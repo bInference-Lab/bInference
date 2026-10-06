@@ -78,9 +78,9 @@ English:
 
 ```text
 🟡 Confirm swap · main · 🔴 Live
-Sell 0.5 BNB → at least 312.40 USDT
+Sell 0.5 BNB → at least 312.4 USDT
 Route  KyberSwap: PancakeSwap v3 92%, Infinity 8% · impact 0.08% · max slippage 0.50%
-Fees   network ≈ $0.004 · private send
+Fees   network <$0.01 · private send
 Check  ✅ simulation: you receive 313.95 USDT · ✅ USDT verified
 Agent says  "Taking profit as you asked at $625"
 Expires at 14:32:05
@@ -91,9 +91,9 @@ Expires at 14:32:05
 
 ```text
 🟡 确认兑换 · main · 🔴 实盘
-卖出 0.5 BNB → 至少收到 312.40 USDT
+卖出 0.5 BNB → 至少收到 312.4 USDT
 路由  KyberSwap：PancakeSwap v3 92%，Infinity 8% · 价格影响 0.08% · 滑点上限 0.50%
-费用  网络费约 $0.004 · 私密发送
+费用  网络费 <$0.01 · 私密发送
 检查  ✅ 模拟：你将收到 313.95 USDT · ✅ USDT 已验证
 Agent 说明  “按你的要求在 $625 止盈”
 过期时间 14:32:05
@@ -167,7 +167,7 @@ The card's message is edited into its receipt; the buttons go away.
 | Paper fill      | `receipt.paper`     | 🧪 Paper fill: {result}                           | 🧪 模拟成交：{result}                     |
 | Auto trade      | `receipt.auto`      | ⚡ Auto trade: {result} · {explorerLink}          | ⚡ 自动交易：{result} · {explorerLink}    |
 | Cancelled       | `receipt.denied`    | ❌ Cancelled on {surface}                         | ❌ 已在 {surface} 取消                    |
-| Expired         | `receipt.expired`   | ❌ Expired with no answer                         | ❌ 未回复，已过期                         |
+| Expired         | `receipt.expired`   | ❌ Expired with no reply                          | ❌ 未回复，已过期                         |
 | Refused         | `receipt.refused`   | ❌ Not sent: {reason}                             | ❌ 未发送：{reason}                       |
 | Failed on chain | `receipt.failed`    | ❌ Failed on chain: {reason} · {explorerLink}     | ❌ 链上失败：{reason} · {explorerLink}    |
 | Unknown         | `receipt.unknown`   | ⚠️ Sent, result not known yet; checking the chain | ⚠️ 已发送，结果待确认；正在检查链上记录   |
@@ -193,13 +193,13 @@ The owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#secti
 | Send level change     | `notice.sendLevel`      | Send level {from} → {to} {when}                                                         | 转账级别 {from} → {to}，{when}                                                      |
 | Rescue address change | `notice.rescueAddress`  | ⚠️ Rescue address changes to {address} at {when}. Not you? Cancel now.                  | ⚠️ 紧急转出地址将于 {when} 改为 {address}。不是你操作？请立即取消。                 |
 | Plaintext secret      | `notice.plainSecret`    | ⚠️ A secret is written as plain text in config. Run `binference check --fix`.           | ⚠️ 配置文件中有明文密钥。请运行 `binference check --fix`。                          |
-| Budget reached        | `notice.budget`         | {agent} used today's model budget ({budget}). Chat resumes {when}; orders keep running. | {agent} 已用完今日模型预算（{budget}）。聊天将于 {when} 恢复；自动订单继续运行。    |
+| Budget reached        | `notice.budget`         | {agent} used today's model budget ({budget}). Chat resumes {when}; orders keep running. | {agent} 已用完今日模型预算（{budget}）。对话将于 {when} 恢复；自动订单继续运行。    |
 | Loop stopped          | `notice.loop`           | {agent} repeated the same step and was stopped                                          | {agent} 重复执行同一步骤，已停止                                                    |
 | Back online           | `notice.resumed`        | Engine was off {duration}: {checked} orders checked, {filled} filled, {skipped} skipped | 引擎停止了 {duration}：已检查 {checked} 个订单，成交 {filled} 个，跳过 {skipped} 个 |
 | Update available      | `notice.update`         | binference {version} is out: {summary}. Run `binference update`.                        | binference {version} 已发布：{summary}。请运行 `binference update`。                |
 | Backup failed         | `notice.backupFailed`   | ⚠️ Last night's backup failed: {reason}                                                 | ⚠️ 昨晚的备份失败：{reason}                                                         |
 | Locked                | `notice.locked`         | 🔴 binference restarted and is locked. Run `binference unlock`.                         | 🔴 binference 已重启并处于锁定状态。请运行 `binference unlock`。                    |
-| Unknown transaction   | `notice.unknownTx`      | ⚠️ {wallet}'s nonce {nonce} was used by a transaction binference did not send           | ⚠️ {wallet} 的随机数 {nonce} 被非 binference 发送的交易占用                         |
+| Unknown transaction   | `notice.unknownTx`      | ⚠️ {wallet}'s nonce {nonce} was used by a transaction binference did not sign           | ⚠️ {wallet} 的随机数 {nonce} 被一笔非 binference 签名的交易占用                     |
 | Binance agent refused | `notice.binanceRefused` | ⚠️ {agent} tried a trade over its limit: {trade}. Refused.                              | ⚠️ {agent} 尝试了超出限额的交易：{trade}。已拒绝。                                  |
 | Binance agent paused  | `notice.binancePaused`  | {agent} paused from {surface}                                                           | 已从 {surface} 暂停 {agent}                                                         |
 | Approval mode         | `notice.approvalMode`   | {agent} is now in {mode} mode, from {surface}                                           | {agent} 已切换为{mode}模式，来自 {surface}                                          |
