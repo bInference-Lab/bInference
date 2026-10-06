@@ -4,14 +4,17 @@
 
 The EVM chain family. It reads a chain through its RPC endpoints with failover, prices gas,
 simulates calls with `eth_simulateV1` and reads the transfers they make, decodes calldata, and
-builds, hashes and checks the transactions a signer signs. Chain facts come in as data from
+builds, hashes and checks the transactions a signer signs. It reads a venue's transaction draft
+for the chain-neutral core: the contract it calls, the wei it sends, and the ERC-20 approval it
+grants. Chain facts come in as data from
 `@binference/chains`; nothing here names a chain.
 
 ## API
 
 | Export                                                                   | What it does                                                                      |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `createEvmFamily`, `parseEvmAddress`                                     | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form                 |
+| `createEvmFamily`, `parseEvmAddress`                                     | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form, draft reading  |
+| `encodeEvmDraft`, `decodeEvmDraft`                                       | A venue's call as a `TxDraft`: the address called, the value and the calldata     |
 | `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                           | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses      |
 | `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health |
 | `createEvmClient`                                                        | A viem public client whose requests go through the failover                       |

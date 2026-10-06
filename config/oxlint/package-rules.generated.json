@@ -5888,6 +5888,9 @@
         "packages/i18n/src/index.ts",
         "packages/platform/src/index.ts",
         "packages/platform/src/testing.ts",
+        "packages/plugin-sdk/src/evm.ts",
+        "packages/plugin-sdk/src/index.ts",
+        "packages/plugin-sdk/src/testing.ts",
         "packages/protocol/src/index.ts",
         "packages/store/src/index.ts"
       ],

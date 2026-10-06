@@ -24,6 +24,7 @@ export {
   printChainRef,
 } from "./caip/chain-ref.js";
 export type { ChainRef, ChainRefParts } from "./caip/chain-ref.js";
+export type { DraftCall, TokenApproval } from "./draft-call.js";
 export type { ChainFamily, ChainRegistry, SigningScheme } from "./ports.js";
 export { chainDefinitionSchema } from "./registry/chain-definition.js";
 export type {
@@ -40,5 +41,25 @@ export type {
 export { createChainRegistry } from "./registry/create-chain-registry.js";
 export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
 export type { RegisteredChain } from "./registry/registered-chain.js";
-export { isTxHash } from "./transaction.js";
-export type { SignatureProblem, SignedTx, TxHash, UnsignedTx } from "./transaction.js";
+export { isTxHash, txDraftSchema } from "./transaction.js";
+export type {
+  SignatureProblem,
+  SignedTx,
+  TxDraft,
+  TxDraftWire,
+  TxHash,
+  UnsignedTx,
+} from "./transaction.js";
+export type { BuildRequest } from "./venues/build-request.js";
+export { decodedEffectSchema } from "./venues/decoded-effect.js";
+export type { DecodedEffect, DecodedEffectWire } from "./venues/decoded-effect.js";
+export type { Quoter, TxBuilder, TxDecoder } from "./venues/ports.js";
+export { venueDeclarationSchema } from "./venues/venue.js";
+export type {
+  Venue,
+  VenueContracts,
+  VenueDeclaration,
+  VenueDeclarationWire,
+} from "./venues/venue.js";
+export { venueQuoteSchema } from "./venues/venue-quote.js";
+export type { QuoteRequest, VenueQuote, VenueQuoteWire } from "./venues/venue-quote.js";

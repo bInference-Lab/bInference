@@ -11,7 +11,7 @@ import {
 import { BinferenceError } from "@binference/core";
 import type { Address } from "viem";
 import { z } from "zod";
-import { evmFamilyId, evmNamespace } from "./evm-family.js";
+import { evmFamilyId, evmNamespace } from "./evm-ids.js";
 
 /** What the EVM family reads from a chain definition. */
 export interface EvmChain {

@@ -695,15 +695,21 @@ Each declares, in a `binference` field of its `package.json`:
 - its config schema.
 
 ```ts
-interface VenueAdapter {
+interface Venue extends Quoter, TxBuilder, TxDecoder {
   id: string;
-  contracts: Address[]; // declared; each must be in the registry
-  quote(req: QuoteRequest): Promise<Quote>;
-  build(intent: Intent, quote: Quote): Promise<UnsignedTx[]>;
-  decode(tx: UnsignedTx): DecodedEffect; // the engine checks it against the intent
-  positions?(wallet: Address): Promise<Position[]>;
+  contracts: { chain: ChainRef; names: string[] }[]; // registry names, not addresses
+  quote(req: QuoteRequest, opts: { signal }): Promise<Result<VenueQuote, "no_route">>;
+  build(req: BuildRequest, opts: { signal }): Promise<TxDraft[]>; // terms set by the host
+  decode(draft: TxDraft): Result<DecodedEffect, "unknown_call">; // checked by the host
+  positions?(wallet: AccountRef): Promise<Position[]>; // lending venues, later
 }
 ```
+
+A venue is defined with `defineVenue` from `@binference/plugin-sdk`. The engine's venue host gives
+it its contracts' addresses from the registry and sets each trade's terms. The venue returns
+`TxDraft`s, transactions before their nonce and fees. The chain family reads each draft's target,
+value and token approval on its own, the venue decodes its trade call, and the host refuses a step
+it cannot read or one that breaks the trade's terms.
 
 **Trust tiers:**
 

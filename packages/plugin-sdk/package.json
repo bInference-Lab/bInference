@@ -1,0 +1,37 @@
+{
+  "name": "@binference/plugin-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "What plugins import: defineVenue, the venue types, their contract suites and each chain family's helpers.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./evm": {
+      "@binference/source": "./src/evm.ts",
+      "types": "./dist/evm.d.mts",
+      "default": "./dist/evm.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/evm.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/chain": "workspace:*",
+    "@binference/chain-evm": "workspace:*",
+    "@binference/core": "workspace:*",
+    "zod": "catalog:"
+  }
+}

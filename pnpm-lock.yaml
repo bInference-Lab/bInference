@@ -436,6 +436,21 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  packages/plugin-sdk:
+    dependencies:
+      '@binference/chain':
+        specifier: workspace:*
+        version: link:../chain
+      '@binference/chain-evm':
+        specifier: workspace:*
+        version: link:../chain-evm
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   packages/protocol:
     dependencies:
       '@binference/chain':

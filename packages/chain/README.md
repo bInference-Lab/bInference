@@ -3,8 +3,10 @@
 ## Purpose
 
 The model every chain shares. Chains, accounts and assets are CAIP ids; an `Amount` is an asset
-and its base units; a chain family turns addresses into their canonical form and checks
-signatures; the registry holds the chains binference may use. Nothing here names a chain.
+and its base units; a chain family turns addresses into their canonical form, reads transaction
+drafts and checks signatures; the registry holds the chains binference may use. It also holds
+the venue ports: what a venue declares, quotes, builds and decodes, so the engine and the plugin
+SDK share one definition. Nothing here names a chain or a venue.
 
 ## API
 
@@ -19,7 +21,11 @@ signatures; the registry holds the chains binference may use. Nothing here names
 | `ChainDefinition`, `chainDefinitionSchema`                            | One chain as data: tokens, contracts, RPCs, relays and explorers |
 | `createChainRegistry`                                                 | The registry, which refuses data its family does not accept      |
 | `UnsignedTx`, `SignedTx`, `TxHash`                                    | Transactions as the core passes them, opaque inside              |
-| `@binference/chain/testing`                                           | Contract suites for each port, a fake family and a fake chain    |
+| `TxDraft`, `txDraftSchema`, `DraftCall`, `TokenApproval`              | A venue's transaction before its nonce and fees, and its read    |
+| `Venue`, `Quoter`, `TxBuilder`, `TxDecoder`                           | The venue ports: quote, build and decode one protocol's trades   |
+| `VenueDeclaration`, `venueDeclarationSchema`                          | A venue's id and its contracts per chain, by registry name       |
+| `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`         | What the venue host asks a venue, and what the venue answers     |
+| `@binference/chain/testing`                                           | Contract suites for each port, a fake family, chain and venue    |
 
 ## Example
 

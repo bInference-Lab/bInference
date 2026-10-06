@@ -15,3 +15,6 @@ Rules for this package:
 - A family package implements `ChainFamily` and `SigningScheme` and passes their suites from
   `@binference/chain/testing`. A chain is data in `@binference/chains`, checked by
   `chainDefinitionSchema` and by its family when the registry starts.
+- Venues are ports here so `engine` and `plugin-sdk` share them: `Quoter`, `TxBuilder` and
+  `TxDecoder` in `src/venues/ports.ts`, each with a contract suite. A venue names its contracts by
+  their registry names, never by address, and returns `TxDraft`s that only its family reads.

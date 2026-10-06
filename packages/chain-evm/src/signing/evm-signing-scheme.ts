@@ -11,7 +11,7 @@ import { err, ok, type Result } from "@binference/core";
 import { type Hex, keccak256, serializeTransaction } from "viem";
 import { parseEvmAddress } from "../evm-address.js";
 import type { EvmChain } from "../evm-chain.js";
-import { evmFamilyId } from "../evm-family.js";
+import { evmFamilyId } from "../evm-ids.js";
 import {
   decodeEvmTransaction,
   encodeEvmTransaction,

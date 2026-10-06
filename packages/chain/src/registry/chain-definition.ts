@@ -80,7 +80,8 @@ export interface ChainDefinition {
   readonly contracts: readonly ContractDefinition[];
 }
 
-const kebab = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/);
+/** A registry key or name in kebab-case, such as a venue's id or a contract's name. */
+export const kebabCaseSchema: z.ZodString = z.string().regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/);
 const httpsUrl = z.string().regex(/^https:\/\/[^\s/]+\S*$/);
 const decimals = z.int().min(0).max(255);
 
@@ -90,7 +91,7 @@ const verificationSchema = z.strictObject({
   control: z.enum(["read", "not_read"]),
 });
 
-const endpointSchema = z.strictObject({ name: kebab, url: httpsUrl, source: httpsUrl });
+const endpointSchema = z.strictObject({ name: kebabCaseSchema, url: httpsUrl, source: httpsUrl });
 
 const tokenSchema = z.strictObject({
   symbol: z.string().min(1),
@@ -101,8 +102,8 @@ const tokenSchema = z.strictObject({
 });
 
 const contractSchema = z.strictObject({
-  venue: kebab,
-  name: kebab,
+  venue: kebabCaseSchema,
+  name: kebabCaseSchema,
   address: z.string().min(1),
   verification: verificationSchema,
 });
@@ -118,9 +119,9 @@ function isUnique(values: readonly string[]): boolean {
 export const chainDefinitionSchema: z.ZodType<ChainDefinition, ChainDefinition> = z
   .strictObject({
     id: z.string().regex(/^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$/),
-    key: kebab,
+    key: kebabCaseSchema,
     name: z.string().min(1),
-    family: kebab,
+    family: kebabCaseSchema,
     nativeAsset: z.strictObject({
       assetNamespace: z.string().regex(/^[-a-z0-9]{3,8}$/),
       assetReference: z.string().regex(/^[-.%a-zA-Z0-9]{1,128}$/),

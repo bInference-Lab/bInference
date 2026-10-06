@@ -1,7 +1,8 @@
 import type { Result } from "@binference/core";
 import type { ChainRef } from "./caip/chain-ref.js";
+import type { DraftCall } from "./draft-call.js";
 import type { RegisteredChain } from "./registry/registered-chain.js";
-import type { SignatureProblem, SignedTx, TxHash, UnsignedTx } from "./transaction.js";
+import type { SignatureProblem, SignedTx, TxDraft, TxHash, UnsignedTx } from "./transaction.js";
 
 /**
  * What a chain family does for the chain-neutral core. A family package (EVM now, Solana later)
@@ -17,6 +18,12 @@ export interface ChainFamily {
    * compares equal for one account. Malformed text is an expected failure, never a throw.
    */
   parseAddress(text: string): Result<string, "malformed_address">;
+  /**
+   * Reads where a draft calls, the native coin it sends and the token approval it grants, from the
+   * draft's bytes alone. A draft of another family, or bytes it cannot read, is an expected
+   * failure: the venue host refuses what the family cannot read.
+   */
+  readDraft(draft: TxDraft): Result<DraftCall, "malformed_draft">;
 }
 
 /**

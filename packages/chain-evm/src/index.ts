@@ -1,9 +1,12 @@
 export { decodeCall } from "./decoding/decode-call.js";
+export { decodeEvmDraft, encodeEvmDraft } from "./drafts/evm-draft.js";
+export type { EvmCallRequest, EvmDraftCall } from "./drafts/evm-draft.js";
 export type { CalldataProblem } from "./decoding/decode-call.js";
 export { parseEvmAddress } from "./evm-address.js";
 export { erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
 export type { EvmChain } from "./evm-chain.js";
-export { createEvmFamily, evmFamilyId, evmNamespace } from "./evm-family.js";
+export { createEvmFamily } from "./evm-family.js";
+export { evmFamilyId, evmNamespace } from "./evm-ids.js";
 export { readFees } from "./fees/read-fees.js";
 export type { EvmFees, FeeOptions, FeeReading } from "./fees/read-fees.js";
 export { createEvmClient } from "./rpc/create-evm-client.js";

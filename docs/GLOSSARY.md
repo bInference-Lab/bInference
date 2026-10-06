@@ -72,6 +72,10 @@ new name here first, in the change that uses it.
   sends.
 - **ledger**: the append-only, hash-chained record of every intent, tap, signature and fill.
 - **venue**: a protocol the agent trades, lends or stakes on, such as PancakeSwap or Venus.
+- **venue host**: the engine part that runs venue code. It sets each trade's terms, and checks
+  every transaction a venue builds against them before anything is signed.
+- **transaction draft**: a transaction a venue built, before the wallet queue gives it its nonce
+  and fees.
 - **registry**: the verified contract addresses in `@binference/chains`.
 
 ### Chat and the agent
