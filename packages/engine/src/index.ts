@@ -194,6 +194,15 @@ export type { TransitionRule } from "./intents/transition-table.js";
 export { ledgerDraftSchema, ledgerEntrySchema } from "./ledger/ledger-entry.js";
 export type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 export { chainLedgerEntry, genesisLedgerHash, hashLedgerEntry } from "./ledger/ledger-hash.js";
+export { checkLedgerChain, genesisCheckpoint } from "./ledger/check-ledger-chain.js";
+export type {
+  LedgerBreakReason,
+  LedgerChainBroken,
+  LedgerChainVerdict,
+  LedgerCheckpoint,
+} from "./ledger/check-ledger-chain.js";
+export { walkLedgerChain } from "./ledger/walk-ledger-chain.js";
+export type { LedgerRange } from "./ledger/walk-ledger-chain.js";
 export { createPolicyCheck } from "./policy/check-policy.js";
 export type {
   PolicyCheck,

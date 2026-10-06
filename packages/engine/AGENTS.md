@@ -44,5 +44,6 @@ Rules for this package:
   fails code that does.
 - The in-memory fakes check every rule a write must pass before they change anything, as the
   SQLite store's transaction does, and they fail with the same `store.*` codes.
+- The ledger chain check (`src/ledger/`) reads entries and never writes.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
   `*.property.test.ts` files.

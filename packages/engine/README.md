@@ -29,6 +29,10 @@ Their records cross the store worker boundary, so each has a zod schema. `@binfe
 their SQLite adapters; `@binference/engine/testing` holds an in-memory fake and a contract suite for
 each.
 
+It checks the ledger. `walkLedgerChain` walks the hash chain through the `LedgerStore` from
+genesis or a trusted checkpoint and names the first entry that breaks it, so an edited, removed or
+added row is found.
+
 ## API
 
 | Export                                                           | What it does                                                    |
@@ -58,6 +62,7 @@ each.
 | `IntentRecord`, `CardRecord`, `StoredConfirmation`               | An intent, a card version and a confirmation as stored          |
 | `LedgerStore`, `LedgerEntry`, `chainLedgerEntry`                 | The hash-chained ledger and how an entry joins its end          |
 | `hashLedgerEntry`, `genesisLedgerHash`                           | The SHA-256 of one ledger entry, and the first `prevHash`       |
+| `walkLedgerChain`, `checkLedgerChain`, `LedgerCheckpoint`        | Walks the hash chain and names the first entry that breaks it   |
 | `IdempotencyStore`, `InboxStore`                                 | Each write's result by its key; inbound events before the ack   |
 | `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |
@@ -105,6 +110,17 @@ const answered = await confirmations.answer(
 );
 if (answered.ok && answered.value.intent.closing !== undefined) {
   const receipt = receiptLine(answered.value.intent.closing); // every copy of the card shows it
+}
+```
+
+`binference check` walks the ledger:
+
+```ts
+import { walkLedgerChain } from "@binference/engine";
+
+const chain = await walkLedgerChain(ledger, {}, { signal });
+if (!chain.ok) {
+  report(chain.error, chain.seq); // a critical finding of `binference check`
 }
 ```
 
