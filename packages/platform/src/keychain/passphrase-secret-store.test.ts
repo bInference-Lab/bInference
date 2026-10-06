@@ -67,6 +67,10 @@ const agentKeyFile = z.strictObject({
   tag: z.base64(),
 });
 
+// Every write restricts its file and folder; on Windows each restriction starts whoami and icacls,
+// which take seconds on a CI runner.
+const contractTimeoutMs = 30_000;
+
 describe("passphrase secret store", () => {
   it.each(
     secretStoreContract({
@@ -80,9 +84,13 @@ describe("passphrase secret store", () => {
         return created;
       },
     }),
-  )("follows the contract: $name", async ({ run }) => {
-    await expect(run()).resolves.toBeUndefined();
-  });
+  )(
+    "follows the contract: $name",
+    async ({ run }) => {
+      await expect(run()).resolves.toBeUndefined();
+    },
+    contractTimeoutMs,
+  );
 
   it("writes the agent-key file of the keys spec, with scrypt at cost 131072", async () => {
     const folder = await keysFolder();

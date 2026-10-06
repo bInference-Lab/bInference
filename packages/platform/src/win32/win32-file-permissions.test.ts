@@ -108,8 +108,9 @@ describe("windows file permissions, with a recorded command runner", () => {
   });
 });
 
-// Runs only on Windows. PowerShell reads the access list by security id, so no account name, and
-// no language of the names, is compared.
+// Runs only on Windows. PowerShell reads the access list through .NET by security id, so no
+// account name or its language is compared, and no PowerShell module has to load (loading one
+// scans every module folder, which takes seconds on a CI runner). Each line is a word and values.
 const aclSchema = z.object({
   protected: z.boolean(),
   user: z.string(),
@@ -118,19 +119,36 @@ const aclSchema = z.object({
 
 function aclScript(path: string): string {
   return [
-    // A failed command ends the script with an error instead of printing empty fields.
     "$ErrorActionPreference = 'Stop'",
-    `$acl = Get-Acl -LiteralPath '${path.replaceAll("'", "''")}'`,
-    "$user = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
-    "$rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))",
-    "@{ protected = $acl.AreAccessRulesProtected; user = $user; rules = @($rules | ForEach-Object { @{ sid = $_.IdentityReference.Value; inherited = $_.IsInherited; allow = [int]$_.AccessControlType } }) } | ConvertTo-Json -Depth 4 -Compress",
+    `$path = '${path.replaceAll("'", "''")}'`,
+    "$acl = if ([IO.Directory]::Exists($path)) { [IO.Directory]::GetAccessControl($path) } else { [IO.File]::GetAccessControl($path) }",
+    "$out = [Console]::Out",
+    "$out.WriteLine('protected ' + $acl.AreAccessRulesProtected)",
+    "$out.WriteLine('user ' + [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)",
+    "foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) { $out.WriteLine('rule ' + $rule.IdentityReference.Value + ' ' + $rule.IsInherited + ' ' + [int]$rule.AccessControlType) }",
   ].join("; ");
+}
+
+function parseAcl(output: string): z.infer<typeof aclSchema> {
+  const lines = output.split(/\r?\n/).map((line) => line.trim().split(" "));
+  const value = (word: string): string | undefined => lines.find(([first]) => first === word)?.[1];
+  return aclSchema.parse({
+    protected: value("protected") === "True",
+    user: value("user"),
+    rules: lines
+      .filter(([first]) => first === "rule")
+      .map(([, ruleSid, inherited, allow]) => ({
+        sid: ruleSid,
+        inherited: inherited === "True",
+        allow: Number(allow),
+      })),
+  });
 }
 
 async function accessProblems(path: string): Promise<readonly string[]> {
   const args = ["-NoProfile", "-NonInteractive", "-Command", aclScript(path)];
   const output = await runCommand("powershell.exe", args, AbortSignal.timeout(15_000));
-  const acl = aclSchema.parse(JSON.parse(output));
+  const acl = parseAcl(output);
   const trusted = new Set([acl.user, systemSid]);
   return [
     ...(acl.protected ? [] : ["inherits access from its folder"]),
