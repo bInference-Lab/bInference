@@ -11,6 +11,12 @@ export { ownerBindingSchema } from "./owner/owner-binding.js";
 export type { OwnerBinding } from "./owner/owner-binding.js";
 export { issueStartCode, startCodeHash, startCodeLifetimeMs } from "./pairing/start-code.js";
 export type { StartCode, StartCodeOptions } from "./pairing/start-code.js";
+export { openPollWorker, pollWorker } from "./polling/open-poll-worker.js";
+export type { PollWorker, PollWorkerOptions } from "./polling/open-poll-worker.js";
+export { createPollerLeases } from "./polling/poller-leases.js";
+export type { PollerLease, PollerLeases } from "./polling/poller-leases.js";
+export { runPolling } from "./polling/run-polling.js";
+export type { RunPollingOptions } from "./polling/run-polling.js";
 export type { OwnerStore } from "./ports.js";
 export type {
   BotSender,

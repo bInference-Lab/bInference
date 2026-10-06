@@ -25,4 +25,5 @@ Rules for this package:
 - Its public API is what `src/index.ts` exports. The `OwnerStore` contract suite and its fake live
   behind `src/testing.ts` (`@binference/telegram/testing`). Every export carries TSDoc.
 - Tests answer Bot API calls with the in-memory Bot API in `src/testing/fake-bot-api.ts`, through
-  grammY's `fetch` option: no network.
+  grammY's `fetch` option: no network. Worker tests start `src/testing/fake-api.worker.ts` with
+  `execArgv` set to run the TypeScript source, and close every worker they start.

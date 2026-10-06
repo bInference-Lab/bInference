@@ -21,7 +21,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/polling/poll.worker.ts --unbundle --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/core": "workspace:*",

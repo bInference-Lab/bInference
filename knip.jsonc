@@ -14,6 +14,10 @@
       "entry": ["src/**/*.worker.ts"],
       "project": ["src/**/*.ts"],
     },
+    "packages/telegram": {
+      "entry": ["src/**/*.worker.ts"],
+      "project": ["src/**/*.ts"],
+    },
   },
   // Installed in CI from a pinned release; it is not an npm package.
   "ignoreBinaries": ["opengrep"],
