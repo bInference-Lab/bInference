@@ -23,6 +23,7 @@ typed client, the server and the MCP server are built from the one operation tab
 | `operations`, `OperationName`, `ArgsOf`, `ResultOf` | Every operation as data: its scope, kind, key rule, transport and schemas |
 | `parseCall`                                         | Checks a call: a known operation, a key on a write, args its schema takes |
 | `describeOperations`                                | The answer of `engine/describe`, with the JSON Schemas of each operation  |
+| `mcpTools`                                          | The tools of `binference mcp` and the operation each one calls            |
 | `intentRequestSchema`, `IntentView` and the others  | The shared requests and views of every operation                          |
 
 ## Example

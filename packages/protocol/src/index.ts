@@ -55,6 +55,8 @@ export { idPrefixes, protocolIdSchema } from "./ids/id-prefixes.js";
 export type { IdKind, ProtocolId } from "./ids/id-prefixes.js";
 export { localeSchema } from "./locale.js";
 export type { Locale } from "./locale.js";
+export { mcpTools } from "./mcp/mcp-tools.js";
+export type { McpTool } from "./mcp/mcp-tools.js";
 export type {
   IdempotencyRule,
   Operation,
