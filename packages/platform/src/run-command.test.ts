@@ -39,7 +39,7 @@ describe("run command to its exit", () => {
     ).resolves.toStrictEqual({ exitCode: 3, stdout: "out", stderr: "err" });
   });
 
-  it("fails with a code for a program that cannot start or is stopped", async () => {
+  it("fails with a code for a program that is not installed, or one that is stopped", async () => {
     const failed = { code: "platform.command_failed" };
 
     await expect(

@@ -27,6 +27,7 @@
     "@binference/core": "workspace:*",
     "@napi-rs/keyring": "catalog:",
     "execa": "catalog:",
+    "which-command": "catalog:",
     "zod": "catalog:"
   }
 }

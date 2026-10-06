@@ -12,7 +12,7 @@
     },
     "chains": { "imports": ["core", "chain"], "money": true },
     "platform": {
-      "imports": ["core", "execa", "@napi-rs/keyring"],
+      "imports": ["core", "execa", "which-command", "@napi-rs/keyring"],
       "osLayer": true,
       "fileSystem": true
     },

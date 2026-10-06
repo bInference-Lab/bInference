@@ -1,5 +1,6 @@
 import { BinferenceError } from "@binference/core";
 import { execa } from "execa";
+import { whichCommand } from "which-command";
 
 /** Runs a program with an argument array and returns its standard output. */
 export type RunProgram = (
@@ -35,6 +36,20 @@ function environmentFor(file: string): Readonly<Record<string, string | undefine
   return windowsPowerShell.test(file) ? { PSMODULEPATH: undefined } : {};
 }
 
+// On Windows execa runs a program it cannot find through cmd.exe, which exits with 1 like a
+// program that ran and failed. Looking the program up first tells the two apart on every OS.
+async function located(file: string): Promise<string> {
+  const path = await whichCommand(file);
+  if (path === undefined) {
+    throw new BinferenceError({
+      code: "platform.command_failed",
+      message: `${file} was not found; check that it is installed and on PATH.`,
+      details: { file },
+    });
+  }
+  return path;
+}
+
 /**
  * Runs an OS program through execa, with no shell, no input and a 15 second limit, and returns its
  * standard output. Throws `platform.command_failed` when the program fails, times out or the
@@ -45,8 +60,9 @@ export async function runCommand(
   args: readonly string[],
   signal: AbortSignal,
 ): Promise<string> {
+  const path = await located(file);
   try {
-    const result = await execa(file, args, {
+    const result = await execa(path, args, {
       cancelSignal: signal,
       timeout: commandTimeoutMs,
       stdin: "ignore",
@@ -74,7 +90,8 @@ export async function runCommandToExit(
   args: readonly string[],
   signal: AbortSignal,
 ): Promise<ProgramExit> {
-  const result = await execa(file, args, {
+  const path = await located(file);
+  const result = await execa(path, args, {
     cancelSignal: signal,
     timeout: commandTimeoutMs,
     stdin: "ignore",
