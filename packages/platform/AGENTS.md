@@ -1,6 +1,6 @@
 # @binference/platform
 
-The OS layer: the state folder and owner-only files.
+The OS layer: the state folder, owner-only files and the engine lock.
 
 The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 

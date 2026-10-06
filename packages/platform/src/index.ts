@@ -1,3 +1,5 @@
+export { acquireFileLock } from "./file-lock.js";
+export type { FileLock } from "./file-lock.js";
 export type { FilePermissions } from "./ports.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
