@@ -22,6 +22,7 @@ const rowSchema = z.strictObject({
   compositionRoot: z.boolean().optional().describe("Reads the environment and wires adapters."),
   publish: z.boolean().optional().describe("Published to npm; every other package is private."),
   coverage: z.number().int().min(0).max(100).optional().describe("Line and branch bar, in %."),
+  mutation: z.boolean().optional().describe("Stryker mutates it on PRs that touch it and nightly."),
 });
 
 /** One row of the package graph: what a package may import and which rules bind it. */

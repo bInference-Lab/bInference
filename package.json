@@ -15,11 +15,15 @@
     "format:check": "oxfmt --check",
     "gen:package": "node --import tsx scripts/gen-package.mts",
     "lint": "oxlint --type-aware --tsconfig tsconfig.json --report-unused-disable-directives-severity error",
-    "test": "vitest run",
+    "mutation": "stryker run",
+    "test": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "catalog:",
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "fast-check": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
@@ -27,6 +31,7 @@
     "tsx": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:",
+    "undici": "catalog:",
     "vitest": "catalog:",
     "zod": "catalog:"
   },

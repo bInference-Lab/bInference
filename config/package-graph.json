@@ -3,8 +3,8 @@
   "allowEverywhere": ["zod"],
   "packages": {
     "core": { "imports": [], "pure": true },
-    "chain": { "imports": ["core"], "pure": true, "money": true },
-    "chain-evm": { "imports": ["core", "chain", "viem"], "money": true },
+    "chain": { "imports": ["core"], "pure": true, "money": true, "coverage": 95 },
+    "chain-evm": { "imports": ["core", "chain", "viem"], "money": true, "coverage": 95 },
     "chains": { "imports": ["core", "chain"], "money": true },
     "platform": {
       "imports": ["core", "execa", "@napi-rs/keyring"],
@@ -18,8 +18,14 @@
       "pure": true,
       "formatsDisplay": true
     },
-    "engine": { "imports": ["core", "chain", "protocol", "i18n"], "pure": true, "money": true },
-    "signer": { "imports": ["core", "chain"], "money": true },
+    "engine": {
+      "imports": ["core", "chain", "protocol", "i18n"],
+      "pure": true,
+      "money": true,
+      "coverage": 95,
+      "mutation": true
+    },
+    "signer": { "imports": ["core", "chain"], "money": true, "coverage": 95, "mutation": true },
     "custody-privy": { "imports": ["core", "chain", "chain-evm"] },
     "server": { "imports": ["core", "protocol", "engine", "ws"], "httpListener": true },
     "telegram": { "imports": ["core", "protocol", "i18n", "engine", "grammy"], "userText": true },

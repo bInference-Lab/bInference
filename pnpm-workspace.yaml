@@ -5,7 +5,10 @@ packages:
 # Every version lives here; package.json files write "catalog:".
 catalogMode: strict
 catalog:
+  "@stryker-mutator/core": 10.0.0
   "@types/node": 26.6.3
+  "@vitest/coverage-v8": 5.0.2
+  fast-check: 4.10.2
   oxfmt: 0.71.0
   oxlint: 1.86.0
   oxlint-tsgolint: 7.0.2003
@@ -13,6 +16,7 @@ catalog:
   tsx: 4.23.15
   turbo: 2.11.5
   typescript: 7.0.2
+  undici: 8.11.2
   vitest: 5.0.2
   zod: 4.6.5
 
