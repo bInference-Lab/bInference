@@ -1,0 +1,30 @@
+rules:
+  - id: binference.child-process-shell
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: Run child processes with an argument array and no shell.
+    patterns:
+      - pattern: "$FN(..., {..., shell: $SHELL, ...})"
+      - metavariable-regex:
+          metavariable: $FN
+          regex: (^|\.)(execa|execaSync|execaNode|spawn|spawnSync|execFile|execFileSync|fork)$
+      - pattern-not: "$FN(..., {..., shell: false, ...})"
+
+  - id: binference.secret-on-command-line
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: A secret never goes on a command line; pass it through stdin or the environment.
+    patterns:
+      - pattern: "$FN($COMMAND, [..., $ARG, ...], ...)"
+      - metavariable-regex:
+          metavariable: $FN
+          regex: (^|\.)(execa|execaSync|execaNode|spawn|spawnSync|execFile|execFileSync)$
+      - metavariable-regex:
+          metavariable: $ARG
+          regex: (?i).*(secret|token|password|passphrase|apikey|api_key|privatekey|private_key|mnemonic).*
+
+  - id: binference.secret-in-url
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: A secret never goes in a URL; send it in a header.
+    pattern-regex: '`https?://[^`]*\$\{[^}]*(?i:secret|token|password|api_?key|private_?key)[^}]*\}'

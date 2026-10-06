@@ -1,27 +1,27 @@
 import type { PackageGraph, PackageRow } from "./graph.mjs";
 
 /** An entry of eslint/no-restricted-imports "paths". */
-export interface RestrictedPath {
+interface RestrictedPath {
   readonly name: string;
   readonly importNames?: readonly string[];
   readonly message: string;
 }
 
 /** An entry of eslint/no-restricted-imports "patterns". */
-export interface RestrictedPattern {
+interface RestrictedPattern {
   readonly regex?: string;
   readonly group?: readonly string[];
   readonly message: string;
 }
 
 /** An entry of eslint/no-restricted-globals. */
-export interface RestrictedGlobal {
+interface RestrictedGlobal {
   readonly name: string;
   readonly message: string;
 }
 
 /** An entry of eslint/no-restricted-properties. */
-export interface RestrictedProperty {
+interface RestrictedProperty {
   readonly object?: string;
   readonly property: string;
   readonly message: string;

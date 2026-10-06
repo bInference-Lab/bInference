@@ -1,0 +1,13 @@
+{
+  "globs": ["**/*.md"],
+  "ignores": ["**/node_modules/**", "**/dist/**", "coverage/**", "reports/**"],
+  "gitignore": true,
+  "config": {
+    "default": true,
+    // Prose lines wrap where the writer chooses.
+    "MD013": false,
+    // READMEs open with a centered banner in HTML.
+    "MD033": false,
+    "MD041": false,
+  },
+}

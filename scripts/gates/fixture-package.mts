@@ -2,7 +2,28 @@
 export interface FixtureOptions {
   readonly dependencies?: Readonly<Record<string, string>>;
   readonly tsconfig?: Readonly<Record<string, unknown>>;
+  /** Package-root files to leave out, such as AGENTS.md. */
+  readonly omit?: readonly string[];
 }
+
+const readme = [
+  "# Fixture",
+  "",
+  "## Purpose",
+  "",
+  "A package planted by the gate checks.",
+  "",
+  "## API",
+  "",
+  "`ready`.",
+  "",
+  "## Example",
+  "",
+  "```ts",
+  "ready;",
+  "```",
+  "",
+].join("\n");
 
 function manifest(key: string, options: FixtureOptions): string {
   const content = {
@@ -30,12 +51,22 @@ export function fixturePackage(
     extends: "../../tsconfig.base.json",
     include: ["src"],
   };
+  const rootFiles: Record<string, string> = {
+    "package.json": manifest(key, options),
+    "tsconfig.json": `${JSON.stringify(tsconfig, null, 2)}\n`,
+    "AGENTS.md": "# Fixture\n\nA package planted by the gate checks.\n",
+    "CLAUDE.md": "@AGENTS.md\n",
+    "README.md": readme,
+  };
   const files: Record<string, string> = {
-    [`${root}/package.json`]: manifest(key, options),
-    [`${root}/tsconfig.json`]: `${JSON.stringify(tsconfig, null, 2)}\n`,
     [`${root}/src/index.ts`]:
       "/** Marks the package as present. */\nexport const ready: number = 1;\n",
   };
+  for (const [file, content] of Object.entries(rootFiles)) {
+    if (!(options.omit ?? []).includes(file)) {
+      files[`${root}/${file}`] = content;
+    }
+  }
   for (const [file, content] of Object.entries(sources)) {
     files[`${root}/src/${file}`] = content;
   }

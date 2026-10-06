@@ -64,9 +64,9 @@ first.
 Docs, UI messages, comments, commits and PR text:
 
 - No em or en dashes as punctuation. No emojis outside the card icons the design names.
-- No filler or hype words (easy, simple, just, seamless, robust, delve, utilize, very, really,
-  powerful, effortless, elevate, streamline).
-- No plan or task ids, no people's names, no "as discussed".
+- No filler or hype words (`easy`, `simple`, `just`, `seamless`, `robust`, `delve`, `utilize`,
+  `very`, `really`, `powerful`, `effortless`, `elevate`, `streamline`).
+- No plan or task ids, no people's names, no `as discussed`.
 - Short sentences, active voice, present tense.
 - Every word a person sees ships in English and Simplified Chinese in the same PR.
 

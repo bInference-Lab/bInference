@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.mts"],
+      "project": ["scripts/**/*.mts", "config/**/*.{ts,mjs}", "*.config.{ts,mts,mjs}"],
+    },
+    "{packages,plugins}/*": {
+      "project": ["src/**/*.ts"],
+    },
+  },
+  // Installed in CI from a pinned release; it is not an npm package.
+  "ignoreBinaries": ["opengrep"],
+  "ignoreDependencies": [
+    // knip's Stryker plugin asks for this runner, but it ships inside @stryker-mutator/core.
+    "@stryker-mutator/command-runner",
+    // The property tests that check:layout asks of policy and amount modules import it.
+    "fast-check",
+    // Each package's build script runs it. Drop this line when the first package lands.
+    "tsdown",
+  ],
+}

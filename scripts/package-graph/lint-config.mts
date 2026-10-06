@@ -4,7 +4,7 @@ import { restrictionsFor, type Restrictions } from "./restrictions.mjs";
 type RuleSetting = string | readonly unknown[];
 
 /** One entry of an Oxlint "overrides" list. */
-export interface LintOverride {
+interface LintOverride {
   readonly files: readonly string[];
   readonly rules: Readonly<Record<string, RuleSetting>>;
 }

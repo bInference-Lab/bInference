@@ -1,0 +1,12 @@
+claude
+copilot
+codex
+cursor
+chatgpt
+gpt
+gemini
+devin
+aider
+windsurf
+anthropic
+openai

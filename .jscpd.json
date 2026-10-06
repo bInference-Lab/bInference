@@ -1,0 +1,18 @@
+{
+  "threshold": 0,
+  "minLines": 8,
+  "minTokens": 50,
+  "format": ["typescript", "javascript"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.test.ts",
+    "**/*.generated.json",
+    "coverage/**",
+    "reports/**",
+    ".stryker-tmp/**"
+  ],
+  "reporters": ["console"],
+  "exitCode": 1,
+  "gitignore": true
+}

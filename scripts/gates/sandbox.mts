@@ -1,6 +1,7 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { listRepoFiles } from "../repo-files.mjs";
 import { runCommand } from "../run-command.mjs";
 
 /** A throwaway copy of the repo where gates run against planted violations. */
@@ -33,21 +34,11 @@ function git(root: string, args: readonly string[]): string {
   return result.output;
 }
 
-function listRepoFiles(repo: string): readonly string[] {
-  const listing = runCommand(["git", "ls-files", "-z", "-c", "-o", "--exclude-standard"], {
-    cwd: repo,
-  });
-  if (listing.status !== 0) {
-    throw new Error(`git ls-files failed:\n${listing.output}`);
-  }
-  return listing.output
-    .split("\0")
-    .filter((file) => file.trim().length > 0 && existsSync(join(repo, file)));
-}
-
 // pnpm refuses a linked node_modules, so the sandbox gets its own install from the store.
 function install(root: string): void {
-  const result = runCommand(["pnpm", "install", "--offline", "--frozen-lockfile"], { cwd: root });
+  const result = runCommand(["pnpm", "install", "--prefer-offline", "--frozen-lockfile"], {
+    cwd: root,
+  });
   if (result.status !== 0) {
     throw new Error(`pnpm install failed in the sandbox:\n${result.output}`);
   }

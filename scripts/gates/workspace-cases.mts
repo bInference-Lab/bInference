@@ -21,7 +21,7 @@ function engineCase(repo: string, nodeVersion: string, expect: "pass" | "fail"):
         command: [
           "pnpm",
           "install",
-          "--offline",
+          "--prefer-offline",
           "--frozen-lockfile",
           `--config.node-version=${nodeVersion}`,
         ],
@@ -43,6 +43,7 @@ export function workspaceCases(repo: string): readonly GateCase[] {
       name: "pnpm gen:package demo makes a package that builds and tests",
       steps: [
         { command: ["pnpm", "gen:package", "demo"], expect: "pass" },
+        { command: ["pnpm", "install", "--prefer-offline"], expect: "pass" },
         {
           command: ["pnpm", "--filter", "@binference/demo", "build"],
           expect: "pass",

@@ -1,0 +1,8 @@
+# A reserved name appears only in a file listed here, under a comment that says why.
+# Each line holds a path and the SHA-256 of the name that file may use.
+
+# The README compares the product with general AI agents by name.
+README.md 96a4bc2602655473120fcc571ee3d8cfe5f8801f8038ccc06323d305e323331c
+README.md 06deac5b8d4a128e257bee1443a9ce063604e9ae63620479e7161fb01a668ac1
+README.zh.md 96a4bc2602655473120fcc571ee3d8cfe5f8801f8038ccc06323d305e323331c
+README.zh.md 06deac5b8d4a128e257bee1443a9ce063604e9ae63620479e7161fb01a668ac1

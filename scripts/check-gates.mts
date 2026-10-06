@@ -1,8 +1,11 @@
 import process from "node:process";
+import { commitCases } from "./gates/commit-cases.mjs";
 import { runCase } from "./gates/gate-case.mjs";
 import { graphCases, tsconfigCases } from "./gates/graph-cases.mjs";
+import { hygieneCases } from "./gates/hygiene-cases.mjs";
 import { lintCases } from "./gates/lint-cases.mjs";
 import { createSandbox } from "./gates/sandbox.mjs";
+import { styleCases } from "./gates/style-cases.mjs";
 import { testCases } from "./gates/test-cases.mjs";
 import { workspaceCases } from "./gates/workspace-cases.mjs";
 
@@ -13,6 +16,9 @@ const cases = [
   ...graphCases(repo),
   ...tsconfigCases(),
   ...testCases(),
+  ...styleCases(repo),
+  ...hygieneCases(repo),
+  ...commitCases(),
 ];
 const filter = process.argv[2];
 const selected = filter === undefined ? cases : cases.filter((item) => item.name.includes(filter));

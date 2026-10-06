@@ -1,0 +1,2 @@
+# Files allowed to suppress a size rule (max-lines, max-lines-per-function, complexity, max-depth,
+# max-params), one path per line. The list starts empty and only shrinks.
