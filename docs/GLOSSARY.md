@@ -71,6 +71,11 @@ new name here first, in the change that uses it.
 - **wallet queue**: the queue per wallet, one transaction at a time, that owns the nonce, signs and
   sends.
 - **ledger**: the append-only, hash-chained record of every intent, tap, signature and fill.
+- **execution**: one trade as it settled on chain or filled on paper: what the wallet sold and
+  bought, the fee and the gas, each valued in USD at the time. Positions and the CSV export are
+  built from executions.
+- **position**: what one wallet holds of one asset at average cost: the quantity, its cost with
+  fees and gas, and the realized profit or loss. Paper and live keep separate positions.
 - **venue**: a protocol the agent trades, lends or stakes on, such as PancakeSwap or Venus.
 - **venue host**: the engine part that runs venue code. It sets each trade's terms, and checks
   every transaction a venue builds against them before anything is signed.

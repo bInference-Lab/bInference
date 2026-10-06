@@ -29,6 +29,8 @@ import type { QuoteFailure, SimulationFailure } from "./intents/intent-reason.js
 import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
+import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
+import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
 import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
@@ -165,6 +167,24 @@ export interface LedgerStore {
   list(page: RowPage, options: StoreCall): Promise<readonly LedgerEntry[]>;
   /** The newest entry, or `undefined` for an empty ledger. */
   last(options: StoreCall): Promise<LedgerEntry | undefined>;
+}
+
+/**
+ * Keeps executions and the positions they move (database spec, section 2.3). An execution is
+ * stored with its position changes in one transaction, each under the row version it was computed
+ * from, so two executions that race on a position cannot both land.
+ */
+export interface PositionStore {
+  /** One wallet's positions, paper or live, ordered by asset. */
+  positions(query: PositionQuery, options: StoreCall): Promise<readonly PositionRecord[]>;
+  /**
+   * Stores an execution and its position writes, and returns the execution with its number. A
+   * position whose row is not at the write's `readVersion`, or a new position whose row exists,
+   * is `stale` and stores nothing. Two writes to one position throw `store.constraint`.
+   */
+  record(write: ExecutionWrite, options: StoreCall): Promise<Result<ExecutionRecord, "stale">>;
+  /** Executions that match the query, in the order recorded. */
+  executions(query: ExecutionQuery, options: StoreCall): Promise<readonly ExecutionRecord[]>;
 }
 
 /** Keeps each write's result under its idempotency key (protocol spec, section 5). */

@@ -203,6 +203,31 @@ export type {
 } from "./ledger/check-ledger-chain.js";
 export { walkLedgerChain } from "./ledger/walk-ledger-chain.js";
 export type { LedgerRange } from "./ledger/walk-ledger-chain.js";
+export {
+  executionDraftSchema,
+  executionQuerySchema,
+  executionRecordSchema,
+} from "./positions/execution-record.js";
+export type {
+  ExecutionDraft,
+  ExecutionQuery,
+  ExecutionRecord,
+} from "./positions/execution-record.js";
+export {
+  executionWriteSchema,
+  positionQuerySchema,
+  positionRecordSchema,
+  positionStateSchema,
+  positionWriteSchema,
+} from "./positions/position-record.js";
+export type {
+  ExecutionWrite,
+  PositionKey,
+  PositionQuery,
+  PositionRecord,
+  PositionState,
+  PositionWrite,
+} from "./positions/position-record.js";
 export { createPolicyCheck } from "./policy/check-policy.js";
 export type {
   PolicyCheck,
@@ -246,6 +271,7 @@ export type {
   LedgerStore,
   MarketData,
   ModelBilling,
+  PositionStore,
   PriceSource,
   QuoteSource,
   Simulator,

@@ -63,6 +63,7 @@ added row is found.
 | `LedgerStore`, `LedgerEntry`, `chainLedgerEntry`                 | The hash-chained ledger and how an entry joins its end          |
 | `hashLedgerEntry`, `genesisLedgerHash`                           | The SHA-256 of one ledger entry, and the first `prevHash`       |
 | `walkLedgerChain`, `checkLedgerChain`, `LedgerCheckpoint`        | Walks the hash chain and names the first entry that breaks it   |
+| `PositionStore`, `PositionRecord`, `ExecutionRecord`             | Executions and the positions they move, stored together         |
 | `IdempotencyStore`, `InboxStore`                                 | Each write's result by its key; inbound events before the ack   |
 | `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |

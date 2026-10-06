@@ -46,6 +46,11 @@ export { intentStoreContract } from "./contracts/intent-store-contract.js";
 export type { IntentStoreHarness } from "./contracts/intent-store-contract.js";
 export { ledgerStoreContract } from "./contracts/ledger-store-contract.js";
 export type { LedgerStoreHarness, LedgerStoreSubject } from "./contracts/ledger-store-contract.js";
+export { positionStoreContract } from "./contracts/position-store-contract.js";
+export type {
+  PositionStoreHarness,
+  PositionStoreSubject,
+} from "./contracts/position-store-contract.js";
 export { createMemoryAccessStore } from "./fakes/memory-access-store.js";
 export { createMemoryAgentStore } from "./fakes/memory-agent-store.js";
 export { createMemoryConfigJournal } from "./fakes/memory-config-journal.js";
@@ -61,3 +66,4 @@ export type { RelayUpdateSource } from "./fakes/relay-update-source.js";
 export { createSharedMarketData } from "./fakes/shared-market-data.js";
 export type { SharedMarketData } from "./fakes/shared-market-data.js";
 export type { MemoryLedgerStore } from "./fakes/memory-ledger-store.js";
+export { createMemoryPositionStore } from "./fakes/memory-position-store.js";
