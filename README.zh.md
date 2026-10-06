@@ -10,7 +10,7 @@ bInference 是一个面向 BNB Smart Chain 的开源 AI Agent。你可以把它�
 
 Hermes Agent、Meta 的 Muse 和 OpenClaw 是面向日常生活的 AI Agent。bInference 能做到它们能做的事，并且专为区块链打造：它深入了解 BNB Smart Chain，在链上交易、调研和执行时，比通用 Agent 更专业。
 
-**你的钱包，你的规则，你来确认。** Agent 只用它自己创建的钱包、在你设定的限额内交易；没有你的确认，任何资金都不会离开钱包。
+**你的钱包，你的规则，你来确认。** Agent 用它自己的钱包、在你设定的限额内交易。默认情况下，没有你的确认什么都不会发生；开启自动模式后，它会在你的限额内自动交易，并在事后告诉你。
 
 [官网](https://binference.io) · [X](https://x.com/getbinference)
 
@@ -90,14 +90,16 @@ Agent 随 bInference 一起成长：bInference 路线图上的每项能力都会
 
 ## 你的机器，你来掌控 <img src=".github/assets/logos/telegram.png" width="20" height="20" alt="Telegram">&nbsp;<img src=".github/assets/logos/claude.png" width="20" height="20" alt="Claude Code">&nbsp;<img src=".github/assets/logos/codex.png" width="20" height="20" alt="Codex">&nbsp;<img src=".github/assets/logos/mcp.png" width="20" height="20" alt="MCP">
 
-bInference 运行在你自己的电脑或服务器上。私钥只保存在那里，经过加密，存放在 AI 无法访问的独立进程中。你可以在 Telegram、网页控制台（也可作为 Mini App 在 Telegram 中打开）、终端，或从 Claude Code、Codex 和任何 MCP 客户端与它沟通。
+你可以用自己的密钥在自己的电脑或服务器上运行 bInference，也可以在 binference.io 上一键部署到 bInference Cloud，无需任何设置。无论哪种方式，钱包都是归你所有的 Privy 钱包：任何机器都不会持有钱包私钥，而且只有你能修改的策略限定了任何机器可以签署的内容。你可以在 Telegram、网页控制台（也可作为 Mini App 在 Telegram 中打开）、终端，或从 Claude Code、Codex 和任何 MCP 客户端与它沟通。
 
 运行一个或多个 Agent，每个都有自己的钱包和限额，支持中文和英文。AI 默认由 bInference Router 提供；任何兼容的模型服务商也都可以使用，包括本地模型。
 
 ## 安全设计 <img src=".github/assets/logos/safe.png" width="20" height="20" alt="">
 
-- 每笔交易都以卡片形式出现，列明准确金额、费用和模拟结果。点一下即发送；不回复就等于拒绝。
+- 默认的手动模式下，每笔交易都以卡片形式出现，列明准确金额、费用和模拟结果。点一下即发送；不回复就等于拒绝。
+- 自动模式在你的限额内交易，并在每笔交易后发送回执。转账、跨链、发币以及任何超出限额的操作仍需你确认。
 - 点了确认也照样有效的限额：单笔上限和 24 小时上限、滑点和交易税上限，以及决定资金可以转往何处的转账级别。
+- 资金只能转往你的紧急转出地址或你保存过的地址，即使机器被入侵，攻击者也无法把资金转走。
 - 每个新 Agent 都从模拟模式开始，使用虚拟资金和真实报价。
 - `/freeze` 立即停止一切。`/rescue` 把全部资金转回你自己的钱包。
 
@@ -116,7 +118,7 @@ binference init
 irm https://binference.io/install.ps1 | iex
 ```
 
-支持 macOS、Windows 和 Linux，可运行在你的电脑、服务器或 Docker 中。开源 Agent 不收取任何费用。
+支持 macOS、Windows 和 Linux，可运行在你的电脑、服务器或 Docker 中。自托管的 Agent 不收取任何费用。不想自己设置？可以在 [binference.io](https://binference.io) 上部署到 bInference Cloud。
 
 ## 参与贡献
 

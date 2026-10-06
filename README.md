@@ -10,7 +10,7 @@ bInference is an open-source AI agent for BNB Smart Chain. Deploy it as a trader
 
 Hermes Agent, Meta's Muse and OpenClaw are AI agents for everyday life. bInference does what they do and is built for blockchain: it knows BNB Smart Chain inside out, so it trades, researches and acts there with a depth a general agent can't match.
 
-**Your wallets, your rules, your tap.** The agent trades from wallets it creates, inside limits you set, and nothing leaves a wallet until you confirm it.
+**Your wallets, your rules, your tap.** The agent trades from its own wallets, inside limits you set. By default nothing moves until you tap; in auto mode it trades within your caps and tells you after.
 
 [Website](https://binference.io) · [X](https://x.com/getbinference)
 
@@ -90,14 +90,16 @@ The agent grows with bInference: every capability on the bInference roadmap come
 
 ## Your machine, your control <img src=".github/assets/logos/telegram.png" width="20" height="20" alt="Telegram">&nbsp;<img src=".github/assets/logos/claude.png" width="20" height="20" alt="Claude Code">&nbsp;<img src=".github/assets/logos/codex.png" width="20" height="20" alt="Codex">&nbsp;<img src=".github/assets/logos/mcp.png" width="20" height="20" alt="MCP">
 
-bInference runs on your own computer or server. Its keys stay there, encrypted, in a separate process the AI cannot reach. You talk to it on Telegram, in the web console (also inside Telegram as a Mini App), in the terminal, or from Claude Code, Codex and any MCP client.
+Run bInference on your own computer or server with your own keys, or deploy it in bInference Cloud on binference.io with nothing to set up. Either way the wallets are Privy wallets you own: no machine ever holds their keys, and a policy only you can change limits what any machine may sign. You talk to it on Telegram, in the web console (also inside Telegram as a Mini App), in the terminal, or from Claude Code, Codex and any MCP client.
 
 Run one agent or several, each with its own wallets and limits, in English or Chinese. The bInference Router runs the AI by default; any compatible model provider works, local models included.
 
 ## Safe by design <img src=".github/assets/logos/safe.png" width="20" height="20" alt="">
 
-- Every transaction arrives as a card with exact amounts, fees and a simulated result. One tap sends it; no answer means no.
+- In manual mode, the default, every transaction arrives as a card with exact amounts, fees and a simulated result. One tap sends it; no answer means no.
+- Auto mode trades within your caps and sends a receipt after each trade. Sends, bridges, token launches and anything over a cap still ask.
 - Limits hold even after a tap: per-trade and 24-hour caps, slippage and tax limits, and send levels that decide where funds may go.
+- Funds can only leave to your rescue address or addresses you saved, so even a hacked machine can't pay an attacker.
 - Every new agent starts in paper mode, with virtual money and real quotes.
 - `/freeze` stops everything. `/rescue` moves all funds to your own wallet.
 
@@ -116,7 +118,7 @@ On Windows, in PowerShell:
 irm https://binference.io/install.ps1 | iex
 ```
 
-Runs on macOS, Windows and Linux, on your computer, a server or Docker. The open-source agent charges no fees.
+Runs on macOS, Windows and Linux, on your computer, a server or Docker. The self-hosted agent charges no fees. Prefer no setup? Deploy it in bInference Cloud on [binference.io](https://binference.io).
 
 ## Contributing
 
