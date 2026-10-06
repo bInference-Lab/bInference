@@ -12,20 +12,20 @@ const rules: CardRules = {
 };
 
 describe("card expiry", () => {
-  it("gives sends, DeFi, bridges, rescues and identity the longer card", () => {
+  it("gives trades and CEX orders the shorter card and every other kind the longer one", () => {
     const expiries = intentKinds.map((kind) => [kind, cardExpiresAt(kind, 1_000, rules)]);
     expect(Object.fromEntries(expiries)).toStrictEqual({
       swap: 61_000,
       buy: 61_000,
       sell: 61_000,
       send: 601_000,
-      revokeApproval: 61_000,
+      revokeApproval: 601_000,
       lend: 601_000,
       stake: 601_000,
       bridge: 601_000,
       cexOrder: 61_000,
       registerIdentity: 601_000,
-      launchToken: 61_000,
+      launchToken: 601_000,
       rescue: 601_000,
     });
   });

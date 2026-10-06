@@ -251,6 +251,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | finality, final                                    | 最终确认                     |                                         |
 | transaction (on chain)                             | 交易, 链上交易               | 链上交易 where "trade" could be meant   |
 | a transaction lands                                | 上链                         |                                         |
+| revert (a transaction fails on chain)              | 回滚                         |                                         |
 | transaction hash                                   | 交易哈希                     |                                         |
 | explorer (block explorer)                          | 区块浏览器                   |                                         |
 | network (chain)                                    | 网络                         |                                         |

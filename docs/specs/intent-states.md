@@ -1,6 +1,7 @@
 # Spec 6: the intent state machine
 
-Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)).
+Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by
+[decision 0099](../DECISIONS.md#d0099).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -52,7 +53,7 @@ other code writes an intent's state ([ENGINEERING.md principle 2](../ENGINEERING
 
 ## 3. Transitions
 
-Each row is the only way into its target state. Guards are checked inside the same database
+These rows are the only ways an intent moves. Guards are checked inside the same database
 transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-10)).
 
 | From                         | To                      | Trigger                                                            | Guard                                                                                                                                                                                                  |
@@ -71,18 +72,21 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `awaiting_confirmation`      | `awaiting_confirmation` | tap with a stale quote                                             | quote older than 10 s: re-quote and re-simulate; a minimum out worse by more than 0.5% opens card version n+1                                                                                          |
 | `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                      | the card version tapped is the current one; the card has not expired                                                                                                                                   |
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                          |                                                                                                                                                                                                        |
-| `awaiting_confirmation`      | `expired`               | card timer                                                         | 60 s for trades; 10 min for sends, DeFi, bridges, rescue, identity                                                                                                                                     |
-| any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                           | not yet signed                                                                                                                                                                                         |
+| `awaiting_confirmation`      | `expired`               | card timer                                                         | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, identity, token launches and approval revokes                                                                                 |
+| any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                           | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099))                                                                                                                |
 | `confirmed`                  | `paper_filled`          | paper mode                                                         | the agent is in paper mode                                                                                                                                                                             |
 | `confirmed`                  | `executing`             | wallet queue takes it                                              | the agent is live; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                                                |
 | `executing`                  | `included`              | every step's receipt seen                                          | every receipt has status 1                                                                                                                                                                             |
-| `executing`                  | `failed_onchain`        | a step's receipt has status 0, or a step was cancelled (section 6) | later steps are not sent                                                                                                                                                                               |
+| `executing`                  | `failed_onchain`        | a step's receipt has status 0, or a step was cancelled (section 6) | the reason `reverted` or `stuck_cancelled` is stored; later steps are not sent                                                                                                                         |
 | `executing`                  | `unknown_after_send`    | startup finds a sent step with no known fate                       |                                                                                                                                                                                                        |
-| `included`                   | `finalized`             | finality                                                           | the last step's block is final; a reorg before that moves the intent back to `executing`                                                                                                               |
+| `unknown_after_send`         | `executing`             | reconciliation finds the step's transaction                        | the transaction at its nonce is ours (section 7)                                                                                                                                                       |
+| `unknown_after_send`         | `failed_onchain`        | reconciliation finds another transaction                           | another transaction used the step's nonce (section 7); the reason `nonce_taken` is stored, with an alarm notice                                                                                        |
+| `included`                   | `finalized`             | finality                                                           | the last step's block is final                                                                                                                                                                         |
+| `included`                   | `executing`             | a reorg removes a step's block before it is final                  |                                                                                                                                                                                                        |
 | `finalized`                  | `reconciled`            | reconciliation                                                     | fills decoded and compared with the simulation; a difference above 1% raises an alarm notice but still reconciles                                                                                      |
 
 Nothing leaves a terminal state. A freeze never interrupts `executing`: a running transaction is
-finished, never cut in half.
+finished, never cut in half. A freeze never cancels a rescue either (section 5).
 
 <a id="section-4"></a>
 
@@ -115,6 +119,9 @@ Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `hig
 Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`.
 
+Failure reasons for `failed_onchain`: `reverted` (a step's receipt has status 0), `stuck_cancelled`
+(section 6) and `nonce_taken` (section 7).
+
 <a id="section-5"></a>
 
 ## 5. Kinds with special paths
@@ -129,12 +136,16 @@ Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
   or a `lend` or `stake` move inside the agent's own positions; it fits the per-trade and
   rolling-day caps; any approval goes to a registry spender; the proposing turn carries no
   outside-content mark; and the proposer is the agent runtime, not an MCP client. Anything else
-  opens a card. A receipt is sent when it settles.
+  opens a card. A receipt is sent when it settles. The test checks these conditions in this order
+  and names the first that fails: `manual` (the agent is in manual mode), `send`, `kind`,
+  `overCap`, `spender` (an approval to a spender outside the registry), `outside` or `mcp`. The card
+  shows each code but `manual` with its `autoAsks` message (spec 4, section 3.4).
 - **Rescue** ([decision 0044](../DECISIONS.md#d0044)): one intent, one card, one step per token per
-  agent wallet, sent to the rescue address. It works while frozen and at every send level. Its card
-  expires after 10 minutes. A step that fails is retried up to 3 times, each time only after the
-  failed transaction is final and a new simulation passes; the intent reconciles with every step's
-  outcome.
+  agent wallet, sent to the rescue address. It works while frozen and at every send level: a freeze
+  does not cancel a pending rescue, since it pays only the owner's own rescue address
+  ([decision 0099](../DECISIONS.md#d0099)). Its card expires after 10 minutes. A step that fails is
+  retried up to 3 times, each time only after the failed transaction is final and a new simulation
+  passes; the intent reconciles with every step's outcome.
 - **Bridges** ([decision 0067](../DECISIONS.md#d0067)) end in `reconciled` when the source
   transaction is final and the bridge reports delivery, or after 2 hours with the delivery marked
   unknown and a notice.

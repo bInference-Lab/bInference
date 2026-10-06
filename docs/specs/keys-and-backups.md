@@ -132,8 +132,9 @@ usable 24 hours after saving; level 3 allows no sends.
   authorize, and the agent key cannot reach Privy.
 - Key buffers are zeroed after use and on exit. The service units turn core dumps off (`LimitCORE=0`
   for systemd, the equivalent for launchd).
-- It talks to the engine over a private IPC endpoint (`~/.binference/run/signer.sock`, or a named
-  pipe on Windows), owner-only, one request at a time per wallet.
+- It talks to the engine over a private IPC endpoint (`~/.binference/run/signer.sock`, or the named
+  pipe `\\.\pipe\binference-<install id>-signer` on Windows), owner-only, one request at a time
+  per wallet.
 
 <a id="section-5-1"></a>
 

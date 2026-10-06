@@ -378,13 +378,18 @@ client (agent runtime, MCP): swap(tokenIn, tokenOut, amount, maxSlippage, reason
 
 **Intent states.** Spec 6 ([intent-states.md](specs/intent-states.md)) holds every state and
 transition. In short, the normal path is
-`proposed → checked → simulated → awaiting_confirmation → confirmed → signed → submitted → included → finalized → reconciled`.
+`proposed → checked → quoted → assessed → simulated → awaiting_confirmation → confirmed → executing → included → finalized → reconciled`.
 An intent can also end in one of these terminal states:
 
-- `rejected_policy`, `risk_blocked`
+- `rejected_policy`, `risk_blocked`, `failed_check`
 - `expired`, `denied`, `cancelled`
-- `failed_onchain`, `replaced`, `dropped`
-- `unknown_after_send`, which is reconciled by hash and nonce and never re-signed.
+- `paper_filled`
+- `failed_onchain`
+
+`unknown_after_send` is not terminal: a step whose fate is unknown after a crash is reconciled by
+hash and nonce and never signed again, and the intent goes on to `executing` or ends in
+`failed_onchain`. Each step's transaction has its own record, with states such as `signed`, `sent`,
+`dropped` and `superseded` (spec 6, section 6).
 
 **Stuck transactions.** A transaction not included after about 20 blocks is simulated again:
 

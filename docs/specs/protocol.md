@@ -52,10 +52,10 @@ below.
 
 The engine listens on two transports. Both carry the same frames (section 3) over WebSocket.
 
-| Transport   | Address                                                                                                                   | Who uses it                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Local IPC   | `~/.binference/run/engine.sock` on macOS and Linux; `\\.\pipe\binference-<install id>` on Windows; owner-only permissions | CLI, terminal chat, the agent runtime, `binference mcp` |
-| HTTP and WS | `127.0.0.1:7456`, path `/ws` (port in config)                                                                             | Console in a browser, the Telegram Mini App             |
+| Transport   | Address                                                                                                                          | Who uses it                                             |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Local IPC   | `~/.binference/run/engine.sock` on macOS and Linux; `\\.\pipe\binference-<install id>-engine` on Windows; owner-only permissions | CLI, terminal chat, the agent runtime, `binference mcp` |
+| HTTP and WS | `127.0.0.1:7456`, path `/ws` (port in config)                                                                                    | Console in a browser, the Telegram Mini App             |
 
 - The HTTP port binds to loopback only. Tailscale `serve` reaches it through a proxy
   ([ARCHITECTURE.md section 25](../ARCHITECTURE.md#section-25)); the engine never binds a public
@@ -554,9 +554,9 @@ later unchanged.
 | `internal` | `error` (with a `details.ref` to find the log line)                                             |
 
 Policy and risk refusals are intent states with reasons, not errors (section 7.4). Their reason
-codes (`daily_cap`, `per_trade_cap`, `gas_reserve`, `slippage`, `price_impact`, `tax`, `liquidity`,
-`venue_off`, `token_denied`, `send_level`, `frozen`, `outside_content_send`, `honeypot`,
-`cannot_sell`, `sources_down`, `no_price`) are listed with their states in spec 6.
+codes (`daily_cap`, `per_trade_cap`, `gas_reserve`, `slippage`, `price_impact`, `tax`,
+`low_liquidity`, `venue_off`, `token_denied`, `send_level`, `frozen`, `outside_content_send`,
+`honeypot`, `cannot_sell`, `sources_down`, `no_price`) are listed with their states in spec 6.
 
 <a id="section-11"></a>
 

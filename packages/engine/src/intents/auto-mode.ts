@@ -8,8 +8,8 @@ export type ApprovalMode = "manual" | "auto";
 
 /**
  * Why auto mode leaves an intent to the owner's tap. `manual`: the agent is not in auto mode.
- * `send`, `kind`, `overCap`, `outside` and `mcp` are the `autoAsks` lines of spec 4, section 3.4.
- * `spender`: a step approves a spender outside the registry.
+ * `send`, `kind`, `overCap`, `spender`, `outside` and `mcp` are the `autoAsks` lines of spec 4,
+ * section 3.4; `spender` means a step approves a spender outside the registry.
  */
 export type AutoModeRefusal =
   | "manual"

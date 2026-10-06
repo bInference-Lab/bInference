@@ -108,20 +108,26 @@ describe("opening the first card", () => {
     });
   });
 
-  it("gives a send, a rescue and an identity card the longer expiry", () => {
-    const expiries = (
-      ["send", "rescue", "registerIdentity", "lend", "stake", "bridge"] as const
-    ).map((kind) => openCard(input({ ...simulated, kind }, manual, 0)));
-    expect(expiries.map(expiryOf)).toStrictEqual([
-      600_000, 600_000, 600_000, 600_000, 600_000, 600_000,
-    ]);
+  it("gives a send, a rescue, a launch and an approval revoke the longer expiry", () => {
+    const kinds = [
+      "send",
+      "rescue",
+      "registerIdentity",
+      "lend",
+      "stake",
+      "bridge",
+      "launchToken",
+      "revokeApproval",
+    ] as const;
+    const expiries = kinds.map((kind) => openCard(input({ ...simulated, kind }, manual, 0)));
+    expect(expiries.map(expiryOf)).toStrictEqual(kinds.map(() => 600_000));
   });
 
-  it("gives every kind spec 6 does not name the trade's shorter expiry", () => {
-    const expiries = (["buy", "sell", "cexOrder", "launchToken", "revokeApproval"] as const).map(
-      (kind) => openCard(input({ ...simulated, kind }, manual, 0)),
+  it("gives trades and CEX orders the shorter expiry", () => {
+    const expiries = (["buy", "sell", "cexOrder"] as const).map((kind) =>
+      openCard(input({ ...simulated, kind }, manual, 0)),
     );
-    expect(expiries.map(expiryOf)).toStrictEqual([60_000, 60_000, 60_000, 60_000, 60_000]);
+    expect(expiries.map(expiryOf)).toStrictEqual([60_000, 60_000, 60_000]);
   });
 
   it("opens no card for an intent the auto mode authorizes", () => {

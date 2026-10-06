@@ -147,7 +147,8 @@ Agent 说明  “按你的要求在 $625 止盈”
 / 「超出自动交易限额」, `autoAsks.send` "sends always ask" / 「转账总是需要确认」,
 `autoAsks.outside` "the idea came from outside content" / 「该想法来自外部内容」, `autoAsks.mcp`
 "proposed from {client}" / 「由 {client} 提出」, `autoAsks.kind` "this kind always asks"
-/ 「此类操作总是需要确认」.
+/ 「此类操作总是需要确认」, `autoAsks.spender` "it approves a contract that is not verified"
+/ 「需要向未验证的合约授权」. The codes are those of the auto test in spec 6, section 5.
 
 <a id="section-3-5"></a>
 
@@ -234,7 +235,9 @@ Command descriptions are registered with `setMyCommands` in both languages (`lan
 
 - Every policy, risk, check and failure reason of spec 6 has a key `reason.<code>`, for example
   `reason.daily_cap`: "it would pass your 24-hour cap ({used} of {cap} used)"
-  / 「将超过你的 24 小时上限（已用 {used}，上限 {cap}）」.
+  / 「将超过你的 24 小时上限（已用 {used}，上限 {cap}）」, and the failure reason
+  `reason.reverted`: "the transaction reverted; only the network fee was spent"
+  / 「交易已回滚，只扣除了网络费」.
 - Every protocol error code has a key `error.<area>.<reason>` with a next step, for example
   `error.engine.locked`: "binference is locked. Run `binference unlock` on the machine."
   / 「binference 已锁定。请在本机运行 `binference unlock`。」
@@ -268,6 +271,7 @@ after it is there ([ENGINEERING.md section 14](../ENGINEERING.md#section-14)):
 | health factor                                      | 健康因子                     |
 | supply, withdraw, borrow, repay                    | 存入, 取出, 借款, 还款       |
 | bridge (verb)                                      | 跨链                         |
+| revert (a transaction fails on chain)              | 回滚                         |
 | route, minimum received                            | 路由, 至少收到               |
 | private send                                       | 私密发送                     |
 | console                                            | 控制台                       |

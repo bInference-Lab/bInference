@@ -4,9 +4,12 @@ import type { QuoteTerms } from "./intent-status.js";
 
 /** The agent's card limits (spec 2, `defaults.cards`), in milliseconds and basis points. */
 export interface CardRules {
-  /** How long a trade's card stays open: 60 s by default. */
+  /** How long the card of a trade or a CEX order stays open: 60 s by default. */
   readonly tradeExpiryMs: number;
-  /** How long a send, DeFi, bridge, rescue or identity card stays open: 10 min by default. */
+  /**
+   * How long the card of any other kind stays open, such as a send, a DeFi move, a bridge, a rescue,
+   * an identity registration, a token launch or an approval revoke: 10 min by default.
+   */
   readonly otherExpiryMs: number;
   /** A tap on a quote older than this waits for a re-quote: 10 s by default. */
   readonly requoteAfterMs: number;
@@ -14,15 +17,16 @@ export interface CardRules {
   readonly requoteToleranceBps: Bps;
 }
 
-// Spec 6 names these kinds for the longer card. Every other kind gets the shorter one, since no
-// answer is a no.
+// Spec 6, section 3: trades and CEX orders get the shorter card, every other kind the longer one.
 const longCardKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
   "send",
+  "revokeApproval",
   "lend",
   "stake",
   "bridge",
-  "rescue",
   "registerIdentity",
+  "launchToken",
+  "rescue",
 ]);
 
 /** When a card of this kind, opened at `openedAtMs`, expires. */
