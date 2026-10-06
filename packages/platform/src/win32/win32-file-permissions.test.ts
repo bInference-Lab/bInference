@@ -3,12 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BinferenceError } from "@binference/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { filePermissionsContract } from "../contracts/file-permissions-contract.js";
 import { ensurePrivateFolder, writePrivateFile } from "../private-files.js";
 import { runCommand } from "../run-command.js";
 import { createWin32FilePermissions } from "./win32-file-permissions.js";
 
 const sid = "S-1-5-21-1004336348-1177238915-682003330-1001";
+const systemSid = "S-1-5-18";
 const whoamiOutput = `"desktop-7\\owner","${sid}"\r\n`;
 
 interface Call {
@@ -37,7 +39,7 @@ function recordingRun(whoamiOutputs: readonly string[] = [whoamiOutput]) {
 }
 
 describe("windows file permissions, with a recorded command runner", () => {
-  it("removes inherited access and grants the owner, folders for their children too", async () => {
+  it("removes inherited access and grants the owner and SYSTEM, folders for their children too", async () => {
     const { calls, run } = recordingRun();
     const permissions = createWin32FilePermissions({ run });
     const signal = new AbortController().signal;
@@ -49,11 +51,25 @@ describe("windows file permissions, with a recorded command runner", () => {
       { file: "whoami", args: ["/user", "/fo", "csv", "/nh"] },
       {
         file: "icacls",
-        args: ["D:\\binference", "/inheritance:r", "/grant:r", `*${sid}:(OI)(CI)(F)`],
+        args: [
+          "D:\\binference",
+          "/inheritance:r",
+          "/grant:r",
+          `*${sid}:(OI)(CI)(F)`,
+          "/grant:r",
+          `*${systemSid}:(OI)(CI)(F)`,
+        ],
       },
       {
         file: "icacls",
-        args: ["D:\\binference\\config.json5", "/inheritance:r", "/grant:r", `*${sid}:(F)`],
+        args: [
+          "D:\\binference\\config.json5",
+          "/inheritance:r",
+          "/grant:r",
+          `*${sid}:(F)`,
+          "/grant:r",
+          `*${systemSid}:(F)`,
+        ],
       },
     ]);
   });
@@ -92,25 +108,36 @@ describe("windows file permissions, with a recorded command runner", () => {
   });
 });
 
-// Runs only on Windows: icacls lists each access entry of a path, and whoami names the owner.
-async function aclEntries(path: string): Promise<readonly string[]> {
-  const signal = AbortSignal.timeout(15_000);
-  const output = await runCommand("icacls", [path], signal);
-  const [first = "", ...rest] = output.split(/\r?\n/);
-  const end = rest.findIndex((line) => line.trim() === "");
-  return [first.slice(path.length), ...rest.slice(0, end)].map((line) => line.trim());
+// Runs only on Windows. PowerShell reads the access list by security id, so no account name, and
+// no language of the names, is compared.
+const aclSchema = z.object({
+  protected: z.boolean(),
+  user: z.string(),
+  rules: z.array(z.object({ sid: z.string(), inherited: z.boolean(), allow: z.number() })),
+});
+
+function aclScript(path: string): string {
+  return [
+    `$acl = Get-Acl -LiteralPath '${path.replaceAll("'", "''")}'`,
+    "$user = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+    "$rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))",
+    "@{ protected = $acl.AreAccessRulesProtected; user = $user; rules = @($rules | ForEach-Object { @{ sid = $_.IdentityReference.Value; inherited = $_.IsInherited; allow = [int]$_.AccessControlType } }) } | ConvertTo-Json -Depth 4 -Compress",
+  ].join("; ");
 }
 
-async function isOwnerOnly(path: string): Promise<boolean> {
-  const owner = (await runCommand("whoami", [], AbortSignal.timeout(15_000))).trim();
-  const entries = await aclEntries(path);
-  return (
-    entries.length === 1 &&
-    entries.every(
-      (entry) =>
-        entry.toLowerCase().startsWith(`${owner.toLowerCase()}:`) && !entry.includes("(I)"),
-    )
-  );
+async function accessProblems(path: string): Promise<readonly string[]> {
+  const args = ["-NoProfile", "-NonInteractive", "-Command", aclScript(path)];
+  const output = await runCommand("powershell.exe", args, AbortSignal.timeout(15_000));
+  const acl = aclSchema.parse(JSON.parse(output));
+  const trusted = new Set([acl.user, systemSid]);
+  return [
+    ...(acl.protected ? [] : ["inherits access from its folder"]),
+    ...acl.rules.filter((rule) => rule.inherited).map((rule) => `${rule.sid} inherited`),
+    ...acl.rules.filter((rule) => !trusted.has(rule.sid)).map((rule) => `${rule.sid} listed`),
+    ...(acl.rules.some((rule) => rule.sid === acl.user && rule.allow === 0)
+      ? []
+      : ["the owner has no entry"]),
+  ];
 }
 
 const folders: string[] = [];
@@ -132,7 +159,7 @@ describe.runIf(process.platform === "win32")("windows file permissions", () => {
         permissions: createWin32FilePermissions(),
         folder: await scratchFolder(),
       }),
-      isOwnerOnly,
+      accessProblems,
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
@@ -149,8 +176,8 @@ describe.runIf(process.platform === "win32")("windows file permissions", () => {
     await ensurePrivateFolder(folder, { permissions, signal });
     await writePrivateFile(file, "{ engine: {} }", { permissions, signal });
 
-    await expect(isOwnerOnly(folder)).resolves.toBe(true);
-    await expect(isOwnerOnly(file)).resolves.toBe(true);
+    await expect(accessProblems(folder)).resolves.toStrictEqual([]);
+    await expect(accessProblems(file)).resolves.toStrictEqual([]);
     await expect(readFile(file, "utf8")).resolves.toBe("{ engine: {} }");
   });
 });

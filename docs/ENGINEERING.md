@@ -198,7 +198,7 @@ from `process.platform`.
 | `SecretStore`     | Keychain                     | Secret Service (libsecret)   | Credential Manager                                   |
 | `ServiceManager`  | `launchctl` (LaunchAgent)    | `systemctl --user`           | `schtasks` (Task Scheduler)                          |
 | `IpcEndpoint`     | Unix socket in the state dir | Unix socket in the state dir | Named pipe `\\.\pipe\binference-<install id>-<name>` |
-| `FilePermissions` | `0600` files, `0700` folders | `0600` files, `0700` folders | Owner-only ACL                                       |
+| `FilePermissions` | `0600` files, `0700` folders | `0600` files, `0700` folders | An ACL for the owner and SYSTEM, nothing inherited   |
 | `Shutdown`        | `SIGINT`, `SIGTERM`          | `SIGINT`, `SIGTERM`          | `SIGINT`, `SIGBREAK`, task stop                      |
 
 `BINFERENCE_HOME` moves the state folder on every OS. The keychain is `@napi-rs/keyring` (prebuilt

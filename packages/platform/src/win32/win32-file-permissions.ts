@@ -10,6 +10,7 @@ export interface Win32FilePermissionsOptions {
 
 // The last field of `whoami /user /fo csv /nh` is the account's security id.
 const sidPattern = /"(S-1-\d+(?:-\d+)+)"\s*$/;
+const systemSid = "S-1-5-18";
 
 async function readOwnerSid(run: RunProgram, signal: AbortSignal): Promise<string> {
   const output = await run("whoami", ["/user", "/fo", "csv", "/nh"], signal);
@@ -25,8 +26,9 @@ async function readOwnerSid(run: RunProgram, signal: AbortSignal): Promise<strin
 
 /**
  * Owner-only files and folders on Windows through icacls: inherited access goes, and the current
- * account gets full control. A folder's grant passes to the files made in it. Explicit grants that
- * another tool added to an existing path stay; binference never adds one.
+ * account and SYSTEM get full control. SYSTEM stays because Windows itself runs as it, as root does
+ * on macOS and Linux. A folder's grants pass to the files made in it. Explicit grants that another
+ * tool added to an existing path stay; binference never adds one.
  */
 export function createWin32FilePermissions(
   options: Win32FilePermissionsOptions = {},
@@ -48,7 +50,18 @@ export function createWin32FilePermissions(
     try {
       // One call that only narrows access: a reset first would hand the parent's access to the
       // path for a moment, and to every file below it that inherits from it.
-      await run("icacls", [path, "/inheritance:r", "/grant:r", `*${sid}:${grant}`], signal);
+      await run(
+        "icacls",
+        [
+          path,
+          "/inheritance:r",
+          "/grant:r",
+          `*${sid}:${grant}`,
+          "/grant:r",
+          `*${systemSid}:${grant}`,
+        ],
+        signal,
+      );
     } catch (error) {
       throw new BinferenceError({
         code: "platform.restrict_failed",

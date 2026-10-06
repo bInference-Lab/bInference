@@ -13,8 +13,8 @@ export interface FilePermissionsSubject {
 /** Makes subjects, and judges a path with the OS's own tools. */
 export interface FilePermissionsHarness {
   create(): Promise<FilePermissionsSubject>;
-  /** Whether the path's owner alone can read it. */
-  isOwnerOnly(path: string): Promise<boolean>;
+  /** What lets someone other than the owner reach the path, in the OS's terms; empty when nothing does. */
+  accessProblems(path: string): Promise<readonly string[]>;
 }
 
 const signal = (): AbortSignal => new AbortController().signal;
@@ -29,7 +29,7 @@ export function filePermissionsContract(harness: FilePermissionsHarness): readon
         const file = join(folder, "shared.txt");
         await writeFile(file, "secret", { mode: 0o644 });
         await permissions.restrictFile(file, signal());
-        assert.equal(await harness.isOwnerOnly(file), true);
+        assert.deepEqual(await harness.accessProblems(file), []);
         assert.equal(await readFile(file, "utf8"), "secret");
       },
     },
@@ -41,7 +41,7 @@ export function filePermissionsContract(harness: FilePermissionsHarness): readon
         await mkdir(inner, { mode: 0o755 });
         await permissions.restrictFolder(inner, signal());
         await writeFile(join(inner, "agent-key"), "key");
-        assert.equal(await harness.isOwnerOnly(inner), true);
+        assert.deepEqual(await harness.accessProblems(inner), []);
       },
     },
     {

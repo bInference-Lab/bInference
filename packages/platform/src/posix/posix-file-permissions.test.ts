@@ -15,9 +15,13 @@ async function scratchFolder(): Promise<string> {
 }
 
 // Another account can read a path only through the group and other bits, or by owning it.
-async function isOwnerOnly(path: string): Promise<boolean> {
+async function accessProblems(path: string): Promise<readonly string[]> {
   const info = await stat(path);
-  return (info.mode & 0o077) === 0 && info.uid === process.getuid?.();
+  const mode = info.mode & 0o777;
+  return [
+    ...((mode & 0o077) === 0 ? [] : [`mode ${mode.toString(8)} lets the group or others in`]),
+    ...(info.uid === process.getuid?.() ? [] : [`owned by uid ${String(info.uid)}`]),
+  ];
 }
 
 afterEach(async () => {
@@ -31,7 +35,7 @@ describe.skipIf(process.platform === "win32")("posix file permissions", () => {
         permissions: createPosixFilePermissions(),
         folder: await scratchFolder(),
       }),
-      isOwnerOnly,
+      accessProblems,
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
@@ -51,7 +55,7 @@ describe.skipIf(process.platform === "win32")("posix file permissions", () => {
 
     expect((await stat(folder)).mode & 0o777).toBe(0o700);
     expect((await stat(file)).mode & 0o777).toBe(0o600);
-    await expect(isOwnerOnly(file)).resolves.toBe(true);
+    await expect(accessProblems(file)).resolves.toStrictEqual([]);
     await expect(readFile(file, "utf8")).resolves.toBe("{ engine: {} }");
   });
 
