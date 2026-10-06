@@ -2,7 +2,7 @@
   "name": "@binference/platform",
   "version": "0.0.0",
   "private": true,
-  "description": "The OS layer: the state folder, owner-only files and the engine lock.",
+  "description": "The OS layer: the state folder, owner-only files, the engine lock and IPC endpoints.",
   "license": "MIT",
   "files": [
     "dist"
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@binference/core": "workspace:*",
-    "execa": "catalog:"
+    "execa": "catalog:",
+    "zod": "catalog:"
   }
 }

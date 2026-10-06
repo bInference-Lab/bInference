@@ -1,6 +1,9 @@
 export { acquireFileLock } from "./file-lock.js";
 export type { FileLock } from "./file-lock.js";
-export type { FilePermissions } from "./ports.js";
+export type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
+export { openIpcChannel } from "./ipc/ipc-channel.js";
+export type { IpcChannel, IpcChannelOptions } from "./ipc/ipc-channel.js";
+export type { FilePermissions, IpcEndpoint } from "./ports.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
 export { resolveStateFolder } from "./state-folder.js";

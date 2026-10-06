@@ -1,6 +1,6 @@
 # @binference/platform
 
-The OS layer: the state folder, owner-only files and the engine lock.
+The OS layer: the state folder, owner-only files, the engine lock and IPC endpoints.
 
 The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 
@@ -13,4 +13,7 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   runs it. A Windows adapter's test runs only on Windows (`describe.runIf`); a POSIX one skips
   Windows (`describe.skipIf`). CI runs all three OSes, so each path is proven where it runs.
 - Child processes go through `runCommand` (execa, an argument array, no shell, a time limit).
-- Tests use real files in a fresh temporary folder, with no sleeps and no polling.
+- The IPC address is not a security boundary: every connection authenticates through
+  `openIpcChannel`. Node cannot set a named pipe's access list.
+- Tests use real files, sockets and pipes in a fresh temporary folder, with no sleeps and no
+  polling: they wait on events.
