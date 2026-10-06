@@ -1,7 +1,8 @@
 # Spec 6: the intent state machine
 
-Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by
-[decision 0099](../DECISIONS.md#d0099).
+Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by decisions
+[0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101) and
+[0102](../DECISIONS.md#d0102).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -58,7 +59,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 
 | From                         | To                      | Trigger                                                            | Guard                                                                                                                                                                                                  |
 | ---------------------------- | ----------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| (none)                       | `proposed`              | `intent/propose`, an order fill, a webhook alert, `safety/rescue`  | args valid; agent exists and is not archived                                                                                                                                                           |
+| (none)                       | `proposed`              | `intent/propose`, an order fill, a webhook alert, `safety/rescue`  | args valid; agent exists and is not archived; a rescue is stored live in either mode ([decision 0100](../DECISIONS.md#d0100))                                                                          |
 | `proposed`                   | `checked`               | resolve and policy                                                 | every policy rule passes (section 4)                                                                                                                                                                   |
 | `proposed`                   | `rejected_policy`       | resolve and policy                                                 | a policy rule fails; the reason is stored                                                                                                                                                              |
 | `checked`                    | `quoted`                | venue quote and build                                              | decode matches: `to` among the venue's declared contracts, recipient is the agent's own wallet (or the confirmed send target), amounts match, minimum out at least the policy's, deadline at most 60 s |
@@ -74,8 +75,8 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                          |                                                                                                                                                                                                        |
 | `awaiting_confirmation`      | `expired`               | card timer                                                         | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, identity, token launches and approval revokes                                                                                 |
 | any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                           | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099))                                                                                                                |
-| `confirmed`                  | `paper_filled`          | paper mode                                                         | the agent is in paper mode                                                                                                                                                                             |
-| `confirmed`                  | `executing`             | wallet queue takes it                                              | the agent is live; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                                                |
+| `confirmed`                  | `paper_filled`          | paper mode                                                         | a paper intent, which a rescue never is ([decision 0100](../DECISIONS.md#d0100))                                                                                                                       |
+| `confirmed`                  | `executing`             | wallet queue takes it                                              | the agent is live, or the intent is a rescue; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                     |
 | `executing`                  | `included`              | every step's receipt seen                                          | every receipt has status 1                                                                                                                                                                             |
 | `executing`                  | `failed_onchain`        | a step's receipt has status 0, or a step was cancelled (section 6) | the reason `reverted` or `stuck_cancelled` is stored; later steps are not sent                                                                                                                         |
 | `executing`                  | `unknown_after_send`    | startup finds a sent step with no known fate                       |                                                                                                                                                                                                        |
@@ -94,24 +95,24 @@ finished, never cut in half. A freeze never cancels a rescue either (section 5).
 
 The reason stored with `rejected_policy` is one of:
 
-| Reason                 | When                                                                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `frozen`               | The agent or the install is frozen                                                                                                         |
-| `paper_only`           | A live-only action (a send, a CEX order, identity) while in paper mode                                                                     |
-| `per_trade_cap`        | USD value above the per-trade cap                                                                                                          |
-| `ceiling`              | Above the wallet's Privy policy, which only the owner can raise ([decision 0085](../DECISIONS.md#d0085), spec 5)                           |
-| `daily_cap`            | The rolling 24 hours would pass the cap ([decision 0046](../DECISIONS.md#d0046))                                                           |
-| `gas_reserve`          | The wallet would drop below its reserve ([decision 0045](../DECISIONS.md#d0045))                                                           |
-| `slippage`             | Requested slippage above the agent's maximum                                                                                               |
-| `price_impact`         | Quoted impact above the maximum (checked after quoting; the intent moves to `failed_check` with this reason)                               |
-| `tax`                  | Token tax above the maximum                                                                                                                |
-| `venue_off`            | The venue is not allowed for this agent                                                                                                    |
-| `token_denied`         | The token is on the deny list, or not on a set allow list                                                                                  |
-| `send_level`           | The send target is not allowed at the current send level                                                                                   |
-| `unsaved_address`      | The send target is neither the rescue address nor a saved address ([decision 0091](../DECISIONS.md#d0091)); saving one needs the owner key |
-| `outside_content_send` | A send or bridge proposed in a turn with the outside-content mark, to an address not in the address book                                   |
-| `health_factor`        | A borrow or withdraw would leave the health factor below the minimum                                                                       |
-| `no_price`             | No USD value could be found ([decision 0059](../DECISIONS.md#d0059))                                                                       |
+| Reason                 | When                                                                                                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frozen`               | The agent or the install is frozen                                                                                                                                                                |
+| `paper_only`           | A live-only action (a send, a bridge, a CEX order, identity) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))                         |
+| `per_trade_cap`        | USD value above the per-trade cap                                                                                                                                                                 |
+| `ceiling`              | Above the wallet's Privy policy, which only the owner can raise ([decision 0085](../DECISIONS.md#d0085), spec 5)                                                                                  |
+| `daily_cap`            | The rolling 24 hours would pass the cap ([decision 0046](../DECISIONS.md#d0046))                                                                                                                  |
+| `gas_reserve`          | The wallet would drop below its reserve ([decision 0045](../DECISIONS.md#d0045))                                                                                                                  |
+| `slippage`             | Requested slippage above the agent's maximum                                                                                                                                                      |
+| `price_impact`         | Quoted impact above the maximum (checked after quoting; the intent moves to `failed_check` with this reason)                                                                                      |
+| `tax`                  | Token tax above the maximum                                                                                                                                                                       |
+| `venue_off`            | The venue is not allowed for this agent                                                                                                                                                           |
+| `token_denied`         | The intent buys or receives a token on the deny list, or moves one missing from a set allow list. Selling a denied token passes, but always opens a card ([decision 0101](../DECISIONS.md#d0101)) |
+| `send_level`           | The send target is not allowed at the current send level                                                                                                                                          |
+| `unsaved_address`      | The send target is neither the rescue address nor a saved address ([decision 0091](../DECISIONS.md#d0091)); saving one needs the owner key                                                        |
+| `outside_content_send` | A send or bridge proposed in a turn with the outside-content mark, to an address not in the address book                                                                                          |
+| `health_factor`        | A borrow or withdraw would leave the health factor below the minimum                                                                                                                              |
+| `no_price`             | No USD value could be found ([decision 0059](../DECISIONS.md#d0059))                                                                                                                              |
 
 Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `high_tax`,
 `low_liquidity`, `sources_down`, `blacklisted`.
@@ -133,17 +134,30 @@ Failure reasons for `failed_onchain`: `reverted` (a step's receipt has status 0)
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when
   all of these hold at `simulated`: the agent's mode is `auto`; the kind is `swap`, `buy`, `sell`,
-  or a `lend` or `stake` move inside the agent's own positions; it fits the per-trade and
-  rolling-day caps; any approval goes to a registry spender; the proposing turn carries no
-  outside-content mark; and the proposer is the agent runtime, not an MCP client. Anything else
-  opens a card. A receipt is sent when it settles. The test checks these conditions in this order
-  and names the first that fails: `manual` (the agent is in manual mode), `send`, `kind`,
-  `overCap`, `spender` (an approval to a spender outside the registry), `outside` or `mcp`. The card
-  shows each code but `manual` with its `autoAsks` message (spec 4, section 3.4).
+  or a `lend` or `stake` move inside the agent's own positions; it sells no token on the deny list
+  ([decision 0101](../DECISIONS.md#d0101)); it fits the per-trade and rolling-day caps; its fee per
+  gas is at most the chain's network fee cap ([decision 0102](../DECISIONS.md#d0102)); any approval
+  goes to a registry spender; the proposing turn carries no outside-content mark; and the proposer
+  is the agent runtime, not an MCP client. Anything else opens a card. A receipt is sent when it
+  settles. The test checks these conditions in this order and names the first that fails: `manual`
+  (the agent is in manual mode), `send`, `kind`, `deniedToken` (it sells a token on the deny list),
+  `overCap`, `overFeeCap` (its fee per gas is above the network fee cap), `spender` (an approval to
+  a spender outside the registry), `outside` or `mcp`. The card shows each code but `manual` with
+  its `autoAsks` message (spec 4, section 3.4).
+- **A token on the deny list** ([decision 0101](../DECISIONS.md#d0101)) may leave the wallet, by a
+  sale, a swap or a send, but never enter it. The policy passes such an intent with the mark
+  `sellsDeniedToken`, which the auto test reads, so it always opens a card.
+- **The network fee cap** ([decision 0102](../DECISIONS.md#d0102)) is the most fee per gas a
+  transaction pays without a tap: `chains.maxFeePerGasGwei` (spec 2), 1 gwei on BSC by default. The
+  fee per gas is read when the steps are built. Above the cap, the intent is not refused: it opens a
+  card that shows the fee, in either mode.
 - **Rescue** ([decision 0044](../DECISIONS.md#d0044)): one intent, one card, one step per token per
   agent wallet, sent to the rescue address. It works while frozen and at every send level: a freeze
   does not cancel a pending rescue, since it pays only the owner's own rescue address
-  ([decision 0099](../DECISIONS.md#d0099)). Its card expires after 10 minutes. A step that fails is
+  ([decision 0099](../DECISIONS.md#d0099)). It moves the real funds in paper mode too: paper mode
+  fakes trades, never the rescue. A rescue is stored live whatever the agent's mode, so it never
+  fills on paper, and the wallet queue takes it while the agent is in paper mode
+  ([decision 0100](../DECISIONS.md#d0100)). Its card expires after 10 minutes. A step that fails is
   retried up to 3 times, each time only after the failed transaction is final and a new simulation
   passes; the intent reconciles with every step's outcome.
 - **Bridges** ([decision 0067](../DECISIONS.md#d0067)) end in `reconciled` when the source
@@ -238,7 +252,8 @@ Property tests (fast-check) hold these for every generated history:
 1. No transition leaves a terminal state.
 2. Every signed transaction has a confirmation record (or an `authorizedBy` that was valid at
    signing) whose intent hash matches its step.
-3. A paper intent never reaches `executing`.
+3. A paper intent never reaches `executing`, and a rescue is never a paper intent
+   ([decision 0100](../DECISIONS.md#d0100)).
 4. The amount sent never exceeds the amount on the confirmed card version.
 5. A recipient is always the agent's own wallet, except a send, bridge or rescue to its confirmed
    target.
@@ -246,6 +261,7 @@ Property tests (fast-check) hold these for every generated history:
    `superseded` predecessor.
 7. Every terminal state has exactly one ledger entry, and the ledger's hash chain verifies.
 8. An auto-authorized intent is never a send, withdrawal, bridge, launch or new-spender approval,
-   never exceeds a cap, and never comes from an outside-content turn or an MCP client.
+   never exceeds a cap, never sells a token on the deny list, never pays a fee per gas above the
+   network fee cap, and never comes from an outside-content turn or an MCP client.
 9. A send's target is always the rescue address or a saved address
    ([decision 0091](../DECISIONS.md#d0091)).

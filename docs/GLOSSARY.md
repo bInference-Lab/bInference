@@ -49,6 +49,8 @@ new name here first, in the change that uses it.
 - **ceiling**: each wallet's Privy policy, the hard limit behind the limits. Only the owner key
   raises it.
 - **gas reserve**: the BNB a wallet keeps for network fees. Trades never spend it.
+- **network fee cap**: per chain, the most fee per gas a transaction pays without the owner's tap
+  (`chains.maxFeePerGasGwei`). A higher fee opens a card.
 - **owner key**: the key that owns the wallets and their policy. It is shown once as a `bnok1` code
   and kept offline.
 - **agent key**: the key the signer holds on one machine. It can ask for signatures inside the
@@ -298,6 +300,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | trade limits                             | 交易限额               |                                  |
 | spending limit                           | 消费上限               |                                  |
 | gas reserve                              | 网络费预留             |                                  |
+| network fee cap                          | 网络费上限             |                                  |
 | freeze, unfreeze                         | 冻结, 解除冻结         |                                  |
 | rescue, rescue address                   | 紧急转出, 紧急转出地址 |                                  |
 | send level                               | 转账级别               |                                  |

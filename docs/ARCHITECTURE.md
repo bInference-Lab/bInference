@@ -520,6 +520,9 @@ New agents start in paper mode. Paper mode runs the whole money path up to the s
 - a paper portfolio with its own P&L;
 - a "Paper" label on every card, receipt and console row.
 
+A rescue is the one exception: it moves the real funds in paper mode too, since paper mode fakes
+trades, never the safety exit ([decision 0100](DECISIONS.md#d0100)).
+
 A paper portfolio starts with 1 BNB and 500 USDT ([decision 0069](DECISIONS.md#d0069)), changeable
 in onboarding and resettable at any time; it works with an empty real wallet.
 
@@ -538,7 +541,9 @@ default) or `auto` mode.
 - **Auto:** buys, sells and swaps, and moves inside the agent's own lending and staking positions,
   run without a tap when they fit the per-trade and daily caps. A receipt follows each one.
 - **Always a tap, in both modes:** sends, withdrawals, bridges, token launches, approvals to a
-  spender outside the registry, anything over a cap, any intent from an outside-content turn
+  spender outside the registry, anything over a cap, a sale of a token on the deny list
+  ([decision 0101](DECISIONS.md#d0101)), a fee per gas above the chain's network fee cap
+  ([decision 0102](DECISIONS.md#d0102)), any intent from an outside-content turn
   ([rule 13](#rule-13)), and every proposal from an MCP client.
 - Switching to auto is a loosening ([decision 0089](DECISIONS.md#d0089)); switching back to manual
   is braking and instant.
@@ -575,7 +580,8 @@ Since [decision 0091](DECISIONS.md#d0091), every send goes to the rescue address
 - a gas reserve that trades never spend ([decision 0045](DECISIONS.md#d0045));
 - maximum tax and maximum slippage;
 - allowed venues;
-- token allow and deny lists;
+- token allow and deny lists (a token on the deny list may still be sold, with a tap,
+  [decision 0101](DECISIONS.md#d0101));
 - a minimum health factor.
 
 **Kill switch.** `/freeze` in Telegram (no LLM involved), a console button or `binference freeze`.
@@ -592,7 +598,8 @@ Unfreezing needs the CLI or the console ([rule 11](#rule-11)).
 **Rescue ([decision 0044](DECISIONS.md#d0044)).** Onboarding asks for a rescue address: the owner's
 own main wallet. `/rescue` in Telegram or the Mini App, a console button or `binference rescue`
 builds one intent that sends every token and the BNB (minus gas) of every agent wallet to that
-address. One tap confirms it. It works at every send level and while frozen, and it never sells.
+address. One tap confirms it. It works at every send level, while frozen and in paper mode
+([decision 0100](DECISIONS.md#d0100)), and it never sells.
 Changing the rescue address takes 24 hours, can be cancelled, and is announced on every surface, so
 a hijacked Telegram account cannot redirect it.
 
@@ -1122,9 +1129,10 @@ onboarding shows the caps for the owner to confirm:
 | Send level                    | 0, Open ([decision 0016](DECISIONS.md#d0016))                                                |
 
 **Execution defaults.** Gas price is the network floor (0.05 gwei) unless relay measurements need
-more; there is no priority bidding in v1. Swaps go to the two fastest private relays, by
-measurement, and never to the public mempool. Risk answers from GoPlus and honeypot.is are cached
-for 10 minutes; our own simulation runs for every trade.
+more; there is no priority bidding in v1. A fee per gas above the chain's network fee cap (1 gwei on
+BSC) waits for the owner's tap ([decision 0102](DECISIONS.md#d0102)). Swaps go to the two fastest
+private relays, by measurement, and never to the public mempool. Risk answers from GoPlus and
+honeypot.is are cached for 10 minutes; our own simulation runs for every trade.
 
 **`.bnb` names ([decision 0071](DECISIONS.md#d0071)).** A name resolves through SPACE ID at send
 time; the card shows both the name and the resolved address, and the address book stores the

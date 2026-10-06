@@ -1,6 +1,7 @@
 # Spec 2: the config file
 
-Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)).
+Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by
+[decision 0102](../DECISIONS.md#d0102).
 
 <a id="section-1"></a>
 
@@ -182,19 +183,20 @@ micro-dollars and base units on load.
 
 ### 6.5 `chains`, `venues`, `risk`, `search`
 
-| Key                                        | Type                                       | Default                                                  | Applies | Meaning                        |
-| ------------------------------------------ | ------------------------------------------ | -------------------------------------------------------- | ------- | ------------------------------ |
-| `chains.enabled`                           | ChainRef[]                                 | `["eip155:56"]` ([decision 0023](../DECISIONS.md#d0023)) | restart | Chains the agent trades on     |
-| `chains.rpc.<chain>.urls`                  | URL[]                                      | the chain file's public RPCs                             | live    | Extra or replacement RPCs      |
-| `chains.rpc.<chain>.key`                   | Secret                                     | none                                                     | live    | A paid RPC's key               |
-| `chains.relays.<chain>`                    | string[]                                   | the two fastest, by measurement                          | live    | Private relays for sends       |
-| `venues.keys.okx`                          | `{ apiKey, secret, passphrase }` (Secrets) | none                                                     | live    | Adds OKX routing               |
-| `venues.keys.oneinch`, `venues.keys.zerox` | Secret                                     | none                                                     | live    | Adds those aggregators         |
-| `venues.kyberClientId`                     | string                                     | `"binference"`                                           | live    | KyberSwap's client id          |
-| `risk.cacheTtlSec`                         | integer                                    | `600`                                                    | live    | GoPlus and honeypot.is answers |
-| `search.provider`                          | `"duckduckgo"` \| `"brave"` \| `"tavily"`  | `"duckduckgo"`                                           | live    | `search_web`                   |
-| `search.keys.<provider>`                   | Secret                                     | none                                                     | live    |                                |
-| `search.xApiKey`                           | Secret                                     | none                                                     | live    | Turns `search_x` on            |
+| Key                                        | Type                                       | Default                                                         | Applies | Meaning                                                                                 |
+| ------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `chains.enabled`                           | ChainRef[]                                 | `["eip155:56"]` ([decision 0023](../DECISIONS.md#d0023))        | restart | Chains the agent trades on                                                              |
+| `chains.rpc.<chain>.urls`                  | URL[]                                      | the chain file's public RPCs                                    | live    | Extra or replacement RPCs                                                               |
+| `chains.rpc.<chain>.key`                   | Secret                                     | none                                                            | live    | A paid RPC's key                                                                        |
+| `chains.relays.<chain>`                    | string[]                                   | the two fastest, by measurement                                 | live    | Private relays for sends                                                                |
+| `chains.maxFeePerGasGwei.<chain>`          | decimal string                             | `{ "eip155:56": "1" }` ([decision 0102](../DECISIONS.md#d0102)) | live    | The network fee cap, in gwei: a higher fee per gas opens a card in either approval mode |
+| `venues.keys.okx`                          | `{ apiKey, secret, passphrase }` (Secrets) | none                                                            | live    | Adds OKX routing                                                                        |
+| `venues.keys.oneinch`, `venues.keys.zerox` | Secret                                     | none                                                            | live    | Adds those aggregators                                                                  |
+| `venues.kyberClientId`                     | string                                     | `"binference"`                                                  | live    | KyberSwap's client id                                                                   |
+| `risk.cacheTtlSec`                         | integer                                    | `600`                                                           | live    | GoPlus and honeypot.is answers                                                          |
+| `search.provider`                          | `"duckduckgo"` \| `"brave"` \| `"tavily"`  | `"duckduckgo"`                                                  | live    | `search_web`                                                                            |
+| `search.keys.<provider>`                   | Secret                                     | none                                                            | live    |                                                                                         |
+| `search.xApiKey`                           | Secret                                     | none                                                            | live    | Turns `search_x` on                                                                     |
 
 <a id="section-6-6"></a>
 
