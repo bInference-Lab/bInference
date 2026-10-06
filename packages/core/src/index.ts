@@ -23,5 +23,7 @@ export { err, ok } from "./result.js";
 export type { Err, Ok, Result } from "./result.js";
 export { retry } from "./retry/retry.js";
 export type { RetryAttempt, RetryOptions, RetryPolicy } from "./retry/retry.js";
+export { createSecret, secretMark } from "./secret/secret.js";
+export type { Secret } from "./secret/secret.js";
 export { createDeadline } from "./time/create-deadline.js";
 export type { Deadline, DeadlineOptions } from "./time/create-deadline.js";

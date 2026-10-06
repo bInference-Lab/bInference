@@ -3,8 +3,9 @@
 ## Purpose
 
 The base every other package builds on: results and the one error class, branded ids, `bigint`
-amount math in basis points, retry with jitter, deadlines on `AbortSignal`, and the `Clock`,
-`Random`, `Logger` and `Http` ports. It does no I/O; adapters live in other packages.
+amount math in basis points, retry with jitter, deadlines on `AbortSignal`, secrets that never
+print, and the `Clock`, `Random`, `Logger` and `Http` ports. It does no I/O; adapters live in other
+packages.
 
 ## API
 
@@ -13,6 +14,7 @@ amount math in basis points, retry with jitter, deadlines on `AbortSignal`, and 
 | `Result`, `ok`, `err`                      | An expected outcome: a value, or a failure named by a string literal |
 | `BinferenceError`, `isErrorCode`           | The one error class, with a dotted code and redacted details         |
 | `redactSecrets`                            | Masks private keys, recovery phrases, bot tokens and binference keys |
+| `Secret`, `createSecret`                   | A secret value that prints, logs and serializes as `[secret]`        |
 | `Brand`                                    | A nominal type for ids, accounts, assets and amounts                 |
 | `mulDiv`, `applyBps`, `splitByBps`         | Amount math on base units with a stated rounding direction           |
 | `Bps`, `bpsSchema`, `isBps`                | Integer rates in basis points, 0 to 10,000                           |
