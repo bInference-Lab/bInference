@@ -130,4 +130,4 @@ Report security problems privately through [GitHub security advisories](../../se
 
 ## License
 
-MIT
+[MIT](LICENSE)

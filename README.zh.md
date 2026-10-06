@@ -130,4 +130,4 @@ irm https://binference.io/install.ps1 | iex
 
 ## 许可证
 
-MIT
+[MIT](LICENSE)
