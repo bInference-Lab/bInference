@@ -4,6 +4,7 @@ import { agentCases } from "./gates/agent-cases.mjs";
 import { chainLiteralCases } from "./gates/chain-literal-cases.mjs";
 import { checkCases } from "./gates/check-cases.mjs";
 import { commitCases } from "./gates/commit-cases.mjs";
+import { configSchemaCases } from "./gates/config-schema-cases.mjs";
 import { contractCases } from "./gates/contract-cases.mjs";
 import { decisionCases } from "./gates/decision-cases.mjs";
 import { docsAndTsdocCases } from "./gates/docs-cases.mjs";
@@ -37,6 +38,7 @@ function allCases(repo: string): readonly GateCase[] {
     ...chainLiteralCases(),
     ...protocolCases(repo),
     ...i18nCases(repo),
+    ...configSchemaCases(repo),
     ...commitCases(),
     ...checkCases(),
     ...prCases(repo),

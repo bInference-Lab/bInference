@@ -65,6 +65,18 @@
         "pnpm-lock.yaml"
       ]
     },
+    "//#check:config-schema": {
+      "outputs": [],
+      "inputs": [
+        "packages/*/src/**",
+        "!packages/*/src/**/*.test.ts",
+        "packages/cli/snapshots/**",
+        "packages/cli/docs/**",
+        "scripts/check-config-schema.mts",
+        "package.json",
+        "pnpm-lock.yaml"
+      ]
+    },
     "//#check:adr": {
       "outputs": [],
       "env": ["BASE_REF"]

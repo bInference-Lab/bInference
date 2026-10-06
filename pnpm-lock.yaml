@@ -262,6 +262,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
+      binference:
+        specifier: workspace:*
+        version: link:packages/cli
       fast-check:
         specifier: 'catalog:'
         version: 4.10.2
