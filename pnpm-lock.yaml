@@ -326,6 +326,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/i18n:
+    dependencies:
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/platform:
     dependencies:
       '@binference/core':

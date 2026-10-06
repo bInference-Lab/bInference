@@ -5545,6 +5545,7 @@
         "packages/core/src/index.ts",
         "packages/core/src/testing.ts",
         "packages/engine/src/index.ts",
+        "packages/i18n/src/index.ts",
         "packages/platform/src/index.ts",
         "packages/platform/src/testing.ts",
         "packages/protocol/src/index.ts"
