@@ -103,6 +103,13 @@ new name here first, in the change that uses it.
   keys.
 - **bInference Cloud**: the hosted profile on binference.io, on the same packages.
 - **profile**: self-hosted or Cloud. Only the composition root knows which.
+- **profile parts**: the parts whose adapter depends on the profile: custody (the `Signer` port),
+  the bot's updates, model billing, secrets, the store and market data. Each is a port.
+- **update source**: where the engine reads a bot's inbound updates, by long polling or through a
+  webhook relay. The engine stores each update in the inbox before it acknowledges it.
+- **model billing**: what pays for an agent's model calls and says what the agent may still spend:
+  the model budget, or bInference AI credit.
+- **market data**: the blocks and prices the watchers stream.
 - **plugin**: an installable integration of one kind: venue, data, surface, skills or provider.
 - **surface plugin**: a plugin that adds a chat surface.
 - **plugin tiers**: **Core** (bundled and reviewed), **Verified** (a reviewed, signed publisher) and

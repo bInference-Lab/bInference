@@ -63,6 +63,9 @@ each.
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
+| `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
+| `ModelBilling`, `ModelCharge`                                    | Pays for model calls and says what an agent may still spend     |
+| `MarketData`, `BlockReading`, `PriceReading`                     | The blocks and prices the watchers stream                       |
 | `Sha256Hex`, `sha256Hex`                                         | A SHA-256 digest as 64 lowercase hex digits                     |
 | `TransitionProblem`, `ProposalProblem`                           | Why the machine refused a trigger or a proposal                 |
 

@@ -1,8 +1,17 @@
+export { botUpdateSourceContract } from "./contracts/bot-update-source-contract.js";
+export type {
+  BotUpdateSourceHarness,
+  BotUpdateSourceSubject,
+} from "./contracts/bot-update-source-contract.js";
 export { confirmationStoreContract } from "./contracts/confirmation-store-contract.js";
 export type {
   ConfirmationStoreHarness,
   ConfirmationStoreSubject,
 } from "./contracts/confirmation-store-contract.js";
+export { marketDataContract } from "./contracts/market-data-contract.js";
+export type { MarketDataHarness, MarketDataSubject } from "./contracts/market-data-contract.js";
+export { modelBillingContract } from "./contracts/model-billing-contract.js";
+export type { ModelBillingHarness } from "./contracts/model-billing-contract.js";
 export { priceSourceContract } from "./contracts/price-source-contract.js";
 export type { PriceSourceHarness, PriceSourceSubject } from "./contracts/price-source-contract.js";
 export { quoteSourceContract } from "./contracts/quote-source-contract.js";
@@ -13,6 +22,8 @@ export type {
   SimulatorHarness,
   SimulatorSubject,
 } from "./contracts/simulator-contract.js";
+export { createCreditBilling } from "./fakes/credit-billing.js";
+export type { CreditAccount } from "./fakes/credit-billing.js";
 export { createFakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export type { FakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export { createFakePriceSource } from "./fakes/fake-price-source.js";
@@ -45,4 +56,8 @@ export { createMemoryInboxStore } from "./fakes/memory-inbox-store.js";
 export { createMemoryIntentStore } from "./fakes/memory-intent-store.js";
 export type { MemoryIntentStoreOptions } from "./fakes/memory-intent-store.js";
 export { createMemoryLedgerStore } from "./fakes/memory-ledger-store.js";
+export { createRelayUpdateSource } from "./fakes/relay-update-source.js";
+export type { RelayUpdateSource } from "./fakes/relay-update-source.js";
+export { createSharedMarketData } from "./fakes/shared-market-data.js";
+export type { SharedMarketData } from "./fakes/shared-market-data.js";
 export type { MemoryLedgerStore } from "./fakes/memory-ledger-store.js";

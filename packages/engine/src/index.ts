@@ -66,6 +66,7 @@ export type {
 } from "./agents/limits-record.js";
 export { configChangeSchema, configJournalEntrySchema } from "./audit/config-change.js";
 export type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
+export type { ModelCharge } from "./billing/model-charge.js";
 export {
   idempotencyEntrySchema,
   idempotencyLookupSchema,
@@ -76,6 +77,7 @@ export type {
   IdempotencyLookup,
   IdempotencyRecall,
 } from "./ingress/idempotency-entry.js";
+export type { BotUpdate } from "./ingress/bot-update.js";
 export { inboxAdmissionSchema, inboxDraftSchema, inboxEntrySchema } from "./ingress/inbox-entry.js";
 export type { InboxAdmission, InboxDraft, InboxEntry, InboxSource } from "./ingress/inbox-entry.js";
 export { isFillAuthorization } from "./intents/authorization.js";
@@ -222,15 +224,19 @@ export type {
   VenueRefused,
   VenueTrade,
 } from "./venues/venue-host.js";
+export type { BlockReading, PriceReading } from "./market/market-reading.js";
 export type {
   AccessStore,
   AgentStore,
+  BotUpdateSource,
   ConfigJournal,
   ConfirmationStore,
   IdempotencyStore,
   InboxStore,
   IntentStore,
   LedgerStore,
+  MarketData,
+  ModelBilling,
   PriceSource,
   QuoteSource,
   Simulator,

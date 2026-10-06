@@ -11,6 +11,8 @@ import type {
 /**
  * Every store port of the engine database, as the composition root hands them to the engine, the
  * server and the Telegram channel. The intent store appends to the same ledger `ledger` reads.
+ * Adapters: `createSqliteEngineStores` in `@binference/store`, and a Postgres adapter that passes
+ * the same contract suites.
  */
 export interface EngineStores {
   readonly intents: IntentStore;

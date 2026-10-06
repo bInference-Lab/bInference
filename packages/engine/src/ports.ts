@@ -1,4 +1,4 @@
-import type { AssetRef } from "@binference/chain";
+import type { AssetRef, ChainRef } from "@binference/chain";
 import type { Id, Ratio, Result } from "@binference/core";
 import type { SimulationView } from "@binference/protocol";
 import type { DeviceRecord } from "./access/device-record.js";
@@ -8,7 +8,9 @@ import type { AgentDraft, AgentRecord, AgentSettings } from "./agents/agent-reco
 import type { ApprovalModeChange, ApprovalModeRecord } from "./agents/approval-mode-record.js";
 import type { LimitsChange, LimitsRecord } from "./agents/limits-record.js";
 import type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
+import type { ModelCharge } from "./billing/model-charge.js";
 import type { BuiltQuote, IntentWrite, StoredIntent } from "./confirmations/stored-intent.js";
+import type { BotUpdate } from "./ingress/bot-update.js";
 import type {
   IdempotencyEntry,
   IdempotencyLookup,
@@ -26,6 +28,7 @@ import type {
 import type { QuoteFailure, SimulationFailure } from "./intents/intent-reason.js";
 import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
+import type { BlockReading, PriceReading } from "./market/market-reading.js";
 import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
@@ -40,7 +43,8 @@ export type UsdPrice = Ratio;
  * Gives the USD price of an asset now (decision 0059): a feed for the native coin and stablecoins,
  * the trade's own quote for other tokens. A price is above zero, with a denominator above zero. An
  * asset it cannot price, or a price too old to trust, is `no_price`, never a throw, so the policy
- * refuses the trade.
+ * refuses the trade. Adapters: Chainlink feeds read over the chain's RPC in `@binference/chain-evm`,
+ * and a market-data service's latest reading.
  */
 export interface PriceSource {
   /** The price of one asset. Rejects with the signal's reason once the signal aborts. */
@@ -48,6 +52,19 @@ export interface PriceSource {
     asset: AssetRef,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<UsdPrice, "no_price">>;
+}
+
+/**
+ * Streams the blocks and prices the watchers read (ARCHITECTURE.md section 9). A stream sees each
+ * reading from the moment the call returns, yields them in order, and rejects with the signal's
+ * reason once the signal aborts. Adapters: watchers that read each block and the pools' state over
+ * the chain's RPC, and a market-data service that shares one reading among every agent watching.
+ */
+export interface MarketData {
+  /** The chain's new blocks. */
+  blocks(chain: ChainRef, options: { readonly signal: AbortSignal }): AsyncIterable<BlockReading>;
+  /** The asset's USD price, each time it is read. */
+  prices(asset: AssetRef, options: { readonly signal: AbortSignal }): AsyncIterable<PriceReading>;
 }
 
 /**
@@ -178,6 +195,26 @@ export interface InboxStore {
   prune(beforeMs: number, options: StoreCall): Promise<number>;
 }
 
+/**
+ * A chat bot's inbound updates, before the engine stores them (ARCHITECTURE.md section 3). The
+ * channel stores each update in the inbox and then acknowledges it, so an update the engine never
+ * stored comes again. Adapters: long polling with the bot's token in `@binference/telegram`, and a
+ * webhook relay that hands over the updates an ingress service received.
+ */
+export interface BotUpdateSource {
+  /**
+   * The updates after the last acknowledged one, in the order of their ids, at most `limit` (100
+   * when absent). Waits while there are none, and answers an update again until it is
+   * acknowledged. Rejects with the signal's reason once the signal aborts.
+   */
+  next(options: {
+    readonly signal: AbortSignal;
+    readonly limit?: number;
+  }): Promise<readonly BotUpdate[]>;
+  /** Acknowledges every update up to and including `updateId`: none of them comes again. */
+  acknowledge(updateId: number, options: { readonly signal: AbortSignal }): Promise<void>;
+}
+
 /** Keeps client tokens, console devices and pairing codes: who may open the protocol. */
 export interface AccessStore {
   /** Saves a new token; an id or secret hash in use is `exists`. */
@@ -250,4 +287,20 @@ export interface ConfigJournal {
   record(change: ConfigChange, options: StoreCall): Promise<ConfigJournalEntry>;
   /** Entries numbered after `page.after`, in order, at most `page.limit`. */
   list(page: RowPage, options: StoreCall): Promise<readonly ConfigJournalEntry[]>;
+}
+
+/**
+ * Pays for each agent's model calls and says what the agent may still spend (ARCHITECTURE.md
+ * sections 26 and 30). Once nothing is left, chat waits; auto orders, watchers and webhook rules
+ * keep running. Adapters: the daily model budget, with the owner's model key or bInference Router
+ * link paying the provider, and a balance of bInference AI credit.
+ */
+export interface ModelBilling {
+  /** What the agent may still spend on models, in micro-dollars; 0 once it is spent. */
+  left(agent: Id<"agt">, options: { readonly signal: AbortSignal }): Promise<bigint>;
+  /**
+   * Charges one call's cost and answers what is left after it, never below 0. Rejects with the
+   * signal's reason once the signal aborts, and charges nothing.
+   */
+  charge(charge: ModelCharge, options: { readonly signal: AbortSignal }): Promise<bigint>;
 }
