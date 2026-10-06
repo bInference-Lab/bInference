@@ -7,3 +7,4 @@ export type {
   Transport,
 } from "./operation-handlers.js";
 export type { PushEvent } from "./push-hub.js";
+export type { ServerAuth } from "./sign-in.js";

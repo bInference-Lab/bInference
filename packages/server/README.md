@@ -11,6 +11,11 @@ no domain logic. It answers `push/subscribe`, `push/unsubscribe` and `engine/des
 numbers the pushes of each topic with their own `seq`. The spec is
 [docs/specs/protocol.md](../../docs/specs/protocol.md).
 
+Sign-in is checked against the `AccessStore`. A client token signs in over IPC only, by the SHA-256
+of its secret, with the scopes stored beside it. A console device signs in over WS only, by signing
+a fresh nonce and the page's origin with its paired key; the key is stored as its SPKI DER in
+base64url, as WebCrypto exports it.
+
 ## API
 
 | Export                                                 | What it does                                                   |
@@ -19,6 +24,7 @@ numbers the pushes of each topic with their own `seq`. The spec is
 | `Caller`, `Transport`                                  | Who makes a call, and over which transport                     |
 | `EngineFacts`                                          | The engine's release, state and owner settings, read when used |
 | `PushEvent`                                            | One event to push on a topic                                   |
+| `ServerAuth`                                           | The `AccessStore` every sign-in is checked against             |
 
 ## Example
 

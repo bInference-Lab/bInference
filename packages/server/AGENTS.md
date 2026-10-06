@@ -12,6 +12,8 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - Frames, credentials, error codes, scopes and the operation table come from
   `@binference/protocol`. A call fails only with a protocol error code; a code the server raises
   itself starts with `server.` and is a fault of the engine's own wiring.
+- No connection is trusted for its address. Tokens sign in over IPC only and devices over WS
+  only.
 - Time and randomness come through the `Clock` and `Random` ports: call timeouts and push retention
   run on the clock, so tests drive them with a manual one.
 - Every queue and map has a bound and a stated overflow: a call over a bound fails with
