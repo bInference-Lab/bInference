@@ -1,5 +1,5 @@
 import type { Socket } from "node:net";
-import type { Result } from "@binference/core";
+import type { Result, Secret } from "@binference/core";
 import type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
 
 /**
@@ -32,4 +32,17 @@ export interface IpcEndpoint {
   bind(options: IpcBindOptions): Promise<Result<IpcBinding, "in_use">>;
   /** Connects to the listener. Returns `unreachable` when nobody listens. */
   connect(signal: AbortSignal): Promise<Result<Socket, "unreachable">>;
+}
+
+/**
+ * The OS keychain: Keychain on macOS, Credential Manager on Windows, the Secret Service on Linux.
+ * Every entry lives under the service `binference`, so the name `telegram-bot` is the entry
+ * `binference/telegram-bot`.
+ */
+export interface SecretStore {
+  /**
+   * Reads one entry. Returns `not_found` when the keychain holds no entry of that name; throws a
+   * `BinferenceError` coded `platform.keychain_failed` when the keychain cannot answer.
+   */
+  read(name: string, signal: AbortSignal): Promise<Result<Secret, "not_found">>;
 }

@@ -13,7 +13,9 @@ ports:
 - IPC over a Unix socket in the state folder, or a named pipe on Windows, with length-prefixed
   frames and a handshake in which both sides prove they hold a shared key;
 - one shutdown sequence for `SIGINT` and `SIGTERM`, Windows `SIGINT` and `SIGBREAK`, and stop
-  requests.
+  requests;
+- the OS keychain, behind the `SecretStore` port;
+- text files read whole, and programs run with an argument array, no shell and a time limit.
 
 ## API
 
@@ -28,7 +30,10 @@ ports:
 | `IpcEndpoint`, `IpcBinding`         | The port that listens on and connects to one local IPC address       |
 | `openIpcChannel`, `IpcChannel`      | An authenticated channel of schema-checked JSON messages             |
 | `createShutdown`, `Shutdown`        | Runs the shutdown steps in order on a stop signal, within a budget   |
-| `@binference/platform/testing`      | The contract suites for `FilePermissions` and `IpcEndpoint`          |
+| `SecretStore`                       | The port that reads an entry `binference/<name>` of the OS keychain  |
+| `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                   |
+| `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit     |
+| `@binference/platform/testing`      | The contract suites of every port, and an in-memory `SecretStore`    |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
 longer than macOS allows.
