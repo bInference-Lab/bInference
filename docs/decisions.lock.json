@@ -1,0 +1,392 @@
+{
+  "decisions": {
+    "0001": {
+      "status": "Amended by 0086",
+      "sha256": "6cc6eed2a93e28684fb96de713981dd088b84a73275ea396532ada52a3c54936"
+    },
+    "0002": {
+      "status": "Accepted",
+      "sha256": "9228dc73394ad366445da2cfaa40460ebae25bbc8b01b82324b28a0079e2ba3f"
+    },
+    "0003": {
+      "status": "Amended by 0088",
+      "sha256": "ea8a64d040af885b5cddb79beed76be8ff57d56ed9b21fac11b10b7615f7662f"
+    },
+    "0004": {
+      "status": "Accepted",
+      "sha256": "5b6190213845fd85f90f4849a42f0479d5cf66cf328a90bf04bbd63826fa15d4"
+    },
+    "0005": {
+      "status": "Accepted",
+      "sha256": "42a6c0e702b23a6d18b474c1f8990c4aa9c118515b27c4d4e5594f87bf3679ce"
+    },
+    "0006": {
+      "status": "Accepted",
+      "sha256": "650a0b00a80df7689934fc354b0804520311bbc0ef5221f2c1ef4baaecc02ad8"
+    },
+    "0007": {
+      "status": "Accepted",
+      "sha256": "62d482ebac833ca627c9018605c3f299f5272950b68daddaa932578c88d15122"
+    },
+    "0008": {
+      "status": "Accepted",
+      "sha256": "0e24c063236f28f4e622f6bb3b5dc706f9e78d0f5508808ee13f98948f4be792"
+    },
+    "0009": {
+      "status": "Accepted",
+      "sha256": "b053d91fa273264a900007c2a4b04dec476106abdd710c78e067ac455c9950c8"
+    },
+    "0010": {
+      "status": "Amended by 0082",
+      "sha256": "230b806462538e62957a06f12872cc3c9ee487879725da2bca7f3f84367cc324"
+    },
+    "0011": {
+      "status": "Accepted",
+      "sha256": "636957cbdafdf024a0c13f96f3c0ec499177e7db50728dade827f95d919d6713"
+    },
+    "0012": {
+      "status": "Amended by 0050",
+      "sha256": "9be4e88c9b9ab270cab9d6addd564c4eb002de4d61226985c351e5a96dcac6e5"
+    },
+    "0013": {
+      "status": "Accepted",
+      "sha256": "2e3720da8be1af8c0a414f82c8ab0e032bd78e67830a1c063f30f8efec4b0934"
+    },
+    "0014": {
+      "status": "Accepted",
+      "sha256": "79e98ea31f29796fd30a0f0d6393a4e004a91bc308d717e0656d4b7bf4f5213f"
+    },
+    "0015": {
+      "status": "Accepted",
+      "sha256": "d0e85676322ad4a0cfb7955c0683e9413c834f20ca8868c70ef411948d80ad7e"
+    },
+    "0016": {
+      "status": "Amended by 0091",
+      "sha256": "ba88ceffe70035b0dc764dc8987f2b323030a8a4458c73dc38206a18aee3a97a"
+    },
+    "0017": {
+      "status": "Accepted",
+      "sha256": "1307e5c671e0a48cdf7ed7b3ea583d0be569edf2066d479bb2dd59a84f640390"
+    },
+    "0018": {
+      "status": "Accepted",
+      "sha256": "8baa31e23e60368802a4baa00429a4015fab52763a8a0a4dea7f2ededa36cd93"
+    },
+    "0019": {
+      "status": "Accepted",
+      "sha256": "4c2a16bec12f6e879f210b4fccfc6b4a09d06479414811bea739e212fe0518bb"
+    },
+    "0020": {
+      "status": "Accepted",
+      "sha256": "a31144d2655f6fec1e8a574bbca911fdfd3d9bb3820c5348c8eb4e5d7a122b3d"
+    },
+    "0021": {
+      "status": "Superseded by 0086",
+      "sha256": "83926a0442e269ec303ae429b2eeba8d659fcf2452603ae14cdad19a20c90648"
+    },
+    "0022": {
+      "status": "Accepted",
+      "sha256": "1daa37edbaa2392684ac24de930a76b4ed38a3e675f5c5f3bf2ee6886b400fb7"
+    },
+    "0023": {
+      "status": "Accepted",
+      "sha256": "bf2f617675f32a57138856c54ef2c8a824e5d3eecff0593ce57b3579cc6f5475"
+    },
+    "0024": {
+      "status": "Accepted",
+      "sha256": "a6ad6ad90d8c6dfe8202db0b1625d24c88a11651f329d2d2d492e34ef9adc90f"
+    },
+    "0025": {
+      "status": "Accepted",
+      "sha256": "17bc69d1c69d9301dde95c47819dccc73b5de2dd16e68dcb127d403e478b100c"
+    },
+    "0026": {
+      "status": "Accepted",
+      "sha256": "bd36bd754f539ec985a64a6b590b44a39887ca1945b40cf3b9a6e861ab9b9b2e"
+    },
+    "0027": {
+      "status": "Accepted",
+      "sha256": "0225f954a06f3aafdbb0eb308aaef0131b15ac1994088792f002fe4ae1139b90"
+    },
+    "0028": {
+      "status": "Accepted",
+      "sha256": "f414a83d0fcbc822e4b7a13023557d8924e4c589188c8a615ad0754b145c9be9"
+    },
+    "0029": {
+      "status": "Accepted",
+      "sha256": "970042daae678156fa490e11ce9a91ced4002541f36b7b8bd391078f59ff7e25"
+    },
+    "0030": {
+      "status": "Accepted",
+      "sha256": "b291e7b0f9e9c8c392976de15224d835f4d617dbc999854fe6b14d830248366e"
+    },
+    "0031": {
+      "status": "Accepted",
+      "sha256": "d56bb419d11b95144717fed8e975075d6cfd070ab82a872e277f4a14a4317d04"
+    },
+    "0032": {
+      "status": "Accepted",
+      "sha256": "5f0009ff0201a733f4fd7ca62b820929d1122e6ce475e623f44a7d306e083000"
+    },
+    "0033": {
+      "status": "Accepted",
+      "sha256": "7522056bd00b0a307697597ebf5a73d558d9de07dcc183ed1b829d5fb7ecb333"
+    },
+    "0034": {
+      "status": "Accepted",
+      "sha256": "283406f462ef029bd87884fdf6b69169f9fe71a15ba7f7cf5701f4dc670f6fe1"
+    },
+    "0035": {
+      "status": "Accepted",
+      "sha256": "e93b1ba2f309d99aad2ba558c539b854eeb9d3ff8406743076453b2187cb127d"
+    },
+    "0036": {
+      "status": "Accepted",
+      "sha256": "4c7c749fc1731012750249b069c49781c92e7112b41e710583a55b03652c2be1"
+    },
+    "0037": {
+      "status": "Amended by 0079",
+      "sha256": "4d0cd6d61e06e1a48ed575ba52a6d5b4e2823b000732a38c74a5fd9e88c3d9f1"
+    },
+    "0038": {
+      "status": "Accepted",
+      "sha256": "a923bcc5ae8d3239aad735b972f35950639d5b44003963ab48f740b2f69bbf79"
+    },
+    "0039": {
+      "status": "Accepted",
+      "sha256": "e29ddd2c7d3902efcf3b216fc7fba4951d04ed71c5e3bee5d7bd47bd982326f4"
+    },
+    "0040": {
+      "status": "Accepted",
+      "sha256": "ae8f8dc6e45800509d4f9e53fe07c45274b4ead10c84b434849eb6990f762371"
+    },
+    "0041": {
+      "status": "Accepted",
+      "sha256": "9ba7801855546cc8292c2f8a0e43b4a3406c6d674552f8ed0d5460a795040133"
+    },
+    "0042": {
+      "status": "Accepted",
+      "sha256": "ba1b7577849e71783f20d85b1ff045d1644908e4535a423d051c5cb2b90b76f1"
+    },
+    "0043": {
+      "status": "Superseded by 0085",
+      "sha256": "c7d67365cf08f0703e4ca6524e3ec3765f84146cac034a9d64cd6e11084fe966"
+    },
+    "0044": {
+      "status": "Accepted",
+      "sha256": "6ff2fb5b278fbb727b799a751d32c24d2f2a7a57d6e41805492fece3be0827c8"
+    },
+    "0045": {
+      "status": "Accepted",
+      "sha256": "72c90fbaa7f4623eddaff3c59f6cd56ae47229f28a2b891eb069e85086a39b12"
+    },
+    "0046": {
+      "status": "Accepted",
+      "sha256": "6084a5c6922f90c0c7c4d6d4cb8281399af94a4c393ed9e9f207e7e888f32339"
+    },
+    "0047": {
+      "status": "Accepted",
+      "sha256": "6670fc2b5c790efad434d2bce5bc7c311a4046b8a7fa7d49399ebf3ec67faa47"
+    },
+    "0048": {
+      "status": "Accepted",
+      "sha256": "b8a3a17999f52ba74eb76dd2a29cc4e294934990c87af76a37c25ce5dfbb30e0"
+    },
+    "0049": {
+      "status": "Accepted",
+      "sha256": "bb6241ce8d7f741c6ddca4c78edac3114fc5df20cb5a25070d1cf421d4c3fea6"
+    },
+    "0050": {
+      "status": "Accepted",
+      "sha256": "98f2c083adf755036372d8e3127113375c3c925a320e28346622afa557ed50e5"
+    },
+    "0051": {
+      "status": "Accepted",
+      "sha256": "fcc1c3188681c072ff461146a5384b3dbf956970d752da6a458f36b7db9abd4d"
+    },
+    "0052": {
+      "status": "Amended by 0089",
+      "sha256": "0b122fa963c7e141ab82a83fb43e1c88f29d60bb82ac990528135124186c7e16"
+    },
+    "0053": {
+      "status": "Accepted",
+      "sha256": "0975cbaf9e5747baf8866b34d097158f9ca4139a9de50462a4ea2621e35c5229"
+    },
+    "0054": {
+      "status": "Accepted",
+      "sha256": "adb6a005c3afcebb3e874bb63e61e54a03735541070d734513b095bed585906b"
+    },
+    "0055": {
+      "status": "Accepted",
+      "sha256": "69bbeff3e199ca276e700d90976011a259f0fe2a27bc5a7e802db81073442775"
+    },
+    "0056": {
+      "status": "Accepted",
+      "sha256": "863403ff00baca7263979a788fe548e999e4c3367b4bbf026cf95f80fcbd3fa1"
+    },
+    "0057": {
+      "status": "Accepted",
+      "sha256": "8e7a93bf334a1ea587bfb8629cf746d99f8b11ed82caa4d485976ec2ee7536be"
+    },
+    "0058": {
+      "status": "Accepted",
+      "sha256": "e6d861f7ba1131279c1bf90b2a297bf4d5058bc4e84598277e8cc31f7005a092"
+    },
+    "0059": {
+      "status": "Accepted",
+      "sha256": "dbb792bced8374e9adf99df25ac002da1eceb6a4ab24820224ef3c2a9b85db57"
+    },
+    "0060": {
+      "status": "Accepted",
+      "sha256": "d6ea8f0f09a39cc9a9f21c14a93ddbfad35c40b156b1654aee322320a994aafe"
+    },
+    "0061": {
+      "status": "Accepted",
+      "sha256": "e82d505f71e0264e5febc2f82335a5ca760f73853df809cd5c3b0dc3475991ec"
+    },
+    "0062": {
+      "status": "Accepted",
+      "sha256": "50b356a33822607931390b8fda64baef85f517919d09ff2a0d42bb174f49c331"
+    },
+    "0063": {
+      "status": "Accepted",
+      "sha256": "9044fb7837dcdca186aa87e5f41f36447273748a806f36212f3f1c2cfc17eddc"
+    },
+    "0064": {
+      "status": "Accepted",
+      "sha256": "8a8c471a7da87686127ad54e59fe54a788fe880be1cb08c3d9324da6112e50c4"
+    },
+    "0065": {
+      "status": "Amended by 0085",
+      "sha256": "f7a46ed5b28134f5a442643d089772a36536368521cb530d456de9520d76c049"
+    },
+    "0066": {
+      "status": "Accepted",
+      "sha256": "d83e1ebbe1b1cb81e4a423a3ca220b3a8368be4549a8e8de67932356d2388b89"
+    },
+    "0067": {
+      "status": "Accepted",
+      "sha256": "ae31ca30e4b497e317ef7b2a6e3dafc12be9233a3586d86c082f3ef8fb09ed53"
+    },
+    "0068": {
+      "status": "Superseded by 0082",
+      "sha256": "6a036d6a3d1576b49af981ba4c156930250ff964ee9aa8b16522b7370b142566"
+    },
+    "0069": {
+      "status": "Accepted",
+      "sha256": "132bbd5717c567a24c8ac00c61284f8f4a6a6a6f963f3236a21bae7851447ebf"
+    },
+    "0070": {
+      "status": "Accepted",
+      "sha256": "de91a624af1a980a440715ea02961665c55623df65d72f0beb5d0bce0912324f"
+    },
+    "0071": {
+      "status": "Accepted",
+      "sha256": "90da6ae5464c7d954a305b6dbaee1249f295bd3ecb4b33071cbd8b1c0d5e2011"
+    },
+    "0072": {
+      "status": "Accepted",
+      "sha256": "6bc8a925853818a1021ed760b6d6a14d3e6a9e1b8d637af43c95f13d84cbed57"
+    },
+    "0073": {
+      "status": "Accepted",
+      "sha256": "a03efb38d561b40946823b102e54117d05d800ad87badecc18d533c9f9f642cc"
+    },
+    "0074": {
+      "status": "Accepted",
+      "sha256": "aeececd61c46c275f16b44d13e05d4b382b7c53b56015d071267ba7e6e1115df"
+    },
+    "0075": {
+      "status": "Accepted",
+      "sha256": "148daaee503f6dcdf2357f7ffcc7132f902c443175635270eb22d1d501c34a0e"
+    },
+    "0076": {
+      "status": "Accepted",
+      "sha256": "b9b5e3f5ee6fc05912d5ee8e17f4e292b90c8207c54ff8ff7a344a6d61465276"
+    },
+    "0077": {
+      "status": "Accepted",
+      "sha256": "e65311bb4e6271e2d1a51ec088b2bb031d9808bfc710864eec0eea9abef389cc"
+    },
+    "0078": {
+      "status": "Accepted",
+      "sha256": "d3e164fae1a40cb7f555c32077747b0cd194c05fee744bba39ab960c5a7c0ccb"
+    },
+    "0079": {
+      "status": "Accepted",
+      "sha256": "6ff26cec256e09621616c5b27b9bbdbc15472ea32b130293456a94c506083c6a"
+    },
+    "0080": {
+      "status": "Accepted",
+      "sha256": "3c34cd2f38e1900b62fa8c06fc4f6d93e56efd1c139728ea72da5bf9e248c51d"
+    },
+    "0081": {
+      "status": "Accepted",
+      "sha256": "6c7667d3cb4511b4b4c993882254d00e2bdbd12ddbf0fc22fa7e276a0b36ac67"
+    },
+    "0082": {
+      "status": "Accepted",
+      "sha256": "3fc9f77562733c5dbf8d88373a7c4a667472343f24523862250405f45c8f3a5b"
+    },
+    "0083": {
+      "status": "Accepted",
+      "sha256": "d8aef1b92f2b1af2d39b933f2b5643f91d4afbf7720679f33fa8172fd95977d3"
+    },
+    "0084": {
+      "status": "Accepted",
+      "sha256": "8f97cc6c3516b0394757363c9b32c0a811e1ab76c81f051980c0d31d8421650c"
+    },
+    "0085": {
+      "status": "Accepted",
+      "sha256": "a5822b3c0b773c25533e37f5189d205d1d3236f7439a7bf1805d2c6ec3dcf4f3"
+    },
+    "0086": {
+      "status": "Accepted",
+      "sha256": "1600085e947ed2f8abe2f67000aa2fa551930e79c395688e31bed2e061e3caa2"
+    },
+    "0087": {
+      "status": "Accepted",
+      "sha256": "83a3cea443f8b52a1df009f82cb95d4d57c99a97580aea973c171982e435ed5d"
+    },
+    "0088": {
+      "status": "Accepted",
+      "sha256": "b8e81e77b34b269be1b3ffc6c3d34e5b4219aaff18f5b9d8b1f546337240234e"
+    },
+    "0089": {
+      "status": "Accepted",
+      "sha256": "3f506e159667c442e595df1e23253a53d62a355ff62183dbb0256fcfda114bbe"
+    },
+    "0090": {
+      "status": "Accepted",
+      "sha256": "594539f9d2fdd2bbd7c064e301f58ac216f0f75a2ea89aede501dd82e3c5ad20"
+    },
+    "0091": {
+      "status": "Accepted",
+      "sha256": "70f4f03e0dcb96c4086f6e23c4fbbd1545b21866955321f1ef3af21f775d5c2f"
+    },
+    "0092": {
+      "status": "Accepted",
+      "sha256": "dfbdf4056b2561e0fc99cdb9ecbf6eaef200fe8758cca0c3e22163267f539e01"
+    },
+    "0093": {
+      "status": "Accepted",
+      "sha256": "07f0e303a47b3b85460132f56edb199e89f9c353256c6cbdf45487c09175a0a9"
+    },
+    "0094": {
+      "status": "Accepted",
+      "sha256": "1cf3c132c41d2bfb54a7743e3e8172f66705f34e291f15785c648c2561c839fd"
+    },
+    "0095": {
+      "status": "Accepted",
+      "sha256": "f1708342db6c32f87bf1d2c0efbba4110f458cb5ff4d45e1e075dd49018ea7ac"
+    },
+    "0096": {
+      "status": "Accepted",
+      "sha256": "caeb859aa8477998786518e60e07e8f41772088116453a722b48c5ffed29a511"
+    },
+    "0097": {
+      "status": "Accepted",
+      "sha256": "f66bbf953a55d633f6f101b2fdac263cc252abd4c161b02ccd498490edd982e8"
+    }
+  }
+}

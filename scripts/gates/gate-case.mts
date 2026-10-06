@@ -27,6 +27,15 @@ export interface GateCase {
   readonly steps: readonly GateStep[];
 }
 
+/** A case that plants files and expects one pnpm script to fail, printing the given output. */
+export function failingCase(
+  name: string,
+  files: Readonly<Record<string, string>>,
+  [script, output]: readonly [string, RegExp],
+): GateCase {
+  return { name, files, steps: [{ command: ["pnpm", script], expect: "fail", output: [output] }] };
+}
+
 function judge(step: GateStep, result: CommandResult): string | undefined {
   const passed = result.status === 0;
   const label = step.command.join(" ");

@@ -1014,9 +1014,11 @@ Enforcer: `review-diff` (each file in the table exists and carries its sections)
   Enforcer: `check:adr` (numbering with no gap or repeat, the four headings).
 - `docs/DECISIONS.md` lists every record file, and every number appears there once. Enforcer:
   `check:adr`.
-- A decision changes only through a new one that supersedes or amends it. Enforcer: `check:adr` (an
-  accepted row or record is hash-locked; only its status may change, and only to "Superseded by
-  NNNN" or "Amended by NNNN").
+- A decision changes only through a new one that supersedes or amends it. Enforcer: `check:adr`
+  with `docs/decisions.lock.json`, which holds the hash of every accepted row and record without
+  its status. Only the status may change, and only to "Superseded by NNNN" or "Amended by NNNN".
+- When a record is accepted, `pnpm check:adr --write` adds it to the lock. It never changes an
+  existing entry, and an entry that differs from the one at the merge base fails the check.
 
 <a id="section-24"></a>
 

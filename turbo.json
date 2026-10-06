@@ -41,6 +41,16 @@
     "//#check:deps-policy": {
       "outputs": []
     },
+    "//#check:tsdoc": {
+      "outputs": []
+    },
+    "//#check:adr": {
+      "outputs": [],
+      "env": ["BASE_REF"]
+    },
+    "//#check:docs": {
+      "outputs": []
+    },
     "//#lint:docs": {
       "outputs": []
     },

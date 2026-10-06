@@ -9,7 +9,9 @@ changes.
 
 The rules these decisions set live in [ARCHITECTURE.md](ARCHITECTURE.md),
 [ENGINEERING.md](ENGINEERING.md) and the [specs](specs/). Section 23 of ENGINEERING.md holds the
-rules for decision records.
+rules for decision records, and `pnpm check:adr` enforces them: the numbering, the four headings,
+one row here per record, and the hashes in [decisions.lock.json](decisions.lock.json) that keep an
+accepted decision's text from changing.
 
 ## The log
 

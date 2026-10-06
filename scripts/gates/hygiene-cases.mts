@@ -1,15 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fixturePackage } from "./fixture-package.mjs";
-import type { GateCase } from "./gate-case.mjs";
-
-function failing(
-  name: string,
-  files: Readonly<Record<string, string>>,
-  [script, output]: readonly [string, RegExp],
-): GateCase {
-  return { name, files, steps: [{ command: ["pnpm", script], expect: "fail", output: [output] }] };
-}
+import { failingCase, type GateCase } from "./gate-case.mjs";
 
 // Directives are assembled here, so this file holds none itself.
 const disable = ["oxlint", "disable"].join("-");
@@ -30,22 +22,22 @@ const twin = [
 ].join("\n");
 
 const layoutCases: readonly GateCase[] = [
-  failing(
+  failingCase(
     "a utils.ts fails check:layout",
     fixturePackage("core", { "utils.ts": "export const one: number = 1;\n" }),
     ["check:layout", /check:layout\(file-name\): packages\/core\/src\/utils\.ts/],
   ),
-  failing(
+  failingCase(
     "a package without AGENTS.md fails check:layout",
     fixturePackage("core", {}, { omit: ["AGENTS.md"] }),
     ["check:layout", /packages\/core has no AGENTS\.md/],
   ),
-  failing(
+  failingCase(
     "a CLAUDE.md other than @AGENTS.md fails check:layout",
     { ...fixturePackage("core", {}), "packages/core/CLAUDE.md": "Read the rules first.\n" },
     ["check:layout", /check:layout\(claude-md\): packages\/core\/CLAUDE\.md/],
   ),
-  failing("a shell script fails check:layout", { "scripts/setup.sh": "echo setup\n" }, [
+  failingCase("a shell script fails check:layout", { "scripts/setup.sh": "echo setup\n" }, [
     "check:layout",
     /check:layout\(shell-script\): scripts\/setup\.sh/,
   ]),
@@ -62,21 +54,21 @@ const suppressionCases: readonly GateCase[] = [
       { command: ["pnpm", "check:suppressions"], expect: "fail", output: [/names the rules/] },
     ],
   },
-  failing(
+  failingCase(
     "an unused suppression fails Oxlint",
     fixturePackage("core", {
       "typed.ts": `// ${disable}-next-line typescript/no-explicit-any -- the value has a type\nexport const one: number = 1;\n`,
     }),
     ["lint", /[Uu]nused/],
   ),
-  failing(
+  failingCase(
     "a suppression without a reason fails check:suppressions",
     fixturePackage("core", {
       "loose.ts": `// ${disable}-next-line typescript/no-explicit-any\nexport const one: any = 1;\n`,
     }),
     ["check:suppressions", /gives its reason/],
   ),
-  failing(
+  failingCase(
     "a new entry in the size baseline fails check:suppressions",
     { "config/size-baseline.txt": "packages/core/src/big.ts\n" },
     ["check:suppressions", /only shrinks/],
@@ -86,12 +78,12 @@ const suppressionCases: readonly GateCase[] = [
 function dependencyCases(repo: string): readonly GateCase[] {
   const workspace = readFileSync(join(repo, "pnpm-workspace.yaml"), "utf8");
   return [
-    failing(
+    failingCase(
       "a caret version fails check:deps-policy",
       { "pnpm-workspace.yaml": workspace.replace(/^ {2}typescript: /m, "  typescript: ^") },
       ["check:deps-policy", /pins typescript to \^/],
     ),
-    failing(
+    failingCase(
       "an age exclusion past its removal date fails check:deps-policy",
       {
         "pnpm-workspace.yaml": workspace.replace(
@@ -105,7 +97,7 @@ function dependencyCases(repo: string): readonly GateCase[] {
 }
 
 const codeCases: readonly GateCase[] = [
-  failing(
+  failingCase(
     "a dead export fails knip",
     fixturePackage("core", {
       "index.ts": 'export { ready } from "./ready.js";\n',
@@ -113,12 +105,12 @@ const codeCases: readonly GateCase[] = [
     }),
     ["deadcode", /Unused exports[\s\S]*unused/],
   ),
-  failing(
+  failingCase(
     "a duplicated block fails jscpd",
     fixturePackage("core", { "fees.ts": twin, "fees-again.ts": twin }),
     ["dup:check", /Found [1-9]\d* clones/],
   ),
-  failing("a broken heading fails markdownlint", { "notes.md": "#Notes\n\nText.\n" }, [
+  failingCase("a broken heading fails markdownlint", { "notes.md": "#Notes\n\nText.\n" }, [
     "lint:docs",
     /MD018/,
   ]),

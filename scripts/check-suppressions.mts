@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
+import { readAtBase } from "./git-base.mjs";
 import { listRepoFiles } from "./repo-files.mjs";
-import { runCommand } from "./run-command.mjs";
 
 interface Problem {
   readonly where: string;
@@ -81,21 +81,10 @@ function fileProblems(root: string, file: string, baseline: readonly string[]): 
     );
 }
 
-function baseRef(root: string): string {
-  const fromEnv = process.env["BASE_REF"];
-  if (fromEnv !== undefined && fromEnv.length > 0) {
-    return fromEnv;
-  }
-  const remote = runCommand(["git", "rev-parse", "--verify", "-q", "origin/master"], { cwd: root });
-  return remote.status === 0 ? "origin/master" : "master";
-}
-
 // The baseline may only shrink: an entry missing at the merge base is a new exception.
 function baselineGrowth(root: string, current: readonly string[]): Problem[] {
-  const mergeBase = runCommand(["git", "merge-base", "HEAD", baseRef(root)], { cwd: root });
-  const base = mergeBase.output.trim().split("\n")[0] ?? "";
-  const before = runCommand(["git", "show", `${base}:${baselinePath}`], { cwd: root });
-  const previous = mergeBase.status === 0 && before.status === 0 ? readBaseline(before.output) : [];
+  const before = readAtBase(root, baselinePath);
+  const previous = before === undefined ? [] : readBaseline(before);
   return current
     .filter((entry) => !previous.includes(entry))
     .map((entry) => ({

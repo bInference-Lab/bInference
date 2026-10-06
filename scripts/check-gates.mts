@@ -2,6 +2,8 @@ import process from "node:process";
 import { agentCases } from "./gates/agent-cases.mjs";
 import { checkCases } from "./gates/check-cases.mjs";
 import { commitCases } from "./gates/commit-cases.mjs";
+import { decisionCases } from "./gates/decision-cases.mjs";
+import { docsAndTsdocCases } from "./gates/docs-cases.mjs";
 import { runCase } from "./gates/gate-case.mjs";
 import { graphCases, tsconfigCases } from "./gates/graph-cases.mjs";
 import { hygieneCases } from "./gates/hygiene-cases.mjs";
@@ -21,6 +23,8 @@ const cases = [
   ...testCases(),
   ...styleCases(repo),
   ...hygieneCases(repo),
+  ...decisionCases(repo),
+  ...docsAndTsdocCases(),
   ...commitCases(),
   ...checkCases(),
   ...prCases(repo),
