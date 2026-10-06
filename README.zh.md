@@ -8,6 +8,8 @@
 
 bInference 是一个面向 BNB Smart Chain 的开源 AI Agent。你可以把它部署成交易员、研究员、KOL、开发者，或任何你需要的角色。它运行在你自己的机器上，你在 Telegram 和其他渠道上指挥它。
 
+Hermes Agent、Meta 的 Muse 和 OpenClaw 是面向日常生活的 AI Agent。bInference 能做到它们能做的事，并且专为区块链打造：它深入了解 BNB Smart Chain，在链上交易、调研和执行时，比通用 Agent 更专业。
+
 **你的钱包，你的规则，你来确认。** Agent 只用它自己创建的钱包、在你设定的限额内交易；没有你的确认，任何资金都不会离开钱包。
 
 [官网](https://binference.io) · [X](https://x.com/getbinference)

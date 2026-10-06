@@ -8,6 +8,8 @@
 
 bInference is an open-source AI agent for BNB Smart Chain. Deploy it as a trader, researcher, influencer, developer or anything you shape it into. It runs on your own machine, and you control it from Telegram and your other channels.
 
+Hermes Agent, Meta's Muse and OpenClaw are AI agents for everyday life. bInference does what they do and is built for blockchain: it knows BNB Smart Chain inside out, so it trades, researches and acts there with a depth a general agent can't match.
+
 **Your wallets, your rules, your tap.** The agent trades from wallets it creates, inside limits you set, and nothing leaves a wallet until you confirm it.
 
 [Website](https://binference.io) · [X](https://x.com/getbinference)
