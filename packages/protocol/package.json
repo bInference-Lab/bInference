@@ -1,0 +1,25 @@
+{
+  "name": "@binference/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The engine protocol as zod schemas: frames, credentials, ids, error codes and versions.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/core": "workspace:*",
+    "zod": "catalog:"
+  }
+}

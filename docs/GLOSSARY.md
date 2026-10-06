@@ -114,7 +114,8 @@ new name here first, in the change that uses it.
 - **scopes**: what a protocol client may do: `read`, `propose`, `chat`, `agent`, `confirm`, `loosen`
   and `admin`.
 - **operation**: a protocol call named `domain/action`, such as `intent/propose`.
-- **frames**: the protocol's messages: `open`, `ready`, `call`, `reply`, `fail`, `push` and `bye`.
+- **frames**: the protocol's messages: `open`, `challenge`, `prove`, `ready`, `call`, `reply`,
+  `fail`, `push` and `bye`.
 - **Binance Agent**: an agent the owner runs on Binance Agent OS and connects to binference.
 - **decision record**: a file in `docs/adr/` that records one decision (ADR).
 
