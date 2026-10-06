@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 
-// 32 random bytes in base64url without padding are 43 characters.
-const clientTokenPattern = /^bnt_[A-Za-z0-9_-]{43}$/;
+/**
+ * Parses a client token: `bnt_` and 32 random bytes in base64url, 43 characters without padding.
+ * It is a secret; the engine stores only its SHA-256 and shows it once, when it is created.
+ */
+export const clientTokenSchema: z.ZodType<string, string> = z
+  .string()
+  .regex(/^bnt_[A-Za-z0-9_-]{43}$/);
 
 /** An IPC client's credential: its `bnt_` token, a secret the engine stores only as SHA-256. */
 export interface TokenCredential {
@@ -28,7 +33,7 @@ export type Credential = TokenCredential | DeviceCredential | TelegramCredential
  * itself and the origin. An object with two credentials is refused.
  */
 export const credentialSchema: z.ZodType<Credential> = z.union([
-  z.strictObject({ token: z.string().regex(clientTokenPattern) }),
+  z.strictObject({ token: clientTokenSchema }),
   z.strictObject({ device: protocolIdSchema("consoleDevice") }),
   z.strictObject({ telegram: z.object({ initData: z.string().min(1) }) }),
 ]);

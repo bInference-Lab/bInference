@@ -1,7 +1,7 @@
-// Example wire values on the fake chain of `@binference/chain`'s fakes, for the shape tests.
+// Example wire values on the fake chain of `@binference/chain`'s fakes, for the operation examples.
 
 /** A JSON value as it travels on the wire. */
-type WireValue =
+export type WireValue =
   | string
   | number
   | boolean
@@ -9,7 +9,13 @@ type WireValue =
   | { readonly [key: string]: WireValue };
 
 /** A JSON object as it travels on the wire. */
-type WireObject = Readonly<Record<string, WireValue>>;
+export type WireObject = Readonly<Record<string, WireValue>>;
+
+/** An example call of one operation: its args and its result, as JSON carries them. */
+export interface WireExample {
+  readonly args: WireValue;
+  readonly result: WireValue;
+}
 
 const uuid = "0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
 
@@ -72,7 +78,7 @@ export const nativeAmount: WireObject = { asset: refs.native, base: "15000000000
 const tokenAmount: WireObject = { asset: refs.token, base: "500000000" };
 
 /** The info of both example assets. */
-const assets: WireObject = {
+export const assets: WireObject = {
   [refs.native]: { symbol: "FAKE", name: "Fake", decimals: 18, verified: true },
   [refs.token]: {
     symbol: "TKN",
@@ -85,7 +91,7 @@ const assets: WireObject = {
 };
 
 /** An example risk check. */
-const riskView: WireObject = {
+export const riskView: WireObject = {
   verdict: "warn",
   flags: [{ code: "high_tax", source: "goplus" }],
   buyTaxBps: 300,
@@ -96,7 +102,7 @@ const riskView: WireObject = {
 };
 
 /** An example quote. */
-const quoteView: WireObject = {
+export const quoteView: WireObject = {
   route: [{ venue: "fake-swap", shareBps: 10_000 }],
   amountIn: nativeAmount,
   expectedOut: tokenAmount,
@@ -156,3 +162,49 @@ export const intentView: WireObject = {
   changedAt: at + 1_000,
   assets,
 };
+
+/** An example agent. */
+export const agentView: WireObject = {
+  agent: ids.agent,
+  name: "Scout",
+  mode: "paper",
+  locale: "zh",
+  frozenAt: at,
+  createdAt: at,
+  changedAt: at,
+};
+
+/** An example wallet. */
+export const walletView: WireObject = {
+  wallet: ids.wallet,
+  agent: ids.agent,
+  address: refs.account,
+  label: "Main",
+  createdAt: at,
+};
+
+/** An example portfolio with a loss on its position. */
+export const portfolioView: WireObject = {
+  balances: [
+    { wallet: ids.wallet, amount: nativeAmount, usdMicros: "900000000", paper: true },
+    { wallet: ids.wallet, amount: tokenAmount, paper: true },
+  ],
+  positions: [
+    {
+      wallet: ids.wallet,
+      asset: refs.token,
+      quantity: "500000000",
+      costUsdMicros: "510000000",
+      realizedUsdMicros: "0",
+      unrealizedUsdMicros: "-12500000",
+      paper: true,
+    },
+  ],
+  totalUsdMicros: "900000000",
+  assets,
+};
+
+/** Wraps items as one page of a list. */
+export function pageOf(...items: readonly WireValue[]): WireValue {
+  return { items, next: "cursor-2" };
+}

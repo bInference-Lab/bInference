@@ -6,6 +6,7 @@
   "protocol.busy": "Too many requests at once. Wait a moment and try again.",
   "protocol.too_large": "The request is too large. Split it into smaller parts.",
   "protocol.key_reused": "This request repeats an earlier one with different details. Start the action again.",
+  "protocol.key_required": "This client sent a change without a request id, so binference cannot tell a retry from a new change. Update the client and try again.",
   "protocol.version": "This client and binference speak different protocol versions. Update the older one.",
   "auth.required": "This client is not signed in. Sign in, then try again.",
   "auth.invalid": "Signing in failed. Pair this device again with `binference console`.",

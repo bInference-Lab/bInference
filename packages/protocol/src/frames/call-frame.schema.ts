@@ -7,6 +7,12 @@ import { z } from "zod";
 export const callIdSchema: z.ZodType<string> = z.string().min(1).max(64);
 
 /**
+ * Parses an idempotency key: 1 to 64 characters, unique per intended action, such as a UUIDv7.
+ * The same key with the same args returns the stored result for 24 hours.
+ */
+export const idempotencyKeySchema: z.ZodType<string, string> = z.string().min(1).max(64);
+
+/**
  * A client's call of one operation, named `domain/action`. `args` is checked against the
  * operation's own schema, which refuses unknown fields. `key` is the idempotency key every write
  * needs: 1 to 64 characters, unique per intended action.
@@ -25,5 +31,5 @@ export const callFrameSchema: z.ZodType<CallFrame> = z.object({
   id: callIdSchema,
   op: z.string().regex(/^[a-z][a-zA-Z0-9]*\/[a-z][a-zA-Z0-9]*$/),
   args: z.unknown(),
-  key: z.string().min(1).max(64).exactOptional(),
+  key: idempotencyKeySchema.exactOptional(),
 });

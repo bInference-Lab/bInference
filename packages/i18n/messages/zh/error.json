@@ -6,6 +6,7 @@
   "protocol.busy": "同时发出的请求太多。请稍等片刻再试。",
   "protocol.too_large": "请求过大。请拆分成更小的部分。",
   "protocol.key_reused": "此请求与之前的一个请求重复，但内容不同。请重新开始此操作。",
+  "protocol.key_required": "此客户端发送的更改没有请求编号，binference 无法区分重试和新的更改。请更新客户端后再试。",
   "protocol.version": "此客户端与 binference 使用的协议版本不同。请更新较旧的一方。",
   "auth.required": "此客户端尚未登录。请登录后再试。",
   "auth.invalid": "登录失败。请运行 `binference console` 重新配对此设备。",

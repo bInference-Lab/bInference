@@ -11,6 +11,9 @@ const engineStates = ["starting", "ready"] as const;
  */
 export type EngineState = (typeof engineStates)[number];
 
+/** Parses an engine state. */
+export const engineStateSchema: z.ZodType<EngineState, string> = z.enum(engineStates);
+
 /** The engine's side of `ready`. */
 export interface EngineInfo {
   /** The engine's release. */
@@ -49,7 +52,7 @@ export const readyFrameSchema: z.ZodType<ReadyFrame> = z.object({
   engine: z.object({
     version: z.string().min(1),
     protocol: z.int().positive(),
-    state: z.enum(engineStates),
+    state: engineStateSchema,
   }),
   owner: z.object({ locale: localeSchema, timezone: z.string().min(1) }),
 });

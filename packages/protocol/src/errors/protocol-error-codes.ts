@@ -10,6 +10,7 @@ export const protocolErrorCodes = [
   "protocol.busy",
   "protocol.too_large",
   "protocol.key_reused",
+  "protocol.key_required",
   "protocol.version",
   "auth.required",
   "auth.invalid",
