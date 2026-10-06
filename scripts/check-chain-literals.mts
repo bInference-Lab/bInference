@@ -1,9 +1,8 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import process from "node:process";
 import { loadGraph } from "./package-graph/graph.mjs";
-import { runCommand } from "./run-command.mjs";
+import { runPluginRules } from "./run-plugin-rules.mjs";
 
 // CAIP-2 namespaces and chain names a pure package must never spell, before any chain data or
 // plugin names more.
@@ -36,52 +35,27 @@ function pureFolders(root: string): readonly string[] {
     .map(([key]) => `packages/${key}/src`);
 }
 
-function lintConfig(root: string): string {
-  return JSON.stringify({
-    plugins: [],
-    jsPlugins: [resolve(root, "config/oxlint/guards.mjs")],
-    categories: { correctness: "off", suspicious: "off", perf: "off" },
-    rules: {
-      "guards/no-chain-literal": ["error", { namespaces: knownNamespaces, ids: registryIds(root) }],
-    },
-  });
-}
-
 const root = process.cwd();
 const folders = pureFolders(root);
-const scratch = mkdtempSync(join(tmpdir(), "binference-chain-literals-"));
-try {
-  const config = join(scratch, "oxlintrc.json");
-  writeFileSync(config, lintConfig(root));
-  const result = runCommand(
-    [
-      "node",
-      join("node_modules", "oxlint", "bin", "oxlint"),
-      "-c",
-      config,
-      "--ignore-pattern",
-      "**/*.test.ts",
-      "--format",
-      "unix",
-      ...folders,
-    ],
-    { cwd: root },
-  );
-  const findings = result.output
-    .split("\n")
-    .filter((line) => line.includes("guards(no-chain-literal)"))
-    .map((line) => `check:chain-literals: ${line}`);
-  for (const finding of findings) {
-    console.error(finding);
-  }
-  if (findings.length === 0 && result.status === 0) {
-    console.log(
-      `check:chain-literals: ${String(folders.length)} pure packages hold no chain literal.`,
-    );
-  } else if (findings.length === 0) {
-    console.error(result.output);
-  }
-  process.exitCode = findings.length === 0 && result.status === 0 ? 0 : 1;
-} finally {
-  rmSync(scratch, { recursive: true, force: true });
+const result = runPluginRules(root, {
+  plugin: "config/oxlint/guards.mjs",
+  rules: {
+    "guards/no-chain-literal": ["error", { namespaces: knownNamespaces, ids: registryIds(root) }],
+  },
+  folders,
+});
+const findings = result.output
+  .split("\n")
+  .filter((line) => line.includes("guards(no-chain-literal)"))
+  .map((line) => `check:chain-literals: ${line}`);
+for (const finding of findings) {
+  console.error(finding);
 }
+if (findings.length === 0 && result.status === 0) {
+  console.log(
+    `check:chain-literals: ${String(folders.length)} pure packages hold no chain literal.`,
+  );
+} else if (findings.length === 0) {
+  console.error(result.output);
+}
+process.exitCode = findings.length === 0 && result.status === 0 ? 0 : 1;
