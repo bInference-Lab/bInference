@@ -168,9 +168,9 @@ Decided in decisions [0022](DECISIONS.md#d0022) and [0023](DECISIONS.md#d0023).
 - **`ChainFamily`** is the port a family implements: parse and format accounts, build transfers and
   approvals, estimate fees, simulate, broadcast, watch blocks and logs, decode receipts, and order
   transactions (nonces for EVM).
-- **`ChainDefinition`** is data in `chains`, written with `satisfies ChainDefinition`. It holds the
-  id, family, native asset, block time, finality rule, RPCs, relays, explorers, tokens and
-  contracts.
+- **`ChainDefinition`** is data in `chains`, exported with a `ChainDefinition` type annotation
+  (TS-7). It holds the id, family, native asset, block time, finality rule, RPCs, relays, explorers,
+  tokens and contracts.
 - **Venues declare** the chains they serve and their contracts per chain.
 - **Wallet queues key on the account:** `wallet:eip155:56:0x…`.
 - **Rule:** pure packages contain no chain literal (`eip155:`, `56`, `bsc`) and no hex address.
@@ -188,17 +188,18 @@ Decided in decisions [0022](DECISIONS.md#d0022) and [0023](DECISIONS.md#d0023).
 
 Decided in decisions [0024](DECISIONS.md#d0024) and [0039](DECISIONS.md#d0039).
 
-`platform` hides every OS difference behind ports. Implementations live in `platform/src/darwin/`,
-`linux/` and `win32/`, chosen once at startup from `process.platform`.
+`platform` hides every OS difference behind ports. Implementations live in `platform/src/posix/`,
+which macOS and Linux share, and `platform/src/win32/`; `createPlatform` picks them once at startup
+from `process.platform`.
 
-| Port              | macOS                        | Linux                        | Windows                               |
-| ----------------- | ---------------------------- | ---------------------------- | ------------------------------------- |
-| `Paths`           | `~/.binference`              | `~/.binference`              | `%USERPROFILE%\.binference`           |
-| `SecretStore`     | Keychain                     | Secret Service (libsecret)   | Credential Manager                    |
-| `ServiceManager`  | `launchctl` (LaunchAgent)    | `systemctl --user`           | `schtasks` (Task Scheduler)           |
-| `IpcEndpoint`     | Unix socket in the state dir | Unix socket in the state dir | Named pipe `\\.\pipe\binference-<id>` |
-| `FilePermissions` | `0600` files, `0700` folders | `0600` files, `0700` folders | Owner-only ACL                        |
-| `Shutdown`        | `SIGINT`, `SIGTERM`          | `SIGINT`, `SIGTERM`          | `SIGINT`, `SIGBREAK`, task stop       |
+| Port              | macOS                        | Linux                        | Windows                                              |
+| ----------------- | ---------------------------- | ---------------------------- | ---------------------------------------------------- |
+| `Paths`           | `~/.binference`              | `~/.binference`              | `%USERPROFILE%\.binference`                          |
+| `SecretStore`     | Keychain                     | Secret Service (libsecret)   | Credential Manager                                   |
+| `ServiceManager`  | `launchctl` (LaunchAgent)    | `systemctl --user`           | `schtasks` (Task Scheduler)                          |
+| `IpcEndpoint`     | Unix socket in the state dir | Unix socket in the state dir | Named pipe `\\.\pipe\binference-<install id>-<name>` |
+| `FilePermissions` | `0600` files, `0700` folders | `0600` files, `0700` folders | Owner-only ACL                                       |
+| `Shutdown`        | `SIGINT`, `SIGTERM`          | `SIGINT`, `SIGTERM`          | `SIGINT`, `SIGBREAK`, task stop                      |
 
 `BINFERENCE_HOME` moves the state folder on every OS. The keychain is `@napi-rs/keyring` (prebuilt
 binaries, nothing to compile); when no keychain is available, a passphrase prompt is the fallback.
@@ -232,7 +233,9 @@ Rules:
   zod-validated messages.
 - **Rule:** database work runs on worker threads; the main thread awaits results. Enforcer:
   `review-diff`, and `check:store` (`node:sqlite` only in worker entries) once the first store
-  lands.
+  lands. The one exception is the platform's engine lock, `platform/src/file-lock.ts`: a single
+  `node:sqlite` statement on the main thread that takes an OS file lock and reads no rows.
+  `check:store` exempts that file.
 - **Rule:** every queue, buffer, cache and map has a maximum size and a stated overflow policy (drop
   oldest, refuse or block). Enforcer: `review-diff`.
 
@@ -271,8 +274,11 @@ Rules:
   (`Number`, `parseFloat`, `parseInt`), `eslint/no-restricted-properties` (`toFixed`,
   `Number.parseFloat`) and `eslint/no-implicit-coercion`.
 - **TS-7** `interface` for object shapes and ports, `type` for unions and aliases, `satisfies` for
-  data definitions. Enforcer: Oxlint `typescript/consistent-type-definitions` (`"interface"`);
-  `satisfies` for data: `review-diff`.
+  data definitions inside a file. `satisfies` cannot be used on an exported value under
+  `isolatedDeclarations`, so exported data carries a type annotation instead
+  (`export const bsc: ChainDefinition = ...`). Enforcer: Oxlint
+  `typescript/consistent-type-definitions` (`"interface"`); `isolatedDeclarations` for exported
+  data; `satisfies` for other data: `review-diff`.
 - **TS-8** Every `switch` on a union is exhaustive. Enforcer: Oxlint
   `typescript/switch-exhaustiveness-check` with `considerDefaultExhaustiveForUnions: false`, so a
   `default` cannot hide a missing case.

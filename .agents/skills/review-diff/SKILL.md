@@ -35,7 +35,8 @@ Read the issue or task the change serves. A red `pnpm check` comes first: fix it
 - Expected outcomes return `Result`; faults throw `BinferenceError` with a dotted code.
 - People see i18n text chosen by an error code, never `error.message`.
 - Every boundary input is parsed by zod at once; types come from `z.infer`.
-- Data definitions use `satisfies`. Nothing mutates an input.
+- Data definitions use `satisfies`; exported data carries a type annotation instead, since
+  `isolatedDeclarations` refuses `satisfies` on an exported value. Nothing mutates an input.
 - A config change ships its config migration. Every key has a `.describe()` text. A risky switch
   is named `dangerously...` and defaults to off.
 - Logs carry ids, never prompts, model output, chat text or secrets.
