@@ -133,6 +133,9 @@ new name here first, in the change that uses it.
 - **store ports**: the engine's ports for the state it keeps: intents with their cards and
   confirmations, the ledger, the inbox, idempotency keys, access, agents and the config journal.
   `store` holds their SQLite adapters; each port has one contract suite and an in-memory fake.
+- **start code**: the single-use code in the `t.me/<bot>?start=<code>` link `binference init`
+  prints; only its SHA-256 is stored. The first person who opens the link becomes the **owner
+  binding**: the owner's numeric Telegram id, the only Telegram user binference obeys.
 - **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`.
 - **unlock mode**: where the agent key and the Privy app secret are read at start: `keychain`,
   `file`, `command` or `manual`.
