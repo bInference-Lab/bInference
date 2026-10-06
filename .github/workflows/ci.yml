@@ -160,6 +160,9 @@ jobs:
           tar -xzf "$tools/actionlint.tar.gz" -C "$tools" actionlint
           echo "$tools" >> "$GITHUB_PATH"
 
+      - name: OpenGrep rules fire
+        run: pnpm security:opengrep --self-test
+
       - name: OpenGrep
         run: pnpm security:opengrep
 

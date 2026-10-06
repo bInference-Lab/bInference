@@ -30,6 +30,7 @@ const tools: Readonly<Record<string, () => readonly string[]>> = {
   node: () => [process.execPath],
   pnpm: pnpmCommand,
   git: () => ["git"],
+  opengrep: () => ["opengrep"],
 };
 
 function resolveCommand(command: readonly string[]): readonly string[] {
@@ -41,7 +42,7 @@ function resolveCommand(command: readonly string[]): readonly string[] {
   return [...resolve(), ...args];
 }
 
-/** Runs node, pnpm or git without a shell and captures stdout and stderr together. */
+/** Runs node, pnpm, git or opengrep without a shell and captures stdout and stderr together. */
 export function runCommand(command: readonly string[], options: CommandOptions): CommandResult {
   const [file, ...args] = resolveCommand(command);
   if (file === undefined) {

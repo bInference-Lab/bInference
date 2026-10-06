@@ -30,7 +30,7 @@
     "mutation": "stryker run",
     "mutation:summary": "node --import tsx scripts/mutation-summary.mts",
     "security:audit": "pnpm audit --audit-level=high",
-    "security:opengrep": "opengrep scan --config config/opengrep/rules.yml --error --no-git-ignore packages plugins scripts config",
+    "security:opengrep": "node --import tsx scripts/scan-opengrep.mts",
     "setup": "node --import tsx scripts/setup.mts",
     "test": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json"
