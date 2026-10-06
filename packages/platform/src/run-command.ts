@@ -24,6 +24,16 @@ export type RunToExit = (
 
 const commandTimeoutMs = 15_000;
 
+// Windows PowerShell started through another process, such as this one under a PowerShell 7
+// terminal, inherits PowerShell 7's module paths and cannot load its own modules. Microsoft's
+// fix is to start it without PSModulePath, so it builds its default value (about_PSModulePath).
+// `undefined` drops the variable from the child's environment (execa merges it over process.env).
+const windowsPowerShell = /(?:^|[\\/])powershell(?:\.exe)?$/i;
+
+function environmentFor(file: string): Readonly<Record<string, string | undefined>> {
+  return windowsPowerShell.test(file) ? { PSModulePath: undefined } : {};
+}
+
 /**
  * Runs an OS program through execa, with no shell, no input and a 15 second limit, and returns its
  * standard output. Throws `platform.command_failed` when the program fails, times out or the
@@ -40,6 +50,7 @@ export async function runCommand(
       timeout: commandTimeoutMs,
       stdin: "ignore",
       windowsHide: true,
+      env: environmentFor(file),
     });
     return result.stdout;
   } catch (error) {
@@ -67,6 +78,7 @@ export async function runCommandToExit(
     timeout: commandTimeoutMs,
     stdin: "ignore",
     windowsHide: true,
+    env: environmentFor(file),
     reject: false,
   });
   // No exit code means the program never ran to its end: it did not start, timed out or was
