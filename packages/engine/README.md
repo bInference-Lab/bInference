@@ -29,9 +29,12 @@ Their records cross the store worker boundary, so each has a zod schema. `@binfe
 their SQLite adapters; `@binference/engine/testing` holds an in-memory fake and a contract suite for
 each.
 
-It checks the ledger. `walkLedgerChain` walks the hash chain through the `LedgerStore` from
-genesis or a trusted checkpoint and names the first entry that breaks it, so an edited, removed or
-added row is found.
+It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain through the
+`LedgerStore` from genesis or a trusted checkpoint and names the first entry that breaks it, so an
+edited, removed or added row is found. `createPositions` values each executed trade at the prices
+of its time and stores it through the `PositionStore` with the position changes it makes, at
+average cost with fees and gas ([decision 0058](../../docs/DECISIONS.md#d0058)); it values
+positions now through the `PriceSource`.
 
 ## API
 
@@ -63,6 +66,8 @@ added row is found.
 | `LedgerStore`, `LedgerEntry`, `chainLedgerEntry`                 | The hash-chained ledger and how an entry joins its end          |
 | `hashLedgerEntry`, `genesisLedgerHash`                           | The SHA-256 of one ledger entry, and the first `prevHash`       |
 | `walkLedgerChain`, `checkLedgerChain`, `LedgerCheckpoint`        | Walks the hash chain and names the first entry that breaks it   |
+| `createPositions`, `Positions`, `ExecutedTrade`                  | Stores a trade with its position changes; values positions now  |
+| `applyExecution`, `valueExecution`                               | One execution's average-cost moves, and its USD values          |
 | `PositionStore`, `PositionRecord`, `ExecutionRecord`             | Executions and the positions they move, stored together         |
 | `IdempotencyStore`, `InboxStore`                                 | Each write's result by its key; inbound events before the ack   |
 | `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
@@ -114,11 +119,13 @@ if (answered.ok && answered.value.intent.closing !== undefined) {
 }
 ```
 
-`binference check` walks the ledger:
+A reconcile step records a trade, and `binference check` walks the ledger:
 
 ```ts
-import { walkLedgerChain } from "@binference/engine";
+import { createPositions, walkLedgerChain } from "@binference/engine";
 
+const positions = createPositions({ store: positionStore, prices });
+const recorded = await positions.record(trade, { signal }); // `stale`: read again and retry
 const chain = await walkLedgerChain(ledger, {}, { signal });
 if (!chain.ok) {
   report(chain.error, chain.seq); // a critical finding of `binference check`

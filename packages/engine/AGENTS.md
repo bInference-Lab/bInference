@@ -44,6 +44,11 @@ Rules for this package:
   fails code that does.
 - The in-memory fakes check every rule a write must pass before they change anything, as the
   SQLite store's transaction does, and they fail with the same `store.*` codes.
+- Positions (`src/positions/`) follow average cost (decision 0058) in bigint base units and
+  micro-dollars, and move each dollar once: what a sale takes out of one position is the cost of
+  the next. Values at the time round up, values now round down, the cost a sale takes rounds up and
+  the last unit takes all that is left. A change to a rounding rule changes its unit test and its
+  case in `*.property.test.ts`.
 - `PositionStore` has its fake and contract suite; its SQLite adapter comes with the first step
   that stores executions.
 - The ledger chain check (`src/ledger/`) reads entries and never writes.
