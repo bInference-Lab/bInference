@@ -1,5 +1,6 @@
 import { BinferenceError } from "@binference/core";
-import type { FilePermissions, IpcEndpoint } from "./ports.js";
+import { createKeychainSecretStore } from "./keychain/keychain-secret-store.js";
+import type { FilePermissions, IpcEndpoint, SecretStore } from "./ports.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
 import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
 import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
@@ -21,6 +22,8 @@ export interface Platform {
   /** `SIGINT` and `SIGTERM` on macOS and Linux; `SIGINT` and `SIGBREAK` on Windows. */
   readonly stopSignals: readonly NodeJS.Signals[];
   readonly ipcEndpoint: (options: IpcEndpointOptions) => IpcEndpoint;
+  /** The OS keychain, entries under the service `binference`. */
+  readonly keychain: SecretStore;
 }
 
 /**
@@ -29,12 +32,14 @@ export interface Platform {
  */
 export function createPlatform(options: StateFolderOptions = {}): Platform {
   const stateFolder = resolveStateFolder(options);
+  const keychain = createKeychainSecretStore();
   if (process.platform === "win32") {
     return {
       stateFolder,
       permissions: createWin32FilePermissions(),
       stopSignals: ["SIGINT", "SIGBREAK"],
       ipcEndpoint: (endpoint) => createWin32IpcEndpoint(endpoint),
+      keychain,
     };
   }
   if (process.platform === "darwin" || process.platform === "linux") {
@@ -45,6 +50,7 @@ export function createPlatform(options: StateFolderOptions = {}): Platform {
       stopSignals: ["SIGINT", "SIGTERM"],
       ipcEndpoint: ({ name }) =>
         createPosixIpcEndpoint({ runFolder: stateFolder.run, name, permissions }),
+      keychain,
     };
   }
   throw new BinferenceError({

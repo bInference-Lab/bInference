@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@binference/core": "workspace:*",
+    "@napi-rs/keyring": "catalog:",
     "execa": "catalog:",
     "zod": "catalog:"
   }

@@ -121,6 +121,8 @@ new name here first, in the change that uses it.
 - **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`.
 - **unlock mode**: where the agent key and the Privy app secret are read at start: `keychain`,
   `file`, `command` or `manual`.
+- **passphrase store**: secrets in owner-only files in `~/.binference/keys/`, each sealed with the
+  owner's passphrase; the fallback where no OS keychain answers, such as headless Linux and Docker.
 - **scopes**: what a protocol client may do: `read`, `propose`, `chat`, `agent`, `confirm`, `loosen`
   and `admin`.
 - **operation**: a protocol call named `domain/action`, such as `intent/propose`.
