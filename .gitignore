@@ -4,6 +4,10 @@
 # Personal and team Claude Code notes that point at internal/.
 CLAUDE.local.md
 
+# pnpm setup links .claude/skills to .agents/skills on each machine.
+/.claude/skills
+/.claude/settings.local.json
+
 .DS_Store
 node_modules/
 dist/

@@ -43,6 +43,9 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Link the agent skills
+        run: pnpm setup
+
       - name: pnpm check
         env:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/master' }}

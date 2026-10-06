@@ -56,3 +56,55 @@ export function skillProblems(repo: RepoView): LayoutProblem[] {
     .map((folder) => skillProblem(repo, folder))
     .filter((item) => item !== undefined);
 }
+
+function listedSkills(repo: RepoView): readonly string[] {
+  const text = readFileSync(join(repo.root, "AGENTS.md"), "utf8");
+  const section = text.split(/^## /m).find((part) => part.startsWith("Skills\n")) ?? "";
+  return [...section.matchAll(/^- `([a-z0-9-]+)`/gm)].map((match) => match[1] ?? "");
+}
+
+/** Every skill the root AGENTS.md lists exists under .agents/skills. */
+export function listedSkillProblems(repo: RepoView): LayoutProblem[] {
+  return listedSkills(repo)
+    .filter((name) => !repo.files.includes(`.agents/skills/${name}/SKILL.md`))
+    .map((name) =>
+      problem("skill", `AGENTS.md lists the skill ${name}; add .agents/skills/${name}/SKILL.md.`),
+    );
+}
+
+const settingsSchema = z.looseObject({
+  hooks: z
+    .looseObject({
+      PostToolUse: z
+        .array(
+          z.looseObject({
+            matcher: z.string(),
+            hooks: z.array(z.looseObject({ type: z.string(), command: z.string() })),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+});
+
+/** The edit hook in .claude/settings.json runs on every edit and write. */
+export function hookProblems(repo: RepoView): LayoutProblem[] {
+  const file = join(repo.root, ".claude", "settings.json");
+  const settings = existsSync(file)
+    ? settingsSchema.safeParse(JSON.parse(readFileSync(file, "utf8")))
+    : undefined;
+  const entries = settings?.success === true ? (settings.data.hooks?.PostToolUse ?? []) : [];
+  const hooked = entries.some(
+    (entry) =>
+      ["Edit", "Write"].every((tool) => entry.matcher.split("|").includes(tool)) &&
+      entry.hooks.some((hook) => hook.command.includes("scripts/edit-hook.mts")),
+  );
+  return hooked
+    ? []
+    : [
+        problem(
+          "hook",
+          ".claude/settings.json must run scripts/edit-hook.mts after Edit and Write.",
+        ),
+      ];
+}

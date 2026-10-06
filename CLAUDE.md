@@ -6,3 +6,5 @@
   when you open a file there.
 - Skills live in `.agents/skills/`; `pnpm setup` links `.claude/skills` to them.
 - Run `clean-diff` on your diff, then `review-diff`, before you call a change done.
+- After each edit, a hook in `.claude/settings.json` runs oxfmt, Oxlint and the style guard on
+  the file and shows you what fails.

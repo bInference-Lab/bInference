@@ -108,6 +108,40 @@ rules are in `docs/ENGINEERING.md` section 19.
 **Branches:** `<type>/<short-name>`, one task each. Commits are signed and the author is the real
 person.
 
+## Commands
+
+Node 26.1 or later. pnpm switches itself to the version in `package.json`.
+
+| Command                            | What it does                                                         |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `pnpm install`                     | Installs dependencies at their exact, 7-day-old versions             |
+| `pnpm setup`                       | Links `.claude/skills` to `.agents/skills`                           |
+| `pnpm check`                       | Runs every gate through Turborepo; a second run comes from the cache |
+| `pnpm format`                      | Formats with oxfmt                                                   |
+| `pnpm lint`                        | Oxlint with the type-aware rules and the `guards` plugin             |
+| `pnpm typecheck`                   | TypeScript 7 over packages and repo scripts                          |
+| `pnpm test`                        | Vitest with coverage bars by package tier                            |
+| `pnpm build`                       | tsdown for each package, ESM and `.d.ts`                             |
+| `pnpm gen:package <name>`          | A new package with its files and its row in the package graph        |
+| `pnpm check:package-graph --write` | Regenerates the import rules after a change to the package graph     |
+| `pnpm check:style --files <file>`  | The style guard on one file                                          |
+| `pnpm check:gates`                 | Plants a violation for each gate and checks that the gate fails      |
+| `pnpm mutation`                    | Stryker on the money core                                            |
+
+What each package may import is in `config/package-graph.json`; edit the graph, never the
+generated rules in `config/oxlint/`.
+
+## Skills
+
+Skills live in `.agents/skills/`. Run the first two on every change, in this order:
+
+- `clean-diff`: strips filler from your diff before review.
+- `review-diff`: reviews the diff against the rules no tool checks.
+- `shape-commit`: checks that the change is one commit's worth and writes its subject.
+- `review-money-path`: the checklist for a change that can move funds.
+- `add-migration`: adds a migration to the store.
+- `write-adr`: records a load-bearing decision.
+
 ## Before you finish
 
 1. The behavior is tested at the cheapest layer that proves it.
