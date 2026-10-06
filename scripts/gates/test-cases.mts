@@ -138,24 +138,36 @@ function moneySample(repo: string, test: string): Record<string, string> {
   return { ...feePackage(test), ...moneyGraph(repo) };
 }
 
-/** Cases for Vitest coverage tiers, the unit test setup and Stryker. */
-export function testCases(repo: string): readonly GateCase[] {
+// The cases run only the planted sample, so their cost does not grow with the repository.
+const sampleTest: readonly string[] = [
+  "pnpm",
+  "test",
+  "--project",
+  `packages/${sampleKey}`,
+  `--coverage.include=packages/${sampleKey}/src/**`,
+];
+const sampleOnly: Readonly<Record<string, string>> = { MUTATE_PACKAGES: sampleKey };
+
+function coverageCases(repo: string): readonly GateCase[] {
   return [
     {
       name: "a money-core file at 94% line coverage fails the coverage gate",
+      cost: 3,
       files: moneySample(repo, feeTest),
-      steps: [{ command: ["pnpm", "test"], expect: "fail", output: [moneyThreshold] }],
+      steps: [{ command: sampleTest, expect: "fail", output: [moneyThreshold] }],
     },
     {
       name: "the same file at 94% passes in a package of the default tier",
+      cost: 3,
       files: feePackage(feeTest),
-      steps: [{ command: ["pnpm", "test"], expect: "pass", output: [/94\.11/] }],
+      steps: [{ command: sampleTest, expect: "pass", output: [/94\.11/] }],
     },
     {
       name: "unit tests run offline, on fake timers, with fast-check",
+      cost: 2,
       files: fixturePackage(sampleKey, { "setup.test.ts": offlineTest }),
       steps: [
-        { command: ["pnpm", "test"], expect: "pass" },
+        { command: sampleTest, expect: "pass" },
         {
           command: ["pnpm", "exec", "vitest", "run", "packages/sample/", "--reporter=verbose"],
           expect: "pass",
@@ -163,12 +175,19 @@ export function testCases(repo: string): readonly GateCase[] {
         },
       ],
     },
+  ];
+}
+
+function mutationCases(repo: string): readonly GateCase[] {
+  return [
     {
       name: "Stryker reports a mutation score on a sample",
+      cost: 7,
       files: moneySample(repo, feeTest),
       steps: [
         {
           command: ["pnpm", "mutation"],
+          env: sampleOnly,
           expect: "pass",
           output: [/Final mutation score of \d+\.\d+ is greater than or equal to break/],
         },
@@ -176,10 +195,21 @@ export function testCases(repo: string): readonly GateCase[] {
     },
     {
       name: "Stryker fails a sample whose tests check nothing",
+      cost: 7,
       files: moneySample(repo, weakTest),
       steps: [
-        { command: ["pnpm", "mutation"], expect: "fail", output: [/under breaking threshold 80/] },
+        {
+          command: ["pnpm", "mutation"],
+          env: sampleOnly,
+          expect: "fail",
+          output: [/under breaking threshold 80/],
+        },
       ],
     },
   ];
+}
+
+/** Cases for Vitest coverage tiers, the unit test setup and Stryker. */
+export function testCases(repo: string): readonly GateCase[] {
+  return [...coverageCases(repo), ...mutationCases(repo)];
 }

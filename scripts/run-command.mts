@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import process from "node:process";
 
 /** How a command ended and everything it printed. */
@@ -59,4 +59,26 @@ export function runCommand(command: readonly string[], options: CommandOptions):
     return { status: -1, output: result.error.message };
   }
   return { status: result.status ?? -1, output: `${result.stdout}\n${result.stderr}` };
+}
+
+/** Runs node, pnpm, git or opengrep without a shell, without blocking, and captures its output. */
+export function runCommandAsync(
+  command: readonly string[],
+  options: CommandOptions,
+): Promise<CommandResult> {
+  const [file, ...args] = resolveCommand(command);
+  if (file === undefined) {
+    throw new Error("A gate command is empty.");
+  }
+  return new Promise((resolve) => {
+    const child = spawn(file, args, {
+      cwd: options.cwd,
+      env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1", ...options.env },
+    });
+    const chunks: string[] = [];
+    child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk.toString("utf8")));
+    child.stderr.on("data", (chunk: Buffer) => chunks.push(chunk.toString("utf8")));
+    child.on("error", (error) => resolve({ status: -1, output: error.message }));
+    child.on("close", (code) => resolve({ status: code ?? -1, output: chunks.join("") }));
+  });
 }

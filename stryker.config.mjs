@@ -1,9 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
+import process from "node:process";
 
 // Rows of config/package-graph.json marked "mutation" that exist on disk.
 const graph = JSON.parse(readFileSync("config/package-graph.json", "utf8"));
+// MUTATE_PACKAGES (comma-separated keys) narrows the run, so one package can be mutated alone.
+const only = (process.env.MUTATE_PACKAGES ?? "").split(",").filter((key) => key.length > 0);
 const folders = Object.entries(graph.packages)
   .filter(([key, row]) => row.mutation === true && existsSync(`packages/${key}/src`))
+  .filter(([key]) => only.length === 0 || only.includes(key))
   .map(([key]) => `packages/${key}`);
 
 // Stryker's Vitest runner predates Vitest 5, so its command runner drives Vitest: each mutant

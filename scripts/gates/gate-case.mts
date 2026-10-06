@@ -21,6 +21,8 @@ export interface GateStep {
 /** A planted change and the gate commands that must react to it. */
 export interface GateCase {
   readonly name: string;
+  /** Rough seconds the case takes, for spreading slow cases across shards; 1 when absent. */
+  readonly cost?: number;
   readonly files?: Readonly<Record<string, string>>;
   /** Commits the planted files before the steps run, for checks that read git history. */
   readonly commitAs?: string;
