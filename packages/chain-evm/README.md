@@ -2,21 +2,24 @@
 
 ## Purpose
 
-The EVM chain family. It reads a chain through its RPC endpoints with failover, prices gas, and
-simulates calls with `eth_simulateV1` to read the transfers they make. Chain facts come in as data
-from `@binference/chains`; nothing here names a chain.
+The EVM chain family. It reads a chain through its RPC endpoints with failover, prices gas,
+simulates calls with `eth_simulateV1` and reads the transfers they make, decodes calldata, and
+builds, hashes and checks the transactions a signer signs. Chain facts come in as data from
+`@binference/chains`; nothing here names a chain.
 
 ## API
 
-| Export                                                            | What it does                                                                      |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `createEvmFamily`, `parseEvmAddress`                              | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form                 |
-| `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                    | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses      |
-| `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                 | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health |
-| `createEvmClient`                                                 | A viem public client whose requests go through the failover                       |
-| `readFees`, `EvmFees`                                             | EIP-1559 fees per gas from the node, refused above the caller's cap               |
-| `simulate`, `Simulation`, `AssetTransfer`, `AssetApproval`        | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
-| `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema` | The wire values every RPC answer is checked with                                  |
+| Export                                                                   | What it does                                                                      |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `createEvmFamily`, `parseEvmAddress`                                     | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form                 |
+| `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                           | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses      |
+| `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health |
+| `createEvmClient`                                                        | A viem public client whose requests go through the failover                       |
+| `readFees`, `EvmFees`                                                    | EIP-1559 fees per gas from the node, refused above the caller's cap               |
+| `simulate`, `Simulation`, `AssetTransfer`, `AssetApproval`               | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
+| `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                     |
+| `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions              |
+| `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                  |
 
 ## Example
 

@@ -21,6 +21,7 @@
   "dependencies": {
     "@binference/chain": "workspace:*",
     "@binference/core": "workspace:*",
+    "@noble/curves": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"
   },

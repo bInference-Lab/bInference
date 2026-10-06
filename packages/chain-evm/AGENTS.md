@@ -17,6 +17,7 @@ Rules for this package:
   viem clients ride on `createRpcFailover` through `createEvmClient`.
 - The failover reads. It refuses `eth_send*`, `eth_sign*`, `personal_*` and `wallet_*`, so a retried
   send can never reach a public node; sends go through the private relays.
+- No key lives here. The signing scheme builds, hashes and checks what a signer signs.
 - `src/testing/` holds test support: fake and loopback `Http` adapters and loopback servers. It is
   the one place that imports `node:http`, and nothing outside tests imports it.
 - Unit tests use no network: fakes, or servers on 127.0.0.1. The fork test runs only when

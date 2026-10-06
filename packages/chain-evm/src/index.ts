@@ -1,3 +1,5 @@
+export { decodeCall } from "./decoding/decode-call.js";
+export type { CalldataProblem } from "./decoding/decode-call.js";
 export { parseEvmAddress } from "./evm-address.js";
 export { erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
 export type { EvmChain } from "./evm-chain.js";
@@ -21,6 +23,10 @@ export type {
   RpcReply,
   RpcResultReply,
 } from "./rpc/rpc-call.js";
+export { createEvmSigningScheme } from "./signing/evm-signing-scheme.js";
+export type { EvmSigningScheme } from "./signing/evm-signing-scheme.js";
+export { decodeEvmTransaction, encodeEvmTransaction } from "./signing/evm-transaction.js";
+export type { DecodedEvmTransaction, EvmTransaction } from "./signing/evm-transaction.js";
 export { simulate } from "./simulation/simulate.js";
 export type {
   BalanceOverride,

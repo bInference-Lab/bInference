@@ -5,7 +5,7 @@
     "core": { "imports": [], "pure": true },
     "chain": { "imports": ["core"], "pure": true, "money": true, "coverage": 95 },
     "chain-evm": {
-      "imports": ["core", "chain", "chains", "viem"],
+      "imports": ["core", "chain", "chains", "viem", "@noble/curves"],
       "only": { "@binference/chains": "src/fork" },
       "money": true,
       "coverage": 95
