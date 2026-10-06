@@ -293,6 +293,15 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  packages/chain:
+    dependencies:
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   packages/core:
     dependencies:
       zod:

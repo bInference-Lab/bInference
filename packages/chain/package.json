@@ -1,0 +1,30 @@
+{
+  "name": "@binference/chain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The chain-neutral model: CAIP ids, amounts, and the ChainFamily, SigningScheme and ChainRegistry ports.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/core": "workspace:*",
+    "zod": "catalog:"
+  }
+}

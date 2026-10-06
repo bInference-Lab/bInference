@@ -72,7 +72,8 @@ export function createSandbox(repo: string): Sandbox {
     },
     reset() {
       git(root, ["reset", "-q", "--hard", base]);
-      git(root, ["clean", "-q", "-fdx", "-e", "/node_modules"]);
+      // Each package's node_modules holds its links to other workspace packages; they survive.
+      git(root, ["clean", "-q", "-fdx", "-e", "node_modules"]);
     },
     dispose() {
       rmSync(root, { recursive: true, force: true });
