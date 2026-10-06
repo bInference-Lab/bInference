@@ -43,6 +43,10 @@ Prices, charts, liquidity, holders, new launches and smart-money wallets from GM
 
 Reads any contract, wallet or transaction on BSC through public BNB Chain RPCs, or your own Alchemy, QuickNode, NodeReal, Ankr or Chainstack key, with automatic failover.
 
+### Custody agentic wallet <img src=".github/assets/logos/privy.png" width="18" height="18" alt="Privy">
+
+The wallet key lives in Privy's secure enclave, never on your machine. The agent signs only inside a policy that you alone can change, and a lost machine loses nothing.
+
 ### Private execution <img src=".github/assets/logos/48club.png" width="18" height="18" alt="48 Club">&nbsp;<img src=".github/assets/logos/blockrazor.png" width="18" height="18" alt="BlockRazor">&nbsp;<img src=".github/assets/logos/bloxroute.png" width="18" height="18" alt="bloXroute">&nbsp;<img src=".github/assets/logos/pancakeswap.png" width="18" height="18" alt="PancakeSwap MEV Guard">
 
 Every transaction is simulated first, then sent privately through 48 Club, BlockRazor, bloXroute or PancakeSwap MEV Guard, out of reach of front-running bots.
