@@ -1,0 +1,89 @@
+# binference
+
+binference is an open-source AI agent that trades on BNB Smart Chain for its owner. It runs on the
+owner's machine, talks on Telegram, in a web console and in the terminal, and asks before every
+transaction. This file holds the rules every engineer and coding agent follows. Each package has
+its own `AGENTS.md`; read it before you change a file there.
+
+The full rules are in `docs/ENGINEERING.md`, the specs in `docs/specs/`, and the decisions in
+`docs/adr/`. When those are silent, write a short ADR and get the owner's yes before coding.
+Never make a random choice.
+
+## Principles
+
+- The engine is the trust boundary. Keys, confirmations, limits and the ledger live only in the
+  engine and the signer; everything else reads and proposes.
+- One owner per responsibility. One module decides and writes each piece of state.
+- Small core, capable plugins. A new venue, chain, model provider or chat surface is an adapter
+  behind an existing port, never an `if` in the core.
+- Chain-agnostic and OS-agnostic. Core code never names a chain, an operating system, a model
+  provider or a database.
+- Fail closed on money, fail soft on telemetry.
+- A change moves every caller and deletes the old path in the same PR.
+- Every action has a visible outcome, and an error tells the reader the next step.
+
+## Names
+
+Every name comes from `docs/GLOSSARY.md`. Never borrow file names, commands, config keys,
+protocol names, tool names or terms from other agent frameworks; add a new name to the glossary
+first.
+
+## TypeScript
+
+- TypeScript 7, ESM only, Node `>=24.16 <25 || >=26.1`. `strict`, `noUncheckedIndexedAccess`,
+  `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `isolatedDeclarations`.
+- No `any`, no non-null `!`, no `enum`, no `namespace`, no default export, no `@ts-ignore`.
+  `as` only in tests and named assertion helpers.
+- `unknown` only at a boundary, parsed by zod at once. Types come from `z.infer`.
+- Branded types for ids, accounts, assets and amounts. Money is `bigint` base units, never
+  `number`. Rates are integer basis points.
+- Exhaustive `switch`; `readonly` data; never mutate an input.
+- Every async I/O takes an `AbortSignal` and has a timeout. No floating promises.
+- Pure packages read time and randomness only through the `Clock` and `Random` ports.
+
+## Clean code
+
+- File 300 code lines (tests 600), function 50, complexity 10, nesting 3, parameters 3.
+- One concept per file, named after its main export. No `utils.ts` or `helpers.ts`. No barrel
+  files except a package's `src/index.ts`.
+- Factory functions and interfaces; classes only for errors. One composition root in `cli`.
+- Ports and adapters: domain code depends on ports; adapters are wired in the composition root.
+  Every port has one contract test suite that each adapter passes.
+- No duplication: extract the second copy into the lowest shared package. No speculative
+  helpers or one-use wrappers.
+- Expected outcomes return `Result`; faults throw `BinferenceError` with a dotted code.
+
+## Comments
+
+- TSDoc on every public export: what it does and what a caller must know.
+- A `//` comment only for a non-obvious constraint (ownership, ordering, cleanup, platform). Never
+  narrate code. No `TODO`; open an issue.
+
+## Writing
+
+Docs, UI messages, comments, commits and PR text:
+
+- No em or en dashes as punctuation. No emojis outside the card icons the design names.
+- No filler or hype words (easy, simple, just, seamless, robust, delve, utilize, very, really,
+  powerful, effortless, elevate, streamline).
+- No plan or task ids, no people's names, no "as discussed".
+- Short sentences, active voice, present tense.
+- Every word a person sees ships in English and Simplified Chinese in the same PR.
+
+## Commits
+
+`type(scope): description`, 72 characters at most.
+
+- `type`: `feat`, `fix`, `perf`, `refactor`, `test`, `docs`, `ci`, `build` or `chore`.
+- `scope`: the package or area (`engine`, `signer`, `orders`, `telegram`, `console`).
+- `description`: lowercase, no period, says exactly what changed in a teammate's words. No vague
+  words ("improve", "enhance"), no emojis, no dashes as punctuation.
+- No AI attribution lines. Example: `fix(orders): stop a trailing stop from firing twice after a
+restart`.
+
+## Before you finish
+
+1. The behavior is tested at the cheapest layer that proves it.
+2. Public exports carry TSDoc; new user-facing words exist in English and Chinese.
+3. A config change has its migration; a load-bearing decision has its ADR.
+4. `pnpm check` passes. CI runs it on Linux, macOS and Windows.
