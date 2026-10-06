@@ -3,12 +3,37 @@ import { join } from "node:path";
 import { z } from "zod";
 import { failingCase, type GateCase } from "./gate-case.mjs";
 
-const recordPath = "docs/adr/0098-sign-in-the-wallet-queue.md";
 const allHeadings = ["Context", "Decision", "Consequences", "Alternatives"];
 
-function recordText(status: string, headings: readonly string[] = allHeadings): string {
+// The planted record takes the next free number, so real records never collide with it.
+interface Planted {
+  readonly next: string;
+  readonly gap: string;
+}
+
+function fourDigits(value: number): string {
+  return String(value).padStart(4, "0");
+}
+
+function nextNumbers(page: string): Planted {
+  const numbers = [...page.matchAll(/<a id="d(\d{4})"><\/a>/g)].map((match) => Number(match[1]));
+  const last = Math.max(0, ...numbers);
+  return { next: fourDigits(last + 1), gap: fourDigits(last + 2) };
+}
+
+function recordPath(number: string): string {
+  return `docs/adr/${number}-sign-in-the-wallet-queue.md`;
+}
+
+function recordText(
+  number: string,
+  status: string,
+  headings: readonly string[] = allHeadings,
+): string {
   const sections = headings.flatMap((heading) => [`## ${heading}`, "", `The ${heading}.`, ""]);
-  return ["# 0098. Sign in the wallet queue", "", `Status: ${status}`, "", ...sections].join("\n");
+  return [`# ${number}. Sign in the wallet queue`, "", `Status: ${status}`, "", ...sections].join(
+    "\n",
+  );
 }
 
 function indexRow(number: string, status: string): string {
@@ -31,28 +56,28 @@ function withCell(page: string, id: string, [column, value]: readonly [number, s
     .join("\n");
 }
 
-function structureCases(page: string): readonly GateCase[] {
+function structureCases(page: string, { next, gap }: Planted): readonly GateCase[] {
   return [
     failingCase(
       "a record missing from DECISIONS.md fails check:adr",
-      { [recordPath]: recordText("Proposed") },
-      ["check:adr", /0098 is not listed in docs\/DECISIONS\.md/],
+      { [recordPath(next)]: recordText(next, "Proposed") },
+      ["check:adr", new RegExp(`${next} is not listed in docs/DECISIONS\\.md`)],
     ),
     failingCase(
       "a record without its four headings fails check:adr",
       {
-        [recordPath]: recordText("Proposed", allHeadings.slice(0, 3)),
-        "docs/DECISIONS.md": page + indexRow("0098", "Proposed"),
+        [recordPath(next)]: recordText(next, "Proposed", allHeadings.slice(0, 3)),
+        "docs/DECISIONS.md": page + indexRow(next, "Proposed"),
       },
       ["check:adr", /a record has the headings/],
     ),
     failingCase(
       "a gap in the record numbers fails check:adr",
       {
-        "docs/adr/0099-sign-in-the-wallet-queue.md": recordText("Proposed").replace("0098", "0099"),
-        "docs/DECISIONS.md": page + indexRow("0099", "Proposed"),
+        [recordPath(gap)]: recordText(gap, "Proposed"),
+        "docs/DECISIONS.md": page + indexRow(gap, "Proposed"),
       },
-      ["check:adr", /0098 is due here/],
+      ["check:adr", new RegExp(`${next} is due here`)],
     ),
   ];
 }
@@ -93,10 +118,10 @@ function lockCases(page: string, lock: string): readonly GateCase[] {
   ];
 }
 
-function recordLockCases(page: string): readonly GateCase[] {
+function recordLockCases(page: string, { next }: Planted): readonly GateCase[] {
   const accepted = {
-    [recordPath]: recordText("Accepted"),
-    "docs/DECISIONS.md": page + indexRow("0098", "Accepted"),
+    [recordPath(next)]: recordText(next, "Accepted"),
+    "docs/DECISIONS.md": page + indexRow(next, "Accepted"),
   };
   return [
     {
@@ -107,9 +132,12 @@ function recordLockCases(page: string): readonly GateCase[] {
         {
           command: ["pnpm", "check:adr"],
           expect: "fail",
-          output: [/0098's text changed/],
+          output: [new RegExp(`${next}'s text changed`)],
           files: {
-            [recordPath]: recordText("Accepted").replace("The Decision.", "Another decision."),
+            [recordPath(next)]: recordText(next, "Accepted").replace(
+              "The Decision.",
+              "Another decision.",
+            ),
           },
         },
       ],
@@ -119,7 +147,7 @@ function recordLockCases(page: string): readonly GateCase[] {
       files: {
         ...accepted,
         "docs/DECISIONS.md":
-          withCell(page, "0005", [4, "Superseded by 0098"]) + indexRow("0098", "Accepted"),
+          withCell(page, "0005", [4, `Superseded by ${next}`]) + indexRow(next, "Accepted"),
       },
       steps: [{ command: ["pnpm", "check:adr", "--write"], expect: "pass" }],
     },
@@ -130,5 +158,10 @@ function recordLockCases(page: string): readonly GateCase[] {
 export function decisionCases(repo: string): readonly GateCase[] {
   const page = readFileSync(join(repo, "docs/DECISIONS.md"), "utf8");
   const lock = readFileSync(join(repo, "docs/decisions.lock.json"), "utf8");
-  return [...structureCases(page), ...lockCases(page, lock), ...recordLockCases(page)];
+  const planted = nextNumbers(page);
+  return [
+    ...structureCases(page, planted),
+    ...lockCases(page, lock),
+    ...recordLockCases(page, planted),
+  ];
 }
