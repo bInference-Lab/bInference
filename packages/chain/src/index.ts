@@ -25,7 +25,7 @@ export {
 } from "./caip/chain-ref.js";
 export type { ChainRef, ChainRefParts } from "./caip/chain-ref.js";
 export type { DraftCall, TokenApproval } from "./draft-call.js";
-export type { ChainFamily, ChainRegistry, SigningScheme } from "./ports.js";
+export type { ChainFamily, ChainRegistry, Signer, SigningScheme } from "./ports.js";
 export { chainDefinitionSchema } from "./registry/chain-definition.js";
 export type {
   AddressVerification,
@@ -41,6 +41,7 @@ export type {
 export { createChainRegistry } from "./registry/create-chain-registry.js";
 export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
 export type { RegisteredChain } from "./registry/registered-chain.js";
+export type { SignAuthorization, SignRequest } from "./sign-request.js";
 export { isTxHash, txDraftSchema } from "./transaction.js";
 export type {
   SignatureProblem,

@@ -1,7 +1,9 @@
-import type { Result } from "@binference/core";
+import type { Id, Result } from "@binference/core";
+import type { AccountRef } from "./caip/account-ref.js";
 import type { ChainRef } from "./caip/chain-ref.js";
 import type { DraftCall } from "./draft-call.js";
 import type { RegisteredChain } from "./registry/registered-chain.js";
+import type { SignRequest } from "./sign-request.js";
 import type { SignatureProblem, SignedTx, TxDraft, TxHash, UnsignedTx } from "./transaction.js";
 
 /**
@@ -35,6 +37,31 @@ export interface SigningScheme {
   readonly family: string;
   /** Checks a signed transaction against the unsigned one and gives its hash on chain. */
   verify(unsigned: UnsignedTx, signed: SignedTx): Result<TxHash, SignatureProblem>;
+}
+
+/**
+ * Signs for the agent wallets (ARCHITECTURE.md section 8). No machine running binference holds a
+ * wallet's private key: a custodian keeps it and signs only inside the wallet's ceiling. Adapters:
+ * `privy-owner` in `@binference/custody-privy` (the owner's Privy app, with the agent key in the
+ * signer process) and `privy-service` (a signer service whose authorization key sits in a KMS).
+ */
+export interface Signer {
+  /** The wallet's account on a chain; `unknown_wallet` when the wallet has none there. */
+  account(
+    wallet: Id<"wal">,
+    chain: ChainRef,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<AccountRef, "unknown_wallet">>;
+  /**
+   * Signs one transaction of an approved intent. `unknown_wallet` when the custodian holds no
+   * such wallet; `refused` when it will not sign this one: its sender is not the wallet, it falls
+   * outside the ceiling, or the owner removed this signer from the wallet. Rejects with the
+   * signal's reason once the signal aborts, and signs nothing.
+   */
+  signTransaction(
+    request: SignRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<SignedTx, "unknown_wallet" | "refused">>;
 }
 
 /** The chains binference may use, filled once by the composition root. */

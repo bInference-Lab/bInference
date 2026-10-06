@@ -10,6 +10,8 @@ export type {
   ChainRegistryHarness,
   ChainRegistrySubject,
 } from "./contracts/chain-registry-contract.js";
+export { signerContract } from "./contracts/signer-contract.js";
+export type { SignerHarness, SignerSubject } from "./contracts/signer-contract.js";
 export { signingSchemeContract } from "./contracts/signing-scheme-contract.js";
 export type {
   SigningSchemeHarness,
@@ -24,6 +26,8 @@ export type { TxDecoderHarness, TxDecoderSubject } from "./contracts/tx-decoder-
 export { fakeApprovalData, fakeDraft } from "./fakes/fake-draft.js";
 export type { FakeCall } from "./fakes/fake-draft.js";
 export { createFakeFamily } from "./fakes/fake-family.js";
+export { createFakeSigner } from "./fakes/fake-signer.js";
+export type { FakeSigner } from "./fakes/fake-signer.js";
 export { createFakeSigningScheme, signFake } from "./fakes/fake-signing-scheme.js";
 export { createFakeChainDefinition } from "./fakes/fake-chain.js";
 export { createFakeVenue, fakeSwapData } from "./fakes/fake-venue.js";

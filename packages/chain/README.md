@@ -18,6 +18,7 @@ SDK share one definition. Nothing here names a chain or a venue.
 | `chainRefSchema`, `accountRefSchema`, `assetRefSchema`                | The same ids parsed at a boundary                                |
 | `Amount`, `amountSchema`                                              | An asset and its base units, as JSON carries them                |
 | `ChainFamily`, `SigningScheme`, `ChainRegistry`                       | The ports a family package and the composition root fill         |
+| `Signer`, `SignRequest`, `SignAuthorization`                          | Custody: signs an approved intent's transaction for a wallet     |
 | `ChainDefinition`, `chainDefinitionSchema`                            | One chain as data: tokens, contracts, RPCs, relays and explorers |
 | `createChainRegistry`                                                 | The registry, which refuses data its family does not accept      |
 | `UnsignedTx`, `SignedTx`, `TxHash`                                    | Transactions as the core passes them, opaque inside              |

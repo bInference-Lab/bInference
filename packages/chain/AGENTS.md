@@ -15,6 +15,9 @@ Rules for this package:
 - A family package implements `ChainFamily` and `SigningScheme` and passes their suites from
   `@binference/chain/testing`. A chain is data in `@binference/chains`, checked by
   `chainDefinitionSchema` and by its family when the registry starts.
+- `Signer` is the custody port here, so the engine and each custody adapter
+  (`@binference/custody-privy`, a signer service) share it without importing each other. Its fake
+  in `@binference/chain/testing` is shaped like a signer service whose owner can remove it.
 - Venues are ports here so `engine` and `plugin-sdk` share them: `Quoter`, `TxBuilder` and
   `TxDecoder` in `src/venues/ports.ts`, each with a contract suite. A venue names its contracts by
   their registry names, never by address, and returns `TxDraft`s that only its family reads.
