@@ -21,6 +21,14 @@ one closes the card and the other sees it closed. A tap on a quote older than th
 quotes and simulates again through the `QuoteSource` and `Simulator` ports, and opens the next card
 version when the minimum out got worse than the tolerance. No answer before the expiry is a no.
 
+It declares the store ports, the engine's view of the state it keeps
+([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
+their events, card versions and confirmations, each move written whole with its ledger entry),
+`LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore` and `ConfigJournal`.
+Their records cross the store worker boundary, so each has a zod schema. `@binference/store` holds
+their SQLite adapters; `@binference/engine/testing` holds an in-memory fake and a contract suite for
+each.
+
 ## API
 
 | Export                                                           | What it does                                                    |
@@ -46,6 +54,16 @@ version when the minimum out got worse than the tolerance. No answer before the 
 | `receiptLine`, `CardClosing`                                     | The receipt line a card becomes when it closes                  |
 | `createVenueHost`, `VenueHost`, `VenueTrade`, `TradePlan`        | Quotes and builds a trade on a venue and checks every step      |
 | `VenueOutcome`, `VenueRefused`, `BuildMismatch`, `PlanStep`      | A checked plan, or the check reason and the check that failed   |
+| `IntentStore`, `IntentDraft`, `IntentChange`, `IntentCommit`     | Intents with their events, cards and confirmations              |
+| `IntentRecord`, `CardRecord`, `StoredConfirmation`               | An intent, a card version and a confirmation as stored          |
+| `LedgerStore`, `LedgerEntry`, `chainLedgerEntry`                 | The hash-chained ledger and how an entry joins its end          |
+| `hashLedgerEntry`, `genesisLedgerHash`                           | The SHA-256 of one ledger entry, and the first `prevHash`       |
+| `IdempotencyStore`, `InboxStore`                                 | Each write's result by its key; inbound events before the ack   |
+| `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
+| `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |
+| `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
+| `EngineStores`                                                   | Every store port, as the composition root hands them out        |
+| `Sha256Hex`, `sha256Hex`                                         | A SHA-256 digest as 64 lowercase hex digits                     |
 | `TransitionProblem`, `ProposalProblem`                           | Why the machine refused a trigger or a proposal                 |
 
 ## Example
@@ -87,4 +105,5 @@ if (answered.ok && answered.value.intent.closing !== undefined) {
 }
 ```
 
-Tests import each port's contract suite and a fake from `@binference/engine/testing`.
+Tests import each port's contract suite and its fake from `@binference/engine/testing`;
+`createMemoryEngineStores` gives every store port in memory over one shared ledger.

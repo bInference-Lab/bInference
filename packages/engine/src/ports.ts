@@ -1,8 +1,34 @@
 import type { AssetRef } from "@binference/chain";
 import type { Id, Ratio, Result } from "@binference/core";
 import type { SimulationView } from "@binference/protocol";
+import type { DeviceRecord } from "./access/device-record.js";
+import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
+import type { TokenRecord } from "./access/token-record.js";
+import type { AgentDraft, AgentRecord, AgentSettings } from "./agents/agent-record.js";
+import type { ApprovalModeChange, ApprovalModeRecord } from "./agents/approval-mode-record.js";
+import type { LimitsChange, LimitsRecord } from "./agents/limits-record.js";
+import type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
 import type { BuiltQuote, IntentWrite, StoredIntent } from "./confirmations/stored-intent.js";
+import type {
+  IdempotencyEntry,
+  IdempotencyLookup,
+  IdempotencyRecall,
+} from "./ingress/idempotency-entry.js";
+import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
+import type { CardRecord } from "./intents/card-record.js";
+import type { StoredConfirmation } from "./intents/confirmation-record.js";
+import type {
+  IntentChange,
+  IntentCommit,
+  IntentEventRecord,
+  IntentQuery,
+} from "./intents/intent-change.js";
 import type { QuoteFailure, SimulationFailure } from "./intents/intent-reason.js";
+import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
+import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
+import type { RowPage } from "./records/row-page.js";
+import type { Sha256Hex } from "./records/sha256-hex.js";
+import type { StampedId } from "./records/stamped-id.js";
 
 /**
  * A USD price as micro-dollars per base unit of one asset: `numerator` micro-dollars buy
@@ -69,4 +95,159 @@ export interface Simulator {
     built: BuiltQuote,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<SimulationView, SimulationFailure>>;
+}
+
+/**
+ * What every store call takes. A call on an aborted signal rejects with the signal's reason and
+ * changes nothing.
+ */
+interface StoreCall {
+  readonly signal: AbortSignal;
+}
+
+/**
+ * Keeps intents with their events, card versions and confirmations (database spec, section 2.3).
+ * It is the one writer of an intent's state: the state machine decides, and this store writes each
+ * move all or nothing, together with its ledger entry.
+ */
+export interface IntentStore {
+  /** Writes a new intent with its first event and ledger entry; an id in use is `exists`. */
+  create(draft: IntentDraft, options: StoreCall): Promise<Result<IntentCommit, "exists">>;
+  /** One intent, or `undefined` when the store has none with that id. */
+  get(id: Id<"int">, options: StoreCall): Promise<IntentRecord | undefined>;
+  /**
+   * Moves an intent when its stored version is `expectedVersion`, then raises the version by one.
+   * Another version is `stale` and writes nothing, so of two racing moves the first wins. A card
+   * that is not this intent's open version, or a second confirmation, throws and writes nothing.
+   */
+  transition(
+    change: IntentChange,
+    options: StoreCall,
+  ): Promise<Result<IntentCommit, "not_found" | "stale">>;
+  /** Intents in the query's states, the least recently changed first. */
+  list(query: IntentQuery, options: StoreCall): Promise<readonly IntentRecord[]>;
+  /** An intent's events, oldest first. */
+  events(id: Id<"int">, options: StoreCall): Promise<readonly IntentEventRecord[]>;
+  /** An intent's card versions, oldest first. */
+  cards(id: Id<"int">, options: StoreCall): Promise<readonly CardRecord[]>;
+  /** An intent's confirmation, if the owner confirmed it. */
+  confirmation(id: Id<"int">, options: StoreCall): Promise<StoredConfirmation | undefined>;
+}
+
+/**
+ * The append-only, hash-chained ledger (database spec, section 2.5). Nothing updates or deletes
+ * an entry. The intent store appends the entries of intent moves; this port appends the others.
+ */
+export interface LedgerStore {
+  /**
+   * Places a draft at the end of the chain and returns it with its `seq` and hashes. An id in use
+   * throws `store.constraint` and appends nothing.
+   */
+  append(draft: LedgerDraft, options: StoreCall): Promise<LedgerEntry>;
+  /** Entries with a `seq` after `page.after`, in order, at most `page.limit`. */
+  list(page: RowPage, options: StoreCall): Promise<readonly LedgerEntry[]>;
+  /** The newest entry, or `undefined` for an empty ledger. */
+  last(options: StoreCall): Promise<LedgerEntry | undefined>;
+}
+
+/** Keeps each write's result under its idempotency key (protocol spec, section 5). */
+export interface IdempotencyStore {
+  /** What the store holds under the key, compared with the args hash. */
+  recall(lookup: IdempotencyLookup, options: StoreCall): Promise<IdempotencyRecall>;
+  /**
+   * Stores a result under its key when the key is free, and answers `new`. A key that holds a
+   * result keeps the first one: `repeat` returns it, `reused` says the args differ.
+   */
+  remember(entry: IdempotencyEntry, options: StoreCall): Promise<IdempotencyRecall>;
+  /** Deletes results stored before `beforeMs` and returns how many. */
+  prune(beforeMs: number, options: StoreCall): Promise<number>;
+}
+
+/** Keeps every inbound Telegram update and webhook call from before it is acknowledged. */
+export interface InboxStore {
+  /** Stores an event; a source key stored before is a `repeat` that returns the first entry. */
+  admit(draft: InboxDraft, options: StoreCall): Promise<InboxAdmission>;
+  /** Marks an entry handled; the first mark wins and a later one is `handled`. */
+  markHandled(
+    mark: { readonly id: number; readonly atMs: number },
+    options: StoreCall,
+  ): Promise<Result<InboxEntry, "not_found" | "handled">>;
+  /** Entries not handled yet, oldest first, at most `limit`: the work a restart resumes. */
+  unhandled(limit: number, options: StoreCall): Promise<readonly InboxEntry[]>;
+  /** Deletes entries handled before `beforeMs` and returns how many. */
+  prune(beforeMs: number, options: StoreCall): Promise<number>;
+}
+
+/** Keeps client tokens, console devices and pairing codes: who may open the protocol. */
+export interface AccessStore {
+  /** Saves a new token; an id or secret hash in use is `exists`. */
+  addToken(token: TokenRecord, options: StoreCall): Promise<Result<TokenRecord, "exists">>;
+  /** The token whose secret has this SHA-256, revoked or not. */
+  findToken(secretHash: Sha256Hex, options: StoreCall): Promise<TokenRecord | undefined>;
+  /** Every token, oldest first. */
+  listTokens(options: StoreCall): Promise<readonly TokenRecord[]>;
+  /** Records a use; `lastUsedAtMs` only moves forward. */
+  markTokenUsed(
+    use: StampedId<"tok">,
+    options: StoreCall,
+  ): Promise<Result<TokenRecord, "not_found">>;
+  /** Revokes a token; a second revoke keeps the first time. */
+  revokeToken(
+    revoke: StampedId<"tok">,
+    options: StoreCall,
+  ): Promise<Result<TokenRecord, "not_found">>;
+  /** Saves a newly paired device; an id in use is `exists`. */
+  addDevice(device: DeviceRecord, options: StoreCall): Promise<Result<DeviceRecord, "exists">>;
+  /** One device, revoked or not. */
+  findDevice(id: Id<"dev">, options: StoreCall): Promise<DeviceRecord | undefined>;
+  /** Every device, oldest first. */
+  listDevices(options: StoreCall): Promise<readonly DeviceRecord[]>;
+  /** Records a successful proof; `lastSeenAtMs` only moves forward. */
+  markDeviceSeen(
+    seen: StampedId<"dev">,
+    options: StoreCall,
+  ): Promise<Result<DeviceRecord, "not_found">>;
+  /** Revokes a device; a second revoke keeps the first time. */
+  revokeDevice(
+    revoke: StampedId<"dev">,
+    options: StoreCall,
+  ): Promise<Result<DeviceRecord, "not_found">>;
+  /** Saves a new pairing code; a hash in use is `exists`. */
+  addPairCode(code: PairCodeRecord, options: StoreCall): Promise<Result<PairCodeRecord, "exists">>;
+  /** Uses a code once, before it expires. */
+  usePairCode(
+    use: PairCodeUse,
+    options: StoreCall,
+  ): Promise<Result<PairCodeRecord, "unknown" | "expired" | "used">>;
+}
+
+/** Keeps the agents and the settings the money path reads: their limits and approval modes. */
+export interface AgentStore {
+  /** Writes a new agent with its limits and approval mode; a taken id or name is refused. */
+  create(
+    draft: AgentDraft,
+    options: StoreCall,
+  ): Promise<Result<AgentSettings, "exists" | "name_taken">>;
+  /** One agent with its settings. */
+  get(id: Id<"agt">, options: StoreCall): Promise<AgentSettings | undefined>;
+  /** Every agent, archived ones too, oldest first. */
+  list(options: StoreCall): Promise<readonly AgentRecord[]>;
+  /** Sets the approval mode under the version the changer read; another version is `stale`. */
+  setApprovalMode(
+    change: ApprovalModeChange,
+    options: StoreCall,
+  ): Promise<Result<ApprovalModeRecord, "not_found" | "stale">>;
+  /** Sets the limits under the version the changer read; another version is `stale`. */
+  setLimits(
+    change: LimitsChange,
+    options: StoreCall,
+  ): Promise<Result<LimitsRecord, "not_found" | "stale">>;
+}
+
+/** The config journal: every config change, who made it and where, in the order recorded. */
+export interface ConfigJournal {
+  /** Records one change and returns it with its number. */
+  record(change: ConfigChange, options: StoreCall): Promise<ConfigJournalEntry>;
+  /** Entries numbered after `page.after`, in order, at most `page.limit`. */
+  list(page: RowPage, options: StoreCall): Promise<readonly ConfigJournalEntry[]>;
 }

@@ -32,5 +32,12 @@ Rules for this package:
   `BuildMismatch` code, a case in `build-checks.test.ts` and a property case.
 - Ports live in `src/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.
+- The store ports in `src/ports.ts` (`IntentStore`, `LedgerStore`, `IdempotencyStore`,
+  `InboxStore`, `AccessStore`, `AgentStore`, `ConfigJournal`) are implemented in
+  `@binference/store`, which imports this package. Each record they pass has a declared type and a
+  zod schema, since it crosses the store worker boundary. A change to a store port changes its
+  contract suite, its fake and its SQLite adapter together.
+- The in-memory fakes check every rule a write must pass before they change anything, as the
+  SQLite store's transaction does, and they fail with the same `store.*` codes.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
   `*.property.test.ts` files.

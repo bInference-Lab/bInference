@@ -118,6 +118,9 @@ new name here first, in the change that uses it.
   `agent.sqlite`: the database's one **writer**, or one of its **readers**.
 - **store task**: a named, synchronous unit of database work that a store worker runs; a write task
   runs in one transaction.
+- **store ports**: the engine's ports for the state it keeps: intents with their cards and
+  confirmations, the ledger, the inbox, idempotency keys, access, agents and the config journal.
+  `store` holds their SQLite adapters; each port has one contract suite and an in-memory fake.
 - **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`.
 - **unlock mode**: where the agent key and the Privy app secret are read at start: `keychain`,
   `file`, `command` or `manual`.
