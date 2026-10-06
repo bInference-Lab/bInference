@@ -16,6 +16,7 @@ catalog:
   jscpd: 5.3.3
   json5: 2.2.3
   knip: 6.38.0
+  kysely: 0.29.6
   markdownlint-cli2: 0.23.3
   oxfmt: 0.71.0
   oxlint: 1.86.0

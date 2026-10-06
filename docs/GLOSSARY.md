@@ -108,6 +108,10 @@ new name here first, in the change that uses it.
 - **config migration**: what `binference check --fix` runs to move older config or data to the
   current shape.
 - **engine lock**: the file lock that allows one engine per state folder.
+- **store worker**: a worker thread that holds one connection to `engine.sqlite` or
+  `agent.sqlite`: the database's one **writer**, or one of its **readers**.
+- **store task**: a named, synchronous unit of database work that a store worker runs; a write task
+  runs in one transaction.
 - **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`.
 - **unlock mode**: where the agent key and the Privy app secret are read at start: `keychain`,
   `file`, `command` or `manual`.

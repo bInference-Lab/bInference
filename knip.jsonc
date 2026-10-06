@@ -8,6 +8,11 @@
     "{packages,plugins}/*": {
       "project": ["src/**/*.ts"],
     },
+    // Worker entries load by URL, so no import names them.
+    "packages/store": {
+      "entry": ["src/**/*.worker.ts"],
+      "project": ["src/**/*.ts"],
+    },
   },
   // Installed in CI from a pinned release; it is not an npm package.
   "ignoreBinaries": ["opengrep"],
