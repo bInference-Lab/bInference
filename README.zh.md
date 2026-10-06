@@ -43,9 +43,9 @@ Hermes Agent、Meta 的 Muse 和 OpenClaw 是面向日常生活的 AI Agent。bI
 
 通过公共 BNB Chain RPC，或你自己的 Alchemy、QuickNode、NodeReal、Ankr、Chainstack 密钥，读取 BSC 上的任何合约、钱包或交易，并自动切换备用节点。
 
-### 智能体托管钱包 <img src=".github/assets/logos/privy.png" width="18" height="18" alt="Privy">
+### Agent 托管钱包 <img src=".github/assets/logos/privy.png" width="18" height="18" alt="Privy">
 
-钱包私钥保存在 Privy 的安全隔区中，从不落到你的机器上。智能体只能在仅由你修改的策略范围内签名，即使机器丢失，资产也不会丢失。
+钱包私钥保存在 Privy 的安全隔区中，从不落到你的机器上。Agent 只能在仅由你修改的策略范围内签名，即使机器丢失，资产也不会丢失。
 
 ### 私密执行 <img src=".github/assets/logos/48club.png" width="18" height="18" alt="48 Club">&nbsp;<img src=".github/assets/logos/blockrazor.png" width="18" height="18" alt="BlockRazor">&nbsp;<img src=".github/assets/logos/bloxroute.png" width="18" height="18" alt="bloXroute">&nbsp;<img src=".github/assets/logos/pancakeswap.png" width="18" height="18" alt="PancakeSwap MEV Guard">
 
