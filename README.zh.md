@@ -6,7 +6,7 @@
 
 # bInference
 
-bInference 是一个面向 BNB Smart Chain 的开源 AI Agent。它负责调研、交易、赚取收益并守护你的资金，运行在你自己的机器上，在 Telegram 上听你指挥。
+bInference 是一个面向 BNB Smart Chain 的开源 AI Agent。你可以把它部署成交易员、研究员、KOL、开发者，或任何你需要的角色。它运行在你自己的机器上，你在 Telegram 和其他渠道上指挥它。
 
 **你的钱包，你的规则，你来确认。** Agent 只用它自己创建的钱包、在你设定的限额内交易；没有你的确认，任何资金都不会离开钱包。
 
@@ -74,6 +74,13 @@ bInference 是一个面向 BNB Smart Chain 的开源 AI Agent。它负责调研�
 - **暂停或停止** 任何 Agent，只需点一下。
 - **证明** 收益，凭经过验证的交易记录。
 - **交易** 你的 Binance 子账户，凭证由 Binance 保管。
+
+## 不只是交易
+
+Agent 随 bInference 一起成长：bInference 路线图上的每项能力都会加入 Agent。
+
+- **短片**：用 bInference Motion Engine 制作世界级的动态短片，可直接发布到 X 和 Binance Square。
+- **私密 AI**：通过 bInference Router 匿名使用 AI，涵盖数百个各类模型；处理敏感内容时，可使用端到端加密的私密模型。
 
 ## 你的机器，你来掌控 <img src=".github/assets/logos/telegram.png" width="20" height="20" alt="Telegram">&nbsp;<img src=".github/assets/logos/claude.png" width="20" height="20" alt="Claude Code">&nbsp;<img src=".github/assets/logos/codex.png" width="20" height="20" alt="Codex">&nbsp;<img src=".github/assets/logos/mcp.png" width="20" height="20" alt="MCP">
 
