@@ -35,7 +35,9 @@ first.
   `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `isolatedDeclarations`.
 - No `any`, no non-null `!`, no `enum`, no `namespace`, no default export, no `@ts-ignore`.
   `as` only in tests and named assertion helpers.
-- `unknown` only at a boundary, parsed by zod at once. Types come from `z.infer`.
+- `unknown` only at a boundary, parsed by zod at once. An exported shape has a declared type and
+  a schema annotated with it ([decision 0098](docs/DECISIONS.md#d0098)); no `z.infer` in an
+  exported position.
 - Branded types for ids, accounts, assets and amounts. Money is `bigint` base units, never
   `number`. Rates are integer basis points.
 - Exhaustive `switch`; `readonly` data; never mutate an input.

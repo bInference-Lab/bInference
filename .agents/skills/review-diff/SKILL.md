@@ -34,7 +34,8 @@ Read the issue or task the change serves. A red `pnpm check` comes first: fix it
 
 - Expected outcomes return `Result`; faults throw `BinferenceError` with a dotted code.
 - People see i18n text chosen by an error code, never `error.message`.
-- Every boundary input is parsed by zod at once; types come from `z.infer`.
+- Every boundary input is parsed by zod at once. An exported shape has a declared type and a
+  schema annotated with it (decision 0098); no `z.infer` in an exported position.
 - Data definitions use `satisfies`; exported data carries a type annotation instead, since
   `isolatedDeclarations` refuses `satisfies` on an exported value. Nothing mutates an input.
 - A config change ships its config migration. Every key has a `.describe()` text. A risky switch
