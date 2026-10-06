@@ -119,5 +119,6 @@ accepted decision's text from changing.
 
 Each record file has one row here, in number order.
 
-| No. | Title | Status | Record |
-| --- | ----- | ------ | ------ |
+| No.                    | Title                                       | Status   | Record                                                                                                             |
+| ---------------------- | ------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| <a id="d0098"></a>0098 | Declare exported types before their schemas | Accepted | [adr/0098-declare-exported-types-before-their-schemas.md](adr/0098-declare-exported-types-before-their-schemas.md) |

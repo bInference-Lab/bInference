@@ -483,8 +483,11 @@ Rules:
   `typescript/no-unsafe-assignment`, `typescript/no-unsafe-return`,
   `typescript/no-unsafe-member-access`, `typescript/no-unsafe-argument` and
   `typescript/no-unsafe-call`, with the TS-4 and TS-5 rules.
-- **SCH-2** Types come from `z.infer`; a hand-written type that repeats a schema is banned.
-  Enforcer: `review-diff`.
+- **SCH-2** Each exported shape has one declared type and one schema annotated with it, side by
+  side ([decision 0098](DECISIONS.md#d0098)); no `z.infer` in an exported position, and a type
+  with no schema for a shape that crosses a boundary is banned. Enforcer: `isolatedDeclarations`
+  (an unannotated exported schema fails to compile), a fixture test per exported shape, and
+  `review-diff`.
 - **SCH-3** Each shape has one schema, in its owning package; other packages import it. Enforcer:
   jscpd (`dup:check`) and `review-diff`.
 - **SCH-4** Every tool and protocol schema converts with
