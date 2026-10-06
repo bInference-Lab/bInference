@@ -317,6 +317,12 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  packages/engine:
+    dependencies:
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/platform:
     dependencies:
       '@binference/core':

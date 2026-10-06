@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fixturePackage } from "./fixture-package.mjs";
 import type { GateCase } from "./gate-case.mjs";
 
 interface PrCase {
@@ -58,7 +57,8 @@ function prCase(item: PrCase): GateCase {
 }
 
 const notes = { "notes.md": "# Notes\n\nThe gates fail on planted violations.\n" };
-const engine = fixturePackage("engine", { "rule.ts": "export const rule: number = 1;\n" });
+// A new file in the engine package; its manifest stays as it is, so no dependency changes.
+const engine = { "packages/engine/src/rule.ts": "export const rule: number = 1;\n" };
 
 function bodyCases(repo: string): readonly GateCase[] {
   return [
