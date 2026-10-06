@@ -480,6 +480,21 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  packages/server:
+    dependencies:
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+      '@binference/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   packages/store:
     dependencies:
       '@binference/chain':

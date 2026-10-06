@@ -149,6 +149,9 @@ new name here first, in the change that uses it.
   `seq`. A client that sees a gap in `seq` refetches the topic's state once.
 - **operation table**: every operation with its args and result schemas and whether it writes; the
   typed client is built over it.
+- **operation handlers**: the functions, one per operation, that the engine and the agent runtime
+  give the protocol server. The server checks each call's scopes, transport and idempotency key, then
+  routes it to its handler.
 - **Binance Agent**: an agent the owner runs on Binance Agent OS and connects to binference.
 - **decision record**: a file in `docs/adr/` that records one decision (ADR).
 

@@ -1,0 +1,27 @@
+{
+  "name": "@binference/server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The protocol server: one WebSocket over HTTP and local IPC, with sign-in, scopes, idempotent writes and pushes.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/core": "workspace:*",
+    "@binference/engine": "workspace:*",
+    "@binference/protocol": "workspace:*",
+    "zod": "catalog:"
+  }
+}
