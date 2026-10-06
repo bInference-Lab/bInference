@@ -981,7 +981,7 @@ A change is done when:
 8. the old path it replaces is gone (principle 6).
 
 Enforcers, by item: (1) the coverage thresholds and `review-diff`; (2) `check:tsdoc`; (3)
-`check:i18n`; (4) `check:docs` (every English page has a Chinese twin), and `review-diff` for
+`check:i18n`; (4) `check:docs` (every English page has a Chinese twin in Starlight's `zh-cn/` folder), and `review-diff` for
 whether the page exists; (5) `check:config-schema`; (6) `write-adr` and `review-diff`; (7) the
 required checks; (8) knip (`deadcode`) and `review-diff`.
 

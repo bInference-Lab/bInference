@@ -7,20 +7,21 @@ const docsCases: readonly GateCase[] = [
   failingCase(
     "an English docs page without its Chinese twin fails check:docs",
     { [`${pages}/start.mdx`]: "# Start\n" },
-    ["check:docs", /start\.mdx: check:docs: has no Chinese twin .*start\.zh\.mdx/],
+    ["check:docs", /docs\/start\.mdx: check:docs: has no Chinese twin .*zh-cn\/start\.mdx/],
   ),
   failingCase(
-    "a meta.json without its meta.zh.json fails check:docs",
-    { [`${pages}/meta.json`]: "{}\n" },
-    ["check:docs", /meta\.json: check:docs: has no Chinese twin .*meta\.zh\.json/],
+    "a Chinese docs page without its English twin fails check:docs",
+    { [`${pages}/zh-cn/guide/install.md`]: "# Install\n" },
+    [
+      "check:docs",
+      /zh-cn\/guide\/install\.md: check:docs: has no English twin .*docs\/guide\/install\.md/,
+    ],
   ),
   {
-    name: "docs pages and meta files with their Chinese twins pass check:docs",
+    name: "docs pages with their Chinese twins pass check:docs",
     files: {
       [`${pages}/start.mdx`]: "# Start\n",
-      [`${pages}/start.zh.mdx`]: "# Start\n",
-      [`${pages}/meta.json`]: "{}\n",
-      [`${pages}/meta.zh.json`]: "{}\n",
+      [`${pages}/zh-cn/start.mdx`]: "# Start\n",
     },
     steps: [{ command: ["pnpm", "check:docs"], expect: "pass" }],
   },
