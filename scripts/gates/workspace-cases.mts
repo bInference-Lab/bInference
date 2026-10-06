@@ -1,14 +1,20 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { findPackages } from "../package-graph/graph.mjs";
 import type { GateCase } from "./gate-case.mjs";
 
-const engineFiles = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc"];
+const rootFiles = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc"];
+
+// The lockfile names every workspace package, so a frozen install needs their manifests too.
+function engineFiles(repo: string): readonly string[] {
+  return [...rootFiles, ...findPackages(repo).map((item) => `${item.folder}/package.json`)];
+}
 
 // The install runs in its own folder, so a gate that wrongly passes installs there and never
 // touches the linked node_modules.
 function engineCase(repo: string, nodeVersion: string, expect: "pass" | "fail"): GateCase {
   const files = Object.fromEntries(
-    engineFiles.map((file) => [
+    engineFiles(repo).map((file) => [
       join(".gates", "engines", file),
       readFileSync(join(repo, file), "utf8"),
     ]),
@@ -50,7 +56,12 @@ export function workspaceCases(repo: string): readonly GateCase[] {
           output: [/index\.mjs/, /index\.d\.mts/],
         },
         { command: ["pnpm", "typecheck"], expect: "pass" },
-        { command: ["pnpm", "test"], expect: "pass", output: [/1 passed/] },
+        { command: ["pnpm", "test"], expect: "pass" },
+        {
+          command: ["pnpm", "exec", "vitest", "run", "packages/demo/", "--reporter=verbose"],
+          expect: "pass",
+          output: [/✓ .*matches the name its manifest declares/],
+        },
       ],
     },
   ];

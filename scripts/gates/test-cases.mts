@@ -1,4 +1,5 @@
-import { fixturePackage } from "./fixture-package.mjs";
+import { graphPath, loadGraph } from "../package-graph/graph.mjs";
+import { fixturePackage, sampleKey } from "./fixture-package.mjs";
 import type { GateCase } from "./gate-case.mjs";
 
 function lines(...text: readonly string[]): string {
@@ -110,38 +111,61 @@ const offlineTest = lines(
   "});",
 );
 
-const moneyThreshold = /\(94\.11%\) does not meet "packages\/engine\/src\/\*\*" threshold \(95%\)/;
+const moneyThreshold = /\(94\.11%\) does not meet "packages\/sample\/src\/\*\*" threshold \(95%\)/;
 
 // The entry only re-exports, so the package's coverage is the sample's own.
-function feePackage(key: string, test: string): Record<string, string> {
-  return fixturePackage(key, {
+function feePackage(test: string): Record<string, string> {
+  return fixturePackage(sampleKey, {
     "index.ts": 'export { afterFee } from "./fee.js";\n',
     "fee.ts": feeSource,
     "fee.test.ts": test,
   });
 }
 
+// The graph with the sample as the only money-core package Stryker mutates, so a case measures
+// the sample alone, whatever real packages exist.
+function moneyGraph(repo: string): Record<string, string> {
+  const graph = loadGraph(repo);
+  const packages = Object.fromEntries(
+    Object.entries(graph.packages).map(([key, row]) => [key, { ...row, mutation: false }]),
+  );
+  const sample = { imports: [], money: true, coverage: 95, mutation: true };
+  const planted = { ...graph, packages: { ...packages, [sampleKey]: sample } };
+  return { [graphPath]: `${JSON.stringify(planted, null, 2)}\n` };
+}
+
+function moneySample(repo: string, test: string): Record<string, string> {
+  return { ...feePackage(test), ...moneyGraph(repo) };
+}
+
 /** Cases for Vitest coverage tiers, the unit test setup and Stryker. */
-export function testCases(): readonly GateCase[] {
+export function testCases(repo: string): readonly GateCase[] {
   return [
     {
       name: "a money-core file at 94% line coverage fails the coverage gate",
-      files: feePackage("engine", feeTest),
+      files: moneySample(repo, feeTest),
       steps: [{ command: ["pnpm", "test"], expect: "fail", output: [moneyThreshold] }],
     },
     {
       name: "the same file at 94% passes in a package of the default tier",
-      files: feePackage("store", feeTest),
+      files: feePackage(feeTest),
       steps: [{ command: ["pnpm", "test"], expect: "pass", output: [/94\.11/] }],
     },
     {
       name: "unit tests run offline, on fake timers, with fast-check",
-      files: fixturePackage("core", { "setup.test.ts": offlineTest }),
-      steps: [{ command: ["pnpm", "test"], expect: "pass", output: [/3 passed/] }],
+      files: fixturePackage(sampleKey, { "setup.test.ts": offlineTest }),
+      steps: [
+        { command: ["pnpm", "test"], expect: "pass" },
+        {
+          command: ["pnpm", "exec", "vitest", "run", "packages/sample/", "--reporter=verbose"],
+          expect: "pass",
+          output: [/✓ .*refuses a real request/, /✓ .*runs on fake timers/, /✓ .*runs fast-check/],
+        },
+      ],
     },
     {
       name: "Stryker reports a mutation score on a sample",
-      files: feePackage("engine", feeTest),
+      files: moneySample(repo, feeTest),
       steps: [
         {
           command: ["pnpm", "mutation"],
@@ -152,7 +176,7 @@ export function testCases(): readonly GateCase[] {
     },
     {
       name: "Stryker fails a sample whose tests check nothing",
-      files: feePackage("engine", weakTest),
+      files: moneySample(repo, weakTest),
       steps: [
         { command: ["pnpm", "mutation"], expect: "fail", output: [/under breaking threshold 80/] },
       ],

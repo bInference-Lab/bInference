@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fixturePackage } from "./fixture-package.mjs";
+import { fixturePackage, sampleKey } from "./fixture-package.mjs";
 import { failingCase, type GateCase } from "./gate-case.mjs";
 
 // Directives are assembled here, so this file holds none itself.
@@ -29,8 +29,8 @@ const layoutCases: readonly GateCase[] = [
   ),
   failingCase(
     "a package without AGENTS.md fails check:layout",
-    fixturePackage("core", {}, { omit: ["AGENTS.md"] }),
-    ["check:layout", /packages\/core has no AGENTS\.md/],
+    fixturePackage(sampleKey, {}, { omit: ["AGENTS.md"] }),
+    ["check:layout", /packages\/sample has no AGENTS\.md/],
   ),
   failingCase(
     "a CLAUDE.md other than @AGENTS.md fails check:layout",

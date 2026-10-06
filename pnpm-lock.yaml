@@ -293,6 +293,12 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  packages/core:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
 packages:
 
   '@babel/code-frame@7.29.7':

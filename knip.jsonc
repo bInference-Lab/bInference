@@ -14,9 +14,5 @@
   "ignoreDependencies": [
     // knip's Stryker plugin asks for this runner, but it ships inside @stryker-mutator/core.
     "@stryker-mutator/command-runner",
-    // The property tests that check:layout asks of policy and amount modules import it.
-    "fast-check",
-    // Each package's build script runs it. Drop this line when the first package lands.
-    "tsdown",
   ],
 }

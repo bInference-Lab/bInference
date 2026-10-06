@@ -28,14 +28,8 @@ function lintCase(
   };
 }
 
+// The real core holds the one error class; the case adds a cli that reads the environment.
 const cleanFiles = {
-  ...fixturePackage("core", {
-    "binference-error.ts": [
-      "/** The one error class. */",
-      "export class BinferenceError extends Error {}",
-      "",
-    ].join("\n"),
-  }),
   ...fixturePackage("cli", {
     "home.ts": [
       "/** Reads the home folder from the environment. */",
@@ -172,7 +166,7 @@ const typeCases: readonly GateCase[] = [
 export function lintCases(): readonly GateCase[] {
   return [
     {
-      name: "the error class and process.env in cli lint clean",
+      name: "the error class in core and process.env in cli lint clean",
       files: cleanFiles,
       steps: [{ command: ["pnpm", "lint"], expect: "pass" }],
     },

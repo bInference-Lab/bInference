@@ -21,7 +21,7 @@ const cases = [
   ...lintCases(),
   ...graphCases(repo),
   ...tsconfigCases(),
-  ...testCases(),
+  ...testCases(repo),
   ...styleCases(repo),
   ...hygieneCases(repo),
   ...decisionCases(repo),

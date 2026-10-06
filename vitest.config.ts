@@ -10,6 +10,9 @@ import { z } from "zod";
 // Workspace packages export src under this condition, so tests never need a build first.
 const sourceConditions = ["@binference/source", "module", "node", "development|production"];
 const defaultBar = 80;
+// Amount math in core is money code: it meets the money bar that engine and chain meet.
+const moneyBar = 95;
+const moneyFolders = ["packages/core/src/amount/**"];
 
 const graphSchema = z.looseObject({
   packages: z.record(z.string(), z.looseObject({ coverage: z.number().optional() })),
@@ -29,17 +32,26 @@ function project(folder: string): TestProjectInlineConfiguration {
   return { extends: true, test: { name: folder, include: [`${folder}/src/**/*.test.ts`] } };
 }
 
-// Packages with their own bar in config/package-graph.json; the rest meet the default.
-function tierThresholds(): Record<string, { lines: number; branches: number }> {
+interface Bar {
+  readonly lines: number;
+  readonly branches: number;
+}
+
+// Packages with their own bar in config/package-graph.json, and the money folders of other
+// packages; the rest meet the default.
+function tierThresholds(): Record<string, Bar> {
   const graph = graphSchema.parse(JSON.parse(readFileSync("config/package-graph.json", "utf8")));
-  return Object.fromEntries(
-    Object.entries(graph.packages)
-      .filter(([, row]) => row.coverage !== undefined && row.coverage !== defaultBar)
-      .map(([key, row]) => [
-        `packages/${key}/src/**`,
-        { lines: row.coverage ?? defaultBar, branches: row.coverage ?? defaultBar },
-      ]),
-  );
+  const packageBars = Object.entries(graph.packages)
+    .filter(([, row]) => row.coverage !== undefined && row.coverage !== defaultBar)
+    .map(([key, row]): [string, Bar] => [
+      `packages/${key}/src/**`,
+      { lines: row.coverage ?? defaultBar, branches: row.coverage ?? defaultBar },
+    ]);
+  const folderBars = moneyFolders.map((glob): [string, Bar] => [
+    glob,
+    { lines: moneyBar, branches: moneyBar },
+  ]);
+  return Object.fromEntries([...packageBars, ...folderBars]);
 }
 
 const folders = packageFolders();

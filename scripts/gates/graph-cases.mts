@@ -19,7 +19,7 @@ export function graphCases(repo: string): readonly GateCase[] {
       },
       steps: [
         { command: writeGraph, expect: "pass" },
-        { command: checkGraph, expect: "pass", output: [/2 packages match/] },
+        { command: checkGraph, expect: "pass", output: [/\d+ packages match/] },
       ],
     },
     {

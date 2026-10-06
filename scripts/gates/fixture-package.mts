@@ -1,3 +1,9 @@
+/**
+ * A package name no real package takes. Cases plant it when only the package's tier matters, so
+ * they never overwrite a real package that other packages import.
+ */
+export const sampleKey = "sample";
+
 /** What a planted package holds besides its source files. */
 export interface FixtureOptions {
   readonly dependencies?: Readonly<Record<string, string>>;
