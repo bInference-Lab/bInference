@@ -72,14 +72,41 @@ Docs, UI messages, comments, commits and PR text:
 
 ## Commits
 
-`type(scope): description`, 72 characters at most.
+Every PR is squashed into one commit on `master`, and its title becomes the subject. The release
+notes are written from those subjects, so each one must read as a line of release notes. The full
+rules are in `docs/ENGINEERING.md` section 19.
 
-- `type`: `feat`, `fix`, `perf`, `refactor`, `test`, `docs`, `ci`, `build` or `chore`.
-- `scope`: the package or area (`engine`, `signer`, `orders`, `telegram`, `console`).
-- `description`: lowercase, no period, says exactly what changed in a teammate's words. No vague
-  words ("improve", "enhance"), no emojis, no dashes as punctuation.
-- No AI attribution lines. Example: `fix(orders): stop a trailing stop from firing twice after a
-restart`.
+**The subject:** `type(scope): description`, 72 characters at most.
+
+- `type`: `feat` (something new), `fix` (wrong behavior made right), `perf`, `refactor` (same
+  behavior, existing tests unchanged), `test`, `docs`, `ci`, `build` (toolchain and
+  dependencies) or `chore`. When two fit, use the one the user notices.
+- `scope`: one name, never two. The package (`engine`, `signer`, `telegram`), the plugin
+  (`pancakeswap`), a feature folder of `engine` or `runtime` (`orders`, `policy`), or `deps`,
+  `skills`, `dev-skills`, `docs`, `release`. No scope only for a change across the repo.
+- `description`: lowercase, no period, says exactly what changed in a teammate's words. A fix
+  names what the user saw. No vague words ("improve", "enhance"), no emojis, no dashes as
+  punctuation, no issue numbers (`Closes #N` goes in the PR body).
+- A breaking change adds `!` (`feat(protocol)!: ...`) and a body paragraph starting `Breaking:`.
+- No AI attribution lines. `Co-authored-by` names people only.
+- Example: `fix(orders): stop a trailing stop from firing twice after a restart`.
+
+**What one commit holds:**
+
+- One reason to exist. If the subject needs "and" to join two unrelated changes, split it.
+- Everything that reason needs: code, tests, TSDoc, English and Chinese messages, docs, the config
+  migration, the ADR. Callers move and the old path is deleted in the same commit.
+- Green on its own on Linux, macOS and Windows, and revertable alone.
+- Apart, each in its own commit: a refactor or rename a feature needs (first), formatting-only
+  changes, one dependency update, an unrelated fix found on the way.
+- Together: a migration and the code that needs it; generated files and their cause.
+- Over about 400 changed lines: a stack of PRs (ports and types, then the adapter, then the
+  wiring), each useful alone, unfinished behavior behind a config switch.
+- Stage only what the change needs and read `git diff --staged`. Never commit secrets, `.env`
+  files, keystores or local paths.
+
+**Branches:** `<type>/<short-name>`, one task each. Commits are signed and the author is the real
+person.
 
 ## Before you finish
 
