@@ -5539,6 +5539,7 @@
     },
     {
       "files": [
+        "packages/chain-evm/src/index.ts",
         "packages/chain/src/index.ts",
         "packages/chain/src/testing.ts",
         "packages/chains/src/index.ts",
