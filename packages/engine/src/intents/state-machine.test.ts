@@ -1,5 +1,6 @@
 import type { Bps, Clock, Id, Result } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type { IntentState } from "./intent-state.js";
 import type { IntentStatus } from "./intent-status.js";
@@ -18,6 +19,18 @@ const cards: CardRules = {
   requoteToleranceBps: 50 as Bps,
 };
 
+const autoFacts: AutoModeFacts = {
+  approvalMode: "auto",
+  modeVersion: 4,
+  isInsideOwnPositions: false,
+  valueUsdMicros: 20_000_000n,
+  perTradeCapUsdMicros: 100_000_000n,
+  rollingDayCapUsdMicros: 500_000_000n,
+  rollingDaySpentUsdMicros: 0n,
+  hasUnlistedSpender: false,
+};
+
+const manualFacts: AutoModeFacts = { ...autoFacts, approvalMode: "manual" };
 const order = "ord_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"ord">;
 
 const swap: IntentProposal = {
@@ -140,7 +153,7 @@ describe("moving an intent", () => {
   it("runs a tapped live swap from proposed to reconciled", () => {
     const steps = run(statusAt("proposed"), [
       ...toSimulated,
-      { type: "authorization_checked", check: { by: "manual" }, cards },
+      { type: "authorization_checked", check: { by: "auto_mode", facts: manualFacts }, cards },
       { type: "confirm_tapped", cardVersion: 1, cards },
       {
         type: "queue_took",
@@ -192,12 +205,24 @@ describe("moving an intent", () => {
     });
   });
 
+  it("runs an auto-mode swap past the card", () => {
+    const steps = run(statusAt("proposed"), [
+      ...toSimulated,
+      { type: "authorization_checked", check: { by: "auto_mode", facts: autoFacts }, cards },
+      ...afterConfirmed,
+    ]);
+    expect(steps.map((step) => step.event.to)).not.toContain("awaiting_confirmation");
+    expect(steps.at(-1)?.status).toMatchObject({
+      state: "reconciled",
+      authorizedBy: { approvalMode: "auto", modeVersion: 4 },
+    });
+  });
+
   it("fills a paper intent at its quote and never executes it", () => {
     const paper = statusAt("proposed", { isPaper: true });
     const steps = run(paper, [
       ...toSimulated,
-      { type: "authorization_checked", check: { by: "manual" }, cards },
-      { type: "confirm_tapped", cardVersion: 1, cards },
+      { type: "authorization_checked", check: { by: "auto_mode", facts: autoFacts }, cards },
       { type: "paper_fill_recorded" },
     ]);
     expect(steps.at(-1)?.event).toMatchObject({ to: "paper_filled", hasLedgerEntry: true });

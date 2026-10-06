@@ -35,8 +35,8 @@ export function fillOnPaper({
   return status.isPaper ? ok({}) : err("live_intent");
 }
 
-// A tapped intent needs the confirmation of its current card version, unexpired; a fill needs its
-// order or rule to still hold.
+// A tapped intent needs the confirmation of its current card version, unexpired; a fill or an
+// auto-mode intent needs its authorization to still hold.
 function approvalProblem(
   status: IntentStatus,
   facts: QueueFacts,

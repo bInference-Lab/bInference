@@ -1,9 +1,18 @@
+export { isFillAuthorization } from "./intents/authorization.js";
 export type {
   Authorization,
+  AutoModeAuthorization,
   FillAuthorization,
   OrderAuthorization,
   WebhookRuleAuthorization,
 } from "./intents/authorization.js";
+export { checkAutoMode } from "./intents/auto-mode.js";
+export type {
+  ApprovalMode,
+  AutoModeFacts,
+  AutoModeRefusal,
+  AutoModeSubject,
+} from "./intents/auto-mode.js";
 export type { CardRules } from "./intents/card-rules.js";
 export { needsLedgerEntry } from "./intents/intent-event.js";
 export type { IntentEvent } from "./intents/intent-event.js";
@@ -37,11 +46,11 @@ export type {
 export { triggerTypes } from "./intents/intent-trigger.js";
 export type {
   AuthorizationCheck,
+  AutoModeCheck,
   CancelCause,
   ConfirmationRecord,
   FillCheck,
   IntentTrigger,
-  ManualCheck,
   QueueFacts,
   TriggerFacts,
   TriggerType,

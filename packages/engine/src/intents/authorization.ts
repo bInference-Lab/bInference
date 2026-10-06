@@ -15,7 +15,23 @@ export interface WebhookRuleAuthorization {
 export type FillAuthorization = OrderAuthorization | WebhookRuleAuthorization;
 
 /**
- * What lets an intent skip its card (spec 6, section 5): a fill's order or rule. An intent without
- * one waits for the owner's tap.
+ * The agent's auto mode authorized the intent at `simulated`, under this version of the mode. The
+ * authorization holds only while the mode keeps that version.
  */
-export type Authorization = FillAuthorization;
+export interface AutoModeAuthorization {
+  readonly approvalMode: "auto";
+  readonly modeVersion: number;
+}
+
+/**
+ * What lets an intent skip its card (spec 6, section 5): a fill's order or rule, or the auto mode.
+ * An intent without one waits for the owner's tap.
+ */
+export type Authorization = FillAuthorization | AutoModeAuthorization;
+
+/** Whether an authorization is a fill's order or rule, not the auto mode. */
+export function isFillAuthorization(
+  authorization: Authorization,
+): authorization is FillAuthorization {
+  return !("approvalMode" in authorization);
+}

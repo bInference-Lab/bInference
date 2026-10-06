@@ -1,3 +1,4 @@
+import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type {
   PolicyRejection,
@@ -51,13 +52,14 @@ export interface FillCheck {
   readonly isValid: boolean;
 }
 
-/** At `simulated`: an intent that is not a fill, which waits for the owner's tap on its card. */
-export interface ManualCheck {
-  readonly by: "manual";
+/** At `simulated`: the facts the auto test reads, for an intent that is not a fill. */
+export interface AutoModeCheck {
+  readonly by: "auto_mode";
+  readonly facts: AutoModeFacts;
 }
 
 /** What decides at `simulated` whether an intent skips its card. */
-export type AuthorizationCheck = FillCheck | ManualCheck;
+export type AuthorizationCheck = FillCheck | AutoModeCheck;
 
 /** The owner's confirmation record of one card version. */
 export interface ConfirmationRecord {
@@ -73,7 +75,10 @@ export interface QueueFacts {
   readonly hasPolicyPassed: boolean;
   /** The confirmation record of an intent the owner tapped. */
   readonly confirmation?: ConfirmationRecord;
-  /** For an intent with `authorizedBy`: its auto order or webhook rule still holds. */
+  /**
+   * For an intent with `authorizedBy`: its auto order or webhook rule still holds, or the auto mode
+   * keeps the version that authorized it.
+   */
   readonly isAuthorizationValid?: boolean;
 }
 

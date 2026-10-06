@@ -2,6 +2,7 @@ import type { Bps, Id, Result } from "@binference/core";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { Authorization } from "./authorization.js";
+import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import { type IntentEvent, needsLedgerEntry } from "./intent-event.js";
 import { type IntentKind, intentKinds } from "./intent-kind.js";
@@ -35,6 +36,7 @@ const order = "ord_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"ord">;
 const rule = "whr_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"whr">;
 const rules = listTransitions();
 const ruleKeys = new Set(rules.map((item) => `${item.from}|${item.trigger}|${item.to}`));
+const autoKinds: ReadonlySet<IntentKind> = new Set(["swap", "buy", "sell", "lend", "stake"]);
 
 // The data any trigger may need. Each step picks a trigger type and builds it from these.
 interface Facts {
@@ -48,6 +50,7 @@ interface Facts {
   readonly requoteMinOutBase: bigint | undefined;
   readonly checkMatches: boolean;
   readonly isFillValid: boolean;
+  readonly auto: AutoModeFacts;
   readonly versionOffset: number;
   readonly cancelCause: "request" | "freeze" | "engine_stopping";
   readonly hasSignedStep: boolean;
@@ -72,11 +75,11 @@ function quoteAt(nowMs: number, agoMs: number, minOutBase: bigint | undefined): 
     : { quotedAtMs: nowMs - agoMs, minOutBase };
 }
 
-// Mostly the check the intent expects: a fill check for a fill, the manual check otherwise.
+// Mostly the check the intent expects: a fill check for a fill, auto-mode facts otherwise.
 function authorizationCheck(facts: Facts, status: IntentStatus): AuthorizationCheck {
   return (status.authorizedBy !== undefined) === facts.checkMatches
     ? { by: "fill", isValid: facts.isFillValid }
-    : { by: "manual" };
+    : { by: "auto_mode", facts: facts.auto };
 }
 
 function cardVersion(facts: Facts, status: IntentStatus): number {
@@ -156,6 +159,17 @@ function mostly<T>(usual: T, rare: T): fc.Arbitrary<T> {
 
 const minOut = fc.option(fc.bigInt({ min: 0n, max: 10n ** 20n }), { nil: undefined, freq: 5 });
 
+const autoFacts: fc.Arbitrary<AutoModeFacts> = fc.record({
+  approvalMode: fc.constantFrom("manual", "auto"),
+  modeVersion: fc.nat(50),
+  isInsideOwnPositions: fc.boolean(),
+  valueUsdMicros: fc.bigInt({ min: 0n, max: 200_000_000n }),
+  perTradeCapUsdMicros: fc.constant(100_000_000n),
+  rollingDayCapUsdMicros: fc.constant(500_000_000n),
+  rollingDaySpentUsdMicros: fc.bigInt({ min: 0n, max: 500_000_000n }),
+  hasUnlistedSpender: mostly(false, true),
+});
+
 const facts: fc.Arbitrary<Facts> = fc.record({
   policyRejection: fc.constantFrom(...policyReasons.filter((code) => code !== "price_impact")),
   quoteFailure: fc.constantFrom("no_route", "venue_down", "decode_mismatch", "price_impact"),
@@ -167,6 +181,7 @@ const facts: fc.Arbitrary<Facts> = fc.record({
   requoteMinOutBase: minOut,
   checkMatches: mostly(true, false),
   isFillValid: mostly(true, false),
+  auto: autoFacts,
   versionOffset: mostly(0, -1),
   cancelCause: fc.constantFrom("request", "freeze", "engine_stopping"),
   hasSignedStep: mostly(false, true),
@@ -365,6 +380,53 @@ function reasonViolations(status: IntentStatus): readonly string[] {
     : [`${status.state} carries ${String(status.reason)}`];
 }
 
+function isAuto(authorization: Authorization | undefined): boolean {
+  return authorization !== undefined && "approvalMode" in authorization;
+}
+
+function fitsAutoCaps(auto: AutoModeFacts): boolean {
+  return (
+    auto.valueUsdMicros <= auto.perTradeCapUsdMicros &&
+    auto.rollingDaySpentUsdMicros + auto.valueUsdMicros <= auto.rollingDayCapUsdMicros
+  );
+}
+
+function isAutoKind(status: IntentStatus, auto: AutoModeFacts): boolean {
+  return (
+    ["swap", "buy", "sell"].includes(status.kind) ||
+    (autoKinds.has(status.kind) && auto.isInsideOwnPositions)
+  );
+}
+
+function isAutoAllowed(status: IntentStatus, auto: AutoModeFacts | undefined): boolean {
+  return (
+    auto !== undefined &&
+    auto.approvalMode === "auto" &&
+    isAutoKind(status, auto) &&
+    fitsAutoCaps(auto) &&
+    !auto.hasUnlistedSpender &&
+    !status.hasOutsideContent &&
+    status.proposer === "agent_runtime"
+  );
+}
+
+function autoFactsOf(trigger: IntentTrigger): AutoModeFacts | undefined {
+  const check = trigger.type === "authorization_checked" ? trigger.check : undefined;
+  return check?.by === "auto_mode" ? check.facts : undefined;
+}
+
+// Invariant 8: an auto-authorized intent is a trade or an own-position move, inside the caps, with
+// no new spender, no outside content and no proposer but the agent runtime.
+function autoViolations({ before, trigger, result }: Outcome): readonly string[] {
+  if (!result.ok || isAuto(before.authorizedBy) || !isAuto(result.value.status.authorizedBy)) {
+    return [];
+  }
+  const { status } = result.value;
+  return isAutoAllowed(status, autoFactsOf(trigger))
+    ? []
+    : [`auto mode authorized a ${status.kind} it must not`];
+}
+
 function hasValidConfirmation(before: IntentStatus, queue: QueueFacts, nowMs: number): boolean {
   const { confirmation } = queue;
   return (
@@ -439,6 +501,7 @@ function violations(history: History): readonly string[] {
     ...history.outcomes.flatMap((outcome) => [
       ...refusalViolations(outcome),
       ...tableViolations(outcome),
+      ...autoViolations(outcome),
       ...signingViolations(outcome),
       ...cancelViolations(outcome),
       ...reasonViolations(outcome.result.ok ? outcome.result.value.status : outcome.before),
@@ -487,6 +550,7 @@ describe("intent histories", () => {
 const authorizations: fc.Arbitrary<Authorization> = fc.constantFrom(
   { order },
   { webhookRule: rule, alertId: "alert-1" },
+  { approvalMode: "auto" as const, modeVersion: 1 },
 );
 
 const statuses: fc.Arbitrary<IntentStatus> = fc.record(

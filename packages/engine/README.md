@@ -7,7 +7,7 @@ watchers, ledger and paper mode. It does no I/O; the composition root wires its 
 
 Today it holds the intent state machine of [spec 6](../../docs/specs/intent-states.md): the 20
 states, the transition table with its guards, the triggers that move an intent, the events that
-record each move and the closed lists of reason codes.
+record each move, the closed lists of reason codes and the auto-mode test.
 
 ## API
 
@@ -20,6 +20,7 @@ record each move and the closed lists of reason codes.
 | `listTransitions`                                                | Every transition the table allows                               |
 | `policyReasons`, `riskReasons`, `checkReasons`, `failureReasons` | The closed lists of reason codes, by the state that stores them |
 | `intentReasons`                                                  | Every reason code once, each with a `reason.<code>` message     |
+| `checkAutoMode`                                                  | The auto-mode test: authorizes an intent or names why it asks   |
 | `needsLedgerEntry`                                               | Whether a transition into a state writes a ledger entry         |
 | `TransitionProblem`, `ProposalProblem`                           | Why the machine refused a trigger or a proposal                 |
 

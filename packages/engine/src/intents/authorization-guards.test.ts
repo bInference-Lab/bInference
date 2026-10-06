@@ -1,6 +1,7 @@
 import type { Bps, Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { authorizeIntent, openCard } from "./authorization-guards.js";
+import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type { IntentStatus } from "./intent-status.js";
 import type { AuthorizationCheck } from "./intent-trigger.js";
@@ -11,6 +12,17 @@ const cards: CardRules = {
   otherExpiryMs: 600_000,
   requoteAfterMs: 10_000,
   requoteToleranceBps: 50 as Bps,
+};
+
+const autoFacts: AutoModeFacts = {
+  approvalMode: "auto",
+  modeVersion: 9,
+  isInsideOwnPositions: false,
+  valueUsdMicros: 20_000_000n,
+  perTradeCapUsdMicros: 100_000_000n,
+  rollingDayCapUsdMicros: 500_000_000n,
+  rollingDaySpentUsdMicros: 0n,
+  hasUnlistedSpender: false,
 };
 
 const order = "ord_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"ord">;
@@ -40,7 +52,11 @@ function expiryOf(verdict: ReturnType<typeof openCard>): number | undefined {
 }
 
 const valid: AuthorizationCheck = { by: "fill", isValid: true };
-const manual: AuthorizationCheck = { by: "manual" };
+const auto: AuthorizationCheck = { by: "auto_mode", facts: autoFacts };
+const manual: AuthorizationCheck = {
+  by: "auto_mode",
+  facts: { ...autoFacts, approvalMode: "manual" },
+};
 
 describe("authorizing an intent at simulated", () => {
   it("confirms a fill whose order or webhook rule still holds", () => {
@@ -57,17 +73,30 @@ describe("authorizing an intent at simulated", () => {
     });
   });
 
-  it("leaves an intent that is not a fill to the card", () => {
+  it("records the auto mode as the authorization when the auto test passes", () => {
+    expect(authorizeIntent(input(simulated, auto))).toStrictEqual({
+      ok: true,
+      value: { authorizedBy: { approvalMode: "auto", modeVersion: 9 } },
+    });
+  });
+
+  it("leaves an intent that fails the auto test to the card", () => {
     expect(authorizeIntent(input(simulated, manual))).toStrictEqual({
       ok: false,
-      error: "authorization_mismatch",
+      error: "auto_mode_refused",
     });
   });
 
   it("refuses a check that does not match the intent", () => {
     const mismatch = { ok: false, error: "authorization_mismatch" };
-    expect(authorizeIntent(input(fill, manual))).toStrictEqual(mismatch);
+    expect(authorizeIntent(input(fill, auto))).toStrictEqual(mismatch);
     expect(authorizeIntent(input(simulated, valid))).toStrictEqual(mismatch);
+    const autoAuthorized: IntentStatus = {
+      ...simulated,
+      authorizedBy: { approvalMode: "auto", modeVersion: 1 },
+    };
+    expect(authorizeIntent(input(autoAuthorized, valid))).toStrictEqual(mismatch);
+    expect(authorizeIntent(input(autoAuthorized, auto))).toStrictEqual(mismatch);
   });
 });
 
@@ -93,6 +122,10 @@ describe("opening the first card", () => {
       (kind) => openCard(input({ ...simulated, kind }, manual, 0)),
     );
     expect(expiries.map(expiryOf)).toStrictEqual([60_000, 60_000, 60_000, 60_000, 60_000]);
+  });
+
+  it("opens no card for an intent the auto mode authorizes", () => {
+    expect(openCard(input(simulated, auto))).toStrictEqual({ ok: false, error: "needs_no_card" });
   });
 
   it("opens no card for a fill", () => {
