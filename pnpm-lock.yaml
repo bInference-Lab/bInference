@@ -416,16 +416,15 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
       zod:
         specifier: 'catalog:'
         version: 4.6.5
-    devDependencies:
-      '@binference/i18n':
-        specifier: workspace:*
-        version: link:../i18n
 
   packages/i18n:
     dependencies:

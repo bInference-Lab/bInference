@@ -203,6 +203,7 @@ export type {
 } from "./ledger/check-ledger-chain.js";
 export { walkLedgerChain } from "./ledger/walk-ledger-chain.js";
 export type { LedgerRange } from "./ledger/walk-ledger-chain.js";
+export { executionsCsv, executionsCsvColumns } from "./ledger/executions-csv.js";
 export { applyExecution } from "./positions/apply-execution.js";
 export { createPositions } from "./positions/create-positions.js";
 export type { Positions, PositionsOptions, ValuedPosition } from "./positions/create-positions.js";

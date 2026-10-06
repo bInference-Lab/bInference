@@ -1,5 +1,7 @@
 export { createFormatter } from "./format/create-formatter.js";
 export type { Formatter, FormatterOptions } from "./format/create-formatter.js";
+export { decimalText } from "./format/decimal-text.js";
+export type { DecimalText } from "./format/decimal-text.js";
 export type { MessageValues } from "./format/format-message.js";
 export { messageLocales } from "./locales.js";
 export type { MessageLocale } from "./locales.js";

@@ -34,7 +34,8 @@ It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain
 edited, removed or added row is found. `createPositions` values each executed trade at the prices
 of its time and stores it through the `PositionStore` with the position changes it makes, at
 average cost with fees and gas ([decision 0058](../../docs/DECISIONS.md#d0058)); it values
-positions now through the `PriceSource`.
+positions now through the `PriceSource`. `executionsCsv` writes executions as a CSV file in the
+layout of Koinly's universal import, which tax tools read.
 
 ## API
 
@@ -69,6 +70,7 @@ positions now through the `PriceSource`.
 | `createPositions`, `Positions`, `ExecutedTrade`                  | Stores a trade with its position changes; values positions now  |
 | `applyExecution`, `valueExecution`                               | One execution's average-cost moves, and its USD values          |
 | `PositionStore`, `PositionRecord`, `ExecutionRecord`             | Executions and the positions they move, stored together         |
+| `executionsCsv`, `executionsCsvColumns`                          | Executions as a CSV file for tax tools                          |
 | `IdempotencyStore`, `InboxStore`                                 | Each write's result by its key; inbound events before the ack   |
 | `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |

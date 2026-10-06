@@ -52,5 +52,6 @@ Rules for this package:
 - `PositionStore` has its fake and contract suite; its SQLite adapter comes with the first step
   that stores executions.
 - The ledger chain check (`src/ledger/`) reads entries and never writes.
+- The CSV export's header is a tax tool's import format, so it stays English in every language.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
   `*.property.test.ts` files.
