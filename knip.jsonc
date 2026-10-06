@@ -2,7 +2,8 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
-      "entry": ["scripts/*.mts"],
+      // check:store loads its Oxlint plugin by path.
+      "entry": ["scripts/*.mts", "config/oxlint/store-guards.mjs"],
       "project": ["scripts/**/*.mts", "config/**/*.{ts,mjs}", "*.config.{ts,mts,mjs}"],
     },
     "{packages,plugins}/*": {

@@ -36,6 +36,10 @@ Error codes start with `store.`: `store.newer_schema` when the file is newer tha
 `store.migration_failed` when a migration rolled back, `store.busy` when another connection held
 the lock past the busy timeout, `store.aborted` and `store.timeout` when a call stopped waiting.
 
+`pnpm check:store` keeps the rules: raw SQL only in migrations and the connection layer,
+synchronous transaction callbacks, an append-only ledger, one writer of `intents.state`, numbered
+migrations with no `down` whose released files never change, and `node:sqlite` only on workers.
+
 ## Example
 
 The composition root opens the engine database, migrates it after the backup and checks it:

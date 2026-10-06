@@ -19,10 +19,12 @@ Rules for this package:
   copied dialect in `src/dialect/`.
 - Migrations are `src/migrations/<database>/NNNN_name.ts`, numbered from 0001 with no gap, listed
   in order in `<database>-migrations.ts`, forward-only, with no `down`. Each runs in one
-  transaction with its version bump. A released migration never changes again. The
+  transaction with its version bump. `pnpm check:store --write` locks a new file's hash in
+  `migrations.lock.json`; a migration in the lock on `master` never changes again. The
   `add-migration` skill has the steps.
 - The ledger is append-only: no `updateTable`, `deleteFrom` or `replaceInto` on it, in code or SQL.
   One file writes `intents.state`: the intent state machine's store adapter.
+- `pnpm check:store` enforces these rules.
 - Tests that start workers pass `execArgv` with `--conditions=@binference/source` and
   `--import tsx`, so the workers run the TypeScript source. They close every handle before they
   delete a file: Windows refuses to delete a file a connection holds.

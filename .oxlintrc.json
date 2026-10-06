@@ -232,7 +232,13 @@
       }
     },
     {
-      "files": ["*.config.ts", "*.config.mts", "*.config.mjs", "config/oxlint/guards.mjs"],
+      "files": [
+        "*.config.ts",
+        "*.config.mts",
+        "*.config.mjs",
+        "config/oxlint/guards.mjs",
+        "config/oxlint/store-guards.mjs"
+      ],
       "rules": {
         "import/no-default-export": "off"
       }

@@ -77,6 +77,23 @@
         "pnpm-lock.yaml"
       ]
     },
+    "//#check:store": {
+      "outputs": [],
+      "env": ["BASE_REF"],
+      "inputs": [
+        "packages/*/src/**",
+        "plugins/*/src/**",
+        "packages/store/migrations.lock.json",
+        "scripts/check-store.mts",
+        "scripts/store/**",
+        "scripts/git-base.mts",
+        "scripts/repo-files.mts",
+        "scripts/run-command.mts",
+        "scripts/run-plugin-rules.mts",
+        "config/oxlint/store-guards.mjs",
+        "config/oxlint/store-ast.mjs"
+      ]
+    },
     "//#check:adr": {
       "outputs": [],
       "env": ["BASE_REF"]

@@ -1,0 +1,6 @@
+{
+  "migrations": {
+    "agent/0001_meta.ts": "8767354b7591ef951a8524267d2fe16d41c16fd296214364f8af591afb60bf4c",
+    "engine/0001_meta.ts": "ff52469aa4c5e12bd332e4029c3b50983710099dbd6b418dc19c870d35e867f3"
+  }
+}
