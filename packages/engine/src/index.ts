@@ -67,4 +67,22 @@ export type {
 export type { TransitionProblem } from "./intents/transition-guard.js";
 export { listTransitions } from "./intents/transition-table.js";
 export type { TransitionRule } from "./intents/transition-table.js";
+export { createPolicyCheck } from "./policy/check-policy.js";
+export type {
+  PolicyCheck,
+  PolicyCheckOptions,
+  PolicyPass,
+  PolicyRefused,
+  PolicyVerdict,
+} from "./policy/check-policy.js";
+export type {
+  AddressBookEntry,
+  PastOutflow,
+  PolicyFacts,
+  PolicyFigures,
+  PolicyLimits,
+  PolicySubject,
+  RequestedSlippage,
+  SendLevel,
+} from "./policy/policy-rules.js";
 export type { PriceSource, UsdPrice } from "./ports.js";
