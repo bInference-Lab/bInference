@@ -10,6 +10,10 @@ Rules for this package:
 - It is the composition root: it may import every package, and it alone reads `process.env`,
   `process.argv` and the config file. It still opens no file itself: files go through
   `@binference/platform` (`readTextFile`), programs through `runCommand`.
+- It is the only package that knows the profile. `src/compose/` names the profile parts
+  (`ProfileParts`) and builds their adapters; `composeCloudTestRoot` is the test composition root
+  on the Cloud-shaped fakes. Every other package takes the ports, and `guards/no-profile-mention`
+  fails it when it names a profile.
 - The config has one strict schema in `src/config/schema/`. Every key has a `.describe()` text,
   a default through `.prefault()` or none, and a type declared before its schema. Secrets are
   `secretSourceSchema` or `commandSourceSchema`, never text.

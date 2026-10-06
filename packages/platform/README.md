@@ -42,7 +42,7 @@ ports:
 | `Platform.serviceManager`           | This OS's service manager, given a clock for its waits               |
 | `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                   |
 | `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit     |
-| `@binference/platform/testing`      | Every port's contract suite, and in-memory secret and service fakes  |
+| `@binference/platform/testing`      | Every port's contract suite, and secret, service and vault fakes     |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
 longer than macOS allows.

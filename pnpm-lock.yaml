@@ -374,6 +374,9 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/engine':
+        specifier: workspace:*
+        version: link:../engine
       '@binference/platform':
         specifier: workspace:*
         version: link:../platform

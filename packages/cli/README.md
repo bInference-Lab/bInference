@@ -7,6 +7,10 @@ them in. Today it loads `config.json5`: one strict schema, four layers (defaults
 `BINFERENCE_*` variables, `--set` flags), issues that name each key's path and fix, secret sources
 read only when needed, and the config migrations behind `binference check --fix`.
 
+`src/compose/` holds `ProfileParts`, the ports whose adapter depends on the profile, and the test
+composition root `composeCloudTestRoot`, which fills them with fakes shaped like the bInference
+Cloud adapters so a test can run the engine on either profile's parts.
+
 The reference of every key, generated from the schema, is
 [docs/config-keys.generated.md](docs/config-keys.generated.md).
 

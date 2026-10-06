@@ -14,3 +14,5 @@ export type {
 } from "./contracts/service-manager-contract.js";
 export { createMemorySecretStore } from "./fakes/memory-secret-store.js";
 export { createMemoryServiceManager } from "./fakes/memory-service-manager.js";
+export { createSecretVault } from "./fakes/secret-vault.js";
+export type { SecretVault } from "./fakes/secret-vault.js";
