@@ -46,6 +46,14 @@ jobs:
       - name: Link the agent skills
         run: pnpm setup
 
+      # Turborepo keys every task on its inputs, so a restored cache skips only unchanged work.
+      - name: Restore the Turborepo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
       - name: pnpm check
         env:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/master' }}

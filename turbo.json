@@ -73,7 +73,36 @@
       "outputs": ["coverage/**"]
     },
     "//#check:gates": {
-      "outputs": []
+      "outputs": [],
+      "inputs": [
+        "scripts/**",
+        "config/**",
+        ".agents/**",
+        ".claude/**",
+        ".github/**",
+        "docs/DECISIONS.md",
+        "docs/decisions.lock.json",
+        "docs/adr/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "turbo.json",
+        "tsconfig.base.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        "stryker.config.mjs",
+        "commitlint.config.mts",
+        "knip.jsonc",
+        ".oxlintrc.json",
+        ".oxfmtrc.jsonc",
+        ".markdownlint-cli2.jsonc",
+        ".jscpd.json",
+        ".npmrc",
+        "packages/*/package.json",
+        "packages/*/tsconfig.json",
+        "packages/*/snapshots/**",
+        "plugins/*/package.json"
+      ]
     }
   }
 }
