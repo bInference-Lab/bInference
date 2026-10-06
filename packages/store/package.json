@@ -19,7 +19,9 @@
     "build": "tsdown src/index.ts src/databases/engine.worker.ts src/databases/agent.worker.ts --unbundle --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
+    "@binference/chain": "workspace:*",
     "@binference/core": "workspace:*",
+    "@binference/engine": "workspace:*",
     "kysely": "catalog:",
     "zod": "catalog:"
   }

@@ -22,7 +22,7 @@ const downStep = [
   'import type { Migration } from "../migration.js";',
   "",
   "export const migration: Migration = {",
-  '  name: "0003_seeded",',
+  '  name: "0099_seeded",',
   "  up(database) {",
   '    database.exec("CREATE TABLE seeded (id INTEGER PRIMARY KEY)");',
   "  },",
@@ -113,16 +113,15 @@ function migrationCases(repo: string): readonly GateCase[] {
       name: "a down step, a numbering gap and a second intent-state writer fail check:store",
       files: {
         ...seeded(intentWrite),
-        ...seeded(intentWrite, "seeded-twin.ts"),
-        "packages/store/src/migrations/engine/0003_seeded.ts": `${downStep.join("\n")}\n`,
+        "packages/store/src/migrations/engine/0099_seeded.ts": `${downStep.join("\n")}\n`,
       },
       steps: [
         {
           command: ["pnpm", "check:store"],
           expect: "fail",
           output: [
-            /0003_seeded\.ts:\d+:\d+: Migrations are forward-only/,
-            /0003_seeded\.ts: migrations are numbered from 0001 with no gap/,
+            /0099_seeded\.ts:\d+:\d+: Migrations are forward-only/,
+            /0099_seeded\.ts: migrations are numbered from 0001 with no gap/,
             finding("2 files write intents.state"),
           ],
         },

@@ -474,9 +474,15 @@ importers:
 
   packages/store:
     dependencies:
+      '@binference/chain':
+        specifier: workspace:*
+        version: link:../chain
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/engine':
+        specifier: workspace:*
+        version: link:../engine
       kysely:
         specifier: 'catalog:'
         version: 0.29.6

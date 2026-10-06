@@ -1,3 +1,10 @@
+import { accessTasks } from "../access/sqlite-access-store.js";
+import { agentTasks } from "../agents/sqlite-agent-store.js";
+import { configJournalTasks } from "../audit/config-journal-tasks.js";
+import { idempotencyTasks } from "../ingress/idempotency-tasks.js";
+import { inboxTasks } from "../ingress/inbox-tasks.js";
+import { intentTasks } from "../intents/intent-tasks.js";
+import { ledgerTasks } from "../ledger/ledger-tasks.js";
 import { engineMigrations } from "../migrations/engine/engine-migrations.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
@@ -6,7 +13,15 @@ export const engineDatabase: DatabaseDefinition = {
   name: "engine",
   synchronous: "full",
   migrations: engineMigrations,
-  tasks: [],
+  tasks: [
+    ...intentTasks,
+    ...ledgerTasks,
+    ...idempotencyTasks,
+    ...inboxTasks,
+    ...accessTasks,
+    ...agentTasks,
+    ...configJournalTasks,
+  ],
 };
 
 /** The engine database's worker entry, for `openDatabase`. */

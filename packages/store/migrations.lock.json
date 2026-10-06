@@ -1,6 +1,16 @@
 {
   "migrations": {
     "agent/0001_meta.ts": "8767354b7591ef951a8524267d2fe16d41c16fd296214364f8af591afb60bf4c",
-    "engine/0001_meta.ts": "ff52469aa4c5e12bd332e4029c3b50983710099dbd6b418dc19c870d35e867f3"
+    "agent/0002_chats.ts": "d8d550d197496e311699f5db3624fa14184b10c8694726ffbc7899f26fa38ce7",
+    "agent/0003_notes.ts": "d56a385170d47f966721fb6b7d0f755c49fc9d20392ec8012aaf1aa769366c11",
+    "engine/0001_meta.ts": "ff52469aa4c5e12bd332e4029c3b50983710099dbd6b418dc19c870d35e867f3",
+    "engine/0002_install_and_safety.ts": "574b3d91d4a66922c1df23b35f6db1b73e31f7aaf96b0d76f8e37c1330766bd0",
+    "engine/0003_agents_and_wallets.ts": "9d33d682768b49a7f43062570580fbdb2961d0b0c7b77d77c6abc161773ec548",
+    "engine/0004_intents_and_transactions.ts": "b0f82e51994cd257d4a31fc863a57a05086be1898c82b27760b8afc141ae43d3",
+    "engine/0005_orders_and_rules.ts": "c60197abb9697c985668bd033ebe2dbaa01768ffcf9b086b8fc4f4135907f98a",
+    "engine/0006_ledger.ts": "82f9878abd893ca8e6e9b0286ff60f92d5c7a662224214e4365a1dc4b969e605",
+    "engine/0007_market_data.ts": "eae9f9b04305a2f7a6c4551448b6d9fa6b23334f8bbaf81604017616798a3d75",
+    "engine/0008_surfaces_and_delivery.ts": "39ce2c9297795a4a69cb09714c5a27386f0be79dfc50f3d0d86391ddf7c22650",
+    "engine/0009_access_and_operations.ts": "c82ef39650f0e1556bc86ce0e29713d085e6e7cb494899d7069b0324954afe3d"
   }
 }

@@ -4,13 +4,14 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { engineMigrations } from "../migrations/engine/engine-migrations.js";
-import { runMigrations } from "../migrations/run-migrations.js";
+import { latestVersion, runMigrations } from "../migrations/run-migrations.js";
 import { checkIntegrity } from "./integrity-check.js";
 import { integrityReportSchema } from "./integrity-report.js";
 import { openConnection } from "./open-connection.worker.js";
 
 let folder = "";
 let database: DatabaseSync;
+const latest = latestVersion(engineMigrations);
 
 beforeEach(() => {
   folder = mkdtempSync(join(tmpdir(), "bnf-store-"));
@@ -25,14 +26,14 @@ afterEach(() => {
 
 describe("checkIntegrity", () => {
   it("reports a clean, current database as ok", () => {
-    const report = checkIntegrity(database, 1);
+    const report = checkIntegrity(database, latest);
 
     expect(report).toStrictEqual({
       ok: true,
       integrity: ["ok"],
       foreignKeys: [],
-      schemaVersion: 1,
-      expectedVersion: 1,
+      schemaVersion: latest,
+      expectedVersion: latest,
       pageCount: report.pageCount,
       freePages: 0,
     });
@@ -41,13 +42,13 @@ describe("checkIntegrity", () => {
   });
 
   it("reports a row whose parent is missing", () => {
-    database.exec("CREATE TABLE wallets (id TEXT PRIMARY KEY)");
-    database.exec("CREATE TABLE ceilings (wallet_id TEXT REFERENCES wallets (id))");
     database.exec("PRAGMA foreign_keys = OFF");
-    database.exec("INSERT INTO ceilings (wallet_id) VALUES ('wal_missing')");
+    database.exec(
+      "INSERT INTO ceilings (wallet_id, policy_id, policy, per_tx_native, read_at) VALUES ('wal_missing', 'policy', '{}', '0', 1)",
+    );
     database.exec("PRAGMA foreign_keys = ON");
 
-    const report = checkIntegrity(database, 1);
+    const report = checkIntegrity(database, latest);
 
     expect(report.ok).toBe(false);
     expect(report.integrity).toStrictEqual(["ok"]);
@@ -55,10 +56,10 @@ describe("checkIntegrity", () => {
   });
 
   it("reports a schema version other than the expected one", () => {
-    const report = checkIntegrity(database, 3);
+    const report = checkIntegrity(database, latest + 2);
 
     expect(report.ok).toBe(false);
-    expect(report).toMatchObject({ schemaVersion: 1, expectedVersion: 3 });
+    expect(report).toMatchObject({ schemaVersion: latest, expectedVersion: latest + 2 });
   });
 
   it("counts free pages left by deleted rows", () => {

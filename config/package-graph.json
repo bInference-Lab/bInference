@@ -16,7 +16,7 @@
       "osLayer": true,
       "fileSystem": true
     },
-    "store": { "imports": ["core", "chain", "kysely"], "fileSystem": true },
+    "store": { "imports": ["core", "chain", "engine", "kysely"], "fileSystem": true },
     "protocol": { "imports": ["core", "chain"], "pure": true, "money": true, "publish": true },
     "i18n": {
       "imports": ["core", "chain", "intl-messageformat"],

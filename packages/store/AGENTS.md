@@ -22,8 +22,21 @@ Rules for this package:
   transaction with its version bump. `pnpm check:store --write` locks a new file's hash in
   `migrations.lock.json`; a migration in the lock on `master` never changes again. The
   `add-migration` skill has the steps.
-- The ledger is append-only: no `updateTable`, `deleteFrom` or `replaceInto` on it, in code or SQL.
-  One file writes `intents.state`: the intent state machine's store adapter.
+- Every table is `STRICT`. A column whose values the spec lists gets a `CHECK` with that list;
+  amounts are decimal text with a digits-only check, flags `IN (0, 1)`, JSON columns `json_valid`.
+  A migration keeps its helpers in its own file: a released file never changes, and a shared
+  helper could.
+- The ledger is append-only: no `updateTable`, `deleteFrom` or `replaceInto` on it, in code or SQL;
+  its triggers refuse an entry off the chain and any change. One file writes `intents.state`:
+  `src/intents/intent-writes.ts`, the intent state machine's store adapter.
+- The store ports live in `@binference/engine` (`src/ports.ts`), which also holds their contract
+  suites and in-memory fakes. An adapter here is a set of store tasks in a feature folder
+  (`intents/`, `ledger/`, `ingress/`, `access/`, `agents/`, `audit/`), listed in
+  `databases/engine-database.ts`, and a `createSqlite…` factory that binds them to a `StoreHost`.
+  Its test runs the port's contract suite on a fresh migrated database from
+  `testing/test-databases.worker.ts`, which runs tasks in the test's thread.
+- A task reads every row it decides on inside its own transaction and returns an expected outcome
+  before it writes anything; a broken rule throws, which rolls the whole task back.
 - `pnpm check:store` enforces these rules.
 - Tests that start workers pass `execArgv` with `--conditions=@binference/source` and
   `--import tsx`, so the workers run the TypeScript source. They close every handle before they

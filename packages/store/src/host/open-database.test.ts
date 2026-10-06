@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { agentWorker } from "../databases/agent-database.js";
 import { engineWorker } from "../databases/engine-database.js";
+import { agentMigrations } from "../migrations/agent/agent-migrations.js";
+import { engineMigrations } from "../migrations/engine/engine-migrations.js";
 import { runMigrations } from "../migrations/run-migrations.js";
 import { writeSchemaVersion } from "../migrations/schema-version.js";
 import { openConnection } from "../sqlite/open-connection.worker.js";
@@ -200,13 +202,13 @@ describe("openDatabase", () => {
 
     await expect(engine.migrate(call)).resolves.toStrictEqual({
       from: 0,
-      to: 1,
-      applied: ["0001_meta"],
+      to: engineMigrations.length,
+      applied: engineMigrations.map((migration) => migration.name),
     });
     await expect(agent.migrate(call)).resolves.toStrictEqual({
       from: 0,
-      to: 1,
-      applied: ["0001_meta"],
+      to: agentMigrations.length,
+      applied: agentMigrations.map((migration) => migration.name),
     });
     expect([engine.name, agent.name]).toStrictEqual(["engine", "agent"]);
     await expect(agent.checkIntegrity(call)).resolves.toMatchObject({ ok: true });

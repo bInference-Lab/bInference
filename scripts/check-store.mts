@@ -75,7 +75,11 @@ function lintFindings(root: string, folders: readonly string[]): readonly string
     ...lines.filter((line) => !line.includes("store(intent-state-writer)")),
     ...intentWriterProblems(lines),
   ];
-  return findings.length === 0 && result.status !== 0 ? [result.output.trim()] : findings;
+  // Oxlint fails on the one allowed writer of intents.state too; its output is a finding only when
+  // no store rule explains the failure, such as a crash.
+  return findings.length === 0 && result.status !== 0 && lines.length === 0
+    ? [result.output.trim()]
+    : findings;
 }
 
 function migrationLockProblems(

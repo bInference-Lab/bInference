@@ -1,8 +1,17 @@
+export { createSqliteAccessStore } from "./access/sqlite-access-store.js";
+export { createSqliteAgentStore } from "./agents/sqlite-agent-store.js";
+export { createSqliteConfigJournal } from "./audit/sqlite-config-journal.js";
 export { agentWorker } from "./databases/agent-database.js";
 export { engineWorker } from "./databases/engine-database.js";
+export { createSqliteEngineStores } from "./databases/sqlite-engine-stores.js";
 export { openDatabase } from "./host/open-database.js";
 export type { CallOptions, DatabaseHandle, OpenDatabaseOptions } from "./host/open-database.js";
+export { createSqliteIdempotencyStore } from "./ingress/sqlite-idempotency-store.js";
+export { createSqliteInboxStore } from "./ingress/sqlite-inbox-store.js";
+export { createSqliteIntentStore } from "./intents/sqlite-intent-store.js";
+export { createSqliteLedgerStore } from "./ledger/sqlite-ledger-store.js";
 export type { MigrationReport } from "./migrations/migration-report.js";
 export type { ForeignKeyProblem, IntegrityReport } from "./sqlite/integrity-report.js";
 export type { VacuumCopy, VacuumOutcome } from "./sqlite/vacuum-into.js";
+export type { StoreHost } from "./tasks/store-host.js";
 export type { StoreTask, TaskAccess, TaskRunner } from "./tasks/store-task.js";
