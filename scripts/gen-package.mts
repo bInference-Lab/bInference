@@ -1,13 +1,15 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
-import { findPackages, graphPath, loadGraph } from "./package-graph/graph.mjs";
+import { findPackages, graphPath, loadGraph, packageName } from "./package-graph/graph.mjs";
 import { buildLintConfig, lintConfigPath, renderLintConfig } from "./package-graph/lint-config.mjs";
 import { runCommand } from "./run-command.mjs";
 
 interface PackageSpec {
   readonly name: string;
   readonly description: string;
+  /** The npm name: the graph row's \`name\`, or \`<scope>/<folder>\`. */
+  readonly npmName: string;
 }
 
 const namePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
@@ -18,12 +20,13 @@ function readSpec(args: readonly string[]): PackageSpec {
   if (name === undefined || !namePattern.test(name)) {
     throw new Error("Usage: pnpm gen:package <kebab-case-name> [description]");
   }
-  return { name, description: description ?? defaultDescription };
+  const npmName = packageName(loadGraph(process.cwd()), name);
+  return { name, description: description ?? defaultDescription, npmName };
 }
 
 function manifest(spec: PackageSpec): string {
   const content = {
-    name: `@binference/${spec.name}`,
+    name: spec.npmName,
     version: "0.0.0",
     private: true,
     description: spec.description,
@@ -54,7 +57,7 @@ function tsconfig(): string {
 
 function agentRules(spec: PackageSpec): string {
   return [
-    `# @binference/${spec.name}`,
+    `# ${spec.npmName}`,
     "",
     spec.description,
     "",
@@ -68,7 +71,7 @@ function agentRules(spec: PackageSpec): string {
 
 function readme(spec: PackageSpec): string {
   return [
-    `# @binference/${spec.name}`,
+    `# ${spec.npmName}`,
     "",
     "## Purpose",
     "",
@@ -83,7 +86,7 @@ function readme(spec: PackageSpec): string {
     "## Example",
     "",
     "```ts",
-    `import { packageName } from "@binference/${spec.name}";`,
+    `import { packageName } from "${spec.npmName}";`,
     "```",
     "",
   ].join("\n");
@@ -92,7 +95,7 @@ function readme(spec: PackageSpec): string {
 function entry(spec: PackageSpec): string {
   return [
     "/** The package's name, as its manifest declares it. */",
-    `export const packageName: string = "@binference/${spec.name}";`,
+    `export const packageName: string = "${spec.npmName}";`,
     "",
   ].join("\n");
 }
@@ -104,7 +107,7 @@ function entryTest(spec: PackageSpec): string {
     "",
     'describe("packageName", () => {',
     '  it("matches the name its manifest declares", () => {',
-    `    expect(packageName).toBe("@binference/${spec.name}");`,
+    `    expect(packageName).toBe("${spec.npmName}");`,
     "  });",
     "});",
     "",
