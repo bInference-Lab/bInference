@@ -12,6 +12,49 @@
         "$TURBO_ROOT$/tsconfig.base.json"
       ],
       "outputs": ["dist/**"]
+    },
+    "//#format:check": {
+      "outputs": []
+    },
+    "//#lint": {
+      "outputs": []
+    },
+    "//#typecheck": {
+      "outputs": []
+    },
+    "//#check:package-graph": {
+      "outputs": []
+    },
+    "//#check:tsconfig": {
+      "outputs": []
+    },
+    "//#check:style": {
+      "outputs": []
+    },
+    "//#check:layout": {
+      "outputs": []
+    },
+    "//#check:suppressions": {
+      "outputs": [],
+      "env": ["BASE_REF"]
+    },
+    "//#check:deps-policy": {
+      "outputs": []
+    },
+    "//#lint:docs": {
+      "outputs": []
+    },
+    "//#deadcode": {
+      "outputs": []
+    },
+    "//#dup:check": {
+      "outputs": []
+    },
+    "//#test": {
+      "outputs": ["coverage/**"]
+    },
+    "//#check:gates": {
+      "outputs": []
     }
   }
 }

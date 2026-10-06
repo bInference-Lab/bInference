@@ -40,12 +40,12 @@ export function workspaceCases(repo: string): readonly GateCase[] {
     engineCase(repo, "26.0.0", "fail"),
     engineCase(repo, "26.1.0", "pass"),
     {
-      name: "pnpm gen:package demo makes a package that builds and tests",
+      name: "pnpm gen:package demo makes a package that builds through Turborepo and tests",
       steps: [
         { command: ["pnpm", "gen:package", "demo"], expect: "pass" },
         { command: ["pnpm", "install", "--prefer-offline"], expect: "pass" },
         {
-          command: ["pnpm", "--filter", "@binference/demo", "build"],
+          command: ["pnpm", "build"],
           expect: "pass",
           output: [/index\.mjs/, /index\.d\.mts/],
         },

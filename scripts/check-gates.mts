@@ -1,4 +1,5 @@
 import process from "node:process";
+import { checkCases } from "./gates/check-cases.mjs";
 import { commitCases } from "./gates/commit-cases.mjs";
 import { runCase } from "./gates/gate-case.mjs";
 import { graphCases, tsconfigCases } from "./gates/graph-cases.mjs";
@@ -19,6 +20,7 @@ const cases = [
   ...styleCases(repo),
   ...hygieneCases(repo),
   ...commitCases(),
+  ...checkCases(),
 ];
 const filter = process.argv[2];
 const selected = filter === undefined ? cases : cases.filter((item) => item.name.includes(filter));

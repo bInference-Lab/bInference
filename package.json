@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm check:package-graph && pnpm check:tsconfig && pnpm check:style && pnpm check:layout && pnpm check:suppressions && pnpm check:deps-policy && pnpm lint:docs && pnpm deadcode && pnpm dup:check && pnpm test && pnpm build && pnpm check:gates",
+    "check": "turbo run build format:check lint typecheck check:package-graph check:tsconfig check:style check:layout check:suppressions check:deps-policy lint:docs deadcode dup:check test check:gates --output-logs=errors-only",
     "check:deps-policy": "node --import tsx scripts/check-deps-policy.mts",
     "check:gates": "node --import tsx scripts/check-gates.mts",
     "check:layout": "node --import tsx scripts/check-layout.mts",

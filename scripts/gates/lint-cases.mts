@@ -6,7 +6,7 @@ function escapeRegex(text: string): string {
 }
 
 // Every expected finding names the planted file and the rule, so a case cannot pass on a
-// finding from somewhere else.
+// finding from somewhere else. The unix format prints one finding per line wherever it runs.
 function lintCase(
   name: string,
   files: Readonly<Record<string, string>>,
@@ -17,11 +17,11 @@ function lintCase(
     files,
     steps: [
       {
-        command: ["pnpm", "lint"],
+        command: ["pnpm", "lint", "--format", "unix"],
         expect: "fail",
         output: findings.map(
           ([file, rule]) =>
-            new RegExp(`${escapeRegex(file)}:\\d+:\\d+: error ${escapeRegex(rule)}`),
+            new RegExp(`${escapeRegex(file)}:\\d+:\\d+: .*\\[Error/${escapeRegex(rule)}\\]`),
         ),
       },
     ],

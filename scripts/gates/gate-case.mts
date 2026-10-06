@@ -12,6 +12,8 @@ export interface GateStep {
   readonly env?: Readonly<Record<string, string>>;
   /** A folder inside the sandbox to run in; the sandbox root by default. */
   readonly cwd?: string;
+  /** Files to write before this step runs. */
+  readonly files?: Readonly<Record<string, string>>;
 }
 
 /** A planted change and the gate commands that must react to it. */
@@ -24,6 +26,7 @@ export interface GateCase {
 }
 
 function checkStep(sandbox: Sandbox, step: GateStep): string | undefined {
+  sandbox.plant(step.files ?? {});
   const result = runCommand(step.command, {
     cwd: join(sandbox.root, step.cwd ?? "."),
     ...(step.input === undefined ? {} : { input: step.input }),
