@@ -65,7 +65,7 @@ const randomCases: fc.Arbitrary<Case> = fc.record({
       fc.record({ asset: fc.constantFrom(...assets), base: fc.bigInt({ min: 0n, max: 200n }) }),
       { maxLength: 3 },
     ),
-    tokens: fc.subarray(assets),
+    inflowAssets: fc.subarray(assets),
   }),
   facts: fc.record({
     isFrozen: fc.boolean(),

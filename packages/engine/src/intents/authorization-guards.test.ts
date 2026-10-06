@@ -18,6 +18,7 @@ const autoFacts: AutoModeFacts = {
   approvalMode: "auto",
   modeVersion: 9,
   isInsideOwnPositions: false,
+  sellsDeniedToken: false,
   valueUsdMicros: 20_000_000n,
   perTradeCapUsdMicros: 100_000_000n,
   rollingDayCapUsdMicros: 500_000_000n,
@@ -128,6 +129,18 @@ describe("opening the first card", () => {
       openCard(input({ ...simulated, kind }, manual, 0)),
     );
     expect(expiries.map(expiryOf)).toStrictEqual([60_000, 60_000, 60_000]);
+  });
+
+  it("opens a card in auto mode for a sale out of a token on the deny list", () => {
+    const denied: AuthorizationCheck = {
+      by: "auto_mode",
+      facts: { ...autoFacts, sellsDeniedToken: true },
+    };
+    expect(openCard(input(simulated, denied, 0)).ok).toBe(true);
+    expect(authorizeIntent(input(simulated, denied))).toStrictEqual({
+      ok: false,
+      error: "auto_mode_refused",
+    });
   });
 
   it("opens no card for an intent the auto mode authorizes", () => {

@@ -6,14 +6,21 @@ import {
   type PastOutflow,
   type PolicyFacts,
   type PolicyFigures,
+  type PolicyInput,
   policyRefusals,
   type PolicySubject,
+  sellsDeniedToken,
 } from "./policy-rules.js";
 
 /** The policy's answer when every rule passes. */
 export interface PolicyPass {
   /** The figures the caps passed with; absent for a rescue, which no cap counts. */
   readonly figures?: PolicyFigures;
+  /**
+   * The intent moves a token on the deny list out of the wallet. It passes, but only the owner's
+   * tap confirms it: pass this mark to the auto test (decision 0101).
+   */
+  readonly sellsDeniedToken: boolean;
 }
 
 /**
@@ -100,14 +107,12 @@ async function valueOf(
   return totalUsdMicros;
 }
 
-function verdictOf(
-  reasons: readonly PolicyRejection[],
-  figures: PolicyFigures | undefined,
-): PolicyVerdict {
+function verdictOf(input: PolicyInput): PolicyVerdict {
+  const { figures } = input;
   const withFigures = figures === undefined ? {} : { figures };
-  const [first, ...rest] = reasons;
+  const [first, ...rest] = policyRefusals(input);
   return first === undefined
-    ? ok(withFigures)
+    ? ok({ ...withFigures, sellsDeniedToken: sellsDeniedToken(input) })
     : { ok: false, error: first, reasons: [first, ...rest], ...withFigures };
 }
 
@@ -123,7 +128,7 @@ async function checkIntent(
 ): Promise<PolicyVerdict> {
   const nowMs = options.clock.now();
   if (subject.kind === "rescue") {
-    return verdictOf(policyRefusals({ subject, facts, nowMs }), undefined);
+    return verdictOf({ subject, facts, nowMs });
   }
   const valueUsdMicros = await valueOf(subject.outflows, options.prices, signal);
   const figures =
@@ -133,8 +138,7 @@ async function checkIntent(
           valueUsdMicros,
           rollingDaySpentUsdMicros: spentInWindow(facts.recentOutflows, nowMs),
         };
-  const input = { subject, facts, nowMs, ...(figures === undefined ? {} : { figures }) };
-  return verdictOf(policyRefusals(input), figures);
+  return verdictOf({ subject, facts, nowMs, ...(figures === undefined ? {} : { figures }) });
 }
 
 /** Creates the {@link PolicyCheck}. */

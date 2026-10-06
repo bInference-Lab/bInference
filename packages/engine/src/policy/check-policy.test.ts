@@ -49,7 +49,7 @@ const buy: PolicySubject = {
   isPaper: false,
   hasOutsideContent: false,
   outflows: [{ asset: coin, base: oneCoin / 10n }],
-  tokens: [coin, meme],
+  inflowAssets: [meme],
   slippage: { bps: 300 as Bps, isRegistryPair: false },
 };
 
@@ -59,7 +59,7 @@ const send: PolicySubject = {
   isPaper: false,
   hasOutsideContent: false,
   outflows: [{ asset: usd, base: 50_000_000n }],
-  tokens: [usd],
+  inflowAssets: [],
   target: saved,
 };
 
@@ -71,7 +71,7 @@ const rescueAll: PolicySubject = {
     { asset: coin, base: oneCoin },
     { asset: meme, base: 5n },
   ],
-  tokens: [coin, meme],
+  inflowAssets: [],
   target: rescue,
 };
 
@@ -98,7 +98,10 @@ describe("the policy check", () => {
   it("passes a buy within every limit with the figures the caps read", async () => {
     await expect(verdict(buy)).resolves.toStrictEqual({
       ok: true,
-      value: { figures: { valueUsdMicros: 60_000_000n, rollingDaySpentUsdMicros: 400_000_000n } },
+      value: {
+        figures: { valueUsdMicros: 60_000_000n, rollingDaySpentUsdMicros: 400_000_000n },
+        sellsDeniedToken: false,
+      },
     });
   });
 
@@ -213,7 +216,12 @@ describe("the policy check's money math", () => {
 });
 
 describe("the gas reserve and the ceiling", () => {
-  const sell: PolicySubject = { ...buy, kind: "sell", outflows: [{ asset: meme, base: 10n }] };
+  const sell: PolicySubject = {
+    ...buy,
+    kind: "sell",
+    outflows: [{ asset: meme, base: 10n }],
+    inflowAssets: [coin],
+  };
 
   it("lets an intent that spends no native coin through below the reserve", async () => {
     const memePrices = new Map([...prices, [meme, { numerator: 1n, denominator: 1n }]]);
@@ -240,7 +248,7 @@ describe("the gas reserve and the ceiling", () => {
   });
 
   it("leaves a native send to the address rules, not the ceiling", async () => {
-    const coinSend = { ...send, outflows: [{ asset: coin, base: oneCoin / 10n }], tokens: [coin] };
+    const coinSend = { ...send, outflows: [{ asset: coin, base: oneCoin / 10n }] };
     const tight = { ceilingPerTxNativeBase: 1n };
     expect(reasonsOf(await verdict(coinSend, tight))).toStrictEqual([]);
     expect(reasonsOf(await verdict({ ...coinSend, kind: "bridge" }, tight))).toStrictEqual([
@@ -251,6 +259,57 @@ describe("the gas reserve and the ceiling", () => {
   it("never judges the native coin against the token lists", async () => {
     const lists = limitsWith({ allowTokens: [meme], denyTokens: [coin] });
     expect(reasonsOf(await verdict(buy, lists))).toStrictEqual([]);
+  });
+});
+
+describe("the token lists", () => {
+  // A sale of $50 in a stablecoin for the native coin.
+  const sale: PolicySubject = {
+    ...buy,
+    kind: "sell",
+    outflows: [{ asset: usd, base: 50_000_000n }],
+    inflowAssets: [coin],
+  };
+  const denyUsd = limitsWith({ denyTokens: [usd] });
+
+  it("passes a sale out of a denied token with the mark for the owner's tap", async () => {
+    await expect(verdict(sale, denyUsd)).resolves.toMatchObject({
+      ok: true,
+      value: { sellsDeniedToken: true },
+    });
+    await expect(verdict(sale)).resolves.toMatchObject({
+      ok: true,
+      value: { sellsDeniedToken: false },
+    });
+  });
+
+  it("marks a send of a denied token the same way", async () => {
+    await expect(verdict(send, denyUsd)).resolves.toMatchObject({
+      ok: true,
+      value: { sellsDeniedToken: true },
+    });
+  });
+
+  it("refuses a swap into a denied token, whatever leaves the wallet", async () => {
+    const swap = { ...sale, kind: "swap", inflowAssets: [meme] } as const;
+    const denyMeme = limitsWith({ denyTokens: [meme] });
+    expect(reasonsOf(await verdict(swap, denyMeme))).toStrictEqual(["token_denied"]);
+    const both = limitsWith({ denyTokens: [usd, meme] });
+    expect(reasonsOf(await verdict(swap, both))).toStrictEqual(["token_denied"]);
+  });
+
+  it("keeps a set allow list over every token the intent moves, a denied sale included", async () => {
+    const allowMemeOnly = limitsWith({ allowTokens: [meme], denyTokens: [usd] });
+    expect(reasonsOf(await verdict(sale, allowMemeOnly))).toStrictEqual(["token_denied"]);
+    const allowUsd = limitsWith({ allowTokens: [usd], denyTokens: [usd] });
+    expect(reasonsOf(await verdict(sale, allowUsd))).toStrictEqual([]);
+  });
+
+  it("never marks the native coin, even on the deny list", async () => {
+    await expect(verdict(buy, limitsWith({ denyTokens: [coin] }))).resolves.toMatchObject({
+      ok: true,
+      value: { sellsDeniedToken: false },
+    });
   });
 });
 
@@ -316,7 +375,7 @@ describe("a rescue", () => {
       { ...facts, isFrozen: true, sendLevel: 3, nativeBalanceBase: 0n, ceilingPerTxNativeBase: 0n },
       { signal: new AbortController().signal },
     );
-    expect(result).toStrictEqual({ ok: true, value: {} });
+    expect(result).toStrictEqual({ ok: true, value: { sellsDeniedToken: false } });
     expect(source.asked()).toStrictEqual([]);
   });
 

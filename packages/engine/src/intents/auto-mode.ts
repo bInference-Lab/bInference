@@ -8,13 +8,15 @@ export type ApprovalMode = "manual" | "auto";
 
 /**
  * Why auto mode leaves an intent to the owner's tap. `manual`: the agent is not in auto mode.
- * `send`, `kind`, `overCap`, `spender`, `outside` and `mcp` are the `autoAsks` lines of spec 4,
- * section 3.4; `spender` means a step approves a spender outside the registry.
+ * `send`, `kind`, `deniedToken`, `overCap`, `spender`, `outside` and `mcp` are the `autoAsks` lines
+ * of spec 4, section 3.4; `deniedToken` means the intent sells a token on the deny list, and
+ * `spender` that a step approves a spender outside the registry.
  */
 export type AutoModeRefusal =
   | "manual"
   | "send"
   | "kind"
+  | "deniedToken"
   | "overCap"
   | "spender"
   | "outside"
@@ -27,6 +29,8 @@ export interface AutoModeFacts {
   readonly modeVersion: number;
   /** A lend or stake move stays inside the agent's own positions. */
   readonly isInsideOwnPositions: boolean;
+  /** The policy's mark: the intent moves a token on the deny list out of the wallet. */
+  readonly sellsDeniedToken: boolean;
   readonly valueUsdMicros: bigint;
   readonly perTradeCapUsdMicros: bigint;
   readonly rollingDayCapUsdMicros: bigint;
@@ -72,6 +76,9 @@ function autoModeRefusal(
   if (refusal !== undefined) {
     return refusal;
   }
+  if (facts.sellsDeniedToken) {
+    return "deniedToken";
+  }
   if (!fitsCaps(facts)) {
     return "overCap";
   }
@@ -86,9 +93,10 @@ function autoModeRefusal(
 
 /**
  * The auto test of spec 6, section 5. It passes only when the agent is in auto mode, the kind is a
- * swap, buy or sell or a lend or stake move inside the agent's own positions, the value fits the
- * per-trade and rolling-day caps, every approval goes to a registry spender, the turn read no
- * outside content, and the agent runtime proposed it. Anything else opens a card.
+ * swap, buy or sell or a lend or stake move inside the agent's own positions, it sells no token on
+ * the deny list, the value fits the per-trade and rolling-day caps, every approval goes to a
+ * registry spender, the turn read no outside content, and the agent runtime proposed it. Anything
+ * else opens a card.
  */
 export function checkAutoMode(
   intent: AutoModeSubject,

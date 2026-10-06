@@ -13,6 +13,7 @@ const facts: AutoModeFacts = {
   approvalMode: "auto",
   modeVersion: 2,
   isInsideOwnPositions: true,
+  sellsDeniedToken: false,
   valueUsdMicros: 100_000_000n,
   perTradeCapUsdMicros: 100_000_000n,
   rollingDayCapUsdMicros: 500_000_000n,
@@ -58,6 +59,11 @@ describe("the auto test", () => {
     expect(refusalOf({ ...swap, kind: "stake" }, { isInsideOwnPositions: false })).toBe("kind");
   });
 
+  it("asks for a sale out of a token on the deny list", () => {
+    expect(refusalOf(swap, { sellsDeniedToken: true })).toBe("deniedToken");
+    expect(refusalOf({ ...swap, kind: "sell" }, { sellsDeniedToken: true })).toBe("deniedToken");
+  });
+
   it("asks when the value passes the per-trade or rolling-day cap", () => {
     const fresh = { rollingDaySpentUsdMicros: 0n };
     expect(refusalOf(swap, { ...fresh, valueUsdMicros: 100_000_001n })).toBe("overCap");
@@ -83,6 +89,10 @@ describe("the auto test", () => {
   it("checks in the order spec 6 lists the conditions", () => {
     const send = { ...swap, kind: "send", hasOutsideContent: true } as const;
     expect(refusalOf(send, { valueUsdMicros: 10n ** 12n })).toBe("send");
+    expect(refusalOf(send, { sellsDeniedToken: true })).toBe("send");
+    expect(refusalOf(swap, { sellsDeniedToken: true, valueUsdMicros: 10n ** 12n })).toBe(
+      "deniedToken",
+    );
     expect(refusalOf(swap, { valueUsdMicros: 10n ** 12n, hasUnlistedSpender: true })).toBe(
       "overCap",
     );
@@ -124,6 +134,7 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
     approvalMode: mostly<ApprovalMode>("auto", "manual"),
     modeVersion: fc.nat(),
     isInsideOwnPositions: fc.boolean(),
+    sellsDeniedToken: mostly(false, true),
     valueUsdMicros: usd,
     perTradeHeadroom: headroom,
     dayHeadroom: headroom,
@@ -134,6 +145,7 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
     approvalMode: generated.approvalMode,
     modeVersion: generated.modeVersion,
     isInsideOwnPositions: generated.isInsideOwnPositions,
+    sellsDeniedToken: generated.sellsDeniedToken,
     valueUsdMicros: generated.valueUsdMicros,
     perTradeCapUsdMicros: atLeastZero(generated.valueUsdMicros + generated.perTradeHeadroom),
     rollingDayCapUsdMicros: atLeastZero(
@@ -151,6 +163,7 @@ function isAllowedBySpec(subject: AutoModeSubject, given: AutoModeFacts): boolea
   return (
     given.approvalMode === "auto" &&
     isAutoKind &&
+    !given.sellsDeniedToken &&
     given.valueUsdMicros <= given.perTradeCapUsdMicros &&
     given.rollingDaySpentUsdMicros + given.valueUsdMicros <= given.rollingDayCapUsdMicros &&
     !given.hasUnlistedSpender &&
@@ -164,6 +177,14 @@ describe("the auto test as a property", () => {
     fc.assert(
       fc.property(subjects, factSets, (subject, generated) => {
         expect(checkAutoMode(subject, generated).ok).toBe(isAllowedBySpec(subject, generated));
+      }),
+    );
+  });
+
+  it("never authorizes a sale out of a token on the deny list", () => {
+    fc.assert(
+      fc.property(subjects, factSets, (subject, generated) => {
+        expect(checkAutoMode(subject, { ...generated, sellsDeniedToken: true }).ok).toBe(false);
       }),
     );
   });

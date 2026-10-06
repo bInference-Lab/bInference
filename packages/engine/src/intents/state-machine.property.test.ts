@@ -163,6 +163,7 @@ const autoFacts: fc.Arbitrary<AutoModeFacts> = fc.record({
   approvalMode: fc.constantFrom("manual", "auto"),
   modeVersion: fc.nat(50),
   isInsideOwnPositions: fc.boolean(),
+  sellsDeniedToken: mostly(false, true),
   valueUsdMicros: fc.bigInt({ min: 0n, max: 200_000_000n }),
   perTradeCapUsdMicros: fc.constant(100_000_000n),
   rollingDayCapUsdMicros: fc.constant(500_000_000n),
@@ -403,6 +404,7 @@ function isAutoAllowed(status: IntentStatus, auto: AutoModeFacts | undefined): b
     auto !== undefined &&
     auto.approvalMode === "auto" &&
     isAutoKind(status, auto) &&
+    !auto.sellsDeniedToken &&
     fitsAutoCaps(auto) &&
     !auto.hasUnlistedSpender &&
     !status.hasOutsideContent &&
@@ -415,8 +417,9 @@ function autoFactsOf(trigger: IntentTrigger): AutoModeFacts | undefined {
   return check?.by === "auto_mode" ? check.facts : undefined;
 }
 
-// Invariant 8: an auto-authorized intent is a trade or an own-position move, inside the caps, with
-// no new spender, no outside content and no proposer but the agent runtime.
+// Invariant 8: an auto-authorized intent is a trade or an own-position move, inside the caps,
+// selling no denied token, with no new spender, no outside content and no proposer but the agent
+// runtime.
 function autoViolations({ before, trigger, result }: Outcome): readonly string[] {
   if (!result.ok || isAuto(before.authorizedBy) || !isAuto(result.value.status.authorizedBy)) {
     return [];

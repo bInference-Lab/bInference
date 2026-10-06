@@ -23,6 +23,7 @@ const autoFacts: AutoModeFacts = {
   approvalMode: "auto",
   modeVersion: 4,
   isInsideOwnPositions: false,
+  sellsDeniedToken: false,
   valueUsdMicros: 20_000_000n,
   perTradeCapUsdMicros: 100_000_000n,
   rollingDayCapUsdMicros: 500_000_000n,

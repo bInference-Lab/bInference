@@ -2,6 +2,7 @@ import type { AccountRef, Amount, AssetRef } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { type AutoModeFacts, type AutoModeSubject, checkAutoMode } from "../intents/auto-mode.js";
 import { intentKinds } from "../intents/intent-kind.js";
 import {
   type PolicyReason,
@@ -17,6 +18,7 @@ import {
   type PolicyInput,
   policyRefusals,
   type PolicySubject,
+  sellsDeniedToken,
 } from "./policy-rules.js";
 
 const nowMs = 1_800_000_000_000;
@@ -42,12 +44,12 @@ const subjects: fc.Arbitrary<PolicySubject> = fc.record(
     outflows: fc.array(fc.record({ asset: fc.constantFrom(...assets), base: small }), {
       maxLength: 3,
     }),
-    tokens: fc.subarray(assets),
+    inflowAssets: fc.subarray(assets),
     venue: fc.constantFrom(...venues),
     slippage: fc.record({ bps, isRegistryPair: fc.boolean() }),
     target: fc.constantFrom(...accounts),
   },
-  { requiredKeys: ["kind", "isPaper", "hasOutsideContent", "outflows", "tokens"] },
+  { requiredKeys: ["kind", "isPaper", "hasOutsideContent", "outflows", "inflowAssets"] },
 );
 
 const entries: fc.Arbitrary<readonly AddressBookEntry[]> = fc.uniqueArray(
@@ -180,9 +182,30 @@ function passViolations(input: PolicyInput): readonly string[] {
   ].filter((text) => text !== "");
 }
 
-function isListed(token: AssetRef, facts: PolicyFacts): boolean {
-  const { allowTokens, denyTokens } = facts.limits;
-  return !denyTokens.includes(token) && (allowTokens.length === 0 || allowTokens.includes(token));
+function isDenied(token: AssetRef, { facts }: PolicyInput): boolean {
+  return token !== coin && facts.limits.denyTokens.includes(token);
+}
+
+function sellsDenied(input: PolicyInput): boolean {
+  return input.subject.outflows.some((item) => isDenied(item.asset, input));
+}
+
+function receivesDenied(input: PolicyInput): boolean {
+  return input.subject.inflowAssets.some((token) => isDenied(token, input));
+}
+
+// A denied token may leave the wallet but never enter it; a set allow list bounds both ways.
+function breaksTokenLists(input: PolicyInput): boolean {
+  const { allowTokens } = input.facts.limits;
+  const moved = [
+    ...input.subject.outflows.map((item) => item.asset),
+    ...input.subject.inflowAssets,
+  ];
+  return (
+    receivesDenied(input) ||
+    (allowTokens.length > 0 &&
+      moved.some((token) => token !== coin && !allowTokens.includes(token)))
+  );
 }
 
 function capsEarned({ facts, figures }: PolicyInput): Earned {
@@ -206,7 +229,8 @@ function walletEarned({ subject, facts }: PolicyInput): Earned {
   };
 }
 
-function tradeEarned({ subject, facts }: PolicyInput): Earned {
+function tradeEarned(input: PolicyInput): Earned {
+  const { subject, facts } = input;
   const { limits } = facts;
   const slippageLimit =
     subject.slippage?.isRegistryPair === true
@@ -216,7 +240,7 @@ function tradeEarned({ subject, facts }: PolicyInput): Earned {
     slippage: subject.slippage !== undefined && subject.slippage.bps > slippageLimit,
     tax: facts.knownTaxBps !== undefined && facts.knownTaxBps > limits.maxTaxBps,
     venue_off: subject.venue !== undefined && !limits.venues.includes(subject.venue),
-    token_denied: subject.tokens.some((token) => token !== coin && !isListed(token, facts)),
+    token_denied: breaksTokenLists(input),
   };
 }
 
@@ -283,6 +307,34 @@ function asRescue(input: PolicyInput): PolicyInput {
 
 const rescues: fc.Arbitrary<PolicyInput> = inputs.map(asRescue);
 
+// A sale out of a denied token is marked and nothing else is; a token that enters never is denied.
+function listViolations(input: PolicyInput): readonly string[] {
+  const isPassed = policyRefusals(input).length === 0;
+  return [
+    sellsDeniedToken(input) === sellsDenied(input) ? "" : "marked wrong",
+    isPassed && receivesDenied(input) ? "passed an intent that receives a denied token" : "",
+  ].filter((text) => text !== "");
+}
+
+// An auto-mode agent and a trade the agent runtime proposed, which auto mode runs unless told not to.
+const allowingAuto: AutoModeFacts = {
+  approvalMode: "auto",
+  modeVersion: 1,
+  isInsideOwnPositions: true,
+  sellsDeniedToken: false,
+  valueUsdMicros: 0n,
+  perTradeCapUsdMicros: 0n,
+  rollingDayCapUsdMicros: 0n,
+  rollingDaySpentUsdMicros: 0n,
+  hasUnlistedSpender: false,
+};
+
+const trades: fc.Arbitrary<AutoModeSubject> = fc.record({
+  kind: fc.constantFrom("swap" as const, "buy" as const, "sell" as const),
+  proposer: fc.constant("agent_runtime" as const),
+  hasOutsideContent: fc.constant(false),
+});
+
 const machine = createIntentStateMachine({
   clock: { now: () => nowMs, sleep: async () => Promise.resolve() },
 });
@@ -343,6 +395,27 @@ describe("the policy rules", () => {
       fc.property(rescues, (input) => {
         expect(policyRefusals(input)).toStrictEqual([]);
       }),
+    );
+  });
+
+  it("mark every sale out of a denied token and pass no intent that receives one", () => {
+    // A rescue only moves tokens out, to the owner's own address, so the lists never judge it.
+    const intents = inputs.filter((input) => input.subject.kind !== "rescue");
+    fc.assert(
+      fc.property(intents, (input) => {
+        expect(listViolations(input)).toStrictEqual([]);
+      }),
+      { numRuns: 1_000 },
+    );
+  });
+
+  it("never let a sale out of a denied token run in auto mode", () => {
+    fc.assert(
+      fc.property(inputs, trades, (input, trade) => {
+        const facts = { ...allowingAuto, sellsDeniedToken: sellsDeniedToken(input) };
+        expect(checkAutoMode(trade, facts).ok).toBe(!sellsDenied(input));
+      }),
+      { numRuns: 1_000 },
     );
   });
 

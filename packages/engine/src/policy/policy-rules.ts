@@ -36,6 +36,7 @@ export interface PolicyLimits {
   readonly venues: readonly string[];
   /** When not empty, the only tokens the agent may touch. */
   readonly allowTokens: readonly AssetRef[];
+  /** Tokens the agent may never receive. It may sell one it holds, with the owner's tap. */
   readonly denyTokens: readonly AssetRef[];
 }
 
@@ -55,8 +56,11 @@ export interface PolicySubject extends Pick<
 > {
   /** What leaves the agent's wallet, in base units. The caps, the ceiling and the reserve count it. */
   readonly outflows: readonly Amount[];
-  /** Every asset the intent moves into or out of the wallet. */
-  readonly tokens: readonly AssetRef[];
+  /**
+   * Every asset the intent moves into the agent's wallet. With the outflows' assets, these are the
+   * tokens the allow and deny lists judge.
+   */
+  readonly inflowAssets: readonly AssetRef[];
   /** The venue the request names, or the one that quoted when the policy runs again. */
   readonly venue?: string;
   /** Absent when the request leaves slippage to the agent's maximum. */
@@ -169,13 +173,31 @@ function paysUnknown(input: PolicyInput): boolean {
 }
 
 // The native coin pays network fees on every chain, so the token lists never judge it.
-function isTokenDenied({ subject, facts }: PolicyInput): boolean {
+function listedTokens(tokens: readonly AssetRef[], { facts }: PolicyInput): readonly AssetRef[] {
+  return tokens.filter((token) => token !== facts.nativeAsset);
+}
+
+// A token on the deny list may leave the wallet but never enter it (decision 0101); a set allow
+// list bounds every token the intent moves, in or out.
+function isTokenDenied(input: PolicyInput): boolean {
+  const { subject, facts } = input;
   const { allowTokens, denyTokens } = facts.limits;
-  return subject.tokens.some(
-    (token) =>
-      token !== facts.nativeAsset &&
-      (denyTokens.includes(token) || (allowTokens.length > 0 && !allowTokens.includes(token))),
+  const moved = [...subject.outflows.map((outflow) => outflow.asset), ...subject.inflowAssets];
+  return (
+    listedTokens(subject.inflowAssets, input).some((token) => denyTokens.includes(token)) ||
+    (allowTokens.length > 0 &&
+      listedTokens(moved, input).some((token) => !allowTokens.includes(token)))
   );
+}
+
+/**
+ * Whether the intent moves a token on the deny list out of the wallet, as a sale, a swap or a
+ * send. Such an intent may pass, but only the owner's tap confirms it: the auto test reads this
+ * mark (decision 0101).
+ */
+export function sellsDeniedToken(input: PolicyInput): boolean {
+  const assets = input.subject.outflows.map((outflow) => outflow.asset);
+  return listedTokens(assets, input).some((token) => input.facts.limits.denyTokens.includes(token));
 }
 
 function asksTooMuchSlippage({ subject, facts }: PolicyInput): boolean {
