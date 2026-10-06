@@ -1,6 +1,6 @@
 # Notices
 
-binference is released under the MIT license. This file holds the notices for third-party work that
+binference is released under the [MIT license](LICENSE). This file holds the notices for third-party work that
 ships in the repository.
 
 ## Copied source code

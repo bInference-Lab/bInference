@@ -17,8 +17,8 @@ pnpm check
 - `pnpm install` installs the exact versions in the lockfile.
 - `pnpm setup` links `.claude/skills` to `.agents/skills`, so coding agents find the skills.
 - `pnpm check` runs every gate: format, lint, types, tests, the style guard and the repository
-  checks. CI runs the same command on Linux, macOS and Windows, and a pull request merges only when
-  all three pass.
+  checks. CI runs the same command on Linux, macOS and Windows, and all three must pass before a
+  pull request merges.
 
 ## How a change flows
 
@@ -64,5 +64,5 @@ privately.
 
 ## License
 
-binference is released under the MIT license, and contributions are accepted under it. There is no
+binference is released under the [MIT license](LICENSE), and contributions are accepted under it. There is no
 contributor agreement to sign.

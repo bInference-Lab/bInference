@@ -284,7 +284,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
   full-text search (FTS5; vectors later). Memory is never a source of contract addresses
   ([rule 10](#rule-10)).
 - **Skills.** `SKILL.md` files in the Agent Skills format: `name`, `description`, and optional
-  `metadata`. We read our own `metadata.binference`.
+  `metadata`. binference reads its own fields under `metadata.binference`.
   - The prompt carries only an index (name, description, location); the model reads the full file
     when a task matches.
   - Skills are text: they cannot add tools or widen policy.
@@ -441,7 +441,7 @@ interface Signer {
   - Self-hosted: the **owner key** (P-256) owns each wallet and its policy. `binference init` makes
     it, shows it once as a code for the owner to keep offline (a password manager), and keeps only
     its public half. It is needed to raise the ceiling, export a wallet or attach a new machine.
-  - Cloud: the user's own Privy account owns the wallet and its policy, through their bInference
+  - Cloud: the owner's own Privy account owns the wallet and its policy, through their bInference
     sign-in.
 - **Who signs.** An added signer under the wallet's policy:
   - Self-hosted: the **agent key** (P-256), held only by the signer process, unlocked from the OS
@@ -747,7 +747,7 @@ Decided in [decision 0006](DECISIONS.md#d0006).
   - The agent trades only a separate "Agentic" sub-account, which the owner funds by hand.
   - There is no withdrawal scope.
   - The owner can disconnect it, or press Emergency stop, on binance.com.
-- **How we connect.** An MCP client in `plugins/binance-agent-os` built on
+- **How it connects.** An MCP client in `plugins/binance-agent-os` built on
   `@modelcontextprotocol/sdk`.
   - It identifies itself with a Client ID Metadata Document, hosted at a fixed HTTPS address that
     binference.io serves. Binance's server supports these documents and has no open registration.
@@ -866,7 +866,7 @@ The engine refuses to start on insecure combinations, and risky switches are nam
   chain's head on BSC comes later.
 - **Logs** never hold keys, seeds or prompts. OpenTelemetry is optional.
 - **`binference check`** checks:
-  - config migrations (we never keep silent aliases);
+  - config migrations, so an old key never stays behind as a silent alias;
   - store integrity;
   - RPC and relay reachability, and model reachability;
   - Telegram health;
@@ -1201,8 +1201,8 @@ the Cloud profile. A port with two adapters runs one contract test suite against
   renewed every few seconds; every write carries the fence, so a worker that lost its lease cannot
   write. Cloud agents get no shell, file or browser tools.
 - **Signer service.** The only holder of our Privy authorization key, in KMS. It runs the same hard
-  rules as the self-hosted signer, signs with `eth_signTransaction`, and we broadcast through
-  private relays. Users can export their key or remove our signer at any time.
+  rules as the self-hosted signer and signs with `eth_signTransaction`; the worker broadcasts through
+  private relays. Owners can export their key or remove the bInference signer at any time.
 - **Separate database roles** for the workers, the ingress API and the signer service. A worker
   cannot insert a confirmation, so a compromised worker cannot approve its own transactions.
 - **Official bot.** Updates arrive by webhook into an ingress table unique on `bot_id + update_id`.
