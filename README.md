@@ -122,7 +122,7 @@ Runs on macOS, Windows and Linux, on your computer, a server or Docker. The self
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md): every change, by a person or a coding agent, follows it.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md): every change, by a person or a coding agent, follows them.
 
 ## Security
 

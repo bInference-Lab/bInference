@@ -122,7 +122,7 @@ irm https://binference.io/install.ps1 | iex
 
 ## 参与贡献
 
-请阅读 [AGENTS.md](AGENTS.md)：无论是人还是编程 Agent，每一次修改都要遵守其中的规则。
+请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [AGENTS.md](AGENTS.md)：无论是人还是编程 Agent，每一次修改都要遵守其中的规则。
 
 ## 安全
 
