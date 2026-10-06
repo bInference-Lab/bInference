@@ -7,8 +7,9 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
-    "check": "turbo run build format:check lint typecheck check:package-graph check:tsconfig check:style check:layout check:suppressions check:deps-policy check:tsdoc check:contract-suites check:adr check:docs lint:docs deadcode dup:check test check:gates --output-logs=errors-only",
+    "check": "turbo run build format:check lint typecheck check:package-graph check:tsconfig check:style check:layout check:suppressions check:deps-policy check:tsdoc check:contract-suites check:chain-literals check:adr check:docs lint:docs deadcode dup:check test check:gates --output-logs=errors-only",
     "check:adr": "node --import tsx scripts/check-adr.mts",
+    "check:chain-literals": "node --import tsx scripts/check-chain-literals.mts",
     "check:contract-suites": "node --import tsx scripts/check-contract-suites.mts",
     "check:deps-policy": "node --import tsx scripts/check-deps-policy.mts",
     "check:docs": "node --import tsx scripts/check-docs.mts",

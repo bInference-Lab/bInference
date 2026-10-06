@@ -47,6 +47,9 @@
     "//#check:contract-suites": {
       "outputs": []
     },
+    "//#check:chain-literals": {
+      "outputs": []
+    },
     "//#check:adr": {
       "outputs": [],
       "env": ["BASE_REF"]

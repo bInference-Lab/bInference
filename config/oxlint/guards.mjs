@@ -139,6 +139,95 @@ const requireAbortSignal = {
   },
 };
 
+// Names that hold a chain, venue or other registry id: switching or comparing on them is a branch
+// on the registry, which the core never takes.
+const registryName = /(?:chain|venue|family|namespace|network|provider|channel)(?:id|ref|key)?$/i;
+const hexAddress = /(?<![0-9a-fA-F])0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/;
+
+function nameOf(node) {
+  if (node.type === "ChainExpression") {
+    return nameOf(node.expression);
+  }
+  if (node.type === "Identifier") {
+    return node.name;
+  }
+  return node.type === "MemberExpression" && node.property.type === "Identifier"
+    ? node.property.name
+    : undefined;
+}
+
+function isLiteral(node) {
+  return node.type === "Literal" && node.value !== null;
+}
+
+function isRegistryName(node) {
+  const name = nameOf(node);
+  return name !== undefined && registryName.test(name);
+}
+
+function literalProblem(text, options) {
+  if (options.caip.test(text)) {
+    return "A CAIP id is data: read it from the chain registry.";
+  }
+  if (hexAddress.test(text)) {
+    return "An address is data: read it from the chain registry.";
+  }
+  return options.ids.has(text.toLowerCase())
+    ? `"${text}" is a registry id: read it from the registry instead.`
+    : undefined;
+}
+
+function chainLiteralOptions(context) {
+  const [options = {}] = context.options;
+  const namespaces = options.namespaces ?? [];
+  return {
+    caip: new RegExp(`(?<![-a-z0-9])(?:${namespaces.join("|") || "(?!)"}):`),
+    ids: new Set((options.ids ?? []).map((id) => id.toLowerCase())),
+  };
+}
+
+const noChainLiteral = {
+  meta: {
+    schema: [
+      {
+        type: "object",
+        properties: {
+          namespaces: { type: "array", items: { type: "string" } },
+          ids: { type: "array", items: { type: "string" } },
+        },
+        additionalProperties: false,
+      },
+    ],
+  },
+  create(context) {
+    const options = chainLiteralOptions(context);
+    const checkText = (node, text) => {
+      const problem = literalProblem(text, options);
+      if (problem !== undefined) {
+        report(context, node, problem);
+      }
+    };
+    const checkComparison = (node) => {
+      const [left, right] = [node.left, node.right];
+      if (
+        (isRegistryName(left) && isLiteral(right)) ||
+        (isRegistryName(right) && isLiteral(left))
+      ) {
+        report(context, node, "Compare through the registry, not against a literal id.");
+      }
+    };
+    return {
+      Literal: (node) => typeof node.value === "string" && checkText(node, node.value),
+      TemplateElement: (node) => checkText(node, node.value.cooked ?? node.value.raw),
+      SwitchStatement: (node) =>
+        isRegistryName(node.discriminant) &&
+        report(context, node, "Look the id up in its registry instead of switching on it."),
+      BinaryExpression: (node) =>
+        ["===", "!==", "==", "!="].includes(node.operator) && checkComparison(node),
+    };
+  },
+};
+
 const plugin = {
   meta: { name: "guards" },
   rules: {
@@ -149,6 +238,7 @@ const plugin = {
     "no-interface-prefix": noInterfacePrefix,
     "type-pascal-case": typePascalCase,
     "require-abort-signal": requireAbortSignal,
+    "no-chain-literal": noChainLiteral,
   },
 };
 
