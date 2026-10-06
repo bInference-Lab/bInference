@@ -5,7 +5,7 @@ export { erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
 export type { EvmChain } from "./evm-chain.js";
 export { createEvmFamily, evmFamilyId, evmNamespace } from "./evm-family.js";
 export { readFees } from "./fees/read-fees.js";
-export type { EvmFees, FeeOptions } from "./fees/read-fees.js";
+export type { EvmFees, FeeOptions, FeeReading } from "./fees/read-fees.js";
 export { createEvmClient } from "./rpc/create-evm-client.js";
 export type { EvmClientOptions } from "./rpc/create-evm-client.js";
 export { createRpcFailover } from "./rpc/create-rpc-failover.js";

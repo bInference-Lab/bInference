@@ -15,7 +15,7 @@ builds, hashes and checks the transactions a signer signs. Chain facts come in a
 | `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                           | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses      |
 | `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health |
 | `createEvmClient`                                                        | A viem public client whose requests go through the failover                       |
-| `readFees`, `EvmFees`                                                    | EIP-1559 fees per gas from the node, refused above the caller's cap               |
+| `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap           |
 | `simulate`, `Simulation`, `AssetTransfer`, `AssetApproval`               | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
 | `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                     |
 | `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions              |

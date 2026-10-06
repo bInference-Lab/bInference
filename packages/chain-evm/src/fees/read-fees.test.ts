@@ -37,8 +37,8 @@ describe("read fees", () => {
     });
     await expect(readFees(rpc, { maxFeePerGasCap: 1_000_000_000n, signal })).resolves.toStrictEqual(
       {
-        ok: true,
-        value: { maxFeePerGas: floor, maxPriorityFeePerGas: floor },
+        fees: { maxFeePerGas: floor, maxPriorityFeePerGas: floor },
+        isAboveCap: false,
       },
     );
   });
@@ -50,20 +50,30 @@ describe("read fees", () => {
     });
     const fees = await readFees(rpc, { maxFeePerGasCap: 10_000_000_000n, signal });
     expect(fees).toStrictEqual({
-      ok: true,
-      value: { maxFeePerGas: 2_000_000_000n + floor, maxPriorityFeePerGas: floor },
+      fees: { maxFeePerGas: 2_000_000_000n + floor, maxPriorityFeePerGas: floor },
+      isAboveCap: false,
     });
   });
 
-  it("refuses fees above the caller's cap", async () => {
+  it("returns fees above the caller's cap, marked for the owner's tap", async () => {
     const rpc = node({
       eth_maxPriorityFeePerGas: { result: "0x174876e800" },
       eth_getBlockByNumber: block("0x0"),
     });
     await expect(readFees(rpc, { maxFeePerGasCap: floor, signal })).resolves.toStrictEqual({
-      ok: false,
-      error: "fee_above_cap",
+      fees: { maxFeePerGas: 100_000_000_000n, maxPriorityFeePerGas: 100_000_000_000n },
+      isAboveCap: true,
     });
+  });
+
+  it("counts a fee cap per gas equal to the caller's cap as within it", async () => {
+    const rpc = node({
+      eth_maxPriorityFeePerGas: { result: "0x2faf080" },
+      eth_getBlockByNumber: block("0x1"),
+    });
+    const atCap = await readFees(rpc, { maxFeePerGasCap: floor + 2n, signal });
+    const belowCap = await readFees(rpc, { maxFeePerGasCap: floor + 1n, signal });
+    expect([atCap.isAboveCap, belowCap.isAboveCap]).toStrictEqual([false, true]);
   });
 
   it("names the node's error when it refuses a fee read", async () => {
