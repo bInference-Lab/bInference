@@ -44,6 +44,9 @@
     "//#check:tsdoc": {
       "outputs": []
     },
+    "//#check:contract-suites": {
+      "outputs": []
+    },
     "//#check:adr": {
       "outputs": [],
       "env": ["BASE_REF"]
