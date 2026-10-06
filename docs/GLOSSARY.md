@@ -123,6 +123,8 @@ new name here first, in the change that uses it.
   `file`, `command` or `manual`.
 - **passphrase store**: secrets in owner-only files in `~/.binference/keys/`, each sealed with the
   owner's passphrase; the fallback where no OS keychain answers, such as headless Linux and Docker.
+- **background service**: the engine started at the owner's login and restarted after a crash: a
+  LaunchAgent on macOS, a `systemctl --user` unit on Linux, a scheduled task on Windows.
 - **scopes**: what a protocol client may do: `read`, `propose`, `chat`, `agent`, `confirm`, `loosen`
   and `admin`.
 - **operation**: a protocol call named `domain/action`, such as `intent/propose`.

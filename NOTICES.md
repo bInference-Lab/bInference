@@ -10,8 +10,13 @@ per source, in the same change.
 
 ### OpenClaw
 
-The SQLite query layer in `packages/store/src/dialect/` adapts code from
-[OpenClaw](https://github.com/openclaw/openclaw) at commit `f997ec3775567f942585d729346628adf3466edb`.
+Code adapted from [OpenClaw](https://github.com/openclaw/openclaw) at commit
+`f997ec3775567f942585d729346628adf3466edb`:
+
+- the SQLite query layer in `packages/store/src/dialect/`;
+- the background service definitions in `packages/platform/src/posix/launchd-plist.ts`,
+  `packages/platform/src/posix/systemd-unit.ts`, `packages/platform/src/win32/task-xml.ts` and the
+  task state probe in `packages/platform/src/win32/schtasks-service-manager.ts`.
 
 ```text
 MIT License

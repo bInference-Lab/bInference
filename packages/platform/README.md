@@ -17,6 +17,9 @@ ports:
 - named secrets behind the `SecretStore` port: the OS keychain through `@napi-rs/keyring` (the
   Secret Service required on Linux, never the kernel keyring, which forgets at a reboot), or the
   passphrase store where no keychain answers;
+- the background service behind the `ServiceManager` port: a LaunchAgent through `launchctl` on
+  macOS, a `systemctl --user` unit on Linux, a scheduled task through `schtasks` on Windows, each
+  started at the owner's login, in their session;
 - text files read whole, and programs run with an argument array, no shell and a time limit.
 
 ## API
@@ -35,9 +38,11 @@ ports:
 | `SecretStore`                       | The port that reads, writes and deletes a named secret               |
 | `Platform.keychain`                 | The OS keychain, entries `binference/<name>`                         |
 | `createPassphraseSecretStore`       | Secrets sealed with the owner's passphrase, one file each in `keys/` |
+| `ServiceManager`                    | The port that installs, removes and reports a background service     |
+| `Platform.serviceManager`           | This OS's service manager, given a clock for its waits               |
 | `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                   |
 | `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit     |
-| `@binference/platform/testing`      | The contract suites of every port, and an in-memory `SecretStore`    |
+| `@binference/platform/testing`      | Every port's contract suite, and in-memory secret and service fakes  |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
 longer than macOS allows.
@@ -82,9 +87,23 @@ back on its own. The owner picks another unlock mode instead; `createPassphraseS
 the same entries in `keys/<name>.json`, sealed with a passphrase the owner types (scrypt, then
 AES-256-GCM bound to the entry and the install id).
 
+## Background service
+
+`platform.serviceManager(clock).install(definition, signal)` writes the service, sets it to start
+at login and starts it; it resolves once the OS reports it running. The names are
+`io.binference.<name>` (a plist in `~/Library/LaunchAgents`), `binference-<name>.service` (in
+`$XDG_CONFIG_HOME/systemd/user`) and the task `binference-<name>`. Each restarts the program after
+an exit with an error, not after a clean exit. macOS and Linux append its output to
+`definition.logFile`; Task Scheduler keeps none, so the program writes its own log. On a Linux
+server with no login session, the user manager runs only with `loginctl enable-linger`.
+
 ## Tests on the real OS
 
-Unit tests never touch the machine's keychain: they replace `@napi-rs/keyring`. With
-`BINFERENCE_KEYCHAIN_TESTS=1`, the keychain contract runs on the real keychain under a service name
-of its own and deletes every entry it wrote. CI sets it on macOS, Windows, and Linux with GNOME
-Keyring.
+Unit tests never touch the machine's keychain or login items: they replace `@napi-rs/keyring`,
+and the service adapters run against recorded `launchctl`, `systemctl` and `schtasks` answers.
+Two switches run the contracts on the real OS, and only CI sets them:
+
+- `BINFERENCE_KEYCHAIN_TESTS=1`: the keychain contract on the real keychain, under a service name
+  of its own, deleting every entry it wrote (macOS, Windows, and Linux with GNOME Keyring).
+- `BINFERENCE_SERVICE_TESTS=1`: the service contract with a sample program that installs, runs,
+  starts at login and uninstalls, and a check that its arguments arrive intact.

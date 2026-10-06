@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseJsonText } from "../json-text.schema.js";
 
 /** The scrypt parameters a sealed secret was made with. */
 interface ScryptParams {
@@ -64,19 +65,11 @@ const sealedSecretSchema: z.ZodType<SealedSecret> = z.strictObject({
   tag: base64Of(16),
 });
 
-function parseJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * Reads a sealed secret file. Text that is not JSON, or JSON of another shape, is `undefined`; so is
  * a scrypt cost outside 1024 to 1048576 or not a power of two.
  */
 export function parseSealedSecret(text: string): SealedSecret | undefined {
-  const parsed = sealedSecretSchema.safeParse(parseJson(text));
+  const parsed = sealedSecretSchema.safeParse(parseJsonText(text));
   return parsed.success ? parsed.data : undefined;
 }

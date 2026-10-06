@@ -1,5 +1,5 @@
 export { createPlatform } from "./create-platform.js";
-export type { IpcEndpointOptions, Platform } from "./create-platform.js";
+export type { IpcEndpointOptions, Platform, PlatformOptions } from "./create-platform.js";
 export { acquireFileLock } from "./file-lock.js";
 export type { FileLock } from "./file-lock.js";
 export type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
@@ -7,12 +7,13 @@ export { openIpcChannel } from "./ipc/ipc-channel.js";
 export type { IpcChannel, IpcChannelOptions } from "./ipc/ipc-channel.js";
 export { createPassphraseSecretStore } from "./keychain/passphrase-secret-store.js";
 export type { PassphraseSecretStoreOptions } from "./keychain/passphrase-secret-store.js";
-export type { FilePermissions, IpcEndpoint, SecretStore } from "./ports.js";
+export type { FilePermissions, IpcEndpoint, SecretStore, ServiceManager } from "./ports.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
 export { readTextFile } from "./read-text-file.js";
 export { runCommand } from "./run-command.js";
 export type { RunProgram } from "./run-command.js";
+export type { ServiceDefinition, ServiceStatus } from "./service/service-definition.js";
 export { createShutdown } from "./shutdown.js";
 export type {
   ShutdownOptions,

@@ -59,8 +59,8 @@ jobs:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/master' }}
         run: pnpm check
 
-  # The platform's contracts on the runner's own keychain. They change the machine, so only CI
-  # turns them on.
+  # The platform's contracts on the runner's own keychain and login items. They change the
+  # machine, so only CI turns them on.
   os-adapters:
     name: OS adapters (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -107,6 +107,23 @@ jobs:
         env:
           BINFERENCE_KEYCHAIN_TESTS: "1"
         run: pnpm vitest run packages/platform/src/keychain
+
+      # A runner has no login session, so the user's systemd manager runs only with lingering.
+      - name: Start the runner's systemd user manager
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          uid="$(id -u)"
+          for _ in $(seq 1 30); do
+            if [ -S "/run/user/$uid/systemd/private" ]; then break; fi
+            sleep 1
+          done
+          echo "XDG_RUNTIME_DIR=/run/user/$uid" >> "$GITHUB_ENV"
+
+      - name: Service contract
+        env:
+          BINFERENCE_SERVICE_TESTS: "1"
+        run: pnpm vitest run packages/platform/src/posix packages/platform/src/win32
 
   pull-request:
     name: check:pr

@@ -19,5 +19,7 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   `openIpcChannel`. Node cannot set a named pipe's access list.
 - Tests use real files, sockets, pipes and signals in a fresh temporary folder, with no sleeps
   and no polling: they wait on events, and time comes from a manual clock.
-- Tests that touch the machine's keychain run only when `BINFERENCE_KEYCHAIN_TESTS=1`, which only
-  CI sets. Unit tests replace `@napi-rs/keyring` with `vi.mock`.
+- Tests that touch the machine's keychain or login items run only when
+  `BINFERENCE_KEYCHAIN_TESTS=1` or `BINFERENCE_SERVICE_TESTS=1`, which only CI sets. Never set them
+  on your own machine. Unit tests replace `@napi-rs/keyring` with `vi.mock` and answer for
+  `launchctl`, `systemctl` and `schtasks` with a fake runner.

@@ -1,6 +1,7 @@
 import { BinferenceError } from "@binference/core";
 import type { FilePermissions } from "../ports.js";
 import { runCommand, type RunProgram } from "../run-command.js";
+import { ownerSidOf, whoamiUserArgs } from "./owner-sid.js";
 
 /** What the Windows adapter runs its programs with. */
 export interface Win32FilePermissionsOptions {
@@ -8,20 +9,10 @@ export interface Win32FilePermissionsOptions {
   readonly run?: RunProgram;
 }
 
-// The last field of `whoami /user /fo csv /nh` is the account's security id.
-const sidPattern = /"(S-1-\d+(?:-\d+)+)"\s*$/;
 const systemSid = "S-1-5-18";
 
 async function readOwnerSid(run: RunProgram, signal: AbortSignal): Promise<string> {
-  const output = await run("whoami", ["/user", "/fo", "csv", "/nh"], signal);
-  const sid = sidPattern.exec(output)?.[1];
-  if (sid === undefined) {
-    throw new BinferenceError({
-      code: "platform.owner_unknown",
-      message: "whoami named no account, so no owner-only access list can be set.",
-    });
-  }
-  return sid;
+  return ownerSidOf(await run("whoami", whoamiUserArgs, signal));
 }
 
 /**

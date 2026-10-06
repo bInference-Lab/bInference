@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createPlatform } from "./create-platform.js";
 
@@ -7,6 +8,17 @@ describe("platform", () => {
     const home = resolve("/srv/binference");
 
     expect(createPlatform({ binferenceHome: home }).stateFolder.root).toBe(home);
+  });
+
+  it("gives this OS's keychain and service manager", () => {
+    const platform = createPlatform({ xdgConfigHome: "relative/config" });
+
+    expect(Object.keys(platform.keychain).toSorted()).toStrictEqual(["delete", "read", "write"]);
+    expect(Object.keys(platform.serviceManager(createManualClock())).toSorted()).toStrictEqual([
+      "install",
+      "status",
+      "uninstall",
+    ]);
   });
 });
 
