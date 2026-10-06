@@ -19,6 +19,7 @@
     "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
+    "@binference/chain": "workspace:*",
     "@binference/core": "workspace:*",
     "zod": "catalog:"
   }

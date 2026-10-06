@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Every state an intent can be in (spec 6, section 2): the normal path first, then the terminal
  * states that end it early, then `unknown_after_send`.
@@ -27,3 +29,6 @@ export const intentStates = [
 
 /** A state of an intent. Only the engine's intent state machine moves an intent between states. */
 export type IntentState = (typeof intentStates)[number];
+
+/** Parses an intent state. */
+export const intentStateSchema: z.ZodType<IntentState, string> = z.enum(intentStates);

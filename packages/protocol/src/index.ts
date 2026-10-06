@@ -49,6 +49,91 @@ export { idPrefixes, protocolIdSchema } from "./ids/id-prefixes.js";
 export type { IdKind, ProtocolId } from "./ids/id-prefixes.js";
 export { localeSchema } from "./locale.js";
 export type { Locale } from "./locale.js";
+export {
+  orderRequestSchema,
+  readOrderRequestSchema,
+  readWebhookRuleRequestSchema,
+  webhookRuleRequestSchema,
+} from "./requests/fill-rule-request.schema.js";
+export type {
+  CopyOrderRequest,
+  DcaOrderRequest,
+  FillBounds,
+  LimitOrderRequest,
+  OrderRequest,
+  StopLossOrderRequest,
+  TakeProfitOrderRequest,
+  TrailingOrderRequest,
+  WebhookRuleRequest,
+} from "./requests/fill-rule-request.schema.js";
+export {
+  intentRequestSchema,
+  readIntentRequestSchema,
+  swapRequestSchema,
+} from "./requests/intent-request.schema.js";
+export type {
+  BridgeRequest,
+  BridgeTarget,
+  BuyRequest,
+  CexOrderRequest,
+  IntentRequest,
+  LaunchTokenRequest,
+  LendRequest,
+  RegisterIdentityRequest,
+  RequestBase,
+  RevokeApprovalRequest,
+  SellRequest,
+  SendRequest,
+  SendTarget,
+  StakeRequest,
+  SwapRequest,
+  TokenLinks,
+} from "./requests/intent-request.schema.js";
+export { signedUsdMicrosSchema } from "./values/signed-usd-micros.schema.js";
+export { fillSizeSchema, tokenAmountSchema } from "./values/token-amount.schema.js";
+export type {
+  BalanceShare,
+  BaseUnits,
+  FillSize,
+  TokenAmount,
+  UsdValue,
+} from "./values/token-amount.schema.js";
 export { checkProtocolVersion, protocolVersion } from "./versions/protocol-version.js";
-export { intentStates } from "./views/intent-state.schema.js";
+export { agentModeSchema, agentViewSchema } from "./views/agent-view.schema.js";
+export type { AgentMode, AgentView } from "./views/agent-view.schema.js";
+export { alertConditionSchema, alertViewSchema } from "./views/alert-view.schema.js";
+export type { AlertCondition, AlertView, PriceCondition } from "./views/alert-view.schema.js";
+export { assetInfosSchema, assetViewSchema } from "./views/asset-info.schema.js";
+export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema.js";
+export { cardViewSchema } from "./views/card-view.schema.js";
+export type { CardView } from "./views/card-view.schema.js";
+export { ceilingChangesSchema, ceilingViewSchema } from "./views/ceiling-view.schema.js";
+export type { CeilingChanges, CeilingView } from "./views/ceiling-view.schema.js";
+export { intentKindSchema } from "./views/intent-kind.schema.js";
+export type { IntentKind } from "./views/intent-kind.schema.js";
+export { intentStates, intentStateSchema } from "./views/intent-state.schema.js";
 export type { IntentState } from "./views/intent-state.schema.js";
+export { intentViewSchema } from "./views/intent-view.schema.js";
+export type {
+  ExecutionView,
+  IntentOutcome,
+  IntentView,
+  RescueRequest,
+  SimulationView,
+} from "./views/intent-view.schema.js";
+export { limitChangesSchema, limitsViewSchema } from "./views/limits-view.schema.js";
+export type { LimitChanges, LimitSettings, LimitsView } from "./views/limits-view.schema.js";
+export { orderStateSchema, orderViewSchema } from "./views/order-view.schema.js";
+export type { OrderFillView, OrderState, OrderView } from "./views/order-view.schema.js";
+export { portfolioViewSchema } from "./views/portfolio-view.schema.js";
+export type { BalanceView, PortfolioView, PositionView } from "./views/portfolio-view.schema.js";
+export { quoteViewSchema } from "./views/quote-view.schema.js";
+export type { QuoteView, RouteLeg } from "./views/quote-view.schema.js";
+export { riskViewSchema } from "./views/risk-view.schema.js";
+export type { RiskFlag, RiskView } from "./views/risk-view.schema.js";
+export { scheduleViewSchema, scheduleWhenSchema } from "./views/schedule-view.schema.js";
+export type { ScheduleView, ScheduleWhen } from "./views/schedule-view.schema.js";
+export { walletViewSchema } from "./views/wallet-view.schema.js";
+export type { WalletView } from "./views/wallet-view.schema.js";
+export { webhookRuleViewSchema } from "./views/webhook-rule-view.schema.js";
+export type { WebhookRuleView } from "./views/webhook-rule-view.schema.js";
