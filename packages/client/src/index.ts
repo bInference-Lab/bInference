@@ -5,11 +5,17 @@ export { defaultClientLimits } from "./default-client-limits.js";
 export type { ClientLimits } from "./default-client-limits.js";
 export type { DeviceProver } from "./open-connection.js";
 export type {
+  KnownOperation,
   OperationArgs,
   OperationContract,
   OperationName,
   OperationResult,
   OperationTable,
+  SubscribeArgs,
+  SubscribeResult,
+  SubscriptionOperations,
+  TopicStart,
+  UnsubscribeArgs,
 } from "./operation-table.js";
 export { createProtocolClient } from "./protocol-client.js";
 export type { CallOptions, ProtocolClient, ProtocolClientOptions } from "./protocol-client.js";
@@ -21,3 +27,4 @@ export type {
   SocketMessage,
   SocketOpen,
 } from "./protocol-socket.js";
+export type { TopicHandlers } from "./push-subscriptions.js";

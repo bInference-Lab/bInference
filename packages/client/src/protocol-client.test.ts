@@ -6,7 +6,7 @@ import {
   type ManualClock,
 } from "@binference/core/testing";
 import { type Credential, protocolVersion, readyFrameSchema } from "@binference/protocol";
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { z } from "zod";
 import { createFakeEngine, type FakeEngine } from "./fake-engine.js";
 import { createProtocolClient } from "./protocol-client.js";
@@ -25,6 +25,21 @@ const operations = {
   "amount/double": {
     args: z.object({ base: decimalStringSchema }),
     result: z.object({ base: decimalStringSchema }),
+    write: false,
+  },
+  "push/subscribe": {
+    args: z.object({
+      topics: z.record(z.string(), z.object({ fromSeq: z.int().positive().exactOptional() })),
+    }),
+    result: z.object({
+      seqs: z.record(z.string(), z.int().nonnegative()),
+      resync: z.array(z.string()).exactOptional(),
+    }),
+    write: false,
+  },
+  "push/unsubscribe": {
+    args: z.object({ topics: z.array(z.string()) }),
+    result: z.object({}),
     write: false,
   },
 };
@@ -265,6 +280,27 @@ describe("createProtocolClient", () => {
     await expect(result).resolves.toStrictEqual(ready);
   });
 
+  it("subscribes through the engine and resumes the topic after a reconnect", async () => {
+    const { engine, clock, client, socket } = await connected();
+    const seen: number[] = [];
+    const refetch = vi.fn<(signal: AbortSignal) => Promise<void>>(async () => undefined);
+    client.subscribe("intent", { onPush: (push) => seen.push(push.seq), refetch });
+    expect(callsSent(socket)).toStrictEqual([
+      { t: "call", id: "1", op: "push/subscribe", args: { topics: { intent: {} } } },
+    ]);
+    socket.deliver({ t: "reply", id: "1", result: { seqs: { intent: 2 } } });
+    await clock.advance(0);
+    socket.deliver({ t: "push", topic: "intent", seq: 3, kind: "intent/changed", data: {} });
+    socket.drop();
+    await clock.advance(0);
+    const next = await signIn(engine, clock);
+    expect(callsSent(next)).toStrictEqual([
+      { t: "call", id: "2", op: "push/subscribe", args: { topics: { intent: { fromSeq: 4 } } } },
+    ]);
+    expect(seen).toStrictEqual([3]);
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
   it("closes for good: rejects waiting calls, refuses new ones and never reconnects", async () => {
     const { engine, clock, client, socket } = await connected();
     const call = client.call("intent/get", { intent: "int_1" }, { signal });
@@ -273,6 +309,10 @@ describe("createProtocolClient", () => {
     await expect(client.call("intent/get", { intent: "int_1" }, { signal })).rejects.toMatchObject({
       code: "client.closed",
     });
+    const handlers = { onPush: vi.fn<() => void>(), refetch: vi.fn<() => Promise<void>>() };
+    expect(() => client.subscribe("intent", handlers)).toThrow(
+      expect.objectContaining({ code: "client.closed" }),
+    );
     await clock.advance(60_000);
     expect(socket.readyState).toBe(3);
     expect(engine.sockets()).toHaveLength(1);

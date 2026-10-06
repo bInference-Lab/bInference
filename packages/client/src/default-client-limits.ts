@@ -8,6 +8,8 @@ export interface ClientLimits {
   readonly handshakeTimeoutMs: number;
   /** The most calls waiting for an answer; one more is refused with `client.busy`. */
   readonly maxPendingCalls: number;
+  /** The most push topics subscribed at once. */
+  readonly maxTopics: number;
   /** How reconnecting backs off, with full jitter; when it is spent, the client closes. */
   readonly reconnect: RetryPolicy;
 }
@@ -20,6 +22,7 @@ export const defaultClientLimits: ClientLimits = {
   callTimeoutMs: 30_000,
   handshakeTimeoutMs: 10_000,
   maxPendingCalls: 60,
+  maxTopics: 64,
   reconnect: {
     attempts: Number.POSITIVE_INFINITY,
     baseDelayMs: 1_000,

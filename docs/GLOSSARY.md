@@ -120,6 +120,8 @@ new name here first, in the change that uses it.
 - **operation**: a protocol call named `domain/action`, such as `intent/propose`.
 - **frames**: the protocol's messages: `open`, `challenge`, `prove`, `ready`, `call`, `reply`,
   `fail`, `push` and `bye`.
+- **push topic**: a stream of pushes, such as `intent` or `chat:<agent id>`, numbered by its own
+  `seq`. A client that sees a gap in `seq` refetches the topic's state once.
 - **operation table**: every operation with its args and result schemas and whether it writes; the
   typed client is built over it.
 - **Binance Agent**: an agent the owner runs on Binance Agent OS and connects to binference.

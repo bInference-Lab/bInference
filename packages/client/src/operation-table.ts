@@ -11,8 +11,49 @@ export interface OperationContract {
   readonly write: boolean;
 }
 
-/** Every operation a client may call, by name, such as `intent/propose`, each with its contract. */
-export type OperationTable<T> = { readonly [N in keyof T]: OperationContract };
+/** Where a push subscription starts: at `fromSeq`, or at the next push when it is absent. */
+export interface TopicStart {
+  readonly fromSeq?: number;
+}
+
+/** What the client sends to `push/subscribe`: each topic with where it starts. */
+export interface SubscribeArgs {
+  readonly topics: Readonly<Record<string, TopicStart>>;
+}
+
+/**
+ * What `push/subscribe` answers: the current `seq` of each topic, and the topics whose missed
+ * pushes the engine no longer holds, which the client refetches.
+ */
+export interface SubscribeResult {
+  readonly seqs: Readonly<Record<string, number>>;
+  readonly resync?: readonly string[];
+}
+
+/** What the client sends to `push/unsubscribe`. */
+export interface UnsubscribeArgs {
+  readonly topics: readonly string[];
+}
+
+/** An operation whose args and result the client builds and reads itself. */
+export interface KnownOperation<Args, Result> extends OperationContract {
+  readonly args: z.ZodType<Args>;
+  readonly result: z.ZodType<Result>;
+}
+
+/** The operations the client calls itself to keep pushes flowing. */
+export interface SubscriptionOperations {
+  readonly "push/subscribe": KnownOperation<SubscribeArgs, SubscribeResult>;
+  readonly "push/unsubscribe": OperationContract & { readonly args: z.ZodType<UnsubscribeArgs> };
+}
+
+/**
+ * Every operation a client may call, by name, such as `intent/propose`, each with its contract.
+ * The table must hold `push/subscribe` and `push/unsubscribe`, which the client calls itself.
+ */
+export type OperationTable<T> = {
+  readonly [N in keyof T]: OperationContract;
+} & SubscriptionOperations;
 
 /** The name of an operation in a table. */
 export type OperationName<T extends OperationTable<T>> = keyof T & string;

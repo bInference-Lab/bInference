@@ -15,6 +15,7 @@ import {
   type Credential,
   type EngineFrame,
   protocolVersion,
+  type PushTopic,
   type ReadyFrame,
 } from "@binference/protocol";
 import { z } from "zod";
@@ -37,9 +38,15 @@ import type {
   OperationName,
   OperationResult,
   OperationTable,
+  SubscriptionOperations,
 } from "./operation-table.js";
 import { type CallAnswer, createPendingCalls, type PendingCalls } from "./pending-calls.js";
 import type { SocketFactory } from "./protocol-socket.js";
+import {
+  createPushSubscriptions,
+  type PushSubscriptions,
+  type TopicHandlers,
+} from "./push-subscriptions.js";
 
 /** What a client is built from. */
 export interface ProtocolClientOptions<T extends OperationTable<T>> {
@@ -69,7 +76,7 @@ export interface CallOptions {
   readonly key?: string;
 }
 
-/** A typed connection to the engine that reconnects and resends its calls. */
+/** A typed connection to the engine that reconnects, resends its calls and keeps its pushes. */
 export interface ProtocolClient<T extends OperationTable<T>> {
   /**
    * Opens the connection and keeps it open. Resolves at the first `ready`; rejects, and closes the
@@ -87,6 +94,12 @@ export interface ProtocolClient<T extends OperationTable<T>> {
     args: OperationArgs<T, N>,
     options: CallOptions,
   ): Promise<OperationResult<T, N>>;
+  /**
+   * Subscribes to a push topic and returns the call that ends the subscription. The topic is
+   * loaded once through `refetch`, then its pushes arrive in `seq` order; a gap starts one more
+   * refetch. Throws `client.busy` when the topic has a subscriber or `maxTopics` are taken.
+   */
+  subscribe(topic: PushTopic, handlers: TopicHandlers): () => void;
   /** Where the client stands: idle, connecting, ready with the engine's `ready`, or closed. */
   status(): ClientStatus;
   /**
@@ -99,6 +112,7 @@ export interface ProtocolClient<T extends OperationTable<T>> {
 interface ClientContext {
   readonly status: ConnectionStatus;
   readonly pending: PendingCalls;
+  readonly subscriptions: PushSubscriptions;
   readonly lifetime: AbortController;
   readonly limits: ClientLimits;
   readonly clock: Clock;
@@ -138,6 +152,7 @@ function shutdown(context: ClientContext, error: Error): void {
   const connection = context.status.connection();
   context.status.set({ state: "closed", error });
   context.pending.rejectAll(error);
+  context.subscriptions.clear();
   connection?.close();
 }
 
@@ -199,6 +214,8 @@ function route(context: ClientContext, frame: EngineFrame): void {
       context.pending.answer(frame);
       return;
     case "push":
+      context.subscriptions.receive(frame);
+      return;
     case "challenge":
     case "ready":
     case "bye":
@@ -220,6 +237,7 @@ async function keepConnected(context: ClientContext, connection: Connection): Pr
   context.status.set({ state: "ready", ready: connection.ready }, connection);
   context.logger.info("client.ready");
   context.pending.frames().forEach((frame) => connection.send(frame));
+  context.subscriptions.resume();
   const reason = await connection.closed;
   if (context.lifetime.signal.aborted || !reason.retryable) {
     shutdown(context, reason);
@@ -250,6 +268,32 @@ async function start(context: ClientContext, signal: AbortSignal): Promise<Ready
   }
 }
 
+function subscriptionsOf<T extends OperationTable<T>>(
+  options: ProtocolClientOptions<T>,
+  limits: ClientLimits,
+  context: () => ClientContext,
+): PushSubscriptions {
+  const subscribe: SubscriptionOperations["push/subscribe"] = options.operations["push/subscribe"];
+  const unsubscribe: SubscriptionOperations["push/unsubscribe"] =
+    options.operations["push/unsubscribe"];
+  const background = (): CallOptions => ({ signal: context().lifetime.signal });
+  return createPushSubscriptions({
+    maxTopics: limits.maxTopics,
+    logger: options.logger,
+    isConnected: () => context().status.current().state === "ready",
+    subscribe: async (args) =>
+      invoke(context(), { op: "push/subscribe", contract: subscribe, args }, background()),
+    unsubscribe: async (topic) => {
+      const args = { topics: [topic] };
+      await invoke(
+        context(),
+        { op: "push/unsubscribe", contract: unsubscribe, args },
+        background(),
+      );
+    },
+  });
+}
+
 function createContext<T extends OperationTable<T>>(
   options: ProtocolClientOptions<T>,
 ): ClientContext {
@@ -258,6 +302,7 @@ function createContext<T extends OperationTable<T>>(
   const context: ClientContext = {
     status: createConnectionStatus(),
     pending: createPendingCalls(limits.maxPendingCalls),
+    subscriptions: subscriptionsOf(options, limits, () => context),
     lifetime: new AbortController(),
     limits,
     clock: options.clock,
@@ -297,6 +342,10 @@ export function createProtocolClient<T extends OperationTable<T>>(
     },
     call: async (op, args, callOptions) =>
       invoke(context, { op, contract: options.operations[op], args }, callOptions),
+    subscribe(topic, handlers) {
+      refuseWhenClosed(context);
+      return context.subscriptions.add(topic, handlers);
+    },
     status: () => context.status.current(),
     close: () => shutdown(context, closedError()),
   };
