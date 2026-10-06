@@ -122,3 +122,15 @@ export type {
   SendLevel,
 } from "./policy/policy-rules.js";
 export type { ConfirmationStore, PriceSource, QuoteSource, Simulator, UsdPrice } from "./ports.js";
+export { buildMismatches } from "./venues/build-checks.js";
+export type { ApprovalStep, BuildMismatch, PlanStep, TradeStep } from "./venues/build-checks.js";
+export { createVenueHost } from "./venues/venue-host.js";
+export type {
+  TradePlan,
+  VenueFailure,
+  VenueHost,
+  VenueHostOptions,
+  VenueOutcome,
+  VenueRefused,
+  VenueTrade,
+} from "./venues/venue-host.js";

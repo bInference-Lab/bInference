@@ -9,7 +9,9 @@ Today it holds the intent state machine of [spec 6](../../docs/specs/intent-stat
 states, the transition table with its guards, the triggers that move an intent, the events that
 record each move, the closed lists of reason codes and the auto-mode test. It also holds the policy
 step of the money path, which checks each intent against the owner's limits and names every rule
-it breaks, and the `PriceSource` port it prices outflows through.
+it breaks, and the `PriceSource` port it prices outflows through. The venue host runs the quote
+and build step: it asks a venue for a quote, sets the trade's terms, and checks every transaction
+the venue builds against them.
 
 It also holds the confirmation step: the card of [spec 4](../../docs/specs/cards-and-messages.md)
 as data (each line a message key with typed values, which every surface renders in the owner's
@@ -42,6 +44,8 @@ version when the minimum out got worse than the tolerance. No answer before the 
 | `drawCard`, `Card`, `CardFacts`, `CardAction`                    | A card version as lines of message keys with typed values       |
 | `CardLine`, `CardValue`, `cardKeys`                              | One line, its values, and every key a card or receipt uses      |
 | `receiptLine`, `CardClosing`                                     | The receipt line a card becomes when it closes                  |
+| `createVenueHost`, `VenueHost`, `VenueTrade`, `TradePlan`        | Quotes and builds a trade on a venue and checks every step      |
+| `VenueOutcome`, `VenueRefused`, `BuildMismatch`, `PlanStep`      | A checked plan, or the check reason and the check that failed   |
 | `TransitionProblem`, `ProposalProblem`                           | Why the machine refused a trigger or a proposal                 |
 
 ## Example

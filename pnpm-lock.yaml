@@ -410,6 +410,9 @@ importers:
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
     devDependencies:
       '@binference/i18n':
         specifier: workspace:*

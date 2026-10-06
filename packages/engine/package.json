@@ -26,7 +26,8 @@
   "dependencies": {
     "@binference/chain": "workspace:*",
     "@binference/core": "workspace:*",
-    "@binference/protocol": "workspace:*"
+    "@binference/protocol": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@binference/i18n": "workspace:*"

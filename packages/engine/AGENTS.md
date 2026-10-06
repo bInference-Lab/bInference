@@ -26,6 +26,10 @@ Rules for this package:
 - The confirmation step (`src/confirmations/`) picks the trigger an answer or the card timer is,
   and writes only through the `ConfirmationStore`, under the row version it read; the state machine
   decides each move.
+- The venue host (`src/venues/`) is the only caller of venue code. It sets every trade's terms,
+  copies what a venue returns, and refuses what it cannot read: a throw or a timeout is
+  `venue_down`, a failed check `decode_mismatch` with the check named. A new check is a
+  `BuildMismatch` code, a case in `build-checks.test.ts` and a property case.
 - Ports live in `src/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
