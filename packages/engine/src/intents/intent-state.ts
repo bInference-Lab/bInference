@@ -1,32 +1,7 @@
-/**
- * Every state an intent can be in (spec 6, section 2): the normal path first, then the terminal
- * states that end it early, then `unknown_after_send`.
- */
-export const intentStates = [
-  "proposed",
-  "checked",
-  "quoted",
-  "assessed",
-  "simulated",
-  "awaiting_confirmation",
-  "confirmed",
-  "executing",
-  "included",
-  "finalized",
-  "reconciled",
-  "paper_filled",
-  "rejected_policy",
-  "risk_blocked",
-  "failed_check",
-  "denied",
-  "expired",
-  "cancelled",
-  "failed_onchain",
-  "unknown_after_send",
-] as const;
+import type { IntentState } from "@binference/protocol";
 
-/** A state of an intent. Only the intent state machine moves an intent between states. */
-export type IntentState = (typeof intentStates)[number];
+export { intentStates } from "@binference/protocol";
+export type { IntentState } from "@binference/protocol";
 
 /**
  * The states nothing leaves. `unknown_after_send` is not one of them: reconciliation ends it in

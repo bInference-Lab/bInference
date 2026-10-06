@@ -407,6 +407,9 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
     devDependencies:
       '@binference/i18n':
         specifier: workspace:*

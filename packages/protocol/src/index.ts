@@ -50,3 +50,5 @@ export type { IdKind, ProtocolId } from "./ids/id-prefixes.js";
 export { localeSchema } from "./locale.js";
 export type { Locale } from "./locale.js";
 export { checkProtocolVersion, protocolVersion } from "./versions/protocol-version.js";
+export { intentStates } from "./views/intent-state.schema.js";
+export type { IntentState } from "./views/intent-state.schema.js";

@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
-    "@binference/core": "workspace:*"
+    "@binference/core": "workspace:*",
+    "@binference/protocol": "workspace:*"
   },
   "devDependencies": {
     "@binference/i18n": "workspace:*"
