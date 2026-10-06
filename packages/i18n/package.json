@@ -2,7 +2,7 @@
   "name": "@binference/i18n",
   "version": "0.0.0",
   "private": true,
-  "description": "The one formatter for token amounts, USD values, rates and times, in English and Simplified Chinese.",
+  "description": "Every word binference shows, in English and Simplified Chinese, and the one formatter for messages, amounts and times.",
   "license": "MIT",
   "files": [
     "dist"
@@ -19,6 +19,7 @@
     "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
-    "@binference/core": "workspace:*"
+    "@binference/core": "workspace:*",
+    "intl-messageformat": "catalog:"
   }
 }

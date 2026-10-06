@@ -1,6 +1,7 @@
 import type { Bps } from "@binference/core";
 import type { MessageLocale } from "../locales.js";
 import { formatPercent, formatTokenAmount, formatUsd } from "./format-amount.js";
+import { createMessageFormat, type MessageValues } from "./format-message.js";
 import { createTimeFormats } from "./format-time.js";
 
 /** Whom a formatter writes for: the owner's language and IANA timezone. */
@@ -11,11 +12,13 @@ export interface FormatterOptions {
 }
 
 /**
- * The one formatter every surface uses for amounts and times. Numbers and money read the same in
- * both languages (`$1.20`, `0.005 BNB`); dates follow the language.
+ * The one formatter every surface uses for words, amounts and times. Numbers and money read the
+ * same in both languages (`$1.20`, `0.005 BNB`); messages, dates and plurals follow the language.
  */
 export interface Formatter {
   readonly locale: MessageLocale;
+  /** The message under a full key such as `reason.daily_cap`, with its values filled in. */
+  readonly message: (key: string, values?: MessageValues) => string;
   /** A token amount from base units and the token's decimals, to 6 significant digits. */
   readonly tokenAmount: (amountBase: bigint, decimals: number) => string;
   /** A USD value from micro-dollars, with 2 decimals; `<$0.01` under a cent. */
@@ -38,6 +41,7 @@ export function createFormatter(options: FormatterOptions): Formatter {
   const times = createTimeFormats(options.locale, options.timeZone);
   return {
     locale: options.locale,
+    message: createMessageFormat(options.locale),
     tokenAmount: formatTokenAmount,
     usd: formatUsd,
     percent: formatPercent,

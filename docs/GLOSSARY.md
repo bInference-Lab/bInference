@@ -159,6 +159,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | CLI                                     | 命令行                  |                             |
 | Mini App                                | Mini App                | Stays English               |
 | skill (Agent Skills)                    | 技能                    |                             |
+| plugin                                  | 插件                    |                             |
 | model                                   | 模型                    |                             |
 | model budget                            | 模型预算                |                             |
 | fallback model                          | 备用模型                |                             |
@@ -257,12 +258,14 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | network (chain)                                    | 网络                         |                                         |
 | contract address                                   | 合约地址                     |                                         |
 | alerts, alert rule                                 | 提醒, 提醒规则               |                                         |
+| venue (where the agent trades, lends or stakes)    | 平台                         | PancakeSwap, Venus                      |
 
 ### Wallets and safety
 
 | English                                  | 中文                   | Notes                            |
 | ---------------------------------------- | ---------------------- | -------------------------------- |
 | agent wallet                             | Agent 钱包             |                                  |
+| owner key                                | 所有者密钥             | Shown once as a `bnok1` code     |
 | balance                                  | 余额                   |                                  |
 | withdraw, fund (a wallet)                | 提取, 充值             | Lending's withdraw is 取出       |
 | top up                                   | 充值                   |                                  |

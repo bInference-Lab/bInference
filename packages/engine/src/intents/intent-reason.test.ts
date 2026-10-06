@@ -1,3 +1,4 @@
+import { messageLocales, messages } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import {
   checkReasons,
@@ -56,6 +57,13 @@ describe("intent reasons", () => {
     expect(intentReasons).toHaveLength(31);
   });
 
-  // oxlint-disable-next-line vitest/warn-todo -- the i18n package adds the messages and this test
-  it.todo("has a reason message in English and Chinese for every reason code");
+  it("has a reason message in English and Chinese for every reason code", () => {
+    const wanted = intentReasons.map((code) => `reason.${code}`).toSorted();
+    const found = messageLocales.map((locale) =>
+      Object.keys(messages[locale])
+        .filter((key) => key.startsWith("reason."))
+        .toSorted(),
+    );
+    expect(found).toStrictEqual(messageLocales.map(() => wanted));
+  });
 });

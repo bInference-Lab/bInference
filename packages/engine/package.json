@@ -20,5 +20,8 @@
   },
   "dependencies": {
     "@binference/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@binference/i18n": "workspace:*"
   }
 }
