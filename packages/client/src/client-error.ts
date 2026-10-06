@@ -1,11 +1,17 @@
 import { BinferenceError, type ErrorDetails } from "@binference/core";
-import type { ByeFrame } from "@binference/protocol";
+import type { ByeFrame, ProtocolError } from "@binference/protocol";
 
 /**
  * Every error code the client raises itself. The engine's codes arrive in `fail` and `bye` frames
  * and keep their own code. Surfaces map each code to an i18n message, as for protocol codes.
  */
-export const clientErrorCodes = ["client.disconnected", "client.cannot_prove"] as const;
+export const clientErrorCodes = [
+  "client.closed",
+  "client.busy",
+  "client.bad_reply",
+  "client.disconnected",
+  "client.cannot_prove",
+] as const;
 
 /** One error code the client raises itself, such as `client.disconnected`. */
 export type ClientErrorCode = (typeof clientErrorCodes)[number];
@@ -23,6 +29,16 @@ export function clientError(options: ClientErrorOptions): BinferenceError {
   return new BinferenceError(options);
 }
 
+/** Turns the error of a `fail` frame into a `BinferenceError` with the engine's code. */
+export function errorFromFail(error: ProtocolError): BinferenceError {
+  return new BinferenceError({
+    code: error.code,
+    message: error.message,
+    retryable: error.retryable,
+    ...(error.details === undefined ? {} : { details: error.details }),
+  });
+}
+
 // The same credential or frames would fail the same way again, so these end the client.
 const finalAreas: ReadonlySet<string> = new Set(["auth", "protocol"]);
 
@@ -34,6 +50,6 @@ export function errorFromBye(bye: ByeFrame): BinferenceError {
   return new BinferenceError({
     code: bye.code,
     message: bye.message,
-    retryable: !finalAreas.has(bye.code.split(".")[0] ?? ""),
+    retryable: !finalAreas.has(bye.code.slice(0, bye.code.indexOf("."))),
   });
 }

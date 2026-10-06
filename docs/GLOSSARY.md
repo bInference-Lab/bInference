@@ -120,6 +120,8 @@ new name here first, in the change that uses it.
 - **operation**: a protocol call named `domain/action`, such as `intent/propose`.
 - **frames**: the protocol's messages: `open`, `challenge`, `prove`, `ready`, `call`, `reply`,
   `fail`, `push` and `bye`.
+- **operation table**: every operation with its args and result schemas and whether it writes; the
+  typed client is built over it.
 - **Binance Agent**: an agent the owner runs on Binance Agent OS and connects to binference.
 - **decision record**: a file in `docs/adr/` that records one decision (ADR).
 

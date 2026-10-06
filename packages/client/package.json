@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@binference/core": "workspace:*",
-    "@binference/protocol": "workspace:*"
+    "@binference/protocol": "workspace:*",
+    "zod": "catalog:"
   }
 }
