@@ -1,0 +1,49 @@
+# binference
+
+## Purpose
+
+The `binference` command and the composition root, the one place that builds adapters and wires
+them in. Today it loads `config.json5`: one strict schema, four layers (defaults, the file,
+`BINFERENCE_*` variables, `--set` flags), issues that name each key's path and fix, secret sources
+read only when needed, and the config migrations behind `binference check --fix`.
+
+The reference of every key, generated from the schema, is
+[docs/config-keys.generated.md](docs/config-keys.generated.md).
+
+## API
+
+| Export                                          | What it does                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ |
+| `loadConfig`                                    | Reads the config in its layers and validates it                                |
+| `configSchema`, `BinferenceConfig`              | The strict schema of `config.json5` and the config it gives                    |
+| `ConfigIssue`, `ConfigProblem`, `ConfigFix`     | One problem as data: the key's path, what is wrong, the next step              |
+| `formatConfigIssue`                             | An issue as one English line for logs and developers                           |
+| `createSecretReader`, `SecretReader`            | Reads `fromEnv`, `fromKeychain`, `fromFile` and `fromCommand` sources          |
+| `SecretSource`, `secretSourceSchema`            | Where a secret lives; the file never holds the secret itself                   |
+| `migrateConfig`, `configMigrations`             | Moves an older file to the current shape, one named step at a time             |
+| `applyEdits`, `ConfigEdit`                      | The set, remove and move edits a migration makes                               |
+| `currentConfigVersion`                          | The `version` this binference reads and writes                                 |
+| `describeConfigSchema`, `renderConfigReference` | The JSON Schema and the key reference that `check:config-schema` keeps current |
+
+## Example
+
+```ts
+import { createSecretReader, formatConfigIssue, loadConfig } from "binference";
+
+const loaded = await loadConfig({
+  file: platform.stateFolder.configFile,
+  env: process.env,
+  sets: ["engine.port=7460"],
+  system: { locale: "zh", timezone: "Asia/Shanghai", unlockMode: "keychain" },
+  signal,
+});
+if (!loaded.ok) {
+  throw new Error(loaded.issues.map(formatConfigIssue).join("\n"));
+}
+
+const secrets = createSecretReader({ env: process.env, keychain, homeDir, clock });
+const botToken = await secrets.read("telegram.botToken", loaded.config.telegram.botToken, signal);
+```
+
+An invalid key reads, in English:
+`engine.port: must be a number from 1024 to 65535 (got "abc"). Set it in config.json5 or remove it.`

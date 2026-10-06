@@ -29,14 +29,13 @@ function lintCase(
 }
 
 // The real core holds the one error class; the case adds a cli that reads the environment.
+// Planted beside the real cli package, which other packages and the gate scripts import.
 const cleanFiles = {
-  ...fixturePackage("cli", {
-    "home.ts": [
-      "/** Reads the home folder from the environment. */",
-      'export const home: string | undefined = process.env["HOME"];',
-      "",
-    ].join("\n"),
-  }),
+  "packages/cli/src/home.ts": [
+    "/** Reads the home folder from the environment. */",
+    'export const home: string | undefined = process.env["HOME"];',
+    "",
+  ].join("\n"),
 };
 
 const guardCases: readonly GateCase[] = [

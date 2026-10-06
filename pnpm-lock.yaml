@@ -191,6 +191,9 @@ catalogs:
     jscpd:
       specifier: 5.3.3
       version: 5.3.3
+    json5:
+      specifier: 2.2.3
+      version: 2.2.3
     knip:
       specifier: 6.38.0
       version: 6.38.0
@@ -319,6 +322,30 @@ importers:
       '@binference/chain':
         specifier: workspace:*
         version: link:../chain
+
+  packages/cli:
+    dependencies:
+      '@binference/chain':
+        specifier: workspace:*
+        version: link:../chain
+      '@binference/chains':
+        specifier: workspace:*
+        version: link:../chains
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+      '@binference/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      json5:
+        specifier: 'catalog:'
+        version: 2.2.3
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
 
   packages/core:
     dependencies:

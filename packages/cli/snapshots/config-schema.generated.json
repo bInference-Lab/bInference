@@ -1,0 +1,1116 @@
+{
+  "version": 1,
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "version": {
+        "description": "The shape of this file.",
+        "default": 1,
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991
+      },
+      "owner": {
+        "description": "The owner.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "locale": {
+            "description": "The language of every surface.",
+            "defaultText": "from the OS",
+            "default": "en",
+            "type": "string",
+            "enum": [
+              "en",
+              "zh"
+            ]
+          },
+          "timezone": {
+            "description": "The IANA time zone for schedules, the daily summary and times shown.",
+            "defaultText": "from the OS",
+            "default": "UTC",
+            "type": "string",
+            "pattern": "^(?:UTC|[A-Z][A-Za-z_]+(?:\\/[A-Za-z0-9_+-]+)+)$",
+            "valueFormat": "time_zone"
+          }
+        },
+        "additionalProperties": false
+      },
+      "engine": {
+        "description": "The engine process.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "port": {
+            "description": "The console, Mini App and WebSocket port.",
+            "default": 7456,
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
+          },
+          "webhookPort": {
+            "description": "The webhook listener's port.",
+            "default": 7457,
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
+          },
+          "extraOrigins": {
+            "description": "More browser origins allowed to reach the engine.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "unlock": {
+            "description": "How the engine unlocks the agent key at start.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "mode": {
+                "description": "Where the agent key and the Privy app secret are read at start.",
+                "defaultText": "keychain with a desktop session, else file",
+                "default": "file",
+                "type": "string",
+                "enum": [
+                  "keychain",
+                  "file",
+                  "manual",
+                  "command"
+                ]
+              },
+              "command": {
+                "description": "The command that prints the agent key; used when mode is command.",
+                "$ref": "#/$defs/CommandSecret"
+              }
+            },
+            "additionalProperties": false
+          },
+          "shutdownBudgetMs": {
+            "description": "The time limit of the shutdown order, in milliseconds.",
+            "default": 30000,
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      },
+      "custody": {
+        "description": "Who holds the agent wallets.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "provider": {
+            "description": "The custody provider.",
+            "default": "privy",
+            "type": "string",
+            "const": "privy"
+          },
+          "privy": {
+            "description": "The owner's Privy app.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "appId": {
+                "description": "The owner's Privy app id (public).",
+                "type": "string",
+                "minLength": 1
+              },
+              "appSecret": {
+                "description": "The owner's Privy app secret, as a secret source.",
+                "$ref": "#/$defs/Secret"
+              },
+              "ownerKeyPublic": {
+                "description": "The owner key's public half, written by binference init.",
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "telegram": {
+        "type": "object",
+        "properties": {
+          "botToken": {
+            "description": "The owner's BotFather token.",
+            "$ref": "#/$defs/Secret"
+          },
+          "mode": {
+            "description": "How updates arrive.",
+            "default": "polling",
+            "type": "string",
+            "enum": [
+              "polling",
+              "webhook"
+            ]
+          },
+          "webhookSecret": {
+            "description": "Checks webhook calls; required with the webhook mode.",
+            "$ref": "#/$defs/Secret"
+          },
+          "confirmBotToken": {
+            "description": "A second bot that only sends confirmations.",
+            "$ref": "#/$defs/Secret"
+          },
+          "groups": {
+            "description": "Whether the bot answers in group chats.",
+            "default": false,
+            "type": "boolean"
+          },
+          "topicsPerAgent": {
+            "description": "One direct-message topic per agent.",
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "botToken"
+        ],
+        "additionalProperties": false,
+        "description": "The owner's Telegram bot."
+      },
+      "models": {
+        "description": "Model providers and the models the agent uses.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "providers": {
+            "description": "The model providers, by name.",
+            "keyName": "provider",
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "binference",
+                    "openai",
+                    "anthropic"
+                  ],
+                  "description": "The provider's wire format."
+                },
+                "baseUrl": {
+                  "description": "Where to call; the binference AI gateway for the binference kind.",
+                  "type": "string",
+                  "format": "uri"
+                },
+                "apiKey": {
+                  "description": "The provider's key.",
+                  "$ref": "#/$defs/Secret"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "main": {
+            "description": "The model that talks and proposes.",
+            "type": "string",
+            "pattern": "^[^\\s/]+\\/\\S+$",
+            "valueFormat": "model"
+          },
+          "fast": {
+            "description": "The model that writes summaries, compacts and classifies.",
+            "type": "string",
+            "pattern": "^[^\\s/]+\\/\\S+$",
+            "valueFormat": "model"
+          },
+          "vision": {
+            "description": "The model that reads images when the main one cannot.",
+            "type": "string",
+            "pattern": "^[^\\s/]+\\/\\S+$",
+            "valueFormat": "model"
+          },
+          "fallbacks": {
+            "description": "Fallback models per role.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "main": {
+                "description": "Models tried in order when the main one fails.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[^\\s/]+\\/\\S+$",
+                  "valueFormat": "model"
+                }
+              },
+              "fast": {
+                "description": "Models tried in order when the fast one fails.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[^\\s/]+\\/\\S+$",
+                  "valueFormat": "model"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "idleTimeoutMs": {
+            "description": "No output for this many milliseconds aborts a model request.",
+            "default": 120000,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "cooldownMs": {
+            "description": "How long a failing provider rests, in milliseconds.",
+            "default": 60000,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "maxToolCallsPerTurn": {
+            "description": "Tool calls allowed per turn.",
+            "default": 25,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "loopDetection": {
+            "description": "Stops a turn that repeats its tool calls.",
+            "default": true,
+            "type": "boolean"
+          },
+          "prices": {
+            "description": "Model prices that replace the built-in table.",
+            "keyName": "model",
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[^\\s/]+\\/\\S+$",
+              "valueFormat": "model"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "inputPerMTokUsd": {
+                  "description": "US dollars per million input tokens.",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                "outputPerMTokUsd": {
+                  "description": "US dollars per million output tokens.",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                },
+                "cachedPerMTokUsd": {
+                  "description": "US dollars per million cached input tokens.",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1000000000000
+                }
+              },
+              "required": [
+                "inputPerMTokUsd",
+                "outputPerMTokUsd",
+                "cachedPerMTokUsd"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "defaults": {
+        "description": "What each new agent starts with; copied into its rows once, at creation.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "limits": {
+            "description": "Trade limits.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "perTradeUsd": {
+                "description": "The most one trade may move, in US dollars.",
+                "default": 100,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              },
+              "rollingDayUsd": {
+                "description": "The most trades and sends may move in 24 hours, in US dollars.",
+                "default": 500,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              },
+              "slippageBps": {
+                "description": "Slippage limits.",
+                "default": {},
+                "type": "object",
+                "properties": {
+                  "registry": {
+                    "description": "Slippage allowed on registry tokens, in basis points.",
+                    "default": 100,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "other": {
+                    "description": "Slippage allowed on every other token, in basis points.",
+                    "default": 500,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  }
+                },
+                "additionalProperties": false
+              },
+              "priceImpactBps": {
+                "description": "The largest price impact allowed, in basis points.",
+                "default": 300,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "taxBps": {
+                "description": "The largest token tax allowed, in basis points.",
+                "default": 1000,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "liquidityFloorUsd": {
+                "description": "The least pool liquidity a trade needs, in US dollars.",
+                "default": 10000,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              },
+              "minHealthFactor": {
+                "description": "The lowest lending health factor a move may leave.",
+                "default": 1.5,
+                "type": "number",
+                "minimum": 1
+              },
+              "gasReserve": {
+                "description": "The native coin kept for gas, per chain.",
+                "keyName": "chain",
+                "default": {
+                  "eip155:56": "0.002"
+                },
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "valueFormat": "chain"
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                  "valueFormat": "decimal"
+                }
+              },
+              "venues": {
+                "description": "The venues allowed.",
+                "defaultText": "every installed core venue",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "allowTokens": {
+                "description": "Tokens allowed; empty allows every token that passes the risk check.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "denyTokens": {
+                "description": "Tokens refused.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "sendLevel": {
+            "description": "The send level, 0 to 3.",
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "approvalMode": {
+            "description": "Whether trades within the caps wait for a tap.",
+            "default": "manual",
+            "type": "string",
+            "enum": [
+              "manual",
+              "auto"
+            ]
+          },
+          "ceiling": {
+            "description": "The wallet policy's ceiling.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "perTxBnb": {
+                "description": "The Privy policy's per-transaction cap, in BNB.",
+                "default": "1",
+                "type": "string",
+                "pattern": "^(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                "valueFormat": "decimal"
+              }
+            },
+            "additionalProperties": false
+          },
+          "cards": {
+            "description": "Cards.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "tradeExpirySec": {
+                "description": "A trade card expires after this many seconds.",
+                "default": 60,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "otherExpirySec": {
+                "description": "Other cards expire after this many seconds.",
+                "default": 600,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "requoteAfterSec": {
+                "description": "A quote older than this many seconds is taken again.",
+                "default": 10,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "requoteToleranceBps": {
+                "description": "A new quote this much worse asks again, in basis points.",
+                "default": 50,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "additionalProperties": false
+          },
+          "orders": {
+            "description": "Auto orders.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "expiryDays": {
+                "description": "An auto order expires after this many days.",
+                "default": 30,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "additionalProperties": false
+          },
+          "copy": {
+            "description": "Copy trading.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "perBuyUsd": {
+                "description": "The most one copied buy may spend, in US dollars.",
+                "default": 20,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              },
+              "perLeaderDayUsd": {
+                "description": "The most copies of one leader may spend a day, in US dollars.",
+                "default": 200,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000
+              }
+            },
+            "additionalProperties": false
+          },
+          "paper": {
+            "description": "Paper mode.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "balances": {
+                "description": "Paper-mode starting balances.",
+                "keyName": "symbol",
+                "default": {
+                  "BNB": "1",
+                  "USDT": "500"
+                },
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+                  "valueFormat": "decimal"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "modelBudgetUsdPerDay": {
+            "description": "The most model calls may cost a day, in US dollars.",
+            "default": 3,
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000
+          }
+        },
+        "additionalProperties": false
+      },
+      "chains": {
+        "description": "Chains.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "description": "Chains the agent trades on.",
+            "default": [
+              "eip155:56"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "valueFormat": "chain"
+            }
+          },
+          "rpc": {
+            "description": "RPCs per chain.",
+            "keyName": "chain",
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "valueFormat": "chain"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "urls": {
+                  "description": "Extra or replacement RPCs.",
+                  "defaultText": "the public RPCs",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "key": {
+                  "description": "A paid RPC's key.",
+                  "$ref": "#/$defs/Secret"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "relays": {
+            "description": "Private relays for sends, per chain.",
+            "keyName": "chain",
+            "defaultText": "the two fastest, by measurement",
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "valueFormat": "chain"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "venues": {
+        "description": "Routing venues.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "keys": {
+            "description": "Keys that add routing venues.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "okx": {
+                "description": "Adds OKX routing.",
+                "type": "object",
+                "properties": {
+                  "apiKey": {
+                    "description": "OKX's API key.",
+                    "$ref": "#/$defs/Secret"
+                  },
+                  "secret": {
+                    "description": "OKX's secret.",
+                    "$ref": "#/$defs/Secret"
+                  },
+                  "passphrase": {
+                    "description": "OKX's passphrase.",
+                    "$ref": "#/$defs/Secret"
+                  }
+                },
+                "required": [
+                  "apiKey",
+                  "secret",
+                  "passphrase"
+                ],
+                "additionalProperties": false
+              },
+              "oneinch": {
+                "description": "Adds 1inch routing.",
+                "$ref": "#/$defs/Secret"
+              },
+              "zerox": {
+                "description": "Adds 0x routing.",
+                "$ref": "#/$defs/Secret"
+              }
+            },
+            "additionalProperties": false
+          },
+          "kyberClientId": {
+            "description": "The client id sent to KyberSwap.",
+            "default": "binference",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "risk": {
+        "description": "Risk data.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "cacheTtlSec": {
+            "description": "How long risk answers are kept, in seconds.",
+            "default": 600,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      },
+      "search": {
+        "description": "Web search.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "provider": {
+            "description": "The provider behind search_web.",
+            "default": "duckduckgo",
+            "type": "string",
+            "enum": [
+              "duckduckgo",
+              "brave",
+              "tavily"
+            ]
+          },
+          "keys": {
+            "description": "Search provider keys.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "brave": {
+                "description": "Brave Search's key.",
+                "$ref": "#/$defs/Secret"
+              },
+              "tavily": {
+                "description": "Tavily's key.",
+                "$ref": "#/$defs/Secret"
+              }
+            },
+            "additionalProperties": false
+          },
+          "xApiKey": {
+            "description": "Turns search_x on.",
+            "$ref": "#/$defs/Secret"
+          }
+        },
+        "additionalProperties": false
+      },
+      "remote": {
+        "description": "Remote access.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "mini": {
+            "description": "Publishes the Mini App over Tailscale serve.",
+            "default": false,
+            "type": "boolean"
+          },
+          "webhooks": {
+            "description": "Publishes the webhook path over Tailscale funnel.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "backups": {
+        "description": "Backups.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "daily": {
+            "description": "Takes an encrypted backup every day.",
+            "default": true,
+            "type": "boolean"
+          },
+          "keepDaily": {
+            "description": "Daily backups kept.",
+            "default": 7,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "keepWeekly": {
+            "description": "Weekly backups kept.",
+            "default": 4,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "copyTo": {
+            "description": "A folder that gets a second copy.",
+            "type": "string",
+            "pattern": "^(?:~[/\\\\]|[/\\\\]|[A-Za-z]:[/\\\\])",
+            "valueFormat": "path"
+          }
+        },
+        "additionalProperties": false
+      },
+      "updates": {
+        "description": "Updates.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "check": {
+            "description": "Checks for a newer version once a day.",
+            "default": true,
+            "type": "boolean"
+          },
+          "channel": {
+            "description": "The release channel.",
+            "default": "stable",
+            "type": "string",
+            "enum": [
+              "stable",
+              "beta"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "telemetry": {
+        "description": "Telemetry.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "description": "Adds opt-in counts to the daily update check.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "network": {
+        "description": "The outbound network.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "proxy": {
+            "description": "An HTTP or HTTPS proxy URL, credentials included.",
+            "$ref": "#/$defs/Secret"
+          },
+          "noProxy": {
+            "description": "Hosts reached without the proxy.",
+            "default": [
+              "127.0.0.1",
+              "localhost"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "chats": {
+        "description": "Chats.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "keepDays": {
+            "description": "Days chats are kept, or forever.",
+            "default": 90,
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "string",
+                "const": "forever"
+              }
+            ]
+          },
+          "newMessageMode": {
+            "description": "Whether a message during a turn merges in or waits for the turn to end.",
+            "default": "merge",
+            "type": "string",
+            "enum": [
+              "merge",
+              "after"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "logging": {
+        "description": "Logs.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "level": {
+            "description": "The log level.",
+            "default": "info",
+            "type": "string",
+            "enum": [
+              "error",
+              "warn",
+              "info",
+              "debug"
+            ]
+          },
+          "keepDays": {
+            "description": "Days log files are kept.",
+            "default": 14,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "maxFileMb": {
+            "description": "A log file rotates at this many megabytes.",
+            "default": 20,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      },
+      "cex": {
+        "description": "Centralized exchanges.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "binance": {
+            "description": "Binance.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "description": "Turns on the Binance Agent OS plugin.",
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "plugins": {
+        "description": "Each plugin's settings, by plugin id.",
+        "keyName": "plugin",
+        "default": {},
+        "type": "object",
+        "propertyNames": {
+          "type": "string",
+          "minLength": 1
+        },
+        "additionalProperties": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "description": "One plugin's settings, as its own schema reads them.",
+          "keyName": "setting"
+        }
+      }
+    },
+    "required": [
+      "telegram"
+    ],
+    "additionalProperties": false,
+    "description": "The binference config file.",
+    "$defs": {
+      "CommandSecret": {
+        "type": "object",
+        "properties": {
+          "fromCommand": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "The program, then its arguments. No shell runs it."
+          }
+        },
+        "required": [
+          "fromCommand"
+        ],
+        "additionalProperties": false,
+        "description": "A secret printed by a program: { fromCommand: [program, ...arguments] }."
+      },
+      "Secret": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "fromKeychain": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+                "valueFormat": "keychain_name",
+                "description": "The name of the keychain entry."
+              }
+            },
+            "required": [
+              "fromKeychain"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "fromEnv": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                "valueFormat": "env_name",
+                "description": "The environment variable."
+              }
+            },
+            "required": [
+              "fromEnv"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "fromFile": {
+                "type": "string",
+                "pattern": "^(?:~[/\\\\]|[/\\\\]|[A-Za-z]:[/\\\\])",
+                "valueFormat": "path",
+                "description": "The file that holds only the secret."
+              }
+            },
+            "required": [
+              "fromFile"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "fromCommand": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "The program, then its arguments. No shell runs it."
+              }
+            },
+            "required": [
+              "fromCommand"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "description": "A secret source: { fromKeychain: name }, { fromEnv: variable }, { fromFile: path } or { fromCommand: [program, ...arguments] }. Never the secret itself."
+      },
+      "JsonValue": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "__schema0": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

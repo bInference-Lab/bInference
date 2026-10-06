@@ -5542,6 +5542,7 @@
         "packages/chain/src/index.ts",
         "packages/chain/src/testing.ts",
         "packages/chains/src/index.ts",
+        "packages/cli/src/index.ts",
         "packages/core/src/index.ts",
         "packages/core/src/testing.ts",
         "packages/engine/src/index.ts",

@@ -1,0 +1,30 @@
+{
+  "name": "binference",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The binference command and the composition root: config loading, secret sources and config migrations.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/chain": "workspace:*",
+    "@binference/chains": "workspace:*",
+    "@binference/core": "workspace:*",
+    "@binference/platform": "workspace:*",
+    "@binference/protocol": "workspace:*",
+    "json5": "catalog:",
+    "zod": "catalog:"
+  }
+}

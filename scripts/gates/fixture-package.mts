@@ -33,7 +33,7 @@ const readme = [
 
 function manifest(key: string, options: FixtureOptions): string {
   const content = {
-    name: key === "cli" ? "binference" : `@binference/${key}`,
+    name: `@binference/${key}`,
     version: "0.0.0",
     private: true,
     type: "module",
