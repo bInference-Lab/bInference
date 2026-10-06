@@ -10,6 +10,7 @@ export interface Win32FilePermissionsOptions {
 }
 
 const systemSid = "S-1-5-18";
+const administratorsSid = "S-1-5-32-544";
 
 async function readOwnerSid(run: RunProgram, signal: AbortSignal): Promise<string> {
   return ownerSidOf(await run("whoami", whoamiUserArgs, signal));
@@ -17,9 +18,11 @@ async function readOwnerSid(run: RunProgram, signal: AbortSignal): Promise<strin
 
 /**
  * Owner-only files and folders on Windows through icacls: inherited access goes, and the current
- * account and SYSTEM get full control. SYSTEM stays because Windows itself runs as it, as root does
- * on macOS and Linux. A folder's grants pass to the files made in it. Explicit grants that another
- * tool added to an existing path stay; binference never adds one.
+ * account, SYSTEM and Administrators get full control, as Windows defines a private file (the rule
+ * OpenSSH applies to its keys). SYSTEM and Administrators can take any file anyway, as root can on
+ * macOS and Linux, and an elevated process gives Administrators an entry on what it creates. A
+ * folder's grants pass to the files made in it. Explicit grants that another tool added to an
+ * existing path stay; binference never adds one.
  */
 export function createWin32FilePermissions(
   options: Win32FilePermissionsOptions = {},
@@ -50,6 +53,8 @@ export function createWin32FilePermissions(
           `*${sid}:${grant}`,
           "/grant:r",
           `*${systemSid}:${grant}`,
+          "/grant:r",
+          `*${administratorsSid}:${grant}`,
         ],
         signal,
       );

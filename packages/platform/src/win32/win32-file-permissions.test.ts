@@ -11,6 +11,7 @@ import { createWin32FilePermissions } from "./win32-file-permissions.js";
 
 const sid = "S-1-5-21-1004336348-1177238915-682003330-1001";
 const systemSid = "S-1-5-18";
+const administratorsSid = "S-1-5-32-544";
 const whoamiOutput = `"desktop-7\\owner","${sid}"\r\n`;
 
 interface Call {
@@ -39,7 +40,7 @@ function recordingRun(whoamiOutputs: readonly string[] = [whoamiOutput]) {
 }
 
 describe("windows file permissions, with a recorded command runner", () => {
-  it("removes inherited access and grants the owner and SYSTEM, folders for their children too", async () => {
+  it("removes inherited access and grants the owner, SYSTEM and Administrators, and folders their children", async () => {
     const { calls, run } = recordingRun();
     const permissions = createWin32FilePermissions({ run });
     const signal = new AbortController().signal;
@@ -58,6 +59,8 @@ describe("windows file permissions, with a recorded command runner", () => {
           `*${sid}:(OI)(CI)(F)`,
           "/grant:r",
           `*${systemSid}:(OI)(CI)(F)`,
+          "/grant:r",
+          `*${administratorsSid}:(OI)(CI)(F)`,
         ],
       },
       {
@@ -69,6 +72,8 @@ describe("windows file permissions, with a recorded command runner", () => {
           `*${sid}:(F)`,
           "/grant:r",
           `*${systemSid}:(F)`,
+          "/grant:r",
+          `*${administratorsSid}:(F)`,
         ],
       },
     ]);
@@ -149,7 +154,7 @@ async function accessProblems(path: string): Promise<readonly string[]> {
   const args = ["-NoProfile", "-NonInteractive", "-Command", aclScript(path)];
   const output = await runCommand("powershell.exe", args, AbortSignal.timeout(15_000));
   const acl = parseAcl(output);
-  const trusted = new Set([acl.user, systemSid]);
+  const trusted = new Set([acl.user, systemSid, administratorsSid]);
   return [
     ...(acl.protected ? [] : ["inherits access from its folder"]),
     ...acl.rules.filter((rule) => rule.inherited).map((rule) => `${rule.sid} inherited`),
