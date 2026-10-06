@@ -1,6 +1,9 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
+import { findPackages, graphPath, loadGraph } from "./package-graph/graph.mjs";
+import { buildLintConfig, lintConfigPath, renderLintConfig } from "./package-graph/lint-config.mjs";
+import { runCommand } from "./run-command.mjs";
 
 interface PackageSpec {
   readonly name: string;
@@ -108,6 +111,28 @@ function entryTest(spec: PackageSpec): string {
   ].join("\n");
 }
 
+// A new package starts with no imports beyond those every package may use; its author widens
+// the row in the graph, and the generated lint rules follow.
+function addGraphRow(repo: string, name: string): readonly string[] {
+  const graph = loadGraph(repo);
+  if (graph.packages[name] === undefined) {
+    const packages = { ...graph.packages, [name]: { imports: [] } };
+    writeFileSync(join(repo, graphPath), `${JSON.stringify({ ...graph, packages }, null, 2)}\n`);
+  }
+  const lintConfig = buildLintConfig(loadGraph(repo), findPackages(repo));
+  writeFileSync(join(repo, lintConfigPath), renderLintConfig(lintConfig));
+  return [graphPath];
+}
+
+function format(repo: string, files: readonly string[]): void {
+  const result = runCommand(["node", join("node_modules", "oxfmt", "bin", "oxfmt"), ...files], {
+    cwd: repo,
+  });
+  if (result.status !== 0) {
+    throw new Error(`oxfmt failed on the new files:\n${result.output}`);
+  }
+}
+
 function generate(spec: PackageSpec): string {
   const root = join("packages", spec.name);
   if (existsSync(root)) {
@@ -126,8 +151,13 @@ function generate(spec: PackageSpec): string {
   for (const [file, content] of Object.entries(files)) {
     writeFileSync(join(root, file), content);
   }
+  const repo = process.cwd();
+  format(repo, [root, ...addGraphRow(repo, spec.name)]);
   return root;
 }
 
 const root = generate(readSpec(process.argv.slice(2)));
-console.log(`Created ${root}. Run pnpm install to link it, then write its README and AGENTS.md.`);
+console.log(
+  `Created ${root} and its row in ${graphPath}. Run pnpm install to link it, then write its ` +
+    "README, its AGENTS.md and the imports its row allows.",
+);

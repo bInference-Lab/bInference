@@ -1,0 +1,65 @@
+{
+  "scope": "@binference",
+  "allowEverywhere": ["zod"],
+  "packages": {
+    "core": { "imports": [], "pure": true },
+    "chain": { "imports": ["core"], "pure": true, "money": true },
+    "chain-evm": { "imports": ["core", "chain", "viem"], "money": true },
+    "chains": { "imports": ["core", "chain"], "money": true },
+    "platform": {
+      "imports": ["core", "execa", "@napi-rs/keyring"],
+      "osLayer": true,
+      "fileSystem": true
+    },
+    "store": { "imports": ["core", "chain", "kysely"], "fileSystem": true },
+    "protocol": { "imports": ["core", "chain"], "pure": true, "money": true, "publish": true },
+    "i18n": {
+      "imports": ["core", "chain", "intl-messageformat"],
+      "pure": true,
+      "formatsDisplay": true
+    },
+    "engine": { "imports": ["core", "chain", "protocol", "i18n"], "pure": true, "money": true },
+    "signer": { "imports": ["core", "chain"], "money": true },
+    "custody-privy": { "imports": ["core", "chain", "chain-evm"] },
+    "server": { "imports": ["core", "protocol", "engine", "ws"], "httpListener": true },
+    "telegram": { "imports": ["core", "protocol", "i18n", "engine", "grammy"], "userText": true },
+    "client": { "imports": ["core", "protocol"], "publish": true },
+    "runtime": {
+      "imports": [
+        "core",
+        "protocol",
+        "client",
+        "i18n",
+        "store",
+        "openai",
+        "@anthropic-ai/sdk",
+        "partial-json",
+        "yaml"
+      ],
+      "only": { "openai": "src/providers", "@anthropic-ai/sdk": "src/providers" }
+    },
+    "tui": {
+      "imports": ["client", "protocol", "i18n", "@earendil-works/pi-tui"],
+      "userText": true
+    },
+    "console": {
+      "imports": [
+        "client",
+        "protocol",
+        "i18n",
+        "react",
+        "react-dom",
+        "@tanstack/react-router",
+        "@tanstack/react-query",
+        "tailwindcss",
+        "vite"
+      ],
+      "userText": true,
+      "browser": true
+    },
+    "mcp": { "imports": ["client", "protocol"] },
+    "plugin-sdk": { "imports": ["core", "chain", "protocol", "chain-evm"], "publish": true },
+    "cli": { "name": "binference", "imports": ["*"], "publish": true, "compositionRoot": true }
+  },
+  "plugins": { "imports": ["plugin-sdk"], "anyThirdParty": true }
+}

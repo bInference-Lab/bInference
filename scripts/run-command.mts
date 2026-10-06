@@ -26,18 +26,19 @@ function pnpmCommand(): readonly string[] {
   return scriptFile.test(entry) ? [process.execPath, entry] : [entry];
 }
 
+const tools: Readonly<Record<string, () => readonly string[]>> = {
+  node: () => [process.execPath],
+  pnpm: pnpmCommand,
+  git: () => ["git"],
+};
+
 function resolveCommand(command: readonly string[]): readonly string[] {
-  const [tool, ...args] = command;
-  switch (tool) {
-    case "node":
-      return [process.execPath, ...args];
-    case "pnpm":
-      return [...pnpmCommand(), ...args];
-    case "git":
-      return ["git", ...args];
-    default:
-      throw new Error(`Unknown tool in a gate command: ${String(tool)}`);
+  const [tool = "", ...args] = command;
+  const resolve = tools[tool];
+  if (resolve === undefined) {
+    throw new Error(`Unknown tool in a gate command: ${tool}`);
   }
+  return [...resolve(), ...args];
 }
 
 /** Runs node, pnpm or git without a shell and captures stdout and stderr together. */

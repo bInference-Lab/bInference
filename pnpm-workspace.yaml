@@ -6,11 +6,15 @@ packages:
 catalogMode: strict
 catalog:
   "@types/node": 26.6.3
+  oxfmt: 0.71.0
+  oxlint: 1.86.0
+  oxlint-tsgolint: 7.0.2003
   tsdown: 0.23.0
   tsx: 4.23.15
   turbo: 2.11.5
   typescript: 7.0.2
   vitest: 5.0.2
+  zod: 4.6.5
 
 # Refuse a Node outside the range in package.json "engines".
 engineStrict: true

@@ -1,10 +1,12 @@
 import process from "node:process";
 import { runCase } from "./gates/gate-case.mjs";
+import { graphCases, tsconfigCases } from "./gates/graph-cases.mjs";
+import { lintCases } from "./gates/lint-cases.mjs";
 import { createSandbox } from "./gates/sandbox.mjs";
 import { workspaceCases } from "./gates/workspace-cases.mjs";
 
 const repo = process.cwd();
-const cases = [...workspaceCases(repo)];
+const cases = [...workspaceCases(repo), ...lintCases(), ...graphCases(repo), ...tsconfigCases()];
 const filter = process.argv[2];
 const selected = filter === undefined ? cases : cases.filter((item) => item.name.includes(filter));
 const sandbox = createSandbox(repo);

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { runCommand } from "./run-command.mjs";
+import { runCommand } from "../run-command.mjs";
 import type { Sandbox } from "./sandbox.mjs";
 
 /** One command of a case, and how it must end. */

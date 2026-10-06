@@ -1,7 +1,7 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { runCommand } from "./run-command.mjs";
+import { runCommand } from "../run-command.mjs";
 
 /** A throwaway copy of the repo where gates run against planted violations. */
 export interface Sandbox {

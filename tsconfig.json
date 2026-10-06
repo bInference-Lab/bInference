@@ -1,11 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": [
-    "packages/*/src/**/*.ts",
-    "plugins/*/src/**/*.ts",
-    "scripts/**/*.mts",
-    "*.config.ts",
-    "*.config.mts"
-  ],
+  "include": ["packages/*/src/**/*.ts", "plugins/*/src/**/*.ts", "*.config.ts", "*.config.mts"],
   "exclude": ["**/node_modules", "**/dist"]
 }

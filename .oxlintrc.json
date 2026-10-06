@@ -1,0 +1,240 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["./config/oxlint/package-rules.generated.json"],
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "vitest", "node"],
+  "jsPlugins": ["./config/oxlint/guards.mjs"],
+  "categories": {
+    "correctness": "error",
+    "perf": "error",
+    "suspicious": "error"
+  },
+  "rules": {
+    "curly": "error",
+    "eslint/complexity": [
+      "error",
+      {
+        "max": 10
+      }
+    ],
+    "eslint/id-match": [
+      "error",
+      "^[a-zA-Z][a-zA-Z0-9]*$",
+      {
+        "properties": false,
+        "onlyDeclarations": true,
+        "ignoreDestructuring": true
+      }
+    ],
+    "eslint/max-depth": [
+      "error",
+      {
+        "max": 3
+      }
+    ],
+    "eslint/max-lines": [
+      "error",
+      {
+        "max": 300,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "eslint/max-lines-per-function": [
+      "error",
+      {
+        "max": 50,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
+    "eslint/max-params": [
+      "error",
+      {
+        "max": 3
+      }
+    ],
+    "eslint/no-console": "error",
+    "eslint/no-else-return": "error",
+    "eslint/no-empty": "error",
+    "eslint/no-eval": "error",
+    "eslint/no-nested-ternary": "error",
+    "eslint/no-new-func": "error",
+    "eslint/no-param-reassign": [
+      "error",
+      {
+        "props": true
+      }
+    ],
+    "eslint/no-shadow": "error",
+    "eslint/no-unused-vars": "error",
+    "eslint/no-var": "error",
+    "eslint/no-warning-comments": "error",
+    "eslint/prefer-const": "error",
+    "guards/no-boolean-param": "error",
+    "guards/no-class": "error",
+    "guards/no-interface-prefix": "error",
+    "guards/no-reexport-file": "error",
+    "guards/require-abort-signal": "error",
+    "guards/type-pascal-case": "error",
+    "import/no-commonjs": "error",
+    "import/no-cycle": "error",
+    "import/no-default-export": "error",
+    "import/no-duplicates": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-self-import": "error",
+    "node/no-path-concat": "error",
+    "oxc/no-barrel-file": [
+      "error",
+      {
+        "threshold": 0
+      }
+    ],
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-expect-error": "allow-with-description",
+        "ts-ignore": true,
+        "ts-nocheck": true,
+        "minimumDescriptionLength": 10
+      }
+    ],
+    "typescript/consistent-type-assertions": [
+      "error",
+      {
+        "assertionStyle": "never"
+      }
+    ],
+    "typescript/consistent-type-definitions": ["error", "interface"],
+    "typescript/consistent-type-imports": "error",
+    "typescript/explicit-module-boundary-types": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-implied-eval": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/only-throw-error": "error",
+    "typescript/restrict-template-expressions": "error",
+    "typescript/switch-exhaustiveness-check": [
+      "error",
+      {
+        "considerDefaultExhaustiveForUnions": false,
+        "allowDefaultCaseForExhaustiveSwitch": false
+      }
+    ],
+    "typescript/use-unknown-in-catch-callback-variable": "error",
+    "unicorn/filename-case": [
+      "error",
+      {
+        "case": "kebabCase"
+      }
+    ],
+    "unicorn/no-abusive-eslint-disable": "error",
+    "unicorn/prefer-node-protocol": "error",
+    "unicorn/throw-new-error": "error"
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "coverage/**",
+    "reports/**",
+    ".stryker-tmp/**"
+  ],
+  "overrides": [
+    {
+      "files": ["packages/**", "plugins/**"],
+      "rules": {
+        "typescript/no-restricted-types": [
+          "error",
+          {
+            "types": {
+              "unknown": "Parse unknown input with zod in a *.schema.ts file."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.schema.ts"],
+      "rules": {
+        "typescript/no-restricted-types": "off"
+      }
+    },
+    {
+      "files": ["packages/core/src/**/binference-error.ts"],
+      "rules": {
+        "guards/no-class": "off"
+      }
+    },
+    {
+      "files": ["**/assert-*.ts"],
+      "rules": {
+        "typescript/consistent-type-assertions": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "eslint/max-lines": [
+          "error",
+          {
+            "max": 600,
+            "skipBlankLines": true,
+            "skipComments": true
+          }
+        ],
+        "eslint/max-lines-per-function": "off",
+        "typescript/consistent-type-assertions": "off",
+        "typescript/no-restricted-types": "off",
+        "vitest/no-commented-out-tests": "error",
+        "vitest/no-conditional-expect": "error",
+        "vitest/no-conditional-in-test": "error",
+        "vitest/no-conditional-tests": "error",
+        "vitest/no-disabled-tests": "error",
+        "vitest/no-focused-tests": "error",
+        "vitest/no-identical-title": "error",
+        "vitest/valid-expect": [
+          "error",
+          {
+            "alwaysAwait": true
+          }
+        ],
+        "vitest/valid-title": [
+          "error",
+          {
+            "mustMatch": "^[a-z][^.]*[^.]$"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["scripts/**"],
+      "rules": {
+        "eslint/no-console": "off"
+      }
+    },
+    {
+      "files": ["*.config.ts", "*.config.mts", "*.config.mjs", "config/oxlint/guards.mjs"],
+      "rules": {
+        "import/no-default-export": "off"
+      }
+    },
+    {
+      "files": ["**/*.mjs"],
+      "rules": {
+        "typescript/no-unsafe-argument": "off",
+        "typescript/no-unsafe-assignment": "off",
+        "typescript/no-unsafe-call": "off",
+        "typescript/no-unsafe-member-access": "off",
+        "typescript/no-unsafe-return": "off"
+      }
+    }
+  ]
+}
