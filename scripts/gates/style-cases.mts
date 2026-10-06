@@ -45,6 +45,29 @@ function messageCase(name: string, message: string, rule: string): GateCase {
   };
 }
 
+// The glossary may hold Chinese (config/style/rule-exceptions.txt), and nothing else it would
+// otherwise fail.
+function exceptionCases(seed: Readonly<Record<string, string>>): readonly GateCase[] {
+  return [
+    {
+      name: "Chinese passes check:style in a file listed for cjk",
+      files: { "docs/GLOSSARY.md": `# Glossary\n\n${seed["chinese"] ?? ""}\n` },
+      steps: [{ command: ["pnpm", "check:style"], expect: "pass" }],
+    },
+    {
+      name: "an emoji fails check:style in a file listed only for cjk",
+      files: { "docs/GLOSSARY.md": `# Glossary\n\nDone ${String.fromCodePoint(0x2705)}\n` },
+      steps: [
+        {
+          command: ["pnpm", "check:style"],
+          expect: "fail",
+          output: [/docs\/GLOSSARY\.md:3: check:style\(emoji\)/],
+        },
+      ],
+    },
+  ];
+}
+
 /** Cases for check:style on files and on commit messages. */
 export function styleCases(repo: string): readonly GateCase[] {
   const seed = seeds(repo);
@@ -68,6 +91,7 @@ export function styleCases(repo: string): readonly GateCase[] {
         },
       ],
     },
+    ...exceptionCases(seed),
     messageCase(
       "an AI trailer fails check:style on a commit message",
       `build: add a gate\n\n${seed["trailer"] ?? ""}\n`,

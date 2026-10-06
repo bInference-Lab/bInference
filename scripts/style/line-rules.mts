@@ -115,7 +115,8 @@ function trailers(line: string, context: LineContext): LineFinding[] {
 
 /** Every style rule that applies to one line of any text. */
 export function checkLine(line: string, context: LineContext): readonly LineFinding[] {
-  return [
+  const excepted = context.lists.ruleExceptions.get(context.file) ?? new Set<string>();
+  const findings = [
     ...(dashPattern.test(line) ? [finding("dash", "No em or en dashes as punctuation.")] : []),
     ...(emojiPattern.test(line) ? [finding("emoji", "No emojis in code, docs or commits.")] : []),
     ...bannedWords(context),
@@ -126,4 +127,5 @@ export function checkLine(line: string, context: LineContext): readonly LineFind
     ...paths(line, context.file),
     ...trailers(line, context),
   ];
+  return findings.filter((item) => !excepted.has(item.rule));
 }

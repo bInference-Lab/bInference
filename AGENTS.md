@@ -5,9 +5,10 @@ owner's machine, talks on Telegram, in a web console and in the terminal, and as
 transaction. This file holds the rules every engineer and coding agent follows. Each package has
 its own `AGENTS.md`; read it before you change a file there.
 
-The full rules are in `docs/ENGINEERING.md`, the specs in `docs/specs/`, and the decisions in
-`docs/adr/`. When those are silent, write a short ADR and get the owner's yes before coding.
-Never make a random choice.
+The full rules are in [docs/ENGINEERING.md](docs/ENGINEERING.md), the architecture in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), the specs in [docs/specs/](docs/specs/), and the
+decisions in [docs/DECISIONS.md](docs/DECISIONS.md). When those are silent, write a short ADR and
+get the maintainers' yes before coding. Never make a random choice.
 
 ## Principles
 
@@ -24,7 +25,7 @@ Never make a random choice.
 
 ## Names
 
-Every name comes from `docs/GLOSSARY.md`. Never borrow file names, commands, config keys,
+Every name comes from [docs/GLOSSARY.md](docs/GLOSSARY.md). Never borrow file names, commands, config keys,
 protocol names, tool names or terms from other agent frameworks; add a new name to the glossary
 first.
 
@@ -74,7 +75,7 @@ Docs, UI messages, comments, commits and PR text:
 
 Every PR is squashed into one commit on `master`, and its title becomes the subject. The release
 notes are written from those subjects, so each one must read as a line of release notes. The full
-rules are in `docs/ENGINEERING.md` section 19.
+rules are in [docs/ENGINEERING.md](docs/ENGINEERING.md#section-19) section 19.
 
 **The subject:** `type(scope): description`, 72 characters at most.
 

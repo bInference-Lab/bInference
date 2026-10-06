@@ -1,0 +1,9 @@
+# A file may break the cjk or emoji rule only when it shows the words people see, under a
+# comment that says why. Each line holds a path and a rule.
+
+# The card spec shows every message in English and Chinese, with the status icons it names.
+docs/specs/cards-and-messages.md cjk
+docs/specs/cards-and-messages.md emoji
+
+# The glossary pairs each English term with its Chinese.
+docs/GLOSSARY.md cjk

@@ -13,6 +13,8 @@ export interface WordLists {
   readonly reserved: ReadonlySet<string>;
   /** Per file, the reserved-name hashes it may use. */
   readonly exceptions: ReadonlyMap<string, ReadonlySet<string>>;
+  /** Per file, the rules it may break: only cjk and emoji, for a doc that shows messages. */
+  readonly ruleExceptions: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /** The folder that holds the lists; check:style never scans it. */
@@ -36,6 +38,22 @@ function readExceptions(repo: string): ReadonlyMap<string, ReadonlySet<string>> 
   return exceptions;
 }
 
+const exceptableRules = new Set(["cjk", "emoji"]);
+
+function readRuleExceptions(repo: string): ReadonlyMap<string, ReadonlySet<string>> {
+  const exceptions = new Map<string, Set<string>>();
+  for (const line of readList(repo, "rule-exceptions.txt")) {
+    const [file = "", rule = ""] = line.split(/\s+/);
+    if (!exceptableRules.has(rule)) {
+      throw new Error(`${styleFolder}/rule-exceptions.txt names ${rule}; only cjk and emoji.`);
+    }
+    const rules = exceptions.get(file) ?? new Set<string>();
+    rules.add(rule);
+    exceptions.set(file, rules);
+  }
+  return exceptions;
+}
+
 /** Reads every list check:style needs. */
 export function loadWordLists(repo: string): WordLists {
   return {
@@ -44,5 +62,6 @@ export function loadWordLists(repo: string): WordLists {
     aiTools: readList(repo, "ai-tools.txt").map((word) => word.toLowerCase()),
     reserved: new Set(readList(repo, "reserved.sha256")),
     exceptions: readExceptions(repo),
+    ruleExceptions: readRuleExceptions(repo),
   };
 }
