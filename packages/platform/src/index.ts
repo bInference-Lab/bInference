@@ -1,3 +1,5 @@
+export { createPlatform } from "./create-platform.js";
+export type { IpcEndpointOptions, Platform } from "./create-platform.js";
 export { acquireFileLock } from "./file-lock.js";
 export type { FileLock } from "./file-lock.js";
 export type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
@@ -6,5 +8,16 @@ export type { IpcChannel, IpcChannelOptions } from "./ipc/ipc-channel.js";
 export type { FilePermissions, IpcEndpoint } from "./ports.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
+export { createShutdown } from "./shutdown.js";
+export type {
+  ShutdownOptions,
+  Shutdown,
+  ShutdownReport,
+  ShutdownStep,
+  ShutdownStepReport,
+  SignalEvents,
+  StepOutcome,
+  StopTrigger,
+} from "./shutdown.js";
 export { resolveStateFolder } from "./state-folder.js";
 export type { StateFolder, StateFolderOptions } from "./state-folder.js";

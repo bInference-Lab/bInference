@@ -7,11 +7,7 @@ import { duplexPair } from "node:stream";
 import { decimalStringSchema, type Result } from "@binference/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import type { IpcEndpoint } from "../ports.js";
-import { createPosixFilePermissions } from "../posix/posix-file-permissions.js";
-import { createPosixIpcEndpoint } from "../posix/posix-ipc-endpoint.js";
-import { resolveStateFolder } from "../state-folder.js";
-import { createWin32IpcEndpoint } from "../win32/win32-ipc-endpoint.js";
+import { createPlatform } from "../create-platform.js";
 import type { IpcBinding } from "./ipc-binding.js";
 import { openIpcChannel } from "./ipc-channel.js";
 
@@ -58,17 +54,6 @@ function pair(serverKey: Uint8Array, clientKey: Uint8Array) {
   return { server, client, serverSide, clientSide };
 }
 
-// The endpoint this OS uses: a named pipe on Windows, a socket in the run folder elsewhere.
-function signerEndpoint(home: string): IpcEndpoint {
-  return process.platform === "win32"
-    ? createWin32IpcEndpoint({ name: "signer", installId: randomUUID() })
-    : createPosixIpcEndpoint({
-        runFolder: resolveStateFolder({ binferenceHome: home }).run,
-        name: "signer",
-        permissions: createPosixFilePermissions(),
-      });
-}
-
 // The listener's side of one exchange: it answers one request and returns its amount.
 async function serveOne(socket: Socket, key: Uint8Array): Promise<bigint> {
   const channel = await openIpcChannel({
@@ -88,7 +73,10 @@ describe("ipc channel", () => {
   it("carries a request and its reply through a real endpoint on this OS", async () => {
     const home = await mkdtemp(join(tmpdir(), "bnf-"));
     folders.push(home);
-    const endpoint = signerEndpoint(home);
+    const endpoint = createPlatform({ binferenceHome: home }).ipcEndpoint({
+      name: "signer",
+      installId: randomUUID(),
+    });
     const key = randomBytes(32);
     const served: Promise<bigint>[] = [];
     const binding = valueOf(

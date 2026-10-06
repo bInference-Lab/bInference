@@ -1,11 +1,13 @@
 # @binference/platform
 
-The OS layer: the state folder, owner-only files, the engine lock and IPC endpoints.
+The OS layer: the state folder, owner-only files, the engine lock, IPC endpoints and the shutdown
+sequence.
 
 The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 
 - It is the only package that names an OS. Code for one OS lives in `src/posix/` (macOS and Linux)
-  or `src/win32/`. Everything else in `src/` runs on every OS.
+  or `src/win32/`; `createPlatform` picks the adapters once, from `process.platform`. Everything
+  else in `src/` runs on every OS.
 - It reads no environment variable: the composition root passes `BINFERENCE_HOME` in.
 - Its public API is what `src/index.ts` exports. Contract suites live behind `src/testing.ts`
   (`@binference/platform/testing`). Every export carries TSDoc.
@@ -15,5 +17,5 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - Child processes go through `runCommand` (execa, an argument array, no shell, a time limit).
 - The IPC address is not a security boundary: every connection authenticates through
   `openIpcChannel`. Node cannot set a named pipe's access list.
-- Tests use real files, sockets and pipes in a fresh temporary folder, with no sleeps and no
-  polling: they wait on events.
+- Tests use real files, sockets, pipes and signals in a fresh temporary folder, with no sleeps
+  and no polling: they wait on events, and time comes from a manual clock.

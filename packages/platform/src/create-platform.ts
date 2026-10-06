@@ -1,0 +1,55 @@
+import { BinferenceError } from "@binference/core";
+import type { FilePermissions, IpcEndpoint } from "./ports.js";
+import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
+import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
+import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
+import { createWin32FilePermissions } from "./win32/win32-file-permissions.js";
+import { createWin32IpcEndpoint } from "./win32/win32-ipc-endpoint.js";
+
+/** What names an IPC endpoint. */
+export interface IpcEndpointOptions {
+  /** Such as `engine` or `signer`. */
+  readonly name: string;
+  /** The install's id; Windows pipe names carry it, macOS and Linux sockets do not need it. */
+  readonly installId: string;
+}
+
+/** This OS's adapters, chosen once at startup. */
+export interface Platform {
+  readonly stateFolder: StateFolder;
+  readonly permissions: FilePermissions;
+  /** `SIGINT` and `SIGTERM` on macOS and Linux; `SIGINT` and `SIGBREAK` on Windows. */
+  readonly stopSignals: readonly NodeJS.Signals[];
+  readonly ipcEndpoint: (options: IpcEndpointOptions) => IpcEndpoint;
+}
+
+/**
+ * Picks the adapters for the OS this process runs on. Throws `platform.unsupported_os` on any OS
+ * but macOS, Linux and Windows.
+ */
+export function createPlatform(options: StateFolderOptions = {}): Platform {
+  const stateFolder = resolveStateFolder(options);
+  if (process.platform === "win32") {
+    return {
+      stateFolder,
+      permissions: createWin32FilePermissions(),
+      stopSignals: ["SIGINT", "SIGBREAK"],
+      ipcEndpoint: (endpoint) => createWin32IpcEndpoint(endpoint),
+    };
+  }
+  if (process.platform === "darwin" || process.platform === "linux") {
+    const permissions = createPosixFilePermissions();
+    return {
+      stateFolder,
+      permissions,
+      stopSignals: ["SIGINT", "SIGTERM"],
+      ipcEndpoint: ({ name }) =>
+        createPosixIpcEndpoint({ runFolder: stateFolder.run, name, permissions }),
+    };
+  }
+  throw new BinferenceError({
+    code: "platform.unsupported_os",
+    message: `binference runs on macOS, Linux and Windows, not ${process.platform}.`,
+    details: { os: process.platform },
+  });
+}

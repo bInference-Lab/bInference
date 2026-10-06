@@ -11,12 +11,15 @@ ports:
 - the engine lock, an OS file lock that lets one engine run per state folder and frees itself when
   the engine's process ends;
 - IPC over a Unix socket in the state folder, or a named pipe on Windows, with length-prefixed
-  frames and a handshake in which both sides prove they hold a shared key.
+  frames and a handshake in which both sides prove they hold a shared key;
+- one shutdown sequence for `SIGINT` and `SIGTERM`, Windows `SIGINT` and `SIGBREAK`, and stop
+  requests.
 
 ## API
 
 | Export                              | What it does                                                         |
 | ----------------------------------- | -------------------------------------------------------------------- |
+| `createPlatform`, `Platform`        | This OS's adapters, its stop signals and the state folder            |
 | `resolveStateFolder`, `StateFolder` | Every path in the state folder; creates nothing                      |
 | `FilePermissions`                   | The port that makes a file or folder owner-only                      |
 | `ensurePrivateFolder`               | Creates a folder and restricts it to its owner                       |
@@ -24,6 +27,7 @@ ports:
 | `acquireFileLock`, `FileLock`       | An exclusive OS file lock, or `held` while another holder has it     |
 | `IpcEndpoint`, `IpcBinding`         | The port that listens on and connects to one local IPC address       |
 | `openIpcChannel`, `IpcChannel`      | An authenticated channel of schema-checked JSON messages             |
+| `createShutdown`, `Shutdown`        | Runs the shutdown steps in order on a stop signal, within a budget   |
 | `@binference/platform/testing`      | The contract suites for `FilePermissions` and `IpcEndpoint`          |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
@@ -31,32 +35,32 @@ longer than macOS allows.
 
 ## Example
 
-The composition root takes the engine lock, then asks the signer over an authenticated channel:
+The composition root takes the engine lock, listens for the signer and stops in order:
 
 ```ts
-import { acquireFileLock, openIpcChannel, resolveStateFolder } from "@binference/platform";
+import { acquireFileLock, createPlatform, createShutdown } from "@binference/platform";
 
-const stateFolder = resolveStateFolder({ binferenceHome: process.env["BINFERENCE_HOME"] });
-const lock = acquireFileLock(stateFolder.engineLock);
+const platform = createPlatform({ binferenceHome: process.env["BINFERENCE_HOME"] });
+const lock = acquireFileLock(platform.stateFolder.engineLock);
 if (!lock.ok) {
   throw new Error("Another engine already runs on this state folder.");
 }
 
-const connected = await endpoint.connect(signal);
-if (!connected.ok) {
-  throw new Error("The signer is not listening.");
-}
-const signer = await openIpcChannel({
-  socket: connected.value,
-  key,
-  role: "client",
-  inbound: replySchema,
-  outbound: requestSchema,
-  signal,
+const endpoint = platform.ipcEndpoint({ name: "signer", installId });
+const bound = await endpoint.bind({ signal, onSocket: (socket) => serveSigner(socket, key) });
+
+const shutdown = createShutdown({
+  clock,
+  budgetMs: 30_000,
+  events: process,
+  signals: platform.stopSignals,
 });
-await signer.send(request, signal);
-const reply = await signer.receive(signal);
+if (bound.ok) {
+  shutdown.add("close the signer endpoint", async () => bound.value.close());
+}
+shutdown.add("free the engine lock", async () => lock.value.release());
+const report = await shutdown.finished;
 ```
 
-`endpoint` is this OS's `IpcEndpoint` for the signer, and `key` is 32 random bytes the engine hands
-the signer on its standard input.
+`serveSigner` opens `openIpcChannel({ socket, key, role: "server", inbound, outbound, signal })`,
+where `key` is 32 random bytes the engine hands the signer on its standard input.

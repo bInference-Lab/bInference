@@ -2,7 +2,7 @@
   "name": "@binference/platform",
   "version": "0.0.0",
   "private": true,
-  "description": "The OS layer: the state folder, owner-only files, the engine lock and IPC endpoints.",
+  "description": "The OS layer: the state folder, owner-only files, the engine lock, IPC endpoints and the shutdown sequence.",
   "license": "MIT",
   "files": [
     "dist"
