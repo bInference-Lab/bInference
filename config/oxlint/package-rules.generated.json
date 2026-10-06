@@ -5541,6 +5541,7 @@
       "files": [
         "packages/chain/src/index.ts",
         "packages/chain/src/testing.ts",
+        "packages/chains/src/index.ts",
         "packages/core/src/index.ts",
         "packages/core/src/testing.ts",
         "packages/platform/src/index.ts",
