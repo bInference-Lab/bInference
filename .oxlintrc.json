@@ -151,6 +151,7 @@
     {
       "files": ["packages/**", "plugins/**"],
       "rules": {
+        "guards/no-profile-mention": "error",
         "typescript/no-restricted-types": [
           "error",
           {
@@ -159,6 +160,12 @@
             }
           }
         ]
+      }
+    },
+    {
+      "files": ["packages/cli/**"],
+      "rules": {
+        "guards/no-profile-mention": "off"
       }
     },
     {

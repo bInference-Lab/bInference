@@ -133,6 +133,10 @@ packages/engine/src/
   (`check:package-graph`: adapter packages are dependencies of `cli` only) and `review-diff`.
 - **Guideline:** a port lives beside its first consumer (`orders/ports.ts`). A port that two
   packages implement moves to the lowest package both depend on.
+- **Rule:** only the composition roots know the profile ([rule 19](ARCHITECTURE.md#rule-19)). Code
+  in any other package never names a profile or holds one in a variable; it takes a port whose
+  adapter the composition root picks. Enforcer: `guards/no-profile-mention`, on for every package
+  but `cli`.
 
 <a id="section-2-3"></a>
 

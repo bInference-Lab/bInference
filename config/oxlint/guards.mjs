@@ -228,6 +228,58 @@ const noChainLiteral = {
   },
 };
 
+// The words of a name or a text: camelCase, snake_case and kebab-case parts, in lowercase.
+function wordsOf(text) {
+  return text
+    .replaceAll(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[^A-Za-z0-9]+/)
+    .filter((word) => word.length > 0)
+    .map((word) => word.toLowerCase());
+}
+
+// A profile's name: "cloud", or "self-hosted" in any spelling.
+function namesProfile(words) {
+  return words.some(
+    (word, index) =>
+      word === "cloud" ||
+      word === "selfhosted" ||
+      (word === "self" && words[index + 1] === "hosted"),
+  );
+}
+
+// A name that holds a profile, such as `profile` or `activeProfile`.
+function holdsProfile(words) {
+  return [words[0], words.at(-1)].some((word) => word === "profile" || word === "profiles");
+}
+
+const profileMessage =
+  "Only the composition root knows the profile: take a port, and let the root pick its adapter (ARCHITECTURE.md rule 19).";
+
+const noProfileMention = {
+  create(context) {
+    const checkText = (node, text) => {
+      if (namesProfile(wordsOf(text))) {
+        report(context, node, profileMessage);
+      }
+    };
+    return {
+      Literal: (node) => typeof node.value === "string" && checkText(node, node.value),
+      TemplateElement: (node) => checkText(node, node.value.cooked ?? node.value.raw),
+      Identifier: (node) => {
+        const words = wordsOf(node.name);
+        if (namesProfile(words) || holdsProfile(words)) {
+          report(context, node, profileMessage);
+        }
+      },
+      Program: () => {
+        for (const comment of context.sourceCode.getAllComments()) {
+          checkText(comment, comment.value);
+        }
+      },
+    };
+  },
+};
+
 const plugin = {
   meta: { name: "guards" },
   rules: {
@@ -239,6 +291,7 @@ const plugin = {
     "type-pascal-case": typePascalCase,
     "require-abort-signal": requireAbortSignal,
     "no-chain-literal": noChainLiteral,
+    "no-profile-mention": noProfileMention,
   },
 };
 

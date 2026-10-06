@@ -31,14 +31,25 @@ function lintCase(
   };
 }
 
-// The real core holds the one error class; the case adds a cli that reads the environment.
-// Planted beside the real cli package, which other packages and the gate scripts import.
+// A branch on the profile: only the composition root may take one.
+const profileBranch = [
+  "/** The swap fee in basis points. */",
+  "export function feeBps(profile: string): number {",
+  '  return profile === "self-hosted" ? 0 : 50;',
+  "}",
+  "",
+].join("\n");
+
+// The real core holds the one error class; the case adds a cli that reads the environment and
+// branches on the profile. Planted beside the real cli package, which other packages and the gate
+// scripts import.
 const cleanFiles = {
   "packages/cli/src/home.ts": [
     "/** Reads the home folder from the environment. */",
     'export const home: string | undefined = process.env["HOME"];',
     "",
   ].join("\n"),
+  "packages/cli/src/compose/fee.ts": profileBranch,
 };
 
 const guardCases: readonly GateCase[] = [
@@ -77,6 +88,11 @@ const guardCases: readonly GateCase[] = [
     "a type name outside PascalCase fails guards/type-pascal-case",
     fixturePackage("core", { "label.ts": "export type label = string;\n" }),
     [["packages/core/src/label.ts", "guards(type-pascal-case)"]],
+  ),
+  lintCase(
+    "a profile branch in engine fails guards/no-profile-mention",
+    { "packages/engine/src/seeded.ts": profileBranch },
+    [["packages/engine/src/seeded.ts", "guards(no-profile-mention)"]],
   ),
   lintCase(
     "fetch without a signal fails guards/require-abort-signal",
@@ -168,7 +184,7 @@ const typeCases: readonly GateCase[] = [
 export function lintCases(): readonly GateCase[] {
   return [
     {
-      name: "the error class in core and process.env in cli lint clean",
+      name: "the error class in core, process.env and a profile branch in cli lint clean",
       files: cleanFiles,
       steps: [{ command: ["pnpm", "lint"], expect: "pass" }],
     },
