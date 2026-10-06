@@ -67,3 +67,4 @@ export type {
 export type { TransitionProblem } from "./intents/transition-guard.js";
 export { listTransitions } from "./intents/transition-table.js";
 export type { TransitionRule } from "./intents/transition-table.js";
+export type { PriceSource, UsdPrice } from "./ports.js";

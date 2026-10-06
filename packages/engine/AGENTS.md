@@ -18,5 +18,7 @@ Rules for this package:
   simulation, wallet queue) reports its outcome as a trigger; the state machine decides.
 - A reason code an intent stores is in a closed list in `intent-reason.ts`, and every code has an
   English and Chinese message `reason.<code>`.
+- Ports live in `src/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
+  (`@binference/engine/testing`), which only tests import.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
   `*.property.test.ts` files.
