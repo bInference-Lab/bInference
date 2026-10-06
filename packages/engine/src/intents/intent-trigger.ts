@@ -69,7 +69,7 @@ export interface ConfirmationRecord {
 
 /** What the wallet queue reads as it takes a confirmed intent. */
 export interface QueueFacts {
-  /** The agent is live, not in paper mode. */
+  /** The agent is live, not in paper mode. A rescue runs either way (decision 0100). */
   readonly isAgentLive: boolean;
   /** The policy still passes, checked again as the queue takes the intent. */
   readonly hasPolicyPassed: boolean;

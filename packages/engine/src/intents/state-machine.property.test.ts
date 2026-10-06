@@ -481,6 +481,9 @@ function pathViolations({ events, final }: History): readonly string[] {
   const firstConfirmed = states.indexOf("confirmed");
   return [
     final.isPaper && states.includes("executing") ? "a paper intent executed" : "",
+    final.kind === "rescue" && (final.isPaper || states.includes("paper_filled"))
+      ? "a rescue ran on paper"
+      : "",
     firstExecuting !== -1 && (firstConfirmed === -1 || firstConfirmed > firstExecuting)
       ? "executing before confirmed"
       : "",

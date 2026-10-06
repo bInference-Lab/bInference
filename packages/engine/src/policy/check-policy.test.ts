@@ -320,7 +320,7 @@ describe("a rescue", () => {
     expect(source.asked()).toStrictEqual([]);
   });
 
-  it("pays only the rescue address and never in paper mode", async () => {
+  it("pays only the rescue address, in paper mode as well as live", async () => {
     expect(reasonsOf(await verdict({ ...rescueAll, target: saved }))).toStrictEqual([
       "unsaved_address",
     ]);
@@ -331,6 +331,6 @@ describe("a rescue", () => {
     });
     const unset = await policy.check(rescueAll, noRescue, { signal: new AbortController().signal });
     expect(reasonsOf(unset)).toStrictEqual(["unsaved_address"]);
-    expect(reasonsOf(await verdict({ ...rescueAll, isPaper: true }))).toStrictEqual(["paper_only"]);
+    expect(reasonsOf(await verdict({ ...rescueAll, isPaper: true }))).toStrictEqual([]);
   });
 });

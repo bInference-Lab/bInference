@@ -138,6 +138,12 @@ describe("proposing an intent", () => {
     expect(machine.propose({ ...swap, proposer: "engine" })).toStrictEqual(refused);
   });
 
+  it("stores a rescue as live while the agent is in paper mode", () => {
+    const rescue: IntentProposal = { ...swap, kind: "rescue", proposer: "owner", isPaper: true };
+    expect(unwrap(machineAt(0).propose(rescue)).status.isPaper).toBe(false);
+    expect(unwrap(machineAt(0).propose({ ...swap, isPaper: true })).status.isPaper).toBe(true);
+  });
+
   it("accepts a rescue only from the owner", () => {
     const machine = machineAt(0);
     const rescue: IntentProposal = { ...swap, kind: "rescue", proposer: "owner" };
@@ -226,6 +232,25 @@ describe("moving an intent", () => {
       { type: "paper_fill_recorded" },
     ]);
     expect(steps.at(-1)?.event).toMatchObject({ to: "paper_filled", hasLedgerEntry: true });
+  });
+
+  it("sends a rescue tapped in paper mode instead of filling it on paper", () => {
+    const rescue = statusAt("confirmed", {
+      kind: "rescue",
+      proposer: "owner",
+      card: { version: 1, openedAtMs: 0, expiresAtMs: 600_000 },
+    });
+    expect(machineAt(1_000).apply(rescue, { type: "paper_fill_recorded" })).toStrictEqual({
+      ok: false,
+      error: "live_intent",
+    });
+    const taken = machineAt(1_000).apply(rescue, {
+      type: "queue_took",
+      isAgentLive: false,
+      hasPolicyPassed: true,
+      confirmation: { cardVersion: 1, expiresAtMs: 600_000 },
+    });
+    expect(unwrap(taken).status.state).toBe("executing");
   });
 
   it("stores the reason of each refusal on the intent and its event", () => {

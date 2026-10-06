@@ -118,6 +118,18 @@ describe("the wallet queue taking an intent", () => {
     });
   });
 
+  it("takes a rescue while the agent is in paper mode, and nothing else", () => {
+    const paperAgent = { ...live, isAgentLive: false };
+    expect(takeIntoQueue(queue(paperAgent, { ...confirmed, kind: "rescue" }))).toStrictEqual({
+      ok: true,
+      value: {},
+    });
+    expect(takeIntoQueue(queue(paperAgent, { ...confirmed, kind: "send" }))).toStrictEqual({
+      ok: false,
+      error: "agent_not_live",
+    });
+  });
+
   it("refuses a tapped intent without a confirmation of its current card", () => {
     const missing = { ok: false, error: "no_confirmation" };
     expect(takeIntoQueue(queue({ isAgentLive: true, hasPolicyPassed: true }))).toStrictEqual(

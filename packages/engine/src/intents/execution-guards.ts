@@ -54,7 +54,8 @@ function approvalProblem(
 
 /**
  * `confirmed` to `executing`: the wallet queue takes a live intent whose confirmation record exists
- * and is unexpired, or whose authorization holds, and whose policy still passes.
+ * and is unexpired, or whose authorization holds, and whose policy still passes. The agent must be
+ * live, except for a rescue, which moves the real funds in paper mode too (decision 0100).
  */
 export function takeIntoQueue({
   status,
@@ -64,7 +65,7 @@ export function takeIntoQueue({
   if (status.isPaper) {
     return err("paper_intent");
   }
-  if (!trigger.isAgentLive) {
+  if (!trigger.isAgentLive && status.kind !== "rescue") {
     return err("agent_not_live");
   }
   if (!trigger.hasPolicyPassed) {

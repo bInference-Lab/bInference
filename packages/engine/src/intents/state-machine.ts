@@ -15,6 +15,7 @@ export type AgentStatus = "active" | "archived" | "missing";
 export interface IntentProposal {
   readonly kind: IntentKind;
   readonly proposer: IntentProposer;
+  /** The agent is in paper mode. A rescue is stored live all the same (decision 0100). */
   readonly isPaper: boolean;
   readonly hasOutsideContent: boolean;
   readonly agentStatus: AgentStatus;
@@ -74,12 +75,13 @@ function proposeIntent(
   if (problem !== undefined) {
     return err(problem);
   }
-  const { kind, proposer, isPaper, hasOutsideContent, fill } = proposal;
+  const { kind, proposer, hasOutsideContent, fill } = proposal;
   const status: IntentStatus = {
     state: "proposed",
     kind,
     proposer,
-    isPaper,
+    // Paper mode fakes trades, never the rescue: it moves the real funds (decision 0100).
+    isPaper: proposal.isPaper && kind !== "rescue",
     hasOutsideContent,
     changedAtMs: nowMs,
     ...(fill === undefined ? {} : { authorizedBy: fill }),

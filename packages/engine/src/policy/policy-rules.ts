@@ -115,8 +115,8 @@ interface PolicyRule {
   readonly refuses: (input: PolicyInput) => boolean;
 }
 
-// A send, a bridge, a CEX order and an identity act outside the paper portfolio; so does a rescue,
-// which its own rules refuse in paper mode.
+// A send, a bridge, a CEX order and an identity act outside the paper portfolio. A rescue is never
+// a paper intent: it moves the real funds in either mode (decision 0100).
 const liveOnlyKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
   "send",
   "bridge",
@@ -248,9 +248,8 @@ const intentRules: readonly PolicyRule[] = [
 ];
 
 // A rescue pays only the owner's rescue address, so it skips the freeze, the send level, the caps
-// and the reserve (decisions 0044 and 0099).
+// and the reserve (decisions 0044 and 0099), and it runs live in paper mode too (decision 0100).
 const rescueRules: readonly PolicyRule[] = [
-  { reason: "paper_only", refuses: ({ subject }) => subject.isPaper },
   { reason: "unsaved_address", refuses: (input) => !paysRescue(input) },
 ];
 

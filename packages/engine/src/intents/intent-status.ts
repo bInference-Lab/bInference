@@ -34,7 +34,10 @@ export interface IntentStatus {
   readonly state: IntentState;
   readonly kind: IntentKind;
   readonly proposer: IntentProposer;
-  /** The intent runs in paper mode: it fills at its quote and never signs. */
+  /**
+   * The intent runs in paper mode: it fills at its quote and never signs. A rescue never does, as
+   * it runs live whatever the agent's mode (decision 0100).
+   */
   readonly isPaper: boolean;
   /** The proposing turn read outside content. */
   readonly hasOutsideContent: boolean;

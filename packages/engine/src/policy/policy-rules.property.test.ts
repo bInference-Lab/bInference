@@ -8,6 +8,8 @@ import {
   type PolicyRejection,
   policyReasons,
 } from "../intents/intent-reason.js";
+import type { IntentStatus } from "../intents/intent-status.js";
+import { createIntentStateMachine } from "../intents/state-machine.js";
 import {
   type AddressBookEntry,
   type PolicyFacts,
@@ -254,11 +256,9 @@ function expectedReasons(input: PolicyInput): readonly PolicyRejection[] {
   );
 }
 
+// A rescue answers only to its target, in paper mode as well as live (decision 0100).
 function rescueReasons(input: PolicyInput): readonly PolicyRejection[] {
-  return [
-    ...(input.subject.isPaper ? ["paper_only" as const] : []),
-    ...(paysRescue(input) ? [] : ["unsaved_address" as const]),
-  ];
+  return paysRescue(input) ? [] : ["unsaved_address"];
 }
 
 function reasonsFor(input: PolicyInput): readonly PolicyRejection[] {
@@ -272,16 +272,51 @@ function violationsOfPass(input: PolicyInput): readonly string[] {
 
 const rescueAccount = "fake:1:rescue" as AccountRef;
 
-// A live rescue that pays the rescue address, whatever else holds.
-function asLiveRescue(input: PolicyInput): PolicyInput {
+// A rescue that pays the rescue address, paper or live, whatever else holds.
+function asRescue(input: PolicyInput): PolicyInput {
   return {
     ...input,
-    subject: { ...input.subject, kind: "rescue", isPaper: false, target: rescueAccount },
+    subject: { ...input.subject, kind: "rescue", target: rescueAccount },
     facts: { ...input.facts, rescueAccount },
   };
 }
 
-const rescues: fc.Arbitrary<PolicyInput> = inputs.map(asLiveRescue);
+const rescues: fc.Arbitrary<PolicyInput> = inputs.map(asRescue);
+
+const machine = createIntentStateMachine({
+  clock: { now: () => nowMs, sleep: async () => Promise.resolve() },
+});
+
+// A rescue the owner asked for while the agent is in paper mode, and how each step treats it.
+function paperRescueProblems(input: PolicyInput): readonly string[] {
+  const proposed = machine.propose({
+    kind: "rescue",
+    proposer: "owner",
+    isPaper: true,
+    hasOutsideContent: input.subject.hasOutsideContent,
+    agentStatus: "active",
+  });
+  if (!proposed.ok) {
+    return ["the proposal was refused"];
+  }
+  const { isPaper } = proposed.value.status;
+  const card = { version: 1, openedAtMs: nowMs, expiresAtMs: nowMs + 1 };
+  const confirmed: IntentStatus = { ...proposed.value.status, state: "confirmed", card };
+  const taken = machine.apply(confirmed, {
+    type: "queue_took",
+    isAgentLive: false,
+    hasPolicyPassed: true,
+    confirmation: { cardVersion: 1, expiresAtMs: nowMs + 1 },
+  });
+  return [
+    isPaper ? "stored as a paper intent" : "",
+    policyRefusals({ ...input, subject: { ...input.subject, isPaper } }).length > 0
+      ? "refused by the policy"
+      : "",
+    machine.apply(confirmed, { type: "paper_fill_recorded" }).ok ? "filled on paper" : "",
+    taken.ok ? "" : "left by the wallet queue",
+  ].filter((text) => text !== "");
+}
 
 describe("the policy rules", () => {
   it("let no intent past a cap, the gas reserve, the ceiling or a send level", () => {
@@ -303,10 +338,18 @@ describe("the policy rules", () => {
     );
   });
 
-  it("let a live rescue to the rescue address through a freeze, any send level and any cap", () => {
+  it("let a rescue to the rescue address through a freeze, any send level, any cap and paper mode", () => {
     fc.assert(
       fc.property(rescues, (input) => {
         expect(policyRefusals(input)).toStrictEqual([]);
+      }),
+    );
+  });
+
+  it("run a rescue asked for in paper mode live: it passes, never fills on paper, and is sent", () => {
+    fc.assert(
+      fc.property(rescues, (input) => {
+        expect(paperRescueProblems(input)).toStrictEqual([]);
       }),
     );
   });
