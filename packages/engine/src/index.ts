@@ -5,11 +5,19 @@ export type {
   StakeMove,
   TradePlace,
 } from "./confirmations/card-action.js";
-export type { Answerer, Surface } from "./confirmations/card-answer.js";
+export type { Answerer, CardAnswer, Surface } from "./confirmations/card-answer.js";
 export { receiptLine } from "./confirmations/card-closing.js";
 export type { CardClosing } from "./confirmations/card-closing.js";
 export { cardKeys } from "./confirmations/card-line.js";
 export type { CardKey, CardLine, CardValue } from "./confirmations/card-line.js";
+export { createConfirmations } from "./confirmations/create-confirmations.js";
+export type {
+  AnswerOutcome,
+  AnswerResult,
+  Confirmations,
+  ConfirmationsOptions,
+  ExpiryResult,
+} from "./confirmations/create-confirmations.js";
 export { drawCard } from "./confirmations/draw-card.js";
 export type {
   AutoAsk,
@@ -20,6 +28,12 @@ export type {
   CardRoute,
   CardWarnings,
 } from "./confirmations/draw-card.js";
+export type {
+  BuiltQuote,
+  IntentWrite,
+  Requote,
+  StoredIntent,
+} from "./confirmations/stored-intent.js";
 export { isFillAuthorization } from "./intents/authorization.js";
 export type {
   Authorization,
@@ -107,4 +121,4 @@ export type {
   RequestedSlippage,
   SendLevel,
 } from "./policy/policy-rules.js";
-export type { PriceSource, UsdPrice } from "./ports.js";
+export type { ConfirmationStore, PriceSource, QuoteSource, Simulator, UsdPrice } from "./ports.js";

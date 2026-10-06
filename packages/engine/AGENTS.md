@@ -23,6 +23,9 @@ Rules for this package:
   order. A new rule takes its reason from that list and adds a property case.
 - A card is data: each line a key of `cardKeys` with typed values, never English text. Every key
   has an English and Chinese message, and each surface renders the lines.
+- The confirmation step (`src/confirmations/`) picks the trigger an answer or the card timer is,
+  and writes only through the `ConfirmationStore`, under the row version it read; the state machine
+  decides each move.
 - Ports live in `src/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in

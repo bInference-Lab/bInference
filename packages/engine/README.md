@@ -11,9 +11,13 @@ record each move, the closed lists of reason codes and the auto-mode test. It al
 step of the money path, which checks each intent against the owner's limits and names every rule
 it breaks, and the `PriceSource` port it prices outflows through.
 
-It also holds the card of [spec 4](../../docs/specs/cards-and-messages.md) as data: each line a
-message key with typed values, which every surface renders in the owner's language, and the
-receipt line a card becomes when it closes.
+It also holds the confirmation step: the card of [spec 4](../../docs/specs/cards-and-messages.md)
+as data (each line a message key with typed values, which every surface renders in the owner's
+language), and the answers to it. The first answer that lands decides: the `ConfirmationStore`
+writes each move as a compare-and-set on the intent's row version, so of two answers that race,
+one closes the card and the other sees it closed. A tap on a quote older than the re-quote age
+quotes and simulates again through the `QuoteSource` and `Simulator` ports, and opens the next card
+version when the minimum out got worse than the tolerance. No answer before the expiry is a no.
 
 ## API
 
@@ -31,6 +35,10 @@ receipt line a card becomes when it closes.
 | `createPolicyCheck`                                              | The policy step: passes an intent or names every rule it breaks |
 | `PolicySubject`, `PolicyFacts`, `PolicyLimits`, `PolicyVerdict`  | What the policy reads and what it answers                       |
 | `PriceSource`, `UsdPrice`                                        | The port that prices an asset in micro-dollars per base unit    |
+| `createConfirmations`, `Confirmations`                           | Applies the owner's answers and the card timer, first one wins  |
+| `CardAnswer`, `AnswerResult`, `ExpiryResult`                     | An answer from a surface, and what became of it                 |
+| `ConfirmationStore`, `QuoteSource`, `Simulator`                  | The ports the confirmations write, re-quote and simulate with   |
+| `StoredIntent`, `IntentWrite`, `BuiltQuote`, `Requote`           | An intent as the store holds it, and one move to store          |
 | `drawCard`, `Card`, `CardFacts`, `CardAction`                    | A card version as lines of message keys with typed values       |
 | `CardLine`, `CardValue`, `cardKeys`                              | One line, its values, and every key a card or receipt uses      |
 | `receiptLine`, `CardClosing`                                     | The receipt line a card becomes when it closes                  |
@@ -60,4 +68,19 @@ const checked = machine.apply(
 );
 ```
 
-Tests import the `PriceSource` contract suite and a fake from `@binference/engine/testing`.
+A surface answers a card and renders what comes back:
+
+```ts
+import { createConfirmations, receiptLine } from "@binference/engine";
+
+const confirmations = createConfirmations({ clock, store, quotes, simulator });
+const answered = await confirmations.answer(
+  { intent, decision: "confirm", cardVersion: 1, answeredBy: { surface: "telegram", by: userRef } },
+  { signal },
+);
+if (answered.ok && answered.value.intent.closing !== undefined) {
+  const receipt = receiptLine(answered.value.intent.closing); // every copy of the card shows it
+}
+```
+
+Tests import each port's contract suite and a fake from `@binference/engine/testing`.
