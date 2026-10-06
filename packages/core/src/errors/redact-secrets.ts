@@ -7,14 +7,16 @@ const secretPatterns: readonly RegExp[] = [
   /\b\d{6,12}:[A-Za-z0-9_-]{30,}/g,
   // A binference API key or protocol token.
   /\b(?:binf|bnt)_[A-Za-z0-9_-]{16,}/g,
+  // An owner key code: bnok1 and base32, whole or in groups of up to five split by spaces or dashes.
+  /\bbnok1[A-Za-z2-7]+(?:[ -][A-Za-z2-7]{1,5})*/g,
 ];
 
 /** What a secret is replaced with. */
 export const redactedMark = "[redacted]";
 
 /**
- * Masks private keys, recovery phrases, bot tokens and binference keys in a text. Run it on every
- * value that leaves the process in a log record or an error's details.
+ * Masks private keys, recovery phrases, bot tokens, binference keys and owner key codes in a text.
+ * Run it on every value that leaves the process in a log record or an error's details.
  */
 export function redactSecrets(text: string): string {
   return secretPatterns.reduce(

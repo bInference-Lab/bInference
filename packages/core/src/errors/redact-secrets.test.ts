@@ -10,6 +10,9 @@ describe("redactSecrets", () => {
     ["a bot token", "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw9"],
     ["a binference key", `binf_${"a1".repeat(10)}`],
     ["a protocol token", `bnt_${"Q2".repeat(16)}`],
+    ["an owner key code in groups", "bnok1abcde fghij klmno pqrst uvwxy z2345 67abc"],
+    ["an owner key code split by dashes", "bnok1ABCDE-FGHIJ-KLMNO-PQRST-UVWXY-Z2345-67ABC"],
+    ["an owner key code in one run", `bnok1${"a2".repeat(29)}`],
   ])("masks %s", (_kind, secret) => {
     const masked = redactSecrets(`Seen: ${secret}.`);
     expect(masked).toBe(`Seen: ${redactedMark}.`);
