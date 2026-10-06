@@ -60,9 +60,11 @@ const config: ViteUserConfig = defineConfig({
   resolve: { conditions: sourceConditions },
   ssr: { resolve: { conditions: sourceConditions } },
   test: {
-    include: ["packages/*/src/**/*.test.ts", "plugins/*/src/**/*.test.ts"],
-    // Vitest refuses an empty project list; until a package exists the root runs alone.
-    ...(folders.length === 0 ? {} : { projects: folders.map(project) }),
+    // Vitest refuses an empty project list; until a package exists the root runs alone. The
+    // include stays out of the root once projects exist, or every project inherits it.
+    ...(folders.length === 0
+      ? { include: ["packages/*/src/**/*.test.ts", "plugins/*/src/**/*.test.ts"] }
+      : { projects: folders.map(project) }),
     passWithNoTests: true,
     setupFiles: ["config/vitest/setup.ts"],
     coverage: {
