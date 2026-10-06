@@ -1,24 +1,12 @@
+export type { CallOptions } from "./call-operation.js";
 export { clientErrorCodes } from "./client-error.js";
 export type { ClientErrorCode } from "./client-error.js";
 export type { ClientStatus } from "./connection-status.js";
 export { defaultClientLimits } from "./default-client-limits.js";
 export type { ClientLimits } from "./default-client-limits.js";
 export type { DeviceProver } from "./open-connection.js";
-export type {
-  KnownOperation,
-  OperationArgs,
-  OperationContract,
-  OperationName,
-  OperationResult,
-  OperationTable,
-  SubscribeArgs,
-  SubscribeResult,
-  SubscriptionOperations,
-  TopicStart,
-  UnsubscribeArgs,
-} from "./operation-table.js";
 export { createProtocolClient } from "./protocol-client.js";
-export type { CallOptions, ProtocolClient, ProtocolClientOptions } from "./protocol-client.js";
+export type { CallableName, ProtocolClient, ProtocolClientOptions } from "./protocol-client.js";
 export type {
   ProtocolSocket,
   SocketClose,

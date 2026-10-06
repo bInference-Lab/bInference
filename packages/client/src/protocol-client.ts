@@ -1,30 +1,33 @@
 import {
   BinferenceError,
   type Clock,
-  createDeadline,
   createIdSource,
-  type IdSource,
   type Logger,
   type Random,
   retry,
   type RetryOptions,
 } from "@binference/core";
 import {
-  type CallFrame,
   type ClientInfo,
   type Credential,
   type EngineFrame,
+  type OperationShape,
+  type OperationShapes,
+  type OperationTable,
+  operations as protocolOperations,
   protocolVersion,
   type PushTopic,
   type ReadyFrame,
 } from "@binference/protocol";
-import { z } from "zod";
-import { clientError, errorFromFail } from "./client-error.js";
 import {
-  type ClientStatus,
-  type ConnectionStatus,
-  createConnectionStatus,
-} from "./connection-status.js";
+  type CallContext,
+  callOperation,
+  type CallOptions,
+  type Invocation,
+  refuseWhenClosed,
+} from "./call-operation.js";
+import { clientError } from "./client-error.js";
+import { type ClientStatus, createConnectionStatus } from "./connection-status.js";
 import { type ClientLimits, defaultClientLimits } from "./default-client-limits.js";
 import {
   type Connection,
@@ -32,26 +35,27 @@ import {
   type DeviceProver,
   openConnection,
 } from "./open-connection.js";
-import type {
-  OperationArgs,
-  OperationContract,
-  OperationName,
-  OperationResult,
-  OperationTable,
-  SubscriptionOperations,
-} from "./operation-table.js";
-import { type CallAnswer, createPendingCalls, type PendingCalls } from "./pending-calls.js";
+import { createPendingCalls } from "./pending-calls.js";
 import type { SocketFactory } from "./protocol-socket.js";
 import {
   createPushSubscriptions,
   type PushSubscriptions,
   type TopicHandlers,
 } from "./push-subscriptions.js";
+import { createStandingCalls, type StandingCalls } from "./standing-calls.js";
+
+/**
+ * An operation a caller calls through `call`: every operation of the table but `push/subscribe`
+ * and `push/unsubscribe`, which `subscribe` makes itself to keep each topic in `seq` order.
+ */
+export type CallableName<S> = Exclude<keyof S & string, "push/subscribe" | "push/unsubscribe">;
 
 /** What a client is built from. */
-export interface ProtocolClientOptions<T extends OperationTable<T>> {
-  /** Every operation the client may call, with its schemas. */
-  readonly operations: T;
+export interface ProtocolClientOptions<
+  S extends Readonly<Record<keyof S, OperationShape>> = OperationShapes,
+> {
+  /** Every operation the client may call: the protocol's `operations`. */
+  readonly operations: OperationTable<S>;
   /** Opens a socket to the engine, such as `() => new WebSocket(url)`. */
   readonly openSocket: SocketFactory;
   readonly client: ClientInfo;
@@ -64,20 +68,13 @@ export interface ProtocolClientOptions<T extends OperationTable<T>> {
   readonly limits?: Partial<ClientLimits>;
 }
 
-/** What one call takes besides its args. */
-export interface CallOptions {
-  readonly signal: AbortSignal;
-  /** How long to wait for the answer, across reconnects; the client's `callTimeoutMs` by default. */
-  readonly timeoutMs?: number;
-  /**
-   * The idempotency key of a write. Pass the same key to retry a write after an error; without
-   * one, the client makes a key for the call. A read sends no key.
-   */
-  readonly key?: string;
-}
-
-/** A typed connection to the engine that reconnects, resends its calls and keeps its pushes. */
-export interface ProtocolClient<T extends OperationTable<T>> {
+/**
+ * A typed connection to the engine that reconnects, resends its calls and keeps its pushes. Its
+ * calls are typed from the protocol's `OperationShapes`: `ArgsOf` in, `ResultOf` out.
+ */
+export interface ProtocolClient<
+  S extends Readonly<Record<keyof S, OperationShape>> = OperationShapes,
+> {
   /**
    * Opens the connection and keeps it open. Resolves at the first `ready`; rejects, and closes the
    * client, when the first connection fails for good or the signal aborts first. A second call
@@ -87,13 +84,14 @@ export interface ProtocolClient<T extends OperationTable<T>> {
   /**
    * Calls an operation and resolves with its parsed result. A call made while the socket is down
    * waits for the next connection; a call in flight when the socket drops is sent again, with the
-   * same idempotency key. Rejects with the engine's error code from a `fail` frame.
+   * same idempotency key. A `subscribe` operation that succeeded, such as `log/follow`, is made
+   * again on every new connection. Rejects with the engine's error code from a `fail` frame.
    */
-  call<N extends OperationName<T>>(
+  call<N extends CallableName<S>>(
     op: N,
-    args: OperationArgs<T, N>,
+    args: S[N]["args"],
     options: CallOptions,
-  ): Promise<OperationResult<T, N>>;
+  ): Promise<S[N]["result"]>;
   /**
    * Subscribes to a push topic and returns the call that ends the subscription. The topic is
    * loaded once through `refetch`, then its pushes arrive in `seq` order; a gap starts one more
@@ -109,36 +107,22 @@ export interface ProtocolClient<T extends OperationTable<T>> {
   close(): void;
 }
 
-interface ClientContext {
-  readonly status: ConnectionStatus;
-  readonly pending: PendingCalls;
+interface ClientContext extends CallContext {
   readonly subscriptions: PushSubscriptions;
+  readonly standing: StandingCalls;
   readonly lifetime: AbortController;
-  readonly limits: ClientLimits;
-  readonly clock: Clock;
   readonly logger: Logger;
   readonly reconnect: Omit<RetryOptions, "signal">;
-  readonly ids: IdSource;
-  readonly nextCallId: () => string;
   readonly connectionOptions: ConnectionOptions;
-}
-
-interface Invocation<C extends OperationContract> {
-  readonly op: string;
-  readonly contract: C;
-  readonly args: z.output<C["args"]>;
 }
 
 function closedError(): BinferenceError {
   return clientError({ code: "client.closed", message: "The client is closed." });
 }
 
-// A closed client refuses new work with the reason it closed, such as `auth.revoked`.
-function refuseWhenClosed(context: ClientContext): void {
-  const status = context.status.current();
-  if (status.state === "closed") {
-    throw status.error;
-  }
+// Calls the client makes for itself run for the client's lifetime, with the default timeout.
+function background(context: ClientContext): CallOptions {
+  return { signal: context.lifetime.signal };
 }
 
 function shutdown(context: ClientContext, error: Error): void {
@@ -153,58 +137,8 @@ function shutdown(context: ClientContext, error: Error): void {
   context.status.set({ state: "closed", error });
   context.pending.rejectAll(error);
   context.subscriptions.clear();
+  context.standing.clear();
   connection?.close();
-}
-
-function settleAnswer<C extends OperationContract>(
-  request: Invocation<C>,
-  answer: CallAnswer,
-): z.output<C["result"]> {
-  if (answer.t === "fail") {
-    throw errorFromFail(answer.error);
-  }
-  // An explicit type argument keeps the generic result type; inference would widen it.
-  const parsed = z.safeParse<C["result"]>(request.contract.result, answer.result);
-  if (!parsed.success) {
-    throw clientError({
-      code: "client.bad_reply",
-      message: `The engine's result for ${request.op} breaks its schema.`,
-      details: { op: request.op },
-    });
-  }
-  return parsed.data;
-}
-
-async function invoke<C extends OperationContract>(
-  context: ClientContext,
-  request: Invocation<C>,
-  options: CallOptions,
-): Promise<z.output<C["result"]>> {
-  refuseWhenClosed(context);
-  const encoded = z.safeEncode<C["args"]>(request.contract.args, request.args);
-  if (!encoded.success) {
-    throw new BinferenceError({
-      code: "protocol.bad_args",
-      message: `The args of ${request.op} break its schema.`,
-      details: { op: request.op },
-    });
-  }
-  const frame: CallFrame = {
-    t: "call",
-    id: context.nextCallId(),
-    op: request.op,
-    args: encoded.data,
-    ...(request.contract.write ? { key: options.key ?? context.ids.next("key") } : {}),
-  };
-  const timeoutMs = options.timeoutMs ?? context.limits.callTimeoutMs;
-  const deadline = createDeadline({ clock: context.clock, signal: options.signal, timeoutMs });
-  try {
-    const answer = context.pending.wait(frame, deadline.signal);
-    context.status.connection()?.send(frame);
-    return settleAnswer(request, await answer);
-  } finally {
-    deadline.clear();
-  }
 }
 
 function route(context: ClientContext, frame: EngineFrame): void {
@@ -232,11 +166,13 @@ async function connectOnce(context: ClientContext, signal: AbortSignal): Promise
 }
 
 // Every call still waiting goes out again on the new connection; a write keeps its key, so the
-// engine answers a repeat with its stored result.
+// engine answers a repeat with its stored result. Subscribe calls hold per-connection state, so
+// they are made again.
 async function keepConnected(context: ClientContext, connection: Connection): Promise<void> {
   context.status.set({ state: "ready", ready: connection.ready }, connection);
   context.logger.info("client.ready");
   context.pending.frames().forEach((frame) => connection.send(frame));
+  context.standing.repeatAll();
   context.subscriptions.resume();
   const reason = await connection.closed;
   if (context.lifetime.signal.aborted || !reason.retryable) {
@@ -268,41 +204,41 @@ async function start(context: ClientContext, signal: AbortSignal): Promise<Ready
   }
 }
 
-function subscriptionsOf<T extends OperationTable<T>>(
-  options: ProtocolClientOptions<T>,
+function subscriptionsOf(
+  logger: Logger,
   limits: ClientLimits,
   context: () => ClientContext,
 ): PushSubscriptions {
-  const subscribe: SubscriptionOperations["push/subscribe"] = options.operations["push/subscribe"];
-  const unsubscribe: SubscriptionOperations["push/unsubscribe"] =
-    options.operations["push/unsubscribe"];
-  const background = (): CallOptions => ({ signal: context().lifetime.signal });
   return createPushSubscriptions({
     maxTopics: limits.maxTopics,
-    logger: options.logger,
+    logger,
     isConnected: () => context().status.current().state === "ready",
     subscribe: async (args) =>
-      invoke(context(), { op: "push/subscribe", contract: subscribe, args }, background()),
-    unsubscribe: async (topic) => {
-      const args = { topics: [topic] };
-      await invoke(
+      callOperation(
         context(),
-        { op: "push/unsubscribe", contract: unsubscribe, args },
-        background(),
-      );
+        { operation: protocolOperations["push/subscribe"], args },
+        background(context()),
+      ),
+    unsubscribe: async (topic) => {
+      const request = {
+        operation: protocolOperations["push/unsubscribe"],
+        args: { topics: [topic] },
+      };
+      await callOperation(context(), request, background(context()));
     },
   });
 }
 
-function createContext<T extends OperationTable<T>>(
-  options: ProtocolClientOptions<T>,
+function createContext<S extends Readonly<Record<keyof S, OperationShape>>>(
+  options: ProtocolClientOptions<S>,
 ): ClientContext {
   const limits: ClientLimits = { ...defaultClientLimits, ...options.limits };
   let calls = 0;
   const context: ClientContext = {
     status: createConnectionStatus(),
     pending: createPendingCalls(limits.maxPendingCalls),
-    subscriptions: subscriptionsOf(options, limits, () => context),
+    subscriptions: subscriptionsOf(options.logger, limits, () => context),
+    standing: createStandingCalls(options.logger),
     lifetime: new AbortController(),
     limits,
     clock: options.clock,
@@ -326,13 +262,29 @@ function createContext<T extends OperationTable<T>>(
   return context;
 }
 
+// A subscribe call that succeeded is kept, to be made again on every new connection.
+async function callAndKeep<Args, Result>(
+  context: ClientContext,
+  request: Invocation<Args, Result>,
+  options: CallOptions,
+): Promise<Result> {
+  const result = await callOperation(context, request, options);
+  if (request.operation.kind === "subscribe") {
+    context.standing.keep(request.operation.name, async () => {
+      await callOperation(context, request, background(context));
+    });
+  }
+  return result;
+}
+
 /**
- * Creates a protocol client over an operation table. It opens no socket until `connect`. Time,
- * randomness and sockets come through its options, so it runs alike in Node and in browsers.
+ * Creates a protocol client over the protocol's operation table: pass `operations` from
+ * `@binference/protocol`. It opens no socket until `connect`. Time, randomness and sockets come
+ * through its options, so it runs alike in Node and in browsers.
  */
-export function createProtocolClient<T extends OperationTable<T>>(
-  options: ProtocolClientOptions<T>,
-): ProtocolClient<T> {
+export function createProtocolClient<
+  S extends Readonly<Record<keyof S, OperationShape>> = OperationShapes,
+>(options: ProtocolClientOptions<S>): ProtocolClient<S> {
   const context = createContext(options);
   let started: Promise<ReadyFrame> | undefined;
   return {
@@ -341,7 +293,7 @@ export function createProtocolClient<T extends OperationTable<T>>(
       return started;
     },
     call: async (op, args, callOptions) =>
-      invoke(context, { op, contract: options.operations[op], args }, callOptions),
+      callAndKeep(context, { operation: options.operations[op], args }, callOptions),
     subscribe(topic, handlers) {
       refuseWhenClosed(context);
       return context.subscriptions.add(topic, handlers);

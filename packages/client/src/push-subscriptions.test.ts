@@ -1,9 +1,11 @@
 import { BinferenceError } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
-import type { PushFrame, PushTopic } from "@binference/protocol";
+import type { ArgsOf, PushFrame, PushTopic, ResultOf } from "@binference/protocol";
 import { describe, expect, it, vi } from "vitest";
-import type { SubscribeArgs, SubscribeResult } from "./operation-table.js";
 import { createPushSubscriptions, type TopicHandlers } from "./push-subscriptions.js";
+
+type SubscribeArgs = ArgsOf<"push/subscribe">;
+type SubscribeResult = ResultOf<"push/subscribe">;
 
 // Enough microtask turns for a reply to reach the subscriptions and a load to start or end.
 async function settle(turns = 20): Promise<void> {
@@ -138,7 +140,7 @@ describe("createPushSubscriptions", () => {
       41,
     ],
     ["the engine's seq went back after a restart", { seqs: { intent: 2 } }, 3],
-  ])("refetches when %s", async (_case, reply: SubscribeResult, next: number) => {
+  ] as const)("refetches when %s", async (_case, reply: SubscribeResult, next: number) => {
     const { subscriptions, requests, answer } = setup();
     const { handlers, seen, refetch, finishLoad } = subscriber();
     subscriptions.add("intent", handlers);

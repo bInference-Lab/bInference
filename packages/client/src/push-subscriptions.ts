@@ -1,7 +1,10 @@
-import { BinferenceError, type Logger } from "@binference/core";
-import type { PushFrame, PushTopic } from "@binference/protocol";
+import type { Logger } from "@binference/core";
+import type { ArgsOf, PushFrame, PushTopic, ResultOf } from "@binference/protocol";
 import { clientError } from "./client-error.js";
-import type { SubscribeArgs, SubscribeResult, TopicStart } from "./operation-table.js";
+import { logFailure } from "./log-failure.js";
+
+type SubscribeArgs = ArgsOf<"push/subscribe">;
+type TopicStart = NonNullable<SubscribeArgs["topics"][PushTopic]>;
 
 /** What a subscriber gives for one topic. */
 export interface TopicHandlers {
@@ -23,7 +26,7 @@ export interface PushSubscriptionsOptions {
   /** Whether a connection is ready; while it is not, the next `resume` subscribes. */
   readonly isConnected: () => boolean;
   /** Calls `push/subscribe`. */
-  readonly subscribe: (args: SubscribeArgs) => Promise<SubscribeResult>;
+  readonly subscribe: (args: SubscribeArgs) => Promise<ResultOf<"push/subscribe">>;
   /** Calls `push/unsubscribe` for a topic. */
   readonly unsubscribe: (topic: PushTopic) => Promise<void>;
 }
@@ -58,17 +61,6 @@ interface Topics {
   readonly options: PushSubscriptionsOptions;
 }
 
-// A failure here is logged, never thrown: the next gap or connection tries again.
-async function logFailure(topics: Topics, event: string, work: () => Promise<void>): Promise<void> {
-  try {
-    await work();
-  } catch (error) {
-    topics.options.logger.warn(event, {
-      errorCode: error instanceof BinferenceError ? error.code : "unexpected",
-    });
-  }
-}
-
 function startOf(state: TopicState): TopicStart {
   return state.phase === "new" || state.lastSeq === undefined ? {} : { fromSeq: state.lastSeq + 1 };
 }
@@ -76,7 +68,7 @@ function startOf(state: TopicState): TopicStart {
 // After a load for a gap or a resync, the topic subscribes again from the push after its last,
 // as the protocol asks. The first load needs no second subscribe.
 async function refetch(topics: Topics, topic: PushTopic, state: TopicState): Promise<void> {
-  await logFailure(topics, "client.refetch_failed", async () =>
+  await logFailure(topics.options.logger, "client.refetch_failed", async () =>
     state.handlers.refetch(state.loads.signal),
   );
   const latest = topics.states.get(topic);
@@ -98,7 +90,7 @@ function startRefetch(topics: Topics, topic: PushTopic): void {
   void refetch(topics, topic, state);
 }
 
-function settle(topics: Topics, topic: PushTopic, reply: SubscribeResult): void {
+function settle(topics: Topics, topic: PushTopic, reply: ResultOf<"push/subscribe">): void {
   const state = topics.states.get(topic);
   const currentSeq = reply.seqs[topic];
   if (state === undefined || currentSeq === undefined || state.phase === "refetching") {
@@ -125,7 +117,7 @@ async function request(topics: Topics, list: readonly PushTopic[]): Promise<void
   if (starts.length === 0 || !topics.options.isConnected()) {
     return;
   }
-  await logFailure(topics, "client.subscribe_failed", async () => {
+  await logFailure(topics.options.logger, "client.subscribe_failed", async () => {
     const reply = await topics.options.subscribe({ topics: Object.fromEntries(starts) });
     starts.forEach(([topic]) => settle(topics, topic, reply));
   });
@@ -145,7 +137,9 @@ function receive(topics: Topics, push: PushFrame): void {
     startRefetch(topics, push.topic);
     return;
   }
-  void logFailure(topics, "client.push_failed", async () => state.handlers.onPush(push));
+  void logFailure(topics.options.logger, "client.push_failed", async () =>
+    state.handlers.onPush(push),
+  );
 }
 
 function add(topics: Topics, topic: PushTopic, handlers: TopicHandlers): () => void {
@@ -165,7 +159,9 @@ function add(topics: Topics, topic: PushTopic, handlers: TopicHandlers): () => v
     states.get(topic)?.loads.abort();
     states.delete(topic);
     if (options.isConnected()) {
-      void logFailure(topics, "client.unsubscribe_failed", async () => options.unsubscribe(topic));
+      void logFailure(topics.options.logger, "client.unsubscribe_failed", async () =>
+        options.unsubscribe(topic),
+      );
     }
   };
 }

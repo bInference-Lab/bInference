@@ -5,43 +5,71 @@ import {
   createSeededRandom,
   type ManualClock,
 } from "@binference/core/testing";
-import { type Credential, protocolVersion, readyFrameSchema } from "@binference/protocol";
+import {
+  type ArgsOf,
+  type Credential,
+  type OperationShapes,
+  type OperationTable,
+  operations,
+  protocolVersion,
+  readyFrameSchema,
+  type ResultOf,
+} from "@binference/protocol";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { z } from "zod";
 import { createFakeEngine, type FakeEngine } from "./fake-engine.js";
-import { createProtocolClient } from "./protocol-client.js";
+import { createProtocolClient, type ProtocolClient } from "./protocol-client.js";
 
-const operations = {
+interface TestShapes extends Pick<OperationShapes, "log/follow" | "log/unfollow"> {
+  readonly "intent/get": {
+    readonly args: { readonly intent: string };
+    readonly result: { readonly state: string };
+  };
+  readonly "intent/propose": {
+    readonly args: { readonly agent: string; readonly reason: string };
+    readonly result: { readonly intent: string };
+  };
+  readonly "amount/double": {
+    readonly args: { readonly base: bigint };
+    readonly result: { readonly base: bigint };
+  };
+}
+
+const readFlags = {
+  kind: "read",
+  idempotency: "none",
+  transport: "any",
+  answeredBy: "engine",
+  since: "2026.10.0",
+} as const;
+
+// A small table for behavior; the protocol's own subscribe operations keep their real schemas.
+const testOperations: OperationTable<TestShapes> = {
   "intent/get": {
+    ...readFlags,
+    name: "intent/get",
+    scope: "read",
     args: z.object({ intent: z.string() }),
     result: z.object({ state: z.string() }),
-    write: false,
   },
   "intent/propose": {
+    ...readFlags,
+    kind: "write",
+    idempotency: "key",
+    name: "intent/propose",
+    scope: "propose",
     args: z.object({ agent: z.string(), reason: z.string() }),
     result: z.object({ intent: z.string() }),
-    write: true,
   },
   "amount/double": {
+    ...readFlags,
+    name: "amount/double",
+    scope: "read",
     args: z.object({ base: decimalStringSchema }),
     result: z.object({ base: decimalStringSchema }),
-    write: false,
   },
-  "push/subscribe": {
-    args: z.object({
-      topics: z.record(z.string(), z.object({ fromSeq: z.int().positive().exactOptional() })),
-    }),
-    result: z.object({
-      seqs: z.record(z.string(), z.int().nonnegative()),
-      resync: z.array(z.string()).exactOptional(),
-    }),
-    write: false,
-  },
-  "push/unsubscribe": {
-    args: z.object({ topics: z.array(z.string()) }),
-    result: z.object({}),
-    write: false,
-  },
+  "log/follow": operations["log/follow"],
+  "log/unfollow": operations["log/unfollow"],
 };
 
 const token: Credential = { token: `bnt_${"a".repeat(43)}` };
@@ -61,7 +89,7 @@ function setup() {
   const clock = createManualClock(1_000);
   const logger = createMemoryLogger({ subsystem: "client" });
   const client = createProtocolClient({
-    operations,
+    operations: testOperations,
     openSocket: engine.openSocket,
     client: { kind: "cli", version: "0.1.0" },
     credential: token,
@@ -280,11 +308,14 @@ describe("createProtocolClient", () => {
     await expect(result).resolves.toStrictEqual(ready);
   });
 
-  it("subscribes through the engine and resumes the topic after a reconnect", async () => {
+  it("subscribes through the protocol's push operations and resumes the topic after a reconnect", async () => {
     const { engine, clock, client, socket } = await connected();
     const seen: number[] = [];
     const refetch = vi.fn<(signal: AbortSignal) => Promise<void>>(async () => undefined);
-    client.subscribe("intent", { onPush: (push) => seen.push(push.seq), refetch });
+    const unsubscribe = client.subscribe("intent", {
+      onPush: (push) => seen.push(push.seq),
+      refetch,
+    });
     expect(callsSent(socket)).toStrictEqual([
       { t: "call", id: "1", op: "push/subscribe", args: { topics: { intent: {} } } },
     ]);
@@ -299,6 +330,32 @@ describe("createProtocolClient", () => {
     ]);
     expect(seen).toStrictEqual([3]);
     expect(refetch).toHaveBeenCalledOnce();
+    unsubscribe();
+    expect(callsSent(next).at(-1)).toStrictEqual({
+      t: "call",
+      id: "3",
+      op: "push/unsubscribe",
+      args: { topics: ["intent"] },
+    });
+  });
+
+  it("makes the last subscribe call of each operation again on every new connection", async () => {
+    const { engine, clock, client, socket } = await connected();
+    const calls = [
+      client.call("log/follow", { level: "info" }, { signal }),
+      client.call("log/follow", { level: "warn" }, { signal }),
+      client.call("log/unfollow", {}, { signal }),
+      client.call("intent/get", { intent: "int_1" }, { signal }),
+    ];
+    ["1", "2", "3", "4"].forEach((id) => socket.deliver({ t: "reply", id, result: {} }));
+    await Promise.allSettled(calls);
+    socket.drop();
+    await clock.advance(0);
+    const next = await signIn(engine, clock);
+    expect(callsSent(next)).toStrictEqual([
+      { t: "call", id: "5", op: "log/follow", args: { level: "warn" } },
+      { t: "call", id: "6", op: "log/unfollow", args: {} },
+    ]);
   });
 
   it("closes for good: rejects waiting calls, refuses new ones and never reconnects", async () => {
@@ -321,12 +378,35 @@ describe("createProtocolClient", () => {
 
   it("types each call's args and result from the operation table", () => {
     const { client } = setup();
-    expectTypeOf<Parameters<typeof client.call>[0]>().toEqualTypeOf<keyof typeof operations>();
+    expectTypeOf<Parameters<typeof client.call>[0]>().toEqualTypeOf<keyof TestShapes>();
     expectTypeOf<typeof client.call<"intent/get">>()
       .parameter(1)
-      .toEqualTypeOf<{ intent: string }>();
+      .toEqualTypeOf<{ readonly intent: string }>();
     expectTypeOf<typeof client.call<"amount/double">>().returns.resolves.toEqualTypeOf<{
-      base: bigint;
+      readonly base: bigint;
     }>();
+  });
+
+  it("types every call of the protocol's table from ArgsOf and ResultOf", () => {
+    const engine = createFakeEngine();
+    const clock = createManualClock(1_000);
+    const client = createProtocolClient({
+      operations,
+      openSocket: engine.openSocket,
+      client: { kind: "mcp", version: "0.1.0" },
+      credential: token,
+      clock,
+      random: createSeededRandom(7),
+      logger: createMemoryLogger({ subsystem: "client" }),
+    });
+    expectTypeOf(client).toEqualTypeOf<ProtocolClient>();
+    expectTypeOf<typeof client.call<"intent/propose">>()
+      .parameter(1)
+      .toEqualTypeOf<ArgsOf<"intent/propose">>();
+    expectTypeOf<typeof client.call<"intent/propose">>().returns.resolves.toEqualTypeOf<
+      ResultOf<"intent/propose">
+    >();
+    expectTypeOf<Extract<Parameters<typeof client.call>[0], "push/subscribe">>().toBeNever();
+    expect(engine.sockets()).toStrictEqual([]);
   });
 });
