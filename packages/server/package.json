@@ -22,6 +22,11 @@
     "@binference/core": "workspace:*",
     "@binference/engine": "workspace:*",
     "@binference/protocol": "workspace:*",
+    "ws": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@binference/client": "workspace:*",
+    "@types/ws": "catalog:"
   }
 }

@@ -15,13 +15,13 @@ export interface ServerAuth {
 type SignInRefusal = "auth.required" | "auth.invalid" | "auth.revoked" | "auth.local_only";
 
 /** A credential that signed in: its id and the scopes it holds. */
-interface Identity {
+export interface Identity {
   readonly credential: string;
   readonly scopes: readonly Scope[];
 }
 
 /** A device sign-in that waits for the device to sign the challenge's nonce. */
-interface Challenge {
+export interface Challenge {
   /** 32 random bytes in base64url, for the `challenge` frame. */
   readonly nonce: string;
   /** Checks the `prove` frame's signature against the device's key. */

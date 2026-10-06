@@ -12,11 +12,15 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - Frames, credentials, error codes, scopes and the operation table come from
   `@binference/protocol`. A call fails only with a protocol error code; a code the server raises
   itself starts with `server.` and is a fault of the engine's own wiring.
-- No connection is trusted for its address. Tokens sign in over IPC only and devices over WS
-  only.
-- Time and randomness come through the `Clock` and `Random` ports: call timeouts and push retention
-  run on the clock, so tests drive them with a manual one.
-- Every queue and map has a bound and a stated overflow: a call over a bound fails with
-  `protocol.busy`, a push to one topic too many is refused.
-- A secret never reaches a log, an error or a stored row: idempotency keys are kept per credential
-  id.
+- No connection is trusted for its address. Tokens sign in over IPC only, devices over WS only, and
+  the HTTP listener binds beyond loopback only when `auth` is set.
+- Time and randomness come through the `Clock` and `Random` ports: the sign-in timeout, pings, call
+  timeouts, the call rate and push retention all run on the clock, so tests drive them with a
+  manual one.
+- Every queue and map has a bound in `ServerLimits` and a stated overflow: a call over a bound fails
+  with `protocol.busy` or `protocol.too_large`, a connection over one is refused with 503, a slow
+  client is cut with 1013 and resumes its topics.
+- A secret never reaches a log, an error or a stored row: a log line names the connection by its
+  id, and idempotency keys are kept per credential id.
+- Tests over real sockets live in `src/e2e/`, on `127.0.0.1` with ephemeral ports, and close every
+  socket and listener. Only `src/e2e/` may import `@binference/client`.
