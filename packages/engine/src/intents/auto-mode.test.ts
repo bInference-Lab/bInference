@@ -18,6 +18,8 @@ const facts: AutoModeFacts = {
   perTradeCapUsdMicros: 100_000_000n,
   rollingDayCapUsdMicros: 500_000_000n,
   rollingDaySpentUsdMicros: 400_000_000n,
+  feePerGasNativeBase: 50_000_000n,
+  networkFeeCapNativeBase: 1_000_000_000n,
   hasUnlistedSpender: false,
 };
 
@@ -70,6 +72,11 @@ describe("the auto test", () => {
     expect(refusalOf(swap, { rollingDaySpentUsdMicros: 400_000_001n })).toBe("overCap");
   });
 
+  it("asks when the fee per gas passes the network fee cap, and runs at the cap", () => {
+    expect(refusalOf(swap, { feePerGasNativeBase: 1_000_000_001n })).toBe("overFeeCap");
+    expect(refusalOf(swap, { feePerGasNativeBase: 1_000_000_000n })).toBe("passes");
+  });
+
   it("asks for an unlisted spender, outside content and every proposer but the runtime", () => {
     expect(refusalOf(swap, { hasUnlistedSpender: true })).toBe("spender");
     expect(refusalOf({ ...swap, hasOutsideContent: true })).toBe("outside");
@@ -93,6 +100,9 @@ describe("the auto test", () => {
     expect(refusalOf(swap, { sellsDeniedToken: true, valueUsdMicros: 10n ** 12n })).toBe(
       "deniedToken",
     );
+    const pricey = { feePerGasNativeBase: 10n ** 12n };
+    expect(refusalOf(swap, { ...pricey, valueUsdMicros: 10n ** 12n })).toBe("overCap");
+    expect(refusalOf(swap, { ...pricey, hasUnlistedSpender: true })).toBe("overFeeCap");
     expect(refusalOf(swap, { valueUsdMicros: 10n ** 12n, hasUnlistedSpender: true })).toBe(
       "overCap",
     );
@@ -139,6 +149,8 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
     perTradeHeadroom: headroom,
     dayHeadroom: headroom,
     rollingDaySpentUsdMicros: usd,
+    feePerGasNativeBase: usd,
+    feeHeadroom: headroom,
     hasUnlistedSpender: mostly(false, true),
   })
   .map((generated): AutoModeFacts => ({
@@ -152,8 +164,19 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
       generated.rollingDaySpentUsdMicros + generated.valueUsdMicros + generated.dayHeadroom,
     ),
     rollingDaySpentUsdMicros: generated.rollingDaySpentUsdMicros,
+    feePerGasNativeBase: generated.feePerGasNativeBase,
+    networkFeeCapNativeBase: atLeastZero(generated.feePerGasNativeBase + generated.feeHeadroom),
     hasUnlistedSpender: generated.hasUnlistedSpender,
   }));
+
+// The money conditions of the auto test: the caps and the network fee cap.
+function fitsEveryCap(given: AutoModeFacts): boolean {
+  return (
+    given.valueUsdMicros <= given.perTradeCapUsdMicros &&
+    given.rollingDaySpentUsdMicros + given.valueUsdMicros <= given.rollingDayCapUsdMicros &&
+    given.feePerGasNativeBase <= given.networkFeeCapNativeBase
+  );
+}
 
 // Spec 6, section 5, written out independently of the module under test.
 function isAllowedBySpec(subject: AutoModeSubject, given: AutoModeFacts): boolean {
@@ -164,8 +187,7 @@ function isAllowedBySpec(subject: AutoModeSubject, given: AutoModeFacts): boolea
     given.approvalMode === "auto" &&
     isAutoKind &&
     !given.sellsDeniedToken &&
-    given.valueUsdMicros <= given.perTradeCapUsdMicros &&
-    given.rollingDaySpentUsdMicros + given.valueUsdMicros <= given.rollingDayCapUsdMicros &&
+    fitsEveryCap(given) &&
     !given.hasUnlistedSpender &&
     !subject.hasOutsideContent &&
     subject.proposer === "agent_runtime"
@@ -186,6 +208,20 @@ describe("the auto test as a property", () => {
       fc.property(subjects, factSets, (subject, generated) => {
         expect(checkAutoMode(subject, { ...generated, sellsDeniedToken: true }).ok).toBe(false);
       }),
+    );
+  });
+
+  it("never authorizes a fee per gas above the network fee cap", () => {
+    fc.assert(
+      fc.property(
+        subjects,
+        factSets,
+        fc.bigInt({ min: 1n, max: 10n ** 9n }),
+        (subject, given, over) => {
+          const fee = { feePerGasNativeBase: given.networkFeeCapNativeBase + over };
+          expect(checkAutoMode(subject, { ...given, ...fee }).ok).toBe(false);
+        },
+      ),
     );
   });
 

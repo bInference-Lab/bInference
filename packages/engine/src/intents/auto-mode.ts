@@ -7,9 +7,9 @@ import type { IntentStatus } from "./intent-status.js";
 export type ApprovalMode = "manual" | "auto";
 
 /**
- * Why auto mode leaves an intent to the owner's tap. `manual`: the agent is not in auto mode.
- * `send`, `kind`, `deniedToken`, `overCap`, `spender`, `outside` and `mcp` are the `autoAsks` lines
- * of spec 4, section 3.4; `deniedToken` means the intent sells a token on the deny list, and
+ * Why auto mode leaves an intent to the owner's tap. `manual`: the agent is not in auto mode. The
+ * others are the `autoAsks` lines of spec 4, section 3.4: `deniedToken` means the intent sells a
+ * token on the deny list, `overFeeCap` that its fee per gas is above the network fee cap, and
  * `spender` that a step approves a spender outside the registry.
  */
 export type AutoModeRefusal =
@@ -18,6 +18,7 @@ export type AutoModeRefusal =
   | "kind"
   | "deniedToken"
   | "overCap"
+  | "overFeeCap"
   | "spender"
   | "outside"
   | "mcp";
@@ -36,6 +37,16 @@ export interface AutoModeFacts {
   readonly rollingDayCapUsdMicros: bigint;
   /** What the agent spent in the rolling 24 hours before this intent. */
   readonly rollingDaySpentUsdMicros: bigint;
+  /**
+   * The most fee per gas the intent's transactions pay, as read when its steps were built, in base
+   * units of the chain's native coin (wei on an EVM chain).
+   */
+  readonly feePerGasNativeBase: bigint;
+  /**
+   * The chain's network fee cap: the most fee per gas a transaction pays without the owner's tap,
+   * in the same units (decision 0102).
+   */
+  readonly networkFeeCapNativeBase: bigint;
   /** A step approves a spender outside the registry. */
   readonly hasUnlistedSpender: boolean;
 }
@@ -82,6 +93,9 @@ function autoModeRefusal(
   if (!fitsCaps(facts)) {
     return "overCap";
   }
+  if (facts.feePerGasNativeBase > facts.networkFeeCapNativeBase) {
+    return "overFeeCap";
+  }
   if (facts.hasUnlistedSpender) {
     return "spender";
   }
@@ -94,9 +108,9 @@ function autoModeRefusal(
 /**
  * The auto test of spec 6, section 5. It passes only when the agent is in auto mode, the kind is a
  * swap, buy or sell or a lend or stake move inside the agent's own positions, it sells no token on
- * the deny list, the value fits the per-trade and rolling-day caps, every approval goes to a
- * registry spender, the turn read no outside content, and the agent runtime proposed it. Anything
- * else opens a card.
+ * the deny list, the value fits the per-trade and rolling-day caps, the fee per gas is at most the
+ * network fee cap, every approval goes to a registry spender, the turn read no outside content,
+ * and the agent runtime proposed it. Anything else opens a card.
  */
 export function checkAutoMode(
   intent: AutoModeSubject,

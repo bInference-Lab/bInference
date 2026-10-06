@@ -28,6 +28,8 @@ const autoFacts: AutoModeFacts = {
   perTradeCapUsdMicros: 100_000_000n,
   rollingDayCapUsdMicros: 500_000_000n,
   rollingDaySpentUsdMicros: 0n,
+  feePerGasNativeBase: 50_000_000n,
+  networkFeeCapNativeBase: 1_000_000_000n,
   hasUnlistedSpender: false,
 };
 

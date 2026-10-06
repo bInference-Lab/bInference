@@ -326,6 +326,8 @@ const allowingAuto: AutoModeFacts = {
   perTradeCapUsdMicros: 0n,
   rollingDayCapUsdMicros: 0n,
   rollingDaySpentUsdMicros: 0n,
+  feePerGasNativeBase: 0n,
+  networkFeeCapNativeBase: 0n,
   hasUnlistedSpender: false,
 };
 
@@ -334,6 +336,15 @@ const trades: fc.Arbitrary<AutoModeSubject> = fc.record({
   proposer: fc.constant("agent_runtime" as const),
   hasOutsideContent: fc.constant(false),
 });
+
+// Fees per gas and caps from zero to far above the network floor, often one wei apart.
+const weiAmounts = fc.bigInt({ min: 0n, max: 10n ** 12n });
+const feesAndCaps: fc.Arbitrary<readonly [bigint, bigint]> = fc.oneof(
+  fc.tuple(weiAmounts, weiAmounts),
+  fc
+    .bigInt({ min: 1n, max: 10n ** 12n })
+    .chain((cap) => fc.tuple(fc.bigInt({ min: cap - 1n, max: cap + 1n }), fc.constant(cap))),
+);
 
 const machine = createIntentStateMachine({
   clock: { now: () => nowMs, sleep: async () => Promise.resolve() },
@@ -414,6 +425,16 @@ describe("the policy rules", () => {
       fc.property(inputs, trades, (input, trade) => {
         const facts = { ...allowingAuto, sellsDeniedToken: sellsDeniedToken(input) };
         expect(checkAutoMode(trade, facts).ok).toBe(!sellsDenied(input));
+      }),
+      { numRuns: 1_000 },
+    );
+  });
+
+  it("never let a fee per gas above the network fee cap run in auto mode", () => {
+    fc.assert(
+      fc.property(trades, feesAndCaps, (trade, [fee, cap]) => {
+        const facts = { ...allowingAuto, feePerGasNativeBase: fee, networkFeeCapNativeBase: cap };
+        expect(checkAutoMode(trade, facts).ok).toBe(fee <= cap);
       }),
       { numRuns: 1_000 },
     );

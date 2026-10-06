@@ -23,6 +23,8 @@ const autoFacts: AutoModeFacts = {
   perTradeCapUsdMicros: 100_000_000n,
   rollingDayCapUsdMicros: 500_000_000n,
   rollingDaySpentUsdMicros: 0n,
+  feePerGasNativeBase: 50_000_000n,
+  networkFeeCapNativeBase: 1_000_000_000n,
   hasUnlistedSpender: false,
 };
 
@@ -141,6 +143,15 @@ describe("opening the first card", () => {
       ok: false,
       error: "auto_mode_refused",
     });
+  });
+
+  it("opens a card in auto mode for a fee per gas above the network fee cap", () => {
+    const pricey: AuthorizationCheck = {
+      by: "auto_mode",
+      facts: { ...autoFacts, feePerGasNativeBase: 1_000_000_001n },
+    };
+    expect(openCard(input(simulated, pricey, 0)).ok).toBe(true);
+    expect(authorizeIntent(input(simulated, pricey)).ok).toBe(false);
   });
 
   it("opens no card for an intent the auto mode authorizes", () => {

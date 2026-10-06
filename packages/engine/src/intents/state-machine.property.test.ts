@@ -168,6 +168,8 @@ const autoFacts: fc.Arbitrary<AutoModeFacts> = fc.record({
   perTradeCapUsdMicros: fc.constant(100_000_000n),
   rollingDayCapUsdMicros: fc.constant(500_000_000n),
   rollingDaySpentUsdMicros: fc.bigInt({ min: 0n, max: 500_000_000n }),
+  feePerGasNativeBase: fc.bigInt({ min: 0n, max: 2_000_000_000n }),
+  networkFeeCapNativeBase: fc.constant(1_000_000_000n),
   hasUnlistedSpender: mostly(false, true),
 });
 
@@ -406,6 +408,7 @@ function isAutoAllowed(status: IntentStatus, auto: AutoModeFacts | undefined): b
     isAutoKind(status, auto) &&
     !auto.sellsDeniedToken &&
     fitsAutoCaps(auto) &&
+    auto.feePerGasNativeBase <= auto.networkFeeCapNativeBase &&
     !auto.hasUnlistedSpender &&
     !status.hasOutsideContent &&
     status.proposer === "agent_runtime"
@@ -417,9 +420,9 @@ function autoFactsOf(trigger: IntentTrigger): AutoModeFacts | undefined {
   return check?.by === "auto_mode" ? check.facts : undefined;
 }
 
-// Invariant 8: an auto-authorized intent is a trade or an own-position move, inside the caps,
-// selling no denied token, with no new spender, no outside content and no proposer but the agent
-// runtime.
+// Invariant 8: an auto-authorized intent is a trade or an own-position move, inside the caps and
+// the network fee cap, selling no denied token, with no new spender, no outside content and no
+// proposer but the agent runtime.
 function autoViolations({ before, trigger, result }: Outcome): readonly string[] {
   if (!result.ok || isAuto(before.authorizedBy) || !isAuto(result.value.status.authorizedBy)) {
     return [];
