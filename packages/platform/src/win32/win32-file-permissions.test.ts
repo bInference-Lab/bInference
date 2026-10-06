@@ -177,10 +177,14 @@ afterEach(async () => {
   await Promise.all(folders.splice(0).map(async (folder) => rm(folder, { recursive: true })));
 });
 
-// Each case starts icacls, whoami and Windows PowerShell, which take seconds on a CI runner.
+// Each case starts icacls, whoami and Windows PowerShell, which take seconds on a CI runner. They
+// run in CI's OS job, never inside the parallel `pnpm check`, where Windows PowerShell can take
+// more than 15 s to start.
 const osTestTimeoutMs = 60_000;
+// oxlint-disable-next-line node/no-process-env -- the switch for the real OS tests, read only here
+const osTests = process.env["BINFERENCE_OS_TESTS"] === "1";
 
-describe.runIf(process.platform === "win32")("windows file permissions", () => {
+describe.runIf(osTests && process.platform === "win32")("windows file permissions", () => {
   it.each(
     filePermissionsContract({
       create: async () => ({

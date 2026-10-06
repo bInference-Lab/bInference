@@ -123,6 +123,7 @@ jobs:
       - name: Service contract
         env:
           BINFERENCE_SERVICE_TESTS: "1"
+          BINFERENCE_OS_TESTS: "1"
         run: pnpm vitest run packages/platform/src/posix packages/platform/src/win32
 
   pull-request:
