@@ -238,6 +238,9 @@ importers:
 
   .:
     devDependencies:
+      '@binference/i18n':
+        specifier: workspace:*
+        version: link:packages/i18n
       '@binference/protocol':
         specifier: workspace:*
         version: link:packages/protocol

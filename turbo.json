@@ -54,6 +54,17 @@
     "//#check:protocol-compat": {
       "outputs": []
     },
+    "//#check:i18n": {
+      "outputs": [],
+      "inputs": [
+        "packages/i18n/messages/**",
+        "packages/i18n/src/**",
+        "packages/protocol/src/**",
+        "docs/GLOSSARY.md",
+        "scripts/check-i18n.mts",
+        "pnpm-lock.yaml"
+      ]
+    },
     "//#check:adr": {
       "outputs": [],
       "env": ["BASE_REF"]

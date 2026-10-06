@@ -9,11 +9,15 @@ and times. Messages are ICU texts in `messages/<locale>/<area>.json`, formatted 
 
 ## API
 
-| Export                            | What it does                                                            |
-| --------------------------------- | ----------------------------------------------------------------------- |
-| `createFormatter`, `Formatter`    | Messages, amounts, money, rates and times for one language and timezone |
-| `messages`, `Catalog`             | Every message by language, under full keys such as `reason.daily_cap`   |
-| `messageLocales`, `MessageLocale` | The languages with messages: `en` and `zh`                              |
+| Export                                        | What it does                                                                |
+| --------------------------------------------- | --------------------------------------------------------------------------- |
+| `createFormatter`, `Formatter`                | Messages, amounts, money, rates and times for one language and timezone     |
+| `messages`, `Catalog`                         | Every message by language, under full keys such as `reason.daily_cap`       |
+| `messageLocales`, `MessageLocale`             | The languages with messages: `en` and `zh`                                  |
+| `@binference/i18n/check`: `checkCatalogs`     | The same files, keys and arguments in every language; ICU that parses       |
+| `@binference/i18n/check`: `checkGlossary`     | Chinese that uses the glossary's word wherever the English uses a term      |
+| `@binference/i18n/check`: `checkCodeMessages` | A message for every code of a closed list, such as the protocol error codes |
+| `@binference/i18n/check`: `parseGlossary`     | The term tables under "Chinese terms" in `docs/GLOSSARY.md`                 |
 
 ## Example
 

@@ -10,6 +10,7 @@ import { docsAndTsdocCases } from "./gates/docs-cases.mjs";
 import { runCase, type GateCase } from "./gates/gate-case.mjs";
 import { graphCases, tsconfigCases } from "./gates/graph-cases.mjs";
 import { hygieneCases } from "./gates/hygiene-cases.mjs";
+import { i18nCases } from "./gates/i18n-cases.mjs";
 import { lintCases } from "./gates/lint-cases.mjs";
 import { prCases } from "./gates/pr-cases.mjs";
 import { protocolCases } from "./gates/protocol-cases.mjs";
@@ -35,6 +36,7 @@ function allCases(repo: string): readonly GateCase[] {
     ...contractCases(),
     ...chainLiteralCases(),
     ...protocolCases(repo),
+    ...i18nCases(repo),
     ...commitCases(),
     ...checkCases(),
     ...prCases(repo),
