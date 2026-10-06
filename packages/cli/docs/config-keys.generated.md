@@ -2,7 +2,7 @@
 
 This file is generated from the config schema by `pnpm check:config-schema --write`. Change the schema in `packages/cli/src/config/schema/`, never this file.
 
-This binference reads `config.json5` version 1. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 2. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -108,6 +108,7 @@ Chains.
 - `chains.rpc.<chain>.urls`: Extra or replacement RPCs. Takes a list in which each item is a URL. Default: the public RPCs. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__URLS`.
 - `chains.rpc.<chain>.key`: A paid RPC's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__KEY`.
 - `chains.relays.<chain>`: Private relays for sends, per chain. Takes a list in which each item is text. Default: the two fastest, by measurement. Variable: `BINFERENCE_CHAINS__RELAYS__<CHAIN>`. Keys: a chain id such as eip155:56.
+- `chains.maxFeePerGasGwei.<chain>`: The network fee cap per chain, in gwei: a higher fee per gas asks the owner. Takes a decimal number in quotes, such as "0.002". Default: `{"eip155:56":"1"}`. Variable: `BINFERENCE_CHAINS__MAX_FEE_PER_GAS_GWEI__<CHAIN>`. Keys: a chain id such as eip155:56.
 
 ## `venues`
 

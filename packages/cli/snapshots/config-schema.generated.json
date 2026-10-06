@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -654,6 +654,23 @@
                 "type": "string",
                 "minLength": 1
               }
+            }
+          },
+          "maxFeePerGasGwei": {
+            "description": "The network fee cap per chain, in gwei: a higher fee per gas asks the owner.",
+            "keyName": "chain",
+            "default": {
+              "eip155:56": "1"
+            },
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "valueFormat": "chain"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+              "valueFormat": "decimal"
             }
           }
         },

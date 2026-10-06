@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { currentConfigVersion } from "../migrations/config-migrations.js";
 import { describeConfigSchema, renderConfigReference } from "./config-reference.js";
 
 describe("config reference", () => {
   it("records the version and a strict JSON Schema with the secret shapes", () => {
     const snapshot = describeConfigSchema();
-    expect(snapshot.version).toBe(1);
+    expect(snapshot.version).toBe(currentConfigVersion);
     expect(snapshot.schema).toMatchObject({
       additionalProperties: false,
       $defs: { CommandSecret: { type: "object", additionalProperties: false } },

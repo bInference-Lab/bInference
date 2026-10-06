@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { ConfigIssue } from "../config-issue.js";
 import { formatConfigIssue } from "../format-config-issue.js";
 import { loadConfig } from "../load-config.js";
+import { currentConfigVersion } from "../migrations/config-migrations.js";
 import type { ConfigOutcome } from "../validate-config.js";
 import { createSecretReader } from "./secret-reader.js";
 
@@ -77,7 +78,10 @@ describe("secrets in logs and errors", () => {
       system: { locale: "en", timezone: "UTC", unlockMode: "file" },
       signal: signal(),
       readFile: async () =>
-        Promise.resolve({ ok: true, value: `{ telegram: { botToken: "${secret}" } }` } as const),
+        Promise.resolve({
+          ok: true,
+          value: `{ version: ${String(currentConfigVersion)}, telegram: { botToken: "${secret}" } }`,
+        } as const),
     });
     const issues = issuesOf(outcome);
     expect(issues.map((issue) => [issue.path, issue.problem.kind])).toStrictEqual([

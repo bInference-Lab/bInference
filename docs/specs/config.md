@@ -230,7 +230,7 @@ micro-dollars and base units on load.
 ```json5
 // ~/.binference/config.json5
 {
-  version: 1,
+  version: 2,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

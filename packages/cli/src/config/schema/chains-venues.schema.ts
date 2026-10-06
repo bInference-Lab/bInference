@@ -2,7 +2,7 @@ import type { ChainRef } from "@binference/chain";
 import { bsc } from "@binference/chains";
 import { z } from "zod";
 import { type SecretSource, secretSourceSchema } from "./secret-source.schema.js";
-import { chainSchema } from "./value-formats.schema.js";
+import { chainSchema, decimalSchema } from "./value-formats.schema.js";
 
 /** Extra or replacement RPCs of one chain. */
 export interface RpcConfig {
@@ -11,11 +11,16 @@ export interface RpcConfig {
   readonly key?: SecretSource;
 }
 
-/** The chains the agent trades on, their RPCs and their private relays. */
+/** The chains the agent trades on, their RPCs, their private relays and their network fee caps. */
 export interface ChainsConfig {
   readonly enabled: readonly ChainRef[];
   readonly rpc: Readonly<Record<ChainRef, RpcConfig>>;
   readonly relays: Readonly<Record<ChainRef, readonly string[]>>;
+  /**
+   * Each chain's network fee cap in gwei, as decimal text such as `"1"`: a higher fee per gas waits
+   * for the owner's tap (decision 0102).
+   */
+  readonly maxFeePerGasGwei: Readonly<Record<ChainRef, string>>;
 }
 
 /** OKX's three secrets. */
@@ -74,6 +79,13 @@ export const chainsSchema: z.ZodType<ChainsConfig> = z
         description: "Private relays for sends, per chain.",
         keyName: "chain",
         defaultText: "the two fastest, by measurement",
+      }),
+    maxFeePerGasGwei: z
+      .record(chainSchema, decimalSchema)
+      .prefault({ [bsc.id]: "1" })
+      .meta({
+        description: "The network fee cap per chain, in gwei: a higher fee per gas asks the owner.",
+        keyName: "chain",
       }),
   })
   .prefault({})

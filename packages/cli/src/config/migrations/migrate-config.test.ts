@@ -106,6 +106,23 @@ describe("migrate config", () => {
     }).toThrow(expect.objectContaining({ code: "config.migrations_out_of_order" }));
   });
 
+  it("moves a version 1 file to version 2 without changing a value, so the fee cap takes its default", () => {
+    const first: JsonObject = { version: 1, telegram: { botToken: { fromKeychain: "bot" } } };
+    expect(migrateConfig(first, configMigrations.slice(0, 1))).toStrictEqual({
+      ok: true,
+      file: { ...first, version: 2 },
+      steps: [
+        {
+          from: 1,
+          to: 2,
+          summary:
+            "Adds chains.maxFeePerGasGwei, the network fee cap of each chain, at its default.",
+          edits: [],
+        },
+      ],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);

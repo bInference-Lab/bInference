@@ -4,10 +4,13 @@ import { readTextFile } from "@binference/platform";
 import { describe, expect, it } from "vitest";
 import { formatConfigIssue } from "./format-config-issue.js";
 import { type LoadConfigOptions, loadConfig } from "./load-config.js";
+import { currentConfigVersion } from "./migrations/config-migrations.js";
 import type { ConfigOutcome, ValidConfig } from "./validate-config.js";
 
 const file = "/srv/binference/config.json5";
-const minimal = '{ telegram: { botToken: { fromKeychain: "telegram-bot" } } }';
+const version = `version: ${String(currentConfigVersion)}`;
+const botToken = 'telegram: { botToken: { fromKeychain: "telegram-bot" } }';
+const minimal = `{ ${version}, ${botToken} }`;
 const signal = (): AbortSignal => new AbortController().signal;
 
 function options(
@@ -63,11 +66,11 @@ describe("load config", () => {
     expect(loaded.config.engine.port).toBe(7456);
     expect(loaded.config.engine.unlock.mode).toBe("keychain");
     expect(loaded.config.chains.enabled).toStrictEqual(["eip155:56"]);
+    expect(loaded.config.chains.maxFeePerGasGwei).toStrictEqual({ "eip155:56": "1" });
   });
 
   it("lets the environment replace the file, and a flag replace both", async () => {
-    const text =
-      '{ engine: { port: 7000, webhookPort: 7001 }, telegram: { botToken: { fromEnv: "T" } } }';
+    const text = `{ ${version}, engine: { port: 7000, webhookPort: 7001 }, ${botToken} }`;
     const loaded = valid(
       await loadConfig(
         options(text, {
@@ -92,9 +95,10 @@ describe("load config", () => {
   it("reads lists, objects and secret sources from variables as JSON", async () => {
     const loaded = valid(
       await loadConfig(
-        options("{}", {
+        options(`{ ${version} }`, {
           env: {
             BINFERENCE_CHAINS__ENABLED: '["eip155:56"]',
+            BINFERENCE_CHAINS__MAX_FEE_PER_GAS_GWEI: '{"eip155:56":"2.5"}',
             BINFERENCE_TELEGRAM__BOT_TOKEN: '{"fromEnv":"TELEGRAM_BOT_TOKEN"}',
             BINFERENCE_MODELS__PROVIDERS__BINFERENCE__KIND: "binference",
             BINFERENCE_HOME: "/srv/binference",
@@ -104,6 +108,7 @@ describe("load config", () => {
     );
     expect(loaded.config.telegram.botToken).toStrictEqual({ fromEnv: "TELEGRAM_BOT_TOKEN" });
     expect(loaded.config.models.providers["binference"]?.kind).toBe("binference");
+    expect(loaded.config.chains.maxFeePerGasGwei).toStrictEqual({ "eip155:56": "2.5" });
   });
 
   it("replaces a secret source whole, never merging two forms", async () => {
@@ -114,7 +119,7 @@ describe("load config", () => {
   });
 
   it("accepts comments, trailing commas, a byte order mark and Windows line endings", async () => {
-    const text = '﻿// mine\r\n{\r\n  telegram: { botToken: { fromKeychain: "bot" }, },\r\n}\r\n';
+    const text = `﻿// mine\r\n{\r\n  ${version},\r\n  ${botToken},\r\n}\r\n`;
     expect(valid(await loadConfig(options(text))).config.telegram.mode).toBe("polling");
   });
 
@@ -154,16 +159,24 @@ describe("load config", () => {
   });
 
   it("refuses a file from a newer binference", async () => {
-    expect(lines(await loadConfig(options(`{ version: 9, ${minimal.slice(1)}`)))).toStrictEqual([
-      "version: is version 9, from a newer binference; this one reads up to version 1. Update " +
+    expect(lines(await loadConfig(options(`{ version: 9, ${botToken} }`)))).toStrictEqual([
+      `version: is version 9, from a newer binference; this one reads up to version ${String(currentConfigVersion)}. Update ` +
         "binference, or restore a backup of config.json5.",
     ]);
   });
 
+  it("refuses a file of an older shape, or one with no version, until check --fix moves it", async () => {
+    const older = [
+      `version: is version 1; this binference reads version ${String(currentConfigVersion)}. ` +
+        "Run binference check --fix to migrate it.",
+    ];
+    expect(lines(await loadConfig(options(`{ version: 1, ${botToken} }`)))).toStrictEqual(older);
+    expect(lines(await loadConfig(options(`{ ${botToken} }`)))).toStrictEqual(older);
+  });
+
   it("requires the bot token, the unlock command and the webhook secret when they are needed", async () => {
-    const text =
-      '{ engine: { unlock: { mode: "command" } }, telegram: { mode: "webhook", botToken: { fromEnv: "T" } } }';
-    expect(lines(await loadConfig(options("{}")))).toStrictEqual([
+    const text = `{ ${version}, engine: { unlock: { mode: "command" } }, telegram: { mode: "webhook", botToken: { fromEnv: "T" } } }`;
+    expect(lines(await loadConfig(options(`{ ${version} }`)))).toStrictEqual([
       "telegram.botToken: is required. Add it to config.json5.",
     ]);
     expect(lines(await loadConfig(options(text)))).toStrictEqual([
