@@ -12,12 +12,15 @@ function lintCase(
   files: Readonly<Record<string, string>>,
   findings: readonly (readonly [file: string, rule: string])[],
 ): GateCase {
+  const planted = Object.keys(files).filter((file) => /\.[cm]?tsx?$/.test(file));
   return {
     name,
     files,
+    // Lints only the planted files: a whole-repo lint per case grows with the repo.
+    cost: 1.5,
     steps: [
       {
-        command: ["pnpm", "lint", "--format", "unix"],
+        command: ["pnpm", "lint", "--format", "unix", ...planted],
         expect: "fail",
         output: findings.map(
           ([file, rule]) =>

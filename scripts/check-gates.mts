@@ -59,10 +59,14 @@ function runShard(cases: readonly GateCase[]): number {
   let failed = 0;
   try {
     for (const item of cases) {
+      const started = performance.now();
       const problem = runCase(sandbox, item);
+      const seconds = ((performance.now() - started) / 1000).toFixed(1);
       failed += problem === undefined ? 0 : 1;
       console.log(
-        problem === undefined ? `ok    ${item.name}` : `FAIL  ${item.name}\n${problem}\n`,
+        problem === undefined
+          ? `ok    ${item.name} (${seconds} s)`
+          : `FAIL  ${item.name} (${seconds} s)\n${problem}\n`,
       );
     }
   } finally {

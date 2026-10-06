@@ -47,17 +47,17 @@ export function workspaceCases(repo: string): readonly GateCase[] {
     engineCase(repo, "26.1.0", "pass"),
     {
       name: "pnpm gen:package demo makes a package that builds through Turborepo and tests",
-      cost: 8,
+      cost: 6,
       steps: [
         { command: ["pnpm", "gen:package", "demo"], expect: "pass" },
         { command: ["pnpm", "install", "--prefer-offline"], expect: "pass" },
+        // Only the new package and what it imports: a full build and test run grows with the repo.
         {
-          command: ["pnpm", "build"],
+          command: ["pnpm", "turbo", "run", "build", "--filter=@binference/demo..."],
           expect: "pass",
           output: [/index\.mjs/, /index\.d\.mts/],
         },
         { command: ["pnpm", "typecheck"], expect: "pass" },
-        { command: ["pnpm", "test"], expect: "pass" },
         {
           command: ["pnpm", "exec", "vitest", "run", "packages/demo/", "--reporter=verbose"],
           expect: "pass",

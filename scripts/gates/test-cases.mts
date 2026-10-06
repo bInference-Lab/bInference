@@ -182,7 +182,7 @@ function mutationCases(repo: string): readonly GateCase[] {
   return [
     {
       name: "Stryker reports a mutation score on a sample",
-      cost: 7,
+      cost: 4,
       files: moneySample(repo, feeTest),
       steps: [
         {
@@ -195,7 +195,7 @@ function mutationCases(repo: string): readonly GateCase[] {
     },
     {
       name: "Stryker fails a sample whose tests check nothing",
-      cost: 7,
+      cost: 4,
       files: moneySample(repo, weakTest),
       steps: [
         {
