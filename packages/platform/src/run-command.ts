@@ -27,11 +27,12 @@ const commandTimeoutMs = 15_000;
 // Windows PowerShell started through another process, such as this one under a PowerShell 7
 // terminal, inherits PowerShell 7's module paths and cannot load its own modules. Microsoft's
 // fix is to start it without PSModulePath, so it builds its default value (about_PSModulePath).
-// `undefined` drops the variable from the child's environment (execa merges it over process.env).
+// Windows names ignore case and Node passes only the first spelling in sorted order, before it
+// drops `undefined` values; the all-capitals name sorts first, so it removes every spelling.
 const windowsPowerShell = /(?:^|[\\/])powershell(?:\.exe)?$/i;
 
 function environmentFor(file: string): Readonly<Record<string, string | undefined>> {
-  return windowsPowerShell.test(file) ? { PSModulePath: undefined } : {};
+  return windowsPowerShell.test(file) ? { PSMODULEPATH: undefined } : {};
 }
 
 /**
@@ -82,8 +83,6 @@ export async function runCommandToExit(
     reject: false,
   });
   // The program never ran to its end: it did not start, timed out or was stopped by the signal.
-  // On Windows a missing program runs through cmd.exe and exits with 1, so its exit code alone
-  // does not say it never started; the spawn error's code (ENOENT) does.
   if (
     result.exitCode === undefined ||
     result.code !== undefined ||
