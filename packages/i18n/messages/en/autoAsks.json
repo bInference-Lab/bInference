@@ -1,0 +1,10 @@
+{
+  "send": "sends always ask",
+  "kind": "this kind always asks",
+  "overCap": "over your auto caps",
+  "spender": "it approves a contract that is not verified",
+  "outside": "the idea came from outside content",
+  "mcp": "proposed from {client}",
+  "deniedToken": "it sells a token on your deny list",
+  "overFeeCap": "the network fee is above your cap"
+}

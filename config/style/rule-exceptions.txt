@@ -7,3 +7,9 @@ docs/specs/cards-and-messages.md emoji
 
 # The glossary pairs each English term with its Chinese.
 docs/GLOSSARY.md cjk
+
+# The card and receipt messages carry the status icons the card spec names.
+packages/i18n/messages/en/card.json emoji
+packages/i18n/messages/zh/card.json emoji
+packages/i18n/messages/en/receipt.json emoji
+packages/i18n/messages/zh/receipt.json emoji

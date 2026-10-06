@@ -10,3 +10,5 @@ export type {
 } from "./check/message-files.js";
 export { parseGlossary } from "./check/parse-glossary.js";
 export type { GlossaryTerm } from "./check/parse-glossary.js";
+export { parseMessage } from "./check/parse-message.js";
+export type { ParsedMessage } from "./check/parse-message.js";

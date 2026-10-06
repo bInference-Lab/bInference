@@ -21,6 +21,8 @@ Rules for this package:
 - The policy step (`src/policy/`) decides and never writes. It reads prices only through the
   `PriceSource` port, rounds every USD value up, and names every rule an intent breaks in spec 6's
   order. A new rule takes its reason from that list and adds a property case.
+- A card is data: each line a key of `cardKeys` with typed values, never English text. Every key
+  has an English and Chinese message, and each surface renders the lines.
 - Ports live in `src/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in

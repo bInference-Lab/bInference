@@ -11,6 +11,10 @@ record each move, the closed lists of reason codes and the auto-mode test. It al
 step of the money path, which checks each intent against the owner's limits and names every rule
 it breaks, and the `PriceSource` port it prices outflows through.
 
+It also holds the card of [spec 4](../../docs/specs/cards-and-messages.md) as data: each line a
+message key with typed values, which every surface renders in the owner's language, and the
+receipt line a card becomes when it closes.
+
 ## API
 
 | Export                                                           | What it does                                                    |
@@ -27,6 +31,9 @@ it breaks, and the `PriceSource` port it prices outflows through.
 | `createPolicyCheck`                                              | The policy step: passes an intent or names every rule it breaks |
 | `PolicySubject`, `PolicyFacts`, `PolicyLimits`, `PolicyVerdict`  | What the policy reads and what it answers                       |
 | `PriceSource`, `UsdPrice`                                        | The port that prices an asset in micro-dollars per base unit    |
+| `drawCard`, `Card`, `CardFacts`, `CardAction`                    | A card version as lines of message keys with typed values       |
+| `CardLine`, `CardValue`, `cardKeys`                              | One line, its values, and every key a card or receipt uses      |
+| `receiptLine`, `CardClosing`                                     | The receipt line a card becomes when it closes                  |
 | `TransitionProblem`, `ProposalProblem`                           | Why the machine refused a trigger or a proposal                 |
 
 ## Example

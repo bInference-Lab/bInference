@@ -175,6 +175,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | fallback model                          | 备用模型                |                             |
 | prompt                                  | 提示词                  |                             |
 | answer, response                        | 回答                    |                             |
+| answer (to a card)                      | 回复                    |                             |
 | request                                 | 请求                    |                             |
 | streaming                               | 流式输出                |                             |
 | context, context window                 | 上下文, 上下文窗口      |                             |
@@ -224,6 +225,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | tax (a token's tax)                                | 交易税                       | tax rate = 税率                         |
 | network fee, gas                                   | 网络费                       | "Gas" only where the English says gas   |
 | fee (a trading fee)                                | 手续费                       |                                         |
+| fees (a card's line of costs)                      | 费用                         |                                         |
 | launch (a token), launchpad                        | 发射, 发射台                 |                                         |
 | opening buy                                        | 首笔买入                     |                                         |
 | paired with (a quote token)                        | 与 X 配对交易                |                                         |

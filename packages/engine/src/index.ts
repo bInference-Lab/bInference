@@ -1,3 +1,25 @@
+export type {
+  CardAction,
+  CardActionFacts,
+  CardActionKind,
+  StakeMove,
+  TradePlace,
+} from "./confirmations/card-action.js";
+export type { Answerer, Surface } from "./confirmations/card-answer.js";
+export { receiptLine } from "./confirmations/card-closing.js";
+export type { CardClosing } from "./confirmations/card-closing.js";
+export { cardKeys } from "./confirmations/card-line.js";
+export type { CardKey, CardLine, CardValue } from "./confirmations/card-line.js";
+export { drawCard } from "./confirmations/draw-card.js";
+export type {
+  AutoAsk,
+  Card,
+  CardCheck,
+  CardFacts,
+  CardFees,
+  CardRoute,
+  CardWarnings,
+} from "./confirmations/draw-card.js";
 export { isFillAuthorization } from "./intents/authorization.js";
 export type {
   Authorization,

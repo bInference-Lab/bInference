@@ -18,6 +18,7 @@ and times. Messages are ICU texts in `messages/<locale>/<area>.json`, formatted 
 | `@binference/i18n/check`: `checkGlossary`     | Chinese that uses the glossary's word wherever the English uses a term      |
 | `@binference/i18n/check`: `checkCodeMessages` | A message for every code of a closed list, such as the protocol error codes |
 | `@binference/i18n/check`: `parseGlossary`     | The term tables under "Chinese terms" in `docs/GLOSSARY.md`                 |
+| `@binference/i18n/check`: `parseMessage`      | A message's arguments and words, so a test can match them to its values     |
 
 ## Example
 
