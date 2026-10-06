@@ -11,6 +11,7 @@ import { graphCases, tsconfigCases } from "./gates/graph-cases.mjs";
 import { hygieneCases } from "./gates/hygiene-cases.mjs";
 import { lintCases } from "./gates/lint-cases.mjs";
 import { prCases } from "./gates/pr-cases.mjs";
+import { protocolCases } from "./gates/protocol-cases.mjs";
 import { createSandbox } from "./gates/sandbox.mjs";
 import { styleCases } from "./gates/style-cases.mjs";
 import { testCases } from "./gates/test-cases.mjs";
@@ -29,6 +30,7 @@ const cases = [
   ...docsAndTsdocCases(),
   ...contractCases(),
   ...chainLiteralCases(),
+  ...protocolCases(repo),
   ...commitCases(),
   ...checkCases(),
   ...prCases(repo),

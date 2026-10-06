@@ -9,16 +9,16 @@ zod schemas that also describe themselves as JSON Schema.
 
 ## API
 
-| Export                                              | What it does                                                          |
-| --------------------------------------------------- | --------------------------------------------------------------------- |
-| `decodeClientFrame`, `decodeEngineFrame`            | Parse one text message into a frame, or name the error code it earns  |
-| `OpenFrame`, `openFrameSchema` and the other frames | One type and one schema for each of the nine frames                   |
-| `credentialSchema`, `deviceProofText`               | What `open.auth` carries, and the text a console device signs         |
-| `scopes`, `scopeSchema`, `Scope`                    | What a client may do                                                  |
-| `idPrefixes`, `protocolIdSchema`, `ProtocolId`      | The typed, prefixed UUIDv7 ids of every thing                         |
-| `protocolErrorCodes`, `protocolErrorSchema`         | Every error code the engine sends, and the error a `fail` frame holds |
-| `protocolVersion`, `checkProtocolVersion`           | The current version, and the check that refuses an unserved one       |
-| `describeProtocol`                                  | The protocol as JSON Schemas, for clients in other languages          |
+| Export                                              | What it does                                                           |
+| --------------------------------------------------- | ---------------------------------------------------------------------- |
+| `decodeClientFrame`, `decodeEngineFrame`            | Parse one text message into a frame, or name the error code it earns   |
+| `OpenFrame`, `openFrameSchema` and the other frames | One type and one schema for each of the nine frames                    |
+| `credentialSchema`, `deviceProofText`               | What `open.auth` carries, and the text a console device signs          |
+| `scopes`, `scopeSchema`, `Scope`                    | What a client may do                                                   |
+| `idPrefixes`, `protocolIdSchema`, `ProtocolId`      | The typed, prefixed UUIDv7 ids of every thing                          |
+| `protocolErrorCodes`, `protocolErrorSchema`         | Every error code the engine sends, and the error a `fail` frame holds  |
+| `protocolVersion`, `checkProtocolVersion`           | The current version, and the check that refuses an unserved one        |
+| `describeProtocol`                                  | The protocol as JSON Schemas, for other languages and the compat check |
 
 ## Example
 

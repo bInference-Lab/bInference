@@ -235,6 +235,9 @@ importers:
 
   .:
     devDependencies:
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:packages/protocol
       '@commitlint/cli':
         specifier: 'catalog:'
         version: 21.2.3(@types/node@26.6.3)(conventional-commits-parser@7.1.2)(typescript@7.0.2)

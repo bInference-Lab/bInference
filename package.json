@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
-    "check": "turbo run build format:check lint typecheck check:package-graph check:tsconfig check:style check:layout check:suppressions check:deps-policy check:tsdoc check:contract-suites check:chain-literals check:adr check:docs lint:docs deadcode dup:check test check:gates --output-logs=errors-only",
+    "check": "turbo run build format:check lint typecheck check:package-graph check:tsconfig check:style check:layout check:suppressions check:deps-policy check:tsdoc check:contract-suites check:chain-literals check:protocol-compat check:adr check:docs lint:docs deadcode dup:check test check:gates --output-logs=errors-only",
     "check:adr": "node --import tsx scripts/check-adr.mts",
     "check:chain-literals": "node --import tsx scripts/check-chain-literals.mts",
     "check:contract-suites": "node --import tsx scripts/check-contract-suites.mts",
@@ -17,6 +17,7 @@
     "check:layout": "node --import tsx scripts/check-layout.mts",
     "check:package-graph": "node --import tsx scripts/check-package-graph.mts",
     "check:pr": "node --import tsx scripts/check-pr.mts",
+    "check:protocol-compat": "node --conditions=@binference/source --import tsx scripts/check-protocol-compat.mts",
     "check:style": "node --import tsx scripts/check-style.mts",
     "check:suppressions": "node --import tsx scripts/check-suppressions.mts",
     "check:tsconfig": "node --import tsx scripts/check-tsconfig.mts",
@@ -38,6 +39,7 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json"
   },
   "devDependencies": {
+    "@binference/protocol": "workspace:*",
     "@commitlint/cli": "catalog:",
     "@commitlint/types": "catalog:",
     "@stryker-mutator/core": "catalog:",

@@ -34,7 +34,7 @@ export interface ProtocolDescription {
 
 /**
  * Describes the protocol as JSON Schemas of what travels on the wire, for clients in other
- * languages and the docs. Throws when a schema has no JSON Schema form.
+ * languages, the docs and the compatibility check. Throws when a schema has no JSON Schema form.
  */
 export function describeProtocol(): ProtocolDescription {
   const schemas: Record<string, z.core.JSONSchema.BaseSchema> = {};

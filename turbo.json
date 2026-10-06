@@ -50,6 +50,9 @@
     "//#check:chain-literals": {
       "outputs": []
     },
+    "//#check:protocol-compat": {
+      "outputs": []
+    },
     "//#check:adr": {
       "outputs": [],
       "env": ["BASE_REF"]
