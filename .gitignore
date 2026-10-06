@@ -6,3 +6,9 @@ CLAUDE.local.md
 
 .DS_Store
 node_modules/
+dist/
+coverage/
+reports/
+.turbo/
+.stryker-tmp/
+*.tsbuildinfo

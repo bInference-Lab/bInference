@@ -1,0 +1,29 @@
+packages:
+  - packages/*
+  - plugins/*
+
+# Every version lives here; package.json files write "catalog:".
+catalogMode: strict
+catalog:
+  "@types/node": 26.6.3
+  tsdown: 0.23.0
+  tsx: 4.23.15
+  turbo: 2.11.5
+  typescript: 7.0.2
+  vitest: 5.0.2
+
+# Refuse a Node outside the range in package.json "engines".
+engineStrict: true
+
+# A release must be 7 days old before it installs, with no fallback to a newer one.
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+blockExoticSubdeps: true
+nodeLinker: isolated
+savePrefix: ""
+
+# Install scripts stay off. Every package with a build script is named here, refused ones too.
+strictDepBuilds: true
+allowBuilds:
+  # Ships prebuilt binaries; its postinstall only checks them.
+  esbuild: false

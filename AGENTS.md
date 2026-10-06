@@ -30,7 +30,7 @@ first.
 
 ## TypeScript
 
-- TypeScript 7, ESM only, Node `>=24.16 <25 || >=26.1`. `strict`, `noUncheckedIndexedAccess`,
+- TypeScript 7, ESM only, Node `>=26.1`. `strict`, `noUncheckedIndexedAccess`,
   `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `isolatedDeclarations`.
 - No `any`, no non-null `!`, no `enum`, no `namespace`, no default export, no `@ts-ignore`.
   `as` only in tests and named assertion helpers.

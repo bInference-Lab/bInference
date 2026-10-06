@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/turbo/schema.json",
+  "agentGuidance": false,
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**",
+        "!src/**/*.test.ts",
+        "package.json",
+        "tsconfig.json",
+        "$TURBO_ROOT$/tsconfig.base.json"
+      ],
+      "outputs": ["dist/**"]
+    }
+  }
+}
