@@ -26,6 +26,8 @@
   "dependencies": {
     "@binference/core": "workspace:*",
     "@binference/engine": "workspace:*",
+    "@binference/i18n": "workspace:*",
+    "grammy": "catalog:",
     "zod": "catalog:"
   }
 }

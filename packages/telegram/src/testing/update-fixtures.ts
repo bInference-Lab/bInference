@@ -2,6 +2,8 @@ import type { JsonValue } from "@binference/core";
 
 /** The owner's numeric Telegram id in tests. */
 export const ownerId = 7_100_000_001;
+/** Another person's numeric Telegram id in tests. */
+export const strangerId = 7_100_000_002;
 
 /** A chat message for {@link textUpdate}. */
 export interface TextFixture {

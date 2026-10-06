@@ -2,30 +2,38 @@
 
 ## Purpose
 
-The Telegram channel for the owner's own BotFather bot. This part holds what the channel keeps
-and checks: the owner, paired once with a single-use start code and named only by a numeric
-Telegram id; updates in binference's own shape; and the screen that cuts any update holding
-something that looks like a recovery phrase, a private key or an owner key to its ids, so the
-secret is never stored.
+The Telegram channel for the owner's own BotFather bot. Every update is screened and stored before
+Telegram learns it arrived, so a crash never loses or repeats one. The owner pairs with a
+single-use start code, and only the owner's numeric Telegram id counts after that; groups stay
+off. A message that looks like a recovery phrase, a private key or an owner key is deleted unseen
+and answered with a warning.
 
 ## API
 
-| Export                             | What it does                                                                |
-| ---------------------------------- | --------------------------------------------------------------------------- |
-| `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored |
-| `startCodeHash`                    | The hash a start code is stored under, apart from console pairing codes     |
-| `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                        |
-| `ChatUpdate`, `ChatPost`           | Updates in binference's own shape                                           |
-| `@binference/telegram/testing`     | `ownerStoreContract` and `createMemoryOwnerStore`                           |
+| Export                             | What it does                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `createTelegramIngress`            | Screens and stores each update, then handles it; `resume` handles what is left |
+| `UpdateIntake`                     | Where updates come in: long polling and a webhook relay both feed it           |
+| `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored    |
+| `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                           |
+| `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                              |
+| `@binference/telegram/testing`     | `ownerStoreContract` and `createMemoryOwnerStore`                              |
 
 ## Example
 
 ```ts
-import { issueStartCode } from "@binference/telegram";
+import { Api } from "grammy";
+import { createTelegramIngress } from "@binference/telegram";
 
-const { link, expiresAtMs } = await issueStartCode(
-  { access: stores.access, clock, random, botUsername: me.username },
-  { signal },
-);
-print(`Open ${link.reveal()} in Telegram before ${display.time(expiresAtMs)}.`);
+const ingress = createTelegramIngress({
+  api: new Api(token.reveal()),
+  stores: { inbox: stores.inbox, access: stores.access, owners },
+  clock,
+  logger: logger.child("telegram"),
+  display: { locale: config.owner.locale, timeZone: config.owner.timezone },
+  onOwnerUpdate: forwardToEngine,
+});
+await ingress.resume({ signal });
+// A webhook relay hands each update body over, and answers Telegram once it resolves.
+await ingress.receive(updateBody, { signal });
 ```
