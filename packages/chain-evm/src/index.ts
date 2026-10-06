@@ -2,6 +2,8 @@ export { parseEvmAddress } from "./evm-address.js";
 export { erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
 export type { EvmChain } from "./evm-chain.js";
 export { createEvmFamily, evmFamilyId, evmNamespace } from "./evm-family.js";
+export { readFees } from "./fees/read-fees.js";
+export type { EvmFees, FeeOptions } from "./fees/read-fees.js";
 export { createEvmClient } from "./rpc/create-evm-client.js";
 export type { EvmClientOptions } from "./rpc/create-evm-client.js";
 export { createRpcFailover } from "./rpc/create-rpc-failover.js";
@@ -19,3 +21,13 @@ export type {
   RpcReply,
   RpcResultReply,
 } from "./rpc/rpc-call.js";
+export { simulate } from "./simulation/simulate.js";
+export type {
+  BalanceOverride,
+  EvmCall,
+  SimulatedCall,
+  Simulation,
+  SimulationRequest,
+} from "./simulation/simulate.js";
+export type { EvmLog } from "./simulation/simulation-reply.schema.js";
+export type { AssetApproval, AssetTransfer } from "./simulation/transfer-logs.js";

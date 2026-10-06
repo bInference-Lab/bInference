@@ -670,7 +670,264 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
+                "message": "See the chain-evm row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@earendil-works/pi-tui",
+                  "@earendil-works/pi-tui/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "execa",
+                  "execa/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "kysely",
+                  "kysely/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "vite",
+                  "vite/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*",
+                  "@binference/chains",
+                  "@binference/chains/*"
+                ],
+                "message": "See the chain-evm row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Number", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Number",
+            "property": "parseFloat",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {
+            "object": "Number",
+            "property": "parseInt",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "node/no-process-env": "error",
+        "eslint/no-implicit-coercion": "error"
+      }
+    },
+    {
+      "files": ["packages/chain-evm/**/*.test.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:fs", "message": "Open files through the platform package."},
+              {"name": "node:fs/promises", "message": "Open files through the platform package."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
+                "message": "See the chain-evm row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@earendil-works/pi-tui",
+                  "@earendil-works/pi-tui/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "execa",
+                  "execa/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "kysely",
+                  "kysely/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "vite",
+                  "vite/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*",
+                  "@binference/chains",
+                  "@binference/chains/*"
+                ],
+                "message": "See the chain-evm row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Number", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "setTimeout",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          },
+          {
+            "name": "setInterval",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Number",
+            "property": "parseFloat",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {
+            "object": "Number",
+            "property": "parseInt",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {
+            "object": "expect",
+            "property": "poll",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "vitest/no-restricted-vi-methods": [
+          "error",
+          {
+            "useRealTimers": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitFor": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitUntil": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/chain-evm/src/fork/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:fs", "message": "Open files through the platform package."},
+              {"name": "node:fs/promises", "message": "Open files through the platform package."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
                 "message": "See the chain-evm row of config/package-graph.json for what it may import."
               },
               {
@@ -751,13 +1008,11 @@
           },
           {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
           {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
-        ],
-        "node/no-process-env": "error",
-        "eslint/no-implicit-coercion": "error"
+        ]
       }
     },
     {
-      "files": ["packages/chain-evm/**/*.test.ts"],
+      "files": ["packages/chain-evm/src/fork/**/*.test.ts"],
       "rules": {
         "eslint/no-restricted-imports": [
           "error",
@@ -787,7 +1042,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
                 "message": "See the chain-evm row of config/package-graph.json for what it may import."
               },
               {

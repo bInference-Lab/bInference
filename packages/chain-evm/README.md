@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The EVM chain family. It reads a chain through its RPC endpoints, moving to the next endpoint when
-one fails, and gives viem clients that ride on that failover. Chain facts come in as data from
-`@binference/chains`; nothing here names a chain.
+The EVM chain family. It reads a chain through its RPC endpoints with failover, prices gas, and
+simulates calls with `eth_simulateV1` to read the transfers they make. Chain facts come in as data
+from `@binference/chains`; nothing here names a chain.
 
 ## API
 
@@ -14,12 +14,14 @@ one fails, and gives viem clients that ride on that failover. Chain facts come i
 | `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                    | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses      |
 | `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                 | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health |
 | `createEvmClient`                                                 | A viem public client whose requests go through the failover                       |
+| `readFees`, `EvmFees`                                             | EIP-1559 fees per gas from the node, refused above the caller's cap               |
+| `simulate`, `Simulation`, `AssetTransfer`, `AssetApproval`        | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
 | `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema` | The wire values every RPC answer is checked with                                  |
 
 ## Example
 
 ```ts
-import { createEvmClient, createRpcFailover, evmChainOf } from "@binference/chain-evm";
+import { createRpcFailover, evmChainOf, simulate } from "@binference/chain-evm";
 
 const chain = evmChainOf(definition);
 const rpc = createRpcFailover({
@@ -29,6 +31,19 @@ const rpc = createRpcFailover({
   timeoutMs: 3_000,
   restMs: 30_000,
 });
-const client = createEvmClient({ chain, rpc, signal });
-const head = await client.getBlockNumber();
+const { calls } = await simulate(rpc, { chain, calls: [swapCall], signal });
+for (const transfer of calls[0]?.transfers ?? []) {
+  console.log(transfer.from, transfer.to, transfer.amount);
+}
+```
+
+## Fork test
+
+`src/fork/` simulates a PancakeSwap v2 swap on a BSC fork and checks it against the same swap sent
+on the fork. It needs Foundry's `anvil` and the network, so `pnpm check` skips it. Fork 20 blocks
+behind the head, since public nodes keep little state and flake at the head:
+
+```sh
+anvil --fork-url https://bsc-dataseed1.bnbchain.org --fork-block-number <head minus 20> --port 8545
+BINFERENCE_FORK_RPC=http://127.0.0.1:8545 pnpm vitest run packages/chain-evm/src/fork
 ```

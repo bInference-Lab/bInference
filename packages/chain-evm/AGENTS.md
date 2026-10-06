@@ -9,7 +9,8 @@ Rules for this package:
 - It is money code: `bigint` wei, no `Number` or `parseFloat` on an amount, and the 95% coverage
   bar. Its public API is what `src/index.ts` exports; every export carries TSDoc.
 - It names no chain. Chain ids, RPCs, tokens and contracts arrive as a `ChainDefinition` from
-  `@binference/chains`.
+  `@binference/chains`, which only the fork tests in `src/fork/` may import; the package graph
+  enforces it.
 - Every RPC answer passes a zod schema before it leaves the failover, and leaves the package as our
   own types: CAIP ids, `Amount`, `bigint`. A `*.schema.ts` file holds every `unknown`.
 - Outbound HTTP goes through the core `Http` port. viem's own transports and retries stay unused:
@@ -18,4 +19,5 @@ Rules for this package:
   send can never reach a public node; sends go through the private relays.
 - `src/testing/` holds test support: fake and loopback `Http` adapters and loopback servers. It is
   the one place that imports `node:http`, and nothing outside tests imports it.
-- Unit tests use no network: fakes, or servers on 127.0.0.1.
+- Unit tests use no network: fakes, or servers on 127.0.0.1. The fork test runs only when
+  `BINFERENCE_FORK_RPC` names a running anvil fork (see the README); `pnpm check` skips it.
