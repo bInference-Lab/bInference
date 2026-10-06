@@ -24,8 +24,11 @@ async function scratchFolder(): Promise<string> {
   return folder;
 }
 
+// A task's program ends a moment after Task Scheduler reports it stopped, and Windows keeps its
+// working folder busy until then; rm retries EBUSY with a growing wait (Node's fs.rm options).
 afterEach(async () => {
-  await Promise.all(folders.splice(0).map(async (folder) => rm(folder, { recursive: true })));
+  const removal = { recursive: true, maxRetries: 10, retryDelay: 200 };
+  await Promise.all(folders.splice(0).map(async (folder) => rm(folder, removal)));
 });
 
 // Time moves only when the adapter sleeps, and each sleep returns at once.

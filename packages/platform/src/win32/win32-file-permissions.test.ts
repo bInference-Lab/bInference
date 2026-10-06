@@ -118,6 +118,8 @@ const aclSchema = z.object({
 
 function aclScript(path: string): string {
   return [
+    // A failed command ends the script with an error instead of printing empty fields.
+    "$ErrorActionPreference = 'Stop'",
     `$acl = Get-Acl -LiteralPath '${path.replaceAll("'", "''")}'`,
     "$user = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
     "$rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]))",
@@ -152,6 +154,9 @@ afterEach(async () => {
   await Promise.all(folders.splice(0).map(async (folder) => rm(folder, { recursive: true })));
 });
 
+// Each case starts icacls, whoami and Windows PowerShell, which take seconds on a CI runner.
+const osTestTimeoutMs = 60_000;
+
 describe.runIf(process.platform === "win32")("windows file permissions", () => {
   it.each(
     filePermissionsContract({
@@ -161,23 +166,31 @@ describe.runIf(process.platform === "win32")("windows file permissions", () => {
       }),
       accessProblems,
     }),
-  )("follows the contract: $name", async ({ run }) => {
-    await expect(run()).resolves.toBeUndefined();
-  });
+  )(
+    "follows the contract: $name",
+    async ({ run }) => {
+      await expect(run()).resolves.toBeUndefined();
+    },
+    osTestTimeoutMs,
+  );
 
-  it("writes a file another user cannot read, over an older file others could", async () => {
-    const permissions = createWin32FilePermissions();
-    const folder = join(await scratchFolder(), "state");
-    const file = join(folder, "config.json5");
-    const signal = AbortSignal.timeout(30_000);
-    await mkdir(folder);
-    await writeFile(file, "old");
+  it(
+    "writes a file another user cannot read, over an older file others could",
+    async () => {
+      const permissions = createWin32FilePermissions();
+      const folder = join(await scratchFolder(), "state");
+      const file = join(folder, "config.json5");
+      const signal = AbortSignal.timeout(30_000);
+      await mkdir(folder);
+      await writeFile(file, "old");
 
-    await ensurePrivateFolder(folder, { permissions, signal });
-    await writePrivateFile(file, "{ engine: {} }", { permissions, signal });
+      await ensurePrivateFolder(folder, { permissions, signal });
+      await writePrivateFile(file, "{ engine: {} }", { permissions, signal });
 
-    await expect(accessProblems(folder)).resolves.toStrictEqual([]);
-    await expect(accessProblems(file)).resolves.toStrictEqual([]);
-    await expect(readFile(file, "utf8")).resolves.toBe("{ engine: {} }");
-  });
+      await expect(accessProblems(folder)).resolves.toStrictEqual([]);
+      await expect(accessProblems(file)).resolves.toStrictEqual([]);
+      await expect(readFile(file, "utf8")).resolves.toBe("{ engine: {} }");
+    },
+    osTestTimeoutMs,
+  );
 });
