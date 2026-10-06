@@ -81,9 +81,15 @@ export async function runCommandToExit(
     env: environmentFor(file),
     reject: false,
   });
-  // No exit code means the program never ran to its end: it did not start, timed out or was
-  // stopped by the signal.
-  if (result.exitCode === undefined) {
+  // The program never ran to its end: it did not start, timed out or was stopped by the signal.
+  // On Windows a missing program runs through cmd.exe and exits with 1, so its exit code alone
+  // does not say it never started; the spawn error's code (ENOENT) does.
+  if (
+    result.exitCode === undefined ||
+    result.code !== undefined ||
+    result.timedOut ||
+    result.isCanceled
+  ) {
     throw new BinferenceError({
       code: "platform.command_failed",
       message: `${file} did not run to its end.`,
