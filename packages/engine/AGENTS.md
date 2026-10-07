@@ -69,6 +69,11 @@ Rules for this package:
   quote and records the fill with the move. The paper portfolio builds on this step.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
+- The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one
+  work per account at a time and is the only way to take a nonce and store a signed transaction.
+  It gives nonces by the lowest free nonce rule in `lowest-free-nonce.ts`, which the fake and the
+  SQLite store both call, and keeps nothing across a restart that the store does not hold. A
+  change to the rule changes its property test and the `TransactionStore` contract suite.
 - The CSV export's header is a tax tool's import format, so it stays English in every language.
   The tax export holds live executions only; paper executions get their own export.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in

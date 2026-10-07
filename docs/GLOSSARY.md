@@ -82,6 +82,8 @@ new name here first, in the change that uses it.
 - **lowest free nonce**: the rule the wallet queue gives nonces by: the lowest nonce the chain has
   not used that no signed or sent transaction of the wallet holds. A nonce never signed, or freed by
   a dropped transaction, goes to the next step, so no gap is left.
+- **slot**: one work's turn on a wallet queue, the only way to take a nonce and store a signed
+  transaction. It closes when the work ends.
 - **ledger**: the append-only, hash-chained record of every intent, tap, signature and fill.
 - **execution**: one trade as it settled on chain or filled on paper: what the wallet sold and
   bought, the fee and the gas, each valued in USD at the time. Positions are built from executions

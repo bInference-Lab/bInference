@@ -18,3 +18,6 @@ export type {
   TransactionRecord,
   TransactionState,
 } from "./wallet-queue/transaction-record.js";
+export { createWalletQueue } from "./wallet-queue/wallet-queue.js";
+export type { WalletQueue, WalletQueueOptions } from "./wallet-queue/wallet-queue.js";
+export type { WalletSlot, WalletSlotPorts } from "./wallet-queue/wallet-slot.js";

@@ -40,6 +40,15 @@ Their records cross the store worker boundary, so each has a zod schema. `@binfe
 their SQLite adapters; `@binference/engine/testing` holds an in-memory fake and a contract suite for
 each.
 
+It holds the wallet queue (ARCHITECTURE.md rule 6), exported as `@binference/engine/wallet-queue`:
+one queue per account, width 1, which owns the account's nonces. A work runs with the account's
+slot, the only way to take a nonce and store a signed transaction. The slot gives the lowest free
+nonce: the lowest nonce at or above both the chain's count (the `NonceSource` port of
+`@binference/chain`) and every nonce a block holds, that no signed or sent transaction of the
+account holds. A nonce given to a step that was never signed, or freed by a dropped transaction, is
+given again first, so a refusal, a stop or a crash leaves no gap; the `TransactionStore` keeps
+every nonce in use, so a new queue after a restart uses none twice.
+
 It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain through the
 `LedgerStore` from genesis or a trusted checkpoint and names the first entry that breaks it, so an
 edited, removed or added row is found. `createPositions` values each executed trade at the prices
@@ -88,6 +97,7 @@ layout of Koinly's universal import, which tax tools read.
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
 | `TransactionStore`                                               | Each wallet's signed transactions and the nonces they hold      |
+| `createWalletQueue`, `WalletQueue`, `WalletSlot` (subpath)       | One queue per account that owns its nonces                      |
 | `lowestFreeNonce`, `isNonceFree`, `NonceGrant` (subpath)         | The rule the queue gives nonces by, and what it gives           |
 | `SignedTransaction`, `TransactionRecord` (subpath)               | A step's signed transaction as the queue stores it              |
 | `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
@@ -171,6 +181,23 @@ const engine = createEngine({
   publish: (push) => server.publish(push),
 });
 const server = createProtocolServer({ handlers: engine.handlers /* , ... */ });
+A step of the execute step runs on its wallet's queue: a nonce, a signature, the save, then sends:
+
+```ts
+import { createWalletQueue } from "@binference/engine/wallet-queue";
+
+const queue = createWalletQueue({ transactions, nonces, clock });
+await queue.run(
+  account,
+  async (slot) => {
+    const { nonce } = await slot.nextNonce({ signal });
+    const signed = await signer.signTransaction(requestAt(nonce), { signal });
+    // The raw transaction is stored before any send: recovery matches by hash and nonce.
+    const saved = await slot.saveSigned(transactionOf(signed, nonce), { signal });
+    return saved.ok ? send(saved.value) : saved;
+  },
+  { signal },
+);
 ```
 
 Tests import each port's contract suite and its fake from `@binference/engine/testing`;
