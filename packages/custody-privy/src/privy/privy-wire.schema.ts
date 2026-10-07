@@ -55,14 +55,6 @@ function parsed<T>(schema: z.ZodType<T>, value: unknown): T | undefined {
   return result.success ? result.data : undefined;
 }
 
-function parsedText<T>(schema: z.ZodType<T>, text: string): T | undefined {
-  try {
-    return parsed(schema, JSON.parse(text));
-  } catch {
-    return undefined;
-  }
-}
-
 /** Reads a key quorum from the SDK's answer; an answer of another shape is undefined. */
 export function readKeyQuorum(answer: unknown): KeyQuorum | undefined {
   const wire = parsed(keyQuorumWire, answer);
@@ -115,48 +107,91 @@ export function readSignedTransaction(answer: unknown): string | undefined {
 }
 
 /**
- * Why Privy refused a request, by the error code its answer names: a policy violation; an
- * authorization signature it did not accept, from a key that is not, or no longer, the wallet's
- * signer; or a request whose expiry had passed.
+ * Every API error code Privy documents ("API error codes", docs.privy.io/basics/troubleshooting/
+ * error-handling/api-errors), with the start of its documented description. An answer may carry
+ * the code, or only the description: a signature Privy did not accept came back as text alone.
+ * The descriptions are lowercase; an answer's text is compared lowercased.
+ */
+const documentedErrors = [
+  ["policy_violation", ["rpc request denied due to policy violation"]],
+  ["insufficient_funds", ["insufficient funds", "insufficient gas credits"]],
+  ["transaction_broadcast_failure", ["transaction failed to broadcast"]],
+  ["missing_or_empty_authorization_header", ["missing `privy-authorization-signature` header"]],
+  ["zero_correct_authorization_signatures", ["no valid authorization signatures were provided"]],
+  ["insufficient_correct_authorization_signatures", ["not enough valid authorization signatures"]],
+  ["incorrect_quantity_of_authorization_signatures", ["number of signatures does not match"]],
+  ["request_expired", ["the request has expired"]],
+  ["no_valid_user_session_keys", ["no valid user signing keys"]],
+  ["user_session_keys_expired", ["user signing key is expired"]],
+] as const;
+
+/** One of the API error codes Privy documents. */
+export type PrivyErrorCode = (typeof documentedErrors)[number][0];
+
+function isPrivyErrorCode(code: string): code is PrivyErrorCode {
+  return documentedErrors.some(([known]) => known === code);
+}
+
+/**
+ * The documented code an error answer names: its `code` field, an `error` text that is a code in
+ * any case, or an `error` text that holds a code's documented description.
+ */
+export function readPrivyErrorCode(body: unknown): PrivyErrorCode | undefined {
+  const wire = failureWire.safeParse(body);
+  if (!wire.success) {
+    return undefined;
+  }
+  const { code, error } = wire.data;
+  if (code !== undefined && isPrivyErrorCode(code)) {
+    return code;
+  }
+  const text = (error ?? "").trim().toLowerCase();
+  if (isPrivyErrorCode(text)) {
+    return text;
+  }
+  if (text === "") {
+    return undefined;
+  }
+  return documentedErrors.find(([, descriptions]) =>
+    descriptions.some((words) => text.includes(words)),
+  )?.[0];
+}
+
+/**
+ * Why Privy refused a signing request: a policy violation; an authorization signature it did not
+ * accept, from a key that is not, or no longer, the wallet's signer; or a request whose expiry had
+ * passed.
  */
 export type PrivyRefusal = "policy" | "authorization" | "expired";
 
-const authorizationCodes = [
-  "missing_or_empty_authorization_header",
-  "zero_correct_authorization_signatures",
-  "insufficient_correct_authorization_signatures",
-  "incorrect_quantity_of_authorization_signatures",
-];
+const refusals: Partial<Record<PrivyErrorCode, PrivyRefusal>> = {
+  policy_violation: "policy",
+  missing_or_empty_authorization_header: "authorization",
+  zero_correct_authorization_signatures: "authorization",
+  insufficient_correct_authorization_signatures: "authorization",
+  incorrect_quantity_of_authorization_signatures: "authorization",
+  request_expired: "expired",
+};
 
-/**
- * Reads the refusal an error answer names. Privy documents its codes but not where its answer
- * carries them, so the `code` and `error` fields and the whole text are searched.
- */
-export function readRefusal(body: string): PrivyRefusal | undefined {
-  const wire = parsedText(failureWire, body);
-  const text = [wire?.code ?? "", wire?.error ?? "", body].join(" ").toLowerCase();
-  if (text.includes("policy_violation") || text.includes("policy violation")) {
-    return "policy";
-  }
-  if (authorizationCodes.some((code) => text.includes(code))) {
-    return "authorization";
-  }
-  return text.includes("request_expired") ? "expired" : undefined;
+/** The refusal a documented error code means, or undefined for any other failure. */
+export function refusalOf(code: PrivyErrorCode | undefined): PrivyRefusal | undefined {
+  return code === undefined ? undefined : refusals[code];
 }
 
 const statusWire = z.object({ status: z.int().min(100).max(599), message: z.string() });
 
 /**
- * Reads the status and the text of an answer the SDK threw as an `APIError`; an error that got
- * no answer, or any other error, is undefined. The text holds the answer's body as JSON.
+ * Reads the status of an answer the SDK threw as an `APIError`, with the documented error code it
+ * names; an error that got no answer, or any other error, is undefined. Privy's free text never
+ * leaves this function: it may echo what the request held.
  */
 export function readStatus(
   error: Error,
-): { readonly status: number; readonly text: string } | undefined {
+): { readonly status: number; readonly code?: PrivyErrorCode } | undefined {
   const wire = error instanceof APIError ? statusWire.safeParse(error) : undefined;
   if (!(error instanceof APIError) || wire?.success !== true) {
     return undefined;
   }
-  const body: unknown = error.error;
-  return { status: wire.data.status, text: `${JSON.stringify(body) ?? ""} ${wire.data.message}` };
+  const code = readPrivyErrorCode(error.error);
+  return code === undefined ? { status: wire.data.status } : { status: wire.data.status, code };
 }

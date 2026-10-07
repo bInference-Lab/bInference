@@ -1,7 +1,7 @@
 import { BinferenceError, createDeadline, type ErrorCode } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import { type PrivySettings, privyClientFor } from "./privy-client.js";
-import { readStatus } from "./privy-wire.schema.js";
+import { type PrivyErrorCode, readStatus } from "./privy-wire.schema.js";
 
 /**
  * How a call may be asked again: a read always; a write or a signing request never by this
@@ -20,7 +20,8 @@ export interface PrivyCall<T> {
 /** An answer of Privy that is not a success: its status and its body as text. */
 interface PrivyStatus {
   readonly status: number;
-  readonly text: string;
+  /** The documented error code the answer names, when it names one. */
+  readonly code?: PrivyErrorCode;
 }
 
 /** What a call gives: the SDK's answer, or Privy's status when it was no success. */
@@ -32,7 +33,7 @@ export type PrivyOutcome<T> =
 export function privyFault(
   code: ErrorCode,
   call: Pick<PrivyCall<never>, "kind" | "path">,
-  status?: number,
+  answer?: PrivyStatus,
 ): BinferenceError {
   const retryable =
     code === "custody.privy_busy" || (call.kind === "read" && code !== "custody.privy_malformed");
@@ -40,25 +41,30 @@ export function privyFault(
     code,
     message: `Privy's API failed a ${call.kind} call (${code}).`,
     retryable,
-    details: status === undefined ? { path: call.path } : { path: call.path, status },
+    details: {
+      path: call.path,
+      ...(answer === undefined ? {} : { status: answer.status }),
+      ...(answer?.code === undefined ? {} : { privyCode: answer.code }),
+    },
   });
 }
 
 /**
  * The fault for an answer that is not a success: Privy was busy, refused the app's credentials,
- * refused the request, or failed.
+ * refused the request, or failed. Its details carry the documented error code Privy named.
  */
 export function statusFault(
   call: Pick<PrivyCall<never>, "kind" | "path">,
-  status: number,
+  answer: PrivyStatus,
 ): BinferenceError {
+  const { status } = answer;
   if (status === 429) {
-    return privyFault("custody.privy_busy", call, status);
+    return privyFault("custody.privy_busy", call, answer);
   }
   if (status === 401 || status === 403) {
-    return privyFault("custody.privy_credentials", call, status);
+    return privyFault("custody.privy_credentials", call, answer);
   }
-  return privyFault(status >= 500 ? "custody.privy_failed" : "custody.privy_refused", call, status);
+  return privyFault(status >= 500 ? "custody.privy_failed" : "custody.privy_refused", call, answer);
 }
 
 function unanswered(call: Pick<PrivyCall<never>, "kind" | "path">, cause: Error): BinferenceError {

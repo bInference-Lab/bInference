@@ -11,7 +11,7 @@ import type { KeyQuorum, PrivyId, PrivyPolicy, WalletRecord } from "./privy-reco
 import {
   readKeyQuorum,
   readPolicy,
-  readRefusal,
+  refusalOf,
   readSignedTransaction,
   readWallet,
 } from "./privy-wire.schema.js";
@@ -127,7 +127,7 @@ async function found<A, T>(
     if (outcome.status === 404) {
       return err("not_found");
     }
-    throw statusFault(call, outcome.status);
+    throw statusFault(call, outcome);
   }
   const value = reading.reader(outcome.value);
   if (value === undefined) {
@@ -143,7 +143,7 @@ async function made<A, T>(
 ): Promise<T> {
   const answer = await found(settings, call, reading);
   if (!answer.ok) {
-    throw statusFault(call, 404);
+    throw statusFault(call, { status: 404 });
   }
   return answer.value;
 }
@@ -220,16 +220,16 @@ async function signWith(
     }
     return ok(raw);
   }
-  const refusal = readRefusal(outcome.text);
+  const refusal = refusalOf(outcome.code);
   if (refusal === "policy" || refusal === "authorization") {
     return err("refused");
   }
   if (refusal === "expired") {
-    throw privyFault("custody.request_expired", call, outcome.status);
+    throw privyFault("custody.request_expired", call, outcome);
   }
   return outcome.status === 404
     ? err("unknown_wallet")
-    : Promise.reject(statusFault(call, outcome.status));
+    : Promise.reject(statusFault(call, outcome));
 }
 
 function readCall<A>(path: string, run: (client: PrivyClient) => Promise<A>): PrivyCall<A> {
