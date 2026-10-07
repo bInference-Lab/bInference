@@ -2,13 +2,15 @@ import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { BinferenceError, type Clock, type SecretStore } from "@binference/core";
 import { createKeychainSecretStore } from "./keychain/keychain-secret-store.js";
-import type { FilePermissions, IpcEndpoint, ServiceManager } from "./ports.js";
+import type { FileAccess, FilePermissions, IpcEndpoint, ServiceManager } from "./ports.js";
 import { createLaunchdServiceManager } from "./posix/launchd-service-manager.js";
+import { createPosixFileAccess } from "./posix/posix-file-access.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
 import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
 import { createSystemdServiceManager } from "./posix/systemd-service-manager.js";
 import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
 import { createSchtasksServiceManager } from "./win32/schtasks-service-manager.js";
+import { createWin32FileAccess } from "./win32/win32-file-access.js";
 import { createWin32FilePermissions } from "./win32/win32-file-permissions.js";
 import { createWin32IpcEndpoint } from "./win32/win32-ipc-endpoint.js";
 
@@ -30,6 +32,8 @@ export interface PlatformOptions extends StateFolderOptions {
 export interface Platform {
   readonly stateFolder: StateFolder;
   readonly permissions: FilePermissions;
+  /** Reads who can reach a path, as `binference check` reports it. */
+  readonly access: FileAccess;
   /** `SIGINT` and `SIGTERM` on macOS and Linux; `SIGINT` and `SIGBREAK` on Windows. */
   readonly stopSignals: readonly NodeJS.Signals[];
   readonly ipcEndpoint: (options: IpcEndpointOptions) => IpcEndpoint;
@@ -72,6 +76,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
     return {
       stateFolder,
       permissions: createWin32FilePermissions(),
+      access: createWin32FileAccess(),
       stopSignals: ["SIGINT", "SIGBREAK"],
       ipcEndpoint: (endpoint) => createWin32IpcEndpoint(endpoint),
       keychain,
@@ -83,6 +88,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
     return {
       stateFolder,
       permissions,
+      access: createPosixFileAccess(),
       stopSignals: ["SIGINT", "SIGTERM"],
       ipcEndpoint: ({ name }) =>
         createPosixIpcEndpoint({ runFolder: stateFolder.run, name, permissions }),

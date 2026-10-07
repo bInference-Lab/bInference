@@ -31,6 +31,7 @@ ports:
 | `createPlatform`, `Platform`        | This OS's adapters, its stop signals and the state folder            |
 | `resolveStateFolder`, `StateFolder` | Every path in the state folder; creates nothing                      |
 | `FilePermissions`                   | The port that makes a file or folder owner-only                      |
+| `FileAccess`, `FileAccessState`     | The port that reads whether a file or folder is owner-only           |
 | `ensurePrivateFolder`               | Creates a folder and restricts it to its owner                       |
 | `writePrivateFile`                  | Writes a file only its owner can read, replacing the old one at once |
 | `acquireFileLock`, `FileLock`       | An exclusive OS file lock, or `held` while another holder has it     |

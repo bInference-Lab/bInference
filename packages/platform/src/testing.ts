@@ -1,3 +1,5 @@
+export { fileAccessContract } from "./contracts/file-access-contract.js";
+export type { FileAccessHarness, FileAccessSubject } from "./contracts/file-access-contract.js";
 export { filePermissionsContract } from "./contracts/file-permissions-contract.js";
 export type {
   FilePermissionsHarness,

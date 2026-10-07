@@ -18,6 +18,22 @@ export interface FilePermissions {
 }
 
 /**
+ * Who can reach a path: `owner_only` when only its owner can, `open` when other accounts can,
+ * `missing` when nothing is there, and `unknown` where this OS's access lists are not read.
+ */
+export type FileAccessState = "owner_only" | "open" | "missing" | "unknown";
+
+/**
+ * Reads who can reach a file or folder, as `binference check` reports it. On macOS and Linux the
+ * group and other bits of its mode decide (`077`); on Windows it answers `unknown` for a path that
+ * exists, since reading an access list by security id needs PowerShell, which takes seconds. A
+ * path it cannot read throws `platform.access_unreadable`.
+ */
+export interface FileAccess {
+  read(path: string, signal: AbortSignal): Promise<FileAccessState>;
+}
+
+/**
  * One local IPC address: a Unix socket in the state folder's `run` folder, or a named pipe on
  * Windows. Node cannot set a named pipe's access list, and the default one lets other accounts open
  * it, so the address is no security boundary: every connection authenticates through

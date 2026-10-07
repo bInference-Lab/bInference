@@ -11,7 +11,13 @@ export { openLogFile } from "./logs/log-file.js";
 export type { LogFile, LogFileOptions } from "./logs/log-file.js";
 export { readLogLines } from "./logs/read-log-lines.js";
 export type { LogLines, ReadLogLinesOptions } from "./logs/read-log-lines.js";
-export type { FilePermissions, IpcEndpoint, ServiceManager } from "./ports.js";
+export type {
+  FileAccess,
+  FileAccessState,
+  FilePermissions,
+  IpcEndpoint,
+  ServiceManager,
+} from "./ports.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
 export { readTextFile } from "./read-text-file.js";
