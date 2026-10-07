@@ -13,3 +13,5 @@ export type {
 export { createMemoryServiceManager } from "./fakes/memory-service-manager.js";
 export { createSecretVault } from "./fakes/secret-vault.js";
 export type { SecretVault } from "./fakes/secret-vault.js";
+export { createTempFolder } from "./fakes/temp-folder.js";
+export type { TempFolder } from "./fakes/temp-folder.js";

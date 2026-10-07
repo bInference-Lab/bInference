@@ -1,7 +1,7 @@
 # @binference/platform
 
-The OS layer: the state folder, owner-only files, the engine lock, IPC endpoints and the shutdown
-sequence.
+The OS layer: the state folder, owner-only files, the engine lock, IPC endpoints, log files and the
+shutdown sequence.
 
 The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 

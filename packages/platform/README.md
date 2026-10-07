@@ -20,7 +20,9 @@ ports:
 - the background service behind the `ServiceManager` port: a LaunchAgent through `launchctl` on
   macOS, a `systemctl --user` unit on Linux, a scheduled task through `schtasks` on Windows, each
   started at the owner's login, in their session;
-- text files read whole, and programs run with an argument array, no shell and a time limit.
+- text files read whole, and programs run with an argument array, no shell and a time limit;
+- log files: lines appended in order without blocking the writer, a file set aside once it is full,
+  set-aside files removed after the days kept, and the last whole lines read back.
 
 ## API
 
@@ -40,8 +42,10 @@ ports:
 | `ServiceManager`                    | The port that installs, removes and reports a background service     |
 | `Platform.serviceManager`           | This OS's service manager, given a clock for its waits               |
 | `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                   |
+| `openLogFile`, `LogFile`            | Appends log lines without blocking; sets a full file aside by size   |
+| `readLogLines`, `LogLines`          | Reads a log file's last whole lines, or the lines after a byte       |
 | `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit     |
-| `@binference/platform/testing`      | Every port's contract suite, and service and secret vault fakes      |
+| `@binference/platform/testing`      | Contract suites, service and secret vault fakes, `createTempFolder`  |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
 longer than macOS allows.
