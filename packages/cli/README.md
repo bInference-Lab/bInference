@@ -36,7 +36,10 @@ handlers, and the engine's pushes reach the server. With the owner's bot (`teleg
 `composeTelegram` joins it: each new card version shows in the owner's chat, a press is answered
 through the engine for the owner only, and a card answered elsewhere or expired becomes its
 receipt. `paper-swap.test.ts` runs one paper swap through every layer on both compositions, then
-the owner's switch to live and a live trade that reaches the executor.
+the owner's switch to live and a live trade that reaches the executor. `mcp-paper-swap.test.ts`
+runs a paper swap from an MCP client to a Telegram tap: the client proposes a swap and retries it
+with the same request id, the card reaches the synthetic Bot API, the owner's tap fills it on
+paper, and the client reads the fill and the ledger.
 
 The reference of every key, generated from the schema, is
 [docs/config-keys.generated.md](docs/config-keys.generated.md).

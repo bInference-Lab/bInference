@@ -42,6 +42,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@binference/mcp": "workspace:*",
+    "@modelcontextprotocol/client": "catalog:",
+    "@modelcontextprotocol/server": "catalog:",
     "@types/ws": "catalog:",
     "viem": "catalog:"
   }
