@@ -1,66 +1,106 @@
 import type { JsonValue } from "@binference/core";
 import { z } from "zod";
+import {
+  type CallbackAnswer,
+  createFakeChats,
+  type DeletedMessage,
+  type FakeChats,
+  type FakeEdit,
+  type FakeMessage,
+  type SentText,
+} from "./fake-chat.js";
 
 /** A token in the Bot API's shape, for tests only. */
 export const fakeBotToken = "7012345678:AAE_fakeTokenForTestsOnly_0123456789ab";
 
-/** A message the bot sent. */
-interface SentText {
-  readonly chatId: number;
-  readonly text: string;
-  readonly threadId?: number;
-}
-
-/** A message the bot deleted. */
-interface DeletedMessage {
-  readonly chatId: number;
-  readonly messageId: number;
-}
-
 /** An error answer the Bot API gives instead of a result. */
-interface FakeRefusal {
+export interface FakeRefusal {
   readonly status: number;
   readonly description: string;
   readonly retryAfterS?: number;
+}
+
+/** A press of an inline button, as Telegram reports it to the bot. */
+export interface FakePress {
+  /** The presser's numeric Telegram id. */
+  readonly from: number;
+  /** The callback data the button carries, or any text a forged press sends. */
+  readonly data: string;
+  /** The message the button sits on. */
+  readonly messageId: number;
+  /** The chat of that message; the presser's private chat by default. */
+  readonly chatId?: number;
+  readonly chatType?: string;
+  readonly isBot?: boolean;
+  readonly languageCode?: string;
+}
+
+/** One request that reached the Bot API. */
+export interface FakeCall {
+  readonly method: string;
+  readonly chatId?: number;
 }
 
 /** The `fetch` grammY calls: its own types name an untyped package, so it is spelled out here. */
 type Fetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 type Signal = AbortSignal | null | undefined;
 
-/** A Bot API in memory for grammY's `fetch` option: no network, Telegram's offset rules. */
+/**
+ * A synthetic Telegram Bot API in memory for grammY's `fetch` option: no network. Updates come
+ * in under Telegram's offset rules; messages, edits, deletes and button answers go out with the
+ * Bot API's checks (HTML parse mode, 4,096 characters, 64-byte callback data, one answer per
+ * press, no edit that changes nothing).
+ */
 export interface FakeBotApi {
   readonly fetch: Fetch;
   /** Adds updates Telegram holds until a `getUpdates` offset passes them. */
   push(...updates: readonly JsonValue[]): void;
+  /** Presses a button: pushes the `callback_query` update and returns it. */
+  press(press: FakePress): JsonValue;
   /** The ids of updates not acknowledged yet. */
   pending(): readonly number[];
+  /** The messages as sent, with the text a reader saw then. */
   sent(): readonly SentText[];
+  /** Every message the bot sent, as it stands now. */
+  messages(): readonly FakeMessage[];
   deleted(): readonly DeletedMessage[];
-  /** The next call of `method` gets this refusal, or a network failure. */
-  failNext(method: string, failure: FakeRefusal | "network"): void;
+  edits(): readonly FakeEdit[];
+  /** The bot's answers to button presses, in order. */
+  answers(): readonly CallbackAnswer[];
+  /** Every request in the order it arrived, refused ones too. */
+  calls(): readonly FakeCall[];
+  /**
+   * The next call of `method` gets this refusal, or a network failure. With `chatId`, the next
+   * call of that method to that chat does.
+   */
+  failNext(
+    method: string,
+    failure: FakeRefusal | "network",
+    target?: { readonly chatId: number },
+  ): void;
   /** Resolves once a `getUpdates` call waits with nothing to return. */
   idle(): Promise<void>;
+}
+
+interface Failure {
+  readonly method: string;
+  readonly failure: FakeRefusal | "network";
+  readonly chatId?: number;
 }
 
 interface State {
   readonly updates: { readonly id: number; readonly update: JsonValue }[];
   readonly wakers: Set<() => void>;
   readonly idlers: (() => void)[];
-  readonly sent: SentText[];
-  readonly deleted: DeletedMessage[];
+  readonly failures: Failure[];
+  readonly calls: FakeCall[];
+  readonly chats: FakeChats;
 }
 
-type Handler = (body: string, signal: Signal) => Promise<Response>;
-
 const pollSchema = z.looseObject({ offset: z.int().optional(), limit: z.int().optional() });
-const sendSchema = z.looseObject({
-  chat_id: z.int(),
-  text: z.string(),
-  message_thread_id: z.int().optional(),
-});
-const deleteSchema = z.looseObject({ chat_id: z.int(), message_id: z.int() });
 const headSchema = z.looseObject({ update_id: z.int() });
+const chatSchema = z.looseObject({ chat_id: z.int().optional() });
+const pressBase = 9000;
 
 function answer(result: JsonValue): Response {
   return new Response(JSON.stringify({ ok: true, result }));
@@ -97,77 +137,124 @@ async function waitForUpdate(state: State, signal: Signal): Promise<void> {
   });
 }
 
-function handlersOf(state: State): Readonly<Record<string, Handler>> {
-  let lastMessageId = 1000;
-  return {
-    getUpdates: async (body, signal) => {
-      const { offset, limit } = pollSchema.parse(JSON.parse(body));
-      const kept = state.updates.filter((held) => offset === undefined || held.id >= offset);
-      state.updates.splice(0, state.updates.length, ...kept);
-      if (state.updates.length === 0) {
-        await waitForUpdate(state, signal);
-      }
-      return answer(state.updates.slice(0, limit ?? 100).map((held) => held.update));
-    },
-    sendMessage: async (body) => {
-      const message = sendSchema.parse(JSON.parse(body));
-      const threadId = message.message_thread_id;
-      const chatId = message.chat_id;
-      state.sent.push({
-        chatId,
-        text: message.text,
-        ...(threadId === undefined ? {} : { threadId }),
-      });
-      lastMessageId += 1;
-      const chat = { id: chatId, type: "private" };
-      return Promise.resolve(
-        answer({ message_id: lastMessageId, date: 1, chat, text: message.text }),
-      );
-    },
-    deleteMessage: async (body) => {
-      const target = deleteSchema.parse(JSON.parse(body));
-      state.deleted.push({ chatId: target.chat_id, messageId: target.message_id });
-      return Promise.resolve(answer(true));
-    },
+async function getUpdates(state: State, body: string, signal: Signal): Promise<Response> {
+  const { offset, limit } = pollSchema.parse(JSON.parse(body));
+  const kept = state.updates.filter((held) => offset === undefined || held.id >= offset);
+  state.updates.splice(0, state.updates.length, ...kept);
+  if (state.updates.length === 0) {
+    await waitForUpdate(state, signal);
+  }
+  return answer(state.updates.slice(0, limit ?? 100).map((held) => held.update));
+}
+
+// The first failure set for this call: its method, and its chat when the failure names one.
+function takeFailure(state: State, call: FakeCall): FakeRefusal | "network" | undefined {
+  const index = state.failures.findIndex(
+    (failure) =>
+      failure.method === call.method &&
+      (failure.chatId === undefined || failure.chatId === call.chatId),
+  );
+  return index === -1 ? undefined : state.failures.splice(index, 1)[0]?.failure;
+}
+
+/** One request as the fake reads it: its method and chat, its body and its signal. */
+interface FakeRequest {
+  readonly call: FakeCall;
+  readonly bot: string;
+  readonly url: string;
+  readonly body: string;
+  readonly signal: Signal;
+}
+
+async function serve(state: State, request: FakeRequest): Promise<Response> {
+  const { call, body } = request;
+  if (call.method === "getUpdates") {
+    return getUpdates(state, body, request.signal);
+  }
+  const chatCall = state.chats.calls[call.method];
+  const result = chatCall?.(body);
+  if (result === undefined) {
+    return refuse({ status: 404, description: "Not Found: method not found" });
+  }
+  return result.ok ? answer(result.value) : refuse({ status: 400, description: result.error });
+}
+
+function requestOf(input: Parameters<Fetch>[0], init: RequestInit | undefined): FakeRequest {
+  const url = urlOf(input);
+  const [bot = "", method = ""] = new URL(url).pathname.split("/").slice(-2);
+  const body = typeof init?.body === "string" ? init.body : "{}";
+  const chatId = chatSchema.safeParse(JSON.parse(body)).data?.chat_id;
+  const call = { method, ...(chatId === undefined ? {} : { chatId }) };
+  return { call, bot, url, body, signal: init?.signal };
+}
+
+function fetchOf(state: State): Fetch {
+  return async (input, init) => {
+    const request = requestOf(input, init);
+    state.calls.push(request.call);
+    const failure = takeFailure(state, request.call);
+    if (failure === "network") {
+      throw new Error(`request to ${request.url} failed, reason: connect ECONNREFUSED`);
+    }
+    if (failure !== undefined || request.bot !== `bot${fakeBotToken}`) {
+      return refuse(failure ?? { status: 401, description: "Unauthorized" });
+    }
+    return serve(state, request);
   };
 }
 
-function fetchOf(state: State, failures: Map<string, FakeRefusal | "network">): Fetch {
-  const handlers = handlersOf(state);
-  return async (input, init) => {
-    const url = urlOf(input);
-    const [botPart, method = ""] = new URL(url).pathname.split("/").slice(-2);
-    const failure = failures.get(method);
-    failures.delete(method);
-    if (failure === "network") {
-      throw new Error(`request to ${url} failed, reason: connect ECONNREFUSED`);
-    }
-    const handler = handlers[method];
-    if (failure !== undefined || botPart !== `bot${fakeBotToken}` || handler === undefined) {
-      return refuse(failure ?? { status: 401, description: "Unauthorized" });
-    }
-    return handler(typeof init?.body === "string" ? init.body : "{}", init?.signal);
+function callbackUpdate(press: FakePress, updateId: number): JsonValue {
+  const chat = { id: press.chatId ?? press.from, type: press.chatType ?? "private" };
+  const language = press.languageCode === undefined ? {} : { language_code: press.languageCode };
+  return {
+    update_id: updateId,
+    callback_query: {
+      id: `press-${String(updateId)}`,
+      from: { id: press.from, is_bot: press.isBot ?? false, first_name: "Fixture", ...language },
+      chat_instance: "1",
+      data: press.data,
+      message: { message_id: press.messageId, date: 1, chat },
+    },
   };
 }
 
 /** Creates an empty in-memory Bot API that accepts {@link fakeBotToken} only. */
 export function createFakeBotApi(): FakeBotApi {
-  const state: State = { updates: [], wakers: new Set(), idlers: [], sent: [], deleted: [] };
-  const failures = new Map<string, FakeRefusal | "network">();
+  const chats = createFakeChats();
+  const state: State = {
+    updates: [],
+    wakers: new Set(),
+    idlers: [],
+    failures: [],
+    calls: [],
+    chats,
+  };
+  let presses = 0;
+  const push = (...updates: readonly JsonValue[]): void => {
+    const held = updates.map((update) => ({ id: headSchema.parse(update).update_id, update }));
+    state.updates.push(...held);
+    for (const wake of state.wakers) {
+      wake();
+    }
+  };
   return {
-    fetch: fetchOf(state, failures),
-    push: (...updates) => {
-      const held = updates.map((update) => ({ id: headSchema.parse(update).update_id, update }));
-      state.updates.push(...held);
-      for (const wake of state.wakers) {
-        wake();
-      }
+    fetch: fetchOf(state),
+    push,
+    press: (press) => {
+      presses += 1;
+      const update = callbackUpdate(press, pressBase + presses);
+      push(update);
+      return update;
     },
     pending: () => state.updates.map((held) => held.id),
-    sent: () => [...state.sent],
-    deleted: () => [...state.deleted],
-    failNext: (method, failure) => {
-      failures.set(method, failure);
+    sent: () => chats.sent(),
+    messages: () => chats.messages(),
+    deleted: () => chats.deleted(),
+    edits: () => chats.edits(),
+    answers: () => chats.answers(),
+    calls: () => [...state.calls],
+    failNext: (method, failure, target) => {
+      state.failures.push({ method, failure, ...target });
     },
     idle: async () =>
       new Promise((resolve) => {

@@ -10,17 +10,17 @@ and answered with a warning. Long polling runs in a worker thread, one poller pe
 
 ## API
 
-| Export                             | What it does                                                                   |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| `createTelegramIngress`            | Screens and stores each update, then handles it; `resume` handles what is left |
-| `UpdateIntake`                     | Where updates come in: long polling and a webhook relay both feed it           |
-| `runPolling`                       | Long-polls one bot from a worker thread, under the token's lease               |
-| `createPollerLeases`               | One poller per bot token in the process                                        |
-| `openPollWorker`, `pollWorker`     | The poll worker thread and its entry                                           |
-| `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored    |
-| `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                           |
-| `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                              |
-| `@binference/telegram/testing`     | `ownerStoreContract` and `createMemoryOwnerStore`                              |
+| Export                             | What it does                                                                                          |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `createTelegramIngress`            | Screens and stores each update, then handles it; `resume` handles what is left                        |
+| `UpdateIntake`                     | Where updates come in: long polling and a webhook relay both feed it                                  |
+| `runPolling`                       | Long-polls one bot from a worker thread, under the token's lease                                      |
+| `createPollerLeases`               | One poller per bot token in the process                                                               |
+| `openPollWorker`, `pollWorker`     | The poll worker thread and its entry                                                                  |
+| `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored                           |
+| `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                                                  |
+| `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                                                     |
+| `@binference/telegram/testing`     | `ownerStoreContract`, `createMemoryOwnerStore`, and `createFakeBotApi`: a synthetic Bot API for tests |
 
 ## Example
 
