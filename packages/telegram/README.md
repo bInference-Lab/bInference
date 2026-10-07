@@ -8,8 +8,11 @@ single-use start code, and only the owner's numeric Telegram id counts after tha
 off. A message that looks like a recovery phrase, a private key or an owner key is deleted unseen
 and answered with a warning. Long polling runs in a worker thread, one poller per bot token.
 
-One throttler per bot token paces the bot by Telegram's limits and waits out every 429, pausing
-only the chat Telegram named.
+Confirmation cards go to the owner's chat in Telegram's HTML, with every value from outside
+escaped, and Confirm and Cancel buttons whose data is a random reference. The engine checks who
+pressed and stores the answer before Telegram hears back; the first answer, on any surface, turns
+every copy into its receipt. One throttler per bot token paces the bot by Telegram's limits and
+waits out every 429, pausing only the chat Telegram named.
 
 ## API
 
@@ -24,6 +27,7 @@ only the chat Telegram named.
 | `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                           |
 | `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                              |
 | `createBotThrottlers`              | One throttler per bot token, installed on every grammY `Api` of the token      |
+| `createTelegramCards`              | Shows card versions, settles them into receipts, takes the owner's presses     |
 | `CardAnswers`                      | The engine's side of a card press: checks the presser, stores the answer first |
 | `CardCopyStore`, `cardCopySchema`  | Where each card version was posted, so every copy can become the receipt       |
 | `@binference/telegram/testing`     | Contract suites and fakes of the three ports, and `createFakeBotApi`           |
@@ -38,6 +42,7 @@ import { Api } from "grammy";
 import {
   createBotThrottlers,
   createPollerLeases,
+  createTelegramCards,
   createTelegramIngress,
   pollWorker,
   runPolling,
@@ -45,13 +50,23 @@ import {
 
 const api = new Api(token.reveal());
 createBotThrottlers({ clock, logger: logger.child("telegram") }).install(api);
+const display = { locale: config.owner.locale, timeZone: config.owner.timezone };
+const cards = createTelegramCards({
+  api,
+  owners,
+  copies: stores.cardCopies,
+  answers: engine.cardAnswers,
+  logger: logger.child("telegram"),
+  display,
+});
 const ingress = createTelegramIngress({
   api,
   stores: { inbox: stores.inbox, access: stores.access, owners },
   clock,
   logger: logger.child("telegram"),
-  display: { locale: config.owner.locale, timeZone: config.owner.timezone },
-  onOwnerUpdate: forwardToEngine,
+  display,
+  onOwnerUpdate: async (update, call) =>
+    update.kind === "callback" ? cards.press(update, call) : forwardToEngine(update, call),
 });
 await ingress.resume({ signal });
 await runPolling(

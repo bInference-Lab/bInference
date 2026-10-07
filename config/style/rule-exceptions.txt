@@ -13,3 +13,7 @@ packages/i18n/messages/en/card.json emoji
 packages/i18n/messages/zh/card.json emoji
 packages/i18n/messages/en/receipt.json emoji
 packages/i18n/messages/zh/receipt.json emoji
+
+# The card buttons carry the Confirm and Cancel icons the card spec names.
+packages/i18n/messages/en/telegram.json emoji
+packages/i18n/messages/zh/telegram.json emoji

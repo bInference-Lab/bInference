@@ -1,6 +1,13 @@
 export { cardCopySchema } from "./cards/card-copy.js";
 export type { CardCopy } from "./cards/card-copy.js";
 export type { CardPress, CardStanding } from "./cards/card-press.js";
+export { createTelegramCards } from "./cards/create-telegram-cards.js";
+export type {
+  CardSettling,
+  CardShowing,
+  TelegramCards,
+  TelegramCardsOptions,
+} from "./cards/create-telegram-cards.js";
 export type { IngressWords, OwnerUpdateSink } from "./ingress/act-on-update.js";
 export { createTelegramIngress } from "./ingress/create-telegram-ingress.js";
 export type {

@@ -2,7 +2,7 @@
   "name": "@binference/telegram",
   "version": "0.0.0",
   "private": true,
-  "description": "The Telegram channel: durable update intake, owner pairing, and secret screening for the owner's bot.",
+  "description": "The Telegram channel: durable update intake, owner pairing, secret screening, confirmation cards and the throttler for the owner's bot.",
   "license": "MIT",
   "files": [
     "dist"

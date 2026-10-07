@@ -1,4 +1,4 @@
-import { bpsSchema, BinferenceError } from "@binference/core";
+import { bpsSchema, BinferenceError, type Id, idSchema } from "@binference/core";
 import type { CardFacts, CardValue } from "@binference/engine";
 import { type AssetInfo, type AssetInfos, assetInfosSchema } from "@binference/protocol";
 
@@ -45,6 +45,11 @@ const known: Readonly<Record<string, AssetInfo>> = {
 export function assetsWith(pepe?: Partial<AssetInfo>): AssetInfos {
   return assetInfosSchema.parse({ ...known, [refs.pepe]: { ...known[refs.pepe], ...pepe } });
 }
+
+/** The intent the fixture cards confirm. */
+export const cardIntent: Id<"int"> = idSchema("int").parse(
+  "int_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+);
 
 /** 14:32:05 UTC on the day of the spec's example card. */
 export const cardExpiresAtMs: number = Date.UTC(2026, 9, 6, 14, 32, 5);

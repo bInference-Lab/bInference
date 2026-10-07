@@ -5,5 +5,7 @@
   "card.route": "{venue}：{legs}",
   "card.routeLeg": "{venue} {share}",
   "card.legSeparator": "，",
-  "card.unverifiedToken": "{symbol}（{address}）"
+  "card.unverifiedToken": "{symbol}（{address}）",
+  "button.confirm": "✅ 确认",
+  "button.cancel": "❌ 取消"
 }

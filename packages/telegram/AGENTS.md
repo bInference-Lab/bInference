@@ -1,7 +1,7 @@
 # @binference/telegram
 
 The Telegram channel for the owner's own bot: durable update intake, owner pairing by start code,
-secret screening, and one throttler per bot token.
+secret screening, confirmation cards and their receipts, and one throttler per bot token.
 
 The root [AGENTS.md](../../AGENTS.md) and [core's schema pattern](../core/AGENTS.md) apply here.
 Rules for this package:
@@ -27,6 +27,9 @@ Rules for this package:
   outside (token symbols and names, the agent's reason, venue and client names) goes through
   `displayOutsideText`, and each line is escaped whole with `escapeHtml` after it is filled in.
   Never build HTML from a value.
+- Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
+  does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the
+  press is answered only after `answer` resolves.
 - Every grammY `Api` the package calls has its token's throttler installed
   (`createBotThrottlers().install(api)`). It paces each chat, bounds each attempt to 30 seconds
   and owns every 429 wait, so callers pass only a signal and never retry a 429 themselves.
