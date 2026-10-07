@@ -52,6 +52,7 @@ export const cardKeys = [
   "receipt.denied",
   "receipt.expired",
   "receipt.paper",
+  "receipt.auto",
   "receipt.result",
 ] as const;
 

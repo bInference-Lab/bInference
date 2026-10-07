@@ -42,11 +42,16 @@ balance comes from it. `agent/goLive` is the one way an agent goes live, once it
 funds; `agent/goPaper` brakes back. Each switch is journaled and announced on the `config` topic,
 and `isFirstLiveCard` says when a card carries the first-live note.
 
-The auto grant ([decision 0088](../../docs/DECISIONS.md#d0088)), exported as
-`@binference/engine/approval`, is what the signer checks before it signs a step of an intent the
-auto mode authorized: the intent, its terms hash, the approval mode version that authorized it, the
-network fee cap and an expiry. A change of the agent's approval mode ends every grant made before
-it.
+The approval mode ([decision 0088](../../docs/DECISIONS.md#d0088)) is per agent: `manual` by
+default, or `auto`. `approval/get` reads it; `approval/set` switches it, to `auto` with the `loosen`
+scope and back to `manual` with `confirm`, and journals, pushes and announces each switch with the
+`notice.approvalMode` notice. The auto test reads the agent as the move to `simulated` read it back,
+so a switch to manual counts for every trade not yet at its auto test; the switch also raises the
+mode's version, which ends the grant of every auto trade not yet signed. The auto grant, exported
+as `@binference/engine/approval`, is what the signer checks before it signs a step of an intent the
+auto mode authorized: the intent, its terms hash, the mode version that authorized it, the network
+fee cap and an expiry. A trade the auto mode ran has no card, so it gets the `receipt.auto`
+notice when it settles, or the paper fill's receipt on paper.
 
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
@@ -132,6 +137,7 @@ layout of Koinly's universal import, which tax tools read.
 | `checkEffects`, `EffectBounds`, `SimulationMismatch` (subpath)   | Checks a simulation and names the first check it fails          |
 | `autoModeGrantOf`, `autoModeTermsHash` (subpath `approval`)      | The auto grant of a stored intent, and the terms it binds       |
 | `AutoModeGrant`, `autoModeGrantSchema`, `checkAutoModeGrant`     | What the signer checks for an auto trade, and its check         |
+| `autoReceiptLine`, `AutoSettlement` (subpath)                    | The receipt of a trade the auto mode ran, paper fills too       |
 | `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
 | `ModelBilling`, `ModelCharge`                                    | Pays for model calls and says what an agent may still spend     |
 | `MarketData`, `BlockReading`, `PriceReading`                     | The blocks and prices the watchers stream                       |

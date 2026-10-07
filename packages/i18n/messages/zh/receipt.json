@@ -3,5 +3,6 @@
   "denied": "❌ 已在 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}} 取消",
   "expired": "❌ 未回复，已过期",
   "paper": "🧪 模拟成交：{result}",
+  "auto": "⚡ 自动交易：{result} · {explorerLink}",
   "result": "{sold} → {bought}"
 }

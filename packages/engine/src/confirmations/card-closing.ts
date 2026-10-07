@@ -20,15 +20,21 @@ export interface ReceiptFill {
   readonly amountOut: Amount;
 }
 
-function paperFillLine(fill: ReceiptFill): CardLine {
-  const result: CardLine = {
+/** What a fill sold and bought, as the `{result}` of a receipt shows it. */
+export function receiptResult(fill: ReceiptFill): CardValue {
+  const line: CardLine = {
     key: "receipt.result",
     values: {
       sold: { type: "amount", amount: fill.amountIn },
       bought: { type: "amount", amount: fill.amountOut },
     },
   };
-  return { key: "receipt.paper", values: { result: { type: "line", line: result } } };
+  return { type: "line", line };
+}
+
+/** The receipt of a paper fill, flagged as paper. */
+export function paperFillLine(fill: ReceiptFill): CardLine {
+  return { key: "receipt.paper", values: { result: receiptResult(fill) } };
 }
 
 /**

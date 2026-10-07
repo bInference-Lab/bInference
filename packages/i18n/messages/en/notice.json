@@ -1,0 +1,3 @@
+{
+  "approvalMode": "{agent} is now in {mode, select, auto {auto} other {manual}} mode, from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}"
+}

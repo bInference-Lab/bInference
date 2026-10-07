@@ -1,4 +1,5 @@
 import { jsonValueSchema } from "@binference/core";
+import { autoReceiptPushes } from "../approval/auto-receipt.js";
 import type { IntentChange, IntentCommit } from "../intents/intent-change.js";
 import { ledgerEntryViewOf } from "../ledger/ledger-entry-view.js";
 import type { EnginePush } from "./engine-push.js";
@@ -63,8 +64,9 @@ function ledgerPushes(commit: IntentCommit): readonly EnginePush[] {
 /**
  * The pushes one stored write of an intent sends (protocol spec, section 6; spec 6, section 8):
  * `intent/created` for a new intent and `intent/changed` for every move, `card/closed` and
- * `card/opened` for the card versions the move closed and opened, and `ledger/appended` for its
- * ledger entry. Pass the change for a move; a new intent has none.
+ * `card/opened` for the card versions the move closed and opened, `ledger/appended` for its
+ * ledger entry, and the receipt notice of an auto trade that settles. Pass the change for a move;
+ * a new intent has none.
  */
 export function intentPushes(commit: IntentCommit, change?: IntentChange): readonly EnginePush[] {
   if (change === undefined) {
@@ -74,5 +76,6 @@ export function intentPushes(commit: IntentCommit, change?: IntentChange): reado
     intentPush(commit, "intent/changed"),
     ...cardPushes(commit, change),
     ...ledgerPushes(commit),
+    ...autoReceiptPushes(commit),
   ];
 }

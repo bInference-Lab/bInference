@@ -2,6 +2,7 @@ import {
   type AccountRef,
   accountRefSchema,
   type Amount,
+  type AssetRef,
   type ChainRegistry,
   createChainRegistry,
   type Venue,
@@ -35,7 +36,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
-import type { AgentStore, Executor, IntentStore, PositionStore } from "../ports.js";
+import type { AgentStore, Executor, IntentStore, PositionStore, UsdPrice } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine } from "./create-engine.js";
@@ -77,6 +78,8 @@ export interface TestEngineOptions {
   readonly paper?: readonly Amount[];
   /** Takes the confirmed live intents; a fake that keeps them when absent. */
   readonly executor?: Executor;
+  /** The USD prices; the coin alone, at $600, when absent. */
+  readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -146,7 +149,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     positions,
     custody,
     prices: createFakePriceSource(
-      new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
+      options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
     ),
     wallets: createFakeWalletFacts(new Map([[testAgent, options.wallets ?? [testWallet]]]), {
       ...defaultFacts,

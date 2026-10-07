@@ -81,10 +81,14 @@ Rules for this package:
 - `agent/goLive` is the only operation that switches an agent to live, and only once its default
   wallet holds funds; `agent/goPaper` brakes. Intents keep the mode they were proposed in. Each
   switch is journaled and pushed as `config/changed`.
-- The auto grant (`src/approval/`, exported as `@binference/engine/approval`) holds for one intent,
-  its terms hash and the approval mode version that authorized it, up to the network fee cap, until
-  its expiry; a change to its shape changes its schema, its check and the signer's hard rule 5
-  together.
+- The approval mode (`src/approval/`, exported as `@binference/engine/approval`) is switched only by
+  `approval/set`: `auto` needs the `loosen` scope, `manual` needs `confirm`, and every switch raises
+  the mode's version, is journaled, pushed as `config/changed` and announced as the
+  `notice.approvalMode` notice. The auto test reads the agent's settings from the snapshot of the
+  move to `simulated`, never from the start of the run. An auto grant holds for one intent, its
+  terms hash and the mode version that authorized it, up to the network fee cap, until its expiry;
+  a change to its shape changes its schema, its check and the signer's hard rule 5 together. Its
+  property test (`auto-mode.property.test.ts`) runs the whole engine.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

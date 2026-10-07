@@ -2,7 +2,6 @@ import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError, type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
-import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
 import {
@@ -22,6 +21,7 @@ import {
 import type { PolicyCheck, PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore, Simulator, WalletFactsSource } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import { authorizationCheckOf } from "./authorization-check-of.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
 import { type PlannedSwap, planSwap } from "./plan-swap.js";
 import { policyFactsOf } from "./policy-facts-of.js";
@@ -181,29 +181,6 @@ async function simulate(
   return advance(run, snapshot, { trigger: { type: "simulation_matched" }, fields });
 }
 
-// The auto test reads the policy's figures; a passed swap always has them, as a missing price is
-// a refusal. The fee per gas and the cap come with the wallet's facts.
-function authorization(run: Run, pass: PolicyPass): IntentTrigger<"authorization_checked"> {
-  const { settings, facts } = run.resolved;
-  const { limits, approvalMode } = settings;
-  const overCap = limits.perTradeUsdMicros + 1n;
-  const autoFacts = {
-    approvalMode: approvalMode.mode,
-    modeVersion: approvalMode.version,
-    isInsideOwnPositions: false,
-    sellsDeniedToken: pass.sellsDeniedToken,
-    valueUsdMicros: pass.figures?.valueUsdMicros ?? overCap,
-    perTradeCapUsdMicros: limits.perTradeUsdMicros,
-    rollingDayCapUsdMicros: limits.rollingDayUsdMicros,
-    rollingDaySpentUsdMicros: pass.figures?.rollingDaySpentUsdMicros ?? 0n,
-    feePerGasNativeBase: facts.feePerGasNativeBase,
-    networkFeeCapNativeBase: facts.networkFeeCapNativeBase,
-    hasUnlistedSpender: false,
-  };
-  const check = { by: "auto_mode", facts: autoFacts } as const;
-  return { type: "authorization_checked", check, cards: cardRulesOf(limits) };
-}
-
 async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnapshot> {
   const policy = await checkPolicy(run, proposed);
   if (policy.passed === undefined) {
@@ -223,7 +200,14 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (simulated.record.state !== "simulated") {
     return simulated;
   }
-  const authorized = await advance(run, simulated, { trigger: authorization(run, policy.passed) });
+  // The auto test reads the agent as the move to `simulated` read it back, so a switch to manual
+  // during the run asks at once.
+  const trigger = authorizationCheckOf({
+    settings: simulated.settings,
+    pass: policy.passed,
+    wallet: run.resolved.facts,
+  });
+  const authorized = await advance(run, simulated, { trigger });
   return run.options.execute(authorized, { signal: run.signal });
 }
 

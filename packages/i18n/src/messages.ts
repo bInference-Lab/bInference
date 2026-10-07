@@ -2,6 +2,7 @@ import enAutoAsks from "../messages/en/autoAsks.json" with { type: "json" };
 import enCard from "../messages/en/card.json" with { type: "json" };
 import enCli from "../messages/en/cli.json" with { type: "json" };
 import enError from "../messages/en/error.json" with { type: "json" };
+import enNotice from "../messages/en/notice.json" with { type: "json" };
 import enReason from "../messages/en/reason.json" with { type: "json" };
 import enReceipt from "../messages/en/receipt.json" with { type: "json" };
 import enTelegram from "../messages/en/telegram.json" with { type: "json" };
@@ -9,6 +10,7 @@ import zhAutoAsks from "../messages/zh/autoAsks.json" with { type: "json" };
 import zhCard from "../messages/zh/card.json" with { type: "json" };
 import zhCli from "../messages/zh/cli.json" with { type: "json" };
 import zhError from "../messages/zh/error.json" with { type: "json" };
+import zhNotice from "../messages/zh/notice.json" with { type: "json" };
 import zhReason from "../messages/zh/reason.json" with { type: "json" };
 import zhReceipt from "../messages/zh/receipt.json" with { type: "json" };
 import zhTelegram from "../messages/zh/telegram.json" with { type: "json" };
@@ -38,6 +40,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("card", enCard),
     ...inArea("autoAsks", enAutoAsks),
     ...inArea("receipt", enReceipt),
+    ...inArea("notice", enNotice),
     ...inArea("telegram", enTelegram),
     ...inArea("cli", enCli),
   },
@@ -47,6 +50,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("card", zhCard),
     ...inArea("autoAsks", zhAutoAsks),
     ...inArea("receipt", zhReceipt),
+    ...inArea("notice", zhNotice),
     ...inArea("telegram", zhTelegram),
     ...inArea("cli", zhCli),
   },

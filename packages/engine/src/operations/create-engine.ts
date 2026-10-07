@@ -1,5 +1,6 @@
 import type { Amount, ChainRegistry, PriceSource, Signer } from "@binference/chain";
 import type { Clock, IdSource } from "@binference/core";
+import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
@@ -22,12 +23,12 @@ import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-han
 
 /** The operation handlers the engine gives the protocol server, by operation name. */
 export interface EngineHandlers
-  extends IntentHandlers, LedgerHandlers, PortfolioHandlers, AgentModeHandlers {}
+  extends IntentHandlers, LedgerHandlers, PortfolioHandlers, AgentModeHandlers, ApprovalHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
- * switch and the ledger, built from ports. It holds no I/O of its own; pushes leave through
- * `publish`.
+ * switch, the approval mode and the ledger, built from ports. It holds no I/O of its own; pushes
+ * leave through `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -157,6 +158,12 @@ export function createEngine(options: EngineOptions): Engine {
       ...intents.handlers,
       ...createLedgerHandlers(options.stores.ledger),
       ...settingsHandlers(options, paper),
+      ...createApprovalHandlers({
+        agents: options.stores.agents,
+        journal: options.stores.configJournal,
+        clock: options.clock,
+        publish: options.publish,
+      }),
     },
     answer: intents.answer,
   };
