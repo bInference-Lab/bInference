@@ -2,8 +2,11 @@
   "name": "binference",
   "version": "0.0.0",
   "private": true,
-  "description": "The binference command and the composition root: config loading, secret sources and config migrations.",
+  "description": "The binference command and the composition root: start, status, health and logs, the config and the self-hosted engine.",
   "license": "MIT",
+  "bin": {
+    "binference": "./dist/main.mjs"
+  },
   "files": [
     "dist"
   ],
@@ -16,23 +19,27 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/main.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
+    "@binference/chain-evm": "workspace:*",
     "@binference/chains": "workspace:*",
+    "@binference/client": "workspace:*",
     "@binference/core": "workspace:*",
     "@binference/engine": "workspace:*",
+    "@binference/i18n": "workspace:*",
     "@binference/platform": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/server": "workspace:*",
+    "@binference/store": "workspace:*",
+    "commander": "catalog:",
     "json5": "catalog:",
     "tslog": "catalog:",
+    "ws": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@binference/client": "workspace:*",
-    "@types/ws": "catalog:",
-    "ws": "catalog:"
+    "@types/ws": "catalog:"
   }
 }

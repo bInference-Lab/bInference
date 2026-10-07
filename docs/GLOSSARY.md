@@ -22,6 +22,15 @@ new name here first, in the change that uses it.
 - **surfaces**: the places the owner reads cards and acts: Telegram, the console, the Mini App and
   the CLI.
 - **composition root**: the one place, `cli/src/compose/`, that builds adapters and wires them in.
+- **missing part**: a profile part the self-hosted composition root has no adapter for yet, such
+  as custody or prices. It refuses every live action, never makes up a balance, a price or a
+  signature, and shows as a failed health signal.
+- **health signals**: what `binference status` reports about the running engine, each `ok`,
+  `warn` or `fail`: event-loop lag, memory, the engine log and each missing part.
+- **engine log**: `logs/engine.log` in the state folder, one JSON line per log record with ids
+  and no content, set aside by size and read back by `binference logs`.
+- **CLI token**: the `bnt_` token in `auth/cli.token` that the CLI signs in with over IPC; the
+  engine stores only its SHA-256.
 
 ### Money and safety
 
@@ -198,8 +207,9 @@ new name here first, in the change that uses it.
 
 - **files**: `config.json5` (the config), `engine.sqlite` and `agent.sqlite` (the databases),
   `NOTICES.md` (third-party notices).
-- **commands**: `binference init`, `start`, `check`, `check --fix`, `check security`, `report`,
-  `console`, `chat`, `mcp`, `live`, `freeze`, `rescue`, `unlock`, `expose`.
+- **commands**: `binference init`, `start`, `status`, `health`, `logs`, `check`, `check --fix`,
+  `check security`, `report`, `console`, `chat`, `mcp`, `live`, `freeze`, `rescue`, `unlock`,
+  `expose`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
@@ -275,6 +285,21 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | checked on chain (a trade)              | 已核验                  |                             |
 | brakes (pause, resume, stop)            | 刹车 (暂停, 恢复, 停止) |                             |
 | approve (an agent, an order, a rule)    | 批准                    | Token approvals are 授权    |
+
+### Running binference
+
+| English                               | 中文       | Notes                        |
+| ------------------------------------- | ---------- | ---------------------------- |
+| state folder                          | 状态文件夹 | `~/.binference`              |
+| usage (of a command)                  | 用法       | Help's heading               |
+| config key                            | 配置项     |                              |
+| value (of a config key)               | 值         |                              |
+| secret source                         | 密钥来源   |                              |
+| keychain                              | 钥匙串     |                              |
+| custody (who holds the agent wallets) | 托管       |                              |
+| wallet facts                          | 钱包信息   |                              |
+| health signal                         | 健康信号   | Shown by `binference status` |
+| log (the engine's log file)           | 日志       |                              |
 
 ### Trading
 

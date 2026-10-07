@@ -3,9 +3,29 @@
 ## Purpose
 
 The `binference` command and the composition root, the one place that builds adapters and wires
-them in. Today it loads `config.json5`: one strict schema, four layers (defaults, the file,
-`BINFERENCE_*` variables, `--set` flags), issues that name each key's path and fix, secret sources
-read only when needed, and the config migrations behind `binference check --fix`.
+them in.
+
+`binference start` runs the self-hosted engine in the foreground (`startSelfHosted` in
+`src/compose/`). In order it takes the engine lock on the state folder, loads `config.json5` with
+its layers and secret sources, opens the engine log, opens `engine.sqlite` on its store workers
+(migrations, then the integrity check), makes sure the CLI token in `auth/cli.token` is known,
+builds the engine on the self-hosted parts, and serves the protocol on the engine's IPC endpoint
+and on `127.0.0.1:<engine.port>`. Parts that have no adapter yet (custody through Privy, Chainlink
+prices, the wallet facts, the simulator) are missing parts: they refuse every live action and show
+as failed health signals. A stop signal, or `engine/stop` over IPC, runs the shutdown sequence,
+which closes the parts in the reverse order: server, IPC, health probe, store, log, lock. A second
+`start` on the same state folder refuses while the first runs.
+
+`binference status` and `binference health` sign in over IPC with the CLI token and call
+`engine/status`; `status` prints the state, the agents and the health signals, and `health`
+exits 0 only when the engine is ready. `binference logs` reads the engine log itself, so it works
+while the engine is stopped; `--follow` keeps reading until a stop signal. Every command takes
+`--json` and `--yes`, prints every word in the owner's language (messages in the i18n `cli`
+area), and exits 0 when done, 1 on an error and 2 when policy refuses.
+
+It also loads `config.json5`: one strict schema, four layers (defaults, the file, `BINFERENCE_*`
+variables, `--set` flags), issues that name each key's path and fix, secret sources read only when
+needed, and the config migrations behind `binference check --fix`.
 
 `src/compose/` holds `ProfileParts`, the ports whose adapter depends on the profile, and the test
 composition root `composeCloudTestRoot`, which fills them with fakes shaped like the bInference
@@ -33,6 +53,18 @@ The reference of every key, generated from the schema, is
 | `applyEdits`, `ConfigEdit`                      | The set, remove and move edits a migration makes                               |
 | `currentConfigVersion`                          | The `version` this binference reads and writes                                 |
 | `describeConfigSchema`, `renderConfigReference` | The JSON Schema and the key reference that `check:config-schema` keeps current |
+
+## Commands
+
+| Command                              | What it does                                                        |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `binference start [--set key=value]` | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
+| `binference status`                  | The engine's state, release, agents and health signals              |
+| `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |
+| `binference logs [-n N] [--follow]`  | The engine log's last lines, then new ones until Ctrl+C             |
+
+In development, run the source: `node --conditions=@binference/source --import tsx
+packages/cli/src/main.ts status`. The store workers get the same Node options.
 
 ## Example
 

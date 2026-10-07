@@ -14,6 +14,17 @@ Rules for this package:
   (`ProfileParts`) and builds their adapters; `composeCloudTestRoot` is the test composition root
   on the Cloud-shaped fakes. Every other package takes the ports, and `guards/no-profile-mention`
   fails it when it names a profile.
+- `startSelfHosted` is the self-hosted composition root. Each part it opens adds its closer, so a
+  start that fails part way closes what it opened, and the shutdown sequence closes the parts in
+  the reverse order. A part without an adapter is a missing part (`createMissingParts`): it
+  refuses, never fakes a balance, a price or a signature, and shows as a failed health signal.
+- Commands live in `src/commands/`, one file each, and run on a `CliHost`, never on `process`
+  directly: only `src/main.ts` reads `process`. Every command takes `--json` and `--yes`; people
+  get messages from the i18n `cli` area through `CliOutput`, scripts get JSON. Log lines and JSON
+  stay English.
+- Tests run commands end to end through `runCli` on a host with a temporary state folder
+  (`src/e2e/test-host.ts`), a manual clock and an emitter for stop signals; store workers run the
+  TypeScript source. Each test stops its engine through the shutdown sequence.
 - `composeEngine` is the one place that joins the engine to its protocol server. A push that fails
   is logged and never stops the money path. The paper swap test runs on every composition with
   `describe.each`; a new profile part joins both compositions there.

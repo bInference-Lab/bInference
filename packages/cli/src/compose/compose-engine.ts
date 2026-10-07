@@ -16,10 +16,11 @@ import {
   type Simulator,
   type WalletFactsSource,
 } from "@binference/engine";
-import type { OwnerInfo } from "@binference/protocol";
+import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
   createProtocolServer,
   type HttpListenOptions,
+  type OperationHandlers,
   type ProtocolServer,
 } from "@binference/server";
 import type { ProfileParts } from "./profile-parts.js";
@@ -45,6 +46,10 @@ export interface ComposeEngineOptions {
   readonly owner: OwnerInfo;
   /** The HTTP listener; without it the server serves IPC connections only. */
   readonly http?: HttpListenOptions;
+  /** Whether the engine serves calls yet; `ready` when left out. */
+  readonly state?: () => EngineState;
+  /** Handlers of operations the composition root answers, such as `engine/status`. */
+  readonly handlers?: OperationHandlers;
   readonly clock: Clock;
   readonly random: Random;
   readonly logger: Logger;
@@ -100,8 +105,12 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     ...(options.http === undefined ? {} : { http: options.http }),
     auth: { access: parts.stores.access },
     idempotency: parts.stores.idempotency,
-    handlers: engine.handlers,
-    engine: { version: options.version, state: () => "ready", owner: () => options.owner },
+    handlers: { ...engine.handlers, ...options.handlers },
+    engine: {
+      version: options.version,
+      state: options.state ?? (() => "ready"),
+      owner: () => options.owner,
+    },
     clock,
     random,
     logger: logger.child("server"),

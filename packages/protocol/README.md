@@ -15,6 +15,7 @@ typed client, the server and the MCP server are built from the one operation tab
 | `decodeClientFrame`, `decodeEngineFrame`            | Parse one text message into a frame, or name the error code it earns      |
 | `OpenFrame`, `openFrameSchema` and the other frames | One type and one schema for each of the nine frames                       |
 | `credentialSchema`, `deviceProofText`               | What `open.auth` carries, and the text a console device signs             |
+| `clientTokenSchema`                                 | A `bnt_` client token: what `auth/cli.token` and `auth/mcp.token` hold    |
 | `scopes`, `scopeSchema`, `Scope`                    | What a client may do                                                      |
 | `idPrefixes`, `protocolIdSchema`, `ProtocolId`      | The typed, prefixed UUIDv7 ids of every thing                             |
 | `protocolErrorCodes`, `protocolErrorSchema`         | Every error code the engine sends, and the error a `fail` frame holds     |

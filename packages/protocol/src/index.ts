@@ -1,4 +1,4 @@
-export { credentialSchema } from "./auth/credential.js";
+export { clientTokenSchema, credentialSchema } from "./auth/credential.js";
 export type {
   Credential,
   DeviceCredential,
