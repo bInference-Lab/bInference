@@ -89,6 +89,36 @@ describe("createMcpServer", () => {
     });
   });
 
+  it("sends a request id as the call's key, so a retry gets the first intent back", async () => {
+    const answers = { "intent/propose": proposedIntent("awaiting_confirmation") };
+    await withSession(answers, async ({ mcp, engine }) => {
+      const retried = { ...swapArgs, requestId: "0190f1c2-retry" };
+      await mcp.callTool({ name: "binference_propose", arguments: retried });
+      await mcp.callTool({ name: "binference_propose", arguments: retried });
+      await mcp.callTool({ name: "binference_propose", arguments: swapArgs });
+      expect(engine.calls.map((call) => [parsed(call.args), call.key])).toStrictEqual([
+        [swapArgs, "0190f1c2-retry"],
+        [swapArgs, "0190f1c2-retry"],
+        [swapArgs, undefined],
+      ]);
+    });
+  });
+
+  it("refuses a request id out of bounds, or on a tool that takes none", async () => {
+    await withSession({}, async ({ mcp, engine }) => {
+      const long = { ...swapArgs, requestId: "x".repeat(65) };
+      const answer = await mcp.callTool({ name: "binference_propose", arguments: long });
+      expect([answer.isError, textsOf(answer)[0]]).toStrictEqual([
+        true,
+        expect.stringContaining("requestId: Expected requestId to be text of 1 to 64 characters."),
+      ]);
+      const status = { intent: fixtureIds.intent, requestId: "0190f1c2-retry" };
+      const read = await mcp.callTool({ name: "binference_intent_status", arguments: status });
+      expect(read.isError).toBe(true);
+      expect(engine.calls).toStrictEqual([]);
+    });
+  });
+
   it("names the state and reason of a proposal the engine refused", async () => {
     const answers = { "intent/propose": proposedIntent("rejected_policy", "daily_cap") };
     await withSession(answers, async ({ mcp }) => {

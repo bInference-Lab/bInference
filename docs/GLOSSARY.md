@@ -230,6 +230,8 @@ new name here first, in the change that uses it.
   `notes_write`.
 - **MCP tools**: the MCP server's read and propose tools, one per operation and named
   `binference_`, such as `binference_propose` for `intent/propose`.
+- **request id**: the optional `requestId` an MCP client gives a propose tool, sent as the call's
+  idempotency key: a retry with the same id returns the first intent and its card, not a new one.
 - **coding-agent skills**: `clean-diff`, `review-diff`, `shape-commit`, `review-money-path`,
   `add-migration`, `write-adr`.
 

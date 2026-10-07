@@ -9,8 +9,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   a token that holds `read` and `propose`. It never opens a socket, reads a token file or reads
   `process.env`: the composition root builds the client and passes it in.
 - Tools come from the protocol's `mcpTools`, one per row, and each tool's input schema from
-  `describeOperations`. Never write a tool, its operation or its schema by hand; a new tool is a
-  row in the protocol's table. Only titles and descriptions live here, in `tool-texts.ts`.
+  `describeOperations`, with an optional `requestId` for a row marked `takesRequestId`. Never write
+  a tool, its operation or its schema by hand; a new tool is a row in the protocol's table. Only
+  titles and descriptions live here, in `tool-texts.ts`.
+- A `requestId` is the protocol call's idempotency key and never reaches the operation's args.
 - Every tool reads or proposes. A tool never reaches an operation of another scope, so no tool can
   confirm, deny, loosen or change settings.
 - Stdout carries MCP messages only: nothing else writes to it. Logs go through the logger, with

@@ -17,6 +17,10 @@ engine's read and propose tools over stdio. The spec is section 11 of
 - **Proposals wait.** `binference_propose` answers with the intent's id and says it is waiting for
   the owner's confirmation in Telegram or the console. An intent the engine refused names its
   state and reason instead.
+- **Retries make no second card.** `binference_propose` and `binference_order_create` take an
+  optional `requestId` of 1 to 64 characters, sent as the call's idempotency key. A retry with the
+  same id and the same args returns the first intent and its card; other args with that id fail
+  with `protocol.key_reused`. The engine keeps a key for 24 hours.
 - **Failures.** A refused or failed call answers as a tool error with the code, the engine's
   message and, for a failure a person can fix, the next step. Tool texts are English.
 - **Without the engine.** Tools list while the engine is down; a call waits for the connection

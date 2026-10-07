@@ -1,9 +1,16 @@
 import { mcpTools, operations } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { operationTools } from "./operation-tools.js";
-import { toolTexts } from "./tool-texts.js";
+import { z } from "zod";
+import { type OperationTool, operationTools } from "./operation-tools.js";
+import { requestIdText, toolTexts } from "./tool-texts.js";
 
 const tools = operationTools();
+const propertiesSchema = z.record(z.string(), z.unknown()).catch({});
+
+// The properties a tool's input schema lists, or none.
+function propertiesOf(tool: OperationTool): Readonly<Record<string, unknown>> {
+  return propertiesSchema.parse(tool.inputSchema["properties"]);
+}
 
 describe("operationTools", () => {
   it("builds one tool per row of the protocol's table, in its order", () => {
@@ -32,6 +39,20 @@ describe("operationTools", () => {
       "binference_order_cancel",
       "binference_alert_create",
     ]);
+  });
+
+  it("lists an optional request id on the propose tools only, with what the model reads", () => {
+    const taking = tools.filter((tool) => "requestId" in propertiesOf(tool));
+    expect(taking.map((tool) => [tool.name, tool.takesRequestId])).toStrictEqual([
+      ["binference_propose", true],
+      ["binference_order_create", true],
+    ]);
+    for (const tool of taking) {
+      expect(tool.inputSchema["properties"]).toMatchObject({
+        requestId: { type: "string", minLength: 1, maxLength: 64, description: requestIdText },
+      });
+      expect(tool.inputSchema["required"]).not.toContain("requestId");
+    }
   });
 
   it("tells the model the fields of each kind for a request that is a union", () => {

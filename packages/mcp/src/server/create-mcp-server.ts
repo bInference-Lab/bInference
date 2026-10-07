@@ -6,7 +6,11 @@ import {
   operationTools,
   type ToolOperation,
 } from "../tools/operation-tools.js";
-import { type ToolInputSchema, toolInputSchema } from "../tools/tool-input.schema.js";
+import {
+  type ToolInput,
+  type ToolInputSchema,
+  toolInputSchema,
+} from "../tools/tool-input.schema.js";
 import { toolAnswer } from "./tool-answer.js";
 import { type ToolFailure, toolFailure } from "./tool-failure.schema.js";
 import { wireResultOf } from "./wire-result.schema.js";
@@ -32,7 +36,7 @@ const instructions =
 interface ToolCall<N extends ToolOperation> {
   readonly tool: OperationTool;
   readonly operation: N;
-  readonly args: ArgsOf<N>;
+  readonly input: ToolInput<ArgsOf<N>>;
 }
 
 function failed(failure: ToolFailure, logger: McpLogger): CallToolResult {
@@ -41,7 +45,8 @@ function failed(failure: ToolFailure, logger: McpLogger): CallToolResult {
 }
 
 // The engine's result goes back as its wire JSON; a failure goes back as a tool error, so the
-// model reads the code and the next step instead of a protocol error.
+// model reads the code and the next step instead of a protocol error. A request id is the call's
+// idempotency key, so a retry with it gets the first result back.
 async function callTool<N extends ToolOperation>(
   call: ToolCall<N>,
   options: McpServerOptions,
@@ -49,7 +54,9 @@ async function callTool<N extends ToolOperation>(
 ): Promise<CallToolResult> {
   let result: ResultOf<N>;
   try {
-    result = await options.client.call(call.operation, call.args, { signal });
+    const { args, requestId } = call.input;
+    const key = requestId === undefined ? {} : { key: requestId };
+    result = await options.client.call(call.operation, args, { signal, ...key });
   } catch (error) {
     return failed(toolFailure(call.tool.name, error), options.logger);
   }
@@ -65,7 +72,7 @@ async function callTool<N extends ToolOperation>(
 /** A tool bound to its operation: its input schema and its handler share the operation's args. */
 interface BoundTool<N extends ToolOperation> {
   readonly inputSchema: ToolInputSchema<ArgsOf<N>>;
-  readonly answer: (args: ArgsOf<N>, signal: AbortSignal) => Promise<CallToolResult>;
+  readonly answer: (input: ToolInput<ArgsOf<N>>, signal: AbortSignal) => Promise<CallToolResult>;
 }
 
 function bindTool<N extends ToolOperation>(
@@ -74,8 +81,12 @@ function bindTool<N extends ToolOperation>(
   options: McpServerOptions,
 ): BoundTool<N> {
   return {
-    inputSchema: toolInputSchema(operations[operation].args, tool.inputSchema),
-    answer: async (args, signal) => callTool({ tool, operation, args }, options, signal),
+    inputSchema: toolInputSchema({
+      args: operations[operation].args,
+      json: tool.inputSchema,
+      takesRequestId: tool.takesRequestId,
+    }),
+    answer: async (input, signal) => callTool({ tool, operation, input }, options, signal),
   };
 }
 
@@ -87,8 +98,8 @@ function registerTool(server: McpServer, tool: OperationTool, options: McpServer
     inputSchema: bound.inputSchema,
     annotations: { readOnlyHint: tool.readOnly },
   };
-  server.registerTool(tool.name, config, async (args, context) =>
-    bound.answer(args, context.mcpReq.signal),
+  server.registerTool(tool.name, config, async (input, context) =>
+    bound.answer(input, context.mcpReq.signal),
   );
 }
 

@@ -14,10 +14,12 @@ export type FakeAnswers = {
   readonly [N in CallableName<OperationShapes>]?: ResultOf<N> | Error;
 };
 
-/** One call that reached the fake engine, with its args as JSON carries them. */
+/** One call that reached the fake engine, with its args as JSON carries them and its key. */
 interface FakeCall {
   readonly op: string;
   readonly args: string;
+  /** The idempotency key the caller passed, if it passed one. */
+  readonly key?: string;
 }
 
 /** A protocol client over a fake engine that records every call it receives. */
@@ -60,7 +62,7 @@ export function createFakeProtocolClient(
       status = { state: "ready", ready };
       return ready;
     },
-    async call(op, args) {
+    async call(op, args, options) {
       if (status.state === "closed") {
         throw status.error;
       }
@@ -68,7 +70,8 @@ export function createFakeProtocolClient(
         operations[op].args,
         args,
       );
-      calls.push({ op, args: JSON.stringify(wire) });
+      const key = options.key === undefined ? {} : { key: options.key };
+      calls.push({ op, args: JSON.stringify(wire), ...key });
       const answer = answers[op];
       if (answer === undefined) {
         throw codedError("protocol.unknown_op", `The fake engine has no answer for ${op}.`);

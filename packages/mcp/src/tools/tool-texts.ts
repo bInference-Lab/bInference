@@ -12,6 +12,10 @@ const ids = "Tokens are CAIP-19 asset ids and addresses are CAIP-10 account ids.
 const waits =
   "Nothing moves until the owner confirms the card in Telegram or the console; no tool can confirm.";
 
+/** What the model reads about the `requestId` a propose tool takes. */
+export const requestIdText =
+  "Optional. A new unique id for this proposal, such as a UUID. Send the same id again only to retry this same call after an error or a timeout: the retry returns the first intent and its card instead of a new one. Never reuse an id for another proposal.";
+
 /**
  * The title and description of each tool, by tool name. The input schema and the operation come
  * from the protocol; these texts only tell the model when to use the tool.

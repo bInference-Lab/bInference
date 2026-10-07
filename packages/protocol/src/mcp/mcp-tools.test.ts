@@ -29,6 +29,18 @@ describe("mcpTools", () => {
     expect(reached.filter((name) => operations[name].scopeCase !== undefined)).toStrictEqual([]);
   });
 
+  it("lets the propose tools, which open a card, take a request id for their idempotency key", () => {
+    const taking = mcpTools.filter((tool) => tool.takesRequestId === true);
+    expect(taking.map((tool) => tool.name)).toStrictEqual([
+      "binference_propose",
+      "binference_order_create",
+    ]);
+    expect(taking.map((tool) => operations[tool.operation].idempotency)).toStrictEqual([
+      "key",
+      "key",
+    ]);
+  });
+
   it("serves both transports, since the MCP server reaches the engine over IPC", () => {
     expect(mcpTools.filter((tool) => operations[tool.operation].transport !== "any")).toStrictEqual(
       [],
