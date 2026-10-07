@@ -5,6 +5,8 @@ export type { FileLock } from "./file-lock.js";
 export type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
 export { openIpcChannel } from "./ipc/ipc-channel.js";
 export type { IpcChannel, IpcChannelOptions } from "./ipc/ipc-channel.js";
+export { createFileSecretStore } from "./keychain/file-secret-store.js";
+export type { FileSecretStoreOptions } from "./keychain/file-secret-store.js";
 export { createPassphraseSecretStore } from "./keychain/passphrase-secret-store.js";
 export type { PassphraseSecretStoreOptions } from "./keychain/passphrase-secret-store.js";
 export { openLogFile } from "./logs/log-file.js";

@@ -1,10 +1,7 @@
-import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
   BinferenceError,
   checkSecretName,
-  err,
-  ok,
   type Result,
   type Secret,
   type SecretStore,
@@ -12,6 +9,7 @@ import {
 import type { FilePermissions } from "../ports.js";
 import { ensurePrivateFolder, writePrivateFile } from "../private-files.js";
 import { readTextFile } from "../read-text-file.js";
+import { removeEntryFile } from "./remove-entry-file.js";
 import { openSealedSecret, sealSecret } from "./sealed-secret.js";
 import { parseSealedSecret, type SealedSecret } from "./sealed-secret.schema.js";
 
@@ -79,23 +77,6 @@ async function readEntry(
   return opened;
 }
 
-async function deleteEntry(file: EntryFile): Promise<Result<void, "not_found">> {
-  try {
-    await rm(file.path);
-    return ok(undefined);
-  } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      return err("not_found");
-    }
-    throw new BinferenceError({
-      code: "platform.file_write_failed",
-      message: `Could not remove ${file.path}; check that it is yours.`,
-      cause: error,
-      details: { path: file.path },
-    });
-  }
-}
-
 /**
  * Secrets in owner-only files sealed with the owner's passphrase, for machines where no OS keychain
  * answers, such as headless Linux and Docker. Each entry is `<folder>/<name>.json`: scrypt with a
@@ -133,7 +114,7 @@ export function createPassphraseSecretStore(options: PassphraseSecretStoreOption
     delete: async (name, signal) => {
       const file = fileFrom(options, name);
       signal.throwIfAborted();
-      return deleteEntry(file);
+      return removeEntryFile(file.path);
     },
   };
 }

@@ -15,8 +15,8 @@ ports:
 - one shutdown sequence for `SIGINT` and `SIGTERM`, Windows `SIGINT` and `SIGBREAK`, and stop
   requests;
 - named secrets behind core's `SecretStore` port: the OS keychain through `@napi-rs/keyring` (the
-  Secret Service required on Linux, never the kernel keyring, which forgets at a reboot), or the
-  passphrase store where no keychain answers;
+  Secret Service required on Linux, never the kernel keyring, which forgets at a reboot), the
+  passphrase store where no keychain answers, or owner-only files for the `file` unlock mode;
 - the background service behind the `ServiceManager` port: a LaunchAgent through `launchctl` on
   macOS, a `systemctl --user` unit on Linux, a scheduled task through `schtasks` on Windows, each
   started at the owner's login, in their session;
@@ -40,6 +40,8 @@ ports:
 | `createShutdown`, `Shutdown`        | Runs the shutdown steps in order on a stop signal, within a budget   |
 | `Platform.keychain`                 | The OS keychain, entries `binference/<name>`                         |
 | `createPassphraseSecretStore`       | Secrets sealed with the owner's passphrase, one file each in `keys/` |
+| `createFileSecretStore`             | The `file` unlock mode: each secret in its own owner-only file       |
+| `Platform.hasDesktopSession`        | Whether a desktop session runs, so the OS keychain is there          |
 | `ServiceManager`                    | The port that installs, removes and reports a background service     |
 | `Platform.serviceManager`           | This OS's service manager, given a clock for its waits               |
 | `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                   |

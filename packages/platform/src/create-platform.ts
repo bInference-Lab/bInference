@@ -26,6 +26,9 @@ export interface IpcEndpointOptions {
 export interface PlatformOptions extends StateFolderOptions {
   /** The value of `XDG_CONFIG_HOME`, where Linux keeps user units; `~/.config` when empty. */
   readonly xdgConfigHome?: string | undefined;
+  /** The values of `DISPLAY` and `WAYLAND_DISPLAY`: on Linux, either one names a desktop session. */
+  readonly display?: string | undefined;
+  readonly waylandDisplay?: string | undefined;
 }
 
 /** This OS's adapters, chosen once at startup. */
@@ -39,6 +42,11 @@ export interface Platform {
   readonly ipcEndpoint: (options: IpcEndpointOptions) => IpcEndpoint;
   /** The OS keychain, entries under the service `binference`. */
   readonly keychain: SecretStore;
+  /**
+   * Whether a desktop session runs, so the OS keychain is there to hold secrets: always on macOS
+   * and Windows, on Linux only with a display. Headless Linux and Docker have none.
+   */
+  readonly hasDesktopSession: boolean;
   /** This OS's service manager; the clock times its waits for a service to start or stop. */
   readonly serviceManager: (clock: Clock) => ServiceManager;
 }
@@ -65,6 +73,10 @@ function posixServiceManager(
   return () => createSystemdServiceManager({ unitFolder, permissions });
 }
 
+function hasDisplay(options: PlatformOptions): boolean {
+  return (options.display ?? "") !== "" || (options.waylandDisplay ?? "") !== "";
+}
+
 /**
  * Picks the adapters for the OS this process runs on. Throws `platform.unsupported_os` on any OS
  * but macOS, Linux and Windows.
@@ -80,6 +92,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       stopSignals: ["SIGINT", "SIGBREAK"],
       ipcEndpoint: (endpoint) => createWin32IpcEndpoint(endpoint),
       keychain,
+      hasDesktopSession: true,
       serviceManager: (clock) => createSchtasksServiceManager({ clock }),
     };
   }
@@ -93,6 +106,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       ipcEndpoint: ({ name }) =>
         createPosixIpcEndpoint({ runFolder: stateFolder.run, name, permissions }),
       keychain,
+      hasDesktopSession: process.platform === "darwin" || hasDisplay(options),
       serviceManager: posixServiceManager(options, permissions),
     };
   }

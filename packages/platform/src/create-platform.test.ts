@@ -22,6 +22,21 @@ describe("platform", () => {
   });
 });
 
+describe.runIf(process.platform === "linux")("platform on Linux", () => {
+  it("has a desktop session only when DISPLAY or WAYLAND_DISPLAY names one", () => {
+    expect(createPlatform({}).hasDesktopSession).toBe(false);
+    expect(createPlatform({ display: "", waylandDisplay: "" }).hasDesktopSession).toBe(false);
+    expect(createPlatform({ display: ":0" }).hasDesktopSession).toBe(true);
+    expect(createPlatform({ waylandDisplay: "wayland-0" }).hasDesktopSession).toBe(true);
+  });
+});
+
+describe.runIf(process.platform !== "linux")("platform on macOS and Windows", () => {
+  it("always has a desktop session", () => {
+    expect(createPlatform({}).hasDesktopSession).toBe(true);
+  });
+});
+
 describe.skipIf(process.platform === "win32")("platform on macOS and Linux", () => {
   it("puts endpoints in the run folder as sockets and stops on SIGINT or SIGTERM", () => {
     const platform = createPlatform({ binferenceHome: "/srv/binference" });
