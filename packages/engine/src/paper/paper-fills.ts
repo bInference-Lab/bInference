@@ -1,4 +1,4 @@
-import type { PriceSource, UsdPrice } from "@binference/chain";
+import { type PriceSource, type UsdPrice, withQuotePrice } from "@binference/chain";
 import { BinferenceError, type Clock } from "@binference/core";
 import type { QuoteView } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -17,10 +17,11 @@ import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.
 export interface PaperFills {
   /**
    * Fills a confirmed paper intent at its confirmed quote: the quote's input for its expected
-   * output, at the time of the fill, valued at the sold asset's price then. Any other intent comes
-   * back as it was; an intent another write moved first comes back as that write left it. A paper
-   * intent whose sold asset has no usable price stays `confirmed`, since a fill is never valued
-   * at a guessed price.
+   * output, at the time of the fill, valued at the sold asset's price then. A sold token the
+   * price source cannot price takes its price from that quote, as the policy step priced it. Any
+   * other intent comes back as it was; an intent another write moved first comes back as that
+   * write left it. A paper intent whose sold asset has no usable price stays `confirmed`, since a
+   * fill is never valued at a guessed price.
    */
   fillAtQuote(
     snapshot: IntentSnapshot,
@@ -105,7 +106,8 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
         return snapshot;
       }
       const quote = confirmedQuote(snapshot);
-      const price = await options.prices.usdPrice(quote.amountIn.asset, { signal });
+      const prices = withQuotePrice(options.prices, quote);
+      const price = await prices.usdPrice(quote.amountIn.asset, { signal });
       if (!price.ok || !isUsablePrice(price.value)) {
         return snapshot;
       }

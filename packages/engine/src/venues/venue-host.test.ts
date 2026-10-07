@@ -24,7 +24,9 @@ import { describe, expect, it } from "vitest";
 import type { BuildMismatch } from "./build-checks.js";
 import {
   createVenueHost,
+  type QuoteOutcome,
   type TradePlan,
+  type TradeQuote,
   type VenueHost,
   type VenueOutcome,
   type VenueTrade,
@@ -99,6 +101,14 @@ function planOf(outcome: VenueOutcome): TradePlan {
   return outcome.value;
 }
 
+// The quote of a successful answer, as `planOf` reads a plan.
+function quotedOf(outcome: QuoteOutcome): TradeQuote {
+  if (!outcome.ok) {
+    throw new Error(`Expected a quote, got ${outcome.error}.`);
+  }
+  return outcome.value;
+}
+
 function building(drafts: readonly TxDraft[]): Venue {
   return { ...createFakeVenue(), build: async () => await Promise.resolve(drafts) };
 }
@@ -122,6 +132,45 @@ describe("venue host", () => {
         ],
       },
     });
+  });
+
+  it("quotes a trade without building it, then builds that quote with its own time", async () => {
+    const clock = createManualClock(nowMs);
+    const builds: BuildRequest[] = [];
+    const fake = createFakeVenue();
+    const venue: Venue = {
+      ...fake,
+      async build(request, options) {
+        builds.push(request);
+        return fake.build(request, options);
+      },
+    };
+    const host = hostOf(venue, clock);
+    const quoted = await host.quote(buy, { signal });
+    expect(quoted).toStrictEqual({
+      ok: true,
+      value: {
+        trade: buy,
+        quote: { expectedOut: { asset: token, base: 2_000_000n }, priceImpactBps: 10 },
+        quotedAtMs: nowMs,
+      },
+    });
+    expect(builds).toHaveLength(0);
+    await clock.advance(2_000);
+    const plan = await host.build(quotedOf(quoted), { signal });
+    expect(plan).toStrictEqual(await hostOf().plan(buy, { signal }));
+    expect(builds.map((request) => request.deadlineMs)).toStrictEqual([nowMs + 60_000]);
+  });
+
+  it("refuses to build a quote for a trade it cannot route", async () => {
+    const quote = { expectedOut: { asset: token, base: 2_000_000n }, priceImpactBps: 10 as Bps };
+    const elsewhere = { trade: { ...buy, venue: "other-swap" }, quote, quotedAtMs: nowMs };
+    await expect(hostOf().build(elsewhere, { signal })).resolves.toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+    await expect(hostOf().quote(buy, { signal: AbortSignal.abort() })).rejects.toBeDefined();
+    await expect(hostOf().build(elsewhere, { signal: AbortSignal.abort() })).rejects.toBeDefined();
   });
 
   it("plans a sale of a token as an exact approval and then the trade call", async () => {

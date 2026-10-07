@@ -51,6 +51,15 @@ export interface TradePlan {
   readonly steps: readonly PlanStep[];
 }
 
+/** A trade the host quoted on its venue and has not built yet. */
+export interface TradeQuote {
+  readonly trade: VenueTrade;
+  /** The host's copy of the venue's quote, which the venue builds the trade from. */
+  readonly quote: VenueQuote;
+  /** When the venue quoted: the trade call's deadline counts from here. */
+  readonly quotedAtMs: number;
+}
+
 /** Why the host refused a trade: a check reason of spec 6 that `quote_failed` carries. */
 export type VenueFailure = Exclude<QuoteFailure, "price_impact">;
 
@@ -62,6 +71,9 @@ export interface VenueRefused extends Err<VenueFailure> {
 /** What the host answers for a trade. */
 export type VenueOutcome = Ok<TradePlan> | VenueRefused;
 
+/** What the host answers when it quotes a trade. */
+export type QuoteOutcome = Ok<TradeQuote> | VenueRefused;
+
 /**
  * The venue host: step 3 of the money path (ARCHITECTURE.md section 7). It runs reviewed venue
  * code inside the engine, sets the terms of every trade itself, and refuses whatever a venue
@@ -69,10 +81,19 @@ export type VenueOutcome = Ok<TradePlan> | VenueRefused;
  */
 export interface VenueHost {
   /**
-   * Quotes a trade on its venue, builds its steps and checks each one. A venue that throws, times
-   * out or answers outside its types is `venue_down`; a pair it cannot route, `no_route`; a step
-   * that breaks a check, `decode_mismatch`. Rejects with the signal's reason once it aborts.
+   * Asks a trade's venue for a quote and builds nothing, so the policy can price the trade from
+   * the quote before any step exists. A venue that throws, times out or answers outside its types
+   * is `venue_down`; a pair it cannot route, `no_route`; a quote of another asset,
+   * `decode_mismatch`. Rejects with the signal's reason once it aborts.
    */
+  quote(trade: VenueTrade, options: { readonly signal: AbortSignal }): Promise<QuoteOutcome>;
+  /**
+   * Builds the steps of a trade it quoted and checks each one, with the terms it sets from that
+   * quote. A venue that fails to build is `venue_down`; a step that breaks a check,
+   * `decode_mismatch`. Rejects with the signal's reason once it aborts.
+   */
+  build(quoted: TradeQuote, options: { readonly signal: AbortSignal }): Promise<VenueOutcome>;
+  /** Quotes a trade, then builds it: `quote` and `build` in one call, with their answers. */
   plan(trade: VenueTrade, options: { readonly signal: AbortSignal }): Promise<VenueOutcome>;
 }
 
@@ -164,12 +185,6 @@ async function quoteOf(
     : refuse("decode_mismatch", "quote_mismatch");
 }
 
-interface BuildInput {
-  readonly context: TradeContext;
-  readonly quote: VenueQuote;
-  readonly quotedAtMs: number;
-}
-
 function boundsOf(context: TradeContext, minOut: Amount, deadlineMs: number): TradeBounds {
   const { trade, chain, request } = context;
   return {
@@ -185,8 +200,12 @@ function boundsOf(context: TradeContext, minOut: Amount, deadlineMs: number): Tr
 }
 
 // The host sets the terms the venue builds with, then reads back and checks what it built.
-async function buildPlan(input: BuildInput, call: VenueCallOptions): Promise<VenueOutcome> {
-  const { context, quote, quotedAtMs } = input;
+async function buildPlan(
+  context: TradeContext,
+  quoted: TradeQuote,
+  call: VenueCallOptions,
+): Promise<VenueOutcome> {
+  const { quote, quotedAtMs } = quoted;
   const { trade, hosted, chain, request } = context;
   const minOut = frozenAmount({
     asset: trade.assetOut,
@@ -219,20 +238,35 @@ async function buildPlan(input: BuildInput, call: VenueCallOptions): Promise<Ven
  */
 export function createVenueHost(options: VenueHostOptions): VenueHost {
   const venues = hostVenues(options.venues, options.chains);
-  return {
-    async plan(trade, { signal }) {
+  const callOf = (signal: AbortSignal): VenueCallOptions => ({
+    clock: options.clock,
+    signal,
+    timeoutMs: options.callTimeoutMs,
+  });
+  const host: VenueHost = {
+    async quote(trade, { signal }) {
       signal.throwIfAborted();
       const context = contextOf(trade, venues, options.chains);
       if (!context.ok) {
         return refuse(context.error);
       }
-      const call = { clock: options.clock, signal, timeoutMs: options.callTimeoutMs };
-      const quote = await quoteOf(context.value, call);
+      const quote = await quoteOf(context.value, callOf(signal));
       if (!quote.ok) {
         return quote;
       }
-      const quotedAtMs = options.clock.now();
-      return await buildPlan({ context: context.value, quote: quote.value, quotedAtMs }, call);
+      return ok(Object.freeze({ trade, quote: quote.value, quotedAtMs: options.clock.now() }));
+    },
+    async build(quoted, { signal }) {
+      signal.throwIfAborted();
+      const context = contextOf(quoted.trade, venues, options.chains);
+      return context.ok
+        ? await buildPlan(context.value, quoted, callOf(signal))
+        : refuse(context.error);
+    },
+    async plan(trade, call) {
+      const quoted = await host.quote(trade, call);
+      return quoted.ok ? await host.build(quoted.value, call) : quoted;
     },
   };
+  return host;
 }

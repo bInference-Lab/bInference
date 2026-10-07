@@ -1,4 +1,4 @@
-import type { AccountRef, AssetRef, UsdPrice } from "@binference/chain";
+import type { AccountRef, AssetRef, QuotedTrade, UsdPrice } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
@@ -146,6 +146,69 @@ describe("the policy check", () => {
     });
     const unpriced = await verdict({ ...buy, outflows: [{ asset: meme, base: 1n }] });
     expect(unpriced).not.toHaveProperty("figures");
+  });
+});
+
+// A sale of a token the source cannot price, for the coin its quote gives back.
+const unpricedSale: PolicySubject = {
+  ...buy,
+  kind: "sell",
+  outflows: [{ asset: meme, base: 10n ** 6n }],
+  inflowAssets: [coin],
+};
+
+function saleQuote(outBase: bigint, out: AssetRef = coin): QuotedTrade {
+  return {
+    amountIn: { asset: meme, base: 10n ** 6n },
+    expectedOut: { asset: out, base: outBase },
+  };
+}
+
+async function quotedVerdict(subject: PolicySubject, quote: QuotedTrade) {
+  const policy = createPolicyCheck({
+    prices: createFakePriceSource(prices),
+    clock: createManualClock(nowMs),
+  });
+  const signal = new AbortController().signal;
+  return policy.check(subject, { ...facts, recentOutflows: [] }, { signal, quote });
+}
+
+describe("the policy check with the trade's own quote", () => {
+  it("values a token without a price at what its quote gives back", async () => {
+    await expect(quotedVerdict(unpricedSale, saleQuote(oneCoin / 10n))).resolves.toStrictEqual({
+      ok: true,
+      value: {
+        figures: { valueUsdMicros: 60_000_000n, rollingDaySpentUsdMicros: 0n },
+        sellsDeniedToken: false,
+      },
+    });
+  });
+
+  it("holds the caps at the quote's price", async () => {
+    await expect(quotedVerdict(unpricedSale, saleQuote(oneCoin / 5n))).resolves.toMatchObject({
+      ok: false,
+      reasons: ["per_trade_cap"],
+      figures: { valueUsdMicros: 120_000_000n },
+    });
+  });
+
+  it("keeps the source's price for an asset it prices", async () => {
+    // At this quote the coin would be worth $10 a coin; the source says $600.
+    const cheap = {
+      amountIn: { asset: coin, base: oneCoin / 10n },
+      expectedOut: { asset: usd, base: 1_000_000n },
+    };
+    const result = await quotedVerdict(buy, cheap);
+    expect(result).toMatchObject({ ok: true, value: { figures: { valueUsdMicros: 60_000_000n } } });
+  });
+
+  it("has no price when the quote's other side has none either", async () => {
+    const other = "fake:1/token:other" as AssetRef;
+    const result = await quotedVerdict(
+      { ...unpricedSale, inflowAssets: [other] },
+      saleQuote(oneCoin, other),
+    );
+    expect(reasonsOf(result)).toStrictEqual(["no_price"]);
   });
 });
 

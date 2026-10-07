@@ -23,8 +23,10 @@ version when the minimum out got worse than the tolerance. No answer before the 
 
 `createEngine` puts steps 1 to 6 of the money path behind the protocol
 ([ARCHITECTURE.md section 7](../../docs/ARCHITECTURE.md#section-7)). `intent/propose` resolves a
-swap against the agent's wallet and limits, then runs the policy, the venue host, the risk step,
-the simulation and the auto test, and answers with the intent waiting on its card or ended. A
+swap against the agent's wallet and limits, asks the venue host for a quote, then runs the policy,
+the venue host's build, the risk step, the simulation and the auto test, and answers with the
+intent waiting on its card or ended. The policy prices a token without a feed from that quote
+(`withQuotePrice` of `@binference/chain`), and nothing is built before the policy passes. A
 request it cannot route yet is a protocol error, and nothing is stored. `intent/confirm` and
 `intent/deny` answer the card through the confirmations. A confirmed intent then goes on to the
 execute step: a paper intent fills at its confirmed quote (the paper fill) and never reaches the

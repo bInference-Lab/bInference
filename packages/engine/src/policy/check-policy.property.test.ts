@@ -1,4 +1,4 @@
-import type { Amount, AssetRef, UsdPrice } from "@binference/chain";
+import type { Amount, AssetRef, QuotedTrade, UsdPrice } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import * as fc from "fast-check";
@@ -112,12 +112,48 @@ const cases: fc.Arbitrary<Case> = randomCases.chain((item) =>
   ),
 );
 
-async function verdictOf({ subject, facts, prices }: Case): Promise<PolicyVerdict> {
+async function verdictOf(
+  { subject, facts, prices }: Case,
+  quote?: QuotedTrade,
+): Promise<PolicyVerdict> {
   const policy = createPolicyCheck({
     prices: createFakePriceSource(prices),
     clock: createManualClock(nowMs),
   });
-  return policy.check(subject, facts, { signal: new AbortController().signal });
+  const signal = new AbortController().signal;
+  return policy.check(subject, facts, quote === undefined ? { signal } : { signal, quote });
+}
+
+// A trade's own quote between two of the assets, which may price one side from the other.
+const quotes: fc.Arbitrary<QuotedTrade> = fc
+  .tuple(
+    fc.uniqueArray(fc.constantFrom(...assets), { minLength: 2, maxLength: 2 }),
+    fc.bigInt({ min: 1n, max: 200n }),
+    fc.bigInt({ min: 1n, max: 200n }),
+  )
+  .map(([pair, inBase, outBase]: readonly [readonly AssetRef[], bigint, bigint]): QuotedTrade => ({
+    amountIn: { asset: pair[0] ?? coin, base: inBase },
+    expectedOut: { asset: pair[1] ?? coin, base: outBase },
+  }));
+
+// The price table with the quote's unpriced side at the price the quote gives it (decision 0059).
+function withQuotedPrice(item: Case, quote: QuotedTrade): Case {
+  const sides = [
+    [quote.amountIn, quote.expectedOut],
+    [quote.expectedOut, quote.amountIn],
+  ] as const;
+  const added = sides.flatMap(([own, other]) => {
+    const price = item.prices.get(other.asset);
+    return item.prices.has(own.asset) || price === undefined
+      ? []
+      : [
+          [
+            own.asset,
+            { numerator: other.base * price.numerator, denominator: price.denominator * own.base },
+          ] as const,
+        ];
+  });
+  return { ...item, prices: new Map([...item.prices, ...added]) };
 }
 
 // The exact worth of the outflows as one fraction, with no rounding at all.
@@ -192,6 +228,23 @@ function shapeViolations(item: Case, verdict: PolicyVerdict): readonly string[] 
     verdict.reasons.includes("no_price") === !isPriced(item) ? "" : "no_price is wrong",
   ].filter((text) => text !== "");
 }
+
+describe("the policy check with the trade's own quote", () => {
+  it("judges an intent exactly as at the prices its quote gives the unpriced side", async () => {
+    await fc.assert(
+      fc.asyncProperty(cases, quotes, async (item, quote) => {
+        const priced = withQuotedPrice(item, quote);
+        const verdict = await verdictOf(item, quote);
+        expect(verdict).toStrictEqual(await verdictOf(priced));
+        expect([
+          ...capViolations(priced, verdict),
+          ...figureViolations(priced, verdict),
+        ]).toStrictEqual([]);
+      }),
+      { numRuns: 500 },
+    );
+  });
+});
 
 describe("the policy check over random intents", () => {
   it("never passes an intent whose exact USD value breaks a cap", async () => {

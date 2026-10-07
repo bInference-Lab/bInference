@@ -3,7 +3,7 @@ import { type Bps, bpsPerWhole, bpsSchema, err, ok, type Result } from "@binfere
 import type { QuoteView } from "@binference/protocol";
 import type { BuiltQuote } from "../confirmations/stored-intent.js";
 import type { QuoteFailure } from "../intents/intent-reason.js";
-import type { TradePlan, VenueHost } from "../venues/venue-host.js";
+import type { TradePlan, TradeQuote, VenueHost, VenueOutcome } from "../venues/venue-host.js";
 import type { SwapTrade } from "./swap-trade.js";
 
 /** A swap the venue host quoted and built: its plan, and the quote and steps a card shows. */
@@ -43,6 +43,19 @@ function quoteViewOf(swap: SwapTrade, plan: TradePlan, nativeAsset: AssetRef): Q
   };
 }
 
+function plannedOf(
+  swap: SwapTrade,
+  planned: VenueOutcome,
+  nativeAsset: AssetRef,
+): Result<PlannedSwap, QuoteFailure> {
+  if (!planned.ok) {
+    return err(planned.error);
+  }
+  const plan = planned.value;
+  const quote = quoteViewOf(swap, plan, nativeAsset);
+  return ok({ plan, built: { quote, steps: plan.steps.map((step) => step.draft) } });
+}
+
 /**
  * Quotes and builds a swap through the venue host, which checks every step it builds. A refusal
  * is the check reason the intent stores with `failed_check`.
@@ -52,10 +65,18 @@ export async function planSwap(
   options: PlanSwapOptions,
 ): Promise<Result<PlannedSwap, QuoteFailure>> {
   const planned = await options.host.plan(swap.trade, { signal: options.signal });
-  if (!planned.ok) {
-    return err(planned.error);
-  }
-  const plan = planned.value;
-  const quote = quoteViewOf(swap, plan, options.nativeAsset);
-  return ok({ plan, built: { quote, steps: plan.steps.map((step) => step.draft) } });
+  return plannedOf(swap, planned, options.nativeAsset);
+}
+
+/**
+ * Builds a swap the venue host already quoted, from that quote, as {@link planSwap} does. The
+ * money path quotes first, so the policy prices the trade from its quote before anything is built.
+ */
+export async function buildSwap(
+  swap: SwapTrade,
+  quoted: TradeQuote,
+  options: PlanSwapOptions,
+): Promise<Result<PlannedSwap, QuoteFailure>> {
+  const planned = await options.host.build(quoted, { signal: options.signal });
+  return plannedOf(swap, planned, options.nativeAsset);
 }

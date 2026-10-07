@@ -1,4 +1,4 @@
-import type { ChainRegistry, Signer } from "@binference/chain";
+import type { ChainRegistry, QuotedTrade, Signer } from "@binference/chain";
 import { BinferenceError, type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
@@ -20,10 +20,10 @@ import {
 } from "../intents/state-machine.js";
 import type { PolicyCheck, PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore, Simulator, WalletFactsSource } from "../ports.js";
-import type { VenueHost } from "../venues/venue-host.js";
+import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
-import { type PlannedSwap, planSwap } from "./plan-swap.js";
+import { buildSwap, type PlannedSwap } from "./plan-swap.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import { registryRisk } from "./registry-risk.js";
 import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
@@ -37,8 +37,10 @@ export interface Proposer {
 
 /**
  * Steps 1 to 6 of the money path (ARCHITECTURE.md section 7): resolve, policy, quote and build,
- * risk, simulation, and the card or the auto mode's authorization. An intent the auto mode
- * confirms goes on to the execute step at once: it fills on paper, or the executor takes it.
+ * risk, simulation, and the card or the auto mode's authorization. The venue quotes before the
+ * policy decides, so the caps judge the trade at its quote's price; nothing is built before the
+ * policy passes. An intent the auto mode confirms goes on to the execute step at once: it fills
+ * on paper, or the executor takes it.
  */
 export interface MoneyPath {
   /**
@@ -119,7 +121,17 @@ async function advance(
     : ((await stored.snapshot(intent, { signal: run.signal })) ?? snapshot);
 }
 
-async function checkPolicy(run: Run, snapshot: IntentSnapshot): Promise<Stepped<PolicyPass>> {
+function quotedTradeOf({ trade, quote }: TradeQuote): QuotedTrade {
+  return { amountIn: trade.amountIn, expectedOut: quote.expectedOut };
+}
+
+// The venue's quote prices the trade's other token; a trade the venue could not quote is judged
+// without it, so its policy refusal still comes first.
+async function checkPolicy(
+  run: Run,
+  snapshot: IntentSnapshot,
+  quote: QuoteOutcome,
+): Promise<Stepped<PolicyPass>> {
   const { resolved, options } = run;
   const { status } = snapshot.stored;
   const subject = swapSubjectOf(resolved.swap, status);
@@ -129,7 +141,9 @@ async function checkPolicy(run: Run, snapshot: IntentSnapshot): Promise<Stepped<
     chain: resolved.chain.ref,
     nativeAsset: resolved.nativeAsset,
   });
-  const verdict = await options.policy.check(subject, facts, { signal: run.signal });
+  const { signal } = run;
+  const call = quote.ok ? { signal, quote: quotedTradeOf(quote.value) } : { signal };
+  const verdict = await options.policy.check(subject, facts, call);
   if (!verdict.ok) {
     const refused = { type: "policy_refused", reason: verdict.error } as const;
     return { snapshot: await advance(run, snapshot, { trigger: refused }) };
@@ -140,13 +154,19 @@ async function checkPolicy(run: Run, snapshot: IntentSnapshot): Promise<Stepped<
     : { snapshot: checked };
 }
 
-async function quote(run: Run, snapshot: IntentSnapshot): Promise<Stepped<PlannedSwap>> {
+async function build(
+  run: Run,
+  snapshot: IntentSnapshot,
+  quote: QuoteOutcome,
+): Promise<Stepped<PlannedSwap>> {
   const { resolved, options } = run;
-  const planned = await planSwap(resolved.swap, {
-    host: options.host,
-    nativeAsset: resolved.nativeAsset,
-    signal: run.signal,
-  });
+  const planned = quote.ok
+    ? await buildSwap(resolved.swap, quote.value, {
+        host: options.host,
+        nativeAsset: resolved.nativeAsset,
+        signal: run.signal,
+      })
+    : quote;
   if (!planned.ok) {
     const failed = { type: "quote_failed", reason: planned.error } as const;
     return { snapshot: await advance(run, snapshot, { trigger: failed }) };
@@ -182,11 +202,12 @@ async function simulate(
 }
 
 async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnapshot> {
-  const policy = await checkPolicy(run, proposed);
+  const quote = await run.options.host.quote(run.resolved.swap.trade, { signal: run.signal });
+  const policy = await checkPolicy(run, proposed, quote);
   if (policy.passed === undefined) {
     return policy.snapshot;
   }
-  const quoted = await quote(run, policy.snapshot);
+  const quoted = await build(run, policy.snapshot, quote);
   if (quoted.passed === undefined) {
     return quoted.snapshot;
   }

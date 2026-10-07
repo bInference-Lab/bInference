@@ -62,10 +62,12 @@ Rules for this package:
   machine decided it and pushes its events. The confirmations write through them as their
   `ConfirmationStore`; nothing else calls `IntentStore.create` or `transition`.
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
-  reports each outcome to the state machine as a trigger. A request it cannot route yet is a
-  protocol error before anything is stored; every refusal after that is the intent's state. What it
-  reads about wallets outside the store comes through `WalletFactsSource`, and a fact it cannot
-  read fails closed (send level 3, no address book).
+  reports each outcome to the state machine as a trigger. Only the venue's quote runs before the
+  policy, so the caps price a token without a feed from it; the venue builds nothing until the
+  policy passes. A request it cannot route yet is a protocol error before anything is stored; every
+  refusal after that is the intent's state. What it reads about wallets outside the store comes
+  through `WalletFactsSource`, and a fact it cannot read fails closed (send level 3, no address
+  book).
 - The execute step (`src/money-path/execute-confirmed.ts`) is the one place a confirmed intent
   goes on: a paper intent to the paper fill, a live one, a rescue in paper mode too (decision
   0100), to the `Executor` port. A paper intent never reaches the executor (spec 6, invariant 3);

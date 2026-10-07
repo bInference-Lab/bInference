@@ -1,4 +1,11 @@
-import type { Amount, AssetRef, PriceSource, UsdPrice } from "@binference/chain";
+import {
+  type Amount,
+  type AssetRef,
+  type PriceSource,
+  type QuotedTrade,
+  type UsdPrice,
+  withQuotePrice,
+} from "@binference/chain";
 import { BinferenceError, type Clock, type Err, mulDiv, type Ok, ok } from "@binference/core";
 import type { PolicyRejection } from "../intents/intent-reason.js";
 import {
@@ -43,13 +50,22 @@ export type PolicyVerdict = Ok<PolicyPass> | PolicyRefused;
 export interface PolicyCheck {
   /**
    * Checks a resolved intent against the owner's limits. Every outflow is priced through the
-   * `PriceSource` and rounded up, so a cap never rounds in the agent's favor.
+   * `PriceSource` and rounded up, so a cap never rounds in the agent's favor. With the trade's own
+   * `quote`, a token the source cannot price takes its price from the quote, valued at the other
+   * side's price (decision 0059); without one, that token has no price.
    */
   check(
     subject: PolicySubject,
     facts: PolicyFacts,
-    options: { readonly signal: AbortSignal },
+    options: PolicyCheckCall,
   ): Promise<PolicyVerdict>;
+}
+
+/** What one policy check runs with besides the intent and its facts. */
+interface PolicyCheckCall {
+  readonly signal: AbortSignal;
+  /** The trade's own quote, when the venue gave one: what it spends and what it expects back. */
+  readonly quote?: QuotedTrade;
 }
 
 /** The ports the policy reads prices and the time from. */
@@ -115,21 +131,21 @@ function verdictOf(input: PolicyInput): PolicyVerdict {
     : { ok: false, error: first, reasons: [first, ...rest], ...withFigures };
 }
 
-interface CheckCall {
+interface CheckCall extends PolicyCheckCall {
   readonly subject: PolicySubject;
   readonly facts: PolicyFacts;
-  readonly signal: AbortSignal;
 }
 
 async function checkIntent(
-  { subject, facts, signal }: CheckCall,
+  { subject, facts, signal, quote }: CheckCall,
   options: PolicyCheckOptions,
 ): Promise<PolicyVerdict> {
   const nowMs = options.clock.now();
   if (subject.kind === "rescue") {
     return verdictOf({ subject, facts, nowMs });
   }
-  const valueUsdMicros = await valueOf(subject.outflows, options.prices, signal);
+  const prices = quote === undefined ? options.prices : withQuotePrice(options.prices, quote);
+  const valueUsdMicros = await valueOf(subject.outflows, prices, signal);
   const figures =
     valueUsdMicros === undefined
       ? undefined
@@ -143,6 +159,6 @@ async function checkIntent(
 /** Creates the {@link PolicyCheck}. */
 export function createPolicyCheck(options: PolicyCheckOptions): PolicyCheck {
   return {
-    check: async (subject, facts, { signal }) => checkIntent({ subject, facts, signal }, options),
+    check: async (subject, facts, call) => checkIntent({ subject, facts, ...call }, options),
   };
 }

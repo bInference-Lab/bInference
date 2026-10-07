@@ -153,7 +153,17 @@ describe("paper fills", () => {
     ]);
   });
 
-  it("stay confirmed, with nothing written, when the sold coin has no price", async () => {
+  it("value a sold asset the source cannot price at the confirmed quote's price", async () => {
+    const held = await holding({ state: "confirmed" });
+    // $30 a million token units: the quote's 2,000,000 units are worth $60.
+    const tokenPrice = { numerator: 30n, denominator: 1n };
+    const tokenOnly = fillsOn(held, createFakePriceSource(new Map([[testToken, tokenPrice]])));
+    expect((await tokenOnly.fillAtQuote(held.snapshot, live)).record.state).toBe("paper_filled");
+    const executions = await held.positions.executions({ after: 0, limit: 5, isPaper: true }, live);
+    expect(executions.map((row) => row.valueUsdMicros)).toStrictEqual([60_000_000n]);
+  });
+
+  it("stay confirmed, with nothing written, when neither side of the quote has a price", async () => {
     const held = await holding({ state: "confirmed" });
     const unpriced = fillsOn(held, createFakePriceSource(new Map()));
     await expect(unpriced.fillAtQuote(held.snapshot, live)).resolves.toBe(held.snapshot);

@@ -1,4 +1,5 @@
-import { assetRefSchema } from "@binference/chain";
+import { assetRefSchema, type Venue } from "@binference/chain";
+import { createFakeVenue } from "@binference/chain/testing";
 import { err, type Id, idSchema } from "@binference/core";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -50,6 +51,36 @@ async function refusal(test: TestEngine, request: IntentRequest): Promise<string
     throw new Error(`Expected a refusal, got an intent in ${proposed.value.state}.`);
   }
   return proposed.error;
+}
+
+// A sale of the test token, which has no USD price in the test engine, for the coin.
+function tokenSale(base: bigint): IntentRequest {
+  return testSwap({ from: testToken, to: testCoin, amount: { base } });
+}
+
+interface CountingVenue extends Venue {
+  quotes(): number;
+  builds(): number;
+}
+
+// The fake venue, counting the quotes and the builds the host asks of it.
+function countingVenue(): CountingVenue {
+  const venue = createFakeVenue();
+  let quotes = 0;
+  let builds = 0;
+  return {
+    ...venue,
+    async quote(request, options) {
+      quotes += 1;
+      return venue.quote(request, options);
+    },
+    async build(request, options) {
+      builds += 1;
+      return venue.build(request, options);
+    },
+    quotes: () => quotes,
+    builds: () => builds,
+  };
 }
 
 // An intent store whose first move loses its race, as when a cancel lands first.
@@ -138,6 +169,46 @@ describe("the money path", () => {
       facts: { nativeBalanceBase: 10n ** 15n },
     });
     expect((await propose(test)).outcome?.reason).toBe("gas_reserve");
+  });
+
+  it("sells a token with no price feed at the price its own quote gives it", async () => {
+    const test = await startTestEngine({ agent: { approvalMode: "auto" } });
+    const view = await propose(test, tokenSale(10n ** 17n), testCallers.runtime);
+    expect(view.state).toBe("paper_filled");
+    expect(await statesOf(test, view.intent)).toStrictEqual([
+      "proposed",
+      "checked",
+      "quoted",
+      "assessed",
+      "simulated",
+      "confirmed",
+      "paper_filled",
+    ]);
+    // The quote gives 0.2 coin, $120 at $600 a coin, for the token.
+    const executions = await test.positions.executions({ after: 0, limit: 5, isPaper: true }, live);
+    expect(executions.map((row) => row.valueUsdMicros)).toStrictEqual([120_000_000n]);
+  });
+
+  it("judges a sale at its quote's price and never builds a trade the policy refuses", async () => {
+    const venue = countingVenue();
+    const test = await startTestEngine({ venues: [venue] });
+    // The quote gives 2 coins, $1,200, for the token: above the $1,000 cap.
+    const view = await propose(test, tokenSale(10n ** 18n));
+    expect([view.state, view.outcome]).toStrictEqual([
+      "rejected_policy",
+      { reason: "per_trade_cap" },
+    ]);
+    expect(view.quote).toBeUndefined();
+    expect([venue.quotes(), venue.builds()]).toStrictEqual([1, 0]);
+  });
+
+  it("refuses a sale of a token with no price feed when its venue cannot quote it", async () => {
+    const venue = {
+      ...createFakeVenue(),
+      quote: async () => await Promise.resolve(err("no_route")),
+    };
+    const view = await propose(await startTestEngine({ venues: [venue] }), tokenSale(10n ** 17n));
+    expect([view.state, view.outcome]).toStrictEqual(["rejected_policy", { reason: "no_price" }]);
   });
 
   it("fails the check when no venue can quote the swap", async () => {
