@@ -16,3 +16,4 @@ reports/
 .turbo/
 .stryker-tmp/
 *.tsbuildinfo
+*.env.*
