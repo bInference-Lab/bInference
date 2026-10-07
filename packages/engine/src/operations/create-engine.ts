@@ -120,7 +120,7 @@ function settingsHandlers(
   });
   const wallets = createWalletHandlers({
     agents: stores.agents,
-    wallets: stores.wallets,
+    install: stores.install,
     custody: options.custody,
     chains,
   });

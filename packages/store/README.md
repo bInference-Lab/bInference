@@ -24,7 +24,7 @@ on worker threads, so no query blocks the main thread:
   row changes or goes. A full-text index keeps the notes searchable.
 - **SQLite adapters of the store ports.** The engine declares its store ports (`IntentStore`,
   `LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore`, `InstallStore`,
-  `ConfigJournal`, `TransactionStore`, `WalletStore`);
+  `ConfigJournal`, `TransactionStore`);
   each adapter here runs one store task per call and passes the port's contract suite.
 - **Maintenance.** SQLite's integrity and foreign key checks, and compact copies with
   `VACUUM INTO`.
@@ -48,7 +48,6 @@ on worker threads, so no query blocks the main thread:
 | `createSqliteInboxStore`       | Inbound Telegram updates and webhook calls, stored before the ack    |
 | `createSqliteAccessStore`      | Client tokens, console devices and pairing codes                     |
 | `createSqliteAgentStore`       | Agents with their limits and approval modes                          |
-| `createSqliteWalletStore`      | The agent wallets with the owner's labels, oldest first              |
 | `createSqliteInstallStore`     | The install id, its custody, the rescue address and init's wallets   |
 | `createSqliteConfigJournal`    | The config journal                                                   |
 | `createSqliteTransactionStore` | Each wallet's signed transactions and the nonces the queue gave      |

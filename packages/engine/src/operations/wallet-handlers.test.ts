@@ -7,34 +7,35 @@ import {
 } from "@binference/chain/testing";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import type { WalletRecord } from "../agents/wallet-record.js";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createMemoryAgentStore } from "../fakes/memory-agent-store.js";
-import { createMemoryWalletStore } from "../fakes/memory-wallet-store.js";
+import { createMemoryInstallStore } from "../fakes/memory-install-store.js";
+import type { WalletRecord } from "../install/install-record.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testAgentDraft } from "../intents/test-intents.js";
 import { testCall } from "./test-engine.js";
 import { createWalletHandlers } from "./wallet-handlers.js";
 
 const other = fixtureId("agt", 41);
-const main: WalletRecord = {
+const main = testWalletRecord({
   id: fixtureId("wal", 41),
   agentId: testAgent,
   label: "Main",
   createdAtMs: 10,
-};
-const spare: WalletRecord = {
+});
+const spare = testWalletRecord({
   id: fixtureId("wal", 42),
   agentId: testAgent,
   label: "Spare",
   createdAtMs: 20,
   archivedAtMs: 30,
-};
-const others: WalletRecord = {
+});
+const others = testWalletRecord({
   id: fixtureId("wal", 43),
   agentId: other,
   label: "Other",
   createdAtMs: 15,
-};
+});
 const accounts = {
   main: accountRefSchema.parse("fake:1:0x00000041"),
   spare: accountRefSchema.parse("fake:2:0x00000042"),
@@ -57,11 +58,11 @@ async function walletList(
 ) {
   const agents = createMemoryAgentStore();
   await agents.create(testAgentDraft(), testCall({}));
-  const wallets = createMemoryWalletStore();
-  stored.forEach((wallet) => wallets.add(wallet));
+  const install = createMemoryInstallStore();
+  stored.forEach((wallet) => install.addWallet(wallet));
   const handlers = createWalletHandlers({
     agents,
-    wallets,
+    install,
     custody: createFakeSigner(held),
     chains: twoChains(),
   });

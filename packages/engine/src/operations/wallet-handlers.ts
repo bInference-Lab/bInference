@@ -1,8 +1,8 @@
 import type { AccountRef, ChainRegistry, Signer } from "@binference/chain";
 import { err, type Ok, ok, type Result } from "@binference/core";
 import type { WalletView } from "@binference/protocol";
-import type { WalletRecord } from "../agents/wallet-record.js";
-import type { AgentStore, WalletStore } from "../ports.js";
+import type { WalletRecord } from "../install/install-record.js";
+import type { AgentStore, InstallStore } from "../ports.js";
 import type { EngineHandler } from "./engine-call.js";
 
 /** The handler of the wallet list (protocol spec, section 7.2). */
@@ -10,10 +10,10 @@ export interface WalletHandlers {
   readonly "wallet/list": EngineHandler<"wallet/list">;
 }
 
-/** What the wallet list reads: the agents, their wallets, and custody for each wallet's account. */
+/** What the wallet list reads: the agents, the install's wallets, and custody for each account. */
 export interface WalletHandlersOptions {
   readonly agents: AgentStore;
-  readonly wallets: WalletStore;
+  readonly install: InstallStore;
   readonly custody: Signer;
   readonly chains: ChainRegistry;
 }
@@ -63,8 +63,10 @@ export function createWalletHandlers(options: WalletHandlersOptions): WalletHand
       ) {
         return err("agent.not_found");
       }
-      const query = args.agent === undefined ? {} : { agentId: args.agent };
-      const records = await options.wallets.list(query, { signal });
+      const { wallets } = await options.install.read({ signal });
+      const records = wallets.filter(
+        (wallet) => args.agent === undefined || wallet.agentId === args.agent,
+      );
       const views = await Promise.all(
         records.map(async (wallet) => viewOf(options, wallet, signal)),
       );

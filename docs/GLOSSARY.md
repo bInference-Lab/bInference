@@ -188,8 +188,8 @@ new name here first, in the change that uses it.
 - **store task**: a named, synchronous unit of database work that a store worker runs; a write task
   runs in one transaction.
 - **store ports**: the engine's ports for the state it keeps: intents with their cards and
-  confirmations, the ledger, the inbox, idempotency keys, access, agents, their wallets, the
-  install and the config journal. `store` holds their SQLite adapters; each port has one contract
+  confirmations, the ledger, the inbox, idempotency keys, access, agents, the install with its
+  wallets, and the config journal. `store` holds their SQLite adapters; each port has one contract
   suite and an in-memory fake.
 - **stored intents**: the engine's one writer of intents. It stores each new intent and every move
   the state machine decides through the intent store, pushes each write as it lands, and is the

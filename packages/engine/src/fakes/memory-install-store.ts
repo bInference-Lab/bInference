@@ -36,10 +36,23 @@ function setUp(state: InstallState, setup: InstallSetup): Result<InstallState, "
   });
 }
 
+/** The in-memory install store, which also takes wallets a test adds. */
+export interface MemoryInstallStore extends InstallStore {
+  /** Adds a wallet as if a setup had stored it; wallets stay oldest first. */
+  addWallet(wallet: WalletRecord): void;
+}
+
 /** Creates an empty in-memory {@link InstallStore} for tests. */
-export function createMemoryInstallStore(): InstallStore {
+export function createMemoryInstallStore(): MemoryInstallStore {
   const held: { state: InstallState } = { state: { wallets: [] } };
   return {
+    addWallet(wallet) {
+      const wallets = [...held.state.wallets, structuredClone(wallet)];
+      held.state = {
+        ...held.state,
+        wallets: wallets.toSorted((a, b) => a.createdAtMs - b.createdAtMs),
+      };
+    },
     installId: async (proposal, call) =>
       memoryCall(call, () => {
         const installId = held.state.installId ?? proposal.id;

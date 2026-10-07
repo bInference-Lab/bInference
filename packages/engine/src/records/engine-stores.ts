@@ -4,10 +4,10 @@ import type {
   ConfigJournal,
   IdempotencyStore,
   InboxStore,
+  InstallStore,
   IntentStore,
   LedgerStore,
   TransactionStore,
-  WalletStore,
 } from "../ports.js";
 
 /**
@@ -25,5 +25,5 @@ export interface EngineStores {
   readonly agents: AgentStore;
   readonly configJournal: ConfigJournal;
   readonly transactions: TransactionStore;
-  readonly wallets: WalletStore;
+  readonly install: InstallStore;
 }

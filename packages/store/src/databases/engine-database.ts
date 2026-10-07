@@ -1,6 +1,5 @@
 import { accessTasks } from "../access/sqlite-access-store.js";
 import { agentTasks } from "../agents/sqlite-agent-store.js";
-import { walletTasks } from "../agents/sqlite-wallet-store.js";
 import { configJournalTasks } from "../audit/config-journal-tasks.js";
 import { idempotencyTasks } from "../ingress/idempotency-tasks.js";
 import { inboxTasks } from "../ingress/inbox-tasks.js";
@@ -25,7 +24,6 @@ export const engineDatabase: DatabaseDefinition = {
     ...agentTasks,
     ...configJournalTasks,
     ...transactionTasks,
-    ...walletTasks,
     ...installTasks,
   ],
 };

@@ -12,7 +12,6 @@ import type {
 } from "./agents/agent-record.js";
 import type { ApprovalModeChange, ApprovalModeRecord } from "./agents/approval-mode-record.js";
 import type { LimitsChange, LimitsRecord } from "./agents/limits-record.js";
-import type { WalletQuery, WalletRecord } from "./agents/wallet-record.js";
 import type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
 import type { ModelCharge } from "./billing/model-charge.js";
 import type { BuiltQuote, IntentWrite, StoredIntent } from "./confirmations/stored-intent.js";
@@ -354,18 +353,6 @@ export interface AgentStore {
     change: AgentModeChange,
     options: StoreCall,
   ): Promise<Result<AgentRecord, "not_found" | "stale">>;
-}
-
-/**
- * Keeps the agent wallets: each wallet's agent, the owner's label for it and when it was made and
- * archived (database spec, section 2.2). Custody holds the wallets themselves and their accounts.
- */
-export interface WalletStore {
-  /**
-   * The query's wallets, archived ones too, oldest first, so an agent's default wallet comes
-   * first; at most 1,000. None for an agent without a wallet.
-   */
-  list(query: WalletQuery, options: StoreCall): Promise<readonly WalletRecord[]>;
 }
 
 /**

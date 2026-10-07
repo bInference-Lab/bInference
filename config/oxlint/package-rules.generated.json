@@ -7440,7 +7440,6 @@
         "packages/engine/src/surfaces.ts",
         "packages/engine/src/testing.ts",
         "packages/engine/src/wallet-queue.ts",
-        "packages/engine/src/wallets.ts",
         "packages/i18n/src/check.ts",
         "packages/i18n/src/index.ts",
         "packages/mcp/src/index.ts",

@@ -39,11 +39,6 @@
       "types": "./dist/surfaces.d.mts",
       "default": "./dist/surfaces.mjs"
     },
-    "./wallets": {
-      "@binference/source": "./src/wallets.ts",
-      "types": "./dist/wallets.d.mts",
-      "default": "./dist/wallets.mjs"
-    },
     "./install": {
       "@binference/source": "./src/install.ts",
       "types": "./dist/install.d.mts",
@@ -51,7 +46,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/approval.ts src/surfaces.ts src/wallets.ts src/install.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/approval.ts src/surfaces.ts src/install.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
