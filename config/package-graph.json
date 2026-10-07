@@ -2,22 +2,43 @@
   "scope": "@binference",
   "allowEverywhere": ["zod"],
   "packages": {
-    "core": { "imports": [], "pure": true },
-    "chain": { "imports": ["core"], "pure": true, "money": true, "coverage": 95 },
-    "chain-evm": {
-      "imports": ["core", "chain", "chains", "viem", "@noble/curves"],
-      "only": { "@binference/chains": "src/fork" },
+    "core": {
+      "imports": [],
+      "pure": true
+    },
+    "chain": {
+      "imports": ["core"],
+      "pure": true,
       "money": true,
       "coverage": 95
     },
-    "chains": { "imports": ["core", "chain"], "money": true },
+    "chain-evm": {
+      "imports": ["core", "chain", "chains", "viem", "@noble/curves"],
+      "only": {
+        "@binference/chains": "src/fork"
+      },
+      "money": true,
+      "coverage": 95
+    },
+    "chains": {
+      "imports": ["core", "chain"],
+      "money": true
+    },
     "platform": {
       "imports": ["core", "execa", "which-command", "@napi-rs/keyring"],
       "osLayer": true,
       "fileSystem": true
     },
-    "store": { "imports": ["core", "chain", "engine", "kysely"], "fileSystem": true },
-    "protocol": { "imports": ["core", "chain"], "pure": true, "money": true, "publish": true },
+    "store": {
+      "imports": ["core", "chain", "engine", "kysely"],
+      "fileSystem": true
+    },
+    "protocol": {
+      "imports": ["core", "chain"],
+      "pure": true,
+      "money": true,
+      "publish": true
+    },
     "i18n": {
       "imports": ["core", "chain", "intl-messageformat"],
       "pure": true,
@@ -32,19 +53,35 @@
     },
     "signer": {
       "imports": ["core", "chain", "@privy-io/node"],
-      "only": { "@privy-io/node": "src/privy-sdk" },
+      "only": {
+        "@privy-io/node": "src/privy-sdk"
+      },
       "money": true,
       "coverage": 95,
       "mutation": true
     },
-    "custody-privy": { "imports": ["core", "chain", "chain-evm"] },
+    "custody-privy": {
+      "imports": ["core", "chain", "chain-evm", "viem"],
+      "only": {
+        "viem": "src/testing"
+      },
+      "money": true
+    },
     "server": {
       "imports": ["core", "protocol", "engine", "ws", "client"],
-      "only": { "@binference/client": "src/e2e" },
+      "only": {
+        "@binference/client": "src/e2e"
+      },
       "httpListener": true
     },
-    "telegram": { "imports": ["core", "protocol", "i18n", "engine", "grammy"], "userText": true },
-    "client": { "imports": ["core", "protocol"], "publish": true },
+    "telegram": {
+      "imports": ["core", "protocol", "i18n", "engine", "grammy"],
+      "userText": true
+    },
+    "client": {
+      "imports": ["core", "protocol"],
+      "publish": true
+    },
     "runtime": {
       "imports": [
         "core",
@@ -57,7 +94,10 @@
         "partial-json",
         "yaml"
       ],
-      "only": { "openai": "src/providers", "@anthropic-ai/sdk": "src/providers" }
+      "only": {
+        "openai": "src/providers",
+        "@anthropic-ai/sdk": "src/providers"
+      }
     },
     "tui": {
       "imports": ["client", "protocol", "i18n", "@earendil-works/pi-tui"],
@@ -85,14 +125,26 @@
         "@modelcontextprotocol/server",
         "@modelcontextprotocol/client"
       ],
-      "only": { "@modelcontextprotocol/client": "src/e2e" }
+      "only": {
+        "@modelcontextprotocol/client": "src/e2e"
+      }
     },
-    "plugin-sdk": { "imports": ["core", "chain", "protocol", "chain-evm"], "publish": true },
-    "cli": { "name": "binference", "imports": ["*"], "publish": true, "compositionRoot": true }
+    "plugin-sdk": {
+      "imports": ["core", "chain", "protocol", "chain-evm"],
+      "publish": true
+    },
+    "cli": {
+      "name": "binference",
+      "imports": ["*"],
+      "publish": true,
+      "compositionRoot": true
+    }
   },
   "plugins": {
     "imports": ["plugin-sdk", "chain-evm"],
-    "only": { "@binference/chain-evm": "*/src/fork" },
+    "only": {
+      "@binference/chain-evm": "*/src/fork"
+    },
     "anyThirdParty": true
   }
 }
