@@ -188,7 +188,7 @@ describe("the fake Bot API", () => {
 
   it("answers a method it does not know with 404", async () => {
     const { api } = setUp();
-    const fault = await refusalOf(api.getMe());
+    const fault = await refusalOf(api.getChat(ownerId));
     expect(fault.error_code).toBe(404);
   });
 });

@@ -1,3 +1,7 @@
+export { botAccountSchema } from "./api/bot-account.schema.js";
+export type { BotAccount } from "./api/bot-account.schema.js";
+export { checkBotToken } from "./api/check-bot-token.js";
+export type { BotTokenProblem } from "./api/check-bot-token.js";
 export { cardCopySchema } from "./cards/card-copy.js";
 export type { CardCopy } from "./cards/card-copy.js";
 export { createTelegramCards } from "./cards/create-telegram-cards.js";

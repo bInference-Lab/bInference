@@ -24,6 +24,7 @@ the receipt of its paper fill.
 | `runPolling`                       | Long-polls one bot from a worker thread, under the token's lease               |
 | `createPollerLeases`               | One poller per bot token in the process                                        |
 | `openPollWorker`, `pollWorker`     | The poll worker thread and its entry                                           |
+| `checkBotToken`, `BotAccount`      | Checks a bot token with `getMe` and answers the bot it opens                   |
 | `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored    |
 | `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                           |
 | `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                              |

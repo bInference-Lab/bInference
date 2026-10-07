@@ -13,6 +13,22 @@ import {
 /** A token in the Bot API's shape, for tests only. */
 export const fakeBotToken = "7012345678:AAE_fakeTokenForTestsOnly_0123456789ab";
 
+/** The username of the bot {@link fakeBotToken} opens, as `getMe` answers it. */
+export const fakeBotUsername = "binference_test_bot";
+
+// `getMe`'s answer for the fake bot: a `User` with the fields Telegram returns only to getMe.
+const fakeBotUser = {
+  id: 7_012_345_678,
+  is_bot: true,
+  first_name: "binference test",
+  username: fakeBotUsername,
+  can_join_groups: true,
+  can_read_all_group_messages: false,
+  supports_inline_queries: false,
+  can_connect_to_business: false,
+  has_main_web_app: false,
+};
+
 /** An error answer the Bot API gives instead of a result. */
 export interface FakeRefusal {
   readonly status: number;
@@ -170,6 +186,9 @@ async function serve(state: State, request: FakeRequest): Promise<Response> {
   const { call, body } = request;
   if (call.method === "getUpdates") {
     return getUpdates(state, body, request.signal);
+  }
+  if (call.method === "getMe") {
+    return answer(fakeBotUser);
   }
   const chatCall = state.chats.calls[call.method];
   const result = chatCall?.(body);
