@@ -59,6 +59,15 @@ account holds. A nonce given to a step that was never signed, or freed by a drop
 given again first, so a refusal, a stop or a crash leaves no gap; the `TransactionStore` keeps
 every nonce in use, so a new queue after a restart uses none twice.
 
+It holds the simulation check (ARCHITECTURE.md section 7, step 5), exported as
+`@binference/engine/simulation`: `createSimulationCheck` is the `Simulator` the money path and the
+re-quote at a tap call. It runs a quote's steps unsent through the chain's `TxSimulator` of
+`@binference/chain` and holds the wallet's net balance changes to the quote's terms: exactly the
+input leaves, at least the minimum out arrives, no other asset leaves or arrives, and no allowance
+is set but the plan's own approval. A step that reverts is `simulation_reverted`; any other
+difference is `effects_differ`, and `checkEffects` names the check that failed. The network fee is
+never among the transfers the simulation reports, so it is counted apart from them.
+
 It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain through the
 `LedgerStore` from genesis or a trusted checkpoint and names the first entry that breaks it, so an
 edited, removed or added row is found. `createPositions` values each executed trade at the prices
@@ -113,6 +122,8 @@ layout of Koinly's universal import, which tax tools read.
 | `createWalletQueue`, `WalletQueue`, `WalletSlot` (subpath)       | One queue per account that owns its nonces                      |
 | `lowestFreeNonce`, `isNonceFree`, `NonceGrant` (subpath)         | The rule the queue gives nonces by, and what it gives           |
 | `SignedTransaction`, `TransactionRecord` (subpath)               | A step's signed transaction as the queue stores it              |
+| `createSimulationCheck`, `SimulationCheckOptions` (subpath)      | The simulate step: a quote's steps run and checked              |
+| `checkEffects`, `EffectBounds`, `SimulationMismatch` (subpath)   | Checks a simulation and names the first check it fails          |
 | `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
 | `ModelBilling`, `ModelCharge`                                    | Pays for model calls and says what an agent may still spend     |
 | `MarketData`, `BlockReading`, `PriceReading`                     | The blocks and prices the watchers stream                       |

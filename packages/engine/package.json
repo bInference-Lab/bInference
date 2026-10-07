@@ -23,10 +23,15 @@
       "@binference/source": "./src/wallet-queue.ts",
       "types": "./dist/wallet-queue.d.mts",
       "default": "./dist/wallet-queue.mjs"
+    },
+    "./simulation": {
+      "@binference/source": "./src/simulation.ts",
+      "types": "./dist/simulation.d.mts",
+      "default": "./dist/simulation.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

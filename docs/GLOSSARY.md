@@ -117,6 +117,9 @@ new name here first, in the change that uses it.
   and fees.
 - **transaction simulator**: the port a chain family fills to run transaction drafts unsent on the
   chain's latest state and report what each one moved, allowed and used in gas.
+- **simulation check**: the simulate step of the money path. The wallet's net balance changes in
+  the simulation must match the intent: exactly the input leaves, at least the minimum out arrives,
+  no other asset leaves or arrives, and no allowance is set but the plan's own approval.
 - **registry**: the verified contract addresses in `@binference/chains`.
 
 ### Chat and the agent

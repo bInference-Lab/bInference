@@ -438,6 +438,9 @@ importers:
       '@types/ws':
         specifier: 'catalog:'
         version: 8.18.2
+      viem:
+        specifier: 'catalog:'
+        version: 2.57.1(typescript@7.0.2)(zod@4.6.5)
 
   packages/client:
     dependencies:

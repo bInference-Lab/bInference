@@ -88,6 +88,10 @@ Rules for this package:
   It gives nonces by the lowest free nonce rule in `lowest-free-nonce.ts`, which the fake and the
   SQLite store both call, and keeps nothing across a restart that the store does not hold. A
   change to the rule changes its property test and the `TransactionStore` contract suite.
+- The simulation check (`src/simulation/`, exported as `@binference/engine/simulation`) reads
+  what a quote's steps do only through the `TxSimulator` port, compares accounts through the
+  chain's family, and never counts the network fee among the transfers. A new check is a
+  `SimulationMismatch` code, a case in `check-effects.test.ts` and a property case.
 - The CSV export's header is a tax tool's import format, so it stays English in every language.
   The tax export holds live executions only; paper executions get their own export.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in

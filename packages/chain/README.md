@@ -30,6 +30,7 @@ can check what they move. Nothing here names a chain or a venue.
 | `VenueDeclaration`, `venueDeclarationSchema`                          | A venue's id and its contracts per chain, by registry name       |
 | `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`         | What the venue host asks a venue, and what the venue answers     |
 | `TxSimulator`, `SimulatedStep`, `AssetTransfer`, `AssetApproval`      | Runs drafts unsent and reports what each moved and allowed       |
+| `isSameAccount`                                                       | Whether two accounts are one, compared in the family's form      |
 | `@binference/chain/testing`                                           | Contract suites for each port, a fake family, chain and venue    |
 
 ## Example

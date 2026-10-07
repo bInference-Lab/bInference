@@ -25,6 +25,9 @@ Rules for this package:
 - Tests run commands end to end through `runCli` on a host with a temporary state folder
   (`src/e2e/test-host.ts`), a manual clock and an emitter for stop signals; store workers run the
   TypeScript source. Each test stops its engine through the shutdown sequence.
+- Fork tests in `src/fork/` run engine steps over the real chain parts they are composed from,
+  such as the simulation check over the EVM transaction simulator, on the fork suite's BSC fork
+  through `@binference/chain-evm/fork`. They run in `pnpm test:fork`, never in `pnpm check`.
 - `composeEngine` is the one place that joins the engine to its protocol server. A push that fails
   is logged and never stops the money path. The paper swap test runs on every composition with
   `describe.each`; a new profile part joins both compositions there.

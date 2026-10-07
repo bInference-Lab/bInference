@@ -6,6 +6,7 @@ import {
   type ChainFamily,
   type DecodedEffect,
   type DraftCall,
+  isSameAccount,
   type TokenApproval,
   type TxDraft,
 } from "@binference/chain";
@@ -77,13 +78,6 @@ export interface TradeBounds {
 export function minOutFloor(expectedOutBase: bigint, slippageBps: Bps): bigint {
   const kept = { numerator: BigInt(bpsPerWhole - slippageBps), denominator: BigInt(bpsPerWhole) };
   return mulDiv(expectedOutBase, kept, "up");
-}
-
-// Two accounts are one when they share a chain and their family reads one canonical address.
-function isSameAccount(left: AccountRef, right: AccountRef, family: ChainFamily): boolean {
-  const [one, two] = [accountRefParts(left), accountRefParts(right)];
-  const [first, second] = [family.parseAddress(one.address), family.parseAddress(two.address)];
-  return one.chain === two.chain && first.ok && second.ok && first.value === second.value;
 }
 
 function isDeclared(account: AccountRef, bounds: TradeBounds): boolean {

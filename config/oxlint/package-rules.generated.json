@@ -6620,6 +6620,7 @@
         "packages/core/src/index.ts",
         "packages/core/src/testing.ts",
         "packages/engine/src/index.ts",
+        "packages/engine/src/simulation.ts",
         "packages/engine/src/testing.ts",
         "packages/engine/src/wallet-queue.ts",
         "packages/i18n/src/check.ts",
