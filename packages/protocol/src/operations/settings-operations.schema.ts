@@ -11,6 +11,7 @@ import {
 } from "../values/page.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
 import { releaseVersionSchema } from "../values/release-version.schema.js";
+import { type AgentMode, agentModeSchema } from "../views/agent-view.schema.js";
 import { type FileTicket, fileTicketSchema } from "../views/file-ticket.schema.js";
 import { type JobRef, jobRefSchema } from "../views/job-ref.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
@@ -41,6 +42,14 @@ interface LedgerRange {
   readonly agent?: ProtocolId<"agent">;
   readonly from?: number;
   readonly to?: number;
+}
+
+/**
+ * The args of `ledger/export`: the range, and which fills. Absent or `live`, the live fills, the
+ * file for tax tools; `paper`, the paper fills in a file of their own.
+ */
+interface LedgerExportArgs extends LedgerRange {
+  readonly mode?: AgentMode;
 }
 
 /** One ledger entry with its hash, chained to the entry before it. */
@@ -92,8 +101,8 @@ export interface SettingsOperationShapes {
     readonly args: LedgerRange & PageArgs;
     readonly result: Page<LedgerEntryView>;
   };
-  /** A CSV file of the range. */
-  readonly "ledger/export": { readonly args: LedgerRange; readonly result: FileTicket };
+  /** A CSV file of the range's live fills, or of its paper fills. */
+  readonly "ledger/export": { readonly args: LedgerExportArgs; readonly result: FileTicket };
   readonly "backup/list": { readonly args: Empty; readonly result: Page<BackupView> };
   readonly "backup/create": {
     readonly args: { readonly copyTo?: string };
@@ -180,7 +189,7 @@ export const settingsOperations: OperationTable<SettingsOperationShapes> = {
     ...writeFlags,
     name: "ledger/export",
     scope: "read",
-    args: z.strictObject(ledgerRange),
+    args: z.strictObject({ ...ledgerRange, mode: agentModeSchema.exactOptional() }),
     result: fileTicketSchema,
   },
   "backup/list": {

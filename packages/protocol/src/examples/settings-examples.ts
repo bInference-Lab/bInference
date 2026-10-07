@@ -87,7 +87,7 @@ export const settingsExamples: { readonly [N in keyof SettingsOperationShapes]: 
       hash,
     }),
   },
-  "ledger/export": { args: { from: at, to: at + 1 }, result: file },
+  "ledger/export": { args: { from: at, to: at + 1, mode: "paper" }, result: file },
   "backup/list": {
     args: empty,
     result: pageOf({ backup: ids.backup, kind: "daily", bytes: 4_096, createdAt: at }),

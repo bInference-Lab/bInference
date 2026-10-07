@@ -70,5 +70,6 @@ Rules for this package:
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - The CSV export's header is a tax tool's import format, so it stays English in every language.
+  The tax export holds live executions only; paper executions get their own export.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
   `*.property.test.ts` files.

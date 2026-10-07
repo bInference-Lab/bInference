@@ -401,7 +401,7 @@ no upload.
 | `config/change`     | `admin`                    | ✓     |       | `{ patch, reason? }` → `{ config, restartNeeded }`; journaled and announced        |
 | `config/history`    | `read`                     |       |       | paging → journal entries                                                           |
 | `ledger/list`       | `read`                     |       |       | paging, `{ agent?, from?, to? }` → entries with their hashes                       |
-| `ledger/export`     | `read`                     | ✓     |       | `{ agent?, from?, to? }` → file (CSV)                                              |
+| `ledger/export`     | `read`                     | ✓     |       | `{ agent?, from?, to?, mode? }` → file (CSV) of `live` (default) or `paper` fills  |
 | `device/list`       | `admin`                    |       |       | → devices                                                                          |
 | `device/revoke`     | `confirm`                  | ✓     |       | `{ device }` → `{}`                                                                |
 | `token/list`        | `admin`                    |       |       | → tokens without secrets                                                           |

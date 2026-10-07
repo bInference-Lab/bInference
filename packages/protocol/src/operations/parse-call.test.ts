@@ -70,6 +70,12 @@ describe("parseCall", () => {
     });
   });
 
+  it("takes a ledger export of live or paper fills, live when no mode is named", () => {
+    const modes = [{}, { mode: "live" }, { mode: "paper" }, { mode: "both" }] as const;
+    const taken = modes.map((args) => parseCall(keyedCallOf("ledger/export", args, "k-3")).ok);
+    expect(taken).toStrictEqual([true, true, true, false]);
+  });
+
   it("refuses an amount written as a number", () => {
     const args = { ...swapRequest, amount: { base: 1.5 } };
     expect(parseCall(keyedCallOf("intent/propose", args, "k-2"))).toStrictEqual({

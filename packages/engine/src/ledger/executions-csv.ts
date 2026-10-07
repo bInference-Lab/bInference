@@ -1,7 +1,7 @@
 import type { Amount } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { decimalText } from "@binference/i18n";
-import type { AssetInfos } from "@binference/protocol";
+import type { AgentMode, AssetInfos } from "@binference/protocol";
 import type { ExecutionRecord } from "../positions/execution-record.js";
 
 /**
@@ -71,23 +71,30 @@ function row(execution: ExecutionRecord, assets: AssetInfos): readonly string[] 
 }
 
 /**
- * Writes executions as a CSV file for tax tools (decision 0058), in the layout of
- * {@link executionsCsvColumns}: a header row, then one row per execution in the order given, with
- * CRLF line ends (RFC 4180).
+ * Writes executions as a CSV file (decision 0058), in the layout of {@link executionsCsvColumns}:
+ * a header row, then one row per execution in the order given, with CRLF line ends (RFC 4180).
  *
+ * - `mode` names the export. `live` is the file for tax tools and holds live executions only;
+ *   `paper` is the paper portfolio's own file. An execution of the other mode throws
+ *   `ledger.wrong_mode`, so a paper fill never reaches a tax tool.
  * - Amounts are exact decimals of whole tokens from base units, never floats: what left the wallet
  *   in the sold token (the fee with it), what arrived, and the gas in the native coin as the fee.
  * - The net worth is what left in the sold token, in US dollars at the time.
  * - Times are UTC as `2026-10-07 09:30:00`; the description holds the intent id.
  *
- * Paper and live executions never share a file: a mix throws `ledger.mixed_modes`. An asset
- * missing from `assets` throws `ledger.unknown_asset`.
+ * An asset missing from `assets` throws `ledger.unknown_asset`.
  */
-export function executionsCsv(executions: readonly ExecutionRecord[], assets: AssetInfos): string {
-  if (new Set(executions.map((execution) => execution.isPaper)).size > 1) {
+export function executionsCsv(
+  executions: readonly ExecutionRecord[],
+  assets: AssetInfos,
+  mode: AgentMode,
+): string {
+  const isPaper = mode === "paper";
+  if (executions.some((execution) => execution.isPaper !== isPaper)) {
     throw new BinferenceError({
-      code: "ledger.mixed_modes",
-      message: "A CSV export holds paper or live executions, never both.",
+      code: "ledger.wrong_mode",
+      message: "A live export holds live executions only, and a paper export paper ones.",
+      details: { mode },
     });
   }
   const lines = [executionsCsvColumns, ...executions.map((execution) => row(execution, assets))];

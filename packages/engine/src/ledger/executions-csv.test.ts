@@ -59,7 +59,7 @@ const header =
 
 describe("executionsCsv", () => {
   it("writes a header and one row per execution, in exact decimals and UTC times", () => {
-    expect(executionsCsv(executions, assets)).toBe(
+    expect(executionsCsv(executions, assets, "live")).toBe(
       header +
         `2026-10-07 09:30:00,1.0025,BNB,1000,TKN,0.0005,BNB,601.5,USD,,${fixtureId("int", 1)},${txHash}\r\n` +
         `2026-10-07 14:05:09,701.75,TKN,558.6,USDT,0.0004,BNB,561.4,USD,,${fixtureId("int", 3)},${txHash}\r\n`,
@@ -71,18 +71,19 @@ describe("executionsCsv", () => {
   });
 
   it("writes only the header when there is nothing to export", () => {
-    expect(executionsCsv([], {})).toBe(header);
+    expect(executionsCsv([], {}, "live")).toBe(header);
   });
 
-  it("leaves the fee cells empty for a paper fill that paid no gas and has no transaction", () => {
+  it("writes paper fills to their own export, fee cells empty when they paid no gas", () => {
     const { txHash: _txHash, ...paperFill } = execution(1, {
       isPaper: true,
       gas: { asset: coin, base: 0n },
       gasUsdMicros: 0n,
     });
-    expect(executionsCsv([paperFill], assets)).toBe(
+    expect(executionsCsv([paperFill], assets, "paper")).toBe(
       `${header}2026-10-07 09:30:00,1.0025,BNB,1000,TKN,,,601.5,USD,,${fixtureId("int", 1)},\r\n`,
     );
+    expect(executionsCsv([], {}, "paper")).toBe(header);
   });
 
   it("quotes a symbol with a comma or quote, and keeps a spreadsheet from running it", () => {
@@ -91,21 +92,28 @@ describe("executionsCsv", () => {
       [token]: info('=HYPERLINK("x"),1', 18),
       [coin]: info("-BNB", 18),
     };
-    const [, row] = executionsCsv([execution(1, {})], tricky).split("\r\n");
+    const [, row] = executionsCsv([execution(1, {})], tricky, "live").split("\r\n");
     expect(row).toBe(
       `2026-10-07 09:30:00,1.0025,'-BNB,1000,"'=HYPERLINK(""x""),1",0.0005,'-BNB,601.5,USD,,` +
         `${fixtureId("int", 1)},${txHash}`,
     );
   });
 
-  it("refuses to mix paper and live executions in one file", () => {
-    expect(() =>
-      executionsCsv([execution(1, {}), execution(2, { isPaper: true })], assets),
-    ).toThrow(expect.objectContaining({ code: "ledger.mixed_modes" }));
+  it("keeps paper fills out of the tax export, and live fills out of the paper one", () => {
+    const paperFill = execution(2, { isPaper: true });
+    expect(() => executionsCsv([execution(1, {}), paperFill], assets, "live")).toThrow(
+      expect.objectContaining({ code: "ledger.wrong_mode", details: { mode: "live" } }),
+    );
+    expect(() => executionsCsv([paperFill], assets, "live")).toThrow(
+      expect.objectContaining({ code: "ledger.wrong_mode" }),
+    );
+    expect(() => executionsCsv([paperFill, execution(1, {})], assets, "paper")).toThrow(
+      expect.objectContaining({ code: "ledger.wrong_mode", details: { mode: "paper" } }),
+    );
   });
 
   it("refuses an asset it has no decimals for", () => {
-    expect(() => executionsCsv([execution(1, {})], { [coin]: info("BNB", 18) })).toThrow(
+    expect(() => executionsCsv([execution(1, {})], { [coin]: info("BNB", 18) }, "live")).toThrow(
       expect.objectContaining({ code: "ledger.unknown_asset", details: { asset: token } }),
     );
   });
