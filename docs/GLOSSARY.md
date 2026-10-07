@@ -84,6 +84,8 @@ new name here first, in the change that uses it.
   a dropped transaction, goes to the next step, so no gap is left.
 - **slot**: one work's turn on a wallet queue, the only way to take a nonce and store a signed
   transaction. It closes when the work ends.
+- **executor**: the execute step for live intents: it takes each confirmed live intent onto its
+  wallet's queue. A paper intent never reaches it.
 - **ledger**: the append-only, hash-chained record of every intent, tap, signature and fill.
 - **execution**: one trade as it settled on chain or filled on paper: what the wallet sold and
   bought, the fee and the gas, each valued in USD at the time. Positions are built from executions

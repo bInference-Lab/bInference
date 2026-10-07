@@ -26,11 +26,13 @@ version when the minimum out got worse than the tolerance. No answer before the 
 swap against the agent's wallet and limits, then runs the policy, the venue host, the risk step,
 the simulation and the auto test, and answers with the intent waiting on its card or ended. A
 request it cannot route yet is a protocol error, and nothing is stored. `intent/confirm` and
-`intent/deny` answer the card through the confirmations, and a confirmed paper intent fills at its
-confirmed quote (the paper fill). The stored intents are the one writer of intents: every new
-intent and every move goes through the `IntentStore` and pushes its `intent`, card and `ledger`
-events, and they are the `ConfirmationStore` the confirmations write through. What the money path
-reads about wallets outside the store comes through the `WalletFactsSource` port.
+`intent/deny` answer the card through the confirmations. A confirmed intent then goes on to the
+execute step: a paper intent fills at its confirmed quote (the paper fill) and never reaches the
+`Executor` port, which takes each confirmed live intent onto its wallet's queue. The stored intents
+are the one writer of intents: every new intent and every move goes through the `IntentStore` and
+pushes its `intent`, card and `ledger` events, and they are the `ConfirmationStore` the
+confirmations write through. What the money path reads about wallets outside the store comes through
+the `WalletFactsSource` port.
 
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
@@ -96,6 +98,7 @@ layout of Koinly's universal import, which tax tools read.
 | `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |
 | `AgentModeChange`, `agentModeChangeSchema`                       | An agent's switch between paper and live, under its row version |
+| `Executor`                                                       | Takes each confirmed live intent onto its wallet's queue        |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
 | `TransactionStore`                                               | Each wallet's signed transactions and the nonces they hold      |
@@ -177,6 +180,7 @@ const engine = createEngine({
   wallets,
   host,
   simulator,
+  executor,
   chains,
   clock,
   ids,

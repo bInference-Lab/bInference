@@ -3,10 +3,11 @@ import type { Clock, IdSource } from "@binference/core";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
+import { createExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
-import type { PriceSource, Simulator, WalletFactsSource } from "../ports.js";
+import type { Executor, PriceSource, Simulator, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { VenueHost } from "../venues/venue-host.js";
@@ -38,6 +39,8 @@ export interface EngineOptions {
   /** The venue host over every venue the engine may use. */
   readonly host: VenueHost;
   readonly simulator: Simulator;
+  /** Takes each confirmed live intent onto its wallet's queue; it never sees a paper intent. */
+  readonly executor: Executor;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly ids: IdSource;
@@ -47,7 +50,8 @@ export interface EngineOptions {
 
 /**
  * Creates the {@link Engine}. Every write of an intent goes through one writer, which pushes
- * `intent`, card and `ledger` events as each write lands.
+ * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
+ * confirmed quote; a confirmed live one goes to the executor.
  */
 export function createEngine(options: EngineOptions): Engine {
   const { stores, custody, host, chains, clock, ids } = options;
@@ -58,13 +62,14 @@ export function createEngine(options: EngineOptions): Engine {
     publish: options.publish,
   });
   const paper = createPaperFills({ stored, clock });
+  const execute = createExecuteConfirmed({ paper, executor: options.executor });
   const confirmations = createConfirmations({
     clock,
     store: stored,
     quotes: createVenueQuoteSource({ stored, custody, host, chains }),
     simulator: options.simulator,
   });
-  const answer = createAnswerCard({ confirmations, stored, paper });
+  const answer = createAnswerCard({ confirmations, stored, execute });
   const moneyPath = createMoneyPath({
     stored,
     agents: stores.agents,
@@ -74,7 +79,7 @@ export function createEngine(options: EngineOptions): Engine {
     host,
     simulator: options.simulator,
     chains,
-    paper,
+    execute,
     clock,
     ids,
   });

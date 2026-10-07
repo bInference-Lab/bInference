@@ -11,6 +11,7 @@ import {
   createVenueHost,
   type Engine,
   type EnginePush,
+  type Executor,
   type Simulator,
   type WalletFactsSource,
 } from "@binference/engine";
@@ -32,6 +33,8 @@ export interface ComposeEngineOptions {
   readonly venues: readonly Venue[];
   readonly simulator: Simulator;
   readonly wallets: WalletFactsSource;
+  /** Takes each confirmed live intent onto its wallet's queue. */
+  readonly executor: Executor;
   /** The engine's release, for `ready`. */
   readonly version: string;
   readonly owner: OwnerInfo;
@@ -80,6 +83,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     wallets: options.wallets,
     host,
     simulator: options.simulator,
+    executor: options.executor,
     chains,
     clock,
     ids: createIdSource({ clock, random }),

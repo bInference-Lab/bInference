@@ -391,6 +391,22 @@ export interface ModelBilling {
 }
 
 /**
+ * The execute step for live intents (ARCHITECTURE.md section 7, step 8): it takes each confirmed
+ * live intent onto its wallet's queue, which signs, stores and sends it. The engine hands it every
+ * confirmed intent that is not a paper one, a rescue in paper mode too (decision 0100), and never
+ * a paper intent (spec 6, invariant 3). Adapter: the executor over the wallet queue, the signer and
+ * the relays.
+ */
+export interface Executor {
+  /**
+   * Takes a confirmed live intent and resolves once it holds it; the wallet queue moves the intent
+   * on from `confirmed` later. Rejects with the signal's reason once the signal aborts, and takes
+   * nothing.
+   */
+  take(intent: Id<"int">, options: { readonly signal: AbortSignal }): Promise<void>;
+}
+
+/**
  * What the money path reads about an agent's wallets beyond the store ports: which wallets the
  * agent owns, and the facts the policy and the auto test read about one of them now. Adapters: the
  * wallets table with the chain's RPC, the custody ceiling and the fee reader for live intents, and

@@ -271,6 +271,7 @@ export type {
   BotUpdateSource,
   ConfigJournal,
   ConfirmationStore,
+  Executor,
   IdempotencyStore,
   InboxStore,
   IntentStore,

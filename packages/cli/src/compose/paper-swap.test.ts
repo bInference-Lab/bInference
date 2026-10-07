@@ -22,10 +22,12 @@ import {
 } from "@binference/core/testing";
 import { type LimitsValues, sha256Hex, walkLedgerChain } from "@binference/engine";
 import {
+  createFakeExecutor,
   createFakePriceSource,
-  createQuoteSimulator,
   createFakeWalletFacts,
   createMemoryEngineStores,
+  createQuoteSimulator,
+  type FakeExecutor,
 } from "@binference/engine/testing";
 import { operations, type PushFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
@@ -122,6 +124,8 @@ async function seed(parts: EngineParts): Promise<void> {
 interface Skeleton {
   readonly client: ProtocolClient;
   readonly parts: EngineParts;
+  /** Stands in for the wallet queue: what reached it. */
+  readonly executor: FakeExecutor;
   close(): Promise<void>;
 }
 
@@ -148,11 +152,13 @@ async function startSkeleton(parts: EngineParts): Promise<Skeleton> {
     networkFeeCapNativeBase: 1_000_000_000n,
     recentOutflows: [],
   };
+  const executor = createFakeExecutor();
   const { server } = composeEngine(parts, {
     chains,
     venues: [createFakeVenue()],
     simulator: createQuoteSimulator(() => undefined),
     wallets: createFakeWalletFacts(new Map([[agent, [wallet]]]), facts),
+    executor,
     version: "2026.10.0",
     owner: { locale: "en", timezone: "UTC" },
     clock,
@@ -175,6 +181,7 @@ async function startSkeleton(parts: EngineParts): Promise<Skeleton> {
   return {
     client,
     parts,
+    executor,
     async close() {
       client.close();
       ipc.close();
@@ -316,6 +323,7 @@ describe.each(compositions)(
         await expect(
           walkLedgerChain(skeleton.parts.stores.ledger, {}, live()),
         ).resolves.toMatchObject({ ok: true, value: { seq: 4 } });
+        expect(skeleton.executor.taken()).toStrictEqual([]);
       },
     );
   },

@@ -19,10 +19,10 @@ import {
   type IntentStateMachine,
   type ProposalProblem,
 } from "../intents/state-machine.js";
-import type { PaperFills } from "../paper/paper-fills.js";
 import type { PolicyCheck, PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore, Simulator, WalletFactsSource } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import type { ExecuteConfirmed } from "./execute-confirmed.js";
 import { type PlannedSwap, planSwap } from "./plan-swap.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import { registryRisk } from "./registry-risk.js";
@@ -37,8 +37,8 @@ export interface Proposer {
 
 /**
  * Steps 1 to 6 of the money path (ARCHITECTURE.md section 7): resolve, policy, quote and build,
- * risk, simulation, and the card or the auto mode's authorization. A confirmed paper intent fills
- * on paper at once.
+ * risk, simulation, and the card or the auto mode's authorization. An intent the auto mode
+ * confirms goes on to the execute step at once: it fills on paper, or the executor takes it.
  */
 export interface MoneyPath {
   /**
@@ -64,7 +64,7 @@ export interface MoneyPathOptions {
   readonly host: VenueHost;
   readonly simulator: Simulator;
   readonly chains: ChainRegistry;
-  readonly paper: PaperFills;
+  readonly execute: ExecuteConfirmed;
   readonly clock: Clock;
   readonly ids: IdSource;
 }
@@ -224,7 +224,7 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
     return simulated;
   }
   const authorized = await advance(run, simulated, { trigger: authorization(run, policy.passed) });
-  return run.options.paper.fillAtQuote(authorized, { signal: run.signal });
+  return run.options.execute(authorized, { signal: run.signal });
 }
 
 async function propose(

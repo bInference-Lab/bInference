@@ -16,6 +16,7 @@ import {
 import { createIdSource, type Id } from "@binference/core";
 import { createManualClock, createSeededRandom, type ManualClock } from "@binference/core/testing";
 import type { AgentDraft } from "../agents/agent-record.js";
+import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
 import {
@@ -32,7 +33,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
-import type { IntentStore } from "../ports.js";
+import type { Executor, IntentStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine } from "./create-engine.js";
@@ -68,6 +69,8 @@ export interface TestEngineOptions {
   readonly wallets?: readonly Id<"wal">[];
   /** Wraps the intent store, so a test can make a write lose its race. */
   readonly intents?: (store: IntentStore) => IntentStore;
+  /** Takes the confirmed live intents; a fake that keeps them when absent. */
+  readonly executor?: Executor;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -76,6 +79,8 @@ export interface TestEngine {
   readonly stores: MemoryEngineStores;
   readonly clock: ManualClock;
   readonly custody: FakeSigner;
+  /** The executor the engine hands confirmed live intents to, when the test gave none. */
+  readonly executor: FakeExecutor;
   /** Every push the engine sent, oldest first. */
   readonly pushes: readonly EnginePush[];
 }
@@ -109,6 +114,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   const venues = options.venues ?? [createFakeVenue()];
   const pushes: EnginePush[] = [];
   const intents = options.intents?.(stores.intents) ?? stores.intents;
+  const executor = createFakeExecutor();
   const engine = createEngine({
     stores: { ...stores, intents },
     custody,
@@ -121,13 +127,14 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     }),
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
     simulator: createQuoteSimulator(() => options.refusal),
+    executor: options.executor ?? executor,
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),
     publish: (push) => pushes.push(push),
   });
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });
-  return { engine, stores, clock, custody, pushes };
+  return { engine, stores, clock, custody, executor, pushes };
 }
 
 /** One call with its args, from a caller, with a signal that never aborts. */

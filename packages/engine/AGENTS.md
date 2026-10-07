@@ -65,6 +65,10 @@ Rules for this package:
   protocol error before anything is stored; every refusal after that is the intent's state. What it
   reads about wallets outside the store comes through `WalletFactsSource`, and a fact it cannot
   read fails closed (send level 3, no address book).
+- The execute step (`src/money-path/execute-confirmed.ts`) is the one place a confirmed intent
+  goes on: a paper intent to the paper fill, a live one, a rescue in paper mode too (decision
+  0100), to the `Executor` port. A paper intent never reaches the executor (spec 6, invariant 3);
+  its property test holds that for every kind, mode and state.
 - The paper fill (`src/paper/`) moves a confirmed paper intent to `paper_filled` at its confirmed
   quote and records the fill with the move. The paper portfolio builds on this step.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use

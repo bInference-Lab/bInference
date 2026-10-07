@@ -4,7 +4,7 @@ import type { CardAnswer } from "../confirmations/card-answer.js";
 import type { AnswerOutcome, Confirmations } from "../confirmations/create-confirmations.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { QuoteFailure, SimulationFailure } from "../intents/intent-reason.js";
-import type { PaperFills } from "../paper/paper-fills.js";
+import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 
 /** An answer's outcome, with the intent as it stands after it. */
 export interface AnsweredCard {
@@ -14,7 +14,8 @@ export interface AnsweredCard {
 
 /**
  * Applies the owner's answer from any surface: Telegram's tap, the console's or the CLI's call.
- * A confirmed paper intent then fills at its confirmed quote.
+ * A confirmed intent then goes on to the execute step: a paper intent fills at its confirmed
+ * quote, and the executor takes a live one.
  */
 export type AnswerCard = (
   answer: CardAnswer,
@@ -25,10 +26,10 @@ export type AnswerCard = (
 export interface AnswerCardOptions {
   readonly confirmations: Confirmations;
   readonly stored: StoredIntents;
-  readonly paper: PaperFills;
+  readonly execute: ExecuteConfirmed;
 }
 
-/** Creates the {@link AnswerCard} step over the confirmations and paper mode. */
+/** Creates the {@link AnswerCard} step over the confirmations and the execute step. */
 export function createAnswerCard(options: AnswerCardOptions): AnswerCard {
   return async (answer, { signal }) => {
     const answered = await options.confirmations.answer(answer, { signal });
@@ -39,7 +40,7 @@ export function createAnswerCard(options: AnswerCardOptions): AnswerCard {
       return err("not_found");
     }
     const outcome: AnswerOutcome = answered.value;
-    return ok({ outcome, intent: await options.paper.fillAtQuote(snapshot, { signal }) });
+    return ok({ outcome, intent: await options.execute(snapshot, { signal }) });
   };
 }
 
