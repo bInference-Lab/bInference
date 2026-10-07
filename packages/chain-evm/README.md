@@ -21,6 +21,7 @@ come in as data from `@binference/chains`; nothing here names a chain.
 | `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap           |
 | `simulate`, `Simulation`                                                 | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
 | `createChainlinkPrices`, `FeedAsset`, `UsdFeed`                          | The `PriceSource` over Chainlink's USD feeds; a stale feed is no price            |
+| `createEvmTxSimulator`                                                   | The `TxSimulator` port of one chain: drafts simulated in order, fee left out      |
 | `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                     |
 | `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions              |
 | `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                  |

@@ -33,6 +33,8 @@ export { createEvmSigningScheme } from "./signing/evm-signing-scheme.js";
 export type { EvmSigningScheme } from "./signing/evm-signing-scheme.js";
 export { decodeEvmTransaction, encodeEvmTransaction } from "./signing/evm-transaction.js";
 export type { DecodedEvmTransaction, EvmTransaction } from "./signing/evm-transaction.js";
+export { createEvmTxSimulator } from "./simulation/create-evm-tx-simulator.js";
+export type { EvmTxSimulatorOptions } from "./simulation/create-evm-tx-simulator.js";
 export { simulate } from "./simulation/simulate.js";
 export type {
   BalanceOverride,
