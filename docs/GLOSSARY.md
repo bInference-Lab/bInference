@@ -234,9 +234,9 @@ new name here first, in the change that uses it.
 
 - **files**: `config.json5` (the config), `engine.sqlite` and `agent.sqlite` (the databases),
   `NOTICES.md` (third-party notices).
-- **commands**: `binference init`, `start`, `status`, `health`, `logs`, `approval`, `check`,
-  `check --fix`, `check security`, `report`, `console`, `chat`, `mcp`, `live`, `freeze`, `rescue`,
-  `unlock`, `expose`.
+- **commands**: `binference init`, `start`, `status`, `health`, `logs`, `approval`, `confirm`,
+  `deny`, `check`, `check --fix`, `check security`, `report`, `console`, `chat`, `mcp`, `live`,
+  `freeze`, `rescue`, `unlock`, `expose`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,

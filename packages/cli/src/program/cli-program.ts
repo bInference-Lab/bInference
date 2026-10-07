@@ -26,6 +26,11 @@ export type ChosenCommand =
       readonly options: AgentFlags;
       /** The mode to set; the command shows the mode when left out. */
       readonly mode?: ApprovalModeChoice;
+    }
+  | {
+      readonly name: "confirm" | "deny";
+      readonly options: CommonOptions;
+      readonly intent: ProtocolId<"intent">;
     };
 
 /** What the program is built from. */
@@ -53,7 +58,7 @@ function addSet(value: string, earlier: readonly string[]): readonly string[] {
 }
 
 // An id of the protocol's kind, or a command line commander refuses with one message.
-function idOf<K extends "agent">(kind: K) {
+function idOf<K extends "agent" | "intent">(kind: K) {
   return (value: string): ProtocolId<K> => {
     const parsed = protocolIdSchema(kind).safeParse(value);
     if (!parsed.success) {
@@ -89,6 +94,18 @@ function addAgentCommands(program: Command, options: ProgramOptions): void {
     );
 }
 
+// Commands that answer a card: they name the intent it shows.
+function addCardCommands(program: Command, options: ProgramOptions): void {
+  const { message, choose } = options;
+  for (const name of ["confirm", "deny"] as const) {
+    withCommon(program.command(name).description(message(`command.${name}`)), message)
+      .addArgument(new Argument("<intent>", message("argument.intent")).argParser(idOf("intent")))
+      .action((intent: ProtocolId<"intent">, flags: OptionValues) =>
+        choose({ name, options: commonFlagsSchema.parse(flags), intent }),
+      );
+  }
+}
+
 function addCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   withCommon(program.command("start").description(message("command.start")), message)
@@ -108,13 +125,14 @@ function addCommands(program: Command, options: ProgramOptions): void {
       choose({ name: "logs", options: logsFlagsSchema.parse(flags) }),
     );
   addAgentCommands(program, options);
+  addCardCommands(program, options);
 }
 
 /**
- * Builds the `binference` command tree on commander: `start`, `status`, `health`, `logs` and
- * `approval`, each with `--json` and `--yes`, and help in the owner's language. Commander never
- * ends the process: a parse error, help or the version throws a `CommanderError` for the caller
- * to map, and its own English error lines are never written.
+ * Builds the `binference` command tree on commander: each command with `--json` and `--yes`, and
+ * help in the owner's language. Commander never ends the process: a parse error, help or the
+ * version throws a `CommanderError` for the caller to map, and its own English error lines are
+ * never written.
  */
 export function buildProgram(options: ProgramOptions): Command {
   const { message } = options;

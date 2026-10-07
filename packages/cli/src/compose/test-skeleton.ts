@@ -1,6 +1,11 @@
 import { once } from "node:events";
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
-import { type AccountRef, accountRefSchema, createChainRegistry } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  createChainRegistry,
+  type Venue,
+} from "@binference/chain";
 import {
   createFakeChainDefinition,
   createFakeFamily,
@@ -134,6 +139,8 @@ export interface Skeleton extends ComposedSkeleton {
 export interface SkeletonOptions {
   /** The owner's bot; without it the skeleton serves no Telegram. */
   readonly telegram?: TelegramParts;
+  /** The venues the engine trades on; the fake venue alone when left out. */
+  readonly venues?: readonly Venue[];
 }
 
 /**
@@ -164,7 +171,7 @@ export async function composeSkeleton(
   const logger = createMemoryLogger({ subsystem: "engine" });
   const composed = composeEngine(parts, {
     chains,
-    venues: [createFakeVenue()],
+    venues: options.venues ?? [createFakeVenue()],
     simulator: createQuoteSimulator(() => undefined),
     wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts),
     executor,

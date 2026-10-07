@@ -8,6 +8,7 @@ import {
   type ComposedSkeleton,
   composeSkeleton,
   type SkeletonComposition,
+  type SkeletonOptions,
   skeletonSecrets,
 } from "../compose/test-skeleton.js";
 import { connectClient, hostOn, noPermissions, type TestMachine } from "./test-host.js";
@@ -28,8 +29,9 @@ export interface ServedSkeleton extends ComposedSkeleton {
 export async function serveSkeleton(
   machine: TestMachine,
   composition: SkeletonComposition,
+  options: SkeletonOptions = {},
 ): Promise<ServedSkeleton> {
-  const skeleton = await composeSkeleton(composition.parts());
+  const skeleton = await composeSkeleton(composition.parts(), options);
   const platform = platformOf(hostOn(machine, []));
   const files = { permissions: noPermissions, signal: new AbortController().signal };
   const tokenFile = cliTokenFile(platform.stateFolder);

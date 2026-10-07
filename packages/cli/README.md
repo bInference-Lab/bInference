@@ -74,6 +74,8 @@ The reference of every key, generated from the schema, is
 | `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |
 | `binference logs [-n N] [--follow]`  | The engine log's last lines, then new ones until Ctrl+C             |
 | `binference approval [manual\|auto]` | Shows the agent's approval mode, or sets it                         |
+| `binference confirm <intent>`        | Confirms the intent's newest card version, as its button does       |
+| `binference deny <intent>`           | Cancels the intent's card, as its button does                       |
 
 In development, run the source: `node --conditions=@binference/source --import tsx
 packages/cli/src/main.ts status`. The store workers get the same Node options.

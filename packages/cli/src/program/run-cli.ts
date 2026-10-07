@@ -3,6 +3,7 @@ import { createFormatter, type Formatter } from "@binference/i18n";
 import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
 import { runApproval } from "../commands/approval-command.js";
+import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runStart } from "../commands/start-command.js";
@@ -73,6 +74,8 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   health: async ({ host, output }) => runHealth(host, output),
   logs: async ({ host, output }, chosen) => runLogs(host, output, chosen.options),
   approval: runApproval,
+  confirm: runCardAnswer,
+  deny: runCardAnswer,
 };
 
 async function runChosen<N extends ChosenCommand["name"]>(
