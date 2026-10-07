@@ -21,6 +21,17 @@ one closes the card and the other sees it closed. A tap on a quote older than th
 quotes and simulates again through the `QuoteSource` and `Simulator` ports, and opens the next card
 version when the minimum out got worse than the tolerance. No answer before the expiry is a no.
 
+`createEngine` puts steps 1 to 6 of the money path behind the protocol
+([ARCHITECTURE.md section 7](../../docs/ARCHITECTURE.md#section-7)). `intent/propose` resolves a
+swap against the agent's wallet and limits, then runs the policy, the venue host, the risk step,
+the simulation and the auto test, and answers with the intent waiting on its card or ended. A
+request it cannot route yet is a protocol error, and nothing is stored. `intent/confirm` and
+`intent/deny` answer the card through the confirmations, and a confirmed paper intent fills at its
+confirmed quote (the paper fill). The stored intents are the one writer of intents: every new
+intent and every move goes through the `IntentStore` and pushes its `intent`, card and `ledger`
+events, and they are the `ConfirmationStore` the confirmations write through. What the money path
+reads about wallets outside the store comes through the `WalletFactsSource` port.
+
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
 their events, card versions and confirmations, each move written whole with its ledger entry),
@@ -81,6 +92,10 @@ layout of Koinly's universal import, which tax tools read.
 | `MarketData`, `BlockReading`, `PriceReading`                     | The blocks and prices the watchers stream                       |
 | `Sha256Hex`, `sha256Hex`                                         | A SHA-256 digest as 64 lowercase hex digits                     |
 | `TransitionProblem`, `ProposalProblem`                           | Why the machine refused a trigger or a proposal                 |
+| `createEngine`, `Engine`, `EngineOptions`, `EngineHandlers`      | The money path and the card answers behind their operations     |
+| `EngineCall`, `EngineCaller`, `EngineHandler`, `AnswerCard`      | A call the server routes, and a card answer from any surface    |
+| `EnginePush`, `PublishPush`                                      | What the engine pushes; the server numbers each topic's pushes  |
+| `WalletFactsSource`, `WalletFacts`, `WalletFactsQuery`           | What the money path reads about an agent's wallets              |
 
 ## Example
 
@@ -132,6 +147,27 @@ const chain = await walkLedgerChain(ledger, {}, { signal });
 if (!chain.ok) {
   report(chain.error, chain.seq); // a critical finding of `binference check`
 }
+```
+
+The composition root builds the engine from ports and hands its handlers to the protocol server:
+
+```ts
+import { createEngine, createVenueHost } from "@binference/engine";
+
+const host = createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 });
+const engine = createEngine({
+  stores,
+  custody,
+  prices,
+  wallets,
+  host,
+  simulator,
+  chains,
+  clock,
+  ids,
+  publish: (push) => server.publish(push),
+});
+const server = createProtocolServer({ handlers: engine.handlers /* , ... */ });
 ```
 
 Tests import each port's contract suite and its fake from `@binference/engine/testing`;

@@ -56,6 +56,15 @@ Rules for this package:
   intents: every new intent and every move goes through them, so each write lands as the state
   machine decided it and pushes its events. The confirmations write through them as their
   `ConfirmationStore`; nothing else calls `IntentStore.create` or `transition`.
+- The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
+  reports each outcome to the state machine as a trigger. A request it cannot route yet is a
+  protocol error before anything is stored; every refusal after that is the intent's state. What it
+  reads about wallets outside the store comes through `WalletFactsSource`, and a fact it cannot
+  read fails closed (send level 3, no address book).
+- The paper fill (`src/paper/`) moves a confirmed paper intent to `paper_filled` at its confirmed
+  quote and records the fill with the move. The paper portfolio builds on this step.
+- The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
+  cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - The CSV export's header is a tax tool's import format, so it stays English in every language.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
   `*.property.test.ts` files.

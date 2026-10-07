@@ -282,6 +282,7 @@ export type {
   QuoteSource,
   Simulator,
   UsdPrice,
+  WalletFactsSource,
 } from "./ports.js";
 export type { EngineStores } from "./records/engine-stores.js";
 export { rowPageSchema } from "./records/row-page.js";
@@ -290,4 +291,9 @@ export { isSha256Hex, sha256Hex, sha256HexSchema } from "./records/sha256-hex.js
 export type { Sha256Hex } from "./records/sha256-hex.js";
 export { stampedIdSchema } from "./records/stamped-id.js";
 export type { StampedId } from "./records/stamped-id.js";
+export { createEngine } from "./operations/create-engine.js";
+export type { Engine, EngineHandlers, EngineOptions } from "./operations/create-engine.js";
+export type { AnswerCard, AnsweredCard } from "./operations/answer-card.js";
+export type { EngineCall, EngineCaller, EngineHandler } from "./operations/engine-call.js";
 export type { EnginePush, PublishPush } from "./pushes/engine-push.js";
+export type { WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";

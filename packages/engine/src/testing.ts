@@ -67,3 +67,10 @@ export { createSharedMarketData } from "./fakes/shared-market-data.js";
 export type { SharedMarketData } from "./fakes/shared-market-data.js";
 export type { MemoryLedgerStore } from "./fakes/memory-ledger-store.js";
 export { createMemoryPositionStore } from "./fakes/memory-position-store.js";
+export { walletFactsSourceContract } from "./contracts/wallet-facts-source-contract.js";
+export type {
+  WalletFactsSourceHarness,
+  WalletFactsSourceSubject,
+} from "./contracts/wallet-facts-source-contract.js";
+export { createFakeWalletFacts } from "./fakes/fake-wallet-facts.js";
+export { createQuoteSimulator } from "./fakes/quote-simulator.js";

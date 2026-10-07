@@ -29,6 +29,7 @@ import type { QuoteFailure, SimulationFailure } from "./intents/intent-reason.js
 import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
+import type { WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
 import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
 import type { RowPage } from "./records/row-page.js";
@@ -323,4 +324,20 @@ export interface ModelBilling {
    * signal's reason once the signal aborts, and charges nothing.
    */
   charge(charge: ModelCharge, options: { readonly signal: AbortSignal }): Promise<bigint>;
+}
+
+/**
+ * What the money path reads about an agent's wallets beyond the store ports: which wallets the
+ * agent owns, and the facts the policy and the auto test read about one of them now. Adapters: the
+ * wallets table with the chain's RPC, the custody ceiling and the fee reader for live intents, and
+ * the paper portfolio for paper ones.
+ */
+export interface WalletFactsSource {
+  /** The agent's wallets, the one it uses by default first; none for an unknown agent. */
+  wallets(
+    agent: Id<"agt">,
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly Id<"wal">[]>;
+  /** The facts of one of the agent's wallets for an intent in the query's mode. */
+  facts(query: WalletFactsQuery, options: { readonly signal: AbortSignal }): Promise<WalletFacts>;
 }

@@ -21,7 +21,7 @@ export const testCoin: AssetRef = assetRefSchema.parse("fake:1/slip44:1");
 export const testToken: AssetRef = assetRefSchema.parse("fake:1/token:0x0000000a");
 
 /** Limits that let a small swap of the coin through on the fake venue. */
-const testLimits: LimitsValues = {
+export const testLimits: LimitsValues = {
   perTradeUsdMicros: 1_000_000_000n,
   rollingDayUsdMicros: 5_000_000_000n,
   slippageRegistryBps: bpsSchema.parse(50),

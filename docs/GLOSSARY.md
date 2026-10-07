@@ -42,6 +42,8 @@ new name here first, in the change that uses it.
 - **schedule**: a model turn that runs at set times. It moves no money.
 - **paper mode**: real quotes, checks and cards, with fills recorded at the confirmed quote and
   nothing sent on chain. New agents start in it; **live** is the opposite.
+- **paper fill**: the fill paper mode records when a paper intent is confirmed: the confirmed
+  quote's input for its expected output, kept with the move to `paper_filled` and its ledger entry.
 - **approval mode**: per agent, **manual** (every transaction outside an auto order needs a tap; the
   default) or **auto** (buys, sells, swaps and moves inside the agent's own positions run within the
   caps without a tap).
@@ -49,6 +51,9 @@ new name here first, in the change that uses it.
 - **ceiling**: each wallet's Privy policy, the hard limit behind the limits. Only the owner key
   raises it.
 - **gas reserve**: the BNB a wallet keeps for network fees. Trades never spend it.
+- **wallet facts**: what the money path reads about an agent's wallets outside the store ports:
+  which wallets the agent owns, the native balance (the paper balance in paper mode), the ceiling's
+  cap per transaction, the fee per gas, the network fee cap and the agent's recent outflows.
 - **network fee cap**: per chain, the most fee per gas a transaction pays without the owner's tap
   (`chains.maxFeePerGasGwei`). A higher fee opens a card.
 - **owner key**: the key that owns the wallets and their policy. It is shown once as a `bnok1` code
