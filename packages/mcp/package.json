@@ -21,6 +21,10 @@
   "dependencies": {
     "@binference/client": "workspace:*",
     "@binference/protocol": "workspace:*",
+    "@modelcontextprotocol/server": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "catalog:"
   }
 }

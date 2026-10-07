@@ -7,6 +7,8 @@ catalogMode: strict
 catalog:
   "@commitlint/cli": 21.2.3
   "@commitlint/types": 21.2.3
+  "@modelcontextprotocol/client": 2.2.0
+  "@modelcontextprotocol/server": 2.2.0
   "@napi-rs/keyring": 2.1.0
   "@noble/curves": 2.4.0
   "@stryker-mutator/core": 10.0.0

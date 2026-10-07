@@ -72,7 +72,15 @@
       "userText": true,
       "browser": true
     },
-    "mcp": { "imports": ["client", "protocol"] },
+    "mcp": {
+      "imports": [
+        "client",
+        "protocol",
+        "@modelcontextprotocol/server",
+        "@modelcontextprotocol/client"
+      ],
+      "only": { "@modelcontextprotocol/client": "src/e2e" }
+    },
     "plugin-sdk": { "imports": ["core", "chain", "protocol", "chain-evm"], "publish": true },
     "cli": { "name": "binference", "imports": ["*"], "publish": true, "compositionRoot": true }
   },

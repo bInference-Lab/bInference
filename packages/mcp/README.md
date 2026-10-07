@@ -2,17 +2,25 @@
 
 ## Purpose
 
-The MCP server behind `binference mcp`: the engine's read and propose tools for any MCP client, such
-as Claude Code or Codex. The spec is section 11 of
+The MCP server behind `binference mcp`. It gives any MCP client, such as Claude Code or Codex, the
+engine's read and propose tools over stdio. The spec is section 11 of
 [docs/specs/protocol.md](../../docs/specs/protocol.md).
 
 - **Tools.** One tool per row of the protocol's `mcpTools`, prefixed `binference_`, each calling
-  one operation. Each tool's input schema is its operation's args schema from `engine/describe`.
-  MCP and the model APIs behind its clients need an object at the root, so an args schema whose
-  root is a union of requests, such as `intent/propose`, is listed as one object with every kind's
-  fields, and the tool's description says which fields each kind takes.
-- **No tool can confirm.** The tools reach `read` and `propose` operations only.
-- **Texts.** Titles and descriptions are English: they reach a model, not the owner's screen.
+  one operation through `@binference/client`. Each tool's input schema is its operation's args
+  schema from `engine/describe`. MCP and the model APIs behind its clients need an object at the
+  root, so an args schema whose root is a union of requests, such as `intent/propose`, is listed as
+  one object with every kind's fields, and the tool's description says which fields each kind
+  takes. The operation's own schema still checks every call before it reaches the engine.
+- **No tool can confirm.** The tools reach `read` and `propose` operations only, and the server
+  signs in with a token that holds those two scopes, so the engine refuses anything else.
+- **Proposals wait.** `binference_propose` answers with the intent's id and says it is waiting for
+  the owner's confirmation in Telegram or the console. An intent the engine refused names its
+  state and reason instead.
+- **Failures.** A refused or failed call answers as a tool error with the code, the engine's
+  message and, for a failure a person can fix, the next step. Tool texts are English.
+- **Without the engine.** Tools list while the engine is down; a call waits for the connection
+  until the protocol client's call timeout.
 
 | Tool                      | Operation       | Tool                       | Operation        |
 | ------------------------- | --------------- | -------------------------- | ---------------- |
@@ -23,17 +31,80 @@ as Claude Code or Codex. The spec is section 11 of
 | `binference_orders`       | `order/list`    | `binference_alert_create`  | `alert/create`   |
 | `binference_resolve_name` | `name/resolve`  | `binference_ledger`        | `ledger/list`    |
 
+## Set up an MCP client
+
+`binference mcp` reads `~/.binference/auth/mcp.token`, which holds only the `read` and `propose`
+scopes. Create it once:
+
+```sh
+binference token create --for mcp
+```
+
+**Claude Code.** Add the server for every project of your user:
+
+```sh
+claude mcp add --scope user binference -- binference mcp
+```
+
+Or share it with everyone who works in a project:
+
+```sh
+claude mcp add --scope project binference -- binference mcp
+```
+
+That command writes the server to the project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "binference": { "type": "stdio", "command": "binference", "args": ["mcp"], "env": {} }
+  }
+}
+```
+
+**Codex.** Add the server:
+
+```sh
+codex mcp add binference -- binference mcp
+```
+
+That command writes this table to `~/.codex/config.toml`, which you can also write by hand:
+
+```toml
+[mcp_servers.binference]
+command = "binference"
+args = ["mcp"]
+```
+
+Check it with `claude mcp list` or `codex mcp list`. Each proposal waits for your tap in
+binference's Telegram bot or the console.
+
 ## API
 
-| Export                           | What it does                                                       |
-| -------------------------------- | ------------------------------------------------------------------ |
-| `operationTools`                 | The tools: name, operation, texts, input schema and read-only mark |
-| `OperationTool`, `ToolOperation` | One tool, and the operations a tool may call                       |
+| Export                          | What it does                                                                     |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| `serveMcpOverStdio`             | Serves the tools over stdio until the MCP client closes stdin or a signal aborts |
+| `createMcpServer`               | The MCP server with its tools, for any MCP transport                             |
+| `McpServerOptions`, `McpLogger` | The protocol client, the release and the logger the server is built from         |
+| `McpStdioOptions`, `McpStreams` | Those options, and the streams for tests                                         |
 
 ## Example
 
-```ts
-import { operationTools } from "@binference/mcp";
+The composition root signs in with the MCP token over the engine's IPC socket and serves:
 
-const proposing = operationTools().filter((tool) => !tool.readOnly);
+```ts
+import { createProtocolClient } from "@binference/client";
+import { serveMcpOverStdio } from "@binference/mcp";
+import { operations } from "@binference/protocol";
+
+const client = createProtocolClient({
+  operations,
+  openSocket: () => ipcSocket(paths.engineSocket),
+  client: { kind: "mcp", version },
+  credential: { token: mcpToken },
+  clock,
+  random,
+  logger: logger.child("mcp"),
+});
+await serveMcpOverStdio({ client, version, logger: logger.child("mcp") }, shutdown.signal);
 ```
