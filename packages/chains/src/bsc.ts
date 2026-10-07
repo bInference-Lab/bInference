@@ -2,7 +2,7 @@ import type { ChainDefinition, ContractDefinition, TokenDefinition } from "@binf
 import type { PriceFeedDefinition } from "./feeds/price-feed-definition.js";
 
 // Every address here was read on chain on this day: its code, proxy slots and owner, and a call
-// that ties it to its siblings. KyberSwap's router is the one exception and says so.
+// that ties it to its siblings. KyberSwap's contracts were read a day later and say so.
 const checkedOn = "2026-10-06";
 
 type TokenRow = readonly [symbol: string, name: string, decimals: number, address: string];
@@ -23,13 +23,17 @@ function createTokens(
   );
 }
 
-function createContracts(venue: string, sources: AddressesBySource): ContractDefinition[] {
+function createContracts(
+  venue: string,
+  sources: AddressesBySource,
+  readOn = checkedOn,
+): ContractDefinition[] {
   return Object.entries(sources).flatMap(([source, addresses]) =>
     Object.entries(addresses).map(([name, address]): ContractDefinition => ({
       venue,
       name,
       address,
-      verification: { source, checkedOn, control: "read" },
+      verification: { source, checkedOn: readOn, control: "read" },
     })),
   );
 }
@@ -82,17 +86,19 @@ const pancakeswap = createContracts("pancakeswap", {
   },
 });
 
-// The router's code was read on chain; its proxy slots and owner were not.
-const kyberswapRouter: ContractDefinition = {
-  venue: "kyberswap",
-  name: "meta-aggregation-router-v2",
-  address: "0x6131B5fae19EA4f9D964eAc0408E4408b66337b5",
-  verification: {
-    source: "https://docs.kyberswap.com/developer-guide/aggregator-api/contracts",
-    checkedOn,
-    control: "not_read",
+// Neither is a proxy, and each is owned by a single key. The router's WETH() is WBNB, and it calls
+// the executor proxy on every route KyberSwap's API builds; the proxy runs only executors it holds
+// a role for.
+const kyberswap = createContracts(
+  "kyberswap",
+  {
+    "https://docs.kyberswap.com/developer-guide/aggregator-api/contracts": {
+      "meta-aggregation-router-v2": "0x6131B5fae19EA4f9D964eAc0408E4408b66337b5",
+      "aggregation-executor-proxy": "0x8F10B468b06c6FD214B65F87778827F7D113f996",
+    },
   },
-};
+  "2026-10-07",
+);
 
 const fourmeme = createContracts("fourmeme", {
   "https://github.com/four-meme-community/fourmeme-docs/blob/main/docs/integration-guide.md": {
@@ -250,7 +256,7 @@ export const bsc: ChainDefinition = {
   tokens,
   contracts: [
     ...pancakeswap,
-    kyberswapRouter,
+    ...kyberswap,
     ...fourmeme,
     ...flap,
     ...venus,
