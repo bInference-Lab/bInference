@@ -74,3 +74,10 @@ export type {
 } from "./contracts/wallet-facts-source-contract.js";
 export { createFakeWalletFacts } from "./fakes/fake-wallet-facts.js";
 export { createQuoteSimulator } from "./fakes/quote-simulator.js";
+export { transactionStoreContract } from "./contracts/transaction-store-contract.js";
+export type {
+  TransactionStoreHarness,
+  TransactionStoreSubject,
+} from "./contracts/transaction-store-contract.js";
+export { createMemoryTransactionStore } from "./fakes/memory-transaction-store.js";
+export type { MemoryTransactionStore } from "./fakes/memory-transaction-store.js";

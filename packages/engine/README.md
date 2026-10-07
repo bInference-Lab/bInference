@@ -87,6 +87,9 @@ layout of Koinly's universal import, which tax tools read.
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
+| `TransactionStore`                                               | Each wallet's signed transactions and the nonces they hold      |
+| `lowestFreeNonce`, `isNonceFree`, `NonceGrant` (subpath)         | The rule the queue gives nonces by, and what it gives           |
+| `SignedTransaction`, `TransactionRecord` (subpath)               | A step's signed transaction as the queue stores it              |
 | `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
 | `ModelBilling`, `ModelCharge`                                    | Pays for model calls and says what an agent may still spend     |
 | `MarketData`, `BlockReading`, `PriceReading`                     | The blocks and prices the watchers stream                       |

@@ -36,6 +36,12 @@ import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/
 import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
+import type { NonceGrant, NonceRequest } from "./wallet-queue/nonce-grant.js";
+import type {
+  SignedTransaction,
+  TransactionQuery,
+  TransactionRecord,
+} from "./wallet-queue/transaction-record.js";
 
 /**
  * A USD price as micro-dollars per base unit of one asset: `numerator` micro-dollars buy
@@ -194,6 +200,32 @@ export interface PositionStore {
   recordArrival(write: ArrivalWrite, options: StoreCall): Promise<Result<ArrivalRecord, "stale">>;
   /** Arrivals that match the query, in the order recorded. */
   arrivals(query: ExecutionQuery, options: StoreCall): Promise<readonly ArrivalRecord[]>;
+}
+
+/**
+ * Keeps each wallet's transactions and the nonces they hold (database spec, `txs` and `nonces`).
+ * The wallet queue is its one writer of nonces: one account's calls come one at a time, from the
+ * account's queue.
+ */
+export interface TransactionStore {
+  /**
+   * Gives the account its next nonce by the lowest free nonce rule, from the account's stored
+   * transactions and the chain's count, and records one past the highest nonce given. A nonce
+   * counts as used only once a signed transaction holds it, so asking again before then gives the
+   * same nonce.
+   */
+  nextNonce(request: NonceRequest, options: StoreCall): Promise<NonceGrant>;
+  /**
+   * Stores a signed transaction in `signed`, before any send. A nonce that is not free (a
+   * `signed` or `sent` transaction of the account holds it, or a block holds it or a later nonce)
+   * is `nonce_taken` and stores nothing. An id in use throws `store.constraint`.
+   */
+  saveSigned(
+    transaction: SignedTransaction,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "nonce_taken">>;
+  /** One account's transactions from a nonce up, by nonce, then by id. */
+  list(query: TransactionQuery, options: StoreCall): Promise<readonly TransactionRecord[]>;
 }
 
 /** Keeps each write's result under its idempotency key (protocol spec, section 5). */

@@ -276,6 +276,7 @@ export type {
   PriceSource,
   QuoteSource,
   Simulator,
+  TransactionStore,
   UsdPrice,
   WalletFactsSource,
 } from "./ports.js";

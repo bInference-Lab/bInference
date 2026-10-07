@@ -18,10 +18,15 @@
       "@binference/source": "./src/testing.ts",
       "types": "./dist/testing.d.mts",
       "default": "./dist/testing.mjs"
+    },
+    "./wallet-queue": {
+      "@binference/source": "./src/wallet-queue.ts",
+      "types": "./dist/wallet-queue.d.mts",
+      "default": "./dist/wallet-queue.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
