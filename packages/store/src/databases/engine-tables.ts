@@ -54,8 +54,49 @@ export interface ApprovalModesTable {
   version: number;
 }
 
+/** `meta`: the schema version, the install id and when the install began. */
+interface MetaTable {
+  key: string;
+  value: string;
+}
+
+/** `safety`: its one row, `id = 1`. */
+interface SafetyTable {
+  id: number;
+  frozen_at: number | null;
+  rescue_address: string | null;
+  pending_rescue_address: string | null;
+  pending_rescue_at: number | null;
+  disclaimer_version: string | null;
+  disclaimer_accepted_at: number | null;
+  version: number;
+}
+
+/** `custody`: its one row, `id = 1`, once the install is set up. */
+export interface CustodyTable {
+  id: number;
+  provider: string;
+  app_id: string;
+  owner_quorum_id: string;
+  owner_key_public: string;
+  agent_quorum_id: string;
+  agent_key_public: string;
+  attached_at: number;
+  version: number;
+}
+
+/** `ceilings`: the policy mirror as JSON text, the cap as decimal text. */
+export interface CeilingsTable {
+  wallet_id: string;
+  policy_id: string;
+  policy: string;
+  per_tx_native: string;
+  read_at: number;
+  version: number;
+}
+
 /** `wallets`. */
-interface WalletsTable {
+export interface WalletsTable {
   id: string;
   agent_id: string;
   family: string;
@@ -233,6 +274,10 @@ export interface ConfigJournalTable {
 
 /** The engine tables the store adapters query, by name. */
 export interface EngineTables {
+  meta: MetaTable;
+  safety: SafetyTable;
+  custody: CustodyTable;
+  ceilings: CeilingsTable;
   agents: AgentsTable;
   limits: LimitsTable;
   approval_modes: ApprovalModesTable;

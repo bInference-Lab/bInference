@@ -7435,6 +7435,7 @@
         "packages/custody-privy/src/testing.ts",
         "packages/engine/src/approval.ts",
         "packages/engine/src/index.ts",
+        "packages/engine/src/install.ts",
         "packages/engine/src/simulation.ts",
         "packages/engine/src/surfaces.ts",
         "packages/engine/src/testing.ts",

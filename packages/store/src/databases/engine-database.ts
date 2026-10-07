@@ -4,6 +4,7 @@ import { walletTasks } from "../agents/sqlite-wallet-store.js";
 import { configJournalTasks } from "../audit/config-journal-tasks.js";
 import { idempotencyTasks } from "../ingress/idempotency-tasks.js";
 import { inboxTasks } from "../ingress/inbox-tasks.js";
+import { installTasks } from "../install/sqlite-install-store.js";
 import { intentTasks } from "../intents/intent-tasks.js";
 import { ledgerTasks } from "../ledger/ledger-tasks.js";
 import { engineMigrations } from "../migrations/engine/engine-migrations.js";
@@ -25,6 +26,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...configJournalTasks,
     ...transactionTasks,
     ...walletTasks,
+    ...installTasks,
   ],
 };
 

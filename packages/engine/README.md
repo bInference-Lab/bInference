@@ -63,7 +63,7 @@ A stored wallet custody holds nowhere fails the call with `wallet.custody_down`.
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
 their events, card versions and confirmations, each move written whole with its ledger entry),
-`LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore`, `WalletStore` and
+`LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore`, `WalletStore`, `InstallStore` and
 `ConfigJournal`.
 Their records cross the store worker boundary, so each has a zod schema. `@binference/store` holds
 their SQLite adapters; `@binference/engine/testing` holds an in-memory fake and a contract suite for
@@ -144,6 +144,7 @@ layout of Koinly's universal import, which tax tools read.
 | `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |
 | `AgentModeChange`, `agentModeChangeSchema`                       | An agent's switch between paper and live, under its row version |
+| `InstallStore`, `InstallSetup`, `WalletRecord` (subpath)         | The install id, its custody, the rescue address and its wallets |
 | `Executor`                                                       | Takes each confirmed live intent onto its wallet's queue        |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `WalletStore`, `WalletRecord`, `walletRecordSchema` (subpath)    | The agent wallets with the owner's labels, oldest first         |

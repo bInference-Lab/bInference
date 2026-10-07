@@ -9,6 +9,7 @@ export { openDatabase } from "./host/open-database.js";
 export type { CallOptions, DatabaseHandle, OpenDatabaseOptions } from "./host/open-database.js";
 export { createSqliteIdempotencyStore } from "./ingress/sqlite-idempotency-store.js";
 export { createSqliteInboxStore } from "./ingress/sqlite-inbox-store.js";
+export { createSqliteInstallStore } from "./install/sqlite-install-store.js";
 export { createSqliteIntentStore } from "./intents/sqlite-intent-store.js";
 export { createSqliteLedgerStore } from "./ledger/sqlite-ledger-store.js";
 export type { MigrationReport } from "./migrations/migration-report.js";

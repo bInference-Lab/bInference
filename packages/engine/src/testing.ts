@@ -32,6 +32,11 @@ export { createFakeSimulator } from "./fakes/fake-simulator.js";
 export { accessStoreContract } from "./contracts/access-store-contract.js";
 export type { AccessStoreHarness } from "./contracts/access-store-contract.js";
 export { agentStoreContract } from "./contracts/agent-store-contract.js";
+export { installStoreContract } from "./contracts/install-store-contract.js";
+export type {
+  InstallStoreHarness,
+  InstallStoreSubject,
+} from "./contracts/install-store-contract.js";
 export type { AgentStoreHarness } from "./contracts/agent-store-contract.js";
 export { configJournalContract } from "./contracts/config-journal-contract.js";
 export type { ConfigJournalHarness } from "./contracts/config-journal-contract.js";
@@ -56,6 +61,7 @@ export { createMemoryEngineStores } from "./fakes/memory-engine-stores.js";
 export type { MemoryEngineStores } from "./fakes/memory-engine-stores.js";
 export { createMemoryIdempotencyStore } from "./fakes/memory-idempotency-store.js";
 export { createMemoryInboxStore } from "./fakes/memory-inbox-store.js";
+export { createMemoryInstallStore } from "./fakes/memory-install-store.js";
 export { createMemoryIntentStore } from "./fakes/memory-intent-store.js";
 export type { MemoryIntentStoreOptions } from "./fakes/memory-intent-store.js";
 export { createMemoryLedgerStore } from "./fakes/memory-ledger-store.js";

@@ -23,6 +23,7 @@ import type {
   IdempotencyRecall,
 } from "./ingress/idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
+import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/install-record.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
 import type {
@@ -365,6 +366,26 @@ export interface WalletStore {
    * first; at most 1,000. None for an agent without a wallet.
    */
   list(query: WalletQuery, options: StoreCall): Promise<readonly WalletRecord[]>;
+}
+
+/**
+ * Keeps the install's own facts (database spec, section 2.1): its id, its custody on Privy, the
+ * rescue address, and the wallets `binference init` sets up for the first agent.
+ */
+export interface InstallStore {
+  /**
+   * The install's id. The first call stores the proposed id with the time the install began;
+   * every later call answers that stored id and ignores the proposal.
+   */
+  installId(proposal: InstallIdProposal, options: StoreCall): Promise<Id<"ins">>;
+  /** The custody, the rescue address and every wallet, archived ones too. */
+  read(options: StoreCall): Promise<InstallFacts>;
+  /**
+   * Writes a setup in one transaction: the custody, the rescue address with any pending change
+   * cleared, every earlier wallet archived, and the new wallet with its ceiling. An install that
+   * holds a custody already is `set_up` and changes nothing, unless the setup starts over.
+   */
+  setUp(setup: InstallSetup, options: StoreCall): Promise<Result<void, "set_up">>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */
