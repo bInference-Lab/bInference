@@ -724,6 +724,12 @@ Decided in [decision 0033](DECISIONS.md#d0033).
 - **Rule:** a new dependency is the latest release at least 7 days old. Its PR states the job, what
   else was considered, and why a Node built-in does not do it. Enforcer: pnpm `minimumReleaseAge`;
   `check:pr` (a dependency section in the PR body when dependencies change); `review-diff`.
+- **Rule:** an adapter for an outside service (a venue, custody, a chat app, a data feed) starts from
+  the service's official docs and checks for an official SDK or npm package. One that fits the port
+  is used at its latest release at least 7 days old, the way its docs recommend. A hand-written
+  client names in its PR each official package it checked and why it did not fit. Endpoints,
+  contract addresses and parameters come from the official docs, never from memory. Enforcer:
+  `check:pr` (the dependency section); `review-diff`.
 - **Rule:** a package declares every dependency it imports. Enforcer: knip (unlisted dependencies)
   and pnpm's isolated `node_modules`.
 - **Rule:** model SDK clients are built only in `runtime/src/providers/`, with every option set

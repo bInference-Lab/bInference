@@ -55,6 +55,9 @@ first.
 - No duplication: extract the second copy into the lowest shared package. No speculative
   helpers or one-use wrappers.
 - Expected outcomes return `Result`; faults throw `BinferenceError` with a dotted code.
+- An outside service (a venue, custody, a chat app, a data feed) is reached through its official
+  SDK when one fits, at its latest release and the way its docs recommend; endpoints and addresses
+  come from its official docs ([docs/ENGINEERING.md](docs/ENGINEERING.md) section 17).
 
 ## Comments
 
