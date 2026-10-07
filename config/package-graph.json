@@ -84,5 +84,9 @@
     "plugin-sdk": { "imports": ["core", "chain", "protocol", "chain-evm"], "publish": true },
     "cli": { "name": "binference", "imports": ["*"], "publish": true, "compositionRoot": true }
   },
-  "plugins": { "imports": ["plugin-sdk"], "anyThirdParty": true }
+  "plugins": {
+    "imports": ["plugin-sdk", "chain-evm"],
+    "only": { "@binference/chain-evm": "*/src/fork" },
+    "anyThirdParty": true
+  }
 }
