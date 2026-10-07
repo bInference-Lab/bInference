@@ -23,7 +23,8 @@ import { createSqliteTransactionStore } from "./sqlite-transaction-store.js";
 // Workers run the TypeScript source, as in the host's own tests.
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
 const workerTest = { timeout: 60_000 };
-const call = { signal: AbortSignal.timeout(30_000) };
+// Each call gets its own 30 s: one signal made at import would bound the whole file.
+const call = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
 const account = accountRefSchema.parse("fake:1:0x0000000a");
 const chainStart = 7;
 
@@ -40,9 +41,14 @@ afterEach(async () => {
 });
 
 async function open(file: string): Promise<DatabaseHandle> {
-  const handle = await openDatabase({ file, worker: engineWorker, execArgv, signal: call.signal });
+  const handle = await openDatabase({
+    file,
+    worker: engineWorker,
+    execArgv,
+    signal: call().signal,
+  });
   opened.push(handle);
-  await handle.migrate(call);
+  await handle.migrate(call());
   return handle;
 }
 
@@ -72,7 +78,7 @@ function queueOn(handle: DatabaseHandle, nonces: ReturnType<typeof createFakeNon
 
 // One step of an intent: a nonce, a signature, the save before any send.
 async function sendStep(slot: WalletSlot, intent: Id<"int">, n: number): Promise<NonceGrant> {
-  const grant = await slot.nextNonce(call);
+  const grant = await slot.nextNonce(call());
   const id = `tx_0190f1c2-3a4b-7c5d-8e6f-${n.toString(16).padStart(12, "0")}` as Id<"tx">;
   const saved = await slot.saveSigned(
     {
@@ -85,7 +91,7 @@ async function sendStep(slot: WalletSlot, intent: Id<"int">, n: number): Promise
       hash: `0x${n.toString(16).padStart(64, "0")}` as TxHash,
       signedAtMs: 1_000,
     },
-    call,
+    call(),
   );
   expect(saved.ok).toBe(true);
   return grant;
@@ -102,7 +108,7 @@ async function crashingStep(slot: WalletSlot, { stop, intent, n }: CrashingStep)
   if (n !== 17) {
     return sendStep(slot, intent, n);
   }
-  await slot.nextNonce(call);
+  await slot.nextNonce(call());
   const crash = new Error("the engine stopped");
   stop.abort(crash);
   throw crash;
@@ -111,7 +117,7 @@ async function crashingStep(slot: WalletSlot, { stop, intent, n }: CrashingStep)
 async function storedNonces(handle: DatabaseHandle): Promise<readonly number[]> {
   const stored = await createSqliteTransactionStore(handle).list(
     { account, fromNonce: 0, limit: 100 },
-    call,
+    call(),
   );
   expect(new Set(stored.map(({ intentId }) => intentId)).size).toBe(stored.length);
   return stored.map(({ nonce }) => nonce);
@@ -126,7 +132,7 @@ describe("the wallet queue on the SQLite store", () => {
       const queue = queueOn(handle, createFakeNonceSource(new Map([[account, chainStart]])));
       const grants = await Promise.all(
         intents.map(async (intent, n) =>
-          queue.run(account, async (slot) => sendStep(slot, intent, n), call),
+          queue.run(account, async (slot) => sendStep(slot, intent, n), call()),
         ),
       );
       expect(grants.map(({ nonce }) => nonce)).toStrictEqual(range(40, chainStart));
@@ -166,7 +172,7 @@ describe("the wallet queue on the SQLite store", () => {
         intents
           .slice(17)
           .map(async (intent, n) =>
-            resumedQueue.run(account, async (slot) => sendStep(slot, intent, n + 17), call),
+            resumedQueue.run(account, async (slot) => sendStep(slot, intent, n + 17), call()),
           ),
       );
       expect(resumed[0]).toStrictEqual({ nonce: chainStart + 17, refillsGap: true });

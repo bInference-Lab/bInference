@@ -14,7 +14,8 @@ import { createSqliteEngineStores } from "./sqlite-engine-stores.js";
 // Workers run the TypeScript source, as in the host's own tests.
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
 const workerTest = { timeout: 60_000 };
-const call = { signal: AbortSignal.timeout(30_000) };
+// Each call gets its own 30 s: one signal made at import would bound the whole file.
+const call = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
 
 function fixtureId<P extends string>(prefix: P, n: number): Id<P> {
   return idSchema(prefix).parse(`${prefix}_0190f1c2-3a4b-7c5d-8e6f-${String(n).padStart(12, "0")}`);
@@ -35,9 +36,14 @@ async function openEngine(): Promise<{ handle: DatabaseHandle; planted: PlantedA
   const folder = mkdtempSync(join(tmpdir(), "bnf-store-"));
   folders.push(folder);
   const file = join(folder, "engine.sqlite");
-  const handle = await openDatabase({ file, worker: engineWorker, execArgv, signal: call.signal });
+  const handle = await openDatabase({
+    file,
+    worker: engineWorker,
+    execArgv,
+    signal: call().signal,
+  });
   opened.push(handle);
-  await handle.migrate(call);
+  await handle.migrate(call());
   const connection = openConnection(file, { role: "writer", synchronous: "normal" });
   const planted = plantAgent(connection, 1);
   connection.close();
@@ -56,19 +62,19 @@ const token: TokenRecord = {
 describe("the SQLite engine stores", () => {
   it("serve every port through the engine's store workers", workerTest, async () => {
     const stores = createSqliteEngineStores((await openEngine()).handle);
-    await expect(stores.access.addToken(token, call)).resolves.toStrictEqual({
+    await expect(stores.access.addToken(token, call())).resolves.toStrictEqual({
       ok: true,
       value: token,
     });
-    await expect(stores.access.findToken(token.secretHash, call)).resolves.toStrictEqual(token);
+    await expect(stores.access.findToken(token.secretHash, call())).resolves.toStrictEqual(token);
     const change = { atMs: 2, by: token.id, surface: "cli", path: "agents.main.locale" };
-    await expect(stores.configJournal.record(change, call)).resolves.toStrictEqual({
+    await expect(stores.configJournal.record(change, call())).resolves.toStrictEqual({
       ...change,
       id: 1,
     });
     const update = { source: "telegram", sourceKey: "tg:1:1", payload: {}, receivedAtMs: 3 };
     await expect(
-      stores.inbox.admit({ ...update, source: "telegram" }, call),
+      stores.inbox.admit({ ...update, source: "telegram" }, call()),
     ).resolves.toMatchObject({ kind: "new" });
     const lookup = {
       credential: token.id,
@@ -76,15 +82,15 @@ describe("the SQLite engine stores", () => {
       key: "k",
       argsHash: token.secretHash,
     };
-    await stores.idempotency.remember({ ...lookup, result: 1, atMs: 4 }, call);
-    await expect(stores.idempotency.recall(lookup, call)).resolves.toStrictEqual({
+    await stores.idempotency.remember({ ...lookup, result: 1, atMs: 4 }, call());
+    await expect(stores.idempotency.recall(lookup, call())).resolves.toStrictEqual({
       kind: "repeat",
       result: 1,
     });
-    await expect(stores.agents.list(call)).resolves.toHaveLength(1);
+    await expect(stores.agents.list(call())).resolves.toHaveLength(1);
     const account = accountRefSchema.parse("fake:1:0x0000000a");
     await expect(
-      stores.transactions.nextNonce({ account, chainNonce: 3, atMs: 5 }, call),
+      stores.transactions.nextNonce({ account, chainNonce: 3, atMs: 5 }, call()),
     ).resolves.toStrictEqual({ nonce: 3, refillsGap: false });
   });
 
@@ -103,7 +109,7 @@ describe("the SQLite engine stores", () => {
       atMs: 10,
       cause: {},
     };
-    await intents.create(draft, call);
+    await intents.create(draft, call());
     const answer = (state: "confirmed" | "denied", n: number) =>
       intents.transition(
         {
@@ -114,14 +120,14 @@ describe("the SQLite engine stores", () => {
           cause: { by: "owner" },
           ledger: { id: fixtureId("led", n), atMs: 20, kind: state, data: {} },
         },
-        call,
+        call(),
       );
     const outcomes = await Promise.all([answer("confirmed", 1), answer("denied", 2)]);
     expect(outcomes).toMatchObject([{ ok: true }, { ok: false, error: "stale" }]);
-    await expect(intents.get(draft.id, call)).resolves.toMatchObject({
+    await expect(intents.get(draft.id, call())).resolves.toMatchObject({
       state: "confirmed",
       version: 1,
     });
-    await expect(ledger.list({ after: 0, limit: 10 }, call)).resolves.toHaveLength(1);
+    await expect(ledger.list({ after: 0, limit: 10 }, call())).resolves.toHaveLength(1);
   });
 });

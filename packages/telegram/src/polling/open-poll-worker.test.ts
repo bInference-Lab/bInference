@@ -7,7 +7,8 @@ import { openPollWorker, type PollWorker, pollWorker } from "./open-poll-worker.
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
 const fakeApiWorker = new URL("../testing/fake-api.worker.ts", import.meta.url);
 const workerTest = { timeout: 60_000 };
-const live = { signal: AbortSignal.timeout(30_000) };
+// Each call gets its own 30 s: one signal made at import would bound the whole file.
+const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
 
 const opened: PollWorker[] = [];
 afterEach(async () => {
@@ -26,10 +27,10 @@ describe("the poll worker", () => {
     workerTest,
     async () => {
       const worker = open(fakeBotToken);
-      const first = await worker.fetch(undefined, live);
+      const first = await worker.fetch(undefined, live());
       expect(first.map((polled) => polled.updateId)).toStrictEqual([1, 2]);
       expect(first[0]?.update).toMatchObject({ update_id: 1, message: { text: "one" } });
-      const again = await worker.fetch(2, live);
+      const again = await worker.fetch(2, live());
       expect(again.map((polled) => polled.updateId)).toStrictEqual([2]);
     },
   );
@@ -42,7 +43,7 @@ describe("the poll worker", () => {
     controller.abort(reason);
     await expect(waiting).rejects.toBe(reason);
     await worker.close();
-    await expect(worker.fetch(3, live)).rejects.toMatchObject({ code: "telegram.poller_closed" });
+    await expect(worker.fetch(3, live())).rejects.toMatchObject({ code: "telegram.poller_closed" });
   });
 
   it(
@@ -51,7 +52,7 @@ describe("the poll worker", () => {
     async () => {
       const token = "7012345678:AAE_aDifferentTokenTheFakeRefuses_01234";
       const refused: unknown = await open(token)
-        .fetch(undefined, live)
+        .fetch(undefined, live())
         .catch((error: unknown) => error);
       expect(refused).toMatchObject({ code: "telegram.bad_token", retryable: false });
       expect(JSON.stringify(refused)).not.toContain(token);

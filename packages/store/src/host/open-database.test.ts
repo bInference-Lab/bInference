@@ -50,7 +50,8 @@ async function open(options: Partial<OpenDatabaseOptions> = {}): Promise<Databas
   return handle;
 }
 
-const call = { signal: AbortSignal.timeout(30_000) };
+// Each call gets its own 30 s: one signal made at import would bound the whole file.
+const call = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
 
 // Every worker closes its connection before the folder goes: Windows refuses to delete a file
 // that a connection still holds.
@@ -65,17 +66,17 @@ afterEach(async () => {
 describe("openDatabase", () => {
   it("loses none of 1,000 writes from four writer workers on one file", workerTest, async () => {
     const handles = await Promise.all([0, 1, 2, 3].map(async () => open()));
-    const migrations = await Promise.all(handles.map(async (handle) => handle.migrate(call)));
+    const migrations = await Promise.all(handles.map(async (handle) => handle.migrate(call())));
 
     const counters = await Promise.all(
       handles.flatMap((handle, writer) =>
         Array.from({ length: 250 }, async (_, seq) =>
-          handle.run(recordWrite, { writer, seq }, call),
+          handle.run(recordWrite, { writer, seq }, call()),
         ),
       ),
     );
-    const summary = await handles[0]?.run(summarize, null, call);
-    const integrity = await handles[1]?.checkIntegrity(call);
+    const summary = await handles[0]?.run(summarize, null, call());
+    const integrity = await handles[1]?.checkIntegrity(call());
 
     expect(migrations.flatMap((report) => report.applied)).toStrictEqual([
       "0001_meta",
@@ -96,11 +97,11 @@ describe("openDatabase", () => {
     workerTest,
     async () => {
       const handle = await open();
-      await handle.migrate(call);
+      await handle.migrate(call());
 
       const counters = await Promise.all(
         Array.from({ length: 200 }, async (_, seq) =>
-          handle.run(recordWrite, { writer: 0, seq }, call),
+          handle.run(recordWrite, { writer: 0, seq }, call()),
         ),
       );
 
@@ -123,14 +124,14 @@ describe("openDatabase", () => {
 
   it("serves reads, integrity checks and VACUUM INTO on a reader", workerTest, async () => {
     const handle = await open({ readers: 2 });
-    await handle.migrate(call);
-    await handle.run(recordWrite, { writer: 0, seq: 0 }, call);
+    await handle.migrate(call());
+    await handle.run(recordWrite, { writer: 0, seq: 0 }, call());
     const target = databaseFile("copy.sqlite");
 
-    const summary = await handle.run(summarize, null, call);
-    const integrity = await handle.checkIntegrity(call);
-    const copy = await handle.vacuumInto(target, call);
-    const again = await handle.vacuumInto(target, call);
+    const summary = await handle.run(summarize, null, call());
+    const integrity = await handle.checkIntegrity(call());
+    const copy = await handle.vacuumInto(target, call());
+    const again = await handle.vacuumInto(target, call());
 
     expect(handle).toMatchObject({ name: "probe", schemaVersion: 0, latestVersion: 2 });
     expect(summary).toMatchObject({ rows: 1, counter: 1 });
@@ -142,12 +143,15 @@ describe("openDatabase", () => {
 
   it("rolls back a write task that fails and rejects with its error", workerTest, async () => {
     const handle = await open();
-    await handle.migrate(call);
+    await handle.migrate(call());
 
-    await expect(handle.run(failAfterWrite, { writer: 0, seq: 0 }, call)).rejects.toMatchObject({
+    await expect(handle.run(failAfterWrite, { writer: 0, seq: 0 }, call())).rejects.toMatchObject({
       code: "probe.failed",
     });
-    await expect(handle.run(summarize, null, call)).resolves.toMatchObject({ rows: 0, counter: 0 });
+    await expect(handle.run(summarize, null, call())).resolves.toMatchObject({
+      rows: 0,
+      counter: 0,
+    });
   });
 
   it("refuses a task its database does not list", workerTest, async () => {
@@ -160,7 +164,7 @@ describe("openDatabase", () => {
       run: () => null,
     });
 
-    await expect(handle.run(stranger, null, call)).rejects.toMatchObject({
+    await expect(handle.run(stranger, null, call())).rejects.toMatchObject({
       code: "store.unknown_task",
     });
   });
@@ -170,14 +174,14 @@ describe("openDatabase", () => {
     workerTest,
     async () => {
       const handle = await open();
-      await handle.migrate(call);
+      await handle.migrate(call());
       const aborted = { signal: AbortSignal.abort() };
 
       await expect(handle.run(summarize, null, aborted)).rejects.toMatchObject({
         code: "store.aborted",
       });
       await handle.close();
-      await expect(handle.run(summarize, null, call)).rejects.toMatchObject({
+      await expect(handle.run(summarize, null, call())).rejects.toMatchObject({
         code: "store.closed",
       });
     },
@@ -200,17 +204,17 @@ describe("openDatabase", () => {
       readers: 1,
     });
 
-    await expect(engine.migrate(call)).resolves.toStrictEqual({
+    await expect(engine.migrate(call())).resolves.toStrictEqual({
       from: 0,
       to: engineMigrations.length,
       applied: engineMigrations.map((migration) => migration.name),
     });
-    await expect(agent.migrate(call)).resolves.toStrictEqual({
+    await expect(agent.migrate(call())).resolves.toStrictEqual({
       from: 0,
       to: agentMigrations.length,
       applied: agentMigrations.map((migration) => migration.name),
     });
     expect([engine.name, agent.name]).toStrictEqual(["engine", "agent"]);
-    await expect(agent.checkIntegrity(call)).resolves.toMatchObject({ ok: true });
+    await expect(agent.checkIntegrity(call())).resolves.toMatchObject({ ok: true });
   });
 });
