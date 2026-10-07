@@ -42,6 +42,12 @@ balance comes from it. `agent/goLive` is the one way an agent goes live, once it
 funds; `agent/goPaper` brakes back. Each switch is journaled and announced on the `config` topic,
 and `isFirstLiveCard` says when a card carries the first-live note.
 
+The auto grant ([decision 0088](../../docs/DECISIONS.md#d0088)), exported as
+`@binference/engine/approval`, is what the signer checks before it signs a step of an intent the
+auto mode authorized: the intent, its terms hash, the approval mode version that authorized it, the
+network fee cap and an expiry. A change of the agent's approval mode ends every grant made before
+it.
+
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
 their events, card versions and confirmations, each move written whole with its ledger entry),
@@ -124,6 +130,8 @@ layout of Koinly's universal import, which tax tools read.
 | `SignedTransaction`, `TransactionRecord` (subpath)               | A step's signed transaction as the queue stores it              |
 | `createSimulationCheck`, `SimulationCheckOptions` (subpath)      | The simulate step: a quote's steps run and checked              |
 | `checkEffects`, `EffectBounds`, `SimulationMismatch` (subpath)   | Checks a simulation and names the first check it fails          |
+| `autoModeGrantOf`, `autoModeTermsHash` (subpath `approval`)      | The auto grant of a stored intent, and the terms it binds       |
+| `AutoModeGrant`, `autoModeGrantSchema`, `checkAutoModeGrant`     | What the signer checks for an auto trade, and its check         |
 | `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
 | `ModelBilling`, `ModelCharge`                                    | Pays for model calls and says what an agent may still spend     |
 | `MarketData`, `BlockReading`, `PriceReading`                     | The blocks and prices the watchers stream                       |

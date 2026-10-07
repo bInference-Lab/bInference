@@ -28,10 +28,15 @@
       "@binference/source": "./src/simulation.ts",
       "types": "./dist/simulation.d.mts",
       "default": "./dist/simulation.mjs"
+    },
+    "./approval": {
+      "@binference/source": "./src/approval.ts",
+      "types": "./dist/approval.d.mts",
+      "default": "./dist/approval.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/approval.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

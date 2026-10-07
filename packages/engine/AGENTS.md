@@ -81,6 +81,10 @@ Rules for this package:
 - `agent/goLive` is the only operation that switches an agent to live, and only once its default
   wallet holds funds; `agent/goPaper` brakes. Intents keep the mode they were proposed in. Each
   switch is journaled and pushed as `config/changed`.
+- The auto grant (`src/approval/`, exported as `@binference/engine/approval`) holds for one intent,
+  its terms hash and the approval mode version that authorized it, up to the network fee cap, until
+  its expiry; a change to its shape changes its schema, its check and the signer's hard rule 5
+  together.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

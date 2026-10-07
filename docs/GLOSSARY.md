@@ -64,6 +64,10 @@ new name here first, in the change that uses it.
 - **approval mode**: per agent, **manual** (every transaction outside an auto order needs a tap; the
   default) or **auto** (buys, sells, swaps and moves inside the agent's own positions run within the
   caps without a tap).
+- **auto grant**: what the signer checks before it signs a step of an intent the auto mode
+  authorized: the intent, its terms hash, the approval mode version that authorized it, the network
+  fee cap and when it expires. A switch of the approval mode ends every grant made under the old
+  version.
 - **limits**: the per-agent caps and lists the engine checks under the ceiling.
 - **ceiling**: each wallet's Privy policy, the hard limit behind the limits. Only the owner key
   raises it.
