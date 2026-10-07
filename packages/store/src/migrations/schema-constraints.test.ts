@@ -127,6 +127,25 @@ describe("the engine database's constraints", () => {
     expect(() => send("tx_3", "dropped")).not.toThrow();
   });
 
+  it("keeps each relay's answer once per send, with a reason exactly when it refused", () => {
+    const database = engine();
+    plantIntent(database, "int_1");
+    run(
+      database,
+      "INSERT INTO txs (id, intent_id, step, chain, account, nonce, state) VALUES ('tx_1', 'int_1', 0, 'fake:1', 'fake:1:0xabc', 7, 'signed')",
+    );
+    const answer = (row: readonly (string | number | null)[]): void =>
+      run(database, "INSERT INTO tx_sends VALUES ('tx_1', 0, ?, ?, ?, ?, ?, 1)", ...row);
+    answer([0, "club48", "refused", "gas_quota", 4802]);
+    answer([1, "blockrazor", "accepted", null, null]);
+    expect(() => answer([2, "club48", "accepted", null, null])).toThrow(/UNIQUE/);
+    expect(() => answer([2, "relay-c", "refused", null, -32_000])).toThrow(/CHECK/);
+    expect(() => answer([2, "relay-c", "accepted", "rejected", null])).toThrow(/CHECK/);
+    expect(() => answer([2, "relay-c", "timed_out", null, 504])).toThrow(/CHECK/);
+    expect(() => answer([2, "relay-c", "refused", "too_slow", null])).toThrow(/CHECK/);
+    expect(() => answer([2, "relay-c", "lost", null, null])).toThrow(/CHECK/);
+  });
+
   it("refuses a confirmation of a card version the intent never had", () => {
     const database = engine();
     plantIntent(database, "int_1");

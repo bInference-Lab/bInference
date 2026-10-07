@@ -1,4 +1,11 @@
-import { type AccountRef, accountRefSchema, isTxHash, type TxHash } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  isTxHash,
+  relayNameSchema,
+  type TxHash,
+  type TxReceipt,
+} from "@binference/chain";
 import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
 import { epochMsSchema, pageLimitSchema } from "../records/record-fields.js";
@@ -50,15 +57,42 @@ const signedShape = {
 /** Parses a signed transaction. */
 export const signedTransactionSchema: z.ZodType<SignedTransaction> = z.strictObject(signedShape);
 
-/** A stored transaction and its state. */
+/** A stored transaction, its state, and what its sends and blocks recorded. */
 export interface TransactionRecord extends SignedTransaction {
   readonly state: TransactionState;
+  /** The relays it was sent to, from its first send on: a later send goes to the same ones. */
+  readonly relays?: readonly string[];
+  /** When a relay first accepted it. */
+  readonly sentAtMs?: number;
+  /** Its receipt, while a block holds it: in `included`, `final` and `reverted`. */
+  readonly receipt?: TxReceipt;
+  /** When its receipt was recorded. */
+  readonly includedAtMs?: number;
+  /** When its block was recorded as final. */
+  readonly finalAtMs?: number;
 }
+
+/** Parses a receipt as stored values carry it, numbers as bigints. */
+export const storedReceiptSchema: z.ZodType<TxReceipt> = z.strictObject({
+  hash: z.string().refine(isTxHash),
+  block: z.strictObject({
+    number: z.bigint().nonnegative(),
+    hash: z.string().regex(/^[-.%a-zA-Z0-9]{1,128}$/),
+  }),
+  status: z.enum(["success", "reverted"]),
+  gasUsed: z.bigint().nonnegative(),
+  feePerGasBase: z.bigint().nonnegative(),
+});
 
 /** Parses a stored transaction. */
 export const transactionRecordSchema: z.ZodType<TransactionRecord> = z.strictObject({
   ...signedShape,
   state: z.enum(transactionStates),
+  relays: z.array(relayNameSchema).min(1).exactOptional(),
+  sentAtMs: epochMsSchema.exactOptional(),
+  receipt: storedReceiptSchema.exactOptional(),
+  includedAtMs: epochMsSchema.exactOptional(),
+  finalAtMs: epochMsSchema.exactOptional(),
 });
 
 /** One account's transactions from nonce `fromNonce` up, at most `limit`, by nonce. */

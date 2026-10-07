@@ -59,6 +59,7 @@ function scheduled(
   const wait = async (label: string) => scheduler.schedule(Promise.resolve(), label);
   return {
     transactions: {
+      ...store,
       nextNonce: async (request, options) => {
         await wait("next nonce");
         return store.nextNonce(request, options);
@@ -67,7 +68,6 @@ function scheduled(
         await wait("save");
         return store.saveSigned(transaction, options);
       },
-      list: async (query, options) => store.list(query, options),
     },
     nonces: {
       next: async (account, options) => {

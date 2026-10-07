@@ -148,7 +148,7 @@ layout of Koinly's universal import, which tax tools read.
 | `Executor`                                                       | Takes each confirmed live intent onto its wallet's queue        |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
-| `TransactionStore`                                               | Each wallet's signed transactions and the nonces they hold      |
+| `TransactionStore`                                               | Each wallet's transactions, their nonces, sends and blocks      |
 | `createWalletQueue`, `WalletQueue`, `WalletSlot` (subpath)       | One queue per account that owns its nonces                      |
 | `lowestFreeNonce`, `isNonceFree`, `NonceGrant` (subpath)         | The rule the queue gives nonces by, and what it gives           |
 | `SignedTransaction`, `TransactionRecord` (subpath)               | A step's signed transaction as the queue stores it              |

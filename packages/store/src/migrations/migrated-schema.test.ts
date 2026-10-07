@@ -116,6 +116,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
     "id intent_id step chain account nonce state raw hash gas_price relays supersedes " +
       "block_number receipt signed_at sent_at included_at final_at",
   ),
+  tx_sends: names("tx_id attempt place relay outcome reason code at"),
   executions: names(
     "id intent_id wallet_id asset_in amount_in asset_out amount_out price_usd_micros " +
       "fee_usd_micros gas_usd_micros paper at",
@@ -165,6 +166,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   send_levels: ["agent_id"],
   ceilings: ["wallet_id"],
   nonces: ["account"],
+  tx_sends: ["tx_id", "attempt", "place"],
   identities: ["agent_id"],
   card_messages: ["card_id", "surface", "message_id"],
   positions: ["wallet_id", "asset", "paper"],
@@ -186,6 +188,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   cards: ["unique|callback_ref", "unique|intent_id,version"],
   confirmations: ["unique|intent_id"],
   txs: ["index|hash", "index|intent_id,step", "unique|account,nonce|partial"],
+  tx_sends: ["unique|tx_id,attempt,relay"],
   executions: ["index|wallet_id,at"],
   orders: ["index|state,agent_id"],
   order_fills: ["index|order_id,at"],

@@ -8,6 +8,7 @@ import { migration as ledger } from "./0006_ledger.js";
 import { migration as marketData } from "./0007_market_data.js";
 import { migration as surfacesAndDelivery } from "./0008_surfaces_and_delivery.js";
 import { migration as accessAndOperations } from "./0009_access_and_operations.js";
+import { migration as transactionSends } from "./0010_transaction_sends.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -20,4 +21,5 @@ export const engineMigrations: readonly Migration[] = [
   marketData,
   surfacesAndDelivery,
   accessAndOperations,
+  transactionSends,
 ];

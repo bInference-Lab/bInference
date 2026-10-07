@@ -9,9 +9,22 @@ export { nonceGrantSchema, nonceRequestSchema } from "./wallet-queue/nonce-grant
 export type { NonceGrant, NonceRequest } from "./wallet-queue/nonce-grant.js";
 export {
   signedTransactionSchema,
+  storedReceiptSchema,
   transactionQuerySchema,
   transactionRecordSchema,
 } from "./wallet-queue/transaction-record.js";
+export {
+  progressedState,
+  transactionInclusionSchema,
+  transactionMarkSchema,
+  transactionSendSchema,
+} from "./wallet-queue/transaction-progress.js";
+export type {
+  TransactionInclusion,
+  TransactionMark,
+  TransactionProgress,
+  TransactionSend,
+} from "./wallet-queue/transaction-progress.js";
 export type {
   SignedTransaction,
   TransactionQuery,

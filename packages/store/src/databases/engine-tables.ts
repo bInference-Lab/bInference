@@ -190,6 +190,18 @@ export interface TxsTable {
   final_at: number | null;
 }
 
+/** `tx_sends`: one row per relay per send of a transaction, in the relays' order. */
+interface TxSendsTable {
+  tx_id: string;
+  attempt: number;
+  place: number;
+  relay: string;
+  outcome: string;
+  reason: string | null;
+  code: number | null;
+  at: number;
+}
+
 /** `nonces`: per account, one past the highest nonce the wallet queue gave. */
 interface NoncesTable {
   account: string;
@@ -294,5 +306,6 @@ export interface EngineTables {
   pair_codes: PairCodesTable;
   config_journal: ConfigJournalTable;
   txs: TxsTable;
+  tx_sends: TxSendsTable;
   nonces: NoncesTable;
 }

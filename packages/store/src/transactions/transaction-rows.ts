@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { accountRefParts } from "@binference/chain";
+import { accountRefParts, txReceiptSchema } from "@binference/chain";
 import {
   type AccountNonces,
   holdingStates,
@@ -9,8 +9,12 @@ import {
   transactionRecordSchema,
 } from "@binference/engine/wallet-queue";
 import type { Insertable, Selectable } from "kysely";
+import { z } from "zod";
 import type { EngineTables, TxsTable } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { field, readJson } from "../rows/column-values.js";
+
+const relaysSchema = z.array(z.string());
 
 /** Reads one `txs` row of a signed transaction as its record. */
 export function toTransactionRecord(row: Selectable<TxsTable>): TransactionRecord {
@@ -24,6 +28,11 @@ export function toTransactionRecord(row: Selectable<TxsTable>): TransactionRecor
     hash: row.hash,
     signedAtMs: row.signed_at,
     state: row.state,
+    ...field("relays", row.relays === null ? null : relaysSchema.parse(readJson(row.relays))),
+    ...field("sentAtMs", row.sent_at),
+    ...field("receipt", row.receipt === null ? null : txReceiptSchema.parse(readJson(row.receipt))),
+    ...field("includedAtMs", row.included_at),
+    ...field("finalAtMs", row.final_at),
   });
 }
 

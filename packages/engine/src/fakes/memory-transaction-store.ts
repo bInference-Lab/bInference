@@ -1,4 +1,4 @@
-import type { AccountRef } from "@binference/chain";
+import type { AccountRef, RelayAnswer } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { TransactionStore } from "../ports.js";
 import {
@@ -9,8 +9,16 @@ import {
   lowestFreeNonce,
 } from "../wallet-queue/lowest-free-nonce.js";
 import type { NonceGrant, NonceRequest } from "../wallet-queue/nonce-grant.js";
+import {
+  progressedState,
+  type TransactionInclusion,
+  type TransactionMark,
+  type TransactionProgress,
+  type TransactionSend,
+} from "../wallet-queue/transaction-progress.js";
 import type {
   SignedTransaction,
+  TransactionQuery,
   TransactionRecord,
   TransactionState,
 } from "../wallet-queue/transaction-record.js";
@@ -44,50 +52,158 @@ function heldNonces(
   };
 }
 
+/** The rows of a memory transaction store, and the only ways to change them. */
+interface MemoryRows {
+  /** Every stored transaction, in the order stored. */
+  readonly all: () => readonly TransactionRecord[];
+  readonly add: (record: TransactionRecord) => void;
+  /** Replaces the stored transaction with the record's id. */
+  readonly replace: (record: TransactionRecord) => void;
+  readonly answersOf: (id: Id<"tx">) => readonly RelayAnswer[];
+  readonly addAnswers: (id: Id<"tx">, answers: readonly RelayAnswer[]) => void;
+}
+
+function createRows(): MemoryRows {
+  const transactions: TransactionRecord[] = [];
+  const answers = new Map<Id<"tx">, readonly RelayAnswer[]>();
+  return {
+    all: () => transactions,
+    add(record) {
+      transactions.push(record);
+    },
+    replace(record) {
+      const index = transactions.findIndex((transaction) => transaction.id === record.id);
+      transactions.splice(index, 1, record);
+    },
+    answersOf: (id) => answers.get(id) ?? [],
+    addAnswers(id, added) {
+      answers.set(id, [...(answers.get(id) ?? []), ...added]);
+    },
+  };
+}
+
+// Moves one stored transaction as the progress allows, writing the fields the move brings.
+function progress(
+  rows: MemoryRows,
+  id: Id<"tx">,
+  change: {
+    readonly progress: TransactionProgress;
+    /** The record after the move, but for its state. */
+    readonly next: (stored: TransactionRecord) => TransactionRecord;
+  },
+): Result<TransactionRecord, "wrong_state"> {
+  const stored = rows.all().find((transaction) => transaction.id === id);
+  if (stored === undefined) {
+    throw constraintFault(`no transaction has the id ${id}`);
+  }
+  const state = progressedState(stored.state, change.progress);
+  if (state === undefined) {
+    return err("wrong_state");
+  }
+  const moved: TransactionRecord = { ...change.next(stored), state };
+  rows.replace(moved);
+  return ok(structuredClone(moved));
+}
+
+function recordSend(rows: MemoryRows, send: TransactionSend) {
+  const accepted = send.answers.find((answer) => answer.outcome === "accepted");
+  const moved = progress(rows, send.id, {
+    progress: { kind: "send", accepted: accepted !== undefined },
+    next: (stored) => ({
+      ...stored,
+      relays: stored.relays ?? send.answers.map(({ relay }) => relay),
+      ...(stored.sentAtMs === undefined && accepted !== undefined
+        ? { sentAtMs: accepted.atMs }
+        : {}),
+    }),
+  });
+  if (moved.ok) {
+    rows.addAnswers(send.id, send.answers);
+  }
+  return moved;
+}
+
+function recordReceipt(rows: MemoryRows, inclusion: TransactionInclusion) {
+  const { receipt, atMs } = inclusion;
+  return progress(rows, inclusion.id, {
+    progress: { kind: "receipt", status: receipt.status },
+    next: (stored) => ({ ...stored, receipt, includedAtMs: atMs }),
+  });
+}
+
+function recordReorg(rows: MemoryRows, mark: TransactionMark) {
+  return progress(rows, mark.id, {
+    progress: { kind: "reorg" },
+    next: ({ receipt: _receipt, includedAtMs: _includedAtMs, ...kept }) => kept,
+  });
+}
+
+function nextNonceOf(
+  rows: MemoryRows,
+  given: Map<AccountRef, number>,
+  request: NonceRequest,
+): NonceGrant {
+  const before = given.get(request.account) ?? 0;
+  const nonces = { ...heldNonces(rows.all(), request.account), given: before };
+  const grant = lowestFreeNonce(request.chainNonce, nonces);
+  given.set(request.account, Math.max(before, grant.nonce + 1));
+  return grant;
+}
+
+function saveSigned(
+  rows: MemoryRows,
+  transaction: SignedTransaction,
+): Result<TransactionRecord, "nonce_taken"> {
+  if (!isNonceFree(transaction.nonce, heldNonces(rows.all(), transaction.account))) {
+    return err("nonce_taken");
+  }
+  if (rows.all().some((stored) => stored.id === transaction.id)) {
+    throw constraintFault(`the transaction id ${transaction.id} is in use`);
+  }
+  const record: TransactionRecord = { ...structuredClone(transaction), state: "signed" };
+  rows.add(record);
+  return ok(structuredClone(record));
+}
+
+function listOf(rows: MemoryRows, query: TransactionQuery): readonly TransactionRecord[] {
+  return structuredClone(
+    rows
+      .all()
+      .filter(({ account, nonce }) => account === query.account && nonce >= query.fromNonce)
+      .toSorted((left, right) => left.nonce - right.nonce || compareIds(left.id, right.id))
+      .slice(0, query.limit),
+  );
+}
+
 /**
  * Creates an empty {@link MemoryTransactionStore}. It keeps every row until it is dropped, checks a
  * whole write before it changes anything, and gives nonces by the same rule as the SQLite store.
  */
 export function createMemoryTransactionStore(): MemoryTransactionStore {
-  const transactions: TransactionRecord[] = [];
+  const rows = createRows();
   const given = new Map<AccountRef, number>();
-  const nextNonce = (request: NonceRequest): NonceGrant => {
-    const before = given.get(request.account) ?? 0;
-    const nonces = { ...heldNonces(transactions, request.account), given: before };
-    const grant = lowestFreeNonce(request.chainNonce, nonces);
-    given.set(request.account, Math.max(before, grant.nonce + 1));
-    return grant;
-  };
-  const saveSigned = (transaction: SignedTransaction): Result<TransactionRecord, "nonce_taken"> => {
-    if (!isNonceFree(transaction.nonce, heldNonces(transactions, transaction.account))) {
-      return err("nonce_taken");
-    }
-    if (transactions.some((stored) => stored.id === transaction.id)) {
-      throw constraintFault(`the transaction id ${transaction.id} is in use`);
-    }
-    const record: TransactionRecord = { ...structuredClone(transaction), state: "signed" };
-    transactions.push(record);
-    return ok(structuredClone(record));
-  };
   return {
-    nextNonce: async (request, call) => memoryCall(call, () => nextNonce(request)),
-    saveSigned: async (transaction, call) => memoryCall(call, () => saveSigned(transaction)),
-    list: async (query, call) =>
+    nextNonce: async (request, call) => memoryCall(call, () => nextNonceOf(rows, given, request)),
+    saveSigned: async (transaction, call) => memoryCall(call, () => saveSigned(rows, transaction)),
+    list: async (query, call) => memoryCall(call, () => listOf(rows, query)),
+    recordSend: async (send, call) => memoryCall(call, () => recordSend(rows, send)),
+    sends: async (id, call) => memoryCall(call, () => structuredClone(rows.answersOf(id))),
+    recordReceipt: async (inclusion, call) =>
+      memoryCall(call, () => recordReceipt(rows, inclusion)),
+    recordFinal: async (mark, call) =>
       memoryCall(call, () =>
-        structuredClone(
-          transactions
-            .filter(({ account, nonce }) => account === query.account && nonce >= query.fromNonce)
-            .toSorted((left, right) => left.nonce - right.nonce || compareIds(left.id, right.id))
-            .slice(0, query.limit),
-        ),
+        progress(rows, mark.id, {
+          progress: { kind: "final" },
+          next: (stored) => ({ ...stored, finalAtMs: mark.atMs }),
+        }),
       ),
+    recordReorg: async (mark, call) => memoryCall(call, () => recordReorg(rows, mark)),
     setState(id, state) {
-      const index = transactions.findIndex((transaction) => transaction.id === id);
-      const stored = transactions[index];
+      const stored = rows.all().find((transaction) => transaction.id === id);
       if (stored === undefined) {
         throw constraintFault(`no transaction has the id ${id}`);
       }
-      transactions[index] = { ...stored, state };
+      rows.replace({ ...stored, state });
     },
   };
 }

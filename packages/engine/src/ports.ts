@@ -1,4 +1,4 @@
-import type { AssetRef, ChainRef, SimulationOptions } from "@binference/chain";
+import type { AssetRef, ChainRef, RelayAnswer, SimulationOptions } from "@binference/chain";
 import type { Id, Result } from "@binference/core";
 import type { SimulationView } from "@binference/protocol";
 import type { DeviceRecord } from "./access/device-record.js";
@@ -43,6 +43,11 @@ import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
 import type { NonceGrant, NonceRequest } from "./wallet-queue/nonce-grant.js";
+import type {
+  TransactionInclusion,
+  TransactionMark,
+  TransactionSend,
+} from "./wallet-queue/transaction-progress.js";
 import type {
   SignedTransaction,
   TransactionQuery,
@@ -231,6 +236,35 @@ export interface TransactionStore {
   ): Promise<Result<TransactionRecord, "nonce_taken">>;
   /** One account's transactions from a nonce up, by nonce, then by id. */
   list(query: TransactionQuery, options: StoreCall): Promise<readonly TransactionRecord[]>;
+  /**
+   * Stores each relay's answer to one send of a stored transaction, and moves a `signed` one to
+   * `sent` once a relay accepted it; its first send names its relays. A transaction no send may
+   * go for (see `progressedState`) is `wrong_state` and stores nothing.
+   */
+  recordSend(
+    send: TransactionSend,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  /** Every relay answer stored for a transaction, send by send, each in its relays' order. */
+  sends(id: Id<"tx">, options: StoreCall): Promise<readonly RelayAnswer[]>;
+  /** Stores a transaction's receipt: `included`, or `reverted` for status 0. */
+  recordReceipt(
+    inclusion: TransactionInclusion,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  /** Marks an `included` transaction `final` once its block is. */
+  recordFinal(
+    mark: TransactionMark,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  /**
+   * Moves an included or reverted transaction back to `sent` once a reorg took its block, and
+   * forgets its receipt. Each record method throws `store.constraint` for an unknown id.
+   */
+  recordReorg(
+    mark: TransactionMark,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "wrong_state">>;
 }
 
 /** Keeps each write's result under its idempotency key (protocol spec, section 5). */

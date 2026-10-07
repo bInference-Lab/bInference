@@ -50,7 +50,7 @@ on worker threads, so no query blocks the main thread:
 | `createSqliteAgentStore`       | Agents with their limits and approval modes                          |
 | `createSqliteInstallStore`     | The install id, its custody, the rescue address and init's wallets   |
 | `createSqliteConfigJournal`    | The config journal                                                   |
-| `createSqliteTransactionStore` | Each wallet's signed transactions and the nonces the queue gave      |
+| `createSqliteTransactionStore` | Each wallet's transactions, their nonces, relay answers and blocks   |
 | `StoreHost`                    | What an adapter sends its tasks to: a `DatabaseHandle`               |
 
 Error codes start with `store.`: `store.newer_schema` when the file is newer than the build,
