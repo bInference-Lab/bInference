@@ -29,6 +29,7 @@ import {
   createFakeWalletFacts,
   createMemoryEngineStores,
   createMemoryPositionStore,
+  type MemoryEngineStores,
   createQuoteSimulator,
   type FakeExecutor,
   testAgent,
@@ -37,6 +38,7 @@ import {
   testNowMs,
   testWallet,
 } from "@binference/engine/testing";
+import type { WalletRecord } from "@binference/engine/wallets";
 import { type ClientKind, operations } from "@binference/protocol";
 import { WebSocket } from "ws";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
@@ -54,6 +56,18 @@ const account: AccountRef = accountRefSchema.parse("fake:1:0x0000000c");
 // $600 a coin: 600 dollars in micro-dollars for 10^18 base units.
 const coinPrice = { numerator: 600_000_000n, denominator: 10n ** 18n };
 const wallets = new Map([[testWallet, account]]);
+// The test agent's one wallet, as setting up an install stores it.
+const walletRecord: WalletRecord = {
+  id: testWallet,
+  agentId: testAgent,
+  label: "Main",
+  createdAtMs: testNowMs - 1_000,
+};
+
+function withTestWallet<Stores extends MemoryEngineStores>(stores: Stores): Stores {
+  stores.wallets.add(walletRecord);
+  return stores;
+}
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 
 /** A composition the skeleton runs on: its name and how its profile parts are made. */
@@ -69,7 +83,7 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
     name: "self-hosted",
     parts: () => ({
       custody: createFakeSigner(wallets),
-      stores: createMemoryEngineStores(),
+      stores: withTestWallet(createMemoryEngineStores()),
       prices: createFakePriceSource(new Map([[testCoin, coinPrice]])),
     }),
   },
@@ -77,6 +91,7 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
     name: "Cloud-shaped",
     parts: () => {
       const root = composeCloudTestRoot({ wallets });
+      withTestWallet(root.stores);
       root.prices.publishPrice({ asset: testCoin, price: coinPrice, atMs: testNowMs });
       return root;
     },

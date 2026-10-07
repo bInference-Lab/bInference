@@ -136,7 +136,7 @@ describe("binference start, status, health and logs end to end", () => {
     },
   );
 
-  it("asks for an agent when a command acts on one and the engine has none", slow, async () => {
+  it("asks for an agent when a command acts on one, and lists no wallet yet", slow, async () => {
     const machine = await newMachine();
     await writeTestConfig(machine.folder);
     const engine = await start(machine);
@@ -148,6 +148,12 @@ describe("binference start, status, health and logs end to end", () => {
     await expect(run(machine, ["approval", "--json"])).resolves.toMatchObject({
       code: 1,
       stdout: '{"error":{"code":"cli.no_agent"}}\n',
+    });
+    // The wallet list reads the SQLite store, which holds no wallet before setup makes one.
+    await expect(run(machine, ["wallet", "list"])).resolves.toStrictEqual({
+      code: 0,
+      stdout: "No agent wallets yet.\n",
+      stderr: "",
     });
     machine.signals.emit("SIGINT", "SIGINT");
     await expect(engine.exit).resolves.toBe(0);

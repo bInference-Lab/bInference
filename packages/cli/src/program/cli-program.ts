@@ -10,6 +10,8 @@ import {
   maxLogLines,
   type StartFlags,
   startFlagsSchema,
+  type WalletAddressFlags,
+  walletAddressFlagsSchema,
 } from "./cli-flags.schema.js";
 import type { CliHost } from "./cli-host.js";
 
@@ -31,7 +33,9 @@ export type ChosenCommand =
       readonly name: "confirm" | "deny";
       readonly options: CommonOptions;
       readonly intent: ProtocolId<"intent">;
-    };
+    }
+  | { readonly name: "walletList"; readonly options: AgentFlags }
+  | { readonly name: "walletAddress"; readonly options: WalletAddressFlags };
 
 /** What the program is built from. */
 export interface ProgramOptions {
@@ -58,7 +62,7 @@ function addSet(value: string, earlier: readonly string[]): readonly string[] {
 }
 
 // An id of the protocol's kind, or a command line commander refuses with one message.
-function idOf<K extends "agent" | "intent">(kind: K) {
+function idOf<K extends "agent" | "intent" | "wallet">(kind: K) {
   return (value: string): ProtocolId<K> => {
     const parsed = protocolIdSchema(kind).safeParse(value);
     if (!parsed.success) {
@@ -106,6 +110,26 @@ function addCardCommands(program: Command, options: ProgramOptions): void {
   }
 }
 
+function addWalletCommands(program: Command, options: ProgramOptions): void {
+  const { message, choose } = options;
+  const wallet = program
+    .command("wallet")
+    .description(message("command.wallet"))
+    .helpOption("-h, --help", message("option.help"))
+    .helpCommand("help [command]", message("option.help"));
+  withCommon(wallet.command("list").description(message("command.walletList")), message)
+    .addOption(agentOption(message))
+    .action((flags: OptionValues) =>
+      choose({ name: "walletList", options: agentFlagsSchema.parse(flags) }),
+    );
+  withCommon(wallet.command("address").description(message("command.walletAddress")), message)
+    .addOption(agentOption(message))
+    .addOption(new Option("--wallet <id>", message("option.wallet")).argParser(idOf("wallet")))
+    .action((flags: OptionValues) =>
+      choose({ name: "walletAddress", options: walletAddressFlagsSchema.parse(flags) }),
+    );
+}
+
 function addCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   withCommon(program.command("start").description(message("command.start")), message)
@@ -126,6 +150,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
     );
   addAgentCommands(program, options);
   addCardCommands(program, options);
+  addWalletCommands(program, options);
 }
 
 /**

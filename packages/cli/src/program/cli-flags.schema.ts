@@ -24,6 +24,12 @@ export interface AgentFlags extends CommonOptions {
   readonly agent?: ProtocolId<"agent">;
 }
 
+/** What `wallet address` takes: the agent, and the wallet `--wallet` names. */
+export interface WalletAddressFlags extends AgentFlags {
+  /** The agent's default wallet when left out. */
+  readonly wallet?: ProtocolId<"wallet">;
+}
+
 /** The most lines `logs --lines` takes. */
 export const maxLogLines = 10_000;
 
@@ -44,6 +50,13 @@ export const startFlagsSchema: z.ZodType<StartFlags> = z
 export const agentFlagsSchema: z.ZodType<AgentFlags> = z.object({
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
+});
+
+/** Parses the options commander read for `wallet address`. */
+export const walletAddressFlagsSchema: z.ZodType<WalletAddressFlags> = z.object({
+  ...commonShape,
+  agent: protocolIdSchema("agent").exactOptional(),
+  wallet: protocolIdSchema("wallet").exactOptional(),
 });
 
 /** Parses the options commander read for `logs`; 100 lines unless `--lines` says otherwise. */
