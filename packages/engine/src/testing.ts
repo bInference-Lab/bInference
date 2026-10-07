@@ -79,6 +79,10 @@ export type {
 } from "./contracts/transaction-store-contract.js";
 export { createMemoryTransactionStore } from "./fakes/memory-transaction-store.js";
 export type { MemoryTransactionStore } from "./fakes/memory-transaction-store.js";
+export { walletStoreContract } from "./contracts/wallet-store-contract.js";
+export type { WalletStoreHarness } from "./contracts/wallet-store-contract.js";
+export { createMemoryWalletStore } from "./fakes/memory-wallet-store.js";
+export type { MemoryWalletStore } from "./fakes/memory-wallet-store.js";
 export { executorContract } from "./contracts/executor-contract.js";
 export type { ExecutorHarness, ExecutorSubject } from "./contracts/executor-contract.js";
 export { createFakeExecutor, type FakeExecutor } from "./fakes/fake-executor.js";

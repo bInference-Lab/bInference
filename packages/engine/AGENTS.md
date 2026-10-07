@@ -33,7 +33,7 @@ Rules for this package:
 - Ports live in `src/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.
 - The store ports in `src/ports.ts` (`IntentStore`, `LedgerStore`, `IdempotencyStore`,
-  `InboxStore`, `AccessStore`, `AgentStore`, `ConfigJournal`) are implemented in
+  `InboxStore`, `AccessStore`, `AgentStore`, `WalletStore`, `ConfigJournal`) are implemented in
   `@binference/store`, which imports this package. Each record they pass has a declared type and a
   zod schema, since it crosses the store worker boundary. A change to a store port changes its
   contract suite, its fake and its SQLite adapter together.

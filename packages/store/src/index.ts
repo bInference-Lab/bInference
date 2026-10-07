@@ -1,5 +1,6 @@
 export { createSqliteAccessStore } from "./access/sqlite-access-store.js";
 export { createSqliteAgentStore } from "./agents/sqlite-agent-store.js";
+export { createSqliteWalletStore } from "./agents/sqlite-wallet-store.js";
 export { createSqliteConfigJournal } from "./audit/sqlite-config-journal.js";
 export { agentWorker } from "./databases/agent-database.js";
 export { engineWorker } from "./databases/engine-database.js";

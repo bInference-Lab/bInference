@@ -21,14 +21,21 @@ import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
 import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
+import { createWalletHandlers, type WalletHandlers } from "./wallet-handlers.js";
 
 /** The operation handlers the engine gives the protocol server, by operation name. */
 export interface EngineHandlers
-  extends IntentHandlers, LedgerHandlers, PortfolioHandlers, AgentModeHandlers, ApprovalHandlers {}
+  extends
+    IntentHandlers,
+    LedgerHandlers,
+    PortfolioHandlers,
+    AgentModeHandlers,
+    ApprovalHandlers,
+    WalletHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
- * switch, the approval mode and the ledger, built from ports. It holds no I/O of its own; pushes
+ * switch, the approval mode, the wallet list and the ledger, built from ports. It holds no I/O of its own; pushes
  * leave through `publish`.
  */
 export interface Engine {
@@ -94,7 +101,7 @@ function paperParts(options: EngineOptions): PaperParts {
 function settingsHandlers(
   options: EngineOptions,
   paper: PaperParts,
-): PortfolioHandlers & AgentModeHandlers {
+): PortfolioHandlers & AgentModeHandlers & WalletHandlers {
   const { stores, chains } = options;
   const portfolio = createPortfolioHandlers({
     agents: stores.agents,
@@ -111,7 +118,13 @@ function settingsHandlers(
     clock: options.clock,
     publish: options.publish,
   });
-  return { ...portfolio, ...modes };
+  const wallets = createWalletHandlers({
+    agents: stores.agents,
+    wallets: stores.wallets,
+    custody: options.custody,
+    chains,
+  });
+  return { ...portfolio, ...modes, ...wallets };
 }
 
 function intentParts(

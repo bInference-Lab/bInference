@@ -7,10 +7,15 @@ import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryIntentStore } from "./memory-intent-store.js";
 import { createMemoryLedgerStore, type MemoryLedgerStore } from "./memory-ledger-store.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
+import { createMemoryWalletStore, type MemoryWalletStore } from "./memory-wallet-store.js";
 
-/** Every engine store port, in memory, over one shared ledger that tests can also append to. */
+/**
+ * Every engine store port, in memory, over one shared ledger that tests can also append to, with
+ * wallets a test adds.
+ */
 export interface MemoryEngineStores extends EngineStores {
   readonly ledger: MemoryLedgerStore;
+  readonly wallets: MemoryWalletStore;
 }
 
 /**
@@ -29,5 +34,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     agents: createMemoryAgentStore(),
     configJournal: createMemoryConfigJournal(),
     transactions: createMemoryTransactionStore(),
+    wallets: createMemoryWalletStore(),
   };
 }

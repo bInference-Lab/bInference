@@ -55,10 +55,16 @@ auto mode authorized: the intent, its terms hash, the mode version that authoriz
 fee cap and an expiry. A trade the auto mode ran has no card, so it gets the `receipt.auto`
 notice when it settles, or the paper fill's receipt on paper.
 
+`wallet/list` lists an agent's wallets, or every agent's, oldest first, so the default wallet comes
+first: each with the owner's label from the `WalletStore` (exported as `@binference/engine/wallets`)
+and its address from custody, the account on the first registered chain where custody holds it.
+A stored wallet custody holds nowhere fails the call with `wallet.custody_down`.
+
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
 their events, card versions and confirmations, each move written whole with its ledger entry),
-`LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore` and `ConfigJournal`.
+`LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore`, `WalletStore` and
+`ConfigJournal`.
 Their records cross the store worker boundary, so each has a zod schema. `@binference/store` holds
 their SQLite adapters; `@binference/engine/testing` holds an in-memory fake and a contract suite for
 each.
@@ -140,6 +146,7 @@ layout of Koinly's universal import, which tax tools read.
 | `AgentModeChange`, `agentModeChangeSchema`                       | An agent's switch between paper and live, under its row version |
 | `Executor`                                                       | Takes each confirmed live intent onto its wallet's queue        |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
+| `WalletStore`, `WalletRecord`, `walletRecordSchema` (subpath)    | The agent wallets with the owner's labels, oldest first         |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
 | `TransactionStore`                                               | Each wallet's signed transactions and the nonces they hold      |
 | `createWalletQueue`, `WalletQueue`, `WalletSlot` (subpath)       | One queue per account that owns its nonces                      |
