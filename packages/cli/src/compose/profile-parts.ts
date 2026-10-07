@@ -1,12 +1,6 @@
-import type { Signer } from "@binference/chain";
+import type { PriceSource, Signer } from "@binference/chain";
 import type { SecretStore } from "@binference/core";
-import type {
-  BotUpdateSource,
-  EngineStores,
-  MarketData,
-  ModelBilling,
-  PriceSource,
-} from "@binference/engine";
+import type { BotUpdateSource, EngineStores, MarketData, ModelBilling } from "@binference/engine";
 
 /**
  * The parts whose adapter depends on the profile (ARCHITECTURE.md section 30). A composition root

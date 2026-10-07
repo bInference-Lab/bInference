@@ -36,3 +36,5 @@ export { nonceSourceContract } from "./contracts/nonce-source-contract.js";
 export type { NonceSourceHarness, NonceSourceSubject } from "./contracts/nonce-source-contract.js";
 export { createFakeNonceSource } from "./fakes/fake-nonce-source.js";
 export type { FakeNonceSource } from "./fakes/fake-nonce-source.js";
+export { priceSourceContract } from "./contracts/price-source-contract.js";
+export type { PriceSourceHarness, PriceSourceSubject } from "./contracts/price-source-contract.js";

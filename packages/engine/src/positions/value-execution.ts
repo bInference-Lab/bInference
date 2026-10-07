@@ -1,5 +1,5 @@
+import type { UsdPrice } from "@binference/chain";
 import { mulDiv } from "@binference/core";
-import type { UsdPrice } from "../ports.js";
 import type { ExecutionDraft } from "./execution-record.js";
 
 /**

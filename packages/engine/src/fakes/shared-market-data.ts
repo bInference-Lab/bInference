@@ -1,7 +1,7 @@
-import type { AssetRef } from "@binference/chain";
+import type { AssetRef, PriceSource } from "@binference/chain";
 import { err, ok } from "@binference/core";
 import type { BlockReading, PriceReading } from "../market/market-reading.js";
-import type { MarketData, PriceSource } from "../ports.js";
+import type { MarketData } from "../ports.js";
 import { createFanOut } from "./fan-out.js";
 
 /**

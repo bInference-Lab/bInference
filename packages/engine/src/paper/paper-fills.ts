@@ -1,10 +1,10 @@
+import type { PriceSource, UsdPrice } from "@binference/chain";
 import { BinferenceError, type Clock } from "@binference/core";
 import type { QuoteView } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
-import type { PriceSource, UsdPrice } from "../ports.js";
 import type { Positions } from "../positions/create-positions.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
 

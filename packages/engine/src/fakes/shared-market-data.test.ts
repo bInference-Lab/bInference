@@ -1,7 +1,7 @@
 import type { AssetRef, ChainRef } from "@binference/chain";
+import { priceSourceContract } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
 import { marketDataContract } from "../contracts/market-data-contract.js";
-import { priceSourceContract } from "../contracts/price-source-contract.js";
 import { createSharedMarketData } from "./shared-market-data.js";
 
 const chain = "fake:1" as ChainRef;

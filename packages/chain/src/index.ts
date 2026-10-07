@@ -25,7 +25,15 @@ export {
 } from "./caip/chain-ref.js";
 export type { ChainRef, ChainRefParts } from "./caip/chain-ref.js";
 export type { DraftCall, TokenApproval } from "./draft-call.js";
-export type { ChainFamily, ChainRegistry, NonceSource, Signer, SigningScheme } from "./ports.js";
+export type {
+  ChainFamily,
+  ChainRegistry,
+  NonceSource,
+  PriceSource,
+  Signer,
+  SigningScheme,
+  UsdPrice,
+} from "./ports.js";
 export { chainDefinitionSchema } from "./registry/chain-definition.js";
 export type {
   AddressVerification,

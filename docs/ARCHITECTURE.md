@@ -1215,8 +1215,8 @@ the Cloud profile. A port with two adapters runs one contract test suite against
   service, the official bot's ingress, billing and the console. The Postgres store adapter is
   public, so self-hosters can use it too.
 - Any change to a port names both adapters in its PR, and both pass its contract suite.
-- The ports: custody `Signer` (`@binference/chain`); Telegram `BotUpdateSource`, models
-  `ModelBilling`, store the store ports, market data `PriceSource` and `MarketData`
+- The ports: custody `Signer` and market data `PriceSource` (`@binference/chain`); Telegram
+  `BotUpdateSource`, models `ModelBilling`, store the store ports, market data `MarketData`
   (`@binference/engine`); secrets `SecretStore` (`@binference/core`). The test composition root
   in `cli/src/compose/` fills them with fakes shaped like the Cloud adapters.
 

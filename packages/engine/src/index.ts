@@ -280,11 +280,9 @@ export type {
   MarketData,
   ModelBilling,
   PositionStore,
-  PriceSource,
   QuoteSource,
   Simulator,
   TransactionStore,
-  UsdPrice,
   WalletFactsSource,
 } from "./ports.js";
 export type { EngineStores } from "./records/engine-stores.js";

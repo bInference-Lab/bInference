@@ -1,6 +1,6 @@
 import type { AssetRef } from "@binference/chain";
+import { priceSourceContract } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
-import { priceSourceContract } from "../contracts/price-source-contract.js";
 import { createFakePriceSource } from "./fake-price-source.js";
 
 const coin = "fake:1/slip44:1" as AssetRef;

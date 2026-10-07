@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import type { AssetRef } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
+import type { AssetRef } from "../caip/asset-ref.js";
 import type { PriceSource } from "../ports.js";
 
 /** A price source under test, an asset it prices and one it cannot price. */

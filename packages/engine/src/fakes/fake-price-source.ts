@@ -1,6 +1,5 @@
-import type { AssetRef } from "@binference/chain";
+import type { AssetRef, PriceSource, UsdPrice } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
-import type { PriceSource, UsdPrice } from "../ports.js";
 
 /** A price source for tests that answers from a fixed table and never touches a chain. */
 export interface FakePriceSource extends PriceSource {

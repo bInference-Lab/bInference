@@ -1,12 +1,6 @@
-import type { Signer } from "@binference/chain";
+import type { PriceSource, Signer } from "@binference/chain";
 import { BinferenceError, err } from "@binference/core";
-import type {
-  Executor,
-  PositionStore,
-  PriceSource,
-  Simulator,
-  WalletFactsSource,
-} from "@binference/engine";
+import type { Executor, PositionStore, Simulator, WalletFactsSource } from "@binference/engine";
 
 /** A part the self-hosted root cannot fill yet; `status` shows each one as a failed signal. */
 type MissingPart = "custody" | "prices" | "wallets" | "simulator" | "executor" | "positions";

@@ -1,6 +1,6 @@
-import type { Amount } from "@binference/chain";
+import type { Amount, PriceSource } from "@binference/chain";
 import { err, type Id, mulDiv, type Result } from "@binference/core";
-import type { PositionStore, PriceSource } from "../ports.js";
+import type { PositionStore } from "../ports.js";
 import { applyArrival } from "./apply-arrival.js";
 import { applyExecution } from "./apply-execution.js";
 import type { ArrivalDraft, ArrivalRecord } from "./arrival-record.js";

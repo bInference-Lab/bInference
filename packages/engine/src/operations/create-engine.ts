@@ -1,4 +1,4 @@
-import type { Amount, ChainRegistry, Signer } from "@binference/chain";
+import type { Amount, ChainRegistry, PriceSource, Signer } from "@binference/chain";
 import type { Clock, IdSource } from "@binference/core";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
@@ -9,13 +9,7 @@ import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfolio.js";
 import { withPaperBalances } from "../paper/paper-wallet-facts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
-import type {
-  Executor,
-  PositionStore,
-  PriceSource,
-  Simulator,
-  WalletFactsSource,
-} from "../ports.js";
+import type { Executor, PositionStore, Simulator, WalletFactsSource } from "../ports.js";
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";

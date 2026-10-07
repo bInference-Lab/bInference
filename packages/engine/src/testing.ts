@@ -12,8 +12,6 @@ export { marketDataContract } from "./contracts/market-data-contract.js";
 export type { MarketDataHarness, MarketDataSubject } from "./contracts/market-data-contract.js";
 export { modelBillingContract } from "./contracts/model-billing-contract.js";
 export type { ModelBillingHarness } from "./contracts/model-billing-contract.js";
-export { priceSourceContract } from "./contracts/price-source-contract.js";
-export type { PriceSourceHarness, PriceSourceSubject } from "./contracts/price-source-contract.js";
 export { quoteSourceContract } from "./contracts/quote-source-contract.js";
 export type { QuoteSourceHarness, QuoteSourceSubject } from "./contracts/quote-source-contract.js";
 export { simulatorContract } from "./contracts/simulator-contract.js";

@@ -1,9 +1,9 @@
-import { type AssetRef, assetRefSchema } from "@binference/chain";
+import { type AssetRef, assetRefSchema, type UsdPrice } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { fixtureId, inOrder, live } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
-import type { PositionStore, UsdPrice } from "../ports.js";
+import type { PositionStore } from "../ports.js";
 import type { ArrivalDraft } from "./arrival-record.js";
 import { createPositions, type ValuedPosition } from "./create-positions.js";
 import type { ExecutedTrade } from "./value-execution.js";

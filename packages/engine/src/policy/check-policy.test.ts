@@ -1,9 +1,8 @@
-import type { AccountRef, AssetRef } from "@binference/chain";
+import type { AccountRef, AssetRef, UsdPrice } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
-import type { UsdPrice } from "../ports.js";
 import { createPolicyCheck, type PolicyVerdict } from "./check-policy.js";
 import type { PolicyFacts, PolicySubject } from "./policy-rules.js";
 

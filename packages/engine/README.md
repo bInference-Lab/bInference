@@ -9,9 +9,9 @@ Today it holds the intent state machine of [spec 6](../../docs/specs/intent-stat
 states, the transition table with its guards, the triggers that move an intent, the events that
 record each move, the closed lists of reason codes and the auto-mode test. It also holds the policy
 step of the money path, which checks each intent against the owner's limits and names every rule
-it breaks, and the `PriceSource` port it prices outflows through. The venue host runs the quote
-and build step: it asks a venue for a quote, sets the trade's terms, and checks every transaction
-the venue builds against them.
+it breaks, pricing outflows through `@binference/chain`'s `PriceSource` port. The venue host runs
+the quote and build step: it asks a venue for a quote, sets the trade's terms, and checks every
+transaction the venue builds against them.
 
 It also holds the confirmation step: the card of [spec 4](../../docs/specs/cards-and-messages.md)
 as data (each line a message key with typed values, which every surface renders in the owner's
@@ -82,7 +82,6 @@ layout of Koinly's universal import, which tax tools read.
 | `needsLedgerEntry`                                               | Whether a transition into a state writes a ledger entry         |
 | `createPolicyCheck`                                              | The policy step: passes an intent or names every rule it breaks |
 | `PolicySubject`, `PolicyFacts`, `PolicyLimits`, `PolicyVerdict`  | What the policy reads and what it answers                       |
-| `PriceSource`, `UsdPrice`                                        | The port that prices an asset in micro-dollars per base unit    |
 | `createConfirmations`, `Confirmations`                           | Applies the owner's answers and the card timer, first one wins  |
 | `CardAnswer`, `AnswerResult`, `ExpiryResult`                     | An answer from a surface, and what became of it                 |
 | `ConfirmationStore`, `QuoteSource`, `Simulator`                  | The ports the confirmations write, re-quote and simulate with   |

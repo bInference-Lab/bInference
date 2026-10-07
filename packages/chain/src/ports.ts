@@ -1,5 +1,6 @@
-import type { Id, Result } from "@binference/core";
+import type { Id, Ratio, Result } from "@binference/core";
 import type { AccountRef } from "./caip/account-ref.js";
+import type { AssetRef } from "./caip/asset-ref.js";
 import type { ChainRef } from "./caip/chain-ref.js";
 import type { DraftCall } from "./draft-call.js";
 import type { RegisteredChain } from "./registry/registered-chain.js";
@@ -85,4 +86,25 @@ export interface NonceSource {
    * when no node answers, and with the signal's reason once the signal aborts.
    */
   next(account: AccountRef, options: { readonly signal: AbortSignal }): Promise<number>;
+}
+
+/**
+ * A USD price as micro-dollars per base unit of one asset: `numerator` micro-dollars buy
+ * `denominator` base units. A ratio stays exact for a token worth less than a micro-dollar a unit.
+ */
+export type UsdPrice = Ratio;
+
+/**
+ * Gives the USD price of an asset now (decision 0059): a feed for the native coin and stablecoins,
+ * the trade's own quote for other tokens. A price is above zero, with a denominator above zero. An
+ * asset it cannot price, or a price too old to trust, is `no_price`, never a throw, so the policy
+ * refuses the trade. Adapters: Chainlink feeds read over the chain's RPC in `@binference/chain-evm`,
+ * and a market-data service's latest reading.
+ */
+export interface PriceSource {
+  /** The price of one asset. Rejects with the signal's reason once the signal aborts. */
+  usdPrice(
+    asset: AssetRef,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<UsdPrice, "no_price">>;
 }

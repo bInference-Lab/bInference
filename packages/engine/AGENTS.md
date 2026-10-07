@@ -37,8 +37,9 @@ Rules for this package:
   `@binference/store`, which imports this package. Each record they pass has a declared type and a
   zod schema, since it crosses the store worker boundary. A change to a store port changes its
   contract suite, its fake and its SQLite adapter together.
-- `BotUpdateSource`, `ModelBilling`, `MarketData` and `PriceSource` are profile parts
-  (ARCHITECTURE.md section 30): each TSDoc names its adapters, and each fake in
+- `BotUpdateSource`, `ModelBilling`, `MarketData` and `PriceSource` (a port of `@binference/chain`,
+  which the chain families implement) are profile parts (ARCHITECTURE.md section 30): each TSDoc
+  names its adapters, and each fake in
   `@binference/engine/testing` is shaped like the hosted adapter (a webhook relay, prepaid credit, a
   shared market-data service). Nothing here names or reads a profile; `guards/no-profile-mention`
   fails code that does.
