@@ -49,6 +49,10 @@ Rules for this package:
   the next. Values at the time round up, values now round down, the cost a sale takes rounds up and
   the last unit takes all that is left. A change to a rounding rule changes its unit test and its
   case in `*.property.test.ts`.
+- Funds that arrive without a trade (a deposit, the paper starting balance) are an arrival: priced
+  through `PriceSource` when they arrive, they open a position at that value. With no usable price
+  the arrival is stored without a value and opens no position, and a sale of units no position
+  holds counts no gain or loss.
 - `PositionStore` has its fake and contract suite; its SQLite adapter comes with the first step
   that stores executions.
 - The ledger chain check (`src/ledger/`) reads entries and never writes.

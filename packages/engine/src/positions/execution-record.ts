@@ -6,7 +6,7 @@ import type { RowPage } from "../records/row-page.js";
 
 /**
  * One trade as it settled on chain, or as it filled on paper, valued in USD at the time. Positions
- * and the CSV export are built from executions alone.
+ * are built from executions and arrivals, and the CSV export from executions alone.
  */
 export interface ExecutionDraft {
   readonly intentId: Id<"int">;
@@ -61,8 +61,8 @@ export const executionRecordSchema: z.ZodType<ExecutionRecord> = z.strictObject(
 });
 
 /**
- * Which executions to list: paper or live, numbered after `after`, at most `limit`, optionally of
- * one wallet and from `fromMs` up to and including `toMs`.
+ * Which executions or arrivals to list: paper or live, numbered after `after`, at most `limit`,
+ * optionally of one wallet and from `fromMs` up to and including `toMs`.
  */
 export interface ExecutionQuery extends RowPage {
   readonly isPaper: boolean;

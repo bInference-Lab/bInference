@@ -972,8 +972,9 @@ Decided in decisions [0043](DECISIONS.md#d0043) to [0046](DECISIONS.md#d0046),
   - Other tokens: the trade's own quote into BNB or USDT.
   - No price means the trade is refused. DEX Screener is a cross-check only.
 - **P&L.** Average cost per position; swap fees and gas are part of the cost; realized and
-  unrealized P&L in USD at the time of each fill. `binference ledger export` writes a CSV of every
-  fill for tax tools.
+  unrealized P&L in USD at the time of each fill. Funds that arrive without a trade (a deposit or
+  the paper starting balance) open a position at their USD price when they arrive.
+  `binference ledger export` writes a CSV of every fill for tax tools.
 
 <a id="section-24"></a>
 

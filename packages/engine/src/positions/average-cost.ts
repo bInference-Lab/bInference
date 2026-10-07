@@ -45,8 +45,8 @@ export function acquire(basis: CostBasis, quantityBase: bigint, costUsdMicros: b
  *
  * - The cost that leaves is the position's cost times the share of units sold, rounded up, so a
  *   gain is never overstated; the last unit takes all the cost that is left.
- * - Units beyond what the position holds came from outside its executions, such as a deposit or a
- *   paper starting balance, at a cost binference never saw. They leave at their own proceeds,
+ * - Units beyond what the position holds have a cost binference does not know: funds it never saw
+ *   arrive, or an arrival with no price (see `applyArrival`). They leave at their own proceeds,
  *   with no gain or loss; the proceeds of the units held round down.
  * - Selling no units changes nothing.
  */

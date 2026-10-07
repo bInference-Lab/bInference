@@ -30,6 +30,7 @@ import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
 import type { WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
+import type { ArrivalRecord, ArrivalWrite } from "./positions/arrival-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
 import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
 import type { RowPage } from "./records/row-page.js";
@@ -171,9 +172,9 @@ export interface LedgerStore {
 }
 
 /**
- * Keeps executions and the positions they move (database spec, section 2.3). An execution is
- * stored with its position changes in one transaction, each under the row version it was computed
- * from, so two executions that race on a position cannot both land.
+ * Keeps executions, arrivals and the positions they move (database spec, section 2.3). An
+ * execution or an arrival is stored with its position changes in one transaction, each under the
+ * row version it was computed from, so two changes that race on a position cannot both land.
  */
 export interface PositionStore {
   /** One wallet's positions, paper or live, ordered by asset. */
@@ -186,6 +187,13 @@ export interface PositionStore {
   record(write: ExecutionWrite, options: StoreCall): Promise<Result<ExecutionRecord, "stale">>;
   /** Executions that match the query, in the order recorded. */
   executions(query: ExecutionQuery, options: StoreCall): Promise<readonly ExecutionRecord[]>;
+  /**
+   * Stores an arrival and its position writes under the same rules as `record`, and returns the
+   * arrival with its number. Arrivals are numbered apart from executions.
+   */
+  recordArrival(write: ArrivalWrite, options: StoreCall): Promise<Result<ArrivalRecord, "stale">>;
+  /** Arrivals that match the query, in the order recorded. */
+  arrivals(query: ExecutionQuery, options: StoreCall): Promise<readonly ArrivalRecord[]>;
 }
 
 /** Keeps each write's result under its idempotency key (protocol spec, section 5). */

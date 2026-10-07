@@ -6,8 +6,7 @@ export type {
   TradePlace,
 } from "./confirmations/card-action.js";
 export type { Answerer, CardAnswer, Surface } from "./confirmations/card-answer.js";
-export { receiptLine } from "./confirmations/card-closing.js";
-export type { CardClosing } from "./confirmations/card-closing.js";
+export { receiptLine, type CardClosing } from "./confirmations/card-closing.js";
 export { cardKeys } from "./confirmations/card-line.js";
 export type { CardKey, CardLine, CardValue } from "./confirmations/card-line.js";
 export { createConfirmations } from "./confirmations/create-confirmations.js";
@@ -34,12 +33,10 @@ export type {
   Requote,
   StoredIntent,
 } from "./confirmations/stored-intent.js";
-export { deviceRecordSchema } from "./access/device-record.js";
-export type { DeviceAlg, DeviceRecord } from "./access/device-record.js";
+export { deviceRecordSchema, type DeviceAlg, type DeviceRecord } from "./access/device-record.js";
 export { pairCodeRecordSchema, pairCodeUseSchema } from "./access/pair-code-record.js";
 export type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
-export { tokenRecordSchema } from "./access/token-record.js";
-export type { TokenKind, TokenRecord } from "./access/token-record.js";
+export { tokenRecordSchema, type TokenKind, type TokenRecord } from "./access/token-record.js";
 export {
   agentDraftSchema,
   agentRecordSchema,
@@ -125,10 +122,8 @@ export type {
   IntentEventRecord,
   IntentQuery,
 } from "./intents/intent-change.js";
-export { needsLedgerEntry } from "./intents/intent-event.js";
-export type { IntentEvent } from "./intents/intent-event.js";
-export { intentKinds } from "./intents/intent-kind.js";
-export type { IntentKind } from "./intents/intent-kind.js";
+export { needsLedgerEntry, type IntentEvent } from "./intents/intent-event.js";
+export { intentKinds, type IntentKind } from "./intents/intent-kind.js";
 export {
   checkReasons,
   failureReasons,
@@ -189,8 +184,7 @@ export type {
   ProposalProblem,
 } from "./intents/state-machine.js";
 export type { TransitionProblem } from "./intents/transition-guard.js";
-export { listTransitions } from "./intents/transition-table.js";
-export type { TransitionRule } from "./intents/transition-table.js";
+export { listTransitions, type TransitionRule } from "./intents/transition-table.js";
 export { ledgerDraftSchema, ledgerEntrySchema } from "./ledger/ledger-entry.js";
 export type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 export { chainLedgerEntry, genesisLedgerHash, hashLedgerEntry } from "./ledger/ledger-hash.js";
@@ -201,10 +195,12 @@ export type {
   LedgerChainVerdict,
   LedgerCheckpoint,
 } from "./ledger/check-ledger-chain.js";
-export { walkLedgerChain } from "./ledger/walk-ledger-chain.js";
-export type { LedgerRange } from "./ledger/walk-ledger-chain.js";
+export { walkLedgerChain, type LedgerRange } from "./ledger/walk-ledger-chain.js";
 export { executionsCsv, executionsCsvColumns } from "./ledger/executions-csv.js";
+export { applyArrival } from "./positions/apply-arrival.js";
 export { applyExecution } from "./positions/apply-execution.js";
+export { arrivalRecordSchema, arrivalWriteSchema } from "./positions/arrival-record.js";
+export type { ArrivalDraft, ArrivalRecord, ArrivalWrite } from "./positions/arrival-record.js";
 export { createPositions } from "./positions/create-positions.js";
 export type { Positions, PositionsOptions, ValuedPosition } from "./positions/create-positions.js";
 export {
@@ -232,8 +228,7 @@ export type {
   PositionState,
   PositionWrite,
 } from "./positions/position-record.js";
-export { valueExecution } from "./positions/value-execution.js";
-export type { ExecutedTrade } from "./positions/value-execution.js";
+export { valueExecution, type ExecutedTrade } from "./positions/value-execution.js";
 export { createPolicyCheck } from "./policy/check-policy.js";
 export type {
   PolicyCheck,
@@ -285,12 +280,9 @@ export type {
   WalletFactsSource,
 } from "./ports.js";
 export type { EngineStores } from "./records/engine-stores.js";
-export { rowPageSchema } from "./records/row-page.js";
-export type { RowPage } from "./records/row-page.js";
-export { isSha256Hex, sha256Hex, sha256HexSchema } from "./records/sha256-hex.js";
-export type { Sha256Hex } from "./records/sha256-hex.js";
-export { stampedIdSchema } from "./records/stamped-id.js";
-export type { StampedId } from "./records/stamped-id.js";
+export { rowPageSchema, type RowPage } from "./records/row-page.js";
+export { isSha256Hex, sha256Hex, sha256HexSchema, type Sha256Hex } from "./records/sha256-hex.js";
+export { stampedIdSchema, type StampedId } from "./records/stamped-id.js";
 export { createEngine } from "./operations/create-engine.js";
 export type { Engine, EngineHandlers, EngineOptions } from "./operations/create-engine.js";
 export type { AnswerCard, AnsweredCard } from "./operations/answer-card.js";

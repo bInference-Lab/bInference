@@ -1,6 +1,8 @@
 import { mulDiv, type Result } from "@binference/core";
 import type { PositionStore, PriceSource, UsdPrice } from "../ports.js";
+import { applyArrival } from "./apply-arrival.js";
 import { applyExecution } from "./apply-execution.js";
+import type { ArrivalDraft, ArrivalRecord } from "./arrival-record.js";
 import type { ExecutionRecord } from "./execution-record.js";
 import type { PositionQuery, PositionRecord } from "./position-record.js";
 import { type ExecutedTrade, valueExecution } from "./value-execution.js";
@@ -17,7 +19,10 @@ export interface ValuedPosition {
   readonly unrealizedUsdMicros?: bigint;
 }
 
-/** The positions of the money path: what each execution moves, and what the positions are worth. */
+/**
+ * The positions of the money path: what each execution and arrival moves, and what the positions
+ * are worth.
+ */
 export interface Positions {
   /**
    * Values a trade at the prices of its time and stores it with the position changes it makes.
@@ -28,6 +33,19 @@ export interface Positions {
     trade: ExecutedTrade,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<ExecutionRecord, "stale">>;
+  /**
+   * Values funds that arrived without a trade at the `PriceSource`'s price now, rounded up as
+   * every value at the time is, and stores them with the position they open. Call it when the
+   * funds arrive, so the price is the one of their arrival.
+   *
+   * No usable price (`no_price`, or a zero or malformed price) stores the arrival without a value,
+   * and it opens no position: a later sale of those units counts no gain or loss, and a later
+   * price never values them after the fact. `stale` as for `record`.
+   */
+  receive(
+    arrival: Omit<ArrivalDraft, "valueUsdMicros">,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<ArrivalRecord, "stale">>;
   /** One wallet's positions with their value and unrealized P&L at the `PriceSource`'s price. */
   value(
     query: PositionQuery,
@@ -70,6 +88,18 @@ export function createPositions(options: PositionsOptions): Positions {
       const query = { walletId: trade.walletId, isPaper: trade.isPaper };
       const held = await store.positions(query, call);
       return store.record({ execution, positions: applyExecution(held, execution) }, call);
+    },
+    async receive(funds, call) {
+      const price = await prices.usdPrice(funds.received.asset, call);
+      const arrival =
+        price.ok && isUsable(price.value)
+          ? { ...funds, valueUsdMicros: mulDiv(funds.received.base, price.value, "up") }
+          : funds;
+      const held = await store.positions(
+        { walletId: funds.walletId, isPaper: funds.isPaper },
+        call,
+      );
+      return store.recordArrival({ arrival, positions: applyArrival(held, arrival) }, call);
     },
     async value(query, call) {
       const held = await store.positions(query, call);

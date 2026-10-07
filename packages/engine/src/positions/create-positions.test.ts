@@ -4,6 +4,7 @@ import { fixtureId, inOrder, live } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
 import type { PositionStore, UsdPrice } from "../ports.js";
+import type { ArrivalDraft } from "./arrival-record.js";
 import { createPositions, type ValuedPosition } from "./create-positions.js";
 import type { ExecutedTrade } from "./value-execution.js";
 
@@ -40,7 +41,7 @@ function trade(n: number, fields: Partial<ExecutedTrade>): ExecutedTrade {
  * 1. Buy 1,000 TKN with 1 BNB at $600. Fee 0.0025 BNB on top, gas 0.0005 BNB.
  *    value 1 x 600 = $600.00, fee 0.0025 x 600 = $1.50, gas 0.0005 x 600 = $0.30
  *    TKN: 1,000 held, cost 600.00 + 1.50 + 0.30 = $601.80
- *    BNB came from a deposit binference never saw bought, so it leaves with no gain or loss.
+ *    BNB came from funds binference never saw arrive, so it leaves with no gain or loss.
  *
  * 2. Buy 400 TKN with 0.5 BNB at $640. Fee 0.00125 BNB, gas 0.0005 BNB.
  *    value 0.5 x 640 = $320.00, fee 0.00125 x 640 = $0.80, gas 0.0005 x 640 = $0.32
@@ -242,5 +243,147 @@ describe("createPositions", () => {
       costUsdMicros: 0n,
     });
     expect(prices.asked()).toStrictEqual([stable]);
+  });
+});
+
+/*
+ * The hand-worked example of funds that arrive without a trade, worked on paper like the first.
+ *
+ * 1. 2 BNB arrive while BNB is $600: BNB holds 2 at a cost of $1,200.00.
+ *
+ * 2. Buy 1,000 TKN with 1 BNB at $640. Fee 0.0025 BNB on top, gas 0.0005 BNB.
+ *    value 1 x 640 = $640.00, fee 0.0025 x 640 = $1.60, gas 0.0005 x 640 = $0.32
+ *    BNB gives up 1.0025 of 2: cost out 1,200 x 1.0025 / 2 = $601.50
+ *    BNB realized: proceeds 640.00 + 1.60 = $641.60, less 601.50 = $40.10
+ *    BNB gives up the gas, 0.0005 of 0.9975: cost out 598.50 x 0.0005 / 0.9975 = $0.30
+ *    BNB realized: 40.10 + 0.32 - 0.30 = $40.12; left 0.997 held, cost 598.50 - 0.30 = $598.20
+ *    TKN: 1,000 held, cost 640.00 + 1.60 + 0.32 = $641.92
+ *
+ * 3. Now BNB is $650 and TKN $0.70.
+ *    BNB: value 0.997 x 650 = $648.05, unrealized 648.05 - 598.20 = $49.85
+ *    TKN: value 1,000 x 0.70 = $700.00, unrealized 700.00 - 641.92 = $58.08
+ *    Realized plus unrealized: 40.12 + 49.85 + 58.08 = $148.05. The same from the cash: $1,200.00
+ *    arrived and the wallet holds 648.05 + 700.00 = $1,348.05.
+ */
+const twoCoins: Omit<ArrivalDraft, "valueUsdMicros"> = {
+  walletId,
+  isPaper: false,
+  atMs: 500,
+  received: { asset: coin, base: 2n * whole },
+};
+const buyAfterArrival = trade(1, {
+  feeBase: 2_500_000_000_000_000n,
+  bought: { asset: token, base: 1_000n * whole },
+  gas: { asset: coin, base: 500_000_000_000_000n },
+  soldPrice: usd(640_000_000n),
+  gasPrice: usd(640_000_000n),
+});
+
+describe("createPositions receive", () => {
+  it("opens a position for funds that arrive at their price then, so a sale realizes a gain", async () => {
+    const store = createMemoryPositionStore();
+    const atArrival = createFakePriceSource(new Map([[coin, usd(600_000_000n)]]));
+    const arrived = await createPositions({ store, prices: atArrival }).receive(twoCoins, live());
+    expect(arrived).toStrictEqual({
+      ok: true,
+      value: { ...twoCoins, valueUsdMicros: 1_200_000_000n, id: 1 },
+    });
+    const now = new Map([
+      [coin, usd(650_000_000n)],
+      [token, usd(700_000n)],
+    ]);
+    const positions = createPositions({ store, prices: createFakePriceSource(now) });
+    await positions.record(buyAfterArrival, live());
+    const valued = await positions.value({ walletId, isPaper: false }, live());
+    expect(
+      valued.map(({ position, valueUsdMicros, unrealizedUsdMicros }) => [
+        position.asset,
+        position.quantityBase,
+        position.costUsdMicros,
+        position.realizedUsdMicros,
+        valueUsdMicros,
+        unrealizedUsdMicros,
+      ]),
+    ).toStrictEqual([
+      [coin, 997_000_000_000_000_000n, 598_200_000n, 40_120_000n, 648_050_000n, 49_850_000n],
+      [token, 1_000n * whole, 641_920_000n, 0n, 700_000_000n, 58_080_000n],
+    ]);
+    expect(totalPnl(valued)).toBe(148_050_000n);
+  });
+
+  it("rounds the value of funds that arrive up to the next micro-dollar", async () => {
+    const store = createMemoryPositionStore();
+    const third = createFakePriceSource(new Map([[coin, { numerator: 1n, denominator: 3n }]]));
+    const dust = { ...twoCoins, received: { asset: coin, base: 4n } };
+    const arrived = await createPositions({ store, prices: third }).receive(dust, live());
+    expect(arrived).toMatchObject({ ok: true, value: { valueUsdMicros: 2n } });
+  });
+
+  it("stores funds that arrive with no price unvalued, opens no position, and a sale gains nothing", async () => {
+    const store = createMemoryPositionStore();
+    const noPrices = createFakePriceSource(new Map());
+    const arrived = await createPositions({ store, prices: noPrices }).receive(twoCoins, live());
+    expect(arrived).toStrictEqual({ ok: true, value: { ...twoCoins, id: 1 } });
+    await expect(store.positions({ walletId, isPaper: false }, live())).resolves.toStrictEqual([]);
+    // A price known later never values them after the fact.
+    const later = createFakePriceSource(new Map([[coin, usd(650_000_000n)]]));
+    await createPositions({ store, prices: later }).record(buyAfterArrival, live());
+    const held = await store.positions({ walletId, isPaper: false }, live());
+    expect(held.map(({ asset, realizedUsdMicros }) => [asset, realizedUsdMicros])).toStrictEqual([
+      [token, 0n],
+    ]);
+  });
+
+  it("counts a zero or malformed price at arrival as no price", async () => {
+    const store = createMemoryPositionStore();
+    const broken = createFakePriceSource(
+      new Map([
+        [coin, usd(0n)],
+        [token, { numerator: 1n, denominator: 0n }],
+      ]),
+    );
+    const positions = createPositions({ store, prices: broken });
+    await positions.receive(twoCoins, live());
+    await positions.receive({ ...twoCoins, received: { asset: token, base: whole } }, live());
+    const stored = await store.arrivals({ after: 0, limit: 10, isPaper: false }, live());
+    expect(stored.map((arrival) => Object.keys(arrival).includes("valueUsdMicros"))).toStrictEqual([
+      false,
+      false,
+    ]);
+    await expect(store.positions({ walletId, isPaper: false }, live())).resolves.toStrictEqual([]);
+  });
+
+  it("opens the paper starting balance as paper positions only", async () => {
+    const store = createMemoryPositionStore();
+    const positions = createPositions({ store, prices: createFakePriceSource(pricesNow) });
+    const starting = {
+      ...twoCoins,
+      isPaper: true,
+      received: { asset: stable, base: 500n * whole },
+    };
+    await positions.receive(starting, live());
+    await expect(positions.value({ walletId, isPaper: false }, live())).resolves.toStrictEqual([]);
+    const paper = await positions.value({ walletId, isPaper: true }, live());
+    expect(
+      paper.map(({ position }) => [position.asset, position.isPaper, position.costUsdMicros]),
+    ).toStrictEqual([[stable, true, 500_000_000n]]);
+  });
+
+  it("stores nothing and answers stale when an execution moved the position first", async () => {
+    const store = createMemoryPositionStore();
+    const prices = createFakePriceSource(new Map([[coin, usd(600_000_000n)]]));
+    await createPositions({ store, prices }).receive(twoCoins, live());
+    const racing: PositionStore = {
+      ...store,
+      positions: async (query, options) => {
+        const held = await store.positions(query, options);
+        await createPositions({ store, prices }).record(buyAfterArrival, options);
+        return held;
+      },
+    };
+    const lost = await createPositions({ store: racing, prices }).receive(twoCoins, live());
+    expect(lost).toStrictEqual({ ok: false, error: "stale" });
+    const stored = await store.arrivals({ after: 0, limit: 10, isPaper: false }, live());
+    expect(stored).toHaveLength(1);
   });
 });

@@ -3,11 +3,8 @@ import { type AssetRef, assetRefSchema } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { PositionStore } from "../ports.js";
-import type {
-  ExecutionDraft,
-  ExecutionQuery,
-  ExecutionRecord,
-} from "../positions/execution-record.js";
+import type { ArrivalDraft } from "../positions/arrival-record.js";
+import type { ExecutionDraft, ExecutionQuery } from "../positions/execution-record.js";
 import type { PositionState, PositionWrite } from "../positions/position-record.js";
 import { assertRefusesAborted, checkOn, inOrder, live } from "./store-fixtures.js";
 
@@ -41,6 +38,16 @@ function draft(subject: PositionStoreSubject, n: number, isPaper = false): Execu
     valueUsdMicros: 600_000_000n,
     feeUsdMicros: 1_500_000n,
     gasUsdMicros: 300_000n,
+  };
+}
+
+function arrival(subject: PositionStoreSubject, n: number, isPaper = false): ArrivalDraft {
+  return {
+    walletId: subject.walletIds[n % 2 === 0 ? 1 : 0],
+    isPaper,
+    atMs: 1_000 * n,
+    received: { asset: token, base: huge },
+    valueUsdMicros: huge,
   };
 }
 
@@ -116,30 +123,88 @@ async function refusesTwoWritesToOnePosition(subject: PositionStoreSubject): Pro
   );
 }
 
-async function listsExecutions(subject: PositionStoreSubject): Promise<void> {
-  const { store, walletIds } = subject;
-  const stored = await inOrder([1, 2, 3, 4, 5], async (n) => {
-    const recorded = await store.record(
-      { execution: draft(subject, n, n === 4), positions: [] },
-      live(),
-    );
-    assert.ok(recorded.ok);
-    return recorded.value;
-  });
+async function storesArrivals(subject: PositionStoreSubject): Promise<void> {
+  const [walletId] = subject.walletIds;
+  const { store } = subject;
+  const position = { position: state(walletId, token, huge) };
+  const opened = await store.recordArrival(
+    { arrival: arrival(subject, 1), positions: [position] },
+    live(),
+  );
+  const { valueUsdMicros: _value, ...unvalued } = arrival(subject, 3);
+  const kept = await store.recordArrival({ arrival: unvalued, positions: [] }, live());
+  assert.ok(opened.ok && kept.ok);
+  assert.deepEqual(opened.value, { ...arrival(subject, 1), id: opened.value.id });
+  assert.deepEqual(kept.value, { ...unvalued, id: kept.value.id });
+  const stale = await store.recordArrival(
+    { arrival: arrival(subject, 5), positions: [position] },
+    live(),
+  );
+  assert.deepEqual(stale, { ok: false, error: "stale" });
+  const twice = [{ position: state(walletId, coin, 1n) }, { position: state(walletId, coin, 2n) }];
+  await assert.rejects(
+    store.recordArrival({ arrival: arrival(subject, 5), positions: twice }, live()),
+    { code: "store.constraint" },
+  );
+  assert.deepEqual(await store.positions({ walletId, isPaper: false }, live()), [
+    { ...state(walletId, token, huge), version: 0 },
+  ]);
+  const page = { after: 0, limit: 10, isPaper: false };
+  assert.deepEqual(await store.arrivals(page, live()), [opened.value, kept.value]);
+  assert.deepEqual(await store.executions(page, live()), []);
+}
+
+interface Listed {
+  readonly id: number;
+}
+
+// Stores five rows, the fourth on paper, and lists them through every filter of the query.
+async function listsInOrder<Row extends Listed>(
+  subject: PositionStoreSubject,
+  store: (row: { readonly n: number; readonly isPaper: boolean }) => Promise<Row>,
+  list: (query: ExecutionQuery) => Promise<readonly Row[]>,
+): Promise<void> {
+  const stored = await inOrder([1, 2, 3, 4, 5], async (n) => store({ n, isPaper: n === 4 }));
   const [one, two, three, four, five] = stored;
   assert.ok(one && two && three && four && five);
   assert.deepEqual(
-    stored.map((execution) => execution.id),
-    stored.map((execution) => execution.id).toSorted((a, b) => a - b),
+    stored.map((row) => row.id),
+    stored.map((row) => row.id).toSorted((a, b) => a - b),
   );
-  const list = async (query: Partial<ExecutionQuery>): Promise<readonly ExecutionRecord[]> =>
-    store.executions({ after: 0, limit: 10, isPaper: false, ...query }, live());
-  assert.deepEqual(await list({}), [one, two, three, five]);
-  assert.deepEqual(await list({ isPaper: true }), [four]);
-  assert.deepEqual(await list({ limit: 2 }), [one, two]);
-  assert.deepEqual(await list({ after: two.id }), [three, five]);
-  assert.deepEqual(await list({ walletId: walletIds[0] }), [one, three, five]);
-  assert.deepEqual(await list({ fromMs: 2_000, toMs: 3_000 }), [two, three]);
+  const query = async (fields: Partial<ExecutionQuery>): Promise<readonly Row[]> =>
+    list({ after: 0, limit: 10, isPaper: false, ...fields });
+  assert.deepEqual(await query({}), [one, two, three, five]);
+  assert.deepEqual(await query({ isPaper: true }), [four]);
+  assert.deepEqual(await query({ limit: 2 }), [one, two]);
+  assert.deepEqual(await query({ after: two.id }), [three, five]);
+  assert.deepEqual(await query({ walletId: subject.walletIds[0] }), [one, three, five]);
+  assert.deepEqual(await query({ fromMs: 2_000, toMs: 3_000 }), [two, three]);
+}
+
+async function listsExecutions(subject: PositionStoreSubject): Promise<void> {
+  await listsInOrder(
+    subject,
+    async ({ n, isPaper }) => {
+      const execution = draft(subject, n, isPaper);
+      const recorded = await subject.store.record({ execution, positions: [] }, live());
+      assert.ok(recorded.ok);
+      return recorded.value;
+    },
+    async (query) => subject.store.executions(query, live()),
+  );
+}
+
+async function listsArrivals(subject: PositionStoreSubject): Promise<void> {
+  await listsInOrder(
+    subject,
+    async ({ n, isPaper }) => {
+      const write = { arrival: arrival(subject, n, isPaper), positions: [] };
+      const recorded = await subject.store.recordArrival(write, live());
+      assert.ok(recorded.ok);
+      return recorded.value;
+    },
+    async (query) => subject.store.arrivals(query, live()),
+  );
 }
 
 async function refusesAborted(subject: PositionStoreSubject): Promise<void> {
@@ -156,7 +221,13 @@ async function refusesAborted(subject: PositionStoreSubject): Promise<void> {
   await assertRefusesAborted(async (options) =>
     store.executions({ after: 0, limit: 1, isPaper: false }, options),
   );
+  const arrived = { arrival: arrival(subject, 1), positions: write.positions };
+  await assertRefusesAborted(async (options) => store.recordArrival(arrived, options));
+  await assertRefusesAborted(async (options) =>
+    store.arrivals({ after: 0, limit: 1, isPaper: false }, options),
+  );
   assert.deepEqual(await store.positions({ walletId, isPaper: false }, live()), []);
+  assert.deepEqual(await store.arrivals({ after: 0, limit: 1, isPaper: false }, live()), []);
 }
 
 /** The contract every `PositionStore` adapter passes. */
@@ -179,6 +250,12 @@ export function positionStoreContract(harness: PositionStoreHarness): readonly C
       refusesTwoWritesToOnePosition,
     ),
     checkOn("lists executions in order by mode, wallet, time and page", create, listsExecutions),
+    checkOn(
+      "stores an arrival with its position, or without a value and a position",
+      create,
+      storesArrivals,
+    ),
+    checkOn("lists arrivals in order by mode, wallet, time and page", create, listsArrivals),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

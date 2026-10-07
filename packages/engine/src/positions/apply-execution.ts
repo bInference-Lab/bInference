@@ -2,13 +2,8 @@ import type { AssetRef } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { acquire, type CostBasis, dispose, emptyCostBasis } from "./average-cost.js";
 import type { ExecutionDraft } from "./execution-record.js";
+import { heldPosition, type PositionChange, positionWriteOf } from "./position-change.js";
 import type { PositionRecord, PositionWrite } from "./position-record.js";
-
-interface Touched {
-  readonly asset: AssetRef;
-  readonly basis: CostBasis;
-  readonly held: PositionRecord | undefined;
-}
 
 // A fee or gas worth something was paid in some units; a value with none would leak from P&L.
 const isPaid = (base: bigint, usdMicros: bigint): boolean => base > 0n || usdMicros === 0n;
@@ -30,30 +25,14 @@ function assertTrade(execution: ExecutionDraft): void {
   }
 }
 
-// A coin the wallet holds from outside its executions, such as a deposit, leaves no row behind.
-function isEmpty({ basis, held }: Touched): boolean {
+// A coin the positions do not hold, such as an arrival with no price, leaves no row behind.
+function isEmpty({ basis, held }: PositionChange): boolean {
   return (
     held === undefined &&
     basis.quantityBase === 0n &&
     basis.costUsdMicros === 0n &&
     basis.realizedUsdMicros === 0n
   );
-}
-
-function writeOf(execution: ExecutionDraft, touched: Touched): PositionWrite {
-  const { asset, basis, held } = touched;
-  return {
-    position: {
-      walletId: execution.walletId,
-      asset,
-      isPaper: execution.isPaper,
-      quantityBase: basis.quantityBase,
-      costUsdMicros: basis.costUsdMicros,
-      realizedUsdMicros: basis.realizedUsdMicros,
-      changedAtMs: Math.max(held?.changedAtMs ?? 0, execution.atMs),
-    },
-    ...(held === undefined ? {} : { readVersion: held.version }),
-  };
 }
 
 /**
@@ -75,12 +54,9 @@ export function applyExecution(
 ): readonly PositionWrite[] {
   assertTrade(execution);
   const { walletId, isPaper, sold, bought, gas } = execution;
-  const touched = new Map<AssetRef, Touched>();
+  const touched = new Map<AssetRef, PositionChange>();
   const change = (asset: AssetRef, step: (basis: CostBasis) => CostBasis): void => {
-    const record = held.find(
-      (position) =>
-        position.walletId === walletId && position.asset === asset && position.isPaper === isPaper,
-    );
+    const record = heldPosition(held, { walletId, asset, isPaper });
     const entry = touched.get(asset) ?? { asset, basis: record ?? emptyCostBasis, held: record };
     touched.set(asset, { ...entry, basis: step(entry.basis) });
   };
@@ -98,5 +74,5 @@ export function applyExecution(
   change(bought.asset, (basis) => acquire(basis, bought.base, costUsdMicros));
   return [...touched.values()]
     .filter((entry) => !isEmpty(entry))
-    .map((entry) => writeOf(execution, entry));
+    .map((entry) => positionWriteOf(execution, entry));
 }

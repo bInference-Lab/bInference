@@ -77,8 +77,10 @@ new name here first, in the change that uses it.
   sends.
 - **ledger**: the append-only, hash-chained record of every intent, tap, signature and fill.
 - **execution**: one trade as it settled on chain or filled on paper: what the wallet sold and
-  bought, the fee and the gas, each valued in USD at the time. Positions and the CSV export are
-  built from executions.
+  bought, the fee and the gas, each valued in USD at the time. Positions are built from executions
+  and arrivals, the CSV export from executions.
+- **arrival**: funds that reach a wallet without a trade, such as a deposit or the paper starting
+  balance, valued in USD when they arrive. It opens a position at that value.
 - **position**: what one wallet holds of one asset at average cost: the quantity, its cost with
   fees and gas, and the realized profit or loss. Paper and live keep separate positions.
 - **venue**: a protocol the agent trades, lends or stakes on, such as PancakeSwap or Venus.
