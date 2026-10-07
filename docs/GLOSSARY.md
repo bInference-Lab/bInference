@@ -183,6 +183,8 @@ new name here first, in the change that uses it.
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
   `notes_write`.
+- **MCP tools**: the MCP server's read and propose tools, one per operation and named
+  `binference_`, such as `binference_propose` for `intent/propose`.
 - **coding-agent skills**: `clean-diff`, `review-diff`, `shape-commit`, `review-money-path`,
   `add-migration`, `write-adr`.
 

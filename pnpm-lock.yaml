@@ -457,6 +457,18 @@ importers:
         specifier: 'catalog:'
         version: 12.1.2
 
+  packages/mcp:
+    dependencies:
+      '@binference/client':
+        specifier: workspace:*
+        version: link:../client
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   packages/platform:
     dependencies:
       '@binference/core':
