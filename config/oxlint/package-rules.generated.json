@@ -6212,6 +6212,7 @@
         "packages/plugin-sdk/src/testing.ts",
         "packages/protocol/src/index.ts",
         "packages/server/src/index.ts",
+        "packages/signer/src/index.ts",
         "packages/store/src/index.ts",
         "packages/telegram/src/index.ts",
         "packages/telegram/src/testing.ts"

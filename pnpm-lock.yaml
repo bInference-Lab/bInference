@@ -527,6 +527,12 @@ importers:
         specifier: 'catalog:'
         version: 8.18.2
 
+  packages/signer:
+    dependencies:
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/store:
     dependencies:
       '@binference/chain':
