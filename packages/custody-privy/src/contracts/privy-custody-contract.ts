@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import { chainRefSchema } from "@binference/chain";
 import { createEvmSigningScheme, type EvmChain } from "@binference/chain-evm";
 import type { ContractCheck } from "@binference/core/testing";
+import { buildCeiling } from "../ceiling/build-ceiling.js";
 import {
   approvalForAllData,
   approveData,
   oneBnbWei,
   testAddresses,
+  testCeilingRequest,
   testChain,
   transferData,
 } from "../testing/custody-fixtures.js";
+import { readBackWallet, type WalletExpectation } from "../wallets/read-back.js";
 import {
   askPrivy,
   type CustodySetup,
@@ -47,6 +50,59 @@ function check(
 ): ContractCheck {
   return { name, run: async () => run(await setUp(harness.create())) };
 }
+
+async function readsBackAs(
+  setup: CustodySetup,
+  expected: WalletExpectation,
+  problem: "owner" | "signer" | "policy",
+): Promise<void> {
+  const found = await readBackWallet(
+    setup.subject.api,
+    { wallet: setup.wallet.id, expected },
+    live(),
+  );
+  assert.deepEqual(found, { ok: false, error: problem });
+}
+
+const readBackChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] => [
+  check(
+    harness,
+    "makes a wallet whose owner, signer and ceiling read back as asked",
+    async (setup) => {
+      const found = await readBackWallet(
+        setup.subject.api,
+        { wallet: setup.wallet.id, expected: setup.expected },
+        live(),
+      );
+      assert.deepEqual(found, { ok: true, value: setup.wallet });
+      assert.deepEqual(setup.wallet.chains, [testChain.ref]);
+    },
+  ),
+  check(
+    harness,
+    "fails the read-back of a wallet whose signer is not the agent key asked for",
+    async (setup) => {
+      const { publicKey } = await setup.subject.strangerProcess.publicKey(live());
+      await readsBackAs(setup, { ...setup.expected, agentKey: publicKey }, "signer");
+    },
+  ),
+  check(
+    harness,
+    "fails the read-back of a wallet whose policy is not the ceiling asked for",
+    async (setup) => {
+      const wider = buildCeiling({ ...testCeilingRequest(), saved: [saved, unsaved] });
+      assert.ok(wider.ok);
+      await readsBackAs(setup, { ...setup.expected, ceiling: wider.value }, "policy");
+    },
+  ),
+  check(
+    harness,
+    "fails the read-back of a wallet whose owner is not the owner key asked for",
+    async (setup) => {
+      await readsBackAs(setup, { ...setup.expected, ownerKey: setup.expected.agentKey }, "owner");
+    },
+  ),
+];
 
 const allowChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] => [
   check(harness, "signs a call to a listed contract with the cap in native coin", async (setup) => {
@@ -126,10 +182,10 @@ const refuseChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] =>
 ];
 
 /**
- * The contract the Privy fake and the Privy test app both pass: on a wallet made with the ceiling,
- * the calls the ceiling allows signed as the wallet, and the ones it does not refused by Privy
- * itself, even with a valid agent key.
+ * The contract the Privy fake and the Privy test app both pass: a wallet made and read back, the
+ * calls the ceiling allows signed as the wallet, and the ones it does not refused by Privy itself,
+ * even with a valid agent key.
  */
 export function privyCustodyContract(harness: PrivyCustodyHarness): readonly ContractCheck[] {
-  return [...allowChecks(harness), ...refuseChecks(harness)];
+  return [...readBackChecks(harness), ...allowChecks(harness), ...refuseChecks(harness)];
 }

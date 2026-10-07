@@ -42,3 +42,5 @@ export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
 export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner-signer.js";
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
+export { checkWallet, readBackWallet } from "./wallets/read-back.js";
+export type { ReadBackProblem, WalletExpectation, WalletView } from "./wallets/read-back.js";

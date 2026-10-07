@@ -91,6 +91,8 @@ new name here first, in the change that uses it.
   wallet's one added signer.
 - **authorization signature**: the agent key's P-256 signature over one Privy request, which Privy
   checks before it signs a transaction.
+- **read-back**: reading a new wallet back from Privy and refusing it unless its owner, its signer
+  and its ceiling are exactly what was asked.
 - **rescue address**: the owner's own wallet, where a rescue sends everything. Changing it takes 24
   hours.
 - **saved address**: an address saved in the ceiling with the owner key. Sends go only to saved

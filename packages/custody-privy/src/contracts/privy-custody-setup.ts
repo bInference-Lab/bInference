@@ -20,6 +20,7 @@ import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner
 import { privyTransaction } from "../signing/privy-transaction.js";
 import { testCeilingRequest, testChain } from "../testing/custody-fixtures.js";
 import { createAgentWallet } from "../wallets/create-agent-wallet.js";
+import type { WalletExpectation } from "../wallets/read-back.js";
 
 /** A Privy app under test, with the keys the suite makes a wallet for. */
 export interface PrivyCustodySubject {
@@ -44,6 +45,7 @@ export interface PrivyCustodyHarness {
 export interface CustodySetup {
   readonly subject: PrivyCustodySubject;
   readonly wallet: PrivyWallet;
+  readonly expected: WalletExpectation;
   readonly agentWallet: Id<"wal">;
   /** The `privy-owner` adapter over the wallet, with the agent key. */
   readonly signer: Signer;
@@ -64,7 +66,8 @@ export const live = (): { readonly signal: AbortSignal } => ({
 const uuid = "0190f1c2-3b4c-7d5e-8f60-718293a4b5c6";
 const agentWallet = idSchema("wal").parse(`wal_${uuid}`);
 
-function testCeiling(): Ceiling {
+/** The test ceiling, built. */
+export function testCeiling(): Ceiling {
   const ceiling = buildCeiling(testCeilingRequest());
   assert.ok(ceiling.ok);
   return ceiling.value;
@@ -81,17 +84,20 @@ async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
     { publicKey: agentKey, displayName: "binference test agent" },
     live(),
   );
-  const wallet = await createAgentWallet(
+  const expected = { ownerKey, agentKey, ceiling: testCeiling() };
+  const created = await createAgentWallet(
     api,
-    { ownerQuorum: ownerQuorum.id, signerQuorum: signerQuorum.id, ceiling: testCeiling() },
+    { ownerQuorum: ownerQuorum.id, signerQuorum: signerQuorum.id, expected },
     live(),
   );
+  assert.ok(created.ok, `The read-back failed: ${created.ok ? "" : created.error}`);
+  const wallet = created.value;
   const signer = createPrivyOwnerSigner({
     api,
     signerProcess,
     walletOf: (id) => (id === agentWallet ? wallet : undefined),
   });
-  return { subject, wallet, agentWallet, signer };
+  return { subject, wallet, expected, agentWallet, signer };
 }
 
 const setups = new WeakMap<PrivyCustodySubject, Promise<CustodySetup>>();

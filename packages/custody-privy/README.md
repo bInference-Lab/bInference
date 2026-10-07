@@ -4,9 +4,10 @@
 
 Custody through the owner's own Privy app (keys spec, sections 1, 2 and 4). It builds each
 wallet's ceiling as a Privy policy, makes the key quorums of the owner and agent keys, makes agent
-wallets owned by the owner key with the agent key as their one signer bound to the ceiling, and
-signs transactions with `eth_signTransaction`, each request authorized by the signer with the agent
-key. Privy refuses any signature outside the ceiling, whatever the machine asks.
+wallets owned by the owner key with the agent key as their one signer bound to the ceiling, reads
+each new wallet back before anything signs for it, and signs transactions with
+`eth_signTransaction`, each request authorized by the signer with the agent key. Privy refuses any
+signature outside the ceiling, whatever the machine asks.
 
 ## API
 
@@ -16,7 +17,8 @@ key. Privy refuses any signature outside the ceiling, whatever the machine asks.
 | `registryCeilingChain`                      | One chain's contracts and spenders for the enabled venues, from the registry      |
 | `PolicyRule`, `policyRuleJson`              | A rule in Privy's policy language, and its JSON                                   |
 | `createPrivyApi`, `PrivyApi`                | Privy's API for one app through its Node SDK: quorums, policies, wallets, signing |
-| `createAgentWallet`                         | Makes the ceiling's policy and the wallet bound to it                             |
+| `createAgentWallet`                         | Makes the policy and the wallet, then reads the wallet back                       |
+| `readBackWallet`, `checkWallet`             | Checks a wallet's owner, signer and policy against what was asked                 |
 | `createPrivyOwnerSigner`                    | The `privy-owner` adapter of the chain `Signer` port                              |
 | `SignerProcess`, `AuthorizeRequest`         | The port of the signer's `publicKey` and `authorize` requests (spec 5, 5.1)       |
 | `signaturePayload`, `PrivyRequest`          | The RFC 8785 text an authorization signature signs                                |
@@ -50,7 +52,14 @@ const agent = await api.createKeyQuorum(
 );
 const wallet = await createAgentWallet(
   api,
-  { ownerQuorum: owner.id, signerQuorum: agent.id, ceiling: ceiling.value },
+  {
+    ownerQuorum: owner.id,
+    signerQuorum: agent.id,
+    expected: { ownerKey: ownerKeyPublic, agentKey: agentKeyPublic, ceiling: ceiling.value },
+  },
   { signal },
 );
+if (!wallet.ok) {
+  return wallet; // "owner", "signer" or "policy": Privy holds something else than was asked
+}
 ```
