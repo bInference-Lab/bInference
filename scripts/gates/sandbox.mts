@@ -143,11 +143,10 @@ function claimIdle(pool: string, busy: string): boolean {
 
 // Brings a kept sandbox from its base to the repo's files and commits them as the new base.
 function refresh(repo: string, root: string, files: readonly string[]): void {
-  git(root, ["reset", "-q", "--hard", baseRef]);
-  const kept = git(root, ["ls-files", "-z"])
+  const kept = git(root, ["ls-tree", "-r", "-z", "--name-only", baseRef])
     .split("\0")
     .filter((file) => file.length > 0);
-  git(root, ["clean", "-q", "-fdx", ...keptInstalls(kept)]);
+  resetTo(root, baseRef, installsOf(kept));
   const wanted = new Set(files);
   for (const file of kept.filter((item) => !wanted.has(item))) {
     rmSync(join(root, file), { force: true });
@@ -169,14 +168,37 @@ function create(repo: string, root: string, files: readonly string[]): void {
   git(root, ["update-ref", baseRef, "HEAD"]);
 }
 
-// The installs of the repo's own packages survive a reset; any other node_modules, such as a
-// planted package's, goes with the rest of the case.
-function keptInstalls(files: readonly string[]): readonly string[] {
-  return files.flatMap((file) =>
-    file === "package.json" || file.endsWith("/package.json")
-      ? ["-e", `/${file.replace(/package\.json$/, "")}node_modules`]
-      : [],
+// Where the repo's own packages keep their installs, as git names an ignored folder.
+function installsOf(files: readonly string[]): ReadonlySet<string> {
+  return new Set(
+    files.flatMap((file) =>
+      file === "package.json" || file.endsWith("/package.json")
+        ? [`${file.replace(/package\.json$/, "")}node_modules/`]
+        : [],
+    ),
   );
+}
+
+// Brings a sandbox back to `base`. git never walks into a node_modules folder: a deep one passes
+// Windows' path limit, and pnpm links packages inside it. The repo's own packages keep their
+// installs; Node deletes any other, such as a planted package's, before git cleans the rest. git
+// names those folders without walking into them.
+function resetTo(root: string, base: string, installs: ReadonlySet<string>): void {
+  git(root, ["reset", "-q", "--hard", base]);
+  const ignored = git(root, [
+    "ls-files",
+    "-z",
+    "--others",
+    "--ignored",
+    "--exclude-standard",
+    "--directory",
+  ]).split("\0");
+  for (const folder of ignored) {
+    if (folder.endsWith("node_modules/") && !installs.has(folder)) {
+      rmSync(join(root, folder), { recursive: true, force: true });
+    }
+  }
+  git(root, ["clean", "-q", "-fdx", "-e", "node_modules"]);
 }
 
 /**
@@ -197,10 +219,9 @@ export function openSandbox(repo: string): Sandbox {
     create(repo, root, repoFiles);
   }
   const base = git(root, ["rev-parse", baseRef]).trim();
-  const keep = keptInstalls(repoFiles);
+  const installs = installsOf(repoFiles);
   const reset = (): void => {
-    git(root, ["reset", "-q", "--hard", base]);
-    git(root, ["clean", "-q", "-fdx", ...keep]);
+    resetTo(root, base, installs);
   };
   return {
     root,
