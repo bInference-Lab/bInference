@@ -6,6 +6,7 @@ import { runApproval } from "../commands/approval-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runLogs } from "../commands/logs-command.js";
+import { runModeSwitch } from "../commands/mode-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
 import { runWalletAddress, runWalletList } from "../commands/wallet-command.js";
@@ -77,6 +78,8 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   approval: runApproval,
   confirm: runCardAnswer,
   deny: runCardAnswer,
+  live: runModeSwitch,
+  paper: runModeSwitch,
   walletList: runWalletList,
   walletAddress: runWalletAddress,
 };

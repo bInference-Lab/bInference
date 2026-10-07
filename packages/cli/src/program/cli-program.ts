@@ -34,7 +34,7 @@ export type ChosenCommand =
       readonly options: CommonOptions;
       readonly intent: ProtocolId<"intent">;
     }
-  | { readonly name: "walletList"; readonly options: AgentFlags }
+  | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
   | { readonly name: "walletAddress"; readonly options: WalletAddressFlags };
 
 /** What the program is built from. */
@@ -83,7 +83,7 @@ function agentOption(message: (key: string) => string): Option {
   return new Option("--agent <id>", message("option.agent")).argParser(idOf("agent"));
 }
 
-// Commands that act on one agent.
+// Commands that act on one agent: its approval mode, and the switch between paper and live.
 function addAgentCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   withCommon(program.command("approval").description(message("command.approval")), message)
@@ -96,6 +96,11 @@ function addAgentCommands(program: Command, options: ProgramOptions): void {
         ...(mode === undefined ? {} : { mode }),
       }),
     );
+  for (const name of ["live", "paper"] as const) {
+    withCommon(program.command(name).description(message(`command.${name}`)), message)
+      .addOption(agentOption(message))
+      .action((flags: OptionValues) => choose({ name, options: agentFlagsSchema.parse(flags) }));
+  }
 }
 
 // Commands that answer a card: they name the intent it shows.

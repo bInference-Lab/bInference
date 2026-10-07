@@ -131,6 +131,13 @@ describe("createCallDispatch", () => {
       code: "auth.local_only",
     },
     {
+      name: "going live over WS, from the console with every scope",
+      frame: call("agent/goLive", { agent }, "k"),
+      scopes: cli,
+      transport: "ws",
+      code: "auth.local_only",
+    },
+    {
       name: "a write without a key",
       frame: call("safety/freeze", {}),
       ...ipc,
