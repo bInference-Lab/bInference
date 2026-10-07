@@ -9,6 +9,7 @@ import {
   operations,
   parseCall,
   type ProtocolError,
+  takesOwnerKey,
   type ReplyFrame,
   type Scope,
 } from "@binference/protocol";
@@ -79,6 +80,14 @@ function noHandler(operation: Operation): ProtocolError {
     : refused("protocol.unknown_op", `This engine does not serve ${operation.name}.`);
 }
 
+/**
+ * Whether a call of the operation needs a shell on the machine: its row marks it `ipc`, or its
+ * args carry the owner key, whatever its row says. Such a call runs over IPC only.
+ */
+export function isLocalOnly(operation: Pick<Operation, "transport" | "args">): boolean {
+  return operation.transport === "ipc" || takesOwnerKey(operation);
+}
+
 function refusalOf(
   op: OperationName,
   caller: Caller,
@@ -88,7 +97,8 @@ function refusalOf(
   if (!holdsScope(caller.scopes, operation)) {
     return refused("auth.scope", `${op} needs the ${operation.scope} scope.`);
   }
-  if (operation.transport === "ipc" && caller.transport === "ws") {
+  // Any transport but IPC is refused, so a transport added later is refused too.
+  if (isLocalOnly(operation) && caller.transport !== "ipc") {
     return refused("auth.local_only", `${op} works over local IPC only.`);
   }
   if (options.engine.state() === "starting" && !servedWhileStarting.has(op)) {
@@ -103,9 +113,10 @@ function refusalOf(
 /**
  * Creates the call dispatch. In order, a call fails for an unknown operation
  * (`protocol.unknown_op`), a scope the connection lacks, counting the operation's scope case
- * (`auth.scope`), a local operation over WS (`auth.local_only`), an engine still starting
- * (`engine.starting`), a missing handler, a write without a key or args the schema refuses. The
- * server's own operations are answered at once; every other call runs its handler.
+ * (`auth.scope`), a local operation or one that carries the owner key over any transport but IPC
+ * (`auth.local_only`), an engine still starting (`engine.starting`), a missing handler, a write
+ * without a key or args the schema refuses. The server's own operations are answered at once;
+ * every other call runs its handler.
  */
 export function createCallDispatch(options: CallDispatchOptions): CallDispatch {
   return (frame, session) => {

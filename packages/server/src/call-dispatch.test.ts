@@ -10,11 +10,13 @@ import {
   type EngineFrame,
   type EngineState,
   operationNames,
+  operations,
+  ownerKeyOperations,
   protocolIdSchema,
   type Scope,
 } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { type CallStep, createCallDispatch, type Session } from "./call-dispatch.js";
+import { type CallStep, createCallDispatch, isLocalOnly, type Session } from "./call-dispatch.js";
 import { createIdempotentWrites } from "./idempotent-writes.js";
 import type { OperationHandlers, Transport } from "./operation-handlers.js";
 import { createPushHub } from "./push-hub.js";
@@ -95,6 +97,11 @@ function replyResult(frame: EngineFrame | undefined): object {
   return { result: frame.result };
 }
 
+// One failed answer with the code for each owner-key operation.
+function failingOwnerKeyCalls(code: string): readonly object[] {
+  return ownerKeyOperations.map(() => [{ t: "fail", error: { code } }]);
+}
+
 function call(op: string, args: object, key?: string): CallFrame {
   return { t: "call", id: "c1", op, args, ...(key === undefined ? {} : { key }) };
 }
@@ -146,6 +153,27 @@ describe("createCallDispatch", () => {
     await expect(framesOf(dispatch(frame, session(scopes, transport)))).resolves.toMatchObject([
       { t: "fail", id: "c1", error: { code, retryable: false } },
     ]);
+  });
+
+  it("refuses every owner-key operation over WS and lets it through over IPC", async () => {
+    const { dispatch } = setup();
+    const framesOver = async (transport: Transport) =>
+      Promise.all(
+        ownerKeyOperations.map(async (op) =>
+          framesOf(dispatch(call(op, {}, "k"), session(cli, transport))),
+        ),
+      );
+    await expect(framesOver("ws")).resolves.toMatchObject(failingOwnerKeyCalls("auth.local_only"));
+    // Over IPC the call passes the transport check and fails later: this engine has no handler.
+    await expect(framesOver("ipc")).resolves.toMatchObject(
+      failingOwnerKeyCalls("protocol.unknown_op"),
+    );
+  });
+
+  it("keeps an owner-key operation local even when its row allows any transport", () => {
+    expect(isLocalOnly({ ...operations["ceiling/set"], transport: "any" })).toBe(true);
+    expect(isLocalOnly(operations["engine/stop"])).toBe(true);
+    expect(isLocalOnly(operations["approval/set"])).toBe(false);
   });
 
   it("fails a routed call while no runtime handler is there, as retryable", async () => {

@@ -85,6 +85,8 @@ new name here first, in the change that uses it.
   (`chains.maxFeePerGasGwei`). A higher fee opens a card.
 - **owner key**: the key that owns the wallets and their policy. It is shown once as a `bnok1` code
   and kept offline.
+- **owner-key operation**: an operation whose args carry the owner key code, such as `ceiling/set`.
+  The engine takes it over IPC only, from a shell on the machine.
 - **agent key**: the key the signer holds on one machine. It can ask for signatures inside the
   ceiling only.
 - **key quorum**: Privy's record of the keys that act for a wallet or a policy. binference makes

@@ -14,6 +14,9 @@ handler map; the server holds no domain logic. The spec is
   `AccessStore`. A console device signs in over WS only, by signing a fresh nonce and the page's
   origin with its paired key, stored as its SPKI DER in base64url as WebCrypto exports it. Every
   connection must reach `ready` within 10 seconds.
+- **Local calls.** A call of an operation marked local, or of one whose args carry the owner key
+  (an owner-key operation, such as `ceiling/set`), runs over IPC only, whatever the operation's row
+  says; any other transport fails it with `auth.local_only`, so it needs a shell on the machine.
 - **Loopback.** The HTTP listener binds a host beyond loopback only when `auth` is set; otherwise
   `start` refuses with `server.unsafe_bind` before anything binds. WS connections must come from
   `http://127.0.0.1:<port>`, `http://localhost:<port>` or an extra origin.

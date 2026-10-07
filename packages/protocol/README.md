@@ -23,6 +23,7 @@ typed client, the server and the MCP server are built from the one operation tab
 | `describeProtocol`                                  | The protocol as JSON Schemas, for other languages and the compat check    |
 | `operations`, `OperationName`, `ArgsOf`, `ResultOf` | Every operation as data: its scope, kind, key rule, transport and schemas |
 | `parseCall`                                         | Checks a call: a known operation, a key on a write, args its schema takes |
+| `takesOwnerKey`, `ownerKeyOperations`               | The operations that carry the owner key, taken over IPC only              |
 | `describeOperations`                                | The answer of `engine/describe`, with the JSON Schemas of each operation  |
 | `mcpTools`                                          | The tools of `binference mcp`, the operation each calls, its request id   |
 | `intentRequestSchema`, `IntentView` and the others  | The shared requests and views of every operation                          |

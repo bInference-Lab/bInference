@@ -14,6 +14,8 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   itself starts with `server.` and is a fault of the engine's own wiring.
 - No connection is trusted for its address. Tokens sign in over IPC only, devices over WS only, and
   the HTTP listener binds beyond loopback only when `auth` is set.
+- An owner-key operation (its args carry the owner key code, `takesOwnerKey`) runs over IPC only,
+  even when its row allows any transport: `isLocalOnly` decides it in the call dispatch.
 - Time and randomness come through the `Clock` and `Random` ports: the sign-in timeout, pings, call
   timeouts, the call rate and push retention all run on the clock, so tests drive them with a
   manual one.
