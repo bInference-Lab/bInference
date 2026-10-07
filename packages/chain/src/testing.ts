@@ -38,3 +38,6 @@ export { createFakeNonceSource } from "./fakes/fake-nonce-source.js";
 export type { FakeNonceSource } from "./fakes/fake-nonce-source.js";
 export { priceSourceContract } from "./contracts/price-source-contract.js";
 export type { PriceSourceHarness, PriceSourceSubject } from "./contracts/price-source-contract.js";
+export { txSimulatorContract } from "./contracts/tx-simulator-contract.js";
+export type { TxSimulatorHarness, TxSimulatorSubject } from "./contracts/tx-simulator-contract.js";
+export { createFakeTxSimulator } from "./fakes/fake-tx-simulator.js";

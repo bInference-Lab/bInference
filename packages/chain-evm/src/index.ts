@@ -42,4 +42,3 @@ export type {
   SimulationRequest,
 } from "./simulation/simulate.js";
 export type { EvmLog } from "./simulation/simulation-reply.schema.js";
-export type { AssetApproval, AssetTransfer } from "./simulation/transfer-logs.js";

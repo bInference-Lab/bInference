@@ -1,21 +1,7 @@
-import type { AccountRef, Amount, AssetRef } from "@binference/chain";
+import type { AssetApproval, AssetRef, AssetTransfer } from "@binference/chain";
 import { type Address, getAddress, type Hex, toEventSelector } from "viem";
 import { type EvmChain, erc20AssetRef, evmAccountRef } from "../evm-chain.js";
 import type { EvmLog } from "./simulation-reply.schema.js";
-
-/** Value moved from one account to another during a simulated call. */
-export interface AssetTransfer {
-  readonly from: AccountRef;
-  readonly to: AccountRef;
-  readonly amount: Amount;
-}
-
-/** An ERC-20 allowance set during a simulated call. */
-export interface AssetApproval {
-  readonly owner: AccountRef;
-  readonly spender: AccountRef;
-  readonly amount: Amount;
-}
 
 const transferTopic = toEventSelector("Transfer(address,address,uint256)");
 const approvalTopic = toEventSelector("Approval(address,address,uint256)");

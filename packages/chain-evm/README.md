@@ -19,7 +19,7 @@ come in as data from `@binference/chains`; nothing here names a chain.
 | `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health |
 | `createEvmClient`                                                        | A viem public client whose requests go through the failover                       |
 | `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap           |
-| `simulate`, `Simulation`, `AssetTransfer`, `AssetApproval`               | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
+| `simulate`, `Simulation`                                                 | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
 | `createChainlinkPrices`, `FeedAsset`, `UsdFeed`                          | The `PriceSource` over Chainlink's USD feeds; a stale feed is no price            |
 | `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                     |
 | `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions              |

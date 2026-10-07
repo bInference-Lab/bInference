@@ -25,3 +25,6 @@ Rules for this package:
 - Venues are ports here so `engine` and `plugin-sdk` share them: `Quoter`, `TxBuilder` and
   `TxDecoder` in `src/venues/ports.ts`, each with a contract suite. A venue names its contracts by
   their registry names, never by address, and returns `TxDraft`s that only its family reads.
+- `TxSimulator` (`src/simulation/ports.ts`) is the I/O half of a family: it runs drafts unsent on
+  the chain's latest state and reports each step's transfers and approvals as CAIP ids and amounts,
+  never the fee, so the engine checks them without importing a family package.

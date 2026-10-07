@@ -115,6 +115,8 @@ new name here first, in the change that uses it.
   every transaction a venue builds against them before anything is signed.
 - **transaction draft**: a transaction a venue built, before the wallet queue gives it its nonce
   and fees.
+- **transaction simulator**: the port a chain family fills to run transaction drafts unsent on the
+  chain's latest state and report what each one moved, allowed and used in gas.
 - **registry**: the verified contract addresses in `@binference/chains`.
 
 ### Chat and the agent

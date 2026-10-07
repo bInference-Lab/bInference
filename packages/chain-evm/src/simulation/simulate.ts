@@ -1,3 +1,4 @@
+import type { AssetApproval, AssetTransfer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { type Address, type Hex, toHex } from "viem";
 import type { EvmChain } from "../evm-chain.js";
@@ -8,12 +9,7 @@ import {
   type SimulatedCallReply,
   simulationReplySchema,
 } from "./simulation-reply.schema.js";
-import {
-  type AssetApproval,
-  type AssetTransfer,
-  readApprovals,
-  readTransfers,
-} from "./transfer-logs.js";
+import { readApprovals, readTransfers } from "./transfer-logs.js";
 
 /** One call to simulate, as an EVM transaction would make it. */
 export interface EvmCall {
