@@ -3,6 +3,8 @@ import { Argument, Command, InvalidArgumentError, Option, type OptionValues } fr
 import {
   type AgentFlags,
   agentFlagsSchema,
+  type CheckFlags,
+  checkFlagsSchema,
   type CommonOptions,
   commonFlagsSchema,
   type LogsFlags,
@@ -35,7 +37,8 @@ export type ChosenCommand =
       readonly intent: ProtocolId<"intent">;
     }
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
-  | { readonly name: "walletAddress"; readonly options: WalletAddressFlags };
+  | { readonly name: "walletAddress"; readonly options: WalletAddressFlags }
+  | { readonly name: "check"; readonly options: CheckFlags };
 
 /** What the program is built from. */
 export interface ProgramOptions {
@@ -156,6 +159,11 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addAgentCommands(program, options);
   addCardCommands(program, options);
   addWalletCommands(program, options);
+  withCommon(program.command("check").description(message("command.check")), message)
+    .option("--fix", message("option.fix"))
+    .action((flags: OptionValues) =>
+      choose({ name: "check", options: checkFlagsSchema.parse(flags) }),
+    );
 }
 
 /**

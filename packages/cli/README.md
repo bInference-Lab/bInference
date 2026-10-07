@@ -30,6 +30,12 @@ the i18n `error` area, and exits 2 when a rule refused it (`auth.scope`, `auth.l
 `wallet.unfunded` and the others a rule decides). Going live is terminal only: the CLI reaches the
 engine over its IPC endpoint alone, and the server takes `agent/goLive` over IPC only.
 
+`binference check` works with or without a running engine. Each finding has a stable check id:
+`config.valid`, `permissions.*` (the state folder, config.json5, the CLI token, the IPC sockets'
+folder and the agent's keys, read through the platform's `FileAccess`), `unlock.mode` (a warning in
+`file` mode) and `engine.reachable`. `--fix` makes owner-only each of those paths others can open;
+on Windows, where the access list is not read, it restricts them all the same.
+
 It also loads `config.json5`: one strict schema, four layers (defaults, the file, `BINFERENCE_*`
 variables, `--set` flags), issues that name each key's path and fix, secret sources read only when
 needed, and the config migrations behind `binference check --fix`.
@@ -81,6 +87,7 @@ The reference of every key, generated from the schema, is
 | `binference paper`                   | Switches the agent back to paper mode                               |
 | `binference wallet list`             | The agent wallets with their labels and addresses                   |
 | `binference wallet address`          | The address to fund the agent's default wallet at                   |
+| `binference check [--fix]`           | Checks the config, file access, unlock mode and the engine          |
 
 In development, run the source: `node --conditions=@binference/source --import tsx
 packages/cli/src/main.ts status`. The store workers get the same Node options.

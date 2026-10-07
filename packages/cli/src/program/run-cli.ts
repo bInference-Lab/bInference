@@ -4,6 +4,7 @@ import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
 import { runApproval } from "../commands/approval-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
+import { runCheck } from "../commands/check-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
@@ -82,6 +83,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   paper: runModeSwitch,
   walletList: runWalletList,
   walletAddress: runWalletAddress,
+  check: runCheck,
 };
 
 async function runChosen<N extends ChosenCommand["name"]>(

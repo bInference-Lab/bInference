@@ -30,6 +30,11 @@ export interface WalletAddressFlags extends AgentFlags {
   readonly wallet?: ProtocolId<"wallet">;
 }
 
+/** What `check` takes: `--fix` repairs what the check may repair. */
+export interface CheckFlags extends CommonOptions {
+  readonly fix: boolean;
+}
+
 /** The most lines `logs --lines` takes. */
 export const maxLogLines = 10_000;
 
@@ -57,6 +62,12 @@ export const walletAddressFlagsSchema: z.ZodType<WalletAddressFlags> = z.object(
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
   wallet: protocolIdSchema("wallet").exactOptional(),
+});
+
+/** Parses the options commander read for `check`. */
+export const checkFlagsSchema: z.ZodType<CheckFlags> = z.object({
+  ...commonShape,
+  fix: z.boolean().default(false),
 });
 
 /** Parses the options commander read for `logs`; 100 lines unless `--lines` says otherwise. */

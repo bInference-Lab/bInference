@@ -52,6 +52,7 @@ describe("the binference command tree", () => {
       "deny",
       "list",
       "address",
+      "check",
     ]);
     for (const command of commands) {
       const flags = command.options.map((option) => option.long);

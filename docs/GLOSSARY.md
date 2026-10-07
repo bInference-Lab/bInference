@@ -325,6 +325,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | value (of a config key)               | 值         |                              |
 | secret source                         | 密钥来源   |                              |
 | keychain                              | 钥匙串     |                              |
+| unlock mode                           | 解锁方式   | `engine.unlock.mode`         |
 | custody (who holds the agent wallets) | 托管       |                              |
 | wallet facts                          | 钱包信息   |                              |
 | health signal                         | 健康信号   | Shown by `binference status` |
