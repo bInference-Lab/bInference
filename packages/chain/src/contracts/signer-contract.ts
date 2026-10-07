@@ -36,8 +36,10 @@ const uuid = "0190f1c2-3b4c-7d5e-8f60-718293a4b5c6";
 const intent = idSchema("int").parse(`int_${uuid}`);
 const confirmation = idSchema("cnf").parse(`cnf_${uuid}`);
 
+const termsHash = "0".repeat(64);
+
 function requestFor(wallet: Id<"wal">, tx: UnsignedTx): SignRequest {
-  return { wallet, intent, authorization: { confirmation }, tx };
+  return { wallet, intent, step: 0, authorization: { confirmation }, termsHash, allowed: [], tx };
 }
 
 const accountChecks = (harness: SignerHarness): readonly ContractCheck[] => [

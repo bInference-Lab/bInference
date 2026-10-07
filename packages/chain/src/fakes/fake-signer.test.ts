@@ -15,7 +15,10 @@ const tx: UnsignedTx = { chain: chainRefSchema.parse("fake:1"), from: account, p
 const request: SignRequest = {
   wallet,
   intent: "int_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"int">,
+  step: 0,
   authorization: { approvalMode: "auto", modeVersion: 3 },
+  termsHash: "0".repeat(64),
+  allowed: [],
   tx,
 };
 const live = { signal: new AbortController().signal };
