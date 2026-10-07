@@ -52,6 +52,10 @@ Rules for this package:
 - `PositionStore` has its fake and contract suite; its SQLite adapter comes with the first step
   that stores executions.
 - The ledger chain check (`src/ledger/`) reads entries and never writes.
+- The stored intents (`src/intents/create-stored-intents.ts`) are the engine's one writer of
+  intents: every new intent and every move goes through them, so each write lands as the state
+  machine decided it and pushes its events. The confirmations write through them as their
+  `ConfirmationStore`; nothing else calls `IntentStore.create` or `transition`.
 - The CSV export's header is a tax tool's import format, so it stays English in every language.
 - Tests sit beside the code as `*.test.ts`; invariants of spec 6 live in
   `*.property.test.ts` files.

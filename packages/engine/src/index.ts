@@ -290,3 +290,4 @@ export { isSha256Hex, sha256Hex, sha256HexSchema } from "./records/sha256-hex.js
 export type { Sha256Hex } from "./records/sha256-hex.js";
 export { stampedIdSchema } from "./records/stamped-id.js";
 export type { StampedId } from "./records/stamped-id.js";
+export type { EnginePush, PublishPush } from "./pushes/engine-push.js";
