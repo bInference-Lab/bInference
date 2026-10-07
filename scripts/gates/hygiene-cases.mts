@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fixturePackage, sampleKey } from "./fixture-package.mjs";
-import { failingCase, type GateCase } from "./gate-case.mjs";
+import { failingCase, lintStep, type GateCase } from "./gate-case.mjs";
 
 // Directives are assembled here, so this file holds none itself.
 const disable = ["oxlint", "disable"].join("-");
@@ -43,24 +43,27 @@ const layoutCases: readonly GateCase[] = [
   ]),
 ];
 
+const blanket = fixturePackage("core", {
+  "loose.ts": `/* ${disable} */\nexport const one: number = 1;\n`,
+});
+const unused = fixturePackage("core", {
+  "typed.ts": `// ${disable}-next-line typescript/no-explicit-any -- the value has a type\nexport const one: number = 1;\n`,
+});
+
 const suppressionCases: readonly GateCase[] = [
   {
     name: "a blanket suppression fails Oxlint and check:suppressions",
-    files: fixturePackage("core", {
-      "loose.ts": `/* ${disable} */\nexport const one: number = 1;\n`,
-    }),
+    files: blanket,
     steps: [
-      { command: ["pnpm", "lint"], expect: "fail", output: [/no-abusive-eslint-disable/] },
+      lintStep(blanket, "fail", [/no-abusive-eslint-disable/]),
       { command: ["pnpm", "check:suppressions"], expect: "fail", output: [/names the rules/] },
     ],
   },
-  failingCase(
-    "an unused suppression fails Oxlint",
-    fixturePackage("core", {
-      "typed.ts": `// ${disable}-next-line typescript/no-explicit-any -- the value has a type\nexport const one: number = 1;\n`,
-    }),
-    ["lint", /[Uu]nused/],
-  ),
+  {
+    name: "an unused suppression fails Oxlint",
+    files: unused,
+    steps: [lintStep(unused, "fail", [/[Uu]nused/])],
+  },
   failingCase(
     "a suppression without a reason fails check:suppressions",
     fixturePackage("core", {
@@ -105,15 +108,30 @@ const codeCases: readonly GateCase[] = [
     }),
     ["deadcode", /Unused exports[\s\S]*unused/],
   ),
-  failingCase(
-    "a duplicated block fails jscpd",
-    fixturePackage("core", { "fees.ts": twin, "fees-again.ts": twin }),
-    ["dup:check", /Found [1-9]\d* clones/],
-  ),
-  failingCase("a broken heading fails markdownlint", { "notes.md": "#Notes\n\nText.\n" }, [
-    "lint:docs",
-    /MD018/,
-  ]),
+  // jscpd and markdownlint read only the planted files, with the repo's settings: a whole-repo
+  // run per case grows with the repo.
+  {
+    name: "a duplicated block fails jscpd",
+    files: fixturePackage("core", { "fees.ts": twin, "fees-again.ts": twin }),
+    steps: [
+      {
+        command: ["pnpm", "exec", "jscpd", "packages/core/src"],
+        expect: "fail",
+        output: [/Found [1-9]\d* clones/],
+      },
+    ],
+  },
+  {
+    name: "a broken heading fails markdownlint",
+    files: { "notes.md": "#Notes\n\nText.\n" },
+    steps: [
+      {
+        command: ["pnpm", "lint:docs", "--no-globs", "notes.md"],
+        expect: "fail",
+        output: [/MD018/],
+      },
+    ],
+  },
 ];
 
 /** Cases for check:layout, check:suppressions, check:deps-policy, knip, jscpd and markdownlint. */

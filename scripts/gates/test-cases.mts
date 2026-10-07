@@ -16,29 +16,32 @@ function amountFunction(name: string, body: readonly string[]): string {
   );
 }
 
+// The rules Stryker mutates. Every mutant reruns the tests, so the sample stays this small.
+const feeRules = lines(
+  "/** Takes a fee in basis points, rounding the fee down. */",
+  "export function afterFee(amount: bigint, feeBps: bigint): bigint {",
+  "  const fee = (amount * feeBps) / 10_000n;",
+  "  return amount - fee;",
+  "}",
+  "",
+  "/** Splits an amount into equal parts and a remainder. */",
+  "export function split(amount: bigint, parts: bigint): readonly [bigint, bigint] {",
+  "  const share = amount / parts;",
+  "  const rest = amount - share * parts;",
+  "  return [share, rest];",
+  "}",
+  "",
+  "/** Subtracts, never below zero. */",
+  "export function subtract(left: bigint, right: bigint): bigint {",
+  "  const difference = left - right;",
+  "  return difference < 0n ? 0n : difference;",
+  "}",
+  "",
+);
+
 // 16 of its 17 lines run under the test below: 94% line coverage, full branch coverage.
 const feeSource = [
-  lines(
-    "/** Takes a fee in basis points, rounding the fee down. */",
-    "export function afterFee(amount: bigint, feeBps: bigint): bigint {",
-    "  const fee = (amount * feeBps) / 10_000n;",
-    "  return amount - fee;",
-    "}",
-    "",
-    "/** Splits an amount into equal parts and a remainder. */",
-    "export function split(amount: bigint, parts: bigint): readonly [bigint, bigint] {",
-    "  const share = amount / parts;",
-    "  const rest = amount - share * parts;",
-    "  return [share, rest];",
-    "}",
-    "",
-    "/** Subtracts, never below zero. */",
-    "export function subtract(left: bigint, right: bigint): bigint {",
-    "  const difference = left - right;",
-    "  return difference < 0n ? 0n : difference;",
-    "}",
-    "",
-  ),
+  feeRules,
   amountFunction("double", ["const twice = amount * 2n;", "return twice;"]),
   amountFunction("triple", ["const thrice = amount * 3n;", "return thrice;"]),
   amountFunction("half", ["const halved = amount / 2n;", "return halved;"]),
@@ -47,11 +50,7 @@ const feeSource = [
   amountFunction("untested", ["return amount;"]),
 ].join("");
 
-const feeTest = lines(
-  'import { describe, expect, it } from "vitest";',
-  'import { afterFee, double, half, quadruple, quarter, split, subtract, triple } from "./fee.js";',
-  "",
-  'describe("fee math", () => {',
+const ruleChecks = [
   '  it("takes a fee and rounds it down", () => {',
   "    expect(afterFee(10_001n, 30n)).toBe(9_971n);",
   "  });",
@@ -64,6 +63,21 @@ const feeTest = lines(
   "    expect(subtract(1n, 2n)).toBe(0n);",
   "    expect(subtract(3n, 2n)).toBe(1n);",
   "  });",
+];
+
+function feeTestOf(names: string, checks: readonly string[]): string {
+  return lines(
+    'import { describe, expect, it } from "vitest";',
+    `import { ${names} } from "./fee.js";`,
+    "",
+    'describe("fee math", () => {',
+    ...checks,
+    "});",
+  );
+}
+
+const feeTest = feeTestOf("afterFee, double, half, quadruple, quarter, split, subtract, triple", [
+  ...ruleChecks,
   "",
   '  it("scales amounts", () => {',
   "    expect(double(4n)).toBe(8n);",
@@ -72,21 +86,16 @@ const feeTest = lines(
   "    expect(quarter(9n)).toBe(2n);",
   "    expect(quadruple(2n)).toBe(8n);",
   "  });",
-  "});",
-);
+]);
 
-// Calls every function but checks nothing, so most mutants survive.
-const weakTest = lines(
-  'import { describe, expect, it } from "vitest";',
-  'import { afterFee, double, half, quadruple, quarter, subtract, triple } from "./fee.js";',
-  "",
-  'describe("fee math", () => {',
+const ruleTest = feeTestOf("afterFee, split, subtract", ruleChecks);
+
+// Calls every rule but checks nothing, so most mutants survive.
+const weakTest = feeTestOf("afterFee, split, subtract", [
   '  it("runs", () => {',
-  "    const results = [afterFee(1n, 1n), subtract(1n, 1n), double(1n), triple(1n)];",
-  "    expect([...results, half(1n), quarter(1n), quadruple(1n)]).toHaveLength(7);",
+  "    expect([afterFee(1n, 1n), split(1n, 1n), subtract(1n, 1n)]).toHaveLength(3);",
   "  });",
-  "});",
-);
+]);
 
 const offlineTest = lines(
   'import fc from "fast-check";',
@@ -114,10 +123,10 @@ const offlineTest = lines(
 const moneyThreshold = /\(94\.11%\) does not meet "packages\/sample\/src\/\*\*" threshold \(95%\)/;
 
 // The entry only re-exports, so the package's coverage is the sample's own.
-function feePackage(test: string): Record<string, string> {
+function feePackage(test: string, source = feeSource): Record<string, string> {
   return fixturePackage(sampleKey, {
     "index.ts": 'export { afterFee } from "./fee.js";\n',
-    "fee.ts": feeSource,
+    "fee.ts": source,
     "fee.test.ts": test,
   });
 }
@@ -134,8 +143,8 @@ function moneyGraph(repo: string): Record<string, string> {
   return { [graphPath]: `${JSON.stringify(planted, null, 2)}\n` };
 }
 
-function moneySample(repo: string, test: string): Record<string, string> {
-  return { ...feePackage(test), ...moneyGraph(repo) };
+function moneySample(repo: string, test: string, source = feeSource): Record<string, string> {
+  return { ...feePackage(test, source), ...moneyGraph(repo) };
 }
 
 // The cases run only the planted sample, so their cost does not grow with the repository.
@@ -167,9 +176,8 @@ function coverageCases(repo: string): readonly GateCase[] {
       cost: 2,
       files: fixturePackage(sampleKey, { "setup.test.ts": offlineTest }),
       steps: [
-        { command: sampleTest, expect: "pass" },
         {
-          command: ["pnpm", "exec", "vitest", "run", "packages/sample/", "--reporter=verbose"],
+          command: [...sampleTest, "--reporter=verbose"],
           expect: "pass",
           output: [/✓ .*refuses a real request/, /✓ .*runs on fake timers/, /✓ .*runs fast-check/],
         },
@@ -182,8 +190,8 @@ function mutationCases(repo: string): readonly GateCase[] {
   return [
     {
       name: "Stryker reports a mutation score on a sample",
-      cost: 4,
-      files: moneySample(repo, feeTest),
+      cost: 3,
+      files: moneySample(repo, ruleTest, feeRules),
       steps: [
         {
           command: ["pnpm", "mutation"],
@@ -195,8 +203,8 @@ function mutationCases(repo: string): readonly GateCase[] {
     },
     {
       name: "Stryker fails a sample whose tests check nothing",
-      cost: 4,
-      files: moneySample(repo, weakTest),
+      cost: 3,
+      files: moneySample(repo, weakTest, feeRules),
       steps: [
         {
           command: ["pnpm", "mutation"],

@@ -1,34 +1,22 @@
 import { fixturePackage } from "./fixture-package.mjs";
-import type { GateCase } from "./gate-case.mjs";
+import { lintStep, typecheckStep, type GateCase } from "./gate-case.mjs";
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 }
 
 // Every expected finding names the planted file and the rule, so a case cannot pass on a
-// finding from somewhere else. The unix format prints one finding per line wherever it runs.
+// finding from somewhere else.
 function lintCase(
   name: string,
   files: Readonly<Record<string, string>>,
   findings: readonly (readonly [file: string, rule: string])[],
 ): GateCase {
-  const planted = Object.keys(files).filter((file) => /\.[cm]?tsx?$/.test(file));
-  return {
-    name,
-    files,
-    // Lints only the planted files: a whole-repo lint per case grows with the repo.
-    cost: 1.5,
-    steps: [
-      {
-        command: ["pnpm", "lint", "--format", "unix", ...planted],
-        expect: "fail",
-        output: findings.map(
-          ([file, rule]) =>
-            new RegExp(`${escapeRegex(file)}:\\d+:\\d+: .*\\[Error/${escapeRegex(rule)}\\]`),
-        ),
-      },
-    ],
-  };
+  const output = findings.map(
+    ([file, rule]) =>
+      new RegExp(`${escapeRegex(file)}:\\d+:\\d+: .*\\[Error/${escapeRegex(rule)}\\]`),
+  );
+  return { name, files, cost: 1.5, steps: [lintStep(files, "fail", output)] };
 }
 
 // A branch on the profile: only the composition root may take one.
@@ -186,7 +174,7 @@ export function lintCases(): readonly GateCase[] {
     {
       name: "the error class in core, process.env and a profile branch in cli lint clean",
       files: cleanFiles,
-      steps: [{ command: ["pnpm", "lint"], expect: "pass" }],
+      steps: [lintStep(cleanFiles, "pass")],
     },
     ...guardCases,
     ...importCases,
@@ -210,7 +198,7 @@ export function lintCases(): readonly GateCase[] {
           "",
         ].join("\n"),
       }),
-      steps: [{ command: ["pnpm", "typecheck"], expect: "fail", output: [/TS2375/, /TS1294/] }],
+      steps: [typecheckStep(["packages/core/src/shapes.ts"], "fail", [/TS2375/, /TS1294/])],
     },
   ];
 }

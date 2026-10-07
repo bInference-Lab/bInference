@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { findPackages } from "../package-graph/graph.mjs";
-import type { GateCase } from "./gate-case.mjs";
+import { typecheckStep, type GateCase } from "./gate-case.mjs";
 
 const rootFiles = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc"];
 
@@ -47,17 +47,18 @@ export function workspaceCases(repo: string): readonly GateCase[] {
     engineCase(repo, "26.1.0", "pass"),
     {
       name: "pnpm gen:package demo makes a package that builds through Turborepo and tests",
-      cost: 6,
+      cost: 3,
       steps: [
         { command: ["pnpm", "gen:package", "demo"], expect: "pass" },
         { command: ["pnpm", "install", "--prefer-offline"], expect: "pass" },
-        // Only the new package and what it imports: a full build and test run grows with the repo.
+        // Only the new package; its build task still builds what it imports first (^build). A
+        // full build and test run grows with the repo.
         {
-          command: ["pnpm", "turbo", "run", "build", "--filter=@binference/demo..."],
+          command: ["pnpm", "turbo", "run", "build", "--filter=@binference/demo"],
           expect: "pass",
           output: [/index\.mjs/, /index\.d\.mts/],
         },
-        { command: ["pnpm", "typecheck"], expect: "pass" },
+        typecheckStep(["packages/demo/src/**/*.ts"], "pass"),
         {
           command: ["pnpm", "exec", "vitest", "run", "packages/demo/", "--reporter=verbose"],
           expect: "pass",

@@ -38,6 +38,37 @@ export function failingCase(
   return { name, files, steps: [{ command: ["pnpm", script], expect: "fail", output: [output] }] };
 }
 
+/**
+ * Oxlint on the planted source files alone, with the repo's settings: a whole-repo lint per case
+ * grows with the repo. The unix format prints one finding per line wherever it runs.
+ */
+export function lintStep(
+  files: Readonly<Record<string, string>>,
+  expect: GateStep["expect"],
+  output: readonly RegExp[] = [],
+): GateStep {
+  const planted = Object.keys(files).filter((file) => /\.[cm]?tsx?$/.test(file));
+  return { command: ["pnpm", "lint", "--format", "unix", ...planted], expect, output };
+}
+
+/**
+ * tsc with the root tsconfig narrowed to some paths, so its settings and exclusions apply while
+ * the cost stays that of the planted files: a whole-repo typecheck per case grows with the repo.
+ */
+export function typecheckStep(
+  include: readonly string[],
+  expect: GateStep["expect"],
+  output: readonly RegExp[] = [],
+): GateStep {
+  const config = { extends: "../tsconfig.json", include: include.map((path) => `../${path}`) };
+  return {
+    command: ["pnpm", "exec", "tsc", "-p", ".gates/tsconfig.json"],
+    files: { ".gates/tsconfig.json": `${JSON.stringify(config, null, 2)}\n` },
+    expect,
+    output,
+  };
+}
+
 function judge(step: GateStep, result: CommandResult): string | undefined {
   const passed = result.status === 0;
   const label = step.command.join(" ");

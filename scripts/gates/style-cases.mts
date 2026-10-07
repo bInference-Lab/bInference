@@ -17,13 +17,17 @@ function seeds(repo: string): Readonly<Record<string, string>> {
   };
 }
 
+// check:style reads only the planted file: a whole-repo scan per case grows with the repo.
+const notesOnly = ["pnpm", "check:style", "--files", "notes.md"];
+const glossaryOnly = ["pnpm", "check:style", "--files", "docs/GLOSSARY.md"];
+
 function styleCase(name: string, text: string, rule: string): GateCase {
   return {
     name,
     files: { "notes.md": `# Notes\n\n${text}\n` },
     steps: [
       {
-        command: ["pnpm", "check:style"],
+        command: notesOnly,
         expect: "fail",
         output: [new RegExp(`notes\\.md:3: check:style\\(${rule}\\)`)],
       },
@@ -52,14 +56,14 @@ function exceptionCases(seed: Readonly<Record<string, string>>): readonly GateCa
     {
       name: "Chinese passes check:style in a file listed for cjk",
       files: { "docs/GLOSSARY.md": `# Glossary\n\n${seed["chinese"] ?? ""}\n` },
-      steps: [{ command: ["pnpm", "check:style"], expect: "pass" }],
+      steps: [{ command: glossaryOnly, expect: "pass" }],
     },
     {
       name: "an emoji fails check:style in a file listed only for cjk",
       files: { "docs/GLOSSARY.md": `# Glossary\n\nDone ${String.fromCodePoint(0x2705)}\n` },
       steps: [
         {
-          command: ["pnpm", "check:style"],
+          command: glossaryOnly,
           expect: "fail",
           output: [/docs\/GLOSSARY\.md:3: check:style\(emoji\)/],
         },
@@ -85,7 +89,7 @@ export function styleCases(repo: string): readonly GateCase[] {
       },
       steps: [
         {
-          command: ["pnpm", "check:style"],
+          command: notesOnly,
           expect: "fail",
           output: [/notes\.md:3: check:style\(reserved-name\)/],
         },
