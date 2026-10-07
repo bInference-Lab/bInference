@@ -25,7 +25,8 @@ Rules for this package:
   ingress replies follow it too, or else the language of the sender's Telegram app.
 - Messages go out in Telegram's HTML only as `src/cards/card-html.ts` builds them: every value from
   outside (token symbols and names, the agent's reason, venue and client names) goes through
-  `displayOutsideText`, and each line is escaped whole with `escapeHtml` after it is filled in.
+  `displayOutsideText` of `@binference/i18n`, and each line is escaped whole with `escapeHtml`
+  after it is filled in.
   Never build HTML from a value.
 - Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
   does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the

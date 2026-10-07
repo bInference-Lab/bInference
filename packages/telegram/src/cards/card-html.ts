@@ -7,10 +7,14 @@ import {
   type ReceiptFill,
   receiptLine,
 } from "@binference/engine";
-import { decimalText, type Formatter, type MessageValues } from "@binference/i18n";
+import {
+  decimalText,
+  displayOutsideText,
+  type Formatter,
+  type MessageValues,
+} from "@binference/i18n";
 import type { AssetInfo, AssetInfos } from "@binference/protocol";
 import { escapeHtml } from "../format/escape-html.js";
-import { displayOutsideText } from "../format/outside-text.js";
 import { addressPartOf, shortAddress } from "../format/short-address.js";
 
 /** What a card is shown with: the owner's formatter, and every asset the card names. */

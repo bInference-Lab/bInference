@@ -1,9 +1,8 @@
 import { bpsSchema } from "@binference/core";
 import { type CardAction, type CardFacts, type CardValue, drawCard } from "@binference/engine";
-import { createFormatter } from "@binference/i18n";
+import { createFormatter, displayOutsideText } from "@binference/i18n";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { displayOutsideText } from "../format/outside-text.js";
 import {
   accountRef,
   assetsWith,

@@ -13,6 +13,7 @@ and times. Messages are ICU texts in `messages/<locale>/<area>.json`, formatted 
 | --------------------------------------------- | --------------------------------------------------------------------------- |
 | `createFormatter`, `Formatter`                | Messages, amounts, money, rates and times for one language and timezone     |
 | `decimalText`, `DecimalText`                  | Base units as an exact decimal with no trailing zeros, for files and tools  |
+| `displayOutsideText`                          | Text set outside binference, cut to a length, with hidden characters shown  |
 | `messages`, `Catalog`                         | Every message by language, under full keys such as `reason.daily_cap`       |
 | `messageLocales`, `MessageLocale`             | The languages with messages: `en` and `zh`                                  |
 | `@binference/i18n/check`: `checkCatalogs`     | The same files, keys and arguments in every language; ICU that parses       |
