@@ -1,3 +1,4 @@
+import type { PrivyRequest } from "@binference/chain";
 import {
   BinferenceError,
   createSecret,
@@ -10,7 +11,6 @@ import {
 } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
-import type { PrivyRequest } from "../signer-process/privy-request.js";
 import type { PrivyTransaction } from "../signing/privy-transaction.js";
 import { createPrivyApi, type PrivyApi } from "./privy-api.js";
 import type { PrivyId } from "./privy-records.js";

@@ -1,5 +1,5 @@
+import type { AuthorizeInput } from "@binference/chain";
 import type { SignerSettings } from "../process/signer-settings.schema.js";
-import type { AuthorizeInput } from "../requests/authorize-input.schema.js";
 import { authorizationHolds } from "./authorization-rule.js";
 import { chainHolds } from "./chain-rule.js";
 import { readPrivyCall } from "./evm-transaction.schema.js";

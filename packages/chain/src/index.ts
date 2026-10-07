@@ -51,7 +51,43 @@ export type {
 export { createChainRegistry } from "./registry/create-chain-registry.js";
 export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
 export type { RegisteredChain } from "./registry/registered-chain.js";
-export type { SignAuthorization, SignRequest } from "./sign-request.js";
+export type { SignRequest } from "./sign-request.js";
+export { authorizationPayload } from "./signing/authorization-payload.js";
+export { authorizeInputSchema } from "./signing/authorize-input.js";
+export type {
+  AllowedTargets,
+  AuthorizeInput,
+  AuthorizeInputWire,
+  SignerWallet,
+} from "./signing/authorize-input.js";
+export { approvalModeNowSchema, autoModeGrantSchema } from "./signing/auto-mode-grant.js";
+export type {
+  ApprovalModeNow,
+  ApprovalModeNowWire,
+  AutoModeGrant,
+  AutoModeGrantWire,
+} from "./signing/auto-mode-grant.js";
+export type { SignerProcess } from "./signing/ports.js";
+export { privyRequestSchema } from "./signing/privy-request.js";
+export type { PrivyHeaders, PrivyRequest } from "./signing/privy-request.js";
+export { signAuthorizationSchema, termsHashSchema } from "./signing/sign-authorization.js";
+export type {
+  AdvanceAuthorization,
+  SignAuthorization,
+  SignAuthorizationWire,
+} from "./signing/sign-authorization.js";
+export { signStepSchema } from "./signing/sign-step.js";
+export type {
+  OriginalCall,
+  SignStep,
+  SignStepWire,
+  StepAction,
+  StepActionWire,
+  StepReplacement,
+  StepReplacementWire,
+} from "./signing/sign-step.js";
+export { signerRefusalSchema } from "./signing/signer-refusal.js";
+export type { SignerRefusal } from "./signing/signer-refusal.js";
 export { isTxHash, txDraftSchema } from "./transaction.js";
 export type {
   SignatureProblem,

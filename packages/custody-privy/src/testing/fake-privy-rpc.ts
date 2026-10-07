@@ -1,3 +1,4 @@
+import { authorizationPayload, type PrivyHeaders } from "@binference/chain";
 import {
   type HttpRequest,
   type HttpResponse,
@@ -6,7 +7,6 @@ import {
 } from "@binference/core";
 import { hexToBigInt, hexToNumber } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { signaturePayload } from "../signer-process/privy-request.js";
 import { authorizingParty, type FakeParty } from "./fake-authorization.js";
 import { evaluatePolicy } from "./fake-policy-engine.js";
 import { answer, failure } from "./fake-privy-answers.js";
@@ -31,16 +31,15 @@ function smallOf(quantity: FakeQuantity): number {
 // The headers a signature covers, as Privy's docs list them: the app id, and the idempotency key
 // and the expiry when the request has them. Other `privy-` headers, such as the SDK's
 // `privy-client`, are not covered.
-const coveredHeaders: ReadonlySet<string> = new Set([
-  "privy-app-id",
-  "privy-idempotency-key",
-  "privy-request-expiry",
-]);
-
-function signedHeaders(request: HttpRequest): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(request.headers ?? {}).filter(([name]) => coveredHeaders.has(name)),
-  );
+function signedHeaders(request: HttpRequest): PrivyHeaders {
+  const headers = request.headers ?? {};
+  const key = headers["privy-idempotency-key"];
+  const expiry = headers["privy-request-expiry"];
+  return {
+    "privy-app-id": headers["privy-app-id"] ?? "",
+    ...(key === undefined ? {} : { "privy-idempotency-key": key }),
+    ...(expiry === undefined ? {} : { "privy-request-expiry": expiry }),
+  };
 }
 
 function policiesFor(wallet: FakeWallet, party: FakeParty): readonly string[] {
@@ -83,7 +82,7 @@ async function signed(wallet: FakeWallet, tx: FakeTransaction): Promise<string> 
   });
 }
 
-function expired(state: FakePrivyState, headers: Readonly<Record<string, string>>): boolean {
+function expired(state: FakePrivyState, headers: PrivyHeaders): boolean {
   const expiry = headers["privy-request-expiry"];
   return (
     expiry !== undefined && !(/^\d+$/.test(expiry) && BigInt(expiry) >= BigInt(state.clock.now()))
@@ -103,13 +102,13 @@ function partyOf(
   const signatures = (request.http.headers?.[signatureHeader] ?? "")
     .split(",")
     .filter((item) => item !== "");
-  const text = signaturePayload({
+  const payload = authorizationPayload({
     method: "POST",
     url: request.http.url,
     body: request.body,
     headers,
   });
-  const party = authorizingParty(state, wallet, { payload: Buffer.from(text, "utf8"), signatures });
+  const party = authorizingParty(state, wallet, { payload, signatures });
   if (party !== undefined) {
     return party;
   }

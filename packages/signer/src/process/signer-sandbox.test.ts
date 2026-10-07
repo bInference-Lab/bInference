@@ -5,11 +5,14 @@ import { createPublicKey, verify } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { authorizationPayload } from "@binference/chain";
+import { signerProcessContract } from "@binference/chain/testing";
+import { createMemoryLogger } from "@binference/core/testing";
 import { build } from "tsdown";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { formatAgentKey } from "../agent-key/agent-key-text.js";
+import { openSignerClient, type SignerClient } from "../client/signer-client.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
-import { authorizationPayload } from "../privy/authorization-signature.js";
 import { formatSignerRequest } from "../requests/signer-message.schema.js";
 import { authorizeFixture, fixtureSettings } from "../testing/sign-fixtures.js";
 import { readLines } from "./read-lines.js";
@@ -125,7 +128,7 @@ async function probeReport(run: Run): Promise<Readonly<Record<string, string>>> 
   >;
 }
 
-async function exitCode(run: Run): Promise<number | null> {
+async function exitCode(run: Pick<Run, "child">): Promise<number | null> {
   return run.child.exitCode ?? new Promise((resolve) => run.child.once("exit", resolve));
 }
 
@@ -137,6 +140,63 @@ function begin(run: Run): void {
   );
 }
 
+// The signer reads the real clock, so this request's confirmation lasts until 2100.
+function lastingFixture() {
+  const fixture = authorizeFixture();
+  return {
+    ...fixture,
+    authorization: { ...fixture.authorization, expiresAtMs: 4_102_444_800_000 },
+  };
+}
+
+const clients: Pick<Run, "child">[] = [];
+
+// Starts the built signer and opens the engine's client over its pipes, as the engine will.
+async function startClient(): Promise<SignerClient> {
+  const child = spawn(process.execPath, signerNodeArguments(signerBundle), {
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  clients.push({ child });
+  return openSignerClient({
+    answers: child.stdout,
+    write: async (line) =>
+      new Promise((resolve, reject) => {
+        child.stdin.write(`${line}\n`, (error) => {
+          if (error === null || error === undefined) {
+            resolve();
+          } else {
+            reject(error);
+          }
+        });
+      }),
+    end: async () =>
+      new Promise((resolve) => {
+        child.stdin.end(resolve);
+      }),
+    settings: fixtureSettings,
+    agentKey: formatAgentKey(agentKey),
+    logger: createMemoryLogger({ subsystem: "engine" }),
+    onRefusal: () => undefined,
+  });
+}
+
+describe("the signer process started as the engine starts it", { timeout: 60_000 }, () => {
+  afterEach(async () => {
+    const started = clients.splice(0);
+    started.forEach((run) => run.child.stdin.end());
+    await Promise.all(started.map(async (run) => exitCode(run)));
+  });
+
+  it.each(
+    signerProcessContract({
+      create: async () => ({ signerProcess: await startClient(), input: lastingFixture() }),
+    }),
+  )("follows the SignerProcess contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+});
+
 describe("the signer process under Node's permission model", () => {
   it(
     "answers publicKey, signs, and refuses an unknown request and a broken rule",
@@ -144,12 +204,7 @@ describe("the signer process under Node's permission model", () => {
     async () => {
       const run = start(signerNodeArguments(signerBundle));
       begin(run);
-      // The signer reads the real clock, so this confirmation lasts until 2100.
-      const fixture = authorizeFixture();
-      const input = {
-        ...fixture,
-        authorization: { ...fixture.authorization, expiresAtMs: 4_102_444_800_000 },
-      };
+      const input = lastingFixture();
       run.child.stdin.write(`${JSON.stringify({ id: "a", kind: "publicKey" })}\n`);
       run.child.stdin.write(`${formatSignerRequest({ id: "b", kind: "authorize", ...input })}\n`);
       run.child.stdin.write(`${JSON.stringify({ id: "c", kind: "exportKey" })}\n`);

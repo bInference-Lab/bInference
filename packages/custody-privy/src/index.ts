@@ -12,7 +12,6 @@ export type {
 } from "./ceiling/policy-rule.js";
 export { registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
 export type { RegistryCeilingRequest } from "./ceiling/registry-ceiling-chain.js";
-export type { SignerProcess } from "./ports.js";
 export { createPrivyApi } from "./privy/privy-api.js";
 export type {
   CallOptions,
@@ -31,13 +30,6 @@ export type {
   WalletSigner,
 } from "./privy/privy-records.js";
 export type { PrivyApiOptions } from "./privy/privy-client.js";
-export type {
-  AgentPublicKey,
-  AuthorizationSignature,
-  AuthorizeRequest,
-} from "./signer-process/authorize-request.js";
-export { signaturePayload } from "./signer-process/privy-request.js";
-export type { PrivyRequest } from "./signer-process/privy-request.js";
 export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
 export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner-signer.js";
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";

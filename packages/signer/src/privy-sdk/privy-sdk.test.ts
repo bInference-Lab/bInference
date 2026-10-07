@@ -1,4 +1,5 @@
 import { createPublicKey, verify } from "node:crypto";
+import { authorizationPayload, type PrivyRequest } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import {
   formatRequestForAuthorizationSignature,
@@ -9,8 +10,7 @@ import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
-import { authorizationPayload, signAuthorization } from "../privy/authorization-signature.js";
-import type { PrivyRequest } from "../privy/privy-request.schema.js";
+import { signAuthorization } from "../privy/authorization-signature.js";
 
 // Privy's docs recommend its SDK for authorization signatures. The signer cannot load the SDK in
 // its sealed process, so it writes the payload itself; this test holds it to the SDK's bytes, for

@@ -2,6 +2,7 @@ import {
   accountRefSchema,
   chainRefSchema,
   type SignedTx,
+  type SignerProcess,
   type SignRequest,
 } from "@binference/chain";
 import { createEvmSigningScheme } from "@binference/chain-evm";
@@ -22,7 +23,6 @@ import {
   type TestCall,
   unsignedCall,
 } from "../contracts/privy-custody-setup.js";
-import type { SignerProcess } from "../ports.js";
 import { createPrivyApi } from "../privy/privy-api.js";
 import { testAddresses, testChain } from "../testing/custody-fixtures.js";
 import {
@@ -102,7 +102,7 @@ function rawOf(signed: Result<SignedTx, string>): string {
 }
 
 function requestFor(setup: CustodySetup, payloadCall: TestCall = call): SignRequest {
-  return signRequest(setup, unsignedCall(setup, payloadCall), payloadCall.to);
+  return signRequest(setup, unsignedCall(setup, payloadCall), payloadCall);
 }
 
 describe("privy-owner signer", () => {
@@ -133,33 +133,42 @@ describe("privy-owner signer", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("passes the signer the exact request it sends, with the step, the terms hash and the allowed set", async () => {
+  it("passes the signer the exact request it sends, with the wallet and the engine's request", async () => {
     const { setup, subject, sent } = await world();
-    const request = { ...requestFor(setup), step: 1, termsHash: "a".repeat(64) };
+    const base = requestFor(setup);
+    const request = { ...base, step: { ...base.step, index: 1 }, termsHash: "a".repeat(64) };
     await expect(setup.signer.signTransaction(request, live())).resolves.toMatchObject({
       ok: true,
     });
     const asked = only(subject.signerProcess.requests());
     const reached = only(sent());
-    expect(asked).toMatchObject({
-      wallet: setup.agentWallet,
+    expect(asked).toStrictEqual({
+      wallet: {
+        id: setup.agentWallet,
+        custodyId: setup.wallet.id,
+        account: accountRefSchema.parse(`${testChain.ref}:${setup.wallet.address}`),
+      },
+      request: asked.request,
       intent: request.intent,
-      step: 1,
+      step: request.step,
+      authorization: request.authorization,
       termsHash: "a".repeat(64),
       allowed: request.allowed,
-      authorization: request.authorization,
     });
+    expect(asked.request.url).toBe(`https://api.privy.io/v1/wallets/${setup.wallet.id}/rpc`);
     expect(reached.url).toBe(asked.request.url);
     expect(JSON.parse(String(reached.body))).toStrictEqual(asked.request.body);
     expect(reached.headers).toMatchObject(asked.request.headers);
     expect(asked.request.body).toMatchObject({
+      method: "eth_signTransaction",
+      chain_type: "ethereum",
       params: { transaction: { type: 2, chain_id: 56, nonce: 0, value: "0x1", data: call.data } },
     });
   });
 
   it("answers refused when the signer's hard rules refuse, and Privy hears nothing", async () => {
     const { setup, subject, sent } = await world();
-    subject.signerProcess.refuseFromNow();
+    subject.signerProcess.refuseFromNow("rule_2");
     await expect(setup.signer.signTransaction(requestFor(setup), live())).resolves.toStrictEqual(
       err("refused"),
     );
@@ -221,7 +230,7 @@ describe("privy-owner signer", () => {
     const { setup, subject, sent } = await world();
     const odd: SignerProcess = {
       publicKey: async (options) => subject.signerProcess.publicKey(options),
-      authorize: async () => Promise.resolve({ ok: true, value: { signature: "a,b\r\nx" } }),
+      authorize: async () => Promise.resolve({ ok: true, value: "a,b\r\nx" }),
     };
     await expect(
       adapterWith(setup, odd).signTransaction(requestFor(setup), live()),

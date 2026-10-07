@@ -18,13 +18,10 @@ authorization signature over each request it is asked to authorize.
 | `formatAgentKey`, `parseAgentKey`         | The agent key as every unlock mode holds it: DER PKCS #8 in base64            |
 | `agentKeyEntry`                           | `agent-key`, the secret store entry of the agent key                          |
 | `createAgentKey`, `openAgentKey`          | Makes and stores the agent key once, and opens it at start                    |
-| `authorizationPayload`                    | The bytes Privy's authorization signature covers (RFC 8785 JSON)              |
 | `signAuthorization`                       | Privy's authorization signature: ECDSA P-256 over SHA-256, DER in base64      |
 | `signerNodeArguments`                     | The Node arguments that start the signer under the permission model           |
-| `openSignerClient`, `SignerClient`        | The engine's client of the signer process: `publicKey` and `authorize`        |
+| `openSignerClient`, `SignerClient`        | The `SignerProcess` port of `@binference/chain` over the signer's pipes       |
 | `SignerSettings`, `signerSettingsSchema`  | The chains and the Privy API origin the signer is started with                |
-| `AuthorizeInput`, `authorizeInputSchema`  | What `authorize` takes (keys spec, section 5.1), and its JSON form            |
-| `AutoModeGrant`, `ApprovalModeNow`        | The auto grant and the agent's mode as rule 5 reads them in auto mode         |
 | `SignerRequest`, `SignerAnswer`           | The messages on the signer's channel                                          |
 | `@binference/signer/process`              | The built signer process, `dist/signer-process.mjs`: one file, never imported |
 
@@ -50,7 +47,8 @@ signer's only channel; only the engine holds them.
 ## The hard rules
 
 The signer reads the transaction out of Privy's `eth_signTransaction` body and checks it against
-the rest of the `authorize` request before it signs (keys spec, section 5.2). A refusal names the
+the rest of the `authorize` request (`AuthorizeInput` of `@binference/chain`, which custody fills)
+before it signs (keys spec, section 5.2). A refusal names the
 first rule broken; the engine's client logs it as `signer.rule_<n>` with the intent's id only and
 hands it to `onRefusal`, which the composition root raises as a notice.
 
@@ -64,7 +62,8 @@ hands it to `onRefusal`, which the composition root raises as a notice.
 | 6    | A transaction that takes an earlier nonce is at `replaces.nonce`: a speed-up repeats `original` (`to`, value and calldata), a cancel is a 0-value transfer with no calldata to the wallet itself                                                                                                                                                                                                                        | `step.replaces`, `wallet.account`                       |
 
 A cancel is checked by rule 6 in place of rules 2 and 3. Quantities in the body are safe integers
-or `0x` hex; a body with decimal text, a `from` field or no `nonce` is `malformed`.
+or `0x` hex; a body with decimal text, a `from` field or no `nonce` is `malformed`. The body may
+name `chain_type: "ethereum"`, as Privy's Node SDK writes it.
 
 ## Example
 
@@ -100,5 +99,5 @@ const signer = await openSignerClient({
   logger: logger.child("signer"),
   onRefusal: (notice) => notices.raise(notice),
 });
-const signature = await signer.authorize(input, signal);
+const signature = await signer.authorize(input, { signal });
 ```

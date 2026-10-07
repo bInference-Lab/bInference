@@ -7,7 +7,7 @@ import {
   type AutoModeGrant,
   autoModeGrantSchema,
   type AutoModeGrantWire,
-} from "./auto-mode-grant.schema.js";
+} from "./auto-mode-grant.js";
 
 /** The life of an auto order or a webhook rule, as the engine read it right before signing. */
 export interface AdvanceAuthorization {
@@ -29,7 +29,7 @@ export interface AdvanceAuthorization {
  * as it stands. The terms hash is that of what the owner confirmed, or of the intent that passed
  * the auto test.
  */
-export type SignerAuthorization =
+export type SignAuthorization =
   | {
       readonly kind: "confirmation";
       readonly id: Id<"cnf">;
@@ -52,8 +52,8 @@ interface AdvanceWire extends AdvanceAuthorization {
   readonly id: string;
 }
 
-/** A {@link SignerAuthorization} as JSON carries it: ids as text, amounts as decimal strings. */
-export type SignerAuthorizationWire =
+/** A {@link SignAuthorization} as JSON carries it: ids as text, amounts as decimal strings. */
+export type SignAuthorizationWire =
   | {
       readonly kind: "confirmation";
       readonly id: string;
@@ -82,8 +82,8 @@ const advanceShape = {
   maxFills: countSchema.exactOptional(),
 };
 
-/** Decodes a {@link SignerAuthorization} from JSON, and encodes it back with `z.encode`. */
-export const signerAuthorizationSchema: z.ZodType<SignerAuthorization, SignerAuthorizationWire> =
+/** Decodes a {@link SignAuthorization} from JSON, and encodes it back with `z.encode`. */
+export const signAuthorizationSchema: z.ZodType<SignAuthorization, SignAuthorizationWire> =
   z.discriminatedUnion("kind", [
     z.strictObject({
       kind: z.literal("confirmation"),

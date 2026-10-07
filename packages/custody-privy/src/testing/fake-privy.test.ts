@@ -1,11 +1,11 @@
 import { generateKeyPairSync, type KeyObject, sign } from "node:crypto";
+import { authorizationPayload } from "@binference/chain";
 import type { HttpResponse, JsonValue } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import { policyRuleJson } from "../ceiling/policy-rule.js";
 import { privyCustodyContract } from "../contracts/privy-custody-contract.js";
-import { signaturePayload } from "../signer-process/privy-request.js";
 import { testCeilingRequest } from "./custody-fixtures.js";
 import { createFakeCustodySubject } from "./fake-custody-subject.js";
 import { createFakePrivy, type FakePrivy } from "./fake-privy.js";
@@ -124,7 +124,7 @@ async function signedRpc(rpc: SignedRpc): Promise<HttpResponse> {
     "privy-app-id": rpc.privy.appId,
     ...(rpc.expiry === undefined ? {} : { "privy-request-expiry": rpc.expiry }),
   };
-  const payload = Buffer.from(signaturePayload({ method: "POST", url, body, headers }));
+  const payload = authorizationPayload({ method: "POST", url, body, headers });
   const signature = rpc.signature ?? sign("sha256", payload, rpc.signer).toString("base64");
   return send(rpc.privy, `/v1/wallets/${rpc.wallet}/rpc`, {
     body,

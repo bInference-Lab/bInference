@@ -1,11 +1,12 @@
 import { createPublicKey, verify } from "node:crypto";
 import { PassThrough } from "node:stream";
+import { authorizationPayload } from "@binference/chain";
+import { signerProcessContract } from "@binference/chain/testing";
 import { createSecret, idSchema } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
-import { authorizationPayload } from "../privy/authorization-signature.js";
 import { maxLineBytes } from "../process/read-lines.js";
 import { serveSigner } from "../process/serve-signer.js";
 import { authorizeFixture, fixtureNowMs, fixtureSettings } from "../testing/sign-fixtures.js";
@@ -13,7 +14,7 @@ import { maxWaitingCalls, openSignerClient, type SignerRefusalNotice } from "./s
 
 const agentKey = createP256KeyPair();
 const keyText = formatAgentKey(agentKey).reveal();
-const signal = (): AbortSignal => new AbortController().signal;
+const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
 
 // A client whose signer the test plays: it reads what the client wrote and writes answers.
 async function scripted() {
@@ -64,38 +65,64 @@ const otherWallet = {
   id: idSchema("wal").parse("wal_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff"),
 };
 
-describe("signer client", () => {
-  it("talks to a signer: settings, then the key, then publicKey and authorize", async () => {
-    const toSigner = new PassThrough();
-    const fromSigner = new PassThrough();
-    const serving = serveSigner({
-      input: toSigner,
-      write: async (line) => {
-        fromSigner.write(`${line}\n`);
-      },
-      now: () => fixtureNowMs,
-    });
-    const client = await openSignerClient({
-      answers: fromSigner,
-      write: async (line) => {
-        toSigner.write(`${line}\n`);
-      },
-      end: async () => {
-        toSigner.end();
-      },
-      settings: fixtureSettings,
-      agentKey: createSecret(keyText),
-      logger: createMemoryLogger({ subsystem: "engine" }),
-      onRefusal: () => undefined,
-    });
-    const input = authorizeFixture();
-
-    await expect(client.publicKey(signal())).resolves.toBe(agentKey.publicKey);
-    const signed = await client.authorize(input, signal());
+// A client over a signer served in this process, on the fixtures' clock.
+async function served() {
+  const toSigner = new PassThrough();
+  const fromSigner = new PassThrough();
+  const serving = serveSigner({
+    input: toSigner,
+    write: async (line) => {
+      fromSigner.write(`${line}\n`);
+    },
+    now: () => fixtureNowMs,
+  });
+  const client = await openSignerClient({
+    answers: fromSigner,
+    write: async (line) => {
+      toSigner.write(`${line}\n`);
+    },
+    end: async () => {
+      toSigner.end();
+    },
+    settings: fixtureSettings,
+    agentKey: createSecret(keyText),
+    logger: createMemoryLogger({ subsystem: "engine" }),
+    onRefusal: () => undefined,
+  });
+  const stop = async (): Promise<void> => {
     await client.close();
     await serving;
     fromSigner.end();
     await client.ended;
+  };
+  return { client, stop };
+}
+
+describe("signer client", () => {
+  const running: (() => Promise<void>)[] = [];
+  afterEach(async () => {
+    await Promise.all(running.splice(0).map(async (stop) => stop()));
+  });
+
+  it.each(
+    signerProcessContract({
+      create: async () => {
+        const { client, stop } = await served();
+        running.push(stop);
+        return { signerProcess: client, input: authorizeFixture() };
+      },
+    }),
+  )("follows the SignerProcess contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("talks to a signer: settings, then the key, then publicKey and authorize", async () => {
+    const { client, stop } = await served();
+    const input = authorizeFixture();
+
+    await expect(client.publicKey(live())).resolves.toBe(agentKey.publicKey);
+    const signed = await client.authorize(input, live());
+    await stop();
 
     const { value } = signed as { readonly value: string };
 
@@ -119,7 +146,7 @@ describe("signer client", () => {
   it("logs a refusal by its reason and ids only, and raises it as a notice", async () => {
     const { client, answer, requests, notices, logger } = await scripted();
     const input = authorizeFixture();
-    const result = client.authorize(input, signal());
+    const result = client.authorize(input, live());
     await settle();
     answer({ id: requests()[0]?.id, ok: false, refused: "malformed" });
 
@@ -141,7 +168,7 @@ describe("signer client", () => {
   it("logs a hard rule refusal by the rule's number", async () => {
     const { client, answer, requests, notices, logger } = await scripted();
     const input = authorizeFixture();
-    const result = client.authorize(input, signal());
+    const result = client.authorize(input, live());
     await settle();
     answer({ id: requests()[0]?.id, ok: false, refused: "rule_3" });
 
@@ -157,9 +184,9 @@ describe("signer client", () => {
   it("sends one request per wallet at a time, and wallets side by side", async () => {
     const { client, answer, requests } = await scripted();
     const input = authorizeFixture();
-    const first = client.authorize(input, signal());
-    const second = client.authorize(input, signal());
-    const other = client.authorize({ ...input, wallet: otherWallet }, signal());
+    const first = client.authorize(input, live());
+    const second = client.authorize(input, live());
+    const other = client.authorize({ ...input, wallet: otherWallet }, live());
     await settle();
     const beforeAnswer = requests().map((request) => request.id);
     answer({ id: beforeAnswer[0], ok: true, signature: "MEQC" });
@@ -179,19 +206,19 @@ describe("signer client", () => {
 
   it("rejects every waiting call once the signer stops, and every later call", async () => {
     const { client, answers } = await scripted();
-    const waiting = client.publicKey(signal());
+    const waiting = client.publicKey(live());
     await settle();
     answers.end();
 
     await expect(waiting).rejects.toMatchObject({ code: "signer.stopped" });
-    await expect(client.authorize(authorizeFixture(), signal())).rejects.toMatchObject({
+    await expect(client.authorize(authorizeFixture(), live())).rejects.toMatchObject({
       code: "signer.stopped",
     });
   });
 
   it("rejects with the fault the signer stopped on", async () => {
     const { client, answer } = await scripted();
-    const waiting = client.publicKey(signal());
+    const waiting = client.publicKey(live());
     await settle();
     answer({ fault: "signer.agent_key_invalid" });
 
@@ -203,7 +230,7 @@ describe("signer client", () => {
 
   it("stops at a line it cannot read and logs it without its text", async () => {
     const { client, answers, logger } = await scripted();
-    const waiting = client.publicKey(signal());
+    const waiting = client.publicKey(live());
     await settle();
     answers.write("not an answer\n");
 
@@ -220,7 +247,7 @@ describe("signer client", () => {
 
   it("stops at an answer line over the limit and logs its code", async () => {
     const { client, answers, logger } = await scripted();
-    const waiting = client.publicKey(signal());
+    const waiting = client.publicKey(live());
     await settle();
     answers.write(`${"x".repeat(maxLineBytes + 1)}\n`);
 
@@ -237,7 +264,7 @@ describe("signer client", () => {
 
   it("stops when the signer's output breaks", async () => {
     const { client, answers, logger } = await scripted();
-    const waiting = client.publicKey(signal());
+    const waiting = client.publicKey(live());
     await settle();
     answers.destroy(new Error("the pipe broke"));
 
@@ -250,19 +277,31 @@ describe("signer client", () => {
   it("rejects an aborted call with the signal's reason and drops its late answer", async () => {
     const { client, answer, requests } = await scripted();
     const controller = new AbortController();
-    const waiting = client.publicKey(controller.signal);
+    const waiting = client.publicKey({ signal: controller.signal });
     await settle();
     controller.abort(new Error("deadline"));
 
     await expect(waiting).rejects.toThrow("deadline");
     answer({ id: requests()[0]?.id, ok: true, publicKey: "AAAA" });
-    await expect(client.publicKey(AbortSignal.abort(new Error("gone")))).rejects.toThrow("gone");
+    await expect(
+      client.publicKey({ signal: AbortSignal.abort(new Error("gone")) }),
+    ).rejects.toThrow("gone");
+  });
+
+  it("sends nothing for a call whose signal aborted before its turn", async () => {
+    const { client, requests } = await scripted();
+    const aborted = { signal: AbortSignal.abort(new Error("gone")) };
+
+    await expect(client.authorize(authorizeFixture(), aborted)).rejects.toThrow("gone");
+    await expect(client.publicKey(aborted)).rejects.toThrow("gone");
+    await settle();
+    expect(requests()).toStrictEqual([]);
   });
 
   it("rejects a call aborted with a reason that is no error with an AbortError", async () => {
     const { client } = await scripted();
     const controller = new AbortController();
-    const waiting = client.publicKey(controller.signal);
+    const waiting = client.publicKey({ signal: controller.signal });
     controller.abort("deadline");
 
     await expect(waiting).rejects.toMatchObject({ name: "AbortError" });
@@ -270,7 +309,7 @@ describe("signer client", () => {
 
   it("drops an answer that names no request and keeps waiting", async () => {
     const { client, answer, requests } = await scripted();
-    const waiting = client.publicKey(signal());
+    const waiting = client.publicKey(live());
     await settle();
     answer({ id: null, ok: false, refused: "unknown_request" });
     answer({ id: requests()[0]?.id, ok: true, publicKey: "AAAA" });
@@ -282,14 +321,14 @@ describe("signer client", () => {
     const { client, answers } = await scripted();
     const controller = new AbortController();
     const waiting = Array.from({ length: maxWaitingCalls }, async () =>
-      client.publicKey(controller.signal),
+      client.publicKey({ signal: controller.signal }),
     );
     await settle();
 
-    await expect(client.publicKey(signal())).rejects.toMatchObject({ code: "signer.busy" });
+    await expect(client.publicKey(live())).rejects.toMatchObject({ code: "signer.busy" });
     controller.abort(new Error("done"));
     await expect(Promise.allSettled(waiting)).resolves.toHaveLength(maxWaitingCalls);
-    const next = client.publicKey(signal());
+    const next = client.publicKey(live());
     await settle();
     answers.end();
     await expect(next).rejects.toMatchObject({ code: "signer.stopped" });
@@ -299,11 +338,11 @@ describe("signer client", () => {
     const { client } = await scripted();
     const controller = new AbortController();
     const queued = Array.from({ length: maxWaitingCalls }, async () =>
-      client.authorize(authorizeFixture(), controller.signal),
+      client.authorize(authorizeFixture(), { signal: controller.signal }),
     );
     await settle();
 
-    await expect(client.authorize(authorizeFixture(), signal())).rejects.toMatchObject({
+    await expect(client.authorize(authorizeFixture(), live())).rejects.toMatchObject({
       code: "signer.busy",
     });
     controller.abort(new Error("done"));
@@ -312,8 +351,8 @@ describe("signer client", () => {
 
   it("refuses an answer of the wrong kind", async () => {
     const { client, answer, requests } = await scripted();
-    const keyCall = client.publicKey(signal());
-    const signCall = client.authorize(authorizeFixture(), signal());
+    const keyCall = client.publicKey(live());
+    const signCall = client.authorize(authorizeFixture(), live());
     await settle();
     const [keyRequest, signRequest] = requests();
     answer({ id: keyRequest?.id, ok: true, signature: "MEQC" });
@@ -327,6 +366,6 @@ describe("signer client", () => {
     const { client, breakWrites } = await scripted();
     breakWrites();
 
-    await expect(client.publicKey(signal())).rejects.toMatchObject({ code: "signer.stopped" });
+    await expect(client.publicKey(live())).rejects.toMatchObject({ code: "signer.stopped" });
   });
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   accountRefSchema,
   type Signer,
+  type SignerProcess,
   type SignRequest,
   type UnsignedTx,
 } from "@binference/chain";
@@ -11,10 +12,9 @@ import {
   type EvmChain,
   parseEvmAddress,
 } from "@binference/chain-evm";
-import { type Id, idSchema, ok, type Result } from "@binference/core";
+import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import type { Ceiling } from "../ceiling/ceiling.js";
-import type { SignerProcess } from "../ports.js";
 import type { PrivyApi } from "../privy/privy-api.js";
 import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
 import { privyTransaction } from "../signing/privy-transaction.js";
@@ -75,7 +75,7 @@ export function testCeiling(): Ceiling {
 
 async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
   const { api, signerProcess, ownerKey } = subject;
-  const { publicKey: agentKey } = await signerProcess.publicKey(live());
+  const agentKey = await signerProcess.publicKey(live());
   const ownerQuorum = await api.createKeyQuorum(
     { publicKey: ownerKey, displayName: "binference test owner" },
     live(),
@@ -133,15 +133,29 @@ export function unsignedCall(
   });
 }
 
-/** A request for the adapter, approved by a confirmation, allowing the call's target. */
-export function signRequest(setup: CustodySetup, tx: UnsignedTx, to: string): SignRequest {
+const intent = idSchema("int").parse(`int_${uuid}`);
+const termsHash = "0".repeat(64);
+
+/** A request for the adapter: one call, approved by a confirmation, allowing the call's target. */
+export function signRequest(setup: CustodySetup, tx: UnsignedTx, call: TestCall): SignRequest {
   return {
     wallet: setup.agentWallet,
-    intent: idSchema("int").parse(`int_${uuid}`),
-    step: 0,
-    authorization: { confirmation: idSchema("cnf").parse(`cnf_${uuid}`) },
-    termsHash: "0".repeat(64),
-    allowed: [accountRefSchema.parse(`${tx.chain}:${to}`)],
+    intent,
+    step: { index: 0, chain: tx.chain, action: { kind: "call", nativeValue: call.valueWei } },
+    authorization: {
+      kind: "confirmation",
+      id: idSchema("cnf").parse(`cnf_${uuid}`),
+      intent,
+      termsHash,
+      // Lasts until 2100: the suite runs on the fake's clock and on the live app's.
+      expiresAtMs: 4_102_444_800_000,
+    },
+    termsHash,
+    allowed: {
+      contracts: [accountRefSchema.parse(`${tx.chain}:${call.to}`)],
+      spenders: [],
+      recipients: [],
+    },
     tx,
   };
 }
@@ -165,11 +179,8 @@ export async function askPrivy(
   const tx = unsignedCall(setup, ask.call, ask.chain);
   const decoded = decodeEvmTransaction(tx);
   assert.ok(decoded.ok);
-  const { wallet, intent, step, authorization, termsHash, allowed } = signRequest(
-    setup,
-    tx,
-    ask.call.to,
-  );
+  const signing = signRequest(setup, tx, ask.call);
+  const account = accountRefSchema.parse(`${tx.chain}:${setup.wallet.address}`);
   const signerProcess = ask.signerProcess ?? setup.subject.signerProcess;
   return api.signTransaction(
     {
@@ -177,10 +188,18 @@ export async function askPrivy(
       transaction: privyTransaction(decoded.value),
       authorize: async (request, signal) => {
         const answer = await signerProcess.authorize(
-          { wallet, request, intent, step, authorization, termsHash, allowed },
+          {
+            wallet: { id: signing.wallet, custodyId: setup.wallet.id, account },
+            request,
+            intent: signing.intent,
+            step: signing.step,
+            authorization: signing.authorization,
+            termsHash: signing.termsHash,
+            allowed: signing.allowed,
+          },
           { signal },
         );
-        return answer.ok ? ok(answer.value.signature) : answer;
+        return answer.ok ? ok(answer.value) : err("refused");
       },
     },
     live(),

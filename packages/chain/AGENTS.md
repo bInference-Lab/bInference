@@ -18,6 +18,11 @@ Rules for this package:
 - `Signer` is the custody port here, so the engine and each custody adapter
   (`@binference/custody-privy`, a signer service) share it without importing each other. Its fake
   in `@binference/chain/testing` is shaped like a signer service whose owner can remove it.
+- The signer's `authorize` request (`AuthorizeInput`, spec 5 section 5.1), its parts and its
+  `SignerProcess` port live in `src/signing/`, so the engine, `@binference/custody-privy` and
+  `@binference/signer` share one shape without importing each other. `SignRequest` carries the
+  engine's half of it. `authorizationPayload` is the one copy of Privy's signature payload: the
+  signer signs those bytes and custody checks the SDK's bytes against them.
 - `PriceSource` and `UsdPrice` live here so the engine and a chain family's price adapter share
   them; the engine's fake stays in `@binference/engine/testing`. A price is an exact ratio, and only
   its caller rounds. `withQuotePrice` gives a trade's other token the price of its own quote, for

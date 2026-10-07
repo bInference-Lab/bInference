@@ -19,7 +19,11 @@ can check what they move. Nothing here names a chain or a venue.
 | `chainRefSchema`, `accountRefSchema`, `assetRefSchema`                | The same ids parsed at a boundary                                |
 | `Amount`, `amountSchema`                                              | An asset and its base units, as JSON carries them                |
 | `ChainFamily`, `SigningScheme`, `ChainRegistry`                       | The ports a family package and the composition root fill         |
-| `Signer`, `SignRequest`, `SignAuthorization`                          | Custody: signs an approved intent's transaction for a wallet     |
+| `Signer`, `SignRequest`                                               | Custody: signs an approved intent's transaction for a wallet     |
+| `SignerProcess`, `AuthorizeInput`, `authorizeInputSchema`             | The signer's `authorize` request (spec 5, 5.1), and its JSON     |
+| `SignStep`, `SignAuthorization`, `AutoModeGrant`, `AllowedTargets`    | The step, the approval and the targets the hard rules check      |
+| `SignerRefusal`                                                       | Why the signer refused: the request, or a hard rule by number    |
+| `PrivyRequest`, `privyRequestSchema`, `authorizationPayload`          | A Privy request, and the bytes its authorization signature signs |
 | `PriceSource`, `UsdPrice`                                             | An asset's USD price now, in micro-dollars per base unit         |
 | `withQuotePrice`, `QuotedTrade`                                       | A trade's other token priced from the trade's own quote          |
 | `ChainDefinition`, `chainDefinitionSchema`                            | One chain as data: tokens, contracts, RPCs, relays and explorers |

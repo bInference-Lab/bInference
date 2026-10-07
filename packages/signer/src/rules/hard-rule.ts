@@ -1,7 +1,6 @@
-import type { AccountRef, ChainRef } from "@binference/chain";
+import type { AccountRef, ChainRef, AuthorizeInput } from "@binference/chain";
 import { accountRefParts } from "@binference/chain";
 import type { SignerSettings } from "../process/signer-settings.schema.js";
-import type { AuthorizeInput } from "../requests/authorize-input.schema.js";
 import type { EvmTransaction } from "./evm-transaction.schema.js";
 
 /** The number of a hard rule of the keys spec, section 5.2. */

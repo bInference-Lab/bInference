@@ -1,10 +1,10 @@
 import { createPublicKey, type KeyObject, verify } from "node:crypto";
+import { authorizationPayload, type PrivyRequest } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { createP256KeyPair, p256KeyPairFromScalar } from "../keys/p256-key-pair.js";
-import { authorizationPayload, signAuthorization } from "./authorization-signature.js";
-import type { PrivyRequest } from "./privy-request.schema.js";
+import { signAuthorization } from "./authorization-signature.js";
 
 // The example request of Privy's docs, "Implementing signing directly"
 // (https://docs.privy.io/controls/authorization-keys/using-owners/sign/direct-implementation).

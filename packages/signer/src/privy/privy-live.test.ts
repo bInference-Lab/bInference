@@ -1,11 +1,11 @@
 import type { KeyObject } from "node:crypto";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the opt-in live test calls Privy's API itself; nothing in the signer reaches the network
 import { request as sendRequest } from "node:https";
+import type { PrivyRequest } from "@binference/chain";
 import { createSecret } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { parseAgentKey } from "../agent-key/agent-key-text.js";
 import { signAuthorization } from "./authorization-signature.js";
-import type { PrivyRequest } from "./privy-request.schema.js";
 
 // The owner's Privy test app, set up by hand: a server wallet on chain 56 whose signer (or owner)
 // is the key in BINFERENCE_PRIVY_AGENT_KEY, as base64 PKCS #8. The test asks Privy to sign a

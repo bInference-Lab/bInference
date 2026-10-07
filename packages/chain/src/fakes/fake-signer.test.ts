@@ -12,13 +12,32 @@ const wallet = "wal_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"wal">;
 const unknownWallet = "wal_0190f1c2-3b4c-7d5e-8f60-718293a4b5c7" as Id<"wal">;
 const account = accountRefSchema.parse("fake:1:0x0000000a");
 const tx: UnsignedTx = { chain: chainRefSchema.parse("fake:1"), from: account, payload: "send|1" };
+const intent = "int_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"int">;
 const request: SignRequest = {
   wallet,
-  intent: "int_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"int">,
-  step: 0,
-  authorization: { approvalMode: "auto", modeVersion: 3 },
+  intent,
+  step: { index: 0, chain: tx.chain, action: { kind: "call", nativeValue: 0n } },
+  authorization: {
+    kind: "approvalMode",
+    grant: {
+      approvalMode: "auto",
+      agent: "agt_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"agt">,
+      intent,
+      kind: "swap",
+      modeVersion: 3,
+      termsHash: "0".repeat(64),
+      grantedAtMs: 0,
+      expiresAtMs: 60_000,
+      networkFeeCapNativeBase: 1n,
+    },
+    current: {
+      agent: "agt_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"agt">,
+      mode: "auto",
+      version: 3,
+    },
+  },
   termsHash: "0".repeat(64),
-  allowed: [],
+  allowed: { contracts: [], spenders: [], recipients: [] },
   tx,
 };
 const live = { signal: new AbortController().signal };

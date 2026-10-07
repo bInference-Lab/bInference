@@ -61,6 +61,15 @@ describe("reading Privy's eth_signTransaction body", () => {
     });
   });
 
+  it("reads the body Privy's Node SDK sends, which names the chain type", () => {
+    expect(
+      readPrivyCall({ ...(signTransaction({ nonce: 3 }) as object), chain_type: "ethereum" }),
+    ).toStrictEqual({
+      kind: "transaction",
+      transaction: { value: 0n, data: "0x", nonce: 3n, delegates: false },
+    });
+  });
+
   it.each([
     ["personal_sign", { method: "personal_sign", params: { message: "hi" } }],
     ["typed data", { method: "eth_signTypedData_v4", params: { typed_data: {} } }],
@@ -73,6 +82,10 @@ describe("reading Privy's eth_signTransaction body", () => {
     [
       "a body with another field",
       { method: "eth_signTransaction", params: {}, caip2: "eip155:56" },
+    ],
+    [
+      "a chain type other than Ethereum",
+      { ...(signTransaction({ nonce: 1 }) as object), chain_type: "solana" },
     ],
     ["params with no transaction", { method: "eth_signTransaction", params: {} }],
     ["no nonce", signTransaction({ to: "0x13f4ea83d0bd40e75c8222255bc855a974568dd4" })],

@@ -15,15 +15,19 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   module after start: no dynamic `import()` on its path. `src/process/signer-sandbox.test.ts`
   builds the entry and proves it; keep it passing.
 - The signer's channel is its standard input and output: the settings line, the agent key's line,
-  then one JSON request per line, answered in order, one at a time. Requests and answers have
-  their schemas in `src/requests/`; an unknown request is refused, never guessed at.
+  then one JSON request per line, answered in order, one at a time. The `authorize` request is
+  `AuthorizeInput` of `@binference/chain`, shared with the engine and custody; the envelope,
+  answers and faults have their schemas in `src/requests/`. An unknown request is refused, never
+  guessed at. `openSignerClient` is the chain `SignerProcess` port and passes its suite, in
+  process and against the built signer.
 - The hard rules (keys spec, section 5.2) live in `src/rules/`, one file per rule. A change to a
   rule moves its test that breaks only that rule and the oracle of
   `check-hard-rules.property.test.ts` in the same commit; the oracle is written apart from the
   rules and must stay that way. Stryker's 80% bar applies to them.
-- Privy's authorization signature is pinned by known answers from Privy's own SDK, and
-  `src/privy-sdk/` holds it to the SDK's bytes for any request, with `@privy-io/node` as a
-  test-only dependency. A change to the payload's bytes breaks every signature Privy checks.
+- Privy's authorization payload is `authorizationPayload` of `@binference/chain`. Its known
+  answers from Privy's own SDK live here, and `src/privy-sdk/` holds it to the SDK's bytes for any
+  request, with `@privy-io/node` as a test-only dependency. A change to the payload's bytes breaks
+  every signature Privy checks.
 - Keys never reach a log, an error, a test title or an assertion message. A private half travels
   as a Node `KeyObject` or a `Secret`; tests compare public halves. Buffers that held a private
   scalar or its DER are zeroed once used.

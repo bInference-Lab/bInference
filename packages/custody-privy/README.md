@@ -9,6 +9,10 @@ each new wallet back before anything signs for it, and signs transactions with
 `eth_signTransaction`, each request authorized by the signer with the agent key. Privy refuses any
 signature outside the ceiling, whatever the machine asks.
 
+The signer is reached through the `SignerProcess` port of `@binference/chain`, with chain's
+`AuthorizeInput`: the engine's `SignRequest`, the Privy wallet and the exact request the SDK sends.
+The bytes the SDK signs must be the bytes chain's `authorizationPayload` writes for that request.
+
 ## API
 
 | Export                                      | What it does                                                                      |
@@ -20,8 +24,6 @@ signature outside the ceiling, whatever the machine asks.
 | `createAgentWallet`                         | Makes the policy and the wallet, then reads the wallet back                       |
 | `readBackWallet`, `checkWallet`             | Checks a wallet's owner, signer and policy against what was asked                 |
 | `createPrivyOwnerSigner`                    | The `privy-owner` adapter of the chain `Signer` port                              |
-| `SignerProcess`, `AuthorizeRequest`         | The port of the signer's `publicKey` and `authorize` requests (spec 5, 5.1)       |
-| `signaturePayload`, `PrivyRequest`          | The RFC 8785 text an authorization signature signs                                |
 | `@binference/custody-privy/testing`         | The Privy fake, a fake signer, the custody contract and its fixtures              |
 
 ## The ceiling

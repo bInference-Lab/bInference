@@ -1,7 +1,7 @@
 import { createPublicKey, verify } from "node:crypto";
+import { authorizationPayload } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
-import { authorizationPayload } from "../privy/authorization-signature.js";
 import { formatSignerRequest } from "../requests/signer-message.schema.js";
 import {
   authorizeFixture,

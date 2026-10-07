@@ -1,8 +1,12 @@
-import { accountRefSchema, chainRefSchema } from "@binference/chain";
+import {
+  accountRefSchema,
+  chainRefSchema,
+  type AuthorizeInput,
+  type SignStep,
+  type StepAction,
+  type SignAuthorization,
+} from "@binference/chain";
 import { type Id, idSchema, type JsonValue } from "@binference/core";
-import type { AuthorizeInput } from "../requests/authorize-input.schema.js";
-import type { SignStep, StepAction } from "../requests/sign-step.schema.js";
-import type { SignerAuthorization } from "../requests/signer-authorization.schema.js";
 import { approveCalldata, fixtureAddresses, transferCalldata } from "./sign-fixtures.js";
 
 // A model of a request, written apart from the signer's code: the oracle below decides from the
@@ -137,7 +141,7 @@ const account = (a: Account) => accountRefSchema.parse(`${a.chain}:${a.address}`
 const id = <P extends string>(prefix: P): Id<P> =>
   idSchema(prefix).parse(`${prefix}_0192f3a4-5b6c-7d8e-9f00-112233445566`);
 
-function authorizationOf(a: Authorization): SignerAuthorization {
+function authorizationOf(a: Authorization): SignAuthorization {
   if (a.kind === "confirmation") {
     const { intent, ...rest } = a;
     return { ...rest, id: id("cnf"), intent: idSchema("int").parse(intent) };

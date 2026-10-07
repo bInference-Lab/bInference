@@ -1,4 +1,4 @@
-import type { StepAction } from "../requests/sign-step.schema.js";
+import type { StepAction } from "@binference/chain";
 import { isAccount, listsAccount, type RuleView } from "./hard-rule.js";
 import { readTokenCall } from "./token-call.js";
 

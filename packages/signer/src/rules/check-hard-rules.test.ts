@@ -1,11 +1,15 @@
-import { accountRefSchema, chainRefSchema } from "@binference/chain";
+import {
+  accountRefSchema,
+  chainRefSchema,
+  type AuthorizeInput,
+  type ApprovalModeNow,
+  type AutoModeGrant,
+  type SignStep,
+  type SignAuthorization,
+} from "@binference/chain";
 import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { SignerSettings } from "../process/signer-settings.schema.js";
-import type { AuthorizeInput } from "../requests/authorize-input.schema.js";
-import type { ApprovalModeNow, AutoModeGrant } from "../requests/auto-mode-grant.schema.js";
-import type { SignStep } from "../requests/sign-step.schema.js";
-import type { SignerAuthorization } from "../requests/signer-authorization.schema.js";
 import {
   accountOn,
   approveCalldata,
@@ -32,7 +36,7 @@ const withStep = (input: AuthorizeInput, step: Partial<SignStep>): AuthorizeInpu
 });
 const withAuthorization = (
   input: AuthorizeInput,
-  authorization: SignerAuthorization,
+  authorization: SignAuthorization,
 ): AuthorizeInput => ({
   ...input,
   authorization,
@@ -61,7 +65,7 @@ const speedUp = withStep(withTransaction(call, { nonce: 3, max_fee_per_gas: "0x4
     original: { to: accountOn(router), value: 10n ** 16n, data: "0x7ff36ab5" },
   },
 });
-const orderAuthorization: SignerAuthorization = {
+const orderAuthorization: SignAuthorization = {
   kind: "order",
   id: idSchema("ord").parse("ord_0192f3a4-5b6c-7d8e-9f00-112233445566"),
   state: "active",
@@ -88,7 +92,7 @@ const grant: AutoModeGrant = {
   expiresAtMs: fixtureNowMs + 1,
   networkFeeCapNativeBase: gwei,
 };
-const autoAuthorization: SignerAuthorization = {
+const autoAuthorization: SignAuthorization = {
   kind: "approvalMode",
   grant,
   current: { agent, mode: "auto", version: 4 },

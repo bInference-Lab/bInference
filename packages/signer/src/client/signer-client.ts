@@ -1,3 +1,4 @@
+import type { AuthorizeInput, SignerProcess, SignerRefusal } from "@binference/chain";
 import {
   BinferenceError,
   err,
@@ -10,12 +11,10 @@ import {
 import { z } from "zod";
 import { readLines } from "../process/read-lines.js";
 import { type SignerSettings, signerSettingsSchema } from "../process/signer-settings.schema.js";
-import type { AuthorizeInput } from "../requests/authorize-input.schema.js";
 import {
   formatSignerRequest,
   readSignerLine,
   type SignerAnswer,
-  type SignerRefusal,
   type SignerRequest,
 } from "../requests/signer-message.schema.js";
 import { type AnswerRouter, createAnswerRouter } from "./answer-router.js";
@@ -43,17 +42,13 @@ export interface SignerClientOptions {
   readonly onRefusal: (notice: SignerRefusalNotice) => void;
 }
 
-/** The engine's client of the signer process. */
-export interface SignerClient {
-  /** The agent key's public half, as Privy's key quorums take it. */
-  publicKey(signal: AbortSignal): Promise<string>;
-  /**
-   * Privy's authorization signature over `input.request`, or why the signer refused it. Requests
-   * for one wallet go one at a time, in call order. Rejects with `signer.stopped` once the signer
-   * has stopped, and with the signal's reason once the signal aborts; the signal carries the
-   * call's deadline.
-   */
-  authorize(input: AuthorizeInput, signal: AbortSignal): Promise<Result<string, SignerRefusal>>;
+/**
+ * The engine's client of the signer process: the `SignerProcess` port over the child's standard
+ * input and output. `authorize` sends requests for one wallet one at a time, in call order, and
+ * rejects with `signer.stopped` once the signer has stopped; the signal carries the call's
+ * deadline. A call whose signal aborted before it was sent never reaches the signer.
+ */
+export interface SignerClient extends SignerProcess {
   /** Closes the signer's input; the signer exits once it has answered every line it read. */
   close(): Promise<void>;
   /** Settles once the signer's output has ended. */
@@ -132,13 +127,17 @@ function refusalOf(answer: SignerAnswer): Result<string, SignerRefusal> {
 
 type Ask = (request: (id: string) => SignerRequest, signal: AbortSignal) => Promise<SignerAnswer>;
 
-// Sends one request with the next id and waits for its answer.
+// Sends one request with the next id and waits for its answer. A request whose signal aborted
+// while it waited its turn is never sent, so the signer signs nothing for it.
 function createAsk(options: SignerClientOptions, router: AnswerRouter): Ask {
   let sent = 0;
   return async (request, signal) => {
     sent += 1;
     const message = request(`r${String(sent)}`);
     const answer = router.wait(message.id, signal);
+    if (signal.aborted) {
+      return answer;
+    }
     try {
       await options.write(formatSignerRequest(message));
     } catch {
@@ -196,7 +195,7 @@ export async function openSignerClient(options: SignerClientOptions): Promise<Si
   await options.write(JSON.stringify(z.encode(signerSettingsSchema, options.settings)));
   await options.write(options.agentKey.reveal());
   return {
-    publicKey: async (signal) =>
+    publicKey: async ({ signal }) =>
       limited(async () => {
         const answer = await ask((id) => ({ id, kind: "publicKey" }), signal);
         if (!answer.ok || !("publicKey" in answer)) {
@@ -204,7 +203,7 @@ export async function openSignerClient(options: SignerClientOptions): Promise<Si
         }
         return answer.publicKey;
       }),
-    authorize: async (input, signal) =>
+    authorize: async (input, { signal }) =>
       limited(async () =>
         inWalletOrder(input.wallet.id, async () => authorizeOnce(options, ask, { input, signal })),
       ),

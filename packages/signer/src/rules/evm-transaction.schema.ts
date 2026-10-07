@@ -73,7 +73,13 @@ const transactionSchema = z
     delegates: fields.authorization_list !== undefined,
   }));
 
-const bodySchema = z.strictObject({ method: z.string(), params: z.json() });
+// Privy's Node SDK adds `chain_type: "ethereum"` to every Ethereum call it sends; Privy's API
+// takes it, and custody signs through the SDK.
+const bodySchema = z.strictObject({
+  method: z.string(),
+  params: z.json(),
+  chain_type: z.literal("ethereum").exactOptional(),
+});
 const paramsSchema = z.strictObject({ transaction: z.json() });
 
 /**

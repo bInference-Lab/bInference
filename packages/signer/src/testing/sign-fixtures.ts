@@ -3,10 +3,10 @@ import {
   accountRefSchema,
   type ChainRef,
   chainRefSchema,
+  type AuthorizeInput,
 } from "@binference/chain";
 import { idSchema, type JsonValue } from "@binference/core";
 import type { SignerSettings } from "../process/signer-settings.schema.js";
-import type { AuthorizeInput } from "../requests/authorize-input.schema.js";
 
 /** The chain the fixtures run on. */
 const fixtureChain: ChainRef = chainRefSchema.parse("eip155:56");

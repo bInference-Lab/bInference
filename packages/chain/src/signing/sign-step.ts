@@ -1,11 +1,7 @@
-import {
-  type AccountRef,
-  accountRefSchema,
-  type ChainRef,
-  chainRefSchema,
-} from "@binference/chain";
 import { decimalStringSchema } from "@binference/core";
 import { z } from "zod";
+import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
+import { type ChainRef, chainRefSchema } from "../caip/chain-ref.js";
 
 /**
  * What one step of an intent's plan does, as the hard rules check the transaction against it:

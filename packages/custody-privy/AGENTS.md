@@ -16,14 +16,17 @@ Rules for this package:
   our own types. Privy may add fields to its answers: objects keep the fields read and drop the
   rest.
 - The SDK forms the authorization payload; the signer signs it only after `readPayload` reads the
-  same request back from those exact bytes.
+  same request back from those exact bytes, which must be the bytes `authorizationPayload` of
+  `@binference/chain` writes. That function is the only copy of Privy's payload.
 - The app secret is a core `Secret`, revealed only into the Basic auth header. Faults carry the
   path and the status, never a header, a body or a key.
 - The ceiling is Privy's policy language. A change to `src/ceiling/` changes what every wallet may
   sign: the known-answer test and the property test against the fake's policy engine change with
   it, and the change needs the owner key on every existing wallet.
-- The signer is reached only through the `SignerProcess` port, shaped like spec 5, section 5.1.
-  This package never holds the agent key or the owner key's private half.
+- The signer is reached only through the `SignerProcess` port of `@binference/chain`, with its
+  `AuthorizeInput` (spec 5, section 5.1). The port's suite runs against the fake signer here and
+  against the signer's real process in `@binference/signer`. This package never holds the agent
+  key or the owner key's private half.
 - `src/testing/` holds the Privy fake, the fake signer and the fixtures; only it imports viem. The
   custody contract in `src/contracts/` runs against the fake in `pnpm check` and against the Privy
   test app when `BINFERENCE_PRIVY_TESTS=1` and the app's id and secret are in the environment.

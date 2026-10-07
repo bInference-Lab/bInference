@@ -1,10 +1,5 @@
 export { privyCustodyContract } from "./contracts/privy-custody-contract.js";
 export type { PrivyCustodyHarness, PrivyCustodySubject } from "./contracts/privy-custody-setup.js";
-export { signerProcessContract } from "./contracts/signer-process-contract.js";
-export type {
-  SignerProcessHarness,
-  SignerProcessSubject,
-} from "./contracts/signer-process-contract.js";
 export {
   approvalForAllData,
   approveData,

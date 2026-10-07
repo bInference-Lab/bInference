@@ -31,7 +31,7 @@ const refused = { ok: false, error: "refused" };
 
 async function signsAsTheWallet(setup: CustodySetup, call: TestCall): Promise<void> {
   const tx = unsignedCall(setup, call);
-  const signed = await setup.signer.signTransaction(signRequest(setup, tx, call.to), live());
+  const signed = await setup.signer.signTransaction(signRequest(setup, tx, call), live());
   assert.ok(signed.ok, `Privy refused a call inside the ceiling to ${call.to}.`);
   assert.ok(createEvmSigningScheme().verify(tx, signed.value).ok);
 }
@@ -82,8 +82,8 @@ const readBackChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] 
     harness,
     "fails the read-back of a wallet whose signer is not the agent key asked for",
     async (setup) => {
-      const { publicKey } = await setup.subject.strangerProcess.publicKey(live());
-      await readsBackAs(setup, { ...setup.expected, agentKey: publicKey }, "signer");
+      const agentKey = await setup.subject.strangerProcess.publicKey(live());
+      await readsBackAs(setup, { ...setup.expected, agentKey }, "signer");
     },
   ),
   check(

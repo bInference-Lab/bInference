@@ -14,7 +14,7 @@ export interface PrivyHeaders {
 
 /**
  * One Privy API request as its authorization signature covers it: the HTTP method, the full URL
- * without a trailing slash, the JSON body and the `privy-` headers. The engine sends Privy exactly
+ * without a trailing slash, the JSON body and the `privy-` headers. Custody sends Privy exactly
  * this request, so the signature holds.
  */
 export interface PrivyRequest {

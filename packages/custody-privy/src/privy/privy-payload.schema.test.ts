@@ -1,6 +1,6 @@
+import { authorizationPayload, type PrivyRequest } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { readPayload } from "./privy-payload.schema.js";
-import { type PrivyRequest, signaturePayload } from "./privy-request.js";
 
 const request: PrivyRequest = {
   method: "POST",
@@ -13,12 +13,18 @@ const bytes = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 describe("readPayload", () => {
   it("reads back the request of a canonical payload", () => {
-    expect(readPayload(bytes(signaturePayload(request)))).toStrictEqual(request);
+    expect(readPayload(authorizationPayload(request))).toStrictEqual(request);
   });
 
   it("reads nothing from a payload whose text is not canonical, so the signer signs only those bytes", () => {
-    const spaced = JSON.stringify(JSON.parse(signaturePayload(request)), null, 1);
-    const { version, ...rest } = JSON.parse(signaturePayload(request)) as Record<string, unknown>;
+    const spaced = JSON.stringify(
+      JSON.parse(authorizationPayload(request).toString("utf8")),
+      null,
+      1,
+    );
+    const { version, ...rest } = JSON.parse(
+      authorizationPayload(request).toString("utf8"),
+    ) as Record<string, unknown>;
     const reordered = JSON.stringify({ version, ...rest });
     expect(readPayload(bytes(spaced))).toBeUndefined();
     expect(readPayload(bytes(reordered))).toBeUndefined();

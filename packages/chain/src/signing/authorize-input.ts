@@ -1,14 +1,14 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
 import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
-import { type PrivyRequest, privyRequestSchema } from "../privy/privy-request.schema.js";
-import { type SignStep, signStepSchema, type SignStepWire } from "./sign-step.schema.js";
+import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
+import { type PrivyRequest, privyRequestSchema } from "./privy-request.js";
 import {
-  type SignerAuthorization,
-  signerAuthorizationSchema,
-  type SignerAuthorizationWire,
+  type SignAuthorization,
+  signAuthorizationSchema,
+  type SignAuthorizationWire,
   termsHashSchema,
-} from "./signer-authorization.schema.js";
+} from "./sign-authorization.js";
+import { type SignStep, signStepSchema, type SignStepWire } from "./sign-step.js";
 
 /** The agent wallet a signature is for. */
 export interface SignerWallet {
@@ -31,16 +31,17 @@ export interface AllowedTargets {
 }
 
 /**
- * What the engine asks the signer to authorize (keys spec, section 5.1): the Privy request it
- * built, with the wallet, the intent and step it belongs to, what approved the intent, the terms
- * hash of what was approved, and the registry's set for the step.
+ * The signer's `authorize` request (keys spec, section 5.1): the Privy request custody built for
+ * one transaction, the wallet it signs for, and from the engine's `SignRequest` the intent
+ * and step it belongs to, what approved the intent, the terms hash of what was approved and the
+ * registry's set for the step. The signer's hard rules (section 5.2) read every field.
  */
 export interface AuthorizeInput {
   readonly wallet: SignerWallet;
   readonly request: PrivyRequest;
   readonly intent: Id<"int">;
   readonly step: SignStep;
-  readonly authorization: SignerAuthorization;
+  readonly authorization: SignAuthorization;
   readonly termsHash: string;
   readonly allowed: AllowedTargets;
 }
@@ -51,7 +52,7 @@ export interface AuthorizeInputWire {
   readonly request: PrivyRequest;
   readonly intent: string;
   readonly step: SignStepWire;
-  readonly authorization: SignerAuthorizationWire;
+  readonly authorization: SignAuthorizationWire;
   readonly termsHash: string;
   readonly allowed: {
     readonly contracts: readonly string[];
@@ -73,7 +74,7 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
   request: privyRequestSchema,
   intent: idSchema("int"),
   step: signStepSchema,
-  authorization: signerAuthorizationSchema,
+  authorization: signAuthorizationSchema,
   termsHash: termsHashSchema,
   allowed: z.strictObject({
     contracts: targetsSchema,

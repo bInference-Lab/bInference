@@ -1,8 +1,9 @@
-import type { ApprovalModeNow, AutoModeGrant } from "../requests/auto-mode-grant.schema.js";
 import type {
+  ApprovalModeNow,
+  AutoModeGrant,
   AdvanceAuthorization,
-  SignerAuthorization,
-} from "../requests/signer-authorization.schema.js";
+  SignAuthorization,
+} from "@binference/chain";
 import type { RuleView } from "./hard-rule.js";
 
 function advanceHolds(authorization: AdvanceAuthorization, nowMs: number): boolean {
@@ -36,7 +37,7 @@ function autoHolds(view: RuleView, grant: AutoModeGrant, current: ApprovalModeNo
   );
 }
 
-const termsHashOf = (authorization: SignerAuthorization): string =>
+const termsHashOf = (authorization: SignAuthorization): string =>
   authorization.kind === "approvalMode" ? authorization.grant.termsHash : authorization.termsHash;
 
 /**

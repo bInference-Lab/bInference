@@ -1,8 +1,11 @@
 import { generateKeyPairSync, sign } from "node:crypto";
+import {
+  type AuthorizeInput,
+  authorizationPayload,
+  type SignerProcess,
+  type SignerRefusal,
+} from "@binference/chain";
 import { err, ok } from "@binference/core";
-import type { SignerProcess } from "../ports.js";
-import type { AuthorizeRequest } from "../signer-process/authorize-request.js";
-import { signaturePayload } from "../signer-process/privy-request.js";
 
 /**
  * A signer for tests: it holds a real P-256 agent key and signs Privy's payload of every request
@@ -10,9 +13,9 @@ import { signaturePayload } from "../signer-process/privy-request.js";
  */
 export interface FakeSignerProcess extends SignerProcess {
   /** The last 1,000 requests it was asked to authorize, oldest first. */
-  requests(): readonly AuthorizeRequest[];
-  /** Refuses every later request, as a failed hard rule does. */
-  refuseFromNow(): void;
+  requests(): readonly AuthorizeInput[];
+  /** Refuses every later request with this reason, as a failed hard rule does. */
+  refuseFromNow(reason: SignerRefusal): void;
 }
 
 const maxKept = 1_000;
@@ -21,29 +24,28 @@ const maxKept = 1_000;
 export function createFakeSignerProcess(): FakeSignerProcess {
   const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
   const publicText = publicKey.export({ format: "der", type: "spki" }).toString("base64");
-  const asked: AuthorizeRequest[] = [];
-  let refusing = false;
+  const asked: AuthorizeInput[] = [];
+  let refusal: SignerRefusal | undefined;
   return {
     async publicKey(options) {
       options.signal.throwIfAborted();
-      return Promise.resolve({ publicKey: publicText });
+      return Promise.resolve(publicText);
     },
-    async authorize(request, options) {
+    async authorize(input, options) {
       options.signal.throwIfAborted();
-      asked.push(request);
+      asked.push(input);
       if (asked.length > maxKept) {
         asked.shift();
       }
-      if (refusing) {
-        return Promise.resolve(err("refused"));
+      if (refusal !== undefined) {
+        return Promise.resolve(err(refusal));
       }
-      const payload = Buffer.from(signaturePayload(request.request), "utf8");
-      const signature = sign("sha256", payload, privateKey).toString("base64");
-      return Promise.resolve(ok({ signature }));
+      const payload = authorizationPayload(input.request);
+      return Promise.resolve(ok(sign("sha256", payload, privateKey).toString("base64")));
     },
     requests: () => [...asked],
-    refuseFromNow: () => {
-      refusing = true;
+    refuseFromNow: (reason) => {
+      refusal = reason;
     },
   };
 }

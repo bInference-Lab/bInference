@@ -1,12 +1,12 @@
+import type { PrivyRequest } from "@binference/chain";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import type { Ceiling } from "../ceiling/ceiling.js";
 import type { PolicyCondition, PolicyRule } from "../ceiling/policy-rule.js";
-import { readPayload } from "../signer-process/privy-payload.schema.js";
-import type { PrivyRequest } from "../signer-process/privy-request.js";
 import type { PrivyTransaction } from "../signing/privy-transaction.js";
 import { callPrivy, type PrivyCall, privyFault, statusFault } from "./privy-call.js";
 import { type PrivyApiOptions, type PrivySettings, privySettings } from "./privy-client.js";
+import { readPayload } from "./privy-payload.schema.js";
 import type { KeyQuorum, PrivyId, PrivyPolicy, WalletRecord } from "./privy-records.js";
 import {
   readKeyQuorum,

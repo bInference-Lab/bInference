@@ -1,20 +1,25 @@
 import type { JsonValue } from "@binference/core";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { type PrivyRequest, signaturePayload } from "./privy-request.js";
+import { authorizationPayload } from "./authorization-payload.js";
+import type { PrivyRequest } from "./privy-request.js";
 
 const url = "https://api.privy.io/v1/wallets/abc/rpc";
 const headers = { "privy-app-id": "app" };
 
+function textOf(request: PrivyRequest): string {
+  return authorizationPayload(request).toString("utf8");
+}
+
 function payloadOf(body: JsonValue): string {
-  return signaturePayload({ method: "POST", url, body, headers });
+  return textOf({ method: "POST", url, body, headers });
 }
 
 function wrapped(canonicalBody: string): string {
   return `{"body":${canonicalBody},"headers":{"privy-app-id":"app"},"method":"POST","url":"${url}","version":1}`;
 }
 
-describe("signaturePayload", () => {
+describe("authorizationPayload", () => {
   it("writes RFC 8785's sample of numbers, strings and literals as the RFC does", () => {
     const body = JSON.parse(
       '{"numbers":[333333333.33333329,1E30,4.50,2e-3,0.000000000000000000000000001],' +
@@ -51,18 +56,26 @@ describe("signaturePayload", () => {
       },
       headers: { "privy-request-expiry": "1700000000000", "privy-app-id": "app" },
     };
-    expect(signaturePayload(request)).toBe(
+    expect(textOf(request)).toBe(
       '{"body":{"method":"eth_signTransaction","params":{"transaction":{"chain_id":56,"to":"0xAb"}}},' +
         `"headers":{"privy-app-id":"app","privy-request-expiry":"1700000000000"},"method":"POST","url":"${url}","version":1}`,
     );
   });
 
+  it("writes an empty object or array body as the empty string, as Privy's SDK does", () => {
+    expect([payloadOf({}), payloadOf([])]).toStrictEqual([wrapped('""'), wrapped('""')]);
+    expect(payloadOf({ a: [] })).toBe(wrapped('{"a":[]}'));
+  });
+
   it("gives one payload whatever order the body's keys were written in", () => {
     fc.assert(
-      fc.property(fc.dictionary(fc.string(), fc.jsonValue()), (record) => {
-        const reversed = Object.fromEntries(Object.entries(record).toReversed());
-        expect(payloadOf(reversed as JsonValue)).toBe(payloadOf(record as JsonValue));
-      }),
+      fc.property(
+        fc.dictionary(fc.string(), fc.jsonValue()),
+        (record: Readonly<Record<string, unknown>>) => {
+          const reversed = Object.fromEntries(Object.entries(record).toReversed());
+          expect(payloadOf(reversed as JsonValue)).toBe(payloadOf(record as JsonValue));
+        },
+      ),
     );
   });
 });

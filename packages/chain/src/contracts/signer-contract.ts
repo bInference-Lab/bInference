@@ -37,9 +37,19 @@ const intent = idSchema("int").parse(`int_${uuid}`);
 const confirmation = idSchema("cnf").parse(`cnf_${uuid}`);
 
 const termsHash = "0".repeat(64);
+// A confirmation that lasts until 2100: the checks ask the signer, never the clock.
+const expiresAtMs = 4_102_444_800_000;
 
 function requestFor(wallet: Id<"wal">, tx: UnsignedTx): SignRequest {
-  return { wallet, intent, step: 0, authorization: { confirmation }, termsHash, allowed: [], tx };
+  return {
+    wallet,
+    intent,
+    step: { index: 0, chain: tx.chain, action: { kind: "call", nativeValue: 0n } },
+    authorization: { kind: "confirmation", id: confirmation, intent, termsHash, expiresAtMs },
+    termsHash,
+    allowed: { contracts: [], spenders: [], recipients: [] },
+    tx,
+  };
 }
 
 const accountChecks = (harness: SignerHarness): readonly ContractCheck[] => [
