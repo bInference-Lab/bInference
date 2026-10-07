@@ -104,6 +104,18 @@ describe("the Telegram ingress", () => {
     expect(JSON.stringify(context.logger.records())).not.toMatch(/winner|sausage/);
   });
 
+  it("deletes a pasted transaction hash unseen and suggests its explorer link instead", async () => {
+    const context = await setUp({ owner: ownerId });
+    const hash = `0x${"9f".repeat(32)}`;
+    await context.receive(textUpdate({ updateId: 12, from: ownerId, text: hash, messageId: 78 }));
+    expect(context.botApi.deleted()).toStrictEqual([{ chatId: ownerId, messageId: 78 }]);
+    const [warning] = context.botApi.sent().map((sent) => sent.text);
+    expect(warning).toBe(messages.en["telegram.secretDeleted"]);
+    expect(warning).toContain("block explorer link");
+    expect(context.delivered).toStrictEqual([]);
+    expect(JSON.stringify(context.logger.records())).not.toContain("9f9f");
+  });
+
   it("warns in the owner's language, or the language of the owner's Telegram", async () => {
     const chosen = await setUp({ owner: ownerId, locale: "zh" });
     await chosen.receive(textUpdate({ updateId: 6, from: ownerId, text: twentyFourWords }));

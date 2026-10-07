@@ -21,6 +21,7 @@ describe("looksLikeSecret", () => {
     ["a phrase with one mistyped word", twelve.replace("sausage", "sausgae")],
     ["a private key", `0x${"4c0883a69102937d6231471b5dbb6204fe512961708279f".padEnd(64, "a")}`],
     ["a private key without 0x, in capitals", "4C0883A6".repeat(8)],
+    ["a transaction hash, which a private key looks like", `see 0x${"9f".repeat(32)} on chain`],
     ["an owner key code in groups", "bnok1abcde fghij klmno pqrst uvwxy z2345 67abc"],
     ["a bot token", "send it to 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw9 please"],
     ["a binference key", `binf_${"a1".repeat(10)}`],

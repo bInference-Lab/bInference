@@ -639,7 +639,8 @@ a hijacked Telegram account cannot redirect it.
   - Pasted text is batched within 300 ms.
 - **Safety.**
   - A message that looks like a private key or a 12- or 24-word seed phrase is deleted at once,
-    never stored, and answered with a warning.
+    never stored, and answered with a warning. A transaction hash looks like a private key, so it
+    is deleted too, and the warning suggests pasting the block explorer link instead.
   - Groups are off by default. When they are on, group messages, forwards, `via_bot` and
     anonymous-admin posts are never treated as the owner, and account details never go to a group.
 - **Language** comes from the owner's choice, otherwise Telegram's `language_code` (`zh*` means

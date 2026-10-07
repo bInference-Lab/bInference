@@ -1,5 +1,5 @@
 {
   "paired": "You are now the owner of this bot. Cards and alerts from your agents come here.",
   "pairRefused": "This link has expired or was already used. Run `binference init` again for a new link.",
-  "secretDeleted": "⚠️ Message deleted: it looked like a recovery phrase, a private key or an owner key. Never paste one into a chat. If it was real, treat it as exposed."
+  "secretDeleted": "⚠️ Message deleted: it looked like a recovery phrase, a private key or an owner key. Never paste one into a chat. If it was real, treat it as exposed. To share a transaction, paste its block explorer link instead, since a transaction hash looks like a private key."
 }
