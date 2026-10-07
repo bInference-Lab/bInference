@@ -23,6 +23,7 @@ import {
   type OperationHandlers,
   type ProtocolServer,
 } from "@binference/server";
+import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
 import type { ProfileParts } from "./profile-parts.js";
 
 /** The profile parts the engine runs on: custody, the store ports and the USD prices. */
@@ -50,6 +51,8 @@ export interface ComposeEngineOptions {
   readonly state?: () => EngineState;
   /** Handlers of operations the composition root answers, such as `engine/status`. */
   readonly handlers?: OperationHandlers;
+  /** The owner's bot; without it the engine shows no card in Telegram. */
+  readonly telegram?: TelegramParts;
   readonly clock: Clock;
   readonly random: Random;
   readonly logger: Logger;
@@ -59,16 +62,38 @@ export interface ComposeEngineOptions {
 export interface ComposedEngine {
   readonly engine: Engine;
   readonly server: ProtocolServer;
+  /** The owner's bot joined to the engine, when the options name one. */
+  readonly telegram?: ComposedTelegram;
 }
 
 // One quote or build that takes longer counts as a venue that is down (spec 6, section 3).
 const venueCallTimeoutMs = 5_000;
 
+// The owner's bot, when the options name one, answers its presses through the engine.
+function joinTelegram(
+  parts: EngineParts,
+  options: ComposeEngineOptions,
+  engine: Engine,
+): ComposedTelegram | undefined {
+  const { telegram, owner, chains, clock, logger } = options;
+  return telegram === undefined
+    ? undefined
+    : composeTelegram(telegram, {
+        stores: parts.stores,
+        answer: engine.answer,
+        chains,
+        owner,
+        clock,
+        logger: logger.child("telegram"),
+      });
+}
+
 /**
  * Wires the engine and its protocol server on the profile parts both profiles fill: the server
  * signs callers in through the access store, keeps each write's result under its idempotency key
  * and routes calls to the engine's handlers; the engine's pushes reach the server, which numbers
- * them per topic. A push that fails is logged and never stops the money path.
+ * them per topic. A push that fails is logged and never stops the money path. With the owner's
+ * bot, card pushes also reach Telegram.
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
   const { clock, random, logger, chains } = options;
@@ -85,6 +110,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
       const code = error instanceof BinferenceError ? error.code : "unexpected";
       logger.warn("engine.push_failed", { errorCode: code });
     }
+    telegram?.relay(push);
   };
   const engine = createEngine({
     stores: parts.stores,
@@ -102,6 +128,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     random,
     publish,
   });
+  const telegram = joinTelegram(parts, options, engine);
   const server = createProtocolServer({
     ...(options.http === undefined ? {} : { http: options.http }),
     auth: { access: parts.stores.access },
@@ -116,5 +143,5 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     random,
     logger: logger.child("server"),
   });
-  return { engine, server };
+  return { engine, server, ...(telegram === undefined ? {} : { telegram }) };
 }

@@ -82,3 +82,11 @@ export type { MemoryTransactionStore } from "./fakes/memory-transaction-store.js
 export { executorContract } from "./contracts/executor-contract.js";
 export type { ExecutorHarness, ExecutorSubject } from "./contracts/executor-contract.js";
 export { createFakeExecutor, type FakeExecutor } from "./fakes/fake-executor.js";
+export {
+  testAgent,
+  testAgentDraft,
+  testCoin,
+  testNowMs,
+  testToken,
+  testWallet,
+} from "./intents/test-intents.js";

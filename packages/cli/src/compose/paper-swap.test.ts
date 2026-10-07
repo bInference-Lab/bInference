@@ -1,225 +1,23 @@
-import { createServer as createNetServer, type Server as NetServer } from "node:net";
+import type { ProtocolClient } from "@binference/client";
+import type { Id } from "@binference/core";
+import { walkLedgerChain } from "@binference/engine";
 import {
-  type AccountRef,
-  accountRefSchema,
-  assetRefSchema,
-  chainRefSchema,
-  createChainRegistry,
-} from "@binference/chain";
-import {
-  createFakeChainDefinition,
-  createFakeFamily,
-  createFakeSigner,
-  createFakeSigningScheme,
-  createFakeVenue,
-} from "@binference/chain/testing";
-import { createProtocolClient, type ProtocolClient } from "@binference/client";
-import { bpsSchema, type Id, idSchema } from "@binference/core";
-import {
-  createManualClock,
-  createMemoryLogger,
-  createSeededRandom,
-} from "@binference/core/testing";
-import {
-  type LimitsValues,
-  type PositionStore,
-  sha256Hex,
-  walkLedgerChain,
-} from "@binference/engine";
-import {
-  createFakeExecutor,
-  createFakePriceSource,
-  createFakeWalletFacts,
-  createMemoryEngineStores,
-  createMemoryPositionStore,
-  createQuoteSimulator,
-  type FakeExecutor,
+  testAgent as agent,
+  testCoin as coin,
+  testNowMs as nowMs,
+  testToken as token,
+  testWallet as wallet,
 } from "@binference/engine/testing";
-import { operations, type PushFrame } from "@binference/protocol";
+import type { PushFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
-import { WebSocket } from "ws";
-import { composeCloudTestRoot } from "./cloud-test-root.js";
-import { composeEngine, type EngineParts } from "./compose-engine.js";
+import {
+  type Skeleton,
+  skeletonCompositions as compositions,
+  skeletonSecrets,
+  startSkeleton,
+} from "./test-skeleton.js";
 
-const nowMs = 1_800_000_000_000;
-const agent = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
-const wallet = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-000000000001");
-const cliToken = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000001");
-const cliSecret = `bnt_${"1".repeat(43)}`;
-const mcpToken = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000002");
-const mcpSecret = `bnt_${"2".repeat(43)}`;
-const account: AccountRef = accountRefSchema.parse("fake:1:0x0000000c");
-const coin = assetRefSchema.parse("fake:1/slip44:1");
-const token = assetRefSchema.parse("fake:1/token:0x0000000a");
-// $600 a coin: 600 dollars in micro-dollars for 10^18 base units.
-const coinPrice = { numerator: 600_000_000n, denominator: 10n ** 18n };
-const wallets = new Map([[wallet, account]]);
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
-
-const limits: LimitsValues = {
-  perTradeUsdMicros: 1_000_000_000n,
-  rollingDayUsdMicros: 5_000_000_000n,
-  slippageRegistryBps: bpsSchema.parse(50),
-  slippageOtherBps: bpsSchema.parse(300),
-  priceImpactBps: bpsSchema.parse(500),
-  taxBps: bpsSchema.parse(1_000),
-  liquidityFloorUsdMicros: 0n,
-  minHealthFactorBp: 15_000,
-  gasReserve: [{ chain: chainRefSchema.parse("fake:1"), reserveBase: 10n ** 15n }],
-  venues: ["fake-swap"],
-  allowTokens: [],
-  denyTokens: [],
-  modelBudgetUsdMicros: 5_000_000n,
-  cardTradeExpiryS: 60,
-  cardOtherExpiryS: 600,
-  requoteAfterS: 10,
-  requoteToleranceBps: bpsSchema.parse(50),
-  orderExpiryDays: 30,
-  copyPerBuyUsdMicros: 20_000_000n,
-  copyPerLeaderDayUsdMicros: 100_000_000n,
-};
-
-/** The two compositions: the self-hosted one and the Cloud-shaped test root. */
-const compositions: readonly { readonly name: string; readonly parts: () => EngineParts }[] = [
-  {
-    // The self-hosted root's custody and Chainlink price adapters stand in as fakes here.
-    name: "self-hosted",
-    parts: () => ({
-      custody: createFakeSigner(wallets),
-      stores: createMemoryEngineStores(),
-      prices: createFakePriceSource(new Map([[coin, coinPrice]])),
-    }),
-  },
-  {
-    name: "Cloud-shaped",
-    parts: () => {
-      const root = composeCloudTestRoot({ wallets });
-      root.prices.publishPrice({ asset: coin, price: coinPrice, atMs: nowMs });
-      return root;
-    },
-  },
-];
-
-async function seed(parts: EngineParts): Promise<void> {
-  const created = await parts.stores.agents.create(
-    {
-      id: agent,
-      name: "main",
-      mode: "paper",
-      locale: "en",
-      models: {},
-      notifications: {},
-      atMs: nowMs - 1_000,
-      limits,
-      approvalMode: "manual",
-      bySurface: "cli",
-    },
-    live(),
-  );
-  expect(created.ok).toBe(true);
-  const cli = {
-    id: cliToken,
-    label: "cli",
-    kind: "cli",
-    scopes: ["read", "propose", "chat", "confirm", "loosen", "admin"],
-    secretHash: sha256Hex(cliSecret),
-    createdAtMs: 0,
-  } as const;
-  await parts.stores.access.addToken(cli, live());
-  const mcp = {
-    id: mcpToken,
-    label: "mcp",
-    kind: "mcp",
-    scopes: ["read", "propose"],
-    secretHash: sha256Hex(mcpSecret),
-    createdAtMs: 0,
-  } as const;
-  await parts.stores.access.addToken(mcp, live());
-}
-
-/** The engine, its server, an IPC stand-in and a CLI client, in one process. */
-interface Skeleton {
-  readonly client: ProtocolClient;
-  readonly parts: EngineParts;
-  readonly positions: PositionStore;
-  /** Stands in for the wallet queue: what reached it. */
-  readonly executor: FakeExecutor;
-  /** Opens another client over the IPC stand-in, signed in with a token's secret. */
-  connect(secret: string): Promise<ProtocolClient>;
-  close(): Promise<void>;
-}
-
-async function listen(server: NetServer): Promise<number> {
-  await new Promise<void>((resolve) => {
-    server.listen(0, "127.0.0.1", () => resolve());
-  });
-  const address = server.address();
-  return typeof address === "object" && address !== null ? address.port : 0;
-}
-
-async function startSkeleton(parts: EngineParts): Promise<Skeleton> {
-  await seed(parts);
-  const clock = createManualClock(nowMs);
-  const chains = createChainRegistry({
-    chains: [createFakeChainDefinition()],
-    families: [createFakeFamily()],
-    signingSchemes: [createFakeSigningScheme()],
-  });
-  const facts = {
-    nativeBalanceBase: 10n ** 18n,
-    ceilingPerTxNativeBase: 10n ** 18n,
-    feePerGasNativeBase: 1_000_000_000n,
-    networkFeeCapNativeBase: 1_000_000_000n,
-    recentOutflows: [],
-  };
-  const positions = createMemoryPositionStore();
-  const executor = createFakeExecutor();
-  const { server } = composeEngine(parts, {
-    chains,
-    venues: [createFakeVenue()],
-    simulator: createQuoteSimulator(() => undefined),
-    wallets: createFakeWalletFacts(new Map([[agent, [wallet]]]), facts),
-    executor,
-    positions,
-    paperBalances: [{ asset: coin, base: 10n ** 18n }],
-    version: "2026.10.0",
-    owner: { locale: "en", timezone: "UTC" },
-    clock,
-    random: createSeededRandom(7),
-    logger: createMemoryLogger({ subsystem: "engine" }),
-  });
-  // The platform's IPC endpoint hands its sockets to the server the same way.
-  const ipc = createNetServer((socket) => server.acceptIpc(socket));
-  const port = await listen(ipc);
-  const clients: ProtocolClient[] = [];
-  const connect = async (secret: string): Promise<ProtocolClient> => {
-    const opened = createProtocolClient({
-      operations,
-      openSocket: () => new WebSocket(`ws://127.0.0.1:${String(port)}/ws`),
-      client: { kind: "cli", version: "test" },
-      credential: { token: secret },
-      clock,
-      random: createSeededRandom(11 + clients.length),
-      logger: createMemoryLogger({ subsystem: "client" }),
-    });
-    clients.push(opened);
-    await opened.connect(AbortSignal.timeout(10_000));
-    return opened;
-  };
-  const client = await connect(cliSecret);
-  return {
-    client,
-    parts,
-    positions,
-    executor,
-    connect,
-    async close() {
-      clients.forEach((opened) => opened.close());
-      ipc.close();
-      await server.close();
-    },
-  };
-}
 
 const swapRequest = {
   kind: "swap" as const,
@@ -382,7 +180,7 @@ describe.each(compositions)(
       async () => {
         skeleton = await startSkeleton(parts());
         const { client } = skeleton;
-        const mcp = await skeleton.connect(mcpSecret);
+        const mcp = await skeleton.connect(skeletonSecrets.mcp, "mcp");
         await expect(mcp.call("agent/goLive", { agent }, live())).rejects.toMatchObject({
           code: "auth.scope",
         });

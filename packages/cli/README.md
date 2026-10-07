@@ -32,9 +32,11 @@ composition root `composeCloudTestRoot`, which fills them with fakes shaped like
 Cloud adapters so a test can run the engine on either profile's parts. `composeEngine` wires the
 engine and its protocol server on the parts both profiles fill (custody, the store ports and the
 prices): the server signs callers in through the access store and routes calls to the engine's
-handlers, and the engine's pushes reach the server. `paper-swap.test.ts` runs one paper swap
-through every layer on both compositions, then the owner's switch to live and a live trade that
-reaches the executor.
+handlers, and the engine's pushes reach the server. With the owner's bot (`telegram`),
+`composeTelegram` joins it: each new card version shows in the owner's chat, a press is answered
+through the engine for the owner only, and a card answered elsewhere or expired becomes its
+receipt. `paper-swap.test.ts` runs one paper swap through every layer on both compositions, then
+the owner's switch to live and a live trade that reaches the executor.
 
 The reference of every key, generated from the schema, is
 [docs/config-keys.generated.md](docs/config-keys.generated.md).

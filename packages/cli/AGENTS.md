@@ -28,9 +28,11 @@ Rules for this package:
 - Fork tests in `src/fork/` run engine steps over the real chain parts they are composed from,
   such as the simulation check over the EVM transaction simulator, on the fork suite's BSC fork
   through `@binference/chain-evm/fork`. They run in `pnpm test:fork`, never in `pnpm check`.
-- `composeEngine` is the one place that joins the engine to its protocol server. A push that fails
-  is logged and never stops the money path. The paper swap test runs on every composition with
-  `describe.each`; a new profile part joins both compositions there.
+- `composeEngine` is the one place that joins the engine to its protocol server, and to the
+  owner's bot through `composeTelegram`. A push that fails, and a card that does not reach
+  Telegram, is logged and never stops the money path. The skeleton tests run on every composition
+  with `describe.each` through `src/compose/test-skeleton.ts`; a new profile part joins both
+  compositions there.
 - The config has one strict schema in `src/config/schema/`. Every key has a `.describe()` text,
   a default through `.prefault()` or none, and a type declared before its schema. Secrets are
   `secretSourceSchema` or `commandSourceSchema`, never text.

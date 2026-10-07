@@ -419,9 +419,15 @@ importers:
       '@binference/store':
         specifier: workspace:*
         version: link:../store
+      '@binference/telegram':
+        specifier: workspace:*
+        version: link:../telegram
       commander:
         specifier: 'catalog:'
         version: 15.0.0
+      grammy:
+        specifier: 'catalog:'
+        version: 1.46.0
       json5:
         specifier: 'catalog:'
         version: 2.2.3

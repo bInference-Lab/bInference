@@ -9,15 +9,17 @@ import { createIntentStateMachine } from "./state-machine.js";
 
 /** The time the test intents and the test engine start at. */
 export const testNowMs = 1_800_000_000_000;
-/** The test agent and its wallet. */
+/** The test agent, as `testAgentDraft` stores it. */
 export const testAgent: Id<"agt"> = idSchema("agt").parse(
   "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001",
 );
+/** The test agent's one wallet. */
 export const testWallet: Id<"wal"> = idSchema("wal").parse(
   "wal_0190f1c2-3a4b-7c5d-8e6f-000000000001",
 );
-/** The fake chain's coin and its listed token. */
+/** The fake chain's coin, which pays its gas. */
 export const testCoin: AssetRef = assetRefSchema.parse("fake:1/slip44:1");
+/** The token the fake chain lists. */
 export const testToken: AssetRef = assetRefSchema.parse("fake:1/token:0x0000000a");
 
 /** Limits that let a small swap of the coin through on the fake venue. */
