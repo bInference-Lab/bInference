@@ -27,6 +27,7 @@
     "@binference/protocol": "workspace:*",
     "@binference/server": "workspace:*",
     "json5": "catalog:",
+    "tslog": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
