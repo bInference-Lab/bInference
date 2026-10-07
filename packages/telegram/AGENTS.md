@@ -20,8 +20,13 @@ Rules for this package:
 - Telegram names an update's chat message `message`, which the lint rule against reading error
   messages also matches. Only `src/updates/chat-update.schema.ts` reads it; everything else uses
   binference's `ChatUpdate`.
-- Every word the bot sends is a message key under `telegram.` in `@binference/i18n`, in the
-  owner's language, or else in the language of the sender's Telegram app.
+- Every word the bot sends is a message key in `@binference/i18n`: `telegram.*`, and the card,
+  receipt and reason messages the engine's card lines name. Cards follow the owner's language;
+  ingress replies follow it too, or else the language of the sender's Telegram app.
+- Messages go out in Telegram's HTML only as `src/cards/card-html.ts` builds them: every value from
+  outside (token symbols and names, the agent's reason, venue and client names) goes through
+  `displayOutsideText`, and each line is escaped whole with `escapeHtml` after it is filled in.
+  Never build HTML from a value.
 - Every grammY `Api` the package calls has its token's throttler installed
   (`createBotThrottlers().install(api)`). It paces each chat, bounds each attempt to 30 seconds
   and owns every 429 wait, so callers pass only a signal and never retry a 429 themselves.
