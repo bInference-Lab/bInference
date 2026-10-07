@@ -81,7 +81,6 @@
   "signal.wallets": "Wallet facts (not built in yet)",
   "signal.simulator": "Transaction simulation (not built in yet)",
   "signal.executor": "Live sending",
-  "signal.network": "Outbound network (not built in yet)",
   "signal.positions": "Stored positions (not built in yet)",
   "health.ready": "binference is running and ready.",
   "health.starting": "binference is still starting. Try again in a few seconds.",

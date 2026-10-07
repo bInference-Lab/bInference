@@ -100,7 +100,6 @@ describe("binference start, status, health and logs end to end", () => {
         "prices",
         "wallets",
         "simulator",
-        "network",
         "positions",
       ]);
       expect(answer.health.slice(2)).toStrictEqual([
@@ -110,7 +109,6 @@ describe("binference start, status, health and logs end to end", () => {
         { signal: "prices", state: "fail" },
         { signal: "wallets", state: "fail" },
         { signal: "simulator", state: "fail" },
-        { signal: "network", state: "fail" },
         { signal: "positions", state: "fail" },
       ]);
 

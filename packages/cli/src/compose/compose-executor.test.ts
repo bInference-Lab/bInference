@@ -4,6 +4,7 @@ import { bsc } from "@binference/chains";
 import {
   createManualClock,
   createMemoryLogger,
+  createScriptedHttp,
   createSeededRandom,
 } from "@binference/core/testing";
 import { createMemoryEngineStores } from "@binference/engine/testing";
@@ -46,7 +47,7 @@ function composeWith(chainsConfig: ChainsConfig) {
     prices: parts.prices,
     chains,
     config: chainsConfig,
-    http: parts.http,
+    http: createScriptedHttp([]),
     clock: createManualClock(),
     random: createSeededRandom(1),
     publish: () => undefined,

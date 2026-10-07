@@ -51,23 +51,10 @@ describe("the missing parts", () => {
       code: "chain.simulation_failed",
       details: { missing: "simulator" },
     });
-    expect(parts.missing).toStrictEqual([
-      "custody",
-      "prices",
-      "wallets",
-      "simulator",
-      "network",
-      "positions",
-    ]);
+    expect(parts.missing).toStrictEqual(["custody", "prices", "wallets", "simulator", "positions"]);
   });
 
-  it("reaches no host and stores no position", async () => {
-    const request = { method: "POST", url: "https://rpc.48.club", signal: live().signal } as const;
-    await expect(parts.http.request(request)).rejects.toMatchObject({
-      code: "http.unreachable",
-      retryable: true,
-      details: { missing: "network" },
-    });
+  it("stores no position", async () => {
     await expect(parts.positions.positions({} as never, live())).rejects.toMatchObject({
       code: "internal.error",
       details: { missing: "positions" },
@@ -86,7 +73,5 @@ describe("the missing parts", () => {
     await expect(parts.simulator.simulate(intent, {} as never, stopped())).rejects.toThrow(
       "stopped",
     );
-    const request = { method: "GET", url: "https://rpc.48.club", ...stopped() } as const;
-    await expect(parts.http.request(request)).rejects.toThrow("stopped");
   });
 });

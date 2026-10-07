@@ -1,16 +1,15 @@
 import type { PriceSource, Signer } from "@binference/chain";
-import { BinferenceError, err, type Http } from "@binference/core";
+import { BinferenceError, err } from "@binference/core";
 import type { PositionStore, Simulator, WalletFactsSource } from "@binference/engine";
 
 /** A part the self-hosted root cannot fill yet; `status` shows each one as a failed signal. */
-type MissingPart = "custody" | "prices" | "wallets" | "simulator" | "network" | "positions";
+type MissingPart = "custody" | "prices" | "wallets" | "simulator" | "positions";
 
 /**
  * The parts the self-hosted root has no adapter for yet: custody through the owner's Privy app,
- * Chainlink prices, the wallet facts, the transaction simulator, outbound HTTP to the chains' RPCs
- * and relays, and the stored positions. Each stands in as a missing part that refuses: custody
- * holds no wallet and signs nothing, every asset has no price, no agent has a wallet, no request
- * leaves the machine. No missing part makes up a balance, a price or a signature, so nothing moves
+ * Chainlink prices, the wallet facts, the transaction simulator and the stored positions. Each
+ * stands in as a missing part that refuses: custody holds no wallet and signs nothing, every asset
+ * has no price, no agent has a wallet, no position is stored. No missing part makes up a balance, a price or a signature, so nothing moves
  * money and nothing fills on paper. They hold nothing, so they never pass their ports' contract
  * checks for a known wallet or asset; their own test proves each refusal.
  */
@@ -20,7 +19,6 @@ export interface MissingParts {
   readonly wallets: WalletFactsSource;
   readonly simulator: Simulator;
   /** Outbound HTTP: every request fails at once, as one that reaches no host. */
-  readonly http: Http;
   readonly positions: PositionStore;
   /** Every part above that is missing, for the health signals. */
   readonly missing: readonly MissingPart[];
@@ -43,36 +41,6 @@ async function refuse(
 ): Promise<never> {
   options.signal.throwIfAborted();
   return Promise.reject(missing(part, "internal.error"));
-}
-
-// Outbound HTTP and stored positions: neither has an adapter yet.
-function missingMoneyParts(): Pick<MissingParts, "http" | "positions"> {
-  return {
-    // A retryable fault, as a request that reaches no host: RPC reads fail over and give up, and
-    // each relay answers `unreachable`.
-    http: {
-      async request(request) {
-        request.signal.throwIfAborted();
-        return Promise.reject(
-          new BinferenceError({
-            code: "http.unreachable",
-            message: "This binference has no outbound HTTP adapter yet.",
-            retryable: true,
-            details: { missing: "network" },
-          }),
-        );
-      },
-    },
-    // Positions have no SQLite adapter yet, and a paper fill must not vanish.
-    positions: {
-      positions: async (_query, options) => refuse("positions", options),
-      record: async (_write, options) => refuse("positions", options),
-      executions: async (_query, options) => refuse("positions", options),
-      recordArrival: async (_write, options) => refuse("positions", options),
-      arrivals: async (_query, options) => refuse("positions", options),
-      resetPaper: async (_reset, options) => refuse("positions", options),
-    },
-  };
 }
 
 /** The missing parts, for a self-hosted engine that serves the protocol and refuses to trade. */
@@ -110,7 +78,15 @@ export function createMissingParts(): MissingParts {
         return Promise.reject(missing("simulator", "chain.simulation_failed"));
       },
     },
-    ...missingMoneyParts(),
-    missing: ["custody", "prices", "wallets", "simulator", "network", "positions"],
+    // Positions have no SQLite adapter yet, and a paper fill must not vanish.
+    positions: {
+      positions: async (_query, options) => refuse("positions", options),
+      record: async (_write, options) => refuse("positions", options),
+      executions: async (_query, options) => refuse("positions", options),
+      recordArrival: async (_write, options) => refuse("positions", options),
+      arrivals: async (_query, options) => refuse("positions", options),
+      resetPaper: async (_reset, options) => refuse("positions", options),
+    },
+    missing: ["custody", "prices", "wallets", "simulator", "positions"],
   };
 }

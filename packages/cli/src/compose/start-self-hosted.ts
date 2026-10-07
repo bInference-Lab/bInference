@@ -98,7 +98,7 @@ function composeSending(
     prices: parts.prices,
     chains,
     config: config.chains,
-    http: parts.http,
+    http: host.http,
     clock: host.clock,
     random: host.random,
     publish: (push) => {
