@@ -61,7 +61,26 @@ function found<T>(item: T | undefined, json: (value: T) => JsonValue): HttpRespo
   return item === undefined ? failure(404, "not_found", "Not found.") : answer(200, json(item));
 }
 
-function answerRead(state: FakePrivyState, path: string): HttpResponse {
+// `GET /v1/wallets`: the app's wallets of one chain type, oldest first, at most `limit` (1 to
+// 100), on one page: the fake never pages.
+function listWallets(state: FakePrivyState, query: URLSearchParams): HttpResponse {
+  const limit = query.get("limit") ?? "100";
+  const chainType = query.get("chain_type") ?? "ethereum";
+  if (!/^(?:[1-9]\d?|100)$/.test(limit) || chainType !== "ethereum") {
+    return failure(400, "invalid_data", "Invalid query.");
+  }
+  const page = [...state.wallets.values()]
+    .filter((_, index) => BigInt(index) < BigInt(limit))
+    .map(walletJson);
+  return answer(200, { data: page, next_cursor: null });
+}
+
+function answerRead(state: FakePrivyState, target: string): HttpResponse {
+  const url = new URL(target, origin);
+  if (url.pathname === "/v1/wallets") {
+    return listWallets(state, url.searchParams);
+  }
+  const path = url.pathname;
   for (const [pattern, route] of reads) {
     const id = pattern.exec(path)?.[1];
     if (id !== undefined) {

@@ -21,6 +21,7 @@ The bytes the SDK signs must be the bytes chain's `authorizationPayload` writes 
 | `registryCeilingChain`                      | One chain's contracts and spenders for the enabled venues, from the registry      |
 | `PolicyRule`, `policyRuleJson`              | A rule in Privy's policy language, and its JSON                                   |
 | `createPrivyApi`, `PrivyApi`                | Privy's API for one app through its Node SDK: quorums, policies, wallets, signing |
+| `checkPrivyApp`                             | Checks an app's id and secret with one read: a page of one Ethereum wallet        |
 | `createAgentWallet`                         | Makes the policy and the wallet, then reads the wallet back                       |
 | `readBackWallet`, `checkWallet`             | Checks a wallet's owner, signer and policy against what was asked                 |
 | `createPrivyOwnerSigner`                    | The `privy-owner` adapter of the chain `Signer` port                              |

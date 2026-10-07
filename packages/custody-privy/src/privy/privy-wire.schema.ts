@@ -35,6 +35,10 @@ const walletWire = z.object({
   ),
 });
 
+const walletPageWire = z.object({
+  data: z.array(z.object({ id: privyId, chain_type: z.string() })).max(100),
+});
+
 const signedWire = z.object({
   signed_transaction: z.string().regex(/^0x(?:[0-9a-fA-F]{2})+$/),
   encoding: z.literal("rlp"),
@@ -99,6 +103,11 @@ export function readWallet(answer: unknown): WalletRecord | undefined {
           overridePolicyIds: signer.override_policy_ids ?? null,
         })),
       };
+}
+
+/** Whether the SDK's answer is a page of wallets: a list of at most 100, each with its id. */
+export function readWalletPage(answer: unknown): boolean {
+  return walletPageWire.safeParse(answer).success;
 }
 
 /** Reads the signed transaction from the SDK's answer to `eth_signTransaction`. */

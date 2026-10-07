@@ -10,6 +10,7 @@ import {
   type HttpResponse,
 } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { checkPrivyApp } from "../privy/check-privy-app.js";
 import { createPrivyApi } from "../privy/privy-api.js";
 import { createFakeSignerProcess } from "../testing/fake-signer-process.js";
 import { privyCustodyContract } from "./privy-custody-contract.js";
@@ -112,4 +113,17 @@ describe.runIf(liveTests)("the Privy test app", () => {
     },
     120_000,
   );
+});
+
+describe.runIf(liveTests)("the Privy test app's id and secret", () => {
+  it("passes the check with one read, and another secret is rejected", async () => {
+    const options = { http: https, clock: realClock, appId, timeoutMs: 30_000 };
+    const call = { signal: AbortSignal.timeout(60_000) };
+    await expect(
+      checkPrivyApp({ ...options, appSecret: createSecret(secret) }, call),
+    ).resolves.toStrictEqual({ ok: true, value: undefined });
+    await expect(
+      checkPrivyApp({ ...options, appSecret: createSecret(`${secret}-not`) }, call),
+    ).resolves.toStrictEqual({ ok: false, error: "rejected" });
+  });
 });

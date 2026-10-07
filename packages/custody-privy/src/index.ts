@@ -12,6 +12,7 @@ export type {
 } from "./ceiling/policy-rule.js";
 export { registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
 export type { RegistryCeilingRequest } from "./ceiling/registry-ceiling-chain.js";
+export { checkPrivyApp } from "./privy/check-privy-app.js";
 export { createPrivyApi } from "./privy/privy-api.js";
 export type {
   CallOptions,
