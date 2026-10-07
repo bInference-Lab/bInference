@@ -14,6 +14,9 @@ Rules for this package:
   (`ProfileParts`) and builds their adapters; `composeCloudTestRoot` is the test composition root
   on the Cloud-shaped fakes. Every other package takes the ports, and `guards/no-profile-mention`
   fails it when it names a profile.
+- `composeEngine` is the one place that joins the engine to its protocol server. A push that fails
+  is logged and never stops the money path. The paper swap test runs on every composition with
+  `describe.each`; a new profile part joins both compositions there.
 - The config has one strict schema in `src/config/schema/`. Every key has a `.describe()` text,
   a default through `.prefault()` or none, and a type declared before its schema. Secrets are
   `secretSourceSchema` or `commandSourceSchema`, never text.

@@ -25,7 +25,13 @@
     "@binference/engine": "workspace:*",
     "@binference/platform": "workspace:*",
     "@binference/protocol": "workspace:*",
+    "@binference/server": "workspace:*",
     "json5": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@binference/client": "workspace:*",
+    "@types/ws": "catalog:",
+    "ws": "catalog:"
   }
 }

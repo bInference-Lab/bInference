@@ -392,12 +392,25 @@ importers:
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@binference/server':
+        specifier: workspace:*
+        version: link:../server
       json5:
         specifier: 'catalog:'
         version: 2.2.3
       zod:
         specifier: 'catalog:'
         version: 4.6.5
+    devDependencies:
+      '@binference/client':
+        specifier: workspace:*
+        version: link:../client
+      '@types/ws':
+        specifier: 'catalog:'
+        version: 8.18.2
+      ws:
+        specifier: 'catalog:'
+        version: 8.22.0
 
   packages/client:
     dependencies:

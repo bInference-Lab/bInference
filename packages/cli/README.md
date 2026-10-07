@@ -9,7 +9,11 @@ read only when needed, and the config migrations behind `binference check --fix`
 
 `src/compose/` holds `ProfileParts`, the ports whose adapter depends on the profile, and the test
 composition root `composeCloudTestRoot`, which fills them with fakes shaped like the bInference
-Cloud adapters so a test can run the engine on either profile's parts.
+Cloud adapters so a test can run the engine on either profile's parts. `composeEngine` wires the
+engine and its protocol server on the parts both profiles fill (custody, the store ports and the
+prices): the server signs callers in through the access store and routes calls to the engine's
+handlers, and the engine's pushes reach the server. `paper-swap.test.ts` runs one paper swap
+through every layer on both compositions.
 
 The reference of every key, generated from the schema, is
 [docs/config-keys.generated.md](docs/config-keys.generated.md).
