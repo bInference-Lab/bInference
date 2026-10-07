@@ -1,6 +1,7 @@
 import {
   type AccountRef,
   accountRefSchema,
+  type Amount,
   type ChainRegistry,
   createChainRegistry,
   type Venue,
@@ -23,6 +24,7 @@ import {
   createMemoryEngineStores,
   type MemoryEngineStores,
 } from "../fakes/memory-engine-stores.js";
+import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 import {
@@ -33,7 +35,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
-import type { Executor, IntentStore } from "../ports.js";
+import type { AgentStore, Executor, IntentStore, PositionStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine } from "./create-engine.js";
@@ -69,6 +71,10 @@ export interface TestEngineOptions {
   readonly wallets?: readonly Id<"wal">[];
   /** Wraps the intent store, so a test can make a write lose its race. */
   readonly intents?: (store: IntentStore) => IntentStore;
+  /** Wraps the agent store the engine writes through, as `intents` does. */
+  readonly agents?: (store: AgentStore) => AgentStore;
+  /** What the paper portfolio opens with: 1 coin when absent, nothing when empty. */
+  readonly paper?: readonly Amount[];
   /** Takes the confirmed live intents; a fake that keeps them when absent. */
   readonly executor?: Executor;
 }
@@ -79,6 +85,7 @@ export interface TestEngine {
   readonly stores: MemoryEngineStores;
   readonly clock: ManualClock;
   readonly custody: FakeSigner;
+  readonly positions: PositionStore;
   /** The executor the engine hands confirmed live intents to, when the test gave none. */
   readonly executor: FakeExecutor;
   /** Every push the engine sent, oldest first. */
@@ -93,6 +100,9 @@ const defaultFacts: WalletFacts = {
   recentOutflows: [],
 };
 
+// The paper portfolio a test engine opens: one coin, $600 at the test price.
+const testPaperBalances: readonly Amount[] = [{ asset: testCoin, base: 10n ** 18n }];
+
 /** The test wallet's account on the fake chain. */
 export const testAccount: AccountRef = accountRefSchema.parse("fake:1:0x0000000c");
 
@@ -105,6 +115,22 @@ export function testChains(): ChainRegistry {
   });
 }
 
+// The stores the engine sees, with the intent and agent stores wrapped as the test asks.
+function wrapped(stores: MemoryEngineStores, options: TestEngineOptions): MemoryEngineStores {
+  return {
+    ...stores,
+    intents: options.intents?.(stores.intents) ?? stores.intents,
+    agents: options.agents?.(stores.agents) ?? stores.agents,
+  };
+}
+
+// Opens the agent's paper portfolio with the balances, or leaves it empty for none.
+async function openPaper(engine: Engine, balances: readonly Amount[]): Promise<void> {
+  if (balances.length > 0) {
+    await engine.handlers["portfolio/resetPaper"](testCall({ agent: testAgent, balances }));
+  }
+}
+
 /** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
 export async function startTestEngine(options: TestEngineOptions = {}): Promise<TestEngine> {
   const clock = createManualClock(testNowMs);
@@ -113,10 +139,11 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   const chains = testChains();
   const venues = options.venues ?? [createFakeVenue()];
   const pushes: EnginePush[] = [];
-  const intents = options.intents?.(stores.intents) ?? stores.intents;
+  const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
   const engine = createEngine({
-    stores: { ...stores, intents },
+    stores: wrapped(stores, options),
+    positions,
     custody,
     prices: createFakePriceSource(
       new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
@@ -128,13 +155,15 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
     simulator: createQuoteSimulator(() => options.refusal),
     executor: options.executor ?? executor,
+    paperBalances: testPaperBalances,
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),
     publish: (push) => pushes.push(push),
   });
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });
-  return { engine, stores, clock, custody, executor, pushes };
+  await openPaper(engine, options.paper ?? testPaperBalances);
+  return { engine, stores, clock, custody, positions, executor, pushes };
 }
 
 /** One call with its args, from a caller, with a signal that never aborts. */

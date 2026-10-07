@@ -409,8 +409,8 @@ export interface Executor {
 /**
  * What the money path reads about an agent's wallets beyond the store ports: which wallets the
  * agent owns, and the facts the policy and the auto test read about one of them now. Adapters: the
- * wallets table with the chain's RPC, the custody ceiling and the fee reader for live intents, and
- * the paper portfolio for paper ones.
+ * wallets table with the chain's RPC, the custody ceiling and the fee reader. For a paper intent
+ * the engine takes the native balance from the paper portfolio instead.
  */
 export interface WalletFactsSource {
   /** The agent's wallets, the one it uses by default first; none for an unknown agent. */

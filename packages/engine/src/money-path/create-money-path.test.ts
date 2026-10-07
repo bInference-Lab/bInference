@@ -126,9 +126,18 @@ describe("the money path", () => {
     ]);
   });
 
-  it("refuses a swap that would spend the gas reserve", async () => {
-    const view = await propose(await startTestEngine({ facts: { nativeBalanceBase: 10n ** 15n } }));
+  it("refuses a paper swap that would spend the paper portfolio's gas reserve", async () => {
+    const paper = [{ asset: testCoin, base: 10n ** 15n }];
+    const view = await propose(await startTestEngine({ paper }));
     expect(view.outcome?.reason).toBe("gas_reserve");
+  });
+
+  it("refuses a live swap that would spend the wallet's gas reserve", async () => {
+    const test = await startTestEngine({
+      agent: { mode: "live" },
+      facts: { nativeBalanceBase: 10n ** 15n },
+    });
+    expect((await propose(test)).outcome?.reason).toBe("gas_reserve");
   });
 
   it("fails the check when no venue can quote the swap", async () => {

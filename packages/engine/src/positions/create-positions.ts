@@ -1,11 +1,13 @@
-import { mulDiv, type Result } from "@binference/core";
-import type { PositionStore, PriceSource, UsdPrice } from "../ports.js";
+import type { Amount } from "@binference/chain";
+import { err, type Id, mulDiv, type Result } from "@binference/core";
+import type { PositionStore, PriceSource } from "../ports.js";
 import { applyArrival } from "./apply-arrival.js";
 import { applyExecution } from "./apply-execution.js";
 import type { ArrivalDraft, ArrivalRecord } from "./arrival-record.js";
 import type { ExecutionRecord } from "./execution-record.js";
+import { paperResetOf } from "./paper-reset-of.js";
 import type { PositionQuery, PositionRecord } from "./position-record.js";
-import { type ExecutedTrade, valueExecution } from "./value-execution.js";
+import { type ExecutedTrade, isUsablePrice, valueExecution } from "./value-execution.js";
 
 /**
  * A position with what it is worth now. A position that holds nothing is worth 0; one whose asset
@@ -46,6 +48,21 @@ export interface Positions {
     arrival: Omit<ArrivalDraft, "valueUsdMicros">,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<ArrivalRecord, "stale">>;
+  /**
+   * Starts a wallet's paper portfolio again from `balances`, one per asset, at the
+   * `PriceSource`'s prices now: every paper position of the wallet empties, and each balance
+   * arrives at its value, rounded up, and opens its position. A paper portfolio holds its balances
+   * as positions, so a balance with no usable price is `no_price` and nothing is stored. `stale`
+   * as for `record`.
+   */
+  resetPaper(
+    reset: {
+      readonly walletId: Id<"wal">;
+      readonly atMs: number;
+      readonly balances: readonly Amount[];
+    },
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<readonly ArrivalRecord[], "no_price" | "stale">>;
   /** One wallet's positions with their value and unrealized P&L at the `PriceSource`'s price. */
   value(
     query: PositionQuery,
@@ -59,9 +76,6 @@ export interface PositionsOptions {
   readonly prices: PriceSource;
 }
 
-// A zero or malformed price would value a position at nothing, so it counts as no price.
-const isUsable = (price: UsdPrice): boolean => price.numerator > 0n && price.denominator > 0n;
-
 async function valueOne(
   position: PositionRecord,
   prices: PriceSource,
@@ -72,11 +86,37 @@ async function valueOne(
     return { position, valueUsdMicros: 0n, unrealizedUsdMicros: 0n };
   }
   const price = await prices.usdPrice(position.asset, { signal });
-  if (!price.ok || !isUsable(price.value)) {
+  if (!price.ok || !isUsablePrice(price.value)) {
     return { position };
   }
   const valueUsdMicros = mulDiv(position.quantityBase, price.value, "down");
   return { position, valueUsdMicros, unrealizedUsdMicros: valueUsdMicros - position.costUsdMicros };
+}
+
+type PaperResetCall = Parameters<Positions["resetPaper"]>[0];
+
+// Every balance is priced before anything is stored, so a missing price leaves the wallet as it was.
+async function resetPaper(
+  options: PositionsOptions,
+  { walletId, atMs, balances }: PaperResetCall,
+  signal: AbortSignal,
+): Promise<Result<readonly ArrivalRecord[], "no_price" | "stale">> {
+  const priced = await Promise.all(
+    balances.map(async (received) => ({
+      received,
+      price: await options.prices.usdPrice(received.asset, { signal }),
+    })),
+  );
+  const arrivals: ArrivalDraft[] = [];
+  for (const { received, price } of priced) {
+    if (!price.ok || !isUsablePrice(price.value)) {
+      return err("no_price");
+    }
+    const valueUsdMicros = mulDiv(received.base, price.value, "up");
+    arrivals.push({ walletId, isPaper: true, atMs, received, valueUsdMicros });
+  }
+  const held = await options.store.positions({ walletId, isPaper: true }, { signal });
+  return options.store.resetPaper(paperResetOf({ walletId, atMs, held, arrivals }), { signal });
 }
 
 /** Creates {@link Positions} over a position store and a price source. */
@@ -92,7 +132,7 @@ export function createPositions(options: PositionsOptions): Positions {
     async receive(funds, call) {
       const price = await prices.usdPrice(funds.received.asset, call);
       const arrival =
-        price.ok && isUsable(price.value)
+        price.ok && isUsablePrice(price.value)
           ? { ...funds, valueUsdMicros: mulDiv(funds.received.base, price.value, "up") }
           : funds;
       const held = await store.positions(
@@ -101,6 +141,7 @@ export function createPositions(options: PositionsOptions): Positions {
       );
       return store.recordArrival({ arrival, positions: applyArrival(held, arrival) }, call);
     },
+    resetPaper: async (reset, call) => resetPaper(options, reset, call.signal),
     async value(query, call) {
       const held = await store.positions(query, call);
       return Promise.all(held.map(async (position) => valueOne(position, prices, call.signal)));

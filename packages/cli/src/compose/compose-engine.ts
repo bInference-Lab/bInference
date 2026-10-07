@@ -1,4 +1,4 @@
-import type { ChainRegistry, Venue } from "@binference/chain";
+import type { Amount, ChainRegistry, Venue } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -12,6 +12,7 @@ import {
   type Engine,
   type EnginePush,
   type Executor,
+  type PositionStore,
   type Simulator,
   type WalletFactsSource,
 } from "@binference/engine";
@@ -35,6 +36,10 @@ export interface ComposeEngineOptions {
   readonly wallets: WalletFactsSource;
   /** Takes each confirmed live intent onto its wallet's queue. */
   readonly executor: Executor;
+  /** Executions, arrivals and positions, the paper portfolio's too. */
+  readonly positions: PositionStore;
+  /** What a paper portfolio starts with: config's `defaults.paper.balances`, resolved to assets. */
+  readonly paperBalances: readonly Amount[];
   /** The engine's release, for `ready`. */
   readonly version: string;
   readonly owner: OwnerInfo;
@@ -78,12 +83,14 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   };
   const engine = createEngine({
     stores: parts.stores,
+    positions: options.positions,
     custody: parts.custody,
     prices: parts.prices,
     wallets: options.wallets,
     host,
     simulator: options.simulator,
     executor: options.executor,
+    paperBalances: options.paperBalances,
     chains,
     clock,
     ids: createIdSource({ clock, random }),

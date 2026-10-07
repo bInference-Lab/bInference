@@ -20,12 +20,18 @@ import {
   createMemoryLogger,
   createSeededRandom,
 } from "@binference/core/testing";
-import { type LimitsValues, sha256Hex, walkLedgerChain } from "@binference/engine";
+import {
+  type LimitsValues,
+  type PositionStore,
+  sha256Hex,
+  walkLedgerChain,
+} from "@binference/engine";
 import {
   createFakeExecutor,
   createFakePriceSource,
   createFakeWalletFacts,
   createMemoryEngineStores,
+  createMemoryPositionStore,
   createQuoteSimulator,
   type FakeExecutor,
 } from "@binference/engine/testing";
@@ -124,6 +130,7 @@ async function seed(parts: EngineParts): Promise<void> {
 interface Skeleton {
   readonly client: ProtocolClient;
   readonly parts: EngineParts;
+  readonly positions: PositionStore;
   /** Stands in for the wallet queue: what reached it. */
   readonly executor: FakeExecutor;
   close(): Promise<void>;
@@ -152,6 +159,7 @@ async function startSkeleton(parts: EngineParts): Promise<Skeleton> {
     networkFeeCapNativeBase: 1_000_000_000n,
     recentOutflows: [],
   };
+  const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
   const { server } = composeEngine(parts, {
     chains,
@@ -159,6 +167,8 @@ async function startSkeleton(parts: EngineParts): Promise<Skeleton> {
     simulator: createQuoteSimulator(() => undefined),
     wallets: createFakeWalletFacts(new Map([[agent, [wallet]]]), facts),
     executor,
+    positions,
+    paperBalances: [{ asset: coin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: { locale: "en", timezone: "UTC" },
     clock,
@@ -181,6 +191,7 @@ async function startSkeleton(parts: EngineParts): Promise<Skeleton> {
   return {
     client,
     parts,
+    positions,
     executor,
     async close() {
       client.close();
@@ -239,6 +250,15 @@ describe.each(compositions)(
         const intents = collect(client, "intent", 10);
         const ledger = collect(client, "ledger", 4);
         await Promise.all([intents.ready, ledger.ready]);
+        const opened = await client.call("portfolio/resetPaper", { agent }, live());
+        expect(opened.balances).toStrictEqual([
+          {
+            wallet,
+            amount: { asset: coin, base: 10n ** 18n },
+            usdMicros: 600_000_000n,
+            paper: true,
+          },
+        ]);
 
         const request = {
           kind: "swap" as const,
@@ -323,6 +343,14 @@ describe.each(compositions)(
         await expect(
           walkLedgerChain(skeleton.parts.stores.ledger, {}, live()),
         ).resolves.toMatchObject({ ok: true, value: { seq: 4 } });
+        const held = await skeleton.positions.positions(
+          { walletId: wallet, isPaper: true },
+          live(),
+        );
+        expect(held.map((row) => [row.asset, row.quantityBase])).toStrictEqual([
+          [coin, 10n ** 18n - 1_000_000n],
+          [token, 2_000_000n],
+        ]);
         expect(skeleton.executor.taken()).toStrictEqual([]);
       },
     );

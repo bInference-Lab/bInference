@@ -48,6 +48,8 @@ new name here first, in the change that uses it.
   nothing sent on chain. New agents start in it; **live** is the opposite.
 - **paper fill**: the fill paper mode records when a paper intent is confirmed: the confirmed
   quote's input for its expected output, kept with the move to `paper_filled` and its ledger entry.
+- **paper portfolio**: an agent's paper money, held as its wallets' paper positions with their own
+  P&L. A **paper reset** starts it again from the starting balances, 1 BNB and 500 USDT by default.
 - **approval mode**: per agent, **manual** (every transaction outside an auto order needs a tap; the
   default) or **auto** (buys, sells, swaps and moves inside the agent's own positions run within the
   caps without a tap).

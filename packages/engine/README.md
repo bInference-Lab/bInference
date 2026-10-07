@@ -34,6 +34,12 @@ pushes its `intent`, card and `ledger` events, and they are the `ConfirmationSto
 confirmations write through. What the money path reads about wallets outside the store comes through
 the `WalletFactsSource` port.
 
+Paper mode ([ARCHITECTURE.md section 10](../../docs/ARCHITECTURE.md#section-10)) keeps each agent's
+paper portfolio as its wallets' paper positions, so a paper fill moves them at average cost and they
+carry their own P&L. `portfolio/resetPaper` starts the portfolio again from the starting balances
+(1 BNB and 500 USDT by default), each valued at its price when it arrives, and a paper intent's
+balance comes from it.
+
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
 their events, card versions and confirmations, each move written whole with its ledger entry),
@@ -81,7 +87,7 @@ layout of Koinly's universal import, which tax tools read.
 | `StoredIntent`, `IntentWrite`, `BuiltQuote`, `Requote`           | An intent as the store holds it, and one move to store          |
 | `drawCard`, `Card`, `CardFacts`, `CardAction`                    | A card version as lines of message keys with typed values       |
 | `CardLine`, `CardValue`, `cardKeys`                              | One line, its values, and every key a card or receipt uses      |
-| `receiptLine`, `CardClosing`                                     | The receipt line a card becomes when it closes                  |
+| `receiptLine`, `CardClosing`, `ReceiptFill`                      | The receipt line a card becomes when it closes, paper fills too |
 | `createVenueHost`, `VenueHost`, `VenueTrade`, `TradePlan`        | Quotes and builds a trade on a venue and checks every step      |
 | `VenueOutcome`, `VenueRefused`, `BuildMismatch`, `PlanStep`      | A checked plan, or the check reason and the check that failed   |
 | `IntentStore`, `IntentDraft`, `IntentChange`, `IntentCommit`     | Intents with their events, cards and confirmations              |
@@ -175,12 +181,14 @@ import { createEngine, createVenueHost } from "@binference/engine";
 const host = createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 });
 const engine = createEngine({
   stores,
+  positions,
   custody,
   prices,
   wallets,
   host,
   simulator,
   executor,
+  paperBalances, // config's `defaults.paper.balances`, resolved to assets
   chains,
   clock,
   ids,

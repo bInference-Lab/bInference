@@ -387,3 +387,41 @@ describe("createPositions receive", () => {
     expect(stored).toHaveLength(1);
   });
 });
+
+describe("a paper reset", () => {
+  const paperCoins = { walletId, atMs: 9_000, balances: [{ asset: coin, base: 2n * whole }] };
+
+  it("empties the paper portfolio, P&L too, and opens each balance at its value now", async () => {
+    const store = createMemoryPositionStore();
+    const prices = createFakePriceSource(new Map([[coin, usd(600_000_000n)], ...pricesNow]));
+    const positions = createPositions({ store, prices });
+    await inOrder(handWorked, async (executed) =>
+      positions.record({ ...executed, isPaper: true }, live()),
+    );
+    await positions.resetPaper(paperCoins, live());
+    const arrived = await store.arrivals({ after: 0, limit: 10, isPaper: true }, live());
+    expect(arrived.map((arrival) => arrival.valueUsdMicros)).toStrictEqual([1_200_000_000n]);
+    const held = await store.positions({ walletId, isPaper: true }, live());
+    expect(
+      held.map((row) => [row.asset, row.quantityBase, row.costUsdMicros, row.realizedUsdMicros]),
+    ).toStrictEqual([
+      [coin, 2n * whole, 1_200_000_000n, 0n],
+      [token, 0n, 0n, 0n],
+      [stable, 0n, 0n, 0n],
+    ]);
+  });
+
+  it("stores nothing when a balance has no usable price", async () => {
+    const store = createMemoryPositionStore();
+    const positions = createPositions({ store, prices: createFakePriceSource(pricesNow) });
+    const balances = [
+      { asset: stable, base: whole },
+      { asset: unpriced, base: whole },
+    ];
+    await expect(positions.resetPaper({ ...paperCoins, balances }, live())).resolves.toStrictEqual({
+      ok: false,
+      error: "no_price",
+    });
+    expect(await store.arrivals({ after: 0, limit: 10, isPaper: true }, live())).toStrictEqual([]);
+  });
+});

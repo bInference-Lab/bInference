@@ -70,7 +70,13 @@ Rules for this package:
   0100), to the `Executor` port. A paper intent never reaches the executor (spec 6, invariant 3);
   its property test holds that for every kind, mode and state.
 - The paper fill (`src/paper/`) moves a confirmed paper intent to `paper_filled` at its confirmed
-  quote and records the fill with the move. The paper portfolio builds on this step.
+  quote and records the fill with the move, then records it as a paper execution, valued at the
+  sold asset's price then. With no usable price the intent stays `confirmed`: a fill is never
+  valued at a guessed price.
+- The paper portfolio is the agent's wallets' paper positions: a paper intent's native balance is
+  its paper position of the native coin. A reset empties every paper position of the agent's
+  wallets, P&L too, and opens the starting balances in its first wallet, each at its price when it
+  arrives; with no usable price it changes nothing. It never touches a live position or the mode.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

@@ -1,4 +1,4 @@
-import type { ChainRegistry, Signer } from "@binference/chain";
+import type { Amount, ChainRegistry, Signer } from "@binference/chain";
 import type { Clock, IdSource } from "@binference/core";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
@@ -6,20 +6,30 @@ import { createMoneyPath } from "../money-path/create-money-path.js";
 import { createExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
 import { createPaperFills } from "../paper/paper-fills.js";
+import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfolio.js";
+import { withPaperBalances } from "../paper/paper-wallet-facts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
-import type { Executor, PriceSource, Simulator, WalletFactsSource } from "../ports.js";
+import type {
+  Executor,
+  PositionStore,
+  PriceSource,
+  Simulator,
+  WalletFactsSource,
+} from "../ports.js";
+import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
+import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
 
 /** The operation handlers the engine gives the protocol server, by operation name. */
-export interface EngineHandlers extends IntentHandlers, LedgerHandlers {}
+export interface EngineHandlers extends IntentHandlers, LedgerHandlers, PortfolioHandlers {}
 
 /**
- * The engine's use cases behind the protocol: the money path, confirmations, paper fills and the
+ * The engine's use cases behind the protocol: the money path, confirmations, paper mode and the
  * ledger, built from ports. It holds no I/O of its own; pushes leave through `publish`.
  */
 export interface Engine {
@@ -32,15 +42,20 @@ export interface Engine {
 /** The ports and adapters the composition root builds the engine from. */
 export interface EngineOptions {
   readonly stores: EngineStores;
+  /** Executions, arrivals and positions, live and paper; the paper portfolio lives here. */
+  readonly positions: PositionStore;
   /** Custody: the agent wallets' accounts, and later their signatures. */
   readonly custody: Signer;
   readonly prices: PriceSource;
+  /** The wallets' live facts; a paper intent's balance comes from the paper portfolio. */
   readonly wallets: WalletFactsSource;
   /** The venue host over every venue the engine may use. */
   readonly host: VenueHost;
   readonly simulator: Simulator;
   /** Takes each confirmed live intent onto its wallet's queue; it never sees a paper intent. */
   readonly executor: Executor;
+  /** A paper reset's starting balances when it names none: 1 BNB and 500 USDT by default. */
+  readonly paperBalances: readonly Amount[];
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly ids: IdSource;
@@ -48,12 +63,39 @@ export interface EngineOptions {
   readonly publish: PublishPush;
 }
 
-/**
- * Creates the {@link Engine}. Every write of an intent goes through one writer, which pushes
- * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
- * confirmed quote; a confirmed live one goes to the executor.
- */
-export function createEngine(options: EngineOptions): Engine {
+interface PaperParts {
+  readonly positions: Positions;
+  readonly portfolio: PaperPortfolio;
+  /** The wallet facts with paper balances from the paper portfolio. */
+  readonly wallets: WalletFactsSource;
+}
+
+function paperParts(options: EngineOptions): PaperParts {
+  const positions = createPositions({ store: options.positions, prices: options.prices });
+  const portfolio = createPaperPortfolio({
+    positions,
+    store: options.positions,
+    wallets: options.wallets,
+    clock: options.clock,
+    startingBalances: options.paperBalances,
+  });
+  const wallets = withPaperBalances(options.wallets, { portfolio, chains: options.chains });
+  return { positions, portfolio, wallets };
+}
+
+function settingsHandlers(options: EngineOptions, paper: PaperParts): PortfolioHandlers {
+  return createPortfolioHandlers({
+    agents: options.stores.agents,
+    portfolio: paper.portfolio,
+    positions: paper.positions,
+    chains: options.chains,
+  });
+}
+
+function intentParts(
+  options: EngineOptions,
+  paper: PaperParts,
+): { readonly handlers: IntentHandlers; readonly answer: AnswerCard } {
   const { stores, custody, host, chains, clock, ids } = options;
   const stored = createStoredIntents({
     intents: stores.intents,
@@ -61,8 +103,13 @@ export function createEngine(options: EngineOptions): Engine {
     ids,
     publish: options.publish,
   });
-  const paper = createPaperFills({ stored, clock });
-  const execute = createExecuteConfirmed({ paper, executor: options.executor });
+  const fills = createPaperFills({
+    stored,
+    positions: paper.positions,
+    prices: options.prices,
+    clock,
+  });
+  const execute = createExecuteConfirmed({ paper: fills, executor: options.executor });
   const confirmations = createConfirmations({
     clock,
     store: stored,
@@ -74,7 +121,7 @@ export function createEngine(options: EngineOptions): Engine {
     stored,
     agents: stores.agents,
     custody,
-    wallets: options.wallets,
+    wallets: paper.wallets,
     policy: createPolicyCheck({ prices: options.prices, clock }),
     host,
     simulator: options.simulator,
@@ -83,6 +130,23 @@ export function createEngine(options: EngineOptions): Engine {
     clock,
     ids,
   });
-  const intentHandlers = createIntentHandlers({ stored, moneyPath, answer, chains });
-  return { handlers: { ...intentHandlers, ...createLedgerHandlers(stores.ledger) }, answer };
+  return { answer, handlers: createIntentHandlers({ stored, moneyPath, answer, chains }) };
+}
+
+/**
+ * Creates the {@link Engine}. Every write of an intent goes through one writer, which pushes
+ * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
+ * confirmed quote in the paper portfolio; a confirmed live one goes to the executor.
+ */
+export function createEngine(options: EngineOptions): Engine {
+  const paper = paperParts(options);
+  const intents = intentParts(options, paper);
+  return {
+    handlers: {
+      ...intents.handlers,
+      ...createLedgerHandlers(options.stores.ledger),
+      ...settingsHandlers(options, paper),
+    },
+    answer: intents.answer,
+  };
 }

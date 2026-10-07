@@ -14,6 +14,11 @@ export interface ExecutedTrade extends Omit<
   readonly gasPrice: UsdPrice;
 }
 
+/** A price above zero with a denominator above zero; a zero or malformed one counts as no price. */
+export function isUsablePrice(price: UsdPrice): boolean {
+  return price.numerator > 0n && price.denominator > 0n;
+}
+
 /**
  * Values a trade in micro-dollars at the prices of its time. Each value rounds up to the next
  * micro-dollar, as the policy step's do, so the cost of what the trade bought is never

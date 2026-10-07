@@ -1,5 +1,7 @@
 {
   "confirmed": "✅ Confirmed on {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}} at {time} · sending",
   "denied": "❌ Cancelled on {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}",
-  "expired": "❌ Expired with no answer"
+  "expired": "❌ Expired with no answer",
+  "paper": "🧪 Paper fill: {result}",
+  "result": "{sold} → {bought}"
 }

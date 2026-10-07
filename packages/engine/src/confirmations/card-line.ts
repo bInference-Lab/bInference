@@ -50,6 +50,8 @@ export const cardKeys = [
   "receipt.confirmed",
   "receipt.denied",
   "receipt.expired",
+  "receipt.paper",
+  "receipt.result",
 ] as const;
 
 /** A message key of a card or a receipt. */
