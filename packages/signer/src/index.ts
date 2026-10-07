@@ -37,8 +37,14 @@ export {
   signerAuthorizationSchema,
   termsHashSchema,
 } from "./requests/signer-authorization.schema.js";
+export { approvalModeNowSchema, autoModeGrantSchema } from "./requests/auto-mode-grant.schema.js";
 export type {
   ApprovalModeNow,
+  ApprovalModeNowWire,
+  AutoModeGrant,
+  AutoModeGrantWire,
+} from "./requests/auto-mode-grant.schema.js";
+export type {
   SignerAuthorization,
   SignerAuthorizationWire,
   AdvanceAuthorization,

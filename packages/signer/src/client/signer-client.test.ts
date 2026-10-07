@@ -8,7 +8,7 @@ import { createP256KeyPair } from "../keys/p256-key-pair.js";
 import { authorizationPayload } from "../privy/authorization-signature.js";
 import { maxLineBytes } from "../process/read-lines.js";
 import { serveSigner } from "../process/serve-signer.js";
-import { authorizeFixture, fixtureSettings } from "../testing/sign-fixtures.js";
+import { authorizeFixture, fixtureNowMs, fixtureSettings } from "../testing/sign-fixtures.js";
 import { maxWaitingCalls, openSignerClient, type SignerRefusalNotice } from "./signer-client.js";
 
 const agentKey = createP256KeyPair();
@@ -73,6 +73,7 @@ describe("signer client", () => {
       write: async (line) => {
         fromSigner.write(`${line}\n`);
       },
+      now: () => fixtureNowMs,
     });
     const client = await openSignerClient({
       answers: fromSigner,
@@ -135,6 +136,22 @@ describe("signer client", () => {
       },
     ]);
     expect(JSON.stringify(logger.records())).not.toContain(keyText.slice(0, 16));
+  });
+
+  it("logs a hard rule refusal by the rule's number", async () => {
+    const { client, answer, requests, notices, logger } = await scripted();
+    const input = authorizeFixture();
+    const result = client.authorize(input, signal());
+    await settle();
+    answer({ id: requests()[0]?.id, ok: false, refused: "rule_3" });
+
+    await expect(result).resolves.toStrictEqual({ ok: false, error: "rule_3" });
+    expect(notices).toStrictEqual([
+      { wallet: input.wallet.id, intent: input.intent, refused: "rule_3" },
+    ]);
+    expect(logger.records().map((record) => record.fields)).toStrictEqual([
+      { intentId: input.intent, errorCode: "signer.rule_3" },
+    ]);
   });
 
   it("sends one request per wallet at a time, and wallets side by side", async () => {

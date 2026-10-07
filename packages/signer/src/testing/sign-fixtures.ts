@@ -4,7 +4,7 @@ import {
   type ChainRef,
   chainRefSchema,
 } from "@binference/chain";
-import { idSchema } from "@binference/core";
+import { idSchema, type JsonValue } from "@binference/core";
 import type { SignerSettings } from "../process/signer-settings.schema.js";
 import type { AuthorizeInput } from "../requests/authorize-input.schema.js";
 
@@ -38,13 +38,14 @@ export const fixtureAddresses: Readonly<
 
 const custodyId = "fmfdj6yqly31huorjqzq38zc";
 const intent = idSchema("int").parse("int_0192f3a4-5b6c-7d8e-9f00-112233445566");
-const termsHash = "ab".repeat(32);
+/** The terms hash the fixture authorizations carry. */
+export const fixtureTermsHash: string = "ab".repeat(32);
 
 /** The Privy RPC URL of the fixture wallet. */
 const fixtureRpcUrl: string = `https://api.privy.io/v1/wallets/${custodyId}/rpc`;
 
 /** The fields of an EVM transaction as Privy's `eth_signTransaction` body carries them. */
-export type FixtureTransaction = Readonly<Record<string, string | number>>;
+export type FixtureTransaction = Readonly<Record<string, JsonValue>>;
 
 /** A 0.01 BNB call to the router, at nonce 7, under the network fee cap of 1 gwei. */
 const fixtureTransaction: FixtureTransaction = {
@@ -84,14 +85,41 @@ export function authorizeFixture(
       kind: "confirmation",
       id: idSchema("cnf").parse("cnf_0192f3a4-5b6c-7d8e-9f00-112233445566"),
       intent,
-      termsHash,
+      termsHash: fixtureTermsHash,
       expiresAtMs: fixtureNowMs + 60_000,
     },
-    termsHash,
+    termsHash: fixtureTermsHash,
     allowed: {
       contracts: [accountOn(fixtureAddresses.router)],
       spenders: [accountOn(fixtureAddresses.router)],
       recipients: [accountOn(fixtureAddresses.saved)],
     },
+  };
+}
+
+const word = (hex: string): string => hex.padStart(64, "0");
+
+/** The calldata of an ERC-20 `approve(spender, amount)`. */
+export function approveCalldata(spender: string, amount: bigint): string {
+  return `0x095ea7b3${word(spender.slice(2))}${word(amount.toString(16))}`;
+}
+
+/** The calldata of an ERC-20 `transfer(recipient, amount)`. */
+export function transferCalldata(recipient: string, amount: bigint): string {
+  return `0xa9059cbb${word(recipient.slice(2))}${word(amount.toString(16))}`;
+}
+
+/** The fixture request with these transaction fields over {@link fixtureTransaction}'s. */
+export function withTransaction(
+  input: AuthorizeInput,
+  fields: FixtureTransaction,
+  without: readonly string[] = [],
+): AuthorizeInput {
+  const transaction = Object.fromEntries(
+    Object.entries({ ...fixtureTransaction, ...fields }).filter(([key]) => !without.includes(key)),
+  );
+  return {
+    ...input,
+    request: { ...input.request, body: { method: "eth_signTransaction", params: { transaction } } },
   };
 }

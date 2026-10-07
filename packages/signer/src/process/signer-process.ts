@@ -8,6 +8,7 @@ const fault = await runSigner({
   program: import.meta.filename,
   input: process.stdin,
   output: process.stdout,
+  now: Date.now,
 });
 if (fault !== undefined) {
   process.exitCode = 1;

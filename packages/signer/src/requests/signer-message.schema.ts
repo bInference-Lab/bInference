@@ -22,9 +22,19 @@ export type SignerRequest = PublicKeyRequest | AuthorizeRequest;
 
 /**
  * Why the signer refused a request: `unknown_request` for a message it cannot read or a kind it
- * does not know, `malformed` for a known kind that breaks its schema.
+ * does not know, `malformed` for a known kind that breaks its schema or a Privy body it cannot
+ * read, and `rule_<n>` for the first hard rule of the keys spec, section 5.2, that the request
+ * breaks.
  */
-export type SignerRefusal = "unknown_request" | "malformed";
+export type SignerRefusal =
+  | "unknown_request"
+  | "malformed"
+  | "rule_1"
+  | "rule_2"
+  | "rule_3"
+  | "rule_4"
+  | "rule_5"
+  | "rule_6";
 
 /**
  * The signer's answer to one request. A refused line that held no readable id is answered with
@@ -64,7 +74,16 @@ const signerLineSchema: z.ZodType<SignerLine, SignerLine> = z.union([
   z.strictObject({
     id: messageIdSchema.nullable(),
     ok: z.literal(false),
-    refused: z.enum(["unknown_request", "malformed"]),
+    refused: z.enum([
+      "unknown_request",
+      "malformed",
+      "rule_1",
+      "rule_2",
+      "rule_3",
+      "rule_4",
+      "rule_5",
+      "rule_6",
+    ]),
   }),
   z.strictObject({
     fault: z.enum([

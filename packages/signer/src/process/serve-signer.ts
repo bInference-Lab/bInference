@@ -12,6 +12,8 @@ export interface SignerChannel {
   readonly input: AsyncIterable<Uint8Array>;
   /** Writes one line to the engine and resolves once it is written. */
   readonly write: (line: string) => Promise<void>;
+  /** Now, in epoch milliseconds. */
+  readonly now: () => number;
 }
 
 interface Start {
@@ -50,7 +52,7 @@ async function serveRequests(
   channel: SignerChannel,
   started: Start,
 ): Promise<void> {
-  const service = createSignerService({ agentKey: started.agentKey });
+  const service = createSignerService({ ...started, now: channel.now });
   // One request at a time: the next line is read only once the last answer is written.
   for await (const line of lines) {
     const answer = service.answer(line.toString("utf8"));

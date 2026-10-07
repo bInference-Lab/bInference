@@ -138,29 +138,47 @@ function begin(run: Run): void {
 }
 
 describe("the signer process under Node's permission model", () => {
-  it("answers publicKey, signs and refuses an unknown request", { timeout: 60_000 }, async () => {
-    const run = start(signerNodeArguments(signerBundle));
-    begin(run);
-    const input = authorizeFixture();
-    run.child.stdin.write(`${JSON.stringify({ id: "a", kind: "publicKey" })}\n`);
-    run.child.stdin.write(`${formatSignerRequest({ id: "b", kind: "authorize", ...input })}\n`);
-    run.child.stdin.write(`${JSON.stringify({ id: "c", kind: "exportKey" })}\n`);
-    const answers = [await nextAnswer(run), await nextAnswer(run), await nextAnswer(run)];
-    const { signature } = answers[1] as { readonly signature: string };
-    run.child.stdin.end();
+  it(
+    "answers publicKey, signs, and refuses an unknown request and a broken rule",
+    { timeout: 60_000 },
+    async () => {
+      const run = start(signerNodeArguments(signerBundle));
+      begin(run);
+      // The signer reads the real clock, so this confirmation lasts until 2100.
+      const fixture = authorizeFixture();
+      const input = {
+        ...fixture,
+        authorization: { ...fixture.authorization, expiresAtMs: 4_102_444_800_000 },
+      };
+      run.child.stdin.write(`${JSON.stringify({ id: "a", kind: "publicKey" })}\n`);
+      run.child.stdin.write(`${formatSignerRequest({ id: "b", kind: "authorize", ...input })}\n`);
+      run.child.stdin.write(`${JSON.stringify({ id: "c", kind: "exportKey" })}\n`);
+      run.child.stdin.write(
+        `${formatSignerRequest({ id: "d", kind: "authorize", ...input, termsHash: "cd".repeat(32) })}\n`,
+      );
+      const answers = [
+        await nextAnswer(run),
+        await nextAnswer(run),
+        await nextAnswer(run),
+        await nextAnswer(run),
+      ];
+      const { signature } = answers[1] as { readonly signature: string };
+      run.child.stdin.end();
 
-    expect(answers[0]).toStrictEqual({ id: "a", ok: true, publicKey: agentKey.publicKey });
-    expect(answers[2]).toStrictEqual({ id: "c", ok: false, refused: "unknown_request" });
-    expect(
-      verify(
-        "sha256",
-        authorizationPayload(input.request),
-        createPublicKey(agentKey.privateKey),
-        Buffer.from(signature, "base64"),
-      ),
-    ).toBe(true);
-    await expect(exitCode(run)).resolves.toBe(0);
-  });
+      expect(answers[0]).toStrictEqual({ id: "a", ok: true, publicKey: agentKey.publicKey });
+      expect(answers[2]).toStrictEqual({ id: "c", ok: false, refused: "unknown_request" });
+      expect(answers[3]).toStrictEqual({ id: "d", ok: false, refused: "rule_5" });
+      expect(
+        verify(
+          "sha256",
+          authorizationPayload(input.request),
+          createPublicKey(agentKey.privateKey),
+          Buffer.from(signature, "base64"),
+        ),
+      ).toBe(true);
+      await expect(exitCode(run)).resolves.toBe(0);
+    },
+  );
 
   it("can open no file, socket, process or worker once started", { timeout: 60_000 }, async () => {
     const run = start([...signerNodeArguments(probedBundle)]);

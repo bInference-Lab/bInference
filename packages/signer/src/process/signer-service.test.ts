@@ -3,11 +3,20 @@ import { describe, expect, it } from "vitest";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
 import { authorizationPayload } from "../privy/authorization-signature.js";
 import { formatSignerRequest } from "../requests/signer-message.schema.js";
-import { authorizeFixture } from "../testing/sign-fixtures.js";
+import {
+  authorizeFixture,
+  fixtureNowMs,
+  fixtureSettings,
+  withTransaction,
+} from "../testing/sign-fixtures.js";
 import { createSignerService } from "./signer-service.js";
 
 const agentKey = createP256KeyPair();
-const service = createSignerService({ agentKey });
+const service = createSignerService({
+  agentKey,
+  settings: fixtureSettings,
+  now: () => fixtureNowMs,
+});
 
 describe("signer service", () => {
   it("answers publicKey with the agent key's public half", () => {
@@ -32,6 +41,34 @@ describe("signer service", () => {
         Buffer.from(signature, "base64"),
       ),
     ).toBe(true);
+  });
+
+  it.each([
+    [
+      "rule 2",
+      withTransaction(authorizeFixture(), { to: "0x3333333333333333333333333333333333333333" }),
+      "rule_2",
+    ],
+    ["rule 5", { ...authorizeFixture(), termsHash: "cd".repeat(32) }, "rule_5"],
+    [
+      "a body it cannot read",
+      {
+        ...authorizeFixture(),
+        request: {
+          ...authorizeFixture().request,
+          body: { method: "eth_signTransaction", params: {} },
+        },
+      },
+      "malformed",
+    ],
+  ])("refuses an authorize that breaks %s, and signs nothing", (_case, input, refused) => {
+    expect(
+      service.answer(formatSignerRequest({ id: "r9", kind: "authorize", ...input })),
+    ).toStrictEqual({
+      id: "r9",
+      ok: false,
+      refused,
+    });
   });
 
   it.each([

@@ -2,7 +2,7 @@ import { PassThrough, Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
-import { fixtureSettings } from "../testing/sign-fixtures.js";
+import { fixtureNowMs, fixtureSettings } from "../testing/sign-fixtures.js";
 import { runSigner } from "./run-signer.js";
 
 const program = "/opt/binference/signer-process.mjs";
@@ -37,6 +37,7 @@ async function run(permission: NodeJS.ProcessPermission | undefined) {
       JSON.stringify({ id: "a", kind: "publicKey" }),
     ),
     output,
+    now: () => fixtureNowMs,
   });
   output.end();
   const text = (await output.toArray()).join("");
@@ -84,7 +85,13 @@ describe("running the signer", () => {
     broken.on("error", () => undefined);
 
     await expect(
-      runSigner({ permission: undefined, program, input: inputOf(), output: broken }),
+      runSigner({
+        permission: undefined,
+        program,
+        input: inputOf(),
+        output: broken,
+        now: () => fixtureNowMs,
+      }),
     ).rejects.toThrow("the engine closed the pipe");
   });
 });

@@ -17,6 +17,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - The signer's channel is its standard input and output: the settings line, the agent key's line,
   then one JSON request per line, answered in order, one at a time. Requests and answers have
   their schemas in `src/requests/`; an unknown request is refused, never guessed at.
+- The hard rules (keys spec, section 5.2) live in `src/rules/`, one file per rule. A change to a
+  rule moves its test that breaks only that rule and the oracle of
+  `check-hard-rules.property.test.ts` in the same commit; the oracle is written apart from the
+  rules and must stay that way. Stryker's 80% bar applies to them.
 - Privy's authorization signature is pinned by known answers from Privy's own SDK, and
   `src/privy-sdk/` holds it to the SDK's bytes for any request, with `@privy-io/node` as a
   test-only dependency. A change to the payload's bytes breaks every signature Privy checks.

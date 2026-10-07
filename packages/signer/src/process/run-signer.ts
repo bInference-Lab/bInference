@@ -10,6 +10,8 @@ export interface SignerHost {
   readonly program: string;
   readonly input: AsyncIterable<Uint8Array>;
   readonly output: Writable;
+  /** The clock of the real world, in epoch milliseconds. */
+  readonly now: () => number;
 }
 
 // Every scope of Node's permission model; the signer keeps none of them.
@@ -55,5 +57,5 @@ export async function runSigner(host: SignerHost): Promise<SignerFaultCode | und
     await write(JSON.stringify({ fault: "signer.not_sealed" }));
     return "signer.not_sealed";
   }
-  return serveSigner({ input: host.input, write });
+  return serveSigner({ input: host.input, write, now: host.now });
 }

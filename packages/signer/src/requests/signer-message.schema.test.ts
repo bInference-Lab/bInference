@@ -69,11 +69,22 @@ const authorizations: readonly SignerAuthorization[] = [
   },
   {
     kind: "approvalMode",
-    intent: base.intent,
-    termsHash,
-    modeVersion: 4,
-    current: { mode: "auto", version: 4 },
-    networkFeeCap: 10n ** 9n,
+    grant: {
+      approvalMode: "auto",
+      agent: idSchema("agt").parse("agt_0192f3a4-5b6c-7d8e-9f00-112233445566"),
+      intent: base.intent,
+      kind: "swap",
+      modeVersion: 4,
+      termsHash,
+      grantedAtMs: fixtureNowMs,
+      expiresAtMs: fixtureNowMs + 60_000,
+      networkFeeCapNativeBase: 10n ** 9n,
+    },
+    current: {
+      agent: idSchema("agt").parse("agt_0192f3a4-5b6c-7d8e-9f00-112233445566"),
+      mode: "auto",
+      version: 4,
+    },
   },
 ];
 
@@ -139,15 +150,15 @@ describe("signer messages", () => {
       { id: "r1", ok: true, publicKey: "AAAA" },
       { id: "r2", ok: true, signature: "MEQC" },
       { id: null, ok: false, refused: "unknown_request" },
+      { id: "r3", ok: false, refused: "rule_6" },
       { fault: "signer.not_sealed" },
     ];
 
     expect(lines.map((line) => readSignerLine(JSON.stringify(line)))).toStrictEqual(lines);
-    expect(["", "{}", "[]", '{"fault":"signer.other"}'].map(readSignerLine)).toStrictEqual([
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-    ]);
+    expect(
+      ["", "{}", "[]", '{"fault":"signer.other"}', '{"id":"r4","ok":false,"refused":"rule_7"}'].map(
+        readSignerLine,
+      ),
+    ).toStrictEqual([undefined, undefined, undefined, undefined, undefined]);
   });
 });

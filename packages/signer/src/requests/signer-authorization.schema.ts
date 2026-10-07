@@ -1,12 +1,13 @@
-import { decimalStringSchema, type Id, idSchema } from "@binference/core";
+import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
-
-/** What an agent's approval mode was, as the engine read it right before asking for the signature. */
-export interface ApprovalModeNow {
-  readonly mode: "manual" | "auto";
-  /** The version of the agent's approval-mode record; every change raises it. */
-  readonly version: number;
-}
+import {
+  type ApprovalModeNow,
+  approvalModeNowSchema,
+  type ApprovalModeNowWire,
+  type AutoModeGrant,
+  autoModeGrantSchema,
+  type AutoModeGrantWire,
+} from "./auto-mode-grant.schema.js";
 
 /** The life of an auto order or a webhook rule, as the engine read it right before signing. */
 export interface AdvanceAuthorization {
@@ -24,8 +25,9 @@ export interface AdvanceAuthorization {
 /**
  * What approved the intent a transaction belongs to, with the facts the hard rules check (keys
  * spec, section 5.2, rule 5): the owner's confirmation of its card, an auto order or a webhook rule
- * the owner confirmed in advance, or the agent's auto mode. `termsHash` is the terms hash of what
- * the owner confirmed, or, in auto mode, of the intent that passed the auto test.
+ * the owner confirmed in advance, or the agent's auto mode: its grant for the intent and the mode
+ * as it stands. The terms hash is that of what the owner confirmed, or of the intent that passed
+ * the auto test.
  */
 export type SignerAuthorization =
   | {
@@ -40,13 +42,8 @@ export type SignerAuthorization =
   | ({ readonly kind: "webhookRule"; readonly id: Id<"whr"> } & AdvanceAuthorization)
   | {
       readonly kind: "approvalMode";
-      readonly intent: Id<"int">;
-      readonly termsHash: string;
-      /** The approval-mode version the intent was authorized under. */
-      readonly modeVersion: number;
+      readonly grant: AutoModeGrant;
       readonly current: ApprovalModeNow;
-      /** The network fee cap of the step's chain, in base units per gas. */
-      readonly networkFeeCap: bigint;
     };
 
 /** A {@link AdvanceAuthorization} with its kind and id, as JSON carries it. */
@@ -55,7 +52,7 @@ interface AdvanceWire extends AdvanceAuthorization {
   readonly id: string;
 }
 
-/** A {@link SignerAuthorization} as JSON carries it: ids as text, the fee cap as a decimal string. */
+/** A {@link SignerAuthorization} as JSON carries it: ids as text, amounts as decimal strings. */
 export type SignerAuthorizationWire =
   | {
       readonly kind: "confirmation";
@@ -67,11 +64,8 @@ export type SignerAuthorizationWire =
   | AdvanceWire
   | {
       readonly kind: "approvalMode";
-      readonly intent: string;
-      readonly termsHash: string;
-      readonly modeVersion: number;
-      readonly current: ApprovalModeNow;
-      readonly networkFeeCap: string;
+      readonly grant: AutoModeGrantWire;
+      readonly current: ApprovalModeNowWire;
     };
 
 /** A SHA-256 as 64 lowercase hex characters, as the store keeps a terms hash. */
@@ -102,10 +96,7 @@ export const signerAuthorizationSchema: z.ZodType<SignerAuthorization, SignerAut
     z.strictObject({ kind: z.literal("webhookRule"), id: idSchema("whr"), ...advanceShape }),
     z.strictObject({
       kind: z.literal("approvalMode"),
-      intent: idSchema("int"),
-      termsHash: termsHashSchema,
-      modeVersion: countSchema,
-      current: z.strictObject({ mode: z.enum(["manual", "auto"]), version: countSchema }),
-      networkFeeCap: decimalStringSchema,
+      grant: autoModeGrantSchema,
+      current: approvalModeNowSchema,
     }),
   ]);

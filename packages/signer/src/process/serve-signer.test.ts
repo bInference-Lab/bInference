@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
 import { readSignerLine } from "../requests/signer-message.schema.js";
-import { fixtureSettings } from "../testing/sign-fixtures.js";
+import { fixtureNowMs, fixtureSettings } from "../testing/sign-fixtures.js";
 import { maxLineBytes } from "./read-lines.js";
 import { serveSigner } from "./serve-signer.js";
 
@@ -22,6 +22,7 @@ async function serve(chunks: readonly Buffer[]) {
     write: async (line) => {
       written.push(line);
     },
+    now: () => fixtureNowMs,
   });
   return { fault, written };
 }
@@ -121,9 +122,9 @@ describe("serving the signer's channel", () => {
   });
 
   it("passes on a failure of its input", async () => {
-    await expect(serveSigner({ input: broken(), write: async () => undefined })).rejects.toThrow(
-      "the input pipe broke",
-    );
+    await expect(
+      serveSigner({ input: broken(), write: async () => undefined, now: () => fixtureNowMs }),
+    ).rejects.toThrow("the input pipe broke");
   });
 
   it("reads the next request only after it wrote the last answer", async () => {
@@ -146,6 +147,7 @@ describe("serving the signer's channel", () => {
         pulled.push("answer");
         await gate.hold();
       },
+      now: () => fixtureNowMs,
     });
 
     const releaseFirst = await gate.next();
