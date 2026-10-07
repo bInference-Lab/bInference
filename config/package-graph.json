@@ -30,7 +30,13 @@
       "coverage": 95,
       "mutation": true
     },
-    "signer": { "imports": ["core", "chain"], "money": true, "coverage": 95, "mutation": true },
+    "signer": {
+      "imports": ["core", "chain", "@privy-io/node"],
+      "only": { "@privy-io/node": "src/privy-sdk" },
+      "money": true,
+      "coverage": 95,
+      "mutation": true
+    },
     "custody-privy": { "imports": ["core", "chain", "chain-evm"] },
     "server": {
       "imports": ["core", "protocol", "engine", "ws", "client"],

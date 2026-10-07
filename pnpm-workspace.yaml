@@ -11,6 +11,7 @@ catalog:
   "@modelcontextprotocol/server": 2.2.0
   "@napi-rs/keyring": 2.1.0
   "@noble/curves": 2.4.0
+  "@privy-io/node": 0.35.0
   "@stryker-mutator/core": 10.0.0
   "@types/node": 26.6.3
   "@types/ws": 8.18.2

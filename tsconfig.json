@@ -3,6 +3,7 @@
   "include": [
     "packages/*/src/**/*.ts",
     "plugins/*/src/**/*.ts",
+    "packages/*/tsdown.config.ts",
     "config/**/*.ts",
     "*.config.ts",
     "*.config.mts"

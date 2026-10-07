@@ -10,6 +10,16 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - It imports only `core` and `chain`. It reads no file, config, database or network: it decides
   the keys, and the composition root hands it the `SecretStore` the unlock mode names. Platform
   stores the bytes.
+- The signer process runs under Node's permission model with no grant and drops every scope once
+  it is loaded, so its code never opens a file, a socket, a process or a worker, and never loads a
+  module after start: no dynamic `import()` on its path. `src/process/signer-sandbox.test.ts`
+  builds the entry and proves it; keep it passing.
+- The signer's channel is its standard input and output: the settings line, the agent key's line,
+  then one JSON request per line, answered in order, one at a time. Requests and answers have
+  their schemas in `src/requests/`; an unknown request is refused, never guessed at.
+- Privy's authorization signature is pinned by known answers from Privy's own SDK, and
+  `src/privy-sdk/` holds it to the SDK's bytes for any request, with `@privy-io/node` as a
+  test-only dependency. A change to the payload's bytes breaks every signature Privy checks.
 - Keys never reach a log, an error, a test title or an assertion message. A private half travels
   as a Node `KeyObject` or a `Secret`; tests compare public halves. Buffers that held a private
   scalar or its DER are zeroed once used.
