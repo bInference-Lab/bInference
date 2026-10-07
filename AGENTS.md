@@ -124,6 +124,7 @@ Node 26.1 or later. pnpm switches itself to the version in `package.json`.
 | `pnpm lint`                        | Oxlint with the type-aware rules and the `guards` plugin             |
 | `pnpm typecheck`                   | TypeScript 7 over packages and repo scripts                          |
 | `pnpm test`                        | Vitest with coverage bars by package tier                            |
+| `pnpm test:fork`                   | The fork suite on an anvil fork of BSC; needs anvil and the network  |
 | `pnpm build`                       | tsdown for each package, ESM and `.d.ts`                             |
 | `pnpm gen:package <name>`          | A new package with its files and its row in the package graph        |
 | `pnpm check:package-graph --write` | Regenerates the import rules after a change to the package graph     |

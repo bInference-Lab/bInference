@@ -20,5 +20,6 @@ Rules for this package:
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.
 - `src/testing/` holds test support: fake and loopback `Http` adapters and loopback servers. It is
   the one place that imports `node:http`, and nothing outside tests imports it.
-- Unit tests use no network: fakes, or servers on 127.0.0.1. The fork test runs only when
-  `BINFERENCE_FORK_RPC` names a running anvil fork (see the README); `pnpm check` skips it.
+- Unit tests use no network: fakes, or servers on 127.0.0.1. Fork tests live in `src/fork/` and
+  run in the fork suite (`pnpm test:fork`, see the README), never in `pnpm check`. They run inside
+  `withFork` and reach only the suite's loopback endpoints.

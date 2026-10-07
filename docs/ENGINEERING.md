@@ -673,6 +673,11 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   blocks, every venue action), crash and recovery, Telegram (synthetic channel in CI, live bot
   before releases touching ingress), agent evaluation (`@copilotkit/aimock` and a fork, nightly),
   console smoke.
+- **Rule:** fork tests live in a package's `src/fork/` and run in the fork suite
+  (`pnpm test:fork`, nightly in CI), never in `pnpm check`. The suite forks BSC once per run, 20
+  blocks behind the head; each test clears the test account's EIP-7702 code, waits for receipts
+  after an explicit mine, and has its changes reverted. Enforcer: `vitest.fork.config.ts` with its global setup, `withFork` in
+  `chain-evm`, and the `src/fork/` exclusion in `vitest.config.ts`.
 
 <a id="section-16"></a>
 

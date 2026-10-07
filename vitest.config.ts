@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  configDefaults,
   defineConfig,
   type TestProjectInlineConfiguration,
   type ViteUserConfig,
@@ -27,8 +28,18 @@ function packageFolders(): readonly string[] {
   );
 }
 
+// Fork tests need anvil and the network: they run in the fork suite (vitest.fork.config.ts).
+const forkFolders = "**/src/fork/**";
+
 function project(folder: string): TestProjectInlineConfiguration {
-  return { extends: true, test: { name: folder, include: [`${folder}/src/**/*.test.ts`] } };
+  return {
+    extends: true,
+    test: {
+      name: folder,
+      include: [`${folder}/src/**/*.test.ts`],
+      exclude: [...configDefaults.exclude, forkFolders],
+    },
+  };
 }
 
 interface Bar {
@@ -69,7 +80,7 @@ const config: ViteUserConfig = defineConfig({
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**/*.ts", "plugins/*/src/**/*.ts"],
-      exclude: ["**/*.test.ts"],
+      exclude: ["**/*.test.ts", forkFolders],
       reporter: ["text", "json-summary"],
       thresholds: { lines: defaultBar, branches: defaultBar, ...tierThresholds() },
     },

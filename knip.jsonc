@@ -19,8 +19,8 @@
       "project": ["src/**/*.ts"],
     },
   },
-  // Installed in CI from a pinned release; it is not an npm package.
-  "ignoreBinaries": ["opengrep"],
+  // Installed in CI from pinned releases; neither is an npm package. anvil serves the fork suite.
+  "ignoreBinaries": ["opengrep", "anvil"],
   "ignoreDependencies": [
     // knip's Stryker plugin asks for this runner, but it ships inside @stryker-mutator/core.
     "@stryker-mutator/command-runner",

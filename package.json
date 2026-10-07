@@ -39,6 +39,7 @@
     "security:opengrep": "node --import tsx scripts/scan-opengrep.mts",
     "setup": "node --import tsx scripts/setup.mts",
     "test": "vitest run --coverage",
+    "test:fork": "vitest run --config vitest.fork.config.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json"
   },
   "devDependencies": {

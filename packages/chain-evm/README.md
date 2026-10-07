@@ -43,13 +43,35 @@ for (const transfer of calls[0]?.transfers ?? []) {
 }
 ```
 
-## Fork test
+## Fork tests
 
-`src/fork/` simulates a PancakeSwap v2 swap on a BSC fork and checks it against the same swap sent
-on the fork. It needs Foundry's `anvil` and the network, so `pnpm check` skips it. Fork 20 blocks
-behind the head, since public nodes keep little state and flake at the head:
+`src/fork/` holds the fork tests and their harness. They run against an anvil fork of BSC, so
+`pnpm check` leaves them out; the fork suite runs them, every night in CI and on demand:
 
 ```sh
-anvil --fork-url https://bsc-dataseed1.bnbchain.org --fork-block-number <head minus 20> --port 8545
-BINFERENCE_FORK_RPC=http://127.0.0.1:8545 pnpm vitest run packages/chain-evm/src/fork
+pnpm test:fork
+```
+
+It needs Foundry's `anvil` on `PATH` (CI pins 1.7.1) and the network. The suite's global setup
+forks BNB Chain's public node 20 blocks behind the head and gives every test the same pinned
+block. Public nodes keep about 120 blocks of state and flake at the head.
+
+A test runs inside `withFork`, which hands it the fork:
+
+- `fork.account` is anvil's first default account with 10 BNB. Its EIP-7702 code is cleared
+  first: on BSC every anvil default account carries code that forwards the BNB it receives.
+- `fork.send` sends from an unlocked or impersonated account, mines a block and waits for the
+  receipt. anvil answers a send before it mines it, so the hash alone proves nothing.
+- Whatever the test changes on the fork is reverted when it ends, even when it fails.
+
+```ts
+it("keeps the BNB sent to the test account", async ({ signal }) =>
+  withFork(signal, async (fork) => {
+    const before = await fork.client.getBalance({ address: fork.account });
+    const receipt = await fork.send({ from: sender, to: fork.account, value: 10n ** 18n });
+    expect(receipt.status).toBe("success");
+    await expect(fork.client.getBalance({ address: fork.account })).resolves.toBe(
+      before + 10n ** 18n,
+    );
+  }));
 ```
