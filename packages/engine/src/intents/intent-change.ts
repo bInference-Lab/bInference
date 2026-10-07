@@ -107,6 +107,8 @@ export interface IntentQuery {
   readonly states: readonly IntentState[];
   /** Only this agent's intents; every agent's when absent. */
   readonly agentId?: Id<"agt">;
+  /** Only paper intents when true, only live ones when false; both when absent. */
+  readonly isPaper?: boolean;
   /** The last intent of the page before. */
   readonly after?: { readonly changedAtMs: number; readonly id: Id<"int"> };
   readonly limit: number;
@@ -116,6 +118,7 @@ export interface IntentQuery {
 export const intentQuerySchema: z.ZodType<IntentQuery> = z.strictObject({
   states: z.array(intentStateSchema).min(1),
   agentId: idSchema("agt").exactOptional(),
+  isPaper: z.boolean().exactOptional(),
   after: z.strictObject({ changedAtMs: epochMsSchema, id: idSchema("int") }).exactOptional(),
   limit: pageLimitSchema,
 });

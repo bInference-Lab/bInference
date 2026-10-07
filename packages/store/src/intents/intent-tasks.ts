@@ -69,13 +69,16 @@ export const listIntentsTask: StoreTask<IntentQuery, readonly IntentRecord[]> = 
   output: z.array(intentRecordSchema),
   run(database, query) {
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const { agentId, after } = query;
+    const { agentId, isPaper, after } = query;
     let select = kysely
       .selectFrom("intents")
       .selectAll()
       .where("state", "in", [...query.states]);
     if (agentId !== undefined) {
       select = select.where("agent_id", "=", agentId);
+    }
+    if (isPaper !== undefined) {
+      select = select.where("paper", "=", isPaper ? 1 : 0);
     }
     if (after !== undefined) {
       select = select.where((row) =>

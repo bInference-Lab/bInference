@@ -1,5 +1,9 @@
 import { err, ok, type Result } from "@binference/core";
 import {
+  type AgentModeChange,
+  agentModeChangeSchema,
+  type AgentRecord,
+  agentRecordSchema,
   type ApprovalModeChange,
   approvalModeChangeSchema,
   type ApprovalModeRecord,
@@ -13,7 +17,7 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
-import { toApprovalMode } from "./agent-rows.js";
+import { toAgentRecord, toApprovalMode } from "./agent-rows.js";
 import { limitsColumns, toLimitsRecord } from "./limits-rows.js";
 
 // A change names the row version it read: a missing row is `not_found`, another version `stale`.
@@ -87,5 +91,34 @@ export const setLimitsTask: StoreTask<
     };
     execute(kysely.updateTable("limits").set(row).where("agent_id", "=", change.agentId));
     return ok(toLimitsRecord(row));
+  },
+});
+
+/** Sets an agent's mode under the agent row's version the changer read. */
+export const setModeTask: StoreTask<
+  AgentModeChange,
+  Result<AgentRecord, "not_found" | "stale">
+> = defineTask({
+  name: "agents.set_mode",
+  access: "write",
+  input: agentModeChangeSchema,
+  output: resultSchema(agentRecordSchema, ["not_found", "stale"]),
+  run(database, change) {
+    const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
+    const found = versioned(
+      takeFirst(kysely.selectFrom("agents").selectAll().where("id", "=", change.agentId)),
+      change.expectedVersion,
+    );
+    if (!found.ok) {
+      return found;
+    }
+    const row = {
+      ...found.value,
+      mode: change.mode,
+      changed_at: change.atMs,
+      version: change.expectedVersion + 1,
+    };
+    execute(kysely.updateTable("agents").set(row).where("id", "=", change.agentId));
+    return ok(toAgentRecord(row));
   },
 });

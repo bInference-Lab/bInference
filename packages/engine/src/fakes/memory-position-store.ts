@@ -1,6 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
 import type { PositionStore } from "../ports.js";
-import type { ArrivalRecord, ArrivalWrite } from "../positions/arrival-record.js";
+import type { ArrivalRecord, ArrivalWrite, PaperReset } from "../positions/arrival-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "../positions/execution-record.js";
 import type {
   ExecutionWrite,
@@ -32,6 +32,44 @@ function matches(query: ExecutionQuery, row: Listed): boolean {
   );
 }
 
+// A reset touches only its own wallet's paper rows, and writes every paper position the wallet has.
+function checkReset(positions: Positions, reset: PaperReset): boolean {
+  const isOwn = (key: Pick<PositionKey, "walletId" | "isPaper">): boolean =>
+    key.walletId === reset.walletId && key.isPaper;
+  if (!reset.arrivals.every(isOwn) || !reset.positions.every((write) => isOwn(write.position))) {
+    throw constraintFault("a paper reset changes only its wallet's paper rows");
+  }
+  const written = new Set(reset.positions.map((write) => keyOf(write.position)));
+  return [...positions.values()].every((row) => !isOwn(row) || written.has(keyOf(row)));
+}
+
+// Moves every position of a write, or none and answers false when one of them is stale.
+function movePositions(positions: Positions, writes: readonly PositionWrite[]): boolean {
+  if (new Set(writes.map((change) => keyOf(change.position))).size < writes.length) {
+    throw constraintFault("one write moves the same position twice");
+  }
+  if (!writes.every((change) => isCurrent(positions, change))) {
+    return false;
+  }
+  for (const { position, readVersion } of writes) {
+    const version = readVersion === undefined ? 0 : readVersion + 1;
+    positions.set(keyOf(position), { ...structuredClone(position), version });
+  }
+  return true;
+}
+
+// Moves the reset's positions and numbers its arrivals from `firstId`, or answers stale.
+function resetPaper(
+  positions: Positions,
+  reset: PaperReset,
+  firstId: number,
+): Result<readonly ArrivalRecord[], "stale"> {
+  if (!checkReset(positions, reset) || !movePositions(positions, reset.positions)) {
+    return err("stale");
+  }
+  return ok(reset.arrivals.map((arrival, index) => ({ ...arrival, id: firstId + index })));
+}
+
 const pageOf = <Row extends Listed>(rows: readonly Row[], query: ExecutionQuery): Row[] =>
   structuredClone(rows.filter((row) => matches(query, row)).slice(0, query.limit));
 
@@ -43,22 +81,8 @@ export function createMemoryPositionStore(): PositionStore {
   const positions: Positions = new Map();
   const executions: ExecutionRecord[] = [];
   const arrivals: ArrivalRecord[] = [];
-  // Moves every position of a write, or none and answers false when one of them is stale.
-  const move = (writes: readonly PositionWrite[]): boolean => {
-    if (new Set(writes.map((change) => keyOf(change.position))).size < writes.length) {
-      throw constraintFault("one write moves the same position twice");
-    }
-    if (!writes.every((change) => isCurrent(positions, change))) {
-      return false;
-    }
-    for (const { position, readVersion } of writes) {
-      const version = readVersion === undefined ? 0 : readVersion + 1;
-      positions.set(keyOf(position), { ...structuredClone(position), version });
-    }
-    return true;
-  };
   const record = (write: ExecutionWrite): Result<ExecutionRecord, "stale"> => {
-    if (!move(write.positions)) {
+    if (!movePositions(positions, write.positions)) {
       return err("stale");
     }
     const execution = { ...structuredClone(write.execution), id: executions.length + 1 };
@@ -66,7 +90,7 @@ export function createMemoryPositionStore(): PositionStore {
     return ok(structuredClone(execution));
   };
   const recordArrival = (write: ArrivalWrite): Result<ArrivalRecord, "stale"> => {
-    if (!move(write.positions)) {
+    if (!movePositions(positions, write.positions)) {
       return err("stale");
     }
     const arrival = { ...structuredClone(write.arrival), id: arrivals.length + 1 };
@@ -86,5 +110,11 @@ export function createMemoryPositionStore(): PositionStore {
     executions: async (query, call) => memoryCall(call, () => pageOf(executions, query)),
     recordArrival: async (write, call) => memoryCall(call, () => recordArrival(write)),
     arrivals: async (query, call) => memoryCall(call, () => pageOf(arrivals, query)),
+    resetPaper: async (reset, call) =>
+      memoryCall(call, () => {
+        const stored = resetPaper(positions, structuredClone(reset), arrivals.length + 1);
+        arrivals.push(...(stored.ok ? stored.value : []));
+        return structuredClone(stored);
+      }),
   };
 }

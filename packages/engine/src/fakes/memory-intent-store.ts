@@ -90,7 +90,7 @@ function byChange(left: IntentRecord, right: IntentRecord): number {
 }
 
 function matches(intent: IntentRecord, query: IntentQuery): boolean {
-  const { after, agentId } = query;
+  const { after, agentId, isPaper } = query;
   const isAfter =
     after === undefined ||
     intent.changedAtMs > after.changedAtMs ||
@@ -98,6 +98,7 @@ function matches(intent: IntentRecord, query: IntentQuery): boolean {
   return (
     query.states.includes(intent.state) &&
     (agentId === undefined || intent.agentId === agentId) &&
+    (isPaper === undefined || intent.isPaper === isPaper) &&
     isAfter
   );
 }

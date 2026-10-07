@@ -57,3 +57,21 @@ export const arrivalWriteSchema: z.ZodType<ArrivalWrite> = z.strictObject({
   arrival: arrivalDraftSchema,
   positions: z.array(positionWriteSchema),
 });
+
+/**
+ * A wallet's paper portfolio started again, stored all or nothing: the starting balances as paper
+ * arrivals of the wallet, and every paper position of the wallet as the reset leaves it, those it
+ * empties and those the arrivals open.
+ */
+export interface PaperReset {
+  readonly walletId: Id<"wal">;
+  readonly arrivals: readonly ArrivalDraft[];
+  readonly positions: readonly PositionWrite[];
+}
+
+/** Parses a paper reset. */
+export const paperResetSchema: z.ZodType<PaperReset> = z.strictObject({
+  walletId: idSchema("wal"),
+  arrivals: z.array(arrivalDraftSchema),
+  positions: z.array(positionWriteSchema),
+});

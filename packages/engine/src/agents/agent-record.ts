@@ -88,6 +88,25 @@ export const agentSettingsSchema: z.ZodType<AgentSettings> = z.strictObject({
   approvalMode: approvalModeRecordSchema,
 });
 
+/**
+ * A new mode for an agent, under the agent row's version the changer read. Going live is a
+ * loosening only `agent/goLive` makes; going back to paper is a braking.
+ */
+export interface AgentModeChange {
+  readonly agentId: Id<"agt">;
+  readonly mode: AgentMode;
+  readonly atMs: number;
+  readonly expectedVersion: number;
+}
+
+/** Parses an agent mode change. */
+export const agentModeChangeSchema: z.ZodType<AgentModeChange> = z.strictObject({
+  agentId: idSchema("agt"),
+  mode: agentShape.mode,
+  atMs: epochMsSchema,
+  expectedVersion: rowVersionSchema,
+});
+
 /** The settings a new agent starts with: its draft's values, all at version 0. */
 export function agentSettingsOf(draft: AgentDraft): AgentSettings {
   const { atMs, limits, approvalMode, bySurface, ...agent } = draft;

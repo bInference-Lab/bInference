@@ -123,6 +123,27 @@ async function setsLimits(store: AgentStore): Promise<void> {
   assert.deepEqual((await store.get(agentId, live()))?.limits, set.value);
 }
 
+async function setsMode(store: AgentStore): Promise<void> {
+  await store.create(draft(1), live());
+  const agentId = draft(1).id;
+  const change = { agentId, mode: "live", atMs: 4_000, expectedVersion: 0 } as const;
+  const set = await store.setMode(change, live());
+  const { id, name, locale, models, notifications, atMs } = draft(1);
+  const fields = { id, name, mode: "live", locale, models, notifications };
+  const record = { ...fields, createdAtMs: atMs, changedAtMs: 4_000, version: 1 };
+  assert.deepEqual(set, { ok: true, value: record });
+  assert.deepEqual(await store.setMode({ ...change, mode: "paper" }, live()), {
+    ok: false,
+    error: "stale",
+  });
+  const unknown = { ...change, agentId: fixtureId("agt", 9) };
+  assert.deepEqual(await store.setMode(unknown, live()), { ok: false, error: "not_found" });
+  const stored = await store.get(agentId, live());
+  assert.deepEqual(stored?.agent, record);
+  assert.equal(stored?.approvalMode.version, 0);
+  assert.equal(stored?.limits.version, 0);
+}
+
 async function refusesAborted(store: AgentStore): Promise<void> {
   const agentId = draft(1).id;
   const mode = { agentId, mode: "auto", bySurface: "cli", atMs: 1, expectedVersion: 0 } as const;
@@ -132,6 +153,8 @@ async function refusesAborted(store: AgentStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.setApprovalMode(mode, options));
   const change = { agentId, limits, atMs: 1, expectedVersion: 0 };
   await assertRefusesAborted(async (options) => store.setLimits(change, options));
+  const goLive = { agentId, mode: "live", atMs: 1, expectedVersion: 0 } as const;
+  await assertRefusesAborted(async (options) => store.setMode(goLive, options));
   assert.deepEqual(await store.list(live()), []);
 }
 
@@ -147,6 +170,7 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
     checkOn("refuses an agent id or name in use", create, refusesTaken),
     checkOn("sets the approval mode under the version the changer read", create, setsApprovalMode),
     checkOn("sets limits under the version read, amounts beyond 64 bits exact", create, setsLimits),
+    checkOn("sets the mode under the agent row's version the changer read", create, setsMode),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

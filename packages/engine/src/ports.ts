@@ -4,7 +4,12 @@ import type { SimulationView } from "@binference/protocol";
 import type { DeviceRecord } from "./access/device-record.js";
 import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
 import type { TokenRecord } from "./access/token-record.js";
-import type { AgentDraft, AgentRecord, AgentSettings } from "./agents/agent-record.js";
+import type {
+  AgentDraft,
+  AgentModeChange,
+  AgentRecord,
+  AgentSettings,
+} from "./agents/agent-record.js";
 import type { ApprovalModeChange, ApprovalModeRecord } from "./agents/approval-mode-record.js";
 import type { LimitsChange, LimitsRecord } from "./agents/limits-record.js";
 import type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
@@ -30,7 +35,7 @@ import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
 import type { WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
-import type { ArrivalRecord, ArrivalWrite } from "./positions/arrival-record.js";
+import type { ArrivalRecord, ArrivalWrite, PaperReset } from "./positions/arrival-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
 import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
 import type { RowPage } from "./records/row-page.js";
@@ -200,6 +205,17 @@ export interface PositionStore {
   recordArrival(write: ArrivalWrite, options: StoreCall): Promise<Result<ArrivalRecord, "stale">>;
   /** Arrivals that match the query, in the order recorded. */
   arrivals(query: ExecutionQuery, options: StoreCall): Promise<readonly ArrivalRecord[]>;
+  /**
+   * Starts a wallet's paper portfolio again: stores the reset's arrivals and position writes all
+   * or nothing, under the same rules as `record`, and returns the arrivals with their numbers. A
+   * paper position of the wallet that the reset does not write moved since the reset read the
+   * positions, so the reset is `stale` and stores nothing. An arrival or a position that is not a
+   * paper one of the reset's wallet throws `store.constraint`.
+   */
+  resetPaper(
+    reset: PaperReset,
+    options: StoreCall,
+  ): Promise<Result<readonly ArrivalRecord[], "stale">>;
 }
 
 /**
@@ -340,6 +356,14 @@ export interface AgentStore {
     change: LimitsChange,
     options: StoreCall,
   ): Promise<Result<LimitsRecord, "not_found" | "stale">>;
+  /**
+   * Sets the agent's mode under the agent row's version the changer read, and raises that version
+   * by one. Another version is `stale` and writes nothing.
+   */
+  setMode(
+    change: AgentModeChange,
+    options: StoreCall,
+  ): Promise<Result<AgentRecord, "not_found" | "stale">>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */

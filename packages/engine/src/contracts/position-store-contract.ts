@@ -6,6 +6,7 @@ import type { PositionStore } from "../ports.js";
 import type { ArrivalDraft } from "../positions/arrival-record.js";
 import type { ExecutionDraft, ExecutionQuery } from "../positions/execution-record.js";
 import type { PositionState, PositionWrite } from "../positions/position-record.js";
+import { refusesStaleReset, resetsPaper } from "./paper-reset-checks.js";
 import { assertRefusesAborted, checkOn, inOrder, live } from "./store-fixtures.js";
 
 /** A position store under test, with two wallets and an intent that exist in its database. */
@@ -256,6 +257,12 @@ export function positionStoreContract(harness: PositionStoreHarness): readonly C
       storesArrivals,
     ),
     checkOn("lists arrivals in order by mode, wallet, time and page", create, listsArrivals),
+    checkOn("resets a wallet's paper portfolio, its live positions untouched", create, resetsPaper),
+    checkOn(
+      "refuses a paper reset that misses a position or touches other rows",
+      create,
+      refusesStaleReset,
+    ),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

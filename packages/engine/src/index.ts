@@ -39,9 +39,11 @@ export type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
 export { tokenRecordSchema, type TokenKind, type TokenRecord } from "./access/token-record.js";
 export {
   agentDraftSchema,
+  agentModeChangeSchema,
   agentRecordSchema,
   agentSettingsOf,
   agentSettingsSchema,
+  type AgentModeChange,
 } from "./agents/agent-record.js";
 export type { AgentDraft, AgentMode, AgentRecord, AgentSettings } from "./agents/agent-record.js";
 export {
@@ -199,19 +201,24 @@ export { walkLedgerChain, type LedgerRange } from "./ledger/walk-ledger-chain.js
 export { executionsCsv, executionsCsvColumns } from "./ledger/executions-csv.js";
 export { applyArrival } from "./positions/apply-arrival.js";
 export { applyExecution } from "./positions/apply-execution.js";
-export { arrivalRecordSchema, arrivalWriteSchema } from "./positions/arrival-record.js";
-export type { ArrivalDraft, ArrivalRecord, ArrivalWrite } from "./positions/arrival-record.js";
+export {
+  arrivalRecordSchema,
+  arrivalWriteSchema,
+  paperResetSchema,
+  type ArrivalDraft,
+  type ArrivalRecord,
+  type ArrivalWrite,
+  type PaperReset,
+} from "./positions/arrival-record.js";
 export { createPositions } from "./positions/create-positions.js";
 export type { Positions, PositionsOptions, ValuedPosition } from "./positions/create-positions.js";
 export {
   executionDraftSchema,
   executionQuerySchema,
   executionRecordSchema,
-} from "./positions/execution-record.js";
-export type {
-  ExecutionDraft,
-  ExecutionQuery,
-  ExecutionRecord,
+  type ExecutionDraft,
+  type ExecutionQuery,
+  type ExecutionRecord,
 } from "./positions/execution-record.js";
 export {
   executionWriteSchema,
@@ -219,14 +226,12 @@ export {
   positionRecordSchema,
   positionStateSchema,
   positionWriteSchema,
-} from "./positions/position-record.js";
-export type {
-  ExecutionWrite,
-  PositionKey,
-  PositionQuery,
-  PositionRecord,
-  PositionState,
-  PositionWrite,
+  type ExecutionWrite,
+  type PositionKey,
+  type PositionQuery,
+  type PositionRecord,
+  type PositionState,
+  type PositionWrite,
 } from "./positions/position-record.js";
 export { valueExecution, type ExecutedTrade } from "./positions/value-execution.js";
 export { createPolicyCheck } from "./policy/check-policy.js";

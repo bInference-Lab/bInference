@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
+import type { IntentQuery } from "../intents/intent-change.js";
 import { genesisLedgerHash } from "../ledger/ledger-hash.js";
 import {
   closesWithMoves,
@@ -140,6 +141,16 @@ async function listsByState(subject: IntentStoreSubject): Promise<void> {
   assert.equal(proposed.length, 3);
   const otherAgent = { ...query, agentId: fixtureId("agt", 99) };
   assert.deepEqual(await store.list(otherAgent, live()), []);
+  await store.create({ ...intentDraft(subject, 5), isPaper: false }, live());
+  const listed = async (byState: IntentQuery): Promise<readonly string[]> =>
+    (await store.list(byState, live())).map((row) => row.id);
+  const byMode = { states: ["proposed"], limit: 10 } as const;
+  assert.deepEqual(await listed({ ...byMode, isPaper: false }), [fixtureId("int", 5)]);
+  assert.deepEqual(await listed({ ...byMode, isPaper: true }), [
+    fixtureId("int", 2),
+    fixtureId("int", 4),
+    fixtureId("int", 3),
+  ]);
 }
 
 async function refusesAborted(subject: IntentStoreSubject): Promise<void> {
@@ -177,7 +188,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     checkOn("refuses a stale or unknown move and writes nothing", create, refusesStale),
     checkOn("lets exactly one of two racing moves from one version win", create, letsOneRacerWin),
     checkOn(
-      "lists intents by state, least recently changed first, page by page",
+      "lists intents by state and mode, least recently changed first, page by page",
       create,
       listsByState,
     ),

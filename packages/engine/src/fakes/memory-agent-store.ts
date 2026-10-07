@@ -1,5 +1,11 @@
 import { err, type Id, ok, type Result } from "@binference/core";
-import { type AgentDraft, type AgentSettings, agentSettingsOf } from "../agents/agent-record.js";
+import {
+  type AgentDraft,
+  type AgentModeChange,
+  type AgentRecord,
+  type AgentSettings,
+  agentSettingsOf,
+} from "../agents/agent-record.js";
 import type { AgentStore } from "../ports.js";
 import { byCreation, memoryCall } from "./memory-call.js";
 
@@ -28,6 +34,24 @@ function current(
     return err("not_found");
   }
   return version(settings) === change.expectedVersion ? ok(settings) : err("stale");
+}
+
+function setMode(
+  agents: Agents,
+  change: AgentModeChange,
+): Result<AgentRecord, "not_found" | "stale"> {
+  const found = current(agents, change, (settings) => settings.agent.version);
+  if (!found.ok) {
+    return found;
+  }
+  const agent = {
+    ...found.value.agent,
+    mode: change.mode,
+    changedAtMs: change.atMs,
+    version: change.expectedVersion + 1,
+  };
+  agents.set(change.agentId, { ...found.value, agent });
+  return ok(structuredClone(agent));
 }
 
 /** Creates an empty in-memory {@link AgentStore} for tests. */
@@ -73,5 +97,6 @@ export function createMemoryAgentStore(): AgentStore {
         agents.set(change.agentId, { ...found.value, limits });
         return ok(structuredClone(limits));
       }),
+    setMode: async (change, call) => memoryCall(call, () => setMode(agents, change)),
   };
 }

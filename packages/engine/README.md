@@ -90,10 +90,12 @@ layout of Koinly's universal import, which tax tools read.
 | `createPositions`, `Positions`, `ExecutedTrade`                  | Stores a trade with its position changes; values positions now  |
 | `applyExecution`, `valueExecution`                               | One execution's average-cost moves, and its USD values          |
 | `PositionStore`, `PositionRecord`, `ExecutionRecord`             | Executions and the positions they move, stored together         |
+| `PaperReset`, `paperResetSchema`                                 | A wallet's paper portfolio started again, stored all or nothing |
 | `executionsCsv`, `executionsCsvColumns`                          | Executions as a CSV file for tax tools                          |
 | `IdempotencyStore`, `InboxStore`                                 | Each write's result by its key; inbound events before the ack   |
 | `AccessStore`, `TokenRecord`, `DeviceRecord`                     | Client tokens, console devices and pairing codes                |
 | `AgentStore`, `AgentSettings`, `LimitsValues`                    | Agents with their limits and approval modes                     |
+| `AgentModeChange`, `agentModeChangeSchema`                       | An agent's switch between paper and live, under its row version |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
 | `TransactionStore`                                               | Each wallet's signed transactions and the nonces they hold      |
