@@ -17,6 +17,10 @@ Rules for this package:
   viem clients ride on `createRpcFailover` through `createEvmClient`.
 - The failover reads. It refuses `eth_send*`, `eth_sign*`, `personal_*` and `wallet_*`, so a retried
   send can never reach a public node; sends go through the private relays.
+- The relay sender (`src/sending/`) sends each signed transaction to every relay at once, once,
+  each request with its own timeout. A relay's error becomes a `RelayRefusal` by its code or its
+  documented text (`relay-refusal.ts` cites each source); the text itself goes nowhere. A new
+  documented error is a line there and a case in its test.
 - Prices come from the Chainlink feeds the composition root names. A feed that cannot be read, a
   broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw.
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.

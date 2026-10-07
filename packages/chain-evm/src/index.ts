@@ -29,6 +29,14 @@ export type {
   RpcReply,
   RpcResultReply,
 } from "./rpc/rpc-call.js";
+export { createEvmNonceSource } from "./sending/create-evm-nonce-source.js";
+export type { EvmNonceSourceOptions } from "./sending/create-evm-nonce-source.js";
+export { createEvmReceiptReader } from "./sending/create-evm-receipt-reader.js";
+export type { EvmReceiptReaderOptions } from "./sending/create-evm-receipt-reader.js";
+export { createEvmRelaySender } from "./sending/create-evm-relay-sender.js";
+export type { EvmRelaySenderOptions } from "./sending/create-evm-relay-sender.js";
+export { createEvmTxPreparer } from "./sending/create-evm-tx-preparer.js";
+export type { EvmTxPreparerOptions } from "./sending/create-evm-tx-preparer.js";
 export { createEvmSigningScheme } from "./signing/evm-signing-scheme.js";
 export type { EvmSigningScheme } from "./signing/evm-signing-scheme.js";
 export { decodeEvmTransaction, encodeEvmTransaction } from "./signing/evm-transaction.js";
