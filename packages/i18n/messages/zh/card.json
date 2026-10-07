@@ -28,6 +28,7 @@
   "warn.highTax": "⚠️ 此代币每笔交易收取 {tax} 交易税",
   "warn.requoted": "⚠️ 价格已变动：这是新的报价",
   "warn.paper": "🧪 模拟模式：不会发送链上交易",
+  "warn.firstLive": "🔴 首笔实盘交易：此交易使用真实资金",
   "warn.autoAsks": "自动模式在此需要你确认：{why}",
   "reason": "Agent 说明  “{reason}”",
   "expiry": "过期时间 {time}"

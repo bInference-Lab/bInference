@@ -76,19 +76,28 @@ function valueText(value: CardValue): string {
   return format(value);
 }
 
-describe("drawing a card in Chinese", () => {
-  it("draws the example swap card of spec 4", () => {
-    const lines = drawCard(swap).lines.map((line) =>
-      display.message(
-        line.key,
-        Object.fromEntries(
-          Object.entries(line.values).map((entry: readonly [string, CardValue]) => [
-            entry[0],
-            valueText(entry[1]),
-          ]),
-        ),
+function rendered(facts: CardFacts): readonly string[] {
+  return drawCard(facts).lines.map((line) =>
+    display.message(
+      line.key,
+      Object.fromEntries(
+        Object.entries(line.values).map((entry: readonly [string, CardValue]) => [
+          entry[0],
+          valueText(entry[1]),
+        ]),
       ),
-    );
+    ),
+  );
+}
+
+describe("drawing a card in Chinese", () => {
+  it("says so in Chinese on the agent's first live card", () => {
+    const firstLive = { ...swap, warnings: { ...swap.warnings, isFirstLive: true } };
+    expect(rendered(firstLive)).toContain(`${icons.live} 首笔实盘交易：此交易使用真实资金`);
+  });
+
+  it("draws the example swap card of spec 4", () => {
+    const lines = rendered(swap);
     expect(lines).toStrictEqual([
       `${icons.waiting} 确认兑换 · main · ${icons.live} 实盘`,
       "卖出 0.5 BNB → 至少收到 312.4 USDT",

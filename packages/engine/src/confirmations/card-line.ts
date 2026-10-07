@@ -36,6 +36,7 @@ export const cardKeys = [
   "card.warn.highTax",
   "card.warn.requoted",
   "card.warn.paper",
+  "card.warn.firstLive",
   "card.warn.autoAsks",
   "autoAsks.send",
   "autoAsks.kind",

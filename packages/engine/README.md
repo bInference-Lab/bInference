@@ -38,7 +38,9 @@ Paper mode ([ARCHITECTURE.md section 10](../../docs/ARCHITECTURE.md#section-10))
 paper portfolio as its wallets' paper positions, so a paper fill moves them at average cost and they
 carry their own P&L. `portfolio/resetPaper` starts the portfolio again from the starting balances
 (1 BNB and 500 USDT by default), each valued at its price when it arrives, and a paper intent's
-balance comes from it.
+balance comes from it. `agent/goLive` is the one way an agent goes live, once its wallet holds
+funds; `agent/goPaper` brakes back. Each switch is journaled and announced on the `config` topic,
+and `isFirstLiveCard` says when a card carries the first-live note.
 
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
@@ -88,6 +90,7 @@ layout of Koinly's universal import, which tax tools read.
 | `drawCard`, `Card`, `CardFacts`, `CardAction`                    | A card version as lines of message keys with typed values       |
 | `CardLine`, `CardValue`, `cardKeys`                              | One line, its values, and every key a card or receipt uses      |
 | `receiptLine`, `CardClosing`, `ReceiptFill`                      | The receipt line a card becomes when it closes, paper fills too |
+| `isFirstLiveCard`                                                | Whether a card is the agent's first live one, which says so     |
 | `createVenueHost`, `VenueHost`, `VenueTrade`, `TradePlan`        | Quotes and builds a trade on a venue and checks every step      |
 | `VenueOutcome`, `VenueRefused`, `BuildMismatch`, `PlanStep`      | A checked plan, or the check reason and the check that failed   |
 | `IntentStore`, `IntentDraft`, `IntentChange`, `IntentCommit`     | Intents with their events, cards and confirmations              |
@@ -175,7 +178,7 @@ if (!chain.ok) {
 
 The composition root builds the engine from ports and hands its handlers to the protocol server:
 
-```ts
+````ts
 import { createEngine, createVenueHost } from "@binference/engine";
 
 const host = createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 });
@@ -212,7 +215,7 @@ await queue.run(
   },
   { signal },
 );
-```
+````
 
 Tests import each port's contract suite and its fake from `@binference/engine/testing`;
 `createMemoryEngineStores` gives every store port in memory over one shared ledger.

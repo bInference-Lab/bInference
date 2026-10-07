@@ -1,6 +1,13 @@
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { expectOk, testCoin, testSwap, testToken, testWallet } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testSwap,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import type { Executor } from "../ports.js";
 import { startTestEngine, type TestEngine, testCall, testCallers } from "./test-engine.js";
 
@@ -60,5 +67,16 @@ describe("paper mode", () => {
     expect([view.state, view.paper]).toStrictEqual(["confirmed", false]);
     expect(test.executor.taken()).toStrictEqual([view.intent]);
     expect(await paperBalances(test)).toStrictEqual([[testCoin, 10n ** 18n]]);
+  });
+
+  it("keeps a paper intent on paper when the agent goes live before the tap", async () => {
+    const test = await startTestEngine({ executor: walletQueueNeverReached });
+    const handlers = test.engine.handlers;
+    const view = expectOk(await handlers["intent/propose"](testCall(testSwap())));
+    expectOk(await handlers["agent/goLive"](testCall({ agent: testAgent })));
+    const card = view.card?.card as Id<"crd">;
+    const args = { intent: view.intent, card, cardVersion: 1 };
+    const answer = expectOk(await handlers["intent/confirm"](testCall(args)));
+    expect([answer.state, answer.paper]).toStrictEqual(["paper_filled", true]);
   });
 });

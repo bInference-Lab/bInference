@@ -46,6 +46,8 @@ export interface CardWarnings {
   /** The token's tax on every trade; zero or absent shows no warning. */
   readonly taxBps?: Bps;
   readonly autoAsk?: AutoAsk;
+  /** The agent's first live card, which says so (`isFirstLiveCard`); absent shows no note. */
+  readonly isFirstLive?: boolean;
 }
 
 /**
@@ -164,6 +166,7 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
     ...shown([
       [facts.card.version > 1, "card.warn.requoted"],
       [facts.isPaper, "card.warn.paper"],
+      [warnings.isFirstLive === true && !facts.isPaper, "card.warn.firstLive"],
     ]),
     ...optional(warnings.autoAsk, autoAskLine),
   ];

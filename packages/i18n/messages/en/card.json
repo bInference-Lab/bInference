@@ -28,6 +28,7 @@
   "warn.highTax": "⚠️ This token takes {tax} tax on every trade",
   "warn.requoted": "⚠️ The price moved: this is a new quote",
   "warn.paper": "🧪 Paper mode: nothing is sent on chain",
+  "warn.firstLive": "🔴 First live trade: this one uses real money",
   "warn.autoAsks": "Auto mode asks you here: {why}",
   "reason": "Agent says  \"{reason}\"",
   "expiry": "Expires at {time}"

@@ -129,6 +129,12 @@ function valuesOf(facts: CardFacts, key: string): CardLine["values"] {
   return drawCard(facts).lines.find((line) => line.key === key)?.values ?? {};
 }
 
+function warnings(facts: CardFacts): readonly string[] {
+  return drawCard(facts)
+    .lines.map((line) => line.key)
+    .filter((key) => key.includes(".warn."));
+}
+
 function argumentNames(line: CardLine): readonly string[] {
   const parsed = parseMessage(messages.en[line.key] ?? "");
   const forms = parsed.ok ? parsed.value.arguments : [];
@@ -197,6 +203,24 @@ describe("drawing a card", () => {
       "card.warn.paper",
       "card.warn.autoAsks",
     ]);
+  });
+
+  it("says so on the agent's first live card, after the other warnings, never on paper", () => {
+    const firstLive: CardFacts = {
+      ...flagged,
+      isPaper: false,
+      warnings: { ...flagged.warnings, isFirstLive: true },
+    };
+    expect(warnings(firstLive).slice(-3)).toStrictEqual([
+      "card.warn.requoted",
+      "card.warn.firstLive",
+      "card.warn.autoAsks",
+    ]);
+    expect(rendered(firstLive)).toContain(
+      `${icons.live} First live trade: this one uses real money`,
+    );
+    expect(warnings({ ...firstLive, isPaper: true })).not.toContain("card.warn.firstLive");
+    expect(warnings(swap)).not.toContain("card.warn.firstLive");
   });
 
   it("names why auto mode asks, with the client of an MCP proposal", () => {

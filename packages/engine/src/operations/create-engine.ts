@@ -20,17 +20,20 @@ import { createPositions, type Positions } from "../positions/create-positions.j
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
 import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
 
 /** The operation handlers the engine gives the protocol server, by operation name. */
-export interface EngineHandlers extends IntentHandlers, LedgerHandlers, PortfolioHandlers {}
+export interface EngineHandlers
+  extends IntentHandlers, LedgerHandlers, PortfolioHandlers, AgentModeHandlers {}
 
 /**
- * The engine's use cases behind the protocol: the money path, confirmations, paper mode and the
- * ledger, built from ports. It holds no I/O of its own; pushes leave through `publish`.
+ * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
+ * switch and the ledger, built from ports. It holds no I/O of its own; pushes leave through
+ * `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -83,13 +86,27 @@ function paperParts(options: EngineOptions): PaperParts {
   return { positions, portfolio, wallets };
 }
 
-function settingsHandlers(options: EngineOptions, paper: PaperParts): PortfolioHandlers {
-  return createPortfolioHandlers({
-    agents: options.stores.agents,
+function settingsHandlers(
+  options: EngineOptions,
+  paper: PaperParts,
+): PortfolioHandlers & AgentModeHandlers {
+  const { stores, chains } = options;
+  const portfolio = createPortfolioHandlers({
+    agents: stores.agents,
     portfolio: paper.portfolio,
     positions: paper.positions,
-    chains: options.chains,
+    chains,
   });
+  const modes = createAgentModeHandlers({
+    agents: stores.agents,
+    journal: stores.configJournal,
+    wallets: options.wallets,
+    custody: options.custody,
+    chains,
+    clock: options.clock,
+    publish: options.publish,
+  });
+  return { ...portfolio, ...modes };
 }
 
 function intentParts(

@@ -46,6 +46,8 @@ const agent = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const wallet = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const cliToken = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const cliSecret = `bnt_${"1".repeat(43)}`;
+const mcpToken = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000002");
+const mcpSecret = `bnt_${"2".repeat(43)}`;
 const account: AccountRef = accountRefSchema.parse("fake:1:0x0000000c");
 const coin = assetRefSchema.parse("fake:1/slip44:1");
 const token = assetRefSchema.parse("fake:1/token:0x0000000a");
@@ -124,6 +126,15 @@ async function seed(parts: EngineParts): Promise<void> {
     createdAtMs: 0,
   } as const;
   await parts.stores.access.addToken(cli, live());
+  const mcp = {
+    id: mcpToken,
+    label: "mcp",
+    kind: "mcp",
+    scopes: ["read", "propose"],
+    secretHash: sha256Hex(mcpSecret),
+    createdAtMs: 0,
+  } as const;
+  await parts.stores.access.addToken(mcp, live());
 }
 
 /** The engine, its server, an IPC stand-in and a CLI client, in one process. */
@@ -133,6 +144,8 @@ interface Skeleton {
   readonly positions: PositionStore;
   /** Stands in for the wallet queue: what reached it. */
   readonly executor: FakeExecutor;
+  /** Opens another client over the IPC stand-in, signed in with a token's secret. */
+  connect(secret: string): Promise<ProtocolClient>;
   close(): Promise<void>;
 }
 
@@ -178,28 +191,45 @@ async function startSkeleton(parts: EngineParts): Promise<Skeleton> {
   // The platform's IPC endpoint hands its sockets to the server the same way.
   const ipc = createNetServer((socket) => server.acceptIpc(socket));
   const port = await listen(ipc);
-  const client = createProtocolClient({
-    operations,
-    openSocket: () => new WebSocket(`ws://127.0.0.1:${String(port)}/ws`),
-    client: { kind: "cli", version: "test" },
-    credential: { token: cliSecret },
-    clock,
-    random: createSeededRandom(11),
-    logger: createMemoryLogger({ subsystem: "client" }),
-  });
-  await client.connect(AbortSignal.timeout(10_000));
+  const clients: ProtocolClient[] = [];
+  const connect = async (secret: string): Promise<ProtocolClient> => {
+    const opened = createProtocolClient({
+      operations,
+      openSocket: () => new WebSocket(`ws://127.0.0.1:${String(port)}/ws`),
+      client: { kind: "cli", version: "test" },
+      credential: { token: secret },
+      clock,
+      random: createSeededRandom(11 + clients.length),
+      logger: createMemoryLogger({ subsystem: "client" }),
+    });
+    clients.push(opened);
+    await opened.connect(AbortSignal.timeout(10_000));
+    return opened;
+  };
+  const client = await connect(cliSecret);
   return {
     client,
     parts,
     positions,
     executor,
+    connect,
     async close() {
-      client.close();
+      clients.forEach((opened) => opened.close());
       ipc.close();
       await server.close();
     },
   };
 }
+
+const swapRequest = {
+  kind: "swap" as const,
+  agent,
+  wallet,
+  reason: "Rotate into the token",
+  from: coin,
+  to: token,
+  amount: { base: 1_000_000n },
+};
 
 const unsettled = (): void => undefined;
 
@@ -260,16 +290,7 @@ describe.each(compositions)(
           },
         ]);
 
-        const request = {
-          kind: "swap" as const,
-          agent,
-          wallet,
-          reason: "Rotate into the token",
-          from: coin,
-          to: token,
-          amount: { base: 1_000_000n },
-        };
-        const proposed = await client.call("intent/propose", request, live());
+        const proposed = await client.call("intent/propose", swapRequest, live());
         expect(proposed).toMatchObject({
           state: "awaiting_confirmation",
           paper: true,
@@ -352,6 +373,33 @@ describe.each(compositions)(
           [token, 2_000_000n],
         ]);
         expect(skeleton.executor.taken()).toStrictEqual([]);
+      },
+    );
+
+    it(
+      "goes live only on the owner's call, then hands a confirmed trade to the wallet queue",
+      { timeout: 60_000 },
+      async () => {
+        skeleton = await startSkeleton(parts());
+        const { client } = skeleton;
+        const mcp = await skeleton.connect(mcpSecret);
+        await expect(mcp.call("agent/goLive", { agent }, live())).rejects.toMatchObject({
+          code: "auth.scope",
+        });
+        const stored = await skeleton.parts.stores.agents.get(agent, live());
+        expect(stored?.agent.mode).toBe("paper");
+        expect((await client.call("agent/goLive", { agent }, live())).mode).toBe("live");
+
+        const proposed = await client.call("intent/propose", swapRequest, live());
+        expect([proposed.paper, proposed.card?.paper]).toStrictEqual([false, false]);
+        const card = proposed.card?.card as Id<"crd">;
+        const confirmed = await client.call(
+          "intent/confirm",
+          { intent: proposed.intent, card, cardVersion: 1 },
+          live(),
+        );
+        expect(confirmed.state).toBe("confirmed");
+        expect(skeleton.executor.taken()).toStrictEqual([proposed.intent]);
       },
     );
   },

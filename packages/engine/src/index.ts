@@ -7,6 +7,7 @@ export type {
 } from "./confirmations/card-action.js";
 export type { Answerer, CardAnswer, Surface } from "./confirmations/card-answer.js";
 export { receiptLine, type CardClosing, type ReceiptFill } from "./confirmations/card-closing.js";
+export { isFirstLiveCard } from "./confirmations/first-live-card.js";
 export { cardKeys } from "./confirmations/card-line.js";
 export type { CardKey, CardLine, CardValue } from "./confirmations/card-line.js";
 export { createConfirmations } from "./confirmations/create-confirmations.js";

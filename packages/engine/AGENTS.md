@@ -77,6 +77,9 @@ Rules for this package:
   its paper position of the native coin. A reset empties every paper position of the agent's
   wallets, P&L too, and opens the starting balances in its first wallet, each at its price when it
   arrives; with no usable price it changes nothing. It never touches a live position or the mode.
+- `agent/goLive` is the only operation that switches an agent to live, and only once its default
+  wallet holds funds; `agent/goPaper` brakes. Intents keep the mode they were proposed in. Each
+  switch is journaled and pushed as `config/changed`.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one
