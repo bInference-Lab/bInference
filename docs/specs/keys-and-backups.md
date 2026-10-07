@@ -34,9 +34,13 @@ any signature outside the policy, whatever the machine asks.
    the public half (`custody.privy.ownerKeyPublic`) and forgets the private half when it exits.
 3. **Agent key.** Init makes a second P-256 key pair for this machine and stores the private half
    through the unlock mode (section 3).
-4. **On Privy, signed with the owner key while init holds it:** a key quorum for the owner key, a
-   key quorum for the agent key, the policy (section 4), and the first agent wallet, owned by the
-   owner quorum, with the agent quorum as its signer bound to the policy.
+4. **On Privy, with the app secret:** a key quorum for the owner key, a key quorum for the agent
+   key, the policy (section 4), and the first agent wallet, owned by the owner quorum, with the
+   agent quorum as its signer bound to the policy. Privy's create calls take no authorization
+   signature; it asks the owner's signature for every later change to a wallet, a policy or a key
+   quorum, and the wallet's signers' for its RPC
+   ([authorization signatures](https://docs.privy.io/api-reference/authorization-signatures),
+   [create a wallet](https://docs.privy.io/api-reference/wallets/create)).
 5. Init reads the wallet back from Privy and refuses to finish unless the owner, the signer and the
    policy are exactly what it asked for.
 
@@ -127,8 +131,9 @@ usable 24 hours after saving; level 3 allows no sends.
 
 ## 5. The signer process
 
-- The engine starts the signer as a child process and passes it the agent key over stdin, read from
-  the unlock mode. The signer never reads config, the databases or the network.
+- The engine starts the signer as a child process and passes it, over stdin, one line of settings
+  (the enabled chains and Privy's API origin) and then the agent key, read from the unlock mode.
+  The signer never reads config, the databases or the network.
 - The engine builds each Privy request (`POST /v1/wallets/<id>/rpc` with method
   `eth_signTransaction`). The signer checks it (section 5.2) and returns Privy's authorization
   signature over that exact request. The engine adds the app secret, sends it to Privy, receives the
@@ -137,20 +142,26 @@ usable 24 hours after saving; level 3 allows no sends.
   authorize, and the agent key cannot reach Privy.
 - Key buffers are zeroed after use and on exit. The service units turn core dumps off (`LimitCORE=0`
   for systemd, the equivalent for launchd).
-- It talks to the engine over a private IPC endpoint (`~/.binference/run/signer.sock`, or the named
-  pipe `\\.\pipe\binference-<install id>-signer` on Windows), owner-only, one request at a time
-  per wallet.
+- It talks to the engine over its standard input and output, pipes only the engine holds, one
+  JSON line per message and one request at a time per wallet. It opens no socket or named pipe:
+  Node's permission model allows one only with `--allow-net`, which allows every TCP connection
+  too, and the signer runs with no grant at all.
 
 <a id="section-5-1"></a>
 
 ### 5.1 Requests
 
-| Request     | Fields                                                                                                                                                                                                     | Answer          |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `publicKey` | none                                                                                                                                                                                                       | `{ publicKey }` |
-| `authorize` | `wallet`, `request` (Privy method, URL and body), `intent`, `step`, `authorization` (a confirmation, an order, a webhook rule or the auto mode), `termsHash`, `allowed` (the registry's set for this step) | `{ signature }` |
+| Request     | Fields                                                                                                                                                                                                                                                | Answer          |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `publicKey` | none                                                                                                                                                                                                                                                  | `{ publicKey }` |
+| `authorize` | `wallet`, `request` (Privy method, URL, body and the `privy-` headers the signature covers), `intent`, `step`, `authorization` (a confirmation, an order, a webhook rule or the auto mode), `termsHash`, `allowed` (the registry's set for this step) | `{ signature }` |
 
-Every request is a zod-checked JSON message with an `id`. Unknown requests are refused.
+Every request is a zod-checked JSON message with an `id`. Unknown requests are refused. The
+`authorize` request is one type in `@binference/chain`, which the engine, custody and the signer
+share. Privy's signature covers `{ version: 1, method, url, body, headers }` as RFC 8785 JSON,
+where `headers` holds `privy-app-id` and, when the request has them, `privy-idempotency-key` and
+`privy-request-expiry`, and no other header
+([implementing signing directly](https://docs.privy.io/controls/authorization-keys/using-owners/sign/direct-implementation)).
 
 <a id="section-5-2"></a>
 
