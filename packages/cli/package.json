@@ -2,7 +2,7 @@
   "name": "binference",
   "version": "0.0.0",
   "private": true,
-  "description": "The binference command and the composition root: start, status, health and logs, the config and the self-hosted engine.",
+  "description": "The binference command and the composition root: init, start, status, health and logs, the config and the self-hosted engine.",
   "license": "MIT",
   "bin": {
     "binference": "./dist/main.mjs"
@@ -27,11 +27,14 @@
     "@binference/chains": "workspace:*",
     "@binference/client": "workspace:*",
     "@binference/core": "workspace:*",
+    "@binference/custody-privy": "workspace:*",
     "@binference/engine": "workspace:*",
     "@binference/i18n": "workspace:*",
+    "@binference/kyberswap": "workspace:*",
     "@binference/platform": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/server": "workspace:*",
+    "@binference/signer": "workspace:*",
     "@binference/store": "workspace:*",
     "@binference/telegram": "workspace:*",
     "@clack/prompts": "catalog:",
@@ -44,7 +47,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@binference/kyberswap": "workspace:*",
     "@binference/mcp": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/server": "catalog:",

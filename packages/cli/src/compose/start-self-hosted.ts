@@ -158,7 +158,7 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
     file: platform.stateFolder.configFile,
     env: host.env,
     sets,
-    system: systemDefaults(host.env),
+    system: systemDefaults(host.env, platform),
     signal,
   });
   if (!loaded.ok) {

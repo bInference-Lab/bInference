@@ -16,6 +16,20 @@ as failed health signals. A stop signal, or `engine/stop` over IPC, runs the shu
 which closes the parts in the reverse order: server, IPC, health probe, store, log, lock. A second
 `start` on the same state folder refuses while the first runs.
 
+`binference init` sets up a new install (keys spec, section 2) under the engine lock: the Privy
+app's id and secret, checked with one read; the owner key, shown once as its `bnok1` code, whose
+last 6 characters the owner types back; the rescue address; the bot token, checked with `getMe`;
+the default limits. Then it stores this machine's agent key where the unlock mode keeps it
+(the keychain with a desktop session, an owner-only file without one, a file sealed with a
+passphrase in `manual` mode, the owner's secret manager in `command` mode), makes the key quorums,
+the ceiling and the first wallet on Privy and reads the wallet back, records the custody, the
+rescue address, the first agent (paper mode, manual approval) and its wallet in `engine.sqlite`,
+issues the bot's pairing link, and writes `config.json5` last, owner-only, with secrets only as
+secret sources. A person answers its questions through a prompter over `@clack/prompts`
+(`src/term/`); with `--yes`, `--json` or no terminal, every answer comes from a flag and the
+owner key's code is printed once. A folder set up before is refused unless the owner passes
+`--start-over`, and a stored agent key is never replaced.
+
 `binference status` and `binference health` sign in over IPC with the CLI token and call
 `engine/status`; `status` prints the state, the agents and the health signals, and `health`
 exits 0 only when the engine is ready. `binference logs` reads the engine log itself, so it works
@@ -76,6 +90,7 @@ The reference of every key, generated from the schema, is
 
 | Command                              | What it does                                                        |
 | ------------------------------------ | ------------------------------------------------------------------- |
+| `binference init`                    | Sets up an install: Privy, owner key, first wallet and bot          |
 | `binference start [--set key=value]` | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
 | `binference status`                  | The engine's state, release, agents and health signals              |
 | `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |

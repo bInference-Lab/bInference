@@ -46,13 +46,16 @@ async function start(machine: TestMachine): Promise<void> {
   await host.waitForLine((line) => line.includes('"state":"ready"'));
 }
 
+// The file unlock mode, whatever the machine running the test would choose.
+const fileUnlock = '  engine: { unlock: { mode: "file" } },\n';
+
 describe("binference check", () => {
   it(
     "checks the config, the unlock mode and the engine, with or without the engine running",
     slow,
     async () => {
       const machine = await machines.create(nowMs);
-      await writeTestConfig(machine.folder);
+      await writeTestConfig(machine.folder, fileUnlock);
       const stopped = await findings(machine);
       expect(stopped.code).toBe(0);
       expect(stopped.byCheck.get("config.valid")).toStrictEqual({
@@ -114,7 +117,7 @@ describe("binference check", () => {
 
   it("warns in file unlock mode in the owner's language", slow, async () => {
     const machine = await machines.create(nowMs);
-    await writeTestConfig(machine.folder);
+    await writeTestConfig(machine.folder, fileUnlock);
     const chinese = await runOn(machine, ["check"], { LANG: "zh_CN.UTF-8" });
     const keys = platformOf(hostOn(machine, [])).stateFolder.keys;
     const warning = String(messages.zh["cli.check.unlockFile"]).replace("{folder}", keys);

@@ -33,6 +33,12 @@ Rules for this package:
   Telegram, is logged and never stops the money path. The skeleton tests run on every composition
   with `describe.each` through `src/compose/test-skeleton.ts`; a new profile part joins both
   compositions there.
+- `binference init` lives in `src/init/`, one step per file, each answering an `InitStep`: its
+  value or a refusal with a code and an `init` message. Every question and check runs before
+  anything is stored or made on Privy; the config file is written last. Questions go through the
+  `Prompter` of `src/term/`: the terminal's over `@clack/prompts`, a scripted one in tests, and
+  one that only prints when nobody answers, so every answer then comes from a flag. Secrets come
+  from flags only as secret sources, never as values.
 - The config has one strict schema in `src/config/schema/`. Every key has a `.describe()` text,
   a default through `.prefault()` or none, and a type declared before its schema. Secrets are
   `secretSourceSchema` or `commandSourceSchema`, never text.

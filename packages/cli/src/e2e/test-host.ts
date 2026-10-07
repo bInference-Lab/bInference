@@ -82,12 +82,25 @@ const offline: Http = {
     ),
 };
 
+/** What a test gives a host in place of the outside world and the person at the terminal. */
+export type HostParts = Partial<Pick<CliHost, "http" | "prompter" | "botApiFetch">>;
+
 /** A host for one `binference` command line on a test machine. */
 export function hostOn(
   machine: TestMachine,
   argv: readonly string[],
   env: Readonly<Record<string, string>> = {},
 ): TestHost {
+  return hostWith(machine, argv, { env });
+}
+
+/** A host for one command line, with its variables and what replaces the outside world. */
+export function hostWith(
+  machine: TestMachine,
+  argv: readonly string[],
+  options: { readonly env: Readonly<Record<string, string>>; readonly parts?: HostParts },
+): TestHost {
+  const { env, parts = {} } = options;
   const out = lineWatcher();
   const written = { out: "", err: "" };
   return {
@@ -103,6 +116,7 @@ export function hostOn(
     clock: machine.clock,
     random: createSeededRandom((seeds.next += 1)),
     http: offline,
+    ...parts,
     signals: machine.signals,
     version: "2026.10.0-test",
     workerExecArgv,

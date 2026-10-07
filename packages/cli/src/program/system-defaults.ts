@@ -19,13 +19,16 @@ export function systemLocale(env: Env): Locale {
 
 /**
  * The config defaults the machine decides: the OS language, the IANA zone in `TZ` or UTC, and the
- * `file` unlock mode, which needs no desktop session.
+ * unlock mode: `keychain` with a desktop session, else `file`, which needs none (spec 5, 3).
  */
-export function systemDefaults(env: Env): SystemDefaults {
+export function systemDefaults(
+  env: Env,
+  session: { readonly hasDesktopSession: boolean },
+): SystemDefaults {
   const timezone = env["TZ"] ?? "";
   return {
     locale: systemLocale(env),
     timezone: zonePattern.test(timezone) ? timezone : "UTC",
-    unlockMode: "file",
+    unlockMode: session.hasDesktopSession ? "keychain" : "file",
   };
 }

@@ -407,12 +407,18 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/custody-privy':
+        specifier: workspace:*
+        version: link:../custody-privy
       '@binference/engine':
         specifier: workspace:*
         version: link:../engine
       '@binference/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@binference/kyberswap':
+        specifier: workspace:*
+        version: link:../../plugins/kyberswap
       '@binference/platform':
         specifier: workspace:*
         version: link:../platform
@@ -422,6 +428,9 @@ importers:
       '@binference/server':
         specifier: workspace:*
         version: link:../server
+      '@binference/signer':
+        specifier: workspace:*
+        version: link:../signer
       '@binference/store':
         specifier: workspace:*
         version: link:../store
@@ -453,9 +462,6 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
-      '@binference/kyberswap':
-        specifier: workspace:*
-        version: link:../../plugins/kyberswap
       '@binference/mcp':
         specifier: workspace:*
         version: link:../mcp

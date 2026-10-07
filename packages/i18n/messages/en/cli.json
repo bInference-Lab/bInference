@@ -116,5 +116,14 @@
   "check.unlockFile": "The agent key and the Privy app secret are in files in {folder} (unlock mode `file`): a copy of this disk lets someone sign inside the ceiling until you remove the agent key. Set `engine.unlock.mode` to `keychain` or `command` where you can.",
   "error.homeNotAbsolute": "BINFERENCE_HOME is not an absolute path. Set it to a full path, or unset it to use the state folder in your home folder.",
   "error.pathTooLong": "The state folder's path is too long for a local socket. Set BINFERENCE_HOME to a shorter folder.",
-  "error.unexpected": "binference stopped on an error ({code}). Run `binference logs` to see what happened."
+  "error.unexpected": "binference stopped on an error ({code}). Run `binference logs` to see what happened.",
+  "option.privyAppId": "Your Privy app ID",
+  "option.privyAppSecret": "The Privy app secret's source, written as in config.json5",
+  "option.botToken": "The bot token's source, written as in config.json5",
+  "option.rescue": "Your rescue address on BNB Chain",
+  "option.unlock": "Where this machine keeps the agent key: `keychain`, `file`, `manual` or `command`",
+  "option.unlockCommand": "With --unlock command: the program that prints the agent key, written as in config.json5",
+  "option.setInit": "Set a config key in the file init writes, written as `key=value`",
+  "option.startOver": "Set up a folder set up before again, with a new owner key and a new wallet",
+  "command.init": "Set up binference: your Privy app, your owner key, your first wallet and your bot"
 }

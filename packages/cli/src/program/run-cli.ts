@@ -6,6 +6,7 @@ import { runApproval } from "../commands/approval-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runCheck } from "../commands/check-command.js";
 import { runHealth } from "../commands/health-command.js";
+import { runInitCommand } from "../commands/init-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runStart } from "../commands/start-command.js";
@@ -25,11 +26,14 @@ const answered: ReadonlySet<string> = new Set(["commander.helpDisplayed", "comma
 // The owner's language and zone from config.json5, else the machine's. A config that does not
 // load is the start command's to report; here it only falls back.
 async function ownerOf(host: CliHost): Promise<OwnerInfo> {
-  const system = systemDefaults(host.env);
-  const machine = { locale: system.locale, timezone: system.timezone };
+  // The unlock mode plays no part in the owner's language and zone.
+  const { locale, timezone } = systemDefaults(host.env, { hasDesktopSession: false });
+  const machine = { locale, timezone };
   try {
+    const platform = platformOf(host);
+    const system = systemDefaults(host.env, platform);
     const loaded = await loadConfig({
-      file: platformOf(host).stateFolder.configFile,
+      file: platform.stateFolder.configFile,
       env: host.env,
       sets: [],
       system,
@@ -69,6 +73,8 @@ type Runner<N extends ChosenCommand["name"]> = (
 
 // Each command's entry, by the name commander chose.
 const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
+  init: async ({ host, output, formatter }, chosen) =>
+    runInitCommand(host, output, { flags: chosen.options, formatter }),
   start: async ({ host, output }, chosen) => runStart(host, output, chosen.options.sets),
   status: async ({ host, output, formatter }) => {
     const message = (key: string): string => formatter.message(`cli.${key}`);

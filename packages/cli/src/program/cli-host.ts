@@ -21,6 +21,8 @@ export interface CliHost {
   readonly http: Http;
   /** Asks the person at the terminal; absent when no person is there to answer. */
   readonly prompter?: Prompter;
+  /** The `fetch` grammY reaches the Bot API with; grammY's own when left out. */
+  readonly botApiFetch?: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
   /** Where stop signals arrive: `process` in the entry file. */
   readonly signals: SignalEvents;
   /** The binference release, such as `2026.10.0`. */

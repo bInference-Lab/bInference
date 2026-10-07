@@ -116,5 +116,14 @@
   "check.unlockFile": "Agent 密钥和 Privy 应用密钥保存在 {folder} 的文件中（解锁方式 `file`）：拿到这块磁盘副本的人可以在上限之内签名，直到你移除 Agent 密钥。条件允许时，请把 `engine.unlock.mode` 设为 `keychain` 或 `command`。",
   "error.homeNotAbsolute": "BINFERENCE_HOME 不是绝对路径。请把它设为完整路径，或取消设置以使用你主文件夹中的状态文件夹。",
   "error.pathTooLong": "状态文件夹的路径太长，无法用于本地套接字。请把 BINFERENCE_HOME 设为更短的文件夹。",
-  "error.unexpected": "binference 因错误而停止（{code}）。请运行 `binference logs` 查看发生了什么。"
+  "error.unexpected": "binference 因错误而停止（{code}）。请运行 `binference logs` 查看发生了什么。",
+  "option.privyAppId": "你的 Privy 应用 ID",
+  "option.privyAppSecret": "Privy 应用密钥的密钥来源，按 config.json5 的写法",
+  "option.botToken": "机器人 Token 的密钥来源，按 config.json5 的写法",
+  "option.rescue": "你在 BNB Chain 上的紧急转出地址",
+  "option.unlock": "此机器保存 Agent 密钥的位置：`keychain`、`file`、`manual` 或 `command`",
+  "option.unlockCommand": "与 --unlock command 一起使用：输出 Agent 密钥的程序，按 config.json5 的写法",
+  "option.setInit": "在 init 写入的文件中设置一个配置项，写作 `key=value`",
+  "option.startOver": "用新的所有者密钥和新钱包重新设置一个已设置过的文件夹",
+  "command.init": "设置 binference：你的 Privy 应用、所有者密钥、第一个钱包和机器人"
 }

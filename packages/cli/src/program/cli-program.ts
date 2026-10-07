@@ -7,6 +7,8 @@ import {
   checkFlagsSchema,
   type CommonOptions,
   commonFlagsSchema,
+  type InitFlags,
+  initFlagsSchema,
   type LogsFlags,
   logsFlagsSchema,
   maxLogLines,
@@ -22,6 +24,7 @@ export type ApprovalModeChoice = "manual" | "auto";
 
 /** The command that runs, with its options checked. */
 export type ChosenCommand =
+  | { readonly name: "init"; readonly options: InitFlags }
   | { readonly name: "start"; readonly options: StartFlags }
   | { readonly name: "status" | "health"; readonly options: CommonOptions }
   | { readonly name: "logs"; readonly options: LogsFlags }
@@ -138,8 +141,32 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     );
 }
 
+function addInit(program: Command, options: ProgramOptions): void {
+  const { message, choose } = options;
+  withCommon(program.command("init").description(message("command.init")), message)
+    .option("--privy-app-id <id>", message("option.privyAppId"))
+    .option("--privy-app-secret <source>", message("option.privyAppSecret"))
+    .option("--bot-token <source>", message("option.botToken"))
+    .option("--rescue <address>", message("option.rescue"))
+    .addOption(
+      new Option("--unlock <mode>", message("option.unlock")).choices([
+        "keychain",
+        "file",
+        "manual",
+        "command",
+      ]),
+    )
+    .option("--unlock-command <source>", message("option.unlockCommand"))
+    .option("--set <key=value>", message("option.setInit"), addSet, [])
+    .option("--start-over", message("option.startOver"))
+    .action((flags: OptionValues) =>
+      choose({ name: "init", options: initFlagsSchema.parse(flags) }),
+    );
+}
+
 function addCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
+  addInit(program, options);
   withCommon(program.command("start").description(message("command.start")), message)
     .option("--set <key=value>", message("option.set"), addSet, [])
     .action((flags: OptionValues) =>
@@ -171,6 +198,10 @@ function addCommands(program: Command, options: ProgramOptions): void {
  * help in the owner's language. Commander never ends the process: a parse error, help or the
  * version throws a `CommanderError` for the caller to map, and its own English error lines are
  * never written.
+ * Builds the `binference` command tree on commander: `init`, `start`, `status`, `health` and `logs`, each
+ * with `--json` and `--yes`, and help in the owner's language. Commander never ends the process:
+ * a parse error, help or the version throws a `CommanderError` for the caller to map, and its own
+ * English error lines are never written.
  */
 export function buildProgram(options: ProgramOptions): Command {
   const { message } = options;

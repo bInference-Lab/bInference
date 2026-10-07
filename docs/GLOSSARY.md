@@ -207,6 +207,10 @@ new name here first, in the change that uses it.
 - **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`.
 - **unlock mode**: where the agent key and the Privy app secret are read at start: `keychain`,
   `file`, `command` or `manual`.
+- **check-back**: the last 6 characters of the owner key's code, which the owner types back at
+  `binference init` before anything is made.
+- **start over**: `binference init --start-over`, which sets up a folder set up before with a new
+  owner key and a new wallet, keeps the stored agent key, and archives the earlier wallets.
 - **passphrase store**: secrets in owner-only files in `~/.binference/keys/`, each sealed with the
   owner's passphrase; the fallback where no OS keychain answers, such as headless Linux and Docker.
 - **background service**: the engine started at the owner's login and restarted after a crash: a
@@ -306,6 +310,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | notification                            | 通知                    |                             |
 | console device                          | 控制台设备              |                             |
 | pairing code, confirmation code         | 验证码, 确认码          |                             |
+| bot token (Telegram)                    | 机器人 Token            | BotFather gives it          |
 | facts, not advice                       | 只陈述事实，不构成建议  |                             |
 | docs                                    | 文档                    |                             |
 | Binance Square                          | 币安广场                | Binance's own Chinese name  |
@@ -326,6 +331,10 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | secret source                         | 密钥来源   |                              |
 | keychain                              | 钥匙串     |                              |
 | unlock mode                           | 解锁方式   | `engine.unlock.mode`         |
+| passphrase                            | 密码短语   | Seals the agent key          |
+| Privy app                             | Privy 应用 |                              |
+| app ID (of a Privy app)               | 应用 ID    |                              |
+| app secret (of a Privy app)           | 应用密钥   |                              |
 | custody (who holds the agent wallets) | 托管       |                              |
 | wallet facts                          | 钱包信息   |                              |
 | health signal                         | 健康信号   | Shown by `binference status` |

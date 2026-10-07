@@ -41,6 +41,7 @@ describe("the binference command tree", () => {
     });
     const commands = leafCommands(program);
     expect(commands.map((command) => command.name())).toStrictEqual([
+      "init",
       "start",
       "status",
       "health",

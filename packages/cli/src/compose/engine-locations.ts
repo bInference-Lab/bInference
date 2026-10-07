@@ -8,6 +8,8 @@ export function platformOf(host: Pick<CliHost, "env" | "homeDir">): Platform {
   return createPlatform({
     binferenceHome: host.env["BINFERENCE_HOME"],
     xdgConfigHome: host.env["XDG_CONFIG_HOME"],
+    display: host.env["DISPLAY"],
+    waylandDisplay: host.env["WAYLAND_DISPLAY"],
     ...(host.homeDir === undefined ? {} : { homeDir: host.homeDir }),
   });
 }
