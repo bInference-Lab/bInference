@@ -7,4 +7,5 @@ export type {
   TxDecoderHarness,
   TxDecoderSubject,
 } from "@binference/chain/testing";
-export type { ContractCheck } from "@binference/core/testing";
+export { createScriptedHttp } from "@binference/core/testing";
+export type { ContractCheck, ScriptedHttp, ScriptedRoute } from "@binference/core/testing";

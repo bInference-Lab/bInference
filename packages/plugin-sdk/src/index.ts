@@ -22,6 +22,6 @@ export {
   assetRefSchema,
   chainRefSchema,
 } from "@binference/chain";
-export { BinferenceError, err, isBps, ok } from "@binference/core";
-export type { Bps, Result } from "@binference/core";
+export { BinferenceError, bpsSchema, err, isBps, ok } from "@binference/core";
+export type { Bps, Http, HttpRequest, HttpResponse, Result } from "@binference/core";
 export { defineVenue } from "./define-venue.js";
