@@ -1,6 +1,6 @@
 import type { Id, Result } from "@binference/core";
+import type { CardPress, CardStanding } from "@binference/engine/surfaces";
 import type { CardCopy } from "./cards/card-copy.js";
-import type { CardPress, CardStanding } from "./cards/card-press.js";
 import type { OwnerBinding } from "./owner/owner-binding.js";
 
 /**

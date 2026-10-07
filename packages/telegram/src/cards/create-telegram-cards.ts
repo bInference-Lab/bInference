@@ -1,5 +1,9 @@
-import { BinferenceError, err, type Id, type Logger, ok, type Result } from "@binference/core";
-import type { Card, CardClosing } from "@binference/engine";
+import { BinferenceError, err, type Logger, ok, type Result } from "@binference/core";
+import type {
+  CardSettling,
+  CardShowing as DrawnCard,
+  CardStanding,
+} from "@binference/engine/surfaces";
 import { createFormatter, type MessageLocale } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
 import type { Api } from "grammy";
@@ -9,25 +13,11 @@ import { cardCallbackData, cardCallbackSchema } from "./card-callback.schema.js"
 import { type CardCalls, createCardCalls, type MessageAt } from "./card-calls.js";
 import type { CardCopy } from "./card-copy.js";
 import { type CardDisplay, cardHtml, receiptHtml } from "./card-html.js";
-import type { CardStanding } from "./card-press.js";
 
-/** One card version to show in the owner's Telegram chat. */
-export interface CardShowing {
-  readonly intent: Id<"int">;
-  /** The card version as the engine drew it. */
-  readonly card: Card;
-  /** The card version's random reference, stored with it (spec 4, section 2). */
-  readonly callbackRef: string;
-  /** Every asset the card names, with its symbol, decimals and verdict. */
-  readonly assets: AssetInfos;
+/** One card version to show in the owner's Telegram chat, as the engine draws it. */
+export interface CardShowing extends DrawnCard {
   /** The agent's topic in the owner's chat. */
   readonly threadId?: number;
-}
-
-/** A card version that closed, and how. */
-export interface CardSettling {
-  readonly ref: string;
-  readonly closing: CardClosing;
 }
 
 /** Confirmation cards in the owner's Telegram chat, from the card to its receipt. */
@@ -42,8 +32,9 @@ export interface TelegramCards {
     options: { readonly signal: AbortSignal },
   ): Promise<Result<CardCopy, "no_owner">>;
   /**
-   * Edits every Telegram copy of a card version into the receipt of its closing and removes the
-   * buttons: for an answer on another surface, the card timer, or an answer here.
+   * Edits every Telegram copy of a card version into the receipt of its closing, or of its paper
+   * fill, and removes the buttons: for an answer on another surface, the card timer, or an answer
+   * here.
    */
   settle(settling: CardSettling, options: { readonly signal: AbortSignal }): Promise<void>;
   /**
@@ -146,7 +137,8 @@ async function settle(context: CardsContext, settling: Settling, call: Call): Pr
   const kept: readonly MessageAt[] = await context.options.copies.find(settling.ref, call);
   const isKept = pressed === undefined || kept.some((copy) => sameMessage(copy, pressed));
   const extra = isKept ? [] : [pressed];
-  const html = receiptHtml(settling.closing, context.displayOf({}));
+  const { closing, paper } = settling;
+  const html = receiptHtml(closing, context.displayOf(paper?.assets ?? {}), paper?.fill);
   await Promise.all(
     [...kept, ...extra].map(async (copy) => context.calls.receipt(copy, html, call)),
   );
@@ -192,7 +184,8 @@ async function press(context: CardsContext, pressed: ButtonPress, call: Call): P
     const { chatId, messageId } = pressed;
     const at =
       chatId === undefined || messageId === undefined ? {} : { pressed: { chatId, messageId } };
-    await settle(context, { ref, closing: standing.closing, ...at }, call);
+    const { closing, paper } = standing;
+    await settle(context, { ref, closing, ...(paper === undefined ? {} : { paper }), ...at }, call);
   }
 }
 

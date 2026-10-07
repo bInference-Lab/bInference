@@ -1,6 +1,6 @@
 import { type AccountRef, type AssetRef, type ChainRegistry } from "@binference/chain";
-import { err, ok, type Result } from "@binference/core";
-import type { IntentRequest } from "@binference/protocol";
+import { type Bps, err, ok, type Result } from "@binference/core";
+import type { IntentRequest, SwapRequest } from "@binference/protocol";
 import type { LimitsValues } from "../agents/limits-record.js";
 import type { PolicySubject, RequestedSlippage } from "../policy/policy-rules.js";
 import type { VenueTrade } from "../venues/venue-host.js";
@@ -26,6 +26,20 @@ function isRegistryPair(chains: ChainRegistry, assets: readonly AssetRef[]): boo
 }
 
 /**
+ * The most slippage a swap allows: what the request asks, or else the agent's maximum for a pair
+ * of registry tokens or for any other pair.
+ */
+export function swapSlippageBps(
+  request: SwapRequest,
+  limits: LimitsValues,
+  chains: ChainRegistry,
+): Bps {
+  const { slippageRegistryBps, slippageOtherBps } = limits;
+  const isRegistry = isRegistryPair(chains, [request.from, request.to]);
+  return request.maxSlippageBps ?? (isRegistry ? slippageRegistryBps : slippageOtherBps);
+}
+
+/**
  * Resolves a swap of an exact amount into the trade the venue host plans: the wallet's account
  * pays and receives, on the agent's first allowed venue, with the slippage the request asks or
  * the agent's maximum for the pair. A request the money path cannot route yet, such as another
@@ -40,14 +54,13 @@ export function swapTradeOf(
     return err("no_route");
   }
   const isRegistry = isRegistryPair(context.chains, [request.from, request.to]);
-  const { slippageRegistryBps, slippageOtherBps } = context.limits;
   const asked = request.maxSlippageBps;
   const trade: VenueTrade = {
     venue,
     wallet: context.account,
     amountIn: { asset: request.from, base: request.amount.base },
     assetOut: request.to,
-    maxSlippageBps: asked ?? (isRegistry ? slippageRegistryBps : slippageOtherBps),
+    maxSlippageBps: swapSlippageBps(request, context.limits, context.chains),
   };
   return ok(
     asked === undefined

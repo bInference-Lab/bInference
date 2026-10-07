@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
-import type { CardStanding } from "../cards/card-press.js";
+import type { CardStanding } from "@binference/engine/surfaces";
 import type { CardAnswers } from "../ports.js";
 
 /** An engine with one open card for the owner, and the card's callback reference. */

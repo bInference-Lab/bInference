@@ -78,6 +78,14 @@ input leaves, at least the minimum out arrives, no other asset leaves or arrives
 is set but the plan's own approval. A step that reverts is `simulation_reverted`; any other
 difference is `effects_differ`, and `checkEffects` names the check that failed. The network fee is
 never among the transfers the simulation reports, so it is counted apart from them.
+It holds the engine's side of button surfaces, exported as `@binference/engine/surfaces`. Each
+card version opens with a random callback reference, and the `IntentStore` finds a version by it.
+`createCardShowings` draws an open card version from the stored intent, with the info of every
+asset it names, and gives the receipt of a version an answer or the timer closed: with the paper
+fill once a confirmed paper intent recorded it. `createCardPresses` answers the owner's press of a
+Telegram button: it finds the card version by its reference, answers only for the owner's numeric
+Telegram id, and stores the answer through the confirmations before it resolves. It is the
+adapter of Telegram's `CardAnswers` port.
 
 It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain through the
 `LedgerStore` from genesis or a trusted checkpoint and names the first entry that breaks it, so an
@@ -147,6 +155,8 @@ layout of Koinly's universal import, which tax tools read.
 | `EngineCall`, `EngineCaller`, `EngineHandler`, `AnswerCard`      | A call the server routes, and a card answer from any surface    |
 | `EnginePush`, `PublishPush`                                      | What the engine pushes; the server numbers each topic's pushes  |
 | `WalletFactsSource`, `WalletFacts`, `WalletFactsQuery`           | What the money path reads about an agent's wallets              |
+| `createCardShowings`, `CardShowing`, `CardSettling` (subpath)    | A card version drawn for a button surface, and its receipt      |
+| `createCardPresses`, `CardPress`, `CardStanding` (subpath)       | Answers the owner's Telegram press through the confirmations    |
 
 ## Example
 

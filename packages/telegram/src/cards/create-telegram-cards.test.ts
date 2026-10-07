@@ -1,6 +1,7 @@
 import type { JsonValue } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import { type CardFacts, checkReasons, drawCard } from "@binference/engine";
+import type { PaperReceipt } from "@binference/engine/surfaces";
 import { createMemoryAccessStore, createMemoryInboxStore } from "@binference/engine/testing";
 import { messages } from "@binference/i18n";
 import { Api } from "grammy";
@@ -15,6 +16,7 @@ import {
   cardExpiresAtMs,
   cardIntent,
   pepeBuyFacts,
+  refs,
   swapFacts,
 } from "../testing/card-fixtures.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
@@ -85,6 +87,16 @@ function pressOf(update: JsonValue): ButtonPress {
 }
 
 type Context = Awaited<ReturnType<typeof setUp>>;
+
+// The engine's side of a press as it answers for a paper intent: a closed card shows the fill.
+function withPaperFill(answers: CardAnswers, paper: PaperReceipt): CardAnswers {
+  return {
+    answer: async (press, call) => {
+      const standing = await answers.answer(press, call);
+      return standing.status === "closed" ? { ...standing, paper } : standing;
+    },
+  };
+}
 
 async function pressCard(context: Context, data: string, from = ownerId): Promise<void> {
   const update = context.botApi.press({ from, data, messageId: 1001 });
@@ -253,6 +265,46 @@ describe("the Telegram cards", () => {
     ]);
     expect(context.botApi.edits()).toHaveLength(1);
     expect(context.botApi.answers()).toStrictEqual([{ callbackId: "press-9001" }]);
+  });
+
+  it("turn the pressed card into the receipt of its paper fill", async () => {
+    const context = await setUp();
+    context.engine.open(ref);
+    const fill = {
+      amountIn: { asset: refs.bnb, base: 5n * 10n ** 17n },
+      amountOut: { asset: refs.usdt, base: 31_395n * 10n ** 16n },
+    };
+    const filling = withPaperFill(context.engine, { fill, assets: assetsWith() });
+    const { api, copies, logger, botApi } = context;
+    const display = { locale: "en", timeZone: "UTC" } as const;
+    const owners = createMemoryOwnerStore();
+    await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
+    const cards = createTelegramCards({ api, owners, copies, answers: filling, logger, display });
+    await cards.show(showing(), live);
+    const update = botApi.press({ from: ownerId, data: confirmData, messageId: 1001 });
+    await cards.press(pressOf(update), live);
+    const icon = String.fromCodePoint(0x1f9ea);
+    expect(botApi.messages()).toMatchObject([
+      { text: `${icon} Paper fill: 0.5 BNB → 313.95 USDT`, buttons: [] },
+    ]);
+  });
+
+  it("turn every copy into the paper fill's receipt when another surface confirms", async () => {
+    const context = await setUp();
+    await context.cards.show(showing(), live);
+    const closing = {
+      outcome: "confirmed",
+      answeredBy: { surface: "cli", by: "tok_1" },
+      atMs: cardExpiresAtMs - 20_000,
+    } as const;
+    const fill = {
+      amountIn: { asset: refs.bnb, base: 5n * 10n ** 17n },
+      amountOut: { asset: refs.usdt, base: 31_395n * 10n ** 16n },
+    };
+    await context.cards.settle({ ref, closing, paper: { fill, assets: assetsWith() } }, live);
+    expect(context.botApi.messages()).toMatchObject([
+      { text: `${String.fromCodePoint(0x1f9ea)} Paper fill: 0.5 BNB → 313.95 USDT`, buttons: [] },
+    ]);
   });
 
   it("turn the card into its receipt when it expires", async () => {

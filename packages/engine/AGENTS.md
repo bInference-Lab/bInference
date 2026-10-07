@@ -91,6 +91,10 @@ Rules for this package:
   property test (`auto-mode.property.test.ts`) runs the whole engine.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
+- Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and
+  answer presses; they decide nothing. A card version is drawn from the stored intent, a press is
+  answered only for the owner and only through the answer step, and every card version carries a
+  callback reference from the `Random` port, never an id.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one
   work per account at a time and is the only way to take a nonce and store a signed transaction.
   It gives nonces by the lowest free nonce rule in `lowest-free-nonce.ts`, which the fake and the

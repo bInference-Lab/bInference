@@ -1,6 +1,6 @@
 import type { Clock } from "@binference/core";
 import type { CardClosing, QuoteFailure, SimulationFailure } from "@binference/engine";
-import type { CardPress, CardStanding } from "../cards/card-press.js";
+import type { CardPress, CardStanding } from "@binference/engine/surfaces";
 import type { CardAnswers } from "../ports.js";
 
 /** The engine's side of card answers in memory, with handles a test drives it by. */

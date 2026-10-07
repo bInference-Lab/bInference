@@ -12,7 +12,8 @@ Confirmation cards go to the owner's chat in Telegram's HTML, with every value f
 escaped, and Confirm and Cancel buttons whose data is a random reference. The engine checks who
 pressed and stores the answer before Telegram hears back; the first answer, on any surface, turns
 every copy into its receipt. One throttler per bot token paces the bot by Telegram's limits and
-waits out every 429, pausing only the chat Telegram named.
+waits out every 429, pausing only the chat Telegram named. A confirmed paper intent's card becomes
+the receipt of its paper fill.
 
 ## API
 
@@ -38,6 +39,7 @@ answers out, with Telegram's checks on HTML, lengths and callback data.
 ## Example
 
 ```ts
+import { createCardPresses } from "@binference/engine/surfaces";
 import { Api } from "grammy";
 import {
   createBotThrottlers,
@@ -51,11 +53,18 @@ import {
 const api = new Api(token.reveal());
 createBotThrottlers({ clock, logger: logger.child("telegram") }).install(api);
 const display = { locale: config.owner.locale, timeZone: config.owner.timezone };
+// The engine's side of each press: the owner's only, stored through the confirmations.
+const answers = createCardPresses({
+  intents: stores.intents,
+  answer: engine.answer,
+  ownerId: async (call) => (await owners.get(call))?.userId,
+  chains,
+});
 const cards = createTelegramCards({
   api,
   owners,
   copies: stores.cardCopies,
-  answers: engine.cardAnswers,
+  answers,
   logger: logger.child("telegram"),
   display,
 });

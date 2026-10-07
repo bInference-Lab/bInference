@@ -4,6 +4,7 @@ import {
   type CardClosing,
   type CardLine,
   type CardValue,
+  type ReceiptFill,
   receiptLine,
 } from "@binference/engine";
 import { decimalText, type Formatter, type MessageValues } from "@binference/i18n";
@@ -131,7 +132,14 @@ export function cardHtml(card: Card, display: CardDisplay): string {
   return card.lines.map((line) => escapeHtml(lineText(line, display))).join("\n");
 }
 
-/** The receipt a card becomes when it closes (spec 4, section 3.5), as Telegram HTML. */
-export function receiptHtml(closing: CardClosing, display: CardDisplay): string {
-  return escapeHtml(lineText(receiptLine(closing), display));
+/**
+ * The receipt a card becomes when it closes (spec 4, section 3.5), as Telegram HTML. A confirmed
+ * paper intent passes its paper fill, whose assets must be in `display.assets`.
+ */
+export function receiptHtml(
+  closing: CardClosing,
+  display: CardDisplay,
+  paperFill?: ReceiptFill,
+): string {
+  return escapeHtml(lineText(receiptLine(closing, paperFill), display));
 }

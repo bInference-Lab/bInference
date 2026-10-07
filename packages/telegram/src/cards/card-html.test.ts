@@ -23,6 +23,7 @@ const icons = {
   done: String.fromCodePoint(0x2705),
   refused: String.fromCodePoint(0x274c),
   live: String.fromCodePoint(0x1f534),
+  paper: String.fromCodePoint(0x1f9ea),
 };
 const english = createFormatter({ locale: "en", timeZone: "UTC" });
 const display: CardDisplay = { formatter: english, assets: assetsWith() };
@@ -226,5 +227,17 @@ describe("a card in Telegram HTML", () => {
     ["the card timer", { outcome: "expired", atMs: 0 }, `${icons.refused} Expired with no answer`],
   ] as const)("draws the receipt of %s", (_name, closing, receipt) => {
     expect(shown(receiptHtml(closing, display)).text).toBe(receipt);
+  });
+
+  it("draws the receipt of a paper fill with what it sold and bought", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const closing = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    const fill = {
+      amountIn: { asset: refs.bnb, base: 5n * 10n ** 17n },
+      amountOut: { asset: refs.usdt, base: 31_395n * 10n ** 16n },
+    };
+    expect(shown(receiptHtml(closing, display, fill)).text).toBe(
+      `${icons.paper} Paper fill: 0.5 BNB → 313.95 USDT`,
+    );
   });
 });

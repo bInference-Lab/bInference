@@ -1,7 +1,13 @@
 import { drawCard } from "@binference/engine";
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
-import { assetsWith, cardExpiresAtMs, pepeBuyFacts, swapFacts } from "../testing/card-fixtures.js";
+import {
+  assetsWith,
+  cardExpiresAtMs,
+  pepeBuyFacts,
+  refs,
+  swapFacts,
+} from "../testing/card-fixtures.js";
 import { parseFakeHtml } from "../testing/fake-html.js";
 import { type CardDisplay, cardHtml, receiptHtml } from "./card-html.js";
 
@@ -10,6 +16,7 @@ const icons = {
   done: String.fromCodePoint(0x2705),
   refused: String.fromCodePoint(0x274c),
   live: String.fromCodePoint(0x1f534),
+  paper: String.fromCodePoint(0x1f9ea),
 };
 const display: CardDisplay = {
   formatter: createFormatter({ locale: "zh", timeZone: "UTC" }),
@@ -47,6 +54,13 @@ describe("a card in Telegram HTML, in Chinese", () => {
     );
     expect(textOf(receiptHtml({ outcome: "expired", atMs: 0 }, display))).toBe(
       `${icons.refused} 未回复，已过期`,
+    );
+    const fill = {
+      amountIn: { asset: refs.bnb, base: 5n * 10n ** 17n },
+      amountOut: { asset: refs.usdt, base: 31_395n * 10n ** 16n },
+    };
+    expect(textOf(receiptHtml(confirmed, display, fill))).toBe(
+      `${icons.paper} 模拟成交：0.5 BNB → 313.95 USDT`,
     );
   });
 });

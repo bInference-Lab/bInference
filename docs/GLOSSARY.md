@@ -45,6 +45,8 @@ new name here first, in the change that uses it.
   owner's Telegram chat. The first answer turns every copy into the receipt.
 - **callback reference**: the random 12 bytes a card version's buttons carry in place of any id,
   so a press names a card no one could guess.
+- **card showing**: a card version as a button surface shows it, drawn from the stored intent with
+  its callback reference and the assets it names.
 - **auto order**: a limit, take-profit, stop-loss, trailing, DCA or copy-trade order, confirmed
   once. Each fill runs inside its bounds without a card.
 - **fill**: one execution of an auto order or a webhook rule.
