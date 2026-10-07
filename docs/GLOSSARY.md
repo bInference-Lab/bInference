@@ -86,6 +86,11 @@ new name here first, in the change that uses it.
   and kept offline.
 - **agent key**: the key the signer holds on one machine. It can ask for signatures inside the
   ceiling only.
+- **key quorum**: Privy's record of the keys that act for a wallet or a policy. binference makes
+  one for the owner key, which owns each wallet and its ceiling, and one for the agent key, each
+  wallet's one added signer.
+- **authorization signature**: the agent key's P-256 signature over one Privy request, which Privy
+  checks before it signs a transaction.
 - **rescue address**: the owner's own wallet, where a rescue sends everything. Changing it takes 24
   hours.
 - **saved address**: an address saved in the ceiling with the owner key. Sends go only to saved

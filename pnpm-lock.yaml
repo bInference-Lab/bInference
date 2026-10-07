@@ -492,6 +492,9 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@privy-io/node':
+        specifier: 'catalog:'
+        version: 0.35.0(viem@2.57.1(typescript@7.0.2)(zod@4.6.5))
       viem:
         specifier: 'catalog:'
         version: 2.57.1(typescript@7.0.2)(zod@4.6.5)

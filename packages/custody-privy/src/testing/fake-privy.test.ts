@@ -4,8 +4,10 @@ import { createManualClock, createSeededRandom } from "@binference/core/testing"
 import { describe, expect, it } from "vitest";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import { policyRuleJson } from "../ceiling/policy-rule.js";
+import { privyCustodyContract } from "../contracts/privy-custody-contract.js";
 import { signaturePayload } from "../signer-process/privy-request.js";
 import { testCeilingRequest } from "./custody-fixtures.js";
+import { createFakeCustodySubject } from "./fake-custody-subject.js";
 import { createFakePrivy, type FakePrivy } from "./fake-privy.js";
 
 const origin = "https://api.privy.io";
@@ -141,6 +143,13 @@ const toRule = (value: JsonValue, operator = "in"): JsonValue => ({
 });
 
 describe("the Privy fake", () => {
+  it.each(privyCustodyContract({ create: () => createFakeCustodySubject() }))(
+    "follows the custody contract: $name",
+    async ({ run }) => {
+      await expect(run()).resolves.toBeUndefined();
+    },
+  );
+
   it("refuses wrong credentials and serves no other origin", async () => {
     const privy = newPrivy();
     const wrong = await privy.http.request({

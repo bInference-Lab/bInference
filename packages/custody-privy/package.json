@@ -27,6 +27,7 @@
     "@binference/chain": "workspace:*",
     "@binference/chain-evm": "workspace:*",
     "@binference/core": "workspace:*",
+    "@privy-io/node": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"
   }

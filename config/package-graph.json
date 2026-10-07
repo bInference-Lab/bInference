@@ -61,7 +61,7 @@
       "mutation": true
     },
     "custody-privy": {
-      "imports": ["core", "chain", "chain-evm", "viem"],
+      "imports": ["core", "chain", "chain-evm", "@privy-io/node", "viem"],
       "only": {
         "viem": "src/testing"
       },

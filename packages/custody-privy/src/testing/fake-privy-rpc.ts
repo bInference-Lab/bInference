@@ -28,12 +28,18 @@ function smallOf(quantity: FakeQuantity): number {
   return typeof quantity === "number" ? quantity : hexToNumber(quantity);
 }
 
-// The `privy-` headers a signature covers: every one the request carries but the signature itself.
+// The headers a signature covers, as Privy's docs list them: the app id, and the idempotency key
+// and the expiry when the request has them. Other `privy-` headers, such as the SDK's
+// `privy-client`, are not covered.
+const coveredHeaders: ReadonlySet<string> = new Set([
+  "privy-app-id",
+  "privy-idempotency-key",
+  "privy-request-expiry",
+]);
+
 function signedHeaders(request: HttpRequest): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(request.headers ?? {}).filter(
-      ([name]) => name.startsWith("privy-") && name !== signatureHeader,
-    ),
+    Object.entries(request.headers ?? {}).filter(([name]) => coveredHeaders.has(name)),
   );
 }
 

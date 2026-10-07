@@ -177,6 +177,9 @@ export const fakeWalletBodySchema: z.ZodType<FakeWalletBody> = z.strictObject({
 export const fakeSignBodySchema: z.ZodType<FakeTransaction> = z
   .strictObject({
     method: z.literal("eth_signTransaction"),
+    chain_type: z.literal("ethereum").optional(),
+    address: z.string().optional(),
+    wallet_id: z.string().optional(),
     params: z.strictObject({
       transaction: z.strictObject({
         to: hexOf(/^0x[0-9a-fA-F]{40}$/),
