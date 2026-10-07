@@ -119,6 +119,18 @@ export type {
 export { venueQuoteSchema } from "./venues/venue-quote.js";
 export type { QuoteRequest, VenueQuote, VenueQuoteWire } from "./venues/venue-quote.js";
 export { isSameAccount } from "./same-account.js";
+export { relayAnswerSchema, relayNameSchema, relayRefusals } from "./sending/relay-answer.js";
+export type {
+  RelayAccepted,
+  RelayAnswer,
+  RelayRefusal,
+  RelayRefused,
+  RelaySilent,
+} from "./sending/relay-answer.js";
+export type { ReceiptReader, RelaySender, TxPreparer } from "./sending/ports.js";
+export type { PreparedTx, PrepareRequest } from "./sending/prepared-tx.js";
+export { txReceiptSchema } from "./sending/tx-receipt.js";
+export type { BlockRef, ChainHead, TxReceipt, TxReceiptWire } from "./sending/tx-receipt.js";
 export type { TxSimulator } from "./simulation/ports.js";
 export type { SimulationOptions } from "./simulation/simulation-options.js";
 export type { AssetApproval, AssetTransfer, SimulatedStep } from "./simulation/simulated-step.js";

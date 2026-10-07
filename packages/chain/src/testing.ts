@@ -46,3 +46,19 @@ export type { PriceSourceHarness, PriceSourceSubject } from "./contracts/price-s
 export { txSimulatorContract } from "./contracts/tx-simulator-contract.js";
 export type { TxSimulatorHarness, TxSimulatorSubject } from "./contracts/tx-simulator-contract.js";
 export { createFakeTxSimulator } from "./fakes/fake-tx-simulator.js";
+export { relaySenderContract } from "./contracts/relay-sender-contract.js";
+export type {
+  RelayBehavior,
+  RelayDelivery,
+  RelaySenderHarness,
+  RelaySenderSubject,
+} from "./contracts/relay-sender-contract.js";
+export { receiptReaderContract } from "./contracts/receipt-reader-contract.js";
+export type {
+  ReceiptReaderHarness,
+  ReceiptReaderSubject,
+} from "./contracts/receipt-reader-contract.js";
+export { txPreparerContract } from "./contracts/tx-preparer-contract.js";
+export type { TxPreparerHarness, TxPreparerSubject } from "./contracts/tx-preparer-contract.js";
+export { createFakeNetwork } from "./fakes/fake-network.js";
+export type { FakeNetwork, FakeNetworkOptions } from "./fakes/fake-network.js";

@@ -35,8 +35,11 @@ can check what they move. Nothing here names a chain or a venue.
 | `VenueDeclaration`, `venueDeclarationSchema`                          | A venue's id and its contracts per chain, by registry name       |
 | `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`         | What the venue host asks a venue, and what the venue answers     |
 | `TxSimulator`, `SimulatedStep`, `AssetTransfer`, `AssetApproval`      | Runs drafts unsent and reports what each moved and allowed       |
+| `TxPreparer`, `PreparedTx`                                            | A draft at its nonce, with gas and fees read now, ready to sign  |
+| `RelaySender`, `RelayAnswer`, `relayRefusals`                         | Sends signed bytes to every private relay; one answer per relay  |
+| `ReceiptReader`, `TxReceipt`, `ChainHead`                             | A sent transaction's receipt, and the latest and final blocks    |
 | `isSameAccount`                                                       | Whether two accounts are one, compared in the family's form      |
-| `@binference/chain/testing`                                           | Contract suites for each port, a fake family, chain and venue    |
+| `@binference/chain/testing`                                           | Each port's suite; a fake family, chain, venue and network       |
 
 ## Example
 

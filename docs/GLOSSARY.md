@@ -133,6 +133,16 @@ new name here first, in the change that uses it.
   and fees.
 - **transaction simulator**: the port a chain family fills to run transaction drafts unsent on the
   chain's latest state and report what each one moved, allowed and used in gas.
+- **transaction preparer**: the port a chain family fills to give a transaction draft its nonce,
+  gas and fees, read from the chain now, as the unsigned transaction the signer signs.
+- **private relay**: an endpoint that takes a signed transaction to block builders without the
+  public mempool, such as 48 Club's. A chain's relays are data in `@binference/chains`.
+- **relay sender**: the port a chain family fills to send one signed transaction to every private
+  relay of its chain at once and report each relay's answer.
+- **relay answer**: what one relay said to one send: accepted, refused with its reason, timed out
+  or unreachable. Each answer is stored per relay.
+- **receipt reader**: the port a chain family fills to read a sent transaction's receipt and the
+  chain's head: its latest block and its final block by the chain's finality rule.
 - **simulation check**: the simulate step of the money path. The wallet's net balance changes in
   the simulation must match the intent: exactly the input leaves, at least the minimum out arrives,
   no other asset leaves or arrives, and no allowance is set but the plan's own approval.

@@ -10,8 +10,8 @@ export function signFake(unsigned: UnsignedTx, address: string): SignedTx {
   return { chain: unsigned.chain, raw: [prefix, address, unsigned.payload].join("|") };
 }
 
-// FNV-1a over the raw text: a stable, short hash for tests.
-function fakeHash(raw: string): string {
+/** The hash of a fake signed transaction: FNV-1a over its raw text, stable and short. */
+export function fakeTxHash(raw: string): string {
   let hash = 0x811c9dc5;
   for (const char of raw) {
     hash = Math.imul(hash ^ (char.codePointAt(0) ?? 0), 0x01000193) >>> 0;
@@ -25,7 +25,7 @@ export function createFakeSigningScheme(): SigningScheme {
     family: "fake",
     verify(unsigned, signed) {
       const [mark, signer, ...payload] = signed.raw.split("|");
-      const hash = fakeHash(signed.raw);
+      const hash = fakeTxHash(signed.raw);
       if (mark !== prefix || signer === undefined || !isTxHash(hash)) {
         return err("malformed_signature");
       }

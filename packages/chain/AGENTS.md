@@ -34,3 +34,7 @@ Rules for this package:
   the chain's latest state and reports each step's transfers and approvals as CAIP ids and amounts,
   never the fee, so the engine checks them without importing a family package. Balances it is
   given, such as a paper portfolio's, replace the sender's on the chain for that run.
+- Sending is three ports in `src/sending/` that a family fills: `TxPreparer` gives a draft its
+  nonce, gas and fees; `RelaySender` sends signed bytes to every private relay at once and answers
+  each relay apart, never retrying; `ReceiptReader` reads receipts and the chain's head by its
+  finality rule. Their fake, `createFakeNetwork`, mines only when a test says so.
