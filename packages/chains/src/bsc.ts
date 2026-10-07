@@ -273,10 +273,18 @@ export const bsc: ChainDefinition = {
 
 /**
  * BSC's standard Chainlink USD feeds, 8 decimals each, with the heartbeat Chainlink publishes.
- * Each names its proxy among the `chainlink` contracts of {@link bsc}.
+ * Each names its proxy among the `chainlink` contracts of {@link bsc}. WBNB's `deposit` and
+ * `withdraw` swap BNB for it one for one, so the BNB feed prices it too.
  */
 export const bscPriceFeeds: readonly PriceFeedDefinition[] = [
-  { contract: "bnb-usd", symbol: "BNB", decimals: 8, heartbeatSeconds: 27, isStablecoin: false },
+  {
+    contract: "bnb-usd",
+    symbol: "BNB",
+    decimals: 8,
+    heartbeatSeconds: 27,
+    isStablecoin: false,
+    wrappers: ["WBNB"],
+  },
   { contract: "usdt-usd", symbol: "USDT", decimals: 8, heartbeatSeconds: 900, isStablecoin: true },
   { contract: "usdc-usd", symbol: "USDC", decimals: 8, heartbeatSeconds: 900, isStablecoin: true },
   {

@@ -60,18 +60,21 @@ async function setRound(fork: Fork, feed: Address, round: FixtureRound): Promise
 }
 
 describe("the Chainlink price source on a BSC fork", () => {
-  it("prices BNB at its feed's answer and USDT at $1 while its feed holds the peg", async ({
+  it("prices BNB and WBNB at the BNB feed's answer and USDT at $1 while its feed holds the peg", async ({
     signal,
   }) =>
     withFork(signal, async (fork) => {
       const { prices } = await pricesOn(fork);
       const usdt = erc20AssetRef(fork.chain, bscToken("USDT"));
+      const wbnb = erc20AssetRef(fork.chain, bscToken("WBNB"));
       const bnbAnswer = await answerOf(fork, bnbFeed);
       const usdtAnswer = await answerOf(fork, usdtFeed);
+      const bnbPrice = ok({ numerator: bnbAnswer * 1_000_000n, denominator: 10n ** 26n });
 
       await expect(prices.usdPrice(fork.chain.nativeAsset, { signal })).resolves.toStrictEqual(
-        ok({ numerator: bnbAnswer * 1_000_000n, denominator: 10n ** 26n }),
+        bnbPrice,
       );
+      await expect(prices.usdPrice(wbnb, { signal })).resolves.toStrictEqual(bnbPrice);
       expect(usdtAnswer).toBeGreaterThan(98_000_000n);
       expect(usdtAnswer).toBeLessThan(102_000_000n);
       await expect(prices.usdPrice(usdt, { signal })).resolves.toStrictEqual(dollar);

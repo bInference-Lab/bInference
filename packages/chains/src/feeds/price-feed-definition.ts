@@ -13,4 +13,9 @@ export interface PriceFeedDefinition {
    * feed holds its peg (decision 0059).
    */
   readonly isStablecoin: boolean;
+  /**
+   * Registry tokens that wrap the feed's asset one for one, such as WBNB for BNB: each redeems for
+   * exactly one unit of the asset, so the feed prices it as it prices the asset.
+   */
+  readonly wrappers?: readonly string[];
 }

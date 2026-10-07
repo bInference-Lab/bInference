@@ -1,7 +1,7 @@
-import { bsc, bscPriceFeeds } from "@binference/chains";
+import { bsc, bscPriceFeeds, type PriceFeedDefinition } from "@binference/chains";
 import { BinferenceError } from "@binference/core";
 import { type EvmChain, erc20AssetRef } from "../evm-chain.js";
-import type { FeedAsset } from "../prices/price-from-round.js";
+import type { FeedAsset, UsdFeed } from "../prices/price-from-round.js";
 import { bscContract, bscToken } from "./bsc-addresses.js";
 
 function tokenDecimals(symbol: string): number {
@@ -16,10 +16,27 @@ function tokenDecimals(symbol: string): number {
   return token.decimals;
 }
 
+// The native coin from its feed, and each token that wraps it one for one at the same price.
+function nativeFeedAssets(
+  chain: EvmChain,
+  definition: PriceFeedDefinition,
+  feed: UsdFeed,
+): FeedAsset[] {
+  const wrappers = (definition.wrappers ?? []).map((symbol) => ({
+    asset: erc20AssetRef(chain, bscToken(symbol)),
+    decimals: tokenDecimals(symbol),
+    isStablecoin: false,
+    feed,
+  }));
+  const { nativeAsset: asset, nativeDecimals: decimals } = chain;
+  return [{ asset, decimals, isStablecoin: false, feed }, ...wrappers];
+}
+
 /**
- * BSC's feed assets from the registry in `@binference/chains`: BNB from its feed, and each
- * stablecoin feed's token at $1 while the feed holds its peg. The BTC and ETH feeds stay unused:
- * decision 0059 prices every other token from the trade's own quote.
+ * BSC's feed assets from the registry in `@binference/chains`: BNB from its feed, WBNB (its one
+ * for one wrapper) from the same feed, and each stablecoin feed's token at $1 while the feed holds
+ * its peg. The BTC and ETH feeds stay unused: decision 0059 prices every other token from the
+ * trade's own quote.
  */
 export function bscFeedAssets(chain: EvmChain): readonly FeedAsset[] {
   return bscPriceFeeds.flatMap((definition): FeedAsset[] => {
@@ -29,8 +46,7 @@ export function bscFeedAssets(chain: EvmChain): readonly FeedAsset[] {
       heartbeatSeconds: definition.heartbeatSeconds,
     };
     if (definition.symbol === chain.nativeSymbol) {
-      const { nativeAsset: asset, nativeDecimals: decimals } = chain;
-      return [{ asset, decimals, isStablecoin: false, feed }];
+      return nativeFeedAssets(chain, definition, feed);
     }
     if (!definition.isStablecoin) {
       return [];

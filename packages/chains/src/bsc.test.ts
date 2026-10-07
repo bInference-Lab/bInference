@@ -110,6 +110,15 @@ describe("bsc price feeds", () => {
     expect(feed.heartbeatSeconds).toBeGreaterThan(0);
   });
 
+  it("prices WBNB, a registry token with BNB's decimals, with the BNB feed alone", () => {
+    const wrapping = bscPriceFeeds.filter((feed) => feed.wrappers !== undefined);
+    expect(wrapping.map((feed) => [feed.symbol, feed.wrappers])).toStrictEqual([
+      [bsc.nativeAsset.symbol, ["WBNB"]],
+    ]);
+    const wbnb = bsc.tokens.find((token) => token.symbol === "WBNB");
+    expect(wbnb?.decimals).toBe(bsc.nativeAsset.decimals);
+  });
+
   it("marks the stablecoin feeds, each watching the registry token of its symbol", () => {
     const stablecoins = bscPriceFeeds
       .filter((feed) => feed.isStablecoin)

@@ -103,6 +103,15 @@ describe("the Chainlink price source", () => {
     expect(mulDiv(10n ** 18n, price.value, "down")).toBe(766_354_310n);
   });
 
+  it("prices WBNB as BNB, one for one, when the BNB feed also lists it", async () => {
+    const { rpc, clock } = setup();
+    const wrapped = [...assets, feedAsset(wbnb, "bnb", 27)];
+    const source = createChainlinkPrices({ rpc, clock, assets: wrapped });
+    const bnbPrice = await source.usdPrice(bnb, live);
+    expect(bnbPrice).toMatchObject({ ok: true });
+    await expect(source.usdPrice(wbnb, live)).resolves.toStrictEqual(bnbPrice);
+  });
+
   it("prices USDT at $1 while its feed holds the peg", async () => {
     await expect(setup().source.usdPrice(usdt, live)).resolves.toStrictEqual(dollar);
   });
