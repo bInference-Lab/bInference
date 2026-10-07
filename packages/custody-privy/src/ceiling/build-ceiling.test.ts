@@ -29,16 +29,6 @@ const transfer = {
   name: "transfer",
   inputs: [{ name: "to", type: "address" }, approve.inputs[1]],
 };
-const approvalForAll = {
-  type: "function",
-  name: "setApprovalForAll",
-  inputs: [
-    { name: "operator", type: "address" },
-    { name: "approved", type: "bool" },
-  ],
-  outputs: [],
-  stateMutability: "nonpayable",
-};
 const onChain = {
   field_source: "ethereum_transaction",
   field: "chain_id",
@@ -128,20 +118,6 @@ const expectedRules = [
         value: "{{wallet.address}}",
       },
       noCoin,
-    ],
-  },
-  {
-    name: "No setApprovalForAll",
-    method: "eth_signTransaction",
-    action: "DENY",
-    conditions: [
-      {
-        field_source: "ethereum_calldata",
-        field: "function_name",
-        abi: [approvalForAll],
-        operator: "eq",
-        value: "setApprovalForAll",
-      },
     ],
   },
   { name: "Owner export", method: "exportPrivateKey", action: "ALLOW", conditions: [] },

@@ -159,8 +159,8 @@ const refuseChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] =>
       await privyRefuses(setup, { to: token, valueWei: 0n, data: approveData(unlisted, 7n) });
     },
   ),
-  check(harness, "refuses setApprovalForAll, even to a listed contract", async (setup) => {
-    await privyRefuses(setup, { to: router, valueWei: 0n, data: approvalForAllData(unsaved) });
+  check(harness, "refuses setApprovalForAll on a token it does not list", async (setup) => {
+    await privyRefuses(setup, { to: token, valueWei: 0n, data: approvalForAllData(unsaved) });
   }),
   check(harness, "refuses a transfer to the wallet itself that carries value", async (setup) => {
     await privyRefuses(setup, { to: setup.wallet.address, valueWei: 1n, data: "0x" });

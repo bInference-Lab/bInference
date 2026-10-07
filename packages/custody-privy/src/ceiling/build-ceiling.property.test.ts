@@ -57,7 +57,8 @@ function tokenCallAllowed(tx: Tx): boolean {
 }
 
 function specAllows(tx: Tx): boolean {
-  if (tx.chainId !== 56n || tx.data.kind === "approvalForAll") {
+  // setApprovalForAll has no rule of its own: it passes only where the call itself is allowed.
+  if (tx.chainId !== 56n) {
     return false;
   }
   const listedCall = contracts.has(tx.to) && tx.valueWei <= oneBnbWei;

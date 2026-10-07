@@ -76,10 +76,35 @@ describe("the fake's policy engine", () => {
     expect(evaluatePolicy(rules, { ...input, valueWei: 5n })).toBe("ALLOW");
   });
 
-  it("compares addresses case by case, as Privy compares strings", () => {
+  it("compares EVM addresses in any case, as Privy does, and other strings exactly", () => {
     const rules = [rule("ALLOW", [on("to", "in", [router])])];
     expect(evaluatePolicy(rules, input)).toBe("ALLOW");
-    expect(evaluatePolicy(rules, { ...input, to: router.toLowerCase() })).toBe("DENY");
+    expect(evaluatePolicy(rules, { ...input, to: router.toLowerCase() })).toBe("ALLOW");
+    const lowerRules = [rule("ALLOW", [on("to", "eq", router.toLowerCase())])];
+    expect(evaluatePolicy(lowerRules, input)).toBe("ALLOW");
+    expect(evaluatePolicy([rule("ALLOW", [on("to", "eq", "Router")])], input)).toBe("DENY");
+  });
+
+  it("denies a plain send under a DENY rule on calldata it cannot decode, as Privy does", () => {
+    // Seen on a Privy app on 2026-10-07: the rule below denied a plain send, which the ALLOW let.
+    const denyFunction: FakeCondition = {
+      field_source: "ethereum_calldata",
+      field: "function_name",
+      abi: [
+        {
+          type: "function",
+          name: "setApprovalForAll",
+          inputs: [],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+      ],
+      operator: "eq",
+      value: "setApprovalForAll",
+    };
+    const rules = [rule("ALLOW", [on("to", "eq", router)]), rule("DENY", [denyFunction])];
+    expect(evaluatePolicy(rules, input)).toBe("DENY");
+    expect(evaluatePolicy([rule("ALLOW", [on("to", "eq", router)])], input)).toBe("ALLOW");
   });
 
   it("compares values and chain ids as numbers, in hex or decimal", () => {

@@ -31,12 +31,22 @@ function asNumber(text: string): bigint | undefined {
   return /^(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(text) ? BigInt(text) : undefined;
 }
 
-// Strings compare case by case, as Privy's do; numbers compare as numbers whatever their base.
+const evmAddress = /^0x[0-9a-fA-F]{40}$/;
+
+// Privy compares an EVM address in `to` or a calldata argument in any case, every other string
+// exactly ("Condition sets", docs.privy.io); numbers compare as numbers whatever their base.
+function comparable(text: string): string {
+  return evmAddress.test(text) ? text.toLowerCase() : text;
+}
+
 function holds(left: Compared, condition: FakeCondition, input: PolicyInput): boolean {
   const values = [condition.value]
     .flat()
     .map((value) => (value === walletVariable ? input.walletAddress : value));
-  const right = typeof left === "bigint" ? values.map(asNumber) : values;
+  const right = typeof left === "bigint" ? values.map(asNumber) : values.map(comparable);
+  if (typeof left === "string") {
+    return stringHolds(comparable(left), condition, right);
+  }
   const [first] = right;
   if (condition.operator === "eq") {
     return first === left;
@@ -47,11 +57,18 @@ function holds(left: Compared, condition: FakeCondition, input: PolicyInput): bo
   if (condition.operator === "in_condition_set") {
     return false;
   }
-  return (
-    typeof left === "bigint" &&
-    typeof first === "bigint" &&
-    numeric[condition.operator](left, first)
-  );
+  return typeof first === "bigint" && numeric[condition.operator](left, first);
+}
+
+function stringHolds(
+  left: string,
+  condition: FakeCondition,
+  right: readonly (string | bigint | undefined)[],
+): boolean {
+  if (condition.operator === "eq") {
+    return right[0] === left;
+  }
+  return condition.operator === "in" && right.some((item) => item === left);
 }
 
 function transactionField(field: string, input: PolicyInput): Compared | undefined {
@@ -67,24 +84,33 @@ function transactionField(field: string, input: PolicyInput): Compared | undefin
   }
 }
 
-function conditionHolds(condition: FakeCondition, input: PolicyInput): boolean {
+// Privy fails closed: a DENY rule's calldata condition that cannot decode the call's data holds,
+// so the rule denies a plain send as well (seen on a Privy app, 2026-10-07).
+function conditionHolds(
+  condition: FakeCondition,
+  input: PolicyInput,
+  action: FakeRule["action"],
+): boolean {
   const left =
     condition.field_source === "ethereum_transaction"
       ? transactionField(condition.field, input)
       : readCalldataField(condition.abi ?? [], condition.field, input.data);
-  return left !== undefined && holds(left, condition, input);
+  if (left === undefined) {
+    return action === "DENY" && condition.field_source === "ethereum_calldata";
+  }
+  return holds(left, condition, input);
 }
 
 /**
  * Privy's policy semantics: only the rules of the request's method (or `*`) apply; a rule applies
  * when every condition holds; a `DENY` that applies wins; with no `ALLOW` that applies, the
- * request is denied.
+ * request is denied. A `DENY` rule whose calldata condition cannot decode the data applies.
  */
 export function evaluatePolicy(rules: readonly FakeRule[], input: PolicyInput): "ALLOW" | "DENY" {
   const applying = rules.filter(
     (rule) =>
       (rule.method === input.method || rule.method === "*") &&
-      rule.conditions.every((condition) => conditionHolds(condition, input)),
+      rule.conditions.every((condition) => conditionHolds(condition, input, rule.action)),
   );
   if (applying.some((rule) => rule.action === "DENY")) {
     return "DENY";

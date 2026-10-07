@@ -107,6 +107,11 @@ Everything else is refused by Privy. What the policy cannot do: count dollars. P
 counters sum token units, count after signing and are at most 10 per app, so the engine's rolling
 caps stay the main money limit and the counters are only a backstop on BNB.
 
+Nor can it deny one function on every contract. Privy denies every transaction that a `DENY` rule
+on calldata cannot decode, plain sends among them, so the policy holds allow rules only. A call to
+a listed contract may then carry any function, and the signer's hard rules (section 5.2) refuse
+`setApprovalForAll` there; outside the listed contracts, no rule allows it.
+
 **Under the ceiling,** the engine's limits (per-trade and daily caps, send levels, allow and deny
 lists) can be loosened from the CLI, the console or the Mini App
 ([decision 0089](../DECISIONS.md#d0089)), never past the ceiling. Raising the ceiling, adding a

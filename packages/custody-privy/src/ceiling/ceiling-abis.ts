@@ -29,13 +29,3 @@ export const transferAbi: AbiFunction = nonpayable(
   ],
   success,
 );
-
-/** ERC-721 and ERC-1155 `setApprovalForAll(operator, approved)`, which the ceiling denies. */
-export const setApprovalForAllAbi: AbiFunction = nonpayable(
-  "setApprovalForAll",
-  [
-    { name: "operator", type: "address" },
-    { name: "approved", type: "bool" },
-  ],
-  [],
-);

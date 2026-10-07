@@ -1,6 +1,6 @@
 import { parseEvmAddress } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
-import { approveAbi, setApprovalForAllAbi, transferAbi } from "./ceiling-abis.js";
+import { approveAbi, transferAbi } from "./ceiling-abis.js";
 import type { Ceiling, CeilingChain, CeilingProblem, CeilingRequest } from "./ceiling.js";
 import type {
   CalldataCondition,
@@ -98,13 +98,6 @@ function chainRules(lists: ChainLists, recipients: readonly string[]): readonly 
   ];
 }
 
-const denyApprovalForAll: PolicyRule = {
-  name: "No setApprovalForAll",
-  method: "eth_signTransaction",
-  action: "DENY",
-  conditions: [onCalldata(setApprovalForAllAbi, "function_name", "setApprovalForAll")],
-};
-
 // Privy refuses an owner's export unless the wallet's policy allows it; a signer can never export.
 const ownerExport: PolicyRule = {
   name: "Owner export",
@@ -150,9 +143,11 @@ function eachChain(chains: readonly CeilingChain[]): Result<readonly ChainLists[
  * the one signing method it allows. On each enabled chain it allows: calls to the listed
  * contracts with at most the cap in native coin; an exact `approve` to a registry spender; a
  * native send or a token `transfer` to the rescue address or a saved address; a zero-value
- * transfer to the wallet itself, which cancels a stuck transaction. It denies
- * `setApprovalForAll` everywhere, and lets the owner, never a signer, export the key. Privy
- * denies everything else, typed data and `personal_sign` among it.
+ * transfer to the wallet itself, which cancels a stuck transaction. It lets the owner, never a
+ * signer, export the key. Privy denies everything else, typed data and `personal_sign` among it.
+ * It holds no `DENY` rule on calldata: Privy denies every transaction whose calldata such a rule
+ * cannot decode, plain sends among them (seen on a Privy app, 2026-10-07). So `setApprovalForAll`
+ * is refused by the allowed sets, and on a listed contract by the signer's hard rules.
  */
 export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingProblem> {
   const lists = eachChain(request.chains);
@@ -166,6 +161,6 @@ export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingPr
   const rules = lists.value.flatMap((item) => chainRules(item, recipients.value));
   return ok({
     chains: request.chains.map((item) => item.chain.ref),
-    rules: [...rules, denyApprovalForAll, ownerExport],
+    rules: [...rules, ownerExport],
   });
 }
