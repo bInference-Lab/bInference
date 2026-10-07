@@ -62,6 +62,9 @@ A test runs inside `withFork`, which hands it the fork:
   first: on BSC every anvil default account carries code that forwards the BNB it receives.
 - `fork.send` sends from an unlocked or impersonated account, mines a block and waits for the
   receipt. anvil answers a send before it mines it, so the hash alone proves nothing.
+- `fork.scanLogs` reads history up to the fork block from 48 Club's public node, through a
+  loopback endpoint that forwards reads only, since BNB Chain's nodes refuse `eth_getLogs`. Blocks
+  mined on the fork come from anvil.
 - Whatever the test changes on the fork is reverted when it ends, even when it fails.
 
 ```ts

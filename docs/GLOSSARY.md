@@ -174,7 +174,8 @@ new name here first, in the change that uses it.
 - **decision record**: a file in `docs/adr/` that records one decision (ADR).
 - **fork suite**: the tests in each package's `src/fork/`, run by `pnpm test:fork` and nightly in
   CI against an anvil fork of BSC at a block pinned 20 behind the head. Its **test account** is
-  anvil's first default account with its EIP-7702 code cleared.
+  anvil's first default account with its EIP-7702 code cleared; its **logs node** is a loopback
+  endpoint that reads history from a public node serving `eth_getLogs`.
 
 ### Files, commands and tools
 

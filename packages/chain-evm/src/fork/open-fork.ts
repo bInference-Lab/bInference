@@ -1,6 +1,13 @@
 import { bsc } from "@binference/chains";
 import { createManualClock } from "@binference/core/testing";
-import { type Address, type Hex, type PublicClient, type TransactionReceipt, toHex } from "viem";
+import {
+  type AbiEvent,
+  type Address,
+  type Hex,
+  type PublicClient,
+  type TransactionReceipt,
+  toHex,
+} from "viem";
 import { z } from "zod";
 import { type EvmChain, evmChainOf } from "../evm-chain.js";
 import { createEvmClient } from "../rpc/create-evm-client.js";
@@ -11,6 +18,7 @@ import type { RpcFailover } from "../rpc/rpc-call.js";
 import { createLoopbackHttp } from "../testing/loopback-http.js";
 import { callLoopback } from "./call-loopback.js";
 import type { ForkContext } from "./fork-context.js";
+import { type LogScan, type ScannedLogs, scanLogs } from "./scan-logs.js";
 
 /** A transaction a fork test sends from an unlocked or impersonated account. */
 interface ForkTransaction {
@@ -39,6 +47,8 @@ export interface Fork {
    * before it mines it, so the hash alone proves nothing.
    */
   send(transaction: ForkTransaction): Promise<TransactionReceipt>;
+  /** One contract's logs of one event: history from the logs node, later blocks from anvil. */
+  scanLogs<E extends AbiEvent>(scan: LogScan<E>): Promise<ScannedLogs<E>>;
 }
 
 const http = createLoopbackHttp();
@@ -49,8 +59,8 @@ const receiptTimeoutMs = 30_000;
 // estimated swap ran out of gas in about half the runs. A fixed limit above any swap's avoids it.
 const gasLimit = 5_000_000n;
 
-// anvil is on loopback, so the test's own timeout bounds a call and the failover's clock never
-// needs to move.
+// Both endpoints are on loopback, so the test's own timeout bounds a call and the failover's
+// clock never needs to move.
 function failoverTo(name: string, url: string): RpcFailover {
   return createRpcFailover({
     endpoints: [{ name, url }],
@@ -86,6 +96,11 @@ export async function openFork(context: ForkContext, signal: AbortSignal): Promi
   const chain = evmChainOf(bsc);
   const rpc = failoverTo("anvil-fork", context.rpcUrl);
   const client = createEvmClient({ chain, rpc, signal });
+  const history = createEvmClient({
+    chain,
+    rpc: failoverTo("logs-node", context.logsRpcUrl),
+    signal,
+  });
   const block = BigInt(context.block);
   const call = async (method: string, params: readonly JsonValue[]): Promise<JsonValue> =>
     callLoopback({ rpcUrl: context.rpcUrl, method, params }, signal);
@@ -98,5 +113,6 @@ export async function openFork(context: ForkContext, signal: AbortSignal): Promi
     client,
     call,
     send: async (transaction) => sendAndMine({ call, client }, transaction),
+    scanLogs: async (scan) => scanLogs({ history, fork: client, forkBlock: block }, scan),
   };
 }
