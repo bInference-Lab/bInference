@@ -69,6 +69,10 @@ A test runs inside `withFork`, which hands it the fork:
   mined on the fork come from anvil.
 - Whatever the test changes on the fork is reverted when it ends, even when it fails.
 
+Fork tests of other packages, such as the composed checks in `cli/src/fork/`, import the harness
+from `@binference/chain-evm/fork`: `withFork`, `Fork`, `bscToken` and `bscContract`. The subpath
+resolves to the source only, so tests alone import it.
+
 ```ts
 it("keeps the BNB sent to the test account", async ({ signal }) =>
   withFork(signal, async (fork) => {
