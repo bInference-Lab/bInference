@@ -1,17 +1,20 @@
-import type { EventEmitter } from "node:events";
+import { EventEmitter } from "node:events";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import type { ProtocolClient } from "@binference/client";
 import type { Clock } from "@binference/core";
-import { createSeededRandom } from "@binference/core/testing";
+import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   acquireFileLock,
   ensurePrivateFolder,
+  type FilePermissions,
   readLogLines,
   writePrivateFile,
 } from "@binference/platform";
+import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { connectEngine } from "../commands/connect-engine.js";
 import type { CliHost } from "../program/cli-host.js";
+import { runCli } from "../program/run-cli.js";
 
 /** A host whose output a test reads, with lines it can wait for. */
 export interface TestHost extends CliHost {
@@ -32,8 +35,8 @@ export interface TestMachine {
 const workerExecArgv = ["--conditions=@binference/source", "--import", "tsx"];
 // Each host draws its own random bytes.
 const seeds = { next: 17 };
-// The test folder is the test's own; its permissions do not matter here.
-const noPermissions = {
+/** Permissions that change nothing: a test's folder is its own, so its permissions do not matter. */
+export const noPermissions: FilePermissions = {
   restrictFolder: async () => Promise.resolve(),
   restrictFile: async () => Promise.resolve(),
 };
@@ -142,4 +145,45 @@ export async function engineLogLines(machine: TestMachine): Promise<readonly str
     signal: new AbortController().signal,
   });
   return read.ok ? read.value.lines : [];
+}
+
+/** What one command line did: its exit code and its output. */
+export interface CommandOutcome {
+  readonly code: number;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+/** Runs one `binference` command line on the machine to its end. */
+export async function runOn(
+  machine: TestMachine,
+  argv: readonly string[],
+  env: Readonly<Record<string, string>> = {},
+): Promise<CommandOutcome> {
+  const host = hostOn(machine, argv, env);
+  const code = await runCli(host);
+  return { code, stdout: host.stdout(), stderr: host.stderr() };
+}
+
+/** Machines a test file makes, each in a fresh temporary folder, and removes after each test. */
+export interface TestMachines {
+  /** A machine with an empty state folder and a manual clock at `nowMs`. */
+  create(nowMs: number): Promise<TestMachine>;
+  /** Removes every folder made since the last call. */
+  removeAll(): Promise<void>;
+}
+
+/** Makes the machines of one test file. */
+export function createTestMachines(): TestMachines {
+  const folders: TempFolder[] = [];
+  return {
+    async create(nowMs) {
+      const folder = await createTempFolder("bnf-");
+      folders.push(folder);
+      return { folder: folder.path, clock: createManualClock(nowMs), signals: new EventEmitter() };
+    },
+    async removeAll() {
+      await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
+    },
+  };
 }

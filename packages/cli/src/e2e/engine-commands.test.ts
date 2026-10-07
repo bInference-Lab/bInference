@@ -136,6 +136,23 @@ describe("binference start, status, health and logs end to end", () => {
     },
   );
 
+  it("asks for an agent when a command acts on one and the engine has none", slow, async () => {
+    const machine = await newMachine();
+    await writeTestConfig(machine.folder);
+    const engine = await start(machine);
+    await expect(run(machine, ["approval"])).resolves.toStrictEqual({
+      code: 1,
+      stdout: "",
+      stderr: "binference has no agent yet. Run `binference init` to make one.\n",
+    });
+    await expect(run(machine, ["approval", "--json"])).resolves.toMatchObject({
+      code: 1,
+      stdout: '{"error":{"code":"cli.no_agent"}}\n',
+    });
+    machine.signals.emit("SIGINT", "SIGINT");
+    await expect(engine.exit).resolves.toBe(0);
+  });
+
   it("refuses a second start on the same state folder while the first runs", slow, async () => {
     const machine = await newMachine();
     await writeTestConfig(machine.folder);

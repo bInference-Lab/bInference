@@ -1,5 +1,8 @@
-import { Command, InvalidArgumentError, type OptionValues } from "commander";
+import { type ProtocolId, protocolIdSchema } from "@binference/protocol";
+import { Argument, Command, InvalidArgumentError, Option, type OptionValues } from "commander";
 import {
+  type AgentFlags,
+  agentFlagsSchema,
   type CommonOptions,
   commonFlagsSchema,
   type LogsFlags,
@@ -10,11 +13,20 @@ import {
 } from "./cli-flags.schema.js";
 import type { CliHost } from "./cli-host.js";
 
+/** The approval mode `binference approval` sets. */
+export type ApprovalModeChoice = "manual" | "auto";
+
 /** The command that runs, with its options checked. */
 export type ChosenCommand =
   | { readonly name: "start"; readonly options: StartFlags }
   | { readonly name: "status" | "health"; readonly options: CommonOptions }
-  | { readonly name: "logs"; readonly options: LogsFlags };
+  | { readonly name: "logs"; readonly options: LogsFlags }
+  | {
+      readonly name: "approval";
+      readonly options: AgentFlags;
+      /** The mode to set; the command shows the mode when left out. */
+      readonly mode?: ApprovalModeChoice;
+    };
 
 /** What the program is built from. */
 export interface ProgramOptions {
@@ -40,11 +52,41 @@ function addSet(value: string, earlier: readonly string[]): readonly string[] {
   return [...earlier, value];
 }
 
+// An id of the protocol's kind, or a command line commander refuses with one message.
+function idOf<K extends "agent">(kind: K) {
+  return (value: string): ProtocolId<K> => {
+    const parsed = protocolIdSchema(kind).safeParse(value);
+    if (!parsed.success) {
+      throw new InvalidArgumentError(`${value} is not a ${kind} id.`);
+    }
+    return parsed.data;
+  };
+}
+
 function withCommon(command: Command, message: (key: string) => string): Command {
   return command
     .option("--json", message("option.json"))
     .option("--yes", message("option.yes"))
     .helpOption("-h, --help", message("option.help"));
+}
+
+function agentOption(message: (key: string) => string): Option {
+  return new Option("--agent <id>", message("option.agent")).argParser(idOf("agent"));
+}
+
+// Commands that act on one agent.
+function addAgentCommands(program: Command, options: ProgramOptions): void {
+  const { message, choose } = options;
+  withCommon(program.command("approval").description(message("command.approval")), message)
+    .addArgument(new Argument("[mode]", message("argument.mode")).choices(["manual", "auto"]))
+    .addOption(agentOption(message))
+    .action((mode: ApprovalModeChoice | undefined, flags: OptionValues) =>
+      choose({
+        name: "approval",
+        options: agentFlagsSchema.parse(flags),
+        ...(mode === undefined ? {} : { mode }),
+      }),
+    );
 }
 
 function addCommands(program: Command, options: ProgramOptions): void {
@@ -65,13 +107,14 @@ function addCommands(program: Command, options: ProgramOptions): void {
     .action((flags: OptionValues) =>
       choose({ name: "logs", options: logsFlagsSchema.parse(flags) }),
     );
+  addAgentCommands(program, options);
 }
 
 /**
- * Builds the `binference` command tree on commander: `start`, `status`, `health` and `logs`, each
- * with `--json` and `--yes`, and help in the owner's language. Commander never ends the process:
- * a parse error, help or the version throws a `CommanderError` for the caller to map, and its own
- * English error lines are never written.
+ * Builds the `binference` command tree on commander: `start`, `status`, `health`, `logs` and
+ * `approval`, each with `--json` and `--yes`, and help in the owner's language. Commander never
+ * ends the process: a parse error, help or the version throws a `CommanderError` for the caller
+ * to map, and its own English error lines are never written.
  */
 export function buildProgram(options: ProgramOptions): Command {
   const { message } = options;

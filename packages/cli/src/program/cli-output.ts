@@ -1,5 +1,6 @@
 import type { JsonValue } from "@binference/core";
 import type { Formatter, MessageValues } from "@binference/i18n";
+import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CliHost } from "./cli-host.js";
 
 /** How a command ends: 0 done, 1 an error, 2 refused by policy (ENGINEERING section 24.5). */
@@ -25,6 +26,11 @@ export interface CliOutput {
   fail(failure: CliFailure): void;
   /** A message that explains a failure, on standard error; nothing with `--json`. */
   explain(key: string, values?: MessageValues): void;
+  /**
+   * The engine refused a call with a protocol error code: its message from the i18n `error` area
+   * on standard error, or `{"error":{"code":...}}` on standard output with `--json`.
+   */
+  refuse(code: ProtocolErrorCode): void;
 }
 
 /** One failure: its code for scripts, its message for people. */
@@ -82,6 +88,13 @@ export function createCliOutput(options: CliOutputOptions): CliOutput {
     explain(key, values) {
       if (!isJson) {
         host.err(`${message(key, values)}\n`);
+      }
+    },
+    refuse(code) {
+      if (isJson) {
+        host.out(`${JSON.stringify({ error: { code } })}\n`);
+      } else {
+        host.err(`${formatter.message(`error.${code}`)}\n`);
       }
     },
   };

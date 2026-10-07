@@ -1,3 +1,4 @@
+import { type ProtocolId, protocolIdSchema } from "@binference/protocol";
 import { z } from "zod";
 
 /** What every command takes: `--json` for scripts, `--yes` for questions. */
@@ -18,6 +19,11 @@ export interface LogsFlags extends CommonOptions {
   readonly follow: boolean;
 }
 
+/** What a command on one agent takes: the agent `--agent` names, or the only one when left out. */
+export interface AgentFlags extends CommonOptions {
+  readonly agent?: ProtocolId<"agent">;
+}
+
 /** The most lines `logs --lines` takes. */
 export const maxLogLines = 10_000;
 
@@ -33,6 +39,12 @@ export const commonFlagsSchema: z.ZodType<CommonOptions> = z.object(commonShape)
 export const startFlagsSchema: z.ZodType<StartFlags> = z
   .object({ ...commonShape, set: z.array(z.string()).default([]) })
   .transform(({ set, ...common }) => ({ ...common, sets: set }));
+
+/** Parses the options commander read for a command on one agent. */
+export const agentFlagsSchema: z.ZodType<AgentFlags> = z.object({
+  ...commonShape,
+  agent: protocolIdSchema("agent").exactOptional(),
+});
 
 /** Parses the options commander read for `logs`; 100 lines unless `--lines` says otherwise. */
 export const logsFlagsSchema: z.ZodType<LogsFlags> = z.object({

@@ -23,6 +23,12 @@ while the engine is stopped; `--follow` keeps reading until a stop signal. Every
 `--json` and `--yes`, prints every word in the owner's language (messages in the i18n `cli`
 area), and exits 0 when done, 1 on an error and 2 when policy refuses.
 
+The commands on one agent (`approval`) act on the agent `--agent` names, or on the only agent the
+engine has; with several and none named they list the ids to choose from. A call the engine
+refuses prints the message of its protocol error code from the i18n `error` area, and exits 2 when
+a rule refused it (`auth.scope`, `auth.local_only`, `wallet.unfunded` and the others a rule
+decides).
+
 It also loads `config.json5`: one strict schema, four layers (defaults, the file, `BINFERENCE_*`
 variables, `--set` flags), issues that name each key's path and fix, secret sources read only when
 needed, and the config migrations behind `binference check --fix`.
@@ -67,6 +73,7 @@ The reference of every key, generated from the schema, is
 | `binference status`                  | The engine's state, release, agents and health signals              |
 | `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |
 | `binference logs [-n N] [--follow]`  | The engine log's last lines, then new ones until Ctrl+C             |
+| `binference approval [manual\|auto]` | Shows the agent's approval mode, or sets it                         |
 
 In development, run the source: `node --conditions=@binference/source --import tsx
 packages/cli/src/main.ts status`. The store workers get the same Node options.

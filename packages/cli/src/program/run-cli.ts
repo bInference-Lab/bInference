@@ -2,6 +2,7 @@ import { BinferenceError } from "@binference/core";
 import { createFormatter, type Formatter } from "@binference/i18n";
 import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
+import { runApproval } from "../commands/approval-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runStart } from "../commands/start-command.js";
@@ -11,6 +12,7 @@ import { loadConfig } from "../config/load-config.js";
 import type { CliHost } from "./cli-host.js";
 import { type CliOutput, createCliOutput, type ExitCode } from "./cli-output.js";
 import { buildProgram, type ChosenCommand } from "./cli-program.js";
+import type { CommandRun } from "./command-run.js";
 import { systemDefaults } from "./system-defaults.js";
 
 // Commander's codes for a help or version request it already answered.
@@ -56,26 +58,29 @@ function reportFault(output: CliOutput, error: ErrorOptions["cause"]): ExitCode 
   return 1;
 }
 
-/** What a chosen command runs with. */
-interface CommandRun {
-  readonly host: CliHost;
-  readonly output: CliOutput;
-  readonly formatter: Formatter;
-}
+type Runner<N extends ChosenCommand["name"]> = (
+  run: CommandRun,
+  chosen: Extract<ChosenCommand, { readonly name: N }>,
+) => Promise<ExitCode>;
 
-async function runChosen(chosen: ChosenCommand, context: CommandRun): Promise<ExitCode> {
-  const { host, output, formatter } = context;
-  if (chosen.name === "start") {
-    return runStart(host, output, chosen.options.sets);
-  }
-  if (chosen.name === "logs") {
-    return runLogs(host, output, chosen.options);
-  }
-  if (chosen.name === "status") {
+// Each command's entry, by the name commander chose.
+const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
+  start: async ({ host, output }, chosen) => runStart(host, output, chosen.options.sets),
+  status: async ({ host, output, formatter }) => {
     const message = (key: string): string => formatter.message(`cli.${key}`);
     return runStatus(host, output, (signal) => signalName(signal, message));
-  }
-  return runHealth(host, output);
+  },
+  health: async ({ host, output }) => runHealth(host, output),
+  logs: async ({ host, output }, chosen) => runLogs(host, output, chosen.options),
+  approval: runApproval,
+};
+
+async function runChosen<N extends ChosenCommand["name"]>(
+  chosen: Extract<ChosenCommand, { readonly name: N }>,
+  context: CommandRun,
+): Promise<ExitCode> {
+  const runner: Runner<N> = runners[chosen.name];
+  return runner(context, chosen);
 }
 
 async function run(host: CliHost, chosen: ChosenCommand, formatter: Formatter): Promise<ExitCode> {

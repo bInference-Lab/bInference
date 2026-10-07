@@ -37,6 +37,7 @@ import { WebSocket } from "ws";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
 import { type ComposedEngine, composeEngine, type EngineParts } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
+import { createEngineOperations } from "./engine-operations.js";
 
 /** The secrets of the CLI token, with every scope, and of the MCP token, with read and propose. */
 export const skeletonSecrets: Readonly<Record<"cli" | "mcp", string>> = {
@@ -137,7 +138,8 @@ export interface SkeletonOptions {
 
 /**
  * Composes the engine on the profile parts with its agent and tokens stored: the fake chain and
- * venue, a quote simulator and a manual clock. Nothing listens yet.
+ * venue, a quote simulator, a manual clock and `engine/status` with no health signal. Nothing
+ * listens yet.
  */
 export async function composeSkeleton(
   parts: EngineParts,
@@ -170,6 +172,13 @@ export async function composeSkeleton(
     paperBalances: [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: { locale: "en", timezone: "UTC" },
+    handlers: createEngineOperations({
+      agents: parts.stores.agents,
+      version: "2026.10.0",
+      state: () => "ready",
+      health: () => [],
+      stop: () => undefined,
+    }),
     ...(options.telegram === undefined ? {} : { telegram: options.telegram }),
     clock,
     random: createSeededRandom(7),

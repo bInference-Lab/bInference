@@ -1,7 +1,7 @@
 import { createConnection } from "node:net";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
 import { BinferenceError, createDeadline } from "@binference/core";
-import { operations } from "@binference/protocol";
+import { operations, type ProtocolErrorCode, protocolErrorCodes } from "@binference/protocol";
 import { WebSocket } from "ws";
 import { cliTokenFile, readCliToken } from "../compose/cli-token.js";
 import { engineEndpoint, platformOf } from "../compose/engine-locations.js";
@@ -113,6 +113,47 @@ function reportUnreachable(
   return 1;
 }
 
+// Codes a call meets when its connection's sign-in ends; the CLI asks for a new start for these.
+const signInCodes: ReadonlySet<string> = new Set([
+  "auth.required",
+  "auth.invalid",
+  "auth.expired",
+  "auth.revoked",
+  "auth.origin",
+]);
+const callCodes: ReadonlySet<string> = new Set(
+  protocolErrorCodes.filter((code) => !signInCodes.has(code)),
+);
+// The engine refused on a rule the owner can change, so the command exits 2 (ENGINEERING 24.5).
+const policyCodes: ReadonlySet<ProtocolErrorCode> = new Set([
+  "auth.scope",
+  "auth.local_only",
+  "agent.frozen",
+  "agent.paper_only",
+  "agent.disclaimer",
+  "wallet.unfunded",
+  "limit.needs_admin",
+  "limit.over_ceiling",
+]);
+
+function isCallCode(code: string): code is ProtocolErrorCode {
+  return callCodes.has(code);
+}
+
+/**
+ * Prints why a call failed and answers the exit code: a protocol code the engine refused the call
+ * with gets its message from the i18n `error` area, and exits 2 when a rule refused it; a lost
+ * connection or a sign-in that ended prints why the CLI could not reach the engine.
+ */
+function reportCallFailure(output: CliOutput, error: ErrorOptions["cause"]): ExitCode {
+  const code = error instanceof BinferenceError ? error.code : "unexpected";
+  if (!isCallCode(code)) {
+    return reportUnreachable(output, failureOf(error));
+  }
+  output.refuse(code);
+  return policyCodes.has(code) ? 2 : 1;
+}
+
 /**
  * Runs one call of a command against the engine: connects, calls, closes. Within 15 seconds, by
  * the host's clock. Prints why when the engine cannot be reached or the call fails.
@@ -135,7 +176,7 @@ export async function withEngine(
     try {
       return await use(connection.client, deadline.signal);
     } catch (error) {
-      return reportUnreachable(output, failureOf(error));
+      return reportCallFailure(output, error);
     } finally {
       connection.client.close();
     }

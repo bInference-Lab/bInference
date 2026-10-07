@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createManualClock } from "@binference/core/testing";
 import { messages } from "@binference/i18n";
+import type { Command } from "commander";
 import { describe, expect, it } from "vitest";
 import { hostOn, type TestMachine } from "../e2e/test-host.js";
 import { buildProgram } from "./cli-program.js";
@@ -16,6 +17,13 @@ const machine: TestMachine = {
 };
 
 const zh = (key: string): string => messages.zh[`cli.${key}`] ?? `missing ${key}`;
+
+// The commands that run, not the groups that hold them, such as `wallet list`.
+function leafCommands(command: Command): readonly Command[] {
+  return command.commands.flatMap((child) =>
+    child.commands.length === 0 ? [child] : leafCommands(child),
+  );
+}
 
 async function run(argv: readonly string[], env: Readonly<Record<string, string>> = {}) {
   const host = hostOn(machine, argv, env);
@@ -31,13 +39,15 @@ describe("the binference command tree", () => {
       host: { out: () => undefined, err: () => undefined },
       choose: () => undefined,
     });
-    expect(program.commands.map((command) => command.name())).toStrictEqual([
+    const commands = leafCommands(program);
+    expect(commands.map((command) => command.name())).toStrictEqual([
       "start",
       "status",
       "health",
       "logs",
+      "approval",
     ]);
-    for (const command of program.commands) {
+    for (const command of commands) {
       const flags = command.options.map((option) => option.long);
       expect(flags).toContain("--json");
       expect(flags).toContain("--yes");
@@ -48,7 +58,7 @@ describe("the binference command tree", () => {
     const english = await run(["--help"]);
     expect(english.code).toBe(0);
     expect(english.stdout).toContain("Usage: binference");
-    expect(english.stdout).toContain("Show whether the engine runs, its agents and its health");
+    expect(english.stdout).toContain("Show whether the engine runs, its agents and its");
     const chinese = await run(["status", "--help"], { LANG: "zh_CN.UTF-8" });
     expect(chinese.code).toBe(0);
     expect(chinese.stdout).toContain(`${zh("help.usage")} binference status [options]`);
