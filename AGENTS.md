@@ -57,7 +57,9 @@ first.
 - Expected outcomes return `Result`; faults throw `BinferenceError` with a dotted code.
 - An outside service (a venue, custody, a chat app, a data feed) is reached through its official
   SDK when one fits, at its latest release and the way its docs recommend; endpoints and addresses
-  come from its official docs ([docs/ENGINEERING.md](docs/ENGINEERING.md) section 17).
+  come from its official docs. Its client handles every error, limit and edge case those docs
+  list, and follows their performance guidance ([docs/ENGINEERING.md](docs/ENGINEERING.md)
+  section 17).
 
 ## Comments
 

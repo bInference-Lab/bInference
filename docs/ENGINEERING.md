@@ -730,6 +730,13 @@ Decided in [decision 0033](DECISIONS.md#d0033).
   client names in its PR each official package it checked and why it did not fit. Endpoints,
   contract addresses and parameters come from the official docs, never from memory. Enforcer:
   `check:pr` (the dependency section); `review-diff`.
+- **Rule:** a client of an outside service handles everything its official docs list: every
+  documented error code becomes a typed outcome or a fault that names the code (never the
+  service's free text), every documented limit and edge case (rate limits, request expiry, list
+  sizes, pagination, retries and idempotency) has a test, and the docs' performance guidance is
+  followed. A behavior seen on the live service that the docs do not describe is pinned by a test
+  of the fake and noted where the client relies on it. Enforcer: tests of each documented code and
+  limit; `review-diff`.
 - **Rule:** a package declares every dependency it imports. Enforcer: knip (unlisted dependencies)
   and pnpm's isolated `node_modules`.
 - **Rule:** model SDK clients are built only in `runtime/src/providers/`, with every option set
