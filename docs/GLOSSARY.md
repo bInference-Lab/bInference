@@ -127,6 +127,8 @@ new name here first, in the change that uses it.
   the simulation must match the intent: exactly the input leaves, at least the minimum out arrives,
   no other asset leaves or arrives, and no allowance is set but the plan's own approval.
 - **registry**: the verified contract addresses in `@binference/chains`.
+- **hook allowlist**: per chain, the pool hooks a route may pass through. A route through a
+  PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped, aggregator routes too.
 
 ### Chat and the agent
 
