@@ -5,6 +5,7 @@ import { readTextFile } from "@binference/platform";
 import { z } from "zod";
 import { runCli } from "./program/run-cli.js";
 import { createSystemClock } from "./runtime/system-clock.js";
+import { createSystemHttp } from "./runtime/system-http.js";
 import { createSystemRandom } from "./runtime/system-random.js";
 
 // The package's own manifest sits one folder up from both src/ and dist/.
@@ -14,6 +15,7 @@ const version = read.ok
   ? z.object({ version: z.string() }).parse(JSON.parse(read.value)).version
   : "unknown";
 
+const http = createSystemHttp();
 process.exitCode = await runCli({
   argv: process.argv.slice(2),
   env: process.env,
@@ -21,8 +23,10 @@ process.exitCode = await runCli({
   err: (text) => process.stderr.write(text),
   clock: createSystemClock(),
   random: createSystemRandom(),
+  http,
   signals: process,
   version,
   // Store workers run with this process's Node options, such as a TypeScript loader.
   workerExecArgv: process.execArgv,
 });
+await http.close();

@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import type { ProtocolClient } from "@binference/client";
-import type { Clock } from "@binference/core";
+import { BinferenceError, type Clock, type Http } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   acquireFileLock,
@@ -70,6 +70,18 @@ function lineWatcher() {
   };
 }
 
+// No test reaches the network: every outside service a test needs answers through its own fake.
+const offline: Http = {
+  request: async () =>
+    Promise.reject(
+      new BinferenceError({
+        code: "http.unreachable",
+        message: "Tests reach no outside service.",
+        retryable: true,
+      }),
+    ),
+};
+
 /** A host for one `binference` command line on a test machine. */
 export function hostOn(
   machine: TestMachine,
@@ -90,6 +102,7 @@ export function hostOn(
     },
     clock: machine.clock,
     random: createSeededRandom((seeds.next += 1)),
+    http: offline,
     signals: machine.signals,
     version: "2026.10.0-test",
     workerExecArgv,

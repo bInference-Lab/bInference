@@ -38,6 +38,7 @@
     "grammy": "catalog:",
     "json5": "catalog:",
     "tslog": "catalog:",
+    "undici": "catalog:",
     "ws": "catalog:",
     "zod": "catalog:"
   },

@@ -437,6 +437,9 @@ importers:
       tslog:
         specifier: 'catalog:'
         version: 5.2.0
+      undici:
+        specifier: 'catalog:'
+        version: 8.11.2
       ws:
         specifier: 'catalog:'
         version: 8.22.0

@@ -1,4 +1,4 @@
-import type { Clock, Random } from "@binference/core";
+import type { Clock, Http, Random } from "@binference/core";
 import type { SignalEvents } from "@binference/platform";
 
 /**
@@ -16,6 +16,8 @@ export interface CliHost {
   readonly err: (text: string) => void;
   readonly clock: Clock;
   readonly random: Random;
+  /** Reaches outside services, such as Privy's API. */
+  readonly http: Http;
   /** Where stop signals arrive: `process` in the entry file. */
   readonly signals: SignalEvents;
   /** The binference release, such as `2026.10.0`. */
