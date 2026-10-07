@@ -127,6 +127,35 @@ export interface ConfirmationsTable {
   expires_at: number;
 }
 
+/** `txs`: one row per signed transaction of a step; the nonce is unique among live states. */
+export interface TxsTable {
+  id: string;
+  intent_id: string;
+  step: number;
+  chain: string;
+  account: string;
+  nonce: number;
+  state: string;
+  raw: string | null;
+  hash: string | null;
+  gas_price: string | null;
+  relays: string | null;
+  supersedes: string | null;
+  block_number: number | null;
+  receipt: string | null;
+  signed_at: number | null;
+  sent_at: number | null;
+  included_at: number | null;
+  final_at: number | null;
+}
+
+/** `nonces`: per account, one past the highest nonce the wallet queue gave. */
+interface NoncesTable {
+  account: string;
+  next_nonce: number;
+  changed_at: number;
+}
+
 /** `ledger`: append-only; `seq` is given by the adapter, which reads the last one first. */
 export interface LedgerTable {
   seq: number;
@@ -219,4 +248,6 @@ export interface EngineTables {
   devices: DevicesTable;
   pair_codes: PairCodesTable;
   config_journal: ConfigJournalTable;
+  txs: TxsTable;
+  nonces: NoncesTable;
 }

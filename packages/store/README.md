@@ -23,7 +23,8 @@ on worker threads, so no query blocks the main thread:
   append-only and chained: an insert must take the next `seq` and the last entry's hash, and no
   row changes or goes. A full-text index keeps the notes searchable.
 - **SQLite adapters of the store ports.** The engine declares its store ports (`IntentStore`,
-  `LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore`, `ConfigJournal`);
+  `LedgerStore`, `IdempotencyStore`, `InboxStore`, `AccessStore`, `AgentStore`, `ConfigJournal`,
+  `TransactionStore`);
   each adapter here runs one store task per call and passes the port's contract suite.
 - **Maintenance.** SQLite's integrity and foreign key checks, and compact copies with
   `VACUUM INTO`.
@@ -48,6 +49,7 @@ on worker threads, so no query blocks the main thread:
 | `createSqliteAccessStore`      | Client tokens, console devices and pairing codes                     |
 | `createSqliteAgentStore`       | Agents with their limits and approval modes                          |
 | `createSqliteConfigJournal`    | The config journal                                                   |
+| `createSqliteTransactionStore` | Each wallet's signed transactions and the nonces the queue gave      |
 | `StoreHost`                    | What an adapter sends its tasks to: a `DatabaseHandle`               |
 
 Error codes start with `store.`: `store.newer_schema` when the file is newer than the build,

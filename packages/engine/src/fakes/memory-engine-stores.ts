@@ -6,6 +6,7 @@ import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
 import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryIntentStore } from "./memory-intent-store.js";
 import { createMemoryLedgerStore, type MemoryLedgerStore } from "./memory-ledger-store.js";
+import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 
 /** Every engine store port, in memory, over one shared ledger that tests can also append to. */
 export interface MemoryEngineStores extends EngineStores {
@@ -27,5 +28,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     access: createMemoryAccessStore(),
     agents: createMemoryAgentStore(),
     configJournal: createMemoryConfigJournal(),
+    transactions: createMemoryTransactionStore(),
   };
 }

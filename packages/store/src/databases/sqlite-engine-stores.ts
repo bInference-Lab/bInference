@@ -7,6 +7,7 @@ import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
 import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
 import type { StoreHost } from "../tasks/store-host.js";
+import { createSqliteTransactionStore } from "../transactions/sqlite-transaction-store.js";
 
 /**
  * Every engine store port on `engine.sqlite`, for the composition root: pass the handle that
@@ -21,5 +22,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     access: createSqliteAccessStore(host),
     agents: createSqliteAgentStore(host),
     configJournal: createSqliteConfigJournal(host),
+    transactions: createSqliteTransactionStore(host),
   };
 }

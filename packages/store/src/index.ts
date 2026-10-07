@@ -15,3 +15,4 @@ export type { ForeignKeyProblem, IntegrityReport } from "./sqlite/integrity-repo
 export type { VacuumCopy, VacuumOutcome } from "./sqlite/vacuum-into.js";
 export type { StoreHost } from "./tasks/store-host.js";
 export type { StoreTask, TaskAccess, TaskRunner } from "./tasks/store-task.js";
+export { createSqliteTransactionStore } from "./transactions/sqlite-transaction-store.js";

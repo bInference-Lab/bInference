@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { accountRefSchema } from "@binference/chain";
 import { type Id, idSchema } from "@binference/core";
 import { type IntentDraft, sha256Hex, type TokenRecord } from "@binference/engine";
 import { afterEach, describe, expect, it } from "vitest";
@@ -81,6 +82,10 @@ describe("the SQLite engine stores", () => {
       result: 1,
     });
     await expect(stores.agents.list(call)).resolves.toHaveLength(1);
+    const account = accountRefSchema.parse("fake:1:0x0000000a");
+    await expect(
+      stores.transactions.nextNonce({ account, chainNonce: 3, atMs: 5 }, call),
+    ).resolves.toStrictEqual({ nonce: 3, refillsGap: false });
   });
 
   it("lets exactly one of two racing moves win through the one writer", workerTest, async () => {

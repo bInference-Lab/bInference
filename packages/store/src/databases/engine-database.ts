@@ -6,6 +6,7 @@ import { inboxTasks } from "../ingress/inbox-tasks.js";
 import { intentTasks } from "../intents/intent-tasks.js";
 import { ledgerTasks } from "../ledger/ledger-tasks.js";
 import { engineMigrations } from "../migrations/engine/engine-migrations.js";
+import { transactionTasks } from "../transactions/sqlite-transaction-store.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
 /** `engine.sqlite`: money, safety, settings and access. `synchronous=FULL`, for money. */
@@ -21,6 +22,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...accessTasks,
     ...agentTasks,
     ...configJournalTasks,
+    ...transactionTasks,
   ],
 };
 
