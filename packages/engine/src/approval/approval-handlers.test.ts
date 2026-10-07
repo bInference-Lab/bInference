@@ -1,3 +1,4 @@
+import { type ApprovalModeNow, type AutoModeGrant, checkAutoModeGrant } from "@binference/chain";
 import { err, type Id } from "@binference/core";
 import type { IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -13,7 +14,6 @@ import {
 import type { AgentStore, IntentStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { autoModeGrantOf } from "./auto-mode-grant-of.js";
-import { type AutoModeGrant, checkAutoModeGrant } from "./auto-mode-grant.js";
 import { testSnapshot } from "./test-snapshot.js";
 
 const live = { signal: new AbortController().signal };
@@ -42,6 +42,12 @@ async function storedMode(test: TestEngine): Promise<ApprovalModeRecord> {
     throw new Error("Expected the test agent.");
   }
   return settings.approvalMode;
+}
+
+// The agent's approval mode as the signer reads it in a signing request.
+async function modeNow(test: TestEngine): Promise<ApprovalModeNow> {
+  const { agentId, mode, version } = await storedMode(test);
+  return { agent: agentId, mode, version };
 }
 
 async function grantOf(test: TestEngine, intent: Id<"int">): Promise<AutoModeGrant> {
@@ -213,10 +219,10 @@ describe("a switch to manual", () => {
       feePerGasNativeBase: 1n,
       nowMs: test.clock.now(),
     };
-    const before = await storedMode(test);
+    const before = await modeNow(test);
     expect(checkAutoModeGrant(grant, { ...signing, approvalMode: before }).ok).toBe(true);
     expectOk(await setMode(test, "manual", braking));
-    const after = await storedMode(test);
+    const after = await modeNow(test);
     expect(checkAutoModeGrant(grant, { ...signing, approvalMode: after })).toStrictEqual(
       err("manual"),
     );

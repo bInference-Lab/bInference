@@ -60,12 +60,20 @@ export type {
   AuthorizeInputWire,
   SignerWallet,
 } from "./signing/authorize-input.js";
-export { approvalModeNowSchema, autoModeGrantSchema } from "./signing/auto-mode-grant.js";
+export {
+  approvalModeNowSchema,
+  autoModeGrantSchema,
+  autoModeKinds,
+  checkAutoModeGrant,
+} from "./signing/auto-mode-grant.js";
 export type {
   ApprovalModeNow,
   ApprovalModeNowWire,
   AutoModeGrant,
+  AutoModeGrantCheck,
+  AutoModeGrantProblem,
   AutoModeGrantWire,
+  AutoModeKind,
 } from "./signing/auto-mode-grant.js";
 export type { SignerProcess } from "./signing/ports.js";
 export { privyRequestSchema } from "./signing/privy-request.js";

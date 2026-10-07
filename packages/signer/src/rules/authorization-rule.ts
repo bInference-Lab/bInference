@@ -1,8 +1,9 @@
-import type {
-  ApprovalModeNow,
-  AutoModeGrant,
-  AdvanceAuthorization,
-  SignAuthorization,
+import {
+  type AdvanceAuthorization,
+  type ApprovalModeNow,
+  type AutoModeGrant,
+  checkAutoModeGrant,
+  type SignAuthorization,
 } from "@binference/chain";
 import type { RuleView } from "./hard-rule.js";
 
@@ -15,26 +16,30 @@ function advanceHolds(authorization: AdvanceAuthorization, nowMs: number): boole
   );
 }
 
-// The auto test's parts the transaction shows (intent-states spec, section 5): never a send, and
-// a fee per gas at most the network fee cap. A cancel moves nothing, so its fee needs no cap.
-function autoTestHolds(view: RuleView, networkFeeCap: bigint): boolean {
+// The fee the auto grant caps, from the auto test's parts the transaction shows (intent-states
+// spec, section 5): never a send, and a fee per gas the grant's cap can judge. A cancel moves
+// nothing, so its fee needs no cap. `undefined` when the transaction fails those parts.
+function cappedFee(view: RuleView): { readonly feePerGasNativeBase?: bigint } | undefined {
   const { step } = view.input;
   if (step.replaces?.kind === "cancel") {
-    return true;
+    return {};
   }
   const fee = view.transaction.feePerGas;
-  return step.action.kind !== "send" && fee !== undefined && fee <= networkFeeCap;
+  return step.action.kind === "send" || fee === undefined
+    ? undefined
+    : { feePerGasNativeBase: fee };
 }
 
+// The grant holds as `checkAutoModeGrant` of `@binference/chain` reads it: the engine's tests hold
+// the grants it makes to the same check.
 function autoHolds(view: RuleView, grant: AutoModeGrant, current: ApprovalModeNow): boolean {
-  return (
-    grant.intent === view.input.intent &&
-    current.agent === grant.agent &&
-    current.mode === "auto" &&
-    current.version === grant.modeVersion &&
-    view.nowMs < grant.expiresAtMs &&
-    autoTestHolds(view, grant.networkFeeCapNativeBase)
-  );
+  const fee = cappedFee(view);
+  if (fee === undefined) {
+    return false;
+  }
+  const { intent, termsHash } = view.input;
+  const check = { intent, termsHash, approvalMode: current, nowMs: view.nowMs, ...fee };
+  return checkAutoModeGrant(grant, check).ok;
 }
 
 const termsHashOf = (authorization: SignAuthorization): string =>

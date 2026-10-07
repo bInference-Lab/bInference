@@ -1,3 +1,4 @@
+import { type AutoModeGrant, type AutoModeKind, autoModeKinds } from "@binference/chain";
 import { stableJson } from "@binference/core";
 import { isFillAuthorization } from "../intents/authorization.js";
 import { cardExpiresAt } from "../intents/card-rules.js";
@@ -5,7 +6,6 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentKind } from "../intents/intent-kind.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { type Sha256Hex, sha256Hex } from "../records/sha256-hex.js";
-import { type AutoModeGrant, type AutoModeKind, autoModeKinds } from "./auto-mode-grant.js";
 
 const grantKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(autoModeKinds);
 

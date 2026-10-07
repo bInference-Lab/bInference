@@ -1,10 +1,16 @@
-import { accountRefSchema, chainRefSchema, type Venue } from "@binference/chain";
+import {
+  accountRefSchema,
+  type ApprovalModeNow,
+  type AutoModeGrant,
+  chainRefSchema,
+  checkAutoModeGrant,
+  type Venue,
+} from "@binference/chain";
 import { createFakeVenue, fakeApprovalData, fakeDraft } from "@binference/chain/testing";
 import { mulDiv } from "@binference/core";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { ApprovalModeRecord } from "../agents/approval-mode-record.js";
 import type { ApprovalMode } from "../intents/auto-mode.js";
 import {
   expectOk,
@@ -24,7 +30,6 @@ import {
   testCallers,
 } from "../operations/test-engine.js";
 import { autoModeGrantOf } from "./auto-mode-grant-of.js";
-import { type AutoModeGrant, checkAutoModeGrant } from "./auto-mode-grant.js";
 import { testSnapshot } from "./test-snapshot.js";
 
 // Spec 6, invariant 8, on the whole engine: the protocol call, the money path, the policy, the
@@ -158,12 +163,14 @@ function mayRunAlone(c: Case): boolean {
   );
 }
 
-async function modeOf(test: TestEngine): Promise<ApprovalModeRecord> {
+// The agent's approval mode as the signer reads it in a signing request.
+async function modeOf(test: TestEngine): Promise<ApprovalModeNow> {
   const settings = await test.stores.agents.get(testAgent, { signal: AbortSignal.timeout(1_000) });
   if (settings === undefined) {
     throw new Error("Expected the test agent.");
   }
-  return settings.approvalMode;
+  const { agentId, mode, version } = settings.approvalMode;
+  return { agent: agentId, mode, version };
 }
 
 /** What one proposal showed: whether the auto mode ran it, and every rule it broke. */

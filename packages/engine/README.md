@@ -148,7 +148,6 @@ layout of Koinly's universal import, which tax tools read.
 | `createSimulationCheck`, `SimulationCheckOptions` (subpath)      | The simulate step: a quote's steps run and checked              |
 | `checkEffects`, `EffectBounds`, `SimulationMismatch` (subpath)   | Checks a simulation and names the first check it fails          |
 | `autoModeGrantOf`, `autoModeTermsHash` (subpath `approval`)      | The auto grant of a stored intent, and the terms it binds       |
-| `AutoModeGrant`, `autoModeGrantSchema`, `checkAutoModeGrant`     | What the signer checks for an auto trade, and its check         |
 | `autoReceiptLine`, `AutoSettlement` (subpath)                    | The receipt of a trade the auto mode ran, paper fills too       |
 | `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
 | `ModelBilling`, `ModelCharge`                                    | Pays for model calls and says what an agent may still spend     |

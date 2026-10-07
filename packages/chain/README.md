@@ -22,6 +22,7 @@ can check what they move. Nothing here names a chain or a venue.
 | `Signer`, `SignRequest`                                               | Custody: signs an approved intent's transaction for a wallet     |
 | `SignerProcess`, `AuthorizeInput`, `authorizeInputSchema`             | The signer's `authorize` request (spec 5, 5.1), and its JSON     |
 | `SignStep`, `SignAuthorization`, `AutoModeGrant`, `AllowedTargets`    | The step, the approval and the targets the hard rules check      |
+| `checkAutoModeGrant`, `AutoModeGrantProblem`, `autoModeKinds`         | Whether an auto grant authorizes a signature now, and why not    |
 | `SignerRefusal`                                                       | Why the signer refused: the request, or a hard rule by number    |
 | `PrivyRequest`, `privyRequestSchema`, `authorizationPayload`          | A Privy request, and the bytes its authorization signature signs |
 | `PriceSource`, `UsdPrice`                                             | An asset's USD price now, in micro-dollars per base unit         |

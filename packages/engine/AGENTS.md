@@ -88,9 +88,10 @@ Rules for this package:
   the mode's version, is journaled, pushed as `config/changed` and announced as the
   `notice.approvalMode` notice. The auto test reads the agent's settings from the snapshot of the
   move to `simulated`, never from the start of the run. An auto grant holds for one intent, its
-  terms hash and the mode version that authorized it, up to the network fee cap, until its expiry;
-  a change to its shape changes its schema, its check and the signer's hard rule 5 together. Its
-  property test (`auto-mode.property.test.ts`) runs the whole engine.
+  terms hash and the mode version that authorized it, up to the network fee cap, until its expiry.
+  Its type, schema and check live in `@binference/chain`, which the signer's hard rule 5 runs; the
+  engine makes grants (`autoModeGrantOf`) and its tests hold them to that check. Its property test
+  (`auto-mode.property.test.ts`) runs the whole engine.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and
