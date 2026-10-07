@@ -56,15 +56,17 @@ describe("the missing parts", () => {
       "prices",
       "wallets",
       "simulator",
-      "executor",
+      "network",
       "positions",
     ]);
   });
 
-  it("sends no live intent and stores no position", async () => {
-    await expect(parts.executor.take(intent, live())).rejects.toMatchObject({
-      code: "wallet.custody_down",
-      details: { missing: "executor" },
+  it("reaches no host and stores no position", async () => {
+    const request = { method: "POST", url: "https://rpc.48.club", signal: live().signal } as const;
+    await expect(parts.http.request(request)).rejects.toMatchObject({
+      code: "http.unreachable",
+      retryable: true,
+      details: { missing: "network" },
     });
     await expect(parts.positions.positions({} as never, live())).rejects.toMatchObject({
       code: "internal.error",
@@ -84,5 +86,7 @@ describe("the missing parts", () => {
     await expect(parts.simulator.simulate(intent, {} as never, stopped())).rejects.toThrow(
       "stopped",
     );
+    const request = { method: "GET", url: "https://rpc.48.club", ...stopped() } as const;
+    await expect(parts.http.request(request)).rejects.toThrow("stopped");
   });
 });

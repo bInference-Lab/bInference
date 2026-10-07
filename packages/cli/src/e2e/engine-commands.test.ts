@@ -95,20 +95,22 @@ describe("binference start, status, health and logs end to end", () => {
         "event_loop",
         "memory",
         "logs",
+        "executor",
         "custody",
         "prices",
         "wallets",
         "simulator",
-        "executor",
+        "network",
         "positions",
       ]);
       expect(answer.health.slice(2)).toStrictEqual([
         { signal: "logs", state: "ok" },
+        { signal: "executor", state: "ok" },
         { signal: "custody", state: "fail" },
         { signal: "prices", state: "fail" },
         { signal: "wallets", state: "fail" },
         { signal: "simulator", state: "fail" },
-        { signal: "executor", state: "fail" },
+        { signal: "network", state: "fail" },
         { signal: "positions", state: "fail" },
       ]);
 

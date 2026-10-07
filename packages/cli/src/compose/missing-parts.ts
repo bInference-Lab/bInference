@@ -1,25 +1,26 @@
 import type { PriceSource, Signer } from "@binference/chain";
-import { BinferenceError, err } from "@binference/core";
-import type { Executor, PositionStore, Simulator, WalletFactsSource } from "@binference/engine";
+import { BinferenceError, err, type Http } from "@binference/core";
+import type { PositionStore, Simulator, WalletFactsSource } from "@binference/engine";
 
 /** A part the self-hosted root cannot fill yet; `status` shows each one as a failed signal. */
-type MissingPart = "custody" | "prices" | "wallets" | "simulator" | "executor" | "positions";
+type MissingPart = "custody" | "prices" | "wallets" | "simulator" | "network" | "positions";
 
 /**
  * The parts the self-hosted root has no adapter for yet: custody through the owner's Privy app,
- * Chainlink prices, the wallet facts, the transaction simulator, the executor that sends live
- * intents and the stored positions. Each stands in as a missing
- * part that refuses: custody holds no wallet and signs nothing, every asset has no price, no agent
- * has a wallet. No missing part makes up a balance, a price or a signature, so nothing moves money
- * and nothing fills on paper. They hold nothing, so they never pass their ports' contract checks
- * for a known wallet or asset; their own test proves each refusal.
+ * Chainlink prices, the wallet facts, the transaction simulator, outbound HTTP to the chains' RPCs
+ * and relays, and the stored positions. Each stands in as a missing part that refuses: custody
+ * holds no wallet and signs nothing, every asset has no price, no agent has a wallet, no request
+ * leaves the machine. No missing part makes up a balance, a price or a signature, so nothing moves
+ * money and nothing fills on paper. They hold nothing, so they never pass their ports' contract
+ * checks for a known wallet or asset; their own test proves each refusal.
  */
 export interface MissingParts {
   readonly custody: Signer;
   readonly prices: PriceSource;
   readonly wallets: WalletFactsSource;
   readonly simulator: Simulator;
-  readonly executor: Executor;
+  /** Outbound HTTP: every request fails at once, as one that reaches no host. */
+  readonly http: Http;
   readonly positions: PositionStore;
   /** Every part above that is missing, for the health signals. */
   readonly missing: readonly MissingPart[];
@@ -44,13 +45,22 @@ async function refuse(
   return Promise.reject(missing(part, "internal.error"));
 }
 
-// Live sending and stored positions: neither has an adapter yet.
-function missingMoneyParts(): Pick<MissingParts, "executor" | "positions"> {
+// Outbound HTTP and stored positions: neither has an adapter yet.
+function missingMoneyParts(): Pick<MissingParts, "http" | "positions"> {
   return {
-    executor: {
-      async take(_intent, options) {
-        options.signal.throwIfAborted();
-        return Promise.reject(missing("executor", "wallet.custody_down"));
+    // A retryable fault, as a request that reaches no host: RPC reads fail over and give up, and
+    // each relay answers `unreachable`.
+    http: {
+      async request(request) {
+        request.signal.throwIfAborted();
+        return Promise.reject(
+          new BinferenceError({
+            code: "http.unreachable",
+            message: "This binference has no outbound HTTP adapter yet.",
+            retryable: true,
+            details: { missing: "network" },
+          }),
+        );
       },
     },
     // Positions have no SQLite adapter yet, and a paper fill must not vanish.
@@ -101,6 +111,6 @@ export function createMissingParts(): MissingParts {
       },
     },
     ...missingMoneyParts(),
-    missing: ["custody", "prices", "wallets", "simulator", "executor", "positions"],
+    missing: ["custody", "prices", "wallets", "simulator", "network", "positions"],
   };
 }

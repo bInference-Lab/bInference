@@ -10,10 +10,14 @@ them in.
 its layers and secret sources, opens the engine log, opens `engine.sqlite` on its store workers
 (migrations, then the integrity check), makes sure the CLI token in `auth/cli.token` is known,
 builds the engine on the self-hosted parts, and serves the protocol on the engine's IPC endpoint
-and on `127.0.0.1:<engine.port>`. Parts that have no adapter yet (custody through Privy, Chainlink
-prices, the wallet facts, the simulator) are missing parts: they refuse every live action and show
-as failed health signals. A stop signal, or `engine/stop` over IPC, runs the shutdown sequence,
-which closes the parts in the reverse order: server, IPC, health probe, store, log, lock. A second
+and on `127.0.0.1:<engine.port>`. The executor (`composeExecutor`) sends live intents through
+every private relay each enabled chain lists or `chains.relays` names, reads through the chain's
+RPCs and `chains.rpc`, and pays at most `chains.maxFeePerGasGwei` without a tap; its health signal
+follows the relays' last answers. Parts that have no adapter yet (custody through Privy, Chainlink
+prices, the wallet facts, the simulator, outbound HTTP) are missing parts: they refuse every live
+action and show as failed health signals. A stop signal, or `engine/stop` over IPC, runs the
+shutdown sequence, which closes the parts in the reverse order: server, IPC, health probe,
+executor, store, log, lock. A second
 `start` on the same state folder refuses while the first runs.
 
 `binference init` sets up a new install (keys spec, section 2) under the engine lock: the Privy

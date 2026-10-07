@@ -1,5 +1,6 @@
+import type { ChainRegistry } from "@binference/chain";
 import { BinferenceError, createDeadline } from "@binference/core";
-import type { EngineStores } from "@binference/engine";
+import type { EnginePush, EngineStores } from "@binference/engine";
 import {
   acquireFileLock,
   createShutdown,
@@ -16,10 +17,11 @@ import { systemDefaults } from "../program/system-defaults.js";
 import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { composeEngine } from "./compose-engine.js";
+import { composeExecutor } from "./compose-executor.js";
 import { platformOf } from "./engine-locations.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { startHealthProbe } from "./health-signals.js";
-import { createMissingParts } from "./missing-parts.js";
+import { createMissingParts, type MissingParts } from "./missing-parts.js";
 import {
   listenForProtocol,
   type OpenedLog,
@@ -79,18 +81,53 @@ interface Composed {
   readonly state: { current: EngineState };
 }
 
+// The executor sends through the chains' relays; its pushes reach the engine's once it exists.
+function composeSending(
+  opening: Opening,
+  opened: Opened,
+  context: { readonly parts: MissingParts; readonly chains: ChainRegistry },
+) {
+  const { host, closers } = opening;
+  const { config, log, stores } = opened;
+  const { parts, chains } = context;
+  const pushes = { publish: (_push: EnginePush): void => undefined };
+  const composed = composeExecutor({
+    stores,
+    custody: parts.custody,
+    wallets: parts.wallets,
+    prices: parts.prices,
+    chains,
+    config: config.chains,
+    http: parts.http,
+    clock: host.clock,
+    random: host.random,
+    publish: (push) => {
+      pushes.publish(push);
+    },
+    logger: log.logger,
+  });
+  closers.add("executor", async () => composed.executor.close());
+  return { ...composed, pushes };
+}
+
 function compose(opening: Opening, opened: Opened): Composed {
   const { host, closers } = opening;
   const { config, log, stores } = opened;
   const state: { current: EngineState } = { current: "starting" };
   const parts = createMissingParts();
-  const probe = startHealthProbe({ missing: parts.missing, logFailed: log.hasFailed });
+  const chains = selfHostedChains();
+  const sending = composeSending(opening, opened, { parts, chains });
+  const probe = startHealthProbe({
+    missing: parts.missing,
+    parts: [{ signal: "executor", state: sending.health }],
+    logFailed: log.hasFailed,
+  });
   closers.add("health", async () => probe.stop());
   const stopper = { stop: (): void => undefined };
-  const { server } = composeEngine(
+  const { server, publish } = composeEngine(
     { custody: parts.custody, stores, prices: parts.prices },
     {
-      chains: selfHostedChains(),
+      chains,
       venues: [],
       simulator: parts.simulator,
       wallets: parts.wallets,
@@ -108,13 +145,14 @@ function compose(opening: Opening, opened: Opened): Composed {
       clock: host.clock,
       random: host.random,
       logger: log.logger,
-      executor: parts.executor,
+      executor: sending.executor,
       positions: parts.positions,
       // No agent holds a wallet until the wallet facts adapter exists, so a paper reset has nowhere
       // to place the starting balance yet.
       paperBalances: [],
     },
   );
+  sending.pushes.publish = publish;
   return { server, stopper, state };
 }
 

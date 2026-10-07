@@ -46,4 +46,22 @@ describe("the health signals", () => {
     ]);
     expect(second[2]).toStrictEqual({ signal: "logs", state: "warn" });
   });
+
+  it("reads each part's own state after the log file, before the missing parts", () => {
+    const executor = { state: "ok" as "ok" | "warn" | "fail" };
+    const probe = startHealthProbe({
+      missing: ["custody"],
+      parts: [{ signal: "executor", state: () => executor.state }],
+      logFailed: () => false,
+    });
+    const first = probe.read();
+    executor.state = "fail";
+    const second = probe.read();
+    probe.stop();
+    expect(first.slice(3)).toStrictEqual([
+      { signal: "executor", state: "ok" },
+      { signal: "custody", state: "fail" },
+    ]);
+    expect(second[3]).toStrictEqual({ signal: "executor", state: "fail" });
+  });
 });

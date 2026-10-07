@@ -62,6 +62,8 @@ export interface ComposeEngineOptions {
 export interface ComposedEngine {
   readonly engine: Engine;
   readonly server: ProtocolServer;
+  /** Where the engine's pushes go: the server, and the owner's bot when there is one. */
+  readonly publish: (push: EnginePush) => void;
   /** The owner's bot joined to the engine, when the options name one. */
   readonly telegram?: ComposedTelegram;
 }
@@ -143,5 +145,5 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     random,
     logger: logger.child("server"),
   });
-  return { engine, server, ...(telegram === undefined ? {} : { telegram }) };
+  return { engine, server, publish, ...(telegram === undefined ? {} : { telegram }) };
 }

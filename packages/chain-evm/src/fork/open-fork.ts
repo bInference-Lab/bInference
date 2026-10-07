@@ -1,4 +1,5 @@
 import { bsc } from "@binference/chains";
+import type { Http } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import {
   type AbiEvent,
@@ -38,6 +39,10 @@ export interface Fork {
   readonly account: Address;
   /** Reads the fork through the RPC failover, as production code reads a chain. */
   readonly rpc: RpcFailover;
+  /** anvil's JSON-RPC endpoint, which also takes signed transactions as a relay would. */
+  readonly rpcUrl: string;
+  /** An Http adapter that reaches the suite's loopback endpoints. */
+  readonly http: Http;
   /** A viem client over {@link Fork.rpc}. */
   readonly client: PublicClient;
   /** Calls one of anvil's own methods, such as `anvil_setBalance`, on the fork. */
@@ -110,6 +115,8 @@ export async function openFork(context: ForkContext, signal: AbortSignal): Promi
     block,
     account,
     rpc,
+    rpcUrl: context.rpcUrl,
+    http,
     client,
     call,
     send: async (transaction) => sendAndMine({ call, client }, transaction),

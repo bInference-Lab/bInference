@@ -17,6 +17,7 @@ const namedSignals: ReadonlySet<string> = new Set([
   "wallets",
   "simulator",
   "executor",
+  "network",
   "positions",
 ]);
 

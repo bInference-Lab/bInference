@@ -26,7 +26,8 @@ new name here first, in the change that uses it.
   as custody or prices. It refuses every live action, never makes up a balance, a price or a
   signature, and shows as a failed health signal.
 - **health signals**: what `binference status` reports about the running engine, each `ok`,
-  `warn` or `fail`: event-loop lag, memory, the engine log and each missing part.
+  `warn` or `fail`: event-loop lag, memory, the engine log, the executor's relays and each missing
+  part.
 - **engine log**: `logs/engine.log` in the state folder, one JSON line per log record with ids
   and no content, set aside by size and read back by `binference logs`.
 - **CLI token**: the `bnt_` token in `auth/cli.token` that the CLI signs in with over IPC; the

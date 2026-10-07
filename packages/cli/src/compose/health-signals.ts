@@ -16,6 +16,8 @@ export interface HealthProbe {
 export interface HealthProbeOptions {
   /** Parts with no adapter yet, each reported as failed. */
   readonly missing: readonly string[];
+  /** Parts that report their own state, such as the executor, read at each read. */
+  readonly parts?: readonly { readonly signal: string; readonly state: () => SignalState }[];
   /** Whether the log file lost lines since the engine started. */
   readonly logFailed: () => boolean;
 }
@@ -48,7 +50,8 @@ const nanosPerMs = 1_000_000;
 
 /**
  * Starts measuring the event loop's delay. Each read reports the 99th percentile of the delay
- * since the read before, the resident memory, the log file, and every missing part as failed.
+ * since the read before, the resident memory, the log file, each part's own state, and every
+ * missing part as failed.
  */
 export function startHealthProbe(options: HealthProbeOptions): HealthProbe {
   const delay = monitorEventLoopDelay({ resolution: 20 });
@@ -61,6 +64,10 @@ export function startHealthProbe(options: HealthProbeOptions): HealthProbe {
         { signal: "event_loop", state: lagState(lagMs) },
         { signal: "memory", state: memoryState(process.memoryUsage().rss) },
         { signal: "logs", state: options.logFailed() ? "warn" : "ok" },
+        ...(options.parts ?? []).map((part): HealthSignal => ({
+          signal: part.signal,
+          state: part.state(),
+        })),
         ...options.missing.map((part): HealthSignal => ({ signal: part, state: "fail" })),
       ];
     },
