@@ -31,15 +31,34 @@ function packageFolders(): readonly string[] {
 // Fork tests need anvil and the network: they run in the fork suite (vitest.fork.config.ts).
 const forkFolders = "**/src/fork/**";
 
-function project(folder: string): TestProjectInlineConfiguration {
+// Platform tests mock native modules and its native suites need the real ones, so each of its
+// files gets a fresh module graph.
+const isolatedFolders = new Set(["packages/platform"]);
+
+// Two projects, split by isolation: every project starts its own workers and module graph, which
+// cost more than the tests themselves when each package was a project.
+function project(
+  name: "shared" | "isolated",
+  members: readonly string[],
+): TestProjectInlineConfiguration {
   return {
     extends: true,
     test: {
-      name: folder,
-      include: [`${folder}/src/**/*.test.ts`],
+      name,
+      include: members.map((folder) => `${folder}/src/**/*.test.ts`),
       exclude: [...configDefaults.exclude, forkFolders],
+      isolate: name === "isolated",
     },
   };
+}
+
+function projects(): readonly TestProjectInlineConfiguration[] {
+  const isolated = folders.filter((folder) => isolatedFolders.has(folder));
+  const shared = folders.filter((folder) => !isolatedFolders.has(folder));
+  return [
+    ...(shared.length === 0 ? [] : [project("shared", shared)]),
+    ...(isolated.length === 0 ? [] : [project("isolated", isolated)]),
+  ];
 }
 
 interface Bar {
@@ -74,8 +93,18 @@ const config: ViteUserConfig = defineConfig({
     // include stays out of the root once projects exist, or every project inherits it.
     ...(folders.length === 0
       ? { include: ["packages/*/src/**/*.test.ts", "plugins/*/src/**/*.test.ts"] }
-      : { projects: folders.map(project) }),
+      : { projects: [...projects()] }),
     passWithNoTests: true,
+    // Files share their worker's modules, as Vitest's performance guide advises for tests that
+    // clean up: importing every file's modules anew took half the run. Source keeps no
+    // module-level state (docs/ENGINEERING.md), and stubbed variables come back after each test.
+    isolate: false,
+    unstubEnvs: true,
+    unstubGlobals: true,
+    // A timeout catches a hang, not a busy machine: unit tests run on fake timers, and a property
+    // test of 0.4 s passed Vitest's 5 s default while other work held the CPU.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     setupFiles: ["config/vitest/setup.ts"],
     coverage: {
       provider: "v8",

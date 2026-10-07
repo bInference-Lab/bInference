@@ -151,8 +151,7 @@ function moneySample(repo: string, test: string, source = feeSource): Record<str
 const sampleTest: readonly string[] = [
   "pnpm",
   "test",
-  "--project",
-  `packages/${sampleKey}`,
+  `packages/${sampleKey}/`,
   `--coverage.include=packages/${sampleKey}/src/**`,
 ];
 const sampleOnly: Readonly<Record<string, string>> = { MUTATE_PACKAGES: sampleKey };

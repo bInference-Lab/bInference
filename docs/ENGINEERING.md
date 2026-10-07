@@ -641,8 +641,13 @@ Decided in [decision 0018](DECISIONS.md#d0018).
 
 Decided in [decision 0034](DECISIONS.md#d0034).
 
-- **Rule:** Vitest 5, tests beside the code (`*.test.ts`). Enforcer: each Vitest project's
-  `include: ["src/**/*.test.ts"]`; `check:layout` (no test file elsewhere).
+- **Rule:** Vitest 5, tests beside the code (`*.test.ts`). Enforcer: the Vitest projects'
+  `include` (`<package>/src/**/*.test.ts`); `check:layout` (no test file elsewhere).
+- **Rule:** test files share their worker's modules, as Vitest's performance guide advises: no
+  test leaves state behind, and stubbed variables and globals come back after each test. A package
+  whose tests need fresh modules, such as one that mocks a native module, joins the isolated
+  project. A timeout catches a hang, not a busy machine: 30 seconds. Enforcer: `vitest.config.ts`
+  (`isolate: false`, `unstubEnvs`, `unstubGlobals`, the `shared` and `isolated` projects).
 - **Rule:** hand-written fakes that implement ports; `vi.mock` is banned in pure packages. Enforcer:
   Oxlint `vitest/no-restricted-vi-methods` (`mock`, `doMock`) in pure packages.
 - **Rule:** unit tests have no network (the test setup installs a refusing dispatcher), no real
