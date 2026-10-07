@@ -32,3 +32,7 @@ export { createFakeSigningScheme, signFake } from "./fakes/fake-signing-scheme.j
 export { createFakeChainDefinition } from "./fakes/fake-chain.js";
 export { createFakeVenue, fakeSwapData } from "./fakes/fake-venue.js";
 export type { FakeVenueOptions } from "./fakes/fake-venue.js";
+export { nonceSourceContract } from "./contracts/nonce-source-contract.js";
+export type { NonceSourceHarness, NonceSourceSubject } from "./contracts/nonce-source-contract.js";
+export { createFakeNonceSource } from "./fakes/fake-nonce-source.js";
+export type { FakeNonceSource } from "./fakes/fake-nonce-source.js";

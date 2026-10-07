@@ -71,3 +71,18 @@ export interface ChainRegistry {
   /** Every chain the registry holds, in the order they were registered. */
   list(): readonly RegisteredChain[];
 }
+
+/**
+ * Reads the next nonce the chain expects from an account: how many transactions the chain counts
+ * for it, those still waiting for a block included (`eth_getTransactionCount` at `pending` on an
+ * EVM chain). A node does not see a transaction sent through a private relay before a block holds
+ * it, so the wallet queue never trusts this count alone. Adapters: the EVM family's read over the
+ * chain's RPC failover.
+ */
+export interface NonceSource {
+  /**
+   * The account's next nonce: a safe integer, 0 for an account the chain has never seen. Rejects
+   * when no node answers, and with the signal's reason once the signal aborts.
+   */
+  next(account: AccountRef, options: { readonly signal: AbortSignal }): Promise<number>;
+}
