@@ -1,12 +1,11 @@
 import { copyFile, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createSecret, type Secret } from "@binference/core";
+import { createSecret, type Secret, type SecretStore } from "@binference/core";
+import { secretStoreContract } from "@binference/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { secretStoreContract } from "../contracts/secret-store-contract.js";
 import { createPlatform } from "../create-platform.js";
-import type { SecretStore } from "../ports.js";
 import { createPassphraseSecretStore } from "./passphrase-secret-store.js";
 
 const folders: string[] = [];

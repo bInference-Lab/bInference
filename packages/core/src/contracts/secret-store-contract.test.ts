@@ -1,6 +1,7 @@
-import { createSecret, ok } from "@binference/core";
-import type { ContractCheck } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
+import { ok } from "../result.js";
+import { createSecret } from "../secret/secret.js";
+import type { ContractCheck } from "./contract-check.js";
 import { secretStoreContract } from "./secret-store-contract.js";
 
 describe("secret store contract", () => {
@@ -15,7 +16,9 @@ describe("secret store contract", () => {
     const results = await Promise.allSettled(
       checks.map(async (check: ContractCheck) => check.run()),
     );
-    expect(results.map((result) => result.status)).toStrictEqual(checks.map(() => "rejected"));
+    expect(
+      results.map((result: Readonly<PromiseSettledResult<void>>) => result.status),
+    ).toStrictEqual(checks.map(() => "rejected"));
     expect(checks).toHaveLength(9);
   });
 });

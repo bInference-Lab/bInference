@@ -1,5 +1,5 @@
 import type { Socket } from "node:net";
-import type { Result, Secret } from "@binference/core";
+import type { Result } from "@binference/core";
 import type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
 import type { ServiceDefinition, ServiceStatus } from "./service/service-definition.js";
 
@@ -33,25 +33,6 @@ export interface IpcEndpoint {
   bind(options: IpcBindOptions): Promise<Result<IpcBinding, "in_use">>;
   /** Connects to the listener. Returns `unreachable` when nobody listens. */
   connect(signal: AbortSignal): Promise<Result<Socket, "unreachable">>;
-}
-
-/**
- * Named secrets at rest. The OS keychain holds them where one answers: Keychain on macOS,
- * Credential Manager on Windows, the Secret Service on Linux, every entry under the service
- * `binference`, so the name `telegram-bot` is the entry `binference/telegram-bot`. Where none
- * answers, files sealed with the owner's passphrase hold them.
- *
- * A name is 1 to 64 lowercase letters, digits, dots, dashes and underscores, starting with a letter
- * or a digit; any other name throws `platform.secret_name_invalid` before the store is touched.
- * A store that cannot answer throws a `BinferenceError`, such as `platform.keychain_failed`.
- */
-export interface SecretStore {
-  /** Reads one entry. Returns `not_found` when the store holds no entry of that name. */
-  read(name: string, signal: AbortSignal): Promise<Result<Secret, "not_found">>;
-  /** Stores a value under the name, replacing the value it held. */
-  write(name: string, value: Secret, signal: AbortSignal): Promise<void>;
-  /** Removes one entry. Returns `not_found` when the store holds no entry of that name. */
-  delete(name: string, signal: AbortSignal): Promise<Result<void, "not_found">>;
 }
 
 /**

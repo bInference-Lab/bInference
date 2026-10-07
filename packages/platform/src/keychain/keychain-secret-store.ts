@@ -1,7 +1,12 @@
-import { BinferenceError, createSecret, err, ok } from "@binference/core";
+import {
+  BinferenceError,
+  checkSecretName,
+  createSecret,
+  err,
+  ok,
+  type SecretStore,
+} from "@binference/core";
 import { AsyncEntry } from "@napi-rs/keyring";
-import type { SecretStore } from "../ports.js";
-import { checkSecretName } from "./secret-name.js";
 
 /** Where the keychain store keeps its entries. */
 export interface KeychainSecretStoreOptions {

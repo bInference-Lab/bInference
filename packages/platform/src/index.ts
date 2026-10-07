@@ -7,7 +7,7 @@ export { openIpcChannel } from "./ipc/ipc-channel.js";
 export type { IpcChannel, IpcChannelOptions } from "./ipc/ipc-channel.js";
 export { createPassphraseSecretStore } from "./keychain/passphrase-secret-store.js";
 export type { PassphraseSecretStoreOptions } from "./keychain/passphrase-secret-store.js";
-export type { FilePermissions, IpcEndpoint, SecretStore, ServiceManager } from "./ports.js";
+export type { FilePermissions, IpcEndpoint, ServiceManager } from "./ports.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
 export { readTextFile } from "./read-text-file.js";

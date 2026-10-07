@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { createSecret, err, ok } from "@binference/core";
-import type { ContractCheck } from "@binference/core/testing";
 import type { SecretStore } from "../ports.js";
+import { err, ok } from "../result.js";
+import { createSecret } from "../secret/secret.js";
+import type { ContractCheck } from "./contract-check.js";
 
 /**
  * Makes a store that holds exactly the given entries, under names no other check uses. A store on a

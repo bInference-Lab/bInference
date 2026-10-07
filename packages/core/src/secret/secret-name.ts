@@ -1,13 +1,13 @@
-import { BinferenceError } from "@binference/core";
+import { BinferenceError } from "../errors/binference-error.js";
 
 const namePattern = /^[a-z0-9][a-z0-9._-]{0,63}$/;
-// Windows refuses these as file names whatever the extension, and the passphrase store keeps one
+// Some file systems refuse these as file names whatever the extension, and a store may keep one
 // file per entry.
 const deviceName = /^(?:con|prn|aux|nul|com\d|lpt\d)(?:\.|$)/;
 
 /**
  * Checks the name of a secret store entry: 1 to 64 lowercase letters, digits, dots, dashes and
- * underscores, starting with a letter or a digit, and no Windows device name such as `con`. Throws
+ * underscores, starting with a letter or a digit, and no device name such as `con`. Throws
  * `platform.secret_name_invalid` for any other name, before a store touches anything.
  */
 export function checkSecretName(name: string): void {

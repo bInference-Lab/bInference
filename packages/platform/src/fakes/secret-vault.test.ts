@@ -1,6 +1,6 @@
 import { createSecret } from "@binference/core";
+import { secretStoreContract } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
-import { secretStoreContract } from "../contracts/secret-store-contract.js";
 import { createSecretVault } from "./secret-vault.js";
 
 const signal = new AbortController().signal;

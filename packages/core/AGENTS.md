@@ -1,6 +1,7 @@
 # @binference/core
 
-Results, errors, branded ids, amount math, retry, and the Clock, Random, Logger and Http ports.
+Results, errors, branded ids, amount math, retry, and the Clock, Random, Logger, Http and SecretStore
+ports.
 
 The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 

@@ -145,7 +145,7 @@ Each section below is numbered; other pages cite it as "ARCHITECTURE.md section 
 binference/                         MIT, pnpm + Turborepo, Node 26.1+, TypeScript 7, zod, Vitest
   packages/
     core/         @binference/core       Result, BinferenceError, branded ids, amount math, retry;
-                                         Clock, Random, Logger and Http ports
+                                         Clock, Random, Logger, Http and SecretStore ports
     chain/        @binference/chain      chain-neutral model: CAIP ids, Amount, the ChainFamily,
                                          SigningScheme and ChainRegistry ports (no viem)
     chain-evm/    @binference/chain-evm  EVM family: viem, RPC failover, nonces, fees, eth_simulateV1,
@@ -1217,7 +1217,7 @@ the Cloud profile. A port with two adapters runs one contract test suite against
 - Any change to a port names both adapters in its PR, and both pass its contract suite.
 - The ports: custody `Signer` (`@binference/chain`); Telegram `BotUpdateSource`, models
   `ModelBilling`, store the store ports, market data `PriceSource` and `MarketData`
-  (`@binference/engine`); secrets `SecretStore` (`@binference/platform`). The test composition root
+  (`@binference/engine`); secrets `SecretStore` (`@binference/core`). The test composition root
   in `cli/src/compose/` fills them with fakes shaped like the Cloud adapters.
 
 **What Cloud adds:**

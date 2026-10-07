@@ -5,8 +5,9 @@ import {
   createDeadline,
   createSecret,
   type Secret,
+  type SecretStore,
 } from "@binference/core";
-import { readTextFile, type RunProgram, runCommand, type SecretStore } from "@binference/platform";
+import { readTextFile, type RunProgram, runCommand } from "@binference/platform";
 import type { ReadTextFile } from "../load-config.js";
 import type {
   CommandSource,

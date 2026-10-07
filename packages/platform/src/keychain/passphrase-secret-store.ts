@@ -1,12 +1,19 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
-import { BinferenceError, err, ok, type Result, type Secret } from "@binference/core";
-import type { FilePermissions, SecretStore } from "../ports.js";
+import {
+  BinferenceError,
+  checkSecretName,
+  err,
+  ok,
+  type Result,
+  type Secret,
+  type SecretStore,
+} from "@binference/core";
+import type { FilePermissions } from "../ports.js";
 import { ensurePrivateFolder, writePrivateFile } from "../private-files.js";
 import { readTextFile } from "../read-text-file.js";
 import { openSealedSecret, sealSecret } from "./sealed-secret.js";
 import { parseSealedSecret, type SealedSecret } from "./sealed-secret.schema.js";
-import { checkSecretName } from "./secret-name.js";
 
 /** Where the passphrase store keeps its files, and what opens them. */
 export interface PassphraseSecretStoreOptions {

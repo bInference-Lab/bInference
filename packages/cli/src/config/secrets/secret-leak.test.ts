@@ -1,6 +1,5 @@
 import { inspect } from "node:util";
-import { createManualClock } from "@binference/core/testing";
-import { createMemorySecretStore } from "@binference/platform/testing";
+import { createManualClock, createMemorySecretStore } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { ConfigIssue } from "../config-issue.js";
 import { formatConfigIssue } from "../format-config-issue.js";

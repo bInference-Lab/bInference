@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { createSecret } from "@binference/core";
+import { createSecret, type SecretStore } from "@binference/core";
+import { secretStoreContract } from "@binference/core/testing";
 import { afterEach, describe, expect, it } from "vitest";
-import { secretStoreContract } from "../contracts/secret-store-contract.js";
-import type { SecretStore } from "../ports.js";
 import { createKeychainSecretStore } from "./keychain-secret-store.js";
 
 // The CI job for the OS keychain sets this switch; it runs on macOS, Windows, and Linux with a

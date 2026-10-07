@@ -1,6 +1,7 @@
-import { createSecret, err, ok } from "@binference/core";
-import { checkSecretName } from "../keychain/secret-name.js";
 import type { SecretStore } from "../ports.js";
+import { err, ok } from "../result.js";
+import { checkSecretName } from "../secret/secret-name.js";
+import { createSecret } from "../secret/secret.js";
 
 async function start(name: string, signal: AbortSignal): Promise<void> {
   checkSecretName(name);
@@ -9,8 +10,8 @@ async function start(name: string, signal: AbortSignal): Promise<void> {
 }
 
 /**
- * Creates a {@link SecretStore} for tests that holds the given entries in memory, as the OS
- * keychain would hold them under the service `binference`. It checks names as every store does.
+ * Creates a {@link SecretStore} for tests that holds the given entries in memory. It checks names
+ * as every store does.
  */
 export function createMemorySecretStore(entries: Readonly<Record<string, string>>): SecretStore {
   const held = new Map(Object.entries(entries));

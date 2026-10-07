@@ -1,5 +1,7 @@
 import type { HttpRequest, HttpResponse } from "./http-exchange.js";
 import type { LogFields } from "./log-record.js";
+import type { Result } from "./result.js";
+import type { Secret } from "./secret/secret.js";
 
 /** Reads the time and waits. Pure packages read time only through this port. */
 export interface Clock {
@@ -34,4 +36,23 @@ export interface Logger {
  */
 export interface Http {
   request(request: HttpRequest): Promise<HttpResponse>;
+}
+
+/**
+ * Named secrets at rest, such as the agent key and the bot token. The composition root picks the
+ * adapter: the OS keychain or the passphrase store of `@binference/platform`, or a hosted secret
+ * service.
+ *
+ * A name is 1 to 64 lowercase letters, digits, dots, dashes and underscores, starting with a letter
+ * or a digit; any other name throws `platform.secret_name_invalid` before the store is touched
+ * (`checkSecretName`). A store that cannot answer throws a `BinferenceError`, such as
+ * `platform.keychain_failed`.
+ */
+export interface SecretStore {
+  /** Reads one entry. Returns `not_found` when the store holds no entry of that name. */
+  read(name: string, signal: AbortSignal): Promise<Result<Secret, "not_found">>;
+  /** Stores a value under the name, replacing the value it held. */
+  write(name: string, value: Secret, signal: AbortSignal): Promise<void>;
+  /** Removes one entry. Returns `not_found` when the store holds no entry of that name. */
+  delete(name: string, signal: AbortSignal): Promise<Result<void, "not_found">>;
 }

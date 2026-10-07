@@ -4,8 +4,8 @@
 
 The base every other package builds on: results and the one error class, branded ids, `bigint`
 amount math in basis points, retry with jitter, deadlines on `AbortSignal`, secrets that never
-print, and the `Clock`, `Random`, `Logger` and `Http` ports. It does no I/O; adapters live in other
-packages.
+print, and the `Clock`, `Random`, `Logger`, `Http` and `SecretStore` ports. It does no I/O; adapters
+live in other packages.
 
 ## API
 
@@ -23,6 +23,7 @@ packages.
 | `retry`                                    | Retries transient faults with capped exponential backoff and jitter  |
 | `createDeadline`                           | A signal that aborts on its parent or after a timeout on the clock   |
 | `Clock`, `Random`, `Logger`, `Http`        | The ports that adapters implement                                    |
+| `SecretStore`, `checkSecretName`           | The port for named secrets at rest, and the entry names it takes     |
 | `@binference/core/testing`                 | Contract suites for each port, and fakes that pass them              |
 
 ## Example

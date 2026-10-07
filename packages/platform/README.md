@@ -14,7 +14,7 @@ ports:
   frames and a handshake in which both sides prove they hold a shared key;
 - one shutdown sequence for `SIGINT` and `SIGTERM`, Windows `SIGINT` and `SIGBREAK`, and stop
   requests;
-- named secrets behind the `SecretStore` port: the OS keychain through `@napi-rs/keyring` (the
+- named secrets behind core's `SecretStore` port: the OS keychain through `@napi-rs/keyring` (the
   Secret Service required on Linux, never the kernel keyring, which forgets at a reboot), or the
   passphrase store where no keychain answers;
 - the background service behind the `ServiceManager` port: a LaunchAgent through `launchctl` on
@@ -35,14 +35,13 @@ ports:
 | `IpcEndpoint`, `IpcBinding`         | The port that listens on and connects to one local IPC address       |
 | `openIpcChannel`, `IpcChannel`      | An authenticated channel of schema-checked JSON messages             |
 | `createShutdown`, `Shutdown`        | Runs the shutdown steps in order on a stop signal, within a budget   |
-| `SecretStore`                       | The port that reads, writes and deletes a named secret               |
 | `Platform.keychain`                 | The OS keychain, entries `binference/<name>`                         |
 | `createPassphraseSecretStore`       | Secrets sealed with the owner's passphrase, one file each in `keys/` |
 | `ServiceManager`                    | The port that installs, removes and reports a background service     |
 | `Platform.serviceManager`           | This OS's service manager, given a clock for its waits               |
 | `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                   |
 | `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit     |
-| `@binference/platform/testing`      | Every port's contract suite, and secret, service and vault fakes     |
+| `@binference/platform/testing`      | Every port's contract suite, and service and secret vault fakes      |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
 longer than macOS allows.

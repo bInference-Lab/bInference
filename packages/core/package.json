@@ -2,7 +2,7 @@
   "name": "@binference/core",
   "version": "0.0.0",
   "private": true,
-  "description": "Results, errors, branded ids, amount math, retry, and the Clock, Random, Logger and Http ports.",
+  "description": "Results, errors, branded ids, amount math, retry, and the Clock, Random, Logger, Http and SecretStore ports.",
   "license": "MIT",
   "files": [
     "dist"

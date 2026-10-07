@@ -1,5 +1,5 @@
-import type { SecretStore } from "../ports.js";
-import { createMemorySecretStore } from "./memory-secret-store.js";
+import type { SecretStore } from "@binference/core";
+import { createMemorySecretStore } from "@binference/core/testing";
 
 /**
  * A secret service for tests that many owners share, as a hosted secret store is: each owner reads

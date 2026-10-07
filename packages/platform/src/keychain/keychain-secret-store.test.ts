@@ -1,6 +1,6 @@
 import { createSecret } from "@binference/core";
+import { secretStoreContract } from "@binference/core/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { secretStoreContract } from "../contracts/secret-store-contract.js";
 import { createKeychainSecretStore } from "./keychain-secret-store.js";
 
 // Stands in for @napi-rs/keyring, so these tests never touch the machine's keychain. The tests on

@@ -1,8 +1,7 @@
 import { join } from "node:path";
 import { err, ok } from "@binference/core";
-import { createManualClock } from "@binference/core/testing";
+import { createManualClock, createMemorySecretStore } from "@binference/core/testing";
 import type { RunProgram } from "@binference/platform";
-import { createMemorySecretStore } from "@binference/platform/testing";
 import { describe, expect, it } from "vitest";
 import type { ReadTextFile } from "../load-config.js";
 import {

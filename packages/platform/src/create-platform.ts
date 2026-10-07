@@ -1,8 +1,8 @@
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
-import { BinferenceError, type Clock } from "@binference/core";
+import { BinferenceError, type Clock, type SecretStore } from "@binference/core";
 import { createKeychainSecretStore } from "./keychain/keychain-secret-store.js";
-import type { FilePermissions, IpcEndpoint, SecretStore, ServiceManager } from "./ports.js";
+import type { FilePermissions, IpcEndpoint, ServiceManager } from "./ports.js";
 import { createLaunchdServiceManager } from "./posix/launchd-service-manager.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
 import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
