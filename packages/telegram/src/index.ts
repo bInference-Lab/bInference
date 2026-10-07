@@ -1,3 +1,6 @@
+export { cardCopySchema } from "./cards/card-copy.js";
+export type { CardCopy } from "./cards/card-copy.js";
+export type { CardPress, CardStanding } from "./cards/card-press.js";
 export type { IngressWords, OwnerUpdateSink } from "./ingress/act-on-update.js";
 export { createTelegramIngress } from "./ingress/create-telegram-ingress.js";
 export type {
@@ -17,7 +20,7 @@ export { createPollerLeases } from "./polling/poller-leases.js";
 export type { PollerLease, PollerLeases } from "./polling/poller-leases.js";
 export { runPolling } from "./polling/run-polling.js";
 export type { RunPollingOptions } from "./polling/run-polling.js";
-export type { OwnerStore } from "./ports.js";
+export type { CardAnswers, CardCopyStore, OwnerStore } from "./ports.js";
 export type { BotThrottlerOptions } from "./throttle/create-bot-throttler.js";
 export { createBotThrottlers } from "./throttle/create-bot-throttlers.js";
 export type { BotThrottlers } from "./throttle/create-bot-throttlers.js";

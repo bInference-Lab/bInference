@@ -13,18 +13,23 @@ only the chat Telegram named.
 
 ## API
 
-| Export                             | What it does                                                                                          |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `createTelegramIngress`            | Screens and stores each update, then handles it; `resume` handles what is left                        |
-| `UpdateIntake`                     | Where updates come in: long polling and a webhook relay both feed it                                  |
-| `runPolling`                       | Long-polls one bot from a worker thread, under the token's lease                                      |
-| `createPollerLeases`               | One poller per bot token in the process                                                               |
-| `openPollWorker`, `pollWorker`     | The poll worker thread and its entry                                                                  |
-| `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored                           |
-| `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                                                  |
-| `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                                                     |
-| `createBotThrottlers`              | One throttler per bot token, installed on every grammY `Api` of the token                             |
-| `@binference/telegram/testing`     | `ownerStoreContract`, `createMemoryOwnerStore`, and `createFakeBotApi`: a synthetic Bot API for tests |
+| Export                             | What it does                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `createTelegramIngress`            | Screens and stores each update, then handles it; `resume` handles what is left |
+| `UpdateIntake`                     | Where updates come in: long polling and a webhook relay both feed it           |
+| `runPolling`                       | Long-polls one bot from a worker thread, under the token's lease               |
+| `createPollerLeases`               | One poller per bot token in the process                                        |
+| `openPollWorker`, `pollWorker`     | The poll worker thread and its entry                                           |
+| `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored    |
+| `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                           |
+| `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                              |
+| `createBotThrottlers`              | One throttler per bot token, installed on every grammY `Api` of the token      |
+| `CardAnswers`                      | The engine's side of a card press: checks the presser, stores the answer first |
+| `CardCopyStore`, `cardCopySchema`  | Where each card version was posted, so every copy can become the receipt       |
+| `@binference/telegram/testing`     | Contract suites and fakes of the three ports, and `createFakeBotApi`           |
+
+`createFakeBotApi` is a synthetic Bot API for tests: updates in, messages, edits and button
+answers out, with Telegram's checks on HTML, lengths and callback data.
 
 ## Example
 

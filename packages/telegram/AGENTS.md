@@ -26,8 +26,9 @@ Rules for this package:
   (`createBotThrottlers().install(api)`). It paces each chat, bounds each attempt to 30 seconds
   and owns every 429 wait, so callers pass only a signal and never retry a 429 themselves.
   `getUpdates` passes through: the poller owns its waits.
-- Its public API is what `src/index.ts` exports. The `OwnerStore` contract suite and its fake live
-  behind `src/testing.ts` (`@binference/telegram/testing`). Every export carries TSDoc.
+- Its public API is what `src/index.ts` exports. The contract suites of `OwnerStore`,
+  `CardAnswers` and `CardCopyStore`, with their fakes, live behind `src/testing.ts`
+  (`@binference/telegram/testing`). Every export carries TSDoc.
 - Tests answer Bot API calls with the synthetic Bot API `createFakeBotApi` (in `src/testing/`,
   exported from `@binference/telegram/testing`), through grammY's `fetch` option: no network. It
   holds updates under Telegram's offset rules, presses buttons as `callback_query` updates, parses
