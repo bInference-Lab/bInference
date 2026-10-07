@@ -270,10 +270,16 @@ export const bsc: ChainDefinition = {
  * Each names its proxy among the `chainlink` contracts of {@link bsc}.
  */
 export const bscPriceFeeds: readonly PriceFeedDefinition[] = [
-  { contract: "bnb-usd", symbol: "BNB", decimals: 8, heartbeatSeconds: 27 },
-  { contract: "usdt-usd", symbol: "USDT", decimals: 8, heartbeatSeconds: 900 },
-  { contract: "usdc-usd", symbol: "USDC", decimals: 8, heartbeatSeconds: 900 },
-  { contract: "fdusd-usd", symbol: "FDUSD", decimals: 8, heartbeatSeconds: 86_400 },
-  { contract: "btc-usd", symbol: "BTC", decimals: 8, heartbeatSeconds: 60 },
-  { contract: "eth-usd", symbol: "ETH", decimals: 8, heartbeatSeconds: 60 },
+  { contract: "bnb-usd", symbol: "BNB", decimals: 8, heartbeatSeconds: 27, isStablecoin: false },
+  { contract: "usdt-usd", symbol: "USDT", decimals: 8, heartbeatSeconds: 900, isStablecoin: true },
+  { contract: "usdc-usd", symbol: "USDC", decimals: 8, heartbeatSeconds: 900, isStablecoin: true },
+  {
+    contract: "fdusd-usd",
+    symbol: "FDUSD",
+    decimals: 8,
+    heartbeatSeconds: 86_400,
+    isStablecoin: true,
+  },
+  { contract: "btc-usd", symbol: "BTC", decimals: 8, heartbeatSeconds: 60, isStablecoin: false },
+  { contract: "eth-usd", symbol: "ETH", decimals: 8, heartbeatSeconds: 60, isStablecoin: false },
 ];

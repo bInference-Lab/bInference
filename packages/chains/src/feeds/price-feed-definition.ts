@@ -8,4 +8,9 @@ export interface PriceFeedDefinition {
   readonly decimals: number;
   /** The longest time between two updates; an older answer is stale. */
   readonly heartbeatSeconds: number;
+  /**
+   * The feed watches a stablecoin, the registry token of its symbol, which counts as $1 while the
+   * feed holds its peg (decision 0059).
+   */
+  readonly isStablecoin: boolean;
 }

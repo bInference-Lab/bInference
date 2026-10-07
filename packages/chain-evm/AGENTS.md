@@ -17,6 +17,8 @@ Rules for this package:
   viem clients ride on `createRpcFailover` through `createEvmClient`.
 - The failover reads. It refuses `eth_send*`, `eth_sign*`, `personal_*` and `wallet_*`, so a retried
   send can never reach a public node; sends go through the private relays.
+- Prices come from the Chainlink feeds the composition root names. A feed that cannot be read, a
+  broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw.
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.
 - `src/testing/` holds test support: fake and loopback `Http` adapters and loopback servers. It is
   the one place that imports `node:http`, and nothing outside tests imports it.

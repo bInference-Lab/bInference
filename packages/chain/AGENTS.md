@@ -19,7 +19,9 @@ Rules for this package:
   (`@binference/custody-privy`, a signer service) share it without importing each other. Its fake
   in `@binference/chain/testing` is shaped like a signer service whose owner can remove it.
 - `PriceSource` and `UsdPrice` live here so the engine and a chain family's price adapter share
-  them; the engine's fake stays in `@binference/engine/testing`.
+  them; the engine's fake stays in `@binference/engine/testing`. A price is an exact ratio, and only
+  its caller rounds. `withQuotePrice` gives a trade's other token the price of its own quote, for
+  the engine step that holds the quote.
 - Venues are ports here so `engine` and `plugin-sdk` share them: `Quoter`, `TxBuilder` and
   `TxDecoder` in `src/venues/ports.ts`, each with a contract suite. A venue names its contracts by
   their registry names, never by address, and returns `TxDraft`s that only its family reads.

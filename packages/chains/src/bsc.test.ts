@@ -109,4 +109,14 @@ describe("bsc price feeds", () => {
     expect(feed.decimals).toBe(8);
     expect(feed.heartbeatSeconds).toBeGreaterThan(0);
   });
+
+  it("marks the stablecoin feeds, each watching the registry token of its symbol", () => {
+    const stablecoins = bscPriceFeeds
+      .filter((feed) => feed.isStablecoin)
+      .map((feed) => feed.symbol);
+    expect(stablecoins).toStrictEqual(["USDT", "USDC", "FDUSD"]);
+    expect(bsc.tokens.map((token) => token.symbol)).toStrictEqual(
+      expect.arrayContaining(stablecoins),
+    );
+  });
 });

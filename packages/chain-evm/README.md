@@ -6,8 +6,8 @@ The EVM chain family. It reads a chain through its RPC endpoints with failover, 
 simulates calls with `eth_simulateV1` and reads the transfers they make, decodes calldata, and
 builds, hashes and checks the transactions a signer signs. It reads a venue's transaction draft
 for the chain-neutral core: the contract it calls, the wei it sends, and the ERC-20 approval it
-grants. Chain facts come in as data from
-`@binference/chains`; nothing here names a chain.
+grants. It prices the native coin and the stablecoins in USD from Chainlink's feeds. Chain facts
+come in as data from `@binference/chains`; nothing here names a chain.
 
 ## API
 
@@ -20,6 +20,7 @@ grants. Chain facts come in as data from
 | `createEvmClient`                                                        | A viem public client whose requests go through the failover                       |
 | `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap           |
 | `simulate`, `Simulation`, `AssetTransfer`, `AssetApproval`               | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
+| `createChainlinkPrices`, `FeedAsset`, `UsdFeed`                          | The `PriceSource` over Chainlink's USD feeds; a stale feed is no price            |
 | `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                     |
 | `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions              |
 | `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                  |

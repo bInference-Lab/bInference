@@ -34,6 +34,8 @@ export type {
   SigningScheme,
   UsdPrice,
 } from "./ports.js";
+export { withQuotePrice } from "./prices/with-quote-price.js";
+export type { QuotedTrade } from "./prices/with-quote-price.js";
 export { chainDefinitionSchema } from "./registry/chain-definition.js";
 export type {
   AddressVerification,

@@ -71,6 +71,9 @@ new name here first, in the change that uses it.
 - **wallet facts**: what the money path reads about an agent's wallets outside the store ports:
   which wallets the agent owns, the native balance (the paper balance in paper mode), the ceiling's
   cap per transaction, the fee per gas, the network fee cap and the agent's recent outflows.
+- **price source**: what gives an asset's USD price now: Chainlink feeds for the native coin and
+  the stablecoins, which count as $1 until their feed moves past 2%, and a trade's own quote for
+  its other token. A stale feed or an asset with neither has no price, and the trade is refused.
 - **network fee cap**: per chain, the most fee per gas a transaction pays without the owner's tap
   (`chains.maxFeePerGasGwei`). A higher fee opens a card.
 - **owner key**: the key that owns the wallets and their policy. It is shown once as a `bnok1` code
