@@ -44,9 +44,12 @@ function failure(code: LogFailure, path: string, cause: ErrorOptions["cause"]): 
   });
 }
 
-async function sizeOf(path: string): Promise<number> {
+// The size of the log file, 0 when there is none yet, or `undefined` when something other than a
+// file holds its path. A folder's size differs by OS (4 KiB on Linux), so it is never measured.
+async function sizeOf(path: string): Promise<number | undefined> {
   try {
-    return (await stat(path)).size;
+    const info = await stat(path);
+    return info.isFile() ? info.size : undefined;
   } catch {
     return 0;
   }
@@ -85,14 +88,23 @@ async function makeRoom(options: LogFileOptions, size: number): Promise<number> 
   }
 }
 
-/** Appends one batch of lines and answers the file's size after it. */
+/**
+ * Appends one batch of lines and answers the file's size after it, or `undefined` when something
+ * other than a file holds the path, so the next batch looks again.
+ */
 async function writeBatch(
   options: LogFileOptions,
   batch: string,
   knownSize: number | undefined,
-): Promise<number> {
+): Promise<number | undefined> {
   const bytes = Buffer.byteLength(batch);
   const size = knownSize ?? (await sizeOf(options.file));
+  if (size === undefined) {
+    // Never set aside or write over what holds the path: the owner put it there.
+    const notFile = new Error(`${options.file} is not a file.`);
+    options.onError?.(failure("platform.log_write_failed", options.file, notFile));
+    return undefined;
+  }
   if (size === 0) {
     await removeOld(options).catch(() => undefined);
   }

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { BinferenceError } from "@binference/core";
@@ -92,15 +92,16 @@ describe("the log file", () => {
     await expect(linesOf(file)).resolves.toStrictEqual(["a", "c", "d"]);
   });
 
-  it("reports a write that fails and never throws", async () => {
+  it("reports a write that fails, never throws, and never moves what holds the path", async () => {
     const folder = await scratchFolder();
-    // A folder where the file should be makes every append fail.
+    // A folder where the file should be makes every append fail. The 1-byte limit is below any
+    // folder's size on every OS, so a writer that measured the folder would set it aside.
     const file = join(folder, "engine.log");
     await mkdir(file);
     const errors: BinferenceError[] = [];
     const log = openLogFile({
       file,
-      maxBytes: 1_000,
+      maxBytes: 1,
       keepMs: dayMs,
       clock: createManualClock(),
       onError: (error) => errors.push(error),
@@ -109,5 +110,6 @@ describe("the log file", () => {
     await log.close();
     expect(errors.map((error) => error.code)).toStrictEqual(["platform.log_write_failed"]);
     expect(errors[0]?.details).toStrictEqual({ path: file });
+    expect((await stat(file)).isDirectory()).toBe(true);
   });
 });

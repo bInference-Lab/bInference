@@ -62,7 +62,12 @@ function wholeLines(bytes: Buffer, window: ReadWindow): LogLines {
 async function readRange(path: string, options: ReadLogLinesOptions): Promise<LogLines> {
   const handle = await open(path, "r");
   try {
-    const { size } = await handle.stat();
+    const info = await handle.stat();
+    // Windows opens a folder for reading and reports it empty; only a regular file is a log.
+    if (!info.isFile()) {
+      throw new Error(`${path} is not a file.`);
+    }
+    const { size } = info;
     const start = startOf(size, options);
     const isTail = options.from === undefined && start > 0;
     const readFrom = isTail ? start - 1 : start;
