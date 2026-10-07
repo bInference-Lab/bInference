@@ -43,10 +43,15 @@
       "@binference/source": "./src/install.ts",
       "types": "./dist/install.d.mts",
       "default": "./dist/install.mjs"
+    },
+    "./executor": {
+      "@binference/source": "./src/executor.ts",
+      "types": "./dist/executor.d.mts",
+      "default": "./dist/executor.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/approval.ts src/surfaces.ts src/install.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
