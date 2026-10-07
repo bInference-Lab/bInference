@@ -5,6 +5,7 @@ packages:
 # Every version lives here; package.json files write "catalog:".
 catalogMode: strict
 catalog:
+  "@clack/prompts": 1.8.1
   "@commitlint/cli": 21.2.3
   "@commitlint/types": 21.2.3
   "@modelcontextprotocol/client": 2.2.0

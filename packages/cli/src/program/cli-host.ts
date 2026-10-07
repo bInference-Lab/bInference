@@ -1,5 +1,6 @@
 import type { Clock, Http, Random } from "@binference/core";
 import type { SignalEvents } from "@binference/platform";
+import type { Prompter } from "../term/prompter.js";
 
 /**
  * What the `binference` command takes from its process. The entry file fills it from `process`;
@@ -18,6 +19,8 @@ export interface CliHost {
   readonly random: Random;
   /** Reaches outside services, such as Privy's API. */
   readonly http: Http;
+  /** Asks the person at the terminal; absent when no person is there to answer. */
+  readonly prompter?: Prompter;
   /** Where stop signals arrive: `process` in the entry file. */
   readonly signals: SignalEvents;
   /** The binference release, such as `2026.10.0`. */

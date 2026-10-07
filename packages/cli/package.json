@@ -34,6 +34,7 @@
     "@binference/server": "workspace:*",
     "@binference/store": "workspace:*",
     "@binference/telegram": "workspace:*",
+    "@clack/prompts": "catalog:",
     "commander": "catalog:",
     "grammy": "catalog:",
     "json5": "catalog:",

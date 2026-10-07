@@ -7,6 +7,7 @@ import { runCli } from "./program/run-cli.js";
 import { createSystemClock } from "./runtime/system-clock.js";
 import { createSystemHttp } from "./runtime/system-http.js";
 import { createSystemRandom } from "./runtime/system-random.js";
+import { createTerminalPrompter } from "./term/terminal-prompter.js";
 
 // The package's own manifest sits one folder up from both src/ and dist/.
 const manifest = fileURLToPath(new URL("../package.json", import.meta.url));
@@ -16,6 +17,8 @@ const version = read.ok
   : "unknown";
 
 const http = createSystemHttp();
+// A person answers questions only when both ends of the terminal are one.
+const hasTerminal = process.stdin.isTTY && process.stdout.isTTY;
 process.exitCode = await runCli({
   argv: process.argv.slice(2),
   env: process.env,
@@ -24,6 +27,9 @@ process.exitCode = await runCli({
   clock: createSystemClock(),
   random: createSystemRandom(),
   http,
+  ...(hasTerminal
+    ? { prompter: createTerminalPrompter({ input: process.stdin, output: process.stdout }) }
+    : {}),
   signals: process,
   version,
   // Store workers run with this process's Node options, such as a TypeScript loader.
