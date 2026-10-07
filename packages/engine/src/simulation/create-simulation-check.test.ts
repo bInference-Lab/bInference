@@ -1,6 +1,7 @@
 import {
   accountRefSchema,
   type SimulatedStep,
+  type SimulationOptions,
   type TxDraft,
   type TxSimulator,
 } from "@binference/chain";
@@ -93,6 +94,20 @@ describe("simulation check", () => {
       ok: true,
       value: { spent: [tokens(1_000_000n)], received: [coins(2_000_000n)], simulatedAt: testNowMs },
     });
+  });
+
+  it("runs the steps with the balances it is given, such as a paper intent's", async () => {
+    const seen: SimulationOptions[] = [];
+    const fake = createFakeTxSimulator(table);
+    const recording: TxSimulator = {
+      simulate: async (drafts, options) => {
+        seen.push(options);
+        return fake.simulate(drafts, options);
+      },
+    };
+    const balances = [tokens(1_000_000n)];
+    await setup(recording).check.simulate(intent, built([approve, swap]), { ...live, balances });
+    expect(seen.map((options) => options.balances)).toStrictEqual([balances]);
   });
 
   it("refuses a hidden transfer of the wallet's other funds as effects that differ", async () => {

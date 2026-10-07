@@ -1,4 +1,4 @@
-import { accountRefSchema, type TxDraft } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, type TxDraft } from "@binference/chain";
 import { txSimulatorContract } from "@binference/chain/testing";
 import { createManualClock } from "@binference/core/testing";
 import { type Address, type Hex, pad, toEventSelector, toHex } from "viem";
@@ -52,13 +52,22 @@ const paid = {
 };
 
 const requestSchema = z.tuple([
-  z.object({ blockStateCalls: z.tuple([z.object({ calls: z.array(z.unknown()) })]) }),
+  z.object({
+    blockStateCalls: z.tuple([
+      z.object({
+        stateOverrides: z.record(z.string(), z.looseObject({ balance: z.string().optional() })),
+        calls: z.array(z.unknown()),
+      }),
+    ]),
+  }),
   z.literal("latest"),
 ]);
 
-// The node runs the first call with a native transfer and an approval; any later call reverts.
+// The node runs the first call with a native transfer and an approval. The user holds too little
+// for more, so any later call reverts unless the simulation gives the user a native balance.
 function answer(request: FakeRpcRequest): FakeRpcAnswer {
   const [{ blockStateCalls }] = requestSchema.parse(request.params);
+  const funded = blockStateCalls[0].stateOverrides[user]?.balance !== undefined;
   const logs: readonly JsonValue[] = [
     {
       address: nativeEmitter,
@@ -72,7 +81,7 @@ function answer(request: FakeRpcRequest): FakeRpcAnswer {
     },
   ];
   const calls = blockStateCalls[0].calls.map((_, index) =>
-    index === 0
+    index === 0 || funded
       ? { status: "0x1", gasUsed: "0x1dbfc", returnData: "0x", logs: [...logs] }
       : { status: "0x0", gasUsed: "0x5208", returnData: "0x", logs: [] },
   );
@@ -98,6 +107,7 @@ describe("createEvmTxSimulator", () => {
         simulator: setup().simulator,
         moving: { drafts: [swap], transfer: paid },
         reverting: [swap, approve],
+        unfunded: { drafts: [swap, swap], balance: { asset: chain.nativeAsset, base: 10n ** 18n } },
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {
@@ -134,6 +144,25 @@ describe("createEvmTxSimulator", () => {
     const { http, simulator } = setup();
     await expect(simulator.simulate([draft as TxDraft], live)).rejects.toMatchObject({
       code: "chain.bad_draft",
+    });
+    expect(http.requests()).toHaveLength(0);
+  });
+
+  it("gives the first draft's sender the native balance of the run", async () => {
+    const { http, simulator } = setup();
+    const balances = [{ asset: chain.nativeAsset, base: 10n ** 18n }];
+    await simulator.simulate([swap], { ...live, balances });
+    const [sent] = http.requests();
+    expect(readFakeRpcRequest(sent?.body).params[0]).toMatchObject({
+      blockStateCalls: [{ stateOverrides: { [user]: { balance: "0xde0b6b3a7640000" } } }],
+    });
+  });
+
+  it("refuses a balance of another chain's asset as a fault, asking no node", async () => {
+    const { http, simulator } = setup();
+    const balances = [{ asset: assetRefSchema.parse(`eip155:1/erc20:${usdt}`), base: 1n }];
+    await expect(simulator.simulate([swap], { ...live, balances })).rejects.toMatchObject({
+      code: "chain.bad_balances",
     });
     expect(http.requests()).toHaveLength(0);
   });

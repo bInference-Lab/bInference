@@ -11,20 +11,20 @@ come in as data from `@binference/chains`; nothing here names a chain.
 
 ## API
 
-| Export                                                                   | What it does                                                                      |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `createEvmFamily`, `parseEvmAddress`                                     | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form, draft reading  |
-| `encodeEvmDraft`, `decodeEvmDraft`                                       | A venue's call as a `TxDraft`: the address called, the value and the calldata     |
-| `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                           | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses      |
-| `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health |
-| `createEvmClient`                                                        | A viem public client whose requests go through the failover                       |
-| `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap           |
-| `simulate`, `Simulation`                                                 | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts             |
-| `createChainlinkPrices`, `FeedAsset`, `UsdFeed`                          | The `PriceSource` over Chainlink's USD feeds; a stale feed is no price            |
-| `createEvmTxSimulator`                                                   | The `TxSimulator` port of one chain: drafts simulated in order, fee left out      |
-| `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                     |
-| `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions              |
-| `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                  |
+| Export                                                                   | What it does                                                                                                                                                     |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createEvmFamily`, `parseEvmAddress`                                     | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form, draft reading                                                                                 |
+| `encodeEvmDraft`, `decodeEvmDraft`                                       | A venue's call as a `TxDraft`: the address called, the value and the calldata                                                                                    |
+| `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                           | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses                                                                                     |
+| `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health                                                                                |
+| `createEvmClient`                                                        | A viem public client whose requests go through the failover                                                                                                      |
+| `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap                                                                                          |
+| `simulate`, `Simulation`                                                 | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts                                                                                            |
+| `createChainlinkPrices`, `FeedAsset`, `UsdFeed`                          | The `PriceSource` over Chainlink's USD feeds; a stale feed is no price                                                                                           |
+| `createEvmTxSimulator`                                                   | The `TxSimulator` port of one chain: drafts simulated in order, fee left out; given balances become state overrides, a token's in the storage slot a probe finds |
+| `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                                                                                                    |
+| `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions                                                                                             |
+| `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                                                                                                 |
 
 ## Example
 

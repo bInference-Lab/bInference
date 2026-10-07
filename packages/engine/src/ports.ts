@@ -1,4 +1,4 @@
-import type { AssetRef, ChainRef } from "@binference/chain";
+import type { AssetRef, ChainRef, SimulationOptions } from "@binference/chain";
 import type { Id, Result } from "@binference/core";
 import type { SimulationView } from "@binference/protocol";
 import type { DeviceRecord } from "./access/device-record.js";
@@ -100,11 +100,15 @@ export interface QuoteSource {
  * with no other outflow or approval.
  */
 export interface Simulator {
-  /** The wallet's balance changes, or why the steps fail. Rejects once the signal aborts. */
+  /**
+   * The wallet's balance changes, or why the steps fail. The options' balances, such as a paper
+   * intent's, replace what the wallet holds on the chain for this run. Rejects once the signal
+   * aborts.
+   */
   simulate(
     intent: Id<"int">,
     built: BuiltQuote,
-    options: { readonly signal: AbortSignal },
+    options: SimulationOptions,
   ): Promise<Result<SimulationView, SimulationFailure>>;
 }
 

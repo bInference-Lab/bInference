@@ -8,6 +8,7 @@ import { createExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfolio.js";
+import { withPaperSimulation } from "../paper/paper-simulation.js";
 import { withPaperBalances } from "../paper/paper-wallet-facts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor, PositionStore, Simulator, WalletFactsSource } from "../ports.js";
@@ -68,6 +69,8 @@ interface PaperParts {
   readonly portfolio: PaperPortfolio;
   /** The wallet facts with paper balances from the paper portfolio. */
   readonly wallets: WalletFactsSource;
+  /** The simulate step with a paper intent's balances from the paper portfolio. */
+  readonly simulator: Simulator;
 }
 
 function paperParts(options: EngineOptions): PaperParts {
@@ -80,7 +83,12 @@ function paperParts(options: EngineOptions): PaperParts {
     startingBalances: options.paperBalances,
   });
   const wallets = withPaperBalances(options.wallets, { portfolio, chains: options.chains });
-  return { positions, portfolio, wallets };
+  const simulator = withPaperSimulation(options.simulator, {
+    portfolio,
+    intents: options.stores.intents,
+    chains: options.chains,
+  });
+  return { positions, portfolio, wallets, simulator };
 }
 
 function settingsHandlers(
@@ -129,7 +137,7 @@ function intentParts(
     clock,
     store: stored,
     quotes: createVenueQuoteSource({ stored, custody, host, chains }),
-    simulator: options.simulator,
+    simulator: paper.simulator,
   });
   const answer = createAnswerCard({ confirmations, stored, execute });
   const moneyPath = createMoneyPath({
@@ -139,7 +147,7 @@ function intentParts(
     wallets: paper.wallets,
     policy: createPolicyCheck({ prices: options.prices, clock }),
     host,
-    simulator: options.simulator,
+    simulator: paper.simulator,
     chains,
     execute,
     clock,

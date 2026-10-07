@@ -79,7 +79,9 @@ re-quote at a tap call. It runs a quote's steps unsent through the chain's `TxSi
 input leaves, at least the minimum out arrives, no other asset leaves or arrives, and no allowance
 is set but the plan's own approval. A step that reverts is `simulation_reverted`; any other
 difference is `effects_differ`, and `checkEffects` names the check that failed. The network fee is
-never among the transfers the simulation reports, so it is counted apart from them.
+never among the transfers the simulation reports, so it is counted apart from them. A paper intent
+simulates with its paper balances: for the run, the wallet holds what its paper positions hold of
+the chain's coin and of the asset the quote spends, so a paper trade passes from an empty wallet.
 It holds the engine's side of button surfaces, exported as `@binference/engine/surfaces`. Each
 card version opens with a random callback reference, and the `IntentStore` finds a version by it.
 `createCardShowings` draws an open card version from the stored intent, with the info of every

@@ -40,6 +40,8 @@ const usdt = bscToken("USDT");
 // Addresses no contract on BSC holds: a stranger, and two routers the tests install on the fork.
 const addressOf = (name: string): Address => getAddress(keccak256(toHex(name)).slice(0, 42));
 const thief = addressOf("binference fork thief");
+// A wallet with nothing on the chain, as a paper agent's often is.
+const emptyWallet = addressOf("binference fork paper wallet");
 const relay = addressOf("binference fork relay router");
 const skimmer = addressOf("binference fork skimming router");
 
@@ -64,11 +66,16 @@ function benchOf(fork: Fork): Bench {
 
 function draft(
   fork: Fork,
-  call: { readonly to: Address; readonly data: Hex; readonly value?: bigint },
+  call: {
+    readonly to: Address;
+    readonly data: Hex;
+    readonly value?: bigint;
+    readonly from?: Address;
+  },
 ): TxDraft {
   const { chain, account } = fork;
   return encodeEvmDraft({
-    from: evmAccountRef(chain, account),
+    from: evmAccountRef(chain, call.from ?? account),
     to: evmAccountRef(chain, call.to),
     value: call.value ?? 0n,
     data: call.data,
@@ -241,6 +248,73 @@ describe("simulation check on a BSC fork", () => {
       expect(checkEffects(steps, boundsOf(bench, skimming))).toStrictEqual({
         ok: false,
         error: "other_outflow",
+      });
+    }));
+
+  it("passes a paper buy from an empty wallet with its paper BNB, which the node refuses without", async ({
+    signal,
+  }) =>
+    withFork(signal, async (fork) => {
+      const bench = benchOf(fork);
+      const quote = await quoteOf(fork, buyIn, [wbnb, usdt]);
+      const data = encodeFunctionData({
+        abi: routerAbi,
+        functionName: "swapExactETHForTokens",
+        args: [(quote * 99n) / 100n, [wbnb, usdt], emptyWallet, await deadlineOf(fork)],
+      });
+      const built = builtOf(
+        { asset: fork.chain.nativeAsset, base: buyIn },
+        { asset: erc20AssetRef(fork.chain, usdt), base: quote },
+        [draft(fork, { from: emptyWallet, to: router, data, value: buyIn })],
+      );
+      const balances = [{ asset: fork.chain.nativeAsset, base: 10n ** 18n }];
+
+      await expect(bench.check.simulate(intent, built, { signal })).rejects.toMatchObject({
+        code: "chain.simulation_failed",
+      });
+      await expect(
+        bench.check.simulate(intent, built, { signal, balances }),
+      ).resolves.toMatchObject({
+        ok: true,
+        value: { spent: [built.quote.amountIn], received: [built.quote.expectedOut] },
+      });
+    }));
+
+  it("passes a paper sale of USDT the empty wallet holds only on paper, set in USDT's storage", async ({
+    signal,
+  }) =>
+    withFork(signal, async (fork) => {
+      const bench = benchOf(fork);
+      const quote = await quoteOf(fork, saleIn, [usdt, wbnb]);
+      const approve = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [router, saleIn],
+      });
+      const sell = encodeFunctionData({
+        abi: routerAbi,
+        functionName: "swapExactTokensForETH",
+        args: [saleIn, (quote * 99n) / 100n, [usdt, wbnb], emptyWallet, await deadlineOf(fork)],
+      });
+      const usdtAsset = erc20AssetRef(fork.chain, usdt);
+      const built = builtOf(
+        { asset: usdtAsset, base: saleIn },
+        { asset: fork.chain.nativeAsset, base: quote },
+        [
+          draft(fork, { from: emptyWallet, to: usdt, data: approve }),
+          draft(fork, { from: emptyWallet, to: router, data: sell }),
+        ],
+      );
+      const balances = [{ asset: usdtAsset, base: saleIn }];
+
+      await expect(bench.check.simulate(intent, built, { signal })).resolves.toMatchObject({
+        ok: false,
+      });
+      await expect(
+        bench.check.simulate(intent, built, { signal, balances }),
+      ).resolves.toMatchObject({
+        ok: true,
+        value: { spent: [built.quote.amountIn], received: [built.quote.expectedOut] },
       });
     }));
 

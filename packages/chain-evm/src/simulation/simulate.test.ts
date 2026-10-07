@@ -166,6 +166,31 @@ describe("simulate", () => {
     });
   });
 
+  it("sets one override per account: its native balance and the storage slots it changes", async () => {
+    const { http, rpc } = setup(
+      answered([{ status: "0x1", gasUsed: "0x1", returnData: "0x", logs: [] }]),
+    );
+    const slot = word(3n);
+    await simulate(rpc, {
+      ...request,
+      storage: [
+        { address: usdt, slot, value: word(9n) },
+        { address: user, slot, value: word(1n) },
+      ],
+    });
+    const [sent] = http.requests();
+    expect(readFakeRpcRequest(sent?.body).params[0]).toMatchObject({
+      blockStateCalls: [
+        {
+          stateOverrides: {
+            [user]: { balance: "0xde0b6b3a7640000", stateDiff: { [slot]: word(1n) } },
+            [usdt]: { stateDiff: { [slot]: word(9n) } },
+          },
+        },
+      ],
+    });
+  });
+
   it("simulates calls without balance overrides", async () => {
     const { http, rpc } = setup(
       answered([{ status: "0x1", gasUsed: "0x1", returnData: "0x", logs: [] }]),

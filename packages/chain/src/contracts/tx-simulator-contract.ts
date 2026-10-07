@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
+import type { Amount } from "../amount.js";
 import type { TxSimulator } from "../simulation/ports.js";
 import type { AssetTransfer } from "../simulation/simulated-step.js";
 import type { TxDraft } from "../transaction.js";
@@ -11,6 +12,11 @@ export interface TxSimulatorSubject {
   readonly moving: { readonly drafts: readonly TxDraft[]; readonly transfer: AssetTransfer };
   /** Drafts whose last one reverts. */
   readonly reverting: readonly TxDraft[];
+  /**
+   * Drafts whose sender holds too little of the native coin on the chain, so the last one
+   * reverts, and the native balance with which every one succeeds.
+   */
+  readonly unfunded: { readonly drafts: readonly TxDraft[]; readonly balance: Amount };
 }
 
 /** Makes a fresh {@link TxSimulatorSubject} for each check. */
@@ -44,6 +50,20 @@ export function txSimulatorContract(harness: TxSimulatorHarness): readonly Contr
         const last = steps.at(-1);
         assert.equal(last?.status, "reverted");
         assert.deepEqual([last.transfers, last.approvals], [[], []]);
+      },
+    },
+    {
+      name: "runs drafts with the native balance it is given instead of the sender's on chain",
+      run: async () => {
+        const { simulator, unfunded } = harness.create();
+        const onChain = await simulator.simulate(unfunded.drafts, live());
+        const funded = await simulator.simulate(unfunded.drafts, {
+          ...live(),
+          balances: [unfunded.balance],
+        });
+        assert.equal(onChain.at(-1)?.status, "reverted");
+        assert.equal(funded.length, unfunded.drafts.length);
+        assert.ok(funded.every((step) => step.status === "success"));
       },
     },
     {

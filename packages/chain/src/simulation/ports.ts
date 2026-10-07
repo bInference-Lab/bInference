@@ -1,5 +1,6 @@
 import type { TxDraft } from "../transaction.js";
 import type { SimulatedStep } from "./simulated-step.js";
+import type { SimulationOptions } from "./simulation-options.js";
 
 /**
  * Runs transaction drafts on their chain's latest state without sending them, and reports what
@@ -10,11 +11,12 @@ import type { SimulatedStep } from "./simulated-step.js";
 export interface TxSimulator {
   /**
    * One step per draft, in the drafts' order. A step that reverts is an outcome, never a throw.
-   * Drafts of a chain the simulator does not serve or that its family cannot read, and a node
-   * that refuses the simulation, are faults. Rejects with the signal's reason once it aborts.
+   * Drafts of a chain the simulator does not serve or that its family cannot read, a balance of
+   * another chain's asset, and a node that refuses the simulation are faults. Rejects with the
+   * signal's reason once it aborts.
    */
   simulate(
     drafts: readonly TxDraft[],
-    options: { readonly signal: AbortSignal },
+    options: SimulationOptions,
   ): Promise<readonly SimulatedStep[]>;
 }

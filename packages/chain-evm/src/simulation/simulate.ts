@@ -26,11 +26,20 @@ export interface BalanceOverride {
   readonly balanceWei: bigint;
 }
 
+/** A storage slot of a contract set before the calls run, such as a token's balance of a holder. */
+export interface StorageOverride {
+  readonly address: Address;
+  readonly slot: Hex;
+  /** The slot's new value, as 32 bytes. */
+  readonly value: Hex;
+}
+
 /** What to simulate: calls that run in order in one block on top of the latest state. */
 export interface SimulationRequest {
   readonly chain: EvmChain;
   readonly calls: readonly EvmCall[];
   readonly balances?: readonly BalanceOverride[];
+  readonly storage?: readonly StorageOverride[];
   readonly signal: AbortSignal;
 }
 
@@ -61,12 +70,33 @@ function simulationFailed(problem: string): BinferenceError {
   });
 }
 
-function blockStateCall(request: SimulationRequest): JsonValue {
-  const overrides = Object.fromEntries(
-    (request.balances ?? []).map((item) => [item.address, { balance: toHex(item.balanceWei) }]),
-  );
+type JsonObject = Readonly<Record<string, JsonValue>>;
+
+// One account's overrides: its native balance, and the storage slots it changes.
+function accountOverrideOf(request: SimulationRequest, address: Address): JsonObject {
+  const balance = (request.balances ?? []).findLast((item) => item.address === address);
+  const slots = (request.storage ?? []).filter((item) => item.address === address);
+  const stateDiff = Object.fromEntries(slots.map((item) => [item.slot, item.value]));
   return {
-    stateOverrides: overrides,
+    ...(balance === undefined ? {} : { balance: toHex(balance.balanceWei) }),
+    ...(slots.length === 0 ? {} : { stateDiff }),
+  };
+}
+
+// eth_simulateV1 takes one override per account, keyed by its address.
+function stateOverridesOf(request: SimulationRequest): JsonObject {
+  const accounts = new Set([
+    ...(request.balances ?? []).map((item) => item.address),
+    ...(request.storage ?? []).map((item) => item.address),
+  ]);
+  return Object.fromEntries(
+    [...accounts].map((address) => [address, accountOverrideOf(request, address)]),
+  );
+}
+
+function blockStateCall(request: SimulationRequest): JsonValue {
+  return {
+    stateOverrides: stateOverridesOf(request),
     calls: request.calls.map((call) => ({
       from: call.from,
       to: call.to,

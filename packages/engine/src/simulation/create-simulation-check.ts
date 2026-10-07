@@ -3,6 +3,7 @@ import {
   type ChainFamily,
   type ChainRegistry,
   isSameAccount,
+  type SimulationOptions,
   type TokenApproval,
   type TxDraft,
   type TxSimulator,
@@ -53,14 +54,14 @@ function readPlan(steps: readonly TxDraft[], chains: ChainRegistry): ReadPlan | 
 async function check(
   built: BuiltQuote,
   options: SimulationCheckOptions,
-  signal: AbortSignal,
+  call: SimulationOptions,
 ): Promise<Result<SimulationView, SimulationFailure>> {
-  signal.throwIfAborted();
+  call.signal.throwIfAborted();
   const plan = readPlan(built.steps, options.chains);
   if (plan === undefined) {
     return err("effects_differ");
   }
-  const steps = await options.simulator.simulate(built.steps, { signal });
+  const steps = await options.simulator.simulate(built.steps, call);
   if (steps.length !== built.steps.length) {
     return err("effects_differ");
   }
@@ -75,13 +76,13 @@ async function check(
 
 /**
  * Creates the simulate step of the money path as the engine's `Simulator`: it runs a quote's
- * steps unsent through the chain's `TxSimulator` and holds what they do to the wallet to the
- * quote's terms (see {@link checkEffects}). A plan it cannot read, with no step, a step from
- * another sender or a draft the family cannot read, is `effects_differ` and runs nothing. When
- * the chain cannot simulate, it rejects and the intent stays where it is.
+ * steps unsent through the chain's `TxSimulator`, with the balances it is given, and holds what
+ * they do to the wallet to the quote's terms (see {@link checkEffects}). A plan it cannot read,
+ * with no step, a step from another sender or a draft the family cannot read, is `effects_differ`
+ * and runs nothing. When the chain cannot simulate, it rejects and the intent stays where it is.
  */
 export function createSimulationCheck(options: SimulationCheckOptions): Simulator {
   return {
-    simulate: async (_intent, built, { signal }) => check(built, options, signal),
+    simulate: async (_intent, built, call) => check(built, options, call),
   };
 }

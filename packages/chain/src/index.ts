@@ -76,4 +76,5 @@ export { venueQuoteSchema } from "./venues/venue-quote.js";
 export type { QuoteRequest, VenueQuote, VenueQuoteWire } from "./venues/venue-quote.js";
 export { isSameAccount } from "./same-account.js";
 export type { TxSimulator } from "./simulation/ports.js";
+export type { SimulationOptions } from "./simulation/simulation-options.js";
 export type { AssetApproval, AssetTransfer, SimulatedStep } from "./simulation/simulated-step.js";
