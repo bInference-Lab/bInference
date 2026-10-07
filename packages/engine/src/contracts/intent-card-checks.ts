@@ -20,26 +20,51 @@ async function awaitingCard(subject: IntentStoreSubject): Promise<void> {
   assert.ok(opened.ok);
 }
 
-/** Card versions open and close with the intent's moves. */
-export async function closesWithMoves(subject: IntentStoreSubject): Promise<void> {
-  const { store } = subject;
+// A worse re-quote: card version 2 opens and replaces version 1. Answers the move's time.
+async function requoteCard(subject: IntentStoreSubject): Promise<number> {
   await awaitingCard(subject);
   const requote = {
     ...intentMove(1, 1, "awaiting_confirmation"),
     closeCard: { id: cardOf(1, 1).id, reason: "replaced" },
     openCard: cardOf(1, 2),
   } as const;
+  assert.ok((await subject.store.transition(requote, live())).ok);
+  return requote.atMs;
+}
+
+/** Card versions open and close with the intent's moves. */
+export async function closesWithMoves(subject: IntentStoreSubject): Promise<void> {
+  const { store } = subject;
+  const requotedAtMs = await requoteCard(subject);
   const expire = {
     ...intentMove(1, 2, "expired"),
     closeCard: { id: cardOf(1, 2).id, reason: "expired" },
   } as const;
-  assert.ok((await store.transition(requote, live())).ok);
   assert.ok((await store.transition(expire, live())).ok);
   assert.deepEqual(await store.cards(intentId, live()), [
-    { ...cardOf(1, 1), intentId, closedAtMs: requote.atMs, closeReason: "replaced" },
+    { ...cardOf(1, 1), intentId, closedAtMs: requotedAtMs, closeReason: "replaced" },
     { ...cardOf(1, 2), intentId, closedAtMs: expire.atMs, closeReason: "expired" },
   ]);
   assert.equal(await store.confirmation(intentId, live()), undefined);
+}
+
+/** A card version is found by its callback reference, open or closed, and no other is. */
+export async function findsCardsByRef(subject: IntentStoreSubject): Promise<void> {
+  const { store } = subject;
+  const requotedAtMs = await requoteCard(subject);
+  const first = cardOf(1, 1);
+  assert.deepEqual(await store.cardByRef(first.callbackRef ?? "", live()), {
+    ...first,
+    intentId,
+    closedAtMs: requotedAtMs,
+    closeReason: "replaced",
+  });
+  const second = cardOf(1, 2);
+  assert.deepEqual(await store.cardByRef(second.callbackRef ?? "", live()), {
+    ...second,
+    intentId,
+  });
+  assert.equal(await store.cardByRef("ZZZZZZZZZZZZZZZZ", live()), undefined);
 }
 
 /** The move to `confirmed` records the owner's one confirmation. */

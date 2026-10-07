@@ -14,6 +14,7 @@ export interface MemoryIntentTables {
   readonly intents: () => readonly IntentRecord[];
   readonly events: (id: Id<"int">) => readonly IntentEventRecord[];
   readonly cards: (id: Id<"int">) => readonly CardRecord[];
+  readonly cardByRef: (callbackRef: string) => CardRecord | undefined;
   readonly confirmation: (id: Id<"int">) => StoredConfirmation | undefined;
   /** Throws, before anything is written, when a move's card or confirmation write would fail. */
   readonly checkCardWrites: (change: IntentChange) => void;
@@ -78,6 +79,8 @@ export function createMemoryIntentTables(): MemoryIntentTables {
     intents: () => structuredClone([...intents.values()]),
     events: (id) => structuredClone(events.filter((event) => event.intentId === id)),
     cards: (id) => structuredClone(cards.filter((card) => card.intentId === id)),
+    cardByRef: (callbackRef) =>
+      structuredClone(cards.find((card) => card.callbackRef === callbackRef)),
     confirmation: (id) => structuredClone(confirmations.get(id)),
     checkCardWrites(change) {
       checkCloseCard(cards, change);

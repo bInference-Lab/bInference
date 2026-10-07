@@ -128,5 +128,6 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Inte
         tables.cards(id).toSorted((left, right) => left.version - right.version),
       ),
     confirmation: async (id, call) => memoryCall(call, () => tables.confirmation(id)),
+    cardByRef: async (callbackRef, call) => memoryCall(call, () => tables.cardByRef(callbackRef)),
   };
 }

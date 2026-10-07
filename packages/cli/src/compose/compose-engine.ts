@@ -99,6 +99,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     chains,
     clock,
     ids: createIdSource({ clock, random }),
+    random,
     publish,
   });
   const server = createProtocolServer({

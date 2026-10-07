@@ -1,5 +1,5 @@
 import type { Amount, ChainRegistry, PriceSource, Signer } from "@binference/chain";
-import type { Clock, IdSource } from "@binference/core";
+import type { Clock, IdSource, Random } from "@binference/core";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
@@ -57,6 +57,8 @@ export interface EngineOptions {
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly ids: IdSource;
+  /** Where each card version's callback reference comes from (spec 4, section 2). */
+  readonly random: Random;
   /** Where pushes go: the protocol server, which numbers them with a `seq` per topic. */
   readonly publish: PublishPush;
 }
@@ -113,6 +115,7 @@ function intentParts(
     intents: stores.intents,
     agents: stores.agents,
     ids,
+    random: options.random,
     publish: options.publish,
   });
   const fills = createPaperFills({

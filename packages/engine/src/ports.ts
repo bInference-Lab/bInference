@@ -143,6 +143,11 @@ export interface IntentStore {
   cards(id: Id<"int">, options: StoreCall): Promise<readonly CardRecord[]>;
   /** An intent's confirmation, if the owner confirmed it. */
   confirmation(id: Id<"int">, options: StoreCall): Promise<StoredConfirmation | undefined>;
+  /**
+   * The card version whose buttons carry this callback reference, open or closed, or `undefined`
+   * when no card version has it.
+   */
+  cardByRef(callbackRef: string, options: StoreCall): Promise<CardRecord | undefined>;
 }
 
 /**

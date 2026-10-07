@@ -119,6 +119,21 @@ export const intentCardsTask: StoreTask<Id<"int">, readonly CardRecord[]> = defi
   },
 });
 
+/** Reads the card version that carries a callback reference; the column is unique. */
+export const cardByRefTask: StoreTask<string, CardRecord | undefined> = defineTask({
+  name: "intents.cardByRef",
+  access: "read",
+  input: z.string(),
+  output: cardRecordSchema.optional(),
+  run(database, callbackRef) {
+    const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+    const row = takeFirst(
+      kysely.selectFrom("cards").selectAll().where("callback_ref", "=", callbackRef),
+    );
+    return row === undefined ? undefined : toCardRecord(row);
+  },
+});
+
 /** Reads an intent's confirmation. */
 export const intentConfirmationTask: StoreTask<
   Id<"int">,
@@ -146,4 +161,5 @@ export const intentTasks: readonly TaskRunner[] = [
   intentEventsTask,
   intentCardsTask,
   intentConfirmationTask,
+  cardByRefTask,
 ];

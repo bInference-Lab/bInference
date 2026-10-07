@@ -1,6 +1,7 @@
 import type { IntentStore } from "@binference/engine";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import {
+  cardByRefTask,
   createIntentTask,
   getIntentTask,
   intentCardsTask,
@@ -23,5 +24,6 @@ export function createSqliteIntentStore(host: StoreHost): IntentStore {
     events: bindTask(host, intentEventsTask),
     cards: bindTask(host, intentCardsTask),
     confirmation: bindTask(host, intentConfirmationTask),
+    cardByRef: bindTask(host, cardByRefTask),
   };
 }

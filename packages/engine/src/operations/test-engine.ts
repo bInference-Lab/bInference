@@ -6,6 +6,7 @@ import {
   type ChainRegistry,
   createChainRegistry,
   type Venue,
+  type UsdPrice,
 } from "@binference/chain";
 import {
   createFakeChainDefinition,
@@ -36,7 +37,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
-import type { AgentStore, Executor, IntentStore, PositionStore, UsdPrice } from "../ports.js";
+import type { AgentStore, Executor, IntentStore, PositionStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine } from "./create-engine.js";
@@ -162,6 +163,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),
+    random: createSeededRandom(4),
     publish: (push) => pushes.push(push),
   });
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });

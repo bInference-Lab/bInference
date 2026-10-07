@@ -5,6 +5,7 @@ import { genesisLedgerHash } from "../ledger/ledger-hash.js";
 import {
   closesWithMoves,
   confirmsOnce,
+  findsCardsByRef,
   refusesClosedCard,
   refusesTakenVersion,
 } from "./intent-card-checks.js";
@@ -167,6 +168,7 @@ async function refusesAborted(subject: IntentStoreSubject): Promise<void> {
   await assertRefusesAborted(async (options) => store.events(id, options));
   await assertRefusesAborted(async (options) => store.cards(id, options));
   await assertRefusesAborted(async (options) => store.confirmation(id, options));
+  await assertRefusesAborted(async (options) => store.cardByRef("ZZZZZZZZZZZZZZZZ", options));
   assert.equal(await store.get(id, live()), undefined);
   assert.equal(await ledger.last(live()), undefined);
 }
@@ -193,6 +195,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
       listsByState,
     ),
     checkOn("opens, replaces and closes card versions with the moves", create, closesWithMoves),
+    checkOn("finds a card version by its callback reference", create, findsCardsByRef),
     checkOn("records one confirmation with the move to confirmed", create, confirmsOnce),
     checkOn("refuses to close a card version that is not open", create, refusesClosedCard),
     checkOn("refuses a card version the intent already has", create, refusesTakenVersion),

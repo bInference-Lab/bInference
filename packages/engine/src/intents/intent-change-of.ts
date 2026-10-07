@@ -1,4 +1,10 @@
-import { BinferenceError, type IdSource, type JsonValue, stableJson } from "@binference/core";
+import {
+  BinferenceError,
+  type IdSource,
+  type JsonValue,
+  type Random,
+  stableJson,
+} from "@binference/core";
 import type { IntentWrite } from "../confirmations/stored-intent.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
 import { sha256Hex } from "../records/sha256-hex.js";
@@ -34,6 +40,8 @@ export interface MoveContext {
   readonly record: IntentRecord;
   readonly history: IntentHistory;
   readonly ids: IdSource;
+  /** Where a new card version's callback reference comes from; without it, it has none. */
+  readonly random?: Random;
 }
 
 interface JsonObject {
@@ -78,15 +86,21 @@ interface CardWrites {
   readonly closeCard?: CardVersionClosing;
 }
 
+// Spec 4, section 2: 12 random bytes, which base64url writes in 16 characters.
+const callbackRefBytes = 12;
+
 // The terms hash covers what the card shows: the request and the quote of this version.
 function opening(card: CardTerms, context: MoveContext, quote: JsonValue | undefined): CardOpening {
-  const { record, ids } = context;
+  const { record, ids, random } = context;
   const { version } = card;
   const terms = { intent: record.id, version, request: record.request, quote: quote ?? null };
   return {
     id: ids.next("crd"),
     version,
     termsHash: sha256Hex(stableJson(terms)),
+    ...(random === undefined
+      ? {}
+      : { callbackRef: Buffer.from(random.bytes(callbackRefBytes)).toString("base64url") }),
     openedAtMs: card.openedAtMs,
     expiresAtMs: card.expiresAtMs,
   };

@@ -1,4 +1,4 @@
-import { createIdSource, type Id } from "@binference/core";
+import { createIdSource, type Id, type Random } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { QuoteView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -90,7 +90,7 @@ async function seed(stored: StoredIntents, stores: ReturnType<typeof createMemor
   await stored.move(toHeld, live);
 }
 
-function holding(): Held {
+function holding(random?: Random): Held {
   const stores = createMemoryEngineStores();
   const pushes: EnginePush[] = [];
   const ids = createIdSource({
@@ -101,6 +101,7 @@ function holding(): Held {
     intents: stores.intents,
     agents: stores.agents,
     ids,
+    ...(random === undefined ? {} : { random }),
     publish: (push) => pushes.push(push),
   });
   return { stored, pushes, ready: seed(stored, stores) };
@@ -181,6 +182,23 @@ describe("stored intents", () => {
       [2, undefined],
     ]);
     expect(pushes.slice(-2).map((push) => push.kind)).toStrictEqual(["card/closed", "card/opened"]);
+  });
+
+  it("give each card version a random callback reference, and none without a random source", async () => {
+    const { stored, ready } = holding(createSeededRandom(6));
+    await ready;
+    const card = { version: 2, openedAtMs: 20_000, expiresAtMs: 80_000 };
+    const moved = await stored.move(moveTo(held, { card }, 20_000), live);
+    const refs = expectOk(moved).history.cards.map((opened) => opened.callbackRef);
+    expect(refs).toStrictEqual([
+      expect.stringMatching(/^[\w-]{16}$/),
+      expect.stringMatching(/^[\w-]{16}$/),
+    ]);
+    expect(new Set(refs).size).toBe(2);
+    const plain = holding();
+    await plain.ready;
+    const snapshot = await plain.stored.snapshot(intent, live);
+    expect(snapshot?.history.cards.map((opened) => opened.callbackRef)).toStrictEqual([undefined]);
   });
 
   it("close the open card when the intent is cancelled", async () => {

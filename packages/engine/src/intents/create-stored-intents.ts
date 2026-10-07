@@ -1,4 +1,12 @@
-import { BinferenceError, err, type Id, type IdSource, ok, type Result } from "@binference/core";
+import {
+  BinferenceError,
+  err,
+  type Id,
+  type IdSource,
+  ok,
+  type Random,
+  type Result,
+} from "@binference/core";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { StoredIntent } from "../confirmations/stored-intent.js";
@@ -53,6 +61,11 @@ export interface StoredIntentsOptions {
   readonly intents: IntentStore;
   readonly agents: AgentStore;
   readonly ids: IdSource;
+  /**
+   * Where each new card version's callback reference comes from, the random reference its
+   * Telegram buttons carry. Without it, card versions carry none and no button can answer them.
+   */
+  readonly random?: Random;
   readonly publish: PublishPush;
 }
 
@@ -138,7 +151,13 @@ async function moveIntent(
     return err("stale");
   }
   const { record, history } = before;
-  const change = changeOf(move, { record, history, ids: options.ids });
+  const { ids, random } = options;
+  const change = changeOf(move, {
+    record,
+    history,
+    ids,
+    ...(random === undefined ? {} : { random }),
+  });
   const commit = await options.intents.transition(change, { signal });
   if (!commit.ok) {
     return err("stale");
