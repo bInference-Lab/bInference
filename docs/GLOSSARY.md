@@ -151,6 +151,8 @@ new name here first, in the change that uses it.
   when a text in it looks like a secret.
 - **poll worker**: the worker thread that calls `getUpdates` for the engine; a **poller lease**
   keeps one poller per bot token in a process.
+- **throttler**: one per bot token; it paces the bot's Bot API calls by Telegram's limits and owns
+  every wait Telegram asks for with a 429.
 - **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`.
 - **unlock mode**: where the agent key and the Privy app secret are read at start: `keychain`,
   `file`, `command` or `manual`.

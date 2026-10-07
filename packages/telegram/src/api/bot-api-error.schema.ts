@@ -2,6 +2,7 @@ import { BinferenceError } from "@binference/core";
 import { GrammyError, HttpError } from "grammy";
 
 const secondMs = 1000;
+const badRequestStatus = 400;
 
 function refusal(method: string, error: GrammyError): BinferenceError {
   const status = error.error_code;
@@ -53,4 +54,16 @@ export function botApiFault(error: unknown, method: string): BinferenceError {
     retryable: error instanceof HttpError,
     details: { method },
   });
+}
+
+/**
+ * Whether a fault is Telegram's 400 for a message: one it no longer has, one older than it lets
+ * the bot change, or an edit that changes nothing. For an edit or a delete, the work is done.
+ */
+export function isMessageGone(error: unknown): boolean {
+  return (
+    error instanceof BinferenceError &&
+    error.code === "telegram.api_refused" &&
+    error.details["status"] === badRequestStatus
+  );
 }

@@ -18,6 +18,9 @@ export type { PollerLease, PollerLeases } from "./polling/poller-leases.js";
 export { runPolling } from "./polling/run-polling.js";
 export type { RunPollingOptions } from "./polling/run-polling.js";
 export type { OwnerStore } from "./ports.js";
+export type { BotThrottlerOptions } from "./throttle/create-bot-throttler.js";
+export { createBotThrottlers } from "./throttle/create-bot-throttlers.js";
+export type { BotThrottlers } from "./throttle/create-bot-throttlers.js";
 export type {
   BotSender,
   ButtonPress,

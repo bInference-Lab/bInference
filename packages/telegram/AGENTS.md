@@ -1,7 +1,7 @@
 # @binference/telegram
 
 The Telegram channel for the owner's own bot: durable update intake, owner pairing by start code,
-and secret screening.
+secret screening, and one throttler per bot token.
 
 The root [AGENTS.md](../../AGENTS.md) and [core's schema pattern](../core/AGENTS.md) apply here.
 Rules for this package:
@@ -22,6 +22,10 @@ Rules for this package:
   binference's `ChatUpdate`.
 - Every word the bot sends is a message key under `telegram.` in `@binference/i18n`, in the
   owner's language, or else in the language of the sender's Telegram app.
+- Every grammY `Api` the package calls has its token's throttler installed
+  (`createBotThrottlers().install(api)`). It paces each chat, bounds each attempt to 30 seconds
+  and owns every 429 wait, so callers pass only a signal and never retry a 429 themselves.
+  `getUpdates` passes through: the poller owns its waits.
 - Its public API is what `src/index.ts` exports. The `OwnerStore` contract suite and its fake live
   behind `src/testing.ts` (`@binference/telegram/testing`). Every export carries TSDoc.
 - Tests answer Bot API calls with the synthetic Bot API `createFakeBotApi` (in `src/testing/`,

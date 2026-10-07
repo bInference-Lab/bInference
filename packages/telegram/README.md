@@ -8,6 +8,9 @@ single-use start code, and only the owner's numeric Telegram id counts after tha
 off. A message that looks like a recovery phrase, a private key or an owner key is deleted unseen
 and answered with a warning. Long polling runs in a worker thread, one poller per bot token.
 
+One throttler per bot token paces the bot by Telegram's limits and waits out every 429, pausing
+only the chat Telegram named.
+
 ## API
 
 | Export                             | What it does                                                                                          |
@@ -20,6 +23,7 @@ and answered with a warning. Long polling runs in a worker thread, one poller pe
 | `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored                           |
 | `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                                                  |
 | `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                                                     |
+| `createBotThrottlers`              | One throttler per bot token, installed on every grammY `Api` of the token                             |
 | `@binference/telegram/testing`     | `ownerStoreContract`, `createMemoryOwnerStore`, and `createFakeBotApi`: a synthetic Bot API for tests |
 
 ## Example
@@ -27,14 +31,17 @@ and answered with a warning. Long polling runs in a worker thread, one poller pe
 ```ts
 import { Api } from "grammy";
 import {
+  createBotThrottlers,
   createPollerLeases,
   createTelegramIngress,
   pollWorker,
   runPolling,
 } from "@binference/telegram";
 
+const api = new Api(token.reveal());
+createBotThrottlers({ clock, logger: logger.child("telegram") }).install(api);
 const ingress = createTelegramIngress({
-  api: new Api(token.reveal()),
+  api,
   stores: { inbox: stores.inbox, access: stores.access, owners },
   clock,
   logger: logger.child("telegram"),
