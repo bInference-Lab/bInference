@@ -83,6 +83,10 @@ async function replace(
   if (prepared.value.isAboveFeeCap) {
     return stopped("over_fee_cap");
   }
+  // Once the engine begins to stop, no replacement is signed; the watch's next wait ends it.
+  if (run.stopping.aborted) {
+    return waiting;
+  }
   const { step, nonce } = transaction;
   const ready = { index: step, draft, nonce, prepared: prepared.value };
   const replacing = { transaction, replaces: prepared.value.replaces };

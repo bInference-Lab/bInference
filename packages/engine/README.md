@@ -111,6 +111,11 @@ until the step turns up after all or a final block holds the other one, which en
 signed ends the intent `cancelled`, or `failed_onchain` with `step_unsent` once an earlier step
 landed, as a step that cannot be signed in a run does (decision 0109).
 
+When the engine stops, `close` takes nothing more: every wait ends, a work still waiting for its
+wallet leaves the queue, and no step is signed, while a signature or a send under way runs to its
+end, so a signed step is stored and sent before the engine exits. The shutdown's budget cuts what
+is left; recovery goes on from the store at the next start.
+
 It holds the simulation check (ARCHITECTURE.md section 7, step 5), exported as
 `@binference/engine/simulation`: `createSimulationCheck` is the `Simulator` the money path and the
 re-quote at a tap call. It runs a quote's steps unsent through the chain's `TxSimulator` of

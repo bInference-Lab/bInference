@@ -301,7 +301,7 @@ describe("recovery after a restart", () => {
     expect(restarted.recovered).toBe(0);
     expect(restartEvents(restarted)).toContain("executor.not_recovered:no_relays");
     expect(await stateOf(bench, intent)).toBe("executing");
-    await restarted.executor.close();
+    await restarted.executor.close(live());
     await expect(restarted.executor.recover(live())).rejects.toMatchObject({
       code: "engine.executor_closed",
     });

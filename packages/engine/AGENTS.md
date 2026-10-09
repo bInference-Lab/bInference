@@ -161,7 +161,10 @@ Rules for this package:
   recovery read every transaction of a step's nonce, so whichever lands is the step's, and a landed
   cancel ends the intent with `stuck_cancelled`; recovery never replaces a stuck step. A step that
   is never signed, at a run or found at recovery, ends the intent through `step_unsent`: `cancelled`
-  when no step was signed, `failed_onchain` once one landed (decision 0109).
+  when no step was signed, `failed_onchain` once one landed (decision 0109). `close` follows the
+  engine's shutdown order (ARCHITECTURE.md section 24): it takes nothing more, every wait ends and
+  no step or replacement starts, while a signature or a send under way runs to its end within the
+  shutdown's budget.
 - The risk step (`src/risk/`, exported as `@binference/engine/risk`) weighs the token a quoted
   trade buys; a sale passes it, and its own simulation decides. A token the registry lists passes
   without asking anyone. Any other needs a report from every required `TokenRiskSource`, each

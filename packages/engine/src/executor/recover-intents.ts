@@ -101,7 +101,7 @@ export async function recoverIntent(run: ExecutionRun, unsettled: Unsettled): Pr
       const stored = await parts.stores.transactions.ofIntent(intent, { signal });
       return recoverSteps(run, snapshot, stored);
     },
-    { signal },
+    { signal: run.stopping },
   );
   return included === undefined ? undefined : settleIncluded(run, included);
 }

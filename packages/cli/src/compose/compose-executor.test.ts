@@ -104,7 +104,7 @@ describe("the self-hosted executor", () => {
   it("builds the executor with a healthy signal, and refuses a chain with no fee cap", async () => {
     const composed = composeWith(config);
     expect(composed.health()).toBe("ok");
-    await composed.executor.close();
+    await composed.executor.close({ signal: new AbortController().signal });
     expect(() => composeWith({ ...config, maxFeePerGasGwei: {} })).toThrow(
       expect.objectContaining({ code: "cli.no_fee_cap" }),
     );

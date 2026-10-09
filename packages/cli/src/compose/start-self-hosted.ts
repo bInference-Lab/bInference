@@ -129,7 +129,8 @@ function composeSending(
     },
     logger: log.logger,
   });
-  closers.add("executor", async () => composed.executor.close());
+  // The executor finishes a signature or a send under way within the shutdown's budget.
+  closers.add("executor", async (signal) => composed.executor.close({ signal }));
   return { ...composed, pushes };
 }
 

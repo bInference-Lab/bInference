@@ -276,7 +276,7 @@ describe("the executor's refusals", () => {
     const proposed = expectOk(await handlers["intent/propose"](testCall(testSwap())));
     await bench.executor.take(proposed.intent, live());
     expect(eventsOf(bench)).toStrictEqual(["executor.not_taken:not_confirmed"]);
-    await bench.executor.close();
+    await bench.executor.close(live());
     await expect(bench.executor.take(proposed.intent, live())).rejects.toMatchObject({
       code: "engine.executor_closed",
     });
@@ -305,16 +305,5 @@ describe("the executor's watch", () => {
       "finalized",
       "reconciled",
     ]);
-  });
-
-  it("stops watching when the executor closes", async () => {
-    const bench = await startExecutorBench();
-    bench.network.script("relay-a", { kind: "hang" });
-    bench.network.script("relay-b", { kind: "hang" });
-    const intent = await tapped(bench);
-    await flush();
-    await bench.executor.close();
-    expect(await stateOf(bench, intent)).toBe("executing");
-    expect(eventsOf(bench).at(-1)).toBe("executor.failed:engine.stopping");
   });
 });

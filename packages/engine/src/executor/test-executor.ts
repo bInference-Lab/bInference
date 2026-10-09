@@ -79,6 +79,8 @@ export interface BenchOptions {
   readonly hold?: boolean;
   /** Wraps the custody the executor signs through. */
   readonly custody?: (custody: Signer) => Signer;
+  /** Wraps the relays the executor sends through. */
+  readonly sender?: (sender: RelaySender) => RelaySender;
   /** Wraps the transaction store the executor and its queue write through. */
   readonly transactions?: (store: TransactionStore) => TransactionStore;
   /** Leaves the fake chain without sending parts. */
@@ -167,9 +169,10 @@ function sendingOf(
   options: BenchOptions,
 ) {
   const { network, transactions } = parts;
+  const noting = notingSender(network, transactions, notes.sent);
   const sending = {
     preparer: options.preparer?.(network) ?? network,
-    sender: notingSender(network, transactions, notes.sent),
+    sender: options.sender?.(noting) ?? noting,
     receipts: options.receipts?.(network) ?? network,
   };
   return new Map(options.withoutRelays === true ? [] : [[benchChain, sending]]);

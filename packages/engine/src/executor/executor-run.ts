@@ -22,11 +22,17 @@ export interface ExecutorParts extends ExecutorOptions {
   readonly log: Logger;
 }
 
-/** One intent's execution: its parts, its plan, and the signal that stops it. */
+/** One intent's execution: its parts, its plan, and the signals that stop it. */
 export interface ExecutionRun {
   readonly parts: ExecutorParts;
   readonly plan: IntentPlan;
+  /** Aborts every call of the run, a signature or a send under way too. */
   readonly signal: AbortSignal;
+  /**
+   * Aborts once the engine begins to stop, and with `signal`: every wait ends and no step starts,
+   * while a signature or a send under way runs on until `signal` aborts.
+   */
+  readonly stopping: AbortSignal;
 }
 
 /** A trigger with the trade the move to `reconciled` records. */
@@ -86,7 +92,7 @@ export async function readSafely<T>(
   }
 }
 
-/** Waits about one block of the run's chain, or rejects once the run stops. */
+/** Waits about one block of the run's chain, or rejects once the engine begins to stop. */
 export async function nextBlock(run: ExecutionRun): Promise<void> {
-  await run.parts.clock.sleep(run.plan.chain.definition.blockTimeMs, run.signal);
+  await run.parts.clock.sleep(run.plan.chain.definition.blockTimeMs, run.stopping);
 }

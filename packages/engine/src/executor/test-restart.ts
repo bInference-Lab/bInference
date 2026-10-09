@@ -36,7 +36,8 @@ export async function restartBench(
   bench: ExecutorBench,
   options: BenchOptions = {},
 ): Promise<RestartedBench> {
-  await bench.executor.close();
+  // A crash cuts every call at once, a signature or a send under way too.
+  await bench.executor.close({ signal: AbortSignal.abort() });
   const signed: SignRequest[] = [];
   const pushes: EnginePush[] = [];
   const sends: BenchSend[] = [];

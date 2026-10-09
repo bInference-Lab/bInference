@@ -1,5 +1,5 @@
 import type { TxDraft } from "@binference/chain";
-import { type Id, ok, type Result } from "@binference/core";
+import { err, type Id, ok, type Result } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
@@ -53,6 +53,10 @@ async function takeIn(
   if (check.terms === undefined) {
     return notTaken(run, intent, "no_authorization");
   }
+  // An intent the engine's stop meets here stays `confirmed`, with nothing signed.
+  if (run.stopping.aborted) {
+    return notTaken(run, intent, "stopping");
+  }
   const executing = await moveIntent(run, snapshot, { type: "queue_took", ...check.facts });
   if (executing === undefined) {
     return undefined;
@@ -98,11 +102,15 @@ async function endStep(
   return endUnsent(run, taken.snapshot, step.index);
 }
 
+// Once the engine begins to stop, no step is signed: the intent ends as one never signed.
 async function readyStep(
   run: ExecutionRun,
   slot: WalletSlot,
   step: { readonly taken: Taken; readonly index: number; readonly draft: TxDraft },
-): Promise<Result<PreparedStep, "would_fail">> {
+): Promise<Result<PreparedStep, "would_fail" | "stopping">> {
+  if (run.stopping.aborted) {
+    return err("stopping");
+  }
   return step.index === 0 ? ok(step.taken.first) : prepareStep(run, slot, step);
 }
 
@@ -155,7 +163,9 @@ async function runFrom(
  * so the slot frees the wallet before finality, and `undefined` when the run stopped. A step that
  * cannot be signed or stored ends the intent (decision 0109). A stuck step is sent again, sped up
  * or cancelled at its nonce (spec 6, section 6); a landed cancel ends the intent `failed_onchain`
- * with `stuck_cancelled`, and a step no rule can move leaves it `executing`.
+ * with `stuck_cancelled`, and a step no rule can move leaves it `executing`. Once the engine
+ * begins to stop, a step being signed or sent goes on to its first send, and no other step is
+ * signed.
  */
 export async function executeInSlot(
   run: ExecutionRun,
