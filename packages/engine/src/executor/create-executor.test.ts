@@ -259,15 +259,15 @@ describe("the executor's refusals", () => {
     expect(bench.network.sends()).toBe(0);
   });
 
-  it("hands a step over as stuck when no block holds it, signed once", async () => {
+  it("sends a step no relay takes again once stuck, with no new signature before the speed-up", async () => {
     const bench = await startExecutorBench({ limits: { stuckAfterBlocks: 3 } });
     bench.network.script("relay-a", { kind: "hang" });
     bench.network.script("relay-b", { kind: "hang" });
     const intent = await tapped(bench);
     await driveUntil(bench, intent, { states: [], blocks: 6 });
     expect(await stateOf(bench, intent)).toBe("executing");
-    expect(eventsOf(bench).at(-1)).toBe("executor.step_stopped:stuck");
-    expect([bench.signed.length, bench.network.sends()]).toStrictEqual([1, 3]);
+    expect(eventsOf(bench)).toContain("executor.stuck_resent:");
+    expect([bench.signed.length, bench.network.sends()]).toStrictEqual([1, 4]);
   });
 
   it("takes nothing it cannot run, and nothing once closed", async () => {

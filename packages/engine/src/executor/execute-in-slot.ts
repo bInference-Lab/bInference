@@ -8,6 +8,7 @@ import { type ExecutionRun, moveIntent } from "./executor-run.js";
 import { checkForQueue, type SigningTerms } from "./queue-check.js";
 import { type PreparedStep, prepareStep, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
+import { stuckRulesOf } from "./stuck-rules.js";
 
 /** Every step of an intent in a block, with the intent moved to `included`. */
 export interface IncludedSteps {
@@ -59,7 +60,7 @@ async function takeIn(
   return { snapshot: executing, terms: check.terms, isAuto: check.isAuto, first: first.value };
 }
 
-// A stuck step leaves the intent `executing`; the stuck step's handling decides it.
+// A step no stuck rule can move leaves the intent `executing`, handed over at this seam.
 function stopStep(run: ExecutionRun, taken: Taken, problem: string): undefined {
   const intentId = taken.snapshot.record.id;
   run.parts.log.warn("executor.step_stopped", { intentId, errorCode: problem });
@@ -127,8 +128,9 @@ async function runFrom(
   if (!stored.ok) {
     return endStep(run, taken, { index, problem: stored.error });
   }
+  const rules = stuckRulesOf(run, { slot, terms: taken.terms });
   const intent = snapshot.record;
-  const watched = await sendAndWatch(run, { intent, transaction: stored.value, rivals: [] });
+  const watched = await sendAndWatch(run, { intent, transaction: stored.value, rivals: [], rules });
   if (watched.outcome === "stuck") {
     return stopStep(run, taken, watched.problem);
   }
@@ -143,8 +145,9 @@ async function runFrom(
  * `queue_took` check, then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
  * so the slot frees the wallet before finality, and `undefined` when the run stopped. A step that
- * cannot be signed or stored ends the intent (decision 0109). A stuck step leaves it `executing`;
- * a step's cancel that lands ends it `failed_onchain` with `stuck_cancelled`.
+ * cannot be signed or stored ends the intent (decision 0109). A stuck step is sent again, sped up
+ * or cancelled at its nonce (spec 6, section 6); a landed cancel ends the intent `failed_onchain`
+ * with `stuck_cancelled`, and a step no rule can move leaves it `executing`.
  */
 export async function executeInSlot(
   run: ExecutionRun,

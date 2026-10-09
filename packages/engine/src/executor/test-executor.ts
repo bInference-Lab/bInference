@@ -6,6 +6,7 @@ import {
   type ReceiptReader,
   type RelaySender,
   type SignRequest,
+  type TxPreparer,
   type Signer,
   type UsdPrice,
 } from "@binference/chain";
@@ -88,6 +89,8 @@ export interface BenchOptions {
   readonly fillOut?: (amountInBase: bigint) => bigint;
   /** Wraps what the executor reads receipts, transfers and nonces through. */
   readonly receipts?: (network: FakeNetwork) => ReceiptReader;
+  /** Wraps what the executor prepares steps and replacements through. */
+  readonly preparer?: (network: FakeNetwork) => TxPreparer;
   /** The executor's USD prices; the coin alone, at $600, when absent. */
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
   /** The seed of the executor's ids; an executor started again needs another one. */
@@ -165,7 +168,7 @@ function sendingOf(
 ) {
   const { network, transactions } = parts;
   const sending = {
-    preparer: network,
+    preparer: options.preparer?.(network) ?? network,
     sender: notingSender(network, transactions, notes.sent),
     receipts: options.receipts?.(network) ?? network,
   };

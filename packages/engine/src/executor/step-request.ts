@@ -3,6 +3,7 @@ import type {
   SignRequest,
   SignStep,
   StepAction,
+  StepReplacement,
   TxDraft,
   UnsignedTx,
 } from "@binference/chain";
@@ -18,6 +19,8 @@ export interface StepToSign {
   readonly index: number;
   readonly draft: TxDraft;
   readonly unsigned: UnsignedTx;
+  /** Set for a stuck step's speed-up or cancel, which takes the nonce of one signed before. */
+  readonly replaces?: StepReplacement;
 }
 
 // What the step does, read from its draft by the chain's family: an exact approval, or a call.
@@ -38,10 +41,16 @@ function actionOf(step: StepToSign): StepAction {
 
 /**
  * The signing request of one step (spec 5, section 5.1): the unsigned transaction, the intent, the
- * step and what it does, and what authorized the intent, which the signer checks again.
+ * step and what it does, what it replaces when it is a speed-up or a cancel, and what authorized
+ * the intent, which the signer checks again.
  */
 export function signRequestOf(step: StepToSign): SignRequest {
-  const signStep: SignStep = { index: step.index, chain: step.chain.ref, action: actionOf(step) };
+  const signStep: SignStep = {
+    index: step.index,
+    chain: step.chain.ref,
+    action: actionOf(step),
+    ...(step.replaces === undefined ? {} : { replaces: step.replaces }),
+  };
   return {
     wallet: step.record.walletId,
     tx: step.unsigned,

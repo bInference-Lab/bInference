@@ -148,14 +148,17 @@ Rules for this package:
   refuse before a signature (the `queue_took` check, a draft that would fail, an auto intent's fee
   above the cap) runs before the move to `executing`, so such an intent stays `confirmed` with
   nothing signed. Each step's raw bytes are stored before any send; a send no relay accepts goes
-  again with the same stored bytes, never a new signature. A stuck step hands over at the seam
-  `executor.step_stopped` logs. Reconciliation reads what each final step moved only through the
-  `ReceiptReader`, records the trade in the positions before the move to `reconciled`, and finds
-  it stored after a restart, so a trade is recorded once. `recover` signs nothing: each stored
-  step is looked up by hash and nonce (spec 6, section 7). The watch and recovery read every
+  again with the same stored bytes. A stuck step follows spec 6, section 6 in `stuck-rules.ts`, only
+  on its wallet's slot: the same bytes again while it still runs, a speed-up after
+  `replaceAfterBlocks`, a cancel once it would fail, each at its nonce for at least
+  `leastReplacementFee` and never above the network fee cap. A step no rule can move hands over at
+  the seam `executor.step_stopped` logs. Reconciliation reads what each final step moved only
+  through the `ReceiptReader`, records the trade in the positions before the move to `reconciled`,
+  and finds it stored after a restart, so a trade is recorded once. `recover` signs nothing: each
+  stored step is looked up by hash and nonce (spec 6, section 7). The watch and recovery read every
   transaction of a step's nonce, so whichever lands is the step's, and a landed cancel ends the
-  intent with `stuck_cancelled`. A step that is never signed, at a run
-  or found at recovery, ends the intent through `step_unsent`: `cancelled` when no step was
+  intent with `stuck_cancelled`; recovery never replaces a stuck step. A step that is never signed,
+  at a run or found at recovery, ends the intent through `step_unsent`: `cancelled` when no step was
   signed, `failed_onchain` once one landed (decision 0109).
 - The risk step (`src/risk/`, exported as `@binference/engine/risk`) weighs the token a quoted
   trade buys; a sale passes it, and its own simulation decides. A token the registry lists passes

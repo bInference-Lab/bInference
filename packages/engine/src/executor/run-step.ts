@@ -1,7 +1,7 @@
-import type { PreparedTx, TxDraft, TxReceipt } from "@binference/chain";
+import type { PreparedTx, StepReplacement, TxDraft, TxReceipt } from "@binference/chain";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { IntentRecord } from "../intents/intent-record.js";
-import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import type { SignedTransaction, TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import type { ExecutionRun } from "./executor-run.js";
 import type { SigningTerms } from "./queue-check.js";
@@ -16,13 +16,23 @@ export interface PreparedStep {
   readonly prepared: PreparedTx;
 }
 
-/** Why a step was not signed, or not stored once signed: nothing was sent for it. */
+/**
+ * Why a step was not signed, or not stored once signed: nothing was sent for it. `wrong_state`:
+ * the transaction a replacement was for is no longer signed or sent.
+ */
 export type SignStop =
   | "would_fail"
   | "refused"
   | "unknown_wallet"
   | "bad_signature"
-  | "nonce_taken";
+  | "nonce_taken"
+  | "wrong_state";
+
+/** What a stuck step's replacement takes the nonce of, and what the signer checks it against. */
+export interface StepReplacing {
+  readonly transaction: TransactionRecord;
+  readonly replaces: StepReplacement;
+}
 
 /** Takes the next nonce from the slot and prepares the step's draft at it, read from the chain. */
 export async function prepareStep(
@@ -37,10 +47,27 @@ export async function prepareStep(
   return prepared.ok ? ok({ index, draft, nonce, prepared: prepared.value }) : prepared;
 }
 
+// Stores the signed bytes in the slot: a replacement at the nonce it takes, any other at the
+// nonce the slot gave.
+async function storeSigned(
+  slot: WalletSlot,
+  transaction: SignedTransaction,
+  call: { readonly replacing?: StepReplacing; readonly signal: AbortSignal },
+): Promise<Result<TransactionRecord, SignStop>> {
+  const { replacing, signal } = call;
+  if (replacing === undefined) {
+    const saved = await slot.saveSigned(transaction, { signal });
+    return saved.ok ? saved : err("nonce_taken");
+  }
+  const replaces = { id: replacing.transaction.id, kind: replacing.replaces.kind };
+  return slot.saveReplacement({ ...transaction, replaces }, { signal });
+}
+
 /**
  * Signs a prepared step through custody with what authorized the intent, checks that the signed
  * bytes are the step's own through the chain's signing scheme, and stores them in the slot before
- * anything is sent (ARCHITECTURE.md rule 6).
+ * anything is sent (ARCHITECTURE.md rule 6). A stuck step's replacement carries what it replaces
+ * to the signer, and takes the nonce of the transaction it replaces (spec 6, section 6).
  */
 export async function signAndStore(
   run: ExecutionRun,
@@ -49,13 +76,22 @@ export async function signAndStore(
     readonly record: IntentRecord;
     readonly terms: SigningTerms;
     readonly ready: PreparedStep;
+    readonly replacing?: StepReplacing;
   },
 ): Promise<Result<TransactionRecord, SignStop>> {
   const { parts, plan, signal } = run;
-  const { record, terms, ready } = step;
+  const { record, terms, ready, replacing } = step;
   const { index, draft, nonce, prepared } = ready;
   const { unsigned } = prepared;
-  const request = signRequestOf({ record, chain: plan.chain, terms, index, draft, unsigned });
+  const request = signRequestOf({
+    record,
+    chain: plan.chain,
+    terms,
+    index,
+    draft,
+    unsigned,
+    ...(replacing === undefined ? {} : { replaces: replacing.replaces }),
+  });
   const signed = await parts.custody.signTransaction(request, { signal });
   if (!signed.ok) {
     return signed;
@@ -74,8 +110,10 @@ export async function signAndStore(
     hash: hash.value,
     signedAtMs: parts.clock.now(),
   };
-  const saved = await slot.saveSigned(transaction, { signal });
-  return saved.ok ? saved : err("nonce_taken");
+  return storeSigned(slot, transaction, {
+    ...(replacing === undefined ? {} : { replacing }),
+    signal,
+  });
 }
 
 /**

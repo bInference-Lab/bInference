@@ -65,10 +65,12 @@ export interface KnownStep {
 // The owner's alarm when another transaction used a step's nonce (spec 4, section 4).
 const unknownTxNoticeKey = "notice.unknownTx";
 
-// Reads a step's fate once; `undefined` when no node answers. The count is read before the
-// receipts: a block that takes the step between the reads shows in a receipt, so a used nonce
-// with no receipt is never the step's own.
-async function readFate(
+/**
+ * Reads a step's fate once; `undefined` when no node answers. The count is read before the
+ * receipts: a block that takes the step between the reads shows in a receipt, so a used nonce
+ * with no receipt is never the step's own.
+ */
+export async function readFate(
   run: ExecutionRun,
   at: NonceTransactions,
 ): Promise<StepFate | undefined> {

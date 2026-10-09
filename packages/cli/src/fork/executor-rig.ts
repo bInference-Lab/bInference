@@ -250,8 +250,8 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
   return { engine, stores, positions, custody, sends, native, bought, logger };
 }
 
-// Mines blocks in the background, as BSC would, until the signal stops it.
-function startMining(fork: Fork, signal: AbortSignal): Promise<void> {
+/** Mines blocks in the background, as BSC would, until the signal stops it. */
+export function startMining(fork: Fork, signal: AbortSignal): Promise<void> {
   const mine = async (): Promise<void> => {
     if (signal.aborted) {
       return;

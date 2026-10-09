@@ -80,19 +80,26 @@ every nonce in use, so a new queue after a restart uses none twice.
 
 It holds the executor (ARCHITECTURE.md section 7, steps 8 and 9), exported as
 `@binference/engine/executor`: `createExecutor` fills the `Executor` port. On the intent's wallet
-queue it checks the intent again (`queue_took`), then runs each step in turn: a nonce from the
-slot, gas and fees from the chain's `TxPreparer`, the signature through custody with the owner's
+queue it checks the intent again (`queue_took`), then runs each step in turn: a nonce from the slot,
+gas and fees from the chain's `TxPreparer`, the signature through custody with the owner's
 confirmation or the auto grant, the hash checked by the chain's signing scheme, the raw bytes
-stored, then a send to every private relay through the `RelaySender`, each relay's answer stored.
-A send no relay accepts goes again with the same stored bytes; nothing is ever signed twice. It
-watches each block through the `ReceiptReader` until every step is included, frees the wallet,
-and watches on until every block is final. A revert ends the intent `failed_onchain` and no later
-step is sent. Once final, it reconciles: what each step moved, read through the `ReceiptReader`,
-becomes the trade, compared with the simulation (more than 1% away raises `notice.fillDiffers`),
-valued and recorded in the positions once, and stored with the move to `reconciled`. Native coin
-an inner call paid the wallet leaves no log, so it comes from the reader's read of each block
-(decision 0108); when no node can say it any more, the owner gets `notice.fillUnknown` and the
-intent stays `finalized`.
+stored, then a send to every private relay through the `RelaySender`, each relay's answer stored. A
+send no relay accepts goes again with the same stored bytes. It watches each block through the
+`ReceiptReader` until every step is included, frees the wallet, and watches on until every block is
+final. A revert ends the intent `failed_onchain` and no later step is sent. A step no block holds
+after 20 blocks is stuck (spec 6, section 6): its draft is prepared again on the latest state, and
+while it still runs it gets the same bytes again, then after 40 blocks a speed-up, the same call at
+its nonce for at least 10% more fee; once it would fail, it gets a cancel, a 0-value transfer to the
+wallet itself at its nonce. Each replacement is a new signature under the same authorization and
+supersedes the transaction before it; whichever transaction of the nonce lands is the step's, so the
+trade fills once, and a landed cancel ends the intent `failed_onchain` with `stuck_cancelled`. A
+replacement above the network fee cap (decision 0102), or one custody refuses, hands the step over
+at `executor.step_stopped`, still `executing`. Once final, it reconciles: what each step moved, read
+through the `ReceiptReader`, becomes the trade, compared with the simulation (more than 1% away
+raises `notice.fillDiffers`), valued and recorded in the positions once, and stored with the move to
+`reconciled`. Native coin an inner call paid the wallet leaves no log, so it comes from the reader's
+read of each block (decision 0108); when no node can say it any more, the owner gets
+`notice.fillUnknown` and the intent stays `finalized`.
 
 At startup `recover` takes up every live intent a stop left unsettled (spec 6, section 7): each
 stored step is looked up by hash and nonce. A block holds it: it goes on. Its nonce is free: the

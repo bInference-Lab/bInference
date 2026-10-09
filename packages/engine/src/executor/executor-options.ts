@@ -24,8 +24,16 @@ export interface ChainSending {
 export interface ExecutorLimits {
   /** Sends of one transaction's stored bytes while no relay accepts them; 3 by default. */
   readonly sendAttempts: number;
-  /** Blocks with no receipt after which a step counts as stuck (spec 6, section 6); 20. */
+  /**
+   * Blocks with no receipt after which a step counts as stuck (spec 6, section 6): it is
+   * simulated again, and sent again with the same bytes while it is still valid; 20.
+   */
   readonly stuckAfterBlocks: number;
+  /**
+   * Blocks with no receipt after which a stuck step still valid is sped up, the same call at
+   * least 10% dearer at its nonce (spec 6, section 6); 40.
+   */
+  readonly replaceAfterBlocks: number;
   /** Blocks after inclusion it waits for every step's block to be final; 600. */
   readonly finalAfterBlocks: number;
   /** Blocks reconciliation waits for what a final intent moved and the prices that value it; 20. */
@@ -58,6 +66,7 @@ export interface ExecutorOptions {
 export const defaultExecutorLimits: ExecutorLimits = {
   sendAttempts: 3,
   stuckAfterBlocks: 20,
+  replaceAfterBlocks: 40,
   finalAfterBlocks: 600,
   settleAfterBlocks: 20,
 };
