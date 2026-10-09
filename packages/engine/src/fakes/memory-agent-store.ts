@@ -6,6 +6,8 @@ import {
   type AgentSettings,
   agentSettingsOf,
 } from "../agents/agent-record.js";
+import type { ApprovalModeChange, ApprovalModeRecord } from "../agents/approval-mode-record.js";
+import type { LimitsChange, LimitsRecord } from "../agents/limits-record.js";
 import type { SendLevelChange, SendLevelRecord } from "../agents/send-level-record.js";
 import type { AgentStore } from "../ports.js";
 import { byCreation, memoryCall } from "./memory-call.js";
@@ -75,6 +77,43 @@ function setSendLevel(
   return ok(structuredClone(sendLevel));
 }
 
+function setApprovalMode(
+  agents: Agents,
+  change: ApprovalModeChange,
+): Result<ApprovalModeRecord, "not_found" | "stale"> {
+  const found = current(agents, change, (settings) => settings.approvalMode.version);
+  if (!found.ok) {
+    return found;
+  }
+  const approvalMode = {
+    ...found.value.approvalMode,
+    mode: change.mode,
+    changedBySurface: change.bySurface,
+    changedAtMs: change.atMs,
+    version: change.expectedVersion + 1,
+  };
+  agents.set(change.agentId, { ...found.value, approvalMode });
+  return ok(structuredClone(approvalMode));
+}
+
+function setLimits(
+  agents: Agents,
+  change: LimitsChange,
+): Result<LimitsRecord, "not_found" | "stale"> {
+  const found = current(agents, change, (settings) => settings.limits.version);
+  if (!found.ok) {
+    return found;
+  }
+  const limits = {
+    ...structuredClone(change.limits),
+    agentId: change.agentId,
+    changedAtMs: change.atMs,
+    version: change.expectedVersion + 1,
+  };
+  agents.set(change.agentId, { ...found.value, limits });
+  return ok(structuredClone(limits));
+}
+
 /** Creates an empty in-memory {@link AgentStore} for tests. */
 export function createMemoryAgentStore(): AgentStore {
   const agents: Agents = new Map();
@@ -88,36 +127,8 @@ export function createMemoryAgentStore(): AgentStore {
         ),
       ),
     setApprovalMode: async (change, call) =>
-      memoryCall(call, () => {
-        const found = current(agents, change, (settings) => settings.approvalMode.version);
-        if (!found.ok) {
-          return found;
-        }
-        const approvalMode = {
-          ...found.value.approvalMode,
-          mode: change.mode,
-          changedBySurface: change.bySurface,
-          changedAtMs: change.atMs,
-          version: change.expectedVersion + 1,
-        };
-        agents.set(change.agentId, { ...found.value, approvalMode });
-        return ok(structuredClone(approvalMode));
-      }),
-    setLimits: async (change, call) =>
-      memoryCall(call, () => {
-        const found = current(agents, change, (settings) => settings.limits.version);
-        if (!found.ok) {
-          return found;
-        }
-        const limits = {
-          ...structuredClone(change.limits),
-          agentId: change.agentId,
-          changedAtMs: change.atMs,
-          version: change.expectedVersion + 1,
-        };
-        agents.set(change.agentId, { ...found.value, limits });
-        return ok(structuredClone(limits));
-      }),
+      memoryCall(call, () => setApprovalMode(agents, change)),
+    setLimits: async (change, call) => memoryCall(call, () => setLimits(agents, change)),
     setMode: async (change, call) => memoryCall(call, () => setMode(agents, change)),
     setSendLevel: async (change, call) => memoryCall(call, () => setSendLevel(agents, change)),
   };
