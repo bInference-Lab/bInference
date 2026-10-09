@@ -179,9 +179,9 @@ describe("safety/rescue", () => {
 
   it("refuses with nothing to move, with no rescue address, and to a caller without confirm", async () => {
     const empty = await startRescuing({ held: new Map() });
-    await expect(rescue(empty)).resolves.toStrictEqual(err("wallet.unfunded"));
+    await expect(rescue(empty)).resolves.toStrictEqual(err("rescue.nothing_to_move"));
     const bare = await startTestEngine();
-    await expect(rescue(bare)).resolves.toStrictEqual(err("wallet.not_found"));
+    await expect(rescue(bare)).resolves.toStrictEqual(err("rescue.no_address"));
     const test = await startRescuing();
     await expect(rescue(test, testCallers.mcp)).resolves.toStrictEqual(err("auth.scope"));
     await expect(rescue(test, testCallers.runtime)).resolves.toStrictEqual(err("auth.scope"));

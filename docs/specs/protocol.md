@@ -238,18 +238,18 @@ Long operations return `{ job }` at once and report through the `job` topic. Fil
 
 ### 7.1 Engine and safety
 
-| Operation                   | Scope     | Write | Local | Args → result                                                                                                                                                                                        |
-| --------------------------- | --------- | ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `engine/status`             | `read`    |       |       | → `{ state, version, protocol, frozen, agents: [{ id, mode, frozen }], health }`                                                                                                                     |
-| `engine/describe`           | `read`    |       |       | → every operation with its scope, flags, `since` and JSON Schemas of args and result                                                                                                                 |
-| `engine/stop`               | `admin`   | ✓     | ✓     | → `{}`; graceful shutdown ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24))                                                                                                              |
-| `engine/unlock`             | `admin`   | ✓     | ✓     | `{ passphrase? }` → `{}`; opens the agent key ([decision 0104](../DECISIONS.md#d0104))                                                                                                               |
-| `safety/status`             | `read`    |       |       | → `{ frozen, frozenAt?, rescueAddress?, pendingRescueAddress? }`                                                                                                                                     |
-| `safety/freeze`             | `confirm` | ✓     |       | `{ agent?: agt_ }` (absent: every agent) → `{ frozenAt }`                                                                                                                                            |
-| `safety/unfreeze`           | `loosen`  | ✓     |       | `{ agent?: agt_ }` → `{}` ([rule 11](../ARCHITECTURE.md#rule-11), [decision 0089](../DECISIONS.md#d0089))                                                                                            |
-| `safety/rescue`             | `confirm` | ✓     |       | `{}` → `{ intent }`: one rescue intent for every agent wallet, awaiting a tap; while one has not ended, that one ([decision 0125](../DECISIONS.md#d0125))                                            |
-| `safety/setRescueAddress`   | `admin`   | ✓     | ✓     | `{ address: AccountRef, ownerKey }` → `{ effectiveAt }` (24 hours later, [decision 0044](../DECISIONS.md#d0044)); saved in every ceiling with the owner key ([decision 0110](../DECISIONS.md#d0110)) |
-| `safety/cancelRescueChange` | `confirm` | ✓     |       | `{}` → `{}`                                                                                                                                                                                          |
+| Operation                   | Scope     | Write | Local | Args → result                                                                                                                                                                                                    |
+| --------------------------- | --------- | ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `engine/status`             | `read`    |       |       | → `{ state, version, protocol, frozen, agents: [{ id, mode, frozen }], health }`                                                                                                                                 |
+| `engine/describe`           | `read`    |       |       | → every operation with its scope, flags, `since` and JSON Schemas of args and result                                                                                                                             |
+| `engine/stop`               | `admin`   | ✓     | ✓     | → `{}`; graceful shutdown ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24))                                                                                                                          |
+| `engine/unlock`             | `admin`   | ✓     | ✓     | `{ passphrase? }` → `{}`; opens the agent key ([decision 0104](../DECISIONS.md#d0104))                                                                                                                           |
+| `safety/status`             | `read`    |       |       | → `{ frozen, frozenAt?, rescueAddress?, pendingRescueAddress? }`                                                                                                                                                 |
+| `safety/freeze`             | `confirm` | ✓     |       | `{ agent?: agt_ }` (absent: every agent) → `{ frozenAt }`                                                                                                                                                        |
+| `safety/unfreeze`           | `loosen`  | ✓     |       | `{ agent?: agt_ }` → `{}` ([rule 11](../ARCHITECTURE.md#rule-11), [decision 0089](../DECISIONS.md#d0089))                                                                                                        |
+| `safety/rescue`             | `confirm` | ✓     |       | `{}` → `{ intent }`: one rescue intent for every agent wallet, awaiting a tap; while one has not ended, that one ([decision 0125](../DECISIONS.md#d0125)); fails `rescue.no_address` or `rescue.nothing_to_move` |
+| `safety/setRescueAddress`   | `admin`   | ✓     | ✓     | `{ address: AccountRef, ownerKey }` → `{ effectiveAt }` (24 hours later, [decision 0044](../DECISIONS.md#d0044)); saved in every ceiling with the owner key ([decision 0110](../DECISIONS.md#d0110))             |
+| `safety/cancelRescueChange` | `confirm` | ✓     |       | `{}` → `{}`                                                                                                                                                                                                      |
 
 <a id="section-7-2"></a>
 
@@ -553,6 +553,7 @@ later unchanged.
 | `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`                                   |
 | `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`                                        |
 | `address`  | `not_found`                                                                                     |
+| `rescue`   | `no_address`, `nothing_to_move`                                                                 |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                              |
 | `order`    | `not_found`, `wrong_state`                                                                      |
 | `asset`    | `not_found`, `bad_address`                                                                      |

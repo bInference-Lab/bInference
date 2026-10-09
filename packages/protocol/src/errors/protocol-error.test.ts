@@ -19,6 +19,7 @@ describe("protocolErrorCodes", () => {
       "agent",
       "wallet",
       "address",
+      "rescue",
       "intent",
       "order",
       "asset",

@@ -34,6 +34,8 @@ export const protocolErrorCodes = [
   "wallet.bad_owner_key",
   "wallet.custody_down",
   "address.not_found",
+  "rescue.no_address",
+  "rescue.nothing_to_move",
   "intent.not_found",
   "intent.wrong_state",
   "intent.expired",

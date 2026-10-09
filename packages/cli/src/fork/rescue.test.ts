@@ -147,7 +147,7 @@ describe("a rescue on the BSC fork", () => {
         expect(rig.signatures()).toBe(7);
         await expect(handlers["safety/rescue"](call({}, signal))).resolves.toStrictEqual({
           ok: false,
-          error: "wallet.unfunded",
+          error: "rescue.nothing_to_move",
         });
       } finally {
         miner.abort();

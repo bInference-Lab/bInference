@@ -66,7 +66,7 @@ async function planOf(
   const { rescueAddress: rescue } = rescueAt(facts, parts.clock.now());
   const chain = rescue === undefined ? undefined : parts.chains.get(accountRefParts(rescue).chain);
   if (rescue === undefined || chain?.ok !== true) {
-    return err("wallet.not_found");
+    return err("rescue.no_address");
   }
   const wallets = await rescueWallets(parts, {
     wallets: facts.wallets,
@@ -77,7 +77,7 @@ async function planOf(
   const check = { simulator: parts.simulator, chain: chain.value, clock: parts.clock };
   const checked = await checkRescueMoves(check, { moves, rescue, signal });
   if (checked.moves.length === 0) {
-    return err("wallet.unfunded");
+    return err("rescue.nothing_to_move");
   }
   const agents = await parts.agents.list({ signal });
   const active = new Set(
@@ -241,8 +241,8 @@ async function runRescue(
  * intent through policy, quote, risk and simulation to its card, whatever the agents' modes,
  * freezes and send levels. The intent is stored under the first wallet that moves something and
  * whose agent is active. No rescue address, or one on a chain the registry lacks, is
- * `wallet.not_found`; nothing to move is `wallet.unfunded`; no active agent with a wallet that
- * moves something is `agent.not_found`. None of them stores anything.
+ * `rescue.no_address`; nothing to move is `rescue.nothing_to_move`; no active agent with a wallet
+ * that moves something is `agent.not_found`. None of them stores anything.
  */
 export async function proposeRescue(
   parts: RescueProposalParts,
