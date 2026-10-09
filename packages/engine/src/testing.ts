@@ -96,3 +96,9 @@ export {
   testToken,
   testWallet,
 } from "./intents/test-intents.js";
+export { riskCacheStoreContract } from "./contracts/risk-cache-store-contract.js";
+export type {
+  RiskCacheStoreHarness,
+  RiskCacheStoreSubject,
+} from "./contracts/risk-cache-store-contract.js";
+export { createMemoryRiskCacheStore } from "./fakes/memory-risk-cache-store.js";

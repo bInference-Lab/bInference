@@ -29,6 +29,11 @@
       "types": "./dist/simulation.d.mts",
       "default": "./dist/simulation.mjs"
     },
+    "./risk": {
+      "@binference/source": "./src/risk.ts",
+      "types": "./dist/risk.d.mts",
+      "default": "./dist/risk.mjs"
+    },
     "./approval": {
       "@binference/source": "./src/approval.ts",
       "types": "./dist/approval.d.mts",
@@ -51,7 +56,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

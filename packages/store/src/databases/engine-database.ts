@@ -7,6 +7,7 @@ import { installTasks } from "../install/sqlite-install-store.js";
 import { intentTasks } from "../intents/intent-tasks.js";
 import { ledgerTasks } from "../ledger/ledger-tasks.js";
 import { engineMigrations } from "../migrations/engine/engine-migrations.js";
+import { riskCacheTasks } from "../risk-cache/risk-cache-tasks.js";
 import { transactionTasks } from "../transactions/sqlite-transaction-store.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
@@ -25,6 +26,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...configJournalTasks,
     ...transactionTasks,
     ...installTasks,
+    ...riskCacheTasks,
   ],
 };
 

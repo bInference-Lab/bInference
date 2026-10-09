@@ -285,6 +285,14 @@ export interface ConfigJournalTable {
 }
 
 /** The engine tables the store adapters query, by name. */
+/** `risk_cache`: one source's report for one token, as JSON text. */
+interface RiskCacheTable {
+  asset: string;
+  source: string;
+  result: string;
+  fetched_at: number;
+}
+
 export interface EngineTables {
   meta: MetaTable;
   safety: SafetyTable;
@@ -305,6 +313,7 @@ export interface EngineTables {
   devices: DevicesTable;
   pair_codes: PairCodesTable;
   config_journal: ConfigJournalTable;
+  risk_cache: RiskCacheTable;
   txs: TxsTable;
   tx_sends: TxSendsTable;
   nonces: NoncesTable;

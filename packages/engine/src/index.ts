@@ -281,6 +281,7 @@ export type {
   ModelBilling,
   PositionStore,
   QuoteSource,
+  RiskCacheStore,
   Simulator,
   TransactionStore,
   WalletFactsSource,

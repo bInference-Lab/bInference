@@ -41,6 +41,7 @@ import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/
 import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
+import type { CachedRiskReport, RiskCacheKey } from "./risk/cached-risk-report.js";
 import type { SimulatedSteps } from "./simulation/simulated-steps.js";
 import type { NonceGrant, NonceRequest } from "./wallet-queue/nonce-grant.js";
 import type {
@@ -116,6 +117,22 @@ export interface Simulator {
     built: BuiltQuote,
     options: SimulationOptions,
   ): Promise<Result<SimulatedSteps, SimulationFailure>>;
+}
+
+/**
+ * Keeps each risk source's last report for a token (database spec, `risk_cache`), so a token is
+ * asked about once per `risk.cacheTtlSec`. It holds one report per token and source, replaced in
+ * place, so it grows by one row for each token a source answered for and never by time. Adapters:
+ * the SQLite store in `@binference/store`.
+ */
+export interface RiskCacheStore {
+  /** The stored report of one source for one token, or `undefined` when none is stored. */
+  read(key: RiskCacheKey, options: StoreCall): Promise<CachedRiskReport | undefined>;
+  /**
+   * Stores a report, replacing the source's earlier one for the token. A source the store keeps
+   * no reports for is a `store.constraint` fault, and changes nothing.
+   */
+  write(entry: CachedRiskReport, options: StoreCall): Promise<void>;
 }
 
 /**
