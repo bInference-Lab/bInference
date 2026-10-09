@@ -26,6 +26,7 @@ import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import { type SimulatedSteps, simulationViewOf } from "../simulation/simulated-steps.js";
 import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
+import { advanceIntent } from "./advance-intent.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
 import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose-route.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
@@ -112,28 +113,13 @@ function agentStatusOf(settings: AgentSettings | undefined): AgentStatus {
   return settings.agent.archivedAtMs === undefined ? "active" : "archived";
 }
 
-// A move that lost its version to another write, such as a cancel, ends the run where that write
-// left the intent.
 async function advance(
   run: Run,
   snapshot: IntentSnapshot,
   move: { readonly trigger: IntentTrigger } & Pick<IntentMove, "fields">,
 ): Promise<IntentSnapshot> {
-  const { stored } = run.options;
-  const step = run.machine.apply(snapshot.stored.status, move.trigger);
-  if (!step.ok) {
-    throw new BinferenceError({
-      code: "engine.step_refused",
-      message: `The state machine refused ${move.trigger.type} on intent ${snapshot.record.id}.`,
-      details: { intent: snapshot.record.id, problem: step.error },
-    });
-  }
-  const intent = snapshot.record.id;
-  const write = { intent, version: snapshot.stored.version, step: step.value, by: "engine" };
-  const moved = await stored.move({ ...write, ...move }, { signal: run.signal });
-  return moved.ok
-    ? moved.value
-    : ((await stored.snapshot(intent, { signal: run.signal })) ?? snapshot);
+  const parts = { stored: run.options.stored, machine: run.machine, signal: run.signal };
+  return advanceIntent(parts, snapshot, move);
 }
 
 function quotedTradeOf({ trade, quote }: TradeQuote): QuotedTrade {
