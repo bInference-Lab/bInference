@@ -18,6 +18,10 @@ import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource }
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
+import {
+  createSendLevelHandlers,
+  type SendLevelHandlers,
+} from "../send-levels/send-level-handlers.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
@@ -34,12 +38,13 @@ export interface EngineHandlers
     PortfolioHandlers,
     AgentModeHandlers,
     ApprovalHandlers,
+    SendLevelHandlers,
     WalletHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
- * switch, the approval mode, the wallet list and the ledger, built from ports. It holds no I/O of its own; pushes
- * leave through `publish`.
+ * switch, the approval mode, the send level, the wallet list and the ledger, built from ports. It
+ * holds no I/O of its own; pushes leave through `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -207,17 +212,19 @@ function intentParts(
 export function createEngine(options: EngineOptions): Engine {
   const paper = paperParts(options);
   const intents = intentParts(options, paper);
+  const settingsParts = {
+    agents: options.stores.agents,
+    journal: options.stores.configJournal,
+    clock: options.clock,
+    publish: options.publish,
+  };
   return {
     handlers: {
       ...intents.handlers,
       ...createLedgerHandlers(options.stores.ledger),
       ...settingsHandlers(options, paper),
-      ...createApprovalHandlers({
-        agents: options.stores.agents,
-        journal: options.stores.configJournal,
-        clock: options.clock,
-        publish: options.publish,
-      }),
+      ...createApprovalHandlers(settingsParts),
+      ...createSendLevelHandlers(settingsParts),
     },
     answer: intents.answer,
   };

@@ -102,6 +102,12 @@ Rules for this package:
   Its type, schema and check live in `@binference/chain`, which the signer's hard rule 5 runs; the
   engine makes grants (`autoModeGrantOf`) and its tests hold them to that check. Its property test
   (`auto-mode.property.test.ts`) runs the whole engine.
+- The send level (`src/send-levels/`) changes only through `sendLevel/set` and
+  `sendLevel/cancelPending`, which decide with `moveSendLevel` (`src/policy/send-level-change.ts`):
+  a stricter level applies at once, a looser one waits 24 hours and needs `loosen`. Every reader of
+  a stored level takes the level in effect through `sendLevelAt`, never the row's `level` alone.
+  Each change is journaled, pushed as `config/changed`, and a moved level is announced as the
+  `notice.sendLevel` notice.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and
