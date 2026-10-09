@@ -2,11 +2,12 @@ import { lockedNotice } from "@binference/engine";
 import { createShutdown, type ShutdownReport } from "@binference/platform";
 import { composeSelfHosted } from "./compose-self-hosted.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
+import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
 
 // Hands every part's closer to the one shutdown sequence, which stop signals and `engine/stop`
-// start: the server first, so nothing new comes in, then the executor, the stores, the log and
-// the lock.
+// start, last opened first: the settle timer, the server, so nothing new comes in, the executor,
+// which finishes what it signs and sends, the signer, the stores, the log and the lock.
 function startShutdown(
   opening: Opening,
   opened: Opened,
@@ -34,7 +35,8 @@ function startShutdown(
  * unlock mode and start the signer and custody, or leave the engine locked with the reason
  * (decisions 0103 and 0117); every unfinished live intent is recovered by hash and nonce and holds
  * its place in its wallet's queue; once unlocked, the confirmed intents an earlier run left go to
- * the executor; then the engine is `ready`, or `locked`, and says so on topic `engine`.
+ * the executor; the timer for work that waits for its time starts; then the engine is `ready`, or
+ * `locked`, and says so on topic `engine`.
  */
 export async function serveEngine(opening: Opening, opened: Opened): Promise<StartOutcome> {
   const { platform, signal } = opening;
@@ -52,6 +54,13 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   if (unlocked.ok) {
     await composed.resume(signal);
   }
+  startSettleTimer({
+    settle: composed.settle,
+    isLocked: () => locked.lock.isLocked(),
+    clock: opening.host.clock,
+    closers: opening.closers,
+    logger: log.logger,
+  });
   const { stop, finished } = startShutdown(opening, opened);
   composed.stopper.stop = stop;
   state.current = "ready";

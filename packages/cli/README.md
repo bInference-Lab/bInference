@@ -17,7 +17,8 @@ starts as a child process under Node's permission model with the agent key and m
 public half; custody then signs through the `privy-owner` adapter. A failure in that step leaves
 the engine locked with its reason, and `binference unlock` runs it again (decision 0117). The
 executor recovers every unfinished live intent by hash and nonce, and once unlocked takes the
-confirmed intents an earlier run left; then the engine is `ready`, or `locked`. The executor (`composeExecutor`) sends live intents through
+confirmed intents an earlier run left; a timer runs the engine's settle every minute; then the
+engine is `ready`, or `locked`. The executor (`composeExecutor`) sends live intents through
 every private relay each enabled chain lists or `chains.relays` names, reads through the chain's
 RPCs and `chains.rpc`, and pays at most `chains.maxFeePerGasGwei` without a tap; its health signal
 follows the relays' last answers. A signer that stops while the engine runs locks it again, with
@@ -25,7 +26,7 @@ follows the relays' last answers. A signer that stops while the engine runs lock
 simulator, the stored positions) are missing parts: they refuse every live action and show as
 failed health signals. A stop signal, or `engine/stop` over IPC, runs the
 shutdown sequence within `engine.shutdownBudgetMs`, which closes the parts in the reverse order:
-server and IPC, so nothing new comes in; the health probe; the executor, which
+the settle timer; server and IPC, so nothing new comes in; the health probe; the executor, which
 lets a signature or a send under way end; the signer; the store, the log and the lock. A second `start` on the same state folder
 refuses while the first runs, in another process too.
 

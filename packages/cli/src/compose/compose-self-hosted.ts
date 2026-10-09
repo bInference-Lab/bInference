@@ -1,6 +1,6 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
-import { type EnginePush, signerStoppedNotice } from "@binference/engine";
+import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
 import type { RunningExecutor } from "@binference/engine/executor";
 import type { EngineState } from "@binference/protocol";
 import type { OperationHandlers, ProtocolServer } from "@binference/server";
@@ -18,6 +18,8 @@ import { selfHostedRiskSources } from "./risk-sources.js";
 export interface ComposedSelfHosted {
   readonly server: ProtocolServer;
   readonly executor: RunningExecutor;
+  /** The work that waits for its time, such as a rescue address's ceiling change. */
+  readonly settle: Engine["settle"];
   /** Takes the confirmed intents the lock held; logs a failure and never rejects. */
   readonly resume: (signal: AbortSignal) => Promise<void>;
   /** The call that `engine/stop` makes once the shutdown sequence exists. */
@@ -205,7 +207,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
 export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSelfHosted {
   const wiring = composeParts(opening, opened);
   const { sending, locked, state, stopper, resume } = wiring;
-  const { server, publish } = composeServing(opening, opened, wiring);
+  const { engine, server, publish } = composeServing(opening, opened, wiring);
   sending.pushes.publish = publish;
   locked.announce.publish = publish;
   wiring.signerStopped.run = () => {
@@ -215,5 +217,5 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     publish(signerStoppedNotice());
   };
   const { executor } = sending;
-  return { server, executor, resume, stopper, state, locked };
+  return { server, executor, settle: engine.settle, resume, stopper, state, locked };
 }
