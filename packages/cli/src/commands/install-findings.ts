@@ -133,8 +133,8 @@ async function reachEngine(options: InstallCheck): Promise<CheckFinding> {
       ? { check: "engine.reachable", level: "ok", details: { version: status.version } }
       : engineProblem({
           level: "warn",
-          code: "engine.starting",
-          key: "health.starting",
+          code: `engine.${status.state}`,
+          key: `health.${status.state}`,
           values: {},
         });
   } finally {
@@ -144,9 +144,9 @@ async function reachEngine(options: InstallCheck): Promise<CheckFinding> {
 
 /**
  * `engine.reachable`: the engine of this state folder answers `engine/status` over IPC with the
- * CLI token and is ready. Not running or still starting is a warning; a running engine that
- * refuses the CLI or does not answer is a problem, and so is a state folder no engine can listen
- * in.
+ * CLI token and is ready. Not running, still starting or locked is a warning; a running engine
+ * that refuses the CLI or does not answer is a problem, and so is a state folder no engine can
+ * listen in.
  */
 export async function engineFinding(options: InstallCheck): Promise<CheckFinding> {
   try {

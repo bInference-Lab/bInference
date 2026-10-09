@@ -67,7 +67,7 @@
   "connect.noSignIn": "命令行无法登录：{file} 不存在。请运行一次 `binference start` 写入它。",
   "connect.refused": "binference 拒绝了命令行（{code}）。请运行 `binference start` 重新启动 binference，让命令行可以重新登录。",
   "connect.failed": "binference 没有回答（{code}）。请运行 `binference logs` 查看原因。",
-  "status.summary": "binference {version} {state, select, ready {正在运行} starting {正在启动} other {处于 {state} 状态}}，协议版本为 {protocol}。",
+  "status.summary": "binference {version} {state, select, ready {正在运行} starting {正在启动} locked {正在运行但已锁定} other {处于 {state} 状态}}，协议版本为 {protocol}。",
   "status.frozen": "所有 Agent 都已冻结。",
   "status.agents": "{count, plural, =0 {还没有 Agent。} other {# 个 Agent：}}",
   "status.agent": "{id}：{mode, select, paper {模拟模式} live {实盘} other {{mode}}}{frozen, select, yes {，已冻结} other {}}",
@@ -125,5 +125,8 @@
   "option.unlockCommand": "与 --unlock command 一起使用：输出 Agent 密钥的程序，按 config.json5 的写法",
   "option.setInit": "在 init 写入的文件中设置一个配置项，写作 `key=value`",
   "option.startOver": "用新的所有者密钥和新钱包重新设置一个已设置过的文件夹",
-  "command.init": "设置 binference：你的 Privy 应用、所有者密钥、第一个钱包和机器人"
+  "command.init": "设置 binference：你的 Privy 应用、所有者密钥、第一个钱包和机器人",
+  "status.locked": "已锁定：在你于本机运行 `binference unlock` 之前，binference 不会签名。",
+  "health.locked": "binference 正在运行但已锁定：在你于本机运行 `binference unlock` 之前，它不会签名。",
+  "start.locked": "binference 已锁定，不会签名：{reason, select, needs_passphrase {需要 Agent 密钥的密码短语} wrong_passphrase {该密码短语无法打开 Agent 密钥} agent_key_missing {解锁方式读取的位置没有 Agent 密钥；请放回你保存的副本} agent_key_invalid {那里的 Agent 密钥不是你的钱包认定的签名者；请放回正确的密钥} keychain_failed {系统钥匙串没有响应；请解锁后重试} command_failed {解锁命令没有输出 Agent 密钥；请自行运行它查看原因} app_secret_missing {config.json5 没有指定 Privy 应用密钥；请设置 `custody.privy.appSecret`} app_secret_unavailable {`custody.privy.appSecret` 指向的位置没有 Privy 应用密钥} other {{reason}}}。请运行 `binference unlock` 打开 Agent 密钥。"
 }

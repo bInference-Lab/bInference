@@ -67,7 +67,7 @@
   "connect.noSignIn": "The CLI cannot sign in: {file} is missing. Start binference once with `binference start` to write it.",
   "connect.refused": "binference refused the CLI ({code}). Start binference again with `binference start`, so the CLI can sign in again.",
   "connect.failed": "binference did not answer ({code}). Run `binference logs` to see why.",
-  "status.summary": "binference {version} is {state, select, ready {running} starting {starting} other {{state}}}, on protocol version {protocol}.",
+  "status.summary": "binference {version} is {state, select, ready {running} starting {starting} locked {running but locked} other {{state}}}, on protocol version {protocol}.",
   "status.frozen": "Every agent is frozen.",
   "status.agents": "{count, plural, =0 {No agents yet.} one {# agent:} other {# agents:}}",
   "status.agent": "{id}: {mode, select, paper {paper mode} live {live} other {{mode}}}{frozen, select, yes {, frozen} other {}}",
@@ -125,5 +125,8 @@
   "option.unlockCommand": "With --unlock command: the program that prints the agent key, written as in config.json5",
   "option.setInit": "Set a config key in the file init writes, written as `key=value`",
   "option.startOver": "Set up a folder set up before again, with a new owner key and a new wallet",
-  "command.init": "Set up binference: your Privy app, your owner key, your first wallet and your bot"
+  "command.init": "Set up binference: your Privy app, your owner key, your first wallet and your bot",
+  "status.locked": "Locked: binference signs nothing until you run `binference unlock` on this machine.",
+  "health.locked": "binference is running but locked: it signs nothing until you run `binference unlock` on this machine.",
+  "start.locked": "binference is locked and signs nothing: {reason, select, needs_passphrase {it needs the passphrase of the agent key} wrong_passphrase {the passphrase does not open the agent key} agent_key_missing {no agent key is where the unlock mode reads it; put back the copy you keep} agent_key_invalid {the agent key there is not the one your wallets name as their signer; put the right one back} keychain_failed {the OS keychain did not respond; unlock it and try again} command_failed {the unlock command printed no agent key; run it yourself to see why} app_secret_missing {config.json5 names no Privy app secret; set `custody.privy.appSecret`} app_secret_unavailable {the Privy app secret is not where `custody.privy.appSecret` names it} other {{reason}}}. Run `binference unlock` to open the agent key."
 }

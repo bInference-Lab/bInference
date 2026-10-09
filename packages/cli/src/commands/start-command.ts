@@ -66,7 +66,17 @@ function announce(output: CliOutput, engine: RunningEngine): void {
   const { host, port } = engine.http;
   output.say("start.ready", { host, port: String(port), ipc: engine.ipc, logFile: engine.logFile });
   output.say("start.missingParts");
-  output.json({ state: "ready", http: { host, port }, ipc: engine.ipc, logFile: engine.logFile });
+  const { lockReason } = engine;
+  if (lockReason !== undefined) {
+    output.say("start.locked", { reason: lockReason });
+  }
+  output.json({
+    state: engine.state,
+    ...(lockReason === undefined ? {} : { lockReason }),
+    http: { host, port },
+    ipc: engine.ipc,
+    logFile: engine.logFile,
+  });
 }
 
 /**

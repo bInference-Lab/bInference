@@ -1,7 +1,7 @@
-import { idSchema, type Id } from "@binference/core";
+import { err, idSchema, type Id, ok } from "@binference/core";
 import type { AgentRecord } from "@binference/engine";
 import { describe, expect, it } from "vitest";
-import { createEngineOperations } from "./engine-operations.js";
+import { createEngineOperations, type EngineOperationsOptions } from "./engine-operations.js";
 
 function agentId(n: number): Id<"agt"> {
   return idSchema("agt").parse(`agt_0190f1c2-3a4b-7c5d-8e6f-${String(n).padStart(12, "0")}`);
@@ -24,9 +24,27 @@ function agent(n: number, extra: Partial<AgentRecord> = {}): AgentRecord {
 
 const call = { caller: undefined as never, signal: new AbortController().signal };
 
-function operationsWith(records: readonly AgentRecord[]) {
+// A lock that opens only with the passphrase, and keeps every passphrase it was handed.
+function passphraseLock() {
+  const typed: (string | undefined)[] = [];
+  const lock: EngineOperationsOptions["lock"] = {
+    unlock: async ({ passphrase }) => {
+      typed.push(passphrase?.reveal());
+      if (passphrase === undefined) {
+        return Promise.resolve(err("needs_passphrase"));
+      }
+      return Promise.resolve(
+        passphrase.reveal() === "right" ? ok(undefined) : err("wrong_passphrase"),
+      );
+    },
+  };
+  return { lock, typed };
+}
+
+function operationsWith(records: readonly AgentRecord[], lock = passphraseLock().lock) {
   const stops = { count: 0 };
   const handlers = createEngineOperations({
+    lock,
     agents: { list: async () => Promise.resolve(records) },
     version: "2026.10.0",
     state: () => "ready",
@@ -69,6 +87,37 @@ describe("the engine's own operations", () => {
     });
     await expect(none["engine/status"]?.({ ...call, args: {} })).resolves.toMatchObject({
       value: { frozen: false, agents: [] },
+    });
+  });
+
+  it("unlocks the engine with the owner's passphrase on engine/unlock", async () => {
+    const { lock, typed } = passphraseLock();
+    const { handlers } = operationsWith([], lock);
+    const unlock = handlers["engine/unlock"];
+    await expect(unlock?.({ ...call, args: { passphrase: "right" } })).resolves.toStrictEqual(
+      ok({}),
+    );
+    expect(typed).toStrictEqual(["right"]);
+  });
+
+  it("fails engine/unlock as locked with the reason, retryable only when a retry can pass", async () => {
+    const { handlers } = operationsWith([]);
+    const unlock = handlers["engine/unlock"];
+    await expect(unlock?.({ ...call, args: { passphrase: "wrong" } })).rejects.toMatchObject({
+      code: "engine.locked",
+      retryable: false,
+      details: { reason: "wrong_passphrase" },
+    });
+    await expect(unlock?.({ ...call, args: {} })).rejects.toMatchObject({
+      code: "engine.locked",
+      retryable: false,
+      details: { reason: "needs_passphrase" },
+    });
+    const missing = operationsWith([], { unlock: async () => err("keychain_failed") }).handlers;
+    await expect(missing["engine/unlock"]?.({ ...call, args: {} })).rejects.toMatchObject({
+      code: "engine.locked",
+      retryable: true,
+      details: { reason: "keychain_failed" },
     });
   });
 

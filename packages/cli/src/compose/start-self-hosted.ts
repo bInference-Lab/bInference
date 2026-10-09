@@ -1,6 +1,6 @@
 import type { ChainRegistry } from "@binference/chain";
 import { BinferenceError, createDeadline } from "@binference/core";
-import type { EnginePush, EngineStores } from "@binference/engine";
+import { type EnginePush, type EngineStores, lockedNotice } from "@binference/engine";
 import {
   acquireFileLock,
   createShutdown,
@@ -8,19 +8,26 @@ import {
   type ShutdownReport,
 } from "@binference/platform";
 import type { EngineState } from "@binference/protocol";
-import type { ProtocolServer, ServerAddress } from "@binference/server";
+import type { OperationHandlers, ProtocolServer, ServerAddress } from "@binference/server";
 import type { ConfigIssue } from "../config/config-issue.js";
 import { loadConfig } from "../config/load-config.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { CliHost } from "../program/cli-host.js";
 import { systemDefaults } from "../program/system-defaults.js";
+import type { LockReason } from "../unlock/unlock-keys.js";
 import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
+import {
+  type ComposedLock,
+  composeLock,
+  readSetUpInstall,
+  type SetUpInstall,
+} from "./compose-lock.js";
 import { platformOf } from "./engine-locations.js";
 import { createEngineOperations } from "./engine-operations.js";
-import { startHealthProbe } from "./health-signals.js";
+import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createMissingParts, type MissingParts } from "./missing-parts.js";
 import {
   listenForProtocol,
@@ -50,6 +57,10 @@ export interface RunningEngine {
   readonly ipc: string;
   /** The engine's log file. */
   readonly logFile: string;
+  /** `ready`, or `locked` when the unlock mode did not open the agent key (decision 0103). */
+  readonly state: EngineState;
+  /** Why the engine is locked, when it is. */
+  readonly lockReason?: LockReason;
   /** Resolves once the shutdown sequence has ended, with what each step did. */
   readonly finished: Promise<ShutdownReport>;
 }
@@ -65,6 +76,8 @@ interface Opened {
   readonly config: BinferenceConfig;
   readonly log: OpenedLog;
   readonly stores: EngineStores;
+  /** The install, or `undefined` before `binference init` set it up. */
+  readonly install: SetUpInstall | undefined;
 }
 
 /** A running engine, or why it did not start. */
@@ -79,6 +92,7 @@ interface Composed {
   readonly server: ProtocolServer;
   readonly stopper: { stop: () => void };
   readonly state: { current: EngineState };
+  readonly locked: ComposedLock;
 }
 
 // The executor sends through the chains' relays; its pushes reach the engine's once it exists.
@@ -110,19 +124,39 @@ function composeSending(
   return { ...composed, pushes };
 }
 
+/** What the engine's own operations answer from besides the stores. */
+interface EngineWiring extends Pick<Composed, "stopper" | "locked"> {
+  readonly missing: MissingParts["missing"];
+  /** The executor's health signal. */
+  readonly executor: () => HealthSignal["state"];
+}
+
+// The engine's own operations: its status with the health signals, its stop and its unlock.
+function engineHandlers(opening: Opening, opened: Opened, wiring: EngineWiring): OperationHandlers {
+  const probe = startHealthProbe({
+    missing: wiring.missing,
+    parts: [{ signal: "executor", state: wiring.executor }],
+    logFailed: opened.log.hasFailed,
+  });
+  opening.closers.add("health", async () => probe.stop());
+  return createEngineOperations({
+    agents: opened.stores.agents,
+    version: opening.host.version,
+    state: wiring.locked.state,
+    lock: wiring.locked.lock,
+    health: () => probe.read(),
+    stop: () => wiring.stopper.stop(),
+  });
+}
+
 function compose(opening: Opening, opened: Opened): Composed {
-  const { host, closers } = opening;
+  const { host, platform } = opening;
   const { config, log, stores } = opened;
   const state: { current: EngineState } = { current: "starting" };
   const parts = createMissingParts();
   const chains = selfHostedChains();
   const sending = composeSending(opening, opened, { parts, chains });
-  const probe = startHealthProbe({
-    missing: parts.missing,
-    parts: [{ signal: "executor", state: sending.health }],
-    logFailed: log.hasFailed,
-  });
-  closers.add("health", async () => probe.stop());
+  const locked = composeLock({ host, platform, config, install: opened.install, started: state });
   const stopper = { stop: (): void => undefined };
   const { server, publish } = composeEngine(
     { custody: parts.custody, stores, prices: parts.prices },
@@ -134,13 +168,13 @@ function compose(opening: Opening, opened: Opened): Composed {
       version: host.version,
       owner: config.owner,
       http: { host: loopback, port: config.engine.port, extraOrigins: config.engine.extraOrigins },
-      state: () => state.current,
-      handlers: createEngineOperations({
-        agents: stores.agents,
-        version: host.version,
-        state: () => state.current,
-        health: () => probe.read(),
-        stop: () => stopper.stop(),
+      state: locked.state,
+      isLocked: () => locked.lock.isLocked(),
+      handlers: engineHandlers(opening, opened, {
+        missing: parts.missing,
+        executor: sending.health,
+        stopper,
+        locked,
       }),
       clock: host.clock,
       random: host.random,
@@ -153,13 +187,15 @@ function compose(opening: Opening, opened: Opened): Composed {
     },
   );
   sending.pushes.publish = publish;
-  return { server, stopper, state };
+  locked.announce.publish = publish;
+  return { server, stopper, state, locked };
 }
 
 async function serve(opening: Opening, opened: Opened): Promise<StartOutcome> {
   const { host, platform, closers } = opening;
   const { config, log } = opened;
-  const { server, stopper, state } = compose(opening, opened);
+  const { server, stopper, state, locked } = compose(opening, opened);
+  const unlocked = await locked.lock.unlock({ signal: opening.signal });
   const listening = await listenForProtocol(opening, server);
   if (!listening.ok) {
     return listening.error === "port_taken"
@@ -180,11 +216,17 @@ async function serve(opening: Opening, opened: Opened): Promise<StartOutcome> {
   });
   stopper.stop = () => void shutdown.stop("request");
   state.current = "ready";
-  server.publish({ topic: "engine", kind: "engine/state", data: { state: "ready" } });
+  server.publish({ topic: "engine", kind: "engine/state", data: { state: locked.state() } });
   log.logger.info("engine.ready");
+  if (!unlocked.ok) {
+    log.logger.warn("engine.locked", { errorCode: `unlock.${unlocked.error}` });
+    server.publish(lockedNotice());
+  }
   const engine: RunningEngine = {
     ...listening.value,
     logFile: log.file,
+    state: locked.state(),
+    ...(unlocked.ok ? {} : { lockReason: unlocked.error }),
     finished,
   };
   return { ok: true, engine };
@@ -215,7 +257,7 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
 
 async function openStoresAndServe(
   opening: Opening,
-  opened: Omit<Opened, "stores">,
+  opened: Omit<Opened, "stores" | "install">,
 ): Promise<StartOutcome> {
   const { host, platform, signal } = opening;
   const stores = await openEngineStores(opening, opened.log.logger);
@@ -230,14 +272,17 @@ async function openStoresAndServe(
     random: host.random,
     signal,
   });
-  return serve(opening, { ...opened, stores });
+  const install = await readSetUpInstall(stores, { host, signal });
+  return serve(opening, { ...opened, stores, install });
 }
 
 /**
  * Starts a self-hosted engine in this process (the composition root of `binference start`): the
  * engine lock, the config with its secret sources, the log file, `engine.sqlite` on its store
- * workers with its migrations and integrity check, the CLI's token, the engine with the missing
- * parts, and the protocol server on the IPC endpoint and on loopback. Stop signals and
+ * workers with its migrations and integrity check, the CLI's token, the agent key through the
+ * unlock mode, the engine with the missing parts, and the protocol server on the IPC endpoint and
+ * on loopback. An install whose key does not open runs locked, with the reason and the
+ * `notice.locked` notice (decision 0103), until `engine/unlock` opens it. Stop signals and
  * `engine/stop` start the shutdown sequence, which closes the parts in the reverse order. A start
  * that fails part way closes what it opened.
  */

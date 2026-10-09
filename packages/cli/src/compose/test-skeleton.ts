@@ -14,7 +14,7 @@ import {
   createFakeVenue,
 } from "@binference/chain/testing";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
-import { BinferenceError, idSchema } from "@binference/core";
+import { BinferenceError, idSchema, ok } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
@@ -198,6 +198,8 @@ export async function composeSkeleton(
       agents: parts.stores.agents,
       version: "2026.10.0",
       state: () => "ready",
+      // The skeleton's custody signs with no agent key of this machine, so nothing is locked.
+      lock: { unlock: async () => Promise.resolve(ok(undefined)) },
       health: () => [],
       stop: () => undefined,
     }),

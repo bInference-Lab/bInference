@@ -31,6 +31,9 @@ function printStatus(output: CliOutput, status: EngineStatus, name: (signal: str
     state: status.state,
     protocol: String(status.protocol),
   });
+  if (status.state === "locked") {
+    output.say("status.locked");
+  }
   if (status.frozen) {
     output.say("status.frozen");
   }
