@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { accountRefSchema } from "../caip/account-ref.js";
 import { assetRefSchema } from "../caip/asset-ref.js";
+import { chainRefSchema } from "../caip/chain-ref.js";
 import { chainFamilyContract } from "../contracts/chain-family-contract.js";
 import { fakeApprovalData, fakeDraft } from "./fake-draft.js";
 import { createFakeFamily } from "./fake-family.js";
@@ -8,6 +9,7 @@ import { createFakeFamily } from "./fake-family.js";
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
 const router = accountRefSchema.parse("fake:1:0x0000000b");
 const token = assetRefSchema.parse("fake:1/token:0x0000000a");
+const coin = assetRefSchema.parse("fake:1/slip44:1");
 const swap = fakeDraft(wallet, { to: "0x0000000b", value: 0n, data: "swap" });
 
 describe("fake family", () => {
@@ -46,6 +48,12 @@ describe("fake family", () => {
           fakeDraft(wallet, { to: "0x0000000a", value: 0n, data: "approve,nobody,5" }),
           fakeDraft(wallet, { to: "0x0000000a", value: 0n, data: "approve,0x0000000b,5,6" }),
         ],
+        chain: chainRefSchema.parse("fake:1"),
+        transfer: {
+          transfer: { from: wallet, to: router, amount: { asset: token, base: 5n } },
+          call: { target: accountRefSchema.parse("fake:1:0x0000000a"), nativeValue: 0n },
+        },
+        unsendable: { from: wallet, to: router, amount: { asset: coin, base: 5n } },
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {
@@ -62,5 +70,28 @@ describe("fake family", () => {
       ok: false,
       error: "malformed_draft",
     });
+  });
+
+  it("writes a token transfer as transfer, the recipient and the amount, to the token", () => {
+    const draft = createFakeFamily().transferDraft({
+      from: wallet,
+      to: router,
+      amount: { asset: token, base: 5n },
+    });
+    expect(draft).toStrictEqual({
+      ok: true,
+      value: fakeDraft(wallet, { to: "0x0000000a", value: 0n, data: "transfer,0x0000000b,5" }),
+    });
+  });
+
+  it("refuses a token of another chain, and a seed shorter than 32 bytes", () => {
+    const family = createFakeFamily();
+    const other = assetRefSchema.parse("fake:2/token:0x0000000a");
+    expect(
+      family.transferDraft({ from: wallet, to: router, amount: { asset: other, base: 1n } }),
+    ).toStrictEqual({ ok: false, error: "unknown_asset" });
+    expect(() => family.freshAccount(chainRefSchema.parse("fake:1"), new Uint8Array(31))).toThrow(
+      expect.objectContaining({ code: "chain.short_seed" }),
+    );
   });
 });

@@ -77,6 +77,20 @@ describe("evm family", () => {
             payload: swap.payload,
           },
         ],
+        chain: chainRefSchema.parse("eip155:56"),
+        transfer: {
+          transfer: {
+            from: wallet,
+            to: router,
+            amount: { asset: assetRefSchema.parse(`eip155:56/erc20:${usdt}`), base: 5n },
+          },
+          call: { target: usdtAccount, nativeValue: 0n },
+        },
+        unsendable: {
+          from: wallet,
+          to: router,
+          amount: { asset: assetRefSchema.parse("eip155:56/slip44:714"), base: 5n },
+        },
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {
@@ -95,6 +109,38 @@ describe("evm family", () => {
         });
         expect(parseEvmAddress(canonical)).toStrictEqual({ ok: true, value: canonical });
       }),
+    );
+  });
+
+  it("transfers a token with the standard call, and refuses one of another chain", () => {
+    const family = createEvmFamily();
+    const amount = { asset: assetRefSchema.parse(`eip155:56/erc20:${usdt}`), base: 5n };
+    const draft = family.transferDraft({ from: wallet, to: router, amount });
+    const data = encodeFunctionData({
+      abi: erc20Abi,
+      functionName: "transfer",
+      args: ["0x10ED43C718714eb63d5aA57B78B54704E256024E", 5n],
+    });
+    expect(draft).toStrictEqual({
+      ok: true,
+      value: encodeEvmDraft({ from: wallet, to: usdtAccount, value: 0n, data }),
+    });
+    const other = { ...amount, asset: assetRefSchema.parse(`eip155:1/erc20:${usdt}`) };
+    expect(family.transferDraft({ from: wallet, to: router, amount: other })).toStrictEqual({
+      ok: false,
+      error: "unknown_asset",
+    });
+  });
+
+  it("takes a fresh account's address from the seed's first 20 bytes, and needs 32", () => {
+    const family = createEvmFamily();
+    const chain = chainRefSchema.parse("eip155:56");
+    const seed = Uint8Array.from({ length: 32 }, (_, index) => index);
+    expect(family.freshAccount(chain, seed)).toBe(
+      `eip155:56:${getAddress("0x000102030405060708090a0b0c0d0e0f10111213")}`,
+    );
+    expect(() => family.freshAccount(chain, seed.subarray(0, 31))).toThrow(
+      expect.objectContaining({ code: "chain.short_seed" }),
     );
   });
 });

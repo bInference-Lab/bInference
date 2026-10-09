@@ -25,6 +25,7 @@ export {
 } from "./caip/chain-ref.js";
 export type { ChainRef, ChainRefParts } from "./caip/chain-ref.js";
 export type { DraftCall, TokenApproval } from "./draft-call.js";
+export type { TokenTransfer } from "./token-transfer.js";
 export type {
   ChainFamily,
   ChainRegistry,

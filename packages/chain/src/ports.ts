@@ -5,6 +5,7 @@ import type { ChainRef } from "./caip/chain-ref.js";
 import type { DraftCall } from "./draft-call.js";
 import type { RegisteredChain } from "./registry/registered-chain.js";
 import type { SignRequest } from "./sign-request.js";
+import type { TokenTransfer } from "./token-transfer.js";
 import type { SignatureProblem, SignedTx, TxDraft, TxHash, UnsignedTx } from "./transaction.js";
 
 /**
@@ -27,6 +28,18 @@ export interface ChainFamily {
    * failure: the venue host refuses what the family cannot read.
    */
   readDraft(draft: TxDraft): Result<DraftCall, "malformed_draft">;
+  /**
+   * An account on `chain` made from random bytes, such as a test holder in a simulation. Nothing is
+   * ever signed for it: a family whose accounts come from keys takes the address from the bytes.
+   * The same bytes give the same account; `seed` holds at least 32 bytes.
+   */
+  freshAccount(chain: ChainRef, seed: Readonly<Uint8Array>): AccountRef;
+  /**
+   * A draft that sends a token with the family's standard transfer call, from `from` to `to`, on
+   * `from`'s chain. The native coin, an asset of another chain or of another standard is
+   * `unknown_asset`.
+   */
+  transferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset">;
 }
 
 /**
