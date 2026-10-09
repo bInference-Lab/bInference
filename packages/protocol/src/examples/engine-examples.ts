@@ -66,12 +66,15 @@ export const engineExamples: { readonly [N in keyof EngineOperationShapes]: Wire
     result: {
       frozen: true,
       frozenAt: at,
+      agents: [{ agent: ids.agent, frozenAt: at }],
+      rescue: { intent: ids.intent, state: "executing" },
       rescueAddress: refs.account,
       pendingRescueAddress: "fake:1:0x0000000d",
+      pendingRescueAt: at + 86_400_000,
     },
   },
   "safety/freeze": { args: { agent: ids.agent }, result: { frozenAt: at } },
-  "safety/unfreeze": { args: empty, result: empty },
+  "safety/unfreeze": { args: empty, result: { intent: ids.intent } },
   "safety/rescue": { args: empty, result: { intent: ids.intent } },
   "safety/setRescueAddress": {
     args: { address: refs.account },

@@ -13,11 +13,13 @@ const kinds = [
   "registerIdentity",
   "launchToken",
   "rescue",
+  "unfreeze",
 ] as const;
 
 /**
- * What an intent does: a request kind of `intent/propose`, or `rescue`, which only `safety/rescue`
- * creates. An auto order or webhook rule fill is a `buy`, `sell` or `swap`.
+ * What an intent does: a request kind of `intent/propose`, `rescue`, which only `safety/rescue`
+ * creates, or `unfreeze`, which only `safety/unfreeze` creates. An auto order or webhook rule fill
+ * is a `buy`, `sell` or `swap`.
  */
 export type IntentKind = (typeof kinds)[number];
 

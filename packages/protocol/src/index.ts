@@ -150,6 +150,7 @@ export type {
   IntentView,
   RescueRequest,
   SimulationView,
+  UnfreezeRequest,
 } from "./views/intent-view.schema.js";
 export type { JobRef } from "./views/job-ref.schema.js";
 export { limitChangesSchema, limitsViewSchema } from "./views/limits-view.schema.js";

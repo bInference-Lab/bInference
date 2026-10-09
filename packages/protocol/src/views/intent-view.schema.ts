@@ -16,6 +16,15 @@ export interface RescueRequest {
   readonly kind: "rescue";
 }
 
+/**
+ * The request of an unfreeze intent, which only `safety/unfreeze` creates: the agent it unfreezes,
+ * or every frozen agent and the install when absent.
+ */
+export interface UnfreezeRequest {
+  readonly kind: "unfreeze";
+  readonly agent?: ProtocolId<"agent">;
+}
+
 /** The balance changes a simulation saw for the wallet. */
 export interface SimulationView {
   readonly spent: readonly Amount[];
@@ -53,7 +62,7 @@ export interface IntentView {
   readonly wallet: ProtocolId<"wallet">;
   readonly kind: IntentKind;
   readonly state: IntentState;
-  readonly request: IntentRequest | RescueRequest;
+  readonly request: IntentRequest | RescueRequest | UnfreezeRequest;
   readonly quote?: QuoteView;
   readonly risk?: RiskView;
   readonly simulation?: SimulationView;
@@ -84,7 +93,11 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
   wallet: protocolIdSchema("wallet"),
   kind: intentKindSchema,
   state: intentStateSchema,
-  request: z.union([readIntentRequestSchema, z.object({ kind: z.literal("rescue") })]),
+  request: z.union([
+    readIntentRequestSchema,
+    z.object({ kind: z.literal("rescue") }),
+    z.object({ kind: z.literal("unfreeze"), agent: protocolIdSchema("agent").exactOptional() }),
+  ]),
   quote: quoteViewSchema.exactOptional(),
   risk: riskViewSchema.exactOptional(),
   simulation: z

@@ -10,6 +10,7 @@ import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { ownerKeyCodeSchema } from "../values/owner-key-code.schema.js";
 import { type AgentMode, agentModeSchema } from "../views/agent-view.schema.js";
+import { type IntentState, intentStateSchema } from "../views/intent-state.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /** One health signal of `engine/status`, such as event-loop lag or RPC health. */
@@ -32,13 +33,28 @@ interface EngineStatus {
   readonly health: readonly HealthSignal[];
 }
 
-/** The answer of `safety/status`. */
+/** A frozen agent in `safety/status`, and when it was frozen. */
+interface FrozenAgent {
+  readonly agent: ProtocolId<"agent">;
+  readonly frozenAt: number;
+}
+
+/** The answer of `safety/status` (decision 0128). */
 interface SafetyStatus {
+  /** Whether the whole install, or any agent not archived, is frozen. */
   readonly frozen: boolean;
+  /** When the whole install was frozen; every agent created since starts frozen. */
   readonly frozenAt?: number;
+  /** Every frozen agent not archived, with its time. */
+  readonly agents?: readonly FrozenAgent[];
+  /** The rescue that has not ended, and its state. */
+  readonly rescue?: { readonly intent: ProtocolId<"intent">; readonly state: IntentState };
+  /** The rescue address in effect. */
   readonly rescueAddress?: AccountRef;
   /** A new rescue address that takes effect 24 hours after it was set. */
   readonly pendingRescueAddress?: AccountRef;
+  /** When the new rescue address takes effect. */
+  readonly pendingRescueAt?: number;
 }
 
 /**
@@ -65,7 +81,11 @@ export interface EngineOperationShapes {
     readonly args: FreezeArgs;
     readonly result: { readonly frozenAt: number };
   };
-  readonly "safety/unfreeze": { readonly args: FreezeArgs; readonly result: Empty };
+  /** An unfreeze card awaiting the owner's tap; none when nothing is frozen (decision 0128). */
+  readonly "safety/unfreeze": {
+    readonly args: FreezeArgs;
+    readonly result: { readonly intent?: ProtocolId<"intent"> };
+  };
   readonly "safety/rescue": {
     readonly args: Empty;
     readonly result: { readonly intent: ProtocolId<"intent"> };
@@ -132,8 +152,15 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     result: z.object({
       frozen: z.boolean(),
       frozenAt: epochMsSchema.exactOptional(),
+      agents: z
+        .array(z.object({ agent: protocolIdSchema("agent"), frozenAt: epochMsSchema }))
+        .exactOptional(),
+      rescue: z
+        .object({ intent: protocolIdSchema("intent"), state: intentStateSchema })
+        .exactOptional(),
       rescueAddress: accountRefSchema.exactOptional(),
       pendingRescueAddress: accountRefSchema.exactOptional(),
+      pendingRescueAt: epochMsSchema.exactOptional(),
     }),
   },
   "safety/freeze": {
@@ -148,7 +175,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     name: "safety/unfreeze",
     scope: "loosen",
     args: freezeArgs,
-    result: emptyResultSchema,
+    result: z.object({ intent: protocolIdSchema("intent").exactOptional() }),
   },
   "safety/rescue": {
     ...writeFlags,
