@@ -37,7 +37,7 @@ can check what they move. Nothing here names a chain or a venue.
 | `TxSimulator`, `SimulatedStep`, `AssetTransfer`, `AssetApproval`      | Runs drafts unsent and reports what each moved and allowed       |
 | `TxPreparer`, `PreparedTx`                                            | A draft at its nonce, with gas and fees read now, ready to sign  |
 | `RelaySender`, `RelayAnswer`, `relayRefusals`                         | Sends signed bytes to every private relay; one answer per relay  |
-| `ReceiptReader`, `TxReceipt`, `ChainHead`                             | A sent transaction's receipt, and the latest and final blocks    |
+| `ReceiptReader`, `TxReceipt`, `ChainHead`                             | Receipts, what a transaction moved, nonces at a block, the head  |
 | `isSameAccount`                                                       | Whether two accounts are one, compared in the family's form      |
 | `@binference/chain/testing`                                           | Each port's suite; a fake family, chain, venue and network       |
 

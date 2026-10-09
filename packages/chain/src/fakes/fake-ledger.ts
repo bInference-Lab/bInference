@@ -3,6 +3,7 @@ import { z } from "zod";
 import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { ChainHead, TxReceipt } from "../sending/tx-receipt.js";
+import type { AssetTransfer } from "../simulation/simulated-step.js";
 import { isTxHash, type TxHash } from "../transaction.js";
 import { fakeTxHash } from "./fake-signing-scheme.js";
 
@@ -30,9 +31,13 @@ export interface FakeLedger {
   /** Takes a transaction out of its block, as a reorg would: it waits in the pool again. */
   reorg(hash: TxHash): void;
   receipt(hash: TxHash): TxReceipt | undefined;
+  /** What a transaction a block holds moved: none once it reverted; `undefined` while unmined. */
+  transfers(hash: TxHash): readonly AssetTransfer[] | undefined;
   head(): ChainHead;
   /** The next nonce of an account: how many of its transactions blocks hold. */
   nextNonce(account: AccountRef): number;
+  /** How many of an account's transactions the blocks up to and including `block` hold. */
+  nonceAt(account: AccountRef, block: bigint): number;
 }
 
 /** What a fake ledger is made of. */
@@ -42,6 +47,8 @@ export interface FakeLedgerOptions {
   readonly finalityDepth: bigint;
   /** Draft payloads whose transactions revert in a block. */
   readonly reverting: ReadonlySet<string>;
+  /** What a transaction that ran moved, by what it was sent as; nothing when absent. */
+  readonly transfersOf?: (sent: FakeSent) => readonly AssetTransfer[];
 }
 
 const gasUsed = 21_000n;
@@ -119,6 +126,23 @@ function reorgOne(state: LedgerState, hash: TxHash): void {
   }
 }
 
+// Blocks hold an account's transactions in nonce order, so the count is one past the highest nonce.
+function nonceAt(state: LedgerState, account: AccountRef, block: bigint): number {
+  const held = [...state.mined.values()].filter(
+    ({ sent, receipt }) => sent.account === account && receipt.block.number <= block,
+  );
+  return held.reduce((next, { sent }) => Math.max(next, sent.nonce + 1), 0);
+}
+
+function transfersOf(state: LedgerState, hash: TxHash): readonly AssetTransfer[] | undefined {
+  const held = state.mined.get(hash);
+  if (held === undefined) {
+    return undefined;
+  }
+  const isReverted = held.receipt.status === "reverted";
+  return isReverted ? [] : (state.options.transfersOf?.(held.sent) ?? []);
+}
+
 /** Creates an empty {@link FakeLedger} at block 0. */
 export function createFakeLedger(options: FakeLedgerOptions): FakeLedger {
   const state: LedgerState = { options, pooled: new Map(), mined: new Map(), nonces: new Map() };
@@ -142,10 +166,12 @@ export function createFakeLedger(options: FakeLedgerOptions): FakeLedger {
       reorgOne(state, hash);
     },
     receipt: (hash) => state.mined.get(hash)?.receipt,
+    transfers: (hash) => transfersOf(state, hash),
     head: () => ({
       latest,
       final: latest > options.finalityDepth ? latest - options.finalityDepth : 0n,
     }),
     nextNonce: (account) => nextOf(state, account),
+    nonceAt: (account, block) => nonceAt(state, account, block),
   };
 }

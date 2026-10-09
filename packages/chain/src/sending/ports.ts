@@ -1,5 +1,7 @@
 import type { Result } from "@binference/core";
+import type { AccountRef } from "../caip/account-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
+import type { AssetTransfer } from "../simulation/simulated-step.js";
 import type { SignedTx, TxHash } from "../transaction.js";
 import type { PreparedTx, PrepareRequest } from "./prepared-tx.js";
 import type { RelayAnswer } from "./relay-answer.js";
@@ -44,8 +46,10 @@ export interface RelaySender {
 
 /**
  * Reads sent transactions' receipts and a chain's head, so the wallet queue watches each step
- * until it is final. Adapters: the EVM family's, over the chain's RPC failover, with the final
- * block from the chain's finality rule.
+ * until it is final; what a transaction a block holds moved, so reconciliation turns it into a
+ * fill; and how many transactions of an account blocks hold, so recovery tells whether a nonce is
+ * used. Adapters: the EVM family's, over the chain's RPC failover, with the final block from the
+ * chain's finality rule.
  */
 export interface ReceiptReader {
   /**
@@ -60,4 +64,26 @@ export interface ReceiptReader {
   ): Promise<TxReceipt | undefined>;
   /** The chain's head now, with `final` at or below `latest`. Rejects as `receipt` does. */
   head(chain: ChainRef, options: { readonly signal: AbortSignal }): Promise<ChainHead>;
+  /**
+   * The native coin and token transfers a transaction a block holds made, in order, as its family
+   * reads them from the transaction and its receipt's logs, or `undefined` while no block holds
+   * it. The fee is never among them. A transfer the family cannot read from those (such as native
+   * coin an inner call sends on an EVM chain) is missing, so a caller compares the result with
+   * what it expected. Rejects as `receipt` does.
+   */
+  transfers(
+    chain: ChainRef,
+    hash: TxHash,
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly AssetTransfer[] | undefined>;
+  /**
+   * How many transactions of the account the blocks up to and including `block` hold: the nonce
+   * the chain expects from it next as of that block, 0 for an account it has never seen. A nonce
+   * below it is used. Rejects as `receipt` does.
+   */
+  nonceAt(
+    account: AccountRef,
+    block: bigint,
+    options: { readonly signal: AbortSignal },
+  ): Promise<number>;
 }

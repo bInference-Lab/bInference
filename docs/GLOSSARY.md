@@ -143,7 +143,9 @@ new name here first, in the change that uses it.
 - **relay answer**: what one relay said to one send: accepted, refused with its reason, timed out
   or unreachable. Each answer is stored per relay.
 - **receipt reader**: the port a chain family fills to read a sent transaction's receipt and the
-  chain's head: its latest block and its final block by the chain's finality rule.
+  chain's head: its latest block and its final block by the chain's finality rule. It also reads
+  what a mined transaction moved, and how many transactions of an account the blocks up to one
+  block hold.
 - **simulation check**: the simulate step of the money path. The wallet's net balance changes in
   the simulation must match the intent: exactly the input leaves, at least the minimum out arrives,
   no other asset leaves or arrives, and no allowance is set but the plan's own approval.

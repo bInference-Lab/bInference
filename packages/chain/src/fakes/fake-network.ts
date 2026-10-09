@@ -4,8 +4,9 @@ import type { RelayBehavior, RelayDelivery } from "../contracts/relay-sender-con
 import type { NonceSource } from "../ports.js";
 import type { ReceiptReader, RelaySender, TxPreparer } from "../sending/ports.js";
 import type { RelayAnswer } from "../sending/relay-answer.js";
+import type { AssetTransfer } from "../simulation/simulated-step.js";
 import type { TxHash, UnsignedTx } from "../transaction.js";
-import { createFakeLedger, type FakeLedger, readFakeSent } from "./fake-ledger.js";
+import { createFakeLedger, type FakeLedger, type FakeSent, readFakeSent } from "./fake-ledger.js";
 
 /**
  * One fake chain for tests, as the wallet queue sees it: it prepares drafts, takes signed
@@ -45,6 +46,8 @@ export interface FakeNetworkOptions {
   readonly finalityDepth?: bigint;
   /** Draft payloads whose transactions revert once a block holds them. */
   readonly reverting?: readonly string[];
+  /** What a transaction that ran moved, by what it was sent as; nothing when absent. */
+  readonly transfers?: (sent: FakeSent) => readonly AssetTransfer[];
 }
 
 const defaultFee = 50_000_000n;
@@ -192,6 +195,17 @@ function readersOf(state: NetworkState): ReceiptReader & NonceSource {
       state.dials.read();
       return await Promise.resolve(state.ledger.head());
     },
+    async transfers(asked, hash, { signal }) {
+      signal.throwIfAborted();
+      served(state, asked);
+      state.dials.read();
+      return await Promise.resolve(state.ledger.transfers(hash));
+    },
+    async nonceAt(account, block, { signal }) {
+      signal.throwIfAborted();
+      state.dials.read();
+      return await Promise.resolve(state.ledger.nonceAt(account, block));
+    },
     async next(account, { signal }) {
       signal.throwIfAborted();
       return await Promise.resolve(state.ledger.nextNonce(account));
@@ -220,6 +234,7 @@ export function createFakeNetwork(options: FakeNetworkOptions): FakeNetwork {
     chain: options.chain,
     finalityDepth: options.finalityDepth ?? 2n,
     reverting: new Set(options.reverting ?? []),
+    ...(options.transfers === undefined ? {} : { transfersOf: options.transfers }),
   });
   const dials = createDials();
   const state: NetworkState = {

@@ -11,6 +11,15 @@ export const quantitySchema: z.ZodType<bigint, string> = z
   .regex(/^0x[0-9a-fA-F]{1,64}$/)
   .transform((text) => BigInt(text));
 
+/**
+ * A transaction count, such as `eth_getTransactionCount` answers, read as a number: a nonce is a
+ * safe integer, since an account never sends 2^53 transactions.
+ */
+export const nonceCountSchema: z.ZodType<number, string> = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{1,13}$/)
+  .transform((text) => z.coerce.number().pipe(z.int().nonnegative()).parse(text));
+
 /** JSON-RPC data: `0x` and whole bytes. */
 export const hexSchema: z.ZodType<Hex, string> = z.string().refine(isHex);
 

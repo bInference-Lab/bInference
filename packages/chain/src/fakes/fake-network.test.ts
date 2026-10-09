@@ -2,6 +2,7 @@ import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { accountRefSchema } from "../caip/account-ref.js";
+import { assetRefSchema } from "../caip/asset-ref.js";
 import { chainRefSchema } from "../caip/chain-ref.js";
 import { nonceSourceContract } from "../contracts/nonce-source-contract.js";
 import { receiptReaderContract } from "../contracts/receipt-reader-contract.js";
@@ -19,11 +20,15 @@ const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortControl
 const swap = fakeDraft(account, { to: "0x0000000b", value: 5n, data: "swap" });
 const broken = fakeDraft(account, { to: "0x0000000b", value: 0n, data: "broken" });
 
+const coin = assetRefSchema.parse("fake:1/slip44:1");
+const swapTransfers = [{ from: account, to: chainAccount(11), amount: { asset: coin, base: 5n } }];
+
 function networkOf(options: { readonly feeCapBase?: bigint } = {}): FakeNetwork {
   return createFakeNetwork({
     chain,
     clock: createManualClock(1_000),
     reverting: [broken.payload],
+    transfers: (sent) => (sent.draftPayload === swap.payload ? swapTransfers : []),
     ...options,
   });
 }
@@ -75,7 +80,15 @@ describe("fake network", () => {
           const network = networkOf();
           const succeeded = await hashOf(network, swap, 0);
           const reverted = await hashOf(network, broken, 1);
-          return { reader: network, chain, succeeded, reverted, unknown: "fake00000000" as TxHash };
+          return {
+            reader: network,
+            chain,
+            succeeded,
+            succeededTransfers: swapTransfers,
+            reverted,
+            unknown: "fake00000000" as TxHash,
+            sender: account,
+          };
         },
       }),
     )("follows the contract: $name", async ({ run }) => {
@@ -148,6 +161,13 @@ describe("fake network", () => {
       block: { number: 2n },
     });
     network.reorg("fake00000000" as TxHash);
+  });
+
+  it("reads no transfers when the test names none, and counts nonces block by block", async () => {
+    const network = createFakeNetwork({ chain, clock: createManualClock(1_000) });
+    const hash = await hashOf(network, swap, 0);
+    await expect(network.transfers(chain, hash, live())).resolves.toStrictEqual([]);
+    await expect(network.nonceAt(chainAccount(13), 1n, live())).resolves.toBe(0);
   });
 
   it("fails the reads a test sets to fail, then reads again", async () => {

@@ -1,34 +1,14 @@
-import { type AccountRef, accountRefParts, type NonceSource } from "@binference/chain";
-import { BinferenceError } from "@binference/core";
-import { z } from "zod";
-import { parseEvmAddress } from "../evm-address.js";
+import type { NonceSource } from "@binference/chain";
 import type { EvmChain } from "../evm-chain.js";
+import { nonceCountSchema } from "../rpc/evm-wire.schema.js";
 import { requestResult } from "../rpc/request-result.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
+import { accountAddressOn } from "./account-address-on.js";
 
 /** What the EVM nonce source reads: one chain, through its RPC failover. */
 export interface EvmNonceSourceOptions {
   readonly rpc: RpcFailover;
   readonly chain: EvmChain;
-}
-
-// A nonce is a safe integer: an account never sends 2^53 transactions.
-const nonceSchema: z.ZodType<number, string> = z
-  .string()
-  .regex(/^0x[0-9a-fA-F]{1,13}$/)
-  .transform((text) => z.coerce.number().pipe(z.int().nonnegative()).parse(text));
-
-function addressOn(chain: EvmChain, account: AccountRef): string {
-  const { chain: accountChain, address } = accountRefParts(account);
-  const parsed = parseEvmAddress(address);
-  if (accountChain !== chain.ref || !parsed.ok) {
-    throw new BinferenceError({
-      code: "chain.unknown_chain",
-      message: `This nonce source reads accounts on ${chain.name} only.`,
-      details: { chain: accountChain },
-    });
-  }
-  return parsed.value;
 }
 
 /**
@@ -40,11 +20,11 @@ export function createEvmNonceSource(options: EvmNonceSourceOptions): NonceSourc
   return {
     async next(account, { signal }) {
       signal.throwIfAborted();
-      const address = addressOn(options.chain, account);
+      const address = accountAddressOn(options.chain, account);
       return requestResult(options.rpc, {
         method: "eth_getTransactionCount",
         params: [address, "pending"],
-        result: nonceSchema,
+        result: nonceCountSchema,
         signal,
       });
     },

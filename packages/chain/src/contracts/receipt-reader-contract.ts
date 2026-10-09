@@ -1,19 +1,24 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
+import type { AccountRef } from "../caip/account-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { ReceiptReader } from "../sending/ports.js";
+import type { AssetTransfer } from "../simulation/simulated-step.js";
 import type { TxHash } from "../transaction.js";
 
 /**
- * A receipt reader under test, on one chain: a transaction a block holds that ran, one a block
- * holds that reverted, and a hash no block holds.
+ * A receipt reader under test, on one chain: a transaction a block holds that ran, with the
+ * transfers it made, one a block holds that reverted, and a hash no block holds. `sender` sent
+ * both, at nonces 0 and 1, the first in a block below the second's.
  */
 export interface ReceiptReaderSubject {
   readonly reader: ReceiptReader;
   readonly chain: ChainRef;
   readonly succeeded: TxHash;
+  readonly succeededTransfers: readonly AssetTransfer[];
   readonly reverted: TxHash;
   readonly unknown: TxHash;
+  readonly sender: AccountRef;
 }
 
 /** Makes a fresh {@link ReceiptReaderSubject} for each check. */
@@ -52,12 +57,32 @@ async function readsHead(harness: ReceiptReaderHarness): Promise<void> {
   assert.ok(head.final >= 0n);
 }
 
+async function readsTransfers(harness: ReceiptReaderHarness): Promise<void> {
+  const { reader, chain, succeeded, succeededTransfers, reverted, unknown } =
+    await harness.create();
+  assert.deepEqual(await reader.transfers(chain, succeeded, live()), succeededTransfers);
+  assert.deepEqual(await reader.transfers(chain, reverted, live()), []);
+  assert.equal(await reader.transfers(chain, unknown, live()), undefined);
+}
+
+async function readsNonces(harness: ReceiptReaderHarness): Promise<void> {
+  const { reader, chain, succeeded, reverted, sender } = await harness.create();
+  const first = await reader.receipt(chain, succeeded, live());
+  const second = await reader.receipt(chain, reverted, live());
+  assert.ok(first !== undefined && second !== undefined);
+  assert.equal(await reader.nonceAt(sender, first.block.number - 1n, live()), 0);
+  assert.equal(await reader.nonceAt(sender, first.block.number, live()), 1);
+  assert.equal(await reader.nonceAt(sender, second.block.number, live()), 2);
+}
+
 async function refusesAborted(harness: ReceiptReaderHarness): Promise<void> {
-  const { reader, chain, succeeded } = await harness.create();
+  const { reader, chain, succeeded, sender } = await harness.create();
   const reason = new Error("stopped");
   const aborted = { signal: AbortSignal.abort(reason) };
   await assert.rejects(reader.receipt(chain, succeeded, aborted), reason);
   await assert.rejects(reader.head(chain, aborted), reason);
+  await assert.rejects(reader.transfers(chain, succeeded, aborted), reason);
+  await assert.rejects(reader.nonceAt(sender, 0n, aborted), reason);
 }
 
 /** The contract every `ReceiptReader` adapter passes. */
@@ -75,6 +100,14 @@ export function receiptReaderContract(harness: ReceiptReaderHarness): readonly C
     {
       name: "reads the chain's head with its final block at or below the latest",
       run: async () => readsHead(harness),
+    },
+    {
+      name: "reads what a transaction a block holds moved, and nothing for one that reverted",
+      run: async () => readsTransfers(harness),
+    },
+    {
+      name: "counts an account's transactions in the blocks up to a block",
+      run: async () => readsNonces(harness),
     },
     {
       name: "rejects with the signal's reason once the signal aborts",

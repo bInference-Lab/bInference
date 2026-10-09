@@ -7,11 +7,14 @@ import {
   txReceiptSchema,
 } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
+import { toHex } from "viem";
 import { z } from "zod";
 import type { EvmChain } from "../evm-chain.js";
-import { hexSchema, quantitySchema } from "../rpc/evm-wire.schema.js";
+import { hexSchema, nonceCountSchema, quantitySchema } from "../rpc/evm-wire.schema.js";
 import { requestResult } from "../rpc/request-result.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
+import { accountAddressOn } from "./account-address-on.js";
+import { readEvmTransfers } from "./read-evm-transfers.js";
 
 /** What the EVM receipt reader reads: one chain through its RPC failover, by its finality rule. */
 export interface EvmReceiptReaderOptions {
@@ -78,8 +81,9 @@ async function finalBlock(
 /**
  * Creates the `ReceiptReader` of one EVM chain over its RPC failover: `eth_getTransactionReceipt`,
  * `eth_blockNumber`, and the final block by the chain's rule: the `finalized` tag, or the latest
- * block less its confirmations. A hash no block holds reads as no receipt. A chain it does not
- * read is a fault.
+ * block less its confirmations. A hash no block holds reads as no receipt. Transfers are the
+ * transaction's own value and its receipt's ERC-20 `Transfer` logs; the nonce at a block is
+ * `eth_getTransactionCount` at that block. A chain it does not read is a fault.
  */
 export function createEvmReceiptReader(options: EvmReceiptReaderOptions): ReceiptReader {
   const { rpc, chain } = options;
@@ -105,6 +109,20 @@ export function createEvmReceiptReader(options: EvmReceiptReaderOptions): Receip
         signal,
       });
       return { latest, final: await finalBlock(options, latest, signal) };
+    },
+    async transfers(asked, hash, { signal }) {
+      signal.throwIfAborted();
+      served(chain, asked);
+      return readEvmTransfers(options, hash, signal);
+    },
+    async nonceAt(account, block, { signal }) {
+      signal.throwIfAborted();
+      return requestResult(rpc, {
+        method: "eth_getTransactionCount",
+        params: [accountAddressOn(chain, account), toHex(block)],
+        result: nonceCountSchema,
+        signal,
+      });
     },
   };
 }

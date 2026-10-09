@@ -24,7 +24,8 @@ export interface SimulatedBlockReply {
   readonly calls: readonly SimulatedCallReply[];
 }
 
-const logSchema = z.looseObject({
+/** Checks one log as a node answers it, in a simulated call or a receipt. */
+export const evmLogSchema: z.ZodType<EvmLog> = z.looseObject({
   address: addressSchema,
   topics: z.array(hexSchema),
   data: hexSchema,
@@ -34,7 +35,7 @@ const callSchema = z.looseObject({
   status: quantitySchema,
   gasUsed: quantitySchema,
   returnData: hexSchema,
-  logs: z.array(logSchema),
+  logs: z.array(evmLogSchema),
 });
 
 /** Checks the result of an `eth_simulateV1` request for one block. */

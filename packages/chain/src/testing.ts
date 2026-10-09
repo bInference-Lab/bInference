@@ -62,3 +62,4 @@ export { txPreparerContract } from "./contracts/tx-preparer-contract.js";
 export type { TxPreparerHarness, TxPreparerSubject } from "./contracts/tx-preparer-contract.js";
 export { createFakeNetwork } from "./fakes/fake-network.js";
 export type { FakeNetwork, FakeNetworkOptions } from "./fakes/fake-network.js";
+export type { FakeSent } from "./fakes/fake-ledger.js";

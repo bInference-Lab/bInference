@@ -37,4 +37,5 @@ Rules for this package:
 - Sending is three ports in `src/sending/` that a family fills: `TxPreparer` gives a draft its
   nonce, gas and fees; `RelaySender` sends signed bytes to every private relay at once and answers
   each relay apart, never retrying; `ReceiptReader` reads receipts and the chain's head by its
-  finality rule. Their fake, `createFakeNetwork`, mines only when a test says so.
+  finality rule, what a mined transaction moved, and an account's nonce as of a block. Their fake,
+  `createFakeNetwork`, mines only when a test says so.
