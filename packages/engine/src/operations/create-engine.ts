@@ -14,7 +14,7 @@ import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfo
 import { withPaperSimulation } from "../paper/paper-simulation.js";
 import { withPaperBalances } from "../paper/paper-wallet-facts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
-import type { Executor, PositionStore, Simulator, WalletFactsSource } from "../ports.js";
+import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
@@ -60,6 +60,8 @@ export interface EngineOptions {
   readonly wallets: WalletFactsSource;
   /** The venue host over every venue the engine may use. */
   readonly host: VenueHost;
+  /** Weighs the token each trade buys (`createRiskCheck` in `@binference/engine/risk`). */
+  readonly risk: RiskCheck;
   readonly simulator: Simulator;
   /** Takes each confirmed live intent onto its wallet's queue; it never sees a paper intent. */
   readonly executor: Executor;
@@ -185,6 +187,7 @@ function intentParts(
     policy: createPolicyCheck({ prices: options.prices, clock }),
     prices: options.prices,
     host,
+    risk: options.risk,
     simulator: paper.simulator,
     chains,
     execute,

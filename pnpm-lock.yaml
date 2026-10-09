@@ -413,6 +413,12 @@ importers:
       '@binference/engine':
         specifier: workspace:*
         version: link:../engine
+      '@binference/goplus':
+        specifier: workspace:*
+        version: link:../../plugins/goplus
+      '@binference/honeypot-is':
+        specifier: workspace:*
+        version: link:../../plugins/honeypot-is
       '@binference/i18n':
         specifier: workspace:*
         version: link:../i18n

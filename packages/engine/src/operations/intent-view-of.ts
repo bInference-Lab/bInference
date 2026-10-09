@@ -4,6 +4,7 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import {
   quoteDocument,
   requestDocument,
+  riskDocument,
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
 import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
@@ -52,9 +53,9 @@ function outcomeOf(snapshot: IntentSnapshot): IntentOutcome | undefined {
 }
 
 /**
- * An intent as every surface draws it (protocol spec, section 8.3): the stored record, its quote
- * and simulation, its newest card version, its outcome with the paper fill or the settled trade as
- * its execution, and the registry's info for the assets it names.
+ * An intent as every surface draws it (protocol spec, section 8.3): the stored record, its quote,
+ * risk check and simulation, its newest card version, its outcome with the paper fill or the
+ * settled trade as its execution, and the registry's info for the assets it names.
  */
 export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): IntentView {
   const { record } = snapshot;
@@ -69,6 +70,7 @@ export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): I
     state: record.state,
     request,
     ...(record.quote === undefined ? {} : { quote: quoteDocument.decode(record.quote) }),
+    ...(record.risk === undefined ? {} : { risk: riskDocument.decode(record.risk) }),
     ...(record.simulation === undefined
       ? {}
       : { simulation: simulationDocument.decode(record.simulation) }),

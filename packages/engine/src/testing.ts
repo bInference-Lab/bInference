@@ -101,4 +101,8 @@ export type {
   RiskCacheStoreHarness,
   RiskCacheStoreSubject,
 } from "./contracts/risk-cache-store-contract.js";
+export { riskCheckContract } from "./contracts/risk-check-contract.js";
+export type { RiskCheckHarness, RiskCheckSubject } from "./contracts/risk-check-contract.js";
+export { createFakeRiskCheck } from "./fakes/fake-risk-check.js";
+export type { FakeRiskCheckOptions } from "./fakes/fake-risk-check.js";
 export { createMemoryRiskCacheStore } from "./fakes/memory-risk-cache-store.js";

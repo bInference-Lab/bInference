@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import type { ChainRef, ChainRegistry } from "@binference/chain";
 import { BinferenceError, createDeadline } from "@binference/core";
-import { type EnginePush, type EngineStores, lockedNotice } from "@binference/engine";
+import { type EnginePush, lockedNotice } from "@binference/engine";
 import {
   acquireFileLock,
   createShutdown,
@@ -36,10 +36,12 @@ import {
   type OpenedLog,
   openEngineLog,
   openEngineStores,
+  type OpenedStores,
   type Opening,
   selfHostedChains,
 } from "./open-engine-parts.js";
 import { readTracers } from "./read-tracers.js";
+import { selfHostedRiskSources } from "./risk-sources.js";
 
 /** Why the engine did not start, with what the owner needs to fix it. */
 export type StartRefusal =
@@ -78,7 +80,7 @@ export interface StartOptions {
 interface Opened {
   readonly config: BinferenceConfig;
   readonly log: OpenedLog;
-  readonly stores: EngineStores;
+  readonly stores: OpenedStores;
   /** The install, or `undefined` before `binference init` set it up. */
   readonly install: SetUpInstall | undefined;
   /** The owner's tracing RPC of each chain config names one for, read from its secret. */
@@ -171,6 +173,12 @@ function compose(opening: Opening, opened: Opened): Composed {
       chains,
       venues: [],
       simulator: parts.simulator,
+      risk: {
+        sources: selfHostedRiskSources(host.http),
+        cache: stores.riskCache,
+        cacheTtlMs: config.risk.cacheTtlSec * 1_000,
+        simulator: parts.txSimulator,
+      },
       wallets: parts.wallets,
       version: host.version,
       owner: config.owner,

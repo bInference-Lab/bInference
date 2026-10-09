@@ -1,7 +1,7 @@
 import { assetRefSchema, type Venue } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
-import { err, type Id, idSchema } from "@binference/core";
-import type { IntentRequest, IntentView } from "@binference/protocol";
+import { type Bps, err, type Id, idSchema } from "@binference/core";
+import type { IntentRequest, IntentView, RiskView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import {
@@ -19,7 +19,8 @@ import {
   testCallers,
   testChains,
 } from "../operations/test-engine.js";
-import type { IntentStore } from "../ports.js";
+import type { IntentStore, RiskCheck } from "../ports.js";
+import type { RiskAssessment, RiskSubject } from "../risk/risk-assessment.js";
 import { otherVenue, otherVenueId } from "./test-routes.js";
 
 const noRefusal = (): undefined => undefined;
@@ -62,6 +63,24 @@ async function refusal(test: TestEngine, request: IntentRequest): Promise<string
 function tokenSale(base: bigint): IntentRequest {
   return testSwap({ from: testToken, to: testCoin, amount: { base } });
 }
+
+// A risk check that answers every trade with one assessment, and keeps what it was asked.
+function scriptedRisk(assessment: RiskAssessment): RiskCheck & { readonly asked: RiskSubject[] } {
+  const asked: RiskSubject[] = [];
+  return {
+    asked,
+    assess: async (subject) => {
+      asked.push(subject);
+      return await Promise.resolve(assessment);
+    },
+  };
+}
+
+const riskView: Omit<RiskView, "checkedAt"> = {
+  verdict: "warn",
+  flags: [{ code: "mintable", source: "first" }],
+  onCurve: false,
+};
 
 interface CountingVenue extends Venue {
   quotes(): number;
@@ -234,6 +253,42 @@ describe("the money path", () => {
     const view = await propose(await startTestEngine({ venues: [] }));
     expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "venue_down"]);
     expect(view.quote).toBeUndefined();
+  });
+
+  it("stores the risk view of a token that passes and goes on to the simulation", async () => {
+    const view = { ...riskView, sellTaxBps: 300 as Bps, checkedAt: 5 };
+    const test = await startTestEngine({ risk: scriptedRisk({ view }) });
+    const proposed = await propose(test);
+    expect([proposed.state, proposed.risk]).toStrictEqual(["awaiting_confirmation", view]);
+    expect(await statesOf(test, proposed.intent)).toContain("assessed");
+  });
+
+  it("blocks with the risk step's reason and stores the view it blocked with", async () => {
+    const view = { ...riskView, verdict: "block", sellTaxBps: 4_000 as Bps, checkedAt: 5 } as const;
+    const test = await startTestEngine({ risk: scriptedRisk({ view, refusal: "high_tax" }) });
+    const proposed = await propose(test);
+    expect([proposed.state, proposed.outcome?.reason, proposed.risk]).toStrictEqual([
+      "risk_blocked",
+      "high_tax",
+      view,
+    ]);
+    expect(proposed.simulation).toBeUndefined();
+  });
+
+  it("asks the risk step about the built quote with the agent's tax and liquidity limits", async () => {
+    const risk = scriptedRisk({ view: { ...riskView, checkedAt: 5 } });
+    const test = await startTestEngine({ risk });
+    const proposed = await propose(test);
+    const [subject] = risk.asked;
+    expect(subject?.limits).toStrictEqual({
+      maxTaxBps: testLimits.taxBps,
+      liquidityFloorUsdMicros: testLimits.liquidityFloorUsdMicros,
+    });
+    expect(subject?.quoted).toMatchObject({
+      trade: { assetOut: testToken, wallet: "fake:1:0x0000000c" },
+      quote: { expectedOut: proposed.quote?.expectedOut },
+      quotedAtMs: proposed.quote?.quotedAt,
+    });
   });
 
   it("blocks a token the registry does not list, as no risk source can answer", async () => {

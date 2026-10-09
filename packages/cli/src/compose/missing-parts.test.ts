@@ -51,6 +51,10 @@ describe("the missing parts", () => {
       code: "chain.simulation_failed",
       details: { missing: "simulator" },
     });
+    await expect(parts.txSimulator.simulate([], live())).rejects.toMatchObject({
+      code: "chain.simulation_failed",
+      details: { missing: "simulator" },
+    });
     expect(parts.missing).toStrictEqual(["custody", "prices", "wallets", "simulator", "positions"]);
   });
 
@@ -73,5 +77,6 @@ describe("the missing parts", () => {
     await expect(parts.simulator.simulate(intent, {} as never, stopped())).rejects.toThrow(
       "stopped",
     );
+    await expect(parts.txSimulator.simulate([], stopped())).rejects.toThrow("stopped");
   });
 });

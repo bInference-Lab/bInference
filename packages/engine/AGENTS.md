@@ -121,6 +121,16 @@ Rules for this package:
   step is looked up by hash and nonce (spec 6, section 7). A step that is never signed, at a run
   or found at recovery, ends the intent through `step_unsent`: `cancelled` when no step was
   signed, `failed_onchain` once one landed (decision 0109).
+- The risk step (`src/risk/`, exported as `@binference/engine/risk`) weighs the token a quoted
+  trade buys; a sale passes it, and its own simulation decides. A token the registry lists passes
+  without asking anyone. Any other needs a report from every required `TokenRiskSource`, each
+  through the `RiskCacheStore` under its own timeout, and the round trip: a buy, a transfer and a
+  sale from two accounts the chain's family makes fresh from the `Random` port, built on the
+  trade's own venue and run through the `TxSimulator` port. Each leg's tax is read from the
+  transfers alone (`leg-taxes.ts`, `sale-tax.ts`), never from a source's figure. The verdict
+  (`risk-verdict.ts`) stores the first of spec 6's risk reasons that holds; a source or a round
+  trip that cannot answer is a refusal, never a throw. A new finding that blocks adds its check
+  there, a case in `risk-verdict.test.ts` and, for a tax rule, a property case.
 - The simulation check (`src/simulation/`, exported as `@binference/engine/simulation`) reads
   what a quote's steps do only through the `TxSimulator` port, compares accounts through the
   chain's family, and never counts the network fee among the transfers. A new check is a

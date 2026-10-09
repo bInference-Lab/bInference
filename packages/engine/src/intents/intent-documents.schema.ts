@@ -5,6 +5,8 @@ import {
   intentRequestSchema,
   type QuoteView,
   quoteViewSchema,
+  type RiskView,
+  riskViewSchema,
   type SimulationView,
 } from "@binference/protocol";
 import { z } from "zod";
@@ -69,6 +71,9 @@ const planSchema: z.ZodType<readonly TxDraft[]> = z.array(txDraftSchema).min(1);
 
 /** The drafts the venue built and the host checked, in order, in the `plan` column. */
 export const planDocument: DocumentCodec<readonly TxDraft[]> = documentCodec("plan", planSchema);
+
+/** The token's risk check: its verdict, findings and measured taxes, in the `risk` column. */
+export const riskDocument: DocumentCodec<RiskView> = documentCodec("risk", riskViewSchema);
 
 /** The wallet's balance changes in the simulation, in the `simulation` column. */
 export const simulationDocument: DocumentCodec<SimulationView> = documentCodec(

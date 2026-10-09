@@ -42,6 +42,7 @@ import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
 import type { CachedRiskReport, RiskCacheKey } from "./risk/cached-risk-report.js";
+import type { RiskAssessment, RiskSubject } from "./risk/risk-assessment.js";
 import type { SimulatedSteps } from "./simulation/simulated-steps.js";
 import type { NonceGrant, NonceRequest } from "./wallet-queue/nonce-grant.js";
 import type {
@@ -117,6 +118,21 @@ export interface Simulator {
     built: BuiltQuote,
     options: SimulationOptions,
   ): Promise<Result<SimulatedSteps, SimulationFailure>>;
+}
+
+/**
+ * The risk step of the money path (ARCHITECTURE.md section 7, step 4): it weighs the token a
+ * quoted trade buys. A token the chain registry lists passes; any other needs every required risk
+ * source's report and the engine's own round trip, and a hard finding blocks it. Adapters: the
+ * engine's own check (`createRiskCheck` in `@binference/engine/risk`).
+ */
+export interface RiskCheck {
+  /**
+   * The view the intent stores, and the risk reason it refuses with, if it does. A source or a
+   * round trip that cannot answer is a refusal (`sources_down`), never a throw. Rejects with the
+   * signal's reason once it aborts.
+   */
+  assess(subject: RiskSubject, options: { readonly signal: AbortSignal }): Promise<RiskAssessment>;
 }
 
 /**

@@ -21,6 +21,7 @@ import { createManualClock, createSeededRandom, type ManualClock } from "@binfer
 import type { AgentDraft } from "../agents/agent-record.js";
 import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
+import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
 import {
   createMemoryEngineStores,
@@ -37,7 +38,14 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
-import type { AgentStore, Executor, IntentStore, PositionStore, Simulator } from "../ports.js";
+import type {
+  AgentStore,
+  Executor,
+  IntentStore,
+  PositionStore,
+  RiskCheck,
+  Simulator,
+} from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine } from "./create-engine.js";
@@ -87,6 +95,8 @@ export interface TestEngineOptions {
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
   /** Whether the engine is locked; never when absent. */
   readonly isLocked?: () => boolean;
+  /** The risk step; one that passes registry tokens and refuses others as `sources_down` when absent. */
+  readonly risk?: RiskCheck;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -149,6 +159,17 @@ async function openPaper(engine: Engine, balances: readonly Amount[]): Promise<v
   }
 }
 
+// The steps a test may replace: the risk check and the simulator, fakes when it gives none.
+function stepsOf(
+  options: TestEngineOptions,
+  fakes: { readonly chains: ChainRegistry; readonly clock: ManualClock },
+): { readonly risk: RiskCheck; readonly simulator: Simulator } {
+  return {
+    risk: options.risk ?? createFakeRiskCheck(fakes),
+    simulator: options.simulator ?? createQuoteSimulator(() => options.refusal),
+  };
+}
+
 /** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
 export async function startTestEngine(options: TestEngineOptions = {}): Promise<TestEngine> {
   const clock = createManualClock(testNowMs);
@@ -171,7 +192,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
       ...options.facts,
     }),
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
-    simulator: options.simulator ?? createQuoteSimulator(() => options.refusal),
+    ...stepsOf(options, { chains, clock }),
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
     isLocked: options.isLocked ?? (() => false),

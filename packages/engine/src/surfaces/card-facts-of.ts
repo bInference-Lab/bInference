@@ -1,4 +1,5 @@
 import type { AssetRef, ChainRegistry } from "@binference/chain";
+import type { Bps } from "@binference/core";
 import type { QuoteView, SimulationView, SwapRequest } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { CardCheck, CardFacts, CardRoute } from "../confirmations/draw-card.js";
@@ -6,6 +7,7 @@ import type { CardRecord } from "../intents/card-record.js";
 import {
   quoteDocument,
   requestDocument,
+  riskDocument,
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -50,12 +52,23 @@ function checkOf(
     : { received, token, isTokenVerified: assetInfoOf(chains, token) !== undefined };
 }
 
+// The highest tax the risk step measured on the token the swap buys, for the card's tax line.
+function taxOf(record: IntentRecord): Bps | undefined {
+  const risk = record.risk === undefined ? undefined : riskDocument.decode(record.risk);
+  const taxes = [risk?.buyTaxBps, risk?.sellTaxBps].filter((tax) => tax !== undefined);
+  return taxes.reduce<Bps | undefined>(
+    (max, tax) => (max === undefined || tax > max ? tax : max),
+    undefined,
+  );
+}
+
 function swapFacts(request: SwapRequest, quote: QuoteView, source: CardSource): CardFacts {
   const { record, card, settings, isFirstLive, chains } = source;
   const route = routeOf(quote, source, request);
   const simulation =
     record.simulation === undefined ? undefined : simulationDocument.decode(record.simulation);
   const check = checkOf(simulation, request.to, chains);
+  const taxBps = taxOf(record);
   return {
     agentName: settings.agent.name,
     isPaper: record.isPaper,
@@ -68,6 +81,7 @@ function swapFacts(request: SwapRequest, quote: QuoteView, source: CardSource): 
       hasUnusualName: false,
       isNewAddress: false,
       ...(isFirstLive ? { isFirstLive } : {}),
+      ...(taxBps === undefined ? {} : { taxBps }),
     },
     reason: request.reason,
   };
@@ -75,7 +89,8 @@ function swapFacts(request: SwapRequest, quote: QuoteView, source: CardSource): 
 
 /**
  * The facts a card version is drawn from (spec 4, section 3), read from the stored intent: the
- * quote's amounts and route, the simulation's check and the agent's reason. The money path quotes
+ * quote's amounts and route, the simulation's check, the highest tax the risk step measured and
+ * the agent's reason. The money path quotes
  * swaps only, so an intent of another kind, or one without a quote, has none. The fees line waits
  * for a gas estimate in the quote, and no source marks unusual names yet.
  */

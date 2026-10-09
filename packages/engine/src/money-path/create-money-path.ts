@@ -7,6 +7,7 @@ import type { IntentMove } from "../intents/intent-change-of.js";
 import {
   planDocument,
   quoteDocument,
+  riskDocument,
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
@@ -21,15 +22,15 @@ import {
 } from "../intents/state-machine.js";
 import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { PolicySubject } from "../policy/policy-rules.js";
-import type { AgentStore, Simulator, WalletFactsSource } from "../ports.js";
+import type { AgentStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import { type SimulatedSteps, simulationViewOf } from "../simulation/simulated-steps.js";
 import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
 import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose-route.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
+import type { PlannedSwap } from "./plan-swap.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import { firstQuoteOf, quoteVenues } from "./quote-venues.js";
-import { registryRisk } from "./registry-risk.js";
 import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
 import { swapSubjectOf } from "./swap-trade.js";
 
@@ -71,6 +72,8 @@ export interface MoneyPathOptions {
   /** The USD prices that value each route's network fee in the asset bought. */
   readonly prices: PriceSource;
   readonly host: VenueHost;
+  /** Weighs the token a quoted trade buys, before the simulation. */
+  readonly risk: RiskCheck;
   readonly simulator: Simulator;
   readonly chains: ChainRegistry;
   readonly execute: ExecuteConfirmed;
@@ -218,6 +221,30 @@ async function build(
     : { snapshot: quoted };
 }
 
+// The risk step weighs the token the chosen route buys at the quote it was built from, against the
+// agent's tax and liquidity limits, and stores its view whether it passes or refuses.
+async function assessRisk(
+  run: Run,
+  snapshot: IntentSnapshot,
+  planned: PlannedSwap,
+): Promise<IntentSnapshot> {
+  const { plan } = planned;
+  const quoted = {
+    trade: { ...run.resolved.swap.trade, venue: plan.venue },
+    quote: plan.quote,
+    quotedAtMs: plan.terms.quotedAtMs,
+  };
+  const { taxBps, liquidityFloorUsdMicros } = run.resolved.settings.limits;
+  const limits = { maxTaxBps: taxBps, liquidityFloorUsdMicros };
+  const assessment = await run.options.risk.assess({ quoted, limits }, { signal: run.signal });
+  const fields = { risk: riskDocument.encode(assessment.view) };
+  const trigger =
+    assessment.refusal === undefined
+      ? ({ type: "risk_passed" } as const)
+      : ({ type: "risk_refused", reason: assessment.refusal } as const);
+  return advance(run, snapshot, { trigger, fields });
+}
+
 // The chosen route was simulated when the best quote weighed it; this step stores that run.
 async function simulate(
   run: Run,
@@ -244,9 +271,7 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (quoted.passed === undefined) {
     return quoted.snapshot;
   }
-  const { assetOut, amountIn } = run.resolved.swap.trade;
-  const risk = registryRisk(run.options.chains, [amountIn.asset, assetOut]);
-  const assessed = await advance(run, quoted.snapshot, { trigger: risk });
+  const assessed = await assessRisk(run, quoted.snapshot, quoted.passed.planned);
   if (assessed.record.state !== "assessed") {
     return assessed;
   }

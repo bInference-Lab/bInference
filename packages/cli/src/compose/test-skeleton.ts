@@ -11,6 +11,7 @@ import {
   createFakeFamily,
   createFakeSigner,
   createFakeSigningScheme,
+  createFakeTxSimulator,
   createFakeVenue,
 } from "@binference/chain/testing";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
@@ -29,6 +30,7 @@ import {
   createFakeWalletFacts,
   createMemoryEngineStores,
   createMemoryPositionStore,
+  createMemoryRiskCacheStore,
   type MemoryEngineStores,
   createQuoteSimulator,
   type FakeExecutor,
@@ -42,7 +44,12 @@ import {
 import { type ClientKind, operations } from "@binference/protocol";
 import { WebSocket } from "ws";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
-import { type ComposedEngine, composeEngine, type EngineParts } from "./compose-engine.js";
+import {
+  type ComposedEngine,
+  composeEngine,
+  type ComposeEngineOptions,
+  type EngineParts,
+} from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
 import { createEngineOperations } from "./engine-operations.js";
 
@@ -150,6 +157,15 @@ export interface Skeleton extends ComposedSkeleton {
   close(): Promise<void>;
 }
 
+// No risk source answers and no round trip step runs, so a token the registry does not list fails
+// closed, as with no risk source.
+const skeletonRisk: ComposeEngineOptions["risk"] = {
+  sources: [],
+  cache: createMemoryRiskCacheStore(["goplus", "honeypot"]),
+  cacheTtlMs: 600_000,
+  simulator: createFakeTxSimulator(new Map()),
+};
+
 /** What a skeleton adds to its profile parts. */
 export interface SkeletonOptions {
   /** The owner's bot; without it the skeleton serves no Telegram. */
@@ -188,6 +204,7 @@ export async function composeSkeleton(
     chains,
     venues: options.venues ?? [createFakeVenue()],
     simulator: createQuoteSimulator(() => undefined),
+    risk: skeletonRisk,
     wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts),
     executor,
     positions,

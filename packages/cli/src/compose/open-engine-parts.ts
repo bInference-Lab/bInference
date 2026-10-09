@@ -2,10 +2,15 @@ import { type ChainRegistry, createChainRegistry } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
 import { bsc } from "@binference/chains";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
-import type { EngineStores } from "@binference/engine";
+import type { EngineStores, RiskCacheStore } from "@binference/engine";
 import { ensurePrivateFolder, openLogFile, type Platform } from "@binference/platform";
 import type { ProtocolServer, ServerAddress } from "@binference/server";
-import { createSqliteEngineStores, engineWorker, openDatabase } from "@binference/store";
+import {
+  createSqliteEngineStores,
+  createSqliteRiskCacheStore,
+  engineWorker,
+  openDatabase,
+} from "@binference/store";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
 import type { CliHost } from "../program/cli-host.js";
@@ -69,6 +74,11 @@ export async function openEngineLog(
   return { logger, file, hasFailed: () => state.failed };
 }
 
+/** The store ports on `engine.sqlite`: the engine's, and the risk step's cache. */
+export interface OpenedStores extends EngineStores {
+  readonly riskCache: RiskCacheStore;
+}
+
 /**
  * Opens `engine.sqlite` on its store workers, applies its migrations and checks its integrity.
  * Answers the store ports, or `undefined` when the integrity check fails.
@@ -76,7 +86,7 @@ export async function openEngineLog(
 export async function openEngineStores(
   opening: Opening,
   logger: EngineLogger,
-): Promise<EngineStores | undefined> {
+): Promise<OpenedStores | undefined> {
   const database = await openDatabase({
     file: opening.platform.stateFolder.engineDatabase,
     worker: engineWorker,
@@ -91,7 +101,10 @@ export async function openEngineStores(
     logger.error("store.integrity_failed");
     return undefined;
   }
-  return createSqliteEngineStores(database);
+  return {
+    ...createSqliteEngineStores(database),
+    riskCache: createSqliteRiskCacheStore(database),
+  };
 }
 
 /** The chains this binference serves: BSC on the EVM family. */

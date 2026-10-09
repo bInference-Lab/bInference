@@ -30,6 +30,7 @@ import { createExecutor } from "@binference/engine/executor";
 import { createSimulationCheck } from "@binference/engine/simulation";
 import {
   createFakePriceSource,
+  createFakeRiskCheck,
   createFakeWalletFacts,
   createMemoryEngineStores,
   createMemoryPositionStore,
@@ -176,6 +177,7 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
       clock,
       callTimeoutMs: 15_000,
     }),
+    risk: createFakeRiskCheck({ chains, clock }),
     simulator: createSimulationCheck({
       simulator: createEvmTxSimulator({ rpc, chain }),
       chains,

@@ -1,4 +1,4 @@
-import type { Id } from "@binference/core";
+import type { Bps, Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { CardRecord } from "../intents/card-record.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
@@ -12,7 +12,7 @@ import {
   testCallers,
   testChains,
 } from "../operations/test-engine.js";
-import type { AgentStore, IntentStore } from "../ports.js";
+import type { AgentStore, IntentStore, RiskCheck } from "../ports.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { createCardShowings } from "./create-card-showings.js";
 import { present, worseAfterFirstQuote } from "./test-venues.js";
@@ -91,6 +91,19 @@ describe("the card showings", () => {
       verified: { type: "choice", choice: "yes" },
     });
     expect(Object.keys(showing.assets)).toStrictEqual([testCoin, testToken]);
+  });
+
+  it("say what tax the risk step measured, the highest of the buy and the sale", async () => {
+    const view = { verdict: "warn", flags: [], onCurve: false, checkedAt: testNowMs } as const;
+    const risk: RiskCheck = {
+      assess: async () =>
+        await Promise.resolve({ view: { ...view, buyTaxBps: 200 as Bps, sellTaxBps: 450 as Bps } }),
+    };
+    const shown = await proposed({ risk });
+    const ref = { intent: shown.intent, card: shown.card.id };
+    const showing = present(await showingsOf(shown.test).opened(ref, live));
+    const tax = showing.card.lines.find((line) => line.key === "card.warn.highTax");
+    expect(tax?.values).toStrictEqual({ tax: { type: "percent", bps: 450 } });
   });
 
   it("say on a live agent's first card that it trades real money", async () => {

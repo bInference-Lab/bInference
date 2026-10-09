@@ -1,4 +1,4 @@
-import type { Amount, ChainRegistry, Venue } from "@binference/chain";
+import type { Amount, ChainRegistry, TxSimulator, Venue } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -13,9 +13,12 @@ import {
   type EnginePush,
   type Executor,
   type PositionStore,
+  type RiskCacheStore,
   type Simulator,
+  type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
+import { createRiskCheck, type RiskCheck, type RiskSourceUse } from "@binference/engine/risk";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
   createProtocolServer,
@@ -29,12 +32,24 @@ import type { ProfileParts } from "./profile-parts.js";
 /** The profile parts the engine runs on: custody, the store ports and the USD prices. */
 export type EngineParts = Pick<ProfileParts, "custody" | "stores" | "prices">;
 
+/** What the token risk step runs on besides the venue host. */
+interface RiskParts {
+  /** The risk sources, each marked as one a token needs a report from or not. */
+  readonly sources: readonly RiskSourceUse[];
+  readonly cache: RiskCacheStore;
+  /** How long a source's report holds: config's `risk.cacheTtlSec`, in milliseconds. */
+  readonly cacheTtlMs: number;
+  /** Runs the round trip's legs unsent on the chain's latest state. */
+  readonly simulator: TxSimulator;
+}
+
 /** What the engine and its protocol server are built from besides the profile parts. */
 export interface ComposeEngineOptions {
   readonly chains: ChainRegistry;
   /** Every venue the engine may use; the venue host checks their declarations at once. */
   readonly venues: readonly Venue[];
   readonly simulator: Simulator;
+  readonly risk: RiskParts;
   readonly wallets: WalletFactsSource;
   /** Takes each confirmed live intent onto its wallet's queue. */
   readonly executor: Executor;
@@ -75,6 +90,9 @@ export interface ComposedEngine {
 
 // One quote or build that takes longer counts as a venue that is down (spec 6, section 3).
 const venueCallTimeoutMs = 5_000;
+// A risk source that takes longer counts as down, as a venue does: GoPlus and honeypot.is each
+// answered within half a second when measured.
+const riskSourceTimeoutMs = 5_000;
 
 // The owner's bot, when the options name one, answers its presses through the engine.
 function joinTelegram(
@@ -95,6 +113,29 @@ function joinTelegram(
       });
 }
 
+// The venue host over the options' venues, and the risk check that builds its round trips there.
+function tradingOf(options: ComposeEngineOptions): {
+  readonly host: VenueHost;
+  readonly risk: RiskCheck;
+} {
+  const { clock, random, chains } = options;
+  const host = createVenueHost({
+    venues: options.venues,
+    chains,
+    clock,
+    callTimeoutMs: venueCallTimeoutMs,
+  });
+  const risk = createRiskCheck({
+    ...options.risk,
+    sourceTimeoutMs: riskSourceTimeoutMs,
+    host,
+    chains,
+    clock,
+    random,
+  });
+  return { host, risk };
+}
+
 /**
  * Wires the engine and its protocol server on the profile parts both profiles fill: the server
  * signs callers in through the access store, keeps each write's result under its idempotency key
@@ -103,8 +144,8 @@ function joinTelegram(
  * bot, card pushes also reach Telegram.
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
-  const { clock, random, logger, chains, venues } = options;
-  const host = createVenueHost({ venues, chains, clock, callTimeoutMs: venueCallTimeoutMs });
+  const { clock, random, logger, chains } = options;
+  const { host, risk } = tradingOf(options);
   const publish = (push: EnginePush): void => {
     try {
       server.publish(push);
@@ -121,6 +162,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     prices: parts.prices,
     wallets: options.wallets,
     host,
+    risk,
     simulator: options.simulator,
     executor: options.executor,
     paperBalances: options.paperBalances,

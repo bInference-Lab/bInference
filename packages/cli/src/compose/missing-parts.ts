@@ -1,4 +1,4 @@
-import type { PriceSource, Signer } from "@binference/chain";
+import type { PriceSource, Signer, TxSimulator } from "@binference/chain";
 import { BinferenceError, err } from "@binference/core";
 import type { PositionStore, Simulator, WalletFactsSource } from "@binference/engine";
 
@@ -18,6 +18,8 @@ export interface MissingParts {
   readonly prices: PriceSource;
   readonly wallets: WalletFactsSource;
   readonly simulator: Simulator;
+  /** The chain's simulator under the risk step's round trip, missing with the simulator. */
+  readonly txSimulator: TxSimulator;
   /** Outbound HTTP: every request fails at once, as one that reaches no host. */
   readonly positions: PositionStore;
   /** Every part above that is missing, for the health signals. */
@@ -42,6 +44,14 @@ async function refuse(
   options.signal.throwIfAborted();
   return Promise.reject(missing(part, "internal.error"));
 }
+
+// The chain's own simulator goes missing with the simulate step, under the same part.
+const missingTxSimulator: TxSimulator = {
+  async simulate(_drafts, options) {
+    options.signal.throwIfAborted();
+    return Promise.reject(missing("simulator", "chain.simulation_failed"));
+  },
+};
 
 /** The missing parts, for a self-hosted engine that serves the protocol and refuses to trade. */
 export function createMissingParts(): MissingParts {
@@ -78,6 +88,7 @@ export function createMissingParts(): MissingParts {
         return Promise.reject(missing("simulator", "chain.simulation_failed"));
       },
     },
+    txSimulator: missingTxSimulator,
     // Positions have no SQLite adapter yet, and a paper fill must not vanish.
     positions: {
       positions: async (_query, options) => refuse("positions", options),
