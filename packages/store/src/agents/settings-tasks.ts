@@ -13,11 +13,17 @@ import {
   type LimitsRecord,
   limitsRecordSchema,
 } from "@binference/engine";
+import {
+  type SendLevelChange,
+  sendLevelChangeSchema,
+  type SendLevelRecord,
+  sendLevelRecordSchema,
+} from "@binference/engine/sends";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
-import { toAgentRecord, toApprovalMode } from "./agent-rows.js";
+import { toAgentRecord, toApprovalMode, toSendLevel } from "./agent-rows.js";
 import { limitsColumns, toLimitsRecord } from "./limits-rows.js";
 
 // A change names the row version it read: a missing row is `not_found`, another version `stale`.
@@ -120,5 +126,38 @@ export const setModeTask: StoreTask<
     };
     execute(kysely.updateTable("agents").set(row).where("id", "=", change.agentId));
     return ok(toAgentRecord(row));
+  },
+});
+
+/** Writes an agent's send level and any pending level under the version the changer read. */
+export const setSendLevelTask: StoreTask<
+  SendLevelChange,
+  Result<SendLevelRecord, "not_found" | "stale">
+> = defineTask({
+  name: "agents.set_send_level",
+  access: "write",
+  input: sendLevelChangeSchema,
+  output: resultSchema(sendLevelRecordSchema, ["not_found", "stale"]),
+  run(database, change) {
+    const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
+    const found = versioned(
+      takeFirst(
+        kysely.selectFrom("send_levels").select("version").where("agent_id", "=", change.agentId),
+      ),
+      change.expectedVersion,
+    );
+    if (!found.ok) {
+      return found;
+    }
+    const row = {
+      agent_id: change.agentId,
+      level: change.level,
+      pending_level: change.pending?.level ?? null,
+      pending_at: change.pending?.atMs ?? null,
+      changed_at: change.atMs,
+      version: change.expectedVersion + 1,
+    };
+    execute(kysely.updateTable("send_levels").set(row).where("agent_id", "=", change.agentId));
+    return ok(toSendLevel(row));
   },
 });

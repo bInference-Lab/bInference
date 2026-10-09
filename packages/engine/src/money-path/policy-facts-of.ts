@@ -2,6 +2,7 @@ import { type AssetRef, type ChainRef } from "@binference/chain";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { LimitsValues } from "../agents/limits-record.js";
 import type { PolicyFacts, PolicyLimits } from "../policy/policy-rules.js";
+import { sendLevelAt } from "../policy/send-level-change.js";
 import type { WalletFacts } from "./wallet-facts.js";
 
 /** What the policy's facts are read from for one intent. */
@@ -11,6 +12,8 @@ export interface PolicyFactsInput {
   /** The intent's chain and its native coin. */
   readonly chain: ChainRef;
   readonly nativeAsset: AssetRef;
+  /** When the policy runs: a pending send level counts from its time on. */
+  readonly nowMs: number;
 }
 
 /** The agent's limits as the policy reads them on one chain; a chain without a reserve keeps none. */
@@ -29,16 +32,17 @@ export function policyLimitsOf(limits: LimitsValues, chain: ChainRef): PolicyLim
 }
 
 /**
- * The facts the policy checks an intent with. The send level is 3 (Locked) and the address book
- * and rescue address are empty until their own store ports exist, so every send is refused: the
- * money path fails closed on what it cannot read.
+ * The facts the policy checks an intent with. The send level is the agent's level in effect now:
+ * a looser level still waiting its 24 hours does not count. The address book and the rescue
+ * address are empty until their own store ports exist, so every send is refused: the money path
+ * fails closed on what it cannot read.
  */
 export function policyFactsOf(input: PolicyFactsInput): PolicyFacts {
   const { settings, wallet } = input;
   return {
     isFrozen: settings.agent.frozenAtMs !== undefined,
     limits: policyLimitsOf(settings.limits, input.chain),
-    sendLevel: 3,
+    sendLevel: sendLevelAt(settings.sendLevel, input.nowMs).level,
     addressBook: [],
     nativeAsset: input.nativeAsset,
     nativeBalanceBase: wallet.nativeBalanceBase,

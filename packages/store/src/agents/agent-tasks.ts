@@ -67,9 +67,19 @@ function insertAgent(database: DatabaseSync, draft: AgentDraft): void {
       version: 0,
     }),
   );
+  execute(
+    kysely.insertInto("send_levels").values({
+      agent_id: draft.id,
+      level: draft.sendLevel,
+      pending_level: null,
+      pending_at: null,
+      changed_at: atMs,
+      version: 0,
+    }),
+  );
 }
 
-/** Writes a new agent with its limits and approval mode. */
+/** Writes a new agent with its limits, approval mode and send level. */
 export const createAgentTask: StoreTask<
   AgentDraft,
   Result<AgentSettings, "exists" | "name_taken">

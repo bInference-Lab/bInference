@@ -54,6 +54,16 @@ export interface ApprovalModesTable {
   version: number;
 }
 
+/** `send_levels`. */
+export interface SendLevelsTable {
+  agent_id: string;
+  level: number;
+  pending_level: number | null;
+  pending_at: number | null;
+  changed_at: number;
+  version: number;
+}
+
 /** `meta`: the schema version, the install id and when the install began. */
 interface MetaTable {
   key: string;
@@ -301,6 +311,7 @@ export interface EngineTables {
   agents: AgentsTable;
   limits: LimitsTable;
   approval_modes: ApprovalModesTable;
+  send_levels: SendLevelsTable;
   wallets: WalletsTable;
   intents: IntentsTable;
   intent_events: IntentEventsTable;

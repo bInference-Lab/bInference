@@ -150,6 +150,7 @@ async function policyVerdict(
     wallet: resolved.facts,
     chain: resolved.chain.ref,
     nativeAsset: resolved.nativeAsset,
+    nowMs: options.clock.now(),
   });
   const call =
     priced.quote === undefined ? { signal } : { signal, quote: quotedTradeOf(priced.quote) };

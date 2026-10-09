@@ -203,6 +203,7 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
       atMs: clock.now(),
       limits: limitsFor(fork),
       approvalMode: "manual",
+      sendLevel: 0,
       bySurface: "cli",
     },
     { signal: AbortSignal.timeout(5_000) },

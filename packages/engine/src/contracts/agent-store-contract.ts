@@ -51,6 +51,7 @@ function draft(n: number, name = `agent ${String(n)}`): AgentDraft {
     atMs: 1_000 + n,
     limits,
     approvalMode: "manual",
+    sendLevel: 2,
     bySurface: "cli",
   };
 }
@@ -58,8 +59,15 @@ function draft(n: number, name = `agent ${String(n)}`): AgentDraft {
 async function createsAgents(store: AgentStore): Promise<void> {
   const created = await store.create(draft(2), live());
   assert.ok(created.ok);
-  const { agent, limits: stored, approvalMode } = created.value;
-  const { atMs, limits: draftLimits, approvalMode: mode, bySurface, ...fields } = draft(2);
+  const { agent, limits: stored, approvalMode, sendLevel } = created.value;
+  const {
+    atMs,
+    limits: draftLimits,
+    approvalMode: mode,
+    sendLevel: level,
+    bySurface,
+    ...fields
+  } = draft(2);
   assert.deepEqual(agent, { ...fields, createdAtMs: atMs, changedAtMs: atMs, version: 0 });
   assert.deepEqual(stored, { ...draftLimits, agentId: agent.id, changedAtMs: atMs, version: 0 });
   assert.deepEqual(approvalMode, {
@@ -69,6 +77,7 @@ async function createsAgents(store: AgentStore): Promise<void> {
     changedAtMs: atMs,
     version: 0,
   });
+  assert.deepEqual(sendLevel, { agentId: agent.id, level, changedAtMs: atMs, version: 0 });
   assert.deepEqual(await store.get(agent.id, live()), created.value);
   assert.equal(await store.get(fixtureId("agt", 9), live()), undefined);
   await store.create(draft(1), live());
@@ -144,6 +153,23 @@ async function setsMode(store: AgentStore): Promise<void> {
   assert.equal(stored?.limits.version, 0);
 }
 
+async function setsSendLevel(store: AgentStore): Promise<void> {
+  await store.create(draft(1), live());
+  const agentId = draft(1).id;
+  const pending = { level: 0, atMs: 90_000 } as const;
+  const waiting = { agentId, level: 3, pending, atMs: 5_000, expectedVersion: 0 } as const;
+  const record = { agentId, level: 3, pending, changedAtMs: 5_000, version: 1 };
+  assert.deepEqual(await store.setSendLevel(waiting, live()), { ok: true, value: record });
+  assert.deepEqual(await store.setSendLevel(waiting, live()), { ok: false, error: "stale" });
+  const unknown = { ...waiting, agentId: fixtureId("agt", 9) };
+  assert.deepEqual(await store.setSendLevel(unknown, live()), { ok: false, error: "not_found" });
+  assert.deepEqual((await store.get(agentId, live()))?.sendLevel, record);
+  const cleared = { agentId, level: 1, atMs: 6_000, expectedVersion: 1 } as const;
+  const set = await store.setSendLevel(cleared, live());
+  assert.deepEqual(set, { ok: true, value: { agentId, level: 1, changedAtMs: 6_000, version: 2 } });
+  assert.deepEqual((await store.get(agentId, live()))?.sendLevel, set.ok ? set.value : undefined);
+}
+
 async function refusesAborted(store: AgentStore): Promise<void> {
   const agentId = draft(1).id;
   const mode = { agentId, mode: "auto", bySurface: "cli", atMs: 1, expectedVersion: 0 } as const;
@@ -155,6 +181,8 @@ async function refusesAborted(store: AgentStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.setLimits(change, options));
   const goLive = { agentId, mode: "live", atMs: 1, expectedVersion: 0 } as const;
   await assertRefusesAborted(async (options) => store.setMode(goLive, options));
+  const locked = { agentId, level: 3, atMs: 1, expectedVersion: 0 } as const;
+  await assertRefusesAborted(async (options) => store.setSendLevel(locked, options));
   assert.deepEqual(await store.list(live()), []);
 }
 
@@ -163,7 +191,7 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
   const create = async (): Promise<AgentStore> => harness.create();
   return [
     checkOn(
-      "creates an agent with its limits and approval mode at version 0",
+      "creates an agent with its limits, approval mode and send level at version 0",
       create,
       createsAgents,
     ),
@@ -171,6 +199,11 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
     checkOn("sets the approval mode under the version the changer read", create, setsApprovalMode),
     checkOn("sets limits under the version read, amounts beyond 64 bits exact", create, setsLimits),
     checkOn("sets the mode under the agent row's version the changer read", create, setsMode),
+    checkOn(
+      "sets the send level and its pending level under the version read",
+      create,
+      setsSendLevel,
+    ),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

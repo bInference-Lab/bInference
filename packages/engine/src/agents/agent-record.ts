@@ -2,6 +2,7 @@ import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/
 import { type Locale, localeSchema } from "@binference/protocol";
 import { z } from "zod";
 import type { ApprovalMode } from "../intents/auto-mode.js";
+import type { SendLevel } from "../policy/policy-rules.js";
 import { epochMsSchema, rowVersionSchema, shortTextSchema } from "../records/record-fields.js";
 import {
   type ApprovalModeRecord,
@@ -14,6 +15,11 @@ import {
   type LimitsValues,
   limitsValuesSchema,
 } from "./limits-record.js";
+import {
+  type SendLevelRecord,
+  sendLevelRecordSchema,
+  sendLevelSchema,
+} from "./send-level-record.js";
 
 /** Whether an agent trades on paper or for real. */
 export type AgentMode = "paper" | "live";
@@ -53,7 +59,10 @@ export const agentRecordSchema: z.ZodType<AgentRecord> = z.strictObject({
   version: rowVersionSchema,
 });
 
-/** A new agent with its first limits and approval mode, written in one transaction at `atMs`. */
+/**
+ * A new agent with its first limits, approval mode and send level, written in one transaction at
+ * `atMs`.
+ */
 export interface AgentDraft extends Pick<
   AgentRecord,
   "id" | "name" | "mode" | "locale" | "models" | "notifications"
@@ -61,6 +70,7 @@ export interface AgentDraft extends Pick<
   readonly atMs: number;
   readonly limits: LimitsValues;
   readonly approvalMode: ApprovalMode;
+  readonly sendLevel: SendLevel;
   /** The surface the agent was made on. */
   readonly bySurface: string;
 }
@@ -71,14 +81,16 @@ export const agentDraftSchema: z.ZodType<AgentDraft> = z.strictObject({
   atMs: epochMsSchema,
   limits: limitsValuesSchema,
   approvalMode: approvalModeSchema,
+  sendLevel: sendLevelSchema,
   bySurface: shortTextSchema,
 });
 
-/** An agent with the settings the money path reads: its limits and its approval mode. */
+/** An agent with the settings the money path reads: its limits, approval mode and send level. */
 export interface AgentSettings {
   readonly agent: AgentRecord;
   readonly limits: LimitsRecord;
   readonly approvalMode: ApprovalModeRecord;
+  readonly sendLevel: SendLevelRecord;
 }
 
 /** Parses an agent's settings. */
@@ -86,6 +98,7 @@ export const agentSettingsSchema: z.ZodType<AgentSettings> = z.strictObject({
   agent: agentRecordSchema,
   limits: limitsRecordSchema,
   approvalMode: approvalModeRecordSchema,
+  sendLevel: sendLevelRecordSchema,
 });
 
 /**
@@ -109,7 +122,7 @@ export const agentModeChangeSchema: z.ZodType<AgentModeChange> = z.strictObject(
 
 /** The settings a new agent starts with: its draft's values, all at version 0. */
 export function agentSettingsOf(draft: AgentDraft): AgentSettings {
-  const { atMs, limits, approvalMode, bySurface, ...agent } = draft;
+  const { atMs, limits, approvalMode, sendLevel, bySurface, ...agent } = draft;
   return {
     agent: { ...agent, createdAtMs: atMs, changedAtMs: atMs, version: 0 },
     limits: { ...limits, agentId: draft.id, changedAtMs: atMs, version: 0 },
@@ -120,5 +133,6 @@ export function agentSettingsOf(draft: AgentDraft): AgentSettings {
       changedAtMs: atMs,
       version: 0,
     },
+    sendLevel: { agentId: draft.id, level: sendLevel, changedAtMs: atMs, version: 0 },
   };
 }

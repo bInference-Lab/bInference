@@ -61,9 +61,10 @@ async function recheckPolicy(
   }
   const { swap, facts, chain, nativeAsset } = resolved.value;
   const quote = quoteDocument.decode(record.quote);
+  const nowMs = parts.clock.now();
   const verdict = await parts.policy.check(
     swapSubjectOf(swap, stored.status),
-    policyFactsOf({ settings, wallet: facts, chain: chain.ref, nativeAsset }),
+    policyFactsOf({ settings, wallet: facts, chain: chain.ref, nativeAsset, nowMs }),
     { signal, quote: { amountIn: quote.amountIn, expectedOut: quote.expectedOut } },
   );
   const isAuto = stored.status.authorizedBy !== undefined;

@@ -11,6 +11,7 @@ import type {
 } from "./agents/agent-record.js";
 import type { ApprovalModeChange, ApprovalModeRecord } from "./agents/approval-mode-record.js";
 import type { LimitsChange, LimitsRecord } from "./agents/limits-record.js";
+import type { SendLevelChange, SendLevelRecord } from "./agents/send-level-record.js";
 import type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
 import type { ModelCharge } from "./billing/model-charge.js";
 import type { BuiltQuote, IntentWrite, StoredIntent } from "./confirmations/stored-intent.js";
@@ -396,9 +397,15 @@ export interface AccessStore {
   ): Promise<Result<PairCodeRecord, "unknown" | "expired" | "used">>;
 }
 
-/** Keeps the agents and the settings the money path reads: their limits and approval modes. */
+/**
+ * Keeps the agents and the settings the money path reads: their limits, approval modes and send
+ * levels.
+ */
 export interface AgentStore {
-  /** Writes a new agent with its limits and approval mode; a taken id or name is refused. */
+  /**
+   * Writes a new agent with its limits, approval mode and send level; a taken id or name is
+   * refused.
+   */
   create(
     draft: AgentDraft,
     options: StoreCall,
@@ -417,6 +424,14 @@ export interface AgentStore {
     change: LimitsChange,
     options: StoreCall,
   ): Promise<Result<LimitsRecord, "not_found" | "stale">>;
+  /**
+   * Writes the send level state the engine decided, its level and any pending level, under the
+   * version the changer read; another version is `stale`. The store applies no rule of its own.
+   */
+  setSendLevel(
+    change: SendLevelChange,
+    options: StoreCall,
+  ): Promise<Result<SendLevelRecord, "not_found" | "stale">>;
   /**
    * Sets the agent's mode under the agent row's version the changer read, and raises that version
    * by one. Another version is `stale` and writes nothing.

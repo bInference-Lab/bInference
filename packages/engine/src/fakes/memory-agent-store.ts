@@ -6,6 +6,7 @@ import {
   type AgentSettings,
   agentSettingsOf,
 } from "../agents/agent-record.js";
+import type { SendLevelChange, SendLevelRecord } from "../agents/send-level-record.js";
 import type { AgentStore } from "../ports.js";
 import { byCreation, memoryCall } from "./memory-call.js";
 
@@ -54,6 +55,26 @@ function setMode(
   return ok(structuredClone(agent));
 }
 
+function setSendLevel(
+  agents: Agents,
+  change: SendLevelChange,
+): Result<SendLevelRecord, "not_found" | "stale"> {
+  const found = current(agents, change, (settings) => settings.sendLevel.version);
+  if (!found.ok) {
+    return found;
+  }
+  const { agentId, level, pending } = structuredClone(change);
+  const sendLevel = {
+    agentId,
+    level,
+    ...(pending === undefined ? {} : { pending }),
+    changedAtMs: change.atMs,
+    version: change.expectedVersion + 1,
+  };
+  agents.set(change.agentId, { ...found.value, sendLevel });
+  return ok(structuredClone(sendLevel));
+}
+
 /** Creates an empty in-memory {@link AgentStore} for tests. */
 export function createMemoryAgentStore(): AgentStore {
   const agents: Agents = new Map();
@@ -98,5 +119,6 @@ export function createMemoryAgentStore(): AgentStore {
         return ok(structuredClone(limits));
       }),
     setMode: async (change, call) => memoryCall(call, () => setMode(agents, change)),
+    setSendLevel: async (change, call) => memoryCall(call, () => setSendLevel(agents, change)),
   };
 }

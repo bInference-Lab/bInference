@@ -58,6 +58,7 @@ export function testAgentDraft(changes: Partial<AgentDraft> = {}): AgentDraft {
     atMs: testNowMs - 1_000,
     limits: testLimits,
     approvalMode: "manual",
+    sendLevel: 0,
     bySurface: "cli",
     ...changes,
   };

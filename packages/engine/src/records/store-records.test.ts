@@ -102,6 +102,7 @@ const agentDraft = {
   atMs: 1,
   limits,
   approvalMode: "manual",
+  sendLevel: 2,
   bySurface: "cli",
 };
 const lookup = { credential: "tok_1", op: "intent/propose", key: "k", argsHash: hash };
