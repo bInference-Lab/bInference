@@ -2,6 +2,7 @@ import type { ChainRegistry, PriceSource, QuotedTrade, Signer } from "@binferenc
 import { BinferenceError, type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
+import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
 import {
@@ -79,6 +80,8 @@ export interface MoneyPathOptions {
   readonly execute: ExecuteConfirmed;
   /** Whether the engine is locked: no live intent is authorized by auto mode while it is. */
   readonly isLocked: () => boolean;
+  /** Told each live wallet's native balance as a proposal reads it. */
+  readonly lowGas: LowGasAlerts;
   readonly clock: Clock;
   readonly ids: IdSource;
 }
@@ -313,6 +316,9 @@ async function propose(
   const resolved = await resolveProposal(options, { request, settings, signal });
   if (!resolved.ok) {
     return resolved;
+  }
+  if (settings.agent.mode === "live") {
+    options.lowGas.check(gasReadingOf(resolved.value));
   }
   const { wallet } = resolved.value;
   const intent = { id: options.ids.next("int"), agentId: request.agent, walletId: wallet };

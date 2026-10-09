@@ -117,6 +117,10 @@ Rules for this package:
   (`src/policy/rescue-change.ts`) decide inside its transaction: any new address waits 24 hours,
   is announced as the `notice.rescueAddress` notice, and can be cancelled. Every reader of the
   stored address takes the one in effect through `rescueAt`.
+- The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
+  resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
+  then not again until a reading shows it back at or above that. It keeps that memory in a bounded
+  set and never throws; the policy, not the alert, keeps trades out of the reserve.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and

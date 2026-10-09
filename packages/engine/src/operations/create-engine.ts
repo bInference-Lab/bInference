@@ -6,6 +6,7 @@ import {
 } from "../address-book/address-book-handlers.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
+import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
 import { createExecuteConfirmed } from "../money-path/execute-confirmed.js";
@@ -209,6 +210,7 @@ function intentParts(
     chains,
     execute,
     isLocked: options.isLocked,
+    lowGas: createLowGasAlerts({ publish: options.publish }),
     clock,
     ids,
   });

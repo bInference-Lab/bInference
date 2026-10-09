@@ -7,5 +7,6 @@
   "notSigned": "⚠️ A trade was cancelled before its first transaction was signed. Nothing was sent.",
   "stepUnsent": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.",
   "sendLevel": "Send level {from} → {to} {pending, select, yes {at {when}} other {now}}",
-  "rescueAddress": "⚠️ Rescue address changes to {address} at {when}. Not you? Cancel now."
+  "rescueAddress": "⚠️ Rescue address changes to {address} at {when}. Not you? Cancel now.",
+  "lowGas": "⚠️ {wallet} has {balance} left for network fees. Add BNB."
 }
