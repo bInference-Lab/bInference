@@ -1,8 +1,9 @@
 import { type Clock, err, jsonValueSchema, ok } from "@binference/core";
 import type { ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
+import { journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
-import { answererOf, type EngineHandler } from "../operations/engine-call.js";
+import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentStore, ConfigJournal } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 
@@ -56,21 +57,16 @@ export function createAddressBookHandlers(
       }
       const settings = await options.agents.get(removed.value.agentId, { signal });
       const name = settings?.agent.name ?? removed.value.agentId;
-      const entry = await options.journal.record(
+      await journalConfigChange(
+        options,
         {
+          caller,
           atMs,
-          by: caller.credential,
-          surface: answererOf(caller).surface,
           path: `agents.${name}.addressBook.${removed.value.id}`,
           before: jsonValueSchema.parse(viewOf(removed.value)),
         },
         { signal },
       );
-      options.publish({
-        topic: "config",
-        kind: "config/changed",
-        data: jsonValueSchema.parse(entry),
-      });
       return ok({});
     },
   };

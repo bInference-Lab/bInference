@@ -11,6 +11,7 @@ import { limitsViewSchema, type LimitsView, type ProtocolErrorCode } from "@binf
 import { z } from "zod";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
+import { journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
 import {
@@ -90,23 +91,19 @@ async function announce(
   after: Moved,
 ): Promise<void> {
   const { call, settings, before } = planned;
-  const surface = answererOf(call.caller).surface;
-  const entry = await options.journal.record(
+  const mover = { agent: settings.agent.id, surface: answererOf(call.caller).surface };
+  await journalConfigChange(
+    options,
     {
+      caller: call.caller,
       atMs: after.record.changedAtMs,
-      by: call.caller.credential,
-      surface,
       path: `agents.${settings.agent.name}.limits`,
       before: wireOf(limitsViewOf(settings.limits, before)),
       after: wireOf(limitsViewOf(after.record, after.state)),
+      notices: limitNotices(mover, before, after.state),
     },
     { signal: call.signal },
   );
-  options.publish({ topic: "config", kind: "config/changed", data: jsonValueSchema.parse(entry) });
-  const mover = { agent: settings.agent.id, surface };
-  for (const notice of limitNotices(mover, before, after.state)) {
-    options.publish(notice);
-  }
 }
 
 interface Moving {

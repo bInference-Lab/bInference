@@ -9,8 +9,9 @@ import {
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { SendLevelRecord, SendLevelState } from "../agents/send-level-record.js";
+import { journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
-import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
+import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { moveSendLevel, sendLevelAt } from "../policy/send-level-change.js";
 import type { AgentStore, ConfigJournal } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -70,21 +71,18 @@ async function announce(
   after: SendLevelRecord,
 ): Promise<void> {
   const { call, settings, before } = planned;
-  const entry = await options.journal.record(
+  await journalConfigChange(
+    options,
     {
+      caller: call.caller,
       atMs: after.changedAtMs,
-      by: call.caller.credential,
-      surface: answererOf(call.caller).surface,
       path: `agents.${settings.agent.name}.sendLevel`,
       before: jsonValueSchema.parse(viewOf(before)),
       after: jsonValueSchema.parse(viewOf(after)),
+      notices: sendLevelNotices(before, after),
     },
     { signal: call.signal },
   );
-  options.publish({ topic: "config", kind: "config/changed", data: jsonValueSchema.parse(entry) });
-  for (const notice of sendLevelNotices(before, after)) {
-    options.publish(notice);
-  }
 }
 
 type Decide = (state: SendLevelState, nowMs: number) => Result<SendLevelState, ProtocolErrorCode>;

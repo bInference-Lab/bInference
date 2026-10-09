@@ -1,14 +1,8 @@
-import {
-  BinferenceError,
-  type Clock,
-  err,
-  jsonValueSchema,
-  ok,
-  type Result,
-} from "@binference/core";
+import { BinferenceError, type Clock, err, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode, ResultOf, Scope } from "@binference/protocol";
 import type { AgentRecord } from "../agents/agent-record.js";
 import type { ApprovalModeRecord } from "../agents/approval-mode-record.js";
+import { journalConfigChange } from "../audit/journal-config-change.js";
 import type { ApprovalMode } from "../intents/auto-mode.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
@@ -57,19 +51,18 @@ async function announce(
   change: Change,
 ): Promise<void> {
   const { agent, before, after } = change;
-  const entry = await options.journal.record(
+  await journalConfigChange(
+    options,
     {
+      caller: call.caller,
       atMs: after.changedAtMs,
-      by: call.caller.credential,
-      surface: after.changedBySurface,
       path: `agents.${agent.name}.approvalMode`,
       before: before.mode,
       after: after.mode,
+      notices: [approvalModeNotice(agent, after)],
     },
     { signal: call.signal },
   );
-  options.publish({ topic: "config", kind: "config/changed", data: jsonValueSchema.parse(entry) });
-  options.publish(approvalModeNotice(agent, after));
 }
 
 async function setMode(

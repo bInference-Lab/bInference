@@ -6,8 +6,9 @@ import {
 } from "@binference/chain";
 import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
+import { journalConfigChange } from "../audit/journal-config-change.js";
 import type { RescueMove } from "../install/rescue-record.js";
-import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
+import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { ConfigJournal } from "../ports.js";
 import { rescueAddressNotice, rescueCancelledNotice } from "./rescue-address-notice.js";
@@ -63,26 +64,25 @@ async function record(
   if (isSame(before, after)) {
     return;
   }
-  const entry = await options.journal.record(
+  const { pendingRescue } = after;
+  const waited = before.pendingRescue;
+  const starts = pendingRescue !== undefined && pendingRescue.atMs !== waited?.atMs;
+  const isDropped = waited !== undefined && pendingRescue === undefined;
+  await journalConfigChange(
+    options,
     {
+      caller: call.caller,
       atMs: options.clock.now(),
-      by: call.caller.credential,
-      surface: answererOf(call.caller).surface,
       path: "safety.rescueAddress",
       before: jsonValueSchema.parse(before),
       after: jsonValueSchema.parse(after),
+      notices: [
+        ...(starts ? [rescueAddressNotice(pendingRescue)] : []),
+        ...(isDropped ? [rescueCancelledNotice(waited)] : []),
+      ],
     },
     { signal: call.signal },
   );
-  options.publish({ topic: "config", kind: "config/changed", data: jsonValueSchema.parse(entry) });
-  const { pendingRescue } = after;
-  const waited = before.pendingRescue;
-  if (pendingRescue !== undefined && pendingRescue.atMs !== waited?.atMs) {
-    options.publish(rescueAddressNotice(pendingRescue));
-  }
-  if (waited !== undefined && pendingRescue === undefined) {
-    options.publish(rescueCancelledNotice(waited));
-  }
 }
 
 // The owner key travels only over IPC (decision 0110); version 1 keeps it optional in the schema.

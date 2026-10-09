@@ -1,19 +1,12 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
-import {
-  BinferenceError,
-  type Clock,
-  err,
-  type Id,
-  jsonValueSchema,
-  ok,
-  type Result,
-} from "@binference/core";
+import { BinferenceError, type Clock, err, type Id, ok, type Result } from "@binference/core";
 import type { AgentView, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
+import { journalConfigChange } from "../audit/journal-config-change.js";
 import type { AgentStore, ConfigJournal, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { activeAgent } from "./active-agent.js";
-import { answererOf, type EngineCall, type EngineHandler } from "./engine-call.js";
+import type { EngineCall, EngineHandler } from "./engine-call.js";
 
 /** The handlers of the agent's mode switch (protocol spec, section 7.2). */
 export interface AgentModeHandlers {
@@ -87,18 +80,17 @@ async function journal(
   call: ModeCall,
   change: { readonly before: AgentRecord; readonly after: AgentRecord },
 ): Promise<void> {
-  const entry = await options.journal.record(
+  await journalConfigChange(
+    options,
     {
+      caller: call.caller,
       atMs: change.after.changedAtMs,
-      by: call.caller.credential,
-      surface: answererOf(call.caller).surface,
       path: `agents.${change.after.name}.mode`,
       before: change.before.mode,
       after: change.after.mode,
     },
     { signal: call.signal },
   );
-  options.publish({ topic: "config", kind: "config/changed", data: jsonValueSchema.parse(entry) });
 }
 
 async function switchMode(
