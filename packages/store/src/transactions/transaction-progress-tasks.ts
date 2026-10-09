@@ -1,14 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { type RelayAnswer, relayAnswerSchema, txReceiptSchema } from "@binference/chain";
-import {
-  BinferenceError,
-  err,
-  type Id,
-  idSchema,
-  jsonValueSchema,
-  ok,
-  type Result,
-} from "@binference/core";
+import { BinferenceError, err, type Id, idSchema, jsonValueSchema, ok } from "@binference/core";
 import {
   holdingStates,
   progressedState,
@@ -16,6 +8,7 @@ import {
   transactionInclusionSchema,
   type TransactionMark,
   transactionMarkSchema,
+  type TransactionMoved,
   type TransactionProgress,
   type TransactionRecord,
   transactionRecordSchema,
@@ -31,8 +24,6 @@ import { jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { toTransactionRecord } from "./transaction-rows.js";
-
-type Moved = Result<TransactionRecord, "wrong_state">;
 
 const movedSchema = resultSchema(transactionRecordSchema, ["wrong_state"]);
 
@@ -57,7 +48,7 @@ function move(
     readonly progress: TransactionProgress;
     readonly columns: (stored: TransactionRecord) => Updateable<TxsTable>;
   },
-): Moved {
+): TransactionMoved {
   const stored = readStored(database, id);
   const state: TransactionState | undefined = progressedState(stored.state, change.progress);
   if (state === undefined) {
@@ -99,7 +90,7 @@ function insertAnswers(database: DatabaseSync, send: TransactionSend): void {
  * Stores each relay's answer to one send, as the send's next attempt, and moves a `signed`
  * transaction to `sent` once a relay accepted it. Its first send names its relays.
  */
-export const recordSendTask: StoreTask<TransactionSend, Moved> = defineTask({
+export const recordSendTask: StoreTask<TransactionSend, TransactionMoved> = defineTask({
   name: "transactions.record_send",
   access: "write",
   input: transactionSendSchema,
@@ -171,7 +162,7 @@ function supersedeRivals(database: DatabaseSync, landing: TransactionRecord): vo
  * Stores a transaction's receipt: `included`, or `reverted` for status 0, with its block. Every
  * other signed or sent transaction of its account at its nonce becomes `superseded`.
  */
-export const recordReceiptTask: StoreTask<TransactionInclusion, Moved> = defineTask({
+export const recordReceiptTask: StoreTask<TransactionInclusion, TransactionMoved> = defineTask({
   name: "transactions.record_receipt",
   access: "write",
   input: transactionInclusionSchema,
@@ -195,7 +186,7 @@ export const recordReceiptTask: StoreTask<TransactionInclusion, Moved> = defineT
 });
 
 /** Marks an included transaction `final`. */
-export const recordFinalTask: StoreTask<TransactionMark, Moved> = defineTask({
+export const recordFinalTask: StoreTask<TransactionMark, TransactionMoved> = defineTask({
   name: "transactions.record_final",
   access: "write",
   input: transactionMarkSchema,
@@ -206,7 +197,7 @@ export const recordFinalTask: StoreTask<TransactionMark, Moved> = defineTask({
 });
 
 /** Marks a signed or sent transaction `dropped` once every relay refused it, its nonce free. */
-export const recordDroppedTask: StoreTask<TransactionMark, Moved> = defineTask({
+export const recordDroppedTask: StoreTask<TransactionMark, TransactionMoved> = defineTask({
   name: "transactions.record_dropped",
   access: "write",
   input: transactionMarkSchema,
@@ -217,7 +208,7 @@ export const recordDroppedTask: StoreTask<TransactionMark, Moved> = defineTask({
 });
 
 /** Marks a signed or sent transaction `superseded` once another transaction used its nonce. */
-export const recordSupersededTask: StoreTask<TransactionMark, Moved> = defineTask({
+export const recordSupersededTask: StoreTask<TransactionMark, TransactionMoved> = defineTask({
   name: "transactions.record_superseded",
   access: "write",
   input: transactionMarkSchema,
@@ -228,7 +219,7 @@ export const recordSupersededTask: StoreTask<TransactionMark, Moved> = defineTas
 });
 
 /** Moves an included or reverted transaction back to `sent`, without its block and receipt. */
-export const recordReorgTask: StoreTask<TransactionMark, Moved> = defineTask({
+export const recordReorgTask: StoreTask<TransactionMark, TransactionMoved> = defineTask({
   name: "transactions.record_reorg",
   access: "write",
   input: transactionMarkSchema,

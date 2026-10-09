@@ -7,7 +7,7 @@ import {
   type TxHash,
   type TxReceipt,
 } from "@binference/chain";
-import { type Id, idSchema } from "@binference/core";
+import { type Id, idSchema, type Result } from "@binference/core";
 import { z } from "zod";
 import { epochMsSchema, pageLimitSchema } from "../records/record-fields.js";
 
@@ -100,6 +100,9 @@ export interface TransactionRecord extends SignedTransaction {
   /** When its block was recorded as final. */
   readonly finalAtMs?: number;
 }
+
+/** A stored transaction after a record method moved it, or `wrong_state` when it may not move. */
+export type TransactionMoved = Result<TransactionRecord, "wrong_state">;
 
 /** Parses a receipt as stored values carry it, numbers as bigints. */
 export const storedReceiptSchema: z.ZodType<TxReceipt> = z.strictObject({

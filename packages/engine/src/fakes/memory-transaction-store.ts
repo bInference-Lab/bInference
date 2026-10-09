@@ -19,6 +19,7 @@ import {
 import type {
   SignedReplacement,
   SignedTransaction,
+  TransactionMoved,
   TransactionQuery,
   TransactionRecord,
   TransactionState,
@@ -92,7 +93,7 @@ function progress(
     /** The record after the move, but for its state. */
     readonly next: (stored: TransactionRecord) => TransactionRecord;
   },
-): Result<TransactionRecord, "wrong_state"> {
+): TransactionMoved {
   const stored = rows.all().find((transaction) => transaction.id === id);
   if (stored === undefined) {
     throw constraintFault(`no transaction has the id ${id}`);

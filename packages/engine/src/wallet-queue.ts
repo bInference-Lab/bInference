@@ -29,6 +29,7 @@ export type {
 export type {
   SignedReplacement,
   SignedTransaction,
+  TransactionMoved,
   TransactionQuery,
   TransactionRecord,
   TransactionReplacement,

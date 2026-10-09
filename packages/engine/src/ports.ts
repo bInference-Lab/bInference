@@ -64,6 +64,7 @@ import type {
 import type {
   SignedReplacement,
   SignedTransaction,
+  TransactionMoved,
   TransactionQuery,
   TransactionRecord,
 } from "./wallet-queue/transaction-record.js";
@@ -311,10 +312,7 @@ export interface TransactionStore {
    * `sent` once a relay accepted it; its first send names its relays. A transaction no send may
    * go for (see `progressedState`) is `wrong_state` and stores nothing.
    */
-  recordSend(
-    send: TransactionSend,
-    options: StoreCall,
-  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  recordSend(send: TransactionSend, options: StoreCall): Promise<TransactionMoved>;
   /** Every relay answer stored for a transaction, send by send, each in its relays' order. */
   sends(id: Id<"tx">, options: StoreCall): Promise<readonly RelayAnswer[]>;
   /**
@@ -323,36 +321,21 @@ export interface TransactionStore {
    * `signed` or `sent` transaction of its account at its nonce becomes `superseded`, so one
    * transaction of a nonce is ever in a block.
    */
-  recordReceipt(
-    inclusion: TransactionInclusion,
-    options: StoreCall,
-  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  recordReceipt(inclusion: TransactionInclusion, options: StoreCall): Promise<TransactionMoved>;
   /** Marks an `included` transaction `final` once its block is. */
-  recordFinal(
-    mark: TransactionMark,
-    options: StoreCall,
-  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  recordFinal(mark: TransactionMark, options: StoreCall): Promise<TransactionMoved>;
   /**
    * Marks a `signed` or `sent` transaction `dropped` once every relay refused it with its nonce
    * still free (decision 0115): the nonce is free for the next step.
    */
-  recordDropped(
-    mark: TransactionMark,
-    options: StoreCall,
-  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  recordDropped(mark: TransactionMark, options: StoreCall): Promise<TransactionMoved>;
   /** Marks a `signed` or `sent` transaction `superseded` once another transaction used its nonce. */
-  recordSuperseded(
-    mark: TransactionMark,
-    options: StoreCall,
-  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  recordSuperseded(mark: TransactionMark, options: StoreCall): Promise<TransactionMoved>;
   /**
    * Moves an included or reverted transaction back to `sent` once a reorg took its block, and
    * forgets its receipt. Each record method throws `store.constraint` for an unknown id.
    */
-  recordReorg(
-    mark: TransactionMark,
-    options: StoreCall,
-  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  recordReorg(mark: TransactionMark, options: StoreCall): Promise<TransactionMoved>;
 }
 
 /** Keeps each write's result under its idempotency key (protocol spec, section 5). */
