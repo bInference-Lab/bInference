@@ -54,6 +54,7 @@ function start(agentKey = formatAgentKey(createP256KeyPair())) {
     agentKey,
     env: process.env,
     logger: createMemoryLogger({ subsystem: "engine" }),
+    onRefusal: () => undefined,
     signal: new AbortController().signal,
   });
 }

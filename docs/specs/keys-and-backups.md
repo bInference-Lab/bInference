@@ -200,7 +200,8 @@ says without checking it:
 6. For a speed-up or a cancel at an already used nonce: the calldata is identical (speed-up) or the
    transaction is a 0-value transfer to the wallet itself (cancel).
 
-A refusal is logged with the rule number, never with key material, and raises a notice.
+A refusal is logged with the rule number, never with key material, and raises
+`notice.signerRefused`, which names the rule in plain words on every surface.
 
 <a id="section-6"></a>
 

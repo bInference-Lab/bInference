@@ -1,5 +1,5 @@
 import { BinferenceError, ok } from "@binference/core";
-import { parseAgentKey, signAuthorization } from "@binference/signer";
+import { parseAgentKey, type SignerRefusalNotice, signAuthorization } from "@binference/signer";
 import type { StartSigner } from "../compose/start-signer.js";
 
 /** A signer a test starts in its own process, and the hooks a test drives it with. */
@@ -12,6 +12,8 @@ export interface TestSigner {
   readonly starts: () => number;
   /** Ends the signer that runs, as a crash would. */
   readonly crash: () => void;
+  /** Refuses as the signer does when a step breaks a rule: the engine hears the refusal. */
+  readonly refuse: (refusal: SignerRefusalNotice) => void;
 }
 
 /**
@@ -20,12 +22,18 @@ export interface TestSigner {
  * given, keeps each start waiting until it resolves, so a test sees the engine mid-start.
  */
 export function createTestSigner(hold?: Promise<void>): TestSigner {
-  const state = { starts: 0, crash: (): void => undefined, arrive: (): void => undefined };
+  const state = {
+    starts: 0,
+    crash: (): void => undefined,
+    arrive: (): void => undefined,
+    refuse: (_refusal: SignerRefusalNotice): void => undefined,
+  };
   const reached = new Promise<void>((resolve) => {
     state.arrive = resolve;
   });
-  const start: StartSigner = async ({ agentKey }) => {
+  const start: StartSigner = async ({ agentKey, onRefusal }) => {
     state.starts += 1;
+    state.refuse = onRefusal;
     state.arrive();
     await hold;
     const pair = parseAgentKey(agentKey);
@@ -49,7 +57,13 @@ export function createTestSigner(hold?: Promise<void>): TestSigner {
       },
     };
   };
-  return { start, reached, starts: () => state.starts, crash: () => state.crash() };
+  return {
+    start,
+    reached,
+    starts: () => state.starts,
+    crash: () => state.crash(),
+    refuse: (refusal) => state.refuse(refusal),
+  };
 }
 
 /** A signer that never starts, as one whose program is missing or refuses its settings. */

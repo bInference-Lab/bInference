@@ -24,7 +24,7 @@ import type {
   InstallStore,
   WalletRecord,
 } from "@binference/engine/install";
-import type { SignerSettings } from "@binference/signer";
+import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./compose-executor.js";
@@ -48,6 +48,8 @@ export interface OpenCustodyOptions {
   /** The engine's environment, of which the signer gets only what Node needs. */
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly startSigner: StartSigner;
+  /** Hears each step the signer refuses. */
+  readonly onRefusal: (notice: SignerRefusalNotice) => void;
   readonly config: Pick<BinferenceConfig, "chains" | "custody">;
   /** The install's wallets and the owner key's public half. */
   readonly install: Pick<InstallStore, "read">;
@@ -97,7 +99,8 @@ async function publicKeyOf(
   const start = { settings, agentKey: keys.agentKey, env: options.env, signal };
   const started: { signer?: StartedSigner } = {};
   try {
-    started.signer = await options.startSigner({ ...start, logger: options.logger });
+    const { logger, onRefusal } = options;
+    started.signer = await options.startSigner({ ...start, logger, onRefusal });
     return { signer: started.signer, publicKey: await started.signer.client.publicKey({ signal }) };
   } catch (error) {
     signal.throwIfAborted();

@@ -1,9 +1,10 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
-import type { RunningExecutor } from "@binference/engine/executor";
+import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
 import type { EngineState } from "@binference/protocol";
 import type { OperationHandlers, ProtocolServer } from "@binference/server";
+import type { SignerRefusalNotice } from "@binference/signer";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
@@ -122,6 +123,8 @@ interface Wiring {
   readonly stopper: { stop: () => void };
   /** What a signer that stops by itself sets off, once the server can say so. */
   readonly signerStopped: { run: () => void };
+  /** What a step the signer refused sets off, once the server can say so. */
+  readonly signerRefused: { run: (notice: SignerRefusalNotice) => void };
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -130,9 +133,11 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   const parts = createMissingParts();
   const { chains } = opened;
   const signerStopped = { run: (): void => undefined };
+  const signerRefused = { run: (_notice: SignerRefusalNotice): void => undefined };
   const custody = composeCustody(opening, opened, {
     chains,
     onStopped: () => signerStopped.run(),
+    onRefusal: (notice) => signerRefused.run(notice),
   });
   const sending = composeSending(opening, opened, { parts, custody: custody.cell.signer, chains });
   const resume = resumeOf(opened, sending.executor);
@@ -146,7 +151,18 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     resume,
   });
   const stopper = { stop: (): void => undefined };
-  return { state, parts, chains, custody, sending, resume, locked, stopper, signerStopped };
+  return {
+    state,
+    parts,
+    chains,
+    custody,
+    sending,
+    resume,
+    locked,
+    stopper,
+    signerStopped,
+    signerRefused,
+  };
 }
 
 // The engine and its protocol server over the wired parts.
@@ -210,6 +226,9 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   const { engine, server, publish } = composeServing(opening, opened, wiring);
   sending.pushes.publish = publish;
   locked.announce.publish = publish;
+  wiring.signerRefused.run = ({ intent, refused }) => {
+    publish(signerRefusedNotice({ intent, refused }));
+  };
   wiring.signerStopped.run = () => {
     locked.lock.lock();
     opened.log.logger.error("engine.signer_stopped");

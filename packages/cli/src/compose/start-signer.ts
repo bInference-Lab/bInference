@@ -2,7 +2,12 @@ import { fileURLToPath } from "node:url";
 import type { SignerProcess } from "@binference/chain";
 import type { Logger, Secret } from "@binference/core";
 import { realFilePath, startNodeProgram } from "@binference/platform";
-import { openSignerClient, type SignerSettings, signerNodeArguments } from "@binference/signer";
+import {
+  openSignerClient,
+  type SignerRefusalNotice,
+  type SignerSettings,
+  signerNodeArguments,
+} from "@binference/signer";
 
 /** A signer that runs: its client, and what ends it. */
 export interface StartedSigner {
@@ -21,6 +26,8 @@ export interface SignerStart {
   /** The environment of this process, of which the signer gets only what Node needs. */
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly logger: Logger;
+  /** Hears each refusal, which the client has logged with its rule, to tell the owner. */
+  readonly onRefusal: (notice: SignerRefusalNotice) => void;
   readonly signal: AbortSignal;
 }
 
@@ -52,8 +59,7 @@ export async function startSignerProcess(
     settings: start.settings,
     agentKey: start.agentKey,
     logger: start.logger.child("signer"),
-    // The client logs each refusal with its rule; spec 4 names no notice for one.
-    onRefusal: () => undefined,
+    onRefusal: start.onRefusal,
   });
   return {
     client,

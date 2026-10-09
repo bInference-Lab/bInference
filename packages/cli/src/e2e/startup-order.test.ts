@@ -1,4 +1,4 @@
-import { createSecret } from "@binference/core";
+import { createSecret, idSchema } from "@binference/core";
 import { messages } from "@binference/i18n";
 import { afterEach, describe, expect, it } from "vitest";
 import type { StartSigner } from "../compose/start-signer.js";
@@ -10,6 +10,8 @@ import { createRunningEngines, stateOf } from "./unlock-fixtures.js";
 const slow = { timeout: 60_000 };
 const engines = createRunningEngines();
 const call = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
+const testWallet = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+const testIntent = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 
 afterEach(async () => {
   await engines.stopAll();
@@ -95,5 +97,37 @@ describe("the startup order", () => {
     await expect(runOn(machine, ["unlock"])).resolves.toMatchObject({ code: 0 });
     expect(signer.starts()).toBe(2);
     await expect(stateOf(machine)).resolves.toBe("ready");
+  });
+
+  it("tells every client when the signer refuses a step, naming the rule", slow, async () => {
+    const machine = await engines.setUp();
+    const signer = createTestSigner();
+    await engines.start(machine, { parts: { startSigner: signer.start } });
+    const client = await connectClient(machine);
+    try {
+      const subscribed = { done: (): void => undefined };
+      const loaded = new Promise<void>((resolve) => {
+        subscribed.done = resolve;
+      });
+      const heard = new Promise<unknown>((resolve) => {
+        client.subscribe("notice", {
+          onPush: (push) => resolve(push.data),
+          refetch: async () => {
+            subscribed.done();
+            return Promise.resolve();
+          },
+        });
+      });
+      await loaded;
+      await client.call("engine/status", {}, call());
+      signer.refuse({ wallet: testWallet, intent: testIntent, refused: "rule_2" });
+      await expect(heard).resolves.toStrictEqual({
+        key: "notice.signerRefused",
+        values: { rule: "rule_2" },
+        intent: testIntent,
+      });
+    } finally {
+      client.close();
+    }
   });
 });

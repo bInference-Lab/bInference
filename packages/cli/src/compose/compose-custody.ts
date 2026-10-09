@@ -1,5 +1,6 @@
 import type { ChainRegistry } from "@binference/chain";
 import { ok, type Result } from "@binference/core";
+import type { SignerRefusalNotice } from "@binference/signer";
 import type { UnlockedKeys, LockReason } from "../unlock/unlock-keys.js";
 import { createCustodyCell, type CustodyCell } from "./custody-cell.js";
 import { openCustody } from "./open-custody.js";
@@ -16,16 +17,21 @@ export interface ComposedCustody {
 /**
  * Builds the self-hosted engine's custody: empty while the engine is locked, then the
  * `privy-owner` adapter over the signer that the unlock starts (decision 0117). A signer that
- * stops by itself while it is in place leaves custody empty again and calls `onStopped`. The
+ * stops by itself while it is in place leaves custody empty again and calls `onStopped`; each
+ * step it refuses reaches `onRefusal`. The
  * shutdown stops the signer once the executor has finished what it signs.
  */
 export function composeCustody(
   opening: Opening,
   opened: Opened,
-  parts: { readonly chains: ChainRegistry; readonly onStopped: () => void },
+  parts: {
+    readonly chains: ChainRegistry;
+    readonly onStopped: () => void;
+    readonly onRefusal: (notice: SignerRefusalNotice) => void;
+  },
 ): ComposedCustody {
   const { host, closers } = opening;
-  const { chains, onStopped } = parts;
+  const { chains, onStopped, onRefusal } = parts;
   const cell = createCustodyCell();
   closers.add("signer", async (signal) => cell.release()?.stop(signal));
   const options = {
@@ -33,6 +39,7 @@ export function composeCustody(
     clock: host.clock,
     env: host.env,
     startSigner: host.startSigner ?? startBuiltSigner,
+    onRefusal,
     config: opened.config,
     install: opened.stores.install,
     chains,
