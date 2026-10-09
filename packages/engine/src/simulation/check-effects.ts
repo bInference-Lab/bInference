@@ -11,6 +11,7 @@ import {
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import type { SimulationFailure } from "../intents/intent-reason.js";
+import { transferChange, walletChanges } from "./wallet-changes.js";
 
 /**
  * Why the simulation check refused a trade's steps (ARCHITECTURE.md section 7, step 5), in the
@@ -52,35 +53,12 @@ export interface NetEffects {
   readonly received: Amount;
 }
 
-// A transfer's change to the wallet's balance: what leaves counts against it, what arrives for
-// it, and a transfer the wallet makes to itself, or one between others, not at all.
-function changeOf(transfer: AssetTransfer, bounds: EffectBounds): bigint {
-  const leaves = isSameAccount(transfer.from, bounds.wallet, bounds.family);
-  const arrives = isSameAccount(transfer.to, bounds.wallet, bounds.family);
-  if (leaves === arrives) {
-    return 0n;
-  }
-  return leaves ? -transfer.amount.base : transfer.amount.base;
-}
-
-function netChanges(
-  transfers: readonly AssetTransfer[],
-  bounds: EffectBounds,
-): ReadonlyMap<AssetRef, bigint> {
-  const changes = new Map<AssetRef, bigint>();
-  for (const transfer of transfers) {
-    const { asset } = transfer.amount;
-    changes.set(asset, (changes.get(asset) ?? 0n) + changeOf(transfer, bounds));
-  }
-  return changes;
-}
-
 // Only the input leaves the wallet: any other asset leaving it, even one the trade gives back,
 // goes somewhere the intent never named.
 function hasOtherOutflow(transfers: readonly AssetTransfer[], bounds: EffectBounds): boolean {
   return transfers.some(
     (transfer) =>
-      transfer.amount.asset !== bounds.amountIn.asset && changeOf(transfer, bounds) < 0n,
+      transfer.amount.asset !== bounds.amountIn.asset && transferChange(transfer, bounds) < 0n,
   );
 }
 
@@ -155,7 +133,7 @@ export function checkEffects(
   if (hasOtherOutflow(transfers, bounds)) {
     return err("other_outflow");
   }
-  const changes = netChanges(transfers, bounds);
+  const changes = walletChanges(transfers, bounds);
   const received = { asset: bounds.minOut.asset, base: changes.get(bounds.minOut.asset) ?? 0n };
   const mismatch =
     balanceMismatch(changes, received, bounds) ??
