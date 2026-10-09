@@ -1,6 +1,6 @@
 # 0117. A signer or custody failure at start runs the engine locked
 
-Status: Accepted
+Status: Amended by 0119
 
 ## Context
 
