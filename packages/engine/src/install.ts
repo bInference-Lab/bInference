@@ -41,3 +41,4 @@ export type {
   SignRecipientsRequest,
 } from "./install/ceiling-change.js";
 export type { CeilingEditor } from "./ports.js";
+export { privyUnreachableNotice } from "./pushes/locked-notice.js";

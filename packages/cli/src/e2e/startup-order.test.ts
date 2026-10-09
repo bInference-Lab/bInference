@@ -1,4 +1,4 @@
-import { createSecret, idSchema } from "@binference/core";
+import { BinferenceError, createSecret, type Http, idSchema } from "@binference/core";
 import { messages } from "@binference/i18n";
 import { afterEach, describe, expect, it } from "vitest";
 import type { StartSigner } from "../compose/start-signer.js";
@@ -16,6 +16,18 @@ const testIntent = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-0000000000
 afterEach(async () => {
   await engines.stopAll();
 });
+
+// No outside service answers until the test brings the network up.
+function networkThatComesUp(privy: Http, network: { readonly isUp: boolean }): Http {
+  const down = new BinferenceError({
+    code: "http.unreachable",
+    message: "No network yet.",
+    retryable: true,
+  });
+  return {
+    request: async (request) => (network.isUp ? privy.request(request) : Promise.reject(down)),
+  };
+}
 
 // A signer that fails to start until the test fixes it, then starts as the test signer does.
 function fixableSigner() {
@@ -130,4 +142,21 @@ describe("the startup order", () => {
       client.close();
     }
   });
+
+  it(
+    "runs locked while Privy is out of reach, and unlocks by hand once it answers",
+    slow,
+    async () => {
+      const machine = await engines.setUp();
+      const network = { isUp: false };
+      const http = networkThatComesUp(machine.privy.http, network);
+      await expect(engines.start(machine, { parts: { http } })).resolves.toMatchObject({
+        state: "locked",
+        lockReason: "custody_unreachable",
+      });
+      network.isUp = true;
+      await expect(runOn(machine, ["unlock"])).resolves.toMatchObject({ code: 0 });
+      await expect(stateOf(machine)).resolves.toBe("ready");
+    },
+  );
 });

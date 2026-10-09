@@ -24,3 +24,14 @@ export const signerStoppedNoticeKey = "notice.signerStopped";
 export function signerStoppedNotice(): EnginePush {
   return noticePush({ key: signerStoppedNoticeKey, values: {} });
 }
+
+/** The message key of the notice that Privy stayed out of reach at start (decision 0119). */
+export const privyUnreachableNoticeKey = "notice.privyUnreachable";
+
+/**
+ * The notice that tells every surface the engine retried Privy for five minutes after its start
+ * and stays locked: the owner checks the machine's network, then runs `binference unlock`.
+ */
+export function privyUnreachableNotice(): EnginePush {
+  return noticePush({ key: privyUnreachableNoticeKey, values: {} });
+}

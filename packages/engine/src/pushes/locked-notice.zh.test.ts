@@ -1,6 +1,10 @@
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
-import { lockedNoticeKey, signerStoppedNoticeKey } from "./locked-notice.js";
+import {
+  lockedNoticeKey,
+  privyUnreachableNoticeKey,
+  signerStoppedNoticeKey,
+} from "./locked-notice.js";
 
 const alarm = String.fromCodePoint(0x1f534);
 
@@ -16,6 +20,13 @@ describe("the locked notice in Chinese", () => {
     const chinese = createFormatter({ locale: "zh", timeZone: "UTC" });
     expect(chinese.message(signerStoppedNoticeKey)).toBe(
       `${alarm} 签名进程已停止，binference 不会签名。请先处理 \`binference logs\` 显示的问题，再运行 \`binference unlock\`。`,
+    );
+  });
+
+  it("tells the owner Privy stayed out of reach, and what to check", () => {
+    const chinese = createFormatter({ locale: "zh", timeZone: "UTC" });
+    expect(chinese.message(privyUnreachableNoticeKey)).toBe(
+      `${alarm} binference 启动后五分钟内都无法连接 Privy，因此仍处于锁定状态。请检查本机网络，然后运行 \`binference unlock\`。`,
     );
   });
 });

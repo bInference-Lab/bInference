@@ -1,9 +1,13 @@
+import type { Result } from "@binference/core";
 import { lockedNotice } from "@binference/engine";
+import { privyUnreachableNotice } from "@binference/engine/install";
 import { createShutdown, type ShutdownReport } from "@binference/platform";
-import { composeSelfHosted } from "./compose-self-hosted.js";
+import type { LockReason } from "../unlock/unlock-keys.js";
+import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
+import { startUnlockRetry } from "./unlock-retry.js";
 
 // Hands every part's closer to the one shutdown sequence, which stop signals and `engine/stop`
 // start, last opened first: the settle timer, the server, so nothing new comes in, the executor,
@@ -28,6 +32,35 @@ function startShutdown(
   return { stop: () => void shutdown.stop("request"), finished };
 }
 
+function isUnreachable(unlocked: Result<void, LockReason>): boolean {
+  return !unlocked.ok && unlocked.error === "custody_unreachable";
+}
+
+// What runs on the clock while the engine serves: the settle timer, and the retries of the signer
+// step after a start that found Privy out of reach (decision 0119).
+function startTimers(
+  opening: Opening,
+  opened: Opened,
+  started: { readonly composed: ComposedSelfHosted; readonly isPrivyUnreachable: boolean },
+): void {
+  const { host, closers } = opening;
+  const { logger } = opened.log;
+  const { composed } = started;
+  const { lock } = composed.locked;
+  startSettleTimer({
+    settle: composed.settle,
+    isLocked: () => lock.isLocked(),
+    clock: host.clock,
+    closers,
+    logger,
+  });
+  if (started.isPrivyUnreachable) {
+    const { clock, random } = host;
+    const onGiveUp = (): void => void composed.server.publish(privyUnreachableNotice());
+    startUnlockRetry({ lock, clock, random, closers, logger, onGiveUp });
+  }
+}
+
 /**
  * Serves the engine in the startup order of ARCHITECTURE.md section 24, once the lock, the config,
  * the stores, their migrations and the integrity check are done: the protocol server listens at
@@ -35,7 +68,8 @@ function startShutdown(
  * unlock mode and start the signer and custody, or leave the engine locked with the reason
  * (decisions 0103 and 0117); every unfinished live intent is recovered by hash and nonce and holds
  * its place in its wallet's queue; once unlocked, the confirmed intents an earlier run left go to
- * the executor; the timer for work that waits for its time starts; then the engine is `ready`, or
+ * the executor; the timer for work that waits for its time starts, and after a start that found
+ * Privy out of reach, the signer step's retries (decision 0119); then the engine is `ready`, or
  * `locked`, and says so on topic `engine`.
  */
 export async function serveEngine(opening: Opening, opened: Opened): Promise<StartOutcome> {
@@ -54,13 +88,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   if (unlocked.ok) {
     await composed.resume(signal);
   }
-  startSettleTimer({
-    settle: composed.settle,
-    isLocked: () => locked.lock.isLocked(),
-    clock: opening.host.clock,
-    closers: opening.closers,
-    logger: log.logger,
-  });
+  startTimers(opening, opened, { composed, isPrivyUnreachable: isUnreachable(unlocked) });
   const { stop, finished } = startShutdown(opening, opened);
   composed.stopper.stop = stop;
   state.current = "ready";
