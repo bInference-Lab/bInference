@@ -13,6 +13,7 @@ import {
   transferData,
 } from "../testing/custody-fixtures.js";
 import { readBackWallet, type WalletExpectation } from "../wallets/read-back.js";
+import { recipientChecks } from "./ceiling-recipients-checks.js";
 import {
   askPrivy,
   check,
@@ -175,9 +176,14 @@ const refuseChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] =>
 
 /**
  * The contract the Privy fake and the Privy test app both pass: a wallet made and read back, the
- * calls the ceiling allows signed as the wallet, and the ones it does not refused by Privy itself,
- * even with a valid agent key.
+ * calls the ceiling allows signed as the wallet, the ones it does not refused by Privy itself, even
+ * with a valid agent key, and the recipients only the owner key changes.
  */
 export function privyCustodyContract(harness: PrivyCustodyHarness): readonly ContractCheck[] {
-  return [...readBackChecks(harness), ...allowChecks(harness), ...refuseChecks(harness)];
+  return [
+    ...readBackChecks(harness),
+    ...allowChecks(harness),
+    ...refuseChecks(harness),
+    ...recipientChecks(harness),
+  ];
 }

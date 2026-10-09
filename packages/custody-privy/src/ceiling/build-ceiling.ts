@@ -15,13 +15,14 @@ const noValue = "0x0";
 // Privy puts the address of the wallet that signs in place of this variable.
 const walletAddress = "{{wallet.address}}";
 
-type AddressProblem = "malformed_address" | "too_many_addresses";
+/** Why a list of recipients cannot go in a ceiling. */
+export type AddressProblem = "malformed_address" | "too_many_addresses";
 
 /**
  * The recipients a ceiling lists: checksummed, each once, in the order given, since Privy compares
  * strings case by case. More than 100 is `too_many_addresses`: Privy's `in` takes at most 100.
  */
-function addressList(texts: readonly string[]): Result<readonly string[], AddressProblem> {
+export function addressList(texts: readonly string[]): Result<readonly string[], AddressProblem> {
   const listed = new Set<string>();
   for (const text of texts) {
     const address = parseEvmAddress(text);
@@ -63,7 +64,10 @@ function allow(name: string, conditions: readonly PolicyCondition[]): PolicyRule
  * The two rules of one chain that name who a send may pay: a native send, and a token `transfer`
  * with no native coin. Changing a ceiling's recipients changes these two rules and nothing else.
  */
-function recipientRules(chainId: string, recipients: readonly string[]): readonly PolicyRule[] {
+export function recipientRules(
+  chainId: string,
+  recipients: readonly string[],
+): readonly PolicyRule[] {
   const onChain = onTransaction("chain_id", "eq", chainId);
   return [
     allow(`Native sends, chain ${chainId}`, [onChain, onTransaction("to", "in", recipients)]),

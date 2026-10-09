@@ -21,7 +21,11 @@ function signedBy(key: string, payload: Buffer, signature: string): boolean {
 }
 
 /** Whether enough members of a quorum signed the payload to meet its threshold. */
-function quorumSigned(quorum: FakeQuorum, payload: Buffer, signatures: readonly string[]): boolean {
+export function quorumSigned(
+  quorum: FakeQuorum,
+  payload: Buffer,
+  signatures: readonly string[],
+): boolean {
   const signers = quorum.publicKeys.filter((key) =>
     signatures.some((signature) => signedBy(key, payload, signature)),
   );

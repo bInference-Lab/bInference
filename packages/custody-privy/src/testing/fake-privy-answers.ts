@@ -30,8 +30,8 @@ export function quorumJson(quorum: FakeQuorum): JsonValue {
   };
 }
 
-// A rule of a policy as Privy answers it, with its id.
-function ruleJson(rule: FakePolicy["rules"][number]): JsonValue {
+/** A rule of a policy as Privy answers it, with its id. */
+export function ruleJson(rule: FakePolicy["rules"][number]): JsonValue {
   return {
     id: rule.id,
     name: rule.name,

@@ -12,7 +12,7 @@ import {
   type EvmChain,
   parseEvmAddress,
 } from "@binference/chain-evm";
-import { err, type Id, idSchema, ok, type Result } from "@binference/core";
+import { type Clock, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import type { Ceiling } from "../ceiling/ceiling.js";
@@ -20,6 +20,7 @@ import type { PrivyApi } from "../privy/privy-api.js";
 import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
 import { privyTransaction } from "../signing/privy-transaction.js";
 import { testCeilingRequest, testChain } from "../testing/custody-fixtures.js";
+import type { OwnerAuthorize } from "../wallets/ceiling-recipients.js";
 import { createAgentWallet } from "../wallets/create-agent-wallet.js";
 import type { WalletExpectation } from "../wallets/read-back.js";
 
@@ -32,6 +33,10 @@ export interface PrivyCustodySubject {
   readonly strangerProcess: SignerProcess;
   /** The owner key's public half, DER SubjectPublicKeyInfo in base64. */
   readonly ownerKey: string;
+  /** Signs a request as the owner key. */
+  readonly ownerAuthorize: OwnerAuthorize;
+  /** The time Privy checks a request's expiry against. */
+  readonly clock: Clock;
 }
 
 /**

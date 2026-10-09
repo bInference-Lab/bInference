@@ -61,7 +61,7 @@ describe("the SDK's fetch over the Http port", () => {
     const { sent, http } = recording(ok);
     const send = fetchOver(http, new AbortController().signal);
     await expect(
-      send("https://api.privy.io/v1/wallets/w", { method: "PATCH" }),
+      send("https://api.privy.io/v1/wallets/w", { method: "OPTIONS" }),
     ).rejects.toMatchObject({
       code: "custody.privy_request_unsupported",
     });

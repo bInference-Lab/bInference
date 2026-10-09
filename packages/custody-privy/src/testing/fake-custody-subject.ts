@@ -4,6 +4,7 @@ import type { PrivyCustodySubject } from "../contracts/privy-custody-setup.js";
 import { createPrivyApi } from "../privy/privy-api.js";
 import { createFakePrivy, type FakePrivy } from "./fake-privy.js";
 import { createFakeSignerProcess, type FakeSignerProcess } from "./fake-signer-process.js";
+import { ownerSigner } from "./owner-signer.js";
 
 /** A custody subject on the Privy fake, with the fakes a test drives. */
 export interface FakeCustodySubject extends PrivyCustodySubject {
@@ -14,7 +15,7 @@ export interface FakeCustodySubject extends PrivyCustodySubject {
 
 /**
  * A subject for the custody contract on a fresh Privy fake: a client of the fake app, a fake
- * signer with a new agent key, a stranger's signer and a new owner key's public half. Time starts
+ * signer with a new agent key, a stranger's signer and a new owner key, which signs as the owner. Time starts
  * at a fixed moment and moves only when the test advances it.
  */
 export function createFakeCustodySubject(seed = 1): FakeCustodySubject {
@@ -33,5 +34,6 @@ export function createFakeCustodySubject(seed = 1): FakeCustodySubject {
     signerProcess: createFakeSignerProcess(),
     strangerProcess: createFakeSignerProcess(),
     ownerKey: owner.publicKey.export({ format: "der", type: "spki" }).toString("base64"),
+    ownerAuthorize: ownerSigner(owner.privateKey),
   };
 }

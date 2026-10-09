@@ -20,6 +20,11 @@ import type { FakePrivyState, FakeWallet } from "./fake-privy-state.js";
 
 const signatureHeader = "privy-authorization-signature";
 
+/** The authorization signatures a request carries, comma separated as Privy takes them. */
+export function signaturesOf(request: HttpRequest): readonly string[] {
+  return (request.headers?.[signatureHeader] ?? "").split(",").filter((item) => item !== "");
+}
+
 function bigOf(quantity: FakeQuantity): bigint {
   return typeof quantity === "number" ? BigInt(quantity) : hexToBigInt(quantity);
 }
@@ -28,10 +33,12 @@ function smallOf(quantity: FakeQuantity): number {
   return typeof quantity === "number" ? quantity : hexToNumber(quantity);
 }
 
-// The headers a signature covers, as Privy's docs list them: the app id, and the idempotency key
-// and the expiry when the request has them. Other `privy-` headers, such as the SDK's
-// `privy-client`, are not covered.
-function signedHeaders(request: HttpRequest): PrivyHeaders {
+/**
+ * The headers a signature covers, as Privy's docs list them: the app id, and the idempotency key
+ * and the expiry when the request has them. Other `privy-` headers, such as the SDK's
+ * `privy-client`, are not covered.
+ */
+export function signedHeaders(request: HttpRequest): PrivyHeaders {
   const headers = request.headers ?? {};
   const key = headers["privy-idempotency-key"];
   const expiry = headers["privy-request-expiry"];
@@ -82,7 +89,8 @@ async function signed(wallet: FakeWallet, tx: FakeTransaction): Promise<string> 
   });
 }
 
-function expired(state: FakePrivyState, headers: PrivyHeaders): boolean {
+/** Whether the request names an expiry that has passed, or one that is no time. */
+export function expired(state: FakePrivyState, headers: PrivyHeaders): boolean {
   const expiry = headers["privy-request-expiry"];
   return (
     expiry !== undefined && !(/^\d+$/.test(expiry) && BigInt(expiry) >= BigInt(state.clock.now()))
@@ -99,9 +107,7 @@ function partyOf(
   if (expired(state, headers)) {
     return failure(400, "request_expired", "The request has expired.");
   }
-  const signatures = (request.http.headers?.[signatureHeader] ?? "")
-    .split(",")
-    .filter((item) => item !== "");
+  const signatures = signaturesOf(request.http);
   const payload = authorizationPayload({
     method: "POST",
     url: request.http.url,

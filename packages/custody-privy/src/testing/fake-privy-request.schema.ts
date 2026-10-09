@@ -132,7 +132,8 @@ const conditionSchema: z.ZodType<FakeCondition> = z
   ])
   .refine(valueFits);
 
-const ruleSchema: z.ZodType<FakeRule> = z
+/** Parses one policy rule, as a policy's body holds it and a rule change sends it. */
+export const fakeRuleSchema: z.ZodType<FakeRule> = z
   .strictObject({
     name: z.string().min(1).max(50),
     method: z.enum(methods),
@@ -146,7 +147,7 @@ export const fakePolicyBodySchema: z.ZodType<FakePolicyBody> = z.strictObject({
   version: z.literal("1.0"),
   name: z.string().min(1).max(50),
   chain_type: z.literal("ethereum"),
-  rules: z.array(ruleSchema),
+  rules: z.array(fakeRuleSchema),
   owner_id: z.string().nullish(),
 });
 

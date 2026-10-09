@@ -1,7 +1,13 @@
-import { jsonValueSchema } from "@binference/core";
+import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { APIError } from "@privy-io/node";
 import { z } from "zod";
-import { isPrivyId, type KeyQuorum, type PrivyPolicy, type WalletRecord } from "./privy-records.js";
+import {
+  isPrivyId,
+  type KeyQuorum,
+  type PrivyId,
+  type PrivyPolicy,
+  type WalletRecord,
+} from "./privy-records.js";
 
 // Privy may add fields to its answers at any time, so objects keep the fields read and drop the
 // rest. A field that is read is checked strictly.
@@ -85,6 +91,33 @@ export function readPolicy(answer: unknown): PrivyPolicy | undefined {
         ownerId: wire.owner_id,
         rules: wire.rules,
       };
+}
+
+const ruleRefWire = z.object({ id: privyId, name: z.string() });
+
+/** A rule of a policy as Privy reports it: its id and name, and its JSON as Privy wrote it. */
+export interface PolicyRuleRef {
+  readonly id: PrivyId;
+  readonly name: string;
+  readonly json: JsonValue;
+}
+
+/** Reads the id and name of each rule of a policy; a rule without them makes it undefined. */
+export function readRuleRefs(rules: readonly JsonValue[]): readonly PolicyRuleRef[] | undefined {
+  const refs: PolicyRuleRef[] = [];
+  for (const json of rules) {
+    const wire = parsed(ruleRefWire, json);
+    if (wire === undefined) {
+      return undefined;
+    }
+    refs.push({ id: wire.id, name: wire.name, json });
+  }
+  return refs;
+}
+
+/** Whether the SDK's answer to a rule change is a rule with its id. */
+export function readRuleAnswer(answer: unknown): boolean {
+  return ruleRefWire.safeParse(answer).success;
 }
 
 /** Reads a wallet from the SDK's answer; an answer of another shape is undefined. */

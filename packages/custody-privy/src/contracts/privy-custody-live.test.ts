@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import { checkPrivyApp } from "../privy/check-privy-app.js";
 import { createPrivyApi } from "../privy/privy-api.js";
 import { createFakeSignerProcess } from "../testing/fake-signer-process.js";
+import { ownerSigner } from "../testing/owner-signer.js";
 import { privyCustodyContract } from "./privy-custody-contract.js";
 import type { PrivyCustodySubject } from "./privy-custody-setup.js";
 
@@ -94,6 +95,8 @@ function liveSubject(): PrivyCustodySubject {
     signerProcess: createFakeSignerProcess(),
     strangerProcess: createFakeSignerProcess(),
     ownerKey: owner.publicKey.export({ format: "der", type: "spki" }).toString("base64"),
+    ownerAuthorize: ownerSigner(owner.privateKey),
+    clock: realClock,
   };
 }
 

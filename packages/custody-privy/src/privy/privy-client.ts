@@ -35,7 +35,7 @@ export interface PrivySettings {
 const defaultOrigin = "https://api.privy.io";
 const defaultTimeoutMs = 15_000;
 const originPattern = /^https:\/\/[a-z0-9.-]+(?::\d{1,5})?$/;
-const methods: ReadonlySet<string> = new Set<HttpMethod>(["GET", "POST", "PUT", "DELETE"]);
+const methods: ReadonlySet<string> = new Set<HttpMethod>(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
 function isMethod(text: string): text is HttpMethod {
   return methods.has(text);

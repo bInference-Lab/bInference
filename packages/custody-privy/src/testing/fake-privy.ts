@@ -14,6 +14,7 @@ import { answer, failure, policyJson, quorumJson, walletJson } from "./fake-priv
 import { createPolicy, createQuorum, createWallet } from "./fake-privy-creates.js";
 import { parseJsonText } from "./fake-privy-request.schema.js";
 import { answerSignTransaction } from "./fake-privy-rpc.js";
+import { answerRuleChange, ruleChangeOf } from "./fake-privy-rules.js";
 import type { FakePrivyState } from "./fake-privy-state.js";
 
 /** Where the fake takes its ids, keys and time from. */
@@ -103,6 +104,10 @@ async function answerWrite(
   if (!body.success) {
     return failure(400, "invalid_data", "The request body is not JSON.");
   }
+  const rule = ruleChangeOf(request, path);
+  if (rule !== undefined) {
+    return answerRuleChange(state, request, { ...rule, body: body.data });
+  }
   switch (path) {
     case "/v1/key_quorums":
       return createQuorum(state, body.data);
@@ -119,8 +124,9 @@ async function answerWrite(
  * Creates a fake Privy app that enforces what binference relies on: Basic auth with the app id
  * and secret; request bodies as strict as Privy's OpenAPI document; P-256 authorization signatures
  * over RFC 8785 payloads from the wallet's owner or an added signer; the request expiry; and the
- * policy that binds the signing party, with Privy's semantics. Wallet keys are secp256k1 keys the
- * fake holds and signs with. It supports Ethereum wallets and `eth_signTransaction` only.
+ * policy that binds the signing party, with Privy's semantics; and a change of a policy rule,
+ * signed by the policy's owner. Wallet keys are secp256k1 keys the fake holds and signs with. It
+ * supports Ethereum wallets and `eth_signTransaction` only.
  */
 export function createFakePrivy(options: FakePrivyOptions): FakePrivy {
   const state: FakePrivyState = {

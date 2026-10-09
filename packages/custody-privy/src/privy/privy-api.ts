@@ -14,6 +14,13 @@ import {
   readSignedTransaction,
   readWallet,
 } from "./privy-wire.schema.js";
+import {
+  changeRule,
+  type RuleAuthorization,
+  type RuleChange,
+  ruleChangeRequest,
+  type RuleRefusal,
+} from "./rule-update.js";
 import { sdkRule } from "./sdk-rule.js";
 
 /** A call's options: every call stops when its signal aborts. */
@@ -57,8 +64,8 @@ export interface SignTransactionRequest {
 }
 
 /**
- * Privy's API for one app, through Privy's official Node SDK: key quorums, policies, wallets and
- * signing. Every answer passes a schema; an answer of another shape throws
+ * Privy's API for one app, through Privy's official Node SDK: key quorums, policies and their
+ * rules, wallets and signing. Every answer passes a schema; an answer of another shape throws
  * `custody.privy_malformed`.
  */
 export interface PrivyApi {
@@ -79,6 +86,16 @@ export interface PrivyApi {
     request: SignTransactionRequest,
     options: CallOptions,
   ): Promise<Result<string, "refused" | "unknown_wallet">>;
+  /**
+   * Writes one rule of a policy over, once, as the policy's owner authorizes: signing now, or with
+   * a signature made earlier over {@link PrivyApi.ruleChangeRequest} of the same change.
+   */
+  changeRule(
+    change: RuleChange,
+    options: CallOptions & { readonly authorization: RuleAuthorization },
+  ): Promise<Result<void, RuleRefusal>>;
+  /** The request a rule change sends, for the owner to sign now and Privy to read later. */
+  ruleChangeRequest(change: RuleChange): PrivyRequest;
 }
 
 const policyName = "binference ceiling";
@@ -281,5 +298,8 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
         { reader: readWallet, signal },
       ),
     signTransaction: async (request, { signal }) => signWith(settings, request, signal),
+    changeRule: async (change, { authorization, signal }) =>
+      changeRule(settings, change, { authorization, signal }),
+    ruleChangeRequest: (change) => ruleChangeRequest(settings, change),
   };
 }

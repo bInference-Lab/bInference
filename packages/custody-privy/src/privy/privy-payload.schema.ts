@@ -1,11 +1,12 @@
 import { authorizationPayload, type PrivyRequest, privyRequestSchema } from "@binference/chain";
 import { z } from "zod";
 
-// Version 1 of Privy's payload over a POST; `privyRequestSchema` reads the rest, and the byte
-// check below refuses any field it would not write.
+// Version 1 of Privy's payload over a POST, such as a signing request, or a PATCH, such as a
+// change of a policy rule; `privyRequestSchema` reads the rest, and the byte check below refuses
+// any field it would not write.
 const payloadSchema = z.looseObject({
   version: z.literal(1),
-  method: z.literal("POST"),
+  method: z.enum(["POST", "PATCH"]),
   url: z.unknown(),
   headers: z.unknown(),
   body: z.unknown(),
@@ -21,7 +22,7 @@ function parsedJson(payload: Uint8Array): unknown {
 
 /**
  * Reads back the request an authorization payload covers, as Privy's SDK hands it to a sign
- * function: a `POST` that `privyRequestSchema` accepts, whose bytes are exactly those
+ * function: a `POST` or a `PATCH` that `privyRequestSchema` accepts, whose bytes are exactly those
  * `authorizationPayload` writes for it. Anything else is undefined: the signer then signs the
  * bytes the SDK formed, or nothing.
  */
