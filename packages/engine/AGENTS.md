@@ -155,7 +155,8 @@ Rules for this package:
   on its own queue, each step a `send` its move's wallet signs to the address the card confirmed,
   which must still be the rescue address in effect. A failed step is tried again up to three
   times once its transaction is final, and a restart goes on from where it stood without signing
-  a sent step again.
+  a sent step again. It reconciles once its landed sends are stored as departures
+  (`src/executor/reconcile-rescue.ts`).
 - The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
   then not again until a reading shows it back at or above that. It keeps that memory in a bounded

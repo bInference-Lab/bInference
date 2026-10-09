@@ -1,10 +1,10 @@
-import type { StepAction } from "@binference/chain";
+import type { AccountRef, AssetRef, StepAction } from "@binference/chain";
 import { accountRefSchema } from "@binference/chain";
 import { createFakeTxSimulator } from "@binference/chain/testing";
 import { type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
-import { expectOk, testWallet } from "../intents/test-intents.js";
+import { expectOk, testCoin, testToken, testWallet } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import {
@@ -17,7 +17,9 @@ import {
   testHeld,
   testMoves,
   testRescue,
+  testReserveBase,
 } from "../safety/test-rescue.js";
+import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
   type BenchOptions,
   driveUntil,
@@ -49,6 +51,54 @@ async function rescueConfirmed(bench: ExecutorBench): Promise<Id<"int">> {
   const args = { intent, card: view.card?.card ?? fixtureId("crd", 0), cardVersion: 1 };
   expectOk(await handlers["intent/confirm"](testCall(args)));
   return intent;
+}
+
+// Each wallet holds what testHeld says as live positions, each unit at one micro-dollar.
+async function holdPositions(bench: ExecutorBench): Promise<void> {
+  const held = [
+    { walletId: testWallet, asset: testToken, base: 500n },
+    { walletId: testWallet, asset: testCoin, base: 10n ** 18n },
+    { walletId: secondWallet, asset: testCoin, base: 5n * 10n ** 17n },
+  ] as const;
+  await Promise.all(
+    held.map(async ({ walletId, asset, base }) => {
+      const arrival = { walletId, isPaper: false, atMs: 1, received: { asset, base } };
+      const position = {
+        walletId,
+        asset,
+        isPaper: false,
+        quantityBase: base,
+        costUsdMicros: base,
+        realizedUsdMicros: 0n,
+        changedAtMs: 1,
+      };
+      const write = { arrival: { ...arrival, valueUsdMicros: base }, positions: [{ position }] };
+      return bench.test.positions.recordArrival(write, live);
+    }),
+  );
+}
+
+// What one account's transactions paid for gas, from their receipts.
+function gasPaid(stored: readonly TransactionRecord[], account: AccountRef): bigint {
+  return stored
+    .filter((transaction) => transaction.account === account)
+    .reduce(
+      (sum, { receipt }) => sum + (receipt?.gasUsed ?? 0n) * (receipt?.feePerGasBase ?? 0n),
+      0n,
+    );
+}
+
+/** A position as the test compares it: asset, units, cost and realized P&L. */
+type Held = readonly [AssetRef, bigint, bigint, bigint];
+
+async function positionsOf(bench: ExecutorBench, walletId: Id<"wal">): Promise<readonly Held[]> {
+  const held = await bench.test.positions.positions({ walletId, isPaper: false }, live);
+  return held.map(({ asset, quantityBase, costUsdMicros, realizedUsdMicros }): Held => [
+    asset,
+    quantityBase,
+    costUsdMicros,
+    realizedUsdMicros,
+  ]);
 }
 
 function sendOf(index: number): StepAction {
@@ -85,6 +135,25 @@ describe("a confirmed rescue on its wallets' queues", () => {
       [testAccount, 0, "final"],
       [testAccount, 1, "final"],
       [secondAccount, 0, "final"],
+    ]);
+  });
+
+  it("takes what each send moved and its gas out of the positions at average cost, realizing nothing", async () => {
+    const bench = await benchWithRescue();
+    await holdPositions(bench);
+    const intent = await rescueConfirmed(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    const stored = await bench.test.stores.transactions.ofIntent(intent, live);
+    // Each unit costs one micro-dollar, so the cost left is the units left: the reserve less gas.
+    const first = testReserveBase - gasPaid(stored, testAccount);
+    const second = testReserveBase - gasPaid(stored, secondAccount);
+    expect(gasPaid(stored, secondAccount)).toBeGreaterThan(0n);
+    await expect(positionsOf(bench, testWallet)).resolves.toStrictEqual([
+      [testCoin, first, first, 0n],
+      [testToken, 0n, 0n, 0n],
+    ]);
+    await expect(positionsOf(bench, secondWallet)).resolves.toStrictEqual([
+      [testCoin, second, second, 0n],
     ]);
   });
 

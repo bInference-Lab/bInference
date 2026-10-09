@@ -7,6 +7,7 @@ import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import type { IntentPlan } from "./intent-plan.js";
 import type { SigningTerms } from "./queue-check.js";
+import { reconcileRescue } from "./reconcile-rescue.js";
 import { currentSteps } from "./recover-steps.js";
 import { checkRescueForQueue } from "./rescue-queue-check.js";
 import { prepareStep, signAndStore } from "./run-step.js";
@@ -237,7 +238,8 @@ async function sendRest(
  * again up to three times, each only once the transaction that failed is final and the step
  * prepares again on the latest state; a step stuck at its nonce ends its wallet's part. Once every
  * step has its last outcome the rescue is `included`, waits for its landed steps' blocks to be
- * final, and reconciles. It resumes a rescue a stop left `executing`: a step in a block is done
+ * final, and reconciles: what its sends took out of each wallet leaves the positions at average
+ * cost (decision 0127). It resumes a rescue a stop left `executing`: a step in a block is done
  * and one signed or sent goes on with its own bytes. Once the engine begins to stop, no step
  * starts and the rescue stays where it is.
  */
@@ -269,7 +271,7 @@ export async function executeRescue(
   const landed = [...head.landed, ...later].filter(({ state }) => state !== "final");
   const finalized = included === undefined ? undefined : await watchFinality(run, included, landed);
   if (finalized !== undefined) {
-    await moveIntent(run, finalized, { type: "fills_reconciled" });
+    await reconcileRescue(run, finalized);
   }
 }
 
@@ -301,7 +303,7 @@ export async function recoverRescue(run: ExecutionRun, snapshot: IntentSnapshot)
       ? snapshot
       : await watchFinality(run, snapshot, await landedSteps(run, id));
   if (finalized !== undefined) {
-    await moveIntent(run, finalized, { type: "fills_reconciled" });
+    await reconcileRescue(run, finalized);
   }
   return undefined;
 }
