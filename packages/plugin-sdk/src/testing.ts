@@ -1,7 +1,14 @@
-export { quoterContract, txBuilderContract, txDecoderContract } from "@binference/chain/testing";
+export {
+  quoterContract,
+  tokenRiskSourceContract,
+  txBuilderContract,
+  txDecoderContract,
+} from "@binference/chain/testing";
 export type {
   QuoterHarness,
   QuoterSubject,
+  TokenRiskSourceHarness,
+  TokenRiskSourceSubject,
   TxBuilderHarness,
   TxBuilderSubject,
   TxDecoderHarness,

@@ -63,3 +63,10 @@ export type { TxPreparerHarness, TxPreparerSubject } from "./contracts/tx-prepar
 export { createFakeNetwork } from "./fakes/fake-network.js";
 export type { FakeNetwork, FakeNetworkOptions } from "./fakes/fake-network.js";
 export type { FakeSent } from "./fakes/fake-ledger.js";
+export { tokenRiskSourceContract } from "./contracts/token-risk-source-contract.js";
+export type {
+  TokenRiskSourceHarness,
+  TokenRiskSourceSubject,
+} from "./contracts/token-risk-source-contract.js";
+export { createFakeRiskSource } from "./fakes/fake-risk-source.js";
+export type { FakeRiskSource, FakeRiskSourceOptions } from "./fakes/fake-risk-source.js";

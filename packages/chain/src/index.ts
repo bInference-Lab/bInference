@@ -134,3 +134,6 @@ export type { BlockRef, ChainHead, TxReceipt, TxReceiptWire } from "./sending/tx
 export type { TxSimulator } from "./simulation/ports.js";
 export type { SimulationOptions } from "./simulation/simulation-options.js";
 export type { AssetApproval, AssetTransfer, SimulatedStep } from "./simulation/simulated-step.js";
+export type { TokenRiskSource } from "./risk/ports.js";
+export { orderedFlags, riskFlagCodes, tokenRiskReportSchema } from "./risk/risk-report.js";
+export type { RiskFlagCode, TokenRiskReport, TokenRiskReportWire } from "./risk/risk-report.js";

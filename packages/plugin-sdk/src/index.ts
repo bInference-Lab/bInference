@@ -7,6 +7,9 @@ export type {
   DecodedEffect,
   QuoteRequest,
   Quoter,
+  RiskFlagCode,
+  TokenRiskReport,
+  TokenRiskSource,
   TxBuilder,
   TxDecoder,
   TxDraft,
@@ -21,6 +24,7 @@ export {
   assetRefParts,
   assetRefSchema,
   chainRefSchema,
+  orderedFlags,
 } from "@binference/chain";
 export {
   BinferenceError,

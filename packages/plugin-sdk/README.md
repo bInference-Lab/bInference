@@ -9,19 +9,25 @@ decodes every transaction the venue builds; it refuses one that calls another co
 another account, spends another amount, accepts less than the policy's minimum output or runs past
 60 seconds.
 
+A risk plugin returns a `TokenRiskSource`: given a token, it reports its findings as
+`RiskFlagCode`s and the liquidity it knows of, `not_covered` for a token it has no answer for, and
+rejects when its service is down. It decides nothing; the engine's risk step does.
+
 ## API
 
-| Export                                                         | What it does                                                          |
-| -------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `defineVenue`                                                  | Checks a venue's declaration and returns the frozen venue             |
-| `Venue`, `VenueDeclaration`, `VenueContracts`                  | A venue: its id, its contracts per chain, quoter, builder, decoder    |
-| `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`  | What the host asks and what the venue answers                         |
-| `TxDraft`                                                      | A transaction before the wallet queue adds its nonce and fees         |
-| `ok`, `err`, `Result`, `BinferenceError`, `isBps`, `bpsSchema` | What a venue needs to answer                                          |
-| `Http`, `HttpRequest`, `HttpResponse`                          | The port a venue reaches its API through                              |
-| `chainRefSchema`, `accountRefSchema`, `assetRefSchema`         | CAIP ids, parsed; `accountRefParts`, `assetRefParts` split them       |
-| `@binference/plugin-sdk/evm`                                   | `encodeEvmDraft`, `decodeEvmDraft`, `decodeCall`, `parseEvmAddress`   |
-| `@binference/plugin-sdk/testing`                               | The venue contract suites and `createScriptedHttp`, a scripted `Http` |
+| Export                                                         | What it does                                                        |
+| -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `defineVenue`                                                  | Checks a venue's declaration and returns the frozen venue           |
+| `Venue`, `VenueDeclaration`, `VenueContracts`                  | A venue: its id, its contracts per chain, quoter, builder, decoder  |
+| `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`  | What the host asks and what the venue answers                       |
+| `TxDraft`                                                      | A transaction before the wallet queue adds its nonce and fees       |
+| `ok`, `err`, `Result`, `BinferenceError`, `isBps`, `bpsSchema` | What a venue needs to answer                                        |
+| `Http`, `HttpRequest`, `HttpResponse`                          | The port a venue reaches its API through                            |
+| `chainRefSchema`, `accountRefSchema`, `assetRefSchema`         | CAIP ids, parsed; `accountRefParts`, `assetRefParts` split them     |
+| `@binference/plugin-sdk/evm`                                   | `encodeEvmDraft`, `decodeEvmDraft`, `decodeCall`, `parseEvmAddress` |
+| `TokenRiskSource`, `TokenRiskReport`, `RiskFlagCode`           | A risk data source and what it reports about a token                |
+| `orderedFlags`                                                 | A report's findings in their fixed order, each once                 |
+| `@binference/plugin-sdk/testing`                               | The venue and risk source contract suites, and `createScriptedHttp` |
 
 ## Example
 
