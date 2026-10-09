@@ -173,6 +173,7 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
       clock,
     }),
     executor,
+    isLocked: () => false,
     paperBalances: [],
     chains,
     clock,

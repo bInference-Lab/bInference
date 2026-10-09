@@ -22,6 +22,7 @@ const cards: CardRules = {
 const autoFacts: AutoModeFacts = {
   approvalMode: "auto",
   modeVersion: 4,
+  isLocked: false,
   isInsideOwnPositions: false,
   sellsDeniedToken: false,
   valueUsdMicros: 20_000_000n,

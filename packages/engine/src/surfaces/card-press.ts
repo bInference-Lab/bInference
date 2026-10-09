@@ -15,8 +15,10 @@ export interface CardPress {
  * How a card stands after a press. `closed`: this press or an earlier answer, or the timer,
  * closed it; every copy becomes the receipt of `closing`, or of `paper` once a confirmed paper
  * intent recorded its fill. `open`: the card waits for another answer, with the reason when a
- * re-quote or its simulation failed. `unknown`: no card has this reference, the presser is not
- * the owner, or the card closed without a receipt, as a cancel closes it; nothing was answered.
+ * re-quote or its simulation failed. `locked`: a Confirm of a live intent while the engine is
+ * locked; the card waits, and the presser is told to run `binference unlock`. `unknown`: no card
+ * has this reference, the presser is not the owner, or the card closed without a receipt, as a
+ * cancel closes it; nothing was answered.
  */
 export type CardStanding =
   | {
@@ -25,4 +27,5 @@ export type CardStanding =
       readonly paper?: PaperReceipt;
     }
   | { readonly status: "open"; readonly reason?: QuoteFailure | SimulationFailure }
+  | { readonly status: "locked" }
   | { readonly status: "unknown" };

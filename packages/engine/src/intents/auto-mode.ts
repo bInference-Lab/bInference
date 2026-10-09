@@ -8,12 +8,14 @@ export type ApprovalMode = "manual" | "auto";
 
 /**
  * Why auto mode leaves an intent to the owner's tap. `manual`: the agent is not in auto mode. The
- * others are the `autoAsks` lines of spec 4, section 3.4: `deniedToken` means the intent sells a
- * token on the deny list, `overFeeCap` that its fee per gas is above the network fee cap, and
- * `spender` that a step approves a spender outside the registry.
+ * others are the `autoAsks` lines of spec 4, section 3.4: `locked` means the engine is locked, so
+ * nothing could sign the intent, `deniedToken` that the intent sells a token on the deny list,
+ * `overFeeCap` that its fee per gas is above the network fee cap, and `spender` that a step
+ * approves a spender outside the registry.
  */
 export type AutoModeRefusal =
   | "manual"
+  | "locked"
   | "send"
   | "kind"
   | "deniedToken"
@@ -28,6 +30,11 @@ export interface AutoModeFacts {
   readonly approvalMode: ApprovalMode;
   /** The mode's version; an auto authorization holds only while it stays the same. */
   readonly modeVersion: number;
+  /**
+   * The engine is locked and the intent is live, so nothing could sign it: auto mode waits until
+   * the owner unlocks (spec 5, section 3). A paper intent signs nothing and is never locked.
+   */
+  readonly isLocked: boolean;
   /** A lend or stake move stays inside the agent's own positions. */
   readonly isInsideOwnPositions: boolean;
   /** The policy's mark: the intent moves a token on the deny list out of the wallet. */
@@ -83,6 +90,9 @@ function autoModeRefusal(
   if (facts.approvalMode !== "auto") {
     return "manual";
   }
+  if (facts.isLocked) {
+    return "locked";
+  }
   const refusal = kindRefusal(intent.kind, facts);
   if (refusal !== undefined) {
     return refusal;
@@ -106,11 +116,12 @@ function autoModeRefusal(
 }
 
 /**
- * The auto test of spec 6, section 5. It passes only when the agent is in auto mode, the kind is a
- * swap, buy or sell or a lend or stake move inside the agent's own positions, it sells no token on
- * the deny list, the value fits the per-trade and rolling-day caps, the fee per gas is at most the
- * network fee cap, every approval goes to a registry spender, the turn read no outside content,
- * and the agent runtime proposed it. Anything else opens a card.
+ * The auto test of spec 6, section 5. It passes only when the agent is in auto mode, the engine is
+ * not locked for the intent, the kind is a swap, buy or sell or a lend or stake move inside the
+ * agent's own positions, it sells no token on the deny list, the value fits the per-trade and
+ * rolling-day caps, the fee per gas is at most the network fee cap, every approval goes to a
+ * registry spender, the turn read no outside content, and the agent runtime proposed it. Anything
+ * else opens a card.
  */
 export function checkAutoMode(
   intent: AutoModeSubject,

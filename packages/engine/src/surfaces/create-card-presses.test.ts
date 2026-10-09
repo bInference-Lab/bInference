@@ -130,6 +130,13 @@ describe("the card presses", () => {
     expect(await stateOf(subject)).toBe("awaiting_confirmation");
   });
 
+  it("keep a live intent's card open as locked while the engine is locked", async () => {
+    const subject = await pressing({ agent: { mode: "live" }, isLocked: () => true });
+    const standing = await subject.presses.answer(press(subject.ref, "confirm"), live);
+    expect(standing).toStrictEqual({ status: "locked" });
+    expect(await stateOf(subject)).toBe("awaiting_confirmation");
+  });
+
   it("keep the card open on a worse re-quote, and on a Confirm of the older version", async () => {
     const subject = await pressing({ venues: [worseAfterFirstQuote()] });
     await subject.test.clock.advance(11_000);

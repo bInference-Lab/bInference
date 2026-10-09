@@ -17,13 +17,14 @@ const figures = { valueUsdMicros: 7n, rollingDaySpentUsdMicros: 11n };
 describe("the authorization check of a swap", () => {
   it("hands the auto test the mode, the caps, the policy's figures and marks and the fees", () => {
     const pass = { figures, sellsDeniedToken: true };
-    expect(authorizationCheckOf({ settings, pass, wallet })).toStrictEqual({
+    expect(authorizationCheckOf({ settings, pass, wallet, isLocked: false })).toStrictEqual({
       type: "authorization_checked",
       check: {
         by: "auto_mode",
         facts: {
           approvalMode: "auto",
           modeVersion: 0,
+          isLocked: false,
           isInsideOwnPositions: false,
           sellsDeniedToken: true,
           valueUsdMicros: 7n,
@@ -40,10 +41,17 @@ describe("the authorization check of a swap", () => {
   });
 
   it("counts a swap without the policy's figures as over the per-trade cap", () => {
-    const trigger = authorizationCheckOf({ settings, pass: { sellsDeniedToken: false }, wallet });
+    const pass = { sellsDeniedToken: false };
+    const trigger = authorizationCheckOf({ settings, pass, wallet, isLocked: false });
     expect(trigger.check).toMatchObject({
       by: "auto_mode",
       facts: { valueUsdMicros: testLimits.perTradeUsdMicros + 1n, rollingDaySpentUsdMicros: 0n },
     });
+  });
+
+  it("tells the auto test that the engine is locked for the swap", () => {
+    const pass = { figures, sellsDeniedToken: false };
+    const trigger = authorizationCheckOf({ settings, pass, wallet, isLocked: true });
+    expect(trigger.check).toMatchObject({ by: "auto_mode", facts: { isLocked: true } });
   });
 });

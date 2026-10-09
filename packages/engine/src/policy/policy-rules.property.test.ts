@@ -320,6 +320,7 @@ function listViolations(input: PolicyInput): readonly string[] {
 const allowingAuto: AutoModeFacts = {
   approvalMode: "auto",
   modeVersion: 1,
+  isLocked: false,
   isInsideOwnPositions: true,
   sellsDeniedToken: false,
   valueUsdMicros: 0n,

@@ -151,6 +151,9 @@ interface Pressed {
 }
 
 function noticeOf(context: CardsContext, standing: CardStanding): string | undefined {
+  if (standing.status === "locked") {
+    return context.words("error.engine.locked");
+  }
   return standing.status === "open" && standing.reason !== undefined
     ? context.words(`reason.${standing.reason}`)
     : undefined;

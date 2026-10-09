@@ -67,6 +67,8 @@ export interface MoneyPathOptions {
   readonly simulator: Simulator;
   readonly chains: ChainRegistry;
   readonly execute: ExecuteConfirmed;
+  /** Whether the engine is locked: no live intent is authorized by auto mode while it is. */
+  readonly isLocked: () => boolean;
   readonly clock: Clock;
   readonly ids: IdSource;
 }
@@ -227,6 +229,7 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
     settings: simulated.settings,
     pass: policy.passed,
     wallet: run.resolved.facts,
+    isLocked: run.options.isLocked() && !simulated.record.isPaper,
   });
   const authorized = await advance(run, simulated, { trigger });
   return run.options.execute(authorized, { signal: run.signal });

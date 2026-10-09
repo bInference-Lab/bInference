@@ -1,8 +1,8 @@
 # Spec 5: custody, keys, signing and backups
 
-Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)). It follows Privy custody
-(decisions [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and
-[0091](../DECISIONS.md#d0091)).
+Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by
+[decision 0103](../DECISIONS.md#d0103). It follows Privy custody (decisions
+[0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
 
@@ -55,7 +55,7 @@ consent, the wallet is made in their Privy account with our signer service under
 
 ## 3. The agent key and the app secret at rest
 
-Decided in [decision 0065](../DECISIONS.md#d0065).
+Decided in [decision 0065](../DECISIONS.md#d0065) and [decision 0103](../DECISIONS.md#d0103).
 
 | `engine.unlock.mode` | Where the agent key and the app secret live                                                                                                                                      | Default when              |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
@@ -83,7 +83,10 @@ The `manual` file, `~/.binference/keys/agent-key.json`, owner-only:
 It is written to a temporary file in the same folder, synced, then renamed over the old one.
 
 While locked, the engine answers reads, refuses signing with `engine.locked`, and auto orders, auto
-mode and webhook rules wait. A notice tells the owner on every surface. `binference check` warns in
+mode and webhook rules wait. A Confirm of a live intent fails with `engine.locked` and changes
+nothing: its card stays open, so the owner confirms again once unlocked. Paper intents and Cancel
+work as ever, and auto mode opens a card for a live intent (`autoAsks.locked`, spec 4). A notice
+tells the owner on every surface. `binference check` warns in
 `file` mode: a copy of the disk plus that folder lets someone sign inside the ceiling until the
 owner removes the agent key.
 

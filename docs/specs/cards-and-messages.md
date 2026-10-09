@@ -1,7 +1,7 @@
 # Spec 4: cards and messages
 
 Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended by decisions
-[0101](../DECISIONS.md#d0101) and [0102](../DECISIONS.md#d0102).
+[0101](../DECISIONS.md#d0101), [0102](../DECISIONS.md#d0102) and [0103](../DECISIONS.md#d0103).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -152,7 +152,9 @@ Agent 说明  “按你的要求在 $625 止盈”
 / 「需要向未验证的合约授权」, `autoAsks.deniedToken` "it sells a token on your deny list"
 / 「卖出的是你禁止列表中的代币」 ([decision 0101](../DECISIONS.md#d0101)), `autoAsks.overFeeCap`
 "the network fee is above your cap" / 「网络费高于你设定的上限」
-([decision 0102](../DECISIONS.md#d0102)). The codes are those of the auto test in spec 6, section 5.
+([decision 0102](../DECISIONS.md#d0102)), `autoAsks.locked` "binference is locked; run
+`binference unlock` on the machine" / 「binference 已锁定；请在本机运行 `binference unlock`」
+([decision 0103](../DECISIONS.md#d0103)). The codes are those of the auto test in spec 6, section 5.
 
 <a id="section-3-5"></a>
 

@@ -291,7 +291,8 @@ export { isSha256Hex, sha256Hex, sha256HexSchema, type Sha256Hex } from "./recor
 export { stampedIdSchema, type StampedId } from "./records/stamped-id.js";
 export { createEngine } from "./operations/create-engine.js";
 export type { Engine, EngineHandlers, EngineOptions } from "./operations/create-engine.js";
-export type { AnswerCard, AnsweredCard } from "./operations/answer-card.js";
+export type { AnswerCard, AnsweredCard, LockedOutcome } from "./operations/answer-card.js";
 export type { EngineCall, EngineCaller, EngineHandler } from "./operations/engine-call.js";
 export type { EnginePush, PublishPush } from "./pushes/engine-push.js";
+export { lockedNotice, lockedNoticeKey } from "./pushes/locked-notice.js";
 export type { WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";

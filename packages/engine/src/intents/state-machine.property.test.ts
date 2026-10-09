@@ -162,6 +162,7 @@ const minOut = fc.option(fc.bigInt({ min: 0n, max: 10n ** 20n }), { nil: undefin
 const autoFacts: fc.Arbitrary<AutoModeFacts> = fc.record({
   approvalMode: fc.constantFrom("manual", "auto"),
   modeVersion: fc.nat(50),
+  isLocked: mostly(false, true),
   isInsideOwnPositions: fc.boolean(),
   sellsDeniedToken: mostly(false, true),
   valueUsdMicros: fc.bigInt({ min: 0n, max: 200_000_000n }),
@@ -405,6 +406,7 @@ function isAutoAllowed(status: IntentStatus, auto: AutoModeFacts | undefined): b
   return (
     auto !== undefined &&
     auto.approvalMode === "auto" &&
+    !auto.isLocked &&
     isAutoKind(status, auto) &&
     !auto.sellsDeniedToken &&
     fitsAutoCaps(auto) &&

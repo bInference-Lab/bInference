@@ -1,3 +1,4 @@
 {
-  "approvalMode": "{agent} 已切换为{mode, select, auto {自动} other {手动}}模式，来自 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}}"
+  "approvalMode": "{agent} 已切换为{mode, select, auto {自动} other {手动}}模式，来自 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}}",
+  "locked": "🔴 binference 已重启并处于锁定状态。请运行 `binference unlock`。"
 }

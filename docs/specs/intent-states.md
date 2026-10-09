@@ -1,8 +1,8 @@
 # Spec 6: the intent state machine
 
 Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by decisions
-[0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101) and
-[0102](../DECISIONS.md#d0102).
+[0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101),
+[0102](../DECISIONS.md#d0102) and [0103](../DECISIONS.md#d0103).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -133,17 +133,19 @@ Failure reasons for `failed_onchain`: `reverted` (a step's receipt has status 0)
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when
-  all of these hold at `simulated`: the agent's mode is `auto`; the kind is `swap`, `buy`, `sell`,
-  or a `lend` or `stake` move inside the agent's own positions; it sells no token on the deny list
-  ([decision 0101](../DECISIONS.md#d0101)); it fits the per-trade and rolling-day caps; its fee per
-  gas is at most the chain's network fee cap ([decision 0102](../DECISIONS.md#d0102)); any approval
-  goes to a registry spender; the proposing turn carries no outside-content mark; and the proposer
-  is the agent runtime, not an MCP client. Anything else opens a card. A receipt is sent when it
-  settles. The test checks these conditions in this order and names the first that fails: `manual`
-  (the agent is in manual mode), `send`, `kind`, `deniedToken` (it sells a token on the deny list),
-  `overCap`, `overFeeCap` (its fee per gas is above the network fee cap), `spender` (an approval to
-  a spender outside the registry), `outside` or `mcp`. The card shows each code but `manual` with
-  its `autoAsks` message (spec 4, section 3.4).
+  all of these hold at `simulated`: the agent's mode is `auto`; the engine is not locked, or the
+  intent is a paper one ([decision 0103](../DECISIONS.md#d0103)); the kind is `swap`,
+  `buy`, `sell`, or a `lend` or `stake` move inside the agent's own positions; it sells no token on
+  the deny list ([decision 0101](../DECISIONS.md#d0101)); it fits the per-trade and rolling-day
+  caps; its fee per gas is at most the chain's network fee cap
+  ([decision 0102](../DECISIONS.md#d0102)); any approval goes to a registry spender; the proposing
+  turn carries no outside-content mark; and the proposer is the agent runtime, not an MCP client.
+  Anything else opens a card. A receipt is sent when it settles. The test checks these conditions in
+  this order and names the first that fails: `manual` (the agent is in manual mode), `locked` (the
+  engine is locked and the intent is live), `send`, `kind`, `deniedToken` (it sells a token on the
+  deny list), `overCap`, `overFeeCap` (its fee per gas is above the network fee cap), `spender` (an
+  approval to a spender outside the registry), `outside` or `mcp`. The card shows each code but
+  `manual` with its `autoAsks` message (spec 4, section 3.4).
 - **A token on the deny list** ([decision 0101](../DECISIONS.md#d0101)) may leave the wallet, by a
   sale, a swap or a send, but never enter it. The policy passes such an intent with the mark
   `sellsDeniedToken`, which the auto test reads, so it always opens a card.

@@ -81,6 +81,8 @@ export interface TestEngineOptions {
   readonly executor?: Executor;
   /** The USD prices; the coin alone, at $600, when absent. */
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
+  /** Whether the engine is locked; never when absent. */
+  readonly isLocked?: () => boolean;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -160,6 +162,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     simulator: createQuoteSimulator(() => options.refusal),
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
+    isLocked: options.isLocked ?? (() => false),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),

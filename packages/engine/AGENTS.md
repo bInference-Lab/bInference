@@ -72,6 +72,10 @@ Rules for this package:
   goes on: a paper intent to the paper fill, a live one, a rescue in paper mode too (decision
   0100), to the `Executor` port. A paper intent never reaches the executor (spec 6, invariant 3);
   its property test holds that for every kind, mode and state.
+- The lock (`isLocked`) says the unlock mode has not given the engine the agent key. Only the
+  answer step and the auto test read it: a Confirm of a live intent is refused as `locked` before
+  anything is stored, and auto mode leaves a live intent to the owner. Reads, paper intents and
+  Cancel never look at it (keys spec, section 3).
 - The paper fill (`src/paper/`) moves a confirmed paper intent to `paper_filled` at its confirmed
   quote and records the fill with the move, then records it as a paper execution, valued at the
   sold asset's price then. With no usable price the intent stays `confirmed`: a fill is never

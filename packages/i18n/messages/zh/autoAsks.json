@@ -6,5 +6,6 @@
   "outside": "该想法来自外部内容",
   "mcp": "由 {client} 提出",
   "deniedToken": "卖出的是你禁止列表中的代币",
-  "overFeeCap": "网络费高于你设定的上限"
+  "overFeeCap": "网络费高于你设定的上限",
+  "locked": "binference 已锁定；请在本机运行 `binference unlock`"
 }

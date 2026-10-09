@@ -12,6 +12,7 @@ import type { IntentProposer } from "./intent-status.js";
 const facts: AutoModeFacts = {
   approvalMode: "auto",
   modeVersion: 2,
+  isLocked: false,
   isInsideOwnPositions: true,
   sellsDeniedToken: false,
   valueUsdMicros: 100_000_000n,
@@ -93,6 +94,12 @@ describe("the auto test", () => {
     expect(refusalOf(everything as AutoModeSubject, { approvalMode: "manual" })).toBe("manual");
   });
 
+  it("asks while the engine is locked, since nothing could sign the intent", () => {
+    expect(refusalOf(swap, { isLocked: true })).toBe("locked");
+    expect(refusalOf(swap, { isLocked: true, approvalMode: "manual" })).toBe("manual");
+    expect(refusalOf({ ...swap, kind: "send" }, { isLocked: true })).toBe("locked");
+  });
+
   it("checks in the order spec 6 lists the conditions", () => {
     const send = { ...swap, kind: "send", hasOutsideContent: true } as const;
     expect(refusalOf(send, { valueUsdMicros: 10n ** 12n })).toBe("send");
@@ -143,6 +150,7 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
   .record({
     approvalMode: mostly<ApprovalMode>("auto", "manual"),
     modeVersion: fc.nat(),
+    isLocked: mostly(false, true),
     isInsideOwnPositions: fc.boolean(),
     sellsDeniedToken: mostly(false, true),
     valueUsdMicros: usd,
@@ -156,6 +164,7 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
   .map((generated): AutoModeFacts => ({
     approvalMode: generated.approvalMode,
     modeVersion: generated.modeVersion,
+    isLocked: generated.isLocked,
     isInsideOwnPositions: generated.isInsideOwnPositions,
     sellsDeniedToken: generated.sellsDeniedToken,
     valueUsdMicros: generated.valueUsdMicros,
@@ -185,6 +194,7 @@ function isAllowedBySpec(subject: AutoModeSubject, given: AutoModeFacts): boolea
     (["lend", "stake"].includes(subject.kind) && given.isInsideOwnPositions);
   return (
     given.approvalMode === "auto" &&
+    !given.isLocked &&
     isAutoKind &&
     !given.sellsDeniedToken &&
     fitsEveryCap(given) &&
@@ -207,6 +217,14 @@ describe("the auto test as a property", () => {
     fc.assert(
       fc.property(subjects, factSets, (subject, generated) => {
         expect(checkAutoMode(subject, { ...generated, sellsDeniedToken: true }).ok).toBe(false);
+      }),
+    );
+  });
+
+  it("never authorizes while the engine is locked", () => {
+    fc.assert(
+      fc.property(subjects, factSets, (subject, generated) => {
+        expect(checkAutoMode(subject, { ...generated, isLocked: true }).ok).toBe(false);
       }),
     );
   });

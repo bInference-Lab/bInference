@@ -6,5 +6,6 @@
   "outside": "the idea came from outside content",
   "mcp": "proposed from {client}",
   "deniedToken": "it sells a token on your deny list",
-  "overFeeCap": "the network fee is above your cap"
+  "overFeeCap": "the network fee is above your cap",
+  "locked": "binference is locked; run `binference unlock` on the machine"
 }

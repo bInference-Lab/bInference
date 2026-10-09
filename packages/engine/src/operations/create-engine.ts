@@ -62,6 +62,12 @@ export interface EngineOptions {
   readonly executor: Executor;
   /** A paper reset's starting balances when it names none: 1 BNB and 500 USDT by default. */
   readonly paperBalances: readonly Amount[];
+  /**
+   * Whether the engine is locked: the unlock mode has not given it the agent key (spec 5, section
+   * 3). While it is, a Confirm of a live intent fails with `engine.locked` and auto mode leaves
+   * live intents to the owner; reads, paper intents and Cancel work as ever.
+   */
+  readonly isLocked: () => boolean;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly ids: IdSource;
@@ -152,7 +158,12 @@ function intentParts(
     quotes: createVenueQuoteSource({ stored, custody, host, chains }),
     simulator: paper.simulator,
   });
-  const answer = createAnswerCard({ confirmations, stored, execute });
+  const answer = createAnswerCard({
+    confirmations,
+    stored,
+    execute,
+    isLocked: options.isLocked,
+  });
   const moneyPath = createMoneyPath({
     stored,
     agents: stores.agents,
@@ -163,6 +174,7 @@ function intentParts(
     simulator: paper.simulator,
     chains,
     execute,
+    isLocked: options.isLocked,
     clock,
     ids,
   });

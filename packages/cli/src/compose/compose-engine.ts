@@ -49,6 +49,11 @@ export interface ComposeEngineOptions {
   readonly http?: HttpListenOptions;
   /** Whether the engine serves calls yet; `ready` when left out. */
   readonly state?: () => EngineState;
+  /**
+   * Whether the unlock mode has not given the engine the agent key yet, so it signs nothing;
+   * never locked when left out.
+   */
+  readonly isLocked?: () => boolean;
   /** Handlers of operations the composition root answers, such as `engine/status`. */
   readonly handlers?: OperationHandlers;
   /** The owner's bot; without it the engine shows no card in Telegram. */
@@ -98,13 +103,8 @@ function joinTelegram(
  * bot, card pushes also reach Telegram.
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
-  const { clock, random, logger, chains } = options;
-  const host = createVenueHost({
-    venues: options.venues,
-    chains,
-    clock,
-    callTimeoutMs: venueCallTimeoutMs,
-  });
+  const { clock, random, logger, chains, venues } = options;
+  const host = createVenueHost({ venues, chains, clock, callTimeoutMs: venueCallTimeoutMs });
   const publish = (push: EnginePush): void => {
     try {
       server.publish(push);
@@ -124,6 +124,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     simulator: options.simulator,
     executor: options.executor,
     paperBalances: options.paperBalances,
+    isLocked: options.isLocked ?? (() => false),
     chains,
     clock,
     ids: createIdSource({ clock, random }),

@@ -16,6 +16,8 @@ export interface AuthorizationInput {
   readonly pass: PolicyPass;
   /** The wallet's fee per gas and network fee cap. */
   readonly wallet: WalletFacts;
+  /** The engine is locked and the swap is live, so nothing could sign it now. */
+  readonly isLocked: boolean;
 }
 
 /**
@@ -27,11 +29,12 @@ export interface AuthorizationInput {
 export function authorizationCheckOf(
   input: AuthorizationInput,
 ): IntentTrigger<"authorization_checked"> {
-  const { settings, pass, wallet } = input;
+  const { settings, pass, wallet, isLocked } = input;
   const { limits, approvalMode } = settings;
   const facts: AutoModeFacts = {
     approvalMode: approvalMode.mode,
     modeVersion: approvalMode.version,
+    isLocked,
     isInsideOwnPositions: false,
     sellsDeniedToken: pass.sellsDeniedToken,
     valueUsdMicros: pass.figures?.valueUsdMicros ?? limits.perTradeUsdMicros + 1n,

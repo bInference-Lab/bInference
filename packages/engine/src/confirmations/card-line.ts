@@ -46,6 +46,7 @@ export const cardKeys = [
   "autoAsks.mcp",
   "autoAsks.deniedToken",
   "autoAsks.overFeeCap",
+  "autoAsks.locked",
   "card.reason",
   "card.expiry",
   "receipt.confirmed",
