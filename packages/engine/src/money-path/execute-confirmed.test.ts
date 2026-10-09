@@ -77,7 +77,12 @@ describe("the execute step", () => {
     const publish = (push: EnginePush): void => {
       pushes.push(push);
     };
-    const execute = createExecuteConfirmed({ paper: paperNeverReached, executor, publish });
+    const execute = createExecuteConfirmed({
+      paper: paperNeverReached,
+      executor,
+      publish,
+      unfreeze: async () => Promise.reject(new Error("A rescue is no unfreeze.")),
+    });
     await expect(execute(rescue, live)).resolves.toBe(rescue);
     expect(executor.taken()).toStrictEqual([intent]);
     expect(pushes).toStrictEqual([]);

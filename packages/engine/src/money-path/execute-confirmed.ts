@@ -9,18 +9,23 @@ import { rescueNotice } from "../safety/rescue-notice.js";
  * an auto order or the auto mode may have confirmed. A confirmed paper intent fills at its
  * confirmed quote and never reaches the executor (spec 6, invariant 3). A confirmed live intent,
  * which a rescue always is (decision 0100), goes to the executor, which takes it onto its wallet's
- * queue; a confirmed rescue is first announced on every surface with `notice.rescue`. Any other
- * intent comes back as it was.
+ * queue; a confirmed rescue is first announced on every surface with `notice.rescue`. A confirmed
+ * unfreeze has no step: it is written at once (decision 0128). Any other intent comes back as it
+ * was.
  */
 export type ExecuteConfirmed = (
   snapshot: IntentSnapshot,
   options: { readonly signal: AbortSignal },
 ) => Promise<IntentSnapshot>;
 
-/** Where a confirmed intent goes: the paper fill or the executor; and where notices go. */
+/**
+ * Where a confirmed intent goes: the paper fill, the executor, or the unfreeze's write; and where
+ * notices go.
+ */
 export interface ExecuteConfirmedOptions {
   readonly paper: PaperFills;
   readonly executor: Executor;
+  readonly unfreeze: ExecuteConfirmed;
   readonly publish: PublishPush;
 }
 
@@ -33,6 +38,9 @@ export function createExecuteConfirmed(options: ExecuteConfirmedOptions): Execut
     }
     if (record.isPaper) {
       return options.paper.fillAtQuote(snapshot, call);
+    }
+    if (record.kind === "unfreeze") {
+      return options.unfreeze(snapshot, call);
     }
     const notice = record.kind === "rescue" ? rescueNotice(record) : undefined;
     if (notice !== undefined) {

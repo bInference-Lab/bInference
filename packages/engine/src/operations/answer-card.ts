@@ -24,7 +24,7 @@ export interface AnsweredCard {
  * Applies the owner's answer from any surface: Telegram's tap, the console's or the CLI's call.
  * A confirmed intent then goes on to the execute step: a paper intent fills at its confirmed
  * quote, and the executor takes a live one. While the engine is locked, a Confirm of a live
- * intent waiting for its answer is refused as `locked` and changes nothing.
+ * intent waiting for its answer is refused as `locked` and changes nothing; an unfreeze's is taken.
  */
 export type AnswerCard = (
   answer: CardAnswer,
@@ -40,7 +40,8 @@ export interface AnswerCardOptions {
   readonly isLocked: () => boolean;
 }
 
-// The lock is read before the answer is stored: a Confirm that could not be signed never lands.
+// The lock is read before the answer is stored: a Confirm that could not be signed never lands. An
+// unfreeze signs nothing, so a locked engine takes its tap (decision 0128).
 async function lockedAnswer(
   options: AnswerCardOptions,
   answer: CardAnswer,
@@ -51,7 +52,9 @@ async function lockedAnswer(
   }
   const snapshot = await options.stored.snapshot(answer.intent, { signal });
   const isWaitingLive =
-    snapshot?.record.state === "awaiting_confirmation" && !snapshot.record.isPaper;
+    snapshot?.record.state === "awaiting_confirmation" &&
+    !snapshot.record.isPaper &&
+    snapshot.record.kind !== "unfreeze";
   return isWaitingLive ? { outcome: { verdict: "locked" }, intent: snapshot } : undefined;
 }
 

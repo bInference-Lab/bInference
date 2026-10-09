@@ -152,6 +152,12 @@ Rules for this package:
   hash binds every move and the wallet that signs it; each wallet's sends are simulated, and a
   move that would not run as planned is left out. While a rescue has not ended, `safety/rescue`
   answers that one. A confirmed rescue is announced with `notice.rescue`.
+- An unfreeze (`src/safety/`, `safety/unfreeze`, decision 0128) is one live `unfreeze` intent of the
+  owner's: it runs to its card at once, with its `UnfreezeQuote` (the agents and whether the
+  install's freeze lifts) in the `quote` column, and never passes the auto test. The tap's execute
+  step writes it with the intent store's `freeze`, `isFrozen: false`, which moves it from
+  `confirmed` to `reconciled` on `unfreeze_written`; the executor never takes one. Each unfreeze is
+  announced with `notice.unfrozen`.
 - `safety/status` (`src/safety/safety-status-handlers.ts`) reads, for any surface with `read`:
   whether anything is frozen, the install's freeze, each frozen agent not archived with its time,
   the rescue that has not ended, and the rescue address in effect with a change that waits.

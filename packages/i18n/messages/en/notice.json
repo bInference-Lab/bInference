@@ -1,6 +1,7 @@
 {
   "approvalMode": "{agent} is now in {mode, select, auto {auto} other {manual}} mode, from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}",
   "frozen": "🔴 {agent} is frozen from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}. Unfreeze in the CLI, the console or the Mini App.",
+  "unfrozen": "🟢 {scope, select, install {Every agent is unfrozen} other {{agent} is unfrozen}} from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}.",
   "rescue": "🔴 Rescue confirmed: moving everything to {address}",
   "locked": "🔴 binference restarted and is locked. Run `binference unlock`.",
   "signerStopped": "🔴 The signer stopped, so binference signs nothing. Fix what `binference logs` shows, then run `binference unlock`.",

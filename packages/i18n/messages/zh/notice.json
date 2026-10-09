@@ -1,6 +1,7 @@
 {
   "approvalMode": "{agent} 已切换为{mode, select, auto {自动} other {手动}}模式，来自 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}}",
   "frozen": "🔴 已从 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}} 冻结 {agent}。请在命令行、控制台或 Mini App 中解除冻结。",
+  "unfrozen": "🟢 已从 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}} {scope, select, install {对全部 Agent 解除冻结} other {对 {agent} 解除冻结}}。",
   "rescue": "🔴 已确认紧急转出：正在将全部资产转到 {address}",
   "locked": "🔴 binference 已重启并处于锁定状态。请运行 `binference unlock`。",
   "signerStopped": "🔴 签名进程已停止，binference 不会签名。请先处理 `binference logs` 显示的问题，再运行 `binference unlock`。",

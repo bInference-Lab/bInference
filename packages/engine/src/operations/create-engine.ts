@@ -42,6 +42,7 @@ import {
 } from "../safety/rescue-address-handlers.js";
 import { settleRescueCeilings } from "../safety/rescue-ceilings.js";
 import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
+import { writeUnfreeze } from "../safety/write-unfreeze.js";
 import {
   createSendLevelHandlers,
   type SendLevelHandlers,
@@ -194,15 +195,22 @@ function requoteOptions(
   return { stored: parts.stored, custody, wallets, host, simulator, prices, chains, clock };
 }
 
-// A confirmed paper intent fills in the paper portfolio; a live one goes to the executor.
+// A confirmed paper intent fills in the paper portfolio, an unfreeze is written, and any other live
+// one goes to the executor.
 function executeOf(
   options: EngineOptions,
   parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
 ): ExecuteConfirmed {
   const { stored, paper } = parts;
-  const { prices, clock, executor, publish } = options;
+  const { prices, clock, executor, publish, ids, stores } = options;
   const fills = createPaperFills({ stored, positions: paper.positions, prices, clock });
-  return createExecuteConfirmed({ paper: fills, executor, publish });
+  const written = { stored, agents: stores.agents, intents: stores.intents, clock, ids, publish };
+  return createExecuteConfirmed({
+    paper: fills,
+    executor,
+    publish,
+    unfreeze: async (snapshot, call) => writeUnfreeze(written, snapshot, call.signal),
+  });
 }
 
 function intentParts(
