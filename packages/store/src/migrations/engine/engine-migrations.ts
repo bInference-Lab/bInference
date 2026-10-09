@@ -11,6 +11,7 @@ import { migration as accessAndOperations } from "./0009_access_and_operations.j
 import { migration as transactionSends } from "./0010_transaction_sends.js";
 import { migration as sendLevelRows } from "./0011_send_level_rows.js";
 import { migration as rescueCeiling } from "./0012_rescue_ceiling.js";
+import { migration as pendingLimits } from "./0013_pending_limits.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -26,4 +27,5 @@ export const engineMigrations: readonly Migration[] = [
   transactionSends,
   sendLevelRows,
   rescueCeiling,
+  pendingLimits,
 ];

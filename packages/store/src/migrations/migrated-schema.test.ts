@@ -86,7 +86,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
       "min_health_factor_bp gas_reserve venues allow_tokens deny_tokens model_budget_usd_micros " +
       "card_trade_expiry_s card_other_expiry_s requote_after_s requote_tolerance_bps " +
       "order_expiry_days copy_per_buy_usd_micros copy_per_leader_day_usd_micros changed_at " +
-      "version",
+      "version pending pending_at",
   ),
   approval_modes: names("agent_id mode changed_by_surface changed_at version"),
   send_levels: names("agent_id level pending_level pending_at changed_at version"),

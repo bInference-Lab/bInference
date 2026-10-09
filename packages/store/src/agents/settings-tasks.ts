@@ -24,7 +24,7 @@ import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { toAgentRecord, toApprovalMode, toSendLevel } from "./agent-rows.js";
-import { limitsColumns, toLimitsRecord } from "./limits-rows.js";
+import { limitsColumns, pendingColumns, toLimitsRecord } from "./limits-rows.js";
 
 // A change names the row version it read: a missing row is `not_found`, another version `stale`.
 function versioned<Row extends { readonly version: number }>(
@@ -69,7 +69,7 @@ export const setApprovalModeTask: StoreTask<
   },
 });
 
-/** Sets an agent's limits under the version the changer read. */
+/** Sets an agent's limits and the ones that wait under the version the changer read. */
 export const setLimitsTask: StoreTask<
   LimitsChange,
   Result<LimitsRecord, "not_found" | "stale">
@@ -91,6 +91,7 @@ export const setLimitsTask: StoreTask<
     }
     const row = {
       ...limitsColumns(change.limits),
+      ...pendingColumns(change.pending),
       agent_id: change.agentId,
       changed_at: change.atMs,
       version: change.expectedVersion + 1,

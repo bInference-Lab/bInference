@@ -41,6 +41,10 @@ export interface LimitsTable {
   order_expiry_days: number;
   copy_per_buy_usd_micros: string;
   copy_per_leader_day_usd_micros: string;
+  /** The looser limits that wait, as JSON of the columns above; null when none wait. */
+  pending: string | null;
+  /** When the limits that wait apply; null when none wait. */
+  pending_at: number | null;
   changed_at: number;
   version: number;
 }

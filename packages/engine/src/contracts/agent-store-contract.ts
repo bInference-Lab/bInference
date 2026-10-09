@@ -134,6 +134,29 @@ async function setsLimits(store: AgentStore): Promise<void> {
   assert.deepEqual((await store.get(agentId, live()))?.limits, set.value);
 }
 
+async function keepsPendingLimits(store: AgentStore): Promise<void> {
+  await store.create(draft(1), live());
+  const agentId = draft(1).id;
+  const looser = { ...limits, perTradeUsdMicros: beyond64Bits, denyTokens: [] };
+  const pending = { values: looser, atMs: 90_000_000 };
+  const change = { agentId, limits, pending, atMs: 3_000, expectedVersion: 0 };
+  const set = await store.setLimits(change, live());
+  assert.deepEqual(set, {
+    ok: true,
+    value: { ...limits, agentId, pending, changedAtMs: 3_000, version: 1 },
+  });
+  assert.deepEqual((await store.get(agentId, live()))?.limits.pending, pending);
+  const dropped = await store.setLimits(
+    { agentId, limits, atMs: 4_000, expectedVersion: 1 },
+    live(),
+  );
+  assert.deepEqual(dropped, {
+    ok: true,
+    value: { ...limits, agentId, changedAtMs: 4_000, version: 2 },
+  });
+  assert.equal((await store.get(agentId, live()))?.limits.pending, undefined);
+}
+
 async function setsMode(store: AgentStore): Promise<void> {
   await store.create(draft(1), live());
   const agentId = draft(1).id;
@@ -250,6 +273,11 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
     checkOn("refuses an agent id or name in use", create, refusesTaken),
     checkOn("sets the approval mode under the version the changer read", create, setsApprovalMode),
     checkOn("sets limits under the version read, amounts beyond 64 bits exact", create, setsLimits),
+    checkOn(
+      "keeps looser limits that wait, and drops them when none do",
+      create,
+      keepsPendingLimits,
+    ),
     checkOn("sets the mode under the agent row's version the changer read", create, setsMode),
     checkOn(
       "sets the send level and its pending level under the version read",

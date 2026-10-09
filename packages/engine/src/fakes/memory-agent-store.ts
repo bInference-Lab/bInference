@@ -105,9 +105,11 @@ function setLimits(
   if (!found.ok) {
     return found;
   }
+  const { pending } = structuredClone(change);
   const limits = {
     ...structuredClone(change.limits),
     agentId: change.agentId,
+    ...(pending === undefined ? {} : { pending }),
     changedAtMs: change.atMs,
     version: change.expectedVersion + 1,
   };

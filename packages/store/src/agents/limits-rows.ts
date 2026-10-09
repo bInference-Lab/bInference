@@ -1,6 +1,11 @@
 import { chainRefSchema } from "@binference/chain";
 import { decimalStringSchema } from "@binference/core";
-import { type LimitsRecord, limitsRecordSchema, type LimitsValues } from "@binference/engine";
+import {
+  type LimitsRecord,
+  limitsRecordSchema,
+  type LimitsValues,
+  limitsValuesSchema,
+} from "@binference/engine";
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { LimitsTable } from "../databases/engine-tables.js";
@@ -11,8 +16,41 @@ const gasReserveColumn = z.array(
   z.strictObject({ chain: chainRefSchema, reserveBase: decimalStringSchema }),
 );
 
+// The looser limits that wait, as the record holds them.
+type PendingLimits = NonNullable<LimitsRecord["pending"]>;
+
 /** The `limits` columns that hold an agent's limits. */
-export type LimitsColumns = Omit<LimitsTable, "agent_id" | "changed_at" | "version">;
+export type LimitsColumns = Omit<
+  LimitsTable,
+  "agent_id" | "pending" | "pending_at" | "changed_at" | "version"
+>;
+
+const decimal = z.string();
+const count = z.int();
+
+// The pending column holds JSON of every limit that waits, as the limits columns hold them.
+const pendingColumn: z.ZodType<LimitsColumns> = z.strictObject({
+  per_trade_usd_micros: decimal,
+  rolling_day_usd_micros: decimal,
+  slippage_registry_bps: count,
+  slippage_other_bps: count,
+  price_impact_bps: count,
+  tax_bps: count,
+  liquidity_floor_usd_micros: decimal,
+  min_health_factor_bp: count,
+  gas_reserve: z.string(),
+  venues: z.string(),
+  allow_tokens: z.string(),
+  deny_tokens: z.string(),
+  model_budget_usd_micros: decimal,
+  card_trade_expiry_s: count,
+  card_other_expiry_s: count,
+  requote_after_s: count,
+  requote_tolerance_bps: count,
+  order_expiry_days: count,
+  copy_per_buy_usd_micros: decimal,
+  copy_per_leader_day_usd_micros: decimal,
+});
 
 /** An agent's limits as their columns store them. */
 export function limitsColumns(limits: LimitsValues): LimitsColumns {
@@ -40,10 +78,9 @@ export function limitsColumns(limits: LimitsValues): LimitsColumns {
   };
 }
 
-/** Reads one `limits` row as its record. */
-export function toLimitsRecord(row: Selectable<LimitsTable>): LimitsRecord {
-  return limitsRecordSchema.parse({
-    agentId: row.agent_id,
+// An agent's limits from their columns.
+function valuesOf(row: LimitsColumns) {
+  return {
     perTradeUsdMicros: readDecimal(row.per_trade_usd_micros),
     rollingDayUsdMicros: readDecimal(row.rolling_day_usd_micros),
     slippageRegistryBps: row.slippage_registry_bps,
@@ -64,6 +101,34 @@ export function toLimitsRecord(row: Selectable<LimitsTable>): LimitsRecord {
     orderExpiryDays: row.order_expiry_days,
     copyPerBuyUsdMicros: readDecimal(row.copy_per_buy_usd_micros),
     copyPerLeaderDayUsdMicros: readDecimal(row.copy_per_leader_day_usd_micros),
+  };
+}
+
+/** The columns that hold the looser limits that wait, null when none do. */
+export function pendingColumns(
+  pending: PendingLimits | undefined,
+): Pick<LimitsTable, "pending" | "pending_at"> {
+  return pending === undefined
+    ? { pending: null, pending_at: null }
+    : { pending: jsonText(limitsColumns(pending.values)), pending_at: pending.atMs };
+}
+
+// The looser limits a row holds, if any wait.
+function pendingOf(row: Selectable<LimitsTable>): PendingLimits | undefined {
+  if (row.pending === null || row.pending_at === null) {
+    return undefined;
+  }
+  const values = valuesOf(pendingColumn.parse(readJson(row.pending)));
+  return { values: limitsValuesSchema.parse(values), atMs: row.pending_at };
+}
+
+/** Reads one `limits` row as its record, with the looser limits that wait. */
+export function toLimitsRecord(row: Selectable<LimitsTable>): LimitsRecord {
+  const pending = pendingOf(row);
+  return limitsRecordSchema.parse({
+    agentId: row.agent_id,
+    ...valuesOf(row),
+    ...(pending === undefined ? {} : { pending }),
     changedAtMs: row.changed_at,
     version: row.version,
   });
