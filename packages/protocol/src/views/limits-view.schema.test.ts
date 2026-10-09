@@ -33,6 +33,12 @@ describe("limitsViewSchema", () => {
     expect(limitsViewSchema.safeParse(view).success).toBe(true);
     expect(limitsViewSchema.safeParse(withoutTax).success).toBe(false);
   });
+
+  it("takes the looser limits that wait, each a change with one time", () => {
+    const pending = { changes: { denyTokens: [] }, effectiveAt: view.changedAt + 86_400_000 };
+    expect(limitsViewSchema.safeParse({ ...view, pending }).success).toBe(true);
+    expect(limitsViewSchema.safeParse({ ...view, pending: { changes: {} } }).success).toBe(false);
+  });
 });
 
 describe("limitChangesSchema", () => {

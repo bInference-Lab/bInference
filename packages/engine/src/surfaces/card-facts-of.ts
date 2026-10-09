@@ -2,6 +2,7 @@ import type { AssetRef, ChainRegistry } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import type { QuoteView, SimulationView, SwapRequest } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
+import { limitsRecordAt } from "../agents/limits-in-effect.js";
 import type { CardCheck, CardFacts, CardRoute } from "../confirmations/draw-card.js";
 import type { CardRecord } from "../intents/card-record.js";
 import {
@@ -37,7 +38,12 @@ function routeOf(
         venue: first.venue,
         legs: quote.route,
         priceImpactBps: quote.priceImpactBps,
-        maxSlippageBps: swapSlippageBps(request, source.settings.limits, source.chains),
+        // The limits in effect when the card version opened, as its trade was quoted under them.
+        maxSlippageBps: swapSlippageBps(
+          request,
+          limitsRecordAt(source.settings.limits, source.card.openedAtMs),
+          source.chains,
+        ),
       };
 }
 

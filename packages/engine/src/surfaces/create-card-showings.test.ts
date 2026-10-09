@@ -1,9 +1,16 @@
-import { BinferenceError, type Bps, type Id } from "@binference/core";
+import { BinferenceError, type Bps, bpsSchema, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { CardRecord } from "../intents/card-record.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { expectOk, testCoin, testNowMs, testSwap, testToken } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testNowMs,
+  testSwap,
+  testToken,
+} from "../intents/test-intents.js";
 import {
   startTestEngine,
   type TestEngine,
@@ -12,6 +19,7 @@ import {
   testCallers,
   testChains,
 } from "../operations/test-engine.js";
+import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { AgentStore, IntentStore, RiskCheck } from "../ports.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { createCardShowings } from "./create-card-showings.js";
@@ -124,6 +132,21 @@ describe("the card showings", () => {
     const keys = showing.card.lines.map((line) => line.key);
     expect(keys).toContain("card.warn.paperEstimate");
     expect(keys).not.toContain("card.check");
+  });
+
+  it("show the slippage of the limits in effect when the card opened", async () => {
+    const test = await startTestEngine();
+    const changes = { slippageRegistryBps: bpsSchema.parse(80) };
+    expectOk(await test.engine.handlers["limit/set"](testCall({ agent: testAgent, changes })));
+    await test.clock.advance(looseningWaitMs);
+    const view = expectOk(
+      await test.engine.handlers["intent/propose"](testCall(testSwap(), testCallers.mcp)),
+    );
+    const [card] = await test.stores.intents.cards(view.intent, live);
+    const ref = { intent: view.intent, card: present(card).id };
+    const showing = present(await showingsOf(test).opened(ref, live));
+    const route = showing.card.lines.find((line) => line.key === "card.route");
+    expect(route?.values).toMatchObject({ slippage: { type: "percent", bps: 80 } });
   });
 
   it("say on a live agent's first card that it trades real money", async () => {

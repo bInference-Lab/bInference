@@ -38,6 +38,8 @@ export interface LimitOperationShapes {
     readonly args: AgentArgs & { readonly changes: LimitChanges };
     readonly result: LimitsView;
   };
+  /** Drops the looser limits that wait; the limits in effect stay. */
+  readonly "limit/cancelPending": { readonly args: AgentArgs; readonly result: LimitsView };
   readonly "sendLevel/get": { readonly args: AgentArgs; readonly result: SendLevelView };
   readonly "sendLevel/set": {
     readonly args: AgentArgs & { readonly level: SendLevel };
@@ -79,6 +81,13 @@ export const limitOperations: OperationTable<LimitOperationShapes> = {
     scope: "confirm",
     scopeCase: { scope: "loosen", when: "looser" },
     args: z.strictObject({ agent, changes: limitChangesSchema }),
+    result: limitsViewSchema,
+  },
+  "limit/cancelPending": {
+    ...writeFlags,
+    name: "limit/cancelPending",
+    scope: "confirm",
+    args: agentArgsSchema,
     result: limitsViewSchema,
   },
   "sendLevel/get": {

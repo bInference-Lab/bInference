@@ -67,6 +67,11 @@ const valuesShape = {
 /** Parses an agent's limits. */
 export const limitsValuesSchema: z.ZodType<LimitsValues> = z.strictObject(valuesShape);
 
+/** The limits of an agent alone, out of a record that holds more. */
+export function limitsValuesOf(record: LimitsValues): LimitsValues {
+  return z.object(valuesShape).parse(record);
+}
+
 /**
  * Looser limits that wait for their time (decision 0111): every limit as it will be from `atMs`,
  * which the store keeps as they were asked. Read the limits in effect through `limitsAt`.

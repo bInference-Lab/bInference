@@ -20178,6 +20178,119 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "pending": {
+              "type": "object",
+              "properties": {
+                "changes": {
+                  "type": "object",
+                  "properties": {
+                    "perTradeUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "rollingDayUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "slippageRegistryBps": {
+                      "type": "number"
+                    },
+                    "slippageOtherBps": {
+                      "type": "number"
+                    },
+                    "priceImpactBps": {
+                      "type": "number"
+                    },
+                    "taxBps": {
+                      "type": "number"
+                    },
+                    "liquidityFloorUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "minHealthFactorBps": {
+                      "type": "integer",
+                      "minimum": 10000,
+                      "maximum": 9007199254740991
+                    },
+                    "gasReserve": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "venues": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                      }
+                    },
+                    "allowTokens": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "denyTokens": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "modelBudgetUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "cardTradeExpirySeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "cardOtherExpirySeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "requoteAfterSeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "requoteToleranceBps": {
+                      "type": "number"
+                    },
+                    "orderExpiryDays": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "copyPerBuyUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "copyPerLeaderDayUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "effectiveAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "changes",
+                "effectiveAt"
+              ]
             }
           },
           "required": [
@@ -20482,6 +20595,432 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "pending": {
+              "type": "object",
+              "properties": {
+                "changes": {
+                  "type": "object",
+                  "properties": {
+                    "perTradeUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "rollingDayUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "slippageRegistryBps": {
+                      "type": "number"
+                    },
+                    "slippageOtherBps": {
+                      "type": "number"
+                    },
+                    "priceImpactBps": {
+                      "type": "number"
+                    },
+                    "taxBps": {
+                      "type": "number"
+                    },
+                    "liquidityFloorUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "minHealthFactorBps": {
+                      "type": "integer",
+                      "minimum": 10000,
+                      "maximum": 9007199254740991
+                    },
+                    "gasReserve": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "venues": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                      }
+                    },
+                    "allowTokens": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "denyTokens": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "modelBudgetUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "cardTradeExpirySeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "cardOtherExpirySeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "requoteAfterSeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "requoteToleranceBps": {
+                      "type": "number"
+                    },
+                    "orderExpiryDays": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "copyPerBuyUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "copyPerLeaderDayUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "effectiveAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "changes",
+                "effectiveAt"
+              ]
+            }
+          },
+          "required": [
+            "perTradeUsdMicros",
+            "rollingDayUsdMicros",
+            "slippageRegistryBps",
+            "slippageOtherBps",
+            "priceImpactBps",
+            "taxBps",
+            "liquidityFloorUsdMicros",
+            "minHealthFactorBps",
+            "gasReserve",
+            "venues",
+            "allowTokens",
+            "denyTokens",
+            "modelBudgetUsdMicros",
+            "cardTradeExpirySeconds",
+            "cardOtherExpirySeconds",
+            "requoteAfterSeconds",
+            "requoteToleranceBps",
+            "orderExpiryDays",
+            "copyPerBuyUsdMicros",
+            "copyPerLeaderDayUsdMicros",
+            "agent",
+            "changedAt"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/limit/cancelPending": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "limit/cancelPending"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
+          "required": [
+            "agent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "confirm",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/limit/cancelPending": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "perTradeUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
+            "rollingDayUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
+            "slippageRegistryBps": {
+              "type": "number"
+            },
+            "slippageOtherBps": {
+              "type": "number"
+            },
+            "priceImpactBps": {
+              "type": "number"
+            },
+            "taxBps": {
+              "type": "number"
+            },
+            "liquidityFloorUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
+            "minHealthFactorBps": {
+              "type": "integer",
+              "minimum": 10000,
+              "maximum": 9007199254740991
+            },
+            "gasReserve": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^(?:0|[1-9]\\d{0,77})$"
+              }
+            },
+            "venues": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,31}$"
+              }
+            },
+            "allowTokens": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "denyTokens": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "modelBudgetUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
+            "cardTradeExpirySeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "cardOtherExpirySeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "requoteAfterSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "requoteToleranceBps": {
+              "type": "number"
+            },
+            "orderExpiryDays": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "copyPerBuyUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
+            "copyPerLeaderDayUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "changedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "pending": {
+              "type": "object",
+              "properties": {
+                "changes": {
+                  "type": "object",
+                  "properties": {
+                    "perTradeUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "rollingDayUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "slippageRegistryBps": {
+                      "type": "number"
+                    },
+                    "slippageOtherBps": {
+                      "type": "number"
+                    },
+                    "priceImpactBps": {
+                      "type": "number"
+                    },
+                    "taxBps": {
+                      "type": "number"
+                    },
+                    "liquidityFloorUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "minHealthFactorBps": {
+                      "type": "integer",
+                      "minimum": 10000,
+                      "maximum": 9007199254740991
+                    },
+                    "gasReserve": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "venues": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                      }
+                    },
+                    "allowTokens": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "denyTokens": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "modelBudgetUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "cardTradeExpirySeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "cardOtherExpirySeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "requoteAfterSeconds": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "requoteToleranceBps": {
+                      "type": "number"
+                    },
+                    "orderExpiryDays": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "copyPerBuyUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    },
+                    "copyPerLeaderDayUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "effectiveAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "changes",
+                "effectiveAt"
+              ]
             }
           },
           "required": [

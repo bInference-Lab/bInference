@@ -340,19 +340,25 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 
 ### 7.6 Limits, send levels and the address book
 
-| Operation                 | Scope                                                | Write | Args → result                                                                                                            |
-| ------------------------- | ---------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------ |
-| `limit/get`               | `read`                                               |       | `{ agent }` → `LimitsView` ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28))                                 |
-| `limit/set`               | `confirm` if every change is stricter, else `loosen` | ✓     | `{ agent, changes }` → `LimitsView`; never past the ceiling                                                              |
-| `sendLevel/get`           | `read`                                               |       | `{ agent }` → `{ level, pending? }`                                                                                      |
-| `sendLevel/set`           | `confirm` if stricter, else `loosen`                 | ✓     | `{ agent, level }` → `{ level, pending? }`; looser waits 24 hours                                                        |
-| `sendLevel/cancelPending` | `confirm`                                            | ✓     | `{ agent }` → `{ level }`                                                                                                |
-| `address/list`            | `read`                                               |       | `{ agent }` → entries with `usableAt`                                                                                    |
-| `address/add`             | `admin`, local                                       | ✓     | `{ agent, chain, address, label, ownerKey }` → entry; also saved in the ceiling ([decision 0091](../DECISIONS.md#d0091)) |
-| `address/remove`          | `confirm`                                            | ✓     | `{ entry }` → `{}`                                                                                                       |
+| Operation                 | Scope                                                | Write | Args → result                                                                                                                      |
+| ------------------------- | ---------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `limit/get`               | `read`                                               |       | `{ agent }` → `LimitsView` with `pending?` ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28))                           |
+| `limit/set`               | `confirm` if every change is stricter, else `loosen` | ✓     | `{ agent, changes }` → `LimitsView`; looser changes wait 24 hours; never past the ceiling ([decision 0111](../DECISIONS.md#d0111)) |
+| `limit/cancelPending`     | `confirm`                                            | ✓     | `{ agent }` → `LimitsView`                                                                                                         |
+| `sendLevel/get`           | `read`                                               |       | `{ agent }` → `{ level, pending? }`                                                                                                |
+| `sendLevel/set`           | `confirm` if stricter, else `loosen`                 | ✓     | `{ agent, level }` → `{ level, pending? }`; looser waits 24 hours                                                                  |
+| `sendLevel/cancelPending` | `confirm`                                            | ✓     | `{ agent }` → `{ level }`                                                                                                          |
+| `address/list`            | `read`                                               |       | `{ agent }` → entries with `usableAt`                                                                                              |
+| `address/add`             | `admin`, local                                       | ✓     | `{ agent, chain, address, label, ownerKey }` → entry; also saved in the ceiling ([decision 0091](../DECISIONS.md#d0091))           |
+| `address/remove`          | `confirm`                                            | ✓     | `{ entry }` → `{}`                                                                                                                 |
 
-The engine decides what is stricter: a lower cap, a lower slippage, a smaller allow list, a larger
-deny list, a higher health factor, a higher send level, a larger gas reserve.
+The engine decides what is stricter, and only a clearly stricter change applies at once: a lower
+cap, slippage, impact, tax or time, a higher liquidity floor or health factor, fewer venues, an
+allow list that keeps only tokens it listed (never an empty one, which allows every token), a deny
+list that keeps every token it listed, a larger gas reserve on every chain, a higher send level.
+Every other change is a loosening, which waits 24 hours, is announced on every surface and can be
+cancelled. A venue that a live wallet's ceiling leaves out is `limit.over_ceiling`: only the owner
+key adds it to the ceiling ([decision 0111](../DECISIONS.md#d0111)).
 
 <a id="section-7-7"></a>
 

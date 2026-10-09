@@ -153,7 +153,12 @@ export type {
 } from "./views/intent-view.schema.js";
 export type { JobRef } from "./views/job-ref.schema.js";
 export { limitChangesSchema, limitsViewSchema } from "./views/limits-view.schema.js";
-export type { LimitChanges, LimitSettings, LimitsView } from "./views/limits-view.schema.js";
+export type {
+  LimitChanges,
+  LimitSettings,
+  LimitsView,
+  PendingLimitsView,
+} from "./views/limits-view.schema.js";
 export { orderStateSchema, orderViewSchema } from "./views/order-view.schema.js";
 export type { OrderFillView, OrderState, OrderView } from "./views/order-view.schema.js";
 export { portfolioViewSchema } from "./views/portfolio-view.schema.js";

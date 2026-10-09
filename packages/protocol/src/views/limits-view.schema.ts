@@ -33,17 +33,26 @@ export interface LimitSettings {
   readonly copyPerLeaderDayUsdMicros: bigint;
 }
 
-/** An agent's limits as `limit/get` answers them. */
+/**
+ * What `limit/set` changes; absent fields stay. Each change is braking or loosening on its own,
+ * and the engine never moves a limit past the ceiling. A `gasReserve` names only the chains whose
+ * reserve changes.
+ */
+export type LimitChanges = Partial<LimitSettings>;
+
+/** Looser limits that wait 24 hours before they apply, all from the same moment. */
+export interface PendingLimitsView {
+  /** Each limit that waits, at the value it takes then. */
+  readonly changes: LimitChanges;
+  readonly effectiveAt: number;
+}
+
+/** An agent's limits in effect as `limit/get` answers them, and looser ones that wait. */
 export interface LimitsView extends LimitSettings {
   readonly agent: ProtocolId<"agent">;
   readonly changedAt: number;
+  readonly pending?: PendingLimitsView;
 }
-
-/**
- * What `limit/set` changes; absent fields stay. Each change is braking or loosening on its own,
- * and the engine never moves a limit past the ceiling.
- */
-export type LimitChanges = Partial<LimitSettings>;
 
 const seconds = z.int().min(1);
 
@@ -74,7 +83,10 @@ const settingsShape = {
 /** Parses the changes of `limit/set`. Unknown fields are refused. */
 export const limitChangesSchema: z.ZodType<LimitChanges> = z.strictObject(settingsShape);
 
+const pendingSchema = z.object({ changes: limitChangesSchema, effectiveAt: epochMsSchema });
+
 /** Parses a limits view. */
 export const limitsViewSchema: z.ZodType<LimitsView> = z
   .object({ ...settingsShape, agent: protocolIdSchema("agent"), changedAt: epochMsSchema })
-  .required();
+  .required()
+  .extend({ pending: pendingSchema.exactOptional() });

@@ -115,11 +115,11 @@ function isLimitName(name: string): name is LimitName {
   return Object.hasOwn(comparisons, name);
 }
 
-// Every limit, in the order `LimitsValues` names them.
-const limitNames: readonly LimitName[] = Object.keys(comparisons).filter(isLimitName);
+/** Every limit, in the order `LimitsValues` names them. */
+export const limitNames: readonly LimitName[] = Object.keys(comparisons).filter(isLimitName);
 
-// Whether two sets of limits allow and refuse the same.
-function isSameLimits(left: LimitsValues, right: LimitsValues): boolean {
+/** Whether two sets of limits allow and refuse the same. */
+export function isSameLimits(left: LimitsValues, right: LimitsValues): boolean {
   return limitNames.every((name) => comparisons[name].isSame(left, right));
 }
 

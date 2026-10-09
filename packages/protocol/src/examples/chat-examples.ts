@@ -44,8 +44,13 @@ export const limitExamples: { readonly [N in keyof LimitOperationShapes]: WireEx
   "limit/get": { args: { agent: ids.agent }, result: limits },
   "limit/set": {
     args: { agent: ids.agent, changes: { perTradeUsdMicros: "50000000", denyTokens: [] } },
-    result: limits,
+    result: {
+      ...limits,
+      perTradeUsdMicros: "50000000",
+      pending: { changes: { denyTokens: [] }, effectiveAt: at + 86_400_000 },
+    },
   },
+  "limit/cancelPending": { args: { agent: ids.agent }, result: limits },
   "sendLevel/get": {
     args: { agent: ids.agent },
     result: { level: 2, pending: { level: 1, effectiveAt: at + 86_400_000 } },

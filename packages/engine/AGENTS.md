@@ -107,6 +107,14 @@ Rules for this package:
   a stored level takes the level in effect through `sendLevelAt`, never the row's `level` alone.
   Each change is journaled, pushed as `config/changed`, and announced: a moved level as the
   `notice.sendLevel` notice, a looser level gone before its time as `notice.sendLevelCancelled`.
+- An agent's limits (`src/limits/`) change only through `limit/set` and `limit/cancelPending`,
+  which decide with `moveLimits` (`src/policy/limit-change.ts`, decision 0111): a clearly stricter
+  value applies at once with `confirm`, every other change needs `loosen` and waits 24 hours in
+  `pending_limits`. `createEngine` wraps the agent store in `withLimitsInEffect`, so every part
+  reads the limits in effect, waiting ones folded in at their time; a venue added while a live
+  wallet's ceiling leaves its contracts out is `limit.over_ceiling`. Each move is journaled, pushed
+  as `config/changed`, and announced per limit as `notice.limitChange` and
+  `notice.limitChangeCancelled`.
 - The address book lives in the agent's settings: the policy reads every live entry, on every
   chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers

@@ -4,6 +4,7 @@ import {
   type AddressBookHandlers,
   createAddressBookHandlers,
 } from "../address-book/address-book-handlers.js";
+import { withLimitsInEffect } from "../agents/limits-in-effect.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
@@ -65,8 +66,8 @@ export interface EngineHandlers
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
  * switch, the approval mode, the limits, the send level, the address book, the rescue address
- * change, the wallet list and the ledger, built from ports. It holds no I/O of its own; pushes
- * leave through `publish`.
+ * change, the wallet list and the ledger, built from ports. A looser limit, send level or rescue
+ * address waits 24 hours. It holds no I/O of its own; pushes leave through `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -240,7 +241,10 @@ function intentParts(
  * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
  * confirmed quote in the paper portfolio; a confirmed live one goes to the executor.
  */
-export function createEngine(options: EngineOptions): Engine {
+export function createEngine(given: EngineOptions): Engine {
+  // Every part reads an agent's limits as they are in effect now (decision 0111).
+  const agents = withLimitsInEffect(given.stores.agents, given.clock);
+  const options = { ...given, stores: { ...given.stores, agents } };
   const paper = paperParts(options);
   const intents = intentParts(options, paper);
   const rescueParts = {
@@ -262,7 +266,11 @@ export function createEngine(options: EngineOptions): Engine {
       ...createLedgerHandlers(options.stores.ledger),
       ...settingsHandlers(options, paper),
       ...createApprovalHandlers(settingsParts),
-      ...createLimitHandlers(settingsParts),
+      ...createLimitHandlers({
+        ...settingsParts,
+        install: options.stores.install,
+        chains: options.chains,
+      }),
       ...createSendLevelHandlers(settingsParts),
       ...createAddressBookHandlers(settingsParts),
       ...createRescueAddressHandlers({
