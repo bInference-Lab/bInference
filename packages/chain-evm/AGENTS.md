@@ -17,6 +17,9 @@ Rules for this package:
   viem clients ride on `createRpcFailover` through `createEvmClient`.
 - The failover reads. It refuses `eth_send*`, `eth_sign*`, `personal_*` and `wallet_*`, so a retried
   send can never reach a public node; sends go through the private relays.
+- A node that pruned the state a read needs is a `missing_state` fault, not a failure: the read
+  moves on, and once every endpoint pruned it, it fails as `chain.state_missing`, which no retry
+  mends. Only the owner's tracing RPC answers then (decision 0108).
 - The relay sender (`src/sending/`) sends each signed transaction to every relay at once, once,
   each request with its own timeout. A relay's error becomes a `RelayRefusal` by its code or its
   documented text (`relay-refusal.ts` cites each source); the text itself goes nowhere. A new

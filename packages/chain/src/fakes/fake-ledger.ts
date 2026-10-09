@@ -38,6 +38,13 @@ export interface FakeLedger {
   nextNonce(account: AccountRef): number;
   /** How many of an account's transactions the blocks up to and including `block` hold. */
   nonceAt(account: AccountRef, block: bigint): number;
+  /**
+   * The native coin an account's transactions that ran in a block received without a log, or
+   * `undefined` once the state before the block is forgotten.
+   */
+  nativeReceived(account: AccountRef, block: bigint): bigint | undefined;
+  /** Forgets the state of every block below `block`, as a node that prunes old state does. */
+  forgetStateBelow(block: bigint): void;
 }
 
 /** What a fake ledger is made of. */
@@ -49,6 +56,8 @@ export interface FakeLedgerOptions {
   readonly reverting: ReadonlySet<string>;
   /** What a transaction that ran moved, by what it was sent as; nothing when absent. */
   readonly transfersOf?: (sent: FakeSent) => readonly AssetTransfer[];
+  /** The native coin a transaction that ran received without a log; none when absent. */
+  readonly nativeReceivedOf?: (sent: FakeSent) => bigint;
 }
 
 const gasUsed = 21_000n;
@@ -143,10 +152,25 @@ function transfersOf(state: LedgerState, hash: TxHash): readonly AssetTransfer[]
   return isReverted ? [] : (state.options.transfersOf?.(held.sent) ?? []);
 }
 
+// What the account's transactions that ran in the block received; the block before must be known.
+function nativeReceived(
+  state: LedgerState,
+  query: { readonly account: AccountRef; readonly block: bigint; readonly forgotten: bigint },
+): bigint | undefined {
+  if (query.block - 1n < query.forgotten) {
+    return undefined;
+  }
+  return [...state.mined.values()]
+    .filter(({ sent, receipt }) => sent.account === query.account && receipt.status === "success")
+    .filter(({ receipt }) => receipt.block.number === query.block)
+    .reduce((sum, { sent }) => sum + (state.options.nativeReceivedOf?.(sent) ?? 0n), 0n);
+}
+
 /** Creates an empty {@link FakeLedger} at block 0. */
 export function createFakeLedger(options: FakeLedgerOptions): FakeLedger {
   const state: LedgerState = { options, pooled: new Map(), mined: new Map(), nonces: new Map() };
   let latest = 0n;
+  let forgotten = 0n;
   return {
     chain: options.chain,
     pool(sent) {
@@ -173,5 +197,9 @@ export function createFakeLedger(options: FakeLedgerOptions): FakeLedger {
     }),
     nextNonce: (account) => nextOf(state, account),
     nonceAt: (account, block) => nonceAt(state, account, block),
+    nativeReceived: (account, block) => nativeReceived(state, { account, block, forgotten }),
+    forgetStateBelow(block) {
+      forgotten = block;
+    },
   };
 }

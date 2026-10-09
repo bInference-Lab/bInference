@@ -55,6 +55,8 @@ function failingTransfers(failures: number): (network: FakeNetwork) => ReceiptRe
       head: async (chain, options) => network.head(chain, options),
       receipt: async (chain, hash, options) => network.receipt(chain, hash, options),
       nonceAt: async (account, block, options) => network.nonceAt(account, block, options),
+      nativeReceived: async (account, block, options) =>
+        network.nativeReceived(account, block, options),
       async transfers(chain, hash, options) {
         if (left > 0) {
           left -= 1;

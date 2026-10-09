@@ -119,15 +119,16 @@ accepted decision's text from changing.
 
 Each record file has one row here, in number order.
 
-| No.                    | Title                                             | Status   | Record                                                                                                                         |
-| ---------------------- | ------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| <a id="d0098"></a>0098 | Declare exported types before their schemas       | Accepted | [adr/0098-declare-exported-types-before-their-schemas.md](adr/0098-declare-exported-types-before-their-schemas.md)             |
-| <a id="d0099"></a>0099 | A freeze leaves a pending rescue                  | Accepted | [adr/0099-a-freeze-leaves-a-pending-rescue.md](adr/0099-a-freeze-leaves-a-pending-rescue.md)                                   |
-| <a id="d0100"></a>0100 | A rescue in paper mode moves real funds           | Accepted | [adr/0100-a-rescue-in-paper-mode-moves-real-funds.md](adr/0100-a-rescue-in-paper-mode-moves-real-funds.md)                     |
-| <a id="d0101"></a>0101 | A denied token is sold only with a tap            | Accepted | [adr/0101-a-denied-token-is-sold-only-with-a-tap.md](adr/0101-a-denied-token-is-sold-only-with-a-tap.md)                       |
-| <a id="d0102"></a>0102 | A network fee above its cap asks the owner        | Accepted | [adr/0102-a-network-fee-above-its-cap-asks-the-owner.md](adr/0102-a-network-fee-above-its-cap-asks-the-owner.md)               |
-| <a id="d0103"></a>0103 | The engine runs locked until the agent key opens  | Accepted | [adr/0103-the-engine-runs-locked-until-the-agent-key-opens.md](adr/0103-the-engine-runs-locked-until-the-agent-key-opens.md)   |
-| <a id="d0104"></a>0104 | binference unlock sends the passphrase over IPC   | Accepted | [adr/0104-binference-unlock-sends-the-passphrase-over-ipc.md](adr/0104-binference-unlock-sends-the-passphrase-over-ipc.md)     |
-| <a id="d0105"></a>0105 | OKX is the second quote through a thin client     | Accepted | [adr/0105-okx-is-the-second-quote-through-a-thin-client.md](adr/0105-okx-is-the-second-quote-through-a-thin-client.md)         |
-| <a id="d0106"></a>0106 | A Permit2 approval is its own checked step        | Accepted | [adr/0106-a-permit2-approval-is-its-own-checked-step.md](adr/0106-a-permit2-approval-is-its-own-checked-step.md)               |
-| <a id="d0107"></a>0107 | The simulation picks the best quote across venues | Accepted | [adr/0107-the-simulation-picks-the-best-quote-across-venues.md](adr/0107-the-simulation-picks-the-best-quote-across-venues.md) |
+| No.                    | Title                                                 | Status   | Record                                                                                                                                 |
+| ---------------------- | ----------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| <a id="d0098"></a>0098 | Declare exported types before their schemas           | Accepted | [adr/0098-declare-exported-types-before-their-schemas.md](adr/0098-declare-exported-types-before-their-schemas.md)                     |
+| <a id="d0099"></a>0099 | A freeze leaves a pending rescue                      | Accepted | [adr/0099-a-freeze-leaves-a-pending-rescue.md](adr/0099-a-freeze-leaves-a-pending-rescue.md)                                           |
+| <a id="d0100"></a>0100 | A rescue in paper mode moves real funds               | Accepted | [adr/0100-a-rescue-in-paper-mode-moves-real-funds.md](adr/0100-a-rescue-in-paper-mode-moves-real-funds.md)                             |
+| <a id="d0101"></a>0101 | A denied token is sold only with a tap                | Accepted | [adr/0101-a-denied-token-is-sold-only-with-a-tap.md](adr/0101-a-denied-token-is-sold-only-with-a-tap.md)                               |
+| <a id="d0102"></a>0102 | A network fee above its cap asks the owner            | Accepted | [adr/0102-a-network-fee-above-its-cap-asks-the-owner.md](adr/0102-a-network-fee-above-its-cap-asks-the-owner.md)                       |
+| <a id="d0103"></a>0103 | The engine runs locked until the agent key opens      | Accepted | [adr/0103-the-engine-runs-locked-until-the-agent-key-opens.md](adr/0103-the-engine-runs-locked-until-the-agent-key-opens.md)           |
+| <a id="d0104"></a>0104 | binference unlock sends the passphrase over IPC       | Accepted | [adr/0104-binference-unlock-sends-the-passphrase-over-ipc.md](adr/0104-binference-unlock-sends-the-passphrase-over-ipc.md)             |
+| <a id="d0105"></a>0105 | OKX is the second quote through a thin client         | Accepted | [adr/0105-okx-is-the-second-quote-through-a-thin-client.md](adr/0105-okx-is-the-second-quote-through-a-thin-client.md)                 |
+| <a id="d0106"></a>0106 | A Permit2 approval is its own checked step            | Accepted | [adr/0106-a-permit2-approval-is-its-own-checked-step.md](adr/0106-a-permit2-approval-is-its-own-checked-step.md)                       |
+| <a id="d0107"></a>0107 | The simulation picks the best quote across venues     | Accepted | [adr/0107-the-simulation-picks-the-best-quote-across-venues.md](adr/0107-the-simulation-picks-the-best-quote-across-venues.md)         |
+| <a id="d0108"></a>0108 | Native coin a trade received is read from the balance | Accepted | [adr/0108-native-coin-a-trade-received-is-read-from-the-balance.md](adr/0108-native-coin-a-trade-received-is-read-from-the-balance.md) |

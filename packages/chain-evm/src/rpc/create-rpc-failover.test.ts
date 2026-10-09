@@ -188,6 +188,35 @@ describe("rpc failover", () => {
     });
   });
 
+  it("asks the next endpoint when one pruned the state, and keeps the pruned one healthy", async () => {
+    const pruned = fakeRpcNode(() => ({
+      error: { code: -32_000, message: "missing trie node 7f3a (path ) state is not available" },
+    }));
+    const { rpc, chainId } = setup({ [primary]: pruned, [secondary]: chainIdNode });
+    await expect(chainId()).resolves.toStrictEqual(fromSecondary);
+    expect(rpc.health()[0]).toStrictEqual({ name: "primary" });
+  });
+
+  it("rejects with state_missing, not retryable, once every endpoint pruned the state", async () => {
+    const pruned = fakeRpcNode(() => ({
+      error: { code: -32_000, message: "historical state 0x9a2c is not available" },
+    }));
+    const { chainId } = setup({ [primary]: pruned, [secondary]: pruned });
+    await expect(chainId()).rejects.toMatchObject({
+      code: "chain.state_missing",
+      retryable: false,
+      details: { method: "eth_chainId", endpoints: 2 },
+    });
+  });
+
+  it("rejects with rpc_down when one endpoint pruned the state and another is down", async () => {
+    const pruned = fakeRpcNode(() => ({
+      error: { code: -32_000, message: "state not available" },
+    }));
+    const { chainId } = setup({ [primary]: pruned, [secondary]: "refuse" });
+    await expect(chainId()).rejects.toMatchObject({ code: "chain.rpc_down" });
+  });
+
   it("stops on the caller's abort without asking another endpoint", async () => {
     const { chainId, asked } = setup({ [primary]: "hang", [secondary]: chainIdNode });
     const controller = new AbortController();

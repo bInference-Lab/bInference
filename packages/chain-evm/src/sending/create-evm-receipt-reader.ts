@@ -15,12 +15,18 @@ import { requestResult } from "../rpc/request-result.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { accountAddressOn } from "./account-address-on.js";
 import { readEvmTransfers } from "./read-evm-transfers.js";
+import { readNativeReceived } from "./read-native-received.js";
 
 /** What the EVM receipt reader reads: one chain through its RPC failover, by its finality rule. */
 export interface EvmReceiptReaderOptions {
   readonly rpc: RpcFailover;
   readonly chain: EvmChain;
   readonly finality: FinalityRule;
+  /**
+   * The owner's node that answers `debug_traceTransaction`, asked for the native coin a wallet
+   * received only once every node of `rpc` pruned the block's state (decision 0108).
+   */
+  readonly tracer?: RpcFailover;
 }
 
 const hash32Schema = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
@@ -83,7 +89,9 @@ async function finalBlock(
  * `eth_blockNumber`, and the final block by the chain's rule: the `finalized` tag, or the latest
  * block less its confirmations. A hash no block holds reads as no receipt. Transfers are the
  * transaction's own value and its receipt's ERC-20 `Transfer` logs; the nonce at a block is
- * `eth_getTransactionCount` at that block. A chain it does not read is a fault.
+ * `eth_getTransactionCount` at that block; the native coin a wallet received in a block is its
+ * balance change with its own transactions' fees and values counted back, or the tracer's call
+ * frames once the state is pruned. A chain it does not read is a fault.
  */
 export function createEvmReceiptReader(options: EvmReceiptReaderOptions): ReceiptReader {
   const { rpc, chain } = options;
@@ -123,6 +131,10 @@ export function createEvmReceiptReader(options: EvmReceiptReaderOptions): Receip
         result: nonceCountSchema,
         signal,
       });
+    },
+    async nativeReceived(account, block, { signal }) {
+      signal.throwIfAborted();
+      return readNativeReceived(options, { account, block }, signal);
     },
   };
 }

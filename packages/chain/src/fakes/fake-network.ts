@@ -24,6 +24,8 @@ export interface FakeNetwork extends TxPreparer, RelaySender, ReceiptReader, Non
   mine(count?: number): void;
   /** Takes a transaction out of its block, as a reorg would. */
   reorg(hash: TxHash): void;
+  /** Forgets the state of every block below `block`, as a node that prunes old state does. */
+  forgetStateBelow(block: bigint): void;
   /** Makes the next `count` reads of receipts or the head fail, as a node that is down. */
   failReads(count: number): void;
   /** Sets the fee per gas the next drafts are prepared with. */
@@ -48,6 +50,8 @@ export interface FakeNetworkOptions {
   readonly reverting?: readonly string[];
   /** What a transaction that ran moved, by what it was sent as; nothing when absent. */
   readonly transfers?: (sent: FakeSent) => readonly AssetTransfer[];
+  /** The native coin a transaction that ran received without a log; none when absent. */
+  readonly nativeReceived?: (sent: FakeSent) => bigint;
 }
 
 const defaultFee = 50_000_000n;
@@ -206,6 +210,12 @@ function readersOf(state: NetworkState): ReceiptReader & NonceSource {
       state.dials.read();
       return await Promise.resolve(state.ledger.nonceAt(account, block));
     },
+    async nativeReceived(account, block, { signal }) {
+      signal.throwIfAborted();
+      state.dials.read();
+      const received = state.ledger.nativeReceived(account, block);
+      return await Promise.resolve(received === undefined ? err("state_gone") : ok(received));
+    },
     async next(account, { signal }) {
       signal.throwIfAborted();
       return await Promise.resolve(state.ledger.nextNonce(account));
@@ -235,6 +245,7 @@ export function createFakeNetwork(options: FakeNetworkOptions): FakeNetwork {
     finalityDepth: options.finalityDepth ?? 2n,
     reverting: new Set(options.reverting ?? []),
     ...(options.transfers === undefined ? {} : { transfersOf: options.transfers }),
+    ...(options.nativeReceived === undefined ? {} : { nativeReceivedOf: options.nativeReceived }),
   });
   const dials = createDials();
   const state: NetworkState = {
@@ -263,6 +274,9 @@ export function createFakeNetwork(options: FakeNetworkOptions): FakeNetwork {
     },
     reorg(hash) {
       ledger.reorg(hash);
+    },
+    forgetStateBelow(block) {
+      ledger.forgetStateBelow(block);
     },
     setFeePerGas: dials.setFeePerGas,
     failReads: dials.failReads,

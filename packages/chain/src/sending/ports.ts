@@ -67,9 +67,9 @@ export interface ReceiptReader {
   /**
    * The native coin and token transfers a transaction a block holds made, in order, as its family
    * reads them from the transaction and its receipt's logs, or `undefined` while no block holds
-   * it. The fee is never among them. A transfer the family cannot read from those (such as native
-   * coin an inner call sends on an EVM chain) is missing, so a caller compares the result with
-   * what it expected. Rejects as `receipt` does.
+   * it. The fee is never among them. Native coin that reaches the sender without a log (an inner
+   * call's value on an EVM chain) is not among them: `nativeReceived` reads it. Rejects as
+   * `receipt` does.
    */
   transfers(
     chain: ChainRef,
@@ -86,4 +86,16 @@ export interface ReceiptReader {
     block: bigint,
     options: { readonly signal: AbortSignal },
   ): Promise<number>;
+  /**
+   * The native coin that reached the account in a block without a log (decision 0108): its
+   * balance after the block less its balance before, with what its own transactions in the block
+   * paid counted back, their fees and the values of those that ran. `state_gone` when no node it
+   * reads still holds the state that needs, and no tracing node can say instead. Rejects as
+   * `receipt` does.
+   */
+  nativeReceived(
+    account: AccountRef,
+    block: bigint,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<bigint, "state_gone">>;
 }

@@ -50,7 +50,9 @@ export type RpcReply<T> = RpcResultReply<T> | RpcErrorReply;
  * - `rate_limited`: HTTP 429, or 403, which BNB Chain's public nodes send for bursts;
  * - `bad_status`: another HTTP status outside 2xx;
  * - `malformed`: an answer that is not a JSON-RPC reply, or a result that fails its schema;
- * - `node_error`: a JSON-RPC error that says the node, not the call, failed.
+ * - `node_error`: a JSON-RPC error that says the node, not the call, failed;
+ * - `missing_state`: a JSON-RPC error that says the node no longer holds the state the call reads,
+ *   such as an old block's a node that prunes has dropped. The node stays healthy.
  */
 export type RpcFault =
   | "timeout"
@@ -58,7 +60,8 @@ export type RpcFault =
   | "rate_limited"
   | "bad_status"
   | "malformed"
-  | "node_error";
+  | "node_error"
+  | "missing_state";
 
 /** One endpoint's state, for health signals. */
 export interface EndpointHealth {

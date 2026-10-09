@@ -6,7 +6,7 @@ import {
   type HttpResponse,
 } from "@binference/core";
 import { type JsonRpcError, readJsonRpcReply } from "./json-rpc-reply.schema.js";
-import { isNodeFault } from "./node-fault.js";
+import { isMissingState, isNodeFault } from "./node-fault.js";
 import type { RpcCall, RpcEndpoint, RpcErrorReply, RpcFault, RpcReply } from "./rpc-call.js";
 
 /** What one endpoint gave a call: a reply, or a failure that sends the call on. */
@@ -41,6 +41,9 @@ function isTimeout(error: Readonly<Error>): boolean {
 }
 
 function errorOutcome<T>(error: JsonRpcError, endpoint: string): EndpointOutcome<T> {
+  if (isMissingState(error)) {
+    return fault("missing_state");
+  }
   if (isNodeFault(error)) {
     return fault("node_error");
   }

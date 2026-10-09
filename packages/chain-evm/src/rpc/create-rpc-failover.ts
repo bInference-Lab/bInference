@@ -40,6 +40,20 @@ function rpcDown(method: string, faults: readonly RpcFault[]): BinferenceError {
   });
 }
 
+function stateMissing(method: string, faults: readonly RpcFault[]): BinferenceError {
+  return new BinferenceError({
+    code: "chain.state_missing",
+    message: `No RPC endpoint still holds the state ${method} reads.`,
+    details: { method, endpoints: faults.length },
+  });
+}
+
+// Every endpoint answered that it pruned the state: asking again later cannot help.
+function exhausted(method: string, faults: readonly RpcFault[]): BinferenceError {
+  const isStateGone = faults.length > 0 && faults.every((fault) => fault === "missing_state");
+  return isStateGone ? stateMissing(method, faults) : rpcDown(method, faults);
+}
+
 function validate(endpoints: readonly RpcEndpoint[]): void {
   const names = new Set(endpoints.map((endpoint) => endpoint.name));
   if (endpoints.length === 0 || names.size !== endpoints.length) {
@@ -54,7 +68,7 @@ function validate(endpoints: readonly RpcEndpoint[]): void {
 async function askInTurn<T>(run: FailoverRun<T>, parts: FailoverParts): Promise<RpcReply<T>> {
   const [endpoint, ...rest] = run.queue;
   if (endpoint === undefined) {
-    throw rpcDown(run.call.method, run.faults);
+    throw exhausted(run.call.method, run.faults);
   }
   const outcome = await askEndpoint({ endpoint, call: run.call, id: run.id }, parts.transport);
   // The caller's abort ends the call: no other endpoint is asked.
@@ -63,7 +77,8 @@ async function askInTurn<T>(run: FailoverRun<T>, parts: FailoverParts): Promise<
     parts.book.settle(endpoint, undefined);
     return outcome.reply;
   }
-  parts.book.settle(endpoint, outcome.fault);
+  // A node that pruned an old block's state still answers everything newer.
+  parts.book.settle(endpoint, outcome.fault === "missing_state" ? undefined : outcome.fault);
   return askInTurn({ ...run, queue: rest, faults: [...run.faults, outcome.fault] }, parts);
 }
 
@@ -71,8 +86,10 @@ async function askInTurn<T>(run: FailoverRun<T>, parts: FailoverParts): Promise<
  * Creates the failover over a chain's RPC endpoints. Each endpoint gets `timeoutMs` to answer;
  * a timeout, a refused connection, an HTTP error, a malformed reply or a node failure moves the
  * call to the next endpoint and rests the failed one for `restMs`. A JSON-RPC error about the call
- * itself, such as a revert, is a reply. Write and signing methods are refused, since a retried
- * send must never reach a public node.
+ * itself, such as a revert, is a reply. When every endpoint answers that it pruned the state the
+ * call reads, the call fails with `chain.state_missing`, which no retry mends; any other failure of
+ * every endpoint is a retryable `chain.rpc_down`. Write and signing methods are refused, since a
+ * retried send must never reach a public node.
  */
 export function createRpcFailover(options: RpcFailoverOptions): RpcFailover {
   validate(options.endpoints);

@@ -48,6 +48,8 @@ function withReceipts(network: FakeNetwork, receipt: ReceiptReader["receipt"]): 
     head: async (chain, options) => network.head(chain, options),
     transfers: async (chain, hash, options) => network.transfers(chain, hash, options),
     nonceAt: async (account, block, options) => network.nonceAt(account, block, options),
+    nativeReceived: async (account, block, options) =>
+      network.nativeReceived(account, block, options),
     receipt,
   };
 }

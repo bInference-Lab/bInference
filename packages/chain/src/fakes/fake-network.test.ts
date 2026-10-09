@@ -29,6 +29,7 @@ function networkOf(options: { readonly feeCapBase?: bigint } = {}): FakeNetwork 
     clock: createManualClock(1_000),
     reverting: [broken.payload],
     transfers: (sent) => (sent.draftPayload === swap.payload ? swapTransfers : []),
+    nativeReceived: (sent) => (sent.draftPayload === swap.payload ? 7n : 0n),
     ...options,
   });
 }
@@ -78,8 +79,10 @@ describe("fake network", () => {
       receiptReaderContract({
         create: async () => {
           const network = networkOf();
+          network.mine();
           const succeeded = await hashOf(network, swap, 0);
           const reverted = await hashOf(network, broken, 1);
+          network.forgetStateBelow(1n);
           return {
             reader: network,
             chain,
@@ -88,6 +91,8 @@ describe("fake network", () => {
             reverted,
             unknown: "fake00000000" as TxHash,
             sender: account,
+            nativeReceived: 7n,
+            stateGone: 1n,
           };
         },
       }),
@@ -168,6 +173,10 @@ describe("fake network", () => {
     const hash = await hashOf(network, swap, 0);
     await expect(network.transfers(chain, hash, live())).resolves.toStrictEqual([]);
     await expect(network.nonceAt(chainAccount(13), 1n, live())).resolves.toBe(0);
+    await expect(network.nativeReceived(account, 1n, live())).resolves.toStrictEqual({
+      ok: true,
+      value: 0n,
+    });
   });
 
   it("fails the reads a test sets to fail, then reads again", async () => {

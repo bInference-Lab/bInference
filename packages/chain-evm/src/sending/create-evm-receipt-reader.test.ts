@@ -1,7 +1,7 @@
 import type { AccountRef, AssetTransfer, FinalityRule, TxHash } from "@binference/chain";
 import { receiptReaderContract } from "@binference/chain/testing";
 import { createManualClock } from "@binference/core/testing";
-import { getAddress } from "viem";
+import { getAddress, toHex } from "viem";
 import { describe, expect, it } from "vitest";
 import type { EvmChain } from "../evm-chain.js";
 import { createRpcFailover } from "../rpc/create-rpc-failover.js";
@@ -78,8 +78,44 @@ function receiptAnswer(hash: JsonValue | undefined): FakeRpcAnswer {
   return { result: hash === reverted ? receiptOf(reverted, "0x0") : null };
 }
 
+// In block 0x60 the wallet paid its fee and 5 wei, and an inner call sent it 1,000 wei; a stranger
+// sent a transaction of its own. The node pruned the state before block 0x20.
+const fee = 21_000n * 50_000_000n;
+const before = 10n ** 18n;
+const pruned = { error: { code: -32_000, message: "missing trie node 1a2b (path )" } };
+const balances = new Map<JsonValue | undefined, FakeRpcAnswer>([
+  ["0x5f", { result: toHex(before) }],
+  ["0x60", { result: toHex(before - fee - 5n + 1_000n) }],
+  ["0x1f", pruned],
+]);
+const blocks = new Map<JsonValue | undefined, JsonValue>([
+  [
+    "0x60",
+    [
+      { hash: succeeded, from: wallet, value: "0x5" },
+      { hash: hashOf("dd"), from: pool, value: "0x9" },
+    ],
+  ],
+  ["0x20", []],
+]);
+
+function historyAnswer(method: string, params: readonly JsonValue[]): FakeRpcAnswer | undefined {
+  const [first, second] = params;
+  if (method === "eth_getBalance") {
+    return balances.get(second) ?? pruned;
+  }
+  if (method === "eth_getBlockByNumber" && second === true) {
+    return { result: { number: first ?? null, transactions: blocks.get(first) ?? [] } };
+  }
+  return undefined;
+}
+
 function answer(method: string, params: readonly JsonValue[]): FakeRpcAnswer {
   const [first, second] = params;
+  const history = historyAnswer(method, params);
+  if (history !== undefined) {
+    return history;
+  }
   switch (method) {
     case "eth_getTransactionReceipt":
       return receiptAnswer(first);
@@ -136,6 +172,8 @@ describe("the EVM receipt reader", () => {
           reverted,
           unknown,
           sender,
+          nativeReceived: 1_000n,
+          stateGone: 0x20n,
         }),
     }),
   )("follows the contract: $name", async ({ run }) => {

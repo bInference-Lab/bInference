@@ -19,6 +19,10 @@ export interface ReceiptReaderSubject {
   readonly reverted: TxHash;
   readonly unknown: TxHash;
   readonly sender: AccountRef;
+  /** The native coin `sender` received without a log in the block that holds `succeeded`. */
+  readonly nativeReceived: bigint;
+  /** A block whose state the reader no longer holds. */
+  readonly stateGone: bigint;
 }
 
 /** Makes a fresh {@link ReceiptReaderSubject} for each check. */
@@ -75,6 +79,16 @@ async function readsNonces(harness: ReceiptReaderHarness): Promise<void> {
   assert.equal(await reader.nonceAt(sender, second.block.number, live()), 2);
 }
 
+async function readsNativeReceived(harness: ReceiptReaderHarness): Promise<void> {
+  const { reader, chain, succeeded, sender, nativeReceived, stateGone } = await harness.create();
+  const receipt = await reader.receipt(chain, succeeded, live());
+  assert.ok(receipt !== undefined);
+  const received = await reader.nativeReceived(sender, receipt.block.number, live());
+  assert.deepEqual(received, { ok: true, value: nativeReceived });
+  const gone = await reader.nativeReceived(sender, stateGone, live());
+  assert.deepEqual(gone, { ok: false, error: "state_gone" });
+}
+
 async function refusesAborted(harness: ReceiptReaderHarness): Promise<void> {
   const { reader, chain, succeeded, sender } = await harness.create();
   const reason = new Error("stopped");
@@ -83,6 +97,7 @@ async function refusesAborted(harness: ReceiptReaderHarness): Promise<void> {
   await assert.rejects(reader.head(chain, aborted), reason);
   await assert.rejects(reader.transfers(chain, succeeded, aborted), reason);
   await assert.rejects(reader.nonceAt(sender, 0n, aborted), reason);
+  await assert.rejects(reader.nativeReceived(sender, 1n, aborted), reason);
 }
 
 /** The contract every `ReceiptReader` adapter passes. */
@@ -108,6 +123,10 @@ export function receiptReaderContract(harness: ReceiptReaderHarness): readonly C
     {
       name: "counts an account's transactions in the blocks up to a block",
       run: async () => readsNonces(harness),
+    },
+    {
+      name: "reads the native coin an account received in a block, or that its state is gone",
+      run: async () => readsNativeReceived(harness),
     },
     {
       name: "rejects with the signal's reason once the signal aborts",
