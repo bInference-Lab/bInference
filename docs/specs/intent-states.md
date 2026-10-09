@@ -5,7 +5,8 @@ Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended
 [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103), [0109](../DECISIONS.md#d0109),
 [0115](../DECISIONS.md#d0115), [0116](../DECISIONS.md#d0116), [0120](../DECISIONS.md#d0120) and 0121
 to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](../DECISIONS.md#d0123),
-[0124](../DECISIONS.md#d0124), [0125](../DECISIONS.md#d0125), [0126](../DECISIONS.md#d0126)).
+[0124](../DECISIONS.md#d0124), [0125](../DECISIONS.md#d0125), [0126](../DECISIONS.md#d0126)) and
+[0127](../DECISIONS.md#d0127).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -187,6 +188,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
     ([decision 0124](../DECISIONS.md#d0124)).
   - **One at a time:** while a rescue has not ended, `safety/rescue` answers its intent and plans
     nothing ([decision 0125](../DECISIONS.md#d0125)).
+  - **Positions:** it reconciles once what each landed send took out of its wallet, the units and
+    the gas, has left the positions at average cost, with no gain or loss
+    ([decision 0127](../DECISIONS.md#d0127)).
 - **Bridges** ([decision 0067](../DECISIONS.md#d0067)) end in `reconciled` when the source
   transaction is final and the bridge reports delivery, or after 2 hours with the delivery marked
   unknown and a notice.

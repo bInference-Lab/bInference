@@ -1,6 +1,7 @@
 # Spec 3: the databases
 
-Status: accepted on 2026-10-06 ([decision 0095](../DECISIONS.md#d0095)).
+Status: accepted on 2026-10-06 ([decision 0095](../DECISIONS.md#d0095)), amended by
+[decision 0127](../DECISIONS.md#d0127).
 
 <a id="section-1"></a>
 
@@ -80,6 +81,7 @@ Conventions ([ENGINEERING.md section 24.2](../ENGINEERING.md#section-24-2)):
 | `txs`           | `id`, `intent_id`, `step`, `chain`, `account`, `nonce`, `state`, `raw`, `hash`, `gas_price`, `relays JSON`, `supersedes`, `replacement` (`speedUp`, `cancel`, set with `supersedes`), `block_number`, `receipt JSON`, `signed_at`, `sent_at`, `included_at`, `final_at`           | unique `(account, nonce)` where `state IN ('signed','sent','included','final')`; `hash`; `(intent_id, step)` |
 | `executions`    | `id`, `intent_id`, `wallet_id`, `asset_in`, `amount_in`, `asset_out`, `amount_out`, `price_usd_micros`, `fee_usd_micros`, `gas_usd_micros`, `paper`, `at`                                                                                                                         | `(wallet_id, at)`                                                                                            |
 | `arrivals`      | `id`, `wallet_id`, `asset`, `amount`, `value_usd_micros` (null when no price was known), `tx_hash`, `paper`, `at`                                                                                                                                                                 | `(wallet_id, at)`                                                                                            |
+| `departures`    | `id`, `intent_id`, `wallet_id`, `asset`, `amount`, `gas_asset`, `gas_amount`, `tx_hash`, `at`                                                                                                                                                                                     | `(wallet_id, at)`; `intent_id`                                                                               |
 | `positions`     | `wallet_id`, `asset`, `paper`, `quantity`, `cost_usd_micros`, `realized_usd_micros`, `changed_at`, `version`                                                                                                                                                                      | PK `(wallet_id, asset, paper)`                                                                               |
 
 `terms_hash` is SHA-256 over the stable JSON of what the card shows (wallet, action, amounts,
@@ -95,6 +97,12 @@ their quantity and that value to the position, so a later sale realizes a real g
 no usable price is known then, the row keeps no value and the position does not change. A later
 price never values them after the fact: units sold beyond what a position holds leave at their
 own proceeds, with no gain or loss.
+
+Funds a send takes out of a live wallet, such as a rescue's transfers, are a `departures` row once
+the send is final ([decision 0127](../DECISIONS.md#d0127)): the units sent, and the native coin it
+paid for gas. Both leave their positions at average cost, rounded down, with no gain or loss; units
+beyond what a position holds take no cost. An intent's departures are written once, in one
+transaction with their position changes.
 
 <a id="section-2-4"></a>
 
@@ -186,17 +194,17 @@ address.
 
 A daily job (inside the engine's schedule queue) prunes:
 
-| What                                                                                        | Kept                                                               |
-| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `ledger`, `executions`, `arrivals`, `positions`, `intents`, `txs`, `cards`, `confirmations` | forever                                                            |
-| `transcript_events`, `turns`                                                                | 90 days ([decision 0056](../DECISIONS.md#d0056); `chats.keepDays`) |
-| `idempotency`                                                                               | 24 hours                                                           |
-| `inbox` handled, `outbox` sent                                                              | 30 days                                                            |
-| `webhook_events`                                                                            | 90 days                                                            |
-| `notices`                                                                                   | 90 days                                                            |
-| `model_usage`                                                                               | 400 days                                                           |
-| `prices`, `risk_cache`                                                                      | replaced in place                                                  |
-| `jobs` ended                                                                                | 30 days                                                            |
+| What                                                                                                      | Kept                                                               |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `ledger`, `executions`, `arrivals`, `departures`, `positions`, `intents`, `txs`, `cards`, `confirmations` | forever                                                            |
+| `transcript_events`, `turns`                                                                              | 90 days ([decision 0056](../DECISIONS.md#d0056); `chats.keepDays`) |
+| `idempotency`                                                                                             | 24 hours                                                           |
+| `inbox` handled, `outbox` sent                                                                            | 30 days                                                            |
+| `webhook_events`                                                                                          | 90 days                                                            |
+| `notices`                                                                                                 | 90 days                                                            |
+| `model_usage`                                                                                             | 400 days                                                           |
+| `prices`, `risk_cache`                                                                                    | replaced in place                                                  |
+| `jobs` ended                                                                                              | 30 days                                                            |
 
 <a id="section-5"></a>
 
