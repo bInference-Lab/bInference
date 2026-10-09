@@ -1,4 +1,5 @@
 import { accountRefSchema, assetRefSchema, type HttpResponse } from "@binference/plugin-sdk";
+import { successOf } from "@binference/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
 import { buyRoute } from "../testing/recorded-buy.js";
 import { hookedRoute, hooklessRoute, noRouteAnswer } from "../testing/recorded-routes.js";
@@ -11,7 +12,6 @@ import {
   scriptedApi,
   sellRequest,
   sellRoutesUrl,
-  valueOf,
   venueOver,
 } from "../testing/venue-fixtures.js";
 
@@ -51,7 +51,7 @@ describe("quotes on kyberswap", () => {
 
   it("quotes a token sale for the chain's coin", async () => {
     const http = scriptedApi({ [sellRoutesUrl]: answer(sellRoute) });
-    const quote = valueOf(await venueOver(http).quote(sellRequest, { signal: live() }));
+    const quote = successOf(await venueOver(http).quote(sellRequest, { signal: live() }));
     expect(quote.expectedOut).toStrictEqual({ asset: bnb, base: 65_171_490_641_067_568n });
     expect(quote.priceImpactBps).toBe(1);
   });
@@ -62,15 +62,15 @@ describe("quotes on kyberswap", () => {
       [withoutFairflow]: answer(hooklessRoute),
     });
     expect(urls).toStrictEqual([buyRoutesUrl, withoutFairflow]);
-    expect(valueOf(quote).expectedOut.base).toBe(76_697_414_709_402_514_376n);
-    expect(valueOf(quote).route).toBe(summaryIn(hooklessRoute));
+    expect(successOf(quote).expectedOut.base).toBe(76_697_414_709_402_514_376n);
+    expect(successOf(quote).route).toBe(summaryIn(hooklessRoute));
   });
 
   it("keeps a route through a hook on the allowlist, in any letter case", async () => {
     const answers = { [buyRoutesUrl]: answer(hookedRoute) };
     const { quote, urls } = await quoteWith(answers, [fairflowHook.toLowerCase()]);
     expect(urls).toStrictEqual([buyRoutesUrl]);
-    expect(valueOf(quote).expectedOut.base).toBe(73_330_472_622_321_619_266n);
+    expect(successOf(quote).expectedOut.base).toBe(73_330_472_622_321_619_266n);
   });
 
   it.each([

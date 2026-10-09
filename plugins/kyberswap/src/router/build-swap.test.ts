@@ -1,5 +1,6 @@
 import { accountRefSchema, type BuildRequest, type TxDraft } from "@binference/plugin-sdk";
 import { decodeEvmDraft } from "@binference/plugin-sdk/evm";
+import { draftAt, successOf } from "@binference/plugin-sdk/testing";
 import * as fc from "fast-check";
 import { encodeFunctionData, erc20Abi } from "viem";
 import { describe, expect, it } from "vitest";
@@ -10,7 +11,6 @@ import {
   answer,
   bnb,
   buildRequestOf,
-  draftAt,
   buildUrl,
   buyRequest,
   buyRoutesUrl,
@@ -18,7 +18,6 @@ import {
   sellRequest,
   sellRoutesUrl,
   usdt,
-  valueOf,
   venueOver,
 } from "../testing/venue-fixtures.js";
 
@@ -32,8 +31,8 @@ const recorded = scriptedApi({
   [buyRoutesUrl]: answer(buyRoute),
   [sellRoutesUrl]: answer(sellRoute),
 });
-const buyQuote = valueOf(await venueOver(recorded).quote(buyRequest, { signal: live() }));
-const sellQuote = valueOf(await venueOver(recorded).quote(sellRequest, { signal: live() }));
+const buyQuote = successOf(await venueOver(recorded).quote(buyRequest, { signal: live() }));
+const sellQuote = successOf(await venueOver(recorded).quote(sellRequest, { signal: live() }));
 const decoder = venueOver(scriptedApi({}));
 
 async function build(request: BuildRequest, buildAnswer = buyBuild) {
@@ -99,7 +98,7 @@ describe("builds on kyberswap", () => {
   ])("builds a call that keeps %s", async (_case, keepBps, minimum) => {
     const request = buildRequestOf(buyRequest, buyQuote, keepBps);
     const { drafts } = await build(request);
-    expect(valueOf(decoder.decode(draftAt(drafts, 0))).minOut.base).toBe(minimum);
+    expect(successOf(decoder.decode(draftAt(drafts, 0))).minOut.base).toBe(minimum);
   });
 
   it("never builds a call whose minimum is below the host's", async () => {
@@ -111,7 +110,7 @@ describe("builds on kyberswap", () => {
           minOut: { asset: usdt, base: minimum },
         };
         const { drafts } = await build(request);
-        const decoded = valueOf(decoder.decode(draftAt(drafts, 0))).minOut.base;
+        const decoded = successOf(decoder.decode(draftAt(drafts, 0))).minOut.base;
         expect([decoded >= minimum, decoded >= apiMinimum]).toStrictEqual([true, true]);
         expect([minimum, apiMinimum]).toContain(decoded);
       }),
@@ -139,7 +138,7 @@ describe("builds on kyberswap", () => {
       }),
     });
     expect(callOf(draftAt(drafts, 1))).toMatchObject({ to: router, value: 0n });
-    expect(valueOf(decoder.decode(draftAt(drafts, 1)))).toMatchObject({
+    expect(successOf(decoder.decode(draftAt(drafts, 1)))).toMatchObject({
       amountIn: { asset: usdt, base: 50n * 10n ** 18n },
       minOut: { asset: bnb },
     });

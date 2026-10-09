@@ -1,7 +1,6 @@
-import { decodeCall } from "@binference/plugin-sdk/evm";
+import { aggregatorNativeToken, decodeCall } from "@binference/plugin-sdk/evm";
 import { type Address, encodeFunctionData, type Hex, parseAbi, zeroAddress } from "viem";
 import { readExecutorPayload } from "./executor-payload.js";
-import { nativeToken } from "./token-address.js";
 
 // The `swap` function of KyberSwap's MetaAggregationRouterV2, from its verified source. The router
 // moves the input to the executor, calls the executor with `targetData`, then reverts unless
@@ -45,9 +44,9 @@ interface SwapExecution {
 export interface SwapCall {
   /** The contract the router calls with the executor data. */
   readonly executor: Address;
-  /** What the call spends; `nativeToken` for the chain's coin. */
+  /** What the call spends; `aggregatorNativeToken` for the chain's coin. */
   readonly srcToken: Address;
-  /** What the call buys; `nativeToken` for the chain's coin. */
+  /** What the call buys; `aggregatorNativeToken` for the chain's coin. */
   readonly dstToken: Address;
   /** The account the router checks the output against, and the executor pays. */
   readonly recipient: Address;
@@ -70,7 +69,7 @@ function spendsExactly(desc: SwapDescription, value: bigint): boolean {
   if (desc.srcReceivers.length !== desc.srcAmounts.length) {
     return false;
   }
-  return desc.srcToken === nativeToken
+  return desc.srcToken === aggregatorNativeToken
     ? value === desc.amount && desc.srcReceivers.length === 0
     : value === 0n && sum(desc.srcAmounts) === desc.amount;
 }

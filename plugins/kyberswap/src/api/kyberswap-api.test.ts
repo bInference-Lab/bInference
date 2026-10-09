@@ -1,8 +1,9 @@
 import type { HttpResponse } from "@binference/plugin-sdk";
+import { successOf } from "@binference/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
 import { buyRoute } from "../testing/recorded-buy.js";
 import { noRouteAnswer } from "../testing/recorded-routes.js";
-import { answer, buildUrl, buyRoutesUrl, scriptedApi, valueOf } from "../testing/venue-fixtures.js";
+import { answer, buildUrl, buyRoutesUrl, scriptedApi } from "../testing/venue-fixtures.js";
 import { createKyberswapApi, type RouteQuery } from "./kyberswap-api.js";
 
 const live = (): AbortSignal => new AbortController().signal;
@@ -36,7 +37,7 @@ describe("kyberswap's aggregator api", () => {
     const { api, http } = apiAnswering(url, answer(buyRoute));
     const excludedSources = ["pancake-infinity-cl-fairflow", "uniswap-v4"];
     const found = await api.findRoute({ ...query, excludedSources }, live());
-    expect(valueOf(found).amountOut).toBe(76_705_221_475_414_064_061n);
+    expect(successOf(found).amountOut).toBe(76_705_221_475_414_064_061n);
     expect(http.requests().map((request) => request.headers)).toStrictEqual([
       { "x-client-id": "binference" },
     ]);

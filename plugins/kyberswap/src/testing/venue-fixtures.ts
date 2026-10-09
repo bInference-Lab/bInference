@@ -8,12 +8,14 @@ import {
   chainRefSchema,
   type HttpResponse,
   type QuoteRequest,
-  type Result,
-  type TxDraft,
   type Venue,
   type VenueQuote,
 } from "@binference/plugin-sdk";
-import { createScriptedHttp, type ScriptedHttp } from "@binference/plugin-sdk/testing";
+import {
+  createScriptedHttp,
+  hostBuildRequest,
+  type ScriptedHttp,
+} from "@binference/plugin-sdk/testing";
 import { createKyberswapVenue } from "../kyberswap-venue.js";
 import { recordedDeadlineSec, recordedWallet } from "./recorded-terms.js";
 
@@ -90,37 +92,11 @@ export function venueOver(http: ScriptedHttp, allowedHooks: readonly string[] = 
   });
 }
 
-/**
- * What the host asks the venue to build after its quote: the recorded deadline and a minimum out
- * that keeps `keepBps` of the quote, rounded up as the host rounds.
- */
+/** What the host asks the venue to build after its quote, with the recorded deadline. */
 export function buildRequestOf(
   request: QuoteRequest,
   quote: VenueQuote,
   keepBps = 9_950n,
 ): BuildRequest {
-  const expected = quote.expectedOut.base;
-  return {
-    ...request,
-    quote,
-    minOut: { asset: request.assetOut, base: (expected * keepBps + 9_999n) / 10_000n },
-    deadlineMs: recordedDeadlineSec * 1000,
-  };
-}
-
-/** The value of a success, so a test reads it without a conditional; a failure throws. */
-export function valueOf<T>(result: Result<T, string>): T {
-  if (!result.ok) {
-    throw new Error(`Expected a success, got ${result.error}.`);
-  }
-  return result.value;
-}
-
-/** The one draft at `index` of a build, which must be there. */
-export function draftAt(drafts: readonly TxDraft[], index: number): TxDraft {
-  const draft = drafts[index];
-  if (draft === undefined) {
-    throw new Error(`The build has no draft ${String(index)}.`);
-  }
-  return draft;
+  return hostBuildRequest(request, quote, { deadlineMs: recordedDeadlineSec * 1000, keepBps });
 }

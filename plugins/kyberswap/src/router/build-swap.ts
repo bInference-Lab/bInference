@@ -5,13 +5,11 @@ import {
   type BuildRequest,
   type TxDraft,
 } from "@binference/plugin-sdk";
-import { encodeEvmDraft } from "@binference/plugin-sdk/evm";
-import { type Address, encodeFunctionData, erc20Abi } from "viem";
+import { aggregatorTokenOf, encodeEvmApproval, encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import type { ChainSetup } from "../chain-setup.js";
 import { addressOf, contractOf, executorName, routerName } from "../kyberswap-contracts.js";
 import type { VenueParts } from "../venue-parts.js";
 import { readSwapCall, withMinReturn } from "./swap-call.js";
-import { tokenOf } from "./token-address.js";
 
 // KyberSwap's API takes a slippage from 0 to 2,000 basis points.
 const maxApiSlippageBps = 2_000n;
@@ -38,20 +36,6 @@ function setupOf(request: BuildRequest, parts: VenueParts): ChainSetup {
   return setup;
 }
 
-function approvalOf(request: BuildRequest, token: Address, router: Address): TxDraft {
-  const chain = accountRefParts(request.wallet).chain;
-  return encodeEvmDraft({
-    from: request.wallet,
-    to: accountRefSchema.parse(`${chain}:${token}`),
-    value: 0n,
-    data: encodeFunctionData({
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [router, request.amountIn.base],
-    }),
-  });
-}
-
 /**
  * Builds a quoted KyberSwap trade: KyberSwap's API encodes the route for the wallet with the host's
  * deadline, the call must go to the registry's router and hand the input to the registry's
@@ -68,7 +52,7 @@ export async function buildSwap(
   const setup = setupOf(request, parts);
   const [router, executor] = [contractOf(request, routerName), contractOf(request, executorName)];
   const summary = request.quote.route;
-  const token = tokenOf(request.amountIn.asset, setup);
+  const token = aggregatorTokenOf(request.amountIn.asset, setup);
   if (summary === undefined || token === undefined) {
     throw refuse("kyberswap.no_route", "The quote carries no KyberSwap route for this input.");
   }
@@ -98,5 +82,13 @@ export async function buildSwap(
   });
   return request.amountIn.asset === setup.nativeAsset
     ? [trade]
-    : [approvalOf(request, token, router), trade];
+    : [
+        encodeEvmApproval({
+          wallet: request.wallet,
+          token,
+          spender: router,
+          amountBase: request.amountIn.base,
+        }),
+        trade,
+      ];
 }

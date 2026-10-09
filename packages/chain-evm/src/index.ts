@@ -1,4 +1,6 @@
 export { decodeCall } from "./decoding/decode-call.js";
+export { encodeEvmApproval } from "./drafts/evm-approval.js";
+export type { EvmApproval } from "./drafts/evm-approval.js";
 export { decodeEvmDraft, encodeEvmDraft } from "./drafts/evm-draft.js";
 export type { EvmCallRequest, EvmDraftCall } from "./drafts/evm-draft.js";
 export type { CalldataProblem } from "./decoding/decode-call.js";
@@ -41,6 +43,16 @@ export { createEvmSigningScheme } from "./signing/evm-signing-scheme.js";
 export type { EvmSigningScheme } from "./signing/evm-signing-scheme.js";
 export { decodeEvmTransaction, encodeEvmTransaction } from "./signing/evm-transaction.js";
 export type { DecodedEvmTransaction, EvmTransaction } from "./signing/evm-transaction.js";
+export { aggregatorEffectOf } from "./tokens/aggregator-effect.js";
+export type { AggregatorCall } from "./tokens/aggregator-effect.js";
+export { aggregatorPairOf } from "./tokens/aggregator-pair.js";
+export type { AggregatorPair, AggregatorTrade } from "./tokens/aggregator-pair.js";
+export {
+  aggregatorAssetOf,
+  aggregatorNativeToken,
+  aggregatorTokenOf,
+} from "./tokens/aggregator-token.js";
+export type { AggregatorChain } from "./tokens/aggregator-token.js";
 export { createEvmTxSimulator } from "./simulation/create-evm-tx-simulator.js";
 export type { EvmTxSimulatorOptions } from "./simulation/create-evm-tx-simulator.js";
 export { simulate } from "./simulation/simulate.js";

@@ -1,5 +1,4 @@
 import {
-  accountRefParts,
   BinferenceError,
   err,
   ok,
@@ -7,11 +6,11 @@ import {
   type Result,
   type VenueQuote,
 } from "@binference/plugin-sdk";
+import { aggregatorPairOf } from "@binference/plugin-sdk/evm";
 import type { Address } from "viem";
 import type { RouteQuery } from "../api/kyberswap-api.js";
 import type { FoundRoute } from "../api/route-answer.schema.js";
 import { contractOf, routerName } from "../kyberswap-contracts.js";
-import { tokenOf } from "../router/token-address.js";
 import type { VenueParts } from "../venue-parts.js";
 import { unlistedHookSources } from "./hook-check.js";
 import { priceImpactOf } from "./price-impact.js";
@@ -67,14 +66,13 @@ function quoteOf(route: FoundRoute, request: QuoteRequest): VenueQuote {
 
 // The trade as KyberSwap's API names it; undefined on a chain or with an asset it does not trade.
 function queryOf(request: QuoteRequest, parts: VenueParts): TradeQuery | undefined {
-  const setup = parts.setups.get(accountRefParts(request.wallet).chain);
-  const tokenIn = setup === undefined ? undefined : tokenOf(request.amountIn.asset, setup);
-  const tokenOut = setup === undefined ? undefined : tokenOf(request.assetOut, setup);
-  if (setup === undefined || tokenIn === undefined || tokenOut === undefined) {
+  const pair = aggregatorPairOf(request, parts.setups);
+  if (pair === undefined) {
     return undefined;
   }
-  const query = { slug: setup.slug, tokenIn, tokenOut, amountIn: request.amountIn.base };
-  return { query: { ...query, excludedSources: [] }, allowedHooks: setup.allowedHooks };
+  const { on, tokenIn, tokenOut } = pair;
+  const query = { slug: on.slug, tokenIn, tokenOut, amountIn: request.amountIn.base };
+  return { query: { ...query, excludedSources: [] }, allowedHooks: on.allowedHooks };
 }
 
 /**
