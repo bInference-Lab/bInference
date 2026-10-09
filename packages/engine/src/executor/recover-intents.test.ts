@@ -168,6 +168,7 @@ describe("recovery after a restart", () => {
       { key: "notice.unknownTx", intent, values: { wallet: "0x0000000c", nonce: "0" } },
     ]);
     expect(restartEvents(restarted)).toContain("executor.nonce_taken:");
+    expect((await transactionsOf(bench)).map(({ state }) => state)).toStrictEqual(["superseded"]);
   });
 
   it("goes back to executing when the unknown step turns out to be its own", async () => {

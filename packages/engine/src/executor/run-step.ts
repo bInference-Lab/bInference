@@ -1,9 +1,9 @@
-import type { ChainHead, PreparedTx, TxDraft, TxReceipt } from "@binference/chain";
+import type { PreparedTx, TxDraft, TxReceipt } from "@binference/chain";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
-import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
+import type { ExecutionRun } from "./executor-run.js";
 import type { SigningTerms } from "./queue-check.js";
 import { signRequestOf } from "./step-request.js";
 import { recordStepSent } from "./step-sent.js";
@@ -23,12 +23,6 @@ export type SignStop =
   | "unknown_wallet"
   | "bad_signature"
   | "nonce_taken";
-
-/** How the watch of a sent step ended. */
-export interface Watched {
-  readonly outcome: "included" | "reverted" | "stuck";
-  readonly transaction: TransactionRecord;
-}
 
 /** Takes the next nonce from the slot and prepares the step's draft at it, read from the chain. */
 export async function prepareStep(
@@ -85,8 +79,9 @@ export async function signAndStore(
 }
 
 /**
- * One send of a stored transaction's bytes to every relay, each answer recorded. An acceptance
- * moves a `signed` step to `sent` and records the send in the ledger. Nothing is signed.
+ * One send of a stored transaction's bytes to every relay, each answer recorded. The first
+ * acceptance moves a `signed` step to `sent` and records the send in the ledger. Nothing is
+ * signed.
  */
 export async function sendOnce(
   run: ExecutionRun,
@@ -111,20 +106,28 @@ export async function sendOnce(
   const accepted = answers.filter(({ outcome }) => outcome === "accepted");
   if (accepted.length > 0) {
     parts.log.info("executor.sent", { intentId, chain: plan.chain.ref });
+  }
+  // The ledger hears of a transaction once, when a relay first takes it; a send of the same bytes
+  // again after that is no new event.
+  if (accepted.length > 0 && transaction.state === "signed") {
     const relays = accepted.map(({ relay }) => relay);
     await recordStepSent(run, intent, { transaction: recorded.value, relays });
-  } else {
+  }
+  if (accepted.length === 0) {
     parts.log.warn("executor.send_failed", { intentId, chain: plan.chain.ref });
   }
   return recorded.value;
 }
 
-/** Records a stored step's receipt: `included`, or `reverted` for a receipt with status 0. */
+/**
+ * Records a stored step's receipt: `included`, or `reverted` for a receipt with status 0. The
+ * store supersedes the step's other transactions at its nonce in the same write.
+ */
 export async function recordReceipt(
   run: ExecutionRun,
   transaction: TransactionRecord,
   receipt: TxReceipt,
-): Promise<Watched> {
+): Promise<TransactionRecord> {
   const { parts, signal } = run;
   const inclusion = { id: transaction.id, receipt, atMs: parts.clock.now() };
   const recorded = await parts.stores.transactions.recordReceipt(inclusion, { signal });
@@ -134,70 +137,5 @@ export async function recordReceipt(
       message: `Transaction ${transaction.id} left the states a receipt records.`,
     });
   }
-  const outcome = receipt.status === "success" ? "included" : "reverted";
-  return { outcome, transaction: recorded.value };
-}
-
-// Stuck once the head moved the limit past where the watch began.
-function isStuck(head: ChainHead | undefined, firstBlock: bigint | undefined, limit: number) {
-  return (
-    head !== undefined && firstBlock !== undefined && head.latest - firstBlock >= BigInt(limit)
-  );
-}
-
-/** Where the watch of one step stands after a number of waits. */
-interface WatchState {
-  readonly intent: IntentRecord;
-  readonly transaction: TransactionRecord;
-  readonly sends: number;
-  readonly waits: number;
-  /** The latest block when the watch first read the head. */
-  readonly firstBlock?: bigint;
-}
-
-// While no relay has accepted the stored bytes, each wait sends them again, up to the limit.
-async function sendIfUnsent(run: ExecutionRun, state: WatchState): Promise<WatchState> {
-  if (state.transaction.state !== "signed" || state.sends >= run.parts.limits.sendAttempts) {
-    return state;
-  }
-  const transaction = await sendOnce(run, state.intent, state.transaction);
-  return { ...state, transaction, sends: state.sends + 1 };
-}
-
-async function watchFrom(run: ExecutionRun, before: WatchState): Promise<Watched> {
-  const { parts, plan, signal } = run;
-  const { receipts } = plan.sending;
-  const { stuckAfterBlocks } = parts.limits;
-  if (before.waits >= stuckAfterBlocks * 3) {
-    return { outcome: "stuck", transaction: before.transaction };
-  }
-  const state = await sendIfUnsent(run, before);
-  const { transaction } = state;
-  const read = async () => receipts.receipt(plan.chain.ref, transaction.hash, { signal });
-  const receipt = await readSafely(run, read);
-  if (receipt !== undefined) {
-    return recordReceipt(run, transaction, receipt);
-  }
-  const head = await readSafely(run, async () => receipts.head(plan.chain.ref, { signal }));
-  const firstBlock = state.firstBlock ?? head?.latest;
-  if (isStuck(head, firstBlock, stuckAfterBlocks)) {
-    return { outcome: "stuck", transaction };
-  }
-  await nextBlock(run);
-  const waited = { ...state, waits: state.waits + 1 };
-  return watchFrom(run, firstBlock === undefined ? waited : { ...waited, firstBlock });
-}
-
-/**
- * Sends a stored step and watches each block until a block holds it. While no relay has accepted
- * it, every block sends the same stored bytes again, up to the send limit; nothing is ever signed
- * again. A step with no receipt `stuckAfterBlocks` blocks after the watch began, or after three
- * times as many waits when the head cannot be read, is `stuck` and handed over.
- */
-export async function sendAndWatch(
-  run: ExecutionRun,
-  intent: IntentRecord,
-  stored: TransactionRecord,
-): Promise<Watched> {
-  return watchFrom(run, { intent, transaction: stored, sends: 0, waits: 0 });
+  return recorded.value;
 }

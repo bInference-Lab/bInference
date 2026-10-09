@@ -6,7 +6,8 @@ import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
 import { checkForQueue, type SigningTerms } from "./queue-check.js";
-import { type PreparedStep, prepareStep, sendAndWatch, signAndStore } from "./run-step.js";
+import { type PreparedStep, prepareStep, signAndStore } from "./run-step.js";
+import { sendAndWatch, type Watched } from "./send-and-watch.js";
 
 /** Every step of an intent in a block, with the intent moved to `included`. */
 export interface IncludedSteps {
@@ -65,6 +66,17 @@ function stopStep(run: ExecutionRun, taken: Taken, problem: string): undefined {
   return undefined;
 }
 
+// A step that will never land ends the intent: its transaction reverted, or its cancel landed.
+async function endLanded(
+  run: ExecutionRun,
+  taken: Taken,
+  outcome: Exclude<Watched["outcome"], "included" | "stuck">,
+): Promise<undefined> {
+  const type = outcome === "cancelled" ? "step_cancelled" : "step_reverted";
+  await moveIntent(run, taken.snapshot, { type });
+  return undefined;
+}
+
 // A step that cannot be signed, or whose signature cannot be stored, sends nothing and never
 // will: the intent ends (decision 0109).
 async function endStep(
@@ -115,13 +127,13 @@ async function runFrom(
   if (!stored.ok) {
     return endStep(run, taken, { index, problem: stored.error });
   }
-  const watched = await sendAndWatch(run, snapshot.record, stored.value);
-  if (watched.outcome === "reverted") {
-    await moveIntent(run, snapshot, { type: "step_reverted" });
-    return undefined;
-  }
+  const intent = snapshot.record;
+  const watched = await sendAndWatch(run, { intent, transaction: stored.value, rivals: [] });
   if (watched.outcome === "stuck") {
-    return stopStep(run, taken, "stuck");
+    return stopStep(run, taken, watched.problem);
+  }
+  if (watched.outcome !== "included") {
+    return endLanded(run, taken, watched.outcome);
   }
   return runFrom(run, slot, { taken, index: index + 1, done: [...done, watched.transaction] });
 }
@@ -131,7 +143,8 @@ async function runFrom(
  * `queue_took` check, then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
  * so the slot frees the wallet before finality, and `undefined` when the run stopped. A step that
- * cannot be signed or stored ends the intent (decision 0109); a stuck step leaves it `executing`.
+ * cannot be signed or stored ends the intent (decision 0109). A stuck step leaves it `executing`;
+ * a step's cancel that lands ends it `failed_onchain` with `stuck_cancelled`.
  */
 export async function executeInSlot(
   run: ExecutionRun,

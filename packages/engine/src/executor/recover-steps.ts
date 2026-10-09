@@ -4,8 +4,15 @@ import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { endUnsent } from "./end-unsent.js";
 import type { IncludedSteps } from "./execute-in-slot.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
-import { recordReceipt, sendAndWatch, sendOnce } from "./run-step.js";
-import { fateOf, type KnownStep, reconcileUnknown } from "./step-fate.js";
+import { recordReceipt, sendOnce } from "./run-step.js";
+import { sendAndWatch } from "./send-and-watch.js";
+import {
+  fateOf,
+  type KnownStep,
+  type NonceTransactions,
+  reconcileUnknown,
+  rivalsOf,
+} from "./step-fate.js";
 
 /**
  * Each step's transaction as recovery reads it: the last one stored for the step that a later
@@ -23,51 +30,59 @@ function stopped(run: ExecutionRun, snapshot: IntentSnapshot, problem: string): 
   return undefined;
 }
 
-// A step the chain holds goes on; one that reverted ends the intent, and no later step is sent.
+// A step the chain holds goes on; one that reverted, or whose cancel landed, ends the intent, and
+// no later step is sent.
 async function goOn(run: ExecutionRun, known: KnownStep): Promise<KnownStep | undefined> {
-  if (known.transaction.state !== "reverted") {
+  const isCancel = known.transaction.replaces?.kind === "cancel";
+  if (!isCancel && known.transaction.state !== "reverted") {
     return known;
   }
-  await moveIntent(run, known.snapshot, { type: "step_reverted" });
+  await moveIntent(run, known.snapshot, { type: isCancel ? "step_cancelled" : "step_reverted" });
   return undefined;
 }
 
-// A stored step no receipt was recorded for: a block holds it, its nonce is free and the same
-// bytes go again, or another transaction used its nonce and its fate is unknown until a final
-// block says whose it is (spec 6, section 7). Nothing is signed.
-async function settleSent(
-  run: ExecutionRun,
-  snapshot: IntentSnapshot,
-  transaction: TransactionRecord,
-): Promise<KnownStep | undefined> {
-  const fate = await fateOf(run, transaction);
+/** A step recovery reads: the intent as it stands, and the step's transactions at its nonce. */
+interface RecoveringStep extends NonceTransactions {
+  readonly snapshot: IntentSnapshot;
+}
+
+// A stored step no receipt was recorded for: a block holds one of its transactions, its nonce is
+// free and the same bytes go again, or another transaction used its nonce and its fate is unknown
+// until a final block says whose it is (spec 6, section 7). Nothing is signed.
+async function settleSent(run: ExecutionRun, step: RecoveringStep): Promise<KnownStep | undefined> {
+  const { snapshot, transaction, rivals } = step;
+  const fate = await fateOf(run, step);
   if (fate === undefined) {
     return stopped(run, snapshot, "chain_unread");
   }
   if (fate.kind === "found") {
-    const recorded = await recordReceipt(run, transaction, fate.receipt);
-    return goOn(run, { snapshot, transaction: recorded.transaction });
+    const recorded = await recordReceipt(run, fate.transaction, fate.receipt);
+    return goOn(run, { snapshot, transaction: recorded });
   }
   if (fate.kind === "free") {
-    const resent = await sendOnce(run, snapshot.record, transaction);
-    const watched = await sendAndWatch(run, snapshot.record, resent);
+    const intent = snapshot.record;
+    const resent = await sendOnce(run, intent, transaction);
+    const watched = await sendAndWatch(run, { intent, transaction: resent, rivals });
     return watched.outcome === "stuck"
-      ? stopped(run, snapshot, "stuck")
+      ? stopped(run, snapshot, watched.problem)
       : goOn(run, { snapshot, transaction: watched.transaction });
   }
   const unknown = await moveIntent(run, snapshot, { type: "fate_unknown" });
-  return unknown === undefined ? undefined : settleUnknown(run, { snapshot: unknown, transaction });
+  return unknown === undefined ? undefined : settleUnknown(run, { ...step, snapshot: unknown });
 }
 
-async function settleUnknown(run: ExecutionRun, step: KnownStep): Promise<KnownStep | undefined> {
-  const { snapshot: unknown, transaction } = step;
+async function settleUnknown(
+  run: ExecutionRun,
+  step: RecoveringStep,
+): Promise<KnownStep | undefined> {
+  const { snapshot: unknown, transaction, rivals } = step;
   run.parts.log.warn("executor.fate_unknown", { intentId: unknown.record.id });
-  const known = await reconcileUnknown(run, { unknown, transaction, waits: 0 });
+  const known = await reconcileUnknown(run, { unknown, transaction, rivals, waits: 0 });
   return known === undefined ? undefined : goOn(run, known);
 }
 
 // A step a block holds goes on as it is; the step with no receipt is the one whose fate decides.
-async function settleStep(run: ExecutionRun, step: KnownStep): Promise<KnownStep | undefined> {
+async function settleStep(run: ExecutionRun, step: RecoveringStep): Promise<KnownStep | undefined> {
   const { snapshot, transaction } = step;
   if (inBlockStates.includes(transaction.state)) {
     return goOn(run, step);
@@ -77,7 +92,7 @@ async function settleStep(run: ExecutionRun, step: KnownStep): Promise<KnownStep
   }
   return snapshot.record.state === "unknown_after_send"
     ? settleUnknown(run, step)
-    : settleSent(run, snapshot, transaction);
+    : settleSent(run, step);
 }
 
 /** Where recovery stands in an intent's steps: the steps settled so far, the next one's index. */
@@ -108,7 +123,8 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
   if (transaction === undefined) {
     return settleMissing(run, walk);
   }
-  const known = await settleStep(run, { snapshot, transaction });
+  const rivals = rivalsOf(walk.stored, transaction);
+  const known = await settleStep(run, { snapshot, transaction, rivals });
   if (known === undefined) {
     return undefined;
   }
@@ -120,9 +136,11 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
  * Recovers an intent a restart left `executing` or `unknown_after_send` (spec 6, section 7), on
  * its wallet's queue: each step's stored transaction in turn is looked up by hash and nonce and
  * goes on from what the chain shows, and nothing is ever signed. It answers the included steps
- * once every step is in a block. A step never signed ends the intent (decision 0109). A step that
- * stays stuck, whose transactions were replaced or dropped, or whose fate stays unknown stops the
- * recovery and leaves the intent where it is, logged.
+ * once every step is in a block, whichever of a step's transactions at its nonce landed; a step
+ * whose cancel landed ends the intent `failed_onchain` with `stuck_cancelled`. A step never signed
+ * ends the intent (decision 0109). A step that stays stuck, since recovery never replaces one,
+ * whose transactions were all replaced or dropped, or whose fate stays unknown stops the recovery
+ * and leaves the intent where it is, logged.
  */
 export async function recoverSteps(
   run: ExecutionRun,

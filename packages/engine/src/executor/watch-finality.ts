@@ -2,7 +2,8 @@ import { BinferenceError } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
-import { sendAndWatch } from "./run-step.js";
+import { sendAndWatch } from "./send-and-watch.js";
+import { rivalsOf } from "./step-fate.js";
 
 /** The steps still waiting for finality, and one a reorg took out of its block, if any. */
 interface FinalCheck {
@@ -94,13 +95,17 @@ async function recoverReorg(
     return undefined;
   }
   parts.log.warn("executor.reorg_seen", { intentId });
-  const watched = await sendAndWatch(run, executing.record, back.value);
-  if (watched.outcome === "reverted") {
-    await moveIntent(run, executing, { type: "step_reverted" });
+  const stored = await parts.stores.transactions.ofIntent(intentId, { signal });
+  const rivals = rivalsOf(stored, back.value);
+  const intent = executing.record;
+  const watched = await sendAndWatch(run, { intent, transaction: back.value, rivals });
+  if (watched.outcome === "stuck") {
+    parts.log.warn("executor.step_stopped", { intentId, errorCode: watched.problem });
     return undefined;
   }
-  if (watched.outcome === "stuck") {
-    parts.log.warn("executor.step_stopped", { intentId, errorCode: "stuck" });
+  if (watched.outcome !== "included") {
+    const type = watched.outcome === "cancelled" ? "step_cancelled" : "step_reverted";
+    await moveIntent(run, executing, { type });
     return undefined;
   }
   const included = await moveIntent(run, executing, { type: "steps_included" });

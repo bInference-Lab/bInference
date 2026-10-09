@@ -152,7 +152,9 @@ Rules for this package:
   `executor.step_stopped` logs. Reconciliation reads what each final step moved only through the
   `ReceiptReader`, records the trade in the positions before the move to `reconciled`, and finds
   it stored after a restart, so a trade is recorded once. `recover` signs nothing: each stored
-  step is looked up by hash and nonce (spec 6, section 7). A step that is never signed, at a run
+  step is looked up by hash and nonce (spec 6, section 7). The watch and recovery read every
+  transaction of a step's nonce, so whichever lands is the step's, and a landed cancel ends the
+  intent with `stuck_cancelled`. A step that is never signed, at a run
   or found at recovery, ends the intent through `step_unsent`: `cancelled` when no step was
   signed, `failed_onchain` once one landed (decision 0109).
 - The risk step (`src/risk/`, exported as `@binference/engine/risk`) weighs the token a quoted
