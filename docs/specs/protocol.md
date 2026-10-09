@@ -546,6 +546,7 @@ later unchanged.
 | `runtime`  | `unavailable`                                                                                   |
 | `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`                                   |
 | `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`                                        |
+| `address`  | `not_found`                                                                                     |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                              |
 | `order`    | `not_found`, `wrong_state`                                                                      |
 | `asset`    | `not_found`, `bad_address`                                                                      |

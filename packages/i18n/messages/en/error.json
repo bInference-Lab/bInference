@@ -29,6 +29,7 @@
   "wallet.unfunded": "This wallet has no funds yet. Fund it with BNB, then try again.",
   "wallet.bad_owner_key": "This owner key does not match the wallet. Check that you entered the right one.",
   "wallet.custody_down": "The wallet service is not responding, so nothing was signed. Try again in a minute.",
+  "address.not_found": "This address book entry does not exist or was removed. Check the address book in the console.",
   "intent.not_found": "binference has no record of this action. Refresh and try again.",
   "intent.wrong_state": "This action already moved on: it was confirmed, cancelled or sent. Refresh to see where it stands.",
   "intent.expired": "This action expired before you confirmed it. Ask your agent again.",

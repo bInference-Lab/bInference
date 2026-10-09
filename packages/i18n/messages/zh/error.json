@@ -29,6 +29,7 @@
   "wallet.unfunded": "此钱包还没有资金。请先充值 BNB 再试。",
   "wallet.bad_owner_key": "此所有者密钥与钱包不匹配。请检查是否输入正确。",
   "wallet.custody_down": "钱包服务暂无响应，未进行任何签名。请一分钟后再试。",
+  "address.not_found": "此地址簿条目不存在或已被删除。请在控制台查看地址簿。",
   "intent.not_found": "binference 没有此操作的记录。请刷新后再试。",
   "intent.wrong_state": "此操作的状态已变化：已确认、已取消或已发送。请刷新查看当前状态。",
   "intent.expired": "此操作在你确认之前已过期。请再次让你的 Agent 发起。",

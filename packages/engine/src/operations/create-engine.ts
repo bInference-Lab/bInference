@@ -1,5 +1,9 @@
 import type { Amount, ChainRegistry, PriceSource, Signer } from "@binference/chain";
 import type { Clock, IdSource, Random } from "@binference/core";
+import {
+  type AddressBookHandlers,
+  createAddressBookHandlers,
+} from "../address-book/address-book-handlers.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
@@ -39,12 +43,13 @@ export interface EngineHandlers
     AgentModeHandlers,
     ApprovalHandlers,
     SendLevelHandlers,
+    AddressBookHandlers,
     WalletHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
- * switch, the approval mode, the send level, the wallet list and the ledger, built from ports. It
- * holds no I/O of its own; pushes leave through `publish`.
+ * switch, the approval mode, the send level, the address book, the wallet list and the ledger,
+ * built from ports. It holds no I/O of its own; pushes leave through `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -225,6 +230,7 @@ export function createEngine(options: EngineOptions): Engine {
       ...settingsHandlers(options, paper),
       ...createApprovalHandlers(settingsParts),
       ...createSendLevelHandlers(settingsParts),
+      ...createAddressBookHandlers(settingsParts),
     },
     answer: intents.answer,
   };

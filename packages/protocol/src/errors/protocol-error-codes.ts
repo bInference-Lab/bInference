@@ -33,6 +33,7 @@ export const protocolErrorCodes = [
   "wallet.unfunded",
   "wallet.bad_owner_key",
   "wallet.custody_down",
+  "address.not_found",
   "intent.not_found",
   "intent.wrong_state",
   "intent.expired",

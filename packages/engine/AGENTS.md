@@ -109,7 +109,9 @@ Rules for this package:
   `notice.sendLevel` notice.
 - The address book lives in the agent's settings: the policy reads every live entry, on every
   chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
-  pay an entry only from its `usableAtMs`, 24 hours after it was saved.
+  pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers
+  (`src/address-book/`) list entries and remove one as braking, with `confirm`, journaled; adding
+  one saves it in the ceiling, so it needs the owner key.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and
