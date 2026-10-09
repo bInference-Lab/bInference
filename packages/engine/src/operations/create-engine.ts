@@ -23,6 +23,10 @@ import { createPositions, type Positions } from "../positions/create-positions.j
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import {
+  createRescueAddressHandlers,
+  type RescueAddressHandlers,
+} from "../safety/rescue-address-handlers.js";
+import {
   createSendLevelHandlers,
   type SendLevelHandlers,
 } from "../send-levels/send-level-handlers.js";
@@ -44,12 +48,14 @@ export interface EngineHandlers
     ApprovalHandlers,
     SendLevelHandlers,
     AddressBookHandlers,
+    RescueAddressHandlers,
     WalletHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
- * switch, the approval mode, the send level, the address book, the wallet list and the ledger,
- * built from ports. It holds no I/O of its own; pushes leave through `publish`.
+ * switch, the approval mode, the send level, the address book, the rescue address change, the
+ * wallet list and the ledger, built from ports. It holds no I/O of its own; pushes leave through
+ * `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -231,6 +237,11 @@ export function createEngine(options: EngineOptions): Engine {
       ...createApprovalHandlers(settingsParts),
       ...createSendLevelHandlers(settingsParts),
       ...createAddressBookHandlers(settingsParts),
+      ...createRescueAddressHandlers({
+        ...settingsParts,
+        install: options.stores.install,
+        chains: options.chains,
+      }),
     },
     answer: intents.answer,
   };

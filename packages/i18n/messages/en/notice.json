@@ -6,5 +6,6 @@
   "fillUnknown": "⚠️ A trade settled, but no RPC can say what it received any more. Add a tracing RPC to the config and restart binference to finish it.",
   "notSigned": "⚠️ A trade was cancelled before its first transaction was signed. Nothing was sent.",
   "stepUnsent": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.",
-  "sendLevel": "Send level {from} → {to} {pending, select, yes {at {when}} other {now}}"
+  "sendLevel": "Send level {from} → {to} {pending, select, yes {at {when}} other {now}}",
+  "rescueAddress": "⚠️ Rescue address changes to {address} at {when}. Not you? Cancel now."
 }
