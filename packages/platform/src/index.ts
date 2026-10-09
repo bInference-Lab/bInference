@@ -43,4 +43,6 @@ export type {
   StopTrigger,
 } from "./shutdown.js";
 export { resolveStateFolder } from "./state-folder.js";
+export { watchFile } from "./watch-file.js";
+export type { FileWatch, WatchFileOptions } from "./watch-file.js";
 export type { StateFolder, StateFolderOptions } from "./state-folder.js";

@@ -21,6 +21,7 @@ ports:
   macOS, a `systemctl --user` unit on Linux, a scheduled task through `schtasks` on Windows, each
   started at the owner's login, in their session;
 - text files read whole, and programs run with an argument array, no shell and a time limit;
+- a watch on one file through its folder, which hears an editor's rename over it too;
 - a long-running Node program, such as the signer, held through pipes to its standard input and
   output, with only the environment it is given;
 - log files: lines appended in order without blocking the writer, a file set aside once it is full,
@@ -52,6 +53,7 @@ ports:
 | `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit      |
 | `startNodeProgram`, `NodeProgram`   | Starts a Node program with pipes and only the environment it is given |
 | `realFilePath`                      | A file's path with every link on the way resolved                     |
+| `watchFile`, `FileWatch`            | Hears each change to a file through its folder, renames included      |
 | `@binference/platform/testing`      | Contract suites, service and secret vault fakes, `createTempFolder`   |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
