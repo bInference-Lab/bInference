@@ -9,7 +9,12 @@ import { executeInSlot } from "./execute-in-slot.js";
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
 import type { ExecutionRun, ExecutorParts } from "./executor-run.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
-import { recoverIntent, type Unsettled, unsettledIntents } from "./recover-intents.js";
+import {
+  liveIntentsIn,
+  recoverIntent,
+  type Unsettled,
+  unsettledIntents,
+} from "./recover-intents.js";
 import { settleIncluded } from "./settle-included.js";
 
 /** The executor of a running engine, which the engine's startup recovers and shutdown closes. */
@@ -23,6 +28,13 @@ export interface RunningExecutor extends Executor {
    * like taken intents, and `close` stops them.
    */
   recover(options: { readonly signal: AbortSignal }): Promise<number>;
+  /**
+   * Takes every confirmed live intent no queue took yet, as an earlier run left them, the least
+   * recently changed first, and resolves with how many it went through. A locked engine holds them
+   * until it holds the agent key (decision 0103), so call it after `recover`, once unlocked. Each
+   * goes through `take`, which leaves one whose confirmation expired as it is.
+   */
+  takeConfirmed(options: { readonly signal: AbortSignal }): Promise<number>;
   /**
    * Stops the executor in the engine's shutdown order: it takes nothing more, every wait ends and
    * no step starts, while a signature or a send under way runs to its end, so a signed step is
@@ -127,6 +139,41 @@ async function execute(parts: ExecutorParts, work: Work, stops: Stops): Promise<
   }
 }
 
+// The engine begins to stop at once; the calls under way stop too once `signal` aborts.
+async function stopAll(
+  stops: Stops,
+  running: ReadonlySet<Promise<void>>,
+  signal: AbortSignal,
+): Promise<void> {
+  const reason = new BinferenceError({
+    code: "engine.stopping",
+    message: "The engine is stopping.",
+  });
+  stops.stopping.abort(reason);
+  const cut = (): void => stops.lifetime.abort(reason);
+  if (signal.aborted) {
+    cut();
+  }
+  signal.addEventListener("abort", cut, { once: true });
+  // Nothing joins the works once the executor stops, so these are the last ones.
+  await Promise.allSettled(running);
+  signal.removeEventListener("abort", cut);
+}
+
+// One at a time, so each takes its place in its wallet's queue in the order it waited.
+async function takeEachConfirmed(
+  parts: ExecutorParts,
+  take: RunningExecutor["take"],
+  signal: AbortSignal,
+): Promise<number> {
+  const confirmed = await liveIntentsIn(parts, ["confirmed"], { signal });
+  await confirmed.reduce<Promise<void>>(
+    async (earlier, record) => earlier.then(async () => take(record.id, { signal })),
+    Promise.resolve(),
+  );
+  return confirmed.length;
+}
+
 function closed(details: Readonly<Record<string, string>>): BinferenceError {
   return new BinferenceError({
     code: "engine.executor_closed",
@@ -153,19 +200,21 @@ export function createExecutor(options: ExecutorOptions): RunningExecutor {
     running.add(finished);
     void finished.finally(() => running.delete(finished));
   };
+  const take: RunningExecutor["take"] = async (intent, { signal }) => {
+    signal.throwIfAborted();
+    if (stops.stopping.signal.aborted) {
+      throw closed({ intent });
+    }
+    const taken = await workOf(parts, intent, signal);
+    if (typeof taken === "string") {
+      parts.log.warn("executor.not_taken", { intentId: intent, errorCode: taken });
+      return;
+    }
+    track(takenWork(taken));
+  };
   return {
-    async take(intent, { signal }) {
-      signal.throwIfAborted();
-      if (stops.stopping.signal.aborted) {
-        throw closed({ intent });
-      }
-      const taken = await workOf(parts, intent, signal);
-      if (typeof taken === "string") {
-        parts.log.warn("executor.not_taken", { intentId: intent, errorCode: taken });
-        return;
-      }
-      track(takenWork(taken));
-    },
+    take,
+    takeConfirmed: async ({ signal }) => takeEachConfirmed(parts, take, signal),
     async recover({ signal }) {
       signal.throwIfAborted();
       if (stops.stopping.signal.aborted) {
@@ -178,20 +227,6 @@ export function createExecutor(options: ExecutorOptions): RunningExecutor {
       });
       return unsettled.length;
     },
-    async close({ signal }) {
-      const reason = new BinferenceError({
-        code: "engine.stopping",
-        message: "The engine is stopping.",
-      });
-      stops.stopping.abort(reason);
-      const cut = (): void => stops.lifetime.abort(reason);
-      if (signal.aborted) {
-        cut();
-      }
-      signal.addEventListener("abort", cut, { once: true });
-      // Nothing joins the works once the executor stops, so these are the last ones.
-      await Promise.allSettled(running);
-      signal.removeEventListener("abort", cut);
-    },
+    close: async ({ signal }) => stopAll(stops, running, signal),
   };
 }

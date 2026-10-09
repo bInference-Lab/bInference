@@ -26,13 +26,17 @@ export interface Unsettled {
 
 const pageSize = 100;
 
-async function listFrom(
-  parts: ExecutorParts,
-  signal: AbortSignal,
-  after?: Pick<IntentRecord, "changedAtMs" | "id">,
+/**
+ * Every live intent in one of `states`, the least recently changed first, read a page at a time.
+ */
+export async function liveIntentsIn(
+  parts: Pick<ExecutorParts, "intents">,
+  states: readonly IntentState[],
+  call: { readonly signal: AbortSignal; readonly after?: Pick<IntentRecord, "changedAtMs" | "id"> },
 ): Promise<readonly IntentRecord[]> {
+  const { signal, after } = call;
   const query = {
-    states: unsettledStates,
+    states,
     isPaper: false,
     limit: pageSize,
     ...(after === undefined ? {} : { after: { changedAtMs: after.changedAtMs, id: after.id } }),
@@ -41,7 +45,7 @@ async function listFrom(
   const last = page.at(-1);
   return page.length < pageSize || last === undefined
     ? page
-    : [...page, ...(await listFrom(parts, signal, last))];
+    : [...page, ...(await liveIntentsIn(parts, states, { signal, after: last }))];
 }
 
 async function unsettledOf(
@@ -68,7 +72,7 @@ export async function unsettledIntents(
   parts: ExecutorParts,
   signal: AbortSignal,
 ): Promise<readonly Unsettled[]> {
-  const records = await listFrom(parts, signal);
+  const records = await liveIntentsIn(parts, unsettledStates, { signal });
   const found = await Promise.all(
     records.map(async (record) => unsettledOf(parts, record, signal)),
   );

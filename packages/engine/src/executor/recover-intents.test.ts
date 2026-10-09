@@ -307,3 +307,31 @@ describe("recovery after a restart", () => {
     });
   });
 });
+
+describe("taking the confirmed intents an earlier run left", () => {
+  it("takes each confirmed live intent onto its wallet's queue, oldest first", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const first = await tapped(bench);
+    const second = await tapped(bench);
+    await expect(bench.executor.takeConfirmed(live())).resolves.toBe(2);
+    await driveUntil(bench, second, { states: ["reconciled"] });
+    expect([await stateOf(bench, first), await stateOf(bench, second)]).toStrictEqual([
+      "reconciled",
+      "reconciled",
+    ]);
+    const transactions = await transactionsOf(bench);
+    expect(transactions.map(({ intentId, nonce }) => [intentId, nonce])).toStrictEqual([
+      [first, 0],
+      [second, 1],
+    ]);
+  });
+
+  it("takes none once the executor stops", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    await tapped(bench);
+    await bench.executor.close(live());
+    await expect(bench.executor.takeConfirmed(live())).rejects.toMatchObject({
+      code: "engine.executor_closed",
+    });
+  });
+});
