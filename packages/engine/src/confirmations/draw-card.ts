@@ -48,6 +48,8 @@ export interface CardWarnings {
   readonly autoAsk?: AutoAsk;
   /** The agent's first live card, which says so (`isFirstLiveCard`); absent shows no note. */
   readonly isFirstLive?: boolean;
+  /** A paper sale nothing could simulate: its fill is the quote's estimate. */
+  readonly isEstimate?: boolean;
 }
 
 /**
@@ -166,6 +168,7 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
     ...shown([
       [facts.card.version > 1, "card.warn.requoted"],
       [facts.isPaper, "card.warn.paper"],
+      [warnings.isEstimate === true, "card.warn.paperEstimate"],
       [warnings.isFirstLive === true && !facts.isPaper, "card.warn.firstLive"],
     ]),
     ...optional(warnings.autoAsk, autoAskLine),

@@ -105,6 +105,7 @@ function paperParts(options: EngineOptions): PaperParts {
     portfolio,
     intents: options.stores.intents,
     chains: options.chains,
+    clock: options.clock,
   });
   return { positions, portfolio, wallets, simulator };
 }

@@ -7,7 +7,7 @@ import {
   type TxSimulator,
   assetRefSchema,
 } from "@binference/chain";
-import { applyBps, bpsSchema } from "@binference/core";
+import { applyBps, BinferenceError, bpsSchema } from "@binference/core";
 import { testCoin, testToken } from "../intents/test-intents.js";
 import { testAccount } from "../operations/test-engine.js";
 import type { TradeQuote } from "../venues/venue-host.js";
@@ -100,7 +100,8 @@ function transferStep(
 /**
  * A simulator of the fake chain for the round trip: it reads the fake venue's swaps, approvals
  * and the fake family's token transfers of {@link unknownToken}, and moves what the model says.
- * A buy reverts unless the run's balances give its sender the coin it pays.
+ * A buy reverts unless the run's balances give its sender the coin it pays, and the model's token
+ * keeps no balance a run can set, as a reflection token.
  */
 export function createTokenModelSimulator(model: TokenModel): TxSimulator & {
   readonly runs: () => number;
@@ -110,6 +111,13 @@ export function createTokenModelSimulator(model: TokenModel): TxSimulator & {
     async simulate(drafts, { signal, balances = [] }) {
       signal.throwIfAborted();
       count += 1;
+      if (balances.some((amount) => amount.asset === unknownToken)) {
+        throw new BinferenceError({
+          code: "chain.balance_unset",
+          message: "The model's token keeps no balance a simulation can set.",
+          details: { asset: unknownToken },
+        });
+      }
       const coin = balances.find((amount) => amount.asset === testCoin)?.base ?? 0n;
       return await Promise.resolve(
         drafts.map((draft) => {

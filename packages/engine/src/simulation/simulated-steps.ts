@@ -9,7 +9,13 @@ export interface SimulatedSteps extends SimulationView {
   readonly gasUsed: bigint;
 }
 
-/** The view an intent stores and shows of a simulation: its balance changes and its time. */
+/**
+ * The view an intent stores and shows of a simulation: its balance changes, its time, and whether
+ * it is a paper estimate.
+ */
 export function simulationViewOf(steps: SimulatedSteps): SimulationView {
-  return { spent: steps.spent, received: steps.received, simulatedAt: steps.simulatedAt };
+  const { spent, received, simulatedAt, estimated } = steps;
+  return estimated === true
+    ? { spent, received, simulatedAt, estimated }
+    : { spent, received, simulatedAt };
 }

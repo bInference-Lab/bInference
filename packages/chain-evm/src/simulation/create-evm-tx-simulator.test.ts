@@ -35,6 +35,7 @@ const chain = {
 } as EvmChain;
 
 const account = (address: Address) => accountRefSchema.parse(`${chain.ref}:${address}`);
+const usdtAsset = assetRefSchema.parse(`${chain.ref}/erc20:${usdt}`);
 const word = (value: bigint): Hex => pad(toHex(value));
 const live = { signal: new AbortController().signal };
 
@@ -108,6 +109,8 @@ describe("createEvmTxSimulator", () => {
         moving: { drafts: [swap], transfer: paid },
         reverting: [swap, approve],
         unfunded: { drafts: [swap, swap], balance: { asset: chain.nativeAsset, base: 10n ** 18n } },
+        // The node answers the balance probe with no marker, as for a token that computes balances.
+        unsettable: { drafts: [swap], balance: { asset: usdtAsset, base: 1n } },
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {

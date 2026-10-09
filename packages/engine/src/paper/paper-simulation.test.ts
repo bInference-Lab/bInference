@@ -4,7 +4,8 @@ import {
   createFakeFamily,
   createFakeSigningScheme,
 } from "@binference/chain/testing";
-import { bpsSchema, err, type Id, ok, type Result } from "@binference/core";
+import { BinferenceError, bpsSchema, err, type Id, ok, type Result } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import type { SimulationView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import type { BuiltQuote } from "../confirmations/stored-intent.js";
@@ -38,6 +39,29 @@ const portfolio: PaperPortfolio = {
   reset: async () => await Promise.reject(new Error("Not reset here.")),
 };
 const simulated = { spent: [], received: [], simulatedAt: testNowMs };
+const clock = createManualClock(testNowMs);
+
+interface Fault {
+  readonly code: "chain.balance_unset" | "chain.simulation_failed";
+  readonly asset: AssetRef;
+}
+
+// A simulator whose every run faults: `chain.balance_unset` is a balance of `asset` it cannot set,
+// as for a reflection token.
+function failing(fault: Fault): Simulator {
+  return {
+    async simulate() {
+      await Promise.resolve();
+      throw new BinferenceError({
+        code: fault.code,
+        message: "The simulation faulted.",
+        details: { asset: fault.asset },
+      });
+    },
+  };
+}
+
+const unset = (asset: AssetRef): Fault => ({ code: "chain.balance_unset", asset });
 
 function built(spent: AssetRef): BuiltQuote {
   const amount = (base: bigint) => ({ asset: spent, base });
@@ -84,8 +108,13 @@ async function setup() {
       return await Promise.resolve(ok({ ...simulated, gasUsed: 0n }));
     },
   };
-  const simulator = withPaperSimulation(recording, { portfolio, intents: stores.intents, chains });
-  return { simulator, seen };
+  const simulator = withPaperSimulation(recording, {
+    portfolio,
+    intents: stores.intents,
+    chains,
+    clock,
+  });
+  return { simulator, seen, stores };
 }
 
 // The paper intent's steps match their terms and the live one's differ, as the inner simulator
@@ -109,6 +138,7 @@ describe("simulation with paper balances", () => {
           portfolio,
           intents: contractStores.intents,
           chains,
+          clock,
         }),
         matching: { intent: paperIntent, built: built(testToken) },
         differing: { intent: liveIntent, built: built(testToken) },
@@ -146,5 +176,46 @@ describe("simulation with paper balances", () => {
     const { simulator, seen } = await setup();
     await simulator.simulate(intent, built(testToken), live);
     expect(seen).toStrictEqual([live]);
+  });
+
+  it("fills a paper sale of a token whose balance cannot be set as an estimate at the quote", async () => {
+    const { stores } = await setup();
+    const simulator = withPaperSimulation(failing(unset(testToken)), {
+      portfolio,
+      intents: stores.intents,
+      chains,
+      clock,
+    });
+    const sale = built(testToken);
+    await expect(simulator.simulate(paperIntent, sale, live)).resolves.toStrictEqual(
+      ok({
+        spent: [sale.quote.amountIn],
+        received: [sale.quote.expectedOut],
+        simulatedAt: testNowMs,
+        gasUsed: 0n,
+        estimated: true,
+      }),
+    );
+  });
+
+  it.each<[string, Id<"int">, Fault]>([
+    ["a live sale", liveIntent, unset(testToken)],
+    ["a paper trade whose coin balance is the one not set", paperIntent, unset(testCoin)],
+    [
+      "a paper trade the node refuses",
+      paperIntent,
+      { code: "chain.simulation_failed", asset: testToken },
+    ],
+  ])("never estimates %s: the fault reaches the caller", async (_case, intent, fault) => {
+    const { stores } = await setup();
+    const simulator = withPaperSimulation(failing(fault), {
+      portfolio,
+      intents: stores.intents,
+      chains,
+      clock,
+    });
+    await expect(simulator.simulate(intent, built(testToken), live)).rejects.toMatchObject({
+      code: fault.code,
+    });
   });
 });

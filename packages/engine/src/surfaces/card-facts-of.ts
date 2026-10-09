@@ -46,7 +46,11 @@ function checkOf(
   token: AssetRef,
   chains: ChainRegistry,
 ): CardCheck | undefined {
-  const received = simulation?.received.find((amount) => amount.asset === token);
+  // An estimate ran nothing, so the card has no simulation to show.
+  const received =
+    simulation?.estimated === true
+      ? undefined
+      : simulation?.received.find((amount) => amount.asset === token);
   return received === undefined
     ? undefined
     : { received, token, isTokenVerified: assetInfoOf(chains, token) !== undefined };
@@ -82,6 +86,7 @@ function swapFacts(request: SwapRequest, quote: QuoteView, source: CardSource): 
       isNewAddress: false,
       ...(isFirstLive ? { isFirstLive } : {}),
       ...(taxBps === undefined ? {} : { taxBps }),
+      ...(simulation?.estimated === true ? { isEstimate: true } : {}),
     },
     reason: request.reason,
   };
@@ -89,8 +94,8 @@ function swapFacts(request: SwapRequest, quote: QuoteView, source: CardSource): 
 
 /**
  * The facts a card version is drawn from (spec 4, section 3), read from the stored intent: the
- * quote's amounts and route, the simulation's check, the highest tax the risk step measured and
- * the agent's reason. The money path quotes
+ * quote's amounts and route, the simulation's check (or that a paper sale's fill is an estimate),
+ * the highest tax the risk step measured and the agent's reason. The money path quotes
  * swaps only, so an intent of another kind, or one without a quote, has none. The fees line waits
  * for a gas estimate in the quote, and no source marks unusual names yet.
  */

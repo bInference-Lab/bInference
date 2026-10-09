@@ -21,6 +21,11 @@ export interface SimulationView {
   readonly spent: readonly Amount[];
   readonly received: readonly Amount[];
   readonly simulatedAt: number;
+  /**
+   * Set on a paper sale of a token whose balance no simulation can set, such as a reflection or
+   * rebasing token: nothing ran, and the amounts are the quote's. A live trade never has one.
+   */
+  readonly estimated?: boolean;
 }
 
 /** One fill of an intent: what went in, what came out, and its costs in micro-dollars. */
@@ -87,6 +92,7 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
       spent: z.array(amountSchema),
       received: z.array(amountSchema),
       simulatedAt: epochMsSchema,
+      estimated: z.boolean().exactOptional(),
     })
     .exactOptional(),
   card: cardViewSchema.exactOptional(),

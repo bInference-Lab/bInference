@@ -12,8 +12,8 @@ export interface TxSimulator {
   /**
    * One step per draft, in the drafts' order. A step that reverts is an outcome, never a throw.
    * Drafts of a chain the simulator does not serve or that its family cannot read, a balance of
-   * another chain's asset, and a node that refuses the simulation are faults. Rejects with the
-   * signal's reason once it aborts.
+   * another chain's asset, a token balance it cannot set (`chain.balance_unset`) and a node that
+   * refuses the simulation are faults. Rejects with the signal's reason once it aborts.
    */
   simulate(
     drafts: readonly TxDraft[],

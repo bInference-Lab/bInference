@@ -8,6 +8,7 @@ import { createFakeTxSimulator } from "./fake-tx-simulator.js";
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
 const router = accountRefSchema.parse("fake:1:0x0000000b");
 const coin = assetRefSchema.parse("fake:1/slip44:1");
+const reflecting = assetRefSchema.parse("fake:1/token:0x0000000f");
 const pay = fakeDraft(wallet, { to: "0x0000000b", value: 5n, data: "pay" });
 const broken = fakeDraft(wallet, { to: "0x0000000b", value: 0n, data: "broken" });
 const transfer = { from: wallet, to: router, amount: { asset: coin, base: 5n } };
@@ -26,10 +27,12 @@ describe("fake transaction simulator", () => {
             [payMore.payload, paid],
           ]),
           needs,
+          new Set([reflecting]),
         ),
         moving: { drafts: [pay], transfer },
         reverting: [pay, broken],
         unfunded: { drafts: [pay, payMore], balance: { asset: coin, base: 10n } },
+        unsettable: { drafts: [pay], balance: { asset: reflecting, base: 1n } },
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {

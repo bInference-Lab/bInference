@@ -50,6 +50,7 @@ const simulationViewSchema: z.ZodType<SimulationView> = z.strictObject({
   spent: z.array(amountSchema),
   received: z.array(amountSchema),
   simulatedAt: epochMsSchema,
+  estimated: z.boolean().exactOptional(),
 });
 
 const authorizationSchema: z.ZodType<Authorization> = z.union([

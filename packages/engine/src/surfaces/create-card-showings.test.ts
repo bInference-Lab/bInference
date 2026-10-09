@@ -1,4 +1,4 @@
-import type { Bps, Id } from "@binference/core";
+import { BinferenceError, type Bps, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { CardRecord } from "../intents/card-record.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
@@ -104,6 +104,26 @@ describe("the card showings", () => {
     const showing = present(await showingsOf(shown.test).opened(ref, live));
     const tax = showing.card.lines.find((line) => line.key === "card.warn.highTax");
     expect(tax?.values).toStrictEqual({ tax: { type: "percent", bps: 450 } });
+  });
+
+  it("say a paper sale of a token nothing can simulate fills as an estimate, with no check line", async () => {
+    const unset = new BinferenceError({
+      code: "chain.balance_unset",
+      message: "No slot holds this token's balances.",
+      details: { asset: testToken },
+    });
+    const test = await startTestEngine({
+      simulator: { simulate: async () => await Promise.reject(unset) },
+    });
+    const sale = testSwap({ from: testToken, to: testCoin, amount: { base: 1_000_000n } });
+    const view = expectOk(await test.engine.handlers["intent/propose"](testCall(sale)));
+    expect([view.state, view.simulation?.estimated]).toStrictEqual(["awaiting_confirmation", true]);
+    const [card] = await test.stores.intents.cards(view.intent, live);
+    const ref = { intent: view.intent, card: present(card).id };
+    const showing = present(await showingsOf(test).opened(ref, live));
+    const keys = showing.card.lines.map((line) => line.key);
+    expect(keys).toContain("card.warn.paperEstimate");
+    expect(keys).not.toContain("card.check");
   });
 
   it("say on a live agent's first card that it trades real money", async () => {

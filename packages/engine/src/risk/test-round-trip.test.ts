@@ -25,6 +25,7 @@ describe("token model simulator", () => {
         },
         reverting: [send, buy],
         unfunded: { drafts: [buy], balance: { asset: testCoin, base: 10n } },
+        unsettable: { drafts: [send], balance: { asset: unknownToken, base: 1n } },
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {

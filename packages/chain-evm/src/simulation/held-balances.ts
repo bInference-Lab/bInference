@@ -1,4 +1,4 @@
-import { type Amount, assetRefParts } from "@binference/chain";
+import { type Amount, type AssetRef, assetRefParts } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { type Address, getAddress, isAddress, toHex } from "viem";
 import type { EvmChain } from "../evm-chain.js";
@@ -38,6 +38,7 @@ function tokenOf(chain: EvmChain, amount: Amount): Address {
 }
 
 interface HeldToken {
+  readonly asset: AssetRef;
   readonly token: Address;
   readonly base: bigint;
 }
@@ -45,20 +46,27 @@ interface HeldToken {
 async function tokenOverride(
   rpc: RpcFailover,
   request: HeldBalancesRequest,
-  { token, base }: HeldToken,
-): Promise<readonly StorageOverride[]> {
+  { token, base, asset }: HeldToken,
+): Promise<StorageOverride> {
   const { holder, signal } = request;
   const slot = await findBalanceSlot(rpc, { token, holder, signal });
-  return slot === undefined ? [] : [{ address: token, slot, value: toHex(base, { size: 32 }) }];
+  if (slot === undefined) {
+    throw new BinferenceError({
+      code: "chain.balance_unset",
+      message: "No storage slot holds this token's balances, so a simulation cannot set one.",
+      details: { asset },
+    });
+  }
+  return { address: token, slot, value: toHex(base, { size: 32 }) };
 }
 
 /**
  * The state overrides that make `holder` hold `amounts` in a simulation, such as a paper
  * portfolio's balances. The native coin's balance is set exactly. A token's balance is set in the
- * slot {@link findBalanceSlot} finds; a token whose slot it cannot find keeps the holder's balance
- * on the chain, so a trade the holder cannot pay for still reverts. An amount of another chain's
- * asset, or of an asset that is neither the coin nor an ERC-20 token, is a `chain.bad_balances`
- * fault.
+ * slot {@link findBalanceSlot} finds; a token whose slot it cannot find, such as a reflection or
+ * rebasing token, is a `chain.balance_unset` fault that names the asset. An amount of another
+ * chain's asset, or of an asset that is neither the coin nor an ERC-20 token, is a
+ * `chain.bad_balances` fault.
  */
 export async function heldBalances(
   rpc: RpcFailover,
@@ -69,10 +77,10 @@ export async function heldBalances(
   // Every token is read before the node is asked, so a bad balance asks nothing.
   const tokens = amounts
     .filter((amount) => amount.asset !== chain.nativeAsset)
-    .map((amount) => ({ token: tokenOf(chain, amount), base: amount.base }));
+    .map((amount) => ({ asset: amount.asset, token: tokenOf(chain, amount), base: amount.base }));
   const storage = await Promise.all(tokens.map(async (held) => tokenOverride(rpc, request, held)));
   return {
     balances: native.map((amount) => ({ address: holder, balanceWei: amount.base })),
-    storage: storage.flat(),
+    storage,
   };
 }

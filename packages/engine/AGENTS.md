@@ -82,6 +82,10 @@ Rules for this package:
   quote and records the fill with the move, then records it as a paper execution, valued at the
   sold asset's price then. With no usable price the intent stays `confirmed`: a fill is never
   valued at a guessed price.
+- The paper simulation (`src/paper/paper-simulation.ts`) gives a paper intent its paper balances.
+  A paper sale of a token whose balance the chain's simulator cannot set (`chain.balance_unset`:
+  a reflection or rebasing token) runs nothing and passes as an estimate at the quote's amounts,
+  which the card says (`card.warn.paperEstimate`). A live trade always needs its simulation.
 - The paper portfolio is the agent's wallets' paper positions: a paper intent's native balance is
   its paper position of the native coin. A reset empties every paper position of the agent's
   wallets, P&L too, and opens the starting balances in its first wallet, each at its price when it

@@ -17,6 +17,8 @@ export interface TxSimulatorSubject {
    * reverts, and the native balance with which every one succeeds.
    */
   readonly unfunded: { readonly drafts: readonly TxDraft[]; readonly balance: Amount };
+  /** Drafts, and a token balance the simulator cannot set for their sender. */
+  readonly unsettable: { readonly drafts: readonly TxDraft[]; readonly balance: Amount };
 }
 
 /** Makes a fresh {@link TxSimulatorSubject} for each check. */
@@ -25,6 +27,37 @@ export interface TxSimulatorHarness {
 }
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
+
+// The balances a run is given: set when it can, refused with the asset named when it cannot.
+function balanceChecks(harness: TxSimulatorHarness): readonly ContractCheck[] {
+  return [
+    {
+      name: "runs drafts with the native balance it is given instead of the sender's on chain",
+      run: async () => {
+        const { simulator, unfunded } = harness.create();
+        const onChain = await simulator.simulate(unfunded.drafts, live());
+        const funded = await simulator.simulate(unfunded.drafts, {
+          ...live(),
+          balances: [unfunded.balance],
+        });
+        assert.equal(onChain.at(-1)?.status, "reverted");
+        assert.equal(funded.length, unfunded.drafts.length);
+        assert.ok(funded.every((step) => step.status === "success"));
+      },
+    },
+    {
+      name: "refuses a token balance it cannot set, naming the asset, and runs nothing",
+      run: async () => {
+        const { simulator, unsettable } = harness.create();
+        const { drafts, balance } = unsettable;
+        await assert.rejects(simulator.simulate(drafts, { ...live(), balances: [balance] }), {
+          code: "chain.balance_unset",
+          details: { asset: balance.asset },
+        });
+      },
+    },
+  ];
+}
 
 /** The contract every `TxSimulator` adapter passes. */
 export function txSimulatorContract(harness: TxSimulatorHarness): readonly ContractCheck[] {
@@ -52,20 +85,7 @@ export function txSimulatorContract(harness: TxSimulatorHarness): readonly Contr
         assert.deepEqual([last.transfers, last.approvals], [[], []]);
       },
     },
-    {
-      name: "runs drafts with the native balance it is given instead of the sender's on chain",
-      run: async () => {
-        const { simulator, unfunded } = harness.create();
-        const onChain = await simulator.simulate(unfunded.drafts, live());
-        const funded = await simulator.simulate(unfunded.drafts, {
-          ...live(),
-          balances: [unfunded.balance],
-        });
-        assert.equal(onChain.at(-1)?.status, "reverted");
-        assert.equal(funded.length, unfunded.drafts.length);
-        assert.ok(funded.every((step) => step.status === "success"));
-      },
-    },
+    ...balanceChecks(harness),
     {
       name: "rejects with the signal's reason once the signal aborts",
       run: async () => {

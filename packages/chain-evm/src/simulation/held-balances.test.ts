@@ -75,12 +75,12 @@ describe("heldBalances", () => {
     });
   });
 
-  it("leaves a token whose slot it cannot find at the holder's balance on the chain", async () => {
+  it("refuses a token whose slot it cannot find, naming the token", async () => {
     const { rpc } = setup(computed);
     const amounts = [{ asset: usdtAsset, base: 1n }];
-    await expect(heldBalances(rpc, { chain, holder, amounts, ...live })).resolves.toStrictEqual({
-      balances: [],
-      storage: [],
+    await expect(heldBalances(rpc, { chain, holder, amounts, ...live })).rejects.toMatchObject({
+      code: "chain.balance_unset",
+      details: { asset: usdtAsset },
     });
   });
 

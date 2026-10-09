@@ -3581,6 +3581,9 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "estimated": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -7984,6 +7987,9 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "estimated": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -9227,6 +9233,9 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "estimated": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -10524,6 +10533,9 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 9007199254740991
+                      },
+                      "estimated": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -11789,6 +11801,9 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "estimated": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -13038,6 +13053,9 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "estimated": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -14286,6 +14304,9 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "estimated": {
+                  "type": "boolean"
                 }
               },
               "required": [
