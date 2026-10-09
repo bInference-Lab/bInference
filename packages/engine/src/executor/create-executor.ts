@@ -4,11 +4,12 @@ import { createStoredIntents } from "../intents/create-stored-intents.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor } from "../ports.js";
+import { createPositions } from "../positions/create-positions.js";
 import { executeInSlot } from "./execute-in-slot.js";
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
 import type { ExecutorParts } from "./executor-run.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
-import { watchFinality } from "./watch-finality.js";
+import { settleIncluded } from "./settle-included.js";
 
 /** The executor of a running engine, which the engine's shutdown closes. */
 export interface RunningExecutor extends Executor {
@@ -31,6 +32,7 @@ function partsOf(options: ExecutorOptions): ExecutorParts {
     stored: createStoredIntents({ intents: stores.intents, agents: stores.agents, ids, publish }),
     machine: createIntentStateMachine({ clock }),
     policy: createPolicyCheck({ prices: options.prices, clock }),
+    valuedPositions: createPositions({ store: options.positions, prices: options.prices }),
     limits: { ...defaultExecutorLimits, ...options.limits },
     log: options.logger.child("executor"),
   };
@@ -69,7 +71,7 @@ async function execute(parts: ExecutorParts, work: Work, signal: AbortSignal): P
       { signal },
     );
     if (included !== undefined) {
-      await watchFinality(run, included.included, included.steps);
+      await settleIncluded(run, included);
     }
   } catch (error) {
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
@@ -79,12 +81,12 @@ async function execute(parts: ExecutorParts, work: Work, signal: AbortSignal): P
 }
 
 /**
- * Creates the executor (ARCHITECTURE.md section 7, step 8). `take` reads a confirmed live intent,
- * its plan and its wallet's account, queues its work on the wallet's queue, and resolves; the work
- * runs on until every step is final, the run stops, or a step is handed over. A work that fails
- * is logged with its fault's code; an intent the executor cannot run stays as it was, and the
- * reason is logged. `close` stops every work at once: what was signed is stored, so recovery goes
- * on from the store.
+ * Creates the executor (ARCHITECTURE.md section 7, steps 8 and 9). `take` reads a confirmed live
+ * intent, its plan and its wallet's account, queues its work on the wallet's queue, and resolves;
+ * the work runs on until the intent reconciles, the run stops, or a step is handed over. A work
+ * that fails is logged with its fault's code; an intent the executor cannot run stays as it was,
+ * and the reason is logged. `close` stops every work at once: what was signed is stored, so
+ * recovery goes on from the store.
  */
 export function createExecutor(options: ExecutorOptions): RunningExecutor {
   const parts = partsOf(options);

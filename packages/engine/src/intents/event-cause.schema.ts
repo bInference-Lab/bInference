@@ -1,4 +1,4 @@
-import { type Amount, amountSchema } from "@binference/chain";
+import { type Amount, amountSchema, isTxHash, type TxHash } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import { z } from "zod";
 import type { CardClosing } from "../confirmations/card-closing.js";
@@ -14,13 +14,28 @@ export interface PaperFill {
 }
 
 /**
+ * A live trade as its transactions settled on chain: what left the wallet and what reached it,
+ * read from the transactions and their logs, the network fee every step paid, each step's
+ * transaction hash in step order, and when it reconciled.
+ */
+export interface SettledTrade {
+  readonly amountIn: Amount;
+  readonly amountOut: Amount;
+  readonly gas: Amount;
+  readonly txHashes: readonly TxHash[];
+  readonly atMs: number;
+}
+
+/**
  * What the engine reads back from an intent event's cause, beside the trigger: who proposed the
- * intent (on its first event), how a card closed, and the paper fill a move recorded.
+ * intent (on its first event), how a card closed, the paper fill a move recorded, and the live
+ * trade the move to `reconciled` recorded.
  */
 export interface EventCause {
   readonly proposer?: IntentProposer;
   readonly closing?: CardClosing;
   readonly fill?: PaperFill;
+  readonly settled?: SettledTrade;
 }
 
 const answererSchema = z.strictObject({
@@ -43,11 +58,20 @@ const paperFillSchema: z.ZodType<PaperFill> = z.strictObject({
   atMs: epochMsSchema,
 });
 
+const settledTradeSchema: z.ZodType<SettledTrade> = z.strictObject({
+  amountIn: amountSchema,
+  amountOut: amountSchema,
+  gas: amountSchema,
+  txHashes: z.array(z.string().refine(isTxHash)).min(1),
+  atMs: epochMsSchema,
+});
+
 // Causes carry more than the engine reads back, such as the trigger and who acted.
 const eventCauseSchema: z.ZodType<EventCause> = z.looseObject({
   proposer: z.enum(["agent_runtime", "mcp_client", "owner", "engine"]).exactOptional(),
   closing: cardClosingSchema.exactOptional(),
   fill: paperFillSchema.exactOptional(),
+  settled: settledTradeSchema.exactOptional(),
 });
 
 /** How a card closed, as an event's cause and its ledger entry keep it. */
@@ -60,6 +84,12 @@ export const closingDocument: DocumentCodec<CardClosing> = documentCodec(
 export const paperFillDocument: DocumentCodec<PaperFill> = documentCodec(
   "paper fill",
   paperFillSchema,
+);
+
+/** A live trade, as the event and the ledger entry of `reconciled` keep it. */
+export const settledTradeDocument: DocumentCodec<SettledTrade> = documentCodec(
+  "settled trade",
+  settledTradeSchema,
 );
 
 const causeDocument: DocumentCodec<EventCause> = documentCodec("event cause", eventCauseSchema);

@@ -140,36 +140,40 @@ async function checkOnce(
   return { ...state, snapshot: recovered.snapshot, pending };
 }
 
-async function watchFrom(run: ExecutionRun, before: FinalityState): Promise<void> {
+async function watchFrom(
+  run: ExecutionRun,
+  before: FinalityState,
+): Promise<IntentSnapshot | undefined> {
   const { parts } = run;
   const intentId = before.snapshot.record.id;
   if (before.waits >= parts.limits.finalAfterBlocks) {
     parts.log.warn("executor.final_late", { intentId });
-    return;
+    return undefined;
   }
   const state = await checkOnce(run, before);
   if (state === undefined) {
-    return;
+    return undefined;
   }
   if (state.pending.length === 0) {
-    await moveIntent(run, state.snapshot, { type: "finality_reached" });
+    const finalized = await moveIntent(run, state.snapshot, { type: "finality_reached" });
     parts.log.info("executor.finalized", { intentId });
-    return;
+    return finalized;
   }
   await nextBlock(run);
-  await watchFrom(run, { ...state, waits: state.waits + 1 });
+  return watchFrom(run, { ...state, waits: state.waits + 1 });
 }
 
 /**
  * Watches the steps of an intent every block holds until each block is final by the chain's
- * finality rule, then moves the intent to `finalized`. A reorg that takes a step's block before
- * it is final moves the intent back to `executing` until a block holds the step again. Past
- * `finalAfterBlocks` blocks the watch hands the intent over, still `included`.
+ * finality rule, then moves the intent to `finalized` and answers it. A reorg that takes a step's
+ * block before it is final moves the intent back to `executing` until a block holds the step
+ * again. Past `finalAfterBlocks` blocks the watch hands the intent over, still `included`, and
+ * answers `undefined`. Pass only the steps not yet `final`.
  */
 export async function watchFinality(
   run: ExecutionRun,
   included: IntentSnapshot,
   steps: readonly TransactionRecord[],
-): Promise<void> {
-  await watchFrom(run, { snapshot: included, pending: steps, waits: 0 });
+): Promise<IntentSnapshot | undefined> {
+  return watchFrom(run, { snapshot: included, pending: steps, waits: 0 });
 }

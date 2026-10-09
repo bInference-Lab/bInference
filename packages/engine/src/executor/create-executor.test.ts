@@ -86,10 +86,10 @@ describe("the executor", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("finalizes a confirmed live intent, its raw bytes stored before the first send", async () => {
+  it("reconciles a confirmed live intent, its raw bytes stored before the first send", async () => {
     const bench = await startExecutorBench();
     const intent = await tapped(bench);
-    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     const [transaction] = await transactionsOf(bench);
     expect(transaction).toMatchObject({ intentId: intent, step: 0, nonce: 0, state: "final" });
     const [firstSend] = bench.sends;
@@ -99,17 +99,20 @@ describe("the executor", () => {
       "executor.took:",
       "executor.sent:",
       "executor.finalized:",
+      "executor.reconciled:",
     ]);
     const entries = bench.pushes.filter((push) => push.kind === "ledger/appended");
     expect(entries.map((push) => JSON.stringify(push.data))).toStrictEqual([
       expect.stringContaining('"kind":"executing"'),
       expect.stringContaining('"kind":"sent"'),
+      expect.stringContaining('"kind":"reconciled"'),
     ]);
-    expect(await statesOf(bench, intent, 4)).toStrictEqual([
+    expect(await statesOf(bench, intent, 5)).toStrictEqual([
       "confirmed",
       "executing",
       "included",
       "finalized",
+      "reconciled",
     ]);
   });
 
@@ -122,7 +125,7 @@ describe("the executor", () => {
     const [unsent] = await transactionsOf(bench);
     expect(unsent?.state).toBe("signed");
     bench.network.script("relay-b", { kind: "accept" });
-    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     expect(bench.signed).toHaveLength(1);
     expect(bench.sends.map(({ raw }) => raw)).toStrictEqual([unsent?.raw, unsent?.raw]);
     expect(await answersOf(bench, unsent)).toStrictEqual([
@@ -137,7 +140,7 @@ describe("the executor", () => {
     const bench = await startExecutorBench();
     bench.network.script("relay-a", { kind: "hang" });
     const intent = await tapped(bench);
-    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     const [transaction] = await transactionsOf(bench);
     expect(await answersOf(bench, transaction)).toStrictEqual([
       "relay-a:timed_out",
@@ -149,7 +152,7 @@ describe("the executor", () => {
   it("runs a plan's steps one after another, at consecutive nonces", async () => {
     const bench = await startExecutorBench();
     const intent = await tapped(bench, tokenSale);
-    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     const transactions = await transactionsOf(bench);
     expect(transactions.map(({ step, nonce, state }) => [step, nonce, state])).toStrictEqual([
       [0, 0, "final"],
@@ -277,7 +280,7 @@ describe("the executor's refusals", () => {
 });
 
 describe("the executor's watch", () => {
-  it("follows a reorg back to executing and on to finalized, with the same bytes", async () => {
+  it("follows a reorg back to executing and on to reconciled, with the same bytes", async () => {
     const bench = await startExecutorBench();
     const intent = await tapped(bench);
     await driveUntil(bench, intent, { states: ["included"] });
@@ -287,15 +290,16 @@ describe("the executor's watch", () => {
     await bench.test.clock.advance(1_000);
     await flush();
     expect(await stateOf(bench, intent)).toBe("executing");
-    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     expect(eventsOf(bench)).toContain("executor.reorg_seen:");
     expect(bench.signed).toHaveLength(1);
-    expect(await statesOf(bench, intent, 5)).toStrictEqual([
+    expect(await statesOf(bench, intent, 6)).toStrictEqual([
       "executing",
       "included",
       "executing",
       "included",
       "finalized",
+      "reconciled",
     ]);
   });
 

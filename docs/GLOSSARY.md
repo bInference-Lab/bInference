@@ -119,6 +119,8 @@ new name here first, in the change that uses it.
   transaction. It closes when the work ends.
 - **executor**: the execute step for live intents: it takes each confirmed live intent onto its
   wallet's queue. A paper intent never reaches it.
+- **reconciliation**: the last step of a live intent: what its final transactions moved becomes the
+  trade, compared with the simulation, recorded in the positions and the ledger.
 - **ledger**: the append-only, hash-chained record of every intent, tap, signature and fill.
 - **execution**: one trade as it settled on chain or filled on paper: what the wallet sold and
   bought, the fee and the gas, each valued in USD at the time. Positions are built from executions

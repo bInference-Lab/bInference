@@ -1,7 +1,12 @@
 import { BinferenceError } from "@binference/core";
 import type { CardClosing } from "../confirmations/card-closing.js";
 import type { CardRecord } from "./card-record.js";
-import { type EventCause, type PaperFill, readEventCause } from "./event-cause.schema.js";
+import {
+  type EventCause,
+  type PaperFill,
+  readEventCause,
+  type SettledTrade,
+} from "./event-cause.schema.js";
 import type { IntentEventRecord } from "./intent-change.js";
 import { authorizationDocument, quoteDocument } from "./intent-documents.schema.js";
 import type { IntentRecord } from "./intent-record.js";
@@ -80,4 +85,9 @@ export function closingOf(history: IntentHistory): CardClosing | undefined {
 /** The paper fill the intent recorded, once it has. */
 export function paperFillOf(history: IntentHistory): PaperFill | undefined {
   return causes(history).find((cause) => cause.fill !== undefined)?.fill;
+}
+
+/** The live trade the intent recorded as it reconciled, once it has. */
+export function settledTradeOf(history: IntentHistory): SettledTrade | undefined {
+  return causes(history).find((cause) => cause.settled !== undefined)?.settled;
 }

@@ -78,7 +78,7 @@ account holds. A nonce given to a step that was never signed, or freed by a drop
 given again first, so a refusal, a stop or a crash leaves no gap; the `TransactionStore` keeps
 every nonce in use, so a new queue after a restart uses none twice.
 
-It holds the executor (ARCHITECTURE.md section 7, step 8), exported as
+It holds the executor (ARCHITECTURE.md section 7, steps 8 and 9), exported as
 `@binference/engine/executor`: `createExecutor` fills the `Executor` port. On the intent's wallet
 queue it checks the intent again (`queue_took`), then runs each step in turn: a nonce from the
 slot, gas and fees from the chain's `TxPreparer`, the signature through custody with the owner's
@@ -87,7 +87,9 @@ stored, then a send to every private relay through the `RelaySender`, each relay
 A send no relay accepts goes again with the same stored bytes; nothing is ever signed twice. It
 watches each block through the `ReceiptReader` until every step is included, frees the wallet,
 and watches on until every block is final. A revert ends the intent `failed_onchain` and no later
-step is sent.
+step is sent. Once final, it reconciles: what each step moved, read through the `ReceiptReader`,
+becomes the trade, compared with the simulation (more than 1% away raises `notice.fillDiffers`),
+valued and recorded in the positions once, and stored with the move to `reconciled`.
 
 It holds the simulation check (ARCHITECTURE.md section 7, step 5), exported as
 `@binference/engine/simulation`: `createSimulationCheck` is the `Simulator` the money path and the
@@ -157,7 +159,7 @@ layout of Koinly's universal import, which tax tools read.
 | `AgentModeChange`, `agentModeChangeSchema`                       | An agent's switch between paper and live, under its row version |
 | `InstallStore`, `InstallSetup`, `WalletRecord` (subpath)         | The install id, its custody, the rescue address and its wallets |
 | `Executor`                                                       | Takes each confirmed live intent onto its wallet's queue        |
-| `createExecutor`, `ChainSending` (subpath `executor`)            | Signs, stores, sends and watches each step of a live intent     |
+| `createExecutor`, `ChainSending` (subpath `executor`)            | Runs each step of a live intent through to `reconciled`         |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
 | `TransactionStore`                                               | Each wallet's transactions, their nonces, sends and blocks      |

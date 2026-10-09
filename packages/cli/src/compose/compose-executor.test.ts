@@ -42,6 +42,7 @@ function composeWith(chainsConfig: ChainsConfig) {
   const parts = createMissingParts();
   return composeExecutor({
     stores: createMemoryEngineStores(),
+    positions: parts.positions,
     custody: parts.custody,
     wallets: parts.wallets,
     prices: parts.prices,

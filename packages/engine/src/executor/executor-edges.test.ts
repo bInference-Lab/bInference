@@ -157,7 +157,7 @@ describe("the executor's watch on a failing node", () => {
     const bench = await startExecutorBench();
     const intent = await tapped(bench);
     bench.network.failReads(3);
-    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     expect(eventsOf(bench)).toContain("executor.read_failed:chain.rpc_down");
   });
 
@@ -178,7 +178,7 @@ describe("the executor's watch on a failing node", () => {
     const [included] = await transactionsOf(bench);
     bench.network.reorg(hashOf(included));
     bench.network.mine(3);
-    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     const [final] = await transactionsOf(bench);
     expect(blockOf(final)).toBeGreaterThan(blockOf(included));
     expect(eventsOf(bench)).not.toContain("executor.reorg_seen:");

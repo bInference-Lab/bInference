@@ -26,7 +26,12 @@ import {
   type Logger,
   type Random,
 } from "@binference/core";
-import type { EnginePush, EngineStores, WalletFactsSource } from "@binference/engine";
+import type {
+  EnginePush,
+  EngineStores,
+  PositionStore,
+  WalletFactsSource,
+} from "@binference/engine";
 import {
   type ChainSending,
   createExecutor,
@@ -47,6 +52,8 @@ export interface ComposedExecutor {
 /** What the executor is built from: the engine's stores and parts, the chains and their config. */
 export interface ComposeExecutorOptions {
   readonly stores: EngineStores;
+  /** Where reconciliation records each live trade. */
+  readonly positions: PositionStore;
   readonly custody: Signer;
   readonly wallets: WalletFactsSource;
   readonly prices: PriceSource;
@@ -198,6 +205,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
   const { stores, clock, random } = options;
   const executor = createExecutor({
     stores,
+    positions: options.positions,
     queue: createWalletQueue({
       transactions: stores.transactions,
       nonces: nonceRouterOf(new Map([...parts].map(([chain, part]) => [chain, part.nonces]))),

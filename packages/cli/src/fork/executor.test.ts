@@ -19,7 +19,13 @@ import {
   idSchema,
 } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
-import { createEngine, createVenueHost, type Engine, type EngineStores } from "@binference/engine";
+import {
+  createEngine,
+  createVenueHost,
+  type Engine,
+  type EngineStores,
+  type PositionStore,
+} from "@binference/engine";
 import { createExecutor } from "@binference/engine/executor";
 import { createSimulationCheck } from "@binference/engine/simulation";
 import {
@@ -51,6 +57,7 @@ const caller = {
 interface Rig {
   readonly engine: Engine;
   readonly stores: EngineStores;
+  readonly positions: PositionStore;
   readonly custody: ReturnType<typeof forkCustody>;
   readonly sends: { readonly raw: string; readonly stored: readonly string[] }[];
   readonly native: AssetRef;
@@ -129,8 +136,10 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
   const { rpc, chain } = fork;
   const finality = { kind: "finalized_tag" } as const;
   const ids = createIdSource({ clock, random: createSeededRandom(43) });
+  const positions = createMemoryPositionStore();
   const executor = createExecutor({
     stores,
+    positions,
     queue: createWalletQueue({
       transactions: stores.transactions,
       nonces: createEvmNonceSource({ rpc, chain }),
@@ -157,7 +166,7 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
   });
   const engine = createEngine({
     stores,
-    positions: createMemoryPositionStore(),
+    positions,
     custody,
     prices,
     wallets,
@@ -196,7 +205,8 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
     },
     { signal: AbortSignal.timeout(5_000) },
   );
-  return { engine, stores, custody, sends, native, bought: erc20AssetRef(fork.chain, usdt) };
+  const bought = erc20AssetRef(fork.chain, usdt);
+  return { engine, stores, positions, custody, sends, native, bought };
 }
 
 async function proposeAndTap(rig: Rig, signal: AbortSignal): Promise<Id<"int">> {
@@ -310,14 +320,21 @@ async function sentOnce(rig: Rig, fork: Fork, signal: AbortSignal) {
   return { transaction, answers };
 }
 
+// The block that holds a stored transaction; one without a receipt reads as block 0.
+function blockOf(transaction: {
+  readonly receipt?: { readonly block: { readonly number: bigint } };
+}) {
+  return transaction.receipt?.block.number ?? 0n;
+}
+
 describe("the executor on the BSC fork", () => {
-  it("ends a confirmed swap finalized, its raw bytes stored before the first send", async ({
+  it("ends a confirmed swap reconciled, its raw bytes stored before the first send", async ({
     signal,
   }) => {
     await onFork(signal, {}, async (rig, fork) => {
       const before = await balanceOf(fork);
       const intent = await proposeAndTap(rig, signal);
-      await expect(reach(rig, intent, "finalized")).resolves.toBe("finalized");
+      await expect(reach(rig, intent, "reconciled")).resolves.toBe("reconciled");
       const { transaction, answers } = await sentOnce(rig, fork, signal);
       expect(transaction.state).toBe("final");
       const [first] = rig.sends;
@@ -326,7 +343,23 @@ describe("the executor on the BSC fork", () => {
       expect(rig.custody.signatures()).toBe(1);
       const onChain = await fork.call("eth_getTransactionByHash", [transaction.hash]);
       expect(onChain).toMatchObject({ hash: transaction.hash });
-      expect(await balanceOf(fork)).toBeGreaterThan(before);
+      const after = await balanceOf(fork);
+      expect(after).toBeGreaterThan(before);
+      const query = { isPaper: false, after: 0, limit: 10 };
+      const [execution, ...others] = await rig.positions.executions(query, { signal });
+      expect(others).toStrictEqual([]);
+      expect(execution).toMatchObject({
+        intentId: intent,
+        sold: { asset: rig.native, base: buyIn },
+        bought: { asset: rig.bought, base: after - before },
+        txHash: transaction.hash,
+      });
+      expect(execution?.gas.base).toBeGreaterThan(0n);
+      const finality = { kind: "finalized_tag" } as const;
+      const reader = createEvmReceiptReader({ rpc: fork.rpc, chain: fork.chain, finality });
+      const block = blockOf(transaction);
+      await expect(reader.nonceAt(transaction.account, block, { signal })).resolves.toBe(1);
+      await expect(reader.nonceAt(transaction.account, block - 1n, { signal })).resolves.toBe(0);
       expect(answers.map(({ relay }) => relay)).toStrictEqual(["anvil-a", "anvil-b"]);
       expect(answers.map(({ outcome }) => outcome)).toContain("accepted");
     });
@@ -337,7 +370,7 @@ describe("the executor on the BSC fork", () => {
   }) => {
     await onFork(signal, { relayHttp: (http) => flaky(http, 2) }, async (rig, fork) => {
       const intent = await proposeAndTap(rig, signal);
-      await expect(reach(rig, intent, "finalized")).resolves.toBe("finalized");
+      await expect(reach(rig, intent, "reconciled")).resolves.toBe("reconciled");
       expect(rig.custody.signatures()).toBe(1);
       const { transaction, answers } = await sentOnce(rig, fork, signal);
       expect(rig.sends.map(({ raw }) => raw).slice(0, 2)).toStrictEqual([

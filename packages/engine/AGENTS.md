@@ -116,6 +116,9 @@ Rules for this package:
   nothing signed. Each step's raw bytes are stored before any send; a send no relay accepts goes
   again with the same stored bytes, never a new signature. Stuck steps and recovery after a
   restart hand over at the seams `executor.step_stopped` and `executor.final_late` log.
+  Reconciliation reads what each final step moved only through the `ReceiptReader`, records the
+  trade in the positions before the move to `reconciled`, and finds it stored when it runs
+  again, so a trade is recorded once.
 - The simulation check (`src/simulation/`, exported as `@binference/engine/simulation`) reads
   what a quote's steps do only through the `TxSimulator` port, compares accounts through the
   chain's family, and never counts the network fee among the transfers. A new check is a

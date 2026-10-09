@@ -10,7 +10,13 @@ import type { LedgerDraft } from "../ledger/ledger-entry.js";
 import { sha256Hex } from "../records/sha256-hex.js";
 import type { CardOpening, CardRecord, CardVersionClosing } from "./card-record.js";
 import type { ConfirmationDraft } from "./confirmation-record.js";
-import { closingDocument, type PaperFill, paperFillDocument } from "./event-cause.schema.js";
+import {
+  closingDocument,
+  type PaperFill,
+  paperFillDocument,
+  type SettledTrade,
+  settledTradeDocument,
+} from "./event-cause.schema.js";
 import type { IntentChange } from "./intent-change.js";
 import {
   authorizationDocument,
@@ -33,6 +39,8 @@ export interface IntentMove extends IntentWrite {
   readonly by?: string;
   /** The fill a paper intent records as it moves to `paper_filled`. */
   readonly fill?: PaperFill;
+  /** The trade a live intent records as it moves to `reconciled`. */
+  readonly settled?: SettledTrade;
 }
 
 /** What a move is stored against: the intent as read, and where new ids come from. */
@@ -50,7 +58,7 @@ interface JsonObject {
 
 function causeOf(move: IntentMove): JsonObject {
   const { event } = move.step;
-  const { by, closing, fill } = move;
+  const { by, closing, fill, settled } = move;
   return {
     trigger: event.trigger,
     ...(by === undefined ? {} : { by }),
@@ -58,6 +66,7 @@ function causeOf(move: IntentMove): JsonObject {
     ...(event.reason === undefined ? {} : { reason: event.reason }),
     ...(event.cancelCause === undefined ? {} : { cancelCause: event.cancelCause }),
     ...(fill === undefined ? {} : { fill: paperFillDocument.encode(fill) }),
+    ...(settled === undefined ? {} : { settled: settledTradeDocument.encode(settled) }),
   };
 }
 

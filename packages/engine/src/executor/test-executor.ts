@@ -1,15 +1,19 @@
 import {
+  type AssetRef,
   type ChainRef,
   chainRefSchema,
   type TxHash,
+  type ReceiptReader,
   type RelaySender,
   type SignRequest,
   type Signer,
+  type UsdPrice,
 } from "@binference/chain";
 import {
   createFakeNetwork,
   type FakeNetwork,
   type FakeNetworkOptions,
+  type FakeSent,
 } from "@binference/chain/testing";
 import { createIdSource, type Id } from "@binference/core";
 import {
@@ -38,6 +42,7 @@ import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { createWalletQueue } from "../wallet-queue/wallet-queue.js";
 import { createExecutor, type RunningExecutor } from "./create-executor.js";
 import type { ExecutorLimits } from "./executor-options.js";
+import { swapTransfers } from "./test-swap-transfers.js";
 
 /** The fake chain the test engine trades on. */
 export const benchChain: ChainRef = chainRefSchema.parse("fake:1");
@@ -79,6 +84,12 @@ export interface BenchOptions {
   readonly withoutRelays?: boolean;
   /** Wraps the intent store the executor writes through, not the engine's. */
   readonly intents?: (store: IntentStore) => IntentStore;
+  /** What a swap's output comes to on chain; the fake venue's quote, twice the input, if absent. */
+  readonly fillOut?: (amountInBase: bigint) => bigint;
+  /** Wraps what the executor reads receipts, transfers and nonces through. */
+  readonly receipts?: (network: FakeNetwork) => ReceiptReader;
+  /** The executor's USD prices; the coin alone, at $600, when absent. */
+  readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
 }
 
 const facts: WalletFacts = {
@@ -135,30 +146,48 @@ interface BenchNotes {
   readonly sent: (send: BenchSend) => void;
 }
 
+// The stores the executor writes through, each wrapped as the options ask.
+function storesOf(test: TestEngine, options: BenchOptions) {
+  const stored = test.stores.transactions;
+  const transactions = options.transactions?.(stored) ?? stored;
+  const intents = options.intents?.(test.stores.intents) ?? test.stores.intents;
+  return { ...test.stores, transactions, intents };
+}
+
+const coinPrice = { numerator: 600n, denominator: 10n ** 12n };
+
+function sendingOf(
+  parts: Pick<BenchParts, "network"> & { readonly transactions: TransactionStore },
+  notes: BenchNotes,
+  options: BenchOptions,
+) {
+  const { network, transactions } = parts;
+  const sending = {
+    preparer: network,
+    sender: notingSender(network, transactions, notes.sent),
+    receipts: options.receipts?.(network) ?? network,
+  };
+  return new Map(options.withoutRelays === true ? [] : [[benchChain, sending]]);
+}
+
 function executorOf(
   parts: Pick<BenchParts, "test" | "network" | "logger">,
   notes: BenchNotes,
   options: BenchOptions,
 ): RunningExecutor {
   const { test, network, logger } = parts;
-  const stored = test.stores.transactions;
-  const transactions = options.transactions?.(stored) ?? stored;
+  const stores = storesOf(test, options);
+  const { transactions } = stores;
   const custody = countingSigner(options.custody?.(test.custody) ?? test.custody, notes.signed);
-  const sending = {
-    preparer: network,
-    sender: notingSender(network, transactions, notes.sent),
-    receipts: network,
-  };
-  const price = { numerator: 600n, denominator: 10n ** 12n };
-  const intents = options.intents?.(test.stores.intents) ?? test.stores.intents;
   return createExecutor({
-    stores: { ...test.stores, transactions, intents },
+    stores,
+    positions: test.positions,
     queue: createWalletQueue({ transactions, nonces: network, clock: test.clock }),
     custody,
     wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts),
-    prices: createFakePriceSource(new Map([[testCoin, price]])),
+    prices: createFakePriceSource(options.prices ?? new Map([[testCoin, coinPrice]])),
     chains: testChains(),
-    sending: new Map(options.withoutRelays === true ? [] : [[benchChain, sending]]),
+    sending: sendingOf({ network, transactions }, notes, options),
     clock: test.clock,
     ids: createIdSource({ clock: test.clock, random: createSeededRandom(9) }),
     publish: notes.pushed,
@@ -184,7 +213,13 @@ export async function startExecutorBench(options: BenchOptions = {}): Promise<Ex
     agent: { mode: "live", ...options.agent },
     executor: proxy,
   });
-  const network = createFakeNetwork({ chain: benchChain, clock: test.clock, ...options.network });
+  const out = options.fillOut ?? ((amountInBase: bigint) => amountInBase * 2n);
+  const network = createFakeNetwork({
+    chain: benchChain,
+    clock: test.clock,
+    transfers: (sent: FakeSent) => swapTransfers(sent, out),
+    ...options.network,
+  });
   const logger = createMemoryLogger({ subsystem: "engine" });
   const signed: SignRequest[] = [];
   const pushes: EnginePush[] = [];

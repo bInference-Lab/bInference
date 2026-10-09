@@ -1,4 +1,5 @@
 {
   "approvalMode": "{agent} 已切换为{mode, select, auto {自动} other {手动}}模式，来自 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}}",
-  "locked": "🔴 binference 已重启并处于锁定状态。请运行 `binference unlock`。"
+  "locked": "🔴 binference 已重启并处于锁定状态。请运行 `binference unlock`。",
+  "fillDiffers": "⚠️ 一笔交易的成交结果与模拟结果相差超过 1%，请核对该笔交易。"
 }

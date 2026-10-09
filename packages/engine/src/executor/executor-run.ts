@@ -1,9 +1,11 @@
 import type { Logger } from "@binference/core";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
+import type { SettledTrade } from "../intents/event-cause.schema.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
 import type { IntentStateMachine } from "../intents/state-machine.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
+import type { Positions } from "../positions/create-positions.js";
 import type { ExecutorLimits, ExecutorOptions } from "./executor-options.js";
 import type { IntentPlan } from "./intent-plan.js";
 
@@ -14,6 +16,8 @@ export interface ExecutorParts extends ExecutorOptions {
   readonly stored: StoredIntents;
   readonly machine: IntentStateMachine;
   readonly policy: PolicyCheck;
+  /** The positions over `positions`, which value each trade reconciliation records. */
+  readonly valuedPositions: Positions;
   readonly limits: ExecutorLimits;
   readonly log: Logger;
 }
@@ -25,18 +29,25 @@ export interface ExecutionRun {
   readonly signal: AbortSignal;
 }
 
+/** A trigger with the trade the move to `reconciled` records. */
+export interface SettlingMove {
+  readonly trigger: IntentTrigger<"fills_reconciled">;
+  readonly settled: SettledTrade;
+}
+
 /**
- * Applies a trigger to the intent as last read and stores the move under that read's version. A
- * refusal by the state machine, or a write another writer beat, is logged and gives `undefined`:
- * the run stops where the intent is.
+ * Applies a trigger to the intent as last read and stores the move under that read's version,
+ * with the settled trade when it brings one. A refusal by the state machine, or a write another
+ * writer beat, is logged and gives `undefined`: the run stops where the intent is.
  */
 export async function moveIntent(
   run: ExecutionRun,
   snapshot: IntentSnapshot,
-  trigger: IntentTrigger,
+  change: IntentTrigger | SettlingMove,
 ): Promise<IntentSnapshot | undefined> {
   const { parts, signal } = run;
   const intentId = snapshot.record.id;
+  const { trigger, ...settling } = "settled" in change ? change : { trigger: change };
   const step = parts.machine.apply(snapshot.stored.status, trigger);
   if (!step.ok) {
     parts.log.warn("executor.move_refused", { intentId, errorCode: step.error });
@@ -47,6 +58,7 @@ export async function moveIntent(
     version: snapshot.stored.version,
     step: step.value,
     by: "engine",
+    ...settling,
   };
   const moved = await parts.stored.move(move, { signal });
   if (!moved.ok) {

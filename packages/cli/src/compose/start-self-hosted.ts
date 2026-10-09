@@ -107,6 +107,7 @@ function composeSending(
   const pushes = { publish: (_push: EnginePush): void => undefined };
   const composed = composeExecutor({
     stores,
+    positions: parts.positions,
     custody: parts.custody,
     wallets: parts.wallets,
     prices: parts.prices,
