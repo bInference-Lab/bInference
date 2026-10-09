@@ -688,6 +688,15 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  plugins/goplus:
+    dependencies:
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   plugins/kyberswap:
     dependencies:
       '@binference/plugin-sdk':

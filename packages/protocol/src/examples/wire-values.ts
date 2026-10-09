@@ -93,7 +93,7 @@ export const assets: WireObject = {
 /** An example risk check. */
 export const riskView: WireObject = {
   verdict: "warn",
-  flags: [{ code: "high_tax", source: "goplus" }],
+  flags: [{ code: "transfer_tax", source: "simulation" }],
   buyTaxBps: 300,
   sellTaxBps: 500,
   liquidityUsdMicros: "25000000000",
