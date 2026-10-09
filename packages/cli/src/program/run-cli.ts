@@ -11,6 +11,7 @@ import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
+import { runUnlock } from "../commands/unlock-command.js";
 import { runWalletAddress, runWalletList } from "../commands/wallet-command.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { loadConfig } from "../config/load-config.js";
@@ -81,6 +82,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
     return runStatus(host, output, (signal) => signalName(signal, message));
   },
   health: async ({ host, output }) => runHealth(host, output),
+  unlock: async (context, chosen) => runUnlock(context, chosen.options),
   logs: async ({ host, output }, chosen) => runLogs(host, output, chosen.options),
   approval: runApproval,
   confirm: runCardAnswer,

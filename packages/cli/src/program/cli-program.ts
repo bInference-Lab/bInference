@@ -27,6 +27,7 @@ export type ChosenCommand =
   | { readonly name: "init"; readonly options: InitFlags }
   | { readonly name: "start"; readonly options: StartFlags }
   | { readonly name: "status" | "health"; readonly options: CommonOptions }
+  | { readonly name: "unlock"; readonly options: CommonOptions }
   | { readonly name: "logs"; readonly options: LogsFlags }
   | {
       readonly name: "approval";
@@ -177,6 +178,9 @@ function addCommands(program: Command, options: ProgramOptions): void {
       (flags: OptionValues) => choose({ name, options: commonFlagsSchema.parse(flags) }),
     );
   }
+  withCommon(program.command("unlock").description(message("command.unlock")), message).action(
+    (flags: OptionValues) => choose({ name: "unlock", options: commonFlagsSchema.parse(flags) }),
+  );
   withCommon(program.command("logs").description(message("command.logs")), message)
     .option("-n, --lines <count>", message("option.lines"), linesOf)
     .option("-f, --follow", message("option.follow"))

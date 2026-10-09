@@ -128,5 +128,11 @@
   "command.init": "设置 binference：你的 Privy 应用、所有者密钥、第一个钱包和机器人",
   "status.locked": "已锁定：在你于本机运行 `binference unlock` 之前，binference 不会签名。",
   "health.locked": "binference 正在运行但已锁定：在你于本机运行 `binference unlock` 之前，它不会签名。",
-  "start.locked": "binference 已锁定，不会签名：{reason, select, needs_passphrase {需要 Agent 密钥的密码短语} wrong_passphrase {该密码短语无法打开 Agent 密钥} agent_key_missing {解锁方式读取的位置没有 Agent 密钥；请放回你保存的副本} agent_key_invalid {那里的 Agent 密钥不是你的钱包认定的签名者；请放回正确的密钥} keychain_failed {系统钥匙串没有响应；请解锁后重试} command_failed {解锁命令没有输出 Agent 密钥；请自行运行它查看原因} app_secret_missing {config.json5 没有指定 Privy 应用密钥；请设置 `custody.privy.appSecret`} app_secret_unavailable {`custody.privy.appSecret` 指向的位置没有 Privy 应用密钥} other {{reason}}}。请运行 `binference unlock` 打开 Agent 密钥。"
+  "start.locked": "binference 已锁定，不会签名：{reason, select, needs_passphrase {需要 Agent 密钥的密码短语} wrong_passphrase {该密码短语无法打开 Agent 密钥} agent_key_missing {解锁方式读取的位置没有 Agent 密钥；请放回你保存的副本} agent_key_invalid {那里的 Agent 密钥不是你的钱包认定的签名者；请放回正确的密钥} keychain_failed {系统钥匙串没有响应；请解锁后重试} command_failed {解锁命令没有输出 Agent 密钥；请自行运行它查看原因} app_secret_missing {config.json5 没有指定 Privy 应用密钥；请设置 `custody.privy.appSecret`} app_secret_unavailable {`custody.privy.appSecret` 指向的位置没有 Privy 应用密钥} other {{reason}}}。请运行 `binference unlock` 打开 Agent 密钥。",
+  "command.unlock": "打开 Agent 密钥，让 binference 可以签名；手动解锁方式下会询问密码短语",
+  "unlock.ask": "此机器上 Agent 密钥的密码短语（隐藏）",
+  "unlock.wrong": "该密码短语无法打开 Agent 密钥。请重试。",
+  "unlock.done": "binference 已解锁。",
+  "unlock.needsTerminal": "手动解锁方式需要输入密码短语。请在终端中运行 `binference unlock`，不要加 --yes 或 --json。",
+  "unlock.failed": "binference 仍处于锁定状态：{reason, select, needs_passphrase {需要 Agent 密钥的密码短语} wrong_passphrase {该密码短语无法打开 Agent 密钥} agent_key_missing {解锁方式读取的位置没有 Agent 密钥；请放回你保存的副本} agent_key_invalid {那里的 Agent 密钥不是你的钱包认定的签名者；请放回正确的密钥} keychain_failed {系统钥匙串没有响应；请解锁后重试} command_failed {解锁命令没有输出 Agent 密钥；请自行运行它查看原因} app_secret_missing {config.json5 没有指定 Privy 应用密钥；请设置 `custody.privy.appSecret`} app_secret_unavailable {`custody.privy.appSecret` 指向的位置没有 Privy 应用密钥} other {{reason}}}。"
 }

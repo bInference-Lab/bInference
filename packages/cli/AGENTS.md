@@ -60,6 +60,7 @@ Rules for this package:
   its own.
 - The engine lock (`src/unlock/engine-lock.ts`) opens the keys at start and through
   `engine/unlock`, one call at a time. `onUnlocked` in `src/compose/compose-lock.ts` is the one
-  place the opened keys go: where the signer and custody start. A passphrase is never logged.
+  place the opened keys go: where the signer and custody start. A passphrase comes only from the
+  terminal's hidden prompt of `binference unlock`, never from a flag, and is never logged.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.
