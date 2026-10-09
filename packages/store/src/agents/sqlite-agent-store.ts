@@ -1,6 +1,7 @@
 import type { AgentStore } from "@binference/engine";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import type { TaskRunner } from "../tasks/store-task.js";
+import { addAddressTask, removeAddressTask } from "./address-book-tasks.js";
 import { createAgentTask, getAgentTask, listAgentsTask } from "./agent-tasks.js";
 import {
   setApprovalModeTask,
@@ -18,6 +19,8 @@ export const agentTasks: readonly TaskRunner[] = [
   setLimitsTask,
   setModeTask,
   setSendLevelTask,
+  addAddressTask,
+  removeAddressTask,
 ];
 
 /** The {@link AgentStore} on `engine.sqlite`: each call runs one store task. */
@@ -31,5 +34,7 @@ export function createSqliteAgentStore(host: StoreHost): AgentStore {
     setLimits: bindTask(host, setLimitsTask),
     setMode: bindTask(host, setModeTask),
     setSendLevel: bindTask(host, setSendLevelTask),
+    addAddress: bindTask(host, addAddressTask),
+    removeAddress: bindTask(host, removeAddressTask),
   };
 }

@@ -10,6 +10,7 @@ import type { ApprovalModeChange, ApprovalModeRecord } from "../agents/approval-
 import type { LimitsChange, LimitsRecord } from "../agents/limits-record.js";
 import type { SendLevelChange, SendLevelRecord } from "../agents/send-level-record.js";
 import type { AgentStore } from "../ports.js";
+import { createMemoryAddressBook } from "./memory-address-book.js";
 import { byCreation, memoryCall } from "./memory-call.js";
 
 type Agents = Map<Id<"agt">, AgentSettings>;
@@ -117,9 +118,16 @@ function setLimits(
 /** Creates an empty in-memory {@link AgentStore} for tests. */
 export function createMemoryAgentStore(): AgentStore {
   const agents: Agents = new Map();
+  const book = createMemoryAddressBook();
   return {
     create: async (draft, call) => memoryCall(call, () => create(agents, draft)),
-    get: async (id, call) => memoryCall(call, () => structuredClone(agents.get(id))),
+    get: async (id, call) =>
+      memoryCall(call, () => {
+        const settings = agents.get(id);
+        return settings === undefined
+          ? undefined
+          : { ...structuredClone(settings), addressBook: book.live(id) };
+      }),
     list: async (call) =>
       memoryCall(call, () =>
         structuredClone(
@@ -131,5 +139,8 @@ export function createMemoryAgentStore(): AgentStore {
     setLimits: async (change, call) => memoryCall(call, () => setLimits(agents, change)),
     setMode: async (change, call) => memoryCall(call, () => setMode(agents, change)),
     setSendLevel: async (change, call) => memoryCall(call, () => setSendLevel(agents, change)),
+    addAddress: async (entry, call) =>
+      memoryCall(call, () => (agents.has(entry.agentId) ? book.add(entry) : err("not_found"))),
+    removeAddress: async (removal, call) => memoryCall(call, () => book.remove(removal)),
   };
 }

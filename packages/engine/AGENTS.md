@@ -68,8 +68,7 @@ Rules for this package:
   every quote and ranks the plans in `rank-routes.ts` by what arrives net of the network fee; a
   change to the ranking changes its case in `rank-routes.property.test.ts`. A request it cannot route yet is a protocol error before anything is stored; every
   refusal after that is the intent's state. What it reads about wallets outside the store comes
-  through `WalletFactsSource`, and a fact it cannot read fails closed (no address book, no rescue
-  address).
+  through `WalletFactsSource`, and a fact it cannot read fails closed (no rescue address).
 - The execute step (`src/money-path/execute-confirmed.ts`) is the one place a confirmed intent
   goes on: a paper intent to the paper fill, a live one, a rescue in paper mode too (decision
   0100), to the `Executor` port. A paper intent never reaches the executor (spec 6, invariant 3);
@@ -108,6 +107,9 @@ Rules for this package:
   a stored level takes the level in effect through `sendLevelAt`, never the row's `level` alone.
   Each change is journaled, pushed as `config/changed`, and a moved level is announced as the
   `notice.sendLevel` notice.
+- The address book lives in the agent's settings: the policy reads every live entry, on every
+  chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
+  pay an entry only from its `usableAtMs`, 24 hours after it was saved.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and

@@ -17,6 +17,7 @@ import type {
 } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, readJson } from "../rows/column-values.js";
+import { readAddressBook } from "./address-book-tasks.js";
 import { toLimitsRecord } from "./limits-rows.js";
 
 /** Reads one `agents` row as its record. */
@@ -63,8 +64,8 @@ export function toSendLevel(row: Selectable<SendLevelsTable>): SendLevelRecord {
 }
 
 /**
- * Reads an agent with its limits, approval mode and send level, or `undefined` when one of them
- * is missing.
+ * Reads an agent with its limits, approval mode, send level and live address book entries, or
+ * `undefined` when one of the first four is missing.
  */
 export function readSettings(database: DatabaseSync, id: Id<"agt">): AgentSettings | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -82,5 +83,6 @@ export function readSettings(database: DatabaseSync, id: Id<"agt">): AgentSettin
     limits: toLimitsRecord(limits),
     approvalMode: toApprovalMode(mode),
     sendLevel: toSendLevel(level),
+    addressBook: readAddressBook(database, id),
   };
 }

@@ -1,4 +1,9 @@
 export {
+  addressEntryRecordSchema,
+  addressEntryRemovalSchema,
+} from "./agents/address-entry-record.js";
+export type { AddressEntryRecord, AddressEntryRemoval } from "./agents/address-entry-record.js";
+export {
   sendLevelChangeSchema,
   sendLevelRecordSchema,
   sendLevelSchema,

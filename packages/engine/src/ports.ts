@@ -3,6 +3,7 @@ import type { Id, Result } from "@binference/core";
 import type { DeviceRecord } from "./access/device-record.js";
 import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
 import type { TokenRecord } from "./access/token-record.js";
+import type { AddressEntryRecord, AddressEntryRemoval } from "./agents/address-entry-record.js";
 import type {
   AgentDraft,
   AgentModeChange,
@@ -398,8 +399,8 @@ export interface AccessStore {
 }
 
 /**
- * Keeps the agents and the settings the money path reads: their limits, approval modes and send
- * levels.
+ * Keeps the agents and the settings the money path reads: their limits, approval modes, send
+ * levels and address books.
  */
 export interface AgentStore {
   /**
@@ -432,6 +433,22 @@ export interface AgentStore {
     change: SendLevelChange,
     options: StoreCall,
   ): Promise<Result<SendLevelRecord, "not_found" | "stale">>;
+  /**
+   * Adds an entry to the agent's address book. An unknown agent is `not_found`, a taken entry id
+   * `exists`, and an account the agent's book holds live already `saved`.
+   */
+  addAddress(
+    entry: AddressEntryRecord,
+    options: StoreCall,
+  ): Promise<Result<AddressEntryRecord, "not_found" | "exists" | "saved">>;
+  /**
+   * Removes a live entry from its agent's address book and answers it; an unknown or removed
+   * entry is `not_found`. The account may be added again later as a new entry.
+   */
+  removeAddress(
+    removal: AddressEntryRemoval,
+    options: StoreCall,
+  ): Promise<Result<AddressEntryRecord, "not_found">>;
   /**
    * Sets the agent's mode under the agent row's version the changer read, and raises that version
    * by one. Another version is `stale` and writes nothing.

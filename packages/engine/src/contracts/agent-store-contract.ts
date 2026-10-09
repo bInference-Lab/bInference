@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { assetRefSchema, chainRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, chainRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
+import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { AgentDraft } from "../agents/agent-record.js";
 import type { LimitsValues } from "../agents/limits-record.js";
 import type { AgentStore } from "../ports.js";
@@ -78,6 +79,7 @@ async function createsAgents(store: AgentStore): Promise<void> {
     version: 0,
   });
   assert.deepEqual(sendLevel, { agentId: agent.id, level, changedAtMs: atMs, version: 0 });
+  assert.deepEqual(created.value.addressBook, []);
   assert.deepEqual(await store.get(agent.id, live()), created.value);
   assert.equal(await store.get(fixtureId("agt", 9), live()), undefined);
   await store.create(draft(1), live());
@@ -170,6 +172,53 @@ async function setsSendLevel(store: AgentStore): Promise<void> {
   assert.deepEqual((await store.get(agentId, live()))?.sendLevel, set.ok ? set.value : undefined);
 }
 
+function entry(n: number, address: string): AddressEntryRecord {
+  return {
+    id: fixtureId("adr", n),
+    agentId: fixtureId("agt", 1),
+    account: accountRefSchema.parse(`fake:1:${address}`),
+    label: `entry ${String(n)}`,
+    usableAtMs: 90_000 + n,
+    createdAtMs: 1_000 + n,
+  };
+}
+
+async function keepsAddressBook(store: AgentStore): Promise<void> {
+  await store.create(draft(1), live());
+  const agentId = draft(1).id;
+  const saved = { ...entry(2, "0xb"), inCeilingAtMs: 1_002 };
+  assert.deepEqual(await store.addAddress(saved, live()), { ok: true, value: saved });
+  assert.deepEqual(await store.addAddress(entry(1, "0xa"), live()), {
+    ok: true,
+    value: entry(1, "0xa"),
+  });
+  assert.deepEqual(await store.addAddress(entry(2, "0xc"), live()), { ok: false, error: "exists" });
+  assert.deepEqual(await store.addAddress(entry(3, "0xb"), live()), { ok: false, error: "saved" });
+  const stranger = { ...entry(4, "0xd"), agentId: fixtureId("agt", 9) };
+  assert.deepEqual(await store.addAddress(stranger, live()), { ok: false, error: "not_found" });
+  assert.deepEqual((await store.get(agentId, live()))?.addressBook, [entry(1, "0xa"), saved]);
+}
+
+async function removesAddresses(store: AgentStore): Promise<void> {
+  await store.create(draft(1), live());
+  const agentId = draft(1).id;
+  await store.addAddress(entry(1, "0xa"), live());
+  const removal = { id: entry(1, "0xa").id, atMs: 5_000 };
+  assert.deepEqual(await store.removeAddress(removal, live()), {
+    ok: true,
+    value: entry(1, "0xa"),
+  });
+  assert.deepEqual(await store.removeAddress(removal, live()), { ok: false, error: "not_found" });
+  const unknown = { id: fixtureId("adr", 9), atMs: 5_000 };
+  assert.deepEqual(await store.removeAddress(unknown, live()), { ok: false, error: "not_found" });
+  assert.deepEqual((await store.get(agentId, live()))?.addressBook, []);
+  assert.deepEqual(await store.addAddress(entry(2, "0xa"), live()), {
+    ok: true,
+    value: entry(2, "0xa"),
+  });
+  assert.deepEqual(await store.addAddress(entry(1, "0xe"), live()), { ok: false, error: "exists" });
+}
+
 async function refusesAborted(store: AgentStore): Promise<void> {
   const agentId = draft(1).id;
   const mode = { agentId, mode: "auto", bySurface: "cli", atMs: 1, expectedVersion: 0 } as const;
@@ -183,6 +232,9 @@ async function refusesAborted(store: AgentStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.setMode(goLive, options));
   const locked = { agentId, level: 3, atMs: 1, expectedVersion: 0 } as const;
   await assertRefusesAborted(async (options) => store.setSendLevel(locked, options));
+  await assertRefusesAborted(async (options) => store.addAddress(entry(1, "0xa"), options));
+  const removal = { id: entry(1, "0xa").id, atMs: 1 };
+  await assertRefusesAborted(async (options) => store.removeAddress(removal, options));
   assert.deepEqual(await store.list(live()), []);
 }
 
@@ -204,6 +256,12 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
       create,
       setsSendLevel,
     ),
+    checkOn(
+      "keeps live address book entries, one per account, oldest first",
+      create,
+      keepsAddressBook,
+    ),
+    checkOn("removes an entry once, so its account may be added again", create, removesAddresses),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

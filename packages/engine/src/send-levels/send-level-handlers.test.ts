@@ -1,9 +1,6 @@
-import { type AccountRef, accountRefSchema, chainRefSchema } from "@binference/chain";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import type { PolicyRejection } from "../intents/intent-reason.js";
-import { expectOk, testAgent, testCoin, testNowMs } from "../intents/test-intents.js";
-import { policyFactsOf } from "../money-path/policy-facts-of.js";
+import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
@@ -11,13 +8,13 @@ import {
   testCall,
   testCallers,
 } from "../operations/test-engine.js";
-import { policyRefusals, type PolicySubject, type SendLevel } from "../policy/policy-rules.js";
+import type { SendLevel } from "../policy/policy-rules.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { AgentStore } from "../ports.js";
+import { saveTestAddress, sendRefusals } from "./test-sends.js";
 
 const live = { signal: new AbortController().signal };
 const unknownAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000009" as Id<"agt">;
-const saved: AccountRef = accountRefSchema.parse("fake:1:0x000000f1");
 // The Mini App holds `confirm` and `loosen`; these callers hold one of the two.
 const braking: EngineCaller = {
   credential: "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001",
@@ -25,16 +22,6 @@ const braking: EngineCaller = {
   scopes: ["read", "confirm"],
 };
 const loosening: EngineCaller = { ...braking, scopes: ["read", "loosen"] };
-
-// A send of one base unit of the coin to an address the owner saved two days ago.
-const send: PolicySubject = {
-  kind: "send",
-  isPaper: false,
-  hasOutsideContent: false,
-  outflows: [{ asset: testCoin, base: 1n }],
-  inflowAssets: [],
-  target: saved,
-};
 
 function setLevel(test: TestEngine, level: SendLevel, caller = testCallers.cli) {
   return test.engine.handlers["sendLevel/set"](testCall({ agent: testAgent, level }, caller));
@@ -46,31 +33,6 @@ function getLevel(test: TestEngine) {
 
 function cancelPending(test: TestEngine, caller = testCallers.cli) {
   return test.engine.handlers["sendLevel/cancelPending"](testCall({ agent: testAgent }, caller));
-}
-
-// What the policy refuses a send to a saved address for, with the agent's settings at the time.
-async function sendRefusals(test: TestEngine): Promise<readonly PolicyRejection[]> {
-  const settings = await test.stores.agents.get(testAgent, live);
-  if (settings === undefined) {
-    throw new Error("Expected the test agent.");
-  }
-  const nowMs = test.clock.now();
-  const facts = policyFactsOf({
-    settings,
-    wallet: {
-      nativeBalanceBase: 10n ** 18n,
-      ceilingPerTxNativeBase: 10n ** 18n,
-      feePerGasNativeBase: 1n,
-      networkFeeCapNativeBase: 1n,
-      recentOutflows: [],
-    },
-    chain: chainRefSchema.parse("fake:1"),
-    nativeAsset: testCoin,
-    nowMs,
-  });
-  const book = [{ account: saved, isSaved: true, usableAtMs: testNowMs - 2 * looseningWaitMs }];
-  const figures = { valueUsdMicros: 1n, rollingDaySpentUsdMicros: 0n };
-  return policyRefusals({ subject: send, facts: { ...facts, addressBook: book }, nowMs, figures });
 }
 
 function notices(test: TestEngine): readonly unknown[] {
@@ -95,6 +57,7 @@ function racing(losses: number): (store: AgentStore) => AgentStore {
 describe("a looser send level", () => {
   it("is refused for a send until 24 hours after the owner asked for it", async () => {
     const test = await startTestEngine({ agent: { sendLevel: 3 } });
+    await saveTestAddress(test);
     expectOk(await setLevel(test, 1));
 
     await test.clock.advance(looseningWaitMs - 1);
@@ -145,6 +108,7 @@ describe("a looser send level", () => {
 
   it("is cancelled with the confirm scope, and the level stays", async () => {
     const test = await startTestEngine({ agent: { sendLevel: 3 } });
+    await saveTestAddress(test);
     expectOk(await setLevel(test, 0));
 
     expect(await cancelPending(test, braking)).toStrictEqual({ ok: true, value: { level: 3 } });

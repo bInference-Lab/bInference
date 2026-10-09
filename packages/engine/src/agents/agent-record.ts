@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ApprovalMode } from "../intents/auto-mode.js";
 import type { SendLevel } from "../policy/policy-rules.js";
 import { epochMsSchema, rowVersionSchema, shortTextSchema } from "../records/record-fields.js";
+import { type AddressEntryRecord, addressEntryRecordSchema } from "./address-entry-record.js";
 import {
   type ApprovalModeRecord,
   approvalModeRecordSchema,
@@ -85,12 +86,17 @@ export const agentDraftSchema: z.ZodType<AgentDraft> = z.strictObject({
   bySurface: shortTextSchema,
 });
 
-/** An agent with the settings the money path reads: its limits, approval mode and send level. */
+/**
+ * An agent with the settings the money path reads: its limits, approval mode, send level and
+ * address book.
+ */
 export interface AgentSettings {
   readonly agent: AgentRecord;
   readonly limits: LimitsRecord;
   readonly approvalMode: ApprovalModeRecord;
   readonly sendLevel: SendLevelRecord;
+  /** The live entries of the agent's address book, oldest first. */
+  readonly addressBook: readonly AddressEntryRecord[];
 }
 
 /** Parses an agent's settings. */
@@ -99,6 +105,7 @@ export const agentSettingsSchema: z.ZodType<AgentSettings> = z.strictObject({
   limits: limitsRecordSchema,
   approvalMode: approvalModeRecordSchema,
   sendLevel: sendLevelRecordSchema,
+  addressBook: z.array(addressEntryRecordSchema),
 });
 
 /**
@@ -120,7 +127,7 @@ export const agentModeChangeSchema: z.ZodType<AgentModeChange> = z.strictObject(
   expectedVersion: rowVersionSchema,
 });
 
-/** The settings a new agent starts with: its draft's values, all at version 0. */
+/** The settings a new agent starts with: its draft's values, all at version 0, and no addresses. */
 export function agentSettingsOf(draft: AgentDraft): AgentSettings {
   const { atMs, limits, approvalMode, sendLevel, bySurface, ...agent } = draft;
   return {
@@ -134,5 +141,6 @@ export function agentSettingsOf(draft: AgentDraft): AgentSettings {
       version: 0,
     },
     sendLevel: { agentId: draft.id, level: sendLevel, changedAtMs: atMs, version: 0 },
+    addressBook: [],
   };
 }

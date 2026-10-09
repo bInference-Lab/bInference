@@ -64,6 +64,19 @@ export interface SendLevelsTable {
   version: number;
 }
 
+/** `address_book`. */
+export interface AddressBookTable {
+  id: string;
+  agent_id: string;
+  chain: string;
+  address: string;
+  label: string;
+  usable_at: number;
+  in_ceiling_at: number | null;
+  created_at: number;
+  removed_at: number | null;
+}
+
 /** `meta`: the schema version, the install id and when the install began. */
 interface MetaTable {
   key: string;
@@ -312,6 +325,7 @@ export interface EngineTables {
   limits: LimitsTable;
   approval_modes: ApprovalModesTable;
   send_levels: SendLevelsTable;
+  address_book: AddressBookTable;
   wallets: WalletsTable;
   intents: IntentsTable;
   intent_events: IntentEventsTable;
