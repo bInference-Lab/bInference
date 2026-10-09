@@ -23,10 +23,18 @@ import {
   runOn,
   secretEnv,
 } from "./init-fixtures.js";
-import { freePort, hostOn, noPermissions } from "./test-host.js";
+import { freePort, type HostParts, hostOn, hostWith, noPermissions } from "./test-host.js";
+import { createTestSigner } from "./test-signer.js";
 
 /** The passphrase the tests seal the `manual` mode's agent key with. */
 export const testPassphrase = "correct horse battery staple";
+
+/** What a test's engine starts with besides the machine's fakes. */
+export interface StartParts {
+  readonly parts?: HostParts;
+  /** The engine's environment; the machine's secrets when left out. */
+  readonly env?: Readonly<Record<string, string>>;
+}
 
 /** Engines a test file starts, so each test stops its own before its folder goes. */
 export interface RunningEngines {
@@ -34,8 +42,11 @@ export interface RunningEngines {
   stopAll(): Promise<void>;
   /** A machine set up by `binference init` in the file unlock mode, its keys in `keys/`. */
   setUp(): Promise<InitMachine>;
-  /** Runs `binference start --json` on the machine and answers its first JSON line. */
-  start(machine: InitMachine): Promise<JsonValue>;
+  /**
+   * Runs `binference start --json` on the machine and answers its first JSON line. Privy is the
+   * machine's fake, and the signer runs in this process, unless the options name others.
+   */
+  start(machine: InitMachine, options?: StartParts): Promise<JsonValue>;
 }
 
 const signal = (): AbortSignal => new AbortController().signal;
@@ -58,10 +69,17 @@ export function createRunningEngines(): RunningEngines {
       }
       return machine;
     },
-    async start(machine) {
+    async start(machine, options = {}) {
       const port = String(await freePort());
       const argv = ["start", "--json", "--set", `engine.port=${port}`];
-      const host = hostOn(machine, argv, secretEnv(machine));
+      const host = hostWith(machine, argv, {
+        env: options.env ?? secretEnv(machine),
+        parts: {
+          http: machine.privy.http,
+          startSigner: createTestSigner().start,
+          ...options.parts,
+        },
+      });
       const exit = runCli(host);
       engines.push({ machine, exit });
       const line = await Promise.race([

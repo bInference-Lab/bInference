@@ -51,6 +51,7 @@ ports:
 | `readLogLines`, `LogLines`          | Reads a log file's last whole lines, or the lines after a byte        |
 | `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit      |
 | `startNodeProgram`, `NodeProgram`   | Starts a Node program with pipes and only the environment it is given |
+| `realFilePath`                      | A file's path with every link on the way resolved                     |
 | `@binference/platform/testing`      | Contract suites, service and secret vault fakes, `createTempFolder`   |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is

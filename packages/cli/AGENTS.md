@@ -65,8 +65,12 @@ Rules for this package:
   its own.
 - The engine lock (`src/unlock/engine-lock.ts`) opens the keys at start and through
   `engine/unlock`, one call at a time. `onUnlocked` in `src/compose/compose-lock.ts` is the one
-  place the opened keys go: where the signer and custody start. A passphrase comes only from the
-  terminal's hidden prompt of `binference unlock`, never from a flag, and is never logged.
+  place the opened keys go: `openCustody` (`src/compose/open-custody.ts`) checks the app with
+  Privy, starts the signer through the host's `startSigner` (the built signer's process unless a
+  test passes its own) and builds the `privy-owner` adapter; a failure there is a lock reason,
+  never a failed start (decision 0117). The engine signs through the custody cell, which refuses
+  while locked. A passphrase comes only from the terminal's hidden prompt of `binference unlock`,
+  never from a flag, and is never logged.
 - The owner key code comes only from the terminal's hidden prompt of an owner-key command, such as
   `binference rescue set`, travels only over IPC and is never logged or stored. The Privy ceiling
   editor (`src/compose/privy-ceiling-editor.ts`) uses it for one request and checks it is the key

@@ -27,6 +27,7 @@ export type { NodeProgram, NodeProgramOptions } from "./node-program.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
 export { readTextFile } from "./read-text-file.js";
+export { realFilePath } from "./real-file-path.js";
 export { runCommand } from "./run-command.js";
 export type { RunProgram } from "./run-command.js";
 export type { ServiceDefinition, ServiceStatus } from "./service/service-definition.js";

@@ -1,4 +1,4 @@
-import { accountRefSchema, assetRefSchema, chainRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema } from "@binference/chain";
 import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { createMissingParts } from "./missing-parts.js";
@@ -7,7 +7,6 @@ const uuid = "0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const wallet = idSchema("wal").parse(`wal_${uuid}`);
 const agent = idSchema("agt").parse(`agt_${uuid}`);
 const intent = idSchema("int").parse(`int_${uuid}`);
-const chain = chainRefSchema.parse("eip155:56");
 const account = accountRefSchema.parse("eip155:56:0x8894E0a0c962CB723c1976a4421c95949bE2D4E3");
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
 const stopped = (): { readonly signal: AbortSignal } => ({
@@ -16,23 +15,6 @@ const stopped = (): { readonly signal: AbortSignal } => ({
 
 describe("the missing parts", () => {
   const parts = createMissingParts();
-
-  it("holds no wallet and signs nothing", async () => {
-    await expect(parts.custody.account(wallet, chain, live())).resolves.toStrictEqual({
-      ok: false,
-      error: "unknown_wallet",
-    });
-    const request = {
-      wallet,
-      intent,
-      authorization: { approvalMode: "auto", modeVersion: 1 },
-      tx: { chain, from: account, payload: "0x" },
-    } as const;
-    await expect(parts.custody.signTransaction(request as never, live())).resolves.toStrictEqual({
-      ok: false,
-      error: "refused",
-    });
-  });
 
   it("prices nothing, so the policy refuses every trade", async () => {
     const coin = assetRefSchema.parse("eip155:56/slip44:714");
@@ -55,7 +37,7 @@ describe("the missing parts", () => {
       code: "chain.simulation_failed",
       details: { missing: "simulator" },
     });
-    expect(parts.missing).toStrictEqual(["custody", "prices", "wallets", "simulator", "positions"]);
+    expect(parts.missing).toStrictEqual(["prices", "wallets", "simulator", "positions"]);
   });
 
   it("stores no position", async () => {
@@ -69,8 +51,6 @@ describe("the missing parts", () => {
   });
 
   it("answers nothing on an aborted signal", async () => {
-    await expect(parts.custody.account(wallet, chain, stopped())).rejects.toThrow("stopped");
-    await expect(parts.custody.signTransaction({} as never, stopped())).rejects.toThrow("stopped");
     await expect(parts.prices.usdPrice({} as never, stopped())).rejects.toThrow("stopped");
     await expect(parts.wallets.wallets(agent, stopped())).rejects.toThrow("stopped");
     await expect(parts.wallets.facts({} as never, stopped())).rejects.toThrow("stopped");

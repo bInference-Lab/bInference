@@ -116,7 +116,7 @@ describe("binference start, status, health and logs end to end", () => {
       expect(people.stdout).toContain(
         "binference 2026.10.0-test is running, on protocol version 1.",
       );
-      expect(people.stdout).toContain("  Custody (not built in yet): failing");
+      expect(people.stdout).toContain("  Custody (Privy and the signer): failing");
       const chinese = await run(machine, ["status"], { LANG: "zh_CN.UTF-8" });
       expect(chinese.stdout).toContain(String(messages.zh["cli.status.signals"]));
 

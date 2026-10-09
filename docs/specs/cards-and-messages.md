@@ -2,7 +2,8 @@
 
 Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended by decisions
 [0101](../DECISIONS.md#d0101), [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103),
-[0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109) and [0115](../DECISIONS.md#d0115).
+[0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115) and
+[0117](../DECISIONS.md#d0117).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -211,6 +212,7 @@ The owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#secti
 | Update available                | `notice.update`                 | binference {version} is out: {summary}. Run `binference update`.                                                                                            | binference {version} 已发布：{summary}。请运行 `binference update`。                                                           |
 | Backup failed                   | `notice.backupFailed`           | ⚠️ Last night's backup failed: {reason}                                                                                                                     | ⚠️ 昨晚的备份失败：{reason}                                                                                                    |
 | Locked                          | `notice.locked`                 | 🔴 binference restarted and is locked. Run `binference unlock`.                                                                                             | 🔴 binference 已重启并处于锁定状态。请运行 `binference unlock`。                                                               |
+| Signer stopped                  | `notice.signerStopped`          | 🔴 The signer stopped, so binference signs nothing. Fix what `binference logs` shows, then run `binference unlock`.                                         | 🔴 签名进程已停止，binference 不会签名。请先处理 `binference logs` 显示的问题，再运行 `binference unlock`。                    |
 | Unknown transaction             | `notice.unknownTx`              | ⚠️ {wallet}'s nonce {nonce} was used by a transaction binference did not sign                                                                               | ⚠️ {wallet} 的随机数 {nonce} 被一笔非 binference 签名的交易占用                                                                |
 | Fill differs                    | `notice.fillDiffers`            | ⚠️ A trade settled more than 1% away from its simulation. Check the trade.                                                                                  | ⚠️ 一笔交易的成交结果与模拟结果相差超过 1%，请核对该笔交易。                                                                   |
 | Fill unknown                    | `notice.fillUnknown`            | ⚠️ A trade settled, but no RPC can say what it received any more. Add a tracing RPC to the config and restart binference to finish it.                      | ⚠️ 一笔交易已上链，但已没有 RPC 能说明它收到了多少。请在配置中添加追踪 RPC 并重启 binference，以完成这笔交易的记录。           |

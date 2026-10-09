@@ -1,7 +1,7 @@
 # Spec 5: custody, keys, signing and backups
 
 Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by decisions
-[0103](../DECISIONS.md#d0103) and [0116](../DECISIONS.md#d0116). It follows Privy custody (decisions
+[0103](../DECISIONS.md#d0103), [0116](../DECISIONS.md#d0116) and [0117](../DECISIONS.md#d0117). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
@@ -85,6 +85,14 @@ The `manual` file, `~/.binference/keys/agent-key.json`, owner-only:
 ```
 
 It is written to a temporary file in the same folder, synced, then renamed over the old one.
+
+Once both secrets open, Privy checks the app with one read and the signer starts with the agent
+key, which must answer the public half the wallets name as their signer; only then does the engine
+unlock. A failure there runs the engine locked too, never stops it: `app_secret_rejected` when
+Privy refuses the app, `custody_unreachable` when Privy does not answer, `signer_failed` when the
+signer does not start or holds another key ([decision 0117](../DECISIONS.md#d0117)). A signer that
+stops later locks the engine again with `notice.signerStopped`. `binference unlock` runs the whole
+step again.
 
 While locked, the engine answers reads, refuses signing with `engine.locked`, and auto orders, auto
 mode and webhook rules wait. A Confirm of a live intent fails with `engine.locked` and changes

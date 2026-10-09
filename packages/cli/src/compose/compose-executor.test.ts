@@ -17,6 +17,7 @@ import {
   relayEndpointsOf,
   rpcEndpointsOf,
 } from "./compose-executor.js";
+import { createCustodyCell } from "./custody-cell.js";
 import { createMissingParts } from "./missing-parts.js";
 import { selfHostedChains } from "./open-engine-parts.js";
 
@@ -43,7 +44,7 @@ function composeWith(chainsConfig: ChainsConfig) {
   return composeExecutor({
     stores: createMemoryEngineStores(),
     positions: parts.positions,
-    custody: parts.custody,
+    custody: createCustodyCell().signer,
     wallets: parts.wallets,
     prices: parts.prices,
     chains,

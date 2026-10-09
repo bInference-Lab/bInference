@@ -1,6 +1,11 @@
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
-import { lockedNotice, lockedNoticeKey } from "./locked-notice.js";
+import {
+  lockedNotice,
+  lockedNoticeKey,
+  signerStoppedNotice,
+  signerStoppedNoticeKey,
+} from "./locked-notice.js";
 
 const alarm = String.fromCodePoint(0x1f534);
 
@@ -17,6 +22,18 @@ describe("the locked notice", () => {
     const english = createFormatter({ locale: "en", timeZone: "UTC" });
     expect(english.message(lockedNoticeKey)).toBe(
       `${alarm} binference restarted and is locked. Run \`binference unlock\`.`,
+    );
+  });
+
+  it("tells every surface when the signer stops, and how to start it again", () => {
+    expect(signerStoppedNotice()).toStrictEqual({
+      topic: "notice",
+      kind: "notice/new",
+      data: { key: "notice.signerStopped", values: {} },
+    });
+    const english = createFormatter({ locale: "en", timeZone: "UTC" });
+    expect(english.message(signerStoppedNoticeKey)).toBe(
+      `${alarm} The signer stopped, so binference signs nothing. Fix what \`binference logs\` shows, then run \`binference unlock\`.`,
     );
   });
 });

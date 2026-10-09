@@ -15,18 +15,27 @@ export interface EngineLock {
   isLocked(): boolean;
   /**
    * Opens the keys and hands them to the step that uses them; the engine unlocks once that step
-   * resolves. Answers why it stays locked, and `ok` at once, reading nothing, once unlocked.
-   * Calls run one at a time. A step that rejects leaves the engine locked and rejects the call.
+   * answers `ok`. Answers why it stays locked, the keys' reason or the step's, and `ok` at once,
+   * reading nothing, once unlocked. Calls run one at a time. A step that rejects leaves the engine
+   * locked and rejects the call.
    */
   unlock(call: UnlockCall): Promise<Result<void, LockReason>>;
+  /** Locks the engine again, as when the signer it unlocked with stops; the next unlock reads anew. */
+  lock(): void;
 }
 
 /** What the lock opens the keys with, and where they go. */
 export interface EngineLockOptions {
   /** Reads the agent key and the Privy app secret through the unlock mode. */
   readonly open: (call: UnlockCall) => Promise<Result<UnlockedKeys, LockReason>>;
-  /** Takes the opened keys: the step that starts the signer and custody with them. */
-  readonly onUnlocked: (keys: UnlockedKeys, signal: AbortSignal) => Promise<void>;
+  /**
+   * Takes the opened keys: the step that starts the signer and custody with them, and why the
+   * engine stays locked when that fails.
+   */
+  readonly onUnlocked: (
+    keys: UnlockedKeys,
+    signal: AbortSignal,
+  ) => Promise<Result<void, LockReason>>;
 }
 
 /** Creates the {@link EngineLock}, locked. */
@@ -40,12 +49,18 @@ export function createEngineLock(options: EngineLockOptions): EngineLock {
     if (!opened.ok) {
       return opened;
     }
-    await options.onUnlocked(opened.value, call.signal);
+    const started = await options.onUnlocked(opened.value, call.signal);
+    if (!started.ok) {
+      return started;
+    }
     state.isLocked = false;
     return ok(undefined);
   };
   return {
     isLocked: () => state.isLocked,
+    lock: () => {
+      state.isLocked = true;
+    },
     unlock: async (call) => {
       const run = state.turn.then(async () => attempt(call));
       state.turn = run.then(

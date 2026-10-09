@@ -1,7 +1,7 @@
 import { lockedNotice } from "@binference/engine";
 import { createShutdown, type ShutdownReport } from "@binference/platform";
-import { composeSelfHosted, type Opened } from "./compose-self-hosted.js";
-import { listenForProtocol, type Opening } from "./open-engine-parts.js";
+import { composeSelfHosted } from "./compose-self-hosted.js";
+import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
 
 // Hands every part's closer to the one shutdown sequence, which stop signals and `engine/stop`
@@ -30,10 +30,11 @@ function startShutdown(
 /**
  * Serves the engine in the startup order of ARCHITECTURE.md section 24, once the lock, the config,
  * the stores, their migrations and the integrity check are done: the protocol server listens at
- * once, answering every call but `engine/status` with `engine.starting`; the signer's keys open
- * through the unlock mode; every unfinished live intent is recovered by hash and nonce and holds
- * its place in its wallet's queue; then the engine is `ready`, or `locked` while its keys stay
- * shut (decision 0103), and says so on topic `engine`.
+ * once, answering every call but `engine/status` with `engine.starting`; the keys open through the
+ * unlock mode and start the signer and custody, or leave the engine locked with the reason
+ * (decisions 0103 and 0117); every unfinished live intent is recovered by hash and nonce and holds
+ * its place in its wallet's queue; once unlocked, the confirmed intents an earlier run left go to
+ * the executor; then the engine is `ready`, or `locked`, and says so on topic `engine`.
  */
 export async function serveEngine(opening: Opening, opened: Opened): Promise<StartOutcome> {
   const { platform, signal } = opening;
@@ -48,6 +49,9 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   }
   const unlocked = await locked.lock.unlock({ signal });
   await executor.recover({ signal });
+  if (unlocked.ok) {
+    await composed.resume(signal);
+  }
   const { stop, finished } = startShutdown(opening, opened);
   composed.stopper.stop = stop;
   state.current = "ready";

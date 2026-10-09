@@ -32,7 +32,8 @@ export interface PrivySettings {
   readonly timeoutMs: number;
 }
 
-const defaultOrigin = "https://api.privy.io";
+/** Privy's API origin, which every call reaches unless a test serves another. */
+export const privyApiOrigin = "https://api.privy.io";
 const defaultTimeoutMs = 15_000;
 const originPattern = /^https:\/\/[a-z0-9.-]+(?::\d{1,5})?$/;
 const methods: ReadonlySet<string> = new Set<HttpMethod>(["GET", "POST", "PUT", "PATCH", "DELETE"]);
@@ -43,7 +44,7 @@ function isMethod(text: string): text is HttpMethod {
 
 /** Checks the options: the origin must be https with no path. */
 export function privySettings(options: PrivyApiOptions): PrivySettings {
-  const origin = options.origin ?? defaultOrigin;
+  const origin = options.origin ?? privyApiOrigin;
   if (!originPattern.test(origin)) {
     throw new BinferenceError({
       code: "custody.origin_invalid",

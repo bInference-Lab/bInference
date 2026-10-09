@@ -296,5 +296,5 @@ export type { Engine, EngineHandlers, EngineOptions } from "./operations/create-
 export type { AnswerCard, AnsweredCard, LockedOutcome } from "./operations/answer-card.js";
 export type { EngineCall, EngineCaller, EngineHandler } from "./operations/engine-call.js";
 export type { EnginePush, PublishPush } from "./pushes/engine-push.js";
-export { lockedNotice, lockedNoticeKey } from "./pushes/locked-notice.js";
+export { lockedNotice, lockedNoticeKey, signerStoppedNotice } from "./pushes/locked-notice.js";
 export type { WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";

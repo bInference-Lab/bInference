@@ -84,7 +84,7 @@ const offline: Http = {
 };
 
 /** What a test gives a host in place of the outside world and the person at the terminal. */
-export type HostParts = Partial<Pick<CliHost, "http" | "prompter" | "botApiFetch">>;
+export type HostParts = Partial<Pick<CliHost, "http" | "prompter" | "botApiFetch" | "startSigner">>;
 
 /** A host for one `binference` command line on a test machine. */
 export function hostOn(

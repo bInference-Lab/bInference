@@ -32,7 +32,9 @@ export interface UnlockedKeys {
  * `agent_key_missing`: the mode holds no agent key; `agent_key_invalid`: it holds something else.
  * `keychain_failed`: the OS keychain did not answer; `command_failed`: the `command` mode's
  * program printed no agent key. `app_secret_missing`: config names no Privy app secret;
- * `app_secret_unavailable`: its source holds none.
+ * `app_secret_unavailable`: its source holds none. Once the keys open (decision 0117):
+ * `app_secret_rejected`: Privy refuses the app id and secret; `custody_unreachable`: Privy did
+ * not answer; `signer_failed`: the signer did not start, stopped, or holds another key.
  */
 export type LockReason =
   | "needs_passphrase"
@@ -42,7 +44,10 @@ export type LockReason =
   | "keychain_failed"
   | "command_failed"
   | "app_secret_missing"
-  | "app_secret_unavailable";
+  | "app_secret_unavailable"
+  | "app_secret_rejected"
+  | "custody_unreachable"
+  | "signer_failed";
 
 /** What the unlock reads: config, the platform's stores, and the manual mode's passphrase. */
 export interface UnlockOptions {

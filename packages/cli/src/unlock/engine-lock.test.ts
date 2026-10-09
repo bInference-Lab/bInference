@@ -26,7 +26,7 @@ function sealed() {
     },
     onUnlocked: async (opened) => {
       handed.push(opened);
-      return Promise.resolve();
+      return Promise.resolve(ok(undefined));
     },
   });
   return { lock, reads, handed };
@@ -59,6 +59,24 @@ describe("the engine lock", () => {
     ]);
     expect(both).toStrictEqual([ok(undefined), ok(undefined)]);
     expect(handed).toHaveLength(1);
+  });
+
+  it("stays locked with the step's reason when the signer does not start", async () => {
+    const lock = createEngineLock({
+      open: async () => Promise.resolve(ok(keys)),
+      onUnlocked: async () => Promise.resolve(err("signer_failed")),
+    });
+    await expect(lock.unlock(given())).resolves.toStrictEqual(err("signer_failed"));
+    expect(lock.isLocked()).toBe(true);
+  });
+
+  it("locks again when told, and reads the keys anew at the next unlock", async () => {
+    const { lock, reads, handed } = sealed();
+    await lock.unlock(given(passphrase));
+    lock.lock();
+    expect(lock.isLocked()).toBe(true);
+    await expect(lock.unlock(given(passphrase))).resolves.toStrictEqual(ok(undefined));
+    expect([lock.isLocked(), reads.length, handed.length]).toStrictEqual([false, 2, 2]);
   });
 
   it("stays locked when the step that takes the keys fails", async () => {

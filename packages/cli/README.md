@@ -11,17 +11,22 @@ its layers and secret sources, opens the engine log, opens `engine.sqlite` on it
 (migrations, then the integrity check), makes sure the CLI token in `auth/cli.token` is known,
 builds the engine on the self-hosted parts, and listens for the protocol on the engine's IPC
 endpoint and on `127.0.0.1:<engine.port>` (`serveEngine`). From there every call but
-`engine/status` answers `engine.starting` while the startup order goes on: the agent key opens
-through the unlock mode, and the executor recovers every unfinished live intent by hash and
-nonce; then the engine is `ready`, or `locked`. The executor (`composeExecutor`) sends live intents through
+`engine/status` answers `engine.starting` while the startup order goes on: the agent key and the
+Privy app secret open through the unlock mode, Privy checks the app with one read, and the signer
+starts as a child process under Node's permission model with the agent key and must answer its
+public half; custody then signs through the `privy-owner` adapter. A failure in that step leaves
+the engine locked with its reason, and `binference unlock` runs it again (decision 0117). The
+executor recovers every unfinished live intent by hash and nonce, and once unlocked takes the
+confirmed intents an earlier run left; then the engine is `ready`, or `locked`. The executor (`composeExecutor`) sends live intents through
 every private relay each enabled chain lists or `chains.relays` names, reads through the chain's
 RPCs and `chains.rpc`, and pays at most `chains.maxFeePerGasGwei` without a tap; its health signal
-follows the relays' last answers. Parts that have no adapter yet (custody through Privy, Chainlink
-prices, the wallet facts, the simulator, outbound HTTP) are missing parts: they refuse every live
-action and show as failed health signals. A stop signal, or `engine/stop` over IPC, runs the
+follows the relays' last answers. A signer that stops while the engine runs locks it again, with
+`notice.signerStopped`. Parts that have no adapter yet (Chainlink prices, the wallet facts, the
+simulator, the stored positions) are missing parts: they refuse every live action and show as
+failed health signals. A stop signal, or `engine/stop` over IPC, runs the
 shutdown sequence within `engine.shutdownBudgetMs`, which closes the parts in the reverse order:
-server and IPC, so nothing new comes in; the health probe; the executor, which lets a signature or
-a send under way end; the store, the log and the lock. A second `start` on the same state folder
+server and IPC, so nothing new comes in; the health probe; the executor, which
+lets a signature or a send under way end; the signer; the store, the log and the lock. A second `start` on the same state folder
 refuses while the first runs, in another process too.
 
 `binference init` sets up a new install (keys spec, section 2) under the engine lock: the Privy

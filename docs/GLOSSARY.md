@@ -356,6 +356,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | app ID (of a Privy app)               | 应用 ID    |                              |
 | app secret (of a Privy app)           | 应用密钥   |                              |
 | custody (who holds the agent wallets) | 托管       |                              |
+| signer (the process)                  | 签名进程   | Holds the agent key          |
+| signer (of a wallet)                  | 签名方     | The agent key's key quorum   |
 | wallet facts                          | 钱包信息   |                              |
 | health signal                         | 健康信号   | Shown by `binference status` |
 | log (the engine's log file)           | 日志       |                              |

@@ -30,6 +30,7 @@ export type {
   WalletRecord,
   WalletSigner,
 } from "./privy/privy-records.js";
+export { privyApiOrigin } from "./privy/privy-client.js";
 export type { PrivyApiOptions } from "./privy/privy-client.js";
 export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
 export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner-signer.js";

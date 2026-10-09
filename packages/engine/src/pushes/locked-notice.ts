@@ -12,3 +12,15 @@ export const lockedNoticeKey = "notice.locked";
 export function lockedNotice(): EnginePush {
   return noticePush({ key: lockedNoticeKey, values: {} });
 }
+
+/** The message key of the notice that the signer stopped while the engine ran (decision 0117). */
+export const signerStoppedNoticeKey = "notice.signerStopped";
+
+/**
+ * The notice that tells every surface the signer stopped after start, so the engine locked again
+ * and signs nothing until the owner fixes the cause and runs `binference unlock`. It names no
+ * agent, since the lock holds for the whole install.
+ */
+export function signerStoppedNotice(): EnginePush {
+  return noticePush({ key: signerStoppedNoticeKey, values: {} });
+}

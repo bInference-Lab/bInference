@@ -1,5 +1,6 @@
 import type { Clock, Http, Random } from "@binference/core";
 import type { SignalEvents } from "@binference/platform";
+import type { StartSigner } from "../compose/start-signer.js";
 import type { Prompter } from "../term/prompter.js";
 
 /**
@@ -31,4 +32,6 @@ export interface CliHost {
   readonly homeDir?: string;
   /** Node options for the store's worker threads, such as a TypeScript loader in tests. */
   readonly workerExecArgv?: readonly string[];
+  /** Starts the signer once the agent key opens; the built signer's process when left out. */
+  readonly startSigner?: StartSigner;
 }

@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { createIdSource, ok } from "@binference/core";
+import { createIdSource, ok, type Result } from "@binference/core";
 import type { EnginePush, EngineStores } from "@binference/engine";
 import type { Platform } from "@binference/platform";
 import type { EngineState } from "@binference/protocol";
@@ -8,6 +8,7 @@ import { createSecretReader } from "../config/secrets/secret-reader.js";
 import type { CliHost } from "../program/cli-host.js";
 import { createEngineLock, type EngineLock } from "../unlock/engine-lock.js";
 import { openInstallKeys } from "../unlock/install-keys.js";
+import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 
 /** What the install's wallets need from this machine, as `binference init` stored it. */
 export interface SetUpInstall {
@@ -25,6 +26,13 @@ export interface ComposeLockOptions {
   readonly install: SetUpInstall | undefined;
   /** Whether the engine serves calls yet: `starting`, then `ready`. */
   readonly started: { readonly current: EngineState };
+  /** Starts the signer and custody with the opened keys, or answers why the engine stays locked. */
+  readonly openCustody: (
+    keys: UnlockedKeys,
+    signal: AbortSignal,
+  ) => Promise<Result<void, LockReason>>;
+  /** What an unlock after start goes on with: the confirmed intents the lock held. */
+  readonly resume: (signal: AbortSignal) => Promise<void>;
 }
 
 /** The engine's lock, the state it reports, and where an unlock after start is announced. */
@@ -37,10 +45,11 @@ export interface ComposedLock {
 }
 
 // An install that was never set up holds no agent key to open: nothing is locked, and live
-// trades fail as the missing custody refuses them.
+// trades fail as the empty custody refuses them.
 const notSetUp: EngineLock = {
   isLocked: () => false,
   unlock: async () => Promise.resolve(ok(undefined)),
+  lock: () => undefined,
 };
 
 function lockOf(
@@ -62,13 +71,15 @@ function lockOf(
   };
   return createEngineLock({
     open: async (call) => openInstallKeys({ ...install, unlock }, call),
-    // The seam where the signer and custody start with the keys, in the startup order of
-    // ARCHITECTURE.md section 24. Without them an unlock changes the engine state alone.
-    onUnlocked: async () => {
-      if (started.current === "ready") {
+    // The signer and custody start with the keys, at the signer's place in the startup order of
+    // ARCHITECTURE.md section 24; an unlock after start announces itself and resumes what waited.
+    onUnlocked: async (keys, signal) => {
+      const custody = await options.openCustody(keys, signal);
+      if (custody.ok && started.current === "ready") {
         announce.publish({ topic: "engine", kind: "engine/state", data: { state: "ready" } });
+        await options.resume(signal);
       }
-      return Promise.resolve();
+      return custody;
     },
   });
 }
@@ -76,7 +87,9 @@ function lockOf(
 /**
  * Builds the self-hosted engine's lock over the install's keys (decision 0103): the unlock mode
  * opens them at start and through `engine/unlock`, and the key must be the one the wallets name as
- * their signer. An unlock after start is announced on topic `engine`.
+ * their signer. The engine unlocks only once the signer and custody start with them (decision
+ * 0117). An unlock after start is announced on topic `engine` and takes the confirmed intents
+ * the lock held.
  */
 export function composeLock(options: ComposeLockOptions): ComposedLock {
   const announce = { publish: (_push: EnginePush): void => undefined };

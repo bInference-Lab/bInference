@@ -1,4 +1,4 @@
-import { type ChainRegistry, createChainRegistry } from "@binference/chain";
+import { type ChainRef, type ChainRegistry, createChainRegistry } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
 import { bsc } from "@binference/chains";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
@@ -15,6 +15,7 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { Closers } from "./closers.js";
+import type { SetUpInstall } from "./compose-lock.js";
 import { engineEndpoint, engineLogFile } from "./engine-locations.js";
 
 /** One start while its parts open: each part adds what closes it. */
@@ -24,6 +25,17 @@ export interface Opening {
   readonly closers: Closers;
   /** The start's deadline. */
   readonly signal: AbortSignal;
+}
+
+/** What the engine is built from once the config, the log and the store are open. */
+export interface Opened {
+  readonly config: BinferenceConfig;
+  readonly log: OpenedLog;
+  readonly stores: OpenedStores;
+  /** The install, or `undefined` before `binference init` set it up. */
+  readonly install: SetUpInstall | undefined;
+  /** The owner's tracing RPC of each chain config names one for, read from its secret. */
+  readonly tracers: ReadonlyMap<ChainRef, string>;
 }
 
 /** The engine's logger, its file, and whether the file lost lines. */
