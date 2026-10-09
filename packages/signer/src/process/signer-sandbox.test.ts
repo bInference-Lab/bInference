@@ -14,7 +14,11 @@ import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { openSignerClient, type SignerClient } from "../client/signer-client.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
 import { formatSignerRequest } from "../requests/signer-message.schema.js";
-import { authorizeFixture, fixtureSettings } from "../testing/sign-fixtures.js";
+import {
+  authorizeFixture,
+  fixtureSettings,
+  fixtureSettingsLine,
+} from "../testing/sign-fixtures.js";
 import { readLines } from "./read-lines.js";
 import { signerNodeArguments } from "./signer-node-arguments.js";
 
@@ -135,9 +139,7 @@ async function exitCode(run: Pick<Run, "child">): Promise<number | null> {
 const agentKey = createP256KeyPair();
 
 function begin(run: Run): void {
-  run.child.stdin.write(
-    `${JSON.stringify(fixtureSettings)}\n${formatAgentKey(agentKey).reveal()}\n`,
-  );
+  run.child.stdin.write(`${fixtureSettingsLine}\n${formatAgentKey(agentKey).reveal()}\n`);
 }
 
 // The signer reads the real clock, so this request's confirmation lasts until 2100.

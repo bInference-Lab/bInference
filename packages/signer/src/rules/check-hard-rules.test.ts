@@ -138,6 +138,12 @@ const settingsWith = (settings: Partial<SignerSettings>): HardRuleContext => ({
   settings: { ...fixtureSettings, ...settings },
 });
 
+// The time `ms` after the fixture confirmation expired.
+const afterExpiry = (ms: number): HardRuleContext => ({
+  ...context,
+  nowMs: fixtureNowMs + 60_000 + ms,
+});
+
 // Each case changes one thing about a request every rule passes, and breaks one rule only.
 const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleContext?])[] = [
   [1, "a chain the owner has not enabled", call, settingsWith({ chains: [otherChain] })],
@@ -290,6 +296,26 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
     }),
   ],
   [5, "an expired confirmation", call, { ...context, nowMs: fixtureNowMs + 60_000 }],
+  [5, "a cancel a minute after its confirmation expired", cancel, afterExpiry(60_000)],
+  [5, "a speed-up after its confirmation expired", speedUp, afterExpiry(1)],
+  [
+    5,
+    "a cancel after its confirmation expired above the network fee cap",
+    withTransaction(cancel, {
+      to: wallet,
+      value: 0,
+      data: "0x",
+      nonce: 3,
+      max_fee_per_gas: "0x3b9aca01",
+    }),
+    afterExpiry(1),
+  ],
+  [
+    5,
+    "a cancel after its confirmation expired on a chain with no fee cap",
+    cancel,
+    { ...afterExpiry(1), settings: { ...fixtureSettings, networkFeeCaps: [] } },
+  ],
   [
     5,
     "an order that is no longer active",
@@ -413,6 +439,13 @@ describe("the hard rules", () => {
     expect(checkHardRules({ ...call, request: { ...call.request, body } }, context)).toBe(
       "malformed",
     );
+  });
+
+  it.each([
+    ["as its confirmation expires", 0],
+    ["a millisecond before the minute after it ends", 59_999],
+  ])("sign a cancel at the network fee cap %s (decision 0116)", (_case, ms) => {
+    expect(brokenHardRules(cancel, afterExpiry(ms))).toStrictEqual([]);
   });
 
   it("reports the first of several broken rules", () => {

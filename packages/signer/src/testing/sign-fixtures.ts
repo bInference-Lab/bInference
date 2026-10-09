@@ -6,7 +6,8 @@ import {
   type AuthorizeInput,
 } from "@binference/chain";
 import { idSchema, type JsonValue } from "@binference/core";
-import type { SignerSettings } from "../process/signer-settings.schema.js";
+import { z } from "zod";
+import { type SignerSettings, signerSettingsSchema } from "../process/signer-settings.schema.js";
 
 /** The chain the fixtures run on. */
 const fixtureChain: ChainRef = chainRefSchema.parse("eip155:56");
@@ -14,11 +15,17 @@ const fixtureChain: ChainRef = chainRefSchema.parse("eip155:56");
 /** The time the fixtures are signed at, epoch milliseconds. */
 export const fixtureNowMs: number = 1_800_000_000_000;
 
-/** The fixtures' signer settings: the fixture chain and Privy's API. */
+/** The fixtures' signer settings: the fixture chain, Privy's API and a 1 gwei network fee cap. */
 export const fixtureSettings: SignerSettings = {
   chains: [fixtureChain],
   privyApi: "https://api.privy.io",
+  networkFeeCaps: [{ chain: fixtureChain, feePerGasBase: 10n ** 9n }],
 };
+
+/** {@link fixtureSettings} as the settings line the signer reads first. */
+export const fixtureSettingsLine: string = JSON.stringify(
+  z.encode(signerSettingsSchema, fixtureSettings),
+);
 
 /** An EVM address on the fixture chain, as a CAIP-10 account. */
 export function accountOn(address: string): AccountRef {

@@ -1,4 +1,5 @@
 import { type ChainRef, chainRefSchema } from "@binference/chain";
+import { decimalStringSchema } from "@binference/core";
 import { z } from "zod";
 
 /**
@@ -10,12 +11,19 @@ export interface SignerSettings {
   readonly chains: readonly ChainRef[];
   /** The origin of Privy's API, such as `https://api.privy.io`; every request URL starts with it. */
   readonly privyApi: string;
+  /**
+   * Each enabled chain's network fee cap: a cancel signed after its confirmation expired pays at
+   * most this (decision 0116), in base units of the chain's native coin per gas (decision 0102). A
+   * chain with no cap here signs no such cancel.
+   */
+  readonly networkFeeCaps: readonly { readonly chain: ChainRef; readonly feePerGasBase: bigint }[];
 }
 
-/** A {@link SignerSettings} as JSON carries it. */
+/** A {@link SignerSettings} as JSON carries it, fee caps as decimal strings. */
 export interface SignerSettingsWire {
   readonly chains: readonly string[];
   readonly privyApi: string;
+  readonly networkFeeCaps: readonly { readonly chain: string; readonly feePerGasBase: string }[];
 }
 
 const loopbackHosts = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -33,6 +41,9 @@ function isApiOrigin(text: string): boolean {
 export const signerSettingsSchema: z.ZodType<SignerSettings, SignerSettingsWire> = z.strictObject({
   chains: z.array(chainRefSchema).min(1).max(64),
   privyApi: z.string().refine(isApiOrigin, { message: "Expected an https origin." }),
+  networkFeeCaps: z
+    .array(z.strictObject({ chain: chainRefSchema, feePerGasBase: decimalStringSchema }))
+    .max(64),
 });
 
 /** Reads the settings line; `undefined` for a line that is not JSON or breaks the schema. */

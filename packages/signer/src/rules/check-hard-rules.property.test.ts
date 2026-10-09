@@ -110,13 +110,25 @@ function advanceOk(
   return a.state === "active" && unexpired && fillsLeft;
 }
 
+// Decision 0116: a cancel still signs up to a minute after its confirmation expired, at no more
+// than the step chain's network fee cap, which the settings hold for chain 56 only.
+function cancelGraceOk(m: Model, expiresAtMs: number): boolean {
+  return (
+    m.replaces.kind === "cancel" &&
+    m.nowMs < expiresAtMs + 60_000 &&
+    m.stepChain === c56 &&
+    m.fee !== undefined &&
+    m.fee <= gwei
+  );
+}
+
 function authorizationOk(m: Model): boolean {
   const a = m.authorization;
   if (a.termsHash !== m.termsHash) {
     return false;
   }
   if (a.kind === "confirmation") {
-    return a.intent === intents[0] && m.nowMs < a.expiresAtMs;
+    return a.intent === intents[0] && (m.nowMs < a.expiresAtMs || cancelGraceOk(m, a.expiresAtMs));
   }
   return a.kind === "auto" ? autoOk(m, a) : advanceOk(m, a);
 }
@@ -295,7 +307,14 @@ const data: fc.Arbitrary<Data> = fc.oneof(
   fc.record({ kind: fc.constant("transfer" as const), account: address, amount }),
 );
 const accounts = fc.array(someAccount, { maxLength: 3 });
-const time = fc.constantFrom(nowMs - 1, nowMs, nowMs + 1, nowMs + 60_000);
+const time = fc.constantFrom(
+  nowMs - 1,
+  nowMs,
+  nowMs + 1,
+  nowMs + 60_000,
+  nowMs + 119_999,
+  nowMs + 120_000,
+);
 
 type Change = (m: Model) => Model;
 type Auto = Extract<Authorization, { kind: "auto" }>;
@@ -459,7 +478,11 @@ describe("the hard rules on random requests", () => {
       fc.property(models, (model) => {
         const service = createSignerService({
           agentKey,
-          settings: { chains: model.enabled.map((c) => chainRefSchema.parse(c)), privyApi: api },
+          settings: {
+            chains: model.enabled.map((c) => chainRefSchema.parse(c)),
+            privyApi: api,
+            networkFeeCaps: [{ chain: chainRefSchema.parse(c56), feePerGasBase: gwei }],
+          },
           now: () => model.nowMs,
         });
         const answer = service.answer(

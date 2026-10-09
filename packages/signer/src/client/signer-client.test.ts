@@ -9,7 +9,12 @@ import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
 import { maxLineBytes } from "../process/read-lines.js";
 import { serveSigner } from "../process/serve-signer.js";
-import { authorizeFixture, fixtureNowMs, fixtureSettings } from "../testing/sign-fixtures.js";
+import {
+  authorizeFixture,
+  fixtureNowMs,
+  fixtureSettings,
+  fixtureSettingsLine,
+} from "../testing/sign-fixtures.js";
 import { maxWaitingCalls, openSignerClient, type SignerRefusalNotice } from "./signer-client.js";
 
 const agentKey = createP256KeyPair();
@@ -140,7 +145,7 @@ describe("signer client", () => {
   it("writes the settings line and the key's line before any request", async () => {
     const { written } = await scripted();
 
-    expect(written).toStrictEqual([JSON.stringify(fixtureSettings), keyText]);
+    expect(written).toStrictEqual([fixtureSettingsLine, keyText]);
   });
 
   it("logs a refusal by its reason and ids only, and raises it as a notice", async () => {

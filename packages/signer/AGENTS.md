@@ -24,6 +24,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   rule moves its test that breaks only that rule and the oracle of
   `check-hard-rules.property.test.ts` in the same commit; the oracle is written apart from the
   rules and must stay that way. Stryker's 80% bar applies to them.
+- Rule 5 refuses everything after an authorization expired but a cancel of the confirmed intent,
+  for 60 seconds after its confirmation expired, at a fee per gas at most the chain's cap in the
+  settings' `networkFeeCaps` (decision 0116). A chain with no cap there signs no such cancel.
 - Privy's authorization payload is `authorizationPayload` of `@binference/chain`. Its known
   answers from Privy's own SDK live here, and `src/privy-sdk/` holds it to the SDK's bytes for any
   request, with `@privy-io/node` as a test-only dependency. A change to the payload's bytes breaks

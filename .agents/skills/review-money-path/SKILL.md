@@ -41,6 +41,8 @@ Also check, without a checklist line:
 - Stored amounts are decimal strings of base units; times are epoch milliseconds in UTC.
 - The ledger is append-only; nothing updates or deletes an entry.
 - A raw transaction is stored before broadcast, so recovery never sends twice.
+- A signature after its authorization expired is only a stuck step's cancel inside the minute of
+  decision 0116, at most at the network fee cap; no replacement is signed above that cap.
 
 ## 3. Report
 

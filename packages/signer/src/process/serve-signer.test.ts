@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
 import { readSignerLine } from "../requests/signer-message.schema.js";
-import { fixtureNowMs, fixtureSettings } from "../testing/sign-fixtures.js";
+import { fixtureNowMs, fixtureSettingsLine } from "../testing/sign-fixtures.js";
 import { maxLineBytes } from "./read-lines.js";
 import { serveSigner } from "./serve-signer.js";
 
 const agentKey = createP256KeyPair();
 const keyText = formatAgentKey(agentKey).reveal();
-const settingsLine = JSON.stringify(fixtureSettings);
+const settingsLine = fixtureSettingsLine;
 const publicKey = (id: string): string => JSON.stringify({ id, kind: "publicKey" });
 
 async function* chunksOf(chunks: readonly Buffer[]): AsyncGenerator<Buffer> {

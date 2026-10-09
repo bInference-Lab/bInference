@@ -1,7 +1,7 @@
 # Spec 5: custody, keys, signing and backups
 
-Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by
-[decision 0103](../DECISIONS.md#d0103). It follows Privy custody (decisions
+Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by decisions
+[0103](../DECISIONS.md#d0103) and [0116](../DECISIONS.md#d0116). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
@@ -186,7 +186,9 @@ says without checking it:
    data only for a named domain.
 5. `termsHash` matches the authorization's: a confirmation that has not expired, an active order or
    webhook rule whose bounds hold, or the agent's current auto-mode grant for an intent that passes
-   the auto test (spec 6, section 5).
+   the auto test (spec 6, section 5). One exception: a cancel (rule 6) of the confirmed intent
+   signs for 60 seconds after its confirmation expired, at a fee per gas at most the chain's
+   network fee cap from the signer's settings ([decision 0116](../DECISIONS.md#d0116)).
 6. For a speed-up or a cancel at an already used nonce: the calldata is identical (speed-up) or the
    transaction is a 0-value transfer to the wallet itself (cancel).
 

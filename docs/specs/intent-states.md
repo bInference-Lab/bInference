@@ -2,8 +2,8 @@
 
 Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by decisions
 [0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101),
-[0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103), [0109](../DECISIONS.md#d0109) and
-[0115](../DECISIONS.md#d0115).
+[0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103), [0109](../DECISIONS.md#d0109),
+[0115](../DECISIONS.md#d0115) and [0116](../DECISIONS.md#d0116).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -219,7 +219,8 @@ runs the call there. No speed-up or cancel is signed with a fee per gas above th
 step's; the store supersedes the others in the same write.
 
 A signature for a speed-up or a cancel is a new signature for the same confirmed intent; the signer
-checks it against the same confirmation record.
+checks it against the same confirmation record, and signs a cancel for one minute after that
+record expired ([decision 0116](../DECISIONS.md#d0116)).
 
 <a id="section-7"></a>
 

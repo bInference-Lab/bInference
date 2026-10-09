@@ -2,7 +2,7 @@ import { PassThrough, Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { formatAgentKey } from "../agent-key/agent-key-text.js";
 import { createP256KeyPair } from "../keys/p256-key-pair.js";
-import { fixtureNowMs, fixtureSettings } from "../testing/sign-fixtures.js";
+import { fixtureNowMs, fixtureSettingsLine } from "../testing/sign-fixtures.js";
 import { runSigner } from "./run-signer.js";
 
 const program = "/opt/binference/signer-process.mjs";
@@ -32,7 +32,7 @@ async function run(permission: NodeJS.ProcessPermission | undefined) {
     permission,
     program,
     input: inputOf(
-      JSON.stringify(fixtureSettings),
+      fixtureSettingsLine,
       formatAgentKey(agentKey).reveal(),
       JSON.stringify({ id: "a", kind: "publicKey" }),
     ),

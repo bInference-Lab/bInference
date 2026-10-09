@@ -3,14 +3,17 @@ import { signerNodeArguments } from "./signer-node-arguments.js";
 import { readSignerSettings } from "./signer-settings.schema.js";
 
 const read = (settings: object): unknown => readSignerSettings(JSON.stringify(settings));
+const caps = [{ chain: "eip155:56", feePerGasBase: "1000000000" }];
+const decodedCaps = [{ chain: "eip155:56", feePerGasBase: 1_000_000_000n }];
 
 describe("signer settings", () => {
   it.each([
     ["Privy's API", { chains: ["eip155:56"], privyApi: "https://api.privy.io" }],
     ["two chains", { chains: ["eip155:56", "eip155:1"], privyApi: "https://api.privy.io" }],
     ["a Privy stand-in on loopback", { chains: ["eip155:56"], privyApi: "http://127.0.0.1:8545" }],
-  ])("reads settings with %s", (_case, settings) => {
-    expect(read(settings)).toStrictEqual(settings);
+  ])("reads settings with %s and each chain's fee cap", (_case, settings) => {
+    const decoded = { ...settings, networkFeeCaps: decodedCaps };
+    expect(read({ ...settings, networkFeeCaps: caps })).toStrictEqual(decoded);
   });
 
   it.each([
@@ -21,8 +24,20 @@ describe("signer settings", () => {
     ["a trailing slash", { chains: ["eip155:56"], privyApi: "https://api.privy.io/" }],
     ["no URL", { chains: ["eip155:56"], privyApi: "api.privy.io" }],
     ["an extra key", { chains: ["eip155:56"], privyApi: "https://api.privy.io", key: "x" }],
+    [
+      "a fee cap that is no decimal string",
+      {
+        chains: ["eip155:56"],
+        privyApi: "https://api.privy.io",
+        networkFeeCaps: [{ chain: "eip155:56", feePerGasBase: 1 }],
+      },
+    ],
   ])("refuses settings with %s", (_case, settings) => {
-    expect(read(settings)).toBeUndefined();
+    expect(read({ networkFeeCaps: caps, ...settings })).toBeUndefined();
+  });
+
+  it("refuses settings without fee caps", () => {
+    expect(read({ chains: ["eip155:56"], privyApi: "https://api.privy.io" })).toBeUndefined();
   });
 
   it("refuses a line that is not JSON", () => {

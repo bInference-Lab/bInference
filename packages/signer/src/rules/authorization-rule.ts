@@ -42,12 +42,34 @@ function autoHolds(view: RuleView, grant: AutoModeGrant, current: ApprovalModeNo
   return checkAutoModeGrant(grant, check).ok;
 }
 
+/**
+ * How long after its confirmation expired a cancel of the confirmed intent still signs (decision
+ * 0116): one trade card's lifetime.
+ */
+const cancelGraceMs = 60_000;
+
+// A cancel moves nothing, so it still signs shortly after the owner's confirmation expired, at no
+// more than the chain's network fee cap per gas (decision 0116).
+function isCancelInGrace(view: RuleView, expiresAtMs: number): boolean {
+  const { step } = view.input;
+  const fee = view.transaction.feePerGas;
+  const cap = view.settings.networkFeeCaps.find(({ chain }) => chain === step.chain);
+  return (
+    step.replaces?.kind === "cancel" &&
+    view.nowMs < expiresAtMs + cancelGraceMs &&
+    cap !== undefined &&
+    fee !== undefined &&
+    fee <= cap.feePerGasBase
+  );
+}
+
 const termsHashOf = (authorization: SignAuthorization): string =>
   authorization.kind === "approvalMode" ? authorization.grant.termsHash : authorization.termsHash;
 
 /**
  * Rule 5: `termsHash` is the authorization's, and the authorization holds now: a confirmation of
- * this intent that has not expired; an active auto order or webhook rule within its expiry and
+ * this intent that has not expired, or expired less than a minute ago for a cancel at most at
+ * the network fee cap (decision 0116); an active auto order or webhook rule within its expiry and
  * its fills; or the agent's auto grant for this intent, unexpired, with the agent's mode still
  * auto at the grant's version, for a transaction that passes the auto test's checks.
  */
@@ -57,7 +79,9 @@ export function authorizationHolds(view: RuleView): boolean {
     return false;
   }
   if (authorization.kind === "confirmation") {
-    return authorization.intent === intent && view.nowMs < authorization.expiresAtMs;
+    const { expiresAtMs } = authorization;
+    const isLive = view.nowMs < expiresAtMs || isCancelInGrace(view, expiresAtMs);
+    return authorization.intent === intent && isLive;
   }
   if (authorization.kind === "approvalMode") {
     return autoHolds(view, authorization.grant, authorization.current);
