@@ -265,6 +265,7 @@ describe("moving an intent", () => {
       ["assessed", { type: "simulation_failed", reason: "effects_differ" }, "failed_check"],
       ["executing", { type: "step_reverted" }, "failed_onchain"],
       ["executing", { type: "step_cancelled" }, "failed_onchain"],
+      ["executing", { type: "step_dropped" }, "failed_onchain"],
       ["unknown_after_send", { type: "nonce_taken" }, "failed_onchain"],
       ["executing", { type: "step_unsent", hasSignedStep: true }, "failed_onchain"],
     ] as const;
@@ -279,6 +280,7 @@ describe("moving an intent", () => {
       ["failed_check", "effects_differ", "effects_differ"],
       ["failed_onchain", "reverted", "reverted"],
       ["failed_onchain", "stuck_cancelled", "stuck_cancelled"],
+      ["failed_onchain", "stuck_dropped", "stuck_dropped"],
       ["failed_onchain", "nonce_taken", "nonce_taken"],
       ["failed_onchain", "step_unsent", "step_unsent"],
     ]);

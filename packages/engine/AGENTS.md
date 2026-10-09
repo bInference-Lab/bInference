@@ -151,15 +151,17 @@ Rules for this package:
   again with the same stored bytes. A stuck step follows spec 6, section 6 in `stuck-rules.ts`, only
   on its wallet's slot: the same bytes again while it still runs, a speed-up after
   `replaceAfterBlocks`, a cancel once it would fail, each at its nonce for at least
-  `leastReplacementFee` and never above the network fee cap. A step no rule can move hands over at
-  the seam `executor.step_stopped` logs. Reconciliation reads what each final step moved only
-  through the `ReceiptReader`, records the trade in the positions before the move to `reconciled`,
-  and finds it stored after a restart, so a trade is recorded once. `recover` signs nothing: each
-  stored step is looked up by hash and nonce (spec 6, section 7). The watch and recovery read every
-  transaction of a step's nonce, so whichever lands is the step's, and a landed cancel ends the
-  intent with `stuck_cancelled`; recovery never replaces a stuck step. A step that is never signed,
-  at a run or found at recovery, ends the intent through `step_unsent`: `cancelled` when no step was
-  signed, `failed_onchain` once one landed (decision 0109).
+  `leastReplacementFee` and never above the network fee cap. A step every relay turns away for
+  `droppedAfterBlocks` blocks, its nonce still free, is dropped: its nonce goes to the next step and
+  the intent ends with `stuck_dropped` (decision 0115). A step no rule can move waits as long for
+  that, then hands over at the seam `executor.step_stopped` logs. Reconciliation reads what each
+  final step moved only through the `ReceiptReader`, records the trade in the positions before the
+  move to `reconciled`, and finds it stored after a restart, so a trade is recorded once. `recover`
+  signs nothing: each stored step is looked up by hash and nonce (spec 6, section 7). The watch and
+  recovery read every transaction of a step's nonce, so whichever lands is the step's, and a landed
+  cancel ends the intent with `stuck_cancelled`; recovery never replaces a stuck step. A step that
+  is never signed, at a run or found at recovery, ends the intent through `step_unsent`: `cancelled`
+  when no step was signed, `failed_onchain` once one landed (decision 0109).
 - The risk step (`src/risk/`, exported as `@binference/engine/risk`) weighs the token a quoted
   trade buys; a sale passes it, and its own simulation decides. A token the registry lists passes
   without asking anyone. Any other needs a report from every required `TokenRiskSource`, each

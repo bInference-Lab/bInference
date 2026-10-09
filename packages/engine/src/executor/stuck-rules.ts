@@ -99,7 +99,7 @@ async function replace(
     intentId: intent.id,
     chain: plan.chain.ref,
   });
-  return { kind: "replaced", transaction: await sendOnce(run, intent, stored.value) };
+  return { kind: "replaced", ...(await sendOnce(run, intent, stored.value)) };
 }
 
 async function moveStuck(
@@ -129,7 +129,7 @@ async function moveStuck(
     intentId: at.intent.id,
     chain: run.plan.chain.ref,
   });
-  return { kind: "resent", transaction: await sendOnce(run, at.intent, at.transaction) };
+  return { kind: "resent", ...(await sendOnce(run, at.intent, at.transaction)) };
 }
 
 /**

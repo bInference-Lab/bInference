@@ -53,13 +53,14 @@ describe("intent reasons", () => {
       "stuck_cancelled",
       "nonce_taken",
       "step_unsent",
+      "stuck_dropped",
     ]);
   });
 
   it("holds every reason code once in the closed list", () => {
     const all = [...policyReasons, ...riskReasons, ...checkReasons, ...failureReasons];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(32);
+    expect(intentReasons).toHaveLength(33);
   });
 
   it("has a reason message in English and Chinese for every reason code", () => {

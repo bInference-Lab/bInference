@@ -76,12 +76,12 @@ export function takeIntoQueue({
 }
 
 /**
- * `executing` to `failed_onchain` when a step reverts or a stuck step is cancelled. A rescue
+ * `executing` to `failed_onchain` when a step reverts, or a stuck step is cancelled or dropped. A rescue
  * retries a failed step instead and settles with every step's outcome (spec 6, section 5).
  */
 export function failOnchain(
-  reason: "reverted" | "stuck_cancelled",
-): TransitionGuard<"step_reverted" | "step_cancelled"> {
+  reason: "reverted" | "stuck_cancelled" | "stuck_dropped",
+): TransitionGuard<"step_reverted" | "step_cancelled" | "step_dropped"> {
   return ({ status }) => (status.kind === "rescue" ? err("rescue_retries") : ok({ reason }));
 }
 

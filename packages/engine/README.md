@@ -93,13 +93,15 @@ its nonce for at least 10% more fee; once it would fail, it gets a cancel, a 0-v
 wallet itself at its nonce. Each replacement is a new signature under the same authorization and
 supersedes the transaction before it; whichever transaction of the nonce lands is the step's, so the
 trade fills once, and a landed cancel ends the intent `failed_onchain` with `stuck_cancelled`. A
-replacement above the network fee cap (decision 0102), or one custody refuses, hands the step over
-at `executor.step_stopped`, still `executing`. Once final, it reconciles: what each step moved, read
-through the `ReceiptReader`, becomes the trade, compared with the simulation (more than 1% away
-raises `notice.fillDiffers`), valued and recorded in the positions once, and stored with the move to
-`reconciled`. Native coin an inner call paid the wallet leaves no log, so it comes from the reader's
-read of each block (decision 0108); when no node can say it any more, the owner gets
-`notice.fillUnknown` and the intent stays `finalized`.
+step every relay turns away for 60 blocks, its nonce still free, is dropped: its nonce goes to the
+next step, and the intent ends `failed_onchain` with `stuck_dropped` (decision 0115). A replacement
+above the network fee cap (decision 0102), or one custody refuses, leaves the step waiting that long
+for the drop, then hands it over at `executor.step_stopped`, still `executing`. Once final, it
+reconciles: what each step moved, read through the `ReceiptReader`, becomes the trade, compared with
+the simulation (more than 1% away raises `notice.fillDiffers`), valued and recorded in the positions
+once, and stored with the move to `reconciled`. Native coin an inner call paid the wallet leaves no
+log, so it comes from the reader's read of each block (decision 0108); when no node can say it any
+more, the owner gets `notice.fillUnknown` and the intent stays `finalized`.
 
 At startup `recover` takes up every live intent a stop left unsettled (spec 6, section 7): each
 stored step is looked up by hash and nonce. A block holds it: it goes on. Its nonce is free: the

@@ -1,6 +1,7 @@
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { holdingStates, inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { endDropped } from "./end-dropped.js";
 import { endUnsent } from "./end-unsent.js";
 import type { IncludedSteps } from "./execute-in-slot.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
@@ -61,8 +62,11 @@ async function settleSent(run: ExecutionRun, step: RecoveringStep): Promise<Know
   }
   if (fate.kind === "free") {
     const intent = snapshot.record;
-    const resent = await sendOnce(run, intent, transaction);
+    const { transaction: resent } = await sendOnce(run, intent, transaction);
     const watched = await sendAndWatch(run, { intent, transaction: resent, rivals });
+    if (watched.outcome === "dropped") {
+      return endDropped(run, snapshot, transaction.step);
+    }
     return watched.outcome === "stuck"
       ? stopped(run, snapshot, watched.problem)
       : goOn(run, { snapshot, transaction: watched.transaction });
@@ -104,13 +108,22 @@ interface Walk {
   readonly done: readonly TransactionRecord[];
 }
 
-// A step with no current transaction: one never signed ends the intent; one whose transactions
-// were all replaced or dropped waits for the stuck step's handling.
-async function settleMissing(run: ExecutionRun, walk: Walk): Promise<undefined> {
-  const isReplaced = walk.stored.some(({ step }) => step === walk.index);
-  return isReplaced
-    ? stopped(run, walk.snapshot, "replaced_step")
-    : endUnsent(run, walk.snapshot, walk.index);
+// A step with no current transaction: one never signed ends the intent. One whose transactions
+// were all replaced or dropped goes on when a block holds one of them after all, ends once one
+// was dropped (decision 0115), and is left as it is otherwise.
+async function settleMissing(run: ExecutionRun, walk: Walk): Promise<KnownStep | undefined> {
+  const { snapshot, index } = walk;
+  const [last, ...earlier] = walk.stored.filter(({ step }) => step === index).toReversed();
+  if (last === undefined) {
+    return endUnsent(run, snapshot, index);
+  }
+  const fate = await fateOf(run, { transaction: last, rivals: earlier });
+  if (fate?.kind === "found") {
+    const recorded = await recordReceipt(run, fate.transaction, fate.receipt);
+    return goOn(run, { snapshot, transaction: recorded });
+  }
+  const isDropped = [last, ...earlier].some(({ state }) => state === "dropped");
+  return isDropped ? endDropped(run, snapshot, index) : stopped(run, snapshot, "replaced_step");
 }
 
 async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | undefined> {
@@ -120,11 +133,14 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
     return included === undefined ? undefined : { included, steps: done };
   }
   const transaction = steps.get(index);
-  if (transaction === undefined) {
-    return settleMissing(run, walk);
-  }
-  const rivals = rivalsOf(walk.stored, transaction);
-  const known = await settleStep(run, { snapshot, transaction, rivals });
+  const known =
+    transaction === undefined
+      ? await settleMissing(run, walk)
+      : await settleStep(run, {
+          snapshot,
+          transaction,
+          rivals: rivalsOf(walk.stored, transaction),
+        });
   if (known === undefined) {
     return undefined;
   }
@@ -136,11 +152,12 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
  * Recovers an intent a restart left `executing` or `unknown_after_send` (spec 6, section 7), on
  * its wallet's queue: each step's stored transaction in turn is looked up by hash and nonce and
  * goes on from what the chain shows, and nothing is ever signed. It answers the included steps
- * once every step is in a block, whichever of a step's transactions at its nonce landed; a step
- * whose cancel landed ends the intent `failed_onchain` with `stuck_cancelled`. A step never signed
- * ends the intent (decision 0109). A step that stays stuck, since recovery never replaces one,
- * whose transactions were all replaced or dropped, or whose fate stays unknown stops the recovery
- * and leaves the intent where it is, logged.
+ * once every step is in a block, whichever of a step's transactions at its nonce landed. A step
+ * whose cancel landed ends the intent `failed_onchain` with `stuck_cancelled`; one every relay
+ * refused for `droppedAfterBlocks` blocks, or one recorded dropped before the stop, ends it with
+ * `stuck_dropped` (decision 0115); a step never signed ends it (decision 0109). A step that stays
+ * stuck, since recovery never replaces one, whose transactions were all replaced, or whose fate
+ * stays unknown stops the recovery and leaves the intent where it is, logged.
  */
 export async function recoverSteps(
   run: ExecutionRun,

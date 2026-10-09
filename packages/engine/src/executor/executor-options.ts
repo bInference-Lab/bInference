@@ -34,6 +34,12 @@ export interface ExecutorLimits {
    * least 10% dearer at its nonce (spec 6, section 6); 40.
    */
   readonly replaceAfterBlocks: number;
+  /**
+   * Blocks every relay refuses a stuck step's bytes before the step is dropped and its intent
+   * ends, the step's nonce still free (decision 0115); 60, three times `stuckAfterBlocks`. A
+   * step no rule can move waits as long before it is handed over.
+   */
+  readonly droppedAfterBlocks: number;
   /** Blocks after inclusion it waits for every step's block to be final; 600. */
   readonly finalAfterBlocks: number;
   /** Blocks reconciliation waits for what a final intent moved and the prices that value it; 20. */
@@ -67,6 +73,7 @@ export const defaultExecutorLimits: ExecutorLimits = {
   sendAttempts: 3,
   stuckAfterBlocks: 20,
   replaceAfterBlocks: 40,
+  droppedAfterBlocks: 60,
   finalAfterBlocks: 600,
   settleAfterBlocks: 20,
 };

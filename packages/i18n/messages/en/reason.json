@@ -30,5 +30,6 @@
   "reverted": "the transaction reverted; only the network fee was spent",
   "stuck_cancelled": "the transaction was stuck and was cancelled; only the network fee was spent",
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",
-  "step_unsent": "an earlier step landed, but a later one was never signed"
+  "step_unsent": "an earlier step landed, but a later one was never signed",
+  "stuck_dropped": "the transaction was stuck and could not be sent any more, so it did not go through"
 }

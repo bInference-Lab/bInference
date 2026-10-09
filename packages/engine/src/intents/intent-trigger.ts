@@ -32,6 +32,7 @@ export const triggerTypes = [
   "steps_included",
   "step_reverted",
   "step_cancelled",
+  "step_dropped",
   "fate_unknown",
   "finality_reached",
   "reorg_seen",
@@ -130,6 +131,11 @@ export interface TriggerFacts {
   readonly step_reverted: NoFacts;
   /** A stuck step was replaced by a cancel at its nonce (spec 6, section 6). */
   readonly step_cancelled: NoFacts;
+  /**
+   * Every relay refused a stuck step's bytes for `droppedAfterBlocks` blocks, its nonce still
+   * free, and it was recorded dropped (decision 0115).
+   */
+  readonly step_dropped: NoFacts;
   /** Startup found a sent step with no known fate. */
   readonly fate_unknown: NoFacts;
   /** The last step's block is final. */

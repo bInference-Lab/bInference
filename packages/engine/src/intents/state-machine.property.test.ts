@@ -139,6 +139,7 @@ const builders: Builders = {
   steps_included: () => ({ type: "steps_included" }),
   step_reverted: () => ({ type: "step_reverted" }),
   step_cancelled: () => ({ type: "step_cancelled" }),
+  step_dropped: () => ({ type: "step_dropped" }),
   fate_unknown: () => ({ type: "fate_unknown" }),
   finality_reached: () => ({ type: "finality_reached" }),
   reorg_seen: () => ({ type: "reorg_seen" }),

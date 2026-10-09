@@ -2,7 +2,8 @@
 
 Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by decisions
 [0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101),
-[0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103) and [0109](../DECISIONS.md#d0109).
+[0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103), [0109](../DECISIONS.md#d0109) and
+[0115](../DECISIONS.md#d0115).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -45,7 +46,7 @@ other code writes an intent's state ([ENGINEERING.md principle 2](../ENGINEERING
 | `denied`                | The owner tapped Cancel. Terminal.                                                                |
 | `expired`               | No answer before the card expired. Terminal.                                                      |
 | `cancelled`             | Withdrawn before any signature: by the proposer, a freeze, a stop or an unsigned step. Terminal.  |
-| `failed_onchain`        | A step reverted or was replaced by a cancel. Terminal.                                            |
+| `failed_onchain`        | A step reverted, was replaced by a cancel, or was dropped. Terminal.                              |
 | `unknown_after_send`    | A step's fate is unknown after a crash; reconciliation is running                                 |
 
 `unknown_after_send` is not terminal: it ends in `reconciled` or `failed_onchain` (section 7).
@@ -81,6 +82,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `executing`                  | `failed_onchain`        | a step's receipt has status 0, or a step was cancelled (section 6) | the reason `reverted` or `stuck_cancelled` is stored; later steps are not sent                                                                                                                         |
 | `executing`                  | `unknown_after_send`    | startup finds a sent step with no known fate                       |                                                                                                                                                                                                        |
 | `unknown_after_send`         | `executing`             | reconciliation finds the step's transaction                        | the transaction at its nonce is ours (section 7)                                                                                                                                                       |
+| `executing`                  | `failed_onchain`        | a stuck step is dropped (section 6)                                | the reason `stuck_dropped` is stored; the owner gets `notice.stepDropped`, or `notice.stepDroppedPartWay` once an earlier step landed ([decision 0115](../DECISIONS.md#d0115))                         |
 | `unknown_after_send`         | `failed_onchain`        | reconciliation finds another transaction                           | another transaction used the step's nonce (section 7); the reason `nonce_taken` is stored, with an alarm notice                                                                                        |
 | `executing`                  | `cancelled`             | a step taken was never signed, and nothing will sign it            | no step was signed before it ([decision 0109](../DECISIONS.md#d0109)); the owner gets `notice.notSigned`                                                                                               |
 | `executing`                  | `failed_onchain`        | a step taken was never signed, and nothing will sign it            | an earlier step landed; the reason `step_unsent` is stored and the owner gets `notice.stepUnsent` ([decision 0109](../DECISIONS.md#d0109)); a rescue retries instead                                   |
@@ -123,8 +125,9 @@ Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`.
 
 Failure reasons for `failed_onchain`: `reverted` (a step's receipt has status 0), `stuck_cancelled`
-(section 6), `nonce_taken` (section 7) and `step_unsent` (a step never signed after an earlier one
-landed, [decision 0109](../DECISIONS.md#d0109)).
+and `stuck_dropped` (section 6, [decision 0115](../DECISIONS.md#d0115)), `nonce_taken` (section 7)
+and `step_unsent` (a step never signed after an earlier one landed,
+[decision 0109](../DECISIONS.md#d0109)).
 
 <a id="section-5"></a>
 
@@ -202,6 +205,18 @@ Stuck steps ([ARCHITECTURE.md section 7](../ARCHITECTURE.md#section-7)):
    at least 10% higher, signed again at the same nonce. The old record becomes `superseded`.
 3. No longer valid: a cancel, a 0-value transfer to the wallet itself at the same nonce with a gas
    price at least 10% higher. The intent ends `failed_onchain` with reason `stuck_cancelled`.
+4. Every relay turned the step's bytes away for 60 blocks, each with an answer that says it holds
+   none of them, no transaction the step replaced may still sit with a relay, and its nonce is
+   still free: the step is recorded `dropped`, which frees its nonce, and the intent ends
+   `failed_onchain` with reason `stuck_dropped` ([decision 0115](../DECISIONS.md#d0115)). A step
+   no rule can move waits 60 blocks for this, getting the same bytes every 20, before it is handed
+   over still `executing`.
+
+"Simulate again" means preparing the step's draft again on the latest state, whose gas estimate
+runs the call there. No speed-up or cancel is signed with a fee per gas above the network fee cap
+([decision 0102](../DECISIONS.md#d0102)); the step is handed over instead
+([decision 0115](../DECISIONS.md#d0115)). Whichever transaction at a step's nonce lands is the
+step's; the store supersedes the others in the same write.
 
 A signature for a speed-up or a cancel is a new signature for the same confirmed intent; the signer
 checks it against the same confirmation record.
@@ -221,7 +236,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 4. Recovery never signs. A step with no stored transaction ends the intent: `cancelled` when no
    step was signed, `failed_onchain` with `step_unsent` once an earlier step landed, each with an
    owner notice ([decision 0109](../DECISIONS.md#d0109)). The executor ends an intent the same way
-   when a step cannot be signed or stored.
+   when a step cannot be signed or stored. A step whose transactions were dropped ends
+   `failed_onchain` with `stuck_dropped`, unless a block holds one of them after all
+   ([decision 0115](../DECISIONS.md#d0115)).
 
 <a id="section-8"></a>
 
@@ -238,7 +255,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 | `failed_onchain`, `unknown_after_send`            | ✓            | `intent/changed` | Always                                                                     |
 
 A move to `cancelled` on a step never signed has no card to close; the owner gets
-`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)).
+`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)). A dropped step's notice is
+`notice.stepDropped`, or `notice.stepDroppedPartWay` once an earlier step landed
+([decision 0115](../DECISIONS.md#d0115)).
 
 Every other transition pushes `intent/changed` without a ledger entry. The ledger entry records the
 state, who or what caused it (surface, device or token), and the hashes involved.

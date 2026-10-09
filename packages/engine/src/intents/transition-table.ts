@@ -94,6 +94,9 @@ export const transitionTable: TransitionTable = {
   step_cancelled: [
     { from: ["executing"], to: "failed_onchain", guard: failOnchain("stuck_cancelled") },
   ],
+  step_dropped: [
+    { from: ["executing"], to: "failed_onchain", guard: failOnchain("stuck_dropped") },
+  ],
   fate_unknown: [{ from: ["executing"], to: "unknown_after_send", guard: pass }],
   finality_reached: [{ from: ["included"], to: "finalized", guard: pass }],
   reorg_seen: [{ from: ["included"], to: "executing", guard: pass }],

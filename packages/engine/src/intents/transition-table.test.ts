@@ -36,6 +36,7 @@ const expected: readonly (readonly [IntentState, string, IntentState])[] = [
   ["executing", "steps_included", "included"],
   ["executing", "step_reverted", "failed_onchain"],
   ["executing", "step_cancelled", "failed_onchain"],
+  ["executing", "step_dropped", "failed_onchain"],
   ["executing", "fate_unknown", "unknown_after_send"],
   ["included", "finality_reached", "finalized"],
   ["finalized", "fills_reconciled", "reconciled"],

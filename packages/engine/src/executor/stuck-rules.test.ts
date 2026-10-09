@@ -21,8 +21,9 @@ import {
 import { restartBench, restartEvents } from "./test-restart.js";
 
 const live = () => ({ signal: new AbortController().signal });
-// The rules run at 3 and 6 blocks, and the network holds back a fee below 52 000 000.
-const limits = { stuckAfterBlocks: 3, replaceAfterBlocks: 6 };
+// The rules run at 3 and 6 blocks, a step every relay refuses is dropped after 9, and the network
+// holds back a fee below 52 000 000.
+const limits = { stuckAfterBlocks: 3, replaceAfterBlocks: 6, droppedAfterBlocks: 9 };
 const held = 52_000_000n;
 const settled = { states: ["reconciled", "failed_onchain"] } as const;
 
@@ -207,7 +208,7 @@ describe("a stuck step", () => {
     ["whose replacement custody refuses", { custody: refusingReplacements }, "refused"],
   ])("is handed over, still executing, %s", async (_, options, problem) => {
     const { bench, intent } = await stuckSwap(options);
-    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    await driveUntil(bench, intent, { states: [], blocks: 18 });
     expect(await stateOf(bench, intent)).toBe("executing");
     expect(eventsOf(bench).at(-1)).toBe(`executor.step_stopped:${problem}`);
     expect((await transactionsOf(bench)).map(({ state }) => state)).toStrictEqual(["sent"]);
@@ -266,7 +267,7 @@ describe("a stuck step's rules on a node or a preparer that fails", () => {
     const preparer = preparerWith({ failing: ["speedUp", "cancel"] });
     const { bench, intent } = await stuckSwap({ preparer });
     bench.network.failing(await stepPayload(bench, intent));
-    await driveUntil(bench, intent, { states: [], blocks: 5 });
+    await driveUntil(bench, intent, { states: [], blocks: 15 });
     expect(eventsOf(bench).at(-1)).toBe("executor.step_stopped:would_fail");
     expect(bench.signed).toHaveLength(1);
   });
@@ -284,7 +285,7 @@ describe("recovery of a replaced step", () => {
   it("hands a step over as stuck, since recovery never replaces one", async () => {
     const { bench, intent } = await stuckSwap();
     const restarted = await restartBench(bench, { limits });
-    await driveUntil(bench, intent, { states: [], blocks: 5 });
+    await driveUntil(bench, intent, { states: [], blocks: 15 });
     expect(restartEvents(restarted).at(-1)).toBe("executor.step_stopped:stuck");
     expect(restarted.signed).toStrictEqual([]);
   });

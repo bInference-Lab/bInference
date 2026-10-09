@@ -1,6 +1,7 @@
 import { BinferenceError } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { endDropped } from "./end-dropped.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import { sendAndWatch } from "./send-and-watch.js";
 import { rivalsOf } from "./step-fate.js";
@@ -102,6 +103,9 @@ async function recoverReorg(
   if (watched.outcome === "stuck") {
     parts.log.warn("executor.step_stopped", { intentId, errorCode: watched.problem });
     return undefined;
+  }
+  if (watched.outcome === "dropped") {
+    return endDropped(run, executing, back.value.step);
   }
   if (watched.outcome !== "included") {
     const type = watched.outcome === "cancelled" ? "step_cancelled" : "step_reverted";

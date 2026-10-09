@@ -1,18 +1,20 @@
-import type { ChainHead, TxReceipt } from "@binference/chain";
+import type { TxReceipt } from "@binference/chain";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { dropStep } from "./drop-step.js";
 import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
-import { recordReceipt, sendOnce } from "./run-step.js";
+import { recordReceipt, type SendOutcome, sendOnce } from "./run-step.js";
 import { landedOf, type NonceTransactions } from "./step-fate.js";
 
 /**
  * How the watch of a sent step ended: a block holds one of its transactions (`included`,
- * `reverted`, or `cancelled` when that one is its cancel), or it is `stuck` and handed over with
- * the reason no stuck rule could move it.
+ * `reverted`, or `cancelled` when that one is its cancel), every relay refused it until it was
+ * `dropped` (decision 0115), or it is `stuck` and handed over with the reason no stuck rule could
+ * move it.
  */
 export type Watched =
   | {
-      readonly outcome: "included" | "reverted" | "cancelled";
+      readonly outcome: "included" | "reverted" | "cancelled" | "dropped";
       readonly transaction: TransactionRecord;
     }
   | {
@@ -36,7 +38,7 @@ export type StuckMove =
       readonly transaction: TransactionRecord;
       readonly receipt: TxReceipt;
     }
-  | { readonly kind: "resent" | "replaced"; readonly transaction: TransactionRecord }
+  | ({ readonly kind: "resent" | "replaced" } & SendOutcome)
   | { readonly kind: "stopped"; readonly problem: string };
 
 /** Moves a stuck step on by spec 6, section 6; recovery, which never signs, has none. */
@@ -53,6 +55,22 @@ interface WatchState extends NonceTransactions {
   readonly firstBlock?: bigint;
   /** The rule to send the same bytes again ran for the current transaction. */
   readonly isResent: boolean;
+  /** The last send of the step's bytes was refused by every relay, and none was taken since. */
+  readonly isRefused: boolean;
+  /** The head when the watch first saw every relay refuse the step's bytes, refused since. */
+  readonly refusedSince?: bigint;
+  /** Set once no rule can move the step: why, and the head when the watch began to wait. */
+  readonly handedOver?: { readonly problem: string; readonly atBlock: bigint };
+  /** The head at the last send of the same bytes while the step waits handed over. */
+  readonly lastSendBlock?: bigint;
+}
+
+// A send's answers: every relay refusing starts the refusal clock, any relay taking or not
+// answering stops it.
+function afterSend(state: WatchState, sent: SendOutcome): WatchState {
+  const { refusedSince: _refusedSince, ...rest } = state;
+  const kept = sent.isRefused && state.isRefused ? state : rest;
+  return { ...kept, transaction: sent.transaction, isRefused: sent.isRefused };
 }
 
 // While no relay has accepted the stored bytes, each wait sends them again, up to the limit.
@@ -60,8 +78,8 @@ async function sendIfUnsent(run: ExecutionRun, state: WatchState): Promise<Watch
   if (state.transaction.state !== "signed" || state.sends >= run.parts.limits.sendAttempts) {
     return state;
   }
-  const transaction = await sendOnce(run, state.intent, state.transaction);
-  return { ...state, transaction, sends: state.sends + 1 };
+  const sent = await sendOnce(run, state.intent, state.transaction);
+  return { ...afterSend(state, sent), sends: state.sends + 1 };
 }
 
 async function settle(
@@ -76,47 +94,118 @@ async function settle(
 }
 
 // The rule a stuck step is due for, once the head moved its limit past where the watch began.
-function dueRule(
-  run: ExecutionRun,
-  state: WatchState,
-  head: ChainHead | undefined,
-): StuckAt["rule"] | undefined {
-  const { stuckAfterBlocks, replaceAfterBlocks } = run.parts.limits;
-  const { firstBlock } = state;
-  if (head === undefined || firstBlock === undefined) {
-    return undefined;
-  }
-  const blocks = head.latest - firstBlock;
+function dueRule(state: WatchState, head: bigint, limits: ExecutionRun["parts"]["limits"]) {
+  const { stuckAfterBlocks, replaceAfterBlocks } = limits;
+  const blocks = head - (state.firstBlock ?? head);
   if (blocks >= BigInt(replaceAfterBlocks)) {
     return "replace";
   }
   return blocks >= BigInt(stuckAfterBlocks) && !state.isResent ? "resend" : undefined;
 }
 
+// A step no rule can move waits handed over: a nonce something else used ends the watch at once,
+// any other reason lets the drop rule run its course first.
+function handOver(state: WatchState, head: bigint, problem: string): WatchState | Watched {
+  if (problem === "nonce_used" || problem === "no_step") {
+    return { outcome: "stuck", transaction: state.transaction, problem };
+  }
+  return { ...state, handedOver: { problem, atBlock: head }, lastSendBlock: head };
+}
+
 // A rule's move becomes the watch's next state, or ends the watch.
 async function afterMove(
   run: ExecutionRun,
-  state: WatchState,
+  at: { readonly state: WatchState; readonly head: bigint },
   move: StuckMove,
 ): Promise<WatchState | Watched> {
+  const { state, head } = at;
   if (move.kind === "landed") {
     return settle(run, move);
   }
   if (move.kind === "stopped") {
-    return { outcome: "stuck", transaction: state.transaction, problem: move.problem };
+    return handOver(state, head, move.problem);
   }
   if (move.kind === "resent") {
-    return { ...state, transaction: move.transaction, isResent: true };
+    return { ...afterSend(state, move), isResent: true };
   }
   if (move.kind === "waiting") {
     return state;
   }
-  const { firstBlock: _firstBlock, ...rest } = state;
+  const { firstBlock: _firstBlock, ...rest } = afterSend(state, move);
   const rivals = [...state.rivals, state.transaction];
-  return { ...rest, transaction: move.transaction, rivals, sends: 1, isResent: false };
+  return { ...rest, rivals, sends: 1, isResent: false };
 }
 
-// One block's look: a receipt of any of the step's transactions ends the watch; a due rule runs.
+// The drop rule (decision 0115): every relay refused the step's bytes for `droppedAfterBlocks`
+// blocks, so it is dropped once its nonce is still free. While a relay may hold a transaction the
+// step replaced, the watch goes on as it was.
+async function dropDue(run: ExecutionRun, state: WatchState): Promise<WatchState | Watched> {
+  const dropped = await dropStep(run, state);
+  if (dropped.kind === "landed") {
+    return settle(run, dropped);
+  }
+  if (dropped.kind === "dropped") {
+    return { outcome: "dropped", transaction: dropped.transaction };
+  }
+  return dropped.kind === "taken"
+    ? { outcome: "stuck", transaction: state.transaction, problem: "nonce_used" }
+    : state;
+}
+
+// A step handed over gets the same bytes again each `stuckAfterBlocks` blocks, so the relays'
+// answers keep the drop rule's clock, until `droppedAfterBlocks` blocks end its wait.
+async function waitHandedOver(
+  run: ExecutionRun,
+  state: WatchState & {
+    readonly handedOver: { readonly problem: string; readonly atBlock: bigint };
+  },
+  head: bigint,
+): Promise<WatchState | Watched> {
+  const { stuckAfterBlocks, droppedAfterBlocks } = run.parts.limits;
+  const { problem, atBlock } = state.handedOver;
+  if (head - atBlock >= BigInt(droppedAfterBlocks)) {
+    return { outcome: "stuck", transaction: state.transaction, problem };
+  }
+  if (head - (state.lastSendBlock ?? atBlock) < BigInt(stuckAfterBlocks)) {
+    return state;
+  }
+  const sent = await sendOnce(run, state.intent, state.transaction);
+  return { ...afterSend(state, sent), lastSendBlock: head };
+}
+
+// Due once every relay refused the step's bytes for `droppedAfterBlocks` blocks.
+function isDropDue(run: ExecutionRun, state: WatchState, head: bigint): boolean {
+  const { refusedSince } = state;
+  return (
+    refusedSince !== undefined && head - refusedSince >= BigInt(run.parts.limits.droppedAfterBlocks)
+  );
+}
+
+// What the head says now: a drop that is due, a wait handed over, or a stuck rule.
+async function atHead(
+  run: ExecutionRun,
+  rules: StuckRules | undefined,
+  at: { readonly state: WatchState; readonly head: bigint },
+): Promise<WatchState | Watched> {
+  const { head } = at;
+  const state = isDropDue(run, at.state, head) ? await dropDue(run, at.state) : at.state;
+  if ("outcome" in state) {
+    return state;
+  }
+  if (state.handedOver !== undefined) {
+    return waitHandedOver(run, { ...state, handedOver: state.handedOver }, head);
+  }
+  const rule = dueRule(state, head, run.parts.limits);
+  if (rule === undefined) {
+    return state;
+  }
+  if (rules === undefined) {
+    return handOver(state, head, "stuck");
+  }
+  return afterMove(run, { state, head }, await rules({ ...state, rule }));
+}
+
+// One block's look: a receipt of any of the step's transactions ends the watch; then the head.
 async function lookOnce(
   run: ExecutionRun,
   rules: StuckRules | undefined,
@@ -131,17 +220,16 @@ async function lookOnce(
   const head = await readSafely(run, async () =>
     plan.sending.receipts.head(plan.chain.ref, { signal }),
   );
-  const firstBlock = state.firstBlock ?? head?.latest;
-  const seen =
-    head === undefined || firstBlock === undefined ? state : { ...state, firstBlock, waits: 0 };
-  const rule = dueRule(run, seen, head);
-  if (rule === undefined) {
-    return seen;
+  if (head === undefined) {
+    return state;
   }
-  if (rules === undefined) {
-    return { outcome: "stuck", transaction: seen.transaction, problem: "stuck" };
-  }
-  return afterMove(run, seen, await rules({ ...seen, rule }));
+  const seen = {
+    ...state,
+    firstBlock: state.firstBlock ?? head.latest,
+    waits: 0,
+    ...(state.isRefused ? { refusedSince: state.refusedSince ?? head.latest } : {}),
+  };
+  return atHead(run, rules, { state: seen, head: head.latest });
 }
 
 async function watchFrom(
@@ -150,7 +238,8 @@ async function watchFrom(
   before: WatchState,
 ): Promise<Watched> {
   if (before.waits >= run.parts.limits.stuckAfterBlocks * 3) {
-    return { outcome: "stuck", transaction: before.transaction, problem: "stuck" };
+    const problem = before.handedOver?.problem ?? "stuck";
+    return { outcome: "stuck", transaction: before.transaction, problem };
   }
   const looked = await lookOnce(run, rules, before);
   if ("outcome" in looked) {
@@ -164,10 +253,12 @@ async function watchFrom(
  * Sends a stored step and watches each block until a block holds one of its transactions at its
  * nonce: the stored one, or one it replaced (`rivals`), whichever lands. While no relay has
  * accepted the current bytes, every block sends them again, up to the send limit. Once the step
- * is stuck, `rules` move it on (spec 6, section 6); without them, as in recovery, nothing is
- * signed again and the step is `stuck` `stuckAfterBlocks` blocks after the watch began. A watch
- * that cannot read the head for three times as many blocks in a row hands the step over as
- * `stuck`.
+ * is stuck, `rules` move it on (spec 6, section 6). A step no rule can move, or any stuck step
+ * without rules, as in recovery, which never signs, waits handed over and gets the same bytes
+ * again each `stuckAfterBlocks` blocks. Once every relay has refused the step's bytes for
+ * `droppedAfterBlocks` blocks and its nonce is still free, the step is `dropped` (decision 0115);
+ * a step that waited handed over that long without it is `stuck`. A watch that cannot read the
+ * head for three times `stuckAfterBlocks` blocks in a row hands the step over as `stuck`.
  */
 export async function sendAndWatch(
   run: ExecutionRun,
@@ -175,5 +266,5 @@ export async function sendAndWatch(
 ): Promise<Watched> {
   const { intent, transaction, rivals, rules } = step;
   const state = { intent, transaction, rivals, sends: 0, waits: 0, isResent: false };
-  return watchFrom(run, rules, state);
+  return watchFrom(run, rules, { ...state, isRefused: false });
 }

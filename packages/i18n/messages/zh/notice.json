@@ -6,6 +6,8 @@
   "fillUnknown": "⚠️ 一笔交易已上链，但已没有 RPC 能说明它收到了多少。请在配置中添加追踪 RPC 并重启 binference，以完成这笔交易的记录。",
   "notSigned": "⚠️ 一笔交易在第一笔链上交易签名前已取消，未发送任何内容。",
   "stepUnsent": "⚠️ 一笔交易中途停止：前面的步骤已上链，但后面的步骤从未签名。请检查钱包。",
+  "stepDropped": "⚠️ 一笔交易长时间未上链，没有完成。没有任何资产变动，钱包已可再次使用。",
+  "stepDroppedPartWay": "⚠️ 一笔交易中途停止：前面的步骤已上链，但后面的步骤长时间未上链，没有完成。钱包已可再次使用。请检查钱包。",
   "sendLevel": "转账级别 {from} → {to}，{pending, select, yes {将于 {when} 生效} other {立即生效}}",
   "rescueAddress": "⚠️ 紧急转出地址将于 {when} 改为 {address}。不是你操作？请立即取消。",
   "lowGas": "⚠️ {wallet} 仅剩 {balance} 可付网络费。请充值 BNB。",

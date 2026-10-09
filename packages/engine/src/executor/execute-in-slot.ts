@@ -3,6 +3,7 @@ import { type Id, ok, type Result } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
+import { endDropped } from "./end-dropped.js";
 import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
 import { checkForQueue, type SigningTerms } from "./queue-check.js";
@@ -67,13 +68,20 @@ function stopStep(run: ExecutionRun, taken: Taken, problem: string): undefined {
   return undefined;
 }
 
-// A step that will never land ends the intent: its transaction reverted, or its cancel landed.
+// A step that will never land ends the intent: its transaction reverted, its cancel landed, or
+// every relay dropped it.
 async function endLanded(
   run: ExecutionRun,
   taken: Taken,
-  outcome: Exclude<Watched["outcome"], "included" | "stuck">,
+  ended: {
+    readonly outcome: Exclude<Watched["outcome"], "included" | "stuck">;
+    readonly index: number;
+  },
 ): Promise<undefined> {
-  const type = outcome === "cancelled" ? "step_cancelled" : "step_reverted";
+  if (ended.outcome === "dropped") {
+    return endDropped(run, taken.snapshot, ended.index);
+  }
+  const type = ended.outcome === "cancelled" ? "step_cancelled" : "step_reverted";
   await moveIntent(run, taken.snapshot, { type });
   return undefined;
 }
@@ -135,7 +143,7 @@ async function runFrom(
     return stopStep(run, taken, watched.problem);
   }
   if (watched.outcome !== "included") {
-    return endLanded(run, taken, watched.outcome);
+    return endLanded(run, taken, { outcome: watched.outcome, index });
   }
   return runFrom(run, slot, { taken, index: index + 1, done: [...done, watched.transaction] });
 }

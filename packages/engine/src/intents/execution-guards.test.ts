@@ -177,6 +177,10 @@ describe("a failed step", () => {
       ok: true,
       value: { reason: "stuck_cancelled" },
     });
+    expect(failOnchain("stuck_dropped")(input)).toStrictEqual({
+      ok: true,
+      value: { reason: "stuck_dropped" },
+    });
   });
 
   it("keeps a rescue executing so the queue retries the step", () => {

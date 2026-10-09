@@ -1,4 +1,11 @@
-import type { PreparedTx, StepReplacement, TxDraft, TxReceipt } from "@binference/chain";
+import type {
+  PreparedTx,
+  RelayAnswer,
+  RelayRefusal,
+  StepReplacement,
+  TxDraft,
+  TxReceipt,
+} from "@binference/chain";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { SignedTransaction, TransactionRecord } from "../wallet-queue/transaction-record.js";
@@ -116,6 +123,38 @@ export async function signAndStore(
   });
 }
 
+/** One send's outcome: the transaction as stored after it, and whether every relay refused it. */
+export interface SendOutcome {
+  readonly transaction: TransactionRecord;
+  /**
+   * Every relay refused the bytes with an answer that says it does not hold them (decision
+   * 0115): not a nonce a block used, a rival it holds at the nonce, its rate limit, or an answer
+   * outside its protocol.
+   */
+  readonly isRefused: boolean;
+}
+
+/**
+ * Whether one send's answers turned the bytes away (decision 0115): every relay refused them with
+ * an answer that says it holds none of them.
+ */
+export function isTurnedAway(answers: readonly RelayAnswer[]): boolean {
+  return (
+    answers.length > 0 &&
+    answers.every((answer) => answer.outcome === "refused" && goneReasons.has(answer.reason))
+  );
+}
+
+// The refusals that say a relay holds no transaction at the nonce: it checked these bytes and
+// turned them away.
+const goneReasons: ReadonlySet<RelayRefusal> = new Set<RelayRefusal>([
+  "underpriced",
+  "insufficient_funds",
+  "gas_quota",
+  "malformed_transaction",
+  "rejected",
+]);
+
 /**
  * One send of a stored transaction's bytes to every relay, each answer recorded. The first
  * acceptance moves a `signed` step to `sent` and records the send in the ledger. Nothing is
@@ -125,7 +164,7 @@ export async function sendOnce(
   run: ExecutionRun,
   intent: IntentRecord,
   transaction: TransactionRecord,
-): Promise<TransactionRecord> {
+): Promise<SendOutcome> {
   const { parts, plan, signal } = run;
   const stored = { chain: plan.chain.ref, raw: transaction.raw };
   const answers = await plan.sending.sender.send(stored, { signal });
@@ -154,7 +193,7 @@ export async function sendOnce(
   if (accepted.length === 0) {
     parts.log.warn("executor.send_failed", { intentId, chain: plan.chain.ref });
   }
-  return recorded.value;
+  return { transaction: recorded.value, isRefused: isTurnedAway(answers) };
 }
 
 /**
