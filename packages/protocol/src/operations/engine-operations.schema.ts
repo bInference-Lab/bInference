@@ -40,6 +40,14 @@ interface SafetyStatus {
   readonly pendingRescueAddress?: AccountRef;
 }
 
+/**
+ * The args of `engine/unlock`: the owner's passphrase in the `manual` unlock mode; in any other
+ * mode none, and the engine reads its source again.
+ */
+interface UnlockArgs {
+  readonly passphrase?: string;
+}
+
 /** The args of `safety/freeze` and `safety/unfreeze`: one agent, or every agent when absent. */
 interface FreezeArgs {
   readonly agent?: ProtocolId<"agent">;
@@ -50,6 +58,7 @@ export interface EngineOperationShapes {
   readonly "engine/status": { readonly args: Empty; readonly result: EngineStatus };
   readonly "engine/describe": { readonly args: Empty; readonly result: EngineDescription };
   readonly "engine/stop": { readonly args: Empty; readonly result: Empty };
+  readonly "engine/unlock": { readonly args: UnlockArgs; readonly result: Empty };
   readonly "safety/status": { readonly args: Empty; readonly result: SafetyStatus };
   readonly "safety/freeze": {
     readonly args: FreezeArgs;
@@ -99,6 +108,15 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     name: "engine/stop",
     scope: "admin",
     args: emptyArgsSchema,
+    result: emptyResultSchema,
+  },
+  "engine/unlock": {
+    ...localWriteFlags,
+    name: "engine/unlock",
+    scope: "admin",
+    args: z.strictObject({
+      passphrase: z.string().min(1).max(1024).exactOptional(),
+    }),
     result: emptyResultSchema,
   },
   "safety/status": {

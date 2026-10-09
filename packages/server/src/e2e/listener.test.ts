@@ -50,6 +50,11 @@ describe("the HTTP listener", () => {
       status: 503,
       body: '{"state":"starting"}',
     });
+    state = "locked";
+    await expect(fetchLocal(server.httpPort, "/health")).resolves.toStrictEqual({
+      status: 200,
+      body: '{"state":"locked"}',
+    });
   });
 
   it.each([

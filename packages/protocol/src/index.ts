@@ -72,6 +72,7 @@ export type {
 export { isOperationName, operationNames, operations } from "./operations/operations.js";
 export type { ArgsOf, OperationName, OperationShapes, ResultOf } from "./operations/operations.js";
 export { ownerKeyOperations, takesOwnerKey } from "./operations/owner-key-operations.js";
+export { storableArgs } from "./operations/storable-args.js";
 export { parseCall } from "./operations/parse-call.js";
 export type { CallOf, CallProblem, OperationCall } from "./operations/parse-call.js";
 export {

@@ -21,6 +21,7 @@ import {
   type ProtocolError,
   type ProtocolErrorCode,
   type ReplyFrame,
+  storableArgs,
 } from "@binference/protocol";
 import { faultFailure, refusalFailure } from "./call-failure.js";
 import { encodeResult } from "./encode-result.js";
@@ -72,7 +73,10 @@ function lookupOf(run: HandlerRun): IdempotencyLookup {
     credential: run.caller.credential,
     op: run.call.op,
     key: run.frame.key ?? "",
-    argsHash: sha256Hex(stableJson(jsonValueSchema.parse(run.frame.args))),
+    // The hash leaves out secret args, so the store holds no trace of a passphrase.
+    argsHash: sha256Hex(
+      stableJson(storableArgs(run.call.op, jsonValueSchema.parse(run.frame.args))),
+    ),
   };
 }
 

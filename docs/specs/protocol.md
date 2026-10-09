@@ -2,7 +2,8 @@
 
 Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 [decision 0088](../DECISIONS.md#d0088) and [decision 0089](../DECISIONS.md#d0089); custody
-operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)).
+operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by
+[decision 0104](../DECISIONS.md#d0104).
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -81,7 +82,7 @@ The engine listens on two transports. Both carry the same frames (section 3) ove
 | `POST /pair`           | Device pairing (section 4.2)                                                                      |
 | `GET /file/:ticket`    | A single-use download (exports, reports, backups), valid 5 minutes                                |
 | `POST /upload/:ticket` | A single-use upload of one image (raw body, at most 5 MiB), valid 2 minutes; answers `{ upload }` |
-| `GET /health`          | `200 {"state":"ready"}` or `503 {"state":"starting"}`                                             |
+| `GET /health`          | `200 {"state":"ready"}`, `200 {"state":"locked"}` or `503 {"state":"starting"}`                   |
 
 Browser requests to `/ws` and `/pair` must carry an `Origin` from the allowed list:
 `http://127.0.0.1:<port>`, `http://localhost:<port>` and the Tailscale `serve` origin from config.
@@ -124,9 +125,11 @@ Every frame is a JSON object whose `t` field names its type.
 - `client.kind` is `runtime`, `console`, `mini`, `cli`, `tui` or `mcp`.
 - `id` in `call` is chosen by the client, unique per connection, at most 64 characters.
 - Replies can arrive out of order; the client matches them by `id`.
-- `state` in `ready` is `starting` or `ready`. While starting, every operation except
+- `state` in `ready` is `starting`, `ready` or `locked`. While starting, every operation except
   `engine/status` fails with `engine.starting` (retryable); a `push` on topic `engine` announces
-  readiness.
+  readiness. `locked` serves every call, but the engine has no agent key and signs nothing until
+  `engine/unlock` opens it ([decision 0103](../DECISIONS.md#d0103)); a `push` on topic `engine`
+  announces the unlock.
 
 <a id="section-4"></a>
 
@@ -189,7 +192,8 @@ A Telegram tap is handled inside the engine and never travels over this protocol
   characters, unique per intended action (a UUIDv7 works).
 - The engine stores `(credential, op, key)` with a hash of `args` and the result for 24 hours. The
   same key with the same args returns the stored result; the same key with different args fails with
-  `protocol.key_reused`.
+  `protocol.key_reused`. The hash leaves out a passphrase (`engine/unlock`), so the store holds no
+  trace of it.
 - A write is stored durably before its `reply` is sent.
 
 <a id="section-6"></a>
@@ -239,6 +243,7 @@ Long operations return `{ job }` at once and report through the `job` topic. Fil
 | `engine/status`             | `read`    |       |       | → `{ state, version, protocol, frozen, agents: [{ id, mode, frozen }], health }`                          |
 | `engine/describe`           | `read`    |       |       | → every operation with its scope, flags, `since` and JSON Schemas of args and result                      |
 | `engine/stop`               | `admin`   | ✓     | ✓     | → `{}`; graceful shutdown ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24))                   |
+| `engine/unlock`             | `admin`   | ✓     | ✓     | `{ passphrase? }` → `{}`; opens the agent key ([decision 0104](../DECISIONS.md#d0104))                    |
 | `safety/status`             | `read`    |       |       | → `{ frozen, frozenAt?, rescueAddress?, pendingRescueAddress? }`                                          |
 | `safety/freeze`             | `confirm` | ✓     |       | `{ agent?: agt_ }` (absent: every agent) → `{ frozenAt }`                                                 |
 | `safety/unfreeze`           | `loosen`  | ✓     |       | `{ agent?: agt_ }` → `{}` ([rule 11](../ARCHITECTURE.md#rule-11), [decision 0089](../DECISIONS.md#d0089)) |

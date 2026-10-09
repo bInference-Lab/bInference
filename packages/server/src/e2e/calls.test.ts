@@ -1,4 +1,5 @@
-import { ok } from "@binference/core";
+import { ok, stableJson } from "@binference/core";
+import { sha256Hex } from "@binference/engine";
 import type { EngineFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OperationHandler, OperationHandlers } from "../operation-handlers.js";
@@ -12,6 +13,8 @@ function stalled(gate: Promise<unknown>): OperationHandler<"safety/status"> {
     return ok({ frozen: false });
   };
 }
+
+const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(1_000) });
 
 function idOf(frame: EngineFrame): string {
   return "id" in frame ? frame.id : frame.t;
@@ -155,6 +158,37 @@ describe("calls over a signed-in connection", () => {
     await expect(raw.next()).resolves.toMatchObject({ t: "push", seq: 3, data: { n: 3 } });
     server.server.publish({ topic: "order", kind: "order/filled", data: { n: 4 } });
     await expect(raw.next()).resolves.toMatchObject({ t: "push", seq: 4, kind: "order/filled" });
+  });
+
+  it("serves every call while the engine is locked", async () => {
+    test = await startTestServer({
+      state: () => "locked",
+      handlers: { "safety/status": async () => ok({ frozen: false }) },
+    });
+    const raw = await openRawSocket(test.ipcUrl);
+    raw.send(openFrame({ token: test.cliToken.secret }));
+    await expect(raw.next()).resolves.toMatchObject({ t: "ready", engine: { state: "locked" } });
+    raw.send({ ...status, id: "1" });
+    await expect(raw.next()).resolves.toMatchObject({ t: "reply", result: { frozen: false } });
+  });
+
+  it("keeps no trace of the unlock passphrase in the idempotency store or the log", async () => {
+    const passphrase = "correct horse battery staple";
+    const { server, raw } = await signedIn({ "engine/unlock": async () => ok({}) });
+    const call = { t: "call", op: "engine/unlock", args: { passphrase }, key: "unlock-1" } as const;
+    raw.send({ ...call, id: "u" });
+    await expect(raw.next()).resolves.toStrictEqual({ t: "reply", id: "u", result: {} });
+    const lookup = {
+      credential: server.cliToken.id,
+      op: "engine/unlock",
+      key: "unlock-1",
+      argsHash: sha256Hex(stableJson({})),
+    };
+    await expect(server.idempotency.recall(lookup, live())).resolves.toStrictEqual({
+      kind: "repeat",
+      result: {},
+    });
+    expect(JSON.stringify(server.logger.records())).not.toContain(passphrase);
   });
 
   it("answers engine starting while the engine starts, except for its status", async () => {

@@ -60,6 +60,7 @@ export const engineExamples: { readonly [N in keyof EngineOperationShapes]: Wire
     },
   },
   "engine/stop": { args: empty, result: empty },
+  "engine/unlock": { args: { passphrase: "correct horse battery staple" }, result: empty },
   "safety/status": {
     args: empty,
     result: {

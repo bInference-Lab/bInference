@@ -3,11 +3,13 @@ import { type Scope, scopeSchema } from "../auth/scopes.js";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type Locale, localeSchema } from "../locale.js";
 
-const engineStates = ["starting", "ready"] as const;
+const engineStates = ["starting", "ready", "locked"] as const;
 
 /**
  * Whether the engine serves calls yet. While `starting`, every operation except `engine/status`
- * fails with `engine.starting`, and a push on topic `engine` announces readiness.
+ * fails with `engine.starting`, and a push on topic `engine` announces readiness. `locked`: the
+ * engine serves every call but has no agent key, so it signs nothing until `engine/unlock`
+ * opens it (decision 0103); a push on topic `engine` announces the unlock.
  */
 export type EngineState = (typeof engineStates)[number];
 

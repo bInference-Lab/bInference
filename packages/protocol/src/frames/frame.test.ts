@@ -85,6 +85,7 @@ const clientFrames = [
 const engineFrames = [
   ["a challenge", challenge],
   ["a ready", ready],
+  ["a ready from a locked engine", { ...ready, engine: { ...ready.engine, state: "locked" } }],
   ["a reply", reply],
   ["a fail", fail],
   [

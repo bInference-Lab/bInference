@@ -13,7 +13,8 @@ export function pathOf(request: IncomingMessage): string {
 const plain = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
 
 /**
- * Answers a plain HTTP request. `GET /health` answers `200 {"state":"ready"}` or
+ * Answers a plain HTTP request. `GET /health` answers `200 {"state":"ready"}`, `200
+ * {"state":"locked"}` for an engine that serves calls but signs nothing yet, or
  * `503 {"state":"starting"}`; another method there is 405, and any other path 404.
  */
 export function answerRequest(
@@ -31,7 +32,7 @@ export function answerRequest(
   }
   const current = state();
   response
-    .writeHead(current === "ready" ? 200 : 503, { ...plain, "content-type": "application/json" })
+    .writeHead(current === "starting" ? 503 : 200, { ...plain, "content-type": "application/json" })
     .end(JSON.stringify({ state: current }));
 }
 
