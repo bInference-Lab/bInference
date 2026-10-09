@@ -76,6 +76,10 @@ async function frozenTimes(test: TestEngine): Promise<readonly (number | undefin
   return agents.map((agent) => agent.frozenAtMs);
 }
 
+async function installFrozenAt(test: TestEngine): Promise<number | undefined> {
+  return (await test.stores.install.read(live)).frozenAtMs;
+}
+
 function freeze(test: TestEngine, agent?: Id<"agt">) {
   return test.engine.handlers["safety/freeze"](testCall(agent === undefined ? {} : { agent }));
 }
@@ -134,7 +138,31 @@ describe("safety/freeze", () => {
     expect(entries.filter(({ kind }) => kind === "freeze")).toMatchObject([
       { agentId: testAgent, subject: testAgent, data: { surface: "cli" } },
       { agentId: second, subject: second, data: { surface: "cli" } },
+      { data: { surface: "cli" } },
     ]);
+    await expect(installFrozenAt(test)).resolves.toBe(testNowMs);
+  });
+
+  it("freezes the whole install, so an agent created later starts frozen until an unfreeze", async () => {
+    const test = await startTestEngine();
+    expectOk(await freeze(test));
+    await test.clock.advance(5_000);
+    const later = await test.stores.agents.create(
+      testAgentDraft({ id: second, name: "second", atMs: test.clock.now() }),
+      live,
+    );
+    expect(expectOk(later).agent.frozenAtMs).toBe(testNowMs + 5_000);
+    await expect(frozenTimes(test)).resolves.toStrictEqual([testNowMs, testNowMs + 5_000]);
+  });
+
+  it("freezes an install with no active agent, which then answers with the install's time", async () => {
+    const test = await startTestEngine({ agents: archivedOnly });
+    await expect(freeze(test)).resolves.toStrictEqual({ ok: true, value: { frozenAt: testNowMs } });
+    await test.clock.advance(5_000);
+    await expect(freeze(test)).resolves.toStrictEqual({ ok: true, value: { frozenAt: testNowMs } });
+    await expect(installFrozenAt(test)).resolves.toBe(testNowMs);
+    const entries = await test.stores.ledger.list({ after: 0, limit: 100 }, live);
+    expect(entries.filter(({ kind }) => kind === "freeze")).toHaveLength(1);
   });
 
   it("freezes only the agent a call names", async () => {
@@ -147,6 +175,7 @@ describe("safety/freeze", () => {
     await expect(frozenTimes(test)).resolves.toStrictEqual([undefined, testNowMs]);
     await expect(stateOf(test, waiting)).resolves.toBe("awaiting_confirmation");
     expect(frozenNotices(test)).toHaveLength(1);
+    await expect(installFrozenAt(test)).resolves.toBeUndefined();
   });
 
   it("keeps the first time and announces nothing when the agents are frozen already", async () => {
@@ -165,12 +194,11 @@ describe("safety/freeze", () => {
     expect(proposed).toMatchObject({ state: "rejected_policy", outcome: { reason: "frozen" } });
   });
 
-  it("refuses an unknown or archived agent and an install with no active agent", async () => {
+  it("refuses an unknown or archived agent", async () => {
     const unknown = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000009");
     const test = await startTestEngine({ agents: archivedOnly });
     await expect(freeze(test, unknown)).resolves.toStrictEqual(err("agent.not_found"));
     await expect(freeze(test, testAgent)).resolves.toStrictEqual(err("agent.archived"));
-    await expect(freeze(test)).resolves.toStrictEqual(err("agent.not_found"));
   });
 
   it("reads again and freezes when another write beat its first try", async () => {

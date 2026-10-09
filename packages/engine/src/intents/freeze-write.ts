@@ -29,16 +29,21 @@ export const agentFreezeSchema: z.ZodType<AgentFreeze> = z.strictObject({
 
 /**
  * One freeze, written all or nothing (ARCHITECTURE.md section 11): each agent marked frozen at
- * `atMs`, each intent's move to `cancelled` with its event, ledger entry and card closing, and the
- * freeze's own ledger entries.
+ * `atMs`, the install too for a freeze of the whole install, each intent's move to `cancelled`
+ * with its event, ledger entry and card closing, and the freeze's own ledger entries.
  */
 export interface FreezeWrite {
   readonly atMs: number;
   /** The agents the freeze marks; one already frozen keeps the time it was frozen first. */
   readonly agents: readonly AgentFreeze[];
+  /**
+   * Whether the freeze covers the whole install: it also marks the install frozen, keeping the
+   * time of an earlier freeze, and every agent created later starts frozen.
+   */
+  readonly isWholeInstall: boolean;
   /** The moves of the agents' unsigned intents to `cancelled`. */
   readonly moves: readonly IntentChange[];
-  /** One `freeze` entry for each agent it marks. */
+  /** One `freeze` entry for each agent it marks, and one for the install it marks. */
   readonly ledger: readonly LedgerDraft[];
 }
 
@@ -46,6 +51,7 @@ export interface FreezeWrite {
 export const freezeWriteSchema: z.ZodType<FreezeWrite> = z.strictObject({
   atMs: epochMsSchema,
   agents: z.array(agentFreezeSchema),
+  isWholeInstall: z.boolean(),
   moves: z.array(intentChangeSchema),
   ledger: z.array(ledgerDraftSchema),
 });

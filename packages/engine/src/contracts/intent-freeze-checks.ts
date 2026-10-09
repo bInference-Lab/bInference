@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { AgentRecord } from "../agents/agent-record.js";
 import type { FreezeWrite } from "../intents/freeze-write.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
+import { draft as agentDraft } from "./agent-store-contract.js";
 import {
   cardOf,
   intentDraft,
@@ -53,6 +54,7 @@ function freezeOf(subject: IntentStoreSubject, agentVersion = 0): FreezeWrite {
       { ...cancel(2, 1), closeCard: { id: cardOf(2, 1).id, reason: "cancelled" } },
     ],
     ledger: [freezeEntry(subject, 1)],
+    isWholeInstall: false,
   };
 }
 
@@ -129,7 +131,7 @@ export async function refusesStaleFreeze(subject: IntentStoreSubject): Promise<v
 /** An agent frozen before keeps the time it was first frozen. */
 export async function keepsFirstFreeze(subject: IntentStoreSubject): Promise<void> {
   const { store } = subject;
-  const first = { atMs: frozenAtMs, agents: freezeOf(subject).agents, moves: [], ledger: [] };
+  const first = { ...freezeOf(subject), moves: [], ledger: [] };
   assert.ok((await store.freeze(first, live())).ok);
   const again = { ...first, atMs: frozenAtMs + 1, agents: freezeOf(subject, 1).agents };
   const frozen = await store.freeze(again, live());
@@ -140,4 +142,34 @@ export async function keepsFirstFreeze(subject: IntentStoreSubject): Promise<voi
   );
   const stored = await agentOf(subject);
   assert.deepEqual([stored?.frozenAtMs, stored?.changedAtMs], [frozenAtMs, frozenAtMs + 1]);
+}
+
+// The agent `n` the subject's agent store creates at `atMs`, as its store lists it.
+async function createdAt(subject: IntentStoreSubject, n: number, atMs: number) {
+  const created = await subject.agents.create({ ...agentDraft(n), atMs }, live());
+  assert.ok(created.ok);
+  return created.value.agent;
+}
+
+/**
+ * A freeze of named agents leaves the install alone; a whole-install freeze marks the install too,
+ * keeping its first time, and an agent created after it starts frozen at its creation.
+ */
+export async function freezesTheWholeInstall(subject: IntentStoreSubject): Promise<void> {
+  const { store, install } = subject;
+  assert.ok((await store.freeze({ ...freezeOf(subject), moves: [] }, live())).ok);
+  assert.equal((await install.read(live())).frozenAtMs, undefined);
+  assert.equal((await createdAt(subject, 9, frozenAtMs + 1)).frozenAtMs, undefined);
+  const whole = { atMs: frozenAtMs + 2, agents: [], moves: [], ledger: [], isWholeInstall: true };
+  assert.ok((await store.freeze(whole, live())).ok);
+  assert.ok((await store.freeze({ ...whole, atMs: frozenAtMs + 3 }, live())).ok);
+  assert.equal((await install.read(live())).frozenAtMs, frozenAtMs + 2);
+  const later = await createdAt(subject, 10, frozenAtMs + 4);
+  assert.equal(later.frozenAtMs, frozenAtMs + 4);
+  const listed = await subject.agents.list(live());
+  const frozen = new Map(listed.map(({ id, frozenAtMs: at }) => [id, at]));
+  assert.deepEqual(
+    [subject.agentId, fixtureId("agt", 9), fixtureId("agt", 10)].map((id) => frozen.get(id)),
+    [frozenAtMs, undefined, frozenAtMs + 4],
+  );
 }

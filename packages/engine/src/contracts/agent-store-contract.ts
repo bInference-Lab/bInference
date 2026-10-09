@@ -41,7 +41,8 @@ const limits: LimitsValues = {
   copyPerLeaderDayUsdMicros: 100_000_000n,
 };
 
-function draft(n: number, name = `agent ${String(n)}`): AgentDraft {
+/** Agent `n`'s draft, in paper mode, named `agent n` unless a name is given. */
+export function draft(n: number, name = `agent ${String(n)}`): AgentDraft {
   return {
     id: fixtureId("agt", n),
     name,

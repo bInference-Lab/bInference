@@ -26,9 +26,10 @@ export interface MemoryEngineStores extends EngineStores {
  */
 export function createMemoryEngineStores(): MemoryEngineStores {
   const ledger = createMemoryLedgerStore();
-  const agents = createMemoryAgentStore();
+  const install = createMemoryInstallStore();
+  const agents = createMemoryAgentStore({ install });
   return {
-    intents: createMemoryIntentStore({ ledger, agents }),
+    intents: createMemoryIntentStore({ ledger, agents, install }),
     ledger,
     idempotency: createMemoryIdempotencyStore(),
     inbox: createMemoryInboxStore(),
@@ -36,6 +37,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     agents,
     configJournal: createMemoryConfigJournal(),
     transactions: createMemoryTransactionStore(),
-    install: createMemoryInstallStore(),
+    install,
   };
 }

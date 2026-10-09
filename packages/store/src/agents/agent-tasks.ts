@@ -32,7 +32,14 @@ function takenBy(database: DatabaseSync, draft: AgentDraft): "exists" | "name_ta
   return row.id === draft.id ? "exists" : "name_taken";
 }
 
-function insertAgent(database: DatabaseSync, draft: AgentDraft): void {
+// Whether the whole install is frozen, so a new agent starts frozen.
+function isInstallFrozen(database: DatabaseSync): boolean {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const safety = takeFirst(kysely.selectFrom("safety").select("frozen_at").where("id", "=", 1));
+  return (safety?.frozen_at ?? null) !== null;
+}
+
+function insertAgent(database: DatabaseSync, draft: AgentDraft, frozenAt: number | null): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const atMs = draft.atMs;
   execute(
@@ -43,7 +50,7 @@ function insertAgent(database: DatabaseSync, draft: AgentDraft): void {
       locale: draft.locale,
       models: jsonText(draft.models),
       notifications: jsonText(draft.notifications),
-      frozen_at: null,
+      frozen_at: frozenAt,
       archived_at: null,
       created_at: atMs,
       changed_at: atMs,
@@ -93,8 +100,11 @@ export const createAgentTask: StoreTask<
     if (taken !== undefined) {
       return err(taken);
     }
-    insertAgent(database, draft);
-    return ok(agentSettingsOf(draft));
+    const frozenAt = isInstallFrozen(database) ? draft.atMs : null;
+    insertAgent(database, draft, frozenAt);
+    const settings = agentSettingsOf(draft);
+    const agent = frozenAt === null ? settings.agent : { ...settings.agent, frozenAtMs: frozenAt };
+    return ok({ ...settings, agent });
   },
 });
 

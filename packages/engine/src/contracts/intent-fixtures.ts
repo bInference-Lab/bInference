@@ -5,7 +5,7 @@ import type { IntentChange } from "../intents/intent-change.js";
 import type { IntentDraft } from "../intents/intent-record.js";
 import type { IntentState } from "../intents/intent-state.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
-import type { AgentStore, IntentStore, LedgerStore } from "../ports.js";
+import type { AgentStore, InstallStore, IntentStore, LedgerStore } from "../ports.js";
 import { fixtureHash, fixtureId } from "./store-fixtures.js";
 
 /**
@@ -17,6 +17,8 @@ export interface IntentStoreSubject {
   readonly store: IntentStore;
   readonly ledger: LedgerStore;
   readonly agents: AgentStore;
+  /** The install store of the same database, whose freeze a whole-install freeze sets. */
+  readonly install: InstallStore;
   readonly agentId: Id<"agt">;
   readonly walletId: Id<"wal">;
 }

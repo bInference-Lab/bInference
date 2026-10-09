@@ -10,13 +10,13 @@ import {
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { AgentRecord } from "../agents/agent-record.js";
 import type { ConfigAuthor } from "../audit/journal-config-change.js";
-import type { StoredIntents } from "../intents/create-stored-intents.js";
+import type { StoredFreeze, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import { statesBeforeSigning } from "../intents/transition-table.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
-import type { AgentStore, IntentStore } from "../ports.js";
+import type { AgentStore, InstallStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
 
@@ -28,6 +28,7 @@ export interface FreezeAgentsOptions {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   readonly intents: IntentStore;
+  readonly install: InstallStore;
   readonly clock: Clock;
   readonly ids: IdSource;
   readonly publish: PublishPush;
@@ -44,13 +45,13 @@ export interface FreezeRequest {
 const maxRounds = 5;
 const pageSize = 1_000;
 
+// The agents a freeze stops: every one not archived for the whole install, none of them needed.
 function targetsOf(
   records: readonly AgentRecord[],
   agent: Id<"agt"> | undefined,
 ): Result<readonly AgentRecord[], ProtocolErrorCode> {
   if (agent === undefined) {
-    const active = records.filter((record) => record.archivedAtMs === undefined);
-    return active.length === 0 ? err("agent.not_found") : ok(active);
+    return ok(records.filter((record) => record.archivedAtMs === undefined));
   }
   const found = records.find((record) => record.id === agent);
   if (found === undefined) {
@@ -110,28 +111,93 @@ async function cancelMoves(
   return moves.flat();
 }
 
+// A `freeze` entry about one agent, or about the whole install without one.
 function freezeEntry(
   options: FreezeAgentsOptions,
-  agent: AgentRecord,
+  agent: AgentRecord | undefined,
   stamp: { readonly atMs: number; readonly author: ConfigAuthor },
 ): LedgerDraft {
   const { atMs, author } = stamp;
   return {
     id: options.ids.next("led"),
     atMs,
-    agentId: agent.id,
+    ...(agent === undefined ? {} : { agentId: agent.id, subject: agent.id }),
     kind: "freeze",
-    subject: agent.id,
     data: { by: author.by, surface: author.surface },
   };
 }
 
-function frozenAtOf(targets: readonly AgentRecord[], marked: readonly AgentRecord[]): number {
+// The latest time any of the agents, or the install a whole-install freeze marks, was frozen.
+function frozenAtOf(
+  targets: readonly AgentRecord[],
+  marked: { readonly agents: readonly AgentRecord[]; readonly installAtMs: number | undefined },
+): number {
   const times = targets.map(
     (target) =>
-      marked.find((agent) => agent.id === target.id)?.frozenAtMs ?? target.frozenAtMs ?? 0,
+      marked.agents.find((agent) => agent.id === target.id)?.frozenAtMs ?? target.frozenAtMs ?? 0,
   );
-  return Math.max(...times);
+  return Math.max(...times, marked.installAtMs ?? 0);
+}
+
+/** What one round of a freeze read: the agents it stops, their moves, and the install's freeze. */
+interface FreezePlan {
+  readonly targets: readonly AgentRecord[];
+  readonly moves: readonly IntentMove[];
+  readonly isWholeInstall: boolean;
+  /** When the install was frozen before, for a whole-install freeze. */
+  readonly installAtMs?: number;
+}
+
+async function planOf(
+  options: FreezeAgentsOptions,
+  request: FreezeRequest,
+  signal: AbortSignal,
+): Promise<Result<FreezePlan, ProtocolErrorCode>> {
+  const targets = targetsOf(await options.agents.list({ signal }), request.agent);
+  if (!targets.ok) {
+    return targets;
+  }
+  const listed = await Promise.all(
+    targets.value.map(async (agent) => unsignedOf(options.intents, agent.id, { signal })),
+  );
+  const moves = await cancelMoves(options, listed.flat(), { by: request.author.by, signal });
+  const isWholeInstall = request.agent === undefined;
+  const installAtMs = isWholeInstall
+    ? (await options.install.read({ signal })).frozenAtMs
+    : undefined;
+  return ok({
+    targets: targets.value,
+    moves,
+    isWholeInstall,
+    ...(installAtMs === undefined ? {} : { installAtMs }),
+  });
+}
+
+// The write of one round: the agents it marks, the install for a first whole-install freeze, the
+// moves, and an entry for each it marks.
+function writeOf(
+  options: FreezeAgentsOptions,
+  plan: FreezePlan & { readonly unfrozen: readonly AgentRecord[]; readonly author: ConfigAuthor },
+): StoredFreeze {
+  const { unfrozen, author, isWholeInstall, moves } = plan;
+  const atMs = options.clock.now();
+  const agents = unfrozen.map((agent) => ({ agentId: agent.id, expectedVersion: agent.version }));
+  const stamp = { atMs, author };
+  const entries = unfrozen.map((agent) => freezeEntry(options, agent, stamp));
+  const marksInstall = isWholeInstall && plan.installAtMs === undefined;
+  const ledger = marksInstall ? [...entries, freezeEntry(options, undefined, stamp)] : entries;
+  return { atMs, agents, isWholeInstall, moves, ledger };
+}
+
+function announce(
+  options: FreezeAgentsOptions,
+  unfrozen: readonly AgentRecord[],
+  author: ConfigAuthor,
+): void {
+  for (const agent of unfrozen) {
+    const values = { agent: agent.name, surface: author.surface };
+    options.publish(noticePush({ key: frozenNoticeKey, agent: agent.id, values }));
+  }
 }
 
 /** One round: read the agents and their unsigned intents, then write the freeze, or `stale`. */
@@ -140,31 +206,24 @@ async function freezeOnce(
   request: FreezeRequest,
   signal: AbortSignal,
 ): Promise<Result<number, ProtocolErrorCode | "stale">> {
-  const targets = targetsOf(await options.agents.list({ signal }), request.agent);
-  if (!targets.ok) {
-    return targets;
+  const plan = await planOf(options, request, signal);
+  if (!plan.ok) {
+    return plan;
   }
-  const { author } = request;
-  const listed = await Promise.all(
-    targets.value.map(async (agent) => unsignedOf(options.intents, agent.id, { signal })),
-  );
-  const moves = await cancelMoves(options, listed.flat(), { by: author.by, signal });
-  const unfrozen = targets.value.filter((agent) => agent.frozenAtMs === undefined);
-  if (unfrozen.length === 0 && moves.length === 0) {
-    return ok(frozenAtOf(targets.value, []));
+  const { targets, moves, isWholeInstall, installAtMs } = plan.value;
+  const unfrozen = targets.filter((agent) => agent.frozenAtMs === undefined);
+  const isMarked = !isWholeInstall || installAtMs !== undefined;
+  if (unfrozen.length === 0 && moves.length === 0 && isMarked) {
+    return ok(frozenAtOf(targets, { agents: [], installAtMs }));
   }
-  const atMs = options.clock.now();
-  const agents = unfrozen.map((agent) => ({ agentId: agent.id, expectedVersion: agent.version }));
-  const ledger = unfrozen.map((agent) => freezeEntry(options, agent, { atMs, author }));
-  const commit = await options.stored.freeze({ atMs, agents, moves, ledger }, { signal });
+  const write = writeOf(options, { ...plan.value, unfrozen, author: request.author });
+  const commit = await options.stored.freeze(write, { signal });
   if (!commit.ok) {
     return commit;
   }
-  for (const agent of unfrozen) {
-    const values = { agent: agent.name, surface: author.surface };
-    options.publish(noticePush({ key: frozenNoticeKey, agent: agent.id, values }));
-  }
-  return ok(frozenAtOf(targets.value, commit.value.agents));
+  announce(options, unfrozen, request.author);
+  const installAt = isWholeInstall ? (installAtMs ?? write.atMs) : undefined;
+  return ok(frozenAtOf(targets, { agents: commit.value.agents, installAtMs: installAt }));
 }
 
 async function freezeFrom(
@@ -190,14 +249,15 @@ async function freezeFrom(
 }
 
 /**
- * Freezes one agent, or every agent not archived (ARCHITECTURE.md section 11), in one write: it
- * marks each agent frozen and cancels every intent of theirs that nothing has signed, a rescue
- * excepted (decision 0099); an intent being signed or sent runs to its end. Each newly frozen
- * agent is announced with `notice.frozen`. An agent frozen before keeps its time, and a freeze
- * that finds nothing to change writes nothing. It answers when the freeze took effect: the latest
- * time any of the agents was frozen. An unknown agent is `agent.not_found`, an archived one
- * `agent.archived`, and an install without an active agent `agent.not_found`. A write another
- * write beat is read and tried again.
+ * Freezes one agent, or the whole install (ARCHITECTURE.md section 11), in one write: it marks
+ * each agent frozen and cancels every intent of theirs that nothing has signed, a rescue excepted
+ * (decision 0099); an intent being signed or sent runs to its end. A whole-install freeze stops
+ * every agent not archived and marks the install frozen too, so every agent created later starts
+ * frozen until an unfreeze. Each newly frozen agent is announced with `notice.frozen`. An agent or
+ * an install frozen before keeps its time, and a freeze that finds nothing to change writes
+ * nothing. It answers when the freeze took effect: the latest time any of the agents, or the
+ * install, was frozen. An unknown agent is `agent.not_found` and an archived one
+ * `agent.archived`. A write another write beat is read and tried again.
  */
 export async function freezeAgents(
   options: FreezeAgentsOptions,

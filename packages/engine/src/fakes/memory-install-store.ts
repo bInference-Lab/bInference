@@ -1,6 +1,7 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { InstallFacts, InstallSetup, WalletRecord } from "../install/install-record.js";
 import {
+  type RescueAddressChange,
   type RescueCancel,
   type RescueCeiling,
   rescueCeilingAfter,
@@ -48,10 +49,11 @@ function withRescue(
   rescue: RescueState,
   ceiling: RescueCeiling | undefined,
 ): InstallState {
-  const { installId, custody, wallets } = state;
+  const { installId, custody, frozenAtMs, wallets } = state;
   return {
     ...(installId === undefined ? {} : { installId }),
     ...(custody === undefined ? {} : { custody }),
+    ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
     ...rescue,
     ...(ceiling === undefined ? {} : { rescueCeiling: ceiling }),
     wallets,
@@ -86,9 +88,10 @@ function movedRescue(
 
 // The install's facts as the store holds them, without the id.
 function factsOf(state: InstallState): InstallFacts {
-  const { custody, rescueCeiling, wallets } = state;
+  const { custody, frozenAtMs, rescueCeiling, wallets } = state;
   return {
     ...(custody === undefined ? {} : { custody }),
+    ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
     ...storedRescue(state),
     ...(rescueCeiling === undefined ? {} : { rescueCeiling }),
     wallets,
@@ -104,10 +107,31 @@ function storedRescue(state: InstallState): RescueState {
   };
 }
 
-/** The in-memory install store, which also takes wallets a test adds. */
+// A new rescue address as the rule decides it, with the ceiling changes it comes with.
+function rescueChange(
+  write: (rescueWrite: RescueWrite) => RescueCancel,
+  { address, atMs, ceiling }: RescueAddressChange,
+): RescueMove {
+  const decide = (rescue: RescueState): RescueState => changeRescue(rescue, address, atMs);
+  const { before, after } = write({
+    atMs,
+    decide,
+    ...(ceiling === undefined ? {} : { asked: ceiling }),
+  });
+  return { before, after };
+}
+
+/**
+ * The in-memory install store, which also takes wallets a test adds and holds the install's freeze
+ * the in-memory intent store writes.
+ */
 export interface MemoryInstallStore extends InstallStore {
   /** Adds a wallet as if a setup had stored it; wallets stay oldest first. */
   addWallet(wallet: WalletRecord): void;
+  /** Marks the install frozen at `atMs` inside another store's write, keeping an earlier time. */
+  freezeNow(atMs: number): void;
+  /** When the whole install was frozen, or `undefined` while it is not. */
+  frozenAt(): number | undefined;
 }
 
 /** Creates an empty in-memory {@link InstallStore} for tests. */
@@ -132,6 +156,10 @@ export function createMemoryInstallStore(): MemoryInstallStore {
         held.state = { ...held.state, installId };
         return installId;
       }),
+    freezeNow(atMs) {
+      held.state = { ...held.state, frozenAtMs: held.state.frozenAtMs ?? atMs };
+    },
+    frozenAt: () => held.state.frozenAtMs,
     read: async (call) => memoryCall(call, () => structuredClone(factsOf(held.state))),
     setUp: async (setup, call) =>
       memoryCall(call, () => {
@@ -142,16 +170,7 @@ export function createMemoryInstallStore(): MemoryInstallStore {
         held.state = next.value;
         return ok(undefined);
       }),
-    changeRescue: async ({ address, atMs, ceiling }, call) =>
-      memoryCall(call, (): RescueMove => {
-        const decide = (rescue: RescueState): RescueState => changeRescue(rescue, address, atMs);
-        const { before, after } = write({
-          atMs,
-          decide,
-          ...(ceiling === undefined ? {} : { asked: ceiling }),
-        });
-        return { before, after };
-      }),
+    changeRescue: async (change, call) => memoryCall(call, () => rescueChange(write, change)),
     cancelRescueChange: async (atMs, call) =>
       memoryCall(call, () => write({ atMs, decide: (rescue) => cancelRescue(rescue, atMs) })),
     clearRescueCeiling: async (call) =>

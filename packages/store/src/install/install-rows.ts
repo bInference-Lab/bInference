@@ -109,12 +109,17 @@ export function readRescueCeiling(database: DatabaseSync): RescueCeiling | undef
   return text === null ? undefined : rescueCeilingSchema.parse(readJson(text));
 }
 
-/** Reads the install's custody, rescue address and wallets with their ceilings, oldest first. */
+/**
+ * Reads the install's custody, freeze, rescue address and wallets with their ceilings, oldest
+ * first.
+ */
 export function readInstall(database: DatabaseSync): InstallFacts {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const custody = takeFirst(kysely.selectFrom("custody").selectAll().where("id", "=", 1));
+  const safety = takeFirst(kysely.selectFrom("safety").select("frozen_at").where("id", "=", 1));
   return {
     ...(custody === undefined ? {} : { custody: toCustody(custody) }),
+    ...field("frozenAtMs", safety?.frozen_at ?? null),
     ...readRescue(database),
     ...field("rescueCeiling", readRescueCeiling(database) ?? null),
     wallets: readWallets(database),

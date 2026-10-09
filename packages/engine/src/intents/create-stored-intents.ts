@@ -12,12 +12,11 @@ import type { AgentSettings } from "../agents/agent-record.js";
 import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { StoredIntent } from "../confirmations/stored-intent.js";
 import { ledgerEntryViewOf } from "../ledger/ledger-entry-view.js";
-import type { LedgerDraft } from "../ledger/ledger-entry.js";
 import type { AgentStore, ConfirmationStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { intentPushes } from "../pushes/intent-pushes.js";
 import type { StoredConfirmation } from "./confirmation-record.js";
-import type { AgentFreeze, FreezeCommit } from "./freeze-write.js";
+import type { FreezeCommit, FreezeWrite } from "./freeze-write.js";
 import { changeOf, type IntentMove } from "./intent-change-of.js";
 import type { IntentChange } from "./intent-change.js";
 import { draftOf, type NewIntent } from "./intent-draft-of.js";
@@ -70,12 +69,12 @@ export interface StoredIntents extends ConfirmationStore {
   ): Promise<Result<FreezeCommit, "stale">>;
 }
 
-/** A freeze to store: the agents it marks, the intent moves it makes and its own ledger entries. */
-export interface StoredFreeze {
-  readonly atMs: number;
-  readonly agents: readonly AgentFreeze[];
+/**
+ * A freeze to store: the agents it marks, whether it marks the whole install, the intent moves it
+ * makes and its own ledger entries.
+ */
+export interface StoredFreeze extends Omit<FreezeWrite, "moves"> {
   readonly moves: readonly IntentMove[];
-  readonly ledger: readonly LedgerDraft[];
 }
 
 /** What the stored intents read and write through, and where their pushes go. */
@@ -217,8 +216,9 @@ async function freezeIntents(
   if (changes === undefined) {
     return err("stale");
   }
-  const { atMs, agents, ledger } = freeze;
-  const commit = await options.intents.freeze({ atMs, agents, moves: changes, ledger }, { signal });
+  const { atMs, agents, isWholeInstall, ledger } = freeze;
+  const write = { atMs, agents, isWholeInstall, moves: changes, ledger };
+  const commit = await options.intents.freeze(write, { signal });
   if (!commit.ok) {
     return err("stale");
   }

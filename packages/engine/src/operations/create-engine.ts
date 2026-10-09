@@ -264,7 +264,7 @@ function safetyHandlers(
 ): FreezeHandlers & RescueHandlers {
   const { stores, clock } = options;
   const { agents, intents, install } = stores;
-  const freeze = createFreezeHandlers({ ...options, stored, agents, intents });
+  const freeze = createFreezeHandlers({ ...options, stored, agents, intents, install });
   const rescue = createRescueHandlers({
     ...options,
     stored,

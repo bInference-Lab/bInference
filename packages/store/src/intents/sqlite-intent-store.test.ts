@@ -2,6 +2,7 @@ import { intentStoreContract } from "@binference/engine/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { engineDatabase } from "../databases/engine-database.js";
+import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
 import { plantAgent } from "../testing/plant-agent.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
@@ -20,7 +21,8 @@ describe("sqlite intent store", () => {
         const store = createSqliteIntentStore(host);
         const ledger = createSqliteLedgerStore(host);
         const agents = createSqliteAgentStore(host);
-        return { store, ledger, agents, ...plantAgent(database, 1) };
+        const install = createSqliteInstallStore(host);
+        return { store, ledger, agents, install, ...plantAgent(database, 1) };
       },
     }),
   )("follows the contract: $name", async ({ run }) => {

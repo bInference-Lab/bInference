@@ -16,7 +16,12 @@ import { byCreation, memoryCall } from "./memory-call.js";
 
 type Agents = Map<Id<"agt">, AgentSettings>;
 
-function create(agents: Agents, draft: AgentDraft): Result<AgentSettings, "exists" | "name_taken"> {
+// An agent created while the whole install is frozen starts frozen at its creation.
+function create(
+  agents: Agents,
+  draft: AgentDraft,
+  install: { readonly isFrozen: boolean },
+): Result<AgentSettings, "exists" | "name_taken"> {
   if (agents.has(draft.id)) {
     return err("exists");
   }
@@ -24,8 +29,9 @@ function create(agents: Agents, draft: AgentDraft): Result<AgentSettings, "exist
     return err("name_taken");
   }
   const settings = agentSettingsOf(structuredClone(draft));
-  agents.set(draft.id, settings);
-  return ok(structuredClone(settings));
+  const agent = install.isFrozen ? { ...settings.agent, frozenAtMs: draft.atMs } : settings.agent;
+  agents.set(draft.id, { ...settings, agent });
+  return ok(structuredClone({ ...settings, agent }));
 }
 
 // The agent's settings when the row the change names is at the version the changer read.
@@ -162,13 +168,21 @@ function freezeNow(
   return ok(structuredClone(frozen));
 }
 
+/** Where an in-memory agent store reads the install's freeze; without it, never frozen. */
+export interface MemoryAgentStoreOptions {
+  readonly install?: { readonly frozenAt: () => number | undefined };
+}
+
 /** Creates an empty in-memory {@link MemoryAgentStore} for tests. */
-export function createMemoryAgentStore(): MemoryAgentStore {
+export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): MemoryAgentStore {
   const agents: Agents = new Map();
   const book = createMemoryAddressBook();
+  const install = (): { readonly isFrozen: boolean } => ({
+    isFrozen: options.install?.frozenAt() !== undefined,
+  });
   return {
     freezeNow: (freezes, atMs) => freezeNow(agents, structuredClone(freezes), atMs),
-    create: async (draft, call) => memoryCall(call, () => create(agents, draft)),
+    create: async (draft, call) => memoryCall(call, () => create(agents, draft, install())),
     get: async (id, call) =>
       memoryCall(call, () => {
         const settings = agents.get(id);

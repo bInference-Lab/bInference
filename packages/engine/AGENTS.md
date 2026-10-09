@@ -140,8 +140,9 @@ Rules for this package:
 - A freeze (`src/safety/freeze-agents.ts`, `safety/freeze`) is one write of the intent store's
   `freeze`: each agent marked frozen, keeping the time of an earlier freeze, and each unsigned
   intent of theirs moved to `cancelled` by the state machine, a rescue excepted (decision 0099),
-  with the freeze's own ledger entries; a write another write beat is read and tried again. Each
-  newly frozen agent is announced with `notice.frozen`. The policy's `frozen` rule keeps every
+  with the freeze's own ledger entries; a write another write beat is read and tried again. A
+  whole-install freeze also marks the install frozen, and the agent store creates every agent
+  frozen while it is. Each newly frozen agent is announced with `notice.frozen`. The policy's `frozen` rule keeps every
   later intent and auto order fill of the agent out.
 - A rescue (`src/safety/`, `safety/rescue`) is one live intent stored under the first wallet that
   moves something and whose agent is active, whatever the agents' modes, freezes and send levels.

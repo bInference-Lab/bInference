@@ -18,6 +18,7 @@ import {
 import {
   agentOf,
   freezesInOneWrite,
+  freezesTheWholeInstall,
   keepsFirstFreeze,
   refusesStaleFreeze,
 } from "./intent-freeze-checks.js";
@@ -175,7 +176,11 @@ async function refusesAborted(subject: IntentStoreSubject): Promise<void> {
   await assertRefusesAborted(async (options) => store.cards(id, options));
   await assertRefusesAborted(async (options) => store.confirmation(id, options));
   await assertRefusesAborted(async (options) => store.cardByRef("ZZZZZZZZZZZZZZZZ", options));
-  const freeze = { atMs: 1, agents: [{ agentId: subject.agentId, expectedVersion: 0 }] };
+  const freeze = {
+    atMs: 1,
+    agents: [{ agentId: subject.agentId, expectedVersion: 0 }],
+    isWholeInstall: false,
+  };
   await assertRefusesAborted(async (options) =>
     store.freeze({ ...freeze, moves: [], ledger: [] }, options),
   );
@@ -221,6 +226,11 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
       refusesStaleFreeze,
     ),
     checkOn("keeps the time an agent was first frozen", create, keepsFirstFreeze),
+    checkOn(
+      "marks the install in a whole-install freeze, and a later agent starts frozen",
+      create,
+      freezesTheWholeInstall,
+    ),
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
   ];
 }

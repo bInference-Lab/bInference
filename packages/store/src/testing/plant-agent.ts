@@ -9,7 +9,10 @@ export interface PlantedAgent {
   readonly walletId: Id<"wal">;
 }
 
-/** Writes agent `n` and one wallet of it straight into an engine database, for adapter tests. */
+/**
+ * Writes agent `n` and one wallet of it with its ceiling straight into an engine database, for
+ * adapter tests.
+ */
 export function plantAgent(database: DatabaseSync, n: number): PlantedAgent {
   const suffix = n.toString(16).padStart(12, "0");
   const agentId = idSchema("agt").parse(`agt_0190f1c2-3a4b-7c5d-8e6f-${suffix}`);
@@ -43,6 +46,16 @@ export function plantAgent(database: DatabaseSync, n: number): PlantedAgent {
       label: "main",
       created_at: 1,
       archived_at: null,
+    }),
+  );
+  execute(
+    kysely.insertInto("ceilings").values({
+      wallet_id: walletId,
+      policy_id: "policy",
+      policy: "{}",
+      per_tx_native: "0",
+      read_at: 1,
+      version: 0,
     }),
   );
   return { agentId, walletId };

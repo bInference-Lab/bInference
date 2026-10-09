@@ -11,13 +11,18 @@ import type { LedgerDraft, LedgerEntry } from "../ledger/ledger-entry.js";
 import type { IntentStore } from "../ports.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { memoryCall } from "./memory-call.js";
+import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentTables, type MemoryIntentTables } from "./memory-intent-tables.js";
 import type { MemoryLedgerStore } from "./memory-ledger-store.js";
 
-/** What an in-memory intent store writes its ledger entries to, and the agents a freeze marks. */
+/**
+ * What an in-memory intent store writes its ledger entries to, and the agents and the install a
+ * freeze marks.
+ */
 export interface MemoryIntentStoreOptions {
   readonly ledger: MemoryLedgerStore;
   readonly agents: MemoryAgentStore;
+  readonly install: MemoryInstallStore;
 }
 
 function appendTo(
@@ -124,6 +129,9 @@ function freeze(
   const agents = options.agents.freezeNow(write.agents, write.atMs);
   if (!agents.ok) {
     return agents;
+  }
+  if (write.isWholeInstall) {
+    options.install.freezeNow(write.atMs);
   }
   const moves = checked.map((move) => writeMove(tables, options.ledger, move));
   const ledgerEntries = write.ledger.map((draft) => options.ledger.appendNow(draft));

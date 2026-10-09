@@ -123,11 +123,13 @@ export const installSetupSchema: z.ZodType<InstallSetup> = z.strictObject({
 });
 
 /**
- * The install as it stands: its custody, its rescue address with a new one that waits, and its
- * wallets, oldest first. Read the rescue address in effect through `rescueAt`.
+ * The install as it stands: its custody, its rescue address with a new one that waits, its
+ * freeze, and its wallets, oldest first. Read the rescue address in effect through `rescueAt`.
  */
 export interface InstallFacts extends RescueState {
   readonly custody?: CustodyRecord;
+  /** When the whole install was frozen; every agent created since starts frozen. */
+  readonly frozenAtMs?: number;
   /** The ceiling changes kept for the new rescue address that waits. */
   readonly rescueCeiling?: RescueCeiling;
   readonly wallets: readonly WalletRecord[];
@@ -136,6 +138,7 @@ export interface InstallFacts extends RescueState {
 /** Parses install facts. */
 export const installFactsSchema: z.ZodType<InstallFacts> = z.strictObject({
   custody: custodyRecordSchema.exactOptional(),
+  frozenAtMs: epochMsSchema.exactOptional(),
   rescueAddress: accountRefSchema.exactOptional(),
   pendingRescue: pendingRescueSchema.exactOptional(),
   rescueCeiling: rescueCeilingSchema.exactOptional(),
