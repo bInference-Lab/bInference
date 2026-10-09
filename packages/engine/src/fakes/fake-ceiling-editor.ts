@@ -11,7 +11,7 @@ import type { CeilingEditor } from "../ports.js";
 import { memoryCall } from "./memory-call.js";
 
 /** The owner key code the fake ceiling editor takes; any other code is another key. */
-export const fakeOwnerKeyCode = "bnok1fakeownerkey";
+export const fakeOwnerKeyCode = "bnok1fakeo wnerk eyfor tests only";
 
 /** A ceiling editor in memory, whose ceilings a test sets up and reads. */
 export interface FakeCeilingEditor extends CeilingEditor {

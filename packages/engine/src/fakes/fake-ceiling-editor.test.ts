@@ -25,7 +25,7 @@ describe("the fake ceiling editor", () => {
         return Promise.resolve({
           editor,
           ownerKey: createSecret(fakeOwnerKeyCode),
-          otherKey: createSecret("bnok1anotherkey"),
+          otherKey: createSecret("bnok1aaaaa bbbbb ccccc ddddd eeeee"),
           ceiling: "ceiling-1",
           unknownCeiling: "ceiling-9",
           accounts,

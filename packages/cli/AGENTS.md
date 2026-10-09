@@ -62,5 +62,9 @@ Rules for this package:
   `engine/unlock`, one call at a time. `onUnlocked` in `src/compose/compose-lock.ts` is the one
   place the opened keys go: where the signer and custody start. A passphrase comes only from the
   terminal's hidden prompt of `binference unlock`, never from a flag, and is never logged.
+- The owner key code comes only from the terminal's hidden prompt of an owner-key command, such as
+  `binference rescue set`, travels only over IPC and is never logged or stored. The Privy ceiling
+  editor (`src/compose/privy-ceiling-editor.ts`) uses it for one request and checks it is the key
+  that owns the install's ceilings before Privy hears of it.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

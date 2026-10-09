@@ -9,6 +9,7 @@ import { runHealth } from "../commands/health-command.js";
 import { runInitCommand } from "../commands/init-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
+import { runRescueSet } from "../commands/rescue-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
 import { runUnlock } from "../commands/unlock-command.js";
@@ -91,6 +92,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   paper: runModeSwitch,
   walletList: runWalletList,
   walletAddress: runWalletAddress,
+  rescueSet: runRescueSet,
   check: runCheck,
 };
 

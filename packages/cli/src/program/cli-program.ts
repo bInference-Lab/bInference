@@ -42,6 +42,7 @@ export type ChosenCommand =
     }
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
   | { readonly name: "walletAddress"; readonly options: WalletAddressFlags }
+  | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }
   | { readonly name: "check"; readonly options: CheckFlags };
 
 /** What the program is built from. */
@@ -142,6 +143,20 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     );
 }
 
+function addRescueCommands(program: Command, options: ProgramOptions): void {
+  const { message, choose } = options;
+  const rescue = program
+    .command("rescue")
+    .description(message("command.rescue"))
+    .helpOption("-h, --help", message("option.help"))
+    .helpCommand("help [command]", message("option.help"));
+  withCommon(rescue.command("set").description(message("command.rescueSet")), message)
+    .addArgument(new Argument("<address>", message("argument.address")))
+    .action((address: string, flags: OptionValues) =>
+      choose({ name: "rescueSet", options: commonFlagsSchema.parse(flags), address }),
+    );
+}
+
 function addInit(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   withCommon(program.command("init").description(message("command.init")), message)
@@ -190,6 +205,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addAgentCommands(program, options);
   addCardCommands(program, options);
   addWalletCommands(program, options);
+  addRescueCommands(program, options);
   withCommon(program.command("check").description(message("command.check")), message)
     .option("--fix", message("option.fix"))
     .action((flags: OptionValues) =>

@@ -15,7 +15,7 @@ export interface RescueAddress {
 const zeroAddress = /^0x0{40}$/;
 
 /** The rescue address in a text, or `undefined` for text that is no usable address. */
-function rescueAddressOf(text: string): RescueAddress | undefined {
+export function rescueAddressOf(text: string): RescueAddress | undefined {
   const parsed = parseEvmAddress(text.trim());
   if (!parsed.ok || zeroAddress.test(parsed.value)) {
     return undefined;

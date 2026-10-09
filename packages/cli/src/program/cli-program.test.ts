@@ -54,6 +54,7 @@ describe("the binference command tree", () => {
       "deny",
       "list",
       "address",
+      "set",
       "check",
     ]);
     for (const command of commands) {

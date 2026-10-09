@@ -1,11 +1,13 @@
 import { once } from "node:events";
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
 import {
+  type ChainDefinition,
   type AccountRef,
   accountRefSchema,
   createChainRegistry,
   type Venue,
 } from "@binference/chain";
+import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
 import {
   createFakeChainDefinition,
   createFakeFamily,
@@ -177,6 +179,8 @@ export interface SkeletonOptions {
   readonly telegram?: TelegramParts;
   /** The venues the engine trades on; the fake venue alone when left out. */
   readonly venues?: readonly Venue[];
+  /** Chains the engine knows besides the fake chain, such as BNB Smart Chain. */
+  readonly chains?: readonly ChainDefinition[];
 }
 
 /**
@@ -191,9 +195,9 @@ export async function composeSkeleton(
   await seed(parts);
   const clock = createManualClock(testNowMs);
   const chains = createChainRegistry({
-    chains: [createFakeChainDefinition()],
-    families: [createFakeFamily()],
-    signingSchemes: [createFakeSigningScheme()],
+    chains: [createFakeChainDefinition(), ...(options.chains ?? [])],
+    families: [createFakeFamily(), createEvmFamily()],
+    signingSchemes: [createFakeSigningScheme(), createEvmSigningScheme()],
   });
   const facts = {
     nativeBalanceBase: 10n ** 18n,

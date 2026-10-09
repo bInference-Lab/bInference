@@ -140,7 +140,7 @@ describe("a change of the rescue address", () => {
     const admin = { ...console, transport: "ws" as const };
 
     expect([
-      await setRescue(test, thief, { ownerKey: "bnok1notthekey" }),
+      await setRescue(test, thief, { ownerKey: "bnok1aaaaa bbbbb ccccc ddddd eeeee" }),
       await test.engine.handlers["safety/setRescueAddress"](testCall({ address: thief })),
       await setRescue(test, thief, { caller: admin }),
     ]).toStrictEqual([

@@ -134,5 +134,15 @@
   "unlock.wrong": "That passphrase does not open the agent key. Try again.",
   "unlock.done": "binference is unlocked.",
   "unlock.needsTerminal": "The manual unlock mode asks for the passphrase. Run `binference unlock` in a terminal, without --yes or --json.",
-  "unlock.failed": "binference stays locked: {reason, select, needs_passphrase {it needs the passphrase of the agent key} wrong_passphrase {the passphrase does not open the agent key} agent_key_missing {no agent key is where the unlock mode reads it; put back the copy you keep} agent_key_invalid {the agent key there is not the one your wallets name as their signer; put the right one back} keychain_failed {the OS keychain did not respond; unlock it and try again} command_failed {the unlock command printed no agent key; run it yourself to see why} app_secret_missing {config.json5 names no Privy app secret; set `custody.privy.appSecret`} app_secret_unavailable {the Privy app secret is not where `custody.privy.appSecret` names it} other {{reason}}}."
+  "unlock.failed": "binference stays locked: {reason, select, needs_passphrase {it needs the passphrase of the agent key} wrong_passphrase {the passphrase does not open the agent key} agent_key_missing {no agent key is where the unlock mode reads it; put back the copy you keep} agent_key_invalid {the agent key there is not the one your wallets name as their signer; put the right one back} keychain_failed {the OS keychain did not respond; unlock it and try again} command_failed {the unlock command printed no agent key; run it yourself to see why} app_secret_missing {config.json5 names no Privy app secret; set `custody.privy.appSecret`} app_secret_unavailable {the Privy app secret is not where `custody.privy.appSecret` names it} other {{reason}}}.",
+  "command.rescue": "Change the rescue address, where a rescue moves everything",
+  "command.rescueSet": "Make an address the rescue address in 24 hours; asks for the owner key",
+  "argument.address": "Your own wallet's address on BNB Chain, starting with 0x",
+  "rescue.ask": "Owner key code (hidden)",
+  "rescue.wrongKey": "That is not the owner key of this install. Try again.",
+  "rescue.wrongKeyEnd": "That is not the owner key of this install. Nothing changed.",
+  "rescue.needsTerminal": "Changing the rescue address asks for the owner key. Run `binference rescue set` in a terminal, without --yes or --json.",
+  "rescue.badAddress": "{address} is no address on BNB Chain. Give an address that starts with 0x and has 40 more characters.",
+  "rescue.set": "The rescue address becomes {address} at {when}. Every surface announces it, and you can cancel it until then.",
+  "rescue.current": "{address} is the rescue address."
 }
