@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@binference/core";
+import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   isNonceFree,
   lowestFreeNonce,
@@ -85,3 +85,26 @@ export const listTransactionsTask: StoreTask<TransactionQuery, readonly Transact
       return rows.map(toTransactionRecord);
     },
   });
+
+/** Lists one intent's transactions, by step, then by id. */
+export const intentTransactionsTask: StoreTask<
+  Id<"int">,
+  readonly TransactionRecord[]
+> = defineTask({
+  name: "transactions.of_intent",
+  access: "read",
+  input: idSchema("int"),
+  output: z.array(transactionRecordSchema),
+  run(database, intent) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const rows = execute(
+      kysely
+        .selectFrom("txs")
+        .selectAll()
+        .where("intent_id", "=", intent)
+        .orderBy("step")
+        .orderBy("id"),
+    ).rows;
+    return rows.map(toTransactionRecord);
+  },
+});

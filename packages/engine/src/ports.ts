@@ -237,6 +237,11 @@ export interface TransactionStore {
   /** One account's transactions from a nonce up, by nonce, then by id. */
   list(query: TransactionQuery, options: StoreCall): Promise<readonly TransactionRecord[]>;
   /**
+   * One intent's transactions, by step, then by id, so a step's replacement comes after the
+   * transaction it replaced; none for an intent that signed nothing.
+   */
+  ofIntent(intent: Id<"int">, options: StoreCall): Promise<readonly TransactionRecord[]>;
+  /**
    * Stores each relay's answer to one send of a stored transaction, and moves a `signed` one to
    * `sent` once a relay accepted it; its first send names its relays. A transaction no send may
    * go for (see `progressedState`) is `wrong_state` and stores nothing.

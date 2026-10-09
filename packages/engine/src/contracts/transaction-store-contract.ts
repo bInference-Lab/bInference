@@ -119,6 +119,17 @@ async function listsByNonce(subject: TransactionStoreSubject): Promise<void> {
   assert.deepEqual(await store.list({ account: accounts[1], fromNonce: 0, limit: 10 }, live()), []);
 }
 
+// Fixture transactions with an even number belong to the first intent, odd ones to the second.
+async function listsByIntent(subject: TransactionStoreSubject): Promise<void> {
+  const { store, intentIds } = subject;
+  const saved = await inOrder([4, 1, 2], async (n) => takeAndSave(subject, n, 5));
+  const [four, one, two] = saved;
+  assert.ok(four !== undefined && one !== undefined && two !== undefined);
+  assert.deepEqual(await store.ofIntent(intentIds[0], live()), [two, four]);
+  assert.deepEqual(await store.ofIntent(intentIds[1], live()), [one]);
+  assert.deepEqual(await store.ofIntent(fixtureId("int", 99), live()), []);
+}
+
 async function refusesAborted(subject: TransactionStoreSubject): Promise<void> {
   const { store, accounts } = subject;
   const request = { account: accounts[0], chainNonce: 5, atMs: 1 };
@@ -127,6 +138,7 @@ async function refusesAborted(subject: TransactionStoreSubject): Promise<void> {
   await assertRefusesAborted(async (call) =>
     store.list({ account: accounts[0], fromNonce: 0, limit: 1 }, call),
   );
+  await assertRefusesAborted(async (call) => store.ofIntent(subject.intentIds[0], call));
   assert.deepEqual(await grant(subject, 5), { nonce: 5, refillsGap: false });
 }
 
@@ -146,6 +158,7 @@ export function transactionStoreContract(
     on("keeps each account's nonces apart", keepsAccountsApart),
     on("throws store.constraint for an id in use and stores nothing", refusesUsedIds),
     on("lists one account's transactions by nonce, from a nonce up", listsByNonce),
+    on("lists one intent's transactions by step", listsByIntent),
     on("changes nothing on an aborted signal", refusesAborted),
     ...transactionProgressChecks(async () => harness.create()),
   ];

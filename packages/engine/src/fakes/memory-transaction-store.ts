@@ -175,6 +175,15 @@ function listOf(rows: MemoryRows, query: TransactionQuery): readonly Transaction
   );
 }
 
+function ofIntent(rows: MemoryRows, intent: Id<"int">): readonly TransactionRecord[] {
+  return structuredClone(
+    rows
+      .all()
+      .filter(({ intentId }) => intentId === intent)
+      .toSorted((left, right) => left.step - right.step || compareIds(left.id, right.id)),
+  );
+}
+
 /**
  * Creates an empty {@link MemoryTransactionStore}. It keeps every row until it is dropped, checks a
  * whole write before it changes anything, and gives nonces by the same rule as the SQLite store.
@@ -186,6 +195,7 @@ export function createMemoryTransactionStore(): MemoryTransactionStore {
     nextNonce: async (request, call) => memoryCall(call, () => nextNonceOf(rows, given, request)),
     saveSigned: async (transaction, call) => memoryCall(call, () => saveSigned(rows, transaction)),
     list: async (query, call) => memoryCall(call, () => listOf(rows, query)),
+    ofIntent: async (intent, call) => memoryCall(call, () => ofIntent(rows, intent)),
     recordSend: async (send, call) => memoryCall(call, () => recordSend(rows, send)),
     sends: async (id, call) => memoryCall(call, () => structuredClone(rows.answersOf(id))),
     recordReceipt: async (inclusion, call) =>

@@ -8,13 +8,19 @@ import {
   recordReorgTask,
   recordSendTask,
 } from "./transaction-progress-tasks.js";
-import { listTransactionsTask, nextNonceTask, saveSignedTask } from "./transaction-tasks.js";
+import {
+  intentTransactionsTask,
+  listTransactionsTask,
+  nextNonceTask,
+  saveSignedTask,
+} from "./transaction-tasks.js";
 
 /** Every task of the SQLite transaction store. */
 export const transactionTasks: readonly TaskRunner[] = [
   nextNonceTask,
   saveSignedTask,
   listTransactionsTask,
+  intentTransactionsTask,
   recordSendTask,
   listSendsTask,
   recordReceiptTask,
@@ -32,6 +38,7 @@ export function createSqliteTransactionStore(host: StoreHost): TransactionStore 
     nextNonce: bindTask(host, nextNonceTask),
     saveSigned: bindTask(host, saveSignedTask),
     list: bindTask(host, listTransactionsTask),
+    ofIntent: bindTask(host, intentTransactionsTask),
     recordSend: bindTask(host, recordSendTask),
     sends: bindTask(host, listSendsTask),
     recordReceipt: bindTask(host, recordReceiptTask),
