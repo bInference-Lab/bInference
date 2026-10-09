@@ -15,7 +15,7 @@ import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
-import { createExecuteConfirmed } from "../money-path/execute-confirmed.js";
+import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import {
   createVenueQuoteSource,
   type VenueQuoteSourceOptions,
@@ -36,6 +36,7 @@ import type {
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
+import { createFreezeHandlers, type FreezeHandlers } from "../safety/freeze-handlers.js";
 import {
   createRescueAddressHandlers,
   type RescueAddressHandlers,
@@ -66,13 +67,14 @@ export interface EngineHandlers
     SendLevelHandlers,
     AddressBookHandlers,
     RescueAddressHandlers,
+    FreezeHandlers,
     WalletHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
  * switch, the approval mode, the limits, the send level, the address book, the rescue address
- * change, the wallet list and the ledger, built from ports. A looser limit, send level or rescue
- * address waits 24 hours. It holds no I/O of its own; pushes leave through `publish`.
+ * change, the freeze, the wallet list and the ledger, built from ports. A looser limit, send level
+ * or rescue address waits 24 hours. It holds no I/O of its own; pushes leave through `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -190,10 +192,25 @@ function requoteOptions(
   return { stored: parts.stored, custody, wallets, host, simulator, prices, chains, clock };
 }
 
+// A confirmed paper intent fills in the paper portfolio; a live one goes to the executor.
+function executeOf(
+  options: EngineOptions,
+  parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
+): ExecuteConfirmed {
+  const { stored, paper } = parts;
+  const { prices, clock, executor } = options;
+  const fills = createPaperFills({ stored, positions: paper.positions, prices, clock });
+  return createExecuteConfirmed({ paper: fills, executor });
+}
+
 function intentParts(
   options: EngineOptions,
   paper: PaperParts,
-): { readonly handlers: IntentHandlers; readonly answer: AnswerCard } {
+): {
+  readonly handlers: IntentHandlers;
+  readonly answer: AnswerCard;
+  readonly stored: StoredIntents;
+} {
   const { stores, custody, host, chains, clock, ids } = options;
   const stored = createStoredIntents({
     intents: stores.intents,
@@ -202,25 +219,15 @@ function intentParts(
     random: options.random,
     publish: options.publish,
   });
-  const fills = createPaperFills({
-    stored,
-    positions: paper.positions,
-    prices: options.prices,
-    clock,
-  });
-  const execute = createExecuteConfirmed({ paper: fills, executor: options.executor });
+  const execute = executeOf(options, { stored, paper });
   const confirmations = createConfirmations({
     clock,
     store: stored,
     quotes: createVenueQuoteSource(requoteOptions(options, { stored, paper })),
     simulator: paper.simulator,
   });
-  const answer = createAnswerCard({
-    confirmations,
-    stored,
-    execute,
-    isLocked: options.isLocked,
-  });
+  const { isLocked } = options;
+  const answer = createAnswerCard({ confirmations, stored, execute, isLocked });
   const moneyPath = createMoneyPath({
     stored,
     agents: stores.agents,
@@ -238,7 +245,17 @@ function intentParts(
     clock,
     ids,
   });
-  return { answer, handlers: createIntentHandlers({ stored, moneyPath, answer, chains }) };
+  return {
+    answer,
+    stored,
+    handlers: createIntentHandlers({ stored, moneyPath, answer, chains }),
+  };
+}
+
+// The freeze of one agent or every agent.
+function safetyHandlers(options: EngineOptions, stored: StoredIntents): FreezeHandlers {
+  const { agents, intents } = options.stores;
+  return createFreezeHandlers({ ...options, stored, agents, intents });
 }
 
 /**
@@ -284,6 +301,7 @@ export function createEngine(given: EngineOptions): Engine {
         journal: settingsParts.journal,
         chains: options.chains,
       }),
+      ...safetyHandlers(options, intents.stored),
     },
     answer: intents.answer,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),

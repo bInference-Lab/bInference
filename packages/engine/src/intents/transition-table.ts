@@ -42,7 +42,8 @@ export interface TransitionRule {
   readonly to: IntentState;
 }
 
-const beforeSigning: readonly IntentState[] = [
+/** The states an intent leaves through `cancelled` while nothing of it is signed (spec 6). */
+export const statesBeforeSigning: readonly IntentState[] = [
   "proposed",
   "checked",
   "quoted",
@@ -93,7 +94,7 @@ export const transitionTable: TransitionTable = {
   deny_tapped: [{ from: ["awaiting_confirmation"], to: "denied", guard: pass }],
   card_timer_fired: [{ from: ["awaiting_confirmation"], to: "expired", guard: expireCard }],
   authorization_lapsed: [{ from: ["confirmed"], to: "expired", guard: lapseAuthorization }],
-  cancel_requested: [{ from: beforeSigning, to: "cancelled", guard: cancelIntent }],
+  cancel_requested: [{ from: statesBeforeSigning, to: "cancelled", guard: cancelIntent }],
   paper_fill_recorded: [{ from: ["confirmed"], to: "paper_filled", guard: fillOnPaper }],
   queue_took: [{ from: ["confirmed"], to: "executing", guard: takeIntoQueue }],
   steps_included: [{ from: ["executing"], to: "included", guard: pass }],

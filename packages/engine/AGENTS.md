@@ -134,6 +134,12 @@ Rules for this package:
   new address in every live wallet's ceiling through the `CeilingEditor` port at once and signs
   ahead the changes that leave the old or the new address out (decision 0110); `Engine.settle`
   sends the first once the change takes effect, a cancel the second.
+- A freeze (`src/safety/freeze-agents.ts`, `safety/freeze`) is one write of the intent store's
+  `freeze`: each agent marked frozen, keeping the time of an earlier freeze, and each unsigned
+  intent of theirs moved to `cancelled` by the state machine, a rescue excepted (decision 0099),
+  with the freeze's own ledger entries; a write another write beat is read and tried again. Each
+  newly frozen agent is announced with `notice.frozen`. The policy's `frozen` rule keeps every
+  later intent and auto order fill of the agent out.
 - The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
   then not again until a reading shows it back at or above that. It keeps that memory in a bounded
