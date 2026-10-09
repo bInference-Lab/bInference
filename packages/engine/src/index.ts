@@ -285,6 +285,7 @@ export type {
   TransactionStore,
   WalletFactsSource,
 } from "./ports.js";
+export type { SimulatedSteps } from "./simulation/simulated-steps.js";
 export type { EngineStores } from "./records/engine-stores.js";
 export { rowPageSchema, type RowPage } from "./records/row-page.js";
 export { isSha256Hex, sha256Hex, sha256HexSchema, type Sha256Hex } from "./records/sha256-hex.js";

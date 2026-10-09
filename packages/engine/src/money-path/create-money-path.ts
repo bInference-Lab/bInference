@@ -1,4 +1,4 @@
-import type { ChainRegistry, QuotedTrade, Signer } from "@binference/chain";
+import type { ChainRegistry, PriceSource, QuotedTrade, Signer } from "@binference/chain";
 import { BinferenceError, type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
@@ -9,6 +9,7 @@ import {
   quoteDocument,
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
+import type { SimulationFailure } from "../intents/intent-reason.js";
 import type { IntentProposerRef } from "../intents/intent-record.js";
 import type { IntentProposer } from "../intents/intent-status.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
@@ -18,13 +19,16 @@ import {
   type IntentStateMachine,
   type ProposalProblem,
 } from "../intents/state-machine.js";
-import type { PolicyCheck, PolicyPass } from "../policy/check-policy.js";
+import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
+import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, Simulator, WalletFactsSource } from "../ports.js";
+import { type SimulatedSteps, simulationViewOf } from "../simulation/simulated-steps.js";
 import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
+import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose-route.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
-import { buildSwap, type PlannedSwap } from "./plan-swap.js";
 import { policyFactsOf } from "./policy-facts-of.js";
+import { firstQuoteOf, quoteVenues } from "./quote-venues.js";
 import { registryRisk } from "./registry-risk.js";
 import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
 import { swapSubjectOf } from "./swap-trade.js";
@@ -37,10 +41,11 @@ export interface Proposer {
 
 /**
  * Steps 1 to 6 of the money path (ARCHITECTURE.md section 7): resolve, policy, quote and build,
- * risk, simulation, and the card or the auto mode's authorization. The venue quotes before the
- * policy decides, so the caps judge the trade at its quote's price; nothing is built before the
- * policy passes. An intent the auto mode confirms goes on to the execute step at once: it fills
- * on paper, or the executor takes it.
+ * risk, simulation, and the card or the auto mode's authorization. Every allowed venue quotes
+ * before the policy decides, so the caps judge the trade at the first venue's quote; nothing is
+ * built before the policy passes. The best quote then picks the route by simulation (decision
+ * 0107), and risk and the stored simulation follow that route. An intent the auto mode confirms
+ * goes on to the execute step at once: it fills on paper, or the executor takes it.
  */
 export interface MoneyPath {
   /**
@@ -63,6 +68,8 @@ export interface MoneyPathOptions {
   readonly custody: Signer;
   readonly wallets: WalletFactsSource;
   readonly policy: PolicyCheck;
+  /** The USD prices that value each route's network fee in the asset bought. */
+  readonly prices: PriceSource;
   readonly host: VenueHost;
   readonly simulator: Simulator;
   readonly chains: ChainRegistry;
@@ -127,15 +134,13 @@ function quotedTradeOf({ trade, quote }: TradeQuote): QuotedTrade {
   return { amountIn: trade.amountIn, expectedOut: quote.expectedOut };
 }
 
-// The venue's quote prices the trade's other token; a trade the venue could not quote is judged
-// without it, so its policy refusal still comes first.
-async function checkPolicy(
+// What the policy judges: the intent's subject on a venue, and the facts of its wallet.
+async function policyVerdict(
   run: Run,
-  snapshot: IntentSnapshot,
-  quote: QuoteOutcome,
-): Promise<Stepped<PolicyPass>> {
-  const { resolved, options } = run;
-  const { status } = snapshot.stored;
+  status: Pick<PolicySubject, "kind" | "isPaper" | "hasOutsideContent">,
+  priced: { readonly quote?: TradeQuote; readonly venue?: string },
+): Promise<PolicyVerdict> {
+  const { resolved, options, signal } = run;
   const subject = swapSubjectOf(resolved.swap, status);
   const facts = policyFactsOf({
     settings: resolved.settings,
@@ -143,9 +148,21 @@ async function checkPolicy(
     chain: resolved.chain.ref,
     nativeAsset: resolved.nativeAsset,
   });
-  const { signal } = run;
-  const call = quote.ok ? { signal, quote: quotedTradeOf(quote.value) } : { signal };
-  const verdict = await options.policy.check(subject, facts, call);
+  const call =
+    priced.quote === undefined ? { signal } : { signal, quote: quotedTradeOf(priced.quote) };
+  const judged = priced.venue === undefined ? subject : { ...subject, venue: priced.venue };
+  return options.policy.check(judged, facts, call);
+}
+
+// The first venue's quote prices the trade's other token; a trade no venue could quote is judged
+// without one, so its policy refusal still comes first.
+async function checkPolicy(
+  run: Run,
+  snapshot: IntentSnapshot,
+  quote: QuoteOutcome,
+): Promise<Stepped<PolicyPass>> {
+  const priced = quote.ok ? { quote: quote.value } : {};
+  const verdict = await policyVerdict(run, snapshot.stored.status, priced);
   if (!verdict.ok) {
     const refused = { type: "policy_refused", reason: verdict.error } as const;
     return { snapshot: await advance(run, snapshot, { trigger: refused }) };
@@ -156,24 +173,40 @@ async function checkPolicy(
     : { snapshot: checked };
 }
 
+// The best quote weighs every venue's quote; the policy judges again a route it did not price.
+function routeChoiceOf(
+  run: Run,
+  snapshot: IntentSnapshot,
+  quotes: readonly QuoteOutcome[],
+): RouteChoiceOptions {
+  const { resolved, options, signal } = run;
+  const first = firstQuoteOf(quotes);
+  const recheck = async (quoted: TradeQuote): Promise<PolicyVerdict> =>
+    policyVerdict(run, snapshot.stored.status, { quote: quoted, venue: quoted.trade.venue });
+  return {
+    swap: resolved.swap,
+    intent: snapshot.record.id,
+    host: options.host,
+    simulator: options.simulator,
+    prices: options.prices,
+    nativeAsset: resolved.nativeAsset,
+    feePerGasBase: resolved.facts.feePerGasNativeBase,
+    ...(first.ok ? { policy: { pricedVenue: first.value.trade.venue, recheck } } : {}),
+    signal,
+  };
+}
+
 async function build(
   run: Run,
   snapshot: IntentSnapshot,
-  quote: QuoteOutcome,
-): Promise<Stepped<PlannedSwap>> {
-  const { resolved, options } = run;
-  const planned = quote.ok
-    ? await buildSwap(resolved.swap, quote.value, {
-        host: options.host,
-        nativeAsset: resolved.nativeAsset,
-        signal: run.signal,
-      })
-    : quote;
-  if (!planned.ok) {
-    const failed = { type: "quote_failed", reason: planned.error } as const;
+  quotes: readonly QuoteOutcome[],
+): Promise<Stepped<ChosenRoute>> {
+  const chosen = await chooseRoute(quotes, routeChoiceOf(run, snapshot, quotes));
+  if (!chosen.ok) {
+    const failed = { type: "quote_failed", reason: chosen.error } as const;
     return { snapshot: await advance(run, snapshot, { trigger: failed }) };
   }
-  const { plan, built } = planned.value;
+  const { plan, built } = chosen.value.planned;
   const fields = {
     quote: quoteDocument.encode(built.quote),
     plan: planDocument.encode(built.steps),
@@ -181,35 +214,33 @@ async function build(
   const trigger = { type: "quote_built", quote: plan.terms } as const;
   const quoted = await advance(run, snapshot, { trigger, fields });
   return quoted.record.state === "quoted"
-    ? { snapshot: quoted, passed: planned.value }
+    ? { snapshot: quoted, passed: chosen.value }
     : { snapshot: quoted };
 }
 
+// The chosen route was simulated when the best quote weighed it; this step stores that run.
 async function simulate(
   run: Run,
   snapshot: IntentSnapshot,
-  planned: PlannedSwap,
+  simulation: Result<SimulatedSteps, SimulationFailure>,
 ): Promise<IntentSnapshot> {
-  const intent = snapshot.record.id;
-  const simulation = await run.options.simulator.simulate(intent, planned.built, {
-    signal: run.signal,
-  });
   if (!simulation.ok) {
     return advance(run, snapshot, {
       trigger: { type: "simulation_failed", reason: simulation.error },
     });
   }
-  const fields = { simulation: simulationDocument.encode(simulation.value) };
+  const fields = { simulation: simulationDocument.encode(simulationViewOf(simulation.value)) };
   return advance(run, snapshot, { trigger: { type: "simulation_matched" }, fields });
 }
 
 async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnapshot> {
-  const quote = await run.options.host.quote(run.resolved.swap.trade, { signal: run.signal });
-  const policy = await checkPolicy(run, proposed, quote);
+  const { host, clock } = run.options;
+  const quotes = await quoteVenues(run.resolved.swap, { host, clock, signal: run.signal });
+  const policy = await checkPolicy(run, proposed, firstQuoteOf(quotes));
   if (policy.passed === undefined) {
     return policy.snapshot;
   }
-  const quoted = await build(run, policy.snapshot, quote);
+  const quoted = await build(run, policy.snapshot, quotes);
   if (quoted.passed === undefined) {
     return quoted.snapshot;
   }
@@ -219,7 +250,7 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (assessed.record.state !== "assessed") {
     return assessed;
   }
-  const simulated = await simulate(run, assessed, quoted.passed);
+  const simulated = await simulate(run, assessed, quoted.passed.simulation);
   if (simulated.record.state !== "simulated") {
     return simulated;
   }
@@ -227,7 +258,7 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   // during the run asks at once.
   const trigger = authorizationCheckOf({
     settings: simulated.settings,
-    pass: policy.passed,
+    pass: quoted.passed.pass ?? policy.passed,
     wallet: run.resolved.facts,
     isLocked: run.options.isLocked() && !simulated.record.isPaper,
   });

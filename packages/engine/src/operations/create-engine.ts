@@ -2,10 +2,13 @@ import type { Amount, ChainRegistry, PriceSource, Signer } from "@binference/cha
 import type { Clock, IdSource, Random } from "@binference/core";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
-import { createStoredIntents } from "../intents/create-stored-intents.js";
+import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
 import { createExecuteConfirmed } from "../money-path/execute-confirmed.js";
-import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
+import {
+  createVenueQuoteSource,
+  type VenueQuoteSourceOptions,
+} from "../money-path/venue-quote-source.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfolio.js";
 import { withPaperSimulation } from "../paper/paper-simulation.js";
@@ -133,6 +136,16 @@ function settingsHandlers(
   return { ...portfolio, ...modes, ...wallets };
 }
 
+// A re-quote at a tap weighs every venue as the money path does, on the paper balances.
+function requoteOptions(
+  options: EngineOptions,
+  parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
+): VenueQuoteSourceOptions {
+  const { custody, host, chains, clock, prices } = options;
+  const { wallets, simulator } = parts.paper;
+  return { stored: parts.stored, custody, wallets, host, simulator, prices, chains, clock };
+}
+
 function intentParts(
   options: EngineOptions,
   paper: PaperParts,
@@ -155,7 +168,7 @@ function intentParts(
   const confirmations = createConfirmations({
     clock,
     store: stored,
-    quotes: createVenueQuoteSource({ stored, custody, host, chains }),
+    quotes: createVenueQuoteSource(requoteOptions(options, { stored, paper })),
     simulator: paper.simulator,
   });
   const answer = createAnswerCard({
@@ -170,6 +183,7 @@ function intentParts(
     custody,
     wallets: paper.wallets,
     policy: createPolicyCheck({ prices: options.prices, clock }),
+    prices: options.prices,
     host,
     simulator: paper.simulator,
     chains,

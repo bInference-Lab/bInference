@@ -3,6 +3,7 @@ import { createFakeVenue } from "@binference/chain/testing";
 import { err, type Id, idSchema } from "@binference/core";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import {
   testAgent,
   testCoin,
@@ -16,8 +17,12 @@ import {
   type TestEngine,
   testCall,
   testCallers,
+  testChains,
 } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
+import { otherVenue, otherVenueId } from "./test-routes.js";
+
+const noRefusal = (): undefined => undefined;
 
 const live = { signal: new AbortController().signal };
 const otherWallet = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-000000000009");
@@ -96,6 +101,20 @@ function losingFirstMove(store: IntentStore): IntentStore {
       return await Promise.resolve(err("stale"));
     },
   };
+}
+
+// An agent that may trade on the fake venue first and the other venue second, which quotes at
+// `perMillion` base units out per million in.
+async function twoVenueEngine(
+  perMillion: bigint,
+  simulator = createQuoteSimulator(noRefusal),
+): Promise<TestEngine> {
+  return startTestEngine({
+    agent: { limits: { ...testLimits, venues: ["fake-swap", otherVenueId] } },
+    chains: testChains([otherVenueId]),
+    venues: [createFakeVenue(), otherVenue({ numerator: perMillion, denominator: 1_000_000n })],
+    simulator,
+  });
 }
 
 describe("the money path", () => {
@@ -300,5 +319,33 @@ describe("the money path", () => {
     await expect(
       test.engine.handlers["intent/propose"](testCall(testSwap(), stranger)),
     ).resolves.toStrictEqual(err("auth.scope"));
+  });
+
+  it("takes the route the simulation proves best for a taxed token, not the higher gross quote", async () => {
+    // The fake venue quotes 2,000,000 before the token's 0.3% transfer tax; the other quotes
+    // 1,996,000 that arrive whole.
+    const taxed = createQuoteSimulator(
+      noRefusal,
+      new Map([["fake-swap", { keptBps: 9_970n, gasUsed: 0n }]]),
+    );
+    const view = await propose(await twoVenueEngine(1_996_000n, taxed));
+    expect(view).toMatchObject({
+      state: "awaiting_confirmation",
+      quote: {
+        route: [{ venue: otherVenueId, shareBps: 10_000 }],
+        expectedOut: { asset: testToken, base: 1_996_000n },
+      },
+      simulation: { received: [{ asset: testToken, base: 1_996_000n }] },
+    });
+  });
+
+  it("asks the policy again about a better route on another venue, and keeps the first on a refusal", async () => {
+    // Selling 0.825 tokens: the fake venue gives 1.65 coins, $990; the other 1.69125 coins,
+    // $1,014.75, above the $1,000 cap.
+    const refused = await propose(await twoVenueEngine(2_050_000n), tokenSale(825n * 10n ** 15n));
+    expect(refused.quote?.route).toStrictEqual([{ venue: "fake-swap", shareBps: 10_000 }]);
+    // At 1.6583 coins, $994.98, the other venue passes and its better route wins.
+    const passed = await propose(await twoVenueEngine(2_010_000n), tokenSale(825n * 10n ** 15n));
+    expect(passed.quote?.route).toStrictEqual([{ venue: otherVenueId, shareBps: 10_000 }]);
   });
 });

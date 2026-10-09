@@ -34,7 +34,7 @@ describe("quote simulator", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("reports the quote's input as spent and its expected output as received", async () => {
+  it("reports the quote's input as spent, its expected output as received, and no gas", async () => {
     const simulator = createQuoteSimulator(() => undefined);
     await expect(
       simulator.simulate(matching, built, { signal: new AbortController().signal }),
@@ -44,7 +44,23 @@ describe("quote simulator", () => {
         spent: [built.quote.amountIn],
         received: [built.quote.expectedOut],
         simulatedAt: testNowMs,
+        gasUsed: 0n,
       },
+    });
+  });
+
+  it("measures a venue's route by its outcome: the tax it takes and the gas it uses", async () => {
+    const routes = new Map([["fake-swap", { keptBps: 9_970n, gasUsed: 150_000n }]]);
+    const simulator = createQuoteSimulator(() => undefined, routes);
+    const taxed = {
+      ...built,
+      quote: { ...built.quote, route: [{ venue: "fake-swap", shareBps: 10_000 as never }] },
+    };
+    await expect(
+      simulator.simulate(matching, taxed, { signal: new AbortController().signal }),
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { received: [{ asset: testToken, base: 1_994_000n }], gasUsed: 150_000n },
     });
   });
 });

@@ -57,20 +57,9 @@ function plannedOf(
 }
 
 /**
- * Quotes and builds a swap through the venue host, which checks every step it builds. A refusal
- * is the check reason the intent stores with `failed_check`.
- */
-export async function planSwap(
-  swap: SwapTrade,
-  options: PlanSwapOptions,
-): Promise<Result<PlannedSwap, QuoteFailure>> {
-  const planned = await options.host.plan(swap.trade, { signal: options.signal });
-  return plannedOf(swap, planned, options.nativeAsset);
-}
-
-/**
- * Builds a swap the venue host already quoted, from that quote, as {@link planSwap} does. The
- * money path quotes first, so the policy prices the trade from its quote before anything is built.
+ * Builds a swap the venue host already quoted, from that quote, and checks every step it builds;
+ * a refusal is the check reason the intent stores with `failed_check`. The money path quotes
+ * first, so the policy prices the trade from its quote before anything is built.
  */
 export async function buildSwap(
   swap: SwapTrade,

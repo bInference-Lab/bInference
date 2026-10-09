@@ -9,11 +9,11 @@ import {
   type TxSimulator,
 } from "@binference/chain";
 import { type Clock, err, ok, type Result } from "@binference/core";
-import type { SimulationView } from "@binference/protocol";
 import type { BuiltQuote } from "../confirmations/stored-intent.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 import type { Simulator } from "../ports.js";
 import { checkEffects, simulationFailureOf } from "./check-effects.js";
+import type { SimulatedSteps } from "./simulated-steps.js";
 
 /** What the simulation check runs on. */
 export interface SimulationCheckOptions {
@@ -55,7 +55,7 @@ async function check(
   built: BuiltQuote,
   options: SimulationCheckOptions,
   call: SimulationOptions,
-): Promise<Result<SimulationView, SimulationFailure>> {
+): Promise<Result<SimulatedSteps, SimulationFailure>> {
   call.signal.throwIfAborted();
   const plan = readPlan(built.steps, options.chains);
   if (plan === undefined) {
@@ -71,13 +71,14 @@ async function check(
     return err(simulationFailureOf(checked.error));
   }
   const { spent, received } = checked.value;
-  return ok({ spent: [spent], received: [received], simulatedAt: options.clock.now() });
+  const gasUsed = steps.reduce((total, step) => total + step.gasUsed, 0n);
+  return ok({ spent: [spent], received: [received], simulatedAt: options.clock.now(), gasUsed });
 }
 
 /**
  * Creates the simulate step of the money path as the engine's `Simulator`: it runs a quote's
- * steps unsent through the chain's `TxSimulator`, with the balances it is given, and holds what
- * they do to the wallet to the quote's terms (see {@link checkEffects}). A plan it cannot read,
+ * steps unsent through the chain's `TxSimulator`, with the balances it is given, holds what they
+ * do to the wallet to the quote's terms (see {@link checkEffects}), and adds up their gas. A plan it cannot read,
  * with no step, a step from another sender or a draft the family cannot read, is `effects_differ`
  * and runs nothing. When the chain cannot simulate, it rejects and the intent stays where it is.
  */

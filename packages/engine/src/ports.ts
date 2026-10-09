@@ -1,6 +1,5 @@
 import type { AssetRef, ChainRef, RelayAnswer, SimulationOptions } from "@binference/chain";
 import type { Id, Result } from "@binference/core";
-import type { SimulationView } from "@binference/protocol";
 import type { DeviceRecord } from "./access/device-record.js";
 import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
 import type { TokenRecord } from "./access/token-record.js";
@@ -42,6 +41,7 @@ import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/
 import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
+import type { SimulatedSteps } from "./simulation/simulated-steps.js";
 import type { NonceGrant, NonceRequest } from "./wallet-queue/nonce-grant.js";
 import type {
   TransactionInclusion,
@@ -107,15 +107,15 @@ export interface QuoteSource {
  */
 export interface Simulator {
   /**
-   * The wallet's balance changes, or why the steps fail. The options' balances, such as a paper
-   * intent's, replace what the wallet holds on the chain for this run. Rejects once the signal
-   * aborts.
+   * The wallet's balance changes and the gas the steps used, or why the steps fail. The options'
+   * balances, such as a paper intent's, replace what the wallet holds on the chain for this run.
+   * Rejects once the signal aborts.
    */
   simulate(
     intent: Id<"int">,
     built: BuiltQuote,
     options: SimulationOptions,
-  ): Promise<Result<SimulationView, SimulationFailure>>;
+  ): Promise<Result<SimulatedSteps, SimulationFailure>>;
 }
 
 /**

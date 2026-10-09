@@ -8,7 +8,10 @@ import { assetInfoOf } from "./asset-infos.js";
 
 /** A swap request resolved for one wallet: the trade the venue host plans, and its slippage. */
 export interface SwapTrade {
+  /** The trade on the agent's first allowed venue. */
   readonly trade: VenueTrade;
+  /** Every venue the agent allows, in its order; the best quote asks each one. */
+  readonly venues: readonly string[];
   /** The slippage the request asked for; absent when it leaves it to the agent's maximum. */
   readonly slippage?: RequestedSlippage;
 }
@@ -41,8 +44,8 @@ export function swapSlippageBps(
 
 /**
  * Resolves a swap of an exact amount into the trade the venue host plans: the wallet's account
- * pays and receives, on the agent's first allowed venue, with the slippage the request asks or
- * the agent's maximum for the pair. A request the money path cannot route yet, such as another
+ * pays and receives, on the agent's first allowed venue and then the others in order, with the
+ * slippage the request asks or the agent's maximum for the pair. A request the money path cannot route yet, such as another
  * kind, a share of a balance, or an agent with no venue, is `no_route`.
  */
 export function swapTradeOf(
@@ -62,10 +65,11 @@ export function swapTradeOf(
     assetOut: request.to,
     maxSlippageBps: swapSlippageBps(request, context.limits, context.chains),
   };
+  const { venues } = context.limits;
   return ok(
     asked === undefined
-      ? { trade }
-      : { trade, slippage: { bps: asked, isRegistryPair: isRegistry } },
+      ? { trade, venues }
+      : { trade, venues, slippage: { bps: asked, isRegistryPair: isRegistry } },
   );
 }
 

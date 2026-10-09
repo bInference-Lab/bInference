@@ -404,9 +404,10 @@ hash and nonce and never signed again, and the intent goes on to `executing` or 
 - OKX's DEX aggregator is the second quote and the fallback once the owner adds an OKX key
   ([decision 0105](DECISIONS.md#d0105)). PancakeSwap's pools are reached through the aggregators,
   never through PancakeSwap's SDK.
-- Quotes are compared net of transfer tax and gas, and the simulation step decides: aggregators
-  differ in whether a quote is net of tax, and the tax sources disagreed on 4 of 10 taxed tokens,
-  so tax is what our own simulation measures.
+- Quotes are compared net of transfer tax and gas, and the simulation step decides
+  ([decision 0107](DECISIONS.md#d0107)): aggregators differ in whether a quote is net of tax, and
+  the tax sources disagreed on 4 of 10 taxed tokens, so tax is what our own simulation measures.
+  Every allowed venue quotes at once; one silent after 3 s is skipped.
 - One Infinity hook allowlist covers every route, aggregators included: a route through a pool whose
   hook is not on the list is dropped and the next quote is used. An aggregator whose answer names no
   hooks, such as OKX, routes through no hooked pool at all.

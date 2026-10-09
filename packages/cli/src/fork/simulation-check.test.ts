@@ -6,9 +6,9 @@ import {
   evmAccountRef,
 } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
-import { bpsSchema, idSchema } from "@binference/core";
+import { bpsSchema, idSchema, type Result } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
-import type { BuiltQuote, Simulator } from "@binference/engine";
+import type { BuiltQuote, SimulatedSteps, Simulator } from "@binference/engine";
 import { checkEffects, createSimulationCheck } from "@binference/engine/simulation";
 import {
   type Address,
@@ -162,8 +162,16 @@ function boundsOf(bench: Bench, built: BuiltQuote) {
   return { wallet, amountIn, minOut, approvals: [], family: chain.value.family };
 }
 
+// The gas a simulation that passed measured; a refusal fails the test.
+function gasOf(simulated: Result<SimulatedSteps, string>): bigint {
+  if (!simulated.ok) {
+    throw new Error(`Expected a simulation, got ${simulated.error}.`);
+  }
+  return simulated.value.gasUsed;
+}
+
 describe("simulation check on a BSC fork", () => {
-  it("passes a PancakeSwap buy that spends exactly the input and receives the quote", async ({
+  it("passes a PancakeSwap buy that spends exactly the input, receives the quote and uses gas", async ({
     signal,
   }) =>
     withFork(signal, async (fork) => {
@@ -178,8 +186,10 @@ describe("simulation check on a BSC fork", () => {
           spent: [built.quote.amountIn],
           received: [built.quote.expectedOut],
           simulatedAt: nowMs,
+          gasUsed: gasOf(simulated),
         },
       });
+      expect(gasOf(simulated)).toBeGreaterThan(21_000n);
     }));
 
   it("passes a PancakeSwap sale with its exact approval, which the swap spends to zero", async ({

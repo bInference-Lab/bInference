@@ -9,6 +9,7 @@ import {
 } from "../intents/state-machine.js";
 import type { TransitionProblem } from "../intents/transition-guard.js";
 import type { ConfirmationStore, QuoteSource, Simulator } from "../ports.js";
+import { simulationViewOf } from "../simulation/simulated-steps.js";
 import type { Answerer, CardAnswer } from "./card-answer.js";
 import type { IntentWrite, Requote, StoredIntent } from "./stored-intent.js";
 
@@ -178,7 +179,8 @@ async function requoteIntent(
   if (!simulation.ok) {
     return { verdict: "requote_failed", reason: simulation.error };
   }
-  return { verdict: "requoted", requote: { ...built.value, simulation: simulation.value } };
+  const requote = { ...built.value, simulation: simulationViewOf(simulation.value) };
+  return { verdict: "requoted", requote };
 }
 
 function requoteTrigger(answer: CardAnswer, stored: StoredIntent, requote: Requote): IntentTrigger {

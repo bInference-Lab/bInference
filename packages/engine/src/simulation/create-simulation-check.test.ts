@@ -87,12 +87,17 @@ describe("simulation check", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("gives the wallet's net changes when the simulation was run", async () => {
+  it("gives the wallet's net changes and the gas of every step when the simulation was run", async () => {
     await expect(
       setup().check.simulate(intent, built([approve, swap]), live),
     ).resolves.toStrictEqual({
       ok: true,
-      value: { spent: [tokens(1_000_000n)], received: [coins(2_000_000n)], simulatedAt: testNowMs },
+      value: {
+        spent: [tokens(1_000_000n)],
+        received: [coins(2_000_000n)],
+        simulatedAt: testNowMs,
+        gasUsed: 200_000n,
+      },
     });
   });
 

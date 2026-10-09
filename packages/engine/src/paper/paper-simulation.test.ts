@@ -81,7 +81,7 @@ async function setup() {
   const recording: Simulator = {
     simulate: async (_intent, _built, options) => {
       seen.push(options);
-      return await Promise.resolve(ok(simulated));
+      return await Promise.resolve(ok({ ...simulated, gasUsed: 0n }));
     },
   };
   const simulator = withPaperSimulation(recording, { portfolio, intents: stores.intents, chains });
@@ -121,7 +121,7 @@ describe("simulation with paper balances", () => {
   it("runs a paper trade with the paper balances of the chain's coin and the asset it spends", async () => {
     const { simulator, seen } = await setup();
     await expect(simulator.simulate(paperIntent, built(testToken), live)).resolves.toStrictEqual(
-      ok(simulated),
+      ok({ ...simulated, gasUsed: 0n }),
     );
     expect(seen.map((options) => options.balances)).toStrictEqual([
       [

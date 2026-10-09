@@ -62,9 +62,11 @@ Rules for this package:
   machine decided it and pushes its events. The confirmations write through them as their
   `ConfirmationStore`; nothing else calls `IntentStore.create` or `transition`.
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
-  reports each outcome to the state machine as a trigger. Only the venue's quote runs before the
-  policy, so the caps price a token without a feed from it; the venue builds nothing until the
-  policy passes. A request it cannot route yet is a protocol error before anything is stored; every
+  reports each outcome to the state machine as a trigger. Only the venues' quotes run before the
+  policy, which prices a token without a feed from the first venue's quote; no venue builds until
+  the policy passes. The best quote (`choose-route.ts`, decision 0107) then builds and simulates
+  every quote and ranks the plans in `rank-routes.ts` by what arrives net of the network fee; a
+  change to the ranking changes its case in `rank-routes.property.test.ts`. A request it cannot route yet is a protocol error before anything is stored; every
   refusal after that is the intent's state. What it reads about wallets outside the store comes
   through `WalletFactsSource`, and a fact it cannot read fails closed (send level 3, no address
   book).

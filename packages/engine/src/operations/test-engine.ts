@@ -37,7 +37,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
-import type { AgentStore, Executor, IntentStore, PositionStore } from "../ports.js";
+import type { AgentStore, Executor, IntentStore, PositionStore, Simulator } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine } from "./create-engine.js";
@@ -68,6 +68,10 @@ export interface TestEngineOptions {
   readonly venues?: readonly Venue[];
   /** Why the simulator refuses every intent; it reports the quote's own amounts when absent. */
   readonly refusal?: SimulationFailure;
+  /** Simulates instead of the quote simulator, such as one that measures a transfer tax. */
+  readonly simulator?: Simulator;
+  /** The chain registry; the fake chain with its one venue contract when absent. */
+  readonly chains?: ChainRegistry;
   readonly facts?: Partial<WalletFacts>;
   /** The agent's wallets in the facts source; the test wallet alone when absent. */
   readonly wallets?: readonly Id<"wal">[];
@@ -98,7 +102,8 @@ export interface TestEngine {
   readonly pushes: readonly EnginePush[];
 }
 
-const defaultFacts: WalletFacts = {
+/** What the fake wallet facts say of the test wallet unless a test changes them. */
+export const testFacts: WalletFacts = {
   nativeBalanceBase: 10n ** 18n,
   ceilingPerTxNativeBase: 10n ** 18n,
   feePerGasNativeBase: 1_000_000_000n,
@@ -112,10 +117,17 @@ const testPaperBalances: readonly Amount[] = [{ asset: testCoin, base: 10n ** 18
 /** The test wallet's account on the fake chain. */
 export const testAccount: AccountRef = accountRefSchema.parse("fake:1:0x0000000c");
 
-/** The chain registry of the fake chain, with its family and signing scheme. */
-export function testChains(): ChainRegistry {
+/**
+ * The chain registry of the fake chain, with its family and signing scheme, and a router at
+ * `0x0000000d` for each venue of `otherVenues` beside the fake venue's.
+ */
+export function testChains(otherVenues: readonly string[] = []): ChainRegistry {
+  const fake = createFakeChainDefinition();
+  const routers = fake.contracts.flatMap((router) =>
+    otherVenues.map((venue) => ({ ...router, venue, address: "0x0000000d" })),
+  );
   return createChainRegistry({
-    chains: [createFakeChainDefinition()],
+    chains: [{ ...fake, contracts: [...fake.contracts, ...routers] }],
     families: [createFakeFamily()],
     signingSchemes: [createFakeSigningScheme()],
   });
@@ -142,7 +154,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   const clock = createManualClock(testNowMs);
   const stores = createMemoryEngineStores();
   const custody = createFakeSigner(new Map([[testWallet, testAccount]]));
-  const chains = testChains();
+  const chains = options.chains ?? testChains();
   const venues = options.venues ?? [createFakeVenue()];
   const pushes: EnginePush[] = [];
   const positions = createMemoryPositionStore();
@@ -155,11 +167,11 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
       options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
     ),
     wallets: createFakeWalletFacts(new Map([[testAgent, options.wallets ?? [testWallet]]]), {
-      ...defaultFacts,
+      ...testFacts,
       ...options.facts,
     }),
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
-    simulator: createQuoteSimulator(() => options.refusal),
+    simulator: options.simulator ?? createQuoteSimulator(() => options.refusal),
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
     isLocked: options.isLocked ?? (() => false),
