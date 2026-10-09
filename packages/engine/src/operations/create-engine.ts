@@ -8,6 +8,7 @@ import { type ApprovalHandlers, createApprovalHandlers } from "../approval/appro
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
+import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
 import { createExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import {
@@ -47,6 +48,7 @@ export interface EngineHandlers
     PortfolioHandlers,
     AgentModeHandlers,
     ApprovalHandlers,
+    LimitHandlers,
     SendLevelHandlers,
     AddressBookHandlers,
     RescueAddressHandlers,
@@ -54,9 +56,9 @@ export interface EngineHandlers
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
- * switch, the approval mode, the send level, the address book, the rescue address change, the
- * wallet list and the ledger, built from ports. It holds no I/O of its own; pushes leave through
- * `publish`.
+ * switch, the approval mode, the limits, the send level, the address book, the rescue address
+ * change, the wallet list and the ledger, built from ports. It holds no I/O of its own; pushes
+ * leave through `publish`.
  */
 export interface Engine {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
@@ -237,6 +239,7 @@ export function createEngine(options: EngineOptions): Engine {
       ...createLedgerHandlers(options.stores.ledger),
       ...settingsHandlers(options, paper),
       ...createApprovalHandlers(settingsParts),
+      ...createLimitHandlers(settingsParts),
       ...createSendLevelHandlers(settingsParts),
       ...createAddressBookHandlers(settingsParts),
       ...createRescueAddressHandlers({
