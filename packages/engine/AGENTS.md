@@ -152,6 +152,9 @@ Rules for this package:
   hash binds every move and the wallet that signs it; each wallet's sends are simulated, and a
   move that would not run as planned is left out. While a rescue has not ended, `safety/rescue`
   answers that one. A confirmed rescue is announced with `notice.rescue`.
+- `safety/status` (`src/safety/safety-status-handlers.ts`) reads, for any surface with `read`:
+  whether anything is frozen, the install's freeze, each frozen agent not archived with its time,
+  the rescue that has not ended, and the rescue address in effect with a change that waits.
 - The executor runs a confirmed rescue (`src/executor/execute-rescue.ts`) wallet by wallet, each
   on its own queue, each step a `send` its move's wallet signs to the address the card confirmed,
   which must still be the rescue address in effect. A failed step is tried again up to three

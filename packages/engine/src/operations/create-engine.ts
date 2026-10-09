@@ -36,13 +36,12 @@ import type {
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
-import { createFreezeHandlers, type FreezeHandlers } from "../safety/freeze-handlers.js";
 import {
   createRescueAddressHandlers,
   type RescueAddressHandlers,
 } from "../safety/rescue-address-handlers.js";
 import { settleRescueCeilings } from "../safety/rescue-ceilings.js";
-import { createRescueHandlers, type RescueHandlers } from "../safety/rescue-handlers.js";
+import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
 import {
   createSendLevelHandlers,
   type SendLevelHandlers,
@@ -68,8 +67,7 @@ export interface EngineHandlers
     SendLevelHandlers,
     AddressBookHandlers,
     RescueAddressHandlers,
-    FreezeHandlers,
-    RescueHandlers,
+    SafetyHandlers,
     WalletHandlers {}
 
 /**
@@ -256,16 +254,12 @@ function intentParts(
   };
 }
 
-// The freeze, and the rescue, which reads every wallet's live balances, never paper ones
-// (decision 0100).
-function safetyHandlers(
-  options: EngineOptions,
-  stored: StoredIntents,
-): FreezeHandlers & RescueHandlers {
+// The freeze, the safety status and the rescue, which reads every wallet's live balances, never
+// paper ones (decision 0100).
+function safetyHandlers(options: EngineOptions, stored: StoredIntents): SafetyHandlers {
   const { stores, clock } = options;
   const { agents, intents, install } = stores;
-  const freeze = createFreezeHandlers({ ...options, stored, agents, intents, install });
-  const rescue = createRescueHandlers({
+  return createSafetyHandlers({
     ...options,
     stored,
     intents,
@@ -274,7 +268,6 @@ function safetyHandlers(
     simulator: options.chainSimulator,
     policy: createPolicyCheck({ prices: options.prices, clock }),
   });
-  return { ...freeze, ...rescue };
 }
 
 /**
