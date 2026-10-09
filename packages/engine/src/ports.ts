@@ -193,12 +193,12 @@ export interface IntentStore {
     options: StoreCall,
   ): Promise<Result<IntentCommit, "not_found" | "stale">>;
   /**
-   * Writes a freeze all or nothing: each agent marked frozen at the write's time under the agent
-   * row's version it names, which then rises by one, the install too for a whole-install freeze,
-   * each intent's move under its own version, and the freeze's ledger entries. An agent or an
-   * install frozen before keeps its first time. An unknown agent or intent is `not_found`, and a
-   * row at another version `stale`; either writes nothing. A move's card write that would fail
-   * throws and writes nothing.
+   * Writes a freeze or an unfreeze all or nothing: each agent marked frozen at the write's time,
+   * or unfrozen, under the agent row's version it names, which then rises by one, the install too
+   * when the write covers it, each intent's move under its own version, and the write's ledger
+   * entries. An agent or an install frozen before a freeze keeps its first time. An unknown agent
+   * or intent is `not_found`, and a row at another version `stale`; either writes nothing. A
+   * move's card write that would fail throws and writes nothing.
    */
   freeze(freeze: FreezeWrite, options: StoreCall): Promise<FreezeOutcome>;
   /** Intents in the query's states, the least recently changed first. */

@@ -9,6 +9,7 @@ import {
 } from "../install/rescue-record.js";
 import { cancelRescue, changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { InstallStore } from "../ports.js";
+import type { FreezeChange } from "./memory-agent-store.js";
 import { constraintFault, memoryCall } from "./memory-call.js";
 
 /** What the fake holds: the install's facts and its id. */
@@ -128,8 +129,11 @@ function rescueChange(
 export interface MemoryInstallStore extends InstallStore {
   /** Adds a wallet as if a setup had stored it; wallets stay oldest first. */
   addWallet(wallet: WalletRecord): void;
-  /** Marks the install frozen at `atMs` inside another store's write, keeping an earlier time. */
-  freezeNow(atMs: number): void;
+  /**
+   * Marks the install frozen at `atMs` inside another store's write, keeping an earlier time, or
+   * clears its freeze.
+   */
+  freezeNow(change: FreezeChange): void;
   /** When the whole install was frozen, or `undefined` while it is not. */
   frozenAt(): number | undefined;
 }
@@ -156,8 +160,10 @@ export function createMemoryInstallStore(): MemoryInstallStore {
         held.state = { ...held.state, installId };
         return installId;
       }),
-    freezeNow(atMs) {
-      held.state = { ...held.state, frozenAtMs: held.state.frozenAtMs ?? atMs };
+    freezeNow({ atMs, isFrozen }) {
+      const { frozenAtMs, ...rest } = held.state;
+      const at = isFrozen ? (frozenAtMs ?? atMs) : undefined;
+      held.state = { ...rest, ...(at === undefined ? {} : { frozenAtMs: at }) };
     },
     frozenAt: () => held.state.frozenAtMs,
     read: async (call) => memoryCall(call, () => structuredClone(factsOf(held.state))),

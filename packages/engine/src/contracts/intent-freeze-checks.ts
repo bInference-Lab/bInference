@@ -48,6 +48,7 @@ function freezeOf(subject: IntentStoreSubject, agentVersion = 0): FreezeWrite {
   });
   return {
     atMs: frozenAtMs,
+    isFrozen: true,
     agents: [{ agentId: subject.agentId, expectedVersion: agentVersion }],
     moves: [
       cancel(1, 0),
@@ -160,7 +161,14 @@ export async function freezesTheWholeInstall(subject: IntentStoreSubject): Promi
   assert.ok((await store.freeze({ ...freezeOf(subject), moves: [] }, live())).ok);
   assert.equal((await install.read(live())).frozenAtMs, undefined);
   assert.equal((await createdAt(subject, 9, frozenAtMs + 1)).frozenAtMs, undefined);
-  const whole = { atMs: frozenAtMs + 2, agents: [], moves: [], ledger: [], isWholeInstall: true };
+  const whole = {
+    atMs: frozenAtMs + 2,
+    isFrozen: true,
+    agents: [],
+    moves: [],
+    ledger: [],
+    isWholeInstall: true,
+  };
   assert.ok((await store.freeze(whole, live())).ok);
   assert.ok((await store.freeze({ ...whole, atMs: frozenAtMs + 3 }, live())).ok);
   assert.equal((await install.read(live())).frozenAtMs, frozenAtMs + 2);
@@ -172,4 +180,37 @@ export async function freezesTheWholeInstall(subject: IntentStoreSubject): Promi
     [subject.agentId, fixtureId("agt", 9), fixtureId("agt", 10)].map((id) => frozen.get(id)),
     [frozenAtMs, undefined, frozenAtMs + 4],
   );
+}
+
+/**
+ * An unfreeze of the whole install unfreezes its agents and clears the install's freeze in one
+ * write, its entries last; an agent created after it starts unfrozen.
+ */
+export async function unfreezesInOneWrite(subject: IntentStoreSubject): Promise<void> {
+  const { store, install, ledger } = subject;
+  const whole = { ...freezeOf(subject), moves: [], isWholeInstall: true };
+  assert.ok((await store.freeze(whole, live())).ok);
+  const entry = { ...freezeEntry(subject, 2), atMs: frozenAtMs + 1, kind: "unfreeze" };
+  const lift = {
+    ...whole,
+    atMs: frozenAtMs + 1,
+    isFrozen: false,
+    agents: [{ agentId: subject.agentId, expectedVersion: 1 }],
+    ledger: [entry],
+  };
+  const lifted = await store.freeze(lift, live());
+  assert.ok(lifted.ok);
+  assert.deepEqual(
+    lifted.value.agents.map(({ frozenAtMs: at, changedAtMs, version }) => [
+      at,
+      changedAtMs,
+      version,
+    ]),
+    [[undefined, frozenAtMs + 1, 2]],
+  );
+  const stored = await agentOf(subject);
+  assert.deepEqual([stored?.frozenAtMs, stored?.version], [undefined, 2]);
+  assert.equal((await install.read(live())).frozenAtMs, undefined);
+  assert.equal((await ledger.last(live()))?.kind, "unfreeze");
+  assert.equal((await createdAt(subject, 9, frozenAtMs + 2)).frozenAtMs, undefined);
 }

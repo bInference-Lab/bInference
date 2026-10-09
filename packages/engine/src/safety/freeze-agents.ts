@@ -186,7 +186,7 @@ function writeOf(
   const entries = unfrozen.map((agent) => freezeEntry(options, agent, stamp));
   const marksInstall = isWholeInstall && plan.installAtMs === undefined;
   const ledger = marksInstall ? [...entries, freezeEntry(options, undefined, stamp)] : entries;
-  return { atMs, agents, isWholeInstall, moves, ledger };
+  return { atMs, isFrozen: true, agents, isWholeInstall, moves, ledger };
 }
 
 function announce(

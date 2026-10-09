@@ -28,28 +28,36 @@ export const agentFreezeSchema: z.ZodType<AgentFreeze> = z.strictObject({
 });
 
 /**
- * One freeze, written all or nothing (ARCHITECTURE.md section 11): each agent marked frozen at
- * `atMs`, the install too for a freeze of the whole install, each intent's move to `cancelled`
- * with its event, ledger entry and card closing, and the freeze's own ledger entries.
+ * One freeze or unfreeze, written all or nothing (ARCHITECTURE.md section 11, decision 0128): each
+ * agent marked frozen at `atMs`, or unfrozen, the install too when the write covers the whole
+ * install, each intent's move with its event, ledger entry and card writes, and the write's own
+ * ledger entries.
  */
 export interface FreezeWrite {
   readonly atMs: number;
-  /** The agents the freeze marks; one already frozen keeps the time it was frozen first. */
+  /** Whether the write freezes, or with `false` lifts a freeze: an unfreeze. */
+  readonly isFrozen: boolean;
+  /** The agents the write marks; one frozen before a freeze keeps the time it was frozen first. */
   readonly agents: readonly AgentFreeze[];
   /**
-   * Whether the freeze covers the whole install: it also marks the install frozen, keeping the
-   * time of an earlier freeze, and every agent created later starts frozen.
+   * Whether the write covers the whole install: a freeze also marks the install frozen, keeping
+   * the time of an earlier freeze, so every agent created later starts frozen; an unfreeze clears
+   * the install's freeze.
    */
   readonly isWholeInstall: boolean;
-  /** The moves of the agents' unsigned intents to `cancelled`. */
+  /**
+   * A freeze's moves of the agents' unsigned intents to `cancelled`, or an unfreeze's move of its
+   * own intent to `reconciled`.
+   */
   readonly moves: readonly IntentChange[];
-  /** One `freeze` entry for each agent it marks, and one for the install it marks. */
+  /** One `freeze` or `unfreeze` entry for each agent it marks, and one for the install. */
   readonly ledger: readonly LedgerDraft[];
 }
 
 /** Parses a freeze write. */
 export const freezeWriteSchema: z.ZodType<FreezeWrite> = z.strictObject({
   atMs: epochMsSchema,
+  isFrozen: z.boolean(),
   agents: z.array(agentFreezeSchema),
   isWholeInstall: z.boolean(),
   moves: z.array(intentChangeSchema),

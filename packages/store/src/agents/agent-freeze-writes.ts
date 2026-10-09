@@ -31,19 +31,21 @@ export function readAgentFreezes(
 }
 
 /**
- * Marks agent rows frozen at `atMs` in the caller's transaction, each under the version it was
- * read at: an agent frozen before keeps its first time, and each row's version rises by one.
+ * Marks agent rows frozen at `atMs`, or unfrozen, in the caller's transaction, each under the
+ * version it was read at: an agent frozen before a freeze keeps its first time, and each row's
+ * version rises by one.
  */
 export function writeAgentFreezes(
   database: DatabaseSync,
   rows: readonly Selectable<AgentsTable>[],
-  atMs: number,
+  change: { readonly atMs: number; readonly isFrozen: boolean },
 ): readonly AgentRecord[] {
+  const { atMs, isFrozen } = change;
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   return rows.map((read) => {
     const row = {
       ...read,
-      frozen_at: read.frozen_at ?? atMs,
+      frozen_at: isFrozen ? (read.frozen_at ?? atMs) : null,
       changed_at: atMs,
       version: read.version + 1,
     };

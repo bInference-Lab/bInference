@@ -70,8 +70,8 @@ export interface StoredIntents extends ConfirmationStore {
 }
 
 /**
- * A freeze to store: the agents it marks, whether it marks the whole install, the intent moves it
- * makes and its own ledger entries.
+ * A freeze or an unfreeze to store: the agents it marks, whether it covers the whole install, the
+ * intent moves it makes and its own ledger entries.
  */
 export interface StoredFreeze extends Omit<FreezeWrite, "moves"> {
   readonly moves: readonly IntentMove[];
@@ -216,8 +216,8 @@ async function freezeIntents(
   if (changes === undefined) {
     return err("stale");
   }
-  const { atMs, agents, isWholeInstall, ledger } = freeze;
-  const write = { atMs, agents, isWholeInstall, moves: changes, ledger };
+  const { atMs, isFrozen, agents, isWholeInstall, ledger } = freeze;
+  const write = { atMs, isFrozen, agents, isWholeInstall, moves: changes, ledger };
   const commit = await options.intents.freeze(write, { signal });
   if (!commit.ok) {
     return err("stale");

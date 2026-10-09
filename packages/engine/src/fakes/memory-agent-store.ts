@@ -124,23 +124,42 @@ function setLimits(
   return ok(structuredClone(limits));
 }
 
+/** A freeze's time, and whether it freezes or lifts a freeze. */
+export interface FreezeChange {
+  readonly atMs: number;
+  readonly isFrozen: boolean;
+}
+
 /** An agent store in memory, which the in-memory intent store marks agents frozen through. */
 export interface MemoryAgentStore extends AgentStore {
   /**
-   * Marks agents frozen at `atMs` at once, inside another in-memory store's write. Every agent is
-   * checked first: an unknown one is `not_found`, one at another row version `stale`, and then
-   * nothing changes. An agent frozen before keeps its first time; each row's version rises by one.
+   * Marks agents frozen at `atMs`, or unfrozen, at once, inside another in-memory store's write.
+   * Every agent is checked first: an unknown one is `not_found`, one at another row version
+   * `stale`, and then nothing changes. An agent frozen before a freeze keeps its first time; each
+   * row's version rises by one.
    */
   freezeNow(
     freezes: readonly AgentFreeze[],
-    atMs: number,
+    change: FreezeChange,
   ): Result<readonly AgentRecord[], "not_found" | "stale">;
+}
+
+// The agent as a freeze leaves it, or an unfreeze, without its freeze time.
+function frozenOf(agent: AgentRecord, { atMs, isFrozen }: FreezeChange): AgentRecord {
+  const { frozenAtMs: was, ...rest } = agent;
+  const frozenAtMs = isFrozen ? (was ?? atMs) : undefined;
+  return {
+    ...rest,
+    ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
+    changedAtMs: atMs,
+    version: agent.version + 1,
+  };
 }
 
 function freezeNow(
   agents: Agents,
   freezes: readonly AgentFreeze[],
-  atMs: number,
+  change: FreezeChange,
 ): Result<readonly AgentRecord[], "not_found" | "stale"> {
   const found: AgentSettings[] = [];
   for (const freeze of freezes) {
@@ -156,12 +175,7 @@ function freezeNow(
   }
   const frozen: AgentRecord[] = [];
   for (const settings of found) {
-    const agent = {
-      ...settings.agent,
-      frozenAtMs: settings.agent.frozenAtMs ?? atMs,
-      changedAtMs: atMs,
-      version: settings.agent.version + 1,
-    };
+    const agent = frozenOf(settings.agent, change);
     agents.set(agent.id, { ...settings, agent });
     frozen.push(agent);
   }
@@ -181,7 +195,7 @@ export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): M
     isFrozen: options.install?.frozenAt() !== undefined,
   });
   return {
-    freezeNow: (freezes, atMs) => freezeNow(agents, structuredClone(freezes), atMs),
+    freezeNow: (freezes, change) => freezeNow(agents, structuredClone(freezes), change),
     create: async (draft, call) => memoryCall(call, () => create(agents, draft, install())),
     get: async (id, call) =>
       memoryCall(call, () => {

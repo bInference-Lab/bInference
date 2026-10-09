@@ -126,12 +126,13 @@ function freeze(
     }
     checked.push({ change, current: current.value });
   }
-  const agents = options.agents.freezeNow(write.agents, write.atMs);
+  const change = { atMs: write.atMs, isFrozen: write.isFrozen };
+  const agents = options.agents.freezeNow(write.agents, change);
   if (!agents.ok) {
     return agents;
   }
   if (write.isWholeInstall) {
-    options.install.freezeNow(write.atMs);
+    options.install.freezeNow(change);
   }
   const moves = checked.map((move) => writeMove(tables, options.ledger, move));
   const ledgerEntries = write.ledger.map((draft) => options.ledger.appendNow(draft));
