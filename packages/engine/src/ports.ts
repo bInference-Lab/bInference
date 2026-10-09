@@ -1,4 +1,4 @@
-import type { AssetRef, ChainRef, RelayAnswer, SimulationOptions } from "@binference/chain";
+import type { Amount, AssetRef, ChainRef, RelayAnswer, SimulationOptions } from "@binference/chain";
 import type { Id, Result } from "@binference/core";
 import type { DeviceRecord } from "./access/device-record.js";
 import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
@@ -45,7 +45,7 @@ import type { QuoteFailure, SimulationFailure } from "./intents/intent-reason.js
 import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
-import type { WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
+import type { BalancesQuery, WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
 import type { ArrivalRecord, ArrivalWrite, PaperReset } from "./positions/arrival-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
 import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
@@ -628,4 +628,12 @@ export interface WalletFactsSource {
   ): Promise<readonly Id<"wal">[]>;
   /** The facts of one of the agent's wallets for an intent in the query's mode. */
   facts(query: WalletFactsQuery, options: { readonly signal: AbortSignal }): Promise<WalletFacts>;
+  /**
+   * What an account holds of each asset asked, now, on the chain, in the order asked: never a
+   * paper balance. Asking for an asset of another chain than the account's is a fault.
+   */
+  balances(
+    query: BalancesQuery,
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly Amount[]>;
 }

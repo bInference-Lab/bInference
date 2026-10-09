@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { AccountRef } from "@binference/chain";
+import type { AccountRef, AssetRef } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { WalletFactsSource } from "../ports.js";
@@ -14,6 +14,8 @@ export interface WalletFactsSourceSubject {
   readonly account: AccountRef;
   /** An agent the source holds no wallet for. */
   readonly stranger: Id<"agt">;
+  /** Assets of the account's chain to read the account's balances of: its coin and a token. */
+  readonly assets: readonly AssetRef[];
 }
 
 /** Makes a fresh {@link WalletFactsSourceSubject} for each check. */
@@ -21,11 +23,31 @@ export interface WalletFactsSourceHarness {
   create(): WalletFactsSourceSubject;
 }
 
+function balanceChecks(harness: WalletFactsSourceHarness): readonly ContractCheck[] {
+  return [
+    {
+      name: "reads what an account holds of each asset asked, in the order asked",
+      run: async () => {
+        const { source, account, assets } = harness.create();
+        assert.ok(assets.length > 1);
+        const held = await source.balances({ account, assets }, live());
+        assert.deepEqual(
+          held.map(({ asset }) => asset),
+          assets,
+        );
+        assert.ok(held.every(({ base }) => base >= 0n));
+        assert.deepEqual(await source.balances({ account, assets: [] }, live()), []);
+      },
+    },
+  ];
+}
+
 /** The contract every `WalletFactsSource` adapter passes. */
 export function walletFactsSourceContract(
   harness: WalletFactsSourceHarness,
 ): readonly ContractCheck[] {
   return [
+    ...balanceChecks(harness),
     {
       name: "lists the agent's wallets with its default first",
       run: async () => {
@@ -57,10 +79,13 @@ export function walletFactsSourceContract(
     {
       name: "refuses to read on an aborted signal",
       run: async () => {
-        const { source, agent, wallet, account } = harness.create();
+        const { source, agent, wallet, account, assets } = harness.create();
         await assertRefusesAborted(async (options) => source.wallets(agent, options));
         await assertRefusesAborted(async (options) =>
           source.facts({ agent, wallet, account, isPaper: true }, options),
+        );
+        await assertRefusesAborted(async (options) =>
+          source.balances({ account, assets }, options),
         );
       },
     },

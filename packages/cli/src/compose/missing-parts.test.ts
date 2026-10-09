@@ -29,6 +29,10 @@ describe("the missing parts", () => {
     await expect(
       parts.wallets.facts({ agent, wallet, account, isPaper: true }, live()),
     ).rejects.toMatchObject({ code: "wallet.custody_down", details: { missing: "wallets" } });
+    await expect(parts.wallets.balances({ account, assets: [] }, live())).rejects.toMatchObject({
+      code: "wallet.custody_down",
+      details: { missing: "wallets" },
+    });
     await expect(parts.simulator.simulate(intent, {} as never, live())).rejects.toMatchObject({
       code: "chain.simulation_failed",
       details: { missing: "simulator" },
@@ -54,6 +58,7 @@ describe("the missing parts", () => {
     await expect(parts.prices.usdPrice({} as never, stopped())).rejects.toThrow("stopped");
     await expect(parts.wallets.wallets(agent, stopped())).rejects.toThrow("stopped");
     await expect(parts.wallets.facts({} as never, stopped())).rejects.toThrow("stopped");
+    await expect(parts.wallets.balances({} as never, stopped())).rejects.toThrow("stopped");
     await expect(parts.simulator.simulate(intent, {} as never, stopped())).rejects.toThrow(
       "stopped",
     );

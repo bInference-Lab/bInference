@@ -12,7 +12,8 @@ export interface PaperWalletFactsOptions {
 /**
  * The wallet facts the money path reads, with a paper intent's native balance taken from the
  * paper portfolio: what the wallet's paper position of the chain's native coin holds, so a paper
- * trade works with an empty real wallet. Live intents read the source as it is. A chain the
+ * trade works with an empty real wallet. Live intents, and the balances of an account, read the
+ * source as it is. A chain the
  * registry does not hold has no native coin to hold on paper, so its paper balance is 0 and the
  * policy refuses the trade.
  */
@@ -22,6 +23,7 @@ export function withPaperBalances(
 ): WalletFactsSource {
   return {
     wallets: async (agent, call) => source.wallets(agent, call),
+    balances: async (query, call) => source.balances(query, call),
     async facts(query, call) {
       const facts = await source.facts(query, call);
       if (!query.isPaper) {

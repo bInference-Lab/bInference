@@ -70,6 +70,10 @@ export function createMissingParts(): MissingParts {
         options.signal.throwIfAborted();
         return Promise.reject(missing("wallets", "wallet.custody_down"));
       },
+      async balances(_query, options) {
+        options.signal.throwIfAborted();
+        return Promise.reject(missing("wallets", "wallet.custody_down"));
+      },
     },
     simulator: {
       async simulate(_intent, _built, options) {

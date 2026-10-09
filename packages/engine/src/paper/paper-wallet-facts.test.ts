@@ -8,7 +8,7 @@ import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { walletFactsSourceContract } from "../contracts/wallet-facts-source-contract.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
-import { testAgent, testCoin, testWallet } from "../intents/test-intents.js";
+import { testAgent, testCoin, testToken, testWallet } from "../intents/test-intents.js";
 import type { PaperPortfolio } from "./paper-portfolio.js";
 import { withPaperBalances } from "./paper-wallet-facts.js";
 
@@ -45,7 +45,14 @@ const source = withPaperBalances(
 describe("wallet facts with paper balances", () => {
   it.each(
     walletFactsSourceContract({
-      create: () => ({ source, agent: testAgent, wallet: testWallet, account, stranger }),
+      create: () => ({
+        source,
+        agent: testAgent,
+        wallet: testWallet,
+        account,
+        stranger,
+        assets: [testCoin, testToken],
+      }),
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();

@@ -1,4 +1,4 @@
-import type { AccountRef } from "@binference/chain";
+import type { AccountRef, AssetRef } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { PastOutflow } from "../policy/policy-rules.js";
 
@@ -27,4 +27,10 @@ export interface WalletFacts {
   readonly networkFeeCapNativeBase: bigint;
   /** The agent's outgoing trades and sends of the last 24 hours, in the intent's mode. */
   readonly recentOutflows: readonly PastOutflow[];
+}
+
+/** Which live balances to read: one account's, of each asset, on the account's chain. */
+export interface BalancesQuery {
+  readonly account: AccountRef;
+  readonly assets: readonly AssetRef[];
 }
