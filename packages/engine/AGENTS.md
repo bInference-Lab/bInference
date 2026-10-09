@@ -112,6 +112,10 @@ Rules for this package:
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers
   (`src/address-book/`) list entries and remove one as braking, with `confirm`, journaled; adding
   one saves it in the ceiling, so it needs the owner key.
+- The install store writes the rescue address as `changeRescue` and `cancelRescue`
+  (`src/policy/rescue-change.ts`) decide inside its transaction: any new address waits 24 hours
+  and can be cancelled. Every reader of the stored address takes the one in effect through
+  `rescueAt`.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and

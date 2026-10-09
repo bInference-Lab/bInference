@@ -1,7 +1,9 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
 import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { z } from "zod";
+import type { RescueState } from "../policy/rescue-change.js";
 import { epochMsSchema, shortTextSchema } from "../records/record-fields.js";
+import { pendingRescueSchema } from "./rescue-record.js";
 
 /**
  * The install's custody on Privy (database spec, section 2.1): the owner's app, and the key
@@ -120,10 +122,12 @@ export const installSetupSchema: z.ZodType<InstallSetup> = z.strictObject({
   isStartOver: z.boolean(),
 });
 
-/** The install as it stands: its custody, its rescue address and its wallets, oldest first. */
-export interface InstallFacts {
+/**
+ * The install as it stands: its custody, its rescue address with a new one that waits, and its
+ * wallets, oldest first. Read the rescue address in effect through `rescueAt`.
+ */
+export interface InstallFacts extends RescueState {
   readonly custody?: CustodyRecord;
-  readonly rescueAddress?: AccountRef;
   readonly wallets: readonly WalletRecord[];
 }
 
@@ -131,6 +135,7 @@ export interface InstallFacts {
 export const installFactsSchema: z.ZodType<InstallFacts> = z.strictObject({
   custody: custodyRecordSchema.exactOptional(),
   rescueAddress: accountRefSchema.exactOptional(),
+  pendingRescue: pendingRescueSchema.exactOptional(),
   wallets: z.array(walletRecordSchema),
 });
 

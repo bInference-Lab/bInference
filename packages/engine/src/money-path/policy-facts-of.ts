@@ -35,8 +35,9 @@ export function policyLimitsOf(limits: LimitsValues, chain: ChainRef): PolicyLim
  * The facts the policy checks an intent with. The send level is the agent's level in effect now:
  * a looser level still waiting its 24 hours does not count. The address book holds the agent's
  * live entries on every chain, since a bridge pays one on another chain; an entry counts as saved
- * once the owner key put it in the ceiling. The rescue address is absent until its own store port
- * exists, so no send may pay it: the money path fails closed on what it cannot read.
+ * once the owner key put it in the ceiling. The rescue address is left out, so no send may pay it:
+ * the money path routes no send or rescue yet, and the step that routes one reads the install's
+ * address in effect through `rescueAt`.
  */
 export function policyFactsOf(input: PolicyFactsInput): PolicyFacts {
   const { settings, wallet } = input;

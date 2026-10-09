@@ -24,6 +24,7 @@ import type {
 } from "./ingress/idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
 import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/install-record.js";
+import type { RescueAddressChange, RescueMove } from "./install/rescue-record.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
 import type {
@@ -469,7 +470,7 @@ export interface InstallStore {
    * every later call answers that stored id and ignores the proposal.
    */
   installId(proposal: InstallIdProposal, options: StoreCall): Promise<Id<"ins">>;
-  /** The custody, the rescue address and every wallet, archived ones too. */
+  /** The custody, the rescue address and a new one that waits, and every wallet, archived too. */
   read(options: StoreCall): Promise<InstallFacts>;
   /**
    * Writes a setup in one transaction: the custody, the rescue address with any pending change
@@ -477,6 +478,16 @@ export interface InstallStore {
    * holds a custody already is `set_up` and changes nothing, unless the setup starts over.
    */
   setUp(setup: InstallSetup, options: StoreCall): Promise<Result<void, "set_up">>;
+  /**
+   * Writes a new rescue address as `changeRescue` decides it at `change.atMs`, in one
+   * transaction, and answers the state in effect before and after.
+   */
+  changeRescue(change: RescueAddressChange, options: StoreCall): Promise<RescueMove>;
+  /**
+   * Drops the new rescue address that waits at `atMs`, as `cancelRescue` decides it, and answers
+   * the state in effect before and after.
+   */
+  cancelRescueChange(atMs: number, options: StoreCall): Promise<RescueMove>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */

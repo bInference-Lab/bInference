@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefSchema } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { InstallSetup, WalletDraft } from "../install/install-record.js";
+import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { InstallStore } from "../ports.js";
 import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
 
@@ -115,6 +116,50 @@ async function refusesAHeldWallet(subject: InstallStoreSubject): Promise<void> {
   assert.deepEqual((await store.read(live())).custody, first.custody);
 }
 
+function rescue(n: number): AccountRef {
+  return accountRefSchema.parse(`fake:1:0x${String(n).repeat(40).slice(0, 40)}`);
+}
+
+async function waitsForANewRescueAddress(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  const first = setup(subject, 1);
+  await store.setUp(first, live());
+  const pendingRescue = { address: rescue(7), atMs: 10_000 + looseningWaitMs };
+  const waiting = { rescueAddress: first.rescueAddress, pendingRescue };
+  assert.deepEqual(await store.changeRescue({ address: rescue(7), atMs: 10_000 }, live()), {
+    before: { rescueAddress: first.rescueAddress },
+    after: waiting,
+  });
+  assert.deepEqual(await store.read(live()), {
+    custody: first.custody,
+    ...waiting,
+    wallets: [first.wallet],
+  });
+  assert.deepEqual(await store.cancelRescueChange(20_000, live()), {
+    before: waiting,
+    after: { rescueAddress: first.rescueAddress },
+  });
+  assert.deepEqual((await store.read(live())).pendingRescue, undefined);
+}
+
+async function paysANewRescueAddressFromItsTime(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  await store.setUp(setup(subject, 1), live());
+  await store.changeRescue({ address: rescue(7), atMs: 10_000 }, live());
+  const later = { address: rescue(8), atMs: 10_000 + looseningWaitMs };
+  assert.deepEqual(await store.changeRescue(later, live()), {
+    before: { rescueAddress: rescue(7) },
+    after: {
+      rescueAddress: rescue(7),
+      pendingRescue: { address: rescue(8), atMs: later.atMs + looseningWaitMs },
+    },
+  });
+  const again = setup(subject, 2, true);
+  await store.setUp(again, live());
+  const read = await store.read(live());
+  assert.deepEqual([read.rescueAddress, read.pendingRescue], [again.rescueAddress, undefined]);
+}
+
 async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   await assertRefusesAborted(async (call) =>
@@ -122,6 +167,10 @@ async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> 
   );
   await assertRefusesAborted(async (call) => store.read(call));
   await assertRefusesAborted(async (call) => store.setUp(setup(subject, 1), call));
+  await assertRefusesAborted(async (call) =>
+    store.changeRescue({ address: rescue(7), atMs: 1 }, call),
+  );
+  await assertRefusesAborted(async (call) => store.cancelRescueChange(1, call));
   assert.deepEqual(await store.read(live()), { wallets: [] });
 }
 
@@ -145,6 +194,16 @@ export function installStoreContract(harness: InstallStoreHarness): readonly Con
       "refuses a wallet whose address it holds, and changes nothing",
       create,
       refusesAHeldWallet,
+    ),
+    checkOn(
+      "keeps a new rescue address waiting 24 hours until it is cancelled",
+      create,
+      waitsForANewRescueAddress,
+    ),
+    checkOn(
+      "pays a new rescue address from its time on, and drops one that waits on a start over",
+      create,
+      paysANewRescueAddressFromItsTime,
     ),
     checkOn("refuses every call on an aborted signal", create, refusesAbortedCalls),
   ];

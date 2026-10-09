@@ -5,6 +5,7 @@ import {
   type CustodyRecord,
   custodyRecordSchema,
   type InstallFacts,
+  type RescueState,
   type WalletRecord,
   walletRecordSchema,
 } from "@binference/engine/install";
@@ -76,17 +77,33 @@ export function hasCustody(database: DatabaseSync): boolean {
   return takeFirst(kysely.selectFrom("custody").select("id").where("id", "=", 1)) !== undefined;
 }
 
+/** Reads the install's rescue address and the new one that waits, as the `safety` row holds. */
+export function readRescue(database: DatabaseSync): RescueState {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const safety = takeFirst(
+    kysely
+      .selectFrom("safety")
+      .select(["rescue_address", "pending_rescue_address", "pending_rescue_at"])
+      .where("id", "=", 1),
+  );
+  const rescue = safety?.rescue_address ?? null;
+  const pending = safety?.pending_rescue_address ?? null;
+  const pendingAt = safety?.pending_rescue_at ?? null;
+  return {
+    ...(rescue === null ? {} : { rescueAddress: accountRefSchema.parse(rescue) }),
+    ...(pending === null || pendingAt === null
+      ? {}
+      : { pendingRescue: { address: accountRefSchema.parse(pending), atMs: pendingAt } }),
+  };
+}
+
 /** Reads the install's custody, rescue address and wallets with their ceilings, oldest first. */
 export function readInstall(database: DatabaseSync): InstallFacts {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const custody = takeFirst(kysely.selectFrom("custody").selectAll().where("id", "=", 1));
-  const safety = takeFirst(
-    kysely.selectFrom("safety").select("rescue_address").where("id", "=", 1),
-  );
-  const rescue = safety?.rescue_address ?? null;
   return {
     ...(custody === undefined ? {} : { custody: toCustody(custody) }),
-    ...(rescue === null ? {} : { rescueAddress: accountRefSchema.parse(rescue) }),
+    ...readRescue(database),
     wallets: readWallets(database),
   };
 }

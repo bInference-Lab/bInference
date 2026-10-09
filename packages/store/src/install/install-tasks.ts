@@ -7,6 +7,14 @@ import {
   installIdProposalSchema,
   type InstallSetup,
   installSetupSchema,
+  cancelRescue,
+  changeRescue,
+  type RescueAddressChange,
+  rescueAddressChangeSchema,
+  type RescueMove,
+  rescueMoveSchema,
+  type RescueState,
+  rescueAt,
 } from "@binference/engine/install";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
@@ -14,7 +22,7 @@ import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText, jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
-import { hasCustody, readInstall } from "./install-rows.js";
+import { hasCustody, readInstall, readRescue } from "./install-rows.js";
 
 const installIdKey = "install_id";
 const createdAtKey = "created_at";
@@ -139,4 +147,46 @@ export const setUpInstallTask: StoreTask<InstallSetup, Result<void, "set_up">> =
     writeWallet(database, setup);
     return ok(undefined);
   },
+});
+
+// Writes the rescue state a rule of the engine decides at `atMs` over the row it read.
+function moveRescue(
+  database: DatabaseSync,
+  atMs: number,
+  decide: (state: RescueState) => RescueState,
+): RescueMove {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const stored = readRescue(database);
+  const after = decide(stored);
+  execute(
+    kysely
+      .updateTable("safety")
+      .set((row) => ({
+        rescue_address: after.rescueAddress ?? null,
+        pending_rescue_address: after.pendingRescue?.address ?? null,
+        pending_rescue_at: after.pendingRescue?.atMs ?? null,
+        version: row("version", "+", 1),
+      }))
+      .where("id", "=", 1),
+  );
+  return { before: rescueAt(stored, atMs), after };
+}
+
+/** Writes a new rescue address as the engine's rule decides it. */
+export const changeRescueTask: StoreTask<RescueAddressChange, RescueMove> = defineTask({
+  name: "install.change_rescue",
+  access: "write",
+  input: rescueAddressChangeSchema,
+  output: rescueMoveSchema,
+  run: (database, change) =>
+    moveRescue(database, change.atMs, (state) => changeRescue(state, change.address, change.atMs)),
+});
+
+/** Drops the new rescue address that waits, as the engine's rule decides it. */
+export const cancelRescueChangeTask: StoreTask<number, RescueMove> = defineTask({
+  name: "install.cancel_rescue_change",
+  access: "write",
+  input: z.int().nonnegative(),
+  output: rescueMoveSchema,
+  run: (database, atMs) => moveRescue(database, atMs, (state) => cancelRescue(state, atMs)),
 });
