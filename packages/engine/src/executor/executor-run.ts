@@ -47,7 +47,7 @@ export interface SettlingMove {
  * writer beat, is logged and gives `undefined`: the run stops where the intent is.
  */
 export async function moveIntent(
-  run: ExecutionRun,
+  run: Pick<ExecutionRun, "parts" | "signal">,
   snapshot: IntentSnapshot,
   change: IntentTrigger | SettlingMove,
 ): Promise<IntentSnapshot | undefined> {

@@ -3,7 +3,7 @@
 Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by decisions
 [0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101),
 [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103), [0109](../DECISIONS.md#d0109),
-[0115](../DECISIONS.md#d0115) and [0116](../DECISIONS.md#d0116).
+[0115](../DECISIONS.md#d0115), [0116](../DECISIONS.md#d0116) and [0120](../DECISIONS.md#d0120).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -75,6 +75,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                      | the card version tapped is the current one; the card has not expired                                                                                                                                   |
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                          |                                                                                                                                                                                                        |
 | `awaiting_confirmation`      | `expired`               | card timer                                                         | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, identity, token launches and approval revokes                                                                                 |
+| `confirmed`                  | `expired`               | recovery finds its authorization ran out                           | the confirmation or the auto grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                          |
 | any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                           | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099))                                                                                                                |
 | `confirmed`                  | `paper_filled`          | paper mode                                                         | a paper intent, which a rescue never is ([decision 0100](../DECISIONS.md#d0100))                                                                                                                       |
 | `confirmed`                  | `executing`             | wallet queue takes it                                              | the agent is live, or the intent is a rescue; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                     |
@@ -240,6 +241,10 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    when a step cannot be signed or stored. A step whose transactions were dropped ends
    `failed_onchain` with `stuck_dropped`, unless a block holds one of them after all
    ([decision 0115](../DECISIONS.md#d0115)).
+5. A `confirmed` live intent whose confirmation or auto grant ran out while the engine was stopped
+   or locked moves to `expired`, with `notice.confirmationLapsed`; nothing is signed. One that
+   still holds waits for the queue until the engine holds its keys
+   ([decision 0120](../DECISIONS.md#d0120)).
 
 <a id="section-8"></a>
 
@@ -256,7 +261,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 | `failed_onchain`, `unknown_after_send`            | ✓            | `intent/changed` | Always                                                                     |
 
 A move to `cancelled` on a step never signed has no card to close; the owner gets
-`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)). A dropped step's notice is
+`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)). A move from `confirmed` to
+`expired` at recovery has none either; the owner gets `notice.confirmationLapsed`
+([decision 0120](../DECISIONS.md#d0120)). A dropped step's notice is
 `notice.stepDropped`, or `notice.stepDroppedPartWay` once an earlier step landed
 ([decision 0115](../DECISIONS.md#d0115)).
 

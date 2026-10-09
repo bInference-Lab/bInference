@@ -2,7 +2,7 @@ import type { ReceiptReader, Signer } from "@binference/chain";
 import type { FakeNetwork } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { testCoin, testSwap, testToken } from "../intents/test-intents.js";
+import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import type { IntentStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import {
@@ -333,5 +333,44 @@ describe("taking the confirmed intents an earlier run left", () => {
     await expect(bench.executor.takeConfirmed(live())).rejects.toMatchObject({
       code: "engine.executor_closed",
     });
+  });
+});
+
+describe("a confirmed intent whose confirmation ran out while the engine was stopped", () => {
+  // A trade card's confirmation lasts 60 seconds.
+  const pastConfirmationMs = 61_000;
+
+  it("expires at the restart, with the owner's notice, and signs nothing", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const intent = await tapped(bench);
+    await bench.test.clock.advance(pastConfirmationMs);
+    const restarted = await restartBench(bench);
+    expect(await stateOf(bench, intent)).toBe("expired");
+    expect([restarted.recovered, restarted.signed.length]).toStrictEqual([0, 0]);
+    const notices = restarted.pushes.filter((push) => push.kind === "notice/new");
+    expect(notices.map((push) => push.data)).toStrictEqual([
+      { key: "notice.confirmationLapsed", agent: testAgent, values: {}, intent },
+    ]);
+    await expect(restarted.executor.takeConfirmed(live())).resolves.toBe(0);
+  });
+
+  it("keeps one whose confirmation still holds for the queue, which takes it once unlocked", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const intent = await tapped(bench);
+    const restarted = await restartBench(bench);
+    expect(await stateOf(bench, intent)).toBe("confirmed");
+    await expect(restarted.executor.takeConfirmed(live())).resolves.toBe(1);
+    await flush();
+    expect(await stateOf(bench, intent)).toBe("executing");
+  });
+
+  it("expires when it ran out while the engine stayed locked", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const intent = await tapped(bench);
+    const restarted = await restartBench(bench);
+    await bench.test.clock.advance(pastConfirmationMs);
+    await expect(restarted.executor.takeConfirmed(live())).resolves.toBe(0);
+    expect(await stateOf(bench, intent)).toBe("expired");
+    expect(restarted.signed).toHaveLength(0);
   });
 });

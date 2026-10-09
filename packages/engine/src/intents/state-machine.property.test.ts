@@ -129,6 +129,10 @@ const builders: Builders = {
   }),
   deny_tapped: () => ({ type: "deny_tapped" }),
   card_timer_fired: () => ({ type: "card_timer_fired" }),
+  authorization_lapsed: (facts, at) => ({
+    type: "authorization_lapsed",
+    expiresAtMs: at.nowMs + facts.confirmationTtlMs,
+  }),
   cancel_requested: (facts) => ({
     type: "cancel_requested",
     cause: facts.cancelCause,
@@ -464,6 +468,15 @@ function signingViolations({ before, trigger, nowMs, result }: Outcome): readonl
   return isApprovedForQueue(before, trigger, nowMs) ? [] : ["executing without a valid approval"];
 }
 
+// Decision 0120: a confirmed intent expires only once what authorized it has run out.
+function lapseViolations({ before, trigger, nowMs, result }: Outcome): readonly string[] {
+  if (!result.ok || before.state !== "confirmed" || result.value.status.state !== "expired") {
+    return [];
+  }
+  const hasLapsed = trigger.type === "authorization_lapsed" && nowMs >= trigger.expiresAtMs;
+  return hasLapsed ? [] : ["a confirmed intent expired before its authorization ran out"];
+}
+
 function isCancelAllowed(before: IntentStatus, trigger: IntentTrigger): boolean {
   if (trigger.type === "step_unsent") {
     return !trigger.hasSignedStep;
@@ -538,6 +551,7 @@ function violations(history: History): readonly string[] {
       ...autoViolations(outcome),
       ...signingViolations(outcome),
       ...cancelViolations(outcome),
+      ...lapseViolations(outcome),
       ...unsentViolations(outcome),
       ...reasonViolations(outcome.result.ok ? outcome.result.value.status : outcome.before),
     ]),

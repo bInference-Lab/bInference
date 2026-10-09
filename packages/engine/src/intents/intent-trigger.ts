@@ -26,6 +26,7 @@ export const triggerTypes = [
   "confirm_requoted",
   "deny_tapped",
   "card_timer_fired",
+  "authorization_lapsed",
   "cancel_requested",
   "paper_fill_recorded",
   "queue_took",
@@ -118,6 +119,11 @@ export interface TriggerFacts {
   /** The owner tapped Cancel, or called `intent/deny`. */
   readonly deny_tapped: NoFacts;
   readonly card_timer_fired: NoFacts;
+  /**
+   * Recovery found a confirmed intent's confirmation, or its auto grant, expired at
+   * `expiresAtMs` before any queue took it (decision 0120).
+   */
+  readonly authorization_lapsed: { readonly expiresAtMs: number };
   readonly cancel_requested: {
     readonly cause: Exclude<CancelCause, "step_unsent">;
     readonly hasSignedStep: boolean;

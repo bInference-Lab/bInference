@@ -1,6 +1,12 @@
 import { ok, type Result } from "@binference/core";
 import { authorizeIntent, openCard } from "./authorization-guards.js";
-import { confirmRequote, confirmTap, expireCard, reopenCard } from "./confirmation-guards.js";
+import {
+  confirmRequote,
+  confirmTap,
+  expireCard,
+  lapseAuthorization,
+  reopenCard,
+} from "./confirmation-guards.js";
 import {
   cancelIntent,
   cancelUnsent,
@@ -86,6 +92,7 @@ export const transitionTable: TransitionTable = {
   ],
   deny_tapped: [{ from: ["awaiting_confirmation"], to: "denied", guard: pass }],
   card_timer_fired: [{ from: ["awaiting_confirmation"], to: "expired", guard: expireCard }],
+  authorization_lapsed: [{ from: ["confirmed"], to: "expired", guard: lapseAuthorization }],
   cancel_requested: [{ from: beforeSigning, to: "cancelled", guard: cancelIntent }],
   paper_fill_recorded: [{ from: ["confirmed"], to: "paper_filled", guard: fillOnPaper }],
   queue_took: [{ from: ["confirmed"], to: "executing", guard: takeIntoQueue }],

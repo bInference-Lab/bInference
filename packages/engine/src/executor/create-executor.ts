@@ -8,6 +8,7 @@ import { createPositions } from "../positions/create-positions.js";
 import { executeInSlot } from "./execute-in-slot.js";
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
 import type { ExecutionRun, ExecutorParts } from "./executor-run.js";
+import { expireLapsed } from "./expire-lapsed.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
 import {
   liveIntentsIn,
@@ -25,14 +26,15 @@ export interface RunningExecutor extends Executor {
    * and nothing is ever signed again. It resolves with how many intents it took once each holds
    * its place: an intent whose steps' fates are still open waits on its wallet's queue, ahead of
    * any intent taken later, so call it at startup before anything is taken. The recoveries run on
-   * like taken intents, and `close` stops them.
+   * like taken intents, and `close` stops them. First, every confirmed live intent whose
+   * confirmation or auto grant ran out while the engine was stopped expires (decision 0120).
    */
   recover(options: { readonly signal: AbortSignal }): Promise<number>;
   /**
    * Takes every confirmed live intent no queue took yet, as an earlier run left them, the least
    * recently changed first, and resolves with how many it went through. A locked engine holds them
-   * until it holds the agent key (decision 0103), so call it after `recover`, once unlocked. Each
-   * goes through `take`, which leaves one whose confirmation expired as it is.
+   * until it holds the agent key (decision 0103), so call it after `recover`, once unlocked. One
+   * whose confirmation or auto grant ran out expires instead (decision 0120).
    */
   takeConfirmed(options: { readonly signal: AbortSignal }): Promise<number>;
   /**
@@ -167,11 +169,12 @@ async function takeEachConfirmed(
   signal: AbortSignal,
 ): Promise<number> {
   const confirmed = await liveIntentsIn(parts, ["confirmed"], { signal });
-  await confirmed.reduce<Promise<void>>(
+  const waiting = await expireLapsed(parts, confirmed, signal);
+  await waiting.reduce<Promise<void>>(
     async (earlier, record) => earlier.then(async () => take(record.id, { signal })),
     Promise.resolve(),
   );
-  return confirmed.length;
+  return waiting.length;
 }
 
 function closed(details: Readonly<Record<string, string>>): BinferenceError {
@@ -220,6 +223,7 @@ export function createExecutor(options: ExecutorOptions): RunningExecutor {
       if (stops.stopping.signal.aborted) {
         throw closed({});
       }
+      await expireLapsed(parts, await liveIntentsIn(parts, ["confirmed"], { signal }), signal);
       const unsettled = await unsettledIntents(parts, signal);
       unsettled.forEach((found) => {
         parts.log.info("executor.recovering", { intentId: found.snapshot.record.id });

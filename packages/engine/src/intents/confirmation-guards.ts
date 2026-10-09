@@ -93,3 +93,14 @@ export function expireCard({
   const { card } = status;
   return card === undefined || nowMs >= card.expiresAtMs ? ok({}) : err("not_expired");
 }
+
+/**
+ * `confirmed` to `expired`: the confirmation or the auto grant that authorized the intent ran out
+ * before any queue took it, so nothing was signed (decision 0120).
+ */
+export function lapseAuthorization({
+  trigger,
+  nowMs,
+}: GuardInput<"authorization_lapsed">): Result<IntentChange, TransitionProblem> {
+  return nowMs >= trigger.expiresAtMs ? ok({}) : err("not_expired");
+}

@@ -166,7 +166,9 @@ Rules for this package:
   recovery read every transaction of a step's nonce, so whichever lands is the step's, and a landed
   cancel ends the intent with `stuck_cancelled`; recovery never replaces a stuck step. A step that
   is never signed, at a run or found at recovery, ends the intent through `step_unsent`: `cancelled`
-  when no step was signed, `failed_onchain` once one landed (decision 0109). `close` follows the
+  when no step was signed, `failed_onchain` once one landed (decision 0109). A confirmed intent whose
+  confirmation or auto grant ran out while the engine was stopped or locked expires at recovery,
+  through `authorization_lapsed` (decision 0120). `close` follows the
   engine's shutdown order (ARCHITECTURE.md section 24): it takes nothing more, every wait ends and
   no step or replacement starts, while a signature or a send under way runs to its end within the
   shutdown's budget.

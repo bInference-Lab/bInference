@@ -111,6 +111,11 @@ until the step turns up after all or a final block holds the other one, which en
 signed ends the intent `cancelled`, or `failed_onchain` with `step_unsent` once an earlier step
 landed, as a step that cannot be signed in a run does (decision 0109).
 
+Recovery also ends every confirmed live intent whose confirmation or auto grant ran out while the
+engine was stopped or locked: it moves to `expired` with `notice.confirmationLapsed`, and nothing
+is signed (decision 0120). `takeConfirmed`, once the engine holds its keys, does the same before it
+takes the rest.
+
 When the engine stops, `close` takes nothing more: every wait ends, a work still waiting for its
 wallet leaves the queue, and no step is signed, while a signature or a send under way runs to its
 end, so a signed step is stored and sent before the engine exits. The shutdown's budget cuts what
