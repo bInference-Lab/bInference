@@ -7456,6 +7456,7 @@
         "packages/telegram/src/index.ts",
         "packages/telegram/src/testing.ts",
         "plugins/goplus/src/index.ts",
+        "plugins/honeypot-is/src/index.ts",
         "plugins/kyberswap/src/index.ts",
         "plugins/kyberswap/src/testing.ts",
         "plugins/okx/src/index.ts",

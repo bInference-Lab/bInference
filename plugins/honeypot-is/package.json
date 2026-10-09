@@ -1,0 +1,25 @@
+{
+  "name": "@binference/honeypot-is",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The honeypot.is risk source: keyless buy, sell and transfer simulations from honeypot.is's API.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/plugin-sdk": "workspace:*",
+    "zod": "catalog:"
+  }
+}

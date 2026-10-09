@@ -174,7 +174,7 @@ binference/                         MIT, pnpm + Turborepo, Node 26.1+, TypeScrip
     i18n/         @binference/i18n       en + zh messages, glossary, formatters, checks
     cli/          binference             the `binference` command and the composition root
   plugins/        first-party venues and data: pancakeswap, kyberswap, okx, flap, fourmeme, venus,
-                  lista, aave, stakehub, across, relay, lifi, binance-agent-os, goplus, honeypot,
+                  lista, aave, stakehub, across, relay, lifi, binance-agent-os, goplus, honeypot-is,
                   dexscreener, geckoterminal, codex, spaceid, erc8004, geniusfun, brew,
                   binance-agents
   skills/         bundled SKILL.md playbooks (section 5)
