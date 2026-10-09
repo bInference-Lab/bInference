@@ -49,10 +49,6 @@ engineStrict: true
 # A release must be 7 days old before it installs, with no fallback to a newer one.
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
-# Each exclusion states its reason and the day it goes.
-minimumReleaseAgeExclude:
-  # Security fix for GHSA-68fv-2mgg-jv7q, released 2026-09-30; remove after 2026-10-07.
-  - source-map-js@1.2.2
 
 overrides:
   # GHSA-68fv-2mgg-jv7q: source-map-js below 1.2.2 can block the event loop (through postcss).
