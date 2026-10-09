@@ -12,6 +12,7 @@ import { authorizationDocument, quoteDocument } from "./intent-documents.schema.
 import type { IntentRecord } from "./intent-record.js";
 import type { CardTerms, IntentStatus, QuoteTerms } from "./intent-status.js";
 import { rescueQuoteDocument } from "./rescue-quote.js";
+import { unfreezeQuoteDocument } from "./unfreeze-quote.js";
 
 /** An intent's events and card versions as its store keeps them, oldest first. */
 export interface IntentHistory {
@@ -23,13 +24,17 @@ function causes(history: IntentHistory): readonly EventCause[] {
   return history.events.map((event) => readEventCause(event.cause));
 }
 
-// A rescue's quote values what it moves and has no minimum out (decision 0044).
+// A rescue's quote values what it moves and an unfreeze's names its agents: neither has a minimum
+// out (decisions 0044 and 0128).
 function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
   if (record.quote === undefined) {
     return undefined;
   }
   if (record.kind === "rescue") {
     return { quotedAtMs: rescueQuoteDocument.decode(record.quote).quotedAtMs };
+  }
+  if (record.kind === "unfreeze") {
+    return { quotedAtMs: unfreezeQuoteDocument.decode(record.quote).quotedAtMs };
   }
   const quote = quoteDocument.decode(record.quote);
   return { quotedAtMs: quote.quotedAt, minOutBase: quote.minOut.base };

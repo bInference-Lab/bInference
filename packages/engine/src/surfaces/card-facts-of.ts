@@ -13,6 +13,7 @@ import {
 } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { type RescueQuote, rescueQuoteDocument } from "../intents/rescue-quote.js";
+import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { swapSlippageBps } from "../money-path/swap-trade.js";
@@ -129,12 +130,31 @@ function rescueFacts(quote: RescueQuote, source: CardSource): CardFacts {
   };
 }
 
+// An unfreeze's card: the agent it unfreezes, or how many agents are frozen when it unfreezes the
+// whole install (decision 0128). The owner asked for it, so no agent's reason shows.
+function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
+  const { record, card, settings } = source;
+  const [only] = quote.agents;
+  const action =
+    quote.isWholeInstall || only === undefined
+      ? ({ kind: "unfreeze", scope: "install", agentCount: quote.agents.length } as const)
+      : ({ kind: "unfreeze", scope: "agent", agent: only.name } as const);
+  return {
+    agentName: settings.agent.name,
+    isPaper: record.isPaper,
+    hasOutsideContent: record.hasOutsideContent,
+    card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
+    action,
+    warnings: { hasUnusualName: false, isNewAddress: false },
+  };
+}
+
 /**
  * The facts a card version is drawn from (spec 4, section 3), read from the stored intent: the
  * quote's amounts and route, the simulation's check (or that a paper sale's fill is an estimate),
  * the highest tax the risk step measured and the agent's reason; for a rescue, its address, what
- * it moves and their value. The money path quotes swaps and rescues only, so an intent of another
- * kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
+ * it moves and their value; for an unfreeze, what it unfreezes. The money path quotes swaps,
+ * rescues and unfreezes only, so an intent of another kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
  * no source marks unusual names yet.
  */
 export function cardFactsOf(source: CardSource): CardFacts | undefined {
@@ -143,6 +163,11 @@ export function cardFactsOf(source: CardSource): CardFacts | undefined {
     return record.quote === undefined
       ? undefined
       : rescueFacts(rescueQuoteDocument.decode(record.quote), source);
+  }
+  if (record.kind === "unfreeze") {
+    return record.quote === undefined
+      ? undefined
+      : unfreezeFacts(unfreezeQuoteDocument.decode(record.quote), source);
   }
   const request = requestDocument.decode(record.request);
   if (request.kind !== "swap" || record.quote === undefined) {

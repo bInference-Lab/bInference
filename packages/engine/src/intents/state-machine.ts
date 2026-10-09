@@ -56,6 +56,9 @@ interface Passed {
   readonly change: IntentChange;
 }
 
+// Only the owner asks for these, and they always run live: the rescue and the unfreeze.
+const ownerKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(["rescue", "unfreeze"]);
+
 function proposalProblem(proposal: IntentProposal): ProposalProblem | undefined {
   if (proposal.agentStatus !== "active") {
     return proposal.agentStatus === "missing" ? "agent_missing" : "agent_archived";
@@ -64,7 +67,9 @@ function proposalProblem(proposal: IntentProposal): ProposalProblem | undefined 
   if ((proposal.fill !== undefined) !== isFromEngine) {
     return "wrong_proposer";
   }
-  return proposal.kind === "rescue" && proposal.proposer !== "owner" ? "wrong_proposer" : undefined;
+  return ownerKinds.has(proposal.kind) && proposal.proposer !== "owner"
+    ? "wrong_proposer"
+    : undefined;
 }
 
 function proposeIntent(
@@ -80,8 +85,9 @@ function proposeIntent(
     state: "proposed",
     kind,
     proposer,
-    // Paper mode fakes trades, never the rescue: it moves the real funds (decision 0100).
-    isPaper: proposal.isPaper && kind !== "rescue",
+    // Paper mode fakes trades, never the rescue, which moves the real funds (decision 0100), nor
+    // an unfreeze, which changes no portfolio (decision 0128).
+    isPaper: proposal.isPaper && !ownerKinds.has(kind),
     hasOutsideContent,
     changedAtMs: nowMs,
     ...(fill === undefined ? {} : { authorizedBy: fill }),

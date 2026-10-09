@@ -154,6 +154,7 @@ const builders: Builders = {
     type: "fills_reconciled",
     isDeliveryReported: facts.isDeliveryReported,
   }),
+  unfreeze_written: () => ({ type: "unfreeze_written" }),
 };
 
 function mostly<T>(usual: T, rare: T): fc.Arbitrary<T> {
@@ -236,7 +237,9 @@ const common = { isPaper: fc.boolean(), hasOutsideContent: mostly(false, true) }
 const proposals: fc.Arbitrary<IntentProposal> = fc.oneof(
   fc.record({
     ...common,
-    kind: fc.constantFrom(...intentKinds.filter((kind) => kind !== "rescue")),
+    kind: fc.constantFrom(
+      ...intentKinds.filter((kind) => kind !== "rescue" && kind !== "unfreeze"),
+    ),
     proposer: fc.constantFrom<IntentProposer>("agent_runtime", "mcp_client", "owner"),
     agentStatus: fc.constant("active" as const),
   }),
@@ -249,7 +252,7 @@ const proposals: fc.Arbitrary<IntentProposal> = fc.oneof(
   }),
   fc.record({
     ...common,
-    kind: fc.constant("rescue" as const),
+    kind: fc.constantFrom("rescue" as const, "unfreeze" as const),
     proposer: fc.constant("owner" as const),
     agentStatus: fc.constant("active" as const),
   }),
@@ -273,7 +276,7 @@ const forward: Readonly<Partial<Record<IntentState, readonly TriggerType[]>>> = 
   assessed: ["simulation_matched"],
   simulated: ["authorization_checked"],
   awaiting_confirmation: ["confirm_tapped", "confirm_requoted"],
-  confirmed: ["paper_fill_recorded", "queue_took"],
+  confirmed: ["paper_fill_recorded", "queue_took", "unfreeze_written"],
   executing: ["steps_included"],
   included: ["finality_reached"],
   finalized: ["fills_reconciled"],
@@ -519,6 +522,15 @@ function ledgerViolations({ events, final }: History): readonly string[] {
   return terminalEntries === wanted ? [] : [`${String(terminalEntries)} terminal ledger entries`];
 }
 
+// Decision 0128: an unfreeze is live and has no step, so no queue ever takes it.
+function unfreezeViolations(
+  final: IntentStatus,
+  states: readonly IntentState[],
+): readonly string[] {
+  const hasRun = final.isPaper || states.includes("executing");
+  return final.kind === "unfreeze" && hasRun ? ["an unfreeze ran on paper or on a chain"] : [];
+}
+
 function pathViolations({ events, final }: History): readonly string[] {
   const states = events.map((event) => event.to);
   const firstExecuting = states.indexOf("executing");
@@ -528,6 +540,7 @@ function pathViolations({ events, final }: History): readonly string[] {
     final.kind === "rescue" && (final.isPaper || states.includes("paper_filled"))
       ? "a rescue ran on paper"
       : "",
+    ...unfreezeViolations(final, states),
     firstExecuting !== -1 && (firstConfirmed === -1 || firstConfirmed > firstExecuting)
       ? "executing before confirmed"
       : "",

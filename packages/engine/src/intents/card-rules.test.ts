@@ -27,6 +27,7 @@ describe("card expiry", () => {
       registerIdentity: 601_000,
       launchToken: 601_000,
       rescue: 601_000,
+      unfreeze: 601_000,
     });
   });
 });

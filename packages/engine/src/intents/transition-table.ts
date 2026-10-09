@@ -15,6 +15,7 @@ import {
   fillOnPaper,
   reconcileFills,
   takeIntoQueue,
+  writeUnfreeze,
 } from "./execution-guards.js";
 import type { IntentState } from "./intent-state.js";
 import { type TriggerType, triggerTypes } from "./intent-trigger.js";
@@ -121,6 +122,7 @@ export const transitionTable: TransitionTable = {
     { from: ["executing"], to: "failed_onchain", guard: failUnsent },
   ],
   fills_reconciled: [{ from: ["finalized"], to: "reconciled", guard: reconcileFills }],
+  unfreeze_written: [{ from: ["confirmed"], to: "reconciled", guard: writeUnfreeze }],
 };
 
 function rulesOf(trigger: TriggerType): readonly TransitionRule[] {

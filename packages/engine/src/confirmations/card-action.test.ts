@@ -81,6 +81,8 @@ const actions: readonly (readonly [CardAction, string, string])[] = [
     "card.rescue.action",
     "rescue",
   ],
+  [{ kind: "unfreeze", scope: "agent", agent: "main" }, "card.unfreeze.agent", "unfreeze"],
+  [{ kind: "unfreeze", scope: "install", agentCount: 2 }, "card.unfreeze.all", "unfreeze"],
 ];
 
 // The names of a message's arguments, in English, without their ICU forms.
@@ -124,6 +126,8 @@ describe("action lines", () => {
       ["text"],
       ["text", "text", "text", "asset", "amount"],
       ["account", "count", "count", "usd"],
+      ["text"],
+      ["count"],
     ]);
   });
 

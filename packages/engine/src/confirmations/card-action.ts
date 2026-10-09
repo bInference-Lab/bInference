@@ -67,6 +67,13 @@ export interface CardActionFacts {
     readonly walletCount: number;
     readonly valueUsdMicros: bigint;
   };
+  /**
+   * One agent's unfreeze names it; a whole-install unfreeze counts the agents frozen now
+   * (decision 0128).
+   */
+  readonly unfreeze:
+    | { readonly scope: "agent"; readonly agent: string }
+    | { readonly scope: "install"; readonly agentCount: number };
 }
 
 /** The kind of a card's action. */
@@ -177,6 +184,10 @@ const actionLines: ActionLines = {
       usd: { type: "usd", usdMicros: action.valueUsdMicros },
     },
   }),
+  unfreeze: (action) =>
+    action.scope === "agent"
+      ? { key: "card.unfreeze.agent", values: { agent: text(action.agent) } }
+      : { key: "card.unfreeze.all", values: { count: count(action.agentCount) } },
 };
 
 /** The action line of a card (spec 4, section 3.3): its kind's message key and values. */
@@ -196,6 +207,7 @@ const verbs: { readonly [K in Exclude<CardActionKind, "lend" | "stake">]: string
   registerIdentity: "register",
   launchToken: "launch",
   rescue: "rescue",
+  unfreeze: "unfreeze",
 };
 
 /** The verb the card's header confirms: the kind, or a lend or stake move such as `supply`. */

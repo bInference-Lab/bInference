@@ -5,6 +5,7 @@ import type {
   IntentRequest,
   IntentView,
   RescueRequest,
+  UnfreezeRequest,
 } from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import {
@@ -16,14 +17,15 @@ import {
 import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
+import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
 import { assetInfosOf } from "../money-path/asset-infos.js";
 
+/** What an intent was asked: a proposal's request, a rescue's or an unfreeze's. */
+type AnyRequest = IntentRequest | RescueRequest | UnfreezeRequest;
+
 // The money path routes swaps; a rescue lists what it moves; other kinds list their assets once
-// it runs them.
-function assetsOf(
-  record: IntentRecord,
-  request: IntentRequest | RescueRequest,
-): readonly AssetRef[] {
+// it runs them, and an unfreeze moves none.
+function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] {
   if (request.kind === "rescue") {
     const quote = record.quote === undefined ? undefined : rescueQuoteDocument.decode(record.quote);
     return [...new Set(quote?.moves.map(({ amount }) => amount.asset) ?? [])];
@@ -31,10 +33,16 @@ function assetsOf(
   return request.kind === "swap" ? [request.from, request.to] : [];
 }
 
-// A rescue's quote is its own document, which the view's quote does not show.
-function requestOf(record: IntentRecord): IntentRequest | RescueRequest {
+// A rescue's or an unfreeze's quote is its own document, which the view's quote does not show.
+function requestOf(record: IntentRecord): AnyRequest {
+  if (record.kind === "unfreeze") {
+    return unfreezeRequestDocument.decode(record.request);
+  }
   return record.kind === "rescue" ? rescueRequest : requestDocument.decode(record.request);
 }
+
+// Only a trade's quote is a `QuoteView`.
+const ownQuoteKinds: ReadonlySet<string> = new Set(["rescue", "unfreeze"]);
 
 function cardViewOf(snapshot: IntentSnapshot): CardView | undefined {
   const card = snapshot.history.cards.at(-1);
@@ -90,7 +98,7 @@ export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): I
     kind: record.kind,
     state: record.state,
     request,
-    ...(record.quote === undefined || record.kind === "rescue"
+    ...(record.quote === undefined || ownQuoteKinds.has(record.kind)
       ? {}
       : { quote: quoteDocument.decode(record.quote) }),
     ...(record.risk === undefined ? {} : { risk: riskDocument.decode(record.risk) }),

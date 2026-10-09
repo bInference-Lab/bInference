@@ -8,7 +8,7 @@ export interface CardRules {
   readonly tradeExpiryMs: number;
   /**
    * How long the card of any other kind stays open, such as a send, a DeFi move, a bridge, a rescue,
-   * an identity registration, a token launch or an approval revoke: 10 min by default.
+   * an unfreeze, an identity registration, a token launch or an approval revoke: 10 min by default.
    */
   readonly otherExpiryMs: number;
   /** A tap on a quote older than this waits for a re-quote: 10 s by default. */
@@ -27,6 +27,7 @@ const longCardKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
   "registerIdentity",
   "launchToken",
   "rescue",
+  "unfreeze",
 ]);
 
 /** When a card of this kind, opened at `openedAtMs`, expires. */

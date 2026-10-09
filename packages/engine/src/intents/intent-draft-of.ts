@@ -1,22 +1,26 @@
 import type { Id, IdSource, JsonValue } from "@binference/core";
-import type { IntentRequest, RescueRequest } from "@binference/protocol";
+import type { IntentRequest, RescueRequest, UnfreezeRequest } from "@binference/protocol";
 import { requestDocument } from "./intent-documents.schema.js";
 import type { IntentDraft, IntentProposerRef } from "./intent-record.js";
 import type { IntentStep } from "./state-machine.js";
+import { unfreezeRequestDocument } from "./unfreeze-quote.js";
 
 /** A new intent to store: the state machine's step into `proposed`, and what it was asked. */
 export interface NewIntent {
   readonly id: Id<"int">;
   readonly agentId: Id<"agt">;
   readonly walletId: Id<"wal">;
-  /** What was asked: a proposal's request, or the rescue's, which asks for nothing more. */
-  readonly request: IntentRequest | RescueRequest;
+  /** What was asked: a proposal's request, the rescue's, or the unfreeze's. */
+  readonly request: IntentRequest | RescueRequest | UnfreezeRequest;
   /** Who called, as the intents table keeps it: the token or device, `telegram` or `engine`. */
   readonly proposerRef: IntentProposerRef;
   readonly step: IntentStep;
 }
 
-function requestOf(request: IntentRequest | RescueRequest): JsonValue {
+function requestOf(request: IntentRequest | RescueRequest | UnfreezeRequest): JsonValue {
+  if (request.kind === "unfreeze") {
+    return unfreezeRequestDocument.encode(request);
+  }
   return request.kind === "rescue" ? { kind: request.kind } : requestDocument.encode(request);
 }
 

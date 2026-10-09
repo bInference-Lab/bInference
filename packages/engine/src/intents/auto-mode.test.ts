@@ -54,6 +54,7 @@ describe("the auto test", () => {
       registerIdentity: "kind",
       launchToken: "kind",
       rescue: "send",
+      unfreeze: "kind",
     });
   });
 

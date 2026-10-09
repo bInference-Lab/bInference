@@ -1,5 +1,5 @@
 {
-  "header": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} supply {supply} withdraw {withdraw} borrow {borrow} repay {repay} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} other {action}} · {agent} · {mode, select, paper {🧪 Paper} other {🔴 Live}}",
+  "header": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} supply {supply} withdraw {withdraw} borrow {borrow} repay {repay} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} unfreeze {unfreeze} other {action}} · {agent} · {mode, select, paper {🧪 Paper} other {🔴 Live}}",
   "swap.action": "Sell {in} → at least {minOut}",
   "buy.action": "Buy {token} with {spend} · on {place}",
   "sell.action": "Sell {amount} → at least {minOut} · on {place}",
@@ -17,6 +17,8 @@
   "identity.action": "Register {agent} on chain (ERC-8004)",
   "launch.action": "Launch {symbol} ({name}) on {venue}, paired with {pair} · first buy {firstBuy}",
   "rescue.action": "Move everything to your rescue address {address}: {count, plural, one {# token} other {# tokens}} from {wallets, plural, one {# wallet} other {# wallets}}, about {usd}",
+  "unfreeze.agent": "Unfreeze {agent}: it trades again within its limits",
+  "unfreeze.all": "Unfreeze every agent: {count, plural, one {# is frozen now} other {# are frozen now}}, and new agents start unfrozen",
   "place.curve": "the {launchpad} curve",
   "route": "Route  {route} · impact {impact} · max slippage {slippage}",
   "fees": "Fees   network ≈ {fee}{privateSend, select, yes { · private send} other {}}",

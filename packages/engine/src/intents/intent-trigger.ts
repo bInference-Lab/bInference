@@ -41,6 +41,7 @@ export const triggerTypes = [
   "nonce_taken",
   "step_unsent",
   "fills_reconciled",
+  "unfreeze_written",
 ] as const;
 
 /** The type of a trigger. */
@@ -159,6 +160,8 @@ export interface TriggerFacts {
   readonly step_unsent: { readonly hasSignedStep: boolean };
   /** Fills decoded and compared with the simulation. A bridge also reports delivery. */
   readonly fills_reconciled: { readonly isDeliveryReported?: boolean };
+  /** A confirmed unfreeze is written: its agents, and the install it names, are unfrozen. */
+  readonly unfreeze_written: NoFacts;
 }
 
 /** Something that happened to an intent, with the facts the state machine's guards read. */

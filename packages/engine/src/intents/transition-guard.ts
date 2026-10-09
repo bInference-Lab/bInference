@@ -32,7 +32,9 @@ export type TransitionProblem =
   | "policy_refused"
   | "no_confirmation"
   | "authorization_lapsed"
-  | "delivery_pending";
+  | "delivery_pending"
+  | "not_unfreeze"
+  | "no_steps";
 
 /** What a transition writes besides the new state. */
 export interface IntentChange {

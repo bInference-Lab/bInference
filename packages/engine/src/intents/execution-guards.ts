@@ -55,7 +55,8 @@ function approvalProblem(
 /**
  * `confirmed` to `executing`: the wallet queue takes a live intent whose confirmation record exists
  * and is unexpired, or whose authorization holds, and whose policy still passes. The agent must be
- * live, except for a rescue, which moves the real funds in paper mode too (decision 0100).
+ * live, except for a rescue, which moves the real funds in paper mode too (decision 0100). An
+ * unfreeze has no step for a queue to take (decision 0128).
  */
 export function takeIntoQueue({
   status,
@@ -64,6 +65,9 @@ export function takeIntoQueue({
 }: GuardInput<"queue_took">): Result<IntentChange, TransitionProblem> {
   if (status.isPaper) {
     return err("paper_intent");
+  }
+  if (status.kind === "unfreeze") {
+    return err("no_steps");
   }
   if (!trigger.isAgentLive && status.kind !== "rescue") {
     return err("agent_not_live");
@@ -123,4 +127,14 @@ export function failUnsent({
     return err("nothing_signed");
   }
   return status.kind === "rescue" ? err("rescue_retries") : ok({ reason: "step_unsent" });
+}
+
+/**
+ * `confirmed` to `reconciled` once an unfreeze is written (decision 0128): it has no step, so its
+ * write is its whole run. Any other kind runs through the paper fill or the wallet queue.
+ */
+export function writeUnfreeze({
+  status,
+}: GuardInput<"unfreeze_written">): Result<IntentChange, TransitionProblem> {
+  return status.kind === "unfreeze" ? ok({}) : err("not_unfreeze");
 }

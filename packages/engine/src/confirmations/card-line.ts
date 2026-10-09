@@ -25,6 +25,8 @@ export const cardKeys = [
   "card.identity.action",
   "card.launch.action",
   "card.rescue.action",
+  "card.unfreeze.agent",
+  "card.unfreeze.all",
   "card.place.curve",
   "card.route",
   "card.fees",
