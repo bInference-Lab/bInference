@@ -1,9 +1,6 @@
 import type { JsonValue } from "@binference/core";
-import {
-  type RunningEngine,
-  type StartRefusal,
-  startSelfHosted,
-} from "../compose/start-self-hosted.js";
+import type { RunningEngine, StartRefusal } from "../compose/start-outcome.js";
+import { startSelfHosted } from "../compose/start-self-hosted.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { CliOutput, ExitCode } from "../program/cli-output.js";
 import { configIssueMessages } from "./config-issue-messages.js";

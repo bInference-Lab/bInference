@@ -9,16 +9,20 @@ them in.
 `src/compose/`). In order it takes the engine lock on the state folder, loads `config.json5` with
 its layers and secret sources, opens the engine log, opens `engine.sqlite` on its store workers
 (migrations, then the integrity check), makes sure the CLI token in `auth/cli.token` is known,
-builds the engine on the self-hosted parts, and serves the protocol on the engine's IPC endpoint
-and on `127.0.0.1:<engine.port>`. The executor (`composeExecutor`) sends live intents through
+builds the engine on the self-hosted parts, and listens for the protocol on the engine's IPC
+endpoint and on `127.0.0.1:<engine.port>` (`serveEngine`). From there every call but
+`engine/status` answers `engine.starting` while the startup order goes on: the agent key opens
+through the unlock mode, and the executor recovers every unfinished live intent by hash and
+nonce; then the engine is `ready`, or `locked`. The executor (`composeExecutor`) sends live intents through
 every private relay each enabled chain lists or `chains.relays` names, reads through the chain's
 RPCs and `chains.rpc`, and pays at most `chains.maxFeePerGasGwei` without a tap; its health signal
 follows the relays' last answers. Parts that have no adapter yet (custody through Privy, Chainlink
 prices, the wallet facts, the simulator, outbound HTTP) are missing parts: they refuse every live
 action and show as failed health signals. A stop signal, or `engine/stop` over IPC, runs the
-shutdown sequence, which closes the parts in the reverse order: server, IPC, health probe,
-executor, store, log, lock. A second
-`start` on the same state folder refuses while the first runs.
+shutdown sequence within `engine.shutdownBudgetMs`, which closes the parts in the reverse order:
+server and IPC, so nothing new comes in; the health probe; the executor, which lets a signature or
+a send under way end; the store, the log and the lock. A second `start` on the same state folder
+refuses while the first runs, in another process too.
 
 `binference init` sets up a new install (keys spec, section 2) under the engine lock: the Privy
 app's id and secret, checked with one read; the owner key, shown once as its `bnok1` code, whose

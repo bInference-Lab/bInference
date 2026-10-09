@@ -14,9 +14,12 @@ Rules for this package:
   (`ProfileParts`) and builds their adapters; `composeCloudTestRoot` is the test composition root
   on the Cloud-shaped fakes. Every other package takes the ports, and `guards/no-profile-mention`
   fails it when it names a profile.
-- `startSelfHosted` is the self-hosted composition root. Each part it opens adds its closer, so a
-  start that fails part way closes what it opened, and the shutdown sequence closes the parts in
-  the reverse order. A part without an adapter is a missing part (`createMissingParts`): it
+- `startSelfHosted` is the self-hosted composition root, in the startup order of ARCHITECTURE.md
+  section 24: it opens the lock, the config, the log and the stores, then `serveEngine` listens at
+  once (calls answer `engine.starting`), opens the keys, recovers, and turns `ready`. Each part it
+  opens adds its closer, so a start that fails part way closes what it opened, and the shutdown
+  sequence closes the parts in the reverse order: a part that must close before another, such as
+  the executor before the store, opens after it. A part without an adapter is a missing part (`createMissingParts`): it
   refuses, never fakes a balance, a price or a signature, and shows as a failed health signal.
 - Commands live in `src/commands/`, one file each, and run on a `CliHost`, never on `process`
   directly: only `src/main.ts` reads `process`. Every command takes `--json` and `--yes`; people
@@ -24,7 +27,9 @@ Rules for this package:
   stay English.
 - Tests run commands end to end through `runCli` on a host with a temporary state folder
   (`src/e2e/test-host.ts`), a manual clock and an emitter for stop signals; store workers run the
-  TypeScript source. Each test stops its engine through the shutdown sequence.
+  TypeScript source. Each test stops its engine through the shutdown sequence. What only separate
+  processes prove, such as the engine lock, runs `src/main.ts` as a process of its own
+  (`engine-process.test.ts`).
 - Fork tests in `src/fork/` run engine steps over the real chain parts they are composed from,
   such as the simulation check over the EVM transaction simulator, on the fork suite's BSC fork
   through `@binference/chain-evm/fork`. They run in `pnpm test:fork`, never in `pnpm check`.
