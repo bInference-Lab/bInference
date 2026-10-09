@@ -1,6 +1,11 @@
 import { err, ok, type Result } from "@binference/core";
 import type { PositionStore } from "../ports.js";
 import type { ArrivalRecord, ArrivalWrite, PaperReset } from "../positions/arrival-record.js";
+import type {
+  DepartureOutcome,
+  DepartureRecord,
+  DepartureWrite,
+} from "../positions/departure-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "../positions/execution-record.js";
 import type {
   ExecutionWrite,
@@ -70,6 +75,31 @@ function resetPaper(
   return ok(reset.arrivals.map((arrival, index) => ({ ...arrival, id: firstId + index })));
 }
 
+// An intent's departures are stored once; a second write answers the first and adds nothing.
+function departOnce(
+  rows: { readonly positions: Positions; readonly departures: readonly DepartureRecord[] },
+  write: DepartureWrite,
+): { readonly outcome: DepartureOutcome; readonly added: readonly DepartureRecord[] } {
+  const earlier = rows.departures.filter(({ intentId }) => intentId === write.intentId);
+  if (earlier.length > 0) {
+    return { outcome: ok(earlier), added: [] };
+  }
+  if (write.positions.some(({ position }) => position.isPaper)) {
+    throw constraintFault("a departure moves only live positions");
+  }
+  if (!movePositions(rows.positions, write.positions)) {
+    return { outcome: err("stale"), added: [] };
+  }
+  const { intentId } = write;
+  const firstId = rows.departures.length + 1;
+  const added = write.departures.map((draft, index) => ({
+    ...draft,
+    intentId,
+    id: firstId + index,
+  }));
+  return { outcome: ok(added), added };
+}
+
 const pageOf = <Row extends Listed>(rows: readonly Row[], query: ExecutionQuery): Row[] =>
   structuredClone(rows.filter((row) => matches(query, row)).slice(0, query.limit));
 
@@ -81,6 +111,7 @@ export function createMemoryPositionStore(): PositionStore {
   const positions: Positions = new Map();
   const executions: ExecutionRecord[] = [];
   const arrivals: ArrivalRecord[] = [];
+  const departures: DepartureRecord[] = [];
   const record = (write: ExecutionWrite): Result<ExecutionRecord, "stale"> => {
     if (!movePositions(positions, write.positions)) {
       return err("stale");
@@ -110,6 +141,12 @@ export function createMemoryPositionStore(): PositionStore {
     executions: async (query, call) => memoryCall(call, () => pageOf(executions, query)),
     recordArrival: async (write, call) => memoryCall(call, () => recordArrival(write)),
     arrivals: async (query, call) => memoryCall(call, () => pageOf(arrivals, query)),
+    recordDepartures: async (write, call) =>
+      memoryCall(call, () => {
+        const { outcome, added } = departOnce({ positions, departures }, structuredClone(write));
+        departures.push(...added);
+        return structuredClone(outcome);
+      }),
     resetPaper: async (reset, call) =>
       memoryCall(call, () => {
         const stored = resetPaper(positions, structuredClone(reset), arrivals.length + 1);

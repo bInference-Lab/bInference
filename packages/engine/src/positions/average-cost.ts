@@ -76,3 +76,30 @@ export function dispose(
     realizedUsdMicros: basis.realizedUsdMicros + proceedsIn - costOut,
   };
 }
+
+/**
+ * Removes units that left the wallet without a sale, such as a send to another address, at their
+ * average cost, with no gain or loss (decision 0127).
+ *
+ * - The cost that leaves is the position's cost times the share of units sent, rounded down, so
+ *   the units left never look cheaper than they were; the last unit takes all the cost left.
+ * - Units beyond what the position holds have no cost binference knows, so they take none.
+ * - Sending no units changes nothing.
+ */
+export function withdraw(basis: CostBasis, quantityBase: bigint): CostBasis {
+  assertNotNegative([quantityBase]);
+  const held = basis.quantityBase;
+  const covered = quantityBase < held ? quantityBase : held;
+  if (covered === 0n) {
+    return basis;
+  }
+  const costOut =
+    covered === held
+      ? basis.costUsdMicros
+      : mulDiv(basis.costUsdMicros, { numerator: covered, denominator: held }, "down");
+  return {
+    ...basis,
+    quantityBase: held - covered,
+    costUsdMicros: basis.costUsdMicros - costOut,
+  };
+}

@@ -1,7 +1,7 @@
 import { mulDiv, type Ratio } from "@binference/core";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { acquire, type CostBasis, dispose, emptyCostBasis } from "./average-cost.js";
+import { acquire, type CostBasis, dispose, emptyCostBasis, withdraw } from "./average-cost.js";
 
 interface Step {
   readonly buys: boolean;
@@ -40,6 +40,11 @@ function history(all: readonly Step[]): readonly CostBasis[] {
     bases.push(applyStep(bases.at(-1) ?? emptyCostBasis, step));
   }
   return bases;
+}
+
+// Where a run of steps leaves the position.
+function lastOf(all: readonly Step[]): CostBasis {
+  return history(all).at(-1) ?? emptyCostBasis;
 }
 
 interface Totals {
@@ -89,6 +94,21 @@ describe("average cost properties", () => {
         const unrealizedUsdMicros = valueUsdMicros - basis.costUsdMicros;
         expect(basis.realizedUsdMicros + unrealizedUsdMicros).toBe(
           proceedsUsdMicros + valueUsdMicros - paidUsdMicros,
+        );
+      }),
+    );
+  });
+
+  it("sends units at their average cost: nothing realized, and the units left never cheaper", () => {
+    fc.assert(
+      fc.property(steps, fc.bigInt({ min: 0n, max: 10n ** 24n }), (all, sentBase) => {
+        const before = lastOf(all);
+        const after = withdraw(before, sentBase);
+        expect(after.realizedUsdMicros).toBe(before.realizedUsdMicros);
+        expect([after].filter(isNegative)).toStrictEqual([]);
+        expect([after].filter(costsWithoutHolding)).toStrictEqual([]);
+        expect(after.costUsdMicros * before.quantityBase).toBeGreaterThanOrEqual(
+          before.costUsdMicros * after.quantityBase,
         );
       }),
     );

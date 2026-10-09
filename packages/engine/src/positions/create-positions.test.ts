@@ -1,11 +1,13 @@
 import { type AssetRef, assetRefSchema, type UsdPrice } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { fixtureId, inOrder, live } from "../contracts/store-fixtures.js";
+import { hashOf } from "../contracts/transaction-store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
 import type { PositionStore } from "../ports.js";
 import type { ArrivalDraft } from "./arrival-record.js";
 import { createPositions, type ValuedPosition } from "./create-positions.js";
+import type { DepartureDraft } from "./departure-record.js";
 import type { ExecutedTrade } from "./value-execution.js";
 
 const coin = assetRefSchema.parse("fake:1/slip44:1");
@@ -385,6 +387,37 @@ describe("createPositions receive", () => {
     expect(lost).toStrictEqual({ ok: false, error: "stale" });
     const stored = await store.arrivals({ after: 0, limit: 10, isPaper: false }, live());
     expect(stored).toHaveLength(1);
+  });
+});
+
+describe("createPositions depart", () => {
+  it("takes a send and its gas out of the positions at average cost, once per intent", async () => {
+    const store = createMemoryPositionStore();
+    const prices = createFakePriceSource(new Map([[coin, usd(600_000_000n)]]));
+    const positions = createPositions({ store, prices });
+    await positions.receive(twoCoins, live());
+    const send: DepartureDraft = {
+      walletId,
+      atMs: 9_000,
+      sent: { asset: coin, base: whole / 2n },
+      gas: { asset: coin, base: whole / 1_000n },
+      txHash: hashOf(1),
+    };
+    const departed = { intentId: fixtureId("int", 7), departures: [send] };
+    const stored = await positions.depart(departed, live());
+    expect(stored).toStrictEqual({
+      ok: true,
+      value: [{ ...send, intentId: departed.intentId, id: 1 }],
+    });
+    const again = { ...departed, departures: [{ ...send, sent: { asset: coin, base: 1n } }] };
+    await expect(positions.depart(again, live())).resolves.toStrictEqual(stored);
+    const [held] = await store.positions({ walletId, isPaper: false }, live());
+    // 0.501 of 2 BNB leave with 0.501 / 2 of their $1,200 cost: $300.60, and nothing is realized.
+    expect([held?.quantityBase, held?.costUsdMicros, held?.realizedUsdMicros]).toStrictEqual([
+      1_499_000_000_000_000_000n,
+      899_400_000n,
+      0n,
+    ]);
   });
 });
 

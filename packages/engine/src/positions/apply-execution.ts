@@ -2,7 +2,12 @@ import type { AssetRef } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { acquire, type CostBasis, dispose, emptyCostBasis } from "./average-cost.js";
 import type { ExecutionDraft } from "./execution-record.js";
-import { heldPosition, type PositionChange, positionWriteOf } from "./position-change.js";
+import {
+  heldPosition,
+  isEmptyChange,
+  type PositionChange,
+  positionWriteOf,
+} from "./position-change.js";
 import type { PositionRecord, PositionWrite } from "./position-record.js";
 
 // A fee or gas worth something was paid in some units; a value with none would leak from P&L.
@@ -23,16 +28,6 @@ function assertTrade(execution: ExecutionDraft): void {
       details: { intent: execution.intentId },
     });
   }
-}
-
-// A coin the positions do not hold, such as an arrival with no price, leaves no row behind.
-function isEmpty({ basis, held }: PositionChange): boolean {
-  return (
-    held === undefined &&
-    basis.quantityBase === 0n &&
-    basis.costUsdMicros === 0n &&
-    basis.realizedUsdMicros === 0n
-  );
 }
 
 /**
@@ -73,6 +68,6 @@ export function applyExecution(
   const costUsdMicros = execution.valueUsdMicros + execution.feeUsdMicros + execution.gasUsdMicros;
   change(bought.asset, (basis) => acquire(basis, bought.base, costUsdMicros));
   return [...touched.values()]
-    .filter((entry) => !isEmpty(entry))
+    .filter((entry) => !isEmptyChange(entry))
     .map((entry) => positionWriteOf(execution, entry));
 }

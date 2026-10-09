@@ -52,6 +52,9 @@ describe("the missing parts", () => {
     await expect(parts.positions.resetPaper({} as never, live())).rejects.toMatchObject({
       details: { missing: "positions" },
     });
+    await expect(parts.positions.recordDepartures({} as never, live())).rejects.toMatchObject({
+      details: { missing: "positions" },
+    });
   });
 
   it("answers nothing on an aborted signal", async () => {

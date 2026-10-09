@@ -2,8 +2,10 @@ import type { Amount, PriceSource } from "@binference/chain";
 import { err, type Id, mulDiv, type Result } from "@binference/core";
 import type { PositionStore } from "../ports.js";
 import { applyArrival } from "./apply-arrival.js";
+import { applyDepartures } from "./apply-departures.js";
 import { applyExecution } from "./apply-execution.js";
 import type { ArrivalDraft, ArrivalRecord } from "./arrival-record.js";
+import type { DepartureDraft, DepartureOutcome } from "./departure-record.js";
 import type { ExecutionRecord } from "./execution-record.js";
 import { paperResetOf } from "./paper-reset-of.js";
 import type { PositionQuery, PositionRecord } from "./position-record.js";
@@ -22,8 +24,8 @@ export interface ValuedPosition {
 }
 
 /**
- * The positions of the money path: what each execution and arrival moves, and what the positions
- * are worth.
+ * The positions of the money path: what each execution, arrival and departure moves, and what
+ * the positions are worth.
  */
 export interface Positions {
   /**
@@ -48,6 +50,15 @@ export interface Positions {
     arrival: Omit<ArrivalDraft, "valueUsdMicros">,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<ArrivalRecord, "stale">>;
+  /**
+   * Takes what one intent's sends moved out of live wallets out of their positions, at average
+   * cost with no gain or loss (decision 0127), and stores the departures once: a second call for
+   * the intent answers the stored ones and changes nothing. `stale` as for `record`.
+   */
+  depart(
+    departed: { readonly intentId: Id<"int">; readonly departures: readonly DepartureDraft[] },
+    options: { readonly signal: AbortSignal },
+  ): Promise<DepartureOutcome>;
   /**
    * Starts a wallet's paper portfolio again from `balances`, one per asset, at the
    * `PriceSource`'s prices now: every paper position of the wallet empties, and each balance
@@ -140,6 +151,14 @@ export function createPositions(options: PositionsOptions): Positions {
         call,
       );
       return store.recordArrival({ arrival, positions: applyArrival(held, arrival) }, call);
+    },
+    async depart({ intentId, departures }, call) {
+      const wallets = [...new Set(departures.map(({ walletId }) => walletId))];
+      const held = await Promise.all(
+        wallets.map(async (walletId) => store.positions({ walletId, isPaper: false }, call)),
+      );
+      const positions = applyDepartures(held.flat(), departures);
+      return store.recordDepartures({ intentId, departures, positions }, call);
     },
     resetPaper: async (reset, call) => resetPaper(options, reset, call.signal),
     async value(query, call) {

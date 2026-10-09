@@ -6,6 +6,7 @@ import type { PositionStore } from "../ports.js";
 import type { ArrivalDraft } from "../positions/arrival-record.js";
 import type { ExecutionDraft, ExecutionQuery } from "../positions/execution-record.js";
 import type { PositionState, PositionWrite } from "../positions/position-record.js";
+import { refusesStaleDeparture, storesDeparturesOnce } from "./departure-checks.js";
 import { refusesStaleReset, resetsPaper } from "./paper-reset-checks.js";
 import { assertRefusesAborted, checkOn, inOrder, live } from "./store-fixtures.js";
 
@@ -262,6 +263,16 @@ export function positionStoreContract(harness: PositionStoreHarness): readonly C
       "refuses a paper reset that misses a position or touches other rows",
       create,
       refusesStaleReset,
+    ),
+    checkOn(
+      "stores an intent's departures with their live positions once",
+      create,
+      storesDeparturesOnce,
+    ),
+    checkOn(
+      "refuses departures from a stale or paper position and stores nothing",
+      create,
+      refusesStaleDeparture,
     ),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];

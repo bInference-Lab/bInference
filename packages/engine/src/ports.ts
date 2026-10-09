@@ -47,6 +47,7 @@ import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
 import type { BalancesQuery, WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
 import type { ArrivalRecord, ArrivalWrite, PaperReset } from "./positions/arrival-record.js";
+import type { DepartureOutcome, DepartureWrite } from "./positions/departure-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
 import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
 import type { RowPage } from "./records/row-page.js";
@@ -231,9 +232,9 @@ export interface LedgerStore {
 }
 
 /**
- * Keeps executions, arrivals and the positions they move (database spec, section 2.3). An
- * execution or an arrival is stored with its position changes in one transaction, each under the
- * row version it was computed from, so two changes that race on a position cannot both land.
+ * Keeps executions, arrivals, departures and the positions they move (database spec, section 2.3).
+ * Each is stored with its position changes in one transaction, each under the row version it was
+ * computed from, so two changes that race on a position cannot both land.
  */
 export interface PositionStore {
   /** One wallet's positions, paper or live, ordered by asset. */
@@ -253,6 +254,13 @@ export interface PositionStore {
   recordArrival(write: ArrivalWrite, options: StoreCall): Promise<Result<ArrivalRecord, "stale">>;
   /** Arrivals that match the query, in the order recorded. */
   arrivals(query: ExecutionQuery, options: StoreCall): Promise<readonly ArrivalRecord[]>;
+  /**
+   * Stores one intent's departures and their live position writes under the same rules as
+   * `record`, and returns the departures with their numbers, numbered apart from executions and
+   * arrivals. An intent's departures are stored once: when it has some already, nothing is written
+   * and those come back. A paper position throws `store.constraint`.
+   */
+  recordDepartures(write: DepartureWrite, options: StoreCall): Promise<DepartureOutcome>;
   /**
    * Starts a wallet's paper portfolio again: stores the reset's arrivals and position writes all
    * or nothing, under the same rules as `record`, and returns the arrivals with their numbers. A

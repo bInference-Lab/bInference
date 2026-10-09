@@ -30,6 +30,19 @@ export function heldPosition(
   );
 }
 
+/**
+ * Whether a change leaves no row behind: an asset the positions never held, such as a coin that
+ * arrived with no price, still holding nothing and having realized nothing.
+ */
+export function isEmptyChange({ basis, held }: PositionChange): boolean {
+  return (
+    held === undefined &&
+    basis.quantityBase === 0n &&
+    basis.costUsdMicros === 0n &&
+    basis.realizedUsdMicros === 0n
+  );
+}
+
 /** The write that stores a change under the row version it read; a new row carries none. */
 export function positionWriteOf(move: PositionMove, change: PositionChange): PositionWrite {
   const { asset, basis, held } = change;

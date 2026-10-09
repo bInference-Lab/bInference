@@ -89,6 +89,7 @@ export function createMissingParts(): MissingParts {
       executions: async (_query, options) => refuse("positions", options),
       recordArrival: async (_write, options) => refuse("positions", options),
       arrivals: async (_query, options) => refuse("positions", options),
+      recordDepartures: async (_write, options) => refuse("positions", options),
       resetPaper: async (_reset, options) => refuse("positions", options),
     },
     missing: ["prices", "wallets", "simulator", "positions"],

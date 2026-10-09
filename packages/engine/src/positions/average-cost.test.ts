@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acquire, dispose, emptyCostBasis } from "./average-cost.js";
+import { acquire, dispose, emptyCostBasis, withdraw } from "./average-cost.js";
 
 const holding = { quantityBase: 3n, costUsdMicros: 10n, realizedUsdMicros: 0n };
 
@@ -78,6 +78,34 @@ describe("dispose", () => {
       expect.objectContaining({ code: "positions.negative_amount" }),
     );
     expect(() => dispose(holding, 1n, -1n)).toThrow(
+      expect.objectContaining({ code: "positions.negative_amount" }),
+    );
+  });
+});
+
+describe("withdraw", () => {
+  it("takes the average cost of the units sent, rounded down, and realizes nothing", () => {
+    // 10 micro-dollars over 3 units: 1 unit costs 3.33, rounded down to 3.
+    const realized = { ...holding, realizedUsdMicros: -4n };
+    expect(withdraw(realized, 1n)).toStrictEqual({
+      quantityBase: 2n,
+      costUsdMicros: 7n,
+      realizedUsdMicros: -4n,
+    });
+  });
+
+  it("takes all the cost left with the last unit, and leaves nothing held", () => {
+    expect(withdraw(holding, 3n)).toStrictEqual(emptyCostBasis);
+  });
+
+  it("sends units beyond the holding with no cost, and changes nothing for none", () => {
+    expect(withdraw(holding, 5n)).toStrictEqual(emptyCostBasis);
+    expect(withdraw(emptyCostBasis, 5n)).toBe(emptyCostBasis);
+    expect(withdraw(holding, 0n)).toBe(holding);
+  });
+
+  it("refuses a negative quantity", () => {
+    expect(() => withdraw(holding, -1n)).toThrow(
       expect.objectContaining({ code: "positions.negative_amount" }),
     );
   });
