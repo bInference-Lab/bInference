@@ -22,6 +22,8 @@ export type {
   IpcEndpoint,
   ServiceManager,
 } from "./ports.js";
+export { startNodeProgram } from "./node-program.js";
+export type { NodeProgram, NodeProgramOptions } from "./node-program.js";
 export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
 export { readTextFile } from "./read-text-file.js";

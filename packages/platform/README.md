@@ -21,34 +21,37 @@ ports:
   macOS, a `systemctl --user` unit on Linux, a scheduled task through `schtasks` on Windows, each
   started at the owner's login, in their session;
 - text files read whole, and programs run with an argument array, no shell and a time limit;
+- a long-running Node program, such as the signer, held through pipes to its standard input and
+  output, with only the environment it is given;
 - log files: lines appended in order without blocking the writer, a file set aside once it is full,
   set-aside files removed after the days kept, and the last whole lines read back.
 
 ## API
 
-| Export                              | What it does                                                         |
-| ----------------------------------- | -------------------------------------------------------------------- |
-| `createPlatform`, `Platform`        | This OS's adapters, its stop signals and the state folder            |
-| `resolveStateFolder`, `StateFolder` | Every path in the state folder; creates nothing                      |
-| `FilePermissions`                   | The port that makes a file or folder owner-only                      |
-| `FileAccess`, `FileAccessState`     | The port that reads whether a file or folder is owner-only           |
-| `ensurePrivateFolder`               | Creates a folder and restricts it to its owner                       |
-| `writePrivateFile`                  | Writes a file only its owner can read, replacing the old one at once |
-| `acquireFileLock`, `FileLock`       | An exclusive OS file lock, or `held` while another holder has it     |
-| `IpcEndpoint`, `IpcBinding`         | The port that listens on and connects to one local IPC address       |
-| `openIpcChannel`, `IpcChannel`      | An authenticated channel of schema-checked JSON messages             |
-| `createShutdown`, `Shutdown`        | Runs the shutdown steps in order on a stop signal, within a budget   |
-| `Platform.keychain`                 | The OS keychain, entries `binference/<name>`                         |
-| `createPassphraseSecretStore`       | Secrets sealed with the owner's passphrase, one file each in `keys/` |
-| `createFileSecretStore`             | The `file` unlock mode: each secret in its own owner-only file       |
-| `Platform.hasDesktopSession`        | Whether a desktop session runs, so the OS keychain is there          |
-| `ServiceManager`                    | The port that installs, removes and reports a background service     |
-| `Platform.serviceManager`           | This OS's service manager, given a clock for its waits               |
-| `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                   |
-| `openLogFile`, `LogFile`            | Appends log lines without blocking; sets a full file aside by size   |
-| `readLogLines`, `LogLines`          | Reads a log file's last whole lines, or the lines after a byte       |
-| `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit     |
-| `@binference/platform/testing`      | Contract suites, service and secret vault fakes, `createTempFolder`  |
+| Export                              | What it does                                                          |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| `createPlatform`, `Platform`        | This OS's adapters, its stop signals and the state folder             |
+| `resolveStateFolder`, `StateFolder` | Every path in the state folder; creates nothing                       |
+| `FilePermissions`                   | The port that makes a file or folder owner-only                       |
+| `FileAccess`, `FileAccessState`     | The port that reads whether a file or folder is owner-only            |
+| `ensurePrivateFolder`               | Creates a folder and restricts it to its owner                        |
+| `writePrivateFile`                  | Writes a file only its owner can read, replacing the old one at once  |
+| `acquireFileLock`, `FileLock`       | An exclusive OS file lock, or `held` while another holder has it      |
+| `IpcEndpoint`, `IpcBinding`         | The port that listens on and connects to one local IPC address        |
+| `openIpcChannel`, `IpcChannel`      | An authenticated channel of schema-checked JSON messages              |
+| `createShutdown`, `Shutdown`        | Runs the shutdown steps in order on a stop signal, within a budget    |
+| `Platform.keychain`                 | The OS keychain, entries `binference/<name>`                          |
+| `createPassphraseSecretStore`       | Secrets sealed with the owner's passphrase, one file each in `keys/`  |
+| `createFileSecretStore`             | The `file` unlock mode: each secret in its own owner-only file        |
+| `Platform.hasDesktopSession`        | Whether a desktop session runs, so the OS keychain is there           |
+| `ServiceManager`                    | The port that installs, removes and reports a background service      |
+| `Platform.serviceManager`           | This OS's service manager, given a clock for its waits                |
+| `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                    |
+| `openLogFile`, `LogFile`            | Appends log lines without blocking; sets a full file aside by size    |
+| `readLogLines`, `LogLines`          | Reads a log file's last whole lines, or the lines after a byte        |
+| `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit      |
+| `startNodeProgram`, `NodeProgram`   | Starts a Node program with pipes and only the environment it is given |
+| `@binference/platform/testing`      | Contract suites, service and secret vault fakes, `createTempFolder`   |
 
 Error codes start with `platform.`, such as `platform.ipc_path_too_long` when a socket path is
 longer than macOS allows.
