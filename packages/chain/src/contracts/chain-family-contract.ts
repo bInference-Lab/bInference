@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
 import { accountRefParts } from "../caip/account-ref.js";
+import { assetRefParts } from "../caip/asset-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { DraftCall } from "../draft-call.js";
 import type { ChainFamily } from "../ports.js";
@@ -32,7 +33,9 @@ export interface ChainFamilySubject {
   readonly chain: ChainRef;
   /** A token transfer it drafts, and the call it reads back from that draft. */
   readonly transfer: { readonly transfer: TokenTransfer; readonly call: DraftCall };
-  /** A transfer of an asset it cannot send with its token standard, such as the native coin. */
+  /** A transfer of the chain's native coin it drafts, and the call it reads back from it. */
+  readonly nativeTransfer: { readonly transfer: TokenTransfer; readonly call: DraftCall };
+  /** A transfer of an asset it cannot send, such as a token of another chain or standard. */
   readonly unsendable: TokenTransfer;
 }
 
@@ -100,10 +103,30 @@ function simulationChecks(harness: ChainFamilyHarness): readonly ContractCheck[]
       },
     },
     {
-      name: "refuses to draft a transfer of an asset its token standard cannot send",
+      name: "refuses to draft a transfer of an asset it cannot send",
       run: async () => {
         const { family, unsendable } = harness.create();
         assert.deepEqual(family.transferDraft(unsendable), { ok: false, error: "unknown_asset" });
+        await Promise.resolve();
+      },
+    },
+  ];
+}
+
+function nativeChecks(harness: ChainFamilyHarness): readonly ContractCheck[] {
+  return [
+    {
+      name: "drafts a send of the native coin that it reads as the coin paid to the recipient",
+      run: async () => {
+        const { family, nativeTransfer } = harness.create();
+        const draft = family.transferDraft(nativeTransfer.transfer);
+        assert.ok(draft.ok);
+        assert.equal(draft.value.from, nativeTransfer.transfer.from);
+        assert.deepEqual(nativeTransfer.call, {
+          target: nativeTransfer.transfer.to,
+          nativeValue: nativeTransfer.transfer.amount.base,
+        });
+        assert.deepEqual(family.readDraft(draft.value), { ok: true, value: nativeTransfer.call });
         await Promise.resolve();
       },
     },
@@ -114,11 +137,14 @@ function simulationChecks(harness: ChainFamilyHarness): readonly ContractCheck[]
 export function chainFamilyContract(harness: ChainFamilyHarness): readonly ContractCheck[] {
   return [
     {
-      name: "names its id and a CAIP-2 namespace",
+      name: "names its id, a CAIP-2 namespace and the asset namespace of the tokens it sends",
       run: async () => {
-        const { family } = harness.create();
+        const { family, transfer } = harness.create();
         assert.match(family.id, /^[a-z][a-z0-9-]*$/);
         assert.match(family.namespace, /^[-a-z0-9]{3,8}$/);
+        assert.match(family.tokenNamespace, /^[-a-z0-9]{3,8}$/);
+        const { assetNamespace } = assetRefParts(transfer.transfer.amount.asset);
+        assert.equal(assetNamespace, family.tokenNamespace);
         await Promise.resolve();
       },
     },
@@ -147,5 +173,6 @@ export function chainFamilyContract(harness: ChainFamilyHarness): readonly Contr
     },
     ...draftChecks(harness),
     ...simulationChecks(harness),
+    ...nativeChecks(harness),
   ];
 }

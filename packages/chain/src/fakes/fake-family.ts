@@ -9,8 +9,9 @@ import type { TxDraft } from "../transaction.js";
 import { fakeCallOf, fakeDraft, isFakeAddress, isFakeUnsigned } from "./fake-draft.js";
 
 const namespace = "fake";
-// The asset namespace of the fake family's tokens.
+// The asset namespaces of the fake family's tokens and of each chain's coin.
 const tokenNamespace = "token";
+const coinNamespace = "slip44";
 
 function parseAddress(text: string): Result<string, "malformed_address"> {
   return isFakeAddress(text) ? ok(text.toLowerCase()) : err("malformed_address");
@@ -57,11 +58,16 @@ function freshAccount(chain: ChainRef, seed: Readonly<Uint8Array>): AccountRef {
   return accountRefSchema.parse(`${chain}:0x${address}`);
 }
 
-// `transfer,<to>,<amount>` to a token is the fake family's token transfer.
+// The coin goes as a call with no data to the recipient; `transfer,<to>,<amount>` to a token is
+// the fake family's token transfer.
 function transferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset"> {
   const { from, to, amount } = transfer;
   const asset = assetRefParts(amount.asset);
   const chain = accountRefParts(from).chain;
+  const recipient = accountRefParts(to).address;
+  if (asset.chain === chain && asset.assetNamespace === coinNamespace) {
+    return ok(fakeDraft(from, { to: recipient, value: amount.base, data: "" }));
+  }
   if (
     asset.chain !== chain ||
     asset.assetNamespace !== tokenNamespace ||
@@ -69,7 +75,7 @@ function transferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset"
   ) {
     return err("unknown_asset");
   }
-  const data = ["transfer", accountRefParts(to).address, amount.base.toString()].join(",");
+  const data = ["transfer", recipient, amount.base.toString()].join(",");
   return ok(fakeDraft(from, { to: asset.assetReference, value: 0n, data }));
 }
 
@@ -77,8 +83,17 @@ function transferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset"
  * Creates a chain family for tests: namespace `fake`, addresses of 8 hex digits after `0x`,
  * canonical in lowercase. Its drafts are `<to>|<value>|<data>` (see `fakeDraft`), and data that
  * starts with `approve,` is a token approval of the `token` asset namespace. A fresh account takes
- * the first 4 bytes of its seed, and a token transfer is `transfer,<to>,<amount>` to the token.
+ * the first 4 bytes of its seed, and a token transfer is `transfer,<to>,<amount>` to the token; a
+ * send of the coin is a call with no data to the recipient.
  */
 export function createFakeFamily(): ChainFamily {
-  return { id: "fake", namespace, parseAddress, readDraft, freshAccount, transferDraft };
+  return {
+    id: "fake",
+    namespace,
+    tokenNamespace,
+    parseAddress,
+    readDraft,
+    freshAccount,
+    transferDraft,
+  };
 }

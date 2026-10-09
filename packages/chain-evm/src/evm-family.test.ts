@@ -86,10 +86,18 @@ describe("evm family", () => {
           },
           call: { target: usdtAccount, nativeValue: 0n },
         },
+        nativeTransfer: {
+          transfer: {
+            from: wallet,
+            to: router,
+            amount: { asset: assetRefSchema.parse("eip155:56/slip44:714"), base: 5n },
+          },
+          call: { target: router, nativeValue: 5n },
+        },
         unsendable: {
           from: wallet,
           to: router,
-          amount: { asset: assetRefSchema.parse("eip155:56/slip44:714"), base: 5n },
+          amount: { asset: assetRefSchema.parse(`eip155:56/erc721:${usdt}`), base: 5n },
         },
       }),
     }),
@@ -127,6 +135,20 @@ describe("evm family", () => {
     });
     const other = { ...amount, asset: assetRefSchema.parse(`eip155:1/erc20:${usdt}`) };
     expect(family.transferDraft({ from: wallet, to: router, amount: other })).toStrictEqual({
+      ok: false,
+      error: "unknown_asset",
+    });
+  });
+
+  it("sends the coin as a plain transfer with no calldata, and refuses an unreadable recipient", () => {
+    const family = createEvmFamily();
+    const amount = { asset: assetRefSchema.parse("eip155:56/slip44:714"), base: 7n };
+    expect(family.transferDraft({ from: wallet, to: router, amount })).toStrictEqual({
+      ok: true,
+      value: encodeEvmDraft({ from: wallet, to: router, value: 7n, data: "0x" }),
+    });
+    const nowhere = accountRefSchema.parse("eip155:56:nowhere");
+    expect(family.transferDraft({ from: wallet, to: nowhere, amount })).toStrictEqual({
       ok: false,
       error: "unknown_asset",
     });

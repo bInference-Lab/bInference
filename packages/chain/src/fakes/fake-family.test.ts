@@ -53,7 +53,15 @@ describe("fake family", () => {
           transfer: { from: wallet, to: router, amount: { asset: token, base: 5n } },
           call: { target: accountRefSchema.parse("fake:1:0x0000000a"), nativeValue: 0n },
         },
-        unsendable: { from: wallet, to: router, amount: { asset: coin, base: 5n } },
+        nativeTransfer: {
+          transfer: { from: wallet, to: router, amount: { asset: coin, base: 5n } },
+          call: { target: router, nativeValue: 5n },
+        },
+        unsendable: {
+          from: wallet,
+          to: router,
+          amount: { asset: assetRefSchema.parse("fake:1/nft:0x0000000a"), base: 5n },
+        },
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {

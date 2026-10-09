@@ -18,6 +18,11 @@ export interface ChainFamily {
   /** The CAIP-2 namespace of the family's chains. */
   readonly namespace: string;
   /**
+   * The CAIP-19 asset namespace of the family's standard tokens, such as `erc20`: a registry
+   * token's asset is `<chain>/<tokenNamespace>:<address>`.
+   */
+  readonly tokenNamespace: string;
+  /**
    * Parses an address as a person or a venue wrote it into the family's canonical form, which
    * compares equal for one account. Malformed text is an expected failure, never a throw.
    */
@@ -35,8 +40,9 @@ export interface ChainFamily {
    */
   freshAccount(chain: ChainRef, seed: Readonly<Uint8Array>): AccountRef;
   /**
-   * A draft that sends a token with the family's standard transfer call, from `from` to `to`, on
-   * `from`'s chain. The native coin, an asset of another chain or of another standard is
+   * A draft that sends an asset as it is, from `from` to `to`, on `from`'s chain: the native coin
+   * (the CAIP-19 `slip44` namespace) as a plain value transfer with no call, and a token with the
+   * family's standard transfer call. An asset of another chain or of another standard is
    * `unknown_asset`.
    */
   transferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset">;

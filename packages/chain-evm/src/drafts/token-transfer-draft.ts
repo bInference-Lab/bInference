@@ -8,21 +8,30 @@ import {
 import { err, ok, type Result } from "@binference/core";
 import { encodeFunctionData, erc20Abi } from "viem";
 import { parseEvmAddress } from "../evm-address.js";
+import { erc20Namespace } from "../evm-ids.js";
 import { encodeEvmDraft } from "./evm-draft.js";
 
 /**
- * Drafts an ERC-20 `transfer(to, amount)` from `from` to the token's contract. A token of another
- * chain than the sender's, an asset that is not an ERC-20 token (the native coin among them) or a
- * token whose reference is no address is `unknown_asset`. Accounts outside the EVM family are a
- * `chain.bad_draft` fault, as for any draft.
+ * Drafts a send from `from`: the chain's coin (the `slip44` namespace) as a plain transfer of its
+ * value to the recipient with no calldata, and an ERC-20 token as `transfer(to, amount)` to the
+ * token's contract. An asset of another chain than the sender's, of another standard, or a token
+ * or recipient whose reference is no address is `unknown_asset`. Accounts outside the EVM family
+ * are a `chain.bad_draft` fault, as for any draft.
  */
 export function evmTransferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset"> {
   const { from, to, amount } = transfer;
   const asset = assetRefParts(amount.asset);
-  const token = parseEvmAddress(asset.assetReference);
   const recipient = parseEvmAddress(accountRefParts(to).address);
   const chain = accountRefParts(from).chain;
-  if (asset.chain !== chain || asset.assetNamespace !== "erc20" || !token.ok || !recipient.ok) {
+  if (asset.chain !== chain || !recipient.ok) {
+    return err("unknown_asset");
+  }
+  if (asset.assetNamespace === "slip44") {
+    const account = accountRefSchema.parse(`${chain}:${recipient.value}`);
+    return ok(encodeEvmDraft({ from, to: account, value: amount.base, data: "0x" }));
+  }
+  const token = parseEvmAddress(asset.assetReference);
+  if (asset.assetNamespace !== erc20Namespace || !token.ok) {
     return err("unknown_asset");
   }
   const data = encodeFunctionData({
