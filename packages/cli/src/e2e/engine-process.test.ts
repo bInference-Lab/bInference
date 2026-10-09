@@ -2,9 +2,10 @@ import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import type { ProtocolClient } from "@binference/client";
 import { createManualClock } from "@binference/core/testing";
-import { type NodeProgram, startNodeProgram } from "@binference/platform";
+import type { NodeProgram } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { type SourceProgram, startSourceProgram } from "./source-program.js";
 import {
   connectClient,
   freePort,
@@ -34,76 +35,19 @@ async function newMachine(): Promise<TestMachine> {
   return { folder: folder.path, clock: createManualClock(0), signals: new EventEmitter() };
 }
 
-/** One `binference` process, and its standard output as lines. */
-interface CliProcess {
-  readonly program: NodeProgram;
-  /** Resolves with the first line that holds `text`, or with every line once the output ends. */
-  readonly lineWith: (text: string) => Promise<string>;
-}
-
-interface Waiter {
-  readonly text: string;
-  readonly resolve: (line: string) => void;
-}
-
-// Collects the program's output as lines, and answers each waiter with the first line that holds
-// its text, or with the whole output once it ends.
-function watchLines(program: NodeProgram): CliProcess["lineWith"] {
-  const lines: string[] = [];
-  const waiters = new Set<Waiter>();
-  const state = { rest: "", hasEnded: false };
-  const answer = (waiter: Waiter, line: string): void => {
-    waiters.delete(waiter);
-    waiter.resolve(line);
-  };
-  void (async () => {
-    const decoder = new TextDecoder();
-    for await (const chunk of program.output) {
-      const whole = (state.rest + decoder.decode(chunk, { stream: true })).split("\n");
-      state.rest = whole.pop() ?? "";
-      lines.push(...whole);
-      waiters.forEach((waiter) => {
-        const found = whole.find((line) => line.includes(waiter.text));
-        if (found !== undefined) {
-          answer(waiter, found);
-        }
-      });
-    }
-    state.hasEnded = true;
-    waiters.forEach((waiter) => answer(waiter, lines.join("\n")));
-  })();
-  return async (text) => {
-    const found = lines.find((line) => line.includes(text));
-    if (found !== undefined || state.hasEnded) {
-      return found ?? lines.join("\n");
-    }
-    return new Promise((resolve) => waiters.add({ text, resolve }));
-  };
-}
-
-// The test's own temporary folder variables, so the TypeScript loader can keep its cache.
-function loaderEnv(): Readonly<Record<string, string>> {
-  const names = ["TMPDIR", "TMP", "TEMP"];
-  return Object.fromEntries(
-    names.flatMap((name) => {
-      const value = process.env[name];
-      return value === undefined ? [] : [[name, value]];
-    }),
-  );
-}
-
-function runBinference(machine: TestMachine, argv: readonly string[]): CliProcess {
-  const program = startNodeProgram({
-    args: ["--conditions=@binference/source", "--import", "tsx", main, ...argv],
+function runBinference(machine: TestMachine, argv: readonly string[]): SourceProgram {
+  const started = startSourceProgram({
+    file: main,
+    args: argv,
     parentEnv: process.env,
-    env: { ...loaderEnv(), BINFERENCE_HOME: machine.folder, LANG: "en_US.UTF-8" },
+    env: { BINFERENCE_HOME: machine.folder, LANG: "en_US.UTF-8" },
     signal: AbortSignal.timeout(slow.timeout),
   });
-  programs.push(program);
-  return { program, lineWith: watchLines(program) };
+  programs.push(started.program);
+  return started;
 }
 
-async function startEngine(machine: TestMachine): Promise<CliProcess> {
+async function startEngine(machine: TestMachine): Promise<SourceProgram> {
   const port = String(await freePort());
   const engine = runBinference(machine, ["start", "--json", "--set", `engine.port=${port}`]);
   await expect(engine.lineWith('"state":"ready"')).resolves.toContain('"ipc"');
