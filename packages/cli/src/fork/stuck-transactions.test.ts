@@ -40,12 +40,19 @@ async function storedOnce(
   return poll();
 }
 
-// Waits until the relays got `count` sends, for at most 30 seconds.
-async function sendsReach(rig: Rig, count: number): Promise<number> {
+// Waits until the store holds the relays' answers to `count` sends of a transaction, so anvil has
+// answered each of them, for at most 30 seconds; answers the sends counted.
+async function sendsReach(
+  rig: Rig,
+  transaction: TransactionRecord,
+  count: number,
+): Promise<number> {
   const deadline = Date.now() + 30_000;
   const poll = async (): Promise<number> => {
-    if (rig.sends.length >= count || Date.now() > deadline) {
-      return rig.sends.length;
+    const answers = await rig.stores.transactions.sends(transaction.id, live());
+    const sends = answers.length / 2;
+    if (sends >= count || Date.now() > deadline) {
+      return sends;
     }
     await wait(100);
     return poll();
@@ -113,7 +120,7 @@ describe("a stuck transaction on the BSC fork", () => {
       const intent = await proposeAndTap(rig, signal);
       const first = nth(await storedOnce(rig, fork, 1), 0);
       await holdFor(fork, first, 21);
-      expect(await sendsReach(rig, 2)).toBeGreaterThanOrEqual(2);
+      expect(await sendsReach(rig, first, 2)).toBeGreaterThanOrEqual(2);
       await expect(mineUntil(rig, fork, { intent, state: "reconciled" })).resolves.toBe(
         "reconciled",
       );
@@ -133,7 +140,7 @@ describe("a stuck transaction on the BSC fork", () => {
       const intent = await proposeAndTap(rig, signal);
       const first = nth(await storedOnce(rig, fork, 1), 0);
       await holdFor(fork, first, 21);
-      await sendsReach(rig, 2);
+      await sendsReach(rig, first, 2);
       await holdFor(fork, first, 20);
       const speedUp = nth(await storedOnce(rig, fork, 2), 1);
       await expect(mineUntil(rig, fork, { intent, state: "reconciled" })).resolves.toBe(
