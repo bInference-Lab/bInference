@@ -6,6 +6,10 @@ import {
 } from "../address-book/address-book-handlers.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
+import {
+  type ConfigHistoryHandlers,
+  createConfigHistoryHandlers,
+} from "../audit/config-history-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
@@ -54,6 +58,7 @@ export interface EngineHandlers
   extends
     IntentHandlers,
     LedgerHandlers,
+    ConfigHistoryHandlers,
     PortfolioHandlers,
     AgentModeHandlers,
     ApprovalHandlers,
@@ -264,6 +269,7 @@ export function createEngine(given: EngineOptions): Engine {
     handlers: {
       ...intents.handlers,
       ...createLedgerHandlers(options.stores.ledger),
+      ...createConfigHistoryHandlers(options.stores.configJournal),
       ...settingsHandlers(options, paper),
       ...createApprovalHandlers(settingsParts),
       ...createLimitHandlers({
