@@ -1,7 +1,7 @@
 import { type Clock, err, jsonValueSchema, ok } from "@binference/core";
 import type { ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
-import { journalConfigChange } from "../audit/journal-config-change.js";
+import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentStore, ConfigJournal } from "../ports.js";
@@ -60,7 +60,7 @@ export function createAddressBookHandlers(
       await journalConfigChange(
         options,
         {
-          caller,
+          author: authorOf(caller),
           atMs,
           path: `agents.${name}.addressBook.${removed.value.id}`,
           before: jsonValueSchema.parse(viewOf(removed.value)),

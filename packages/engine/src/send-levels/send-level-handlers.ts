@@ -9,7 +9,7 @@ import {
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { SendLevelRecord, SendLevelState } from "../agents/send-level-record.js";
-import { journalConfigChange } from "../audit/journal-config-change.js";
+import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { moveSendLevel, sendLevelAt } from "../policy/send-level-change.js";
@@ -74,7 +74,7 @@ async function announce(
   await journalConfigChange(
     options,
     {
-      caller: call.caller,
+      author: authorOf(call.caller),
       atMs: after.changedAtMs,
       path: `agents.${settings.agent.name}.sendLevel`,
       before: jsonValueSchema.parse(viewOf(before)),

@@ -2,7 +2,7 @@ import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError, type Clock, err, type Id, ok, type Result } from "@binference/core";
 import type { AgentView, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
-import { journalConfigChange } from "../audit/journal-config-change.js";
+import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { AgentStore, ConfigJournal, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { activeAgent } from "./active-agent.js";
@@ -83,7 +83,7 @@ async function journal(
   await journalConfigChange(
     options,
     {
-      caller: call.caller,
+      author: authorOf(call.caller),
       atMs: change.after.changedAtMs,
       path: `agents.${change.after.name}.mode`,
       before: change.before.mode,

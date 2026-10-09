@@ -10,12 +10,23 @@ export interface ConfigChangeParts {
   readonly publish: PublishPush;
 }
 
+/** Who made a config change: a credential's id or `engine`, and the surface it came from. */
+export interface ConfigAuthor {
+  readonly by: string;
+  readonly surface: string;
+}
+
+/** The author of a change a caller made over the protocol. */
+export function authorOf(caller: EngineCaller): ConfigAuthor {
+  return { by: caller.credential, surface: answererOf(caller).surface };
+}
+
 /**
  * One change to a setting or a limit: who made it, when, the path, its value before and after
  * (absent for a new or a removed one), and the notices that announce it on every surface.
  */
 export interface ConfigChangeMade {
-  readonly caller: EngineCaller;
+  readonly author: ConfigAuthor;
   readonly atMs: number;
   /** The setting's path, such as `agents.main.limits`. */
   readonly path: string;
@@ -34,12 +45,12 @@ export async function journalConfigChange(
   change: ConfigChangeMade,
   options: { readonly signal: AbortSignal },
 ): Promise<ConfigJournalEntry> {
-  const { caller, atMs, path, before, after, notices = [] } = change;
+  const { author, atMs, path, before, after, notices = [] } = change;
   const entry = await parts.journal.record(
     {
       atMs,
-      by: caller.credential,
-      surface: answererOf(caller).surface,
+      by: author.by,
+      surface: author.surface,
       path,
       ...(before === undefined ? {} : { before }),
       ...(after === undefined ? {} : { after }),

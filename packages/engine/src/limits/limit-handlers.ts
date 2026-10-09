@@ -11,7 +11,7 @@ import { limitsViewSchema, type LimitsView, type ProtocolErrorCode } from "@binf
 import { z } from "zod";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
-import { journalConfigChange } from "../audit/journal-config-change.js";
+import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
 import {
@@ -95,7 +95,7 @@ async function announce(
   await journalConfigChange(
     options,
     {
-      caller: call.caller,
+      author: authorOf(call.caller),
       atMs: after.record.changedAtMs,
       path: `agents.${settings.agent.name}.limits`,
       before: wireOf(limitsViewOf(settings.limits, before)),

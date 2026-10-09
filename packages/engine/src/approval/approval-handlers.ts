@@ -2,7 +2,7 @@ import { BinferenceError, type Clock, err, ok, type Result } from "@binference/c
 import type { ProtocolErrorCode, ResultOf, Scope } from "@binference/protocol";
 import type { AgentRecord } from "../agents/agent-record.js";
 import type { ApprovalModeRecord } from "../agents/approval-mode-record.js";
-import { journalConfigChange } from "../audit/journal-config-change.js";
+import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { ApprovalMode } from "../intents/auto-mode.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
@@ -54,7 +54,7 @@ async function announce(
   await journalConfigChange(
     options,
     {
-      caller: call.caller,
+      author: authorOf(call.caller),
       atMs: after.changedAtMs,
       path: `agents.${agent.name}.approvalMode`,
       before: before.mode,

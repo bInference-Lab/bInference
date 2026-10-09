@@ -3,7 +3,7 @@ import { createMemoryConfigJournal } from "../fakes/memory-config-journal.js";
 import { testCallers } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
-import { journalConfigChange } from "./journal-config-change.js";
+import { authorOf, journalConfigChange } from "./journal-config-change.js";
 
 const live = () => ({ signal: new AbortController().signal });
 
@@ -15,7 +15,7 @@ describe("journaling a config change", () => {
     const entry = await journalConfigChange(
       { journal, publish: (push) => pushes.push(push) },
       {
-        caller: testCallers.cli,
+        author: authorOf(testCallers.cli),
         atMs: 5,
         path: "agents.main.limits",
         before: { perTradeUsd: "50" },
@@ -43,7 +43,12 @@ describe("journaling a config change", () => {
     const journal = createMemoryConfigJournal();
     const entry = await journalConfigChange(
       { journal, publish: () => undefined },
-      { caller: testCallers.cli, atMs: 6, path: "agents.main.addressBook.adr_1", before: "x" },
+      {
+        author: authorOf(testCallers.cli),
+        atMs: 6,
+        path: "agents.main.addressBook.adr_1",
+        before: "x",
+      },
       live(),
     );
     expect(entry).not.toHaveProperty("after");

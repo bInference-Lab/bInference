@@ -6,7 +6,7 @@ import {
 } from "@binference/chain";
 import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
-import { journalConfigChange } from "../audit/journal-config-change.js";
+import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { RescueMove } from "../install/rescue-record.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
@@ -71,7 +71,7 @@ async function record(
   await journalConfigChange(
     options,
     {
-      caller: call.caller,
+      author: authorOf(call.caller),
       atMs: options.clock.now(),
       path: "safety.rescueAddress",
       before: jsonValueSchema.parse(before),
