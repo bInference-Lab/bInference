@@ -8,9 +8,11 @@ import { nonceSourceContract } from "../contracts/nonce-source-contract.js";
 import { receiptReaderContract } from "../contracts/receipt-reader-contract.js";
 import { type RelayBehavior, relaySenderContract } from "../contracts/relay-sender-contract.js";
 import { txPreparerContract } from "../contracts/tx-preparer-contract.js";
-import type { TxDraft, TxHash } from "../transaction.js";
+import type { ReplaceRequest } from "../sending/prepared-tx.js";
+import type { TxDraft, TxHash, UnsignedTx } from "../transaction.js";
 import { fakeDraft } from "./fake-draft.js";
 import { createFakeNetwork, type FakeNetwork } from "./fake-network.js";
+import { fakeOriginalCall } from "./fake-replacement.js";
 import { fakeTxHash, signFake } from "./fake-signing-scheme.js";
 
 const chain = chainRefSchema.parse("fake:1");
@@ -44,6 +46,15 @@ async function hashOf(network: FakeNetwork, draft: TxDraft, nonce: number): Prom
   const { signed } = await sendDraft(network, draft, nonce);
   network.mine();
   return fakeTxHash(signed.raw) as TxHash;
+}
+
+// Prepares a replacement; a test whose replacement would fail fails.
+async function replacedOf(network: FakeNetwork, request: ReplaceRequest): Promise<UnsignedTx> {
+  const replacement = await network.replace(request, live());
+  if (!replacement.ok) {
+    throw new Error("Expected a replacement.");
+  }
+  return replacement.value.unsigned;
 }
 
 async function senderSubject(behaviors: readonly RelayBehavior[]) {
@@ -112,6 +123,16 @@ describe("fake network", () => {
             draft: swap,
             failing: broken,
             nonceOf: (unsigned) => nonceSchema.parse(unsigned.payload.split("|")[3]),
+            callOf: (unsigned) =>
+              fakeOriginalCall(chain, unsigned.payload.split("|").slice(0, 3).join("|")),
+            sign: async (unsigned) => Promise.resolve(signFake(unsigned, "0x0000000c")),
+            signFailing: async (nonce) =>
+              Promise.resolve(
+                signFake(
+                  { ...swap, payload: `${broken.payload}|${String(nonce)}|9` },
+                  "0x0000000c",
+                ),
+              ),
           });
         },
       }),
@@ -153,6 +174,47 @@ describe("fake network", () => {
     const again = await sendDraft(network, broken, 0);
     expect(again.answers.map((answer) => answer.outcome)).toStrictEqual(["refused", "refused"]);
     await expect(network.head(chain, live())).resolves.toStrictEqual({ latest: 4n, final: 2n });
+  });
+
+  it("replaces a pooled nonce only for 10% more fee, and mines what pays the floor", async () => {
+    const network = networkOf();
+    const { signed } = await sendDraft(network, swap, 0);
+    network.holdBelow(60_000_000n);
+    network.mine(2);
+    expect(await network.next(account, live())).toBe(0);
+    const cheap = signFake({ ...swap, payload: `${swap.payload}|0|54999999` }, "0x0000000c");
+    const refused = await network.send(cheap, live());
+    expect(refused).toMatchObject([
+      { outcome: "refused", reason: "replacement_underpriced" },
+      { outcome: "refused", reason: "replacement_underpriced" },
+    ]);
+    network.setFeePerGas(70_000_000n);
+    const request = { kind: "speedUp", from: account, replaced: signed } as const;
+    const speedUp = signFake(await replacedOf(network, request), "0x0000000c");
+    await network.send(speedUp, live());
+    network.mine();
+    await expect(
+      network.receipt(chain, fakeTxHash(speedUp.raw) as TxHash, live()),
+    ).resolves.toMatchObject({
+      block: { number: 3n },
+    });
+    await expect(
+      network.receipt(chain, fakeTxHash(signed.raw) as TxHash, live()),
+    ).resolves.toBeUndefined();
+  });
+
+  it("drops a pooled transaction, which a block holds only once it is sent again", async () => {
+    const network = networkOf();
+    const { signed } = await sendDraft(network, swap, 0);
+    const hash = fakeTxHash(signed.raw) as TxHash;
+    network.drop(hash);
+    network.mine();
+    await expect(network.receipt(chain, hash, live())).resolves.toBeUndefined();
+    await network.send(signed, live());
+    network.mine();
+    await expect(network.receipt(chain, hash, live())).resolves.toMatchObject({
+      block: { number: 2n },
+    });
   });
 
   it("takes a transaction out of its block in a reorg, and mines it again later", async () => {

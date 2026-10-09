@@ -7,6 +7,7 @@ import type { RelayAnswer } from "../sending/relay-answer.js";
 import type { AssetTransfer } from "../simulation/simulated-step.js";
 import type { TxHash, UnsignedTx } from "../transaction.js";
 import { createFakeLedger, type FakeLedger, type FakeSent, readFakeSent } from "./fake-ledger.js";
+import { prepareFakeReplacement } from "./fake-replacement.js";
 
 /**
  * One fake chain for tests, as the wallet queue sees it: it prepares drafts, takes signed
@@ -24,6 +25,10 @@ export interface FakeNetwork extends TxPreparer, RelaySender, ReceiptReader, Non
   mine(count?: number): void;
   /** Takes a transaction out of its block, as a reorg would. */
   reorg(hash: TxHash): void;
+  /** Takes a pooled transaction out of every relay, as relays that drop it would. */
+  drop(hash: TxHash): void;
+  /** Mines only transactions that pay at least this fee per gas, as a rising base fee would. */
+  holdBelow(feePerGasBase: bigint): void;
   /** Forgets the state of every block below `block`, as a node that prunes old state does. */
   forgetStateBelow(block: bigint): void;
   /** Makes the next `count` reads of receipts or the head fail, as a node that is down. */
@@ -87,14 +92,16 @@ interface Relaying {
   readonly clock: Clock;
 }
 
-// A relay that takes the bytes pools them; one that holds them already, or whose nonce a block
-// holds, refuses them.
+// A relay that takes the bytes pools them, as it does bytes it holds already. It refuses them
+// once a block holds their nonce, and when they take a pooled nonce for too little more fee.
 function accepted(relaying: Relaying, relay: string, raw: string): RelayAnswer {
   const atMs = relaying.clock.now();
   const pooled = relaying.ledger.pool(readFakeSent(relaying.ledger.chain, raw));
-  return pooled === "pooled"
-    ? { relay, outcome: "accepted", atMs }
-    : { relay, outcome: "refused", reason: "nonce_too_low", atMs };
+  if (pooled === "pooled") {
+    return { relay, outcome: "accepted", atMs };
+  }
+  const reason = pooled === "underpriced" ? "replacement_underpriced" : "nonce_too_low";
+  return { relay, outcome: "refused", reason, atMs };
 }
 
 function answerOf(relaying: Relaying, relay: string, raw: string): RelayAnswer {
@@ -169,7 +176,19 @@ function served(state: NetworkState, asked: ChainRef): void {
 }
 
 function preparerOf(state: NetworkState): TxPreparer {
+  const feeCapBase = state.options.feeCapBase ?? defaultFee * 20n;
   return {
+    async replace(request, { signal }) {
+      signal.throwIfAborted();
+      served(state, request.replaced.chain);
+      const replacing = {
+        chain: state.options.chain,
+        feePerGasBase: state.dials.feePerGas(),
+        feeCapBase,
+        failing: state.failingPayloads,
+      };
+      return await Promise.resolve(prepareFakeReplacement(replacing, request));
+    },
     async prepare({ draft, nonce }, { signal }) {
       signal.throwIfAborted();
       served(state, draft.chain);
@@ -179,7 +198,7 @@ function preparerOf(state: NetworkState): TxPreparer {
       const feePerGasBase = state.dials.feePerGas();
       const payload = [draft.payload, String(nonce), feePerGasBase.toString()].join("|");
       const unsigned: UnsignedTx = { chain: draft.chain, from: draft.from, payload };
-      const isAboveFeeCap = feePerGasBase > (state.options.feeCapBase ?? defaultFee * 20n);
+      const isAboveFeeCap = feePerGasBase > feeCapBase;
       return await Promise.resolve(ok({ unsigned, feePerGasBase, isAboveFeeCap }));
     },
   };
@@ -238,6 +257,29 @@ function senderOf(state: NetworkState): RelaySender {
   };
 }
 
+// What a test does to the fake chain's pool and blocks.
+function blocksOf(
+  ledger: FakeLedger,
+): Pick<FakeNetwork, "mine" | "reorg" | "drop" | "holdBelow" | "forgetStateBelow"> {
+  return {
+    mine(count = 1) {
+      ledger.mine(count);
+    },
+    reorg: (hash) => {
+      ledger.reorg(hash);
+    },
+    drop: (hash) => {
+      ledger.drop(hash);
+    },
+    holdBelow: (feePerGasBase) => {
+      ledger.holdBelow(feePerGasBase);
+    },
+    forgetStateBelow: (block) => {
+      ledger.forgetStateBelow(block);
+    },
+  };
+}
+
 /** Creates a {@link FakeNetwork} at block 0 whose relays all accept. */
 export function createFakeNetwork(options: FakeNetworkOptions): FakeNetwork {
   const ledger = createFakeLedger({
@@ -269,15 +311,7 @@ export function createFakeNetwork(options: FakeNetworkOptions): FakeNetwork {
     passing(payload) {
       state.failingPayloads.delete(payload);
     },
-    mine(count = 1) {
-      ledger.mine(count);
-    },
-    reorg(hash) {
-      ledger.reorg(hash);
-    },
-    forgetStateBelow(block) {
-      ledger.forgetStateBelow(block);
-    },
+    ...blocksOf(ledger),
     setFeePerGas: dials.setFeePerGas,
     failReads: dials.failReads,
     received: state.deliveries.list,

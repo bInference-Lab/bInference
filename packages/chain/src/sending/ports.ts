@@ -3,7 +3,12 @@ import type { AccountRef } from "../caip/account-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { AssetTransfer } from "../simulation/simulated-step.js";
 import type { SignedTx, TxHash } from "../transaction.js";
-import type { PreparedTx, PrepareRequest } from "./prepared-tx.js";
+import type {
+  PreparedReplacement,
+  PreparedTx,
+  PrepareRequest,
+  ReplaceRequest,
+} from "./prepared-tx.js";
 import type { RelayAnswer } from "./relay-answer.js";
 import type { ChainHead, TxReceipt } from "./tx-receipt.js";
 
@@ -22,6 +27,17 @@ export interface TxPreparer {
     request: PrepareRequest,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<PreparedTx, "would_fail">>;
+  /**
+   * A transaction that takes a signed one's nonce (intent-states spec, section 6), read from the
+   * chain's latest state: a speed-up repeats the signed call, a cancel is a 0-value transfer to
+   * the sender itself. Each fee per gas is at least `leastReplacementFee` of the signed one's,
+   * or the chain's fee now when that is higher. `would_fail` when the chain says the call
+   * fails now. Signed bytes its family cannot read are a fault; the rest is as `prepare`.
+   */
+  replace(
+    request: ReplaceRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<PreparedReplacement, "would_fail">>;
 }
 
 /**

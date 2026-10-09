@@ -1,11 +1,18 @@
-import { accountRefSchema } from "@binference/chain";
+import {
+  accountRefSchema,
+  chainRefSchema,
+  type SignedTx,
+  type UnsignedTx,
+} from "@binference/chain";
 import { txPreparerContract } from "@binference/chain/testing";
 import { createManualClock } from "@binference/core/testing";
+import { keccak256, parseTransaction, toHex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
-import { encodeEvmDraft } from "../drafts/evm-draft.js";
-import type { EvmChain } from "../evm-chain.js";
+import { decodeEvmDraft, encodeEvmDraft } from "../drafts/evm-draft.js";
+import { type EvmChain, evmAccountRef } from "../evm-chain.js";
 import { createRpcFailover } from "../rpc/create-rpc-failover.js";
-import { decodeEvmTransaction } from "../signing/evm-transaction.js";
+import { decodeEvmTransaction, encodeEvmTransaction } from "../signing/evm-transaction.js";
 import { createFakeRpcHttp, type FakeRpcAnswer, fakeRpcNode } from "../testing/fake-rpc-http.js";
 import { createEvmTxPreparer } from "./create-evm-tx-preparer.js";
 
@@ -25,6 +32,8 @@ const swap = encodeEvmDraft({ from: user, to: router, value: 10n ** 17n, data: "
 const reverting = encodeEvmDraft({ from: user, to: router, value: 0n, data: "0xdeadbeef" });
 const live = () => ({ signal: new AbortController().signal });
 const floor = 50_000_000n;
+// A throwaway key from fixed words: the preparer reads signed bytes, never who signed them.
+const signer = privateKeyToAccount(keccak256(toHex("binference chain-evm preparer test")));
 
 function nodeAnswer(method: string, params: readonly unknown[]): FakeRpcAnswer {
   switch (method) {
@@ -56,6 +65,14 @@ function preparerOf(networkFeeCap: bigint, gasHeadroomBps?: number) {
   return { http, preparer: createEvmTxPreparer({ rpc, chain, networkFeeCap, ...headroom }) };
 }
 
+function decodeEvmDraftCall(draft: typeof swap) {
+  const call = decodeEvmDraft(draft);
+  if (!call.ok) {
+    throw new Error("Expected an EVM draft.");
+  }
+  return call.value;
+}
+
 function decoded(unsigned: Parameters<typeof decodeEvmTransaction>[0]) {
   const transaction = decodeEvmTransaction(unsigned);
   if (!transaction.ok) {
@@ -72,6 +89,30 @@ async function preparedOf(preparer: ReturnType<typeof preparerOf>["preparer"], n
   return prepared.value;
 }
 
+async function signed(unsigned: UnsignedTx): Promise<SignedTx> {
+  const fields = parseTransaction(unsigned.payload as `0x${string}`);
+  return { chain: unsigned.chain, raw: await signer.signTransaction(fields) };
+}
+
+// The reverting call, signed at a nonce before it began to revert.
+async function signedFailing(nonce: number): Promise<SignedTx> {
+  const fees = { maxFeePerGas: floor, maxPriorityFeePerGas: floor };
+  const call = decodeEvmDraftCall(reverting);
+  return signed(encodeEvmTransaction(chain, { ...call, nonce, gas: 100_000n, fees }));
+}
+
+function callOf(unsigned: UnsignedTx) {
+  const { to, value, data } = decoded(unsigned);
+  return { to: evmAccountRef(chain, to), value, data };
+}
+
+function valueOf<T>(result: { readonly ok: true; readonly value: T } | { readonly ok: false }): T {
+  if (!result.ok) {
+    throw new Error("Expected the preparer to prepare.");
+  }
+  return result.value;
+}
+
 interface RpcCallBody {
   readonly method: string;
   readonly params: unknown;
@@ -86,6 +127,9 @@ describe("the EVM transaction preparer", () => {
           draft: swap,
           failing: reverting,
           nonceOf: (unsigned) => decoded(unsigned).nonce,
+          callOf,
+          sign: signed,
+          signFailing: signedFailing,
         }),
     }),
   )("follows the contract: $name", async ({ run }) => {
@@ -124,6 +168,53 @@ describe("the EVM transaction preparer", () => {
         data: "0x7ff36ab5",
       },
       "latest",
+    ]);
+  });
+
+  it.each([
+    ["below the chain's", 50_000_000n, 55_000_000n],
+    ["far below the chain's", 10_000_000n, floor],
+  ])("raises both fees of a replacement signed %s to replace it", async (_, before, after) => {
+    const { preparer } = preparerOf(10n ** 9n);
+    const fees = { maxFeePerGas: before, maxPriorityFeePerGas: before };
+    const call = decodeEvmDraftCall(swap);
+    const replaced = await signed(
+      encodeEvmTransaction(chain, { ...call, nonce: 9, gas: 1n, fees }),
+    );
+    const replacement = valueOf(
+      await preparer.replace({ kind: "speedUp", from: user, replaced }, live()),
+    );
+    expect(replacement.feePerGasBase).toBe(after);
+    expect(decoded(replacement.unsigned)).toMatchObject({
+      nonce: 9,
+      gas: 120_000n,
+      fees: { maxFeePerGas: after, maxPriorityFeePerGas: after },
+    });
+  });
+
+  it("refuses signed bytes of another chain, no type-2 call, or a sender elsewhere", async () => {
+    const { preparer } = preparerOf(10n ** 9n);
+    const replaced = await signed((await preparedOf(preparer, 0)).unsigned);
+    const elsewhere = accountRefSchema.parse("eip155:1:0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
+    const outcomes = await Promise.allSettled([
+      preparer.replace(
+        { kind: "cancel", from: user, replaced: { ...replaced, raw: "0x01" } },
+        live(),
+      ),
+      preparer.replace(
+        {
+          kind: "cancel",
+          from: user,
+          replaced: { ...replaced, chain: chainRefSchema.parse("eip155:1") },
+        },
+        live(),
+      ),
+      preparer.replace({ kind: "cancel", from: elsewhere, replaced }, live()),
+    ]);
+    expect(outcomes).toMatchObject([
+      { status: "rejected", reason: { code: "chain.bad_transaction" } },
+      { status: "rejected", reason: { code: "chain.bad_transaction" } },
+      { status: "rejected", reason: { code: "chain.unknown_chain" } },
     ]);
   });
 

@@ -2,6 +2,7 @@ import { BinferenceError } from "@binference/core";
 import { z } from "zod";
 import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
+import { leastReplacementFee } from "../sending/least-replacement-fee.js";
 import type { ChainHead, TxReceipt } from "../sending/tx-receipt.js";
 import type { AssetTransfer } from "../simulation/simulated-step.js";
 import { isTxHash, type TxHash } from "../transaction.js";
@@ -24,8 +25,16 @@ export interface FakeSent {
  */
 export interface FakeLedger {
   readonly chain: ChainRef;
-  /** Puts a transaction in the pool; `nonce_too_low` once a block holds its nonce. */
-  pool(sent: FakeSent): "pooled" | "nonce_too_low";
+  /**
+   * Puts a transaction in the pool; `nonce_too_low` once a block holds its nonce. One that takes
+   * the nonce of a pooled transaction of its sender replaces it when its fee per gas is at least
+   * `leastReplacementFee` of the pooled one's, and is `underpriced` otherwise.
+   */
+  pool(sent: FakeSent): "pooled" | "nonce_too_low" | "underpriced";
+  /** Takes a transaction out of the pool, as a relay that drops it would. */
+  drop(hash: TxHash): void;
+  /** From now on a block holds only transactions that pay at least this fee per gas. */
+  holdBelow(feePerGasBase: bigint): void;
   /** Mines `count` blocks, each holding every pooled transaction it can. */
   mine(count: number): void;
   /** Takes a transaction out of its block, as a reorg would: it waits in the pool again. */
@@ -98,6 +107,8 @@ interface LedgerState {
   readonly pooled: Map<TxHash, FakeSent>;
   readonly mined: Map<TxHash, { readonly sent: FakeSent; readonly receipt: TxReceipt }>;
   readonly nonces: Map<AccountRef, number>;
+  /** The least fee per gas a block takes now. */
+  readonly floorFee: () => bigint;
 }
 
 function nextOf(state: LedgerState, account: AccountRef): number {
@@ -117,10 +128,14 @@ function include(state: LedgerState, sent: FakeSent, number: bigint): void {
   state.nonces.set(sent.account, sent.nonce + 1);
 }
 
-// One block holds every pooled transaction whose nonce is its sender's next, in turn.
+// One block holds every pooled transaction whose nonce is its sender's next and whose fee it
+// takes, in turn.
 function mineAt(state: LedgerState, number: bigint): void {
   const ready = () =>
-    [...state.pooled.values()].find((sent) => sent.nonce === nextOf(state, sent.account));
+    [...state.pooled.values()].find(
+      (sent) =>
+        sent.nonce === nextOf(state, sent.account) && sent.feePerGasBase >= state.floorFee(),
+    );
   for (let sent = ready(); sent !== undefined; sent = ready()) {
     include(state, sent, number);
   }
@@ -166,19 +181,44 @@ function nativeReceived(
     .reduce((sum, { sent }) => sum + (state.options.nativeReceivedOf?.(sent) ?? 0n), 0n);
 }
 
+function poolOne(state: LedgerState, sent: FakeSent): "pooled" | "nonce_too_low" | "underpriced" {
+  if (sent.nonce < nextOf(state, sent.account) || state.mined.has(sent.hash)) {
+    return "nonce_too_low";
+  }
+  const rival = [...state.pooled.values()].find(
+    (pooled) =>
+      pooled.account === sent.account && pooled.nonce === sent.nonce && pooled.hash !== sent.hash,
+  );
+  if (rival !== undefined && sent.feePerGasBase < leastReplacementFee(rival.feePerGasBase)) {
+    return "underpriced";
+  }
+  if (rival !== undefined) {
+    state.pooled.delete(rival.hash);
+  }
+  state.pooled.set(sent.hash, sent);
+  return "pooled";
+}
+
 /** Creates an empty {@link FakeLedger} at block 0. */
 export function createFakeLedger(options: FakeLedgerOptions): FakeLedger {
-  const state: LedgerState = { options, pooled: new Map(), mined: new Map(), nonces: new Map() };
+  let floorFee = 0n;
+  const state: LedgerState = {
+    options,
+    pooled: new Map(),
+    mined: new Map(),
+    nonces: new Map(),
+    floorFee: () => floorFee,
+  };
   let latest = 0n;
   let forgotten = 0n;
   return {
     chain: options.chain,
-    pool(sent) {
-      if (sent.nonce < nextOf(state, sent.account) || state.mined.has(sent.hash)) {
-        return "nonce_too_low";
-      }
-      state.pooled.set(sent.hash, sent);
-      return "pooled";
+    pool: (sent) => poolOne(state, sent),
+    drop(hash) {
+      state.pooled.delete(hash);
+    },
+    holdBelow(feePerGasBase) {
+      floorFee = feePerGasBase;
     },
     mine(count) {
       for (let block = 0; block < count; block += 1) {

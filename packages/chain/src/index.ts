@@ -129,7 +129,13 @@ export type {
   RelaySilent,
 } from "./sending/relay-answer.js";
 export type { ReceiptReader, RelaySender, TxPreparer } from "./sending/ports.js";
-export type { PreparedTx, PrepareRequest } from "./sending/prepared-tx.js";
+export { leastReplacementFee } from "./sending/least-replacement-fee.js";
+export type {
+  PreparedReplacement,
+  PreparedTx,
+  PrepareRequest,
+  ReplaceRequest,
+} from "./sending/prepared-tx.js";
 export { txReceiptSchema } from "./sending/tx-receipt.js";
 export type { BlockRef, ChainHead, TxReceipt, TxReceiptWire } from "./sending/tx-receipt.js";
 export type { TxSimulator } from "./simulation/ports.js";
