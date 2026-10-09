@@ -436,6 +436,14 @@
       "status": "Accepted",
       "sha256": "000b63c6d32d3bd2a5151598ceae050c2420587e3b2bb8427f8b7fb8eda43975"
     },
+    "0110": {
+      "status": "Accepted",
+      "sha256": "4b8c2a5482258522ffa462867e7d9180816296c3cb32f2cf424f39a72714a854"
+    },
+    "0111": {
+      "status": "Accepted",
+      "sha256": "5b349a3f35cdc9e5d8c568e7b99814ce5a67cbe91d35614f0db2fc47a315ffb7"
+    },
     "0112": {
       "status": "Accepted",
       "sha256": "683171197c3dade88b5f7f0fa87ba072cc73c1c65a7a1581a5c3b4f01ebae571"
