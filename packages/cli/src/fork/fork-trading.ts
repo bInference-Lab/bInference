@@ -10,6 +10,7 @@ import {
 import {
   decodeEvmDraft,
   decodeEvmTransaction,
+  type EvmChain,
   encodeEvmDraft,
   erc20AssetRef,
   evmAccountRef,
@@ -49,8 +50,11 @@ function pathOf(trade: Pick<BuildRequest, "amountIn" | "assetOut">, nativeAsset:
 }
 
 // A sale of a token for BNB: the exact approval to the router, then `swapExactTokensForETH`.
-function saleDrafts(fork: Fork, request: BuildRequest, nativeAsset: AssetRef): readonly TxDraft[] {
-  const { chain } = fork;
+function saleDrafts(
+  chain: EvmChain,
+  request: BuildRequest,
+  nativeAsset: AssetRef,
+): readonly TxDraft[] {
   const token = tokenOf(request.amountIn.asset, nativeAsset);
   const approve = encodeFunctionData({
     abi: erc20Abi,
@@ -75,7 +79,11 @@ function saleDrafts(fork: Fork, request: BuildRequest, nativeAsset: AssetRef): r
   ];
 }
 
-function buyDrafts(fork: Fork, request: BuildRequest, nativeAsset: AssetRef): readonly TxDraft[] {
+function buyDrafts(
+  chain: EvmChain,
+  request: BuildRequest,
+  nativeAsset: AssetRef,
+): readonly TxDraft[] {
   const data = encodeFunctionData({
     abi: routerAbi,
     functionName: "swapExactETHForTokens",
@@ -86,20 +94,37 @@ function buyDrafts(fork: Fork, request: BuildRequest, nativeAsset: AssetRef): re
       BigInt(Math.floor(request.deadlineMs / 1_000)),
     ],
   });
-  const to = evmAccountRef(fork.chain, router);
+  const to = evmAccountRef(chain, router);
   return [encodeEvmDraft({ from: request.wallet, to, value: request.amountIn.base, data })];
 }
 
 /**
- * A venue for the fork suite on PancakeSwap's v2 router: it quotes with `getAmountsOut` on the
- * fork, buys a token with `swapExactETHForTokens`, sells one for BNB with an exact approval and
- * `swapExactTokensForETH`, and its decoder reads both trade calls back.
+ * PancakeSwap's v2 router as the fork suite trades on it, all but the quote: it buys a token with
+ * `swapExactETHForTokens`, sells one for BNB with an exact approval and `swapExactTokensForETH`,
+ * and its decoder reads both trade calls back. It reads nothing from a chain.
+ */
+export function pancakeV2Trades(chain: EvmChain, nativeAsset: AssetRef): Omit<Venue, "quote"> {
+  return {
+    id: "pancakeswap",
+    contracts: [{ chain: chain.ref, names: ["v2-router"] }],
+    async build(request) {
+      const isSale = request.amountIn.asset !== nativeAsset;
+      return Promise.resolve(
+        isSale ? saleDrafts(chain, request, nativeAsset) : buyDrafts(chain, request, nativeAsset),
+      );
+    },
+    decode: (draft) => decodeSwap(chain, nativeAsset, draft),
+  };
+}
+
+/**
+ * A venue for the fork suite on PancakeSwap's v2 router: {@link pancakeV2Trades}, quoted with
+ * `getAmountsOut` on the fork.
  */
 export function pancakeV2Venue(fork: Fork, nativeAsset: AssetRef): Venue {
   const { chain, client } = fork;
   return {
-    id: "pancakeswap",
-    contracts: [{ chain: chain.ref, names: ["v2-router"] }],
+    ...pancakeV2Trades(chain, nativeAsset),
     async quote(request) {
       const amounts = await client.readContract({
         address: router,
@@ -111,21 +136,14 @@ export function pancakeV2Venue(fork: Fork, nativeAsset: AssetRef): Venue {
       const expectedOut = { asset: request.assetOut, base: out };
       return out === 0n ? err("no_route") : ok({ expectedOut, priceImpactBps: bpsSchema.parse(5) });
     },
-    async build(request) {
-      const isSale = request.amountIn.asset !== nativeAsset;
-      return Promise.resolve(
-        isSale ? saleDrafts(fork, request, nativeAsset) : buyDrafts(fork, request, nativeAsset),
-      );
-    },
-    decode: (draft) => decodeSwap(fork, nativeAsset, draft),
   };
 }
 
-function assetOf(fork: Fork, token: Address, nativeAsset: AssetRef): AssetRef {
-  return token === wbnb ? nativeAsset : erc20AssetRef(fork.chain, token);
+function assetOf(chain: EvmChain, token: Address, nativeAsset: AssetRef): AssetRef {
+  return token === wbnb ? nativeAsset : erc20AssetRef(chain, token);
 }
 
-function decodeSwap(fork: Fork, nativeAsset: AssetRef, draft: TxDraft) {
+function decodeSwap(chain: EvmChain, nativeAsset: AssetRef, draft: TxDraft) {
   const call = decodeEvmDraft(draft);
   if (!call.ok) {
     return err("unknown_call");
@@ -134,17 +152,17 @@ function decodeSwap(fork: Fork, nativeAsset: AssetRef, draft: TxDraft) {
   if (decoded.functionName === "swapExactETHForTokens") {
     const [minOut, path, to, deadline] = decoded.args;
     return ok({
-      recipient: evmAccountRef(fork.chain, to),
+      recipient: evmAccountRef(chain, to),
       amountIn: { asset: nativeAsset, base: call.value.value },
-      minOut: { asset: assetOf(fork, path.at(-1) ?? wbnb, nativeAsset), base: minOut },
+      minOut: { asset: assetOf(chain, path.at(-1) ?? wbnb, nativeAsset), base: minOut },
       deadlineMs: Number(deadline) * 1_000,
     });
   }
   if (decoded.functionName === "swapExactTokensForETH") {
     const [amountIn, minOut, path, to, deadline] = decoded.args;
     return ok({
-      recipient: evmAccountRef(fork.chain, to),
-      amountIn: { asset: assetOf(fork, path[0] ?? wbnb, nativeAsset), base: amountIn },
+      recipient: evmAccountRef(chain, to),
+      amountIn: { asset: assetOf(chain, path[0] ?? wbnb, nativeAsset), base: amountIn },
       minOut: { asset: nativeAsset, base: minOut },
       deadlineMs: Number(deadline) * 1_000,
     });

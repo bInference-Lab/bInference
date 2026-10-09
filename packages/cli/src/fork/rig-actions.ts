@@ -21,7 +21,7 @@ export interface ForkSwap {
 
 /** Proposes a swap as the CLI would and taps Confirm on its card; answers the intent. */
 export async function proposeAndTap(
-  rig: Rig,
+  rig: Pick<Rig, "engine" | "native" | "bought">,
   signal: AbortSignal,
   swap: ForkSwap = { from: rig.native, to: rig.bought, base: buyIn },
 ): Promise<Id<"int">> {
