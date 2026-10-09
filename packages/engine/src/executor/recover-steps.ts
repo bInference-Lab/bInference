@@ -1,6 +1,7 @@
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { holdingStates, inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { endUnsent } from "./end-unsent.js";
 import type { IncludedSteps } from "./execute-in-slot.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
 import { recordReceipt, sendAndWatch, sendOnce } from "./run-step.js";
@@ -72,7 +73,7 @@ async function settleStep(run: ExecutionRun, step: KnownStep): Promise<KnownStep
     return goOn(run, step);
   }
   if (!holdingStates.includes(transaction.state)) {
-    return stopped(run, snapshot, "unsigned_step");
+    return stopped(run, snapshot, "replaced_step");
   }
   return snapshot.record.state === "unknown_after_send"
     ? settleUnknown(run, step)
@@ -82,9 +83,19 @@ async function settleStep(run: ExecutionRun, step: KnownStep): Promise<KnownStep
 /** Where recovery stands in an intent's steps: the steps settled so far, the next one's index. */
 interface Walk {
   readonly snapshot: IntentSnapshot;
+  readonly stored: readonly TransactionRecord[];
   readonly steps: ReadonlyMap<number, TransactionRecord>;
   readonly index: number;
   readonly done: readonly TransactionRecord[];
+}
+
+// A step with no current transaction: one never signed ends the intent; one whose transactions
+// were all replaced or dropped waits for the stuck step's handling.
+async function settleMissing(run: ExecutionRun, walk: Walk): Promise<undefined> {
+  const isReplaced = walk.stored.some(({ step }) => step === walk.index);
+  return isReplaced
+    ? stopped(run, walk.snapshot, "replaced_step")
+    : endUnsent(run, walk.snapshot, walk.index);
 }
 
 async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | undefined> {
@@ -95,13 +106,13 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
   }
   const transaction = steps.get(index);
   if (transaction === undefined) {
-    return stopped(run, snapshot, "unsigned_step");
+    return settleMissing(run, walk);
   }
   const known = await settleStep(run, { snapshot, transaction });
   if (known === undefined) {
     return undefined;
   }
-  const next = { snapshot: known.snapshot, steps, index: index + 1 };
+  const next = { ...walk, snapshot: known.snapshot, index: index + 1 };
   return walkFrom(run, { ...next, done: [...done, known.transaction] });
 }
 
@@ -109,13 +120,15 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
  * Recovers an intent a restart left `executing` or `unknown_after_send` (spec 6, section 7), on
  * its wallet's queue: each step's stored transaction in turn is looked up by hash and nonce and
  * goes on from what the chain shows, and nothing is ever signed. It answers the included steps
- * once every step is in a block. A step with no stored transaction, one that stays stuck, or one
- * whose fate stays unknown stops the recovery and leaves the intent where it is, logged.
+ * once every step is in a block. A step never signed ends the intent (decision 0109). A step that
+ * stays stuck, whose transactions were replaced or dropped, or whose fate stays unknown stops the
+ * recovery and leaves the intent where it is, logged.
  */
 export async function recoverSteps(
   run: ExecutionRun,
   snapshot: IntentSnapshot,
   stored: readonly TransactionRecord[],
 ): Promise<IncludedSteps | undefined> {
-  return walkFrom(run, { snapshot, steps: currentSteps(stored), index: 0, done: [] });
+  const steps = currentSteps(stored);
+  return walkFrom(run, { snapshot, stored, steps, index: 0, done: [] });
 }

@@ -3,7 +3,9 @@ import { authorizeIntent, openCard } from "./authorization-guards.js";
 import { confirmRequote, confirmTap, expireCard, reopenCard } from "./confirmation-guards.js";
 import {
   cancelIntent,
+  cancelUnsent,
   failOnchain,
+  failUnsent,
   fillOnPaper,
   reconcileFills,
   takeIntoQueue,
@@ -102,6 +104,10 @@ export const transitionTable: TransitionTable = {
       to: "failed_onchain",
       guard: () => ok({ reason: "nonce_taken" }),
     },
+  ],
+  step_unsent: [
+    { from: ["executing"], to: "cancelled", guard: cancelUnsent },
+    { from: ["executing"], to: "failed_onchain", guard: failUnsent },
   ],
   fills_reconciled: [{ from: ["finalized"], to: "reconciled", guard: reconcileFills }],
 };

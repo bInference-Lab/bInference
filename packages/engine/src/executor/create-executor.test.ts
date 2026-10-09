@@ -244,13 +244,17 @@ describe("the executor's refusals", () => {
     expect(bench.signed).toStrictEqual([]);
   });
 
-  it("stops a step custody refuses, with nothing stored or sent", async () => {
+  it("cancels an intent whose first step custody refuses, with nothing stored or sent", async () => {
     const { bench, intent } = await heldTap();
     bench.test.custody.removeFrom(testWallet);
     await bench.release();
     await flush();
-    expect(await stateOf(bench, intent)).toBe("executing");
-    expect(eventsOf(bench)).toStrictEqual(["executor.took:", "executor.step_stopped:refused"]);
+    expect(await stateOf(bench, intent)).toBe("cancelled");
+    expect(eventsOf(bench)).toStrictEqual([
+      "executor.took:",
+      "executor.step_stopped:refused",
+      "executor.step_unsent:cancelled",
+    ]);
     expect(await transactionsOf(bench)).toStrictEqual([]);
     expect(bench.network.sends()).toBe(0);
   });

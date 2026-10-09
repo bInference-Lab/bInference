@@ -4,6 +4,7 @@ import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import type { IntentStore } from "../ports.js";
+import type { EnginePush } from "../pushes/engine-push.js";
 import {
   type BenchOptions,
   benchChain,
@@ -104,6 +105,14 @@ function hangingAt(index: number): (custody: Signer) => Signer {
       });
     },
   });
+}
+
+// The keys of the notices among pushes, oldest first.
+function noticeKeys(pushes: readonly EnginePush[]): readonly string[] {
+  return pushes
+    .filter(({ kind }) => kind === "notice/new")
+    .map(({ data }) => JSON.stringify(data))
+    .map((data) => /"key":"([^"]+)"/.exec(data)?.[1] ?? "");
 }
 
 async function reasonOf(bench: ExecutorBench, intent: Id<"int">) {
@@ -250,28 +259,29 @@ describe("recovery after a restart", () => {
     expect(restarted.signed).toHaveLength(0);
   });
 
-  it("signs nothing for a step the stop left unsigned, and leaves the intent executing", async () => {
+  it("cancels an intent whose first step the stop left unsigned, signing nothing", async () => {
     const bench = await startExecutorBench({ custody: hangingAt(0) });
     const intent = await tapped(bench);
     await flush();
     expect(await stateOf(bench, intent)).toBe("executing");
     const restarted = await restartBench(bench);
-    await driveUntil(bench, intent, { states: ["reconciled"], blocks: 3 });
-    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(await stateOf(bench, intent)).toBe("cancelled");
+    expect(await transactionsOf(bench)).toStrictEqual([]);
     expect(restarted.signed).toHaveLength(0);
-    expect(restartEvents(restarted)).toContain("executor.step_stopped:unsigned_step");
+    expect(noticeKeys(restarted.pushes)).toStrictEqual(["notice.notSigned"]);
   });
 
-  it("signs no later step after the earlier one reached a block", async () => {
+  it("fails an intent with step_unsent when a later step was never signed after one landed", async () => {
     const bench = await startExecutorBench({ custody: hangingAt(1) });
     const intent = await tapped(bench, tokenSale);
     await driveUntil(bench, intent, { states: ["reconciled"], blocks: 3 });
     const [approval] = await transactionsOf(bench);
     expect(approval?.state).toBe("included");
     const restarted = await restartBench(bench);
-    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(await stateOf(bench, intent)).toBe("failed_onchain");
+    expect(await reasonOf(bench, intent)).toBe("step_unsent");
     expect(restarted.signed).toHaveLength(0);
-    expect(restartEvents(restarted)).toContain("executor.step_stopped:unsigned_step");
+    expect(noticeKeys(restarted.pushes)).toStrictEqual(["notice.stepUnsent"]);
   });
 
   it("stops without a signature when the chain cannot be read", async () => {

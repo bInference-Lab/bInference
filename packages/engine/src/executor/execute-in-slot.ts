@@ -3,6 +3,7 @@ import { type Id, ok, type Result } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
+import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
 import { checkForQueue, type SigningTerms } from "./queue-check.js";
 import { type PreparedStep, prepareStep, sendAndWatch, signAndStore } from "./run-step.js";
@@ -57,12 +58,23 @@ async function takeIn(
   return { snapshot: executing, terms: check.terms, isAuto: check.isAuto, first: first.value };
 }
 
-// A step that cannot be signed leaves the intent `executing` with nothing sent for the step;
-// recovery decides it (spec 6, section 7).
+// A stuck step leaves the intent `executing`; the stuck step's handling decides it.
 function stopStep(run: ExecutionRun, taken: Taken, problem: string): undefined {
   const intentId = taken.snapshot.record.id;
   run.parts.log.warn("executor.step_stopped", { intentId, errorCode: problem });
   return undefined;
+}
+
+// A step that cannot be signed, or whose signature cannot be stored, sends nothing and never
+// will: the intent ends (decision 0109).
+async function endStep(
+  run: ExecutionRun,
+  taken: Taken,
+  step: { readonly index: number; readonly problem: string },
+): Promise<undefined> {
+  const intentId = taken.snapshot.record.id;
+  run.parts.log.warn("executor.step_stopped", { intentId, errorCode: step.problem });
+  return endUnsent(run, taken.snapshot, step.index);
 }
 
 async function readyStep(
@@ -93,7 +105,7 @@ async function runFrom(
   }
   const ready = await readyStep(run, slot, { taken, index, draft });
   if (!ready.ok || (taken.isAuto && ready.value.prepared.isAboveFeeCap)) {
-    return stopStep(run, taken, ready.ok ? "over_fee_cap" : ready.error);
+    return endStep(run, taken, { index, problem: ready.ok ? "over_fee_cap" : ready.error });
   }
   const stored = await signAndStore(run, slot, {
     record: snapshot.record,
@@ -101,7 +113,7 @@ async function runFrom(
     ready: ready.value,
   });
   if (!stored.ok) {
-    return stopStep(run, taken, stored.error);
+    return endStep(run, taken, { index, problem: stored.error });
   }
   const watched = await sendAndWatch(run, snapshot.record, stored.value);
   if (watched.outcome === "reverted") {
@@ -118,7 +130,8 @@ async function runFrom(
  * The work of one confirmed intent on its wallet's queue (ARCHITECTURE.md section 7, step 8): the
  * `queue_took` check, then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
- * so the slot frees the wallet before finality, and `undefined` when the run stopped.
+ * so the slot frees the wallet before finality, and `undefined` when the run stopped. A step that
+ * cannot be signed or stored ends the intent (decision 0109); a stuck step leaves it `executing`.
  */
 export async function executeInSlot(
   run: ExecutionRun,

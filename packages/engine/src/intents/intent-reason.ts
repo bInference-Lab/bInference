@@ -63,9 +63,15 @@ export type SimulationFailure = Extract<CheckReason, "simulation_reverted" | "ef
 /**
  * Why a sent intent failed on chain: the reason stored with `failed_onchain`. `reverted` is a
  * receipt with status 0, `stuck_cancelled` a stuck step replaced by a cancel (spec 6, section 6),
- * and `nonce_taken` a nonce another transaction used after a crash (section 7).
+ * `nonce_taken` a nonce another transaction used after a crash (section 7), and `step_unsent` a
+ * step never signed after an earlier one landed (decision 0109).
  */
-export const failureReasons = ["reverted", "stuck_cancelled", "nonce_taken"] as const;
+export const failureReasons = [
+  "reverted",
+  "stuck_cancelled",
+  "nonce_taken",
+  "step_unsent",
+] as const;
 
 /** A reason a sent intent failed on chain. */
 export type FailureReason = (typeof failureReasons)[number];

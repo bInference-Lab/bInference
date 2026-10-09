@@ -1,8 +1,8 @@
 # Spec 4: cards and messages
 
 Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended by decisions
-[0101](../DECISIONS.md#d0101), [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103) and
-[0108](../DECISIONS.md#d0108).
+[0101](../DECISIONS.md#d0101), [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103),
+[0108](../DECISIONS.md#d0108) and [0109](../DECISIONS.md#d0109).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -205,6 +205,8 @@ The owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#secti
 | Unknown transaction   | `notice.unknownTx`      | ⚠️ {wallet}'s nonce {nonce} was used by a transaction binference did not sign                                                          | ⚠️ {wallet} 的随机数 {nonce} 被一笔非 binference 签名的交易占用                                                      |
 | Fill differs          | `notice.fillDiffers`    | ⚠️ A trade settled more than 1% away from its simulation. Check the trade.                                                             | ⚠️ 一笔交易的成交结果与模拟结果相差超过 1%，请核对该笔交易。                                                         |
 | Fill unknown          | `notice.fillUnknown`    | ⚠️ A trade settled, but no RPC can say what it received any more. Add a tracing RPC to the config and restart binference to finish it. | ⚠️ 一笔交易已上链，但已没有 RPC 能说明它收到了多少。请在配置中添加追踪 RPC 并重启 binference，以完成这笔交易的记录。 |
+| Not signed            | `notice.notSigned`      | ⚠️ A trade was cancelled before its first transaction was signed. Nothing was sent.                                                    | ⚠️ 一笔交易在第一笔链上交易签名前已取消，未发送任何内容。                                                            |
+| Step unsent           | `notice.stepUnsent`     | ⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.                      | ⚠️ 一笔交易中途停止：前面的步骤已上链，但后面的步骤从未签名。请检查钱包。                                            |
 | Binance agent refused | `notice.binanceRefused` | ⚠️ {agent} tried a trade over its limit: {trade}. Refused.                                                                             | ⚠️ {agent} 尝试了超出限额的交易：{trade}。已拒绝。                                                                   |
 | Binance agent paused  | `notice.binancePaused`  | {agent} paused from {surface}                                                                                                          | 已从 {surface} 暂停 {agent}                                                                                          |
 | Approval mode         | `notice.approvalMode`   | {agent} is now in {mode} mode, from {surface}                                                                                          | {agent} 已切换为{mode}模式，来自 {surface}                                                                           |

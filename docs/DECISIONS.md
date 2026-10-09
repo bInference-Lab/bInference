@@ -132,3 +132,4 @@ Each record file has one row here, in number order.
 | <a id="d0106"></a>0106 | A Permit2 approval is its own checked step            | Accepted | [adr/0106-a-permit2-approval-is-its-own-checked-step.md](adr/0106-a-permit2-approval-is-its-own-checked-step.md)                       |
 | <a id="d0107"></a>0107 | The simulation picks the best quote across venues     | Accepted | [adr/0107-the-simulation-picks-the-best-quote-across-venues.md](adr/0107-the-simulation-picks-the-best-quote-across-venues.md)         |
 | <a id="d0108"></a>0108 | Native coin a trade received is read from the balance | Accepted | [adr/0108-native-coin-a-trade-received-is-read-from-the-balance.md](adr/0108-native-coin-a-trade-received-is-read-from-the-balance.md) |
+| <a id="d0109"></a>0109 | An intent whose next step was never signed ends       | Accepted | [adr/0109-an-intent-whose-next-step-was-never-signed-ends.md](adr/0109-an-intent-whose-next-step-was-never-signed-ends.md)             |

@@ -29,5 +29,6 @@
   "effects_differ": "the simulation showed other results than the quote, so nothing was sent",
   "reverted": "the transaction reverted; only the network fee was spent",
   "stuck_cancelled": "the transaction was stuck and was cancelled; only the network fee was spent",
-  "nonce_taken": "another transaction used this wallet's nonce, so this one did not land"
+  "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",
+  "step_unsent": "an earlier step landed, but a later one was never signed"
 }

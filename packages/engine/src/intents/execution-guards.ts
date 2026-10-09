@@ -100,3 +100,27 @@ export function reconcileFills({
     nowMs - status.changedAtMs < bridgeDeliveryWaitMs;
   return isWaitingForDelivery ? err("delivery_pending") : ok({});
 }
+
+/**
+ * `executing` to `cancelled` once a step the executor took was never signed, and no step was
+ * before it (decision 0109): nothing reached the chain.
+ */
+export function cancelUnsent({
+  trigger,
+}: GuardInput<"step_unsent">): Result<IntentChange, TransitionProblem> {
+  return trigger.hasSignedStep ? err("already_signed") : ok({ cancelCause: "step_unsent" });
+}
+
+/**
+ * `executing` to `failed_onchain` with `step_unsent` once a step was never signed after an
+ * earlier one landed (decision 0109). A rescue retries a failed step instead (spec 6, section 5).
+ */
+export function failUnsent({
+  status,
+  trigger,
+}: GuardInput<"step_unsent">): Result<IntentChange, TransitionProblem> {
+  if (!trigger.hasSignedStep) {
+    return err("nothing_signed");
+  }
+  return status.kind === "rescue" ? err("rescue_retries") : ok({ reason: "step_unsent" });
+}

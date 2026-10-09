@@ -21,6 +21,18 @@ import {
 } from "./test-executor.js";
 
 const live = () => ({ signal: new AbortController().signal });
+
+async function reasonOf(bench: ExecutorBench, intent: Id<"int">) {
+  return (await bench.test.stores.intents.get(intent, live()))?.reason;
+}
+
+// The keys of the notices the executor sent, oldest first.
+function noticeKeysOf(bench: ExecutorBench): readonly string[] {
+  return bench.pushes
+    .filter(({ kind }) => kind === "notice/new")
+    .map(({ data }) => JSON.stringify(data))
+    .map((data) => /"key":"([^"]+)"/.exec(data)?.[1] ?? "");
+}
 const tokenSale = testSwap({ from: testToken, to: testCoin, amount: { base: 1_000_000n } });
 
 // The payload of a token sale's second step, the swap after its approval.
@@ -96,14 +108,21 @@ describe("the executor on what it cannot run", () => {
   it.each<[string, BenchOptions, string]>([
     ["bytes another signer signed", { custody: wrongSigner }, "bad_signature"],
     ["a store that finds the nonce taken", { transactions: refusing("saveSigned") }, "nonce_taken"],
-  ])("stops a step on %s, with nothing sent", async (_, options, problem) => {
-    const bench = await startExecutorBench(options);
-    const intent = await tapped(bench);
-    await flush();
-    expect(await stateOf(bench, intent)).toBe("executing");
-    expect(eventsOf(bench).at(-1)).toBe(`executor.step_stopped:${problem}`);
-    expect(bench.network.sends()).toBe(0);
-  });
+  ])(
+    "cancels an intent on %s at its first step, with nothing sent",
+    async (_, options, problem) => {
+      const bench = await startExecutorBench(options);
+      const intent = await tapped(bench);
+      await flush();
+      expect(await stateOf(bench, intent)).toBe("cancelled");
+      expect(eventsOf(bench).slice(-2)).toStrictEqual([
+        `executor.step_stopped:${problem}`,
+        "executor.step_unsent:cancelled",
+      ]);
+      expect(noticeKeysOf(bench)).toStrictEqual(["notice.notSigned"]);
+      expect(bench.network.sends()).toBe(0);
+    },
+  );
 
   it.each<[string, BenchOptions]>([
     ["a send", { transactions: refusing("recordSend") }],
@@ -127,14 +146,19 @@ describe("the executor on what it cannot run", () => {
 });
 
 describe("the executor on a later step", () => {
-  it("stops a later step that would fail now, after the step before it landed", async () => {
+  it("fails an intent with step_unsent when a later step would fail after the one before landed", async () => {
     const bench = await startExecutorBench({ hold: true });
     const intent = await tapped(bench, tokenSale);
     bench.network.failing(await swapPayload(bench, intent));
     await bench.release();
     await driveUntil(bench, intent, { states: [], blocks: 3 });
-    expect(await stateOf(bench, intent)).toBe("executing");
-    expect(eventsOf(bench).at(-1)).toBe("executor.step_stopped:would_fail");
+    expect(await stateOf(bench, intent)).toBe("failed_onchain");
+    expect(await reasonOf(bench, intent)).toBe("step_unsent");
+    expect(eventsOf(bench).slice(-2)).toStrictEqual([
+      "executor.step_stopped:would_fail",
+      "executor.step_unsent:failed_onchain",
+    ]);
+    expect(noticeKeysOf(bench)).toStrictEqual(["notice.stepUnsent"]);
     expect((await transactionsOf(bench)).map(({ step }) => step)).toStrictEqual([0]);
   });
 
@@ -147,7 +171,8 @@ describe("the executor on a later step", () => {
     await flush();
     bench.network.setFeePerGas(2_000_000_000n);
     await driveUntil(bench, view.intent, { states: [], blocks: 3 });
-    expect(eventsOf(bench).at(-1)).toBe("executor.step_stopped:over_fee_cap");
+    expect(eventsOf(bench)).toContain("executor.step_stopped:over_fee_cap");
+    expect(await stateOf(bench, view.intent)).toBe("failed_onchain");
     expect(bench.signed).toHaveLength(1);
   });
 });

@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by decisions
 [0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101),
-[0102](../DECISIONS.md#d0102) and [0103](../DECISIONS.md#d0103).
+[0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103) and [0109](../DECISIONS.md#d0109).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -44,7 +44,7 @@ other code writes an intent's state ([ENGINEERING.md principle 2](../ENGINEERING
 | `failed_check`          | Quote, build, decode or simulation failed. Terminal.                                              |
 | `denied`                | The owner tapped Cancel. Terminal.                                                                |
 | `expired`               | No answer before the card expired. Terminal.                                                      |
-| `cancelled`             | Withdrawn before signing: by the proposer, a freeze, or the engine stopping. Terminal.            |
+| `cancelled`             | Withdrawn before any signature: by the proposer, a freeze, a stop or an unsigned step. Terminal.  |
 | `failed_onchain`        | A step reverted or was replaced by a cancel. Terminal.                                            |
 | `unknown_after_send`    | A step's fate is unknown after a crash; reconciliation is running                                 |
 
@@ -82,6 +82,8 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `executing`                  | `unknown_after_send`    | startup finds a sent step with no known fate                       |                                                                                                                                                                                                        |
 | `unknown_after_send`         | `executing`             | reconciliation finds the step's transaction                        | the transaction at its nonce is ours (section 7)                                                                                                                                                       |
 | `unknown_after_send`         | `failed_onchain`        | reconciliation finds another transaction                           | another transaction used the step's nonce (section 7); the reason `nonce_taken` is stored, with an alarm notice                                                                                        |
+| `executing`                  | `cancelled`             | a step taken was never signed, and nothing will sign it            | no step was signed before it ([decision 0109](../DECISIONS.md#d0109)); the owner gets `notice.notSigned`                                                                                               |
+| `executing`                  | `failed_onchain`        | a step taken was never signed, and nothing will sign it            | an earlier step landed; the reason `step_unsent` is stored and the owner gets `notice.stepUnsent` ([decision 0109](../DECISIONS.md#d0109)); a rescue retries instead                                   |
 | `included`                   | `finalized`             | finality                                                           | the last step's block is final                                                                                                                                                                         |
 | `included`                   | `executing`             | a reorg removes a step's block before it is final                  |                                                                                                                                                                                                        |
 | `finalized`                  | `reconciled`            | reconciliation                                                     | fills decoded and compared with the simulation; a difference above 1% raises an alarm notice but still reconciles                                                                                      |
@@ -121,7 +123,8 @@ Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`.
 
 Failure reasons for `failed_onchain`: `reverted` (a step's receipt has status 0), `stuck_cancelled`
-(section 6) and `nonce_taken` (section 7).
+(section 6), `nonce_taken` (section 7) and `step_unsent` (a step never signed after an earlier one
+landed, [decision 0109](../DECISIONS.md#d0109)).
 
 <a id="section-5"></a>
 
@@ -215,6 +218,10 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    and reconciliation reads that nonce's transaction. It is ours (same hash after all): continue. It
    is not ours: the intent ends `failed_onchain` with reason `nonce_taken` and an alarm notice.
 3. Nothing is ever signed again for a step until its earlier transaction's fate is known.
+4. Recovery never signs. A step with no stored transaction ends the intent: `cancelled` when no
+   step was signed, `failed_onchain` with `step_unsent` once an earlier step landed, each with an
+   owner notice ([decision 0109](../DECISIONS.md#d0109)). The executor ends an intent the same way
+   when a step cannot be signed or stored.
 
 <a id="section-8"></a>
 
@@ -229,6 +236,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 | `executing`, each step `sent`                     | ✓            | `intent/changed` |                                                                            |
 | `reconciled`, `paper_filled`                      | ✓            | `intent/changed` | Every fill                                                                 |
 | `failed_onchain`, `unknown_after_send`            | ✓            | `intent/changed` | Always                                                                     |
+
+A move to `cancelled` on a step never signed has no card to close; the owner gets
+`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)).
 
 Every other transition pushes `intent/changed` without a ledger entry. The ledger entry records the
 state, who or what caused it (surface, device or token), and the hashes involved.

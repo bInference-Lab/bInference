@@ -144,6 +144,7 @@ const builders: Builders = {
   reorg_seen: () => ({ type: "reorg_seen" }),
   sent_step_found: () => ({ type: "sent_step_found" }),
   nonce_taken: () => ({ type: "nonce_taken" }),
+  step_unsent: (facts) => ({ type: "step_unsent", hasSignedStep: facts.hasSignedStep }),
   fills_reconciled: (facts) => ({
     type: "fills_reconciled",
     isDeliveryReported: facts.isDeliveryReported,
@@ -462,16 +463,37 @@ function signingViolations({ before, trigger, nowMs, result }: Outcome): readonl
   return isApprovedForQueue(before, trigger, nowMs) ? [] : ["executing without a valid approval"];
 }
 
+function isCancelAllowed(before: IntentStatus, trigger: IntentTrigger): boolean {
+  if (trigger.type === "step_unsent") {
+    return !trigger.hasSignedStep;
+  }
+  return (
+    trigger.type === "cancel_requested" &&
+    !trigger.hasSignedStep &&
+    !(trigger.cause === "freeze" && before.kind === "rescue")
+  );
+}
+
+// An intent is cancelled only with nothing signed, and a freeze never cancels a rescue.
 function cancelViolations({ before, trigger, result }: Outcome): readonly string[] {
   if (!result.ok || result.value.status.state !== "cancelled") {
     return [];
   }
-  const cancel = trigger.type === "cancel_requested" ? trigger : undefined;
-  const isAllowed =
-    cancel !== undefined &&
-    !cancel.hasSignedStep &&
-    !(cancel.cause === "freeze" && before.kind === "rescue");
-  return isAllowed ? [] : ["cancelled a signed intent or a rescue on a freeze"];
+  return isCancelAllowed(before, trigger)
+    ? []
+    : ["cancelled a signed intent or a rescue on a freeze"];
+}
+
+// Decision 0109: an unsigned step fails a live intent only after an earlier step was signed.
+function unsentViolations({ before, trigger, result }: Outcome): readonly string[] {
+  if (!result.ok || trigger.type !== "step_unsent") {
+    return [];
+  }
+  const { status } = result.value;
+  const isRight = trigger.hasSignedStep
+    ? status.state === "failed_onchain" && before.kind !== "rescue"
+    : status.state === "cancelled";
+  return isRight ? [] : [`an unsigned step moved ${before.state} to ${status.state}`];
 }
 
 // Invariant 7: an intent that ends has exactly one ledger entry for its terminal state.
@@ -515,6 +537,7 @@ function violations(history: History): readonly string[] {
       ...autoViolations(outcome),
       ...signingViolations(outcome),
       ...cancelViolations(outcome),
+      ...unsentViolations(outcome),
       ...reasonViolations(outcome.result.ok ? outcome.result.value.status : outcome.before),
     ]),
     ...ledgerViolations(history),

@@ -37,14 +37,18 @@ export const triggerTypes = [
   "reorg_seen",
   "sent_step_found",
   "nonce_taken",
+  "step_unsent",
   "fills_reconciled",
 ] as const;
 
 /** The type of a trigger. */
 export type TriggerType = (typeof triggerTypes)[number];
 
-/** Who or what withdrew an intent before signing: an `intent/cancel` call, a freeze or a stop. */
-export type CancelCause = "request" | "freeze" | "engine_stopping";
+/**
+ * Who or what withdrew an intent before signing: an `intent/cancel` call, a freeze or a stop, or
+ * the executor once a step it took was never signed (decision 0109).
+ */
+export type CancelCause = "request" | "freeze" | "engine_stopping" | "step_unsent";
 
 /** At `simulated`: whether a fill's auto order or webhook rule still holds within its bounds. */
 export interface FillCheck {
@@ -113,7 +117,10 @@ export interface TriggerFacts {
   /** The owner tapped Cancel, or called `intent/deny`. */
   readonly deny_tapped: NoFacts;
   readonly card_timer_fired: NoFacts;
-  readonly cancel_requested: { readonly cause: CancelCause; readonly hasSignedStep: boolean };
+  readonly cancel_requested: {
+    readonly cause: Exclude<CancelCause, "step_unsent">;
+    readonly hasSignedStep: boolean;
+  };
   /** Paper mode filled the intent at its confirmed quote. */
   readonly paper_fill_recorded: NoFacts;
   readonly queue_took: QueueFacts;
@@ -133,6 +140,11 @@ export interface TriggerFacts {
   readonly sent_step_found: NoFacts;
   /** Reconciliation found another transaction at the step's nonce. */
   readonly nonce_taken: NoFacts;
+  /**
+   * A step the executor took was never signed, and nothing will sign it (decision 0109).
+   * `hasSignedStep`: an earlier step was signed, and a block holds it.
+   */
+  readonly step_unsent: { readonly hasSignedStep: boolean };
   /** Fills decoded and compared with the simulation. A bridge also reports delivery. */
   readonly fills_reconciled: { readonly isDeliveryReported?: boolean };
 }

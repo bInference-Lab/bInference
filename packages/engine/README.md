@@ -98,7 +98,9 @@ At startup `recover` takes up every live intent a stop left unsettled (spec 6, s
 stored step is looked up by hash and nonce. A block holds it: it goes on. Its nonce is free: the
 same bytes go again. Another transaction used its nonce: the intent waits in `unknown_after_send`
 until the step turns up after all or a final block holds the other one, which ends it
-`failed_onchain` with `nonce_taken` and `notice.unknownTx`. Recovery never signs.
+`failed_onchain` with `nonce_taken` and `notice.unknownTx`. Recovery never signs: a step never
+signed ends the intent `cancelled`, or `failed_onchain` with `step_unsent` once an earlier step
+landed, as a step that cannot be signed in a run does (decision 0109).
 
 It holds the simulation check (ARCHITECTURE.md section 7, step 5), exported as
 `@binference/engine/simulation`: `createSimulationCheck` is the `Simulator` the money path and the

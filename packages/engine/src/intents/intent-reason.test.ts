@@ -48,13 +48,18 @@ describe("intent reasons", () => {
       "effects_differ",
       "price_impact",
     ]);
-    expect(failureReasons).toStrictEqual(["reverted", "stuck_cancelled", "nonce_taken"]);
+    expect(failureReasons).toStrictEqual([
+      "reverted",
+      "stuck_cancelled",
+      "nonce_taken",
+      "step_unsent",
+    ]);
   });
 
   it("holds every reason code once in the closed list", () => {
     const all = [...policyReasons, ...riskReasons, ...checkReasons, ...failureReasons];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(31);
+    expect(intentReasons).toHaveLength(32);
   });
 
   it("has a reason message in English and Chinese for every reason code", () => {

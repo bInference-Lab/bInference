@@ -266,6 +266,7 @@ describe("moving an intent", () => {
       ["executing", { type: "step_reverted" }, "failed_onchain"],
       ["executing", { type: "step_cancelled" }, "failed_onchain"],
       ["unknown_after_send", { type: "nonce_taken" }, "failed_onchain"],
+      ["executing", { type: "step_unsent", hasSignedStep: true }, "failed_onchain"],
     ] as const;
     const outcomes = cases.map(([from, trigger]) => {
       const step = unwrap(machineAt(0).apply(statusAt(from), trigger));
@@ -279,6 +280,7 @@ describe("moving an intent", () => {
       ["failed_onchain", "reverted", "reverted"],
       ["failed_onchain", "stuck_cancelled", "stuck_cancelled"],
       ["failed_onchain", "nonce_taken", "nonce_taken"],
+      ["failed_onchain", "step_unsent", "step_unsent"],
     ]);
   });
 
@@ -293,6 +295,13 @@ describe("moving an intent", () => {
     expect(step.status).not.toHaveProperty("cancelCause");
     const plain = unwrap(machineAt(0).apply(statusAt("proposed"), { type: "policy_passed" }));
     expect(plain.event).not.toHaveProperty("cancelCause");
+  });
+
+  it("cancels an executing intent whose first step was never signed, and records why", () => {
+    const trigger: IntentTrigger = { type: "step_unsent", hasSignedStep: false };
+    const step = unwrap(machineAt(0).apply(statusAt("executing"), trigger));
+    expect(step.event).toMatchObject({ to: "cancelled", cancelCause: "step_unsent" });
+    expect(step.status.reason).toBeUndefined();
   });
 
   it("moves an included intent back to executing on a reorg", () => {

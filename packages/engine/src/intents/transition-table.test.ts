@@ -42,6 +42,8 @@ const expected: readonly (readonly [IntentState, string, IntentState])[] = [
   ["included", "reorg_seen", "executing"],
   ["unknown_after_send", "sent_step_found", "executing"],
   ["unknown_after_send", "nonce_taken", "failed_onchain"],
+  ["executing", "step_unsent", "cancelled"],
+  ["executing", "step_unsent", "failed_onchain"],
 ];
 
 function key(rule: TransitionRule): string {
@@ -85,9 +87,12 @@ describe("the transition table", () => {
     expect([...reachableFrom("proposed")].toSorted()).toStrictEqual([...intentStates].toSorted());
   });
 
-  it("never cancels from executing or later", () => {
+  it("cancels from executing only on a step that was never signed, and never later", () => {
     const cancels = listTransitions().filter((rule) => rule.to === "cancelled");
-    expect(cancels.map((rule) => rule.from)).toStrictEqual(beforeSigning);
+    expect(cancels.map((rule) => [rule.from, rule.trigger])).toStrictEqual([
+      ...beforeSigning.map((from) => [from, "cancel_requested"]),
+      ["executing", "step_unsent"],
+    ]);
   });
 
   it("enters executing only from confirmed, a reorg or a found step", () => {

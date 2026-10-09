@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   bridgeDeliveryWaitMs,
   cancelIntent,
+  cancelUnsent,
   failOnchain,
+  failUnsent,
   fillOnPaper,
   reconcileFills,
   takeIntoQueue,
@@ -40,7 +42,7 @@ function queue(facts: QueueFacts, status = confirmed, nowMs = 10_000): GuardInpu
 }
 
 function cancel(
-  cause: CancelCause,
+  cause: Exclude<CancelCause, "step_unsent">,
   kind: IntentKind = "swap",
   hasSignedStep = false,
 ): GuardInput<"cancel_requested"> {
@@ -226,5 +228,44 @@ describe("reconciling", () => {
       error: "delivery_pending",
     });
     expect(reconcileFills(reconcile("bridge", 1_000 + 7_200_000)).ok).toBe(true);
+  });
+});
+
+const firstStep = { hasSignedStep: false } as const;
+const laterStep = { hasSignedStep: true } as const;
+
+function unsent(
+  step: { readonly hasSignedStep: boolean },
+  kind: IntentKind = "swap",
+): GuardInput<"step_unsent"> {
+  return {
+    status: { ...confirmed, state: "executing", kind },
+    trigger: { type: "step_unsent", hasSignedStep: step.hasSignedStep },
+    nowMs: 0,
+  };
+}
+
+describe("a step that was never signed", () => {
+  it("cancels the intent when no step before it was signed", () => {
+    expect(cancelUnsent(unsent(firstStep))).toStrictEqual({
+      ok: true,
+      value: { cancelCause: "step_unsent" },
+    });
+    expect(cancelUnsent(unsent(laterStep))).toStrictEqual({ ok: false, error: "already_signed" });
+  });
+
+  it("fails the intent on chain with step_unsent once an earlier step landed", () => {
+    expect(failUnsent(unsent(laterStep))).toStrictEqual({
+      ok: true,
+      value: { reason: "step_unsent" },
+    });
+    expect(failUnsent(unsent(firstStep))).toStrictEqual({ ok: false, error: "nothing_signed" });
+  });
+
+  it("keeps a rescue executing so the queue retries the step", () => {
+    expect(failUnsent(unsent(laterStep, "rescue"))).toStrictEqual({
+      ok: false,
+      error: "rescue_retries",
+    });
   });
 });

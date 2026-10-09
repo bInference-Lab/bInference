@@ -23,6 +23,7 @@ export type TransitionProblem =
   | "quote_held"
   | "not_expired"
   | "already_signed"
+  | "nothing_signed"
   | "rescue_outlasts_freeze"
   | "rescue_retries"
   | "live_intent"

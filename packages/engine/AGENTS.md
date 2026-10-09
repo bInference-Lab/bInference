@@ -118,8 +118,9 @@ Rules for this package:
   `executor.step_stopped` logs. Reconciliation reads what each final step moved only through the
   `ReceiptReader`, records the trade in the positions before the move to `reconciled`, and finds
   it stored after a restart, so a trade is recorded once. `recover` signs nothing: each stored
-  step is looked up by hash and nonce (spec 6, section 7), and a step with no stored transaction
-  stops it.
+  step is looked up by hash and nonce (spec 6, section 7). A step that is never signed, at a run
+  or found at recovery, ends the intent through `step_unsent`: `cancelled` when no step was
+  signed, `failed_onchain` once one landed (decision 0109).
 - The simulation check (`src/simulation/`, exported as `@binference/engine/simulation`) reads
   what a quote's steps do only through the `TxSimulator` port, compares accounts through the
   chain's family, and never counts the network fee among the transfers. A new check is a
