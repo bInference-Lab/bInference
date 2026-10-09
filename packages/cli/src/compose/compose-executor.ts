@@ -59,6 +59,8 @@ export interface ComposeExecutorOptions {
   readonly prices: PriceSource;
   readonly chains: ChainRegistry;
   readonly config: ChainsConfig;
+  /** The owner's tracing RPC of each chain that has one (decision 0108). */
+  readonly tracers?: ReadonlyMap<ChainRef, string>;
   /** Outbound HTTP for the chains' RPCs and relays. */
   readonly http: Http;
   readonly clock: Clock;
@@ -72,6 +74,8 @@ export interface ComposeExecutorOptions {
 const rpcTimeoutMs = 5_000;
 const rpcRestMs = 30_000;
 const relayTimeoutMs = 3_000;
+// A tracer replays a whole transaction, so it gets longer than a read.
+const tracerTimeoutMs = 15_000;
 const gweiText = /^(\d+)(?:\.(\d{1,9}))?$/;
 const weiPerGwei = 1_000_000_000n;
 
@@ -127,6 +131,22 @@ export function relayEndpointsOf(
   });
 }
 
+// The owner's tracing RPC of the chain, when config names one; errors name it `tracer` only.
+function tracerOf(chain: ChainRef, options: ComposeExecutorOptions) {
+  const url = options.tracers?.get(chain);
+  return url === undefined
+    ? {}
+    : {
+        tracer: createRpcFailover({
+          endpoints: [{ name: "tracer", url }],
+          http: options.http,
+          clock: options.clock,
+          timeoutMs: tracerTimeoutMs,
+          restMs: rpcRestMs,
+        }),
+      };
+}
+
 interface ChainParts {
   readonly sending: ChainSending;
   readonly nonces: NonceSource;
@@ -168,7 +188,12 @@ function chainPartsOf(
         networkFeeCap: gweiToWei(capText, chain.ref),
       }),
       sender: health.watch(chain.ref, sender),
-      receipts: createEvmReceiptReader({ rpc, chain: evm, finality: definition.finality }),
+      receipts: createEvmReceiptReader({
+        rpc,
+        chain: evm,
+        finality: definition.finality,
+        ...tracerOf(chain.ref, options),
+      }),
     },
     nonces: createEvmNonceSource({ rpc, chain: evm }),
   };
@@ -192,8 +217,9 @@ export function nonceRouterOf(sources: ReadonlyMap<ChainRef, NonceSource>): Nonc
  * Builds the executor of a self-hosted engine: for each enabled chain of the EVM family, the RPC
  * failover over config's RPCs and the chain's public ones, the relay sender over every relay the
  * chain lists or config names (all of them until a measurement picks the fastest), the preparer
- * with config's network fee cap, the receipt reader by the chain's finality rule and the nonce
- * source; the wallet queue over the stored transactions; custody as the composition gives it.
+ * with config's network fee cap, the receipt reader by the chain's finality rule with the owner's
+ * tracing RPC when there is one, and the nonce source; the wallet queue over the stored
+ * transactions; custody as the composition gives it.
  */
 export function composeExecutor(options: ComposeExecutorOptions): ComposedExecutor {
   const health = createRelayHealth();

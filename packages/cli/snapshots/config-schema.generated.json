@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -632,6 +632,10 @@
                 },
                 "key": {
                   "description": "A paid RPC's key.",
+                  "$ref": "#/$defs/Secret"
+                },
+                "tracer": {
+                  "description": "The URL of your RPC that answers debug_traceTransaction, such as a paid node's. binference asks it what a trade received once the public RPCs dropped an old block.",
                   "$ref": "#/$defs/Secret"
                 }
               },

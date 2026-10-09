@@ -13,6 +13,7 @@ import {
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { connectEngine } from "../commands/connect-engine.js";
+import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import type { CliHost } from "../program/cli-host.js";
 import { runCli } from "../program/run-cli.js";
 
@@ -130,7 +131,9 @@ export function hostWith(
 export async function writeTestConfig(folder: string, extra = ""): Promise<void> {
   const files = { permissions: noPermissions, signal: new AbortController().signal };
   await ensurePrivateFolder(folder, files);
-  const text = `{\n  version: 2,\n  telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },\n${extra}}\n`;
+  const version = String(currentConfigVersion);
+  const bot = `telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } }`;
+  const text = `{\n  version: ${version},\n  ${bot},\n${extra}}\n`;
   await writePrivateFile(join(folder, "config.json5"), text, files);
 }
 

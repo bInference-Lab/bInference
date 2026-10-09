@@ -9,6 +9,11 @@ export interface RpcConfig {
   readonly urls?: readonly string[];
   /** A paid RPC's key. */
   readonly key?: SecretSource;
+  /**
+   * The URL of the owner's RPC that answers `debug_traceTransaction`, read from a secret source
+   * since a paid node's URL carries its key (decision 0108).
+   */
+  readonly tracer?: SecretSource;
 }
 
 /** The chains the agent trades on, their RPCs, their private relays and their network fee caps. */
@@ -68,6 +73,12 @@ export const chainsSchema: z.ZodType<ChainsConfig> = z
             .exactOptional()
             .meta({ description: "Extra or replacement RPCs.", defaultText: "the public RPCs" }),
           key: secretSourceSchema.exactOptional().describe("A paid RPC's key."),
+          tracer: secretSourceSchema
+            .exactOptional()
+            .describe(
+              "The URL of your RPC that answers debug_traceTransaction, such as a paid node's. " +
+                "binference asks it what a trade received once the public RPCs dropped an old block.",
+            ),
         }),
       )
       .prefault({})

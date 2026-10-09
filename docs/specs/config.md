@@ -1,7 +1,7 @@
 # Spec 2: the config file
 
-Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by
-[decision 0102](../DECISIONS.md#d0102).
+Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
+[0102](../DECISIONS.md#d0102) and [0108](../DECISIONS.md#d0108).
 
 <a id="section-1"></a>
 
@@ -188,6 +188,7 @@ micro-dollars and base units on load.
 | `chains.enabled`                           | ChainRef[]                                 | `["eip155:56"]` ([decision 0023](../DECISIONS.md#d0023))        | restart | Chains the agent trades on                                                              |
 | `chains.rpc.<chain>.urls`                  | URL[]                                      | the chain file's public RPCs                                    | live    | Extra or replacement RPCs                                                               |
 | `chains.rpc.<chain>.key`                   | Secret                                     | none                                                            | live    | A paid RPC's key                                                                        |
+| `chains.rpc.<chain>.tracer`                | Secret                                     | none ([decision 0108](../DECISIONS.md#d0108))                   | restart | The URL of an RPC that answers `debug_traceTransaction`, for blocks the others dropped  |
 | `chains.relays.<chain>`                    | string[]                                   | the two fastest, by measurement                                 | live    | Private relays for sends                                                                |
 | `chains.maxFeePerGasGwei.<chain>`          | decimal string                             | `{ "eip155:56": "1" }` ([decision 0102](../DECISIONS.md#d0102)) | live    | The network fee cap, in gwei: a higher fee per gas opens a card in either approval mode |
 | `venues.keys.okx`                          | `{ apiKey, secret, passphrase }` (Secrets) | none                                                            | live    | Adds OKX routing                                                                        |
@@ -230,7 +231,7 @@ micro-dollars and base units on load.
 ```json5
 // ~/.binference/config.json5
 {
-  version: 2,
+  version: 3,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

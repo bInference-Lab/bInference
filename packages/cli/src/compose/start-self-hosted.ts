@@ -1,4 +1,5 @@
-import type { ChainRegistry } from "@binference/chain";
+import { homedir } from "node:os";
+import type { ChainRef, ChainRegistry } from "@binference/chain";
 import { BinferenceError, createDeadline } from "@binference/core";
 import { type EnginePush, type EngineStores, lockedNotice } from "@binference/engine";
 import {
@@ -12,6 +13,7 @@ import type { OperationHandlers, ProtocolServer, ServerAddress } from "@binferen
 import type { ConfigIssue } from "../config/config-issue.js";
 import { loadConfig } from "../config/load-config.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
+import { createSecretReader } from "../config/secrets/secret-reader.js";
 import type { CliHost } from "../program/cli-host.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import type { LockReason } from "../unlock/unlock-keys.js";
@@ -37,6 +39,7 @@ import {
   type Opening,
   selfHostedChains,
 } from "./open-engine-parts.js";
+import { readTracers } from "./read-tracers.js";
 
 /** Why the engine did not start, with what the owner needs to fix it. */
 export type StartRefusal =
@@ -78,6 +81,8 @@ interface Opened {
   readonly stores: EngineStores;
   /** The install, or `undefined` before `binference init` set it up. */
   readonly install: SetUpInstall | undefined;
+  /** The owner's tracing RPC of each chain config names one for, read from its secret. */
+  readonly tracers: ReadonlyMap<ChainRef, string>;
 }
 
 /** A running engine, or why it did not start. */
@@ -107,6 +112,7 @@ function composeSending(
   const pushes = { publish: (_push: EnginePush): void => undefined };
   const composed = composeExecutor({
     stores,
+    tracers: opened.tracers,
     positions: parts.positions,
     custody: parts.custody,
     wallets: parts.wallets,
@@ -247,7 +253,15 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   }
   const log = await openEngineLog(opening, loaded.config);
   try {
-    return await openStoresAndServe(opening, { config: loaded.config, log });
+    const secrets = createSecretReader({
+      env: host.env,
+      keychain: platform.keychain,
+      homeDir: host.homeDir ?? homedir(),
+      clock: host.clock,
+    });
+    const call = { logger: log.logger, signal };
+    const tracers = await readTracers(loaded.config.chains, secrets, call);
+    return await openStoresAndServe(opening, { config: loaded.config, log, tracers });
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";

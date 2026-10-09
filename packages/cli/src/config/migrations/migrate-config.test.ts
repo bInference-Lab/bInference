@@ -106,6 +106,15 @@ describe("migrate config", () => {
     }).toThrow(expect.objectContaining({ code: "config.migrations_out_of_order" }));
   });
 
+  it("moves a version 2 file to version 3 without changing a value, with no tracing RPC", () => {
+    const second: JsonObject = { version: 2, chains: { rpc: {} } };
+    expect(migrateConfig(second, configMigrations.slice(0, 2))).toMatchObject({
+      ok: true,
+      file: { ...second, version: 3 },
+      steps: [{ from: 2, to: 3, edits: [] }],
+    });
+  });
+
   it("moves a version 1 file to version 2 without changing a value, so the fee cap takes its default", () => {
     const first: JsonObject = { version: 1, telegram: { botToken: { fromKeychain: "bot" } } };
     expect(migrateConfig(first, configMigrations.slice(0, 1))).toStrictEqual({

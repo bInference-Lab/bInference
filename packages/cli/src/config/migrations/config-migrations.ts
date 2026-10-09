@@ -10,6 +10,11 @@ export const configMigrations: readonly ConfigMigration[] = [
     summary: "Adds chains.maxFeePerGasGwei, the network fee cap of each chain, at its default.",
     edits: () => [],
   },
+  {
+    from: 2,
+    summary: "Adds chains.rpc.<chain>.tracer, the owner's tracing RPC, which no file sets yet.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */
