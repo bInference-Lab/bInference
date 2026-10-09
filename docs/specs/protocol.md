@@ -2,8 +2,8 @@
 
 Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 [decision 0088](../DECISIONS.md#d0088) and [decision 0089](../DECISIONS.md#d0089); custody
-operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by
-[decision 0104](../DECISIONS.md#d0104).
+operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
+[0104](../DECISIONS.md#d0104) and [0125](../DECISIONS.md#d0125).
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -247,7 +247,7 @@ Long operations return `{ job }` at once and report through the `job` topic. Fil
 | `safety/status`             | `read`    |       |       | → `{ frozen, frozenAt?, rescueAddress?, pendingRescueAddress? }`                                                                                                                                     |
 | `safety/freeze`             | `confirm` | ✓     |       | `{ agent?: agt_ }` (absent: every agent) → `{ frozenAt }`                                                                                                                                            |
 | `safety/unfreeze`           | `loosen`  | ✓     |       | `{ agent?: agt_ }` → `{}` ([rule 11](../ARCHITECTURE.md#rule-11), [decision 0089](../DECISIONS.md#d0089))                                                                                            |
-| `safety/rescue`             | `confirm` | ✓     |       | `{}` → `{ intent }`: one rescue intent for every agent wallet, awaiting a tap                                                                                                                        |
+| `safety/rescue`             | `confirm` | ✓     |       | `{}` → `{ intent }`: one rescue intent for every agent wallet, awaiting a tap; while one has not ended, that one ([decision 0125](../DECISIONS.md#d0125))                                            |
 | `safety/setRescueAddress`   | `admin`   | ✓     | ✓     | `{ address: AccountRef, ownerKey }` → `{ effectiveAt }` (24 hours later, [decision 0044](../DECISIONS.md#d0044)); saved in every ceiling with the owner key ([decision 0110](../DECISIONS.md#d0110)) |
 | `safety/cancelRescueChange` | `confirm` | ✓     |       | `{}` → `{}`                                                                                                                                                                                          |
 

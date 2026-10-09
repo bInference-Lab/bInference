@@ -3,7 +3,9 @@
 Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended by decisions
 [0099](../DECISIONS.md#d0099), [0100](../DECISIONS.md#d0100), [0101](../DECISIONS.md#d0101),
 [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103), [0109](../DECISIONS.md#d0109),
-[0115](../DECISIONS.md#d0115), [0116](../DECISIONS.md#d0116) and [0120](../DECISIONS.md#d0120).
+[0115](../DECISIONS.md#d0115), [0116](../DECISIONS.md#d0116), [0120](../DECISIONS.md#d0120) and 0121
+to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](../DECISIONS.md#d0123),
+[0124](../DECISIONS.md#d0124), [0125](../DECISIONS.md#d0125), [0126](../DECISIONS.md#d0126)).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
@@ -169,6 +171,22 @@ and `step_unsent` (a step never signed after an earlier one landed,
   ([decision 0100](../DECISIONS.md#d0100)). Its card expires after 10 minutes. A step that fails is
   retried up to 3 times, each time only after the failed transaction is final and a new simulation
   passes; the intent reconciles with every step's outcome.
+  - **What moves:** each wallet on the rescue address's chain sends every token the chain registry
+    lists and every asset it holds a live position in, with a balance above zero; no other token is
+    looked for ([decision 0121](../DECISIONS.md#d0121)). Its native coin goes last, all of it above
+    its agent's gas reserve, which stays to pay the rescue's own fees
+    ([decision 0122](../DECISIONS.md#d0122)).
+  - **One intent, many wallets:** the intent is stored under the oldest wallet that moves something
+    and whose agent is active. Its quote lists every move with the wallet that signs it, and the
+    card's terms hash covers them. The first wallet's queue takes the intent; each wallet then sends
+    its own steps from its own queue, the wallets one after another. A step stuck at its nonce ends
+    its wallet's part only ([decision 0123](../DECISIONS.md#d0123)).
+  - **Checks:** each wallet's sends are simulated in order before the card opens. A send that
+    fails, moves anything but its own amount out of its wallet, sets an allowance, or lands nothing
+    at the rescue address is left out, and the rest go. With nothing left, no rescue is stored
+    ([decision 0124](../DECISIONS.md#d0124)).
+  - **One at a time:** while a rescue has not ended, `safety/rescue` answers its intent and plans
+    nothing ([decision 0125](../DECISIONS.md#d0125)).
 - **Bridges** ([decision 0067](../DECISIONS.md#d0067)) end in `reconciled` when the source
   transaction is final and the bridge reports delivery, or after 2 hours with the delivery marked
   unknown and a notice.
@@ -235,10 +253,14 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    and reconciliation reads that nonce's transaction. It is ours (same hash after all): continue. It
    is not ours: the intent ends `failed_onchain` with reason `nonce_taken` and an alarm notice.
 3. Nothing is ever signed again for a step until its earlier transaction's fate is known.
-4. Recovery never signs. A step with no stored transaction ends the intent: `cancelled` when no
-   step was signed, `failed_onchain` with `step_unsent` once an earlier step landed, each with an
-   owner notice ([decision 0109](../DECISIONS.md#d0109)). The executor ends an intent the same way
-   when a step cannot be signed or stored. A step whose transactions were dropped ends
+4. Recovery never signs, except a rescue's unsent steps. A step with no stored transaction ends the
+   intent: `cancelled` when no step was signed, `failed_onchain` with `step_unsent` once an earlier
+   step landed, each with an owner notice ([decision 0109](../DECISIONS.md#d0109)). The executor
+   ends an intent the same way when a step cannot be signed or stored. A rescue left `executing`
+   goes on instead: a step a block holds is done, a signed or sent step goes on with its stored
+   bytes, and a step with no stored transaction is signed as at its first run while the owner's
+   confirmation lasts. Once it has run out, that step fails and the rescue reconciles with what
+   landed ([decision 0126](../DECISIONS.md#d0126)). A step whose transactions were dropped ends
    `failed_onchain` with `stuck_dropped`, unless a block holds one of them after all
    ([decision 0115](../DECISIONS.md#d0115)).
 5. A `confirmed` live intent whose confirmation or auto grant ran out while the engine was stopped
