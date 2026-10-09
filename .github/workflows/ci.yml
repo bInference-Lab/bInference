@@ -94,19 +94,20 @@ jobs:
           sudo apt-get install -y --no-install-recommends gnome-keyring dbus-x11
 
       # The keyring unlocks with a throwaway password inside its own D-Bus session.
-      - name: Keychain contract (Linux)
+      - name: Keychain contract and unlock (Linux)
         if: runner.os == 'Linux'
         env:
           BINFERENCE_KEYCHAIN_TESTS: "1"
         run: >-
           dbus-run-session -- sh -c 'printf runner | gnome-keyring-daemon --unlock
-          --components=secrets > /dev/null && pnpm vitest run packages/platform/src/keychain'
+          --components=secrets > /dev/null && pnpm vitest run packages/platform/src/keychain
+          packages/cli/src/unlock'
 
-      - name: Keychain contract
+      - name: Keychain contract and unlock
         if: runner.os != 'Linux'
         env:
           BINFERENCE_KEYCHAIN_TESTS: "1"
-        run: pnpm vitest run packages/platform/src/keychain
+        run: pnpm vitest run packages/platform/src/keychain packages/cli/src/unlock
 
       # A runner has no login session, so the user's systemd manager runs only with lingering.
       - name: Start the runner's systemd user manager

@@ -64,6 +64,10 @@ Decided in [decision 0065](../DECISIONS.md#d0065) and [decision 0103](../DECISIO
 | `command`            | Secret sources `{ fromCommand: [...] }` (1Password, Vault, pass)                                                                                                                 | Never by default          |
 | `manual`             | The agent key in an encrypted file (below), opened by `binference unlock` over IPC after each start                                                                              | Never by default          |
 
+In the `file` mode, a systemd unit passes its credentials in the folder `CREDENTIALS_DIRECTORY`
+names. Each credential the unit passes wins over its file in `keys/`, entry by entry; the app
+secret falls back to `custody.privy.appSecret`. No other mode reads credentials.
+
 The `manual` file, `~/.binference/keys/agent-key.json`, owner-only:
 
 ```json5

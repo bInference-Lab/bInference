@@ -53,5 +53,10 @@ Rules for this package:
 - A secret is read only when its key is needed, through `createSecretReader`, and stays a
   `Secret` until the one call that uses it. No issue, error, log field or origin ever holds a
   secret value, a program's output or a `--set` flag's value; `secret-leak.test.ts` proves it.
+- `unlockKeys` (`src/unlock/`) is the one reader of the agent key and the Privy app secret at
+  start, by `engine.unlock.mode` (keys spec, section 3). A secret that is not there is a lock
+  reason, never a guess or a fallback to another mode; only the `file` mode reads systemd's
+  credentials. Its keychain test runs on the real OS keychain in CI only, under a service name of
+  its own.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.
