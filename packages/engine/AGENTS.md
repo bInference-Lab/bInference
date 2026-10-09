@@ -148,6 +148,11 @@ Rules for this package:
   hash binds every move and the wallet that signs it; each wallet's sends are simulated, and a
   move that would not run as planned is left out. While a rescue has not ended, `safety/rescue`
   answers that one. A confirmed rescue is announced with `notice.rescue`.
+- The executor runs a confirmed rescue (`src/executor/execute-rescue.ts`) wallet by wallet, each
+  on its own queue, each step a `send` its move's wallet signs to the address the card confirmed,
+  which must still be the rescue address in effect. A failed step is tried again up to three
+  times once its transaction is final, and a restart goes on from where it stood without signing
+  a sent step again.
 - The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
   then not again until a reading shows it back at or above that. It keeps that memory in a bounded

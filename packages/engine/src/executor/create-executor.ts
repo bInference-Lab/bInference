@@ -1,11 +1,14 @@
 import type { AccountRef } from "@binference/chain";
 import { BinferenceError, type Id } from "@binference/core";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
+import type { IntentRecord } from "../intents/intent-record.js";
+import { rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor } from "../ports.js";
 import { createPositions } from "../positions/create-positions.js";
 import { executeInSlot } from "./execute-in-slot.js";
+import { executeRescue, recoverRescue, rescueGroupsOf } from "./execute-rescue.js";
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
 import type { ExecutionRun, ExecutorParts } from "./executor-run.js";
 import { expireLapsed } from "./expire-lapsed.js";
@@ -74,12 +77,37 @@ function partsOf(options: ExecutorOptions): ExecutorParts {
   };
 }
 
+// A rescue's steps each come from the wallet its move names, which signs it (decision 0044).
+async function rescueWorkOf(
+  parts: ExecutorParts,
+  record: IntentRecord,
+  call: { readonly plan: IntentPlan; readonly signal: AbortSignal },
+): Promise<Work | string> {
+  const { plan, signal } = call;
+  const quote = record.quote === undefined ? undefined : rescueQuoteDocument.decode(record.quote);
+  const moves = quote?.moves ?? [];
+  const accounts = await Promise.all(
+    moves.map(async ({ wallet }) => parts.custody.account(wallet, plan.chain.ref, { signal })),
+  );
+  const isOwn =
+    moves.length === plan.steps.length &&
+    plan.steps.every((step, index) => {
+      const account = accounts[index];
+      return account?.ok === true && account.value === step.from;
+    });
+  if (!isOwn) {
+    return "other_sender";
+  }
+  const rescue = { intent: record.id, groups: rescueGroupsOf(plan) };
+  return { intent: record.id, plan, go: async (run) => executeRescue(run, rescue) };
+}
+
 // What the executor needs before it queues an intent; anything missing leaves it `confirmed`.
 async function workOf(
   parts: ExecutorParts,
   intent: Id<"int">,
   signal: AbortSignal,
-): Promise<Taken | string> {
+): Promise<Work | string> {
   const snapshot = await parts.stored.snapshot(intent, { signal });
   if (snapshot === undefined || snapshot.record.state !== "confirmed" || snapshot.record.isPaper) {
     return "not_confirmed";
@@ -89,12 +117,15 @@ async function workOf(
     return planned.problem;
   }
   const { plan } = planned;
+  if (snapshot.record.kind === "rescue") {
+    return rescueWorkOf(parts, snapshot.record, { plan, signal });
+  }
   const account = await parts.custody.account(snapshot.record.walletId, plan.chain.ref, { signal });
   if (!account.ok) {
     return account.error;
   }
   const isOwn = plan.steps.every((step) => step.from === account.value);
-  return isOwn ? { intent, plan, account: account.value } : "other_sender";
+  return isOwn ? takenWork({ intent, plan, account: account.value }) : "other_sender";
 }
 
 // A confirmed intent on its wallet's queue, then off it until it reconciles.
@@ -115,9 +146,14 @@ function takenWork(taken: Taken): Work {
   };
 }
 
+// A rescue runs on from where it stands; any other intent is recovered without a signature.
 function recoveryWork(unsettled: Unsettled): Work {
   const { snapshot, plan } = unsettled;
-  return { intent: snapshot.record.id, plan, go: async (run) => recoverIntent(run, unsettled) };
+  const go =
+    snapshot.record.kind === "rescue"
+      ? async (run: ExecutionRun) => recoverRescue(run, snapshot)
+      : async (run: ExecutionRun) => recoverIntent(run, unsettled);
+  return { intent: snapshot.record.id, plan, go };
 }
 
 /** The executor's two stops: the engine beginning to stop, then every call cut. */
@@ -208,12 +244,12 @@ export function createExecutor(options: ExecutorOptions): RunningExecutor {
     if (stops.stopping.signal.aborted) {
       throw closed({ intent });
     }
-    const taken = await workOf(parts, intent, signal);
-    if (typeof taken === "string") {
-      parts.log.warn("executor.not_taken", { intentId: intent, errorCode: taken });
+    const work = await workOf(parts, intent, signal);
+    if (typeof work === "string") {
+      parts.log.warn("executor.not_taken", { intentId: intent, errorCode: work });
       return;
     }
-    track(takenWork(taken));
+    track(work);
   };
   return {
     take,

@@ -52,7 +52,7 @@ export interface ExecutorLimits {
  * parts of each chain the executor sends on; reconciliation records each trade in `positions`.
  */
 export interface ExecutorOptions {
-  readonly stores: Pick<EngineStores, "intents" | "agents" | "ledger" | "transactions">;
+  readonly stores: Pick<EngineStores, "intents" | "agents" | "ledger" | "transactions" | "install">;
   readonly positions: PositionStore;
   readonly queue: WalletQueue;
   readonly custody: Signer;

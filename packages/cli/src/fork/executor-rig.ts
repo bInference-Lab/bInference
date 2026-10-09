@@ -34,6 +34,7 @@ import {
   createVenueHost,
   type Engine,
   type EngineStores,
+  type LimitsValues,
   type PositionStore,
   type WalletFactsSource,
 } from "@binference/engine";
@@ -77,7 +78,8 @@ export interface Rig {
   readonly logger: MemoryLogger;
 }
 
-function limitsFor(fork: Fork) {
+/** The limits of a fork test's agents: a swap of the rig fits, and 0.002 BNB stays for gas. */
+export function forkLimits(fork: Fork): LimitsValues {
   return {
     perTradeUsdMicros: 1_000_000_000n,
     rollingDayUsdMicros: 5_000_000_000n,
@@ -238,7 +240,7 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
       models: {},
       notifications: {},
       atMs: parts.clock.now(),
-      limits: limitsFor(fork),
+      limits: forkLimits(fork),
       approvalMode: "manual",
       sendLevel: 0,
       bySurface: "cli",

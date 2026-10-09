@@ -33,6 +33,7 @@ import type { WalletFacts } from "../money-path/wallet-facts.js";
 import {
   startTestEngine,
   type TestEngine,
+  type TestEngineOptions,
   testAccount,
   testCall,
   testChains,
@@ -97,6 +98,8 @@ export interface BenchOptions {
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
   /** The seed of the executor's ids; an executor started again needs another one. */
   readonly idSeed?: number;
+  /** How the bench's test engine differs from the default, beside its agent and executor. */
+  readonly engine?: Omit<TestEngineOptions, "agent" | "executor">;
 }
 
 const facts: WalletFacts = {
@@ -219,6 +222,7 @@ export async function startExecutorBench(options: BenchOptions = {}): Promise<Ex
     },
   };
   const test = await startTestEngine({
+    ...options.engine,
     agent: { mode: "live", ...options.agent },
     executor: proxy,
   });

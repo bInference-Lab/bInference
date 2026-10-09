@@ -86,9 +86,10 @@ function allowedTargetsOf(snapshot: IntentSnapshot, chain: RegisteredChain): All
   return { contracts, spenders: contracts, recipients: [] };
 }
 
-async function confirmationTerms(
+/** What the owner's confirmation of the intent lets the signer check, once it is stored. */
+export async function confirmationTerms(
   snapshot: IntentSnapshot,
-  parts: QueueCheckParts,
+  parts: Pick<QueueCheckParts, "intents">,
   signal: AbortSignal,
 ): Promise<Omit<SigningTerms, "allowed"> | undefined> {
   const confirmation = await parts.intents.confirmation(snapshot.record.id, { signal });
