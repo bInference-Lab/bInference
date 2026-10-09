@@ -89,6 +89,27 @@ describe("a wallet slot", () => {
     await expect(slot.nextNonce(live)).resolves.toStrictEqual({ nonce: 7, refillsGap: false });
   });
 
+  it("stores a replacement of its account's transaction at that nonce, taking none", async () => {
+    const { slot, transactions } = setUp();
+    await slot.nextNonce(live);
+    await slot.saveSigned(signed(1, 7), live);
+    const speedUp = {
+      ...signed(2, 7),
+      intentId: fixtureId("int", 1),
+      replaces: { id: fixtureId("tx", 1), kind: "speedUp" },
+    } as const;
+    await expect(slot.saveReplacement({ ...speedUp, account: other }, live)).rejects.toMatchObject(
+      notGiven,
+    );
+    await expect(slot.saveReplacement(speedUp, live)).resolves.toStrictEqual({
+      ok: true,
+      value: { ...speedUp, state: "signed" },
+    });
+    const stored = await transactions.ofIntent(fixtureId("int", 1), live);
+    expect(stored.map(({ state }) => state)).toStrictEqual(["superseded", "signed"]);
+    await expect(slot.nextNonce(live)).resolves.toStrictEqual({ nonce: 8, refillsGap: false });
+  });
+
   it("refuses every use once it is closed", async () => {
     const opened = setUp();
     await opened.slot.nextNonce(live);
@@ -97,6 +118,9 @@ describe("a wallet slot", () => {
     const closed = { code: "wallet_queue.slot_closed", details: { account } };
     await expect(slot.nextNonce(live)).rejects.toMatchObject(closed);
     await expect(slot.saveSigned(signed(1, 7), live)).rejects.toMatchObject(closed);
+    const replaces = { id: fixtureId("tx", 1), kind: "cancel" } as const;
+    const replacement = { ...signed(2, 7), replaces };
+    await expect(slot.saveReplacement(replacement, live)).rejects.toMatchObject(closed);
   });
 
   it("rejects with the signal's reason once the signal aborts", async () => {

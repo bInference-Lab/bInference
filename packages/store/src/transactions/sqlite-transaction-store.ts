@@ -7,11 +7,13 @@ import {
   recordReceiptTask,
   recordReorgTask,
   recordSendTask,
+  recordSupersededTask,
 } from "./transaction-progress-tasks.js";
 import {
   intentTransactionsTask,
   listTransactionsTask,
   nextNonceTask,
+  saveReplacementTask,
   saveSignedTask,
 } from "./transaction-tasks.js";
 
@@ -19,12 +21,14 @@ import {
 export const transactionTasks: readonly TaskRunner[] = [
   nextNonceTask,
   saveSignedTask,
+  saveReplacementTask,
   listTransactionsTask,
   intentTransactionsTask,
   recordSendTask,
   listSendsTask,
   recordReceiptTask,
   recordFinalTask,
+  recordSupersededTask,
   recordReorgTask,
 ];
 
@@ -37,12 +41,14 @@ export function createSqliteTransactionStore(host: StoreHost): TransactionStore 
   return {
     nextNonce: bindTask(host, nextNonceTask),
     saveSigned: bindTask(host, saveSignedTask),
+    saveReplacement: bindTask(host, saveReplacementTask),
     list: bindTask(host, listTransactionsTask),
     ofIntent: bindTask(host, intentTransactionsTask),
     recordSend: bindTask(host, recordSendTask),
     sends: bindTask(host, listSendsTask),
     recordReceipt: bindTask(host, recordReceiptTask),
     recordFinal: bindTask(host, recordFinalTask),
+    recordSuperseded: bindTask(host, recordSupersededTask),
     recordReorg: bindTask(host, recordReorgTask),
   };
 }

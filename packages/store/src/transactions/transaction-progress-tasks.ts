@@ -10,6 +10,7 @@ import {
   type Result,
 } from "@binference/core";
 import {
+  holdingStates,
   progressedState,
   type TransactionInclusion,
   transactionInclusionSchema,
@@ -151,13 +152,36 @@ export const listSendsTask: StoreTask<Id<"tx">, readonly RelayAnswer[]> = define
   },
 });
 
-/** Stores a transaction's receipt: `included`, or `reverted` for status 0, with its block. */
+// A block holds one transaction of a nonce: its rivals still signed or sent are superseded first,
+// so the index of one holding transaction per nonce never sees two.
+function supersedeRivals(database: DatabaseSync, landing: TransactionRecord): void {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  execute(
+    kysely
+      .updateTable("txs")
+      .set({ state: "superseded" })
+      .where("account", "=", landing.account)
+      .where("nonce", "=", landing.nonce)
+      .where("id", "!=", landing.id)
+      .where("state", "in", holdingStates),
+  );
+}
+
+/**
+ * Stores a transaction's receipt: `included`, or `reverted` for status 0, with its block. Every
+ * other signed or sent transaction of its account at its nonce becomes `superseded`.
+ */
 export const recordReceiptTask: StoreTask<TransactionInclusion, Moved> = defineTask({
   name: "transactions.record_receipt",
   access: "write",
   input: transactionInclusionSchema,
   output: movedSchema,
   run(database, { id, receipt, atMs }) {
+    const stored = readStored(database, id);
+    if (progressedState(stored.state, { kind: "receipt", status: receipt.status }) === undefined) {
+      return err("wrong_state");
+    }
+    supersedeRivals(database, stored);
     return move(database, id, {
       progress: { kind: "receipt", status: receipt.status },
       columns: () => ({
@@ -178,6 +202,17 @@ export const recordFinalTask: StoreTask<TransactionMark, Moved> = defineTask({
   output: movedSchema,
   run(database, { id, atMs }) {
     return move(database, id, { progress: { kind: "final" }, columns: () => ({ final_at: atMs }) });
+  },
+});
+
+/** Marks a signed or sent transaction `superseded` once another transaction used its nonce. */
+export const recordSupersededTask: StoreTask<TransactionMark, Moved> = defineTask({
+  name: "transactions.record_superseded",
+  access: "write",
+  input: transactionMarkSchema,
+  output: movedSchema,
+  run(database, { id }) {
+    return move(database, id, { progress: { kind: "superseded" }, columns: () => ({}) });
   },
 });
 

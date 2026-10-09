@@ -3,6 +3,7 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 import { transactionProgressChecks } from "./transaction-progress-checks.js";
+import { transactionReplacementChecks } from "./transaction-replacement-checks.js";
 import {
   grant,
   signed,
@@ -161,5 +162,6 @@ export function transactionStoreContract(
     on("lists one intent's transactions by step", listsByIntent),
     on("changes nothing on an aborted signal", refusesAborted),
     ...transactionProgressChecks(async () => harness.create()),
+    ...transactionReplacementChecks(async () => harness.create()),
   ];
 }

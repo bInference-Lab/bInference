@@ -1,27 +1,15 @@
 import assert from "node:assert/strict";
-import type { RelayAnswer, TxReceipt } from "@binference/chain";
-import type { Result } from "@binference/core";
+import type { RelayAnswer } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
-import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
-import { hashOf, takeAndSave, type TransactionStoreSubject } from "./transaction-store-fixtures.js";
+import {
+  receiptOf,
+  takeAndSave,
+  type TransactionStoreSubject,
+  valueOf,
+} from "./transaction-store-fixtures.js";
 
 const wrongState = { ok: false, error: "wrong_state" } as const;
-
-function receiptOf(n: number, block: bigint, status: TxReceipt["status"]): TxReceipt {
-  return {
-    hash: hashOf(n),
-    block: { number: block, hash: `0x${block.toString(16).padStart(64, "0")}` },
-    status,
-    gasUsed: 2n ** 64n + 1n,
-    feePerGasBase: 2n ** 64n + 3n,
-  };
-}
-
-function valueOf(result: Result<TransactionRecord, string>): TransactionRecord {
-  assert.ok(result.ok, "Expected the store to record the change.");
-  return result.value;
-}
 
 async function recordsSends(subject: TransactionStoreSubject): Promise<void> {
   const { store } = subject;

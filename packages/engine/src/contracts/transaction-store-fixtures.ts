@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { type AccountRef, isTxHash, type TxHash } from "@binference/chain";
-import type { Id } from "@binference/core";
+import { type AccountRef, isTxHash, type TxHash, type TxReceipt } from "@binference/chain";
+import type { Id, Result } from "@binference/core";
 import type { TransactionStore } from "../ports.js";
 import type { NonceGrant } from "../wallet-queue/nonce-grant.js";
 import type {
+  SignedReplacement,
   SignedTransaction,
   TransactionRecord,
+  TransactionReplacement,
   TransactionState,
 } from "../wallet-queue/transaction-record.js";
 import { fixtureId, live } from "./store-fixtures.js";
@@ -64,4 +66,43 @@ export async function takeAndSave(
   const saved = await subject.store.saveSigned(signed(subject, n, nonce), live());
   assert.ok(saved.ok);
   return saved.value;
+}
+
+/** The receipt of fixture transaction `n` in a block, with amounts past 64 bits. */
+export function receiptOf(n: number, block: bigint, status: TxReceipt["status"]): TxReceipt {
+  return {
+    hash: hashOf(n),
+    block: { number: block, hash: `0x${block.toString(16).padStart(64, "0")}` },
+    status,
+    gasUsed: 2n ** 64n + 1n,
+    feePerGasBase: 2n ** 64n + 3n,
+  };
+}
+
+/** The record a store change answers; a change the store refused fails the check. */
+export function valueOf(result: Result<TransactionRecord, string>): TransactionRecord {
+  assert.ok(result.ok, "Expected the store to record the change.");
+  return result.value;
+}
+
+/** Transaction `n`, signed to take the nonce of `replaced` for its step, as `kind`. */
+export function replacementOf(
+  n: number,
+  replaced: TransactionRecord,
+  kind: TransactionReplacement["kind"],
+): SignedReplacement {
+  const { intentId, step, account, nonce } = replaced;
+  const replaces = { id: replaced.id, kind };
+  const raw = `0x02f9${n.toString(16).padStart(4, "0")}`;
+  return {
+    id: fixtureId("tx", n),
+    intentId,
+    step,
+    account,
+    nonce,
+    raw,
+    hash: hashOf(n),
+    signedAtMs: 1_000 * n,
+    replaces,
+  };
 }

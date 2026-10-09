@@ -3,6 +3,7 @@ import {
   accountRefSchema,
   isTxHash,
   relayNameSchema,
+  type StepReplacement,
   type TxHash,
   type TxReceipt,
 } from "@binference/chain";
@@ -57,9 +58,37 @@ const signedShape = {
 /** Parses a signed transaction. */
 export const signedTransactionSchema: z.ZodType<SignedTransaction> = z.strictObject(signedShape);
 
+/**
+ * The transaction whose nonce a stuck step's replacement takes (intent-states spec, section 6),
+ * and how: a `speedUp` repeats the step's call, a `cancel` is a 0-value transfer to the wallet
+ * itself.
+ */
+export interface TransactionReplacement {
+  readonly id: Id<"tx">;
+  readonly kind: StepReplacement["kind"];
+}
+
+const replacementSchema: z.ZodType<TransactionReplacement> = z.strictObject({
+  id: idSchema("tx"),
+  kind: z.enum(["speedUp", "cancel"]),
+});
+
+/** A signed transaction that takes the nonce of one stored before for the same step. */
+export interface SignedReplacement extends SignedTransaction {
+  readonly replaces: TransactionReplacement;
+}
+
+/** Parses a signed replacement. */
+export const signedReplacementSchema: z.ZodType<SignedReplacement> = z.strictObject({
+  ...signedShape,
+  replaces: replacementSchema,
+});
+
 /** A stored transaction, its state, and what its sends and blocks recorded. */
 export interface TransactionRecord extends SignedTransaction {
   readonly state: TransactionState;
+  /** Set for a stuck step's replacement: the transaction whose nonce it takes, and how. */
+  readonly replaces?: TransactionReplacement;
   /** The relays it was sent to, from its first send on: a later send goes to the same ones. */
   readonly relays?: readonly string[];
   /** When a relay first accepted it. */
@@ -88,6 +117,7 @@ export const storedReceiptSchema: z.ZodType<TxReceipt> = z.strictObject({
 export const transactionRecordSchema: z.ZodType<TransactionRecord> = z.strictObject({
   ...signedShape,
   state: z.enum(transactionStates),
+  replaces: replacementSchema.exactOptional(),
   relays: z.array(relayNameSchema).min(1).exactOptional(),
   sentAtMs: epochMsSchema.exactOptional(),
   receipt: storedReceiptSchema.exactOptional(),

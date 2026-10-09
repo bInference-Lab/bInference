@@ -127,6 +127,25 @@ describe("the engine database's constraints", () => {
     expect(() => send("tx_3", "dropped")).not.toThrow();
   });
 
+  it("names how a transaction replaces another exactly when it supersedes one", () => {
+    const database = engine();
+    plantIntent(database, "int_1");
+    const save = (id: string, supersedes: string | null, replacement: string | null): void =>
+      run(
+        database,
+        "INSERT INTO txs (id, intent_id, step, chain, account, nonce, state, supersedes, replacement) VALUES (?, 'int_1', 0, 'fake:1', 'fake:1:0xabc', 7, 'superseded', ?, ?)",
+        id,
+        supersedes,
+        replacement,
+      );
+    save("tx_1", null, null);
+    save("tx_2", "tx_1", "speedUp");
+    save("tx_3", "tx_2", "cancel");
+    expect(() => save("tx_4", "tx_3", null)).toThrow(/CHECK/);
+    expect(() => save("tx_5", null, "cancel")).toThrow(/CHECK/);
+    expect(() => save("tx_6", "tx_3", "bump")).toThrow(/CHECK/);
+  });
+
   it("keeps each relay's answer once per send, with a reason exactly when it refused", () => {
     const database = engine();
     plantIntent(database, "int_1");

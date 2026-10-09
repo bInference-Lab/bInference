@@ -2,7 +2,11 @@ import type { AccountRef, NonceSource } from "@binference/chain";
 import { BinferenceError, type Clock, type Result } from "@binference/core";
 import type { TransactionStore } from "../ports.js";
 import type { NonceGrant } from "./nonce-grant.js";
-import type { SignedTransaction, TransactionRecord } from "./transaction-record.js";
+import type {
+  SignedReplacement,
+  SignedTransaction,
+  TransactionRecord,
+} from "./transaction-record.js";
 
 /**
  * A work's turn on one account's wallet queue: the only way to take a nonce and store a signed
@@ -25,6 +29,15 @@ export interface WalletSlot {
     transaction: SignedTransaction,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<TransactionRecord, "nonce_taken">>;
+  /**
+   * Stores a stuck step's replacement at the nonce of the transaction it replaces, which becomes
+   * `superseded` (see `TransactionStore.saveReplacement`); it takes no nonce. A replacement of
+   * another account throws `wallet_queue.not_given`.
+   */
+  saveReplacement(
+    replacement: SignedReplacement,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<TransactionRecord, "wrong_state" | "nonce_taken">>;
 }
 
 /** The ports a slot reads the chain's count from and keeps transactions in. */
@@ -83,6 +96,13 @@ export function openWalletSlot(account: AccountRef, ports: WalletSlotPorts): Ope
       // The grant is spent whatever the store answers: the next transaction asks again.
       given = undefined;
       return ports.transactions.saveSigned(transaction, { signal });
+    },
+    async saveReplacement(replacement, { signal }) {
+      assertOpen();
+      if (replacement.account !== account) {
+        throw notGivenFault(account, replacement);
+      }
+      return ports.transactions.saveReplacement(replacement, { signal });
     },
   };
   return {

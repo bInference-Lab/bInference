@@ -8,6 +8,7 @@ export type { AccountNonces } from "./wallet-queue/lowest-free-nonce.js";
 export { nonceGrantSchema, nonceRequestSchema } from "./wallet-queue/nonce-grant.js";
 export type { NonceGrant, NonceRequest } from "./wallet-queue/nonce-grant.js";
 export {
+  signedReplacementSchema,
   signedTransactionSchema,
   storedReceiptSchema,
   transactionQuerySchema,
@@ -26,9 +27,11 @@ export type {
   TransactionSend,
 } from "./wallet-queue/transaction-progress.js";
 export type {
+  SignedReplacement,
   SignedTransaction,
   TransactionQuery,
   TransactionRecord,
+  TransactionReplacement,
   TransactionState,
 } from "./wallet-queue/transaction-record.js";
 export { createWalletQueue } from "./wallet-queue/wallet-queue.js";

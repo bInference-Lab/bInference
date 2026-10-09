@@ -114,7 +114,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   txs: names(
     "id intent_id step chain account nonce state raw hash gas_price relays supersedes " +
-      "block_number receipt signed_at sent_at included_at final_at",
+      "block_number receipt signed_at sent_at included_at final_at replacement",
   ),
   tx_sends: names("tx_id attempt place relay outcome reason code at"),
   executions: names(

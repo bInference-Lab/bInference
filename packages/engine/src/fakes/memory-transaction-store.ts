@@ -17,6 +17,7 @@ import {
   type TransactionSend,
 } from "../wallet-queue/transaction-progress.js";
 import type {
+  SignedReplacement,
   SignedTransaction,
   TransactionQuery,
   TransactionRecord,
@@ -123,12 +124,24 @@ function recordSend(rows: MemoryRows, send: TransactionSend) {
   return moved;
 }
 
+// A block holds one transaction of a nonce: the others still signed or sent are superseded.
 function recordReceipt(rows: MemoryRows, inclusion: TransactionInclusion) {
   const { receipt, atMs } = inclusion;
-  return progress(rows, inclusion.id, {
+  const moved = progress(rows, inclusion.id, {
     progress: { kind: "receipt", status: receipt.status },
     next: (stored) => ({ ...stored, receipt, includedAtMs: atMs }),
   });
+  if (moved.ok) {
+    const { id, account, nonce } = moved.value;
+    rows
+      .all()
+      .filter((rival) => rival.id !== id && rival.account === account && rival.nonce === nonce)
+      .filter((rival) => holdingStates.includes(rival.state))
+      .forEach((rival) => {
+        rows.replace({ ...rival, state: "superseded" });
+      });
+  }
+  return moved;
 }
 
 function recordReorg(rows: MemoryRows, mark: TransactionMark) {
@@ -165,6 +178,41 @@ function saveSigned(
   return ok(structuredClone(record));
 }
 
+function replacedOf(rows: MemoryRows, replacement: SignedReplacement): TransactionRecord {
+  const replaced = rows.all().find(({ id }) => id === replacement.replaces.id);
+  if (replaced === undefined) {
+    throw constraintFault(`no transaction has the id ${replacement.replaces.id}`);
+  }
+  const { account, intentId, step, nonce } = replacement;
+  const isSameStep =
+    replaced.account === account &&
+    replaced.intentId === intentId &&
+    replaced.step === step &&
+    replaced.nonce === nonce;
+  if (!isSameStep || rows.all().some(({ id }) => id === replacement.id)) {
+    throw constraintFault("a replacement takes its own step's nonce under an id of its own");
+  }
+  return replaced;
+}
+
+function saveReplacement(
+  rows: MemoryRows,
+  replacement: SignedReplacement,
+): Result<TransactionRecord, "wrong_state" | "nonce_taken"> {
+  const replaced = replacedOf(rows, replacement);
+  if (!holdingStates.includes(replaced.state)) {
+    return err("wrong_state");
+  }
+  const others = rows.all().filter(({ id }) => id !== replaced.id);
+  if (!isNonceFree(replacement.nonce, heldNonces(others, replacement.account))) {
+    return err("nonce_taken");
+  }
+  rows.replace({ ...replaced, state: "superseded" });
+  const record: TransactionRecord = { ...structuredClone(replacement), state: "signed" };
+  rows.add(record);
+  return ok(structuredClone(record));
+}
+
 function listOf(rows: MemoryRows, query: TransactionQuery): readonly TransactionRecord[] {
   return structuredClone(
     rows
@@ -194,6 +242,8 @@ export function createMemoryTransactionStore(): MemoryTransactionStore {
   return {
     nextNonce: async (request, call) => memoryCall(call, () => nextNonceOf(rows, given, request)),
     saveSigned: async (transaction, call) => memoryCall(call, () => saveSigned(rows, transaction)),
+    saveReplacement: async (replacement, call) =>
+      memoryCall(call, () => saveReplacement(rows, replacement)),
     list: async (query, call) => memoryCall(call, () => listOf(rows, query)),
     ofIntent: async (intent, call) => memoryCall(call, () => ofIntent(rows, intent)),
     recordSend: async (send, call) => memoryCall(call, () => recordSend(rows, send)),
@@ -206,6 +256,10 @@ export function createMemoryTransactionStore(): MemoryTransactionStore {
           progress: { kind: "final" },
           next: (stored) => ({ ...stored, finalAtMs: mark.atMs }),
         }),
+      ),
+    recordSuperseded: async (mark, call) =>
+      memoryCall(call, () =>
+        progress(rows, mark.id, { progress: { kind: "superseded" }, next: (stored) => stored }),
       ),
     recordReorg: async (mark, call) => memoryCall(call, () => recordReorg(rows, mark)),
     setState(id, state) {

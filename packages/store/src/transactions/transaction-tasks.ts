@@ -1,11 +1,15 @@
-import { err, type Id, idSchema, ok, type Result } from "@binference/core";
+import type { DatabaseSync } from "node:sqlite";
+import { BinferenceError, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
+  holdingStates,
   isNonceFree,
   lowestFreeNonce,
   type NonceGrant,
   nonceGrantSchema,
   type NonceRequest,
   nonceRequestSchema,
+  type SignedReplacement,
+  signedReplacementSchema,
   type SignedTransaction,
   signedTransactionSchema,
   type TransactionQuery,
@@ -18,7 +22,12 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
-import { readAccountNonces, signedRow, toTransactionRecord } from "./transaction-rows.js";
+import {
+  readAccountNonces,
+  replacementRow,
+  signedRow,
+  toTransactionRecord,
+} from "./transaction-rows.js";
 
 /**
  * Gives an account its next nonce by the lowest free nonce rule, and raises its stored next nonce
@@ -60,6 +69,67 @@ export const saveSignedTask: StoreTask<
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
     execute(kysely.insertInto("txs").values(signedRow(transaction)));
     return ok({ ...transaction, state: "signed" });
+  },
+});
+
+function constraint(message: string, transaction: Id<"tx">): BinferenceError {
+  return new BinferenceError({ code: "store.constraint", message, details: { transaction } });
+}
+
+// The stored transaction a replacement takes the nonce of: one of its own step, at its nonce.
+function readReplaced(database: DatabaseSync, replacement: SignedReplacement): TransactionRecord {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const byId = (id: Id<"tx">) =>
+    takeFirst(kysely.selectFrom("txs").selectAll().where("id", "=", id));
+  const replaced = byId(replacement.replaces.id);
+  if (replaced === undefined || byId(replacement.id) !== undefined) {
+    throw constraint(
+      "A replacement names a stored transaction and an id of its own.",
+      replacement.id,
+    );
+  }
+  const record = toTransactionRecord(replaced);
+  const { account, intentId, step, nonce } = replacement;
+  const isSameStep =
+    record.account === account &&
+    record.intentId === intentId &&
+    record.step === step &&
+    record.nonce === nonce;
+  if (!isSameStep) {
+    throw constraint(
+      "A replacement takes the nonce of its own step's transaction.",
+      replacement.id,
+    );
+  }
+  return record;
+}
+
+/**
+ * Stores a stuck step's replacement at the nonce of the signed or sent transaction it replaces,
+ * which becomes `superseded`, in one transaction.
+ */
+export const saveReplacementTask: StoreTask<
+  SignedReplacement,
+  Result<TransactionRecord, "wrong_state" | "nonce_taken">
+> = defineTask({
+  name: "transactions.save_replacement",
+  access: "write",
+  input: signedReplacementSchema,
+  output: resultSchema(transactionRecordSchema, ["wrong_state", "nonce_taken"]),
+  run(database, replacement) {
+    const replaced = readReplaced(database, replacement);
+    if (!holdingStates.includes(replaced.state)) {
+      return err("wrong_state");
+    }
+    const nonces = readAccountNonces(database, replacement.account);
+    const held = nonces.held.filter((nonce) => nonce !== replaced.nonce);
+    if (!isNonceFree(replacement.nonce, { ...nonces, held })) {
+      return err("nonce_taken");
+    }
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    execute(kysely.updateTable("txs").set({ state: "superseded" }).where("id", "=", replaced.id));
+    execute(kysely.insertInto("txs").values(replacementRow(replacement)));
+    return ok({ ...replacement, state: "signed" });
   },
 });
 

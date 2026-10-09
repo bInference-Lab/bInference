@@ -21,6 +21,7 @@ const progresses: readonly TransactionProgress[] = [
   { kind: "receipt", status: "reverted" },
   { kind: "final" },
   { kind: "reorg" },
+  { kind: "superseded" },
 ];
 
 describe("the progress of a stored transaction", () => {
@@ -40,15 +41,28 @@ describe("the progress of a stored transaction", () => {
     ["included", { kind: "reorg" }, "sent"],
     ["reverted", { kind: "reorg" }, "sent"],
     ["final", { kind: "reorg" }, undefined],
+    ["superseded", { kind: "receipt", status: "success" }, "included"],
+    ["dropped", { kind: "receipt", status: "reverted" }, "reverted"],
+    ["signed", { kind: "superseded" }, "superseded"],
+    ["sent", { kind: "superseded" }, "superseded"],
+    ["included", { kind: "superseded" }, undefined],
   ])("moves %s on %o to %s", (state, progress, expected) => {
     expect(progressedState(state, progress)).toBe(expected);
   });
 
-  it("never moves a final, dropped or superseded transaction", () => {
+  it("never moves a final transaction", () => {
+    fc.assert(
+      fc.property(fc.constantFrom(...progresses), (progress) => {
+        expect(progressedState("final", progress)).toBeUndefined();
+      }),
+    );
+  });
+
+  it("moves a dropped or superseded transaction only into the block that holds it", () => {
     fc.assert(
       fc.property(
-        fc.constantFrom<TransactionState>("final", "dropped", "superseded"),
-        fc.constantFrom(...progresses),
+        fc.constantFrom<TransactionState>("dropped", "superseded"),
+        fc.constantFrom(...progresses.filter(({ kind }) => kind !== "receipt")),
         (state, progress) => {
           expect(progressedState(state, progress)).toBeUndefined();
         },

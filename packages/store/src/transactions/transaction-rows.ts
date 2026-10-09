@@ -4,6 +4,7 @@ import {
   type AccountNonces,
   holdingStates,
   inBlockStates,
+  type SignedReplacement,
   type SignedTransaction,
   type TransactionRecord,
   transactionRecordSchema,
@@ -28,6 +29,10 @@ export function toTransactionRecord(row: Selectable<TxsTable>): TransactionRecor
     hash: row.hash,
     signedAtMs: row.signed_at,
     state: row.state,
+    ...field(
+      "replaces",
+      row.supersedes === null ? null : { id: row.supersedes, kind: row.replacement },
+    ),
     ...field("relays", row.relays === null ? null : relaysSchema.parse(readJson(row.relays))),
     ...field("sentAtMs", row.sent_at),
     ...field("receipt", row.receipt === null ? null : txReceiptSchema.parse(readJson(row.receipt))),
@@ -51,6 +56,7 @@ export function signedRow(transaction: SignedTransaction): Insertable<TxsTable> 
     gas_price: null,
     relays: null,
     supersedes: null,
+    replacement: null,
     block_number: null,
     receipt: null,
     signed_at: transaction.signedAtMs,
@@ -58,6 +64,12 @@ export function signedRow(transaction: SignedTransaction): Insertable<TxsTable> 
     included_at: null,
     final_at: null,
   };
+}
+
+/** The `txs` row of a stuck step's replacement, before any send. */
+export function replacementRow(replacement: SignedReplacement): Insertable<TxsTable> {
+  const { replaces, ...signed } = replacement;
+  return { ...signedRow(signed), supersedes: replaces.id, replacement: replaces.kind };
 }
 
 /**

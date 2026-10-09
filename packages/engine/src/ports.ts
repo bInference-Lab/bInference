@@ -61,6 +61,7 @@ import type {
   TransactionSend,
 } from "./wallet-queue/transaction-progress.js";
 import type {
+  SignedReplacement,
   SignedTransaction,
   TransactionQuery,
   TransactionRecord,
@@ -277,6 +278,18 @@ export interface TransactionStore {
     transaction: SignedTransaction,
     options: StoreCall,
   ): Promise<Result<TransactionRecord, "nonce_taken">>;
+  /**
+   * Stores a stuck step's replacement (intent-states spec, section 6): in one write the `signed`
+   * or `sent` transaction it replaces becomes `superseded`, and the replacement is stored in
+   * `signed` at that transaction's nonce. `wrong_state` when the replaced one is no longer signed
+   * or sent, `nonce_taken` when a block holds the nonce or a later one; either stores nothing. A
+   * replacement of another account, intent, step or nonce than the replaced one's, or of an
+   * unknown one, throws `store.constraint`.
+   */
+  saveReplacement(
+    replacement: SignedReplacement,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "wrong_state" | "nonce_taken">>;
   /** One account's transactions from a nonce up, by nonce, then by id. */
   list(query: TransactionQuery, options: StoreCall): Promise<readonly TransactionRecord[]>;
   /**
@@ -295,13 +308,23 @@ export interface TransactionStore {
   ): Promise<Result<TransactionRecord, "wrong_state">>;
   /** Every relay answer stored for a transaction, send by send, each in its relays' order. */
   sends(id: Id<"tx">, options: StoreCall): Promise<readonly RelayAnswer[]>;
-  /** Stores a transaction's receipt: `included`, or `reverted` for status 0. */
+  /**
+   * Stores a transaction's receipt: `included`, or `reverted` for status 0. A `superseded` or
+   * `dropped` transaction takes it too, since it landed after all; in the same write every
+   * `signed` or `sent` transaction of its account at its nonce becomes `superseded`, so one
+   * transaction of a nonce is ever in a block.
+   */
   recordReceipt(
     inclusion: TransactionInclusion,
     options: StoreCall,
   ): Promise<Result<TransactionRecord, "wrong_state">>;
   /** Marks an `included` transaction `final` once its block is. */
   recordFinal(
+    mark: TransactionMark,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "wrong_state">>;
+  /** Marks a `signed` or `sent` transaction `superseded` once another transaction used its nonce. */
+  recordSuperseded(
     mark: TransactionMark,
     options: StoreCall,
   ): Promise<Result<TransactionRecord, "wrong_state">>;

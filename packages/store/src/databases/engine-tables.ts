@@ -210,6 +210,8 @@ export interface TxsTable {
   gas_price: string | null;
   relays: string | null;
   supersedes: string | null;
+  /** `speedUp` or `cancel` for a stuck step's replacement, set with `supersedes`. */
+  replacement: string | null;
   block_number: number | null;
   receipt: string | null;
   signed_at: number | null;
