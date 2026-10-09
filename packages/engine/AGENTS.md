@@ -105,8 +105,8 @@ Rules for this package:
   `sendLevel/cancelPending`, which decide with `moveSendLevel` (`src/policy/send-level-change.ts`):
   a stricter level applies at once, a looser one waits 24 hours and needs `loosen`. Every reader of
   a stored level takes the level in effect through `sendLevelAt`, never the row's `level` alone.
-  Each change is journaled, pushed as `config/changed`, and a moved level is announced as the
-  `notice.sendLevel` notice.
+  Each change is journaled, pushed as `config/changed`, and announced: a moved level as the
+  `notice.sendLevel` notice, a looser level gone before its time as `notice.sendLevelCancelled`.
 - The address book lives in the agent's settings: the policy reads every live entry, on every
   chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers
@@ -115,7 +115,7 @@ Rules for this package:
 - The rescue address (`src/safety/`) changes only through `safety/setRescueAddress` and
   `safety/cancelRescueChange`, which the install store writes as `changeRescue` and `cancelRescue`
   (`src/policy/rescue-change.ts`) decide inside its transaction: any new address waits 24 hours,
-  is announced as the `notice.rescueAddress` notice, and can be cancelled. Every reader of the
+  is announced as the `notice.rescueAddress` notice, and can be cancelled, which is announced too. Every reader of the
   stored address takes the one in effect through `rescueAt`.
 - The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,

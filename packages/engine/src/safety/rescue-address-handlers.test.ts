@@ -66,6 +66,10 @@ describe("a change of the rescue address", () => {
     await setRescue(test, thief);
 
     expect(await cancelChange(test)).toStrictEqual({ ok: true, value: {} });
+    expect(test.pushes.at(-1)?.data).toStrictEqual({
+      key: "notice.rescueAddressCancelled",
+      values: { address: "0x000000b2" },
+    });
     await test.clock.advance(looseningWaitMs);
     expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
   });
@@ -110,7 +114,16 @@ describe("a change of the rescue address", () => {
       value: { effectiveAt: testNowMs + 60_000 },
     });
     expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
-    expect(test.pushes.filter((push) => push.topic === "notice")).toHaveLength(1);
+    expect(
+      test.pushes.filter((push) => push.topic === "notice").map((push) => push.data),
+    ).toStrictEqual([
+      {
+        key: "notice.rescueAddress",
+        values: { address: "0x000000b2" },
+        times: { when: testNowMs + looseningWaitMs },
+      },
+      { key: "notice.rescueAddressCancelled", values: { address: "0x000000b2" } },
+    ]);
   });
 
   it("stores the address in its family's canonical form", async () => {

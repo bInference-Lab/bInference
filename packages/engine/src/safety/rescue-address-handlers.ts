@@ -11,7 +11,7 @@ import { answererOf, type EngineCall, type EngineHandler } from "../operations/e
 import type { RescueState } from "../policy/rescue-change.js";
 import type { ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { rescueAddressNotice } from "./rescue-address-notice.js";
+import { rescueAddressNotice, rescueCancelledNotice } from "./rescue-address-notice.js";
 
 /** The handlers of the install's rescue address change (protocol spec, section 7.1). */
 export interface RescueAddressHandlers {
@@ -52,7 +52,7 @@ function isSame(a: RescueState, b: RescueState): boolean {
 }
 
 // A change is journaled with who made it and where, and pushed on the config topic; a new
-// address that starts to wait is announced to the owner on every surface.
+// address that starts to wait, and one dropped before its time, are announced on every surface.
 async function record(
   options: RescueAddressHandlersOptions,
   call: RescueCall,
@@ -74,8 +74,12 @@ async function record(
   );
   options.publish({ topic: "config", kind: "config/changed", data: jsonValueSchema.parse(entry) });
   const { pendingRescue } = after;
-  if (pendingRescue !== undefined && pendingRescue.atMs !== before.pendingRescue?.atMs) {
+  const waited = before.pendingRescue;
+  if (pendingRescue !== undefined && pendingRescue.atMs !== waited?.atMs) {
     options.publish(rescueAddressNotice(pendingRescue));
+  }
+  if (waited !== undefined && pendingRescue === undefined) {
+    options.publish(rescueCancelledNotice(waited));
   }
 }
 

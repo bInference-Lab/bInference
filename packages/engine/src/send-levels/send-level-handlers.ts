@@ -14,7 +14,7 @@ import { answererOf, type EngineCall, type EngineHandler } from "../operations/e
 import { moveSendLevel, sendLevelAt } from "../policy/send-level-change.js";
 import type { AgentStore, ConfigJournal } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { sendLevelNotice } from "./send-level-notice.js";
+import { sendLevelNotices } from "./send-level-notice.js";
 
 /** The handlers of an agent's send level (protocol spec, section 7.6; decision 0016). */
 export interface SendLevelHandlers {
@@ -62,8 +62,8 @@ function isSame(a: SendLevelState, b: SendLevelState): boolean {
   );
 }
 
-// Every change is journaled with who made it and where, pushed on the config topic, and, when it
-// moves a level, announced to the owner as a notice on every surface.
+// Every change is journaled with who made it and where, pushed on the config topic, and announced
+// to the owner as a notice on every surface.
 async function announce(
   options: SendLevelHandlersOptions,
   planned: Planned,
@@ -82,8 +82,7 @@ async function announce(
     { signal: call.signal },
   );
   options.publish({ topic: "config", kind: "config/changed", data: jsonValueSchema.parse(entry) });
-  const notice = sendLevelNotice(before, after);
-  if (notice !== undefined) {
+  for (const notice of sendLevelNotices(before, after)) {
     options.publish(notice);
   }
 }
@@ -140,7 +139,8 @@ async function move(
  * the `confirm` scope and drops any looser level that waits; a looser level needs the `loosen`
  * scope and waits 24 hours (decision 0089), so a hijacked surface cannot quietly open a locked
  * wallet. `sendLevel/cancelPending` drops the looser level that waits. Each change is journaled,
- * pushed as `config/changed`, and a moved level is announced as the `notice.sendLevel` notice.
+ * pushed as `config/changed`, and announced: a moved level as the `notice.sendLevel` notice, a
+ * looser level that is gone before its time as the `notice.sendLevelCancelled` notice.
  */
 export function createSendLevelHandlers(options: SendLevelHandlersOptions): SendLevelHandlers {
   return {

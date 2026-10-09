@@ -18,3 +18,17 @@ export function rescueAddressNotice(pending: PendingRescue): EnginePush {
     times: { when: pending.atMs },
   });
 }
+
+/** The message key of the notice that announces a cancelled rescue address change. */
+export const rescueAddressCancelledKey = "notice.rescueAddressCancelled";
+
+/**
+ * The notice that announces, for the whole install, that a new rescue address was dropped before
+ * a rescue paid it: cancelled, or replaced by the address in effect.
+ */
+export function rescueCancelledNotice(dropped: PendingRescue): EnginePush {
+  return noticePush({
+    key: rescueAddressCancelledKey,
+    values: { address: accountRefParts(dropped.address).address },
+  });
+}

@@ -1,7 +1,11 @@
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import { testAgent } from "../intents/test-intents.js";
-import { sendLevelNotice, sendLevelNoticeKey } from "./send-level-notice.js";
+import {
+  sendLevelCancelledKey,
+  sendLevelNoticeKey,
+  sendLevelNotices,
+} from "./send-level-notice.js";
 
 const english = createFormatter({ locale: "en", timeZone: "UTC" });
 const atMs = Date.UTC(2027, 0, 2, 9, 30);
@@ -20,11 +24,14 @@ describe("the send level notice", () => {
     expect(english.message(sendLevelNoticeKey, values)).toBe("Send level 0 → 2 now");
   });
 
-  it("is left out when no level moved", () => {
-    const cancelled = sendLevelNotice(
-      { level: 1, pending: { level: 0, atMs } },
-      { ...record, level: 1 },
+  it("says a looser level was cancelled and which level stays", () => {
+    const values = { to: "0", level: "1" };
+    expect(english.message(sendLevelCancelledKey, values)).toBe(
+      "Send level change to 0 cancelled; it stays 1",
     );
-    expect(cancelled).toBeUndefined();
+  });
+
+  it("announces nothing for a move that changed nothing", () => {
+    expect(sendLevelNotices({ level: 1 }, { ...record, level: 1 })).toStrictEqual([]);
   });
 });

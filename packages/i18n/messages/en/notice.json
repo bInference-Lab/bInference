@@ -8,5 +8,7 @@
   "stepUnsent": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.",
   "sendLevel": "Send level {from} → {to} {pending, select, yes {at {when}} other {now}}",
   "rescueAddress": "⚠️ Rescue address changes to {address} at {when}. Not you? Cancel now.",
-  "lowGas": "⚠️ {wallet} has {balance} left for network fees. Add BNB."
+  "lowGas": "⚠️ {wallet} has {balance} left for network fees. Add BNB.",
+  "sendLevelCancelled": "Send level change to {to} cancelled; it stays {level}",
+  "rescueAddressCancelled": "Rescue address change to {address} cancelled"
 }

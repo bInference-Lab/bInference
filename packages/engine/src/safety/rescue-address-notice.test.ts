@@ -1,6 +1,6 @@
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
-import { rescueAddressNoticeKey } from "./rescue-address-notice.js";
+import { rescueAddressCancelledKey, rescueAddressNoticeKey } from "./rescue-address-notice.js";
 
 const english = createFormatter({ locale: "en", timeZone: "UTC" });
 const atMs = Date.UTC(2027, 0, 2, 9, 30);
@@ -10,6 +10,12 @@ describe("the rescue address notice", () => {
     const when = english.dateTime(atMs);
     expect(english.message(rescueAddressNoticeKey, { address: "0xabc", when })).toBe(
       `⚠️ Rescue address changes to 0xabc at ${when}. Not you? Cancel now.`,
+    );
+  });
+
+  it("says a change was cancelled", () => {
+    expect(english.message(rescueAddressCancelledKey, { address: "0xabc" })).toBe(
+      "Rescue address change to 0xabc cancelled",
     );
   });
 });

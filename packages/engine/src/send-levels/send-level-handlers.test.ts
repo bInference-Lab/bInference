@@ -117,11 +117,19 @@ describe("a looser send level", () => {
     expect(await sendRefusals(test)).toStrictEqual(["send_level"]);
   });
 
-  it("is dropped by a stricter level, which applies at once", async () => {
+  it("is dropped by a stricter level, which applies at once, and both are announced", async () => {
     const test = await startTestEngine({ agent: { sendLevel: 2 } });
     expectOk(await setLevel(test, 0));
 
     expect(await setLevel(test, 3, braking)).toStrictEqual({ ok: true, value: { level: 3 } });
+    expect(notices(test).slice(1)).toStrictEqual([
+      {
+        key: "notice.sendLevel",
+        agent: testAgent,
+        values: { from: "2", to: "3", pending: "no" },
+      },
+      { key: "notice.sendLevelCancelled", agent: testAgent, values: { to: "0", level: "3" } },
+    ]);
     await test.clock.advance(looseningWaitMs);
     expect(await getLevel(test)).toStrictEqual({ ok: true, value: { level: 3 } });
   });
@@ -153,7 +161,7 @@ describe("the send level operations", () => {
     expect(test.pushes.filter((push) => push.kind === "config/changed")).toHaveLength(1);
   });
 
-  it("journal a cancelled loosening without announcing a level that never moved", async () => {
+  it("journal and announce a cancelled loosening, naming the level that stays", async () => {
     const test = await startTestEngine({ agent: { sendLevel: 1 } });
     expectOk(await setLevel(test, 0));
     expectOk(await cancelPending(test));
@@ -164,7 +172,11 @@ describe("the send level operations", () => {
       { before: { level: 1 }, after: { level: 1, pending } },
       { before: { level: 1, pending }, after: { level: 1 } },
     ]);
-    expect(notices(test)).toHaveLength(1);
+    expect(notices(test).at(-1)).toStrictEqual({
+      key: "notice.sendLevelCancelled",
+      agent: testAgent,
+      values: { to: "0", level: "1" },
+    });
   });
 
   it("change nothing for the level in effect or a cancel with nothing waiting", async () => {
