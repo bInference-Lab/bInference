@@ -158,7 +158,7 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
  * moves the intent to `reconciled` with the trade, whose ledger entry and pushes every surface
  * hears. A trade more than 1% away from its simulation still reconciles, with an alarm notice.
  * While a read or a price fails it tries again each block, up to `settleAfterBlocks`; then it
- * leaves the intent `finalized`.
+ * leaves the intent `finalized`, and recovery reconciles it after a restart.
  */
 export async function reconcileTrade(
   run: ExecutionRun,

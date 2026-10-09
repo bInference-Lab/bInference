@@ -114,11 +114,12 @@ Rules for this package:
   refuse before a signature (the `queue_took` check, a draft that would fail, an auto intent's fee
   above the cap) runs before the move to `executing`, so such an intent stays `confirmed` with
   nothing signed. Each step's raw bytes are stored before any send; a send no relay accepts goes
-  again with the same stored bytes, never a new signature. Stuck steps and recovery after a
-  restart hand over at the seams `executor.step_stopped` and `executor.final_late` log.
-  Reconciliation reads what each final step moved only through the `ReceiptReader`, records the
-  trade in the positions before the move to `reconciled`, and finds it stored when it runs
-  again, so a trade is recorded once.
+  again with the same stored bytes, never a new signature. A stuck step hands over at the seam
+  `executor.step_stopped` logs. Reconciliation reads what each final step moved only through the
+  `ReceiptReader`, records the trade in the positions before the move to `reconciled`, and finds
+  it stored after a restart, so a trade is recorded once. `recover` signs nothing: each stored
+  step is looked up by hash and nonce (spec 6, section 7), and a step with no stored transaction
+  stops it.
 - The simulation check (`src/simulation/`, exported as `@binference/engine/simulation`) reads
   what a quote's steps do only through the `TxSimulator` port, compares accounts through the
   chain's family, and never counts the network fee among the transfers. A new check is a

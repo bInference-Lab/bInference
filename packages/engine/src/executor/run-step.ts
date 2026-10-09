@@ -84,9 +84,11 @@ export async function signAndStore(
   return saved.ok ? saved : err("nonce_taken");
 }
 
-// One send of the stored bytes to every relay, each answer recorded. The first acceptance moves
-// the step to `sent` and records it in the ledger.
-async function sendOnce(
+/**
+ * One send of a stored transaction's bytes to every relay, each answer recorded. An acceptance
+ * moves a `signed` step to `sent` and records the send in the ledger. Nothing is signed.
+ */
+export async function sendOnce(
   run: ExecutionRun,
   intent: IntentRecord,
   transaction: TransactionRecord,
@@ -117,7 +119,8 @@ async function sendOnce(
   return recorded.value;
 }
 
-async function recordReceipt(
+/** Records a stored step's receipt: `included`, or `reverted` for a receipt with status 0. */
+export async function recordReceipt(
   run: ExecutionRun,
   transaction: TransactionRecord,
   receipt: TxReceipt,

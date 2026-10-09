@@ -1,5 +1,6 @@
 {
   "approvalMode": "{agent} is now in {mode, select, auto {auto} other {manual}} mode, from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}",
   "locked": "🔴 binference restarted and is locked. Run `binference unlock`.",
+  "unknownTx": "⚠️ {wallet}'s nonce {nonce} was used by a transaction binference did not sign",
   "fillDiffers": "⚠️ A trade settled more than 1% away from its simulation. Check the trade."
 }

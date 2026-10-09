@@ -64,7 +64,7 @@ export interface ExecutorBench {
 }
 
 /** One send the relays got, and what the transaction store held when it began. */
-interface BenchSend {
+export interface BenchSend {
   readonly raw: string;
   readonly stored: readonly string[];
 }
@@ -90,6 +90,8 @@ export interface BenchOptions {
   readonly receipts?: (network: FakeNetwork) => ReceiptReader;
   /** The executor's USD prices; the coin alone, at $600, when absent. */
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
+  /** The seed of the executor's ids; an executor started again needs another one. */
+  readonly idSeed?: number;
 }
 
 const facts: WalletFacts = {
@@ -140,7 +142,7 @@ interface BenchParts {
 }
 
 /** Where the bench's executor notes what it signs, pushes and sends. */
-interface BenchNotes {
+export interface BenchNotes {
   readonly signed: (request: SignRequest) => void;
   readonly pushed: (push: EnginePush) => void;
   readonly sent: (send: BenchSend) => void;
@@ -170,7 +172,8 @@ function sendingOf(
   return new Map(options.withoutRelays === true ? [] : [[benchChain, sending]]);
 }
 
-function executorOf(
+/** Builds an executor over the bench's engine and network, noting what it signs, pushes, sends. */
+export function executorOf(
   parts: Pick<BenchParts, "test" | "network" | "logger">,
   notes: BenchNotes,
   options: BenchOptions,
@@ -189,7 +192,7 @@ function executorOf(
     chains: testChains(),
     sending: sendingOf({ network, transactions }, notes, options),
     clock: test.clock,
-    ids: createIdSource({ clock: test.clock, random: createSeededRandom(9) }),
+    ids: createIdSource({ clock: test.clock, random: createSeededRandom(options.idSeed ?? 9) }),
     publish: notes.pushed,
     logger,
     ...(options.limits === undefined ? {} : { limits: options.limits }),

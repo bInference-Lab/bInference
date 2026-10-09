@@ -91,6 +91,12 @@ step is sent. Once final, it reconciles: what each step moved, read through the 
 becomes the trade, compared with the simulation (more than 1% away raises `notice.fillDiffers`),
 valued and recorded in the positions once, and stored with the move to `reconciled`.
 
+At startup `recover` takes up every live intent a stop left unsettled (spec 6, section 7): each
+stored step is looked up by hash and nonce. A block holds it: it goes on. Its nonce is free: the
+same bytes go again. Another transaction used its nonce: the intent waits in `unknown_after_send`
+until the step turns up after all or a final block holds the other one, which ends it
+`failed_onchain` with `nonce_taken` and `notice.unknownTx`. Recovery never signs.
+
 It holds the simulation check (ARCHITECTURE.md section 7, step 5), exported as
 `@binference/engine/simulation`: `createSimulationCheck` is the `Simulator` the money path and the
 re-quote at a tap call. It runs a quote's steps unsent through the chain's `TxSimulator` of
@@ -159,7 +165,7 @@ layout of Koinly's universal import, which tax tools read.
 | `AgentModeChange`, `agentModeChangeSchema`                       | An agent's switch between paper and live, under its row version |
 | `InstallStore`, `InstallSetup`, `WalletRecord` (subpath)         | The install id, its custody, the rescue address and its wallets |
 | `Executor`                                                       | Takes each confirmed live intent onto its wallet's queue        |
-| `createExecutor`, `ChainSending` (subpath `executor`)            | Runs each step of a live intent through to `reconciled`         |
+| `createExecutor`, `ChainSending` (subpath `executor`)            | Runs each live intent to `reconciled`; recovers after a stop    |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
 | `TransactionStore`                                               | Each wallet's transactions, their nonces, sends and blocks      |
