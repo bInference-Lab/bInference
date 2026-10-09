@@ -129,3 +129,4 @@ Each record file has one row here, in number order.
 | <a id="d0103"></a>0103 | The engine runs locked until the agent key opens | Accepted | [adr/0103-the-engine-runs-locked-until-the-agent-key-opens.md](adr/0103-the-engine-runs-locked-until-the-agent-key-opens.md) |
 | <a id="d0104"></a>0104 | binference unlock sends the passphrase over IPC  | Accepted | [adr/0104-binference-unlock-sends-the-passphrase-over-ipc.md](adr/0104-binference-unlock-sends-the-passphrase-over-ipc.md)   |
 | <a id="d0105"></a>0105 | OKX is the second quote through a thin client    | Accepted | [adr/0105-okx-is-the-second-quote-through-a-thin-client.md](adr/0105-okx-is-the-second-quote-through-a-thin-client.md)       |
+| <a id="d0106"></a>0106 | A Permit2 approval is its own checked step       | Accepted | [adr/0106-a-permit2-approval-is-its-own-checked-step.md](adr/0106-a-permit2-approval-is-its-own-checked-step.md)             |

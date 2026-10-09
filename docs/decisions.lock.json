@@ -419,6 +419,10 @@
     "0105": {
       "status": "Accepted",
       "sha256": "8751d519bdc8bab39fed1076db6da272f604e21761129722f29d0e5f80ac0fcd"
+    },
+    "0106": {
+      "status": "Accepted",
+      "sha256": "04f41961b8eadf00103355fb09300b879850b594047b5f88e533fb88c1594224"
     }
   }
 }
