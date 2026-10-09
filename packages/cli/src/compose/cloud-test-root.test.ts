@@ -62,4 +62,11 @@ describe("cloud test root", () => {
       error: "not_found",
     });
   });
+
+  it("asks GoPlus alone for a token's risk, never the honeypot source", () => {
+    const root = composeCloudTestRoot();
+    expect(root.riskSources.map(({ source, isRequired }) => [source.id, isRequired])).toStrictEqual(
+      [["goplus", true]],
+    );
+  });
 });

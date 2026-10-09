@@ -18,7 +18,7 @@ import {
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
-import { createRiskCheck, type RiskCheck, type RiskSourceUse } from "@binference/engine/risk";
+import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
   createProtocolServer,
@@ -29,13 +29,11 @@ import {
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
 import type { ProfileParts } from "./profile-parts.js";
 
-/** The profile parts the engine runs on: custody, the store ports and the USD prices. */
-export type EngineParts = Pick<ProfileParts, "custody" | "stores" | "prices">;
+/** The profile parts the engine runs on: custody, the store ports, the USD prices and the risk sources. */
+export type EngineParts = Pick<ProfileParts, "custody" | "stores" | "prices" | "riskSources">;
 
 /** What the token risk step runs on besides the venue host. */
 interface RiskParts {
-  /** The risk sources, each marked as one a token needs a report from or not. */
-  readonly sources: readonly RiskSourceUse[];
   readonly cache: RiskCacheStore;
   /** How long a source's report holds: config's `risk.cacheTtlSec`, in milliseconds. */
   readonly cacheTtlMs: number;
@@ -113,11 +111,12 @@ function joinTelegram(
       });
 }
 
-// The venue host over the options' venues, and the risk check that builds its round trips there.
-function tradingOf(options: ComposeEngineOptions): {
-  readonly host: VenueHost;
-  readonly risk: RiskCheck;
-} {
+// The venue host over the options' venues, and the risk check that asks the profile's sources and
+// builds its round trips there.
+function tradingOf(
+  parts: EngineParts,
+  options: ComposeEngineOptions,
+): { readonly host: VenueHost; readonly risk: RiskCheck } {
   const { clock, random, chains } = options;
   const host = createVenueHost({
     venues: options.venues,
@@ -127,6 +126,7 @@ function tradingOf(options: ComposeEngineOptions): {
   });
   const risk = createRiskCheck({
     ...options.risk,
+    sources: parts.riskSources,
     sourceTimeoutMs: riskSourceTimeoutMs,
     host,
     chains,
@@ -145,7 +145,7 @@ function tradingOf(options: ComposeEngineOptions): {
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
   const { clock, random, logger, chains } = options;
-  const { host, risk } = tradingOf(options);
+  const { host, risk } = tradingOf(parts, options);
   const publish = (push: EnginePush): void => {
     try {
       server.publish(push);

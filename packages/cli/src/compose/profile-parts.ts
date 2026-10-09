@@ -1,6 +1,7 @@
 import type { PriceSource, Signer } from "@binference/chain";
 import type { SecretStore } from "@binference/core";
 import type { BotUpdateSource, EngineStores, MarketData, ModelBilling } from "@binference/engine";
+import type { RiskSourceUse } from "@binference/engine/risk";
 
 /**
  * The parts whose adapter depends on the profile (ARCHITECTURE.md section 30). A composition root
@@ -22,4 +23,10 @@ export interface ProfileParts {
   readonly prices: PriceSource;
   /** Market data: the blocks and prices the watchers stream. */
   readonly market: MarketData;
+  /**
+   * Token risk: the risk data sources, each marked as one a token needs a report from or not.
+   * Self-hosted asks GoPlus and honeypot.is; Cloud asks GoPlus alone, since honeypot.is's terms
+   * forbid sharing its API.
+   */
+  readonly riskSources: readonly RiskSourceUse[];
 }

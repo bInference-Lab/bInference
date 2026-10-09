@@ -1,5 +1,5 @@
 import type { AccountRef } from "@binference/chain";
-import { createFakeSigner, type FakeSigner } from "@binference/chain/testing";
+import { createFakeRiskSource, createFakeSigner, type FakeSigner } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
 import {
   type CreditAccount,
@@ -55,5 +55,9 @@ export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudT
     stores: createMemoryEngineStores(),
     prices: market,
     market,
+    // GoPlus alone: honeypot.is's terms forbid sharing its API, so Cloud never asks it.
+    riskSources: [
+      { source: createFakeRiskSource({ id: "goplus", reports: new Map() }), isRequired: true },
+    ],
   };
 }

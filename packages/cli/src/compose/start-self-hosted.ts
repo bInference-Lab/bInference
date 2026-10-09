@@ -163,18 +163,18 @@ function compose(opening: Opening, opened: Opened): Composed {
   const { config, log, stores } = opened;
   const state: { current: EngineState } = { current: "starting" };
   const parts = createMissingParts();
+  const riskSources = selfHostedRiskSources(host.http);
   const chains = selfHostedChains();
   const sending = composeSending(opening, opened, { parts, chains });
   const locked = composeLock({ host, platform, config, install: opened.install, started: state });
   const stopper = { stop: (): void => undefined };
   const { server, publish } = composeEngine(
-    { custody: parts.custody, stores, prices: parts.prices },
+    { custody: parts.custody, stores, prices: parts.prices, riskSources },
     {
       chains,
       venues: [],
       simulator: parts.simulator,
       risk: {
-        sources: selfHostedRiskSources(host.http),
         cache: stores.riskCache,
         cacheTtlMs: config.risk.cacheTtlSec * 1_000,
         simulator: parts.txSimulator,

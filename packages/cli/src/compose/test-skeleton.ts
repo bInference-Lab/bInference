@@ -19,6 +19,7 @@ import { BinferenceError, idSchema, ok } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
+  createScriptedHttp,
   createSeededRandom,
   type ManualClock,
   type MemoryLogger,
@@ -52,6 +53,7 @@ import {
 } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
 import { createEngineOperations } from "./engine-operations.js";
+import { selfHostedRiskSources } from "./risk-sources.js";
 
 /** The secrets of the CLI token, with every scope, and of the MCP token, with read and propose. */
 export const skeletonSecrets: Readonly<Record<"cli" | "mcp", string>> = {
@@ -92,6 +94,8 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
       custody: createFakeSigner(wallets),
       stores: withTestWallet(createMemoryEngineStores()),
       prices: createFakePriceSource(new Map([[testCoin, coinPrice]])),
+      // The self-hosted sources, over outbound HTTP that reaches no host.
+      riskSources: selfHostedRiskSources(createScriptedHttp([])),
     }),
   },
   {
@@ -158,9 +162,8 @@ export interface Skeleton extends ComposedSkeleton {
 }
 
 // No risk source answers and no round trip step runs, so a token the registry does not list fails
-// closed, as with no risk source.
+// closed.
 const skeletonRisk: ComposeEngineOptions["risk"] = {
-  sources: [],
   cache: createMemoryRiskCacheStore(["goplus", "honeypot"]),
   cacheTtlMs: 600_000,
   simulator: createFakeTxSimulator(new Map()),
