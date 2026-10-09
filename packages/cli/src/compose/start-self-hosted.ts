@@ -9,8 +9,15 @@ import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
 import { platformOf } from "./engine-locations.js";
-import { type Opened, openEngineLog, openEngineStores, type Opening } from "./open-engine-parts.js";
+import {
+  type Opened,
+  openEngineLog,
+  openEngineStores,
+  type Opening,
+  selfHostedChains,
+} from "./open-engine-parts.js";
 import { readTracers } from "./read-tracers.js";
+import { readVenues } from "./read-venues.js";
 import { serveEngine } from "./serve-engine.js";
 import type { StartOutcome } from "./start-outcome.js";
 
@@ -43,9 +50,20 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
       homeDir: host.homeDir ?? homedir(),
       clock: host.clock,
     });
+    const { config } = loaded;
     const call = { logger: log.logger, signal };
-    const tracers = await readTracers(loaded.config.chains, secrets, call);
-    return await openStoresAndServe(opening, { config: loaded.config, log, tracers });
+    const tracers = await readTracers(config.chains, secrets, call);
+    const chains = selfHostedChains();
+    const venues = await readVenues({
+      ...call,
+      venues: config.venues,
+      chains: config.chains,
+      registry: chains,
+      secrets,
+      http: host.http,
+      clock: host.clock,
+    });
+    return await openStoresAndServe(opening, { config, log, tracers, chains, venues });
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";

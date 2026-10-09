@@ -11,7 +11,7 @@ import { type ComposedLock, composeLock } from "./compose-lock.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createMissingParts, type MissingParts } from "./missing-parts.js";
-import { type Opened, type Opening, selfHostedChains } from "./open-engine-parts.js";
+import type { Opened, Opening } from "./open-engine-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 
 /** The self-hosted engine, built and not yet listening. */
@@ -128,7 +128,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   const { host, platform } = opening;
   const state: { current: EngineState } = { current: "starting" };
   const parts = createMissingParts();
-  const chains = selfHostedChains();
+  const { chains } = opened;
   const signerStopped = { run: (): void => undefined };
   const custody = composeCustody(opening, opened, {
     chains,
@@ -164,7 +164,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
     },
     {
       chains: wiring.chains,
-      venues: [],
+      venues: opened.venues,
       simulator: parts.simulator,
       risk: {
         cache: stores.riskCache,
@@ -199,7 +199,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
 /**
  * Builds the self-hosted engine on its opened config, log and stores: custody, empty until the
  * lock opens it; the executor over the chains' RPCs and relays; the lock over the install's keys;
- * the engine with the missing parts; and its protocol server, which answers `engine.starting`
+ * the engine over the venues and the missing parts; and its protocol server, which answers `engine.starting`
  * until the startup order ends. A signer that stops by itself locks the engine again, and every
  * surface hears it. Each part adds its closer, so the shutdown sequence closes the server first,
  * then lets the executor finish what it signs and sends, then stops the signer.

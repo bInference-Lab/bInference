@@ -9,7 +9,9 @@ them in.
 `src/compose/`). In order it takes the engine lock on the state folder, loads `config.json5` with
 its layers and secret sources, opens the engine log, opens `engine.sqlite` on its store workers
 (migrations, then the integrity check), makes sure the CLI token in `auth/cli.token` is known,
-builds the engine on the self-hosted parts, and listens for the protocol on the engine's IPC
+builds the engine on the self-hosted parts and venues (KyberSwap always, OKX's DEX aggregator when
+`venues.keys.okx` names the owner's key; the money path keeps the best plan across them), and
+listens for the protocol on the engine's IPC
 endpoint and on `127.0.0.1:<engine.port>` (`serveEngine`). From there every call but
 `engine/status` answers `engine.starting` while the startup order goes on: the agent key and the
 Privy app secret open through the unlock mode, Privy checks the app with one read, and the signer

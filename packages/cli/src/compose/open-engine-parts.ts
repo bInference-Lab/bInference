@@ -1,4 +1,9 @@
-import { type ChainRef, type ChainRegistry, createChainRegistry } from "@binference/chain";
+import {
+  type ChainRef,
+  type ChainRegistry,
+  createChainRegistry,
+  type Venue,
+} from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
 import { bsc } from "@binference/chains";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
@@ -36,6 +41,10 @@ export interface Opened {
   readonly install: SetUpInstall | undefined;
   /** The owner's tracing RPC of each chain config names one for, read from its secret. */
   readonly tracers: ReadonlyMap<ChainRef, string>;
+  /** The chains this binference serves. */
+  readonly chains: ChainRegistry;
+  /** The venues it quotes on, their keys read. */
+  readonly venues: readonly Venue[];
 }
 
 /** The engine's logger, its file, and whether the file lost lines. */
