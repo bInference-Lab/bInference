@@ -13,6 +13,7 @@
     "engine/0008_surfaces_and_delivery.ts": "39ce2c9297795a4a69cb09714c5a27386f0be79dfc50f3d0d86391ddf7c22650",
     "engine/0009_access_and_operations.ts": "c82ef39650f0e1556bc86ce0e29713d085e6e7cb494899d7069b0324954afe3d",
     "engine/0010_transaction_sends.ts": "7a10a5da2c4f93fa24f5bc2e70e465cbe18ddcd794a75e94dbeafa4adbac2da1",
-    "engine/0011_send_level_rows.ts": "cdaf3404babe9778b1f65f581f0d84e311744a82a98a88daf127543666e18fce"
+    "engine/0011_send_level_rows.ts": "cdaf3404babe9778b1f65f581f0d84e311744a82a98a88daf127543666e18fce",
+    "engine/0012_rescue_ceiling.ts": "5d6cb85accc1e91693fedad586c1bf1a4351c5f656b4a5a85a5e66785ae9488c"
   }
 }

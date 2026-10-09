@@ -31,7 +31,7 @@ import type {
   SignRecipientsRequest,
 } from "./install/ceiling-change.js";
 import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/install-record.js";
-import type { RescueAddressChange, RescueMove } from "./install/rescue-record.js";
+import type { RescueAddressChange, RescueCancel, RescueMove } from "./install/rescue-record.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
 import type {
@@ -487,14 +487,17 @@ export interface InstallStore {
   setUp(setup: InstallSetup, options: StoreCall): Promise<Result<void, "set_up">>;
   /**
    * Writes a new rescue address as `changeRescue` decides it at `change.atMs`, in one
-   * transaction, and answers the state in effect before and after.
+   * transaction, with the ceiling changes `rescueCeilingAfter` keeps, and answers the state in
+   * effect before and after.
    */
   changeRescue(change: RescueAddressChange, options: StoreCall): Promise<RescueMove>;
   /**
    * Drops the new rescue address that waits at `atMs`, as `cancelRescue` decides it, and answers
-   * the state in effect before and after.
+   * the state in effect before and after, with the ceiling changes kept for the dropped address.
    */
-  cancelRescueChange(atMs: number, options: StoreCall): Promise<RescueMove>;
+  cancelRescueChange(atMs: number, options: StoreCall): Promise<RescueCancel>;
+  /** Forgets the ceiling changes kept for the new rescue address, once they were sent. */
+  clearRescueCeiling(options: StoreCall): Promise<void>;
 }
 
 /**

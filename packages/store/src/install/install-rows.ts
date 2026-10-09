@@ -5,6 +5,8 @@ import {
   type CustodyRecord,
   custodyRecordSchema,
   type InstallFacts,
+  type RescueCeiling,
+  rescueCeilingSchema,
   type RescueState,
   type WalletRecord,
   walletRecordSchema,
@@ -97,6 +99,16 @@ export function readRescue(database: DatabaseSync): RescueState {
   };
 }
 
+/** Reads the ceiling changes kept for the new rescue address that waits, if any. */
+export function readRescueCeiling(database: DatabaseSync): RescueCeiling | undefined {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const safety = takeFirst(
+    kysely.selectFrom("safety").select("rescue_ceiling").where("id", "=", 1),
+  );
+  const text = safety?.rescue_ceiling ?? null;
+  return text === null ? undefined : rescueCeilingSchema.parse(readJson(text));
+}
+
 /** Reads the install's custody, rescue address and wallets with their ceilings, oldest first. */
 export function readInstall(database: DatabaseSync): InstallFacts {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -104,6 +116,7 @@ export function readInstall(database: DatabaseSync): InstallFacts {
   return {
     ...(custody === undefined ? {} : { custody: toCustody(custody) }),
     ...readRescue(database),
+    ...field("rescueCeiling", readRescueCeiling(database) ?? null),
     wallets: readWallets(database),
   };
 }

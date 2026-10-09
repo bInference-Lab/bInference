@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { err, type Id, idSchema, ok, type Result } from "@binference/core";
+import { err, type Id, idSchema, jsonValueSchema, ok, type Result } from "@binference/core";
 import {
   type InstallFacts,
   installFactsSchema,
@@ -11,6 +11,10 @@ import {
   changeRescue,
   type RescueAddressChange,
   rescueAddressChangeSchema,
+  type RescueCancel,
+  rescueCancelSchema,
+  type RescueCeiling,
+  rescueCeilingAfter,
   type RescueMove,
   rescueMoveSchema,
   type RescueState,
@@ -22,7 +26,7 @@ import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText, jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
-import { hasCustody, readInstall, readRescue } from "./install-rows.js";
+import { hasCustody, readInstall, readRescue, readRescueCeiling } from "./install-rows.js";
 
 const installIdKey = "install_id";
 const createdAtKey = "created_at";
@@ -60,6 +64,7 @@ function writeRescue(database: DatabaseSync, setup: InstallSetup): void {
         rescue_address: setup.rescueAddress,
         pending_rescue_address: null,
         pending_rescue_at: null,
+        rescue_ceiling: null,
         version: row("version", "+", 1),
       }))
       .where("id", "=", 1),
@@ -149,15 +154,25 @@ export const setUpInstallTask: StoreTask<InstallSetup, Result<void, "set_up">> =
   },
 });
 
-// Writes the rescue state a rule of the engine decides at `atMs` over the row it read.
-function moveRescue(
-  database: DatabaseSync,
-  atMs: number,
-  decide: (state: RescueState) => RescueState,
-): RescueMove {
+/** A rule's rescue move at a time, and the ceiling changes a new address that waits comes with. */
+interface RescueWrite {
+  readonly atMs: number;
+  readonly decide: (state: RescueState) => RescueState;
+  readonly asked?: RescueCeiling;
+}
+
+// Writes the rescue state a rule of the engine decides over the row it read, with the ceiling
+// changes `rescueCeilingAfter` keeps; a dropped address comes back with the changes kept for it.
+function moveRescue(database: DatabaseSync, { atMs, decide, asked }: RescueWrite): RescueCancel {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const stored = readRescue(database);
-  const after = decide(stored);
+  const kept = readRescueCeiling(database);
+  const move = { before: rescueAt(stored, atMs), after: decide(stored) };
+  const ceiling = rescueCeilingAfter(move, {
+    ...(kept === undefined ? {} : { stored: kept }),
+    ...(asked === undefined ? {} : { asked }),
+  });
+  const { after } = move;
   execute(
     kysely
       .updateTable("safety")
@@ -165,11 +180,13 @@ function moveRescue(
         rescue_address: after.rescueAddress ?? null,
         pending_rescue_address: after.pendingRescue?.address ?? null,
         pending_rescue_at: after.pendingRescue?.atMs ?? null,
+        rescue_ceiling: ceiling === undefined ? null : jsonText(jsonValueSchema.parse(ceiling)),
         version: row("version", "+", 1),
       }))
       .where("id", "=", 1),
   );
-  return { before: rescueAt(stored, atMs), after };
+  const isDropped = move.before.pendingRescue !== undefined && after.pendingRescue === undefined;
+  return { ...move, ...(isDropped && kept !== undefined ? { dropped: kept } : {}) };
 }
 
 /** Writes a new rescue address as the engine's rule decides it. */
@@ -178,15 +195,36 @@ export const changeRescueTask: StoreTask<RescueAddressChange, RescueMove> = defi
   access: "write",
   input: rescueAddressChangeSchema,
   output: rescueMoveSchema,
-  run: (database, change) =>
-    moveRescue(database, change.atMs, (state) => changeRescue(state, change.address, change.atMs)),
+  run(database, { address, atMs, ceiling }) {
+    const decide = (state: RescueState): RescueState => changeRescue(state, address, atMs);
+    const { before, after } = moveRescue(database, {
+      atMs,
+      decide,
+      ...(ceiling === undefined ? {} : { asked: ceiling }),
+    });
+    return { before, after };
+  },
 });
 
 /** Drops the new rescue address that waits, as the engine's rule decides it. */
-export const cancelRescueChangeTask: StoreTask<number, RescueMove> = defineTask({
+export const cancelRescueChangeTask: StoreTask<number, RescueCancel> = defineTask({
   name: "install.cancel_rescue_change",
   access: "write",
   input: z.int().nonnegative(),
-  output: rescueMoveSchema,
-  run: (database, atMs) => moveRescue(database, atMs, (state) => cancelRescue(state, atMs)),
+  output: rescueCancelSchema,
+  run: (database, atMs) =>
+    moveRescue(database, { atMs, decide: (state) => cancelRescue(state, atMs) }),
+});
+
+/** Forgets the ceiling changes kept for the new rescue address. */
+export const clearRescueCeilingTask: StoreTask<null, null> = defineTask({
+  name: "install.clear_rescue_ceiling",
+  access: "write",
+  input: z.null(),
+  output: z.null(),
+  run(database) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    execute(kysely.updateTable("safety").set({ rescue_ceiling: null }).where("id", "=", 1));
+    return null;
+  },
 });

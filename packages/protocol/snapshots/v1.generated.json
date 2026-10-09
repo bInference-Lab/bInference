@@ -1279,6 +1279,10 @@
           "properties": {
             "address": {
               "type": "string"
+            },
+            "ownerKey": {
+              "type": "string",
+              "pattern": "^bnok1[A-Za-z2-7][A-Za-z2-7 -]{20,200}$"
             }
           },
           "required": [

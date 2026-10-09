@@ -112,11 +112,14 @@ Rules for this package:
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers
   (`src/address-book/`) list entries and remove one as braking, with `confirm`, journaled; adding
   one saves it in the ceiling, so it needs the owner key.
-- The rescue address (`src/safety/`) changes only through `safety/setRescueAddress` and
-  `safety/cancelRescueChange`, which the install store writes as `changeRescue` and `cancelRescue`
-  (`src/policy/rescue-change.ts`) decide inside its transaction: any new address waits 24 hours,
-  is announced as the `notice.rescueAddress` notice, and can be cancelled, which is announced too. Every reader of the
-  stored address takes the one in effect through `rescueAt`.
+- The rescue address (`src/safety/`) changes only through `safety/setRescueAddress`, with the
+  owner key over IPC, and `safety/cancelRescueChange`, which the install store writes as
+  `changeRescue` and `cancelRescue` (`src/policy/rescue-change.ts`) decide inside its transaction:
+  any new address waits 24 hours, is announced, and can be cancelled, which is announced too. Every
+  reader of the stored address takes the one in effect through `rescueAt`. The owner key saves the
+  new address in every live wallet's ceiling through the `CeilingEditor` port at once and signs
+  ahead the changes that leave the old or the new address out (decision 0110); `Engine.settle`
+  sends the first once the change takes effect, a cancel the second.
 - The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
   then not again until a reading shows it back at or above that. It keeps that memory in a bounded

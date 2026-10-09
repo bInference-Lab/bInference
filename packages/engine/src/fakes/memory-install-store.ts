@@ -1,6 +1,11 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { InstallFacts, InstallSetup, WalletRecord } from "../install/install-record.js";
-import type { RescueMove } from "../install/rescue-record.js";
+import {
+  type RescueCancel,
+  type RescueCeiling,
+  rescueCeilingAfter,
+  type RescueMove,
+} from "../install/rescue-record.js";
 import { cancelRescue, changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { InstallStore } from "../ports.js";
 import { constraintFault, memoryCall } from "./memory-call.js";
@@ -31,31 +36,72 @@ function setUp(state: InstallState, setup: InstallSetup): Result<InstallState, "
     item.archivedAtMs === undefined ? { ...item, archivedAtMs: setup.atMs } : item,
   );
   return ok({
-    ...withRescue(state, { rescueAddress: setup.rescueAddress }),
+    ...withRescue(state, { rescueAddress: setup.rescueAddress }, undefined),
     custody: setup.custody,
     wallets: [...archived, setup.wallet],
   });
 }
 
-// The state with its rescue address and the one that waits replaced by `rescue`.
-function withRescue(state: InstallState, rescue: RescueState): InstallState {
+// The state with its rescue address, the one that waits and its ceiling changes replaced.
+function withRescue(
+  state: InstallState,
+  rescue: RescueState,
+  ceiling: RescueCeiling | undefined,
+): InstallState {
   const { installId, custody, wallets } = state;
   return {
     ...(installId === undefined ? {} : { installId }),
     ...(custody === undefined ? {} : { custody }),
     ...rescue,
+    ...(ceiling === undefined ? {} : { rescueCeiling: ceiling }),
     wallets,
   };
 }
 
-// The rescue state a rule decides at `atMs`, written as the SQLite store's one transaction does.
+/** A rule's rescue move at a time, and the ceiling changes a new address that waits comes with. */
+interface RescueWrite {
+  readonly atMs: number;
+  readonly decide: (rescue: RescueState) => RescueState;
+  readonly asked?: RescueCeiling;
+}
+
+// The rescue state a rule decides, written as the SQLite store's one transaction does.
 function movedRescue(
   state: InstallState,
-  atMs: number,
-  decide: (rescue: RescueState) => RescueState,
-): { readonly state: InstallState; readonly move: RescueMove } {
-  const after = decide(state);
-  return { state: withRescue(state, after), move: { before: rescueAt(state, atMs), after } };
+  { atMs, decide, asked }: RescueWrite,
+): { readonly state: InstallState; readonly move: RescueCancel } {
+  const move = { before: rescueAt(state, atMs), after: decide(state) };
+  const stored = state.rescueCeiling;
+  const ceiling = rescueCeilingAfter(move, {
+    ...(stored === undefined ? {} : { stored }),
+    ...(asked === undefined ? {} : { asked }),
+  });
+  const isDropped =
+    move.before.pendingRescue !== undefined && move.after.pendingRescue === undefined;
+  return {
+    state: withRescue(state, move.after, ceiling),
+    move: { ...move, ...(isDropped && stored !== undefined ? { dropped: stored } : {}) },
+  };
+}
+
+// The install's facts as the store holds them, without the id.
+function factsOf(state: InstallState): InstallFacts {
+  const { custody, rescueCeiling, wallets } = state;
+  return {
+    ...(custody === undefined ? {} : { custody }),
+    ...storedRescue(state),
+    ...(rescueCeiling === undefined ? {} : { rescueCeiling }),
+    wallets,
+  };
+}
+
+// The rescue address and the one that waits as stored, before any is settled.
+function storedRescue(state: InstallState): RescueState {
+  const { rescueAddress, pendingRescue } = state;
+  return {
+    ...(rescueAddress === undefined ? {} : { rescueAddress }),
+    ...(pendingRescue === undefined ? {} : { pendingRescue }),
+  };
 }
 
 /** The in-memory install store, which also takes wallets a test adds. */
@@ -67,8 +113,8 @@ export interface MemoryInstallStore extends InstallStore {
 /** Creates an empty in-memory {@link InstallStore} for tests. */
 export function createMemoryInstallStore(): MemoryInstallStore {
   const held: { state: InstallState } = { state: { wallets: [] } };
-  const write = (atMs: number, decide: (rescue: RescueState) => RescueState): RescueMove => {
-    const moved = movedRescue(held.state, atMs, decide);
+  const write = (rescueWrite: RescueWrite): RescueCancel => {
+    const moved = movedRescue(held.state, rescueWrite);
     held.state = moved.state;
     return structuredClone(moved.move);
   };
@@ -86,16 +132,7 @@ export function createMemoryInstallStore(): MemoryInstallStore {
         held.state = { ...held.state, installId };
         return installId;
       }),
-    read: async (call) =>
-      memoryCall(call, () => {
-        const { custody, rescueAddress, pendingRescue, wallets } = held.state;
-        return structuredClone({
-          ...(custody === undefined ? {} : { custody }),
-          ...(rescueAddress === undefined ? {} : { rescueAddress }),
-          ...(pendingRescue === undefined ? {} : { pendingRescue }),
-          wallets,
-        });
-      }),
+    read: async (call) => memoryCall(call, () => structuredClone(factsOf(held.state))),
     setUp: async (setup, call) =>
       memoryCall(call, () => {
         const next = setUp(held.state, structuredClone(setup));
@@ -105,9 +142,21 @@ export function createMemoryInstallStore(): MemoryInstallStore {
         held.state = next.value;
         return ok(undefined);
       }),
-    changeRescue: async ({ address, atMs }, call) =>
-      memoryCall(call, () => write(atMs, (rescue) => changeRescue(rescue, address, atMs))),
+    changeRescue: async ({ address, atMs, ceiling }, call) =>
+      memoryCall(call, (): RescueMove => {
+        const decide = (rescue: RescueState): RescueState => changeRescue(rescue, address, atMs);
+        const { before, after } = write({
+          atMs,
+          decide,
+          ...(ceiling === undefined ? {} : { asked: ceiling }),
+        });
+        return { before, after };
+      }),
     cancelRescueChange: async (atMs, call) =>
-      memoryCall(call, () => write(atMs, (rescue) => cancelRescue(rescue, atMs))),
+      memoryCall(call, () => write({ atMs, decide: (rescue) => cancelRescue(rescue, atMs) })),
+    clearRescueCeiling: async (call) =>
+      memoryCall(call, () => {
+        held.state = withRescue(held.state, storedRescue(held.state), undefined);
+      }),
   };
 }

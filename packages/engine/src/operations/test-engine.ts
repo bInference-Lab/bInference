@@ -19,6 +19,7 @@ import {
 import { createIdSource, type Id } from "@binference/core";
 import { createManualClock, createSeededRandom, type ManualClock } from "@binference/core/testing";
 import type { AgentDraft } from "../agents/agent-record.js";
+import { createFakeCeilingEditor, type FakeCeilingEditor } from "../fakes/fake-ceiling-editor.js";
 import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
@@ -40,6 +41,7 @@ import {
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type {
   AgentStore,
+  CeilingEditor,
   Executor,
   IntentStore,
   PositionStore,
@@ -57,6 +59,7 @@ export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCalle
     credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000001",
     client: { kind: "cli", version: "test" },
     scopes: ["read", "propose", "chat", "confirm", "loosen", "admin"],
+    transport: "ipc",
   },
   mcp: {
     credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000002",
@@ -97,6 +100,8 @@ export interface TestEngineOptions {
   readonly isLocked?: () => boolean;
   /** The risk step; one that passes registry tokens and refuses others as `sources_down` when absent. */
   readonly risk?: RiskCheck;
+  /** The ceilings the owner key changes; a fake holding none when absent. */
+  readonly ceilings?: CeilingEditor;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -110,6 +115,8 @@ export interface TestEngine {
   readonly executor: FakeExecutor;
   /** Every push the engine sent, oldest first. */
   readonly pushes: readonly EnginePush[];
+  /** The ceilings the engine changes, when the test gave none of its own. */
+  readonly ceilings: FakeCeilingEditor;
 }
 
 /** What the fake wallet facts say of the test wallet unless a test changes them. */
@@ -180,10 +187,12 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   const pushes: EnginePush[] = [];
   const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
+  const ceilings = createFakeCeilingEditor({ clock });
   const engine = createEngine({
     stores: wrapped(stores, options),
     positions,
     custody,
+    ceilings: options.ceilings ?? ceilings,
     prices: createFakePriceSource(
       options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
     ),
@@ -204,7 +213,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   });
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });
   await openPaper(engine, options.paper ?? testPaperBalances);
-  return { engine, stores, clock, custody, positions, executor, pushes };
+  return { engine, stores, clock, custody, positions, executor, pushes, ceilings };
 }
 
 /** One call with its args, from a caller, with a signal that never aborts. */

@@ -8,6 +8,7 @@ import { type EngineState, engineStateSchema } from "../frames/ready-frame.schem
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
+import { ownerKeyCodeSchema } from "../values/owner-key-code.schema.js";
 import { type AgentMode, agentModeSchema } from "../views/agent-view.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
@@ -69,8 +70,12 @@ export interface EngineOperationShapes {
     readonly args: Empty;
     readonly result: { readonly intent: ProtocolId<"intent"> };
   };
+  /**
+   * A new rescue address, which the owner key also saves in every ceiling (decision 0110). Version 1
+   * marks `ownerKey` optional for compatibility; the engine refuses a call without it, or over WS.
+   */
   readonly "safety/setRescueAddress": {
-    readonly args: { readonly address: AccountRef };
+    readonly args: { readonly address: AccountRef; readonly ownerKey?: string };
     readonly result: { readonly effectiveAt: number };
   };
   readonly "safety/cancelRescueChange": { readonly args: Empty; readonly result: Empty };
@@ -156,7 +161,10 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     ...writeFlags,
     name: "safety/setRescueAddress",
     scope: "admin",
-    args: z.strictObject({ address: accountRefSchema }),
+    args: z.strictObject({
+      address: accountRefSchema,
+      ownerKey: ownerKeyCodeSchema.exactOptional(),
+    }),
     result: z.object({ effectiveAt: epochMsSchema }),
   },
   "safety/cancelRescueChange": {

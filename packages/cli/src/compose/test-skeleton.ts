@@ -29,6 +29,7 @@ import {
   createFakeExecutor,
   createFakePriceSource,
   createFakeWalletFacts,
+  createFakeCeilingEditor,
   createMemoryEngineStores,
   createMemoryPositionStore,
   createMemoryRiskCacheStore,
@@ -92,6 +93,7 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
     name: "self-hosted",
     parts: () => ({
       custody: createFakeSigner(wallets),
+      ceilings: createFakeCeilingEditor({ clock: createManualClock(testNowMs) }),
       stores: withTestWallet(createMemoryEngineStores()),
       prices: createFakePriceSource(new Map([[testCoin, coinPrice]])),
       // The self-hosted sources, over outbound HTTP that reaches no host.

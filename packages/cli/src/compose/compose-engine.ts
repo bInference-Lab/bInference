@@ -29,8 +29,11 @@ import {
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
 import type { ProfileParts } from "./profile-parts.js";
 
-/** The profile parts the engine runs on: custody, the store ports, the USD prices and the risk sources. */
-export type EngineParts = Pick<ProfileParts, "custody" | "stores" | "prices" | "riskSources">;
+/** The profile parts the engine runs on: custody and its ceilings, stores, prices, risk sources. */
+export type EngineParts = Pick<
+  ProfileParts,
+  "custody" | "ceilings" | "stores" | "prices" | "riskSources"
+>;
 
 /** What the token risk step runs on besides the venue host. */
 interface RiskParts {
@@ -159,6 +162,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     stores: parts.stores,
     positions: options.positions,
     custody: parts.custody,
+    ceilings: parts.ceilings,
     prices: parts.prices,
     wallets: options.wallets,
     host,

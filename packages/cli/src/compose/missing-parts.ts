@@ -1,6 +1,7 @@
 import type { PriceSource, Signer, TxSimulator } from "@binference/chain";
 import { BinferenceError, err } from "@binference/core";
 import type { PositionStore, Simulator, WalletFactsSource } from "@binference/engine";
+import type { CeilingEditor } from "@binference/engine/install";
 
 /** A part the self-hosted root cannot fill yet; `status` shows each one as a failed signal. */
 type MissingPart = "custody" | "prices" | "wallets" | "simulator" | "positions";
@@ -15,6 +16,7 @@ type MissingPart = "custody" | "prices" | "wallets" | "simulator" | "positions";
  */
 export interface MissingParts {
   readonly custody: Signer;
+  readonly ceilings: CeilingEditor;
   readonly prices: PriceSource;
   readonly wallets: WalletFactsSource;
   readonly simulator: Simulator;
@@ -53,6 +55,18 @@ const missingTxSimulator: TxSimulator = {
   },
 };
 
+// Custody's ceilings change through Privy, which no adapter reaches yet.
+async function refuseCustody(options: { readonly signal: AbortSignal }): Promise<never> {
+  options.signal.throwIfAborted();
+  return Promise.reject(missing("custody", "wallet.custody_down"));
+}
+
+const missingCeilings: CeilingEditor = {
+  setRecipients: async (_request, options) => refuseCustody(options),
+  signRecipients: async (_request, options) => refuseCustody(options),
+  sendSigned: async (_change, options) => refuseCustody(options),
+};
+
 /** The missing parts, for a self-hosted engine that serves the protocol and refuses to trade. */
 export function createMissingParts(): MissingParts {
   return {
@@ -66,6 +80,7 @@ export function createMissingParts(): MissingParts {
         return Promise.resolve(err("refused"));
       },
     },
+    ceilings: missingCeilings,
     prices: {
       async usdPrice(_asset, options) {
         options.signal.throwIfAborted();

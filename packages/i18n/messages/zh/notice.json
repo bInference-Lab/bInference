@@ -10,5 +10,6 @@
   "rescueAddress": "⚠️ 紧急转出地址将于 {when} 改为 {address}。不是你操作？请立即取消。",
   "lowGas": "⚠️ {wallet} 仅剩 {balance} 可付网络费。请充值 BNB。",
   "sendLevelCancelled": "已取消将转账级别改为 {to}，仍为 {level}",
-  "rescueAddressCancelled": "已取消将紧急转出地址改为 {address}"
+  "rescueAddressCancelled": "已取消将紧急转出地址改为 {address}",
+  "ceilingOutdated": "⚠️ 各钱包的上限仍允许向 {address} 转账。请用所有者密钥运行 `binference rescue set` 更新。"
 }

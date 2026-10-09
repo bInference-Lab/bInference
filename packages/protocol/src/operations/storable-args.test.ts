@@ -9,6 +9,13 @@ describe("storable args", () => {
     ).toStrictEqual({});
   });
 
+  it("leave out the owner key of safety/setRescueAddress and keep the address", () => {
+    const address = "eip155:56:0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
+    expect(
+      storableArgs("safety/setRescueAddress", { address, ownerKey: "bnok1abcde fghij" }),
+    ).toStrictEqual({ address });
+  });
+
   it("keep the args of every other operation as they came", () => {
     const args = { agent: "agt_0190f1c2-3a4b-7c5d-8e6f-0123456789ab", passphrase: "kept" };
     expect(storableArgs("safety/freeze", args)).toBe(args);

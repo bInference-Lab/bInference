@@ -20,7 +20,14 @@ import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfo
 import { withPaperSimulation } from "../paper/paper-simulation.js";
 import { withPaperBalances } from "../paper/paper-wallet-facts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
-import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
+import type {
+  CeilingEditor,
+  Executor,
+  PositionStore,
+  RiskCheck,
+  Simulator,
+  WalletFactsSource,
+} from "../ports.js";
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
@@ -28,6 +35,7 @@ import {
   createRescueAddressHandlers,
   type RescueAddressHandlers,
 } from "../safety/rescue-address-handlers.js";
+import { settleRescueCeilings } from "../safety/rescue-ceilings.js";
 import {
   createSendLevelHandlers,
   type SendLevelHandlers,
@@ -65,6 +73,12 @@ export interface Engine {
   readonly handlers: EngineHandlers;
   /** Applies a card answer from a surface the engine serves itself, such as a Telegram tap. */
   readonly answer: AnswerCard;
+  /**
+   * Does the work that waits for its time: once a new rescue address takes effect, it sends the
+   * change that leaves the old one out of every ceiling. A timer of the composition root calls it;
+   * the rescue address operations call it too.
+   */
+  readonly settle: (options: { readonly signal: AbortSignal }) => Promise<void>;
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -74,6 +88,8 @@ export interface EngineOptions {
   readonly positions: PositionStore;
   /** Custody: the agent wallets' accounts, and later their signatures. */
   readonly custody: Signer;
+  /** Custody's ceilings, which the owner key changes. */
+  readonly ceilings: CeilingEditor;
   readonly prices: PriceSource;
   /** The wallets' live facts; a paper intent's balance comes from the paper portfolio. */
   readonly wallets: WalletFactsSource;
@@ -227,6 +243,13 @@ function intentParts(
 export function createEngine(options: EngineOptions): Engine {
   const paper = paperParts(options);
   const intents = intentParts(options, paper);
+  const rescueParts = {
+    install: options.stores.install,
+    agents: options.stores.agents,
+    ceilings: options.ceilings,
+    clock: options.clock,
+    publish: options.publish,
+  };
   const settingsParts = {
     agents: options.stores.agents,
     journal: options.stores.configJournal,
@@ -243,11 +266,12 @@ export function createEngine(options: EngineOptions): Engine {
       ...createSendLevelHandlers(settingsParts),
       ...createAddressBookHandlers(settingsParts),
       ...createRescueAddressHandlers({
-        ...settingsParts,
-        install: options.stores.install,
+        ...rescueParts,
+        journal: settingsParts.journal,
         chains: options.chains,
       }),
     },
     answer: intents.answer,
+    settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
   };
 }

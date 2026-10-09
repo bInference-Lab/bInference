@@ -10,5 +10,6 @@
   "rescueAddress": "⚠️ Rescue address changes to {address} at {when}. Not you? Cancel now.",
   "lowGas": "⚠️ {wallet} has {balance} left for network fees. Add BNB.",
   "sendLevelCancelled": "Send level change to {to} cancelled; it stays {level}",
-  "rescueAddressCancelled": "Rescue address change to {address} cancelled"
+  "rescueAddressCancelled": "Rescue address change to {address} cancelled",
+  "ceilingOutdated": "⚠️ The wallets' ceilings still let sends pay {address}. Run `binference rescue set` with the owner key to update them."
 }

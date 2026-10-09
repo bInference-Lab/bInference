@@ -1,41 +1,78 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
-import { err } from "@binference/core";
+import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { testNowMs } from "../intents/test-intents.js";
+import { fakeOwnerKeyCode } from "../fakes/fake-ceiling-editor.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
+import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
-import { startTestEngine, type TestEngine, testCall } from "../operations/test-engine.js";
+import {
+  startTestEngine,
+  type TestEngine,
+  testCall,
+  testCallers,
+} from "../operations/test-engine.js";
 import { rescueAt } from "../policy/rescue-change.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
+import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
 
 const live = { signal: new AbortController().signal };
 const owner: AccountRef = accountRefSchema.parse("fake:1:0x000000a1");
 const thief: AccountRef = accountRefSchema.parse("fake:1:0x000000b2");
+// A console device brakes over WS; it never carries the owner key.
 const console: EngineCaller = {
   credential: "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001",
   client: { kind: "console", version: "test" },
   scopes: ["read", "confirm", "admin"],
+  transport: "ws",
 };
+const wallet = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c1"),
+  agentId: testAgent,
+  label: "main",
+  createdAtMs: testNowMs - 2 * looseningWaitMs,
+});
+const archived = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c2"),
+  agentId: testAgent,
+  label: "old",
+  createdAtMs: testNowMs - 3 * looseningWaitMs,
+  archivedAtMs: testNowMs - 2 * looseningWaitMs,
+});
 
-function setRescue(test: TestEngine, address: AccountRef) {
-  return test.engine.handlers["safety/setRescueAddress"](testCall({ address }, console));
+function setRescue(
+  test: TestEngine,
+  address: AccountRef,
+  call: { readonly ownerKey?: string; readonly caller?: EngineCaller } = {},
+) {
+  const { ownerKey = fakeOwnerKeyCode, caller = testCallers.cli } = call;
+  return test.engine.handlers["safety/setRescueAddress"](testCall({ address, ownerKey }, caller));
 }
 
 function cancelChange(test: TestEngine) {
   return test.engine.handlers["safety/cancelRescueChange"](testCall({}, console));
 }
 
-// The test engine with the owner's rescue address in effect since a day before the test.
+// The test engine with the owner's rescue address in effect since a day before the test, and one
+// live wallet whose ceiling lists it.
 async function withRescue(): Promise<TestEngine> {
   const test = await startTestEngine();
   await test.stores.install.changeRescue(
-    { address: owner, atMs: testNowMs - looseningWaitMs },
+    { address: owner, atMs: testNowMs - 2 * looseningWaitMs },
     live,
   );
+  test.stores.install.addWallet(archived);
+  test.stores.install.addWallet(wallet);
+  test.ceilings.put(wallet.policyId, [owner]);
+  test.ceilings.put(archived.policyId, [owner]);
   return test;
 }
 
 async function rescueNow(test: TestEngine) {
   return rescueAt(await test.stores.install.read(live), test.clock.now());
+}
+
+function noticeData(test: TestEngine): readonly unknown[] {
+  return test.pushes.filter((push) => push.topic === "notice").map((push) => push.data);
 }
 
 describe("a change of the rescue address", () => {
@@ -48,17 +85,72 @@ describe("a change of the rescue address", () => {
     expect((await rescueNow(test)).rescueAddress).toBe(owner);
     await test.clock.advance(1);
     expect((await rescueNow(test)).rescueAddress).toBe(thief);
-    expect(test.pushes.filter((push) => push.topic === "notice")).toStrictEqual([
+    expect(noticeData(test)).toStrictEqual([
       {
-        topic: "notice",
-        kind: "notice/new",
-        data: {
-          key: "notice.rescueAddress",
-          values: { address: "0x000000b2" },
-          times: { when: effectiveAt },
-        },
+        key: "notice.rescueAddress",
+        values: { address: "0x000000b2" },
+        times: { when: effectiveAt },
       },
     ]);
+  });
+
+  it("saves the new address in every live wallet's ceiling at once, beside the old one", async () => {
+    const test = await withRescue();
+    await saveTestAddress(test);
+
+    expectOk(await setRescue(test, thief));
+
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual(
+      [owner, thief, testSaved.account].toSorted(),
+    );
+    expect(test.ceilings.recipients(archived.policyId)).toStrictEqual([owner]);
+  });
+
+  it("leaves the old address out of the ceilings once the new one takes effect", async () => {
+    const test = await withRescue();
+    expectOk(await setRescue(test, thief));
+
+    await test.clock.advance(looseningWaitMs - 1);
+    await test.engine.settle(live);
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner, thief]);
+    await test.clock.advance(1);
+    await test.engine.settle(live);
+
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([thief]);
+    expect((await test.stores.install.read(live)).rescueCeiling).toBeUndefined();
+  });
+
+  it("tells the owner when a ceiling changed meanwhile and the old address stays in it", async () => {
+    const test = await withRescue();
+    expectOk(await setRescue(test, thief));
+    test.ceilings.put(wallet.policyId, [owner, thief, testSaved.account]);
+
+    await test.clock.advance(looseningWaitMs);
+    await test.engine.settle(live);
+
+    expect(test.ceilings.recipients(wallet.policyId)).toHaveLength(3);
+    expect(noticeData(test).at(-1)).toStrictEqual({
+      key: "notice.ceilingOutdated",
+      values: { address: "0x000000a1" },
+    });
+  });
+
+  it("refuses a wrong or missing owner key and a call over WS, and changes nothing", async () => {
+    const test = await withRescue();
+    const admin = { ...console, transport: "ws" as const };
+
+    expect([
+      await setRescue(test, thief, { ownerKey: "bnok1notthekey" }),
+      await test.engine.handlers["safety/setRescueAddress"](testCall({ address: thief })),
+      await setRescue(test, thief, { caller: admin }),
+    ]).toStrictEqual([
+      err("wallet.bad_owner_key"),
+      err("wallet.bad_owner_key"),
+      err("auth.local_only"),
+    ]);
+    expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
+    expect(test.pushes).toStrictEqual([]);
   });
 
   it("is cancelled from any surface that brakes, and the owner's address stays", async () => {
@@ -66,12 +158,15 @@ describe("a change of the rescue address", () => {
     await setRescue(test, thief);
 
     expect(await cancelChange(test)).toStrictEqual({ ok: true, value: {} });
-    expect(test.pushes.at(-1)?.data).toStrictEqual({
+    expect(noticeData(test).at(-1)).toStrictEqual({
       key: "notice.rescueAddressCancelled",
       values: { address: "0x000000b2" },
     });
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
     await test.clock.advance(looseningWaitMs);
+    await test.engine.settle(live);
     expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
   });
 
   it("is journaled and pushed as a config change, both ways", async () => {
@@ -86,7 +181,7 @@ describe("a change of the rescue address", () => {
     ).toStrictEqual([
       {
         path: "safety.rescueAddress",
-        surface: "console",
+        surface: "cli",
         before: { rescueAddress: owner },
         after: { rescueAddress: owner, pendingRescue },
       },
@@ -114,9 +209,8 @@ describe("a change of the rescue address", () => {
       value: { effectiveAt: testNowMs + 60_000 },
     });
     expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
-    expect(
-      test.pushes.filter((push) => push.topic === "notice").map((push) => push.data),
-    ).toStrictEqual([
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
+    expect(noticeData(test)).toStrictEqual([
       {
         key: "notice.rescueAddress",
         values: { address: "0x000000b2" },

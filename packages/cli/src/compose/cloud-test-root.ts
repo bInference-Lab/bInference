@@ -1,9 +1,11 @@
 import type { AccountRef } from "@binference/chain";
 import { createFakeRiskSource, createFakeSigner, type FakeSigner } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import {
   type CreditAccount,
   createCreditBilling,
+  createFakeCeilingEditor,
   createMemoryEngineStores,
   createRelayUpdateSource,
   type MemoryEngineStores,
@@ -49,6 +51,7 @@ export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudT
   const market = createSharedMarketData();
   return {
     custody: createFakeSigner(options.wallets ?? new Map()),
+    ceilings: createFakeCeilingEditor({ clock: createManualClock(0) }),
     updates: createRelayUpdateSource(),
     billing: createCreditBilling(options.credits ?? []),
     secrets: createSecretVault().storeFor("owner"),

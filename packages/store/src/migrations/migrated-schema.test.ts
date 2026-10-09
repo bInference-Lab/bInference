@@ -70,7 +70,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   meta: names("key value"),
   safety: names(
     "id frozen_at rescue_address pending_rescue_address pending_rescue_at disclaimer_version " +
-      "disclaimer_accepted_at version",
+      "disclaimer_accepted_at version rescue_ceiling",
   ),
   custody: names(
     "id provider app_id owner_quorum_id owner_key_public agent_quorum_id agent_key_public " +

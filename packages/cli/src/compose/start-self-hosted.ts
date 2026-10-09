@@ -169,7 +169,7 @@ function compose(opening: Opening, opened: Opened): Composed {
   const locked = composeLock({ host, platform, config, install: opened.install, started: state });
   const stopper = { stop: (): void => undefined };
   const { server, publish } = composeEngine(
-    { custody: parts.custody, stores, prices: parts.prices, riskSources },
+    { custody: parts.custody, ceilings: parts.ceilings, stores, prices: parts.prices, riskSources },
     {
       chains,
       venues: [],

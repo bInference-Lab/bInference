@@ -18,6 +18,11 @@ export interface EngineCaller {
   readonly client: ClientInfo;
   /** The scopes the server checked the call against. */
   readonly scopes: readonly Scope[];
+  /**
+   * Where the call came in: `ipc`, the local socket, or `ws`. The server always sets it; a caller
+   * without it counts as not local, so an owner-key operation refuses it.
+   */
+  readonly transport?: "ipc" | "ws";
 }
 
 /** One call the protocol server checked and routed to the engine. */

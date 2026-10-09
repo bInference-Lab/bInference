@@ -3,7 +3,7 @@ import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/
 import { z } from "zod";
 import type { RescueState } from "../policy/rescue-change.js";
 import { epochMsSchema, shortTextSchema } from "../records/record-fields.js";
-import { pendingRescueSchema } from "./rescue-record.js";
+import { pendingRescueSchema, type RescueCeiling, rescueCeilingSchema } from "./rescue-record.js";
 
 /**
  * The install's custody on Privy (database spec, section 2.1): the owner's app, and the key
@@ -128,6 +128,8 @@ export const installSetupSchema: z.ZodType<InstallSetup> = z.strictObject({
  */
 export interface InstallFacts extends RescueState {
   readonly custody?: CustodyRecord;
+  /** The ceiling changes kept for the new rescue address that waits. */
+  readonly rescueCeiling?: RescueCeiling;
   readonly wallets: readonly WalletRecord[];
 }
 
@@ -136,6 +138,7 @@ export const installFactsSchema: z.ZodType<InstallFacts> = z.strictObject({
   custody: custodyRecordSchema.exactOptional(),
   rescueAddress: accountRefSchema.exactOptional(),
   pendingRescue: pendingRescueSchema.exactOptional(),
+  rescueCeiling: rescueCeilingSchema.exactOptional(),
   wallets: z.array(walletRecordSchema),
 });
 

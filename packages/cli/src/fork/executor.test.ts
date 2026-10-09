@@ -29,6 +29,7 @@ import {
 import { createExecutor } from "@binference/engine/executor";
 import { createSimulationCheck } from "@binference/engine/simulation";
 import {
+  createFakeCeilingEditor,
   createFakePriceSource,
   createFakeRiskCheck,
   createFakeWalletFacts,
@@ -169,6 +170,7 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
     stores,
     positions,
     custody,
+    ceilings: createFakeCeilingEditor({ clock }),
     prices,
     wallets,
     host: createVenueHost({

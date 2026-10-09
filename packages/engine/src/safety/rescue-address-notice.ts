@@ -1,4 +1,4 @@
-import { accountRefParts } from "@binference/chain";
+import { type AccountRef, accountRefParts } from "@binference/chain";
 import type { PendingRescue } from "../policy/rescue-change.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
@@ -30,5 +30,19 @@ export function rescueCancelledNotice(dropped: PendingRescue): EnginePush {
   return noticePush({
     key: rescueAddressCancelledKey,
     values: { address: accountRefParts(dropped.address).address },
+  });
+}
+
+/** The message key of the notice that says a ceiling still lists an old address. */
+export const ceilingOutdatedKey = "notice.ceilingOutdated";
+
+/**
+ * The notice that tells the owner, for the whole install, that the wallets' ceilings still let a
+ * send pay an address binference no longer pays: a change signed ahead could not be sent.
+ */
+export function ceilingOutdatedNotice(address: AccountRef): EnginePush {
+  return noticePush({
+    key: ceilingOutdatedKey,
+    values: { address: accountRefParts(address).address },
   });
 }

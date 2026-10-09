@@ -1,6 +1,10 @@
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
-import { rescueAddressCancelledKey, rescueAddressNoticeKey } from "./rescue-address-notice.js";
+import {
+  ceilingOutdatedKey,
+  rescueAddressCancelledKey,
+  rescueAddressNoticeKey,
+} from "./rescue-address-notice.js";
 
 const chinese = createFormatter({ locale: "zh", timeZone: "Asia/Shanghai" });
 const atMs = Date.UTC(2027, 0, 2, 9, 30);
@@ -16,6 +20,12 @@ describe("the rescue address notice in Chinese", () => {
   it("says a change was cancelled", () => {
     expect(chinese.message(rescueAddressCancelledKey, { address: "0xabc" })).toBe(
       "已取消将紧急转出地址改为 0xabc",
+    );
+  });
+
+  it("says the ceilings still let sends pay an old address, and how to fix it", () => {
+    expect(chinese.message(ceilingOutdatedKey, { address: "0xabc" })).toBe(
+      "⚠️ 各钱包的上限仍允许向 0xabc 转账。请用所有者密钥运行 `binference rescue set` 更新。",
     );
   });
 });

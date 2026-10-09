@@ -160,6 +160,29 @@ async function paysANewRescueAddressFromItsTime(subject: InstallStoreSubject): P
   assert.deepEqual([read.rescueAddress, read.pendingRescue], [again.rescueAddress, undefined]);
 }
 
+const signedChange = (untilMs: number) => ({ untilMs, payload: { signed: [String(untilMs)] } });
+
+async function keepsCeilingChanges(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  await store.setUp(setup(subject, 1), live());
+  const ceiling = { onEffect: signedChange(1), onCancel: signedChange(2) };
+  await store.changeRescue({ address: rescue(7), atMs: 10_000, ceiling }, live());
+  assert.deepEqual((await store.read(live())).rescueCeiling, ceiling);
+  const again = { address: rescue(7), atMs: 20_000, ceiling: { onEffect: signedChange(3) } };
+  await store.changeRescue(again, live());
+  assert.deepEqual((await store.read(live())).rescueCeiling, ceiling);
+  const cancelled = await store.cancelRescueChange(30_000, live());
+  assert.deepEqual(cancelled.dropped, ceiling);
+  assert.equal((await store.read(live())).rescueCeiling, undefined);
+  await store.changeRescue({ address: rescue(8), atMs: 40_000, ceiling }, live());
+  await store.clearRescueCeiling(live());
+  const read = await store.read(live());
+  assert.deepEqual([read.rescueCeiling, read.pendingRescue?.address], [undefined, rescue(8)]);
+  await store.changeRescue({ address: rescue(9), atMs: 50_000, ceiling }, live());
+  await store.changeRescue({ address: read.rescueAddress ?? rescue(1), atMs: 60_000 }, live());
+  assert.equal((await store.read(live())).rescueCeiling, undefined);
+}
+
 async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   await assertRefusesAborted(async (call) =>
@@ -171,6 +194,7 @@ async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> 
     store.changeRescue({ address: rescue(7), atMs: 1 }, call),
   );
   await assertRefusesAborted(async (call) => store.cancelRescueChange(1, call));
+  await assertRefusesAborted(async (call) => store.clearRescueCeiling(call));
   assert.deepEqual(await store.read(live()), { wallets: [] });
 }
 
@@ -204,6 +228,11 @@ export function installStoreContract(harness: InstallStoreHarness): readonly Con
       "pays a new rescue address from its time on, and drops one that waits on a start over",
       create,
       paysANewRescueAddressFromItsTime,
+    ),
+    checkOn(
+      "keeps the ceiling changes signed for a new rescue address while it waits",
+      create,
+      keepsCeilingChanges,
     ),
     checkOn("refuses every call on an aborted signal", create, refusesAbortedCalls),
   ];

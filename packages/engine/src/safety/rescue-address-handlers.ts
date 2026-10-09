@@ -4,14 +4,19 @@ import {
   accountRefSchema,
   type ChainRegistry,
 } from "@binference/chain";
-import { type Clock, err, jsonValueSchema, ok, type Result } from "@binference/core";
+import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { RescueMove } from "../install/rescue-record.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
-import type { RescueState } from "../policy/rescue-change.js";
-import type { ConfigJournal, InstallStore } from "../ports.js";
-import type { PublishPush } from "../pushes/engine-push.js";
+import { changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
+import type { ConfigJournal } from "../ports.js";
 import { rescueAddressNotice, rescueCancelledNotice } from "./rescue-address-notice.js";
+import {
+  moveRescueCeilings,
+  type RescueCeilingsOptions,
+  sendCancelCeilings,
+  settleRescueCeilings,
+} from "./rescue-ceilings.js";
 
 /** The handlers of the install's rescue address change (protocol spec, section 7.1). */
 export interface RescueAddressHandlers {
@@ -20,12 +25,9 @@ export interface RescueAddressHandlers {
 }
 
 /** What the rescue address handlers read, write and announce through. */
-export interface RescueAddressHandlersOptions {
-  readonly install: InstallStore;
+export interface RescueAddressHandlersOptions extends RescueCeilingsOptions {
   readonly chains: ChainRegistry;
   readonly journal: ConfigJournal;
-  readonly clock: Clock;
-  readonly publish: PublishPush;
 }
 
 type RescueCall = EngineCall<"safety/setRescueAddress"> | EngineCall<"safety/cancelRescueChange">;
@@ -83,40 +85,97 @@ async function record(
   }
 }
 
+// The owner key travels only over IPC (decision 0110); version 1 keeps it optional in the schema.
+function ownerKeyOf(
+  call: EngineCall<"safety/setRescueAddress">,
+): Result<Secret, ProtocolErrorCode> {
+  if (call.caller.transport !== "ipc") {
+    return err("auth.local_only");
+  }
+  const { ownerKey } = call.args;
+  return ownerKey === undefined ? err("wallet.bad_owner_key") : ok(createSecret(ownerKey));
+}
+
+async function setRescue(
+  options: RescueAddressHandlersOptions,
+  call: EngineCall<"safety/setRescueAddress">,
+): Promise<Result<{ readonly effectiveAt: number }, ProtocolErrorCode>> {
+  const ownerKey = ownerKeyOf(call);
+  const address = canonicalOf(options.chains, call.args.address);
+  if (!ownerKey.ok) {
+    return ownerKey;
+  }
+  if (!address.ok) {
+    return address;
+  }
+  const { signal } = call;
+  await settleRescueCeilings(options, signal);
+  const facts = await options.install.read({ signal });
+  const atMs = options.clock.now();
+  const next = changeRescue(facts, address.value, atMs);
+  const effectiveAt =
+    next.pendingRescue?.address === address.value ? next.pendingRescue.atMs : atMs;
+  if (isSame(next, rescueAt(facts, atMs))) {
+    return ok({ effectiveAt });
+  }
+  const ceiling = await moveRescueCeilings(options, {
+    facts,
+    next,
+    ownerKey: ownerKey.value,
+    signal,
+  });
+  if (!ceiling.ok) {
+    return ceiling;
+  }
+  const change = {
+    address: address.value,
+    atMs,
+    ...(ceiling.value === undefined ? {} : { ceiling: ceiling.value }),
+  };
+  await record(options, call, await options.install.changeRescue(change, { signal }));
+  return ok({ effectiveAt });
+}
+
+async function cancelChange(
+  options: RescueAddressHandlersOptions,
+  call: EngineCall<"safety/cancelRescueChange">,
+): Promise<void> {
+  const { signal } = call;
+  await settleRescueCeilings(options, signal);
+  const cancel = await options.install.cancelRescueChange(options.clock.now(), { signal });
+  await record(options, call, cancel);
+  const dropped = cancel.before.pendingRescue;
+  if (dropped !== undefined && cancel.after.pendingRescue === undefined) {
+    await sendCancelCeilings(
+      options,
+      {
+        address: dropped.address,
+        ...(cancel.dropped === undefined ? {} : { ceiling: cancel.dropped }),
+      },
+      signal,
+    );
+  }
+}
+
 /**
- * Creates the rescue address handlers (decision 0044). `safety/setRescueAddress` makes a new
- * address wait 24 hours before a rescue pays it, announced on every surface with the time it
- * takes effect, and answers that time; asking for the address in effect drops one that waits and
- * answers now. An address on a chain the registry lacks, or one its family cannot read, is
- * `protocol.bad_args`. `safety/cancelRescueChange` drops the address that waits, and the address
- * in effect stays. Each change is journaled and pushed as `config/changed`. A rescue to the new
- * address also needs it in each wallet's ceiling, which only the owner key changes.
+ * Creates the rescue address handlers (decisions 0044 and 0110). `safety/setRescueAddress` takes
+ * the owner key over IPC only: it saves the new address in every wallet's ceiling at once, beside
+ * the address in effect, and signs ahead the change that leaves the old address out once the new
+ * one takes effect 24 hours later, and the one that leaves the new address out if it is
+ * cancelled. The new address is announced with its time; asking for the address in effect drops
+ * one that waits and answers now. An address on a chain the registry lacks, or one its family
+ * cannot read, is `protocol.bad_args`; a missing or wrong owner key `wallet.bad_owner_key`; a call
+ * over WS `auth.local_only`. `safety/cancelRescueChange` drops the address that waits and sends
+ * the change that leaves it out of the ceilings. Each change is journaled, pushed as
+ * `config/changed` and announced. Both first send a change whose time has come.
  */
 export function createRescueAddressHandlers(
   options: RescueAddressHandlersOptions,
 ): RescueAddressHandlers {
   return {
-    async "safety/setRescueAddress"(call) {
-      const address = canonicalOf(options.chains, call.args.address);
-      if (!address.ok) {
-        return address;
-      }
-      const atMs = options.clock.now();
-      const move = await options.install.changeRescue(
-        { address: address.value, atMs },
-        { signal: call.signal },
-      );
-      await record(options, call, move);
-      const { pendingRescue } = move.after;
-      return ok({
-        effectiveAt: pendingRescue?.address === address.value ? pendingRescue.atMs : atMs,
-      });
-    },
+    "safety/setRescueAddress": async (call) => setRescue(options, call),
     async "safety/cancelRescueChange"(call) {
-      const move = await options.install.cancelRescueChange(options.clock.now(), {
-        signal: call.signal,
-      });
-      await record(options, call, move);
+      await cancelChange(options, call);
       return ok({});
     },
   };
