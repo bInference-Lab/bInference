@@ -190,6 +190,7 @@ layout of Koinly's universal import, which tax tools read.
 | `InstallStore`, `InstallSetup`, `WalletRecord` (subpath)         | The install id, its custody, the rescue address and its wallets |
 | `Executor`                                                       | Takes each confirmed live intent onto its wallet's queue        |
 | `createExecutor`, `ChainSending` (subpath `executor`)            | Runs each live intent to `reconciled`; recovers after a stop    |
+| `journalConfigChange` (subpath `audit`)                          | Journals a setting change, pushes it and announces it           |
 | `ConfigJournal`, `ConfigChange`                                  | Every config change, who made it and where                      |
 | `EngineStores`                                                   | Every store port, as the composition root hands them out        |
 | `TransactionStore`                                               | Each wallet's transactions, their nonces, sends and blocks      |

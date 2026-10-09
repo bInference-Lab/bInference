@@ -60,7 +60,8 @@ export interface ComposeEngineOptions {
   readonly paperBalances: readonly Amount[];
   /** The engine's release, for `ready`. */
   readonly version: string;
-  readonly owner: OwnerInfo;
+  /** The owner's language and time zone now, read at each new connection. */
+  readonly owner: () => OwnerInfo;
   /** The HTTP listener; without it the server serves IPC connections only. */
   readonly http?: HttpListenOptions;
   /** Whether the engine serves calls yet; `ready` when left out. */
@@ -108,7 +109,7 @@ function joinTelegram(
         stores: parts.stores,
         answer: engine.answer,
         chains,
-        owner,
+        owner: owner(),
         clock,
         logger: logger.child("telegram"),
       });
@@ -186,7 +187,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     engine: {
       version: options.version,
       state: options.state ?? (() => "ready"),
-      owner: () => options.owner,
+      owner: options.owner,
     },
     clock,
     random,

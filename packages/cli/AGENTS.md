@@ -44,6 +44,10 @@ Rules for this package:
   `Prompter` of `src/term/`: the terminal's over `@clack/prompts`, a scripted one in tests, and
   one that only prints when nobody answers, so every answer then comes from a flag. Secrets come
   from flags only as secret sources, never as values.
+- A part that follows a reload of `config.json5` reads its key from `Opened.settings`, the config
+  cell, on each use, and its path joins `keysReadOnEachUse` in `src/config/config-changes.ts`;
+  a part that copies a key at start reads `Opened.config`, and the reload says that key waits
+  for a restart (decision 0118).
 - The config has one strict schema in `src/config/schema/`. Every key has a `.describe()` text,
   a default through `.prefault()` or none, and a type declared before its schema. Secrets are
   `secretSourceSchema` or `commandSourceSchema`, never text.

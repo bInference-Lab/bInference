@@ -58,10 +58,15 @@
       "@binference/source": "./src/sends.ts",
       "types": "./dist/sends.d.mts",
       "default": "./dist/sends.mjs"
+    },
+    "./audit": {
+      "@binference/source": "./src/audit.ts",
+      "types": "./dist/audit.d.mts",
+      "default": "./dist/audit.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

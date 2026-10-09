@@ -3,11 +3,13 @@ import { BinferenceError, createDeadline } from "@binference/core";
 import { acquireFileLock, ensurePrivateFolder } from "@binference/platform";
 import { loadConfig } from "../config/load-config.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
+import type { ConfigOutcome } from "../config/validate-config.js";
 import type { CliHost } from "../program/cli-host.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
+import { createConfigCell } from "./config-cell.js";
 import { platformOf } from "./engine-locations.js";
 import {
   type Opened,
@@ -32,17 +34,21 @@ const startBudgetMs = 60_000;
 
 async function openAndServe(opening: Opening, sets: readonly string[]): Promise<StartOutcome> {
   const { host, platform, signal } = opening;
-  const loaded = await loadConfig({
-    file: platform.stateFolder.configFile,
-    env: host.env,
-    sets,
-    system: systemDefaults(host.env, platform),
-    signal,
-  });
+  // A reload reads the same layers again: the file, the variables and this run's flags.
+  const readConfig = async (reading: AbortSignal): Promise<ConfigOutcome> =>
+    loadConfig({
+      file: platform.stateFolder.configFile,
+      env: host.env,
+      sets,
+      system: systemDefaults(host.env, platform),
+      signal: reading,
+    });
+  const loaded = await readConfig(signal);
   if (!loaded.ok) {
     return { ok: false, refusal: "config_invalid", issues: loaded.issues };
   }
-  const log = await openEngineLog(opening, loaded.config);
+  const settings = createConfigCell(loaded.config);
+  const log = await openEngineLog(opening, settings);
   try {
     const secrets = createSecretReader({
       env: host.env,
@@ -63,7 +69,8 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
       http: host.http,
       clock: host.clock,
     });
-    return await openStoresAndServe(opening, { config, log, tracers, chains, venues });
+    const opened = { config, settings, readConfig, log, tracers, chains, venues };
+    return await openStoresAndServe(opening, opened);
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";

@@ -17,7 +17,11 @@ endpoint and on `127.0.0.1:<engine.port>` (`serveEngine`). From there every call
 Privy app secret open through the unlock mode, Privy checks the app with one read, and the signer
 starts as a child process under Node's permission model with the agent key and must answer its
 public half; custody then signs through the `privy-owner` adapter. A failure in that step leaves
-the engine locked with its reason, and `binference unlock` runs it again (decision 0117). After a
+the engine locked with its reason, and `binference unlock` runs it again (decision 0117). While
+it serves, a watch on `config.json5` reloads the settings 500 ms after the file last changed
+(`startConfigReload`, decision 0118): a file with problems keeps the running config and says why;
+otherwise each changed key is journaled, and the parts that read the config cell
+(`createConfigCell`) apply it at once. After a
 start that found Privy out of reach, the engine retries the step by itself for five minutes
 (decision 0119). The
 executor recovers every unfinished live intent by hash and nonce, and once unlocked takes the

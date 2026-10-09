@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
+import type { ProtocolClient } from "@binference/client";
 import { createManualClock } from "@binference/core/testing";
 import { type NodeProgram, startNodeProgram } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
@@ -144,4 +145,84 @@ describe("binference start as a process of its own", () => {
     await startEngine(machine);
     await stopOverIpc(machine);
   });
+});
+
+// Resolves with the first push on the topic whose data holds `text`, once the subscription has
+// loaded; rejects after 15 seconds.
+async function pushWith(
+  client: ProtocolClient,
+  topic: "config" | "notice",
+  text: string,
+): Promise<{ readonly heard: Promise<string> }> {
+  const loaded = { done: (): void => undefined };
+  const isLoaded = new Promise<void>((resolve) => {
+    loaded.done = resolve;
+  });
+  const heard = new Promise<string>((resolve, reject) => {
+    AbortSignal.timeout(15_000).addEventListener("abort", () => reject(new Error(`No ${text}.`)));
+    client.subscribe(topic, {
+      onPush: (push) => {
+        const data = JSON.stringify(push.data);
+        if (data.includes(text)) {
+          resolve(data);
+        }
+      },
+      refetch: async () => {
+        loaded.done();
+        return Promise.resolve();
+      },
+    });
+  });
+  await isLoaded;
+  return { heard };
+}
+
+describe("the settings of a running engine", () => {
+  it("reload when the config file changes, journaled and announced", slow, async () => {
+    const machine = await newMachine();
+    await startEngine(machine);
+    const client = await connectClient(machine);
+    try {
+      const changed = await pushWith(client, "config", "logging.level");
+      const told = await pushWith(client, "notice", "notice.configChanged");
+      await writeTestConfig(machine.folder, '  logging: { level: "debug" },\n');
+      await expect(changed.heard).resolves.toContain('"by":"engine","surface":"config.json5"');
+      await expect(told.heard).resolves.toContain('"afterRestart":"none"');
+      const history = await client.call(
+        "config/history",
+        {},
+        { signal: AbortSignal.timeout(10_000) },
+      );
+      expect(history.items.map((item) => [item.path, item.before, item.after])).toStrictEqual([
+        ["logging.level", "info", "debug"],
+      ]);
+    } finally {
+      client.close();
+    }
+    await stopOverIpc(machine);
+  });
+
+  it(
+    "keep running on the old settings when the file has a problem, and say which",
+    slow,
+    async () => {
+      const machine = await newMachine();
+      await startEngine(machine);
+      const client = await connectClient(machine);
+      try {
+        const told = await pushWith(client, "notice", "notice.configInvalid");
+        await writeTestConfig(machine.folder, '  logging: { level: "loud" },\n');
+        await expect(told.heard).resolves.toContain('"problem":"bad_value","key":"logging.level"');
+        const history = await client.call(
+          "config/history",
+          {},
+          { signal: AbortSignal.timeout(10_000) },
+        );
+        expect(history.items).toStrictEqual([]);
+      } finally {
+        client.close();
+      }
+      await stopOverIpc(machine);
+    },
+  );
 });

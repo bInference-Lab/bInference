@@ -17,10 +17,12 @@ import {
   openDatabase,
 } from "@binference/store";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
+import type { ConfigOutcome } from "../config/validate-config.js";
 import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { Closers } from "./closers.js";
 import type { SetUpInstall } from "./compose-lock.js";
+import type { ConfigCell } from "./config-cell.js";
 import { engineEndpoint, engineLogFile } from "./engine-locations.js";
 
 /** One start while its parts open: each part adds what closes it. */
@@ -34,7 +36,12 @@ export interface Opening {
 
 /** What the engine is built from once the config, the log and the store are open. */
 export interface Opened {
+  /** The config the engine started with: what a part that copies a key at start reads. */
   readonly config: BinferenceConfig;
+  /** The config as reloaded, for the parts that read a key on each use (decision 0118). */
+  readonly settings: ConfigCell;
+  /** Reads the config again in the same layers, as a reload does. */
+  readonly readConfig: (signal: AbortSignal) => Promise<ConfigOutcome>;
   readonly log: OpenedLog;
   readonly stores: OpenedStores;
   /** The install, or `undefined` before `binference init` set it up. */
@@ -64,11 +71,12 @@ export interface Listening {
 const mebibyte = 1024 * 1024;
 const dayMs = 86_400_000;
 
-/** Opens `logs/engine.log` with the config's size and age limits, and the logger on it. */
-export async function openEngineLog(
-  opening: Opening,
-  config: BinferenceConfig,
-): Promise<OpenedLog> {
+/**
+ * Opens `logs/engine.log` with the config's size and age limits, and the logger on it, writing
+ * from the level the config cell holds at each record.
+ */
+export async function openEngineLog(opening: Opening, settings: ConfigCell): Promise<OpenedLog> {
+  const config = settings.current();
   const { platform, host } = opening;
   await ensurePrivateFolder(platform.stateFolder.logs, {
     permissions: platform.permissions,
@@ -87,7 +95,7 @@ export async function openEngineLog(
   });
   const logger = createFileLogger({
     file: logFile,
-    level: config.logging.level,
+    level: () => settings.current().logging.level,
     clock: host.clock,
     subsystem: "engine",
   });

@@ -18,8 +18,8 @@ export interface EngineLogger extends Logger {
 /** Where the engine's logger writes, from which level, and by which clock. */
 export interface FileLoggerOptions {
   readonly file: Pick<LogFile, "append" | "close">;
-  /** The lowest level written, from config `logging.level`. */
-  readonly level: LogLevel;
+  /** The lowest level written, from config `logging.level`, read at each record. */
+  readonly level: () => LogLevel;
   readonly clock: Clock;
   /** The root subsystem, such as `engine`. */
   readonly subsystem: string;
@@ -72,26 +72,29 @@ function lineOf(record: Entry & ILogObjMeta): string {
   return redactSecrets(JSON.stringify(line));
 }
 
-function wrap(tslog: Tslog): Logger {
+// Each record is checked against the level now, so a reload of `logging.level` applies at once.
+function wrap(tslog: Tslog, level: () => LogLevel): Logger {
+  const isOn = (asked: LogLevel): boolean => levelIds[asked] >= levelIds[level()];
   return {
-    debug: (event, fields) => tslog.debug(event, fields ?? {}),
-    info: (event, fields) => tslog.info(event, fields ?? {}),
-    warn: (event, fields) => tslog.warn(event, fields ?? {}),
-    error: (event, fields) => tslog.error(event, fields ?? {}),
-    child: (part) => wrap(tslog.getSubLogger({ name: part })),
+    debug: (event, fields) => void (isOn("debug") && tslog.debug(event, fields ?? {})),
+    info: (event, fields) => void (isOn("info") && tslog.info(event, fields ?? {})),
+    warn: (event, fields) => void (isOn("warn") && tslog.warn(event, fields ?? {})),
+    error: (event, fields) => void (isOn("error") && tslog.error(event, fields ?? {})),
+    child: (part) => wrap(tslog.getSubLogger({ name: part }), level),
   };
 }
 
 /**
  * Creates the engine's logger: the `Logger` port on tslog, writing one JSON line per record to the
- * log file. Records below `level` are dropped. Lines carry ids only, and every line is redacted,
+ * log file. Records below `level` as it is now are dropped. Lines carry ids only, and every line is
+ * redacted,
  * so a key, a recovery phrase or a token never reaches the file.
  */
 export function createFileLogger(options: FileLoggerOptions): EngineLogger {
   const tslog: Tslog = new TslogLogger<Entry>({
     type: "hidden",
     name: options.subsystem,
-    minLevel: levelIds[options.level],
+    minLevel: levelIds.debug,
     clock: () => new Date(options.clock.now()),
     stack: { capture: "off" },
   });
@@ -101,7 +104,7 @@ export function createFileLogger(options: FileLoggerOptions): EngineLogger {
     write: (_record, line) => options.file.append(line),
   });
   return {
-    ...wrap(tslog),
+    ...wrap(tslog, options.level),
     async close() {
       await tslog.flush();
       await options.file.close();

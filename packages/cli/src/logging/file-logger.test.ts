@@ -25,7 +25,7 @@ function loggerOn(level: LogLevel = "debug") {
   const file = memoryFile();
   const logger = createFileLogger({
     file,
-    level,
+    level: () => level,
     clock: createManualClock(nowMs),
     subsystem: "engine",
   });
@@ -51,7 +51,7 @@ describe("the file logger", () => {
         const file = memoryFile();
         const logger = createFileLogger({
           file,
-          level: "debug",
+          level: () => "debug",
           clock: createManualClock(nowMs),
           subsystem,
         });
@@ -90,6 +90,26 @@ describe("the file logger", () => {
     logger.warn("relay.slow");
     logger.error("rpc.down");
     expect(recordsOf(file.lines).map((record) => record.level)).toStrictEqual(["warn", "error"]);
+  });
+
+  it("follows the level as the config changes it, child loggers too", () => {
+    const file = memoryFile();
+    const config = { level: "warn" as LogLevel };
+    const logger = createFileLogger({
+      file,
+      level: () => config.level,
+      clock: createManualClock(nowMs),
+      subsystem: "engine",
+    });
+    const child = logger.child("server");
+    child.info("server.listening");
+    config.level = "debug";
+    child.info("server.listening");
+    logger.debug("queue.idle");
+    expect(recordsOf(file.lines).map((record) => record.event)).toStrictEqual([
+      "server.listening",
+      "queue.idle",
+    ]);
   });
 
   it("closes the log file once its lines are handed over", async () => {

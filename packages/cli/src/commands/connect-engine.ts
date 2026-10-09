@@ -68,7 +68,7 @@ export async function connectEngine(host: CliHost, signal: AbortSignal): Promise
     random: host.random,
     logger: createFileLogger({
       file: { append: () => undefined, close: async () => Promise.resolve() },
-      level: "error",
+      level: () => "error",
       clock: host.clock,
       subsystem: "cli",
     }),

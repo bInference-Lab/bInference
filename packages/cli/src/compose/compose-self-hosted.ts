@@ -18,6 +18,8 @@ import { selfHostedRiskSources } from "./risk-sources.js";
 /** The self-hosted engine, built and not yet listening. */
 export interface ComposedSelfHosted {
   readonly server: ProtocolServer;
+  /** Where the engine's pushes go: the server, and the owner's bot when there is one. */
+  readonly publish: (push: EnginePush) => void;
   readonly executor: RunningExecutor;
   /** The work that waits for its time, such as a rescue address's ceiling change. */
   readonly settle: Engine["settle"];
@@ -189,7 +191,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       },
       wallets: parts.wallets,
       version: host.version,
-      owner: config.owner,
+      owner: () => opened.settings.current().owner,
       http: { host: loopback, port: config.engine.port, extraOrigins: config.engine.extraOrigins },
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
@@ -236,5 +238,5 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     publish(signerStoppedNotice());
   };
   const { executor } = sending;
-  return { server, executor, settle: engine.settle, resume, stopper, state, locked };
+  return { server, publish, executor, settle: engine.settle, resume, stopper, state, locked };
 }

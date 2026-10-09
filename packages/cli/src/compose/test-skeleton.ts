@@ -219,7 +219,7 @@ export async function composeSkeleton(
     positions,
     paperBalances: [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
-    owner: { locale: "en", timezone: "UTC" },
+    owner: () => ({ locale: "en", timezone: "UTC" }),
     handlers: createEngineOperations({
       agents: parts.stores.agents,
       version: "2026.10.0",

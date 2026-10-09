@@ -1,7 +1,7 @@
 # Spec 2: the config file
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
-[0102](../DECISIONS.md#d0102) and [0108](../DECISIONS.md#d0108).
+[0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108) and [0118](../DECISIONS.md#d0118).
 
 <a id="section-1"></a>
 
@@ -31,6 +31,13 @@ Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended
 - `binference init` writes it with comments for every key it sets.
 - The engine reads it at startup and on `config/change`; it never rewrites keys the owner did not
   change, and it keeps comments.
+- The engine also reloads it 500 ms after the file last changed, through a watch on its folder
+  ([decision 0118](../DECISIONS.md#d0118)). A file with problems keeps the running config, and
+  `notice.configInvalid` names the first problem by its line or its key. Otherwise each changed key
+  is journaled by `engine` on the surface `config.json5`, and `notice.configChanged` lists the
+  changes and those that apply only after a restart. A key applies at once when the part that uses
+  it reads it on each use: today `owner.locale`, `owner.timezone` and `logging.level`; every other
+  key, those marked live below included, applies after a restart until its part does.
 
 <a id="section-3"></a>
 

@@ -96,7 +96,8 @@ Rules for this package:
   address book, the rescue address) goes through `journalConfigChange` (`src/audit/`): it
   journals who made it and where, pushes `config/changed`, then publishes the notices that
   announce it. A new setting's writer calls it too, never the `ConfigJournal` by hand.
-  `config/history` reads the journal back, a page at a time, in the order it was recorded.
+  `config/history` reads the journal back, a page at a time, in the order it was recorded. The
+  `audit` subpath exports it with the config reload's notices, for the composition root.
 - The approval mode (`src/approval/`, exported as `@binference/engine/approval`) is switched only by
   `approval/set`: `auto` needs the `loosen` scope, `manual` needs `confirm`, and every switch raises
   the mode's version, is journaled, pushed as `config/changed` and announced as the
