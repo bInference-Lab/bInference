@@ -58,6 +58,10 @@ export interface Fork {
 
 const http = createLoopbackHttp();
 const accountsSchema = z.tuple([addressSchema], addressSchema);
+// The block anvil forked at, as it reports it: each test file's setup pins the fork again.
+const nodeInfoSchema = z.looseObject({
+  forkConfig: z.looseObject({ forkBlockNumber: z.number().int().nonnegative() }),
+});
 const receiptTimeoutMs = 30_000;
 // anvil's own estimate runs at the fork block's second, but it mines the next block at the wall
 // clock. A PancakeSwap v2 pair updates its price accumulators only when the second changes, so an
@@ -106,10 +110,11 @@ export async function openFork(context: ForkContext, signal: AbortSignal): Promi
     rpc: failoverTo("logs-node", context.logsRpcUrl),
     signal,
   });
-  const block = BigInt(context.block);
   const call = async (method: string, params: readonly JsonValue[]): Promise<JsonValue> =>
     callLoopback({ rpcUrl: context.rpcUrl, method, params }, signal);
   const [account] = accountsSchema.parse(await call("eth_accounts", []));
+  const info = nodeInfoSchema.parse(await call("anvil_nodeInfo", []));
+  const block = BigInt(info.forkConfig.forkBlockNumber);
   return {
     chain,
     block,

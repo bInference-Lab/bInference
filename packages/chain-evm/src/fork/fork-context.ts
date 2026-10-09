@@ -6,8 +6,8 @@
 export interface ForkContext {
   /** anvil's JSON-RPC endpoint. */
   readonly rpcUrl: string;
-  /** The block the fork was taken at, in decimal: the same block for every test of a run. */
-  readonly block: string;
+  /** The public node anvil forks from; each test file's setup pins the fork there again. */
+  readonly upstream: string;
   /** A JSON-RPC endpoint that reads `eth_getLogs` from a public node, for blocks up to `block`. */
   readonly logsRpcUrl: string;
 }
