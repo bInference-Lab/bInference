@@ -113,7 +113,7 @@ async function loadedConfig(machine: InitMachine): Promise<BinferenceConfig> {
 function expectedCeiling(http: Http): Ceiling {
   const chain = registryCeilingChain({
     definition: bsc,
-    venues: coreVenues(http, "binference"),
+    venues: coreVenues(http, { keys: {}, kyberClientId: "binference" }),
     perTxNativeCapBase: 10n ** 18n,
   });
   const ceiling = chain.ok

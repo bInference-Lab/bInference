@@ -398,18 +398,19 @@ hash and nonce and never signed again, and the intent goes on to `executing` or 
 
 **Routing.** By default ([rule 16](#rule-16)):
 
-- KyberSwap is the primary route and PancakeSwap's Smart Router (v2, v3 and Infinity) the second
-  quote and the fallback, both keyless. Measured on 184 real trades, KyberSwap was within 1 bp of
-  the better quote on 95% of them, PancakeSwap's SDK on 68%; KyberSwap answers in about 0.4 s, the
-  SDK in about 4 s and some 450 RPC calls.
-- Quotes are compared net of transfer tax and gas, and the simulation step decides: KyberSwap's
-  quotes are already net of tax, the SDK's are not, and the tax sources disagreed on 4 of 10 taxed
-  tokens, so tax is what our own simulation measures.
+- KyberSwap is the primary route, keyless. Measured on 184 real trades, KyberSwap was within 1 bp
+  of the better quote on 95% of them, PancakeSwap's SDK on 68%; KyberSwap answers in about 0.4 s,
+  the SDK in about 4 s and some 450 RPC calls.
+- OKX's DEX aggregator is the second quote and the fallback once the owner adds an OKX key
+  ([decision 0105](DECISIONS.md#d0105)). PancakeSwap's pools are reached through the aggregators,
+  never through PancakeSwap's SDK.
+- Quotes are compared net of transfer tax and gas, and the simulation step decides: aggregators
+  differ in whether a quote is net of tax, and the tax sources disagreed on 4 of 10 taxed tokens,
+  so tax is what our own simulation measures.
 - One Infinity hook allowlist covers every route, aggregators included: a route through a pool whose
-  hook is not on the list is dropped and the next quote is used.
-- A "no pools" answer from the SDK is retried once before it counts as no route; the public node
-  throttles its bursts.
-- OKX, 1inch and 0x join when the owner adds their keys.
+  hook is not on the list is dropped and the next quote is used. An aggregator whose answer names no
+  hooks, such as OKX, routes through no hooked pool at all.
+- 1inch and 0x join when the owner adds their keys.
 - Launchpad tokens still on their curve trade directly on Flap's Portal or four.meme's TokenManager.
 
 **Risk tiers:**

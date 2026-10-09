@@ -101,7 +101,7 @@ async function prepare(context: InitContext): Promise<InitStep<Prepared>> {
   }
   const { config } = built.value;
   const registry = selfHostedChains();
-  const venues = enabledVenues(config, coreVenues(context.host.http, config.venues.kyberClientId));
+  const venues = enabledVenues(config, coreVenues(context.host.http, config.venues));
   if (!venues.ok) {
     return venues;
   }

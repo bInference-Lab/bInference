@@ -419,6 +419,9 @@ importers:
       '@binference/kyberswap':
         specifier: workspace:*
         version: link:../../plugins/kyberswap
+      '@binference/okx':
+        specifier: workspace:*
+        version: link:../../plugins/okx
       '@binference/platform':
         specifier: workspace:*
         version: link:../platform
@@ -686,6 +689,22 @@ importers:
         version: 4.6.5
 
   plugins/kyberswap:
+    dependencies:
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      viem:
+        specifier: 'catalog:'
+        version: 2.57.1(typescript@7.0.2)(zod@4.6.5)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@binference/chain-evm':
+        specifier: workspace:*
+        version: link:../../packages/chain-evm
+
+  plugins/okx:
     dependencies:
       '@binference/plugin-sdk':
         specifier: workspace:*

@@ -2,7 +2,8 @@ import type { ChainDefinition, ContractDefinition, TokenDefinition } from "@binf
 import type { PriceFeedDefinition } from "./feeds/price-feed-definition.js";
 
 // Every address here was read on chain on this day: its code, proxy slots and owner, and a call
-// that ties it to its siblings. KyberSwap's contracts were read a day later and say so.
+// that ties it to its siblings. KyberSwap's contracts were read a day later and OKX's three days
+// later; each says so.
 const checkedOn = "2026-10-06";
 
 type TokenRow = readonly [symbol: string, name: string, decimals: number, address: string];
@@ -98,6 +99,19 @@ const kyberswap = createContracts(
     },
   },
   "2026-10-07",
+);
+
+// OKX's DEX router and its TokenApprove share an owner key; neither is a proxy. TokenApprove
+// obeys only OKX's TokenApproveProxy, which lists this router among the callers it serves.
+const okx = createContracts(
+  "okx",
+  {
+    "https://web3.okx.com/onchainos/dev-docs/trade/dex-smart-contract": {
+      "dex-router": "0x5994814f2C4040b863A0125A45DE152a8c2A4DEc",
+      "token-approve": "0x2c34A2Fb1d0b4f55de51E1d0bDEfaDDce6b7cDD6",
+    },
+  },
+  "2026-10-09",
 );
 
 const fourmeme = createContracts("fourmeme", {
@@ -257,6 +271,7 @@ export const bsc: ChainDefinition = {
   contracts: [
     ...pancakeswap,
     ...kyberswap,
+    ...okx,
     ...fourmeme,
     ...flap,
     ...venus,

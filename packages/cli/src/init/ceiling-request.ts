@@ -8,22 +8,29 @@ import {
   registryCeilingChain,
 } from "@binference/custody-privy";
 import { createKyberswapVenue } from "@binference/kyberswap";
+import { okxDeclaration } from "@binference/okx";
+import type { VenuesConfig } from "../config/schema/chains-venues.schema.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { baseUnitsOf } from "./base-units.js";
 import { type InitStep, refused } from "./init-context.js";
 
 /**
  * The core venues this binference installs, by what each declares: its id and its registry
- * contracts per chain. Each venue is made only to read its declaration; nothing is called.
+ * contracts per chain. KyberSwap needs no key; OKX is installed only when `venues.keys.okx` names
+ * the owner's key. Each venue is made only to read its declaration; nothing is called and no key
+ * is read.
  */
-export function coreVenues(http: Http, kyberClientId: string): readonly VenueDeclaration[] {
+export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDeclaration[] {
   const chain = evmChainOf(bsc);
   const kyberswap = createKyberswapVenue({
     http,
-    clientId: kyberClientId,
+    clientId: venues.kyberClientId,
     chains: [{ chain: chain.ref, nativeAsset: chain.nativeAsset, allowedHooks: [] }],
   });
-  return [{ id: kyberswap.id, contracts: kyberswap.contracts }];
+  const keyless = [{ id: kyberswap.id, contracts: kyberswap.contracts }];
+  return venues.keys.okx === undefined
+    ? keyless
+    : [...keyless, okxDeclaration([{ chain: chain.ref, nativeAsset: chain.nativeAsset }])];
 }
 
 /**

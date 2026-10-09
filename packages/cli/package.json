@@ -31,6 +31,7 @@
     "@binference/engine": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/kyberswap": "workspace:*",
+    "@binference/okx": "workspace:*",
     "@binference/platform": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/server": "workspace:*",
