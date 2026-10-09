@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { intentDraft, intentMove, type IntentStoreSubject } from "../contracts/intent-fixtures.js";
 import { fixtureId, inOrder, live } from "../contracts/store-fixtures.js";
+import { createMemoryAgentStore } from "../fakes/memory-agent-store.js";
 import { createMemoryIntentStore } from "../fakes/memory-intent-store.js";
 import { createMemoryLedgerStore } from "../fakes/memory-ledger-store.js";
 import type { IntentDraft } from "../intents/intent-record.js";
@@ -19,9 +20,11 @@ interface Numbered extends Stored {
 // The agent's intents, numbered from 1 in order, each moved to its state when it has one.
 async function storing(intents: readonly Stored[]): Promise<IntentStoreSubject> {
   const ledger = createMemoryLedgerStore();
+  const agents = createMemoryAgentStore();
   const subject: IntentStoreSubject = {
-    store: createMemoryIntentStore({ ledger }),
+    store: createMemoryIntentStore({ ledger, agents }),
     ledger,
+    agents,
     agentId: fixtureId("agt", 1),
     walletId: fixtureId("wal", 1),
   };

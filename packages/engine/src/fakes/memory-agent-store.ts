@@ -9,6 +9,7 @@ import {
 import type { ApprovalModeChange, ApprovalModeRecord } from "../agents/approval-mode-record.js";
 import type { LimitsChange, LimitsRecord } from "../agents/limits-record.js";
 import type { SendLevelChange, SendLevelRecord } from "../agents/send-level-record.js";
+import type { AgentFreeze } from "../intents/freeze-write.js";
 import type { AgentStore } from "../ports.js";
 import { createMemoryAddressBook } from "./memory-address-book.js";
 import { byCreation, memoryCall } from "./memory-call.js";
@@ -117,11 +118,56 @@ function setLimits(
   return ok(structuredClone(limits));
 }
 
-/** Creates an empty in-memory {@link AgentStore} for tests. */
-export function createMemoryAgentStore(): AgentStore {
+/** An agent store in memory, which the in-memory intent store marks agents frozen through. */
+export interface MemoryAgentStore extends AgentStore {
+  /**
+   * Marks agents frozen at `atMs` at once, inside another in-memory store's write. Every agent is
+   * checked first: an unknown one is `not_found`, one at another row version `stale`, and then
+   * nothing changes. An agent frozen before keeps its first time; each row's version rises by one.
+   */
+  freezeNow(
+    freezes: readonly AgentFreeze[],
+    atMs: number,
+  ): Result<readonly AgentRecord[], "not_found" | "stale">;
+}
+
+function freezeNow(
+  agents: Agents,
+  freezes: readonly AgentFreeze[],
+  atMs: number,
+): Result<readonly AgentRecord[], "not_found" | "stale"> {
+  const found: AgentSettings[] = [];
+  for (const freeze of freezes) {
+    const checked = current(
+      agents,
+      { agentId: freeze.agentId, expectedVersion: freeze.expectedVersion },
+      (settings) => settings.agent.version,
+    );
+    if (!checked.ok) {
+      return checked;
+    }
+    found.push(checked.value);
+  }
+  const frozen: AgentRecord[] = [];
+  for (const settings of found) {
+    const agent = {
+      ...settings.agent,
+      frozenAtMs: settings.agent.frozenAtMs ?? atMs,
+      changedAtMs: atMs,
+      version: settings.agent.version + 1,
+    };
+    agents.set(agent.id, { ...settings, agent });
+    frozen.push(agent);
+  }
+  return ok(structuredClone(frozen));
+}
+
+/** Creates an empty in-memory {@link MemoryAgentStore} for tests. */
+export function createMemoryAgentStore(): MemoryAgentStore {
   const agents: Agents = new Map();
   const book = createMemoryAddressBook();
   return {
+    freezeNow: (freezes, atMs) => freezeNow(agents, structuredClone(freezes), atMs),
     create: async (draft, call) => memoryCall(call, () => create(agents, draft)),
     get: async (id, call) =>
       memoryCall(call, () => {

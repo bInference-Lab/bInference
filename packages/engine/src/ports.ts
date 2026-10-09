@@ -34,6 +34,7 @@ import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/in
 import type { RescueAddressChange, RescueCancel, RescueMove } from "./install/rescue-record.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
+import type { FreezeOutcome, FreezeWrite } from "./intents/freeze-write.js";
 import type {
   IntentChange,
   IntentCommit,
@@ -189,6 +190,14 @@ export interface IntentStore {
     change: IntentChange,
     options: StoreCall,
   ): Promise<Result<IntentCommit, "not_found" | "stale">>;
+  /**
+   * Writes a freeze all or nothing: each agent marked frozen at the write's time under the agent
+   * row's version it names, which then rises by one, each intent's move under its own version, and
+   * the freeze's ledger entries. An agent frozen before keeps its first time. An unknown agent or
+   * intent is `not_found`, and a row at another version `stale`; either writes nothing. A move's
+   * card write that would fail throws and writes nothing.
+   */
+  freeze(freeze: FreezeWrite, options: StoreCall): Promise<FreezeOutcome>;
   /** Intents in the query's states, the least recently changed first. */
   list(query: IntentQuery, options: StoreCall): Promise<readonly IntentRecord[]>;
   /** An intent's events, oldest first. */

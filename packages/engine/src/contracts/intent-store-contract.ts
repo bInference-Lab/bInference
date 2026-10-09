@@ -15,6 +15,12 @@ import {
   intentMove,
   type IntentStoreSubject,
 } from "./intent-fixtures.js";
+import {
+  agentOf,
+  freezesInOneWrite,
+  keepsFirstFreeze,
+  refusesStaleFreeze,
+} from "./intent-freeze-checks.js";
 import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 
 /** Makes a fresh, empty intent store for each check. */
@@ -169,6 +175,11 @@ async function refusesAborted(subject: IntentStoreSubject): Promise<void> {
   await assertRefusesAborted(async (options) => store.cards(id, options));
   await assertRefusesAborted(async (options) => store.confirmation(id, options));
   await assertRefusesAborted(async (options) => store.cardByRef("ZZZZZZZZZZZZZZZZ", options));
+  const freeze = { atMs: 1, agents: [{ agentId: subject.agentId, expectedVersion: 0 }] };
+  await assertRefusesAborted(async (options) =>
+    store.freeze({ ...freeze, moves: [], ledger: [] }, options),
+  );
+  assert.equal((await agentOf(subject))?.frozenAtMs, undefined);
   assert.equal(await store.get(id, live()), undefined);
   assert.equal(await ledger.last(live()), undefined);
 }
@@ -199,6 +210,17 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     checkOn("records one confirmation with the move to confirmed", create, confirmsOnce),
     checkOn("refuses to close a card version that is not open", create, refusesClosedCard),
     checkOn("refuses a card version the intent already has", create, refusesTakenVersion),
+    checkOn(
+      "freezes agents and cancels their intents in one write, its own entries last",
+      create,
+      freezesInOneWrite,
+    ),
+    checkOn(
+      "refuses a freeze that read a row at another version or names an unknown one",
+      create,
+      refusesStaleFreeze,
+    ),
+    checkOn("keeps the time an agent was first frozen", create, keepsFirstFreeze),
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
   ];
 }

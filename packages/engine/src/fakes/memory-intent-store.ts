@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "@binference/core";
+import type { FreezeCommit, FreezeWrite } from "../intents/freeze-write.js";
 import type {
   IntentChange,
   IntentCommit,
@@ -8,13 +9,15 @@ import type {
 import type { IntentDraft, IntentRecord } from "../intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "../ledger/ledger-entry.js";
 import type { IntentStore } from "../ports.js";
+import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { memoryCall } from "./memory-call.js";
 import { createMemoryIntentTables, type MemoryIntentTables } from "./memory-intent-tables.js";
 import type { MemoryLedgerStore } from "./memory-ledger-store.js";
 
-/** What an in-memory intent store writes its ledger entries to. */
+/** What an in-memory intent store writes its ledger entries to, and the agents a freeze marks. */
 export interface MemoryIntentStoreOptions {
   readonly ledger: MemoryLedgerStore;
+  readonly agents: MemoryAgentStore;
 }
 
 function appendTo(
@@ -48,11 +51,11 @@ function create(
   return ok(commitOf(intent, event, ledgerEntry));
 }
 
-function transition(
+// A move whose intent is unknown or at another version; its card writes throw when they would fail.
+function checkMove(
   tables: MemoryIntentTables,
-  ledger: MemoryLedgerStore,
   change: IntentChange,
-): Result<IntentCommit, "not_found" | "stale"> {
+): Result<IntentRecord, "not_found" | "stale"> {
   const current = tables.intent(change.id);
   if (current === undefined) {
     return err("not_found");
@@ -61,6 +64,20 @@ function transition(
     return err("stale");
   }
   tables.checkCardWrites(change);
+  return ok(current);
+}
+
+/** A move checked against the intent as it stands. */
+interface CheckedMove {
+  readonly change: IntentChange;
+  readonly current: IntentRecord;
+}
+
+function writeMove(
+  tables: MemoryIntentTables,
+  ledger: MemoryLedgerStore,
+  { change, current }: CheckedMove,
+): IntentCommit {
   const ledgerEntry = appendTo(ledger, change.ledger);
   const intent: IntentRecord = {
     ...current,
@@ -78,7 +95,39 @@ function transition(
     cause: change.cause,
     atMs: change.atMs,
   });
-  return ok(commitOf(intent, event, ledgerEntry));
+  return commitOf(intent, event, ledgerEntry);
+}
+
+function transition(
+  tables: MemoryIntentTables,
+  ledger: MemoryLedgerStore,
+  change: IntentChange,
+): Result<IntentCommit, "not_found" | "stale"> {
+  const checked = checkMove(tables, change);
+  return checked.ok ? ok(writeMove(tables, ledger, { change, current: checked.value })) : checked;
+}
+
+// Every move is checked before the agents are marked, and nothing is written before both pass.
+function freeze(
+  tables: MemoryIntentTables,
+  options: MemoryIntentStoreOptions,
+  write: FreezeWrite,
+): Result<FreezeCommit, "not_found" | "stale"> {
+  const checked: CheckedMove[] = [];
+  for (const change of write.moves) {
+    const current = checkMove(tables, change);
+    if (!current.ok) {
+      return current;
+    }
+    checked.push({ change, current: current.value });
+  }
+  const agents = options.agents.freezeNow(write.agents, write.atMs);
+  if (!agents.ok) {
+    return agents;
+  }
+  const moves = checked.map((move) => writeMove(tables, options.ledger, move));
+  const ledgerEntries = write.ledger.map((draft) => options.ledger.appendNow(draft));
+  return ok(structuredClone({ agents: agents.value, moves, ledgerEntries }));
 }
 
 // Orders as the SQLite store does: by change time, then by id in code-unit order, never by locale.
@@ -114,6 +163,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Inte
     get: async (id, call) => memoryCall(call, () => tables.intent(id)),
     transition: async (change, call) =>
       memoryCall(call, () => transition(tables, options.ledger, change)),
+    freeze: async (write, call) => memoryCall(call, () => freeze(tables, options, write)),
     list: async (query, call) =>
       memoryCall(call, () =>
         tables

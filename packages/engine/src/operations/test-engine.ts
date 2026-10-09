@@ -49,6 +49,7 @@ import type {
   Simulator,
 } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
+import type { EngineStores } from "../records/engine-stores.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
@@ -151,7 +152,7 @@ export function testChains(otherVenues: readonly string[] = []): ChainRegistry {
 }
 
 // The stores the engine sees, with the intent and agent stores wrapped as the test asks.
-function wrapped(stores: MemoryEngineStores, options: TestEngineOptions): MemoryEngineStores {
+function wrapped(stores: MemoryEngineStores, options: TestEngineOptions): EngineStores {
   return {
     ...stores,
     intents: options.intents?.(stores.intents) ?? stores.intents,

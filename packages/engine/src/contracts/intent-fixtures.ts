@@ -5,16 +5,18 @@ import type { IntentChange } from "../intents/intent-change.js";
 import type { IntentDraft } from "../intents/intent-record.js";
 import type { IntentState } from "../intents/intent-state.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
-import type { IntentStore, LedgerStore } from "../ports.js";
+import type { AgentStore, IntentStore, LedgerStore } from "../ports.js";
 import { fixtureHash, fixtureId } from "./store-fixtures.js";
 
 /**
- * An intent store under test, the ledger it appends intent entries to, and an agent and wallet
- * that exist in its database, for the rows that name them.
+ * An intent store under test, the ledger it appends intent entries to, the agent store a freeze
+ * marks agents in, and an agent at version 0 and its wallet that exist in its database, for the
+ * rows that name them.
  */
 export interface IntentStoreSubject {
   readonly store: IntentStore;
   readonly ledger: LedgerStore;
+  readonly agents: AgentStore;
   readonly agentId: Id<"agt">;
   readonly walletId: Id<"wal">;
 }

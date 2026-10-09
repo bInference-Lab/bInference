@@ -123,6 +123,21 @@ export function createIntent(
 }
 
 /**
+ * The intent a move names, read in the caller's transaction: `not_found` when there is none, and
+ * `stale` when its stored version is not the one the mover read.
+ */
+export function readMoved(
+  database: DatabaseSync,
+  change: IntentChange,
+): Result<IntentRecord, "not_found" | "stale"> {
+  const current = readIntent(database, change.id);
+  if (current === undefined) {
+    return err("not_found");
+  }
+  return current.version === change.expectedVersion ? ok(current) : err("stale");
+}
+
+/**
  * Moves an intent when its stored version is the one the mover read: its new state and parts,
  * the event, the ledger entry and the card writes, all in the caller's transaction.
  */
@@ -130,13 +145,11 @@ export function moveIntent(
   database: DatabaseSync,
   change: IntentChange,
 ): Result<IntentCommit, "not_found" | "stale"> {
-  const current = readIntent(database, change.id);
-  if (current === undefined) {
-    return err("not_found");
+  const read = readMoved(database, change);
+  if (!read.ok) {
+    return read;
   }
-  if (current.version !== change.expectedVersion) {
-    return err("stale");
-  }
+  const current = read.value;
   writeCardChanges(database, change);
   const ledgerEntry = appendFor(database, change.ledger);
   const moved: IntentRecord = {

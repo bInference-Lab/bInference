@@ -17,11 +17,18 @@ import {
   type StoredConfirmation,
   storedConfirmationSchema,
 } from "@binference/engine";
+import {
+  type FreezeCommit,
+  freezeCommitSchema,
+  type FreezeWrite,
+  freezeWriteSchema,
+} from "@binference/engine/safety";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
+import { writeFreeze } from "./freeze-writes.js";
 import { toCardRecord, toConfirmation, toIntentEvent, toIntentRecord } from "./intent-rows.js";
 import { createIntent, moveIntent } from "./intent-writes.js";
 
@@ -46,6 +53,18 @@ export const moveIntentTask: StoreTask<
   input: intentChangeSchema,
   output: resultSchema(intentCommitSchema, ["not_found", "stale"]),
   run: (database, change) => moveIntent(database, change),
+});
+
+/** Marks agents frozen and cancels their unsigned intents, all in one transaction. */
+export const freezeTask: StoreTask<
+  FreezeWrite,
+  Result<FreezeCommit, "not_found" | "stale">
+> = defineTask({
+  name: "intents.freeze",
+  access: "write",
+  input: freezeWriteSchema,
+  output: resultSchema(freezeCommitSchema, ["not_found", "stale"]),
+  run: (database, write) => writeFreeze(database, write),
 });
 
 /** Reads one intent. */
@@ -156,6 +175,7 @@ export const intentConfirmationTask: StoreTask<
 export const intentTasks: readonly TaskRunner[] = [
   createIntentTask,
   moveIntentTask,
+  freezeTask,
   getIntentTask,
   listIntentsTask,
   intentEventsTask,
