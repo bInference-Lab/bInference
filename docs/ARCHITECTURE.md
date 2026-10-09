@@ -421,6 +421,8 @@ hash and nonce and never signed again, and the intent goes on to `executing` or 
 - A hard flag blocks: honeypot, cannot sell, a hidden owner able to change balances, or a tax over
   the owner's maximum.
 - When the risk sources are down, unknown tokens fail closed.
+- [Decision 0112](DECISIONS.md#d0112) sets which sources a token needs and what blocks it;
+  [decision 0113](DECISIONS.md#d0113) how the round trip measures each leg's tax.
 
 <a id="section-8"></a>
 
