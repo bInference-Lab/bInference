@@ -257,6 +257,10 @@ export function createMemoryTransactionStore(): MemoryTransactionStore {
           next: (stored) => ({ ...stored, finalAtMs: mark.atMs }),
         }),
       ),
+    recordDropped: async (mark, call) =>
+      memoryCall(call, () =>
+        progress(rows, mark.id, { progress: { kind: "dropped" }, next: (stored) => stored }),
+      ),
     recordSuperseded: async (mark, call) =>
       memoryCall(call, () =>
         progress(rows, mark.id, { progress: { kind: "superseded" }, next: (stored) => stored }),

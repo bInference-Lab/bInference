@@ -85,6 +85,19 @@ async function marksSuperseded(subject: TransactionStoreSubject): Promise<void> 
   });
 }
 
+async function marksDropped(subject: TransactionStoreSubject): Promise<void> {
+  const { store } = subject;
+  const first = await sentAt(subject, 1, 5);
+  const marked = valueOf(await store.recordDropped({ id: first.id, atMs: 3 }, live()));
+  assert.deepEqual(marked, { ...first, state: "dropped" });
+  const wrongState = { ok: false, error: "wrong_state" };
+  assert.deepEqual(await store.recordDropped({ id: first.id, atMs: 4 }, live()), wrongState);
+  assert.deepEqual(await grant(subject, 5), { nonce: 5, refillsGap: true });
+  await assert.rejects(store.recordDropped({ id: fixtureId("tx", 9), atMs: 4 }, live()), {
+    code: "store.constraint",
+  });
+}
+
 async function refusesAborted(subject: TransactionStoreSubject): Promise<void> {
   const { store } = subject;
   const first = await takeAndSave(subject, 2, 5);
@@ -93,6 +106,7 @@ async function refusesAborted(subject: TransactionStoreSubject): Promise<void> {
   await assertRefusesAborted(async (call) =>
     store.recordSuperseded({ id: first.id, atMs: 1 }, call),
   );
+  await assertRefusesAborted(async (call) => store.recordDropped({ id: first.id, atMs: 1 }, call));
   const listed = await store.ofIntent(first.intentId, live());
   assert.deepEqual(listed, [first]);
 }
@@ -121,6 +135,11 @@ export function transactionReplacementChecks(
       "marks a signed or sent transaction superseded, and nothing else",
       create,
       marksSuperseded,
+    ),
+    checkOn(
+      "marks a transaction every relay refused dropped, freeing its nonce",
+      create,
+      marksDropped,
     ),
     checkOn("stores and marks nothing on an aborted signal", create, refusesAborted),
   ];

@@ -22,6 +22,7 @@ const progresses: readonly TransactionProgress[] = [
   { kind: "final" },
   { kind: "reorg" },
   { kind: "superseded" },
+  { kind: "dropped" },
 ];
 
 describe("the progress of a stored transaction", () => {
@@ -46,6 +47,8 @@ describe("the progress of a stored transaction", () => {
     ["signed", { kind: "superseded" }, "superseded"],
     ["sent", { kind: "superseded" }, "superseded"],
     ["included", { kind: "superseded" }, undefined],
+    ["sent", { kind: "dropped" }, "dropped"],
+    ["superseded", { kind: "dropped" }, undefined],
   ])("moves %s on %o to %s", (state, progress, expected) => {
     expect(progressedState(state, progress)).toBe(expected);
   });

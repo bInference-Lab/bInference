@@ -5,6 +5,7 @@ import {
   listSendsTask,
   recordFinalTask,
   recordReceiptTask,
+  recordDroppedTask,
   recordReorgTask,
   recordSendTask,
   recordSupersededTask,
@@ -29,6 +30,7 @@ export const transactionTasks: readonly TaskRunner[] = [
   recordReceiptTask,
   recordFinalTask,
   recordSupersededTask,
+  recordDroppedTask,
   recordReorgTask,
 ];
 
@@ -49,6 +51,7 @@ export function createSqliteTransactionStore(host: StoreHost): TransactionStore 
     recordReceipt: bindTask(host, recordReceiptTask),
     recordFinal: bindTask(host, recordFinalTask),
     recordSuperseded: bindTask(host, recordSupersededTask),
+    recordDropped: bindTask(host, recordDroppedTask),
     recordReorg: bindTask(host, recordReorgTask),
   };
 }

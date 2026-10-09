@@ -205,6 +205,17 @@ export const recordFinalTask: StoreTask<TransactionMark, Moved> = defineTask({
   },
 });
 
+/** Marks a signed or sent transaction `dropped` once every relay refused it, its nonce free. */
+export const recordDroppedTask: StoreTask<TransactionMark, Moved> = defineTask({
+  name: "transactions.record_dropped",
+  access: "write",
+  input: transactionMarkSchema,
+  output: movedSchema,
+  run(database, { id }) {
+    return move(database, id, { progress: { kind: "dropped" }, columns: () => ({}) });
+  },
+});
+
 /** Marks a signed or sent transaction `superseded` once another transaction used its nonce. */
 export const recordSupersededTask: StoreTask<TransactionMark, Moved> = defineTask({
   name: "transactions.record_superseded",

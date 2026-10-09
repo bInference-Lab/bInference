@@ -323,6 +323,14 @@ export interface TransactionStore {
     mark: TransactionMark,
     options: StoreCall,
   ): Promise<Result<TransactionRecord, "wrong_state">>;
+  /**
+   * Marks a `signed` or `sent` transaction `dropped` once every relay refused it with its nonce
+   * still free (decision 0115): the nonce is free for the next step.
+   */
+  recordDropped(
+    mark: TransactionMark,
+    options: StoreCall,
+  ): Promise<Result<TransactionRecord, "wrong_state">>;
   /** Marks a `signed` or `sent` transaction `superseded` once another transaction used its nonce. */
   recordSuperseded(
     mark: TransactionMark,
