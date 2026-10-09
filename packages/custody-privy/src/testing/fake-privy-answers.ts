@@ -30,6 +30,33 @@ export function quorumJson(quorum: FakeQuorum): JsonValue {
   };
 }
 
+// A rule of a policy as Privy answers it, with its id.
+function ruleJson(rule: FakePolicy["rules"][number]): JsonValue {
+  return {
+    id: rule.id,
+    name: rule.name,
+    method: rule.method,
+    action: rule.action,
+    conditions: rule.conditions.map((condition) => ({
+      field_source: condition.field_source,
+      field: condition.field,
+      ...(condition.abi === undefined
+        ? {}
+        : {
+            abi: condition.abi.map((item) => ({
+              type: item.type,
+              name: item.name,
+              inputs: item.inputs.map((input) => ({ ...input })),
+              outputs: item.outputs.map((output) => ({ ...output })),
+              stateMutability: item.stateMutability,
+            })),
+          }),
+      operator: condition.operator,
+      value: typeof condition.value === "string" ? condition.value : [...condition.value],
+    })),
+  };
+}
+
 /** A policy as Privy answers it. */
 export function policyJson(policy: FakePolicy): JsonValue {
   return {
@@ -39,29 +66,7 @@ export function policyJson(policy: FakePolicy): JsonValue {
     chain_type: "ethereum",
     owner_id: policy.ownerId,
     created_at: policy.createdAt,
-    rules: policy.rules.map((rule) => ({
-      id: rule.id,
-      name: rule.name,
-      method: rule.method,
-      action: rule.action,
-      conditions: rule.conditions.map((condition) => ({
-        field_source: condition.field_source,
-        field: condition.field,
-        ...(condition.abi === undefined
-          ? {}
-          : {
-              abi: condition.abi.map((item) => ({
-                type: item.type,
-                name: item.name,
-                inputs: item.inputs.map((input) => ({ ...input })),
-                outputs: item.outputs.map((output) => ({ ...output })),
-                stateMutability: item.stateMutability,
-              })),
-            }),
-        operator: condition.operator,
-        value: typeof condition.value === "string" ? condition.value : [...condition.value],
-      })),
-    })),
+    rules: policy.rules.map(ruleJson),
   };
 }
 

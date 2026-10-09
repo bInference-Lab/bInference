@@ -13,6 +13,7 @@ import {
   parseEvmAddress,
 } from "@binference/chain-evm";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
+import type { ContractCheck } from "@binference/core/testing";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import type { Ceiling } from "../ceiling/ceiling.js";
 import type { PrivyApi } from "../privy/privy-api.js";
@@ -204,4 +205,13 @@ export async function askPrivy(
     },
     live(),
   );
+}
+
+/** A check of the custody contract on the suite's wallet for the harness's subject. */
+export function check(
+  harness: PrivyCustodyHarness,
+  name: string,
+  run: (setup: CustodySetup) => Promise<void>,
+): ContractCheck {
+  return { name, run: async () => run(await setUp(harness.create())) };
 }

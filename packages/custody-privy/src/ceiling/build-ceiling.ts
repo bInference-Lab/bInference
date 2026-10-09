@@ -17,7 +17,10 @@ const walletAddress = "{{wallet.address}}";
 
 type AddressProblem = "malformed_address" | "too_many_addresses";
 
-// Checksummed, each once, in the order given: Privy compares strings case by case.
+/**
+ * The recipients a ceiling lists: checksummed, each once, in the order given, since Privy compares
+ * strings case by case. More than 100 is `too_many_addresses`: Privy's `in` takes at most 100.
+ */
 function addressList(texts: readonly string[]): Result<readonly string[], AddressProblem> {
   const listed = new Set<string>();
   for (const text of texts) {
@@ -56,6 +59,22 @@ function allow(name: string, conditions: readonly PolicyCondition[]): PolicyRule
   return { name, method: "eth_signTransaction", action: "ALLOW", conditions };
 }
 
+/**
+ * The two rules of one chain that name who a send may pay: a native send, and a token `transfer`
+ * with no native coin. Changing a ceiling's recipients changes these two rules and nothing else.
+ */
+function recipientRules(chainId: string, recipients: readonly string[]): readonly PolicyRule[] {
+  const onChain = onTransaction("chain_id", "eq", chainId);
+  return [
+    allow(`Native sends, chain ${chainId}`, [onChain, onTransaction("to", "in", recipients)]),
+    allow(`Token sends, chain ${chainId}`, [
+      onChain,
+      onTransaction("value", "lte", noValue),
+      onCalldata(transferAbi, "transfer.to", recipients),
+    ]),
+  ];
+}
+
 /** Lists for one chain, checked and checksummed. */
 interface ChainLists {
   readonly chain: CeilingChain;
@@ -81,15 +100,7 @@ function chainRules(lists: ChainLists, recipients: readonly string[]): readonly 
   return [
     ...(lists.contracts.length > 0 ? [calls] : []),
     ...(lists.spenders.length > 0 ? [approvals] : []),
-    allow(`Native sends, chain ${String(chainId)}`, [
-      onChain,
-      onTransaction("to", "in", recipients),
-    ]),
-    allow(`Token sends, chain ${String(chainId)}`, [
-      onChain,
-      noCoin,
-      onCalldata(transferAbi, "transfer.to", recipients),
-    ]),
+    ...recipientRules(String(chainId), recipients),
     allow(`Self cancel, chain ${String(chainId)}`, [
       onChain,
       onTransaction("to", "eq", walletAddress),

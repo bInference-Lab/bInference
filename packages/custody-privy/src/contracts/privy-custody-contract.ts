@@ -15,10 +15,10 @@ import {
 import { readBackWallet, type WalletExpectation } from "../wallets/read-back.js";
 import {
   askPrivy,
+  check,
   type CustodySetup,
   live,
   type PrivyCustodyHarness,
-  setUp,
   signRequest,
   type TestCall,
   unsignedCall,
@@ -41,14 +41,6 @@ async function privyRefuses(setup: CustodySetup, call: TestCall, chain?: EvmChai
     await askPrivy(setup, chain === undefined ? { call } : { call, chain }),
     refused,
   );
-}
-
-function check(
-  harness: PrivyCustodyHarness,
-  name: string,
-  run: (setup: CustodySetup) => Promise<void>,
-): ContractCheck {
-  return { name, run: async () => run(await setUp(harness.create())) };
 }
 
 async function readsBackAs(

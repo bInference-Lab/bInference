@@ -2,7 +2,6 @@ import type { PrivyRequest } from "@binference/chain";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import type { Ceiling } from "../ceiling/ceiling.js";
-import type { PolicyCondition, PolicyRule } from "../ceiling/policy-rule.js";
 import type { PrivyTransaction } from "../signing/privy-transaction.js";
 import { callPrivy, type PrivyCall, privyFault, statusFault } from "./privy-call.js";
 import { type PrivyApiOptions, type PrivySettings, privySettings } from "./privy-client.js";
@@ -15,6 +14,7 @@ import {
   readSignedTransaction,
   readWallet,
 } from "./privy-wire.schema.js";
+import { sdkRule } from "./sdk-rule.js";
 
 /** A call's options: every call stops when its signal aborts. */
 export interface CallOptions {
@@ -83,33 +83,6 @@ export interface PrivyApi {
 
 const policyName = "binference ceiling";
 const expiryMs = 5 * 60_000;
-
-function valueOf(condition: PolicyCondition): string | string[] {
-  return typeof condition.value === "string" ? condition.value : [...condition.value];
-}
-
-// The SDK's request types take mutable arrays; the ceiling's stay readonly.
-function sdkCondition(condition: PolicyCondition) {
-  return condition.field_source === "ethereum_calldata"
-    ? {
-        field_source: condition.field_source,
-        field: condition.field,
-        abi: condition.abi,
-        operator: condition.operator,
-        value: valueOf(condition),
-      }
-    : {
-        field_source: condition.field_source,
-        field: condition.field,
-        operator: condition.operator,
-        value: valueOf(condition),
-      };
-}
-
-function sdkRule(rule: PolicyRule) {
-  const { name, method, action } = rule;
-  return { name, method, action, conditions: rule.conditions.map(sdkCondition) };
-}
 
 /** How one answer is read: by its reader, within the call's signal. */
 interface Reading<A, T> {
