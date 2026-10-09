@@ -3,6 +3,11 @@ export type {
   BotUpdateSourceHarness,
   BotUpdateSourceSubject,
 } from "./contracts/bot-update-source-contract.js";
+export { ceilingEditorContract } from "./contracts/ceiling-editor-contract.js";
+export type {
+  CeilingEditorHarness,
+  CeilingEditorSubject,
+} from "./contracts/ceiling-editor-contract.js";
 export { confirmationStoreContract } from "./contracts/confirmation-store-contract.js";
 export type {
   ConfirmationStoreHarness,
@@ -22,6 +27,8 @@ export type {
 } from "./contracts/simulator-contract.js";
 export { createCreditBilling } from "./fakes/credit-billing.js";
 export type { CreditAccount } from "./fakes/credit-billing.js";
+export { createFakeCeilingEditor, fakeOwnerKeyCode } from "./fakes/fake-ceiling-editor.js";
+export type { FakeCeilingEditor } from "./fakes/fake-ceiling-editor.js";
 export { createFakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export type { FakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export { createFakePriceSource } from "./fakes/fake-price-source.js";

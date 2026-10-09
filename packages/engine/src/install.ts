@@ -20,3 +20,13 @@ export { cancelRescue, changeRescue, rescueAt } from "./policy/rescue-change.js"
 export type { RescueState } from "./policy/rescue-change.js";
 export { rescueAddressChangeSchema, rescueMoveSchema } from "./install/rescue-record.js";
 export type { RescueAddressChange, RescueMove } from "./install/rescue-record.js";
+export { signedCeilingChangeSchema } from "./install/ceiling-change.js";
+export type {
+  CeilingRecipients,
+  CeilingRefusal,
+  RecipientsRequest,
+  SignedCeilingChange,
+  SignedChangeRefusal,
+  SignRecipientsRequest,
+} from "./install/ceiling-change.js";
+export type { CeilingEditor } from "./ports.js";

@@ -23,6 +23,13 @@ import type {
   IdempotencyRecall,
 } from "./ingress/idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
+import type {
+  CeilingRefusal,
+  RecipientsRequest,
+  SignedCeilingChange,
+  SignedChangeRefusal,
+  SignRecipientsRequest,
+} from "./install/ceiling-change.js";
 import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/install-record.js";
 import type { RescueAddressChange, RescueMove } from "./install/rescue-record.js";
 import type { CardRecord } from "./intents/card-record.js";
@@ -488,6 +495,40 @@ export interface InstallStore {
    * the state in effect before and after.
    */
   cancelRescueChange(atMs: number, options: StoreCall): Promise<RescueMove>;
+}
+
+/**
+ * Changes whom each agent wallet's ceiling lets a send pay (spec 5, section 4; decision 0110), with
+ * the owner key. Only a ceiling's owner changes it. Adapter: the owner's Privy app, signed with the
+ * owner key. The key comes with each request, serves it alone and is kept nowhere.
+ */
+export interface CeilingEditor {
+  /**
+   * Sets each ceiling's recipients now, signed with the owner key: every send rule lists exactly
+   * these accounts. Setting what a ceiling lists already changes nothing. A refusal changes no
+   * ceiling it names.
+   */
+  setRecipients(
+    request: RecipientsRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<void, CeilingRefusal>>;
+  /**
+   * Signs now, with the owner key, a change of each ceiling's recipients from `from` to `to`, to
+   * send with `sendSigned` before `untilMs`. It sends nothing.
+   */
+  signRecipients(
+    request: SignRecipientsRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<SignedCeilingChange, CeilingRefusal>>;
+  /**
+   * Sends a change signed ahead, while every ceiling still lists what it listed when the change
+   * was signed, or the new recipients already; `changed` when one does not, so a change signed
+   * earlier never undoes a later one. Sending it again changes nothing more.
+   */
+  sendSigned(
+    change: SignedCeilingChange,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<void, SignedChangeRefusal>>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */
