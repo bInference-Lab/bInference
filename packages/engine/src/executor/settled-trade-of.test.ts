@@ -44,7 +44,12 @@ const swapped = [
 
 describe("settledTradeOf", () => {
   it("nets what the steps moved for the wallet, and adds up the fee of every step", () => {
-    const trade = settledTradeOf([step(1, []), step(2, swapped)], { quote, holder, atMs: 7 });
+    const trade = settledTradeOf([step(1, []), step(2, swapped)], {
+      quote,
+      holder,
+      nativeReceivedBase: 0n,
+      atMs: 7,
+    });
     expect(trade).toStrictEqual({
       amountIn: { asset: testCoin, base: 100n },
       amountOut: { asset: testToken, base: 199n },
@@ -59,7 +64,12 @@ describe("settledTradeOf", () => {
       { from: router, to: wallet, amount: { asset: testCoin, base: 5n } },
       { from: wallet, to: router, amount: { asset: testToken, base: 5n } },
     ];
-    const trade = settledTradeOf([step(1, backwards, false)], { quote, holder, atMs: 7 });
+    const trade = settledTradeOf([step(1, backwards, false)], {
+      quote,
+      holder,
+      nativeReceivedBase: 0n,
+      atMs: 7,
+    });
     expect(trade).toMatchObject({
       amountIn: { base: 0n },
       amountOut: { base: 0n },
@@ -68,9 +78,26 @@ describe("settledTradeOf", () => {
   });
 });
 
+describe("settledTradeOf, on a sale for the native coin", () => {
+  it("adds the native coin received without a log to what the wallet received", () => {
+    const sale = { ...quote, amountIn: quote.expectedOut, expectedOut: quote.amountIn };
+    const sold = [{ from: wallet, to: router, amount: { asset: testToken, base: 200n } }];
+    const terms = { quote: sale, holder, nativeReceivedBase: 99n, atMs: 7 };
+    expect(settledTradeOf([step(1, sold)], terms)).toMatchObject({
+      amountIn: { asset: testToken, base: 200n },
+      amountOut: { asset: testCoin, base: 99n },
+    });
+  });
+});
+
 describe("differsFromSimulation", () => {
   const simulation = { spent: [quote.amountIn], received: [quote.expectedOut], simulatedAt: 1 };
-  const trade = settledTradeOf([step(1, swapped)], { quote, holder, atMs: 7 });
+  const trade = settledTradeOf([step(1, swapped)], {
+    quote,
+    holder,
+    nativeReceivedBase: 0n,
+    atMs: 7,
+  });
 
   it("holds a trade within 1% of its simulation, either way", () => {
     expect(differsFromSimulation(trade, simulation)).toBe(false);

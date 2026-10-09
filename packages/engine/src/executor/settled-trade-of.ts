@@ -1,4 +1,4 @@
-import type { Amount, AssetTransfer } from "@binference/chain";
+import type { Amount, AssetRef, AssetTransfer } from "@binference/chain";
 import type { QuoteView, SimulationView } from "@binference/protocol";
 import type { SettledTrade } from "../intents/event-cause.schema.js";
 import { type WalletHolder, walletChanges } from "../simulation/wallet-changes.js";
@@ -10,10 +10,15 @@ export interface SettledStep {
   readonly transfers: readonly AssetTransfer[];
 }
 
-/** What a settled trade is read against: the confirmed quote and the wallet that traded. */
+/**
+ * What a settled trade is read against: the confirmed quote, the wallet that traded, and the
+ * native coin the wallet received without a log in the blocks that hold the steps (decision 0108).
+ */
 export interface SettlementTerms {
   readonly quote: QuoteView;
   readonly holder: WalletHolder;
+  /** Native coin the wallet received that no transfer shows, in base units. */
+  readonly nativeReceivedBase: bigint;
   /** When the trade reconciles. */
   readonly atMs: number;
 }
@@ -37,8 +42,9 @@ function gasOf(steps: readonly SettledStep[], quote: QuoteView): Amount {
 /**
  * The trade a live intent's final steps made (ARCHITECTURE.md section 7, step 9): the quote's
  * input asset the wallet spent net, the output asset it received net, both read from what the
- * steps moved, the fee every step paid, and each step's hash in step order. A net change the
- * other way, such as an input that came back, counts as 0.
+ * steps moved and the native coin it received without a log, the fee every step paid, and each
+ * step's hash in step order. A net change the other way, such as an input that came back, counts
+ * as 0.
  */
 export function settledTradeOf(
   steps: readonly SettledStep[],
@@ -49,11 +55,14 @@ export function settledTradeOf(
     steps.flatMap(({ transfers }) => transfers),
     holder,
   );
+  const native = quote.gas.asset;
+  const changeOf = (asset: AssetRef): bigint =>
+    (changes.get(asset) ?? 0n) + (asset === native ? terms.nativeReceivedBase : 0n);
   const inAsset = quote.amountIn.asset;
   const outAsset = quote.expectedOut.asset;
   return {
-    amountIn: { asset: inAsset, base: atLeastZero(-(changes.get(inAsset) ?? 0n)) },
-    amountOut: { asset: outAsset, base: atLeastZero(changes.get(outAsset) ?? 0n) },
+    amountIn: { asset: inAsset, base: atLeastZero(-changeOf(inAsset)) },
+    amountOut: { asset: outAsset, base: atLeastZero(changeOf(outAsset)) },
     gas: gasOf(steps, quote),
     txHashes: steps.map(({ transaction }) => transaction.hash),
     atMs,

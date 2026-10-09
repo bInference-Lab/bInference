@@ -42,7 +42,7 @@ import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { createWalletQueue } from "../wallet-queue/wallet-queue.js";
 import { createExecutor, type RunningExecutor } from "./create-executor.js";
 import type { ExecutorLimits } from "./executor-options.js";
-import { swapTransfers } from "./test-swap-transfers.js";
+import { swapCoinReceived, swapTransfers } from "./test-swap-transfers.js";
 
 /** The fake chain the test engine trades on. */
 export const benchChain: ChainRef = chainRefSchema.parse("fake:1");
@@ -221,6 +221,7 @@ export async function startExecutorBench(options: BenchOptions = {}): Promise<Ex
     chain: benchChain,
     clock: test.clock,
     transfers: (sent: FakeSent) => swapTransfers(sent, out),
+    nativeReceived: (sent: FakeSent) => swapCoinReceived(sent, out),
     ...options.network,
   });
   const logger = createMemoryLogger({ subsystem: "engine" });

@@ -9,7 +9,7 @@ import {
   erc20AssetRef,
   evmAccountRef,
 } from "@binference/chain-evm";
-import { bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
+import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
 import {
   BinferenceError,
   bpsSchema,
@@ -35,7 +35,7 @@ import {
   createMemoryPositionStore,
 } from "@binference/engine/testing";
 import { createWalletQueue } from "@binference/engine/wallet-queue";
-import { erc20Abi, keccak256, toHex } from "viem";
+import { encodeFunctionData, erc20Abi, keccak256, parseAbi, toHex } from "viem";
 import { describe, expect, it } from "vitest";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
@@ -209,16 +209,27 @@ async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
   return { engine, stores, positions, custody, sends, native, bought };
 }
 
-async function proposeAndTap(rig: Rig, signal: AbortSignal): Promise<Id<"int">> {
+/** The swap a fork test proposes: what goes in, how much, and what comes out. */
+interface ForkSwap {
+  readonly from: AssetRef;
+  readonly to: AssetRef;
+  readonly base: bigint;
+}
+
+async function proposeAndTap(
+  rig: Rig,
+  signal: AbortSignal,
+  swap: ForkSwap = { from: rig.native, to: rig.bought, base: buyIn },
+): Promise<Id<"int">> {
   const handlers = rig.engine.handlers;
   const request = {
     kind: "swap",
     agent,
     wallet,
-    reason: "Buy USDT on the fork",
-    from: rig.native,
-    to: rig.bought,
-    amount: { base: buyIn },
+    reason: "Trade USDT on the fork",
+    from: swap.from,
+    to: swap.to,
+    amount: { base: swap.base },
   } as const;
   const proposed = await handlers["intent/propose"]({ args: request, caller, signal });
   const card = proposed.ok ? proposed.value.card : undefined;
@@ -327,6 +338,32 @@ function blockOf(transaction: {
   return transaction.receipt?.block.number ?? 0n;
 }
 
+// The fork's own account buys USDT for the test wallet, which then holds it to sell.
+async function fundUsdt(fork: Fork): Promise<bigint> {
+  const to = forkWallet(walletKey).address;
+  const data = encodeFunctionData({
+    abi: parseAbi([
+      "function swapExactETHForTokens(uint256 amountOutMin, address[] path, address to, uint256 deadline) payable returns (uint256[] amounts)",
+    ]),
+    functionName: "swapExactETHForTokens",
+    args: [0n, [bscToken("WBNB"), usdt], to, BigInt(Math.floor(Date.now() / 1_000) + 600)],
+  });
+  const router = bscContract("pancakeswap", "v2-router");
+  await fork.send({ from: fork.account, to: router, value: 5n * 10n ** 16n, data });
+  return balanceOf(fork);
+}
+
+// The intent's live execution; a test whose intent recorded none fails.
+async function executionOf(rig: Rig, intent: Id<"int">, signal: AbortSignal) {
+  const query = { isPaper: false, after: 0, limit: 10 };
+  const executions = await rig.positions.executions(query, { signal });
+  const execution = executions.find(({ intentId }) => intentId === intent);
+  if (execution === undefined) {
+    throw new BinferenceError({ code: "fork.no_execution", message: "Nothing was recorded." });
+  }
+  return execution;
+}
+
 describe("the executor on the BSC fork", () => {
   it("ends a confirmed swap reconciled, its raw bytes stored before the first send", async ({
     signal,
@@ -362,6 +399,27 @@ describe("the executor on the BSC fork", () => {
       await expect(reader.nonceAt(transaction.account, block - 1n, { signal })).resolves.toBe(0);
       expect(answers.map(({ relay }) => relay)).toStrictEqual(["anvil-a", "anvil-b"]);
       expect(answers.map(({ outcome }) => outcome)).toContain("accepted");
+    });
+  });
+
+  it("reconciles a sale of USDT for BNB, the BNB received matching the chain", async ({
+    signal,
+  }) => {
+    await onFork(signal, {}, async (rig, fork) => {
+      const held = await fundUsdt(fork);
+      const address = forkWallet(walletKey).address;
+      const before = await fork.client.getBalance({ address });
+      const sale = { from: rig.bought, to: rig.native, base: held };
+      const intent = await proposeAndTap(rig, signal, sale);
+      await expect(reach(rig, intent, "reconciled")).resolves.toBe("reconciled");
+      const after = await fork.client.getBalance({ address });
+      const execution = await executionOf(rig, intent, signal);
+      expect(execution.sold).toStrictEqual({ asset: rig.bought, base: held });
+      expect(execution.bought.asset).toBe(rig.native);
+      expect(execution.bought.base).toBe(after - before + execution.gas.base);
+      expect(execution.bought.base).toBeGreaterThan(0n);
+      expect(await balanceOf(fork)).toBe(0n);
+      expect(rig.custody.signatures()).toBe(2);
     });
   });
 

@@ -89,7 +89,10 @@ watches each block through the `ReceiptReader` until every step is included, fre
 and watches on until every block is final. A revert ends the intent `failed_onchain` and no later
 step is sent. Once final, it reconciles: what each step moved, read through the `ReceiptReader`,
 becomes the trade, compared with the simulation (more than 1% away raises `notice.fillDiffers`),
-valued and recorded in the positions once, and stored with the move to `reconciled`.
+valued and recorded in the positions once, and stored with the move to `reconciled`. Native coin
+an inner call paid the wallet leaves no log, so it comes from the reader's read of each block
+(decision 0108); when no node can say it any more, the owner gets `notice.fillUnknown` and the
+intent stays `finalized`.
 
 At startup `recover` takes up every live intent a stop left unsettled (spec 6, section 7): each
 stored step is looked up by hash and nonce. A block holds it: it goes on. Its nonce is free: the

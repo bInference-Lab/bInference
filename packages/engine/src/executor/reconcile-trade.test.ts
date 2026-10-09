@@ -116,7 +116,7 @@ describe("reconciliation", () => {
     expect(noticesOf(bench.pushes)).toStrictEqual([]);
   });
 
-  it("counts the network fee of every step of a plan", async () => {
+  it("counts the coin a sale received through an inner call, and every step's network fee", async () => {
     const bench = await startExecutorBench();
     const intent = await tapped(bench, tokenSale);
     await expect(driveUntil(bench, intent, done)).resolves.toBe("reconciled");
@@ -126,6 +126,19 @@ describe("reconciliation", () => {
       bought: { asset: testCoin, base: 2_000_000n },
       gas: { asset: testCoin, base: 2n * 21_000n * 50_000_000n },
     });
+  });
+
+  it("alarms and leaves the intent finalized once no node can say what the trade received", async () => {
+    const bench = await startExecutorBench();
+    const intent = await tapped(bench, tokenSale);
+    await driveUntil(bench, intent, { states: ["included"] });
+    bench.network.forgetStateBelow(1_000n);
+    await expect(driveUntil(bench, intent, { ...done, blocks: 12 })).resolves.toBe("finalized");
+    expect(noticesOf(bench.pushes)).toStrictEqual([
+      expect.stringContaining('"key":"notice.fillUnknown"'),
+    ]);
+    expect(eventsOf(bench)).toContain("executor.fill_unknown:");
+    expect(await executionsOf(bench)).toStrictEqual([]);
   });
 
   it("reads again on the next block while what a step moved cannot be read", async () => {

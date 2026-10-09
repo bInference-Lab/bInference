@@ -63,14 +63,16 @@ function netOf(transfers: readonly AssetTransfer[], asset: string): bigint {
 }
 
 describe("settledTradeOf, for any transfers and fees", () => {
-  it("spends the input the wallet lost net, receives the output it gained net, never below 0", () => {
+  it("spends the input the wallet lost net, native coin received counted, never below 0", () => {
     fc.assert(
       fc.property(
         fc.array(transfer, { maxLength: 8 }),
         receipt,
-        (transfers: readonly AssetTransfer[], fee: Fee) => {
-          const trade = settledTradeOf([stepOf(transfers, fee)], { quote, holder, atMs: 1 });
-          const spent = -netOf(transfers, testCoin);
+        base,
+        (transfers: readonly AssetTransfer[], fee: Fee, nativeReceivedBase: bigint) => {
+          const terms = { quote, holder, nativeReceivedBase, atMs: 1 };
+          const trade = settledTradeOf([stepOf(transfers, fee)], terms);
+          const spent = -(netOf(transfers, testCoin) + nativeReceivedBase);
           const received = netOf(transfers, testToken);
           expect(trade.amountIn.base).toBe(atLeastZero(spent));
           expect(trade.amountOut.base).toBe(atLeastZero(received));
@@ -85,7 +87,7 @@ describe("differsFromSimulation, for any amounts", () => {
   it("flags exactly the trades more than 1% away from the simulation", () => {
     fc.assert(
       fc.property(base, fc.bigInt({ min: 1n, max: 10n ** 24n }), (actual, simulated) => {
-        const trade = settledTradeOf([], { quote, holder, atMs: 1 });
+        const trade = settledTradeOf([], { quote, holder, nativeReceivedBase: 0n, atMs: 1 });
         const out = { ...trade, amountOut: { asset: testToken, base: actual } };
         const simulation = {
           spent: [{ asset: testCoin, base: 0n }],

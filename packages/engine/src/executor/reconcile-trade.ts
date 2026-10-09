@@ -12,6 +12,11 @@ import { differsFromSimulation, type SettledStep, settledTradeOf } from "./settl
 
 // The owner's alarm when a trade settles more than 1% away from its simulation.
 const fillDiffersNoticeKey = "notice.fillDiffers";
+// The owner's alarm when no node can say what a trade received any more (decision 0108).
+const fillUnknownNoticeKey = "notice.fillUnknown";
+
+/** How one try ended: settled, wait for the next block, or stopped until a restart. */
+type SettleOutcome = "settled" | "waiting" | "stopped";
 
 function confirmedQuote(snapshot: IntentSnapshot): QuoteView {
   const { quote, id } = snapshot.record;
@@ -43,6 +48,40 @@ async function settledSteps(
     return transfers === undefined ? [] : [{ transaction, transfers }];
   });
   return settled.length === steps.length ? settled : undefined;
+}
+
+// The native coin the wallet received without a log in each block that holds a step, added up
+// once per block; `undefined` while a read fails.
+async function nativeReceived(
+  run: ExecutionRun,
+  steps: readonly SettledStep[],
+): Promise<bigint | "state_gone" | undefined> {
+  const { plan, signal } = run;
+  const wallet = plan.steps[0].from;
+  const blocks = new Set(
+    steps.flatMap(({ transaction }) => transaction.receipt?.block.number ?? []),
+  );
+  const read = await Promise.all(
+    [...blocks].map(async (block) =>
+      readSafely(run, async () => plan.sending.receipts.nativeReceived(wallet, block, { signal })),
+    ),
+  );
+  if (read.includes(undefined)) {
+    return undefined;
+  }
+  const values = read.flatMap((received) => (received?.ok === true ? [received.value] : []));
+  return values.length === read.length
+    ? values.reduce((sum, value) => sum + value, 0n)
+    : "state_gone";
+}
+
+function warnUnknown(run: ExecutionRun, snapshot: IntentSnapshot): "stopped" {
+  const { id, agentId } = snapshot.record;
+  run.parts.log.error("executor.fill_unknown", { intentId: id });
+  run.parts.publish(
+    noticePush({ key: fillUnknownNoticeKey, agent: agentId, intent: id, values: {} }),
+  );
+  return "stopped";
 }
 
 // The trade valued at the sold asset's and the native coin's prices now; a sold token with no
@@ -114,9 +153,10 @@ function warnDifference(run: ExecutionRun, snapshot: IntentSnapshot, trade: Sett
   );
 }
 
-// One try: what the steps moved, priced, recorded in the positions, then the move. `false` when
-// a read, a price or the position write must wait for the next block.
-async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<boolean> {
+// One try: what the steps moved, priced, recorded in the positions, then the move. A read, a
+// price or the position write that fails waits for the next block; a trade no node can say the
+// native coin of any more stops until a restart.
+async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<SettleOutcome> {
   const { parts, signal } = run;
   const quote = confirmedQuote(snapshot);
   const stored = await parts.stores.transactions.ofIntent(snapshot.record.id, { signal });
@@ -124,8 +164,12 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
     run,
     stored.filter(({ state }) => state === "final"),
   );
-  if (steps === undefined) {
-    return false;
+  const received = steps === undefined ? undefined : await nativeReceived(run, steps);
+  if (steps === undefined || received === undefined) {
+    return "waiting";
+  }
+  if (received === "state_gone") {
+    return warnUnknown(run, snapshot);
   }
   const last = steps.at(-1);
   if (last === undefined) {
@@ -136,12 +180,13 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
     });
   }
   const holder = { wallet: run.plan.steps[0].from, family: run.plan.chain.family };
-  const trade = settledTradeOf(steps, { quote, holder, atMs: snapshot.record.changedAtMs });
+  const atMs = snapshot.record.changedAtMs;
+  const trade = settledTradeOf(steps, { quote, holder, nativeReceivedBase: received, atMs });
   const txHash = last.transaction.hash;
   const priced = await pricedTrade(run, snapshot, { trade, quote, txHash });
   if (priced === undefined || !(await recordOnce(run, priced))) {
     parts.log.warn("executor.settle_waits", { intentId: snapshot.record.id });
-    return false;
+    return "waiting";
   }
   const settling = { trigger: { type: "fills_reconciled" }, settled: trade } as const;
   const reconciled = await moveIntent(run, snapshot, settling);
@@ -149,7 +194,7 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
     parts.log.info("executor.reconciled", { intentId: snapshot.record.id });
     warnDifference(run, snapshot, trade);
   }
-  return true;
+  return "settled";
 }
 
 /**
@@ -158,7 +203,9 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
  * moves the intent to `reconciled` with the trade, whose ledger entry and pushes every surface
  * hears. A trade more than 1% away from its simulation still reconciles, with an alarm notice.
  * While a read or a price fails it tries again each block, up to `settleAfterBlocks`; then it
- * leaves the intent `finalized`, and recovery reconciles it after a restart.
+ * leaves the intent `finalized`, and recovery reconciles it after a restart. When no node, nor the
+ * owner's tracing RPC, can say the native coin the trade received any more (decision 0108), the
+ * owner gets an alarm notice and the intent stays `finalized`, with nothing recorded.
  */
 export async function reconcileTrade(
   run: ExecutionRun,
@@ -169,7 +216,7 @@ export async function reconcileTrade(
     run.parts.log.warn("executor.settle_late", { intentId: finalized.record.id });
     return;
   }
-  if (await settleOnce(run, finalized)) {
+  if ((await settleOnce(run, finalized)) !== "waiting") {
     return;
   }
   await nextBlock(run);

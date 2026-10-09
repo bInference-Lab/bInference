@@ -215,6 +215,22 @@ describe("recovery after a restart", () => {
     expect(restarted.signed).toHaveLength(0);
   });
 
+  it("reconciles a trade after a restart once a node can say what it received again", async () => {
+    const bench = await startExecutorBench();
+    const intent = await tapped(bench, tokenSale);
+    await driveUntil(bench, intent, { states: ["included"] });
+    bench.network.forgetStateBelow(1_000n);
+    await driveUntil(bench, intent, { states: ["reconciled"], blocks: 6 });
+    expect(await stateOf(bench, intent)).toBe("finalized");
+    bench.network.forgetStateBelow(0n);
+    const restarted = await restartBench(bench);
+    expect(await stateOf(bench, intent)).toBe("reconciled");
+    const query = { isPaper: false, after: 0, limit: 10 };
+    const [execution] = await bench.test.positions.executions(query, live());
+    expect(execution?.bought).toStrictEqual({ asset: testCoin, base: 2_000_000n });
+    expect(restarted.signed).toHaveLength(0);
+  });
+
   it("records a trade once when the stop fell between its record and the move", async () => {
     const bench = await startExecutorBench({ intents: stoppingBeforeReconciled });
     const intent = await tapped(bench);

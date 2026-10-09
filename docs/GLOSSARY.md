@@ -150,6 +150,9 @@ new name here first, in the change that uses it.
   chain's head: its latest block and its final block by the chain's finality rule. It also reads
   what a mined transaction moved, how many transactions of an account the blocks up to one block
   hold, and the native coin an account received in a block without a log.
+- **tracing RPC**: an RPC node of the owner's that answers `debug_traceTransaction`, named per
+  chain in config. Reconciliation asks it what a trade received only once the other RPCs dropped
+  the block's state.
 - **simulation check**: the simulate step of the money path. The wallet's net balance changes in
   the simulation must match the intent: exactly the input leaves, at least the minimum out arrives,
   no other asset leaves or arrives, and no allowance is set but the plan's own approval.
@@ -409,6 +412,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | private execution                                  | 私密执行                     |                                         |
 | chain access                                       | 链上访问                     |                                         |
 | block, nonce                                       | 区块, 随机数                 |                                         |
+| tracing RPC                                        | 追踪 RPC                     |                                         |
 | finality, final                                    | 最终确认                     |                                         |
 | transaction (on chain)                             | 交易, 链上交易               | 链上交易 where "trade" could be meant   |
 | a transaction lands                                | 上链                         |                                         |
