@@ -5,6 +5,7 @@ import {
   type AssetRef,
   type ChainRegistry,
   createChainRegistry,
+  type TxSimulator,
   type Venue,
   type UsdPrice,
 } from "@binference/chain";
@@ -13,6 +14,7 @@ import {
   createFakeFamily,
   createFakeSigner,
   createFakeSigningScheme,
+  createFakeTxSimulator,
   createFakeVenue,
   type FakeSigner,
 } from "@binference/chain/testing";
@@ -103,6 +105,12 @@ export interface TestEngineOptions {
   readonly risk?: RiskCheck;
   /** The ceilings the owner key changes; a fake holding none when absent. */
   readonly ceilings?: CeilingEditor;
+  /** Runs a rescue's sends; one under which every send reverts when absent. */
+  readonly chainSimulator?: TxSimulator;
+  /** What each account holds, as the wallet facts read it live; nothing when absent. */
+  readonly held?: ReadonlyMap<AccountRef, readonly Amount[]>;
+  /** Wallets custody holds besides the test wallet, each with its account. */
+  readonly custodyWallets?: ReadonlyMap<Id<"wal">, AccountRef>;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -167,22 +175,40 @@ async function openPaper(engine: Engine, balances: readonly Amount[]): Promise<v
   }
 }
 
-// The steps a test may replace: the risk check and the simulator, fakes when it gives none.
+// The steps a test may replace: the risk check and the simulators, fakes when it gives none.
 function stepsOf(
   options: TestEngineOptions,
   fakes: { readonly chains: ChainRegistry; readonly clock: ManualClock },
-): { readonly risk: RiskCheck; readonly simulator: Simulator } {
+): {
+  readonly risk: RiskCheck;
+  readonly simulator: Simulator;
+  readonly chainSimulator: TxSimulator;
+} {
   return {
     risk: options.risk ?? createFakeRiskCheck(fakes),
     simulator: options.simulator ?? createQuoteSimulator(() => options.refusal),
+    chainSimulator: options.chainSimulator ?? createFakeTxSimulator(new Map()),
   };
+}
+
+// The wallet facts of the test agent's wallets, and what each account holds live.
+function walletsOf(options: TestEngineOptions) {
+  return createFakeWalletFacts(
+    new Map([[testAgent, options.wallets ?? [testWallet]]]),
+    { ...testFacts, ...options.facts },
+    options.held,
+  );
+}
+
+function custodyOf(options: TestEngineOptions): readonly (readonly [Id<"wal">, AccountRef])[] {
+  return [...(options.custodyWallets ?? [])];
 }
 
 /** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
 export async function startTestEngine(options: TestEngineOptions = {}): Promise<TestEngine> {
   const clock = createManualClock(testNowMs);
   const stores = createMemoryEngineStores();
-  const custody = createFakeSigner(new Map([[testWallet, testAccount]]));
+  const custody = createFakeSigner(new Map([[testWallet, testAccount], ...custodyOf(options)]));
   const chains = options.chains ?? testChains();
   const venues = options.venues ?? [createFakeVenue()];
   const pushes: EnginePush[] = [];
@@ -197,10 +223,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     prices: createFakePriceSource(
       options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
     ),
-    wallets: createFakeWalletFacts(new Map([[testAgent, options.wallets ?? [testWallet]]]), {
-      ...testFacts,
-      ...options.facts,
-    }),
+    wallets: walletsOf(options),
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
     ...stepsOf(options, { chains, clock }),
     executor: options.executor ?? executor,

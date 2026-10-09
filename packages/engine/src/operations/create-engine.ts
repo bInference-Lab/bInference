@@ -1,4 +1,4 @@
-import type { Amount, ChainRegistry, PriceSource, Signer } from "@binference/chain";
+import type { Amount, ChainRegistry, PriceSource, Signer, TxSimulator } from "@binference/chain";
 import type { Clock, IdSource, Random } from "@binference/core";
 import {
   type AddressBookHandlers,
@@ -42,6 +42,7 @@ import {
   type RescueAddressHandlers,
 } from "../safety/rescue-address-handlers.js";
 import { settleRescueCeilings } from "../safety/rescue-ceilings.js";
+import { createRescueHandlers, type RescueHandlers } from "../safety/rescue-handlers.js";
 import {
   createSendLevelHandlers,
   type SendLevelHandlers,
@@ -68,6 +69,7 @@ export interface EngineHandlers
     AddressBookHandlers,
     RescueAddressHandlers,
     FreezeHandlers,
+    RescueHandlers,
     WalletHandlers {}
 
 /**
@@ -106,6 +108,8 @@ export interface EngineOptions {
   /** Weighs the token each trade buys (`createRiskCheck` in `@binference/engine/risk`). */
   readonly risk: RiskCheck;
   readonly simulator: Simulator;
+  /** Runs a rescue's sends unsent on its chain, live balances only. */
+  readonly chainSimulator: TxSimulator;
   /** Takes each confirmed live intent onto its wallet's queue; it never sees a paper intent. */
   readonly executor: Executor;
   /** A paper reset's starting balances when it names none: 1 BNB and 500 USDT by default. */
@@ -198,9 +202,9 @@ function executeOf(
   parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
 ): ExecuteConfirmed {
   const { stored, paper } = parts;
-  const { prices, clock, executor } = options;
+  const { prices, clock, executor, publish } = options;
   const fills = createPaperFills({ stored, positions: paper.positions, prices, clock });
-  return createExecuteConfirmed({ paper: fills, executor });
+  return createExecuteConfirmed({ paper: fills, executor, publish });
 }
 
 function intentParts(
@@ -252,10 +256,25 @@ function intentParts(
   };
 }
 
-// The freeze of one agent or every agent.
-function safetyHandlers(options: EngineOptions, stored: StoredIntents): FreezeHandlers {
-  const { agents, intents } = options.stores;
-  return createFreezeHandlers({ ...options, stored, agents, intents });
+// The freeze, and the rescue, which reads every wallet's live balances, never paper ones
+// (decision 0100).
+function safetyHandlers(
+  options: EngineOptions,
+  stored: StoredIntents,
+): FreezeHandlers & RescueHandlers {
+  const { stores, clock } = options;
+  const { agents, intents, install } = stores;
+  const freeze = createFreezeHandlers({ ...options, stored, agents, intents });
+  const rescue = createRescueHandlers({
+    ...options,
+    stored,
+    intents,
+    agents,
+    install,
+    simulator: options.chainSimulator,
+    policy: createPolicyCheck({ prices: options.prices, clock }),
+  });
+  return { ...freeze, ...rescue };
 }
 
 /**

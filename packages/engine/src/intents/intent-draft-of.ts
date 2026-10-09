@@ -1,5 +1,5 @@
-import type { Id, IdSource } from "@binference/core";
-import type { IntentRequest } from "@binference/protocol";
+import type { Id, IdSource, JsonValue } from "@binference/core";
+import type { IntentRequest, RescueRequest } from "@binference/protocol";
 import { requestDocument } from "./intent-documents.schema.js";
 import type { IntentDraft, IntentProposerRef } from "./intent-record.js";
 import type { IntentStep } from "./state-machine.js";
@@ -9,10 +9,15 @@ export interface NewIntent {
   readonly id: Id<"int">;
   readonly agentId: Id<"agt">;
   readonly walletId: Id<"wal">;
-  readonly request: IntentRequest;
+  /** What was asked: a proposal's request, or the rescue's, which asks for nothing more. */
+  readonly request: IntentRequest | RescueRequest;
   /** Who called, as the intents table keeps it: the token or device, `telegram` or `engine`. */
   readonly proposerRef: IntentProposerRef;
   readonly step: IntentStep;
+}
+
+function requestOf(request: IntentRequest | RescueRequest): JsonValue {
+  return request.kind === "rescue" ? { kind: request.kind } : requestDocument.encode(request);
 }
 
 /**
@@ -37,7 +42,7 @@ export function draftOf(intent: NewIntent, ids: IdSource): IntentDraft {
     walletId: intent.walletId,
     kind: status.kind,
     state: status.state,
-    request: requestDocument.encode(intent.request),
+    request: requestOf(intent.request),
     hasOutsideContent: status.hasOutsideContent,
     isPaper: status.isPaper,
     proposer: proposerRef,

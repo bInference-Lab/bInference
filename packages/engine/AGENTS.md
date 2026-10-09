@@ -140,6 +140,14 @@ Rules for this package:
   with the freeze's own ledger entries; a write another write beat is read and tried again. Each
   newly frozen agent is announced with `notice.frozen`. The policy's `frozen` rule keeps every
   later intent and auto order fill of the agent out.
+- A rescue (`src/safety/`, `safety/rescue`) is one live intent stored under the first wallet that
+  moves something and whose agent is active, whatever the agents' modes, freezes and send levels.
+  It plans every wallet of the install on the rescue address's chain: each token the registry
+  lists or the wallet holds a live position in, whole, and the native coin above the agent's gas
+  reserve, never a sale. Its quote is a `RescueQuote` in the `quote` column, so the card's terms
+  hash binds every move and the wallet that signs it; each wallet's sends are simulated, and a
+  move that would not run as planned is left out. While a rescue has not ended, `safety/rescue`
+  answers that one. A confirmed rescue is announced with `notice.rescue`.
 - The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
   then not again until a reading shows it back at or above that. It keeps that memory in a bounded

@@ -40,7 +40,7 @@ interface RiskParts {
   readonly cache: RiskCacheStore;
   /** How long a source's report holds: config's `risk.cacheTtlSec`, in milliseconds. */
   readonly cacheTtlMs: number;
-  /** Runs the round trip's legs unsent on the chain's latest state. */
+  /** Runs the round trip's legs, and a rescue's sends, unsent on the chain's latest state. */
   readonly simulator: TxSimulator;
 }
 
@@ -169,6 +169,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     host,
     risk,
     simulator: options.simulator,
+    chainSimulator: options.risk.simulator,
     executor: options.executor,
     paperBalances: options.paperBalances,
     isLocked: options.isLocked ?? (() => false),

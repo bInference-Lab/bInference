@@ -43,6 +43,11 @@ function storedOnPaper({ kind, isAgentOnPaper }: Case): boolean {
   return proposed.value.status.isPaper;
 }
 
+// The execute step's notices, which no case here reads.
+function publish(): void {
+  // A notice changes nothing about where an intent goes.
+}
+
 // Where the execute step sends each intent it is handed, in order.
 async function routesOf(item: Case): Promise<readonly Route[]> {
   const routes: Route[] = [];
@@ -59,7 +64,7 @@ async function routesOf(item: Case): Promise<readonly Route[]> {
     },
   };
   const record = { id: intent, kind: item.kind, state: item.state, isPaper: storedOnPaper(item) };
-  await createExecuteConfirmed({ paper, executor })({ record } as IntentSnapshot, live);
+  await createExecuteConfirmed({ paper, executor, publish })({ record } as IntentSnapshot, live);
   return routes;
 }
 

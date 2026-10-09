@@ -217,6 +217,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
       chains,
       clock,
     }),
+    chainSimulator: createEvmTxSimulator({ rpc, chain }),
     executor,
     isLocked: () => false,
     paperBalances: [],

@@ -13,6 +13,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { PaperFills } from "../paper/paper-fills.js";
+import type { EnginePush } from "../pushes/engine-push.js";
 import { createExecuteConfirmed } from "./execute-confirmed.js";
 
 const live = { signal: new AbortController().signal };
@@ -72,8 +73,13 @@ describe("the execute step", () => {
     const rescue = await rescueOnPaper();
     expect([rescue.record.kind, rescue.record.isPaper]).toStrictEqual(["rescue", false]);
     const executor = createFakeExecutor();
-    const execute = createExecuteConfirmed({ paper: paperNeverReached, executor });
+    const pushes: EnginePush[] = [];
+    const publish = (push: EnginePush): void => {
+      pushes.push(push);
+    };
+    const execute = createExecuteConfirmed({ paper: paperNeverReached, executor, publish });
     await expect(execute(rescue, live)).resolves.toBe(rescue);
     expect(executor.taken()).toStrictEqual([intent]);
+    expect(pushes).toStrictEqual([]);
   });
 });

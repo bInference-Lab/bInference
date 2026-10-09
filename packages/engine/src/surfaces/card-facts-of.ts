@@ -1,4 +1,4 @@
-import type { AssetRef, ChainRegistry } from "@binference/chain";
+import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import type { QuoteView, SimulationView, SwapRequest } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
@@ -12,8 +12,15 @@ import {
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { type RescueQuote, rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
+import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { swapSlippageBps } from "../money-path/swap-trade.js";
+
+function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
+  const chain = chains.get(assetRefParts(asset).chain);
+  return chain.ok && nativeAssetOf(chain.value) === asset;
+}
 
 /** What a card version's facts are read from: the stored intent, the version and its agent. */
 export interface CardSource {
@@ -98,15 +105,45 @@ function swapFacts(request: SwapRequest, quote: QuoteView, source: CardSource): 
   };
 }
 
+// A rescue's card: where everything goes, how many tokens from how many wallets, and their value
+// when quoted (spec 4, section 3.3). The owner asked for it, so no agent's reason shows.
+function rescueFacts(quote: RescueQuote, source: CardSource): CardFacts {
+  const { record, card, settings, chains } = source;
+  const { moves, rescue, valueUsdMicros } = quote;
+  const tokens = new Set(
+    moves.map(({ amount }) => amount.asset).filter((asset) => !isNativeAsset(chains, asset)),
+  );
+  return {
+    agentName: settings.agent.name,
+    isPaper: record.isPaper,
+    hasOutsideContent: record.hasOutsideContent,
+    card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
+    action: {
+      kind: "rescue",
+      address: rescue,
+      tokenCount: tokens.size,
+      walletCount: new Set(moves.map(({ from }) => from)).size,
+      valueUsdMicros,
+    },
+    warnings: { hasUnusualName: false, isNewAddress: false },
+  };
+}
+
 /**
  * The facts a card version is drawn from (spec 4, section 3), read from the stored intent: the
  * quote's amounts and route, the simulation's check (or that a paper sale's fill is an estimate),
- * the highest tax the risk step measured and the agent's reason. The money path quotes
- * swaps only, so an intent of another kind, or one without a quote, has none. The fees line waits
- * for a gas estimate in the quote, and no source marks unusual names yet.
+ * the highest tax the risk step measured and the agent's reason; for a rescue, its address, what
+ * it moves and their value. The money path quotes swaps and rescues only, so an intent of another
+ * kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
+ * no source marks unusual names yet.
  */
 export function cardFactsOf(source: CardSource): CardFacts | undefined {
   const { record } = source;
+  if (record.kind === "rescue") {
+    return record.quote === undefined
+      ? undefined
+      : rescueFacts(rescueQuoteDocument.decode(record.quote), source);
+  }
   const request = requestDocument.decode(record.request);
   if (request.kind !== "swap" || record.quote === undefined) {
     return undefined;

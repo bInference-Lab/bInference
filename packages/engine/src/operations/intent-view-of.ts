@@ -1,5 +1,11 @@
 import type { AssetRef, ChainRegistry } from "@binference/chain";
-import type { CardView, IntentOutcome, IntentRequest, IntentView } from "@binference/protocol";
+import type {
+  CardView,
+  IntentOutcome,
+  IntentRequest,
+  IntentView,
+  RescueRequest,
+} from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import {
   quoteDocument,
@@ -8,11 +14,26 @@ import {
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
 import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
+import type { IntentRecord } from "../intents/intent-record.js";
+import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
 import { assetInfosOf } from "../money-path/asset-infos.js";
 
-// The money path routes swaps; other kinds list their assets once it runs them.
-function assetsOf(request: IntentRequest): readonly AssetRef[] {
+// The money path routes swaps; a rescue lists what it moves; other kinds list their assets once
+// it runs them.
+function assetsOf(
+  record: IntentRecord,
+  request: IntentRequest | RescueRequest,
+): readonly AssetRef[] {
+  if (request.kind === "rescue") {
+    const quote = record.quote === undefined ? undefined : rescueQuoteDocument.decode(record.quote);
+    return [...new Set(quote?.moves.map(({ amount }) => amount.asset) ?? [])];
+  }
   return request.kind === "swap" ? [request.from, request.to] : [];
+}
+
+// A rescue's quote is its own document, which the view's quote does not show.
+function requestOf(record: IntentRecord): IntentRequest | RescueRequest {
+  return record.kind === "rescue" ? rescueRequest : requestDocument.decode(record.request);
 }
 
 function cardViewOf(snapshot: IntentSnapshot): CardView | undefined {
@@ -59,7 +80,7 @@ function outcomeOf(snapshot: IntentSnapshot): IntentOutcome | undefined {
  */
 export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): IntentView {
   const { record } = snapshot;
-  const request = requestDocument.decode(record.request);
+  const request = requestOf(record);
   const card = cardViewOf(snapshot);
   const outcome = outcomeOf(snapshot);
   return {
@@ -69,7 +90,9 @@ export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): I
     kind: record.kind,
     state: record.state,
     request,
-    ...(record.quote === undefined ? {} : { quote: quoteDocument.decode(record.quote) }),
+    ...(record.quote === undefined || record.kind === "rescue"
+      ? {}
+      : { quote: quoteDocument.decode(record.quote) }),
     ...(record.risk === undefined ? {} : { risk: riskDocument.decode(record.risk) }),
     ...(record.simulation === undefined
       ? {}
@@ -80,6 +103,6 @@ export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): I
     outsideContent: record.hasOutsideContent,
     createdAt: record.createdAtMs,
     changedAt: record.changedAtMs,
-    assets: assetInfosOf(chains, assetsOf(request)),
+    assets: assetInfosOf(chains, assetsOf(record, request)),
   };
 }

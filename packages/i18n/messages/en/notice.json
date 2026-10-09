@@ -1,6 +1,7 @@
 {
   "approvalMode": "{agent} is now in {mode, select, auto {auto} other {manual}} mode, from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}",
   "frozen": "🔴 {agent} is frozen from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}. Unfreeze in the CLI, the console or the Mini App.",
+  "rescue": "🔴 Rescue confirmed: moving everything to {address}",
   "locked": "🔴 binference restarted and is locked. Run `binference unlock`.",
   "signerStopped": "🔴 The signer stopped, so binference signs nothing. Fix what `binference logs` shows, then run `binference unlock`.",
   "signerRefused": "⚠️ The signer refused to sign a step of a trade: {rule, select, unknown_request {it was no request the signer knows} malformed {the request could not be read} rule_1 {its chain is not enabled, or is not the transaction's} rule_2 {it calls a contract the trade may not use} rule_3 {its amounts are not the trade's} rule_4 {it asks for a kind of signature the signer never gives} rule_5 {the confirmation or the grant behind it ran out, or does not match} rule_6 {it is no plain speed-up or cancel of the step} other {it broke one of the signer's rules}}. Nothing was sent for it.",
