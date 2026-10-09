@@ -103,8 +103,9 @@ new name here first, in the change that uses it.
   addresses and the rescue address.
 - **address book**: the agent's saved addresses with their labels.
 - **send level**: from 0 (Open) to 3 (Locked), where sends may go among the saved addresses.
-- **freeze**: stops an agent or the whole install at once. Unfreezing needs the CLI, the console or
-  the Mini App.
+- **freeze**: stops an agent or the whole install at once; an agent created while the install is
+  frozen starts frozen. Unfreezing is asked for in the CLI, the console or the Mini App, and takes
+  the owner's tap on its card.
 - **rescue**: one intent that moves every token and the BNB of every agent wallet to the rescue
   address, even while frozen.
 - **braking** and **loosening**: a change that makes the agent safer works at once; one that makes
