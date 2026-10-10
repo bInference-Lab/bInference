@@ -684,6 +684,14 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   after an explicit mine, reads history logs from a node that serves `eth_getLogs`, and has its
   changes reverted. Enforcer: `vitest.fork.config.ts` with its global setup, `withFork` in
   `chain-evm`, and the `src/fork/` exclusion in `vitest.config.ts`.
+- **Rule:** crash tests live in a package's `src/crash/` and run in the crash suite
+  (`pnpm test:crash`, nightly in CI on Linux, macOS and Windows, 100 runs on each), never in
+  `pnpm check`. Each run kills an engine process outright at a kill point (`SIGKILL`, or
+  `TerminateProcess` on Windows), starts it again on the same state folder, and counts what
+  reached the chain at the test's relays and in anvil, never what the engine reports. anvil runs a
+  chain of its own with BSC's chain id and no fork, so no run reaches the network. Enforcer:
+  `vitest.crash.config.ts` with its global setup, `BINFERENCE_CRASH_RUNS` for the runs per kill
+  point, and the `src/crash/` exclusion in `vitest.config.ts`.
 
 <a id="section-16"></a>
 

@@ -30,6 +30,8 @@ function packageFolders(): readonly string[] {
 
 // Fork tests need anvil and the network: they run in the fork suite (vitest.fork.config.ts).
 const forkFolders = "**/src/fork/**";
+// Crash tests need anvil and kill processes: they run in the crash suite (vitest.crash.config.ts).
+const crashFolders = "**/src/crash/**";
 
 // Platform tests mock native modules and its native suites need the real ones, so each of its
 // files gets a fresh module graph.
@@ -46,7 +48,7 @@ function project(
     test: {
       name,
       include: members.map((folder) => `${folder}/src/**/*.test.ts`),
-      exclude: [...configDefaults.exclude, forkFolders],
+      exclude: [...configDefaults.exclude, forkFolders, crashFolders],
       isolate: name === "isolated",
     },
   };
@@ -108,7 +110,7 @@ const config: ViteUserConfig = defineConfig({
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**/*.ts", "plugins/*/src/**/*.ts"],
-      exclude: ["**/*.test.ts", forkFolders],
+      exclude: ["**/*.test.ts", forkFolders, crashFolders],
       reporter: ["text", "json-summary"],
       thresholds: { lines: defaultBar, branches: defaultBar, ...tierThresholds() },
     },

@@ -10,14 +10,18 @@ export interface ForkSource {
   readonly block: bigint;
 }
 
-/** An anvil process serving a fork on 127.0.0.1. */
-export interface AnvilFork {
+/** An anvil process serving a chain on 127.0.0.1. */
+export interface AnvilChain {
   /** anvil's JSON-RPC endpoint. */
   readonly url: string;
-  /** The block the fork was taken at. */
-  readonly block: bigint;
   /** Stops anvil and waits until it exits. */
   stop(): Promise<void>;
+}
+
+/** An anvil process serving a fork on 127.0.0.1. */
+export interface AnvilFork extends AnvilChain {
+  /** The block the fork was taken at. */
+  readonly block: bigint;
 }
 
 type AnvilProcess = ChildProcessByStdio<null, Readable, Readable>;
@@ -104,17 +108,36 @@ export async function readAnvilVersion(): Promise<string> {
   return versionLine.exec(await output)?.[1] ?? "of an unknown version";
 }
 
+async function startAnvil(args: readonly string[]): Promise<AnvilChain> {
+  const child = spawn("anvil", args, { stdio: ["ignore", "pipe", "pipe"] });
+  try {
+    const address = await waitForAddress(child);
+    return { url: `http://${address}`, stop: async () => stopProcess(child) };
+  } catch (error) {
+    await stopProcess(child);
+    throw error;
+  }
+}
+
 /**
  * Starts anvil forked from `source` and resolves once it listens on 127.0.0.1. A start that fails
  * stops the process and rejects with anvil's own error.
  */
 export async function startAnvilFork(source: ForkSource): Promise<AnvilFork> {
-  const child = spawn("anvil", anvilArgs(source), { stdio: ["ignore", "pipe", "pipe"] });
-  try {
-    const address = await waitForAddress(child);
-    return { url: `http://${address}`, block: source.block, stop: async () => stopProcess(child) };
-  } catch (error) {
-    await stopProcess(child);
-    throw error;
-  }
+  return { ...(await startAnvil(anvilArgs(source))), block: source.block };
+}
+
+/**
+ * Starts anvil on a chain of its own, with no fork: empty but for anvil's funded default accounts,
+ * with the chain id given, blocks mined only on demand. It resolves once anvil listens on
+ * 127.0.0.1; a start that fails stops the process and rejects with anvil's own error.
+ */
+export async function startAnvilChain(chainId: number): Promise<AnvilChain> {
+  const args = [
+    ["--chain-id", String(chainId)],
+    ["--host", "127.0.0.1"],
+    ["--port", "0"],
+    ["--no-mining"],
+  ];
+  return startAnvil(args.flat());
 }

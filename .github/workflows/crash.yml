@@ -1,0 +1,106 @@
+name: Crash suite
+
+# The crash suite on Linux, macOS and Windows, every night and on demand: each run kills an engine
+# process at a point between signing and receipt, SIGKILL or TerminateProcess, starts it again and
+# counts what reached the chain. It runs against anvil on a chain of its own, so the job reaches
+# no network beyond its installs and holds no key.
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Runs per kill point
+        required: false
+        default: "20"
+
+permissions: read-all
+
+concurrency:
+  group: crash-suite
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+  FOUNDRY_VERSION: v1.7.1
+
+jobs:
+  crash:
+    name: Crash suite (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # Foundry's release archive for each runner, checked against its published digest.
+        include:
+          - os: ubuntu-latest
+            foundry: linux_amd64.tar.gz
+            foundry-sha256: cf7e688ed0c4c48adffca788b496076e31060b67ac5afe1e43dbb5499c20c88b
+          - os: macos-latest
+            foundry: darwin_arm64.tar.gz
+            foundry-sha256: eacdc67718fac857cad9e19c7f6729dd80de731d09df81856391d093cfcab547
+          - os: windows-latest
+            foundry: win32_amd64.zip
+            foundry-sha256: 6d41121b4bbb809845821c903619cfee75ed364f2bdc58a6787c9b0454114537
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.10.0"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The suite needs anvil alone.
+      - name: Install anvil
+        if: runner.os != 'Windows'
+        env:
+          FOUNDRY_ASSET: ${{ matrix.foundry }}
+          FOUNDRY_SHA256: ${{ matrix.foundry-sha256 }}
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/foundry"
+          mkdir -p "$tools"
+          curl -fsSL --retry 3 -o "$tools/foundry.tar.gz" \
+            "https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}/foundry_${FOUNDRY_VERSION}_${FOUNDRY_ASSET}"
+          echo "${FOUNDRY_SHA256}  $tools/foundry.tar.gz" | shasum -a 256 --check
+          tar -xzf "$tools/foundry.tar.gz" -C "$tools" anvil
+          "$tools/anvil" --version
+          echo "$tools" >> "$GITHUB_PATH"
+
+      - name: Install anvil (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          FOUNDRY_ASSET: ${{ matrix.foundry }}
+          FOUNDRY_SHA256: ${{ matrix.foundry-sha256 }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tools = Join-Path $env:RUNNER_TEMP "foundry"
+          New-Item -ItemType Directory -Force -Path $tools | Out-Null
+          $archive = Join-Path $tools "foundry.zip"
+          $url = "https://github.com/foundry-rs/foundry/releases/download/$env:FOUNDRY_VERSION/foundry_$($env:FOUNDRY_VERSION)_$env:FOUNDRY_ASSET"
+          Invoke-WebRequest -Uri $url -OutFile $archive -MaximumRetryCount 3
+          $digest = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
+          if ($digest -ne $env:FOUNDRY_SHA256) { throw "foundry.zip has SHA-256 $digest." }
+          Expand-Archive -Path $archive -DestinationPath $tools
+          & (Join-Path $tools "anvil.exe") --version
+          Add-Content -Path $env:GITHUB_PATH -Value $tools
+
+      # 20 runs at each of the five kill points: 100 runs on each OS. Vitest writes the results to
+      # the job summary.
+      - name: Crash suite
+        env:
+          BINFERENCE_CRASH_RUNS: ${{ inputs.runs || '20' }}
+        run: pnpm test:crash
