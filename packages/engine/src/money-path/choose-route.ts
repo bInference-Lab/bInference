@@ -51,45 +51,71 @@ interface Candidate {
   readonly simulation?: Result<SimulatedSteps, SimulationFailure>;
 }
 
+// A port that throws fails only the route it was asked about; an abort still ends the choice.
+async function unlessThrown<T>(work: Promise<T>, signal: AbortSignal): Promise<T | undefined> {
+  try {
+    return await work;
+  } catch {
+    signal.throwIfAborted();
+    return undefined;
+  }
+}
+
+// A simulator that throws leaves the plan without a simulation, so it never passes.
 async function candidateOf(quoted: TradeQuote, options: RouteChoiceOptions): Promise<Candidate> {
   const { host, nativeAsset, signal } = options;
   const planned = await buildSwap(options.swap, quoted, { host, nativeAsset, signal });
   if (!planned.ok) {
     return { quoted, planned };
   }
-  const simulation = await options.simulator.simulate(options.intent, planned.value.built, {
+  const built = planned.value.built;
+  const simulation = await unlessThrown(
+    options.simulator.simulate(options.intent, built, { signal }),
     signal,
-  });
-  return { quoted, planned, simulation };
+  );
+  return simulation === undefined ? { quoted, planned } : { quoted, planned, simulation };
 }
 
-// The native coin's worth in the asset bought: one for one when the trade buys the coin, else
-// through USD prices, a token the source cannot price taking its price from the first quote.
-async function nativeToAssetOut(
+type PriceAnswer = Awaited<ReturnType<PriceSource["usdPrice"]>>;
+
+// The USD prices of the native coin and of the asset bought, a token the source cannot price
+// taking its price from the first quote. A price source that throws gives no prices.
+async function usdPricesOf(
   first: TradeQuote | undefined,
   options: RouteChoiceOptions,
-): Promise<Ratio | undefined> {
-  const { assetOut } = options.swap.trade;
-  if (assetOut === options.nativeAsset) {
-    return { numerator: 1n, denominator: 1n };
-  }
+): Promise<readonly PriceAnswer[]> {
   const trade =
     first === undefined
       ? undefined
       : { amountIn: first.trade.amountIn, expectedOut: first.quote.expectedOut };
   const prices = trade === undefined ? options.prices : withQuotePrice(options.prices, trade);
-  const call = { signal: options.signal };
-  const [native, out] = await Promise.all([
-    prices.usdPrice(options.nativeAsset, call),
-    prices.usdPrice(assetOut, call),
+  const { signal } = options;
+  const answers = Promise.all([
+    prices.usdPrice(options.nativeAsset, { signal }),
+    prices.usdPrice(options.swap.trade.assetOut, { signal }),
   ]);
-  if (!native.ok || !out.ok || out.value.numerator <= 0n || native.value.denominator <= 0n) {
+  return (await unlessThrown(answers, signal)) ?? [];
+}
+
+// The native coin's worth in the asset bought: one for one when the trade buys the coin, else
+// through their USD prices.
+async function nativeToAssetOut(
+  first: TradeQuote | undefined,
+  options: RouteChoiceOptions,
+): Promise<Ratio | undefined> {
+  if (options.swap.trade.assetOut === options.nativeAsset) {
+    return { numerator: 1n, denominator: 1n };
+  }
+  const [native, out] = await usdPricesOf(first, options);
+  if (native?.ok !== true || out?.ok !== true) {
     return undefined;
   }
-  return {
-    numerator: native.value.numerator * out.value.denominator,
-    denominator: native.value.denominator * out.value.numerator,
-  };
+  return out.value.numerator <= 0n || native.value.denominator <= 0n
+    ? undefined
+    : {
+        numerator: native.value.numerator * out.value.denominator,
+        denominator: native.value.denominator * out.value.numerator,
+      };
 }
 
 // The chosen plan's quote carries the network fee its simulation measured.
@@ -117,19 +143,21 @@ interface Passed {
   readonly steps: SimulatedSteps;
 }
 
-// The policy's word on each route: none needed for the one it priced, or without a policy.
-async function verdictsOf(
-  ranked: readonly Passed[],
-  options: RouteChoiceOptions,
-): Promise<readonly (PolicyVerdict | undefined)[]> {
-  const { policy } = options;
-  return Promise.all(
-    ranked.map(async ({ candidate }) =>
-      policy === undefined || candidate.quoted.trade.venue === policy.pricedVenue
-        ? undefined
-        : policy.recheck(candidate.quoted),
-    ),
-  );
+/** The policy's word on one route, and its new pass when it judged the route again. */
+interface RouteVerdict {
+  readonly passes: boolean;
+  readonly pass?: PolicyPass;
+}
+
+// None is needed for the route the policy priced, or without a policy. A check that throws
+// refuses the route.
+async function verdictOf(candidate: Candidate, options: RouteChoiceOptions): Promise<RouteVerdict> {
+  const { policy, signal } = options;
+  if (policy === undefined || candidate.quoted.trade.venue === policy.pricedVenue) {
+    return { passes: true };
+  }
+  const verdict = await unlessThrown(policy.recheck(candidate.quoted), signal);
+  return verdict?.ok === true ? { passes: true, pass: verdict.value } : { passes: false };
 }
 
 // The first route, best first, that the policy passes: the one it priced, or one it passes again.
@@ -137,13 +165,14 @@ async function firstPassing(
   ranked: readonly Passed[],
   options: RouteChoiceOptions,
 ): Promise<ChosenRoute | undefined> {
-  const verdicts = await verdictsOf(ranked, options);
-  const place = verdicts.findIndex((verdict) => verdict === undefined || verdict.ok);
+  const verdicts = await Promise.all(
+    ranked.map(async ({ candidate }) => verdictOf(candidate, options)),
+  );
+  const place = verdicts.findIndex((verdict) => verdict.passes);
   const winner = ranked[place];
-  const verdict = verdicts[place];
   return winner === undefined
     ? undefined
-    : chosenOf(winner.candidate, options, verdict?.ok === true ? verdict.value : undefined);
+    : chosenOf(winner.candidate, options, verdicts[place]?.pass);
 }
 
 // With no route passing, the venue the policy priced, else the first in order, reports why.
@@ -170,7 +199,10 @@ function fallbackOf(
  * route passing, the venue the policy priced keeps its build failure or its failed simulation, so
  * the intent ends with that reason. With no quote at all, the first venue's refusal stands; with
  * every quote above the maximum, `price_impact` (spec 6, section 4). An impact a venue cannot
- * tell is the whole input, so it is dropped like any other above the maximum.
+ * tell is the whole input, so it is dropped like any other above the maximum. A simulator or a
+ * policy check that throws fails only the route it was asked about, and a plan left without a
+ * simulation ends as `venue_down`; a price source that throws ranks the plans as one without a
+ * price does. Only an aborted signal rejects.
  */
 export async function chooseRoute(
   quotes: readonly QuoteOutcome[],

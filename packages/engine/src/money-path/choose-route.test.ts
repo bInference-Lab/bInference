@@ -15,6 +15,16 @@ import type { SwapTrade } from "./swap-trade.js";
 import { otherVenue, otherVenueId } from "./test-routes.js";
 
 const noRefusal = (): undefined => undefined;
+
+// A simulator that throws for the plan of one venue, or of every venue when none is named.
+function throwingOn(venue: string | undefined, simulator: Simulator): Simulator {
+  return {
+    simulate: async (id, built, options) =>
+      venue === undefined || built.quote.route[0]?.venue === venue
+        ? Promise.reject(new Error("node down"))
+        : simulator.simulate(id, built, options),
+  };
+}
 const steep = bpsSchema.parse(301);
 
 const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
@@ -35,6 +45,7 @@ const coinPrices = createFakePriceSource(
 const passed: PolicyVerdict = ok({ sellsDeniedToken: false });
 const refused: PolicyVerdict = { ok: false, error: "per_trade_cap", reasons: ["per_trade_cap"] };
 const refuseAgain = async (_quoted: TradeQuote): Promise<PolicyVerdict> => Promise.resolve(refused);
+const throwingCheck = async (): Promise<PolicyVerdict> => Promise.reject(new Error("no feed"));
 
 interface Routing {
   readonly venues?: readonly Parameters<typeof createVenueHost>[0]["venues"][number][];
@@ -182,6 +193,36 @@ describe("the best quote", () => {
     ];
     const simulator = createQuoteSimulator(noRefusal);
     await expect(choose(0n, { venues, simulator })).resolves.toStrictEqual(err("price_impact"));
+  });
+
+  it("counts a simulator that throws on one route as that route failing", async () => {
+    const simulator = throwingOn("fake-swap", createQuoteSimulator(noRefusal));
+    const route = chosenOf(await choose(1_900_000n, { simulator }));
+    expect(venueOf(route)).toBe(otherVenueId);
+  });
+
+  it("ends as venue_down, not a rejection, when the simulator throws on every route", async () => {
+    const simulator = throwingOn(undefined, createQuoteSimulator(noRefusal));
+    await expect(choose(2_100_000n, { simulator })).resolves.toStrictEqual(err("venue_down"));
+  });
+
+  it("counts a policy check that throws as a refusal of that route", async () => {
+    const change = { policy: { pricedVenue: "fake-swap", recheck: throwingCheck } };
+    const simulator = createQuoteSimulator(noRefusal);
+    expect(venueOf(chosenOf(await choose(2_100_000n, { simulator, change })))).toBe("fake-swap");
+  });
+
+  it("ranks by what arrives alone when the price source throws", async () => {
+    const simulator = createQuoteSimulator(
+      noRefusal,
+      new Map([
+        ["fake-swap", { keptBps: 10_000n, gasUsed: 300_000n }],
+        [otherVenueId, { keptBps: 10_000n, gasUsed: 100_000n }],
+      ]),
+    );
+    const prices = { usdPrice: async () => Promise.reject(new Error("feed down")) };
+    const route = chosenOf(await choose(1_999_900n, { simulator, change: { prices } }));
+    expect(venueOf(route)).toBe("fake-swap");
   });
 
   it("keeps the first venue's refusal when no venue quotes", async () => {
