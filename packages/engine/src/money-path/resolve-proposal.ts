@@ -75,8 +75,9 @@ async function walletOf(
 /**
  * Resolves a request for the money path: the agent's wallet and its account on the trade's
  * chain, the trade itself and the wallet's facts. A wallet that is not the agent's, or that the
- * custodian does not hold, is `wallet.not_found`; a request the money path cannot route yet is
- * `quote.no_route`. Neither stores anything.
+ * custodian does not hold, is `wallet.not_found`; an asset with no canonical form on a chain the
+ * registry holds is `protocol.bad_args`; a request the money path cannot route yet is
+ * `quote.no_route`. None stores anything.
  */
 export async function resolveProposal(
   options: ResolveOptions,
@@ -96,7 +97,7 @@ export async function resolveProposal(
   const context = { limits: settings.limits, account: account.value, chains: options.chains };
   const swap = swapTradeOf(request, context);
   if (!swap.ok) {
-    return err("quote.no_route");
+    return err(swap.error === "no_route" ? "quote.no_route" : swap.error);
   }
   const isPaper = settings.agent.mode === "paper";
   const query = { agent: request.agent, wallet, account: account.value, isPaper };

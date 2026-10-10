@@ -141,6 +141,7 @@ async function policyVerdict(
     settings: resolved.settings,
     wallet: resolved.facts,
     chain: resolved.chain.ref,
+    chains: options.chains,
     nativeAsset: resolved.nativeAsset,
     nowMs: options.clock.now(),
   });

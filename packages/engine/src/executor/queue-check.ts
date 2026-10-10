@@ -70,6 +70,7 @@ async function recheckPolicy(
     settings,
     wallet: facts,
     chain: chain.ref,
+    chains: parts.chains,
     nativeAsset,
     nowMs,
   });

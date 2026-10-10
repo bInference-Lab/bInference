@@ -50,7 +50,7 @@ export function createVenueQuoteSource(options: VenueQuoteSourceOptions): QuoteS
       const { limits } = snapshot.settings;
       const swap = swapTradeOf(request, { limits, account: account.value, chains: options.chains });
       if (!swap.ok) {
-        return swap;
+        return err("no_route");
       }
       const query = {
         agent: record.agentId,

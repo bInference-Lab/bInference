@@ -1,4 +1,9 @@
-import { type AccountRef, type AssetRef, type ChainRegistry } from "@binference/chain";
+import {
+  type AccountRef,
+  type AssetRef,
+  canonicalAsset,
+  type ChainRegistry,
+} from "@binference/chain";
 import { type Bps, err, ok, type Result } from "@binference/core";
 import type { IntentRequest, SwapRequest } from "@binference/protocol";
 import type { LimitsValues } from "../agents/limits-record.js";
@@ -24,8 +29,12 @@ export interface SwapContext {
   readonly chains: ChainRegistry;
 }
 
+// The registry writes its tokens in their family's canonical form, as the lookup must.
 function isRegistryPair(chains: ChainRegistry, assets: readonly AssetRef[]): boolean {
-  return assets.every((asset) => assetInfoOf(chains, asset) !== undefined);
+  return assets.every((asset) => {
+    const canonical = canonicalAsset(chains, asset);
+    return canonical.ok && assetInfoOf(chains, canonical.value) !== undefined;
+  });
 }
 
 /**
@@ -45,24 +54,31 @@ export function swapSlippageBps(
 /**
  * Resolves a swap of an exact amount into the trade the venue host plans: the wallet's account
  * pays and receives, on the agent's first allowed venue and then the others in order, with the
- * slippage the request asks or the agent's maximum for the pair. A request the money path cannot route yet, such as another
+ * slippage the request asks or the agent's maximum for the pair. Both assets take their family's
+ * canonical form, so the policy's token lists judge every spelling of a token alike; an asset
+ * that has none is `protocol.bad_args`. A request the money path cannot route yet, such as another
  * kind, a share of a balance, or an agent with no venue, is `no_route`.
  */
 export function swapTradeOf(
   request: IntentRequest,
   context: SwapContext,
-): Result<SwapTrade, "no_route"> {
+): Result<SwapTrade, "no_route" | "protocol.bad_args"> {
   const [venue] = context.limits.venues;
   if (request.kind !== "swap" || !("base" in request.amount) || venue === undefined) {
     return err("no_route");
   }
-  const isRegistry = isRegistryPair(context.chains, [request.from, request.to]);
+  const from = canonicalAsset(context.chains, request.from);
+  const to = canonicalAsset(context.chains, request.to);
+  if (!from.ok || !to.ok) {
+    return err("protocol.bad_args");
+  }
+  const isRegistry = isRegistryPair(context.chains, [from.value, to.value]);
   const asked = request.maxSlippageBps;
   const trade: VenueTrade = {
     venue,
     wallet: context.account,
-    amountIn: { asset: request.from, base: request.amount.base },
-    assetOut: request.to,
+    amountIn: { asset: from.value, base: request.amount.base },
+    assetOut: to.value,
     maxSlippageBps: swapSlippageBps(request, context.limits, context.chains),
   };
   const { venues } = context.limits;

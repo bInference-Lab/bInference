@@ -1,3 +1,4 @@
+import { assetRefSchema } from "@binference/chain";
 import { bpsSchema, err, idSchema } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -134,6 +135,20 @@ describe("a stricter limit", () => {
         after: { perTradeUsdMicros: lower.toString() },
       },
     ]);
+  });
+
+  it("keeps a denied token in its canonical form, once, and refuses one without", async () => {
+    const test = await startTestEngine();
+    const shouted = assetRefSchema.parse("fake:1/token:0x0000000A");
+
+    const set = expectOk(await setLimits(test, { denyTokens: [shouted, testToken] }, braking));
+
+    expect(set.denyTokens).toStrictEqual([testToken]);
+    expect(await proposedState(test)).toBe("rejected_policy");
+    const malformed = assetRefSchema.parse("fake:1/token:0x0a");
+    expect(await setLimits(test, { denyTokens: [malformed] }, braking)).toStrictEqual(
+      err("protocol.bad_args"),
+    );
   });
 
   it("changes a gas reserve only on the chain it names", async () => {

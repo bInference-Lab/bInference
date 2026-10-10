@@ -1,4 +1,9 @@
-import { type AssetRef, assetRefSchema, type ChainRegistry } from "@binference/chain";
+import {
+  type AssetRef,
+  assetRefSchema,
+  canonicalAsset,
+  type ChainRegistry,
+} from "@binference/chain";
 import { evmChainOf } from "@binference/chain-evm";
 import { type Id, ok } from "@binference/core";
 import type { AgentDraft, GasReserve, LimitsValues } from "@binference/engine";
@@ -32,11 +37,21 @@ function gasReserveOf(
   return ok(found);
 }
 
-function assetsOf(listed: readonly string[]): InitStep<readonly AssetRef[]> {
-  const parsed = listed.map((text) => assetRefSchema.safeParse(text));
-  const wrong = listed.find((_, index) => parsed[index]?.success !== true);
+// Each token takes its family's canonical form, so the policy matches every spelling of it.
+function canonicalOf(registry: ChainRegistry, text: string): AssetRef | undefined {
+  const parsed = assetRefSchema.safeParse(text);
+  const canonical = parsed.success ? canonicalAsset(registry, parsed.data) : undefined;
+  return canonical?.ok === true ? canonical.value : undefined;
+}
+
+function assetsOf(
+  registry: ChainRegistry,
+  listed: readonly string[],
+): InitStep<readonly AssetRef[]> {
+  const canonical = listed.map((text) => canonicalOf(registry, text));
+  const wrong = listed.find((_, index) => canonical[index] === undefined);
   return wrong === undefined
-    ? ok(parsed.flatMap((item) => (item.success ? [item.data] : [])))
+    ? ok([...new Set(canonical.flatMap((asset) => (asset === undefined ? [] : [asset])))])
     : refused("init.bad_token", "refused.badToken", { token: wrong });
 }
 
@@ -86,8 +101,8 @@ export interface FirstAgentFacts {
  * The first agent, as the config's `defaults` make it (config spec, section 1): in paper mode
  * (decision 0019), with the approval mode of `defaults.approvalMode`, manual unless the owner set
  * another, the send level of `defaults.sendLevel`, and the default limits with coin amounts in
- * base units. A gas reserve on a chain the registry lacks, or a listed token that is no CAIP-19
- * asset, stops init.
+ * base units, each listed token in its family's canonical form. A gas reserve on a chain the
+ * registry lacks, or a listed token with no canonical form on a chain it holds, stops init.
  */
 export function firstAgentDraft(
   config: BinferenceConfig,
@@ -98,11 +113,11 @@ export function firstAgentDraft(
   if (!gasReserve.ok) {
     return gasReserve;
   }
-  const allow = assetsOf(config.defaults.limits.allowTokens);
+  const allow = assetsOf(registry, config.defaults.limits.allowTokens);
   if (!allow.ok) {
     return allow;
   }
-  const deny = assetsOf(config.defaults.limits.denyTokens);
+  const deny = assetsOf(registry, config.defaults.limits.denyTokens);
   if (!deny.ok) {
     return deny;
   }

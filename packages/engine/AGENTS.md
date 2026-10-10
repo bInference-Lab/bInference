@@ -20,7 +20,9 @@ Rules for this package:
   English and Chinese message `reason.<code>`.
 - The policy step (`src/policy/`) decides and never writes. It reads prices only through the
   `PriceSource` port, rounds every USD value up, and names every rule an intent breaks in spec 6's
-  order. A new rule takes its reason from that list and adds a property case.
+  order. A new rule takes its reason from that list and adds a property case. It compares assets
+  in their family's canonical form (`canonicalAsset` of `@binference/chain`): a request's assets
+  and the token lists take it where they enter, and the facts read a stored list in it.
 - A card is data: each line a key of `cardKeys` with typed values, never English text. Every key
   has an English and Chinese message, and each surface renders the lines as `cardLineText`
   (`src/surfaces/card-text.ts`) writes them in plain text, escaping them for its own markup.

@@ -154,6 +154,7 @@ async function checkPolicy(
     settings: snapshot.settings,
     wallet: run.wallet,
     chain: chain.ref,
+    chains: parts.chains,
     nativeAsset,
     nowMs,
   });

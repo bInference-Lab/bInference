@@ -1,4 +1,4 @@
-import type { ChainRegistry } from "@binference/chain";
+import { type AssetRef, canonicalAsset, type ChainRegistry } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -7,7 +7,12 @@ import {
   ok,
   type Result,
 } from "@binference/core";
-import { limitsViewSchema, type LimitsView, type ProtocolErrorCode } from "@binference/protocol";
+import {
+  type LimitChanges as WireChanges,
+  limitsViewSchema,
+  type LimitsView,
+  type ProtocolErrorCode,
+} from "@binference/protocol";
 import { z } from "zod";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
@@ -170,14 +175,46 @@ async function refusalOf(
   return venuesOutsideCeiling(check).length > 0 ? "limit.over_ceiling" : undefined;
 }
 
+// Each token of a list takes its family's canonical form, so the policy matches every spelling of
+// it and a list holds it once.
+function canonicalTokens(
+  chains: ChainRegistry,
+  tokens: readonly AssetRef[] | undefined,
+): Result<readonly AssetRef[] | undefined, "protocol.bad_args"> {
+  if (tokens === undefined) {
+    return ok(undefined);
+  }
+  const canonical = tokens.map((token) => canonicalAsset(chains, token));
+  return canonical.every((token) => token.ok)
+    ? ok([...new Set(canonical.flatMap((token) => (token.ok ? [token.value] : [])))])
+    : err("protocol.bad_args");
+}
+
+function canonicalChanges(
+  chains: ChainRegistry,
+  changes: WireChanges,
+): Result<WireChanges, "protocol.bad_args"> {
+  const allow = canonicalTokens(chains, changes.allowTokens);
+  const deny = canonicalTokens(chains, changes.denyTokens);
+  if (!allow.ok || !deny.ok) {
+    return err("protocol.bad_args");
+  }
+  return ok({
+    ...changes,
+    ...(allow.value === undefined ? {} : { allowTokens: allow.value }),
+    ...(deny.value === undefined ? {} : { denyTokens: deny.value }),
+  });
+}
+
 function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set">): Decide {
   return async (state, nowMs) => {
     const { values } = limitsAt(state, nowMs);
-    const refusal = await refusalOf(options, call, values.venues);
-    if (refusal !== undefined) {
-      return err(refusal);
+    const changes = canonicalChanges(options.chains, call.args.changes);
+    const refusal = changes.ok ? await refusalOf(options, call, values.venues) : changes.error;
+    if (!changes.ok || refusal !== undefined) {
+      return err(refusal ?? "protocol.bad_args");
     }
-    const { next, looser } = moveLimits(state, limitChangesOf(call.args.changes, values), nowMs);
+    const { next, looser } = moveLimits(state, limitChangesOf(changes.value, values), nowMs);
     return call.caller.scopes.includes(looser.length > 0 ? "loosen" : "confirm")
       ? ok(next)
       : err("auth.scope");
@@ -189,7 +226,9 @@ function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set"
  * intent to them, and the looser ones that wait. `limit/set` applies at once, with the `confirm`
  * scope, each change that is clearly stricter or back to the value in effect, and drops any looser
  * value of that limit that waits; every other change needs the `loosen` scope and waits 24 hours
- * (decision 0111). A venue a live wallet's ceiling leaves out is `limit.over_ceiling`.
+ * (decision 0111). A venue a live wallet's ceiling leaves out is `limit.over_ceiling`. The token
+ * lists keep each token in its family's canonical form; a token without one is
+ * `protocol.bad_args`.
  * `limit/cancelPending` drops the looser limits that wait. Each move is journaled, pushed as
  * `config/changed`, and announced as `notice.limitChange` and `notice.limitChangeCancelled`
  * notices.

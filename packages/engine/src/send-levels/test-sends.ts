@@ -4,7 +4,7 @@ import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { PolicyRejection } from "../intents/intent-reason.js";
 import { expectOk, testAgent, testCoin, testNowMs } from "../intents/test-intents.js";
 import { policyFactsOf } from "../money-path/policy-facts-of.js";
-import type { TestEngine } from "../operations/test-engine.js";
+import { type TestEngine, testChains } from "../operations/test-engine.js";
 import { policyRefusals, type PolicySubject } from "../policy/policy-rules.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 
@@ -50,7 +50,8 @@ export async function sendRefusals(
     recentOutflows: [],
   };
   const chain = chainRefSchema.parse("fake:1");
-  const facts = policyFactsOf({ settings, wallet, chain, nativeAsset: testCoin, nowMs });
+  const chains = testChains();
+  const facts = policyFactsOf({ settings, wallet, chain, chains, nativeAsset: testCoin, nowMs });
   const subject: PolicySubject = {
     kind: "send",
     isPaper: false,

@@ -34,7 +34,10 @@ export interface PolicyLimits {
   readonly gasReserveBase: bigint;
   /** The venues the agent may use. */
   readonly venues: readonly string[];
-  /** When not empty, the only tokens the agent may touch. */
+  /**
+   * When not empty, the only tokens the agent may touch. Each list holds its tokens in their
+   * family's canonical form, as the subject does, so the rules compare one spelling of each.
+   */
   readonly allowTokens: readonly AssetRef[];
   /** Tokens the agent may never receive. It may sell one it holds, with the owner's tap. */
   readonly denyTokens: readonly AssetRef[];

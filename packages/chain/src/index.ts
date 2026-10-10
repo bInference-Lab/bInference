@@ -49,6 +49,7 @@ export type {
   NativeAssetDefinition,
   TokenDefinition,
 } from "./registry/chain-definition.js";
+export { canonicalAsset } from "./registry/canonical-asset.js";
 export { createChainRegistry } from "./registry/create-chain-registry.js";
 export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
 export type { PriceFeedDefinition } from "./registry/price-feed-definition.js";
