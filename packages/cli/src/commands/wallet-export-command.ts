@@ -7,9 +7,8 @@ import type { WalletAddressFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import type { Prompter } from "../term/prompter.js";
-import { withEngine } from "./connect-engine.js";
 import { cannotAskOwnerKey, withOwnerKey } from "./owner-key-prompt.js";
-import { chooseWallet } from "./wallet-choice.js";
+import { withWallet } from "./wallet-choice.js";
 
 const command = "wallet export";
 // A label is the owner's text from any surface: cut and made visible, as cards do.
@@ -25,13 +24,9 @@ async function walletOf(
   options: WalletAddressFlags,
 ): Promise<StepOutcome<WalletView>> {
   const chosen: { wallet?: WalletView } = {};
-  const code = await withEngine(run.host, run.output, async (client, signal) => {
-    const wallet = await chooseWallet({ client, output: run.output, signal }, options);
-    if (wallet === undefined) {
-      return 1;
-    }
+  const code = await withWallet(run, options, async (wallet) => {
     chosen.wallet = wallet;
-    return 0;
+    return Promise.resolve(0);
   });
   return chosen.wallet === undefined ? { ok: false, code } : { ok: true, value: chosen.wallet };
 }

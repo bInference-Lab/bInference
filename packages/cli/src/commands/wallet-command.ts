@@ -10,7 +10,7 @@ import { chooseAgentFirst } from "./agent-choice.js";
 import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
 import { withOwnerKey } from "./owner-key-prompt.js";
-import { chooseWallet } from "./wallet-choice.js";
+import { withWallet } from "./wallet-choice.js";
 
 // A label is the owner's text from any surface: cut and made visible, as cards do.
 const labelLength = 64;
@@ -58,12 +58,8 @@ export async function runWalletAddress(
   run: CommandRun,
   request: { readonly options: WalletAddressFlags },
 ): Promise<ExitCode> {
-  const { host, output } = run;
-  return withEngine(host, output, async (client, signal) => {
-    const wallet = await chooseWallet({ client, output, signal }, request.options);
-    if (wallet === undefined) {
-      return 1;
-    }
+  const { output } = run;
+  return withWallet(run, request.options, async (wallet) => {
     const { agent, label, address } = wallet;
     output.json({ agent, wallet: wallet.wallet, label, address });
     const values = walletValues(wallet);

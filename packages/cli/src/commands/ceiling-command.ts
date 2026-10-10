@@ -14,9 +14,8 @@ import type { CeilingSetFlags, WalletAddressFlags } from "../program/cli-flags.s
 import type { ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { chainName } from "./chain-name.js";
-import { withEngine } from "./connect-engine.js";
 import { cannotAskOwnerKey, withOwnerKey } from "./owner-key-prompt.js";
-import { chooseWallet } from "./wallet-choice.js";
+import { withWallet } from "./wallet-choice.js";
 
 // A label is the owner's text from any surface: cut and made visible, as cards do.
 const labelLength = 64;
@@ -86,12 +85,7 @@ export async function runCeiling(
   run: CommandRun,
   request: { readonly options: WalletAddressFlags },
 ): Promise<ExitCode> {
-  const { host, output } = run;
-  return withEngine(host, output, async (client, signal) => {
-    const wallet = await chooseWallet({ client, output, signal }, request.options);
-    if (wallet === undefined) {
-      return 1;
-    }
+  return withWallet(run, request.options, async (wallet, client, signal) => {
     const ceiling = await client.call("ceiling/get", { wallet: wallet.wallet }, { signal });
     printCeiling(run, { wallet, ceiling });
     return 0;
@@ -126,18 +120,13 @@ async function planOf(
   run: CommandRun,
   options: CeilingSetFlags,
 ): Promise<StepOutcome<CeilingPlan>> {
-  const { host, output } = run;
   const planned: { plan?: CeilingPlan } = {};
-  const code = await withEngine(host, output, async (client, signal) => {
-    const wallet = await chooseWallet({ client, output, signal }, options);
-    if (wallet === undefined) {
-      return 1;
-    }
+  const code = await withWallet(run, options, async (wallet, client, signal) => {
     const ceiling = await client.call("ceiling/get", { wallet: wallet.wallet }, { signal });
     const changes = changesOf(options, ceiling);
     if (changes === undefined) {
       const values = { amount: options.perTx ?? "" };
-      output.fail({ code: "protocol.bad_args", key: "ceiling.badCap", values });
+      run.output.fail({ code: "protocol.bad_args", key: "ceiling.badCap", values });
       return 1;
     }
     planned.plan = { wallet, changes };
