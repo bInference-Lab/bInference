@@ -9,8 +9,10 @@ import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { optionalOwnerKeyCodeSchema } from "../values/owner-key-code.schema.js";
+import { type Page, type PageArgs, pageArgsSchema, pageSchema } from "../values/page.schema.js";
 import { type AgentMode, agentModeSchema } from "../views/agent-view.schema.js";
 import { type IntentState, intentStateSchema } from "../views/intent-state.schema.js";
+import { type NoticeView, noticeViewSchema } from "../views/notice-view.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /** One health signal of `engine/status`, such as event-loop lag or RPC health. */
@@ -99,6 +101,12 @@ export interface EngineOperationShapes {
     readonly result: { readonly effectiveAt: number };
   };
   readonly "safety/cancelRescueChange": { readonly args: Empty; readonly result: Empty };
+  /**
+   * The notices kept, oldest first, each with its delivery to every surface (decision 0133). The
+   * cursor is a notice's id, from a `notice/new` push or a page before: the page holds the notices
+   * recorded after it.
+   */
+  readonly "notice/list": { readonly args: PageArgs; readonly result: Page<NoticeView> };
 }
 
 const freezeArgs = z.strictObject({ agent: protocolIdSchema("agent").exactOptional() });
@@ -200,5 +208,12 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     scope: "confirm",
     args: emptyArgsSchema,
     result: emptyResultSchema,
+  },
+  "notice/list": {
+    ...readFlags,
+    name: "notice/list",
+    scope: "read",
+    args: pageArgsSchema,
+    result: pageSchema(noticeViewSchema),
   },
 };

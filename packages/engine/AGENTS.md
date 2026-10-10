@@ -183,6 +183,12 @@ Rules for this package:
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
   then not again until a reading shows it back at or above that. It keeps that memory in a bounded
   set and never throws; the policy, not the alert, keeps trades out of the reserve.
+- Notices (`src/notices/`, exported as `@binference/engine/notices`, decision 0133):
+  `noticeRecordOf` gives a notice its kind, its level and a `queued` delivery for each chat
+  surface, and `createNoticeHandlers` answers `notice/list`. The composition root's notice log is
+  their one writer. A surface moves a delivery only through `NoticeStore.move`, from the state it
+  read, and back from `unknown_after_send` to `queued` only when the surface answered a refusal,
+  so nothing went out.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and

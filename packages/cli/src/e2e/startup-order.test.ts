@@ -133,7 +133,7 @@ describe("the startup order", () => {
       await loaded;
       await client.call("engine/status", {}, call());
       signer.refuse({ wallet: testWallet, intent: testIntent, refused: "rule_2" });
-      await expect(heard).resolves.toStrictEqual({
+      await expect(heard).resolves.toMatchObject({
         key: "notice.signerRefused",
         values: { rule: "rule_2" },
         intent: testIntent,

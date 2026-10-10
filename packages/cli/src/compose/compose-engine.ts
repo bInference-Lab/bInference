@@ -18,6 +18,7 @@ import {
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
+import { createNoticeHandlers } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
@@ -27,6 +28,7 @@ import {
   type ProtocolServer,
 } from "@binference/server";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
+import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
 
 /**
@@ -92,8 +94,13 @@ export interface ComposeEngineOptions {
 export interface ComposedEngine {
   readonly engine: Engine;
   readonly server: ProtocolServer;
-  /** Where the engine's pushes go: the server, and the owner's bot when there is one. */
+  /**
+   * Where the engine's pushes go: the server, and the owner's bot when there is one. Every notice
+   * is stored on its way (decision 0133).
+   */
   readonly publish: (push: EnginePush) => void;
+  /** The one write path of the notices; `idle` resolves once every notice so far is stored. */
+  readonly notices: NoticeLog;
   /** The owner's bot joined to the engine, when the options name one. */
   readonly telegram?: ComposedTelegram;
 }
@@ -157,19 +164,53 @@ function custodyPartsOf(parts: EngineParts) {
   return { custody, ceilings, walletMaker, ...(exporter === undefined ? {} : { exporter }) };
 }
 
+// The protocol server over the handlers: it signs callers in through the access store and keeps
+// each write's result under its idempotency key.
+function serverOf(
+  parts: EngineParts,
+  options: ComposeEngineOptions,
+  handlers: EngineHandlerTable,
+): ProtocolServer {
+  const { clock, random, logger } = options;
+  return createProtocolServer({
+    ...(options.http === undefined ? {} : { http: options.http }),
+    auth: { access: parts.stores.access },
+    idempotency: parts.stores.idempotency,
+    handlers,
+    engine: {
+      version: options.version,
+      state: options.state ?? (() => "ready"),
+      owner: options.owner,
+    },
+    clock,
+    random,
+    logger: logger.child("server"),
+  });
+}
+
 /**
  * Wires the engine and its protocol server on the profile parts both profiles fill: the server
  * signs callers in through the access store, keeps each write's result under its idempotency key
  * and routes calls to the engine's handlers; the engine's pushes reach the server, which numbers
- * them per topic. A push that fails is logged and never stops the money path. With the owner's
- * bot, card pushes also reach Telegram.
+ * them per topic. Every notice is stored first, with a delivery queued for the owner's bot when
+ * there is one. A push that fails is logged and never stops the money path. With the owner's bot,
+ * card pushes also reach Telegram.
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
   const { clock, random, logger, chains } = options;
   const { host, risk } = tradingOf(parts, options);
+  const ids = createIdSource({ clock, random });
+  const notices = createNoticeLog({
+    store: parts.stores.notices,
+    surfaces: options.telegram === undefined ? [] : ["telegram"],
+    ids,
+    clock,
+    logger,
+  });
   const publish = (push: EnginePush): void => {
+    const stamped = notices.take(push);
     try {
-      server.publish(push);
+      server.publish(stamped);
     } catch (error) {
       const code = error instanceof BinferenceError ? error.code : "unexpected";
       logger.warn("engine.push_failed", { errorCode: code });
@@ -191,25 +232,16 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     isLocked: options.isLocked ?? (() => false),
     chains,
     clock,
-    ids: createIdSource({ clock, random }),
+    ids,
     random,
     publish,
   });
-  const handlers: EngineHandlerTable = { ...engine.handlers, ...options.handlers };
+  const handlers: EngineHandlerTable = {
+    ...engine.handlers,
+    ...createNoticeHandlers(parts.stores.notices),
+    ...options.handlers,
+  };
   const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers });
-  const server = createProtocolServer({
-    ...(options.http === undefined ? {} : { http: options.http }),
-    auth: { access: parts.stores.access },
-    idempotency: parts.stores.idempotency,
-    handlers,
-    engine: {
-      version: options.version,
-      state: options.state ?? (() => "ready"),
-      owner: options.owner,
-    },
-    clock,
-    random,
-    logger: logger.child("server"),
-  });
-  return { engine, server, publish, ...(telegram === undefined ? {} : { telegram }) };
+  const server = serverOf(parts, options, handlers);
+  return { engine, server, publish, notices, ...(telegram === undefined ? {} : { telegram }) };
 }

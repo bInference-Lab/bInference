@@ -63,19 +63,33 @@ function amountWires(
   );
 }
 
-/** The `notice/new` push of one notice, on the `notice` topic every reading client receives. */
-export function noticePush(notice: Notice): EnginePush {
+// The notice as the push carries it, each amount's base units as decimal text.
+function noticeData(notice: Notice) {
   const { agent, intent, key, values, times, amounts } = notice;
   return {
-    topic: "notice",
-    kind: "notice/new",
-    data: {
-      key,
-      ...(agent === undefined ? {} : { agent }),
-      values: { ...values },
-      ...(times === undefined ? {} : { times: { ...times } }),
-      ...(amounts === undefined ? {} : { amounts: amountWires(amounts) }),
-      ...(intent === undefined ? {} : { intent }),
-    },
+    key,
+    ...(agent === undefined ? {} : { agent }),
+    values: { ...values },
+    ...(times === undefined ? {} : { times: { ...times } }),
+    ...(amounts === undefined ? {} : { amounts: amountWires(amounts) }),
+    ...(intent === undefined ? {} : { intent }),
   };
+}
+
+/** The `notice/new` push of one notice, on the `notice` topic every reading client receives. */
+export function noticePush(notice: Notice): EnginePush {
+  return { topic: "notice", kind: "notice/new", data: noticeData(notice) };
+}
+
+/**
+ * The `notice/new` push of a stored notice (decision 0133): the notice with its id and time, so a
+ * client that misses pushes reads on with `notice/list` from the last id it has.
+ */
+export function storedNoticePush(stored: {
+  readonly id: Id<"ntc">;
+  readonly atMs: number;
+  readonly notice: Notice;
+}): EnginePush {
+  const data = { id: stored.id, at: stored.atMs, ...noticeData(stored.notice) };
+  return { topic: "notice", kind: "notice/new", data };
 }

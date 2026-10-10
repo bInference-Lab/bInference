@@ -6,6 +6,7 @@ import {
   at,
   ids,
   intentView,
+  nativeAmount,
   pageOf,
   refs,
   walletView,
@@ -81,6 +82,18 @@ export const engineExamples: { readonly [N in keyof EngineOperationShapes]: Wire
     result: { effectiveAt: at + 86_400_000 },
   },
   "safety/cancelRescueChange": { args: empty, result: empty },
+  "notice/list": {
+    args: { cursor: ids.notice, limit: 20 },
+    result: pageOf({
+      id: ids.notice,
+      at,
+      key: "notice.lowGas",
+      agent: ids.agent,
+      values: { wallet: "Main" },
+      amounts: { balance: nativeAmount },
+      delivered: { telegram: "unknown_after_send" },
+    }),
+  },
 };
 
 /** An example call of every agent and identity operation. */
