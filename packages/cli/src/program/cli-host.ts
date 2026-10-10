@@ -1,7 +1,17 @@
 import type { Clock, Http, Random } from "@binference/core";
-import type { SignalEvents } from "@binference/platform";
+import type { ServiceManager, SignalEvents } from "@binference/platform";
 import type { StartSigner } from "../compose/start-signer.js";
 import type { Prompter } from "../term/prompter.js";
+
+/** How this binference was started, so the background service starts it the same way. */
+export interface BinferenceEntry {
+  /** Node's absolute path, `process.execPath`. */
+  readonly node: string;
+  /** Node's own options, such as a TypeScript loader when it runs from source. */
+  readonly nodeOptions: readonly string[];
+  /** The absolute path of the entry script, `main.mjs` once built. */
+  readonly script: string;
+}
 
 /**
  * What the `binference` command takes from its process. The entry file fills it from `process`;
@@ -34,4 +44,11 @@ export interface CliHost {
   readonly workerExecArgv?: readonly string[];
   /** Starts the signer once the agent key opens; the built signer's process when left out. */
   readonly startSigner?: StartSigner;
+  /** How this binference was started, which the background service runs again. */
+  readonly entry: BinferenceEntry;
+  /**
+   * Installs, stops and reads the background service; this OS's own when left out. Tests pass a
+   * fake, so no test touches the machine's login items.
+   */
+  readonly serviceManager?: ServiceManager;
 }

@@ -1,33 +1,10 @@
-import type { JsonValue } from "@binference/core";
 import type { RunningEngine, StartRefusal } from "../compose/start-outcome.js";
 import { startSelfHosted } from "../compose/start-self-hosted.js";
+import type { StartFlags } from "../program/cli-flags.schema.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { CliOutput, ExitCode } from "../program/cli-output.js";
-import { configIssueMessages } from "./config-issue-messages.js";
-
-function issuesOf(refusal: Extract<StartRefusal, { refusal: "config_invalid" }>): JsonValue {
-  return refusal.issues.map((issue) => ({
-    path: issue.path,
-    problem: issue.problem.kind,
-    fix: issue.fix,
-    layer: issue.origin.layer,
-  }));
-}
-
-function refuseConfig(
-  output: CliOutput,
-  refusal: Extract<StartRefusal, { refusal: "config_invalid" }>,
-): void {
-  output.fail({
-    code: "config.invalid",
-    key: "start.configInvalid",
-    values: { file: "config.json5", count: refusal.issues.length },
-    details: issuesOf(refusal),
-  });
-  for (const issue of refusal.issues) {
-    configIssueMessages(issue).forEach(({ key, values }) => output.explain(key, values));
-  }
-}
+import { refuseConfig } from "./config-refusal.js";
+import { runServiceStart } from "./service-start-command.js";
 
 function refuse(output: CliOutput, refusal: StartRefusal): ExitCode {
   switch (refusal.refusal) {
@@ -53,7 +30,7 @@ function refuse(output: CliOutput, refusal: StartRefusal): ExitCode {
       });
       break;
     case "config_invalid":
-      refuseConfig(output, refusal);
+      refuseConfig(output, refusal.issues);
       break;
   }
   return 1;
@@ -77,11 +54,11 @@ function announce(output: CliOutput, engine: RunningEngine): void {
 }
 
 /**
- * `binference start`: starts the engine in this process and serves the protocol until a stop
- * signal or `engine/stop` runs the shutdown sequence. Exits 0 when every shutdown step finished,
- * 1 when one did not or the engine refused to start.
+ * `binference start --foreground`: starts the engine in this process and serves the protocol
+ * until a stop signal or `engine/stop` runs the shutdown sequence. Exits 0 when every shutdown
+ * step finished, 1 when one did not or the engine refused to start.
  */
-export async function runStart(
+async function runForeground(
   host: CliHost,
   output: CliOutput,
   sets: readonly string[],
@@ -102,4 +79,18 @@ export async function runStart(
   }
   output.say("start.stopped");
   return 0;
+}
+
+/**
+ * `binference start`: runs the engine as the background service, or with `--foreground` in this
+ * process, which is what the service itself runs.
+ */
+export async function runStart(
+  host: CliHost,
+  output: CliOutput,
+  flags: StartFlags,
+): Promise<ExitCode> {
+  return flags.isForeground
+    ? runForeground(host, output, flags.sets)
+    : runServiceStart(host, output, flags.sets);
 }

@@ -19,6 +19,8 @@ export type ApprovalModeChoice = "manual" | "auto";
 export type ChosenCommand =
   | { readonly name: "init"; readonly options: InitFlags }
   | { readonly name: "start"; readonly options: StartFlags }
+  | { readonly name: "restart"; readonly options: StartFlags }
+  | { readonly name: "stop"; readonly options: CommonOptions }
   | { readonly name: "status" | "health"; readonly options: CommonOptions }
   | { readonly name: "unlock"; readonly options: CommonOptions }
   | { readonly name: "logs"; readonly options: LogsFlags }

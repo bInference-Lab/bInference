@@ -8,10 +8,12 @@ export interface CommonOptions {
   readonly yes: boolean;
 }
 
-/** What `start` takes besides the common options. */
+/** What `start` and `restart` take besides the common options. */
 export interface StartFlags extends CommonOptions {
   /** Each `--set key=value`, in the order given. */
   readonly sets: readonly string[];
+  /** `--foreground`: run the engine in this process rather than as the background service. */
+  readonly isForeground: boolean;
 }
 
 /** What `logs` takes besides the common options. */
@@ -81,10 +83,18 @@ const commonShape = {
 /** Parses the options commander read for `status` and `health`. */
 export const commonFlagsSchema: z.ZodType<CommonOptions> = z.object(commonShape);
 
-/** Parses the options commander read for `start`. */
+/** Parses the options commander read for `start` and `restart`. */
 export const startFlagsSchema: z.ZodType<StartFlags> = z
-  .object({ ...commonShape, set: z.array(z.string()).default([]) })
-  .transform(({ set, ...common }) => ({ ...common, sets: set }));
+  .object({
+    ...commonShape,
+    set: z.array(z.string()).default([]),
+    foreground: z.boolean().default(false),
+  })
+  .transform(({ set, foreground, ...common }) => ({
+    ...common,
+    sets: set,
+    isForeground: foreground,
+  }));
 
 /** Parses the options commander read for a command on one agent. */
 export const agentFlagsSchema: z.ZodType<AgentFlags> = z.object({

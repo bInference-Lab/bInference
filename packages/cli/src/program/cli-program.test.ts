@@ -44,8 +44,10 @@ describe("the binference command tree", () => {
     expect(commands.map((command) => command.name())).toStrictEqual([
       "init",
       "start",
+      "restart",
       "status",
       "health",
+      "stop",
       "unlock",
       "logs",
       "approval",

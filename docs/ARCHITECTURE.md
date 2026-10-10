@@ -131,9 +131,10 @@ Each section below is numbered; other pages cite it as "ARCHITECTURE.md section 
 
   MCP clients get `read` and `propose`, never `confirm`.
 
-- **One command still runs everything.** `binference start` launches the engine, which supervises
-  the agent runtime and the signer as child processes. Docker and the systemd or launchd units do
-  the same.
+- **One command still runs everything.** `binference start --foreground` launches the engine,
+  which supervises the agent runtime and the signer as child processes. `binference start`
+  installs it as the background service, whose launchd, systemd or Task Scheduler entry runs that
+  command at each login ([decision 0138](DECISIONS.md#d0138)); Docker runs it too.
 - **When the owner chats through another agent product over MCP** and that product runs its own
   Telegram bot, the engine needs a second, confirmations-only bot from BotFather (one bot token can
   be polled by only one process), or the owner confirms in the console.
@@ -1009,8 +1010,9 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
   flight, save state, stop channels, close the databases.
 - **`binference check`** adds SQLite integrity checks and maintenance, `--fix` repairs, and a health
   contract.
-- **Commands.** `status`, `health`, `logs`, `report` (a redacted support bundle), `backup create`,
-  `backup restore`, `update`, `expose`, `uninstall`, `reset`.
+- **Commands.** `start` (the background service, or `--foreground`), `stop`, `restart`, `status`,
+  `health`, `logs`, `report` (a redacted support bundle), `backup create`, `backup restore`,
+  `update`, `expose`, `uninstall`, `reset`.
 - **Config journal.** Every change to settings or limits is recorded (who, where, before, after) and
   announced on every surface.
 - **Live settings** reload without a restart; onboarding has a non-interactive mode for Docker and

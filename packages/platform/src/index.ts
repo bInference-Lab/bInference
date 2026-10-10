@@ -30,6 +30,8 @@ export { readTextFile } from "./read-text-file.js";
 export { realFilePath } from "./real-file-path.js";
 export { runCommand } from "./run-command.js";
 export type { RunProgram } from "./run-command.js";
+export { pollUntil } from "./service/poll-until.js";
+export type { Poll } from "./service/poll-until.js";
 export type { ServiceDefinition, ServiceStatus } from "./service/service-definition.js";
 export { createShutdown } from "./shutdown.js";
 export type {

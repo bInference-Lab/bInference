@@ -124,10 +124,16 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addInit(program, options);
   withCommon(program.command("start").description(message("command.start")), message)
     .option("--set <key=value>", message("option.set"), addSet, [])
+    .option("--foreground", message("option.foreground"))
     .action((flags: OptionValues) =>
       choose({ name: "start", options: startFlagsSchema.parse(flags) }),
     );
-  for (const name of ["status", "health"] as const) {
+  withCommon(program.command("restart").description(message("command.restart")), message)
+    .option("--set <key=value>", message("option.set"), addSet, [])
+    .action((flags: OptionValues) =>
+      choose({ name: "restart", options: startFlagsSchema.parse(flags) }),
+    );
+  for (const name of ["status", "health", "stop"] as const) {
     withCommon(program.command(name).description(message(`command.${name}`)), message).action(
       (flags: OptionValues) => choose({ name, options: commonFlagsSchema.parse(flags) }),
     );

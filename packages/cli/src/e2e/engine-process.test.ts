@@ -49,7 +49,13 @@ function runBinference(machine: TestMachine, argv: readonly string[]): SourcePro
 
 async function startEngine(machine: TestMachine): Promise<SourceProgram> {
   const port = String(await freePort());
-  const engine = runBinference(machine, ["start", "--json", "--set", `engine.port=${port}`]);
+  const engine = runBinference(machine, [
+    "start",
+    "--foreground",
+    "--json",
+    "--set",
+    `engine.port=${port}`,
+  ]);
   await expect(engine.lineWith('"state":"ready"')).resolves.toContain('"ipc"');
   return engine;
 }
@@ -66,7 +72,13 @@ describe("binference start as a process of its own", () => {
     const machine = await newMachine();
     const first = await startEngine(machine);
     const port = String(await freePort());
-    const second = runBinference(machine, ["start", "--json", "--set", `engine.port=${port}`]);
+    const second = runBinference(machine, [
+      "start",
+      "--foreground",
+      "--json",
+      "--set",
+      `engine.port=${port}`,
+    ]);
     await expect(second.program.exited).resolves.toBe(1);
     await expect(second.lineWith("error")).resolves.toBe(
       '{"error":{"code":"engine.already_running"}}',

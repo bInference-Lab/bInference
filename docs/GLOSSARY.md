@@ -370,6 +370,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | wallet facts                          | 钱包信息   |                              |
 | health signal                         | 健康信号   | Shown by `binference status` |
 | log (the engine's log file)           | 日志       |                              |
+| background service                    | 后台服务   | `binference start`           |
+| log in (to the computer)              | 登录       |                              |
 
 ### Trading
 

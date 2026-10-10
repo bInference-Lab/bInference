@@ -9,6 +9,7 @@ import {
   ensurePrivateFolder,
   type FilePermissions,
   readLogLines,
+  type ServiceManager,
   writePrivateFile,
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
@@ -83,8 +84,24 @@ const offline: Http = {
     ),
 };
 
+// No test reaches the machine's login items: a test that runs the background service passes a
+// service manager of its own, and every other one meets a manager that refuses.
+async function refusedService(): Promise<never> {
+  return Promise.reject(
+    new BinferenceError({ code: "platform.service_failed", message: "Tests have no services." }),
+  );
+}
+const noServices: ServiceManager = {
+  install: refusedService,
+  stop: refusedService,
+  uninstall: refusedService,
+  status: refusedService,
+};
+
 /** What a test gives a host in place of the outside world and the person at the terminal. */
-export type HostParts = Partial<Pick<CliHost, "http" | "prompter" | "botApiFetch" | "startSigner">>;
+export type HostParts = Partial<
+  Pick<CliHost, "http" | "prompter" | "botApiFetch" | "startSigner" | "serviceManager" | "homeDir">
+>;
 
 /** A host for one `binference` command line on a test machine. */
 export function hostOn(
@@ -107,6 +124,12 @@ export function hostWith(
   return {
     argv,
     env: { BINFERENCE_HOME: machine.folder, LANG: "en_US.UTF-8", ...env },
+    entry: {
+      node: join(machine.folder, "bin", "node"),
+      nodeOptions: workerExecArgv,
+      script: join(machine.folder, "bin", "binference.mjs"),
+    },
+    serviceManager: noServices,
     out: (text) => {
       written.out += text;
       out.write(text);

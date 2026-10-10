@@ -9,6 +9,12 @@ import { createSystemHttp } from "./runtime/system-http.js";
 import { createSystemRandom } from "./runtime/system-random.js";
 import { createTerminalPrompter } from "./term/terminal-prompter.js";
 
+// The background service runs this file again with the same Node and Node options.
+const entry = {
+  node: process.execPath,
+  nodeOptions: process.execArgv,
+  script: fileURLToPath(import.meta.url),
+};
 // The package's own manifest sits one folder up from both src/ and dist/.
 const manifest = fileURLToPath(new URL("../package.json", import.meta.url));
 const read = await readTextFile(manifest, AbortSignal.timeout(5_000));
@@ -34,5 +40,6 @@ process.exitCode = await runCli({
   version,
   // Store workers run with this process's Node options, such as a TypeScript loader.
   workerExecArgv: process.execArgv,
+  entry,
 });
 await http.close();

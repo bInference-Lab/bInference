@@ -26,6 +26,11 @@ Rules for this package:
   directly: only `src/main.ts` reads `process`. Every command takes `--json` and `--yes`; people
   get messages from the i18n `cli` area through `CliOutput`, scripts get JSON. Log lines and JSON
   stay English.
+- `binference start` runs the engine as the background service through the platform's
+  `ServiceManager` (decision 0138), the OS's own unless the host names one; the service runs
+  `binference start --foreground`, which is `startSelfHosted`. Every test host gets a service
+  manager that refuses, so no test touches the machine's login items; a test of the service passes
+  `src/e2e/test-services.ts`, which runs the service's command line in the test's process.
 - Tests run commands end to end through `runCli` on a host with a temporary state folder
   (`src/e2e/test-host.ts`), a manual clock and an emitter for stop signals; store workers run the
   TypeScript source. Each test stops its engine through the shutdown sequence. What only separate
@@ -33,11 +38,11 @@ Rules for this package:
   (`engine-process.test.ts`).
 - Fork tests in `src/fork/` run engine steps over the real chain parts they are composed from,
   such as the simulation check over the EVM transaction simulator, on the fork suite's BSC fork
-  through `@binference/chain-evm/fork`. `self-hosted-start.test.ts` runs `binference start` itself
-  there, with the fake Privy, the test signer and KyberSwap's public API. They run in
-  `pnpm test:fork`, never in `pnpm check`.
+  through `@binference/chain-evm/fork`. `self-hosted-start.test.ts` runs `binference start
+--foreground` itself there, with the fake Privy, the test signer and KyberSwap's public API.
+  They run in `pnpm test:fork`, never in `pnpm check`.
 - Crash tests in `src/crash/` run `src/crash/crash-engine.ts` as a process of its own:
-  `binference start` through `runCli`, as `src/main.ts` runs it, on a state folder
+  `binference start --foreground` through `runCli`, as `src/main.ts` runs it, on a state folder
   `binference init` set up (decision 0135). They kill it at each kill point and start it again.
   The engine reaches the chain only through the test's relays and RPC in front of anvil, which
   count every send and place the kills; Privy and KyberSwap's API are the test's, on loopback,

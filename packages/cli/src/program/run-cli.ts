@@ -16,6 +16,7 @@ import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
+import { runRestart, runStop } from "../commands/stop-command.js";
 import { runUnlock } from "../commands/unlock-command.js";
 import { runWalletAddress, runWalletCreate, runWalletList } from "../commands/wallet-command.js";
 import { runWalletExport } from "../commands/wallet-export-command.js";
@@ -83,7 +84,9 @@ type Runner<N extends ChosenCommand["name"]> = (
 const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   init: async ({ host, output, formatter }, chosen) =>
     runInitCommand(host, output, { flags: chosen.options, formatter }),
-  start: async ({ host, output }, chosen) => runStart(host, output, chosen.options.sets),
+  start: async ({ host, output }, chosen) => runStart(host, output, chosen.options),
+  stop: async ({ host, output }) => runStop(host, output),
+  restart: async ({ host, output }, chosen) => runRestart(host, output, chosen.options),
   status: async ({ host, output, formatter }) => {
     const message = (key: string): string => formatter.message(`cli.${key}`);
     return runStatus(host, output, (signal) => signalName(signal, message));

@@ -93,8 +93,8 @@ export async function setUpCrashInstall(
 }
 
 /**
- * Starts `binference start` on the install as a program of its own, and resolves once it reported
- * its state; an engine that ends first resolves too, its output then holding why.
+ * Starts `binference start --foreground` on the install as a program of its own, and resolves
+ * once it reported its state; an engine that ends first resolves too, its output then holding why.
  */
 export async function startCrashEngine(
   world: CrashWorld,

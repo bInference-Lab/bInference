@@ -101,12 +101,13 @@ async function openStoresAndServe(
 }
 
 /**
- * Starts a self-hosted engine in this process (the composition root of `binference start`), in
- * the startup order of ARCHITECTURE.md section 24: the engine lock on the state folder, so a
- * second engine on it refuses at once; the config with its secret sources; the log file;
- * `engine.sqlite` on its store workers with its migrations and integrity check; the CLI's token;
- * then {@link serveEngine}. Stop signals and `engine/stop` start the shutdown sequence, which
- * closes the parts in the reverse order. A start that fails part way closes what it opened.
+ * Starts a self-hosted engine in this process (the composition root of `binference start
+ * --foreground`, which the background service runs), in the startup order of ARCHITECTURE.md
+ * section 24: the engine lock on the state folder, so a second engine on it refuses at once; the
+ * config with its secret sources; the log file; `engine.sqlite` on its store workers with its
+ * migrations and integrity check; the CLI's token; then {@link serveEngine}. Stop signals and
+ * `engine/stop` start the shutdown sequence, which closes the parts in the reverse order. A start
+ * that fails part way closes what it opened.
  */
 export async function startSelfHosted(options: StartOptions): Promise<StartOutcome> {
   const { host } = options;

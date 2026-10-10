@@ -5,7 +5,16 @@
 The `binference` command and the composition root, the one place that builds adapters and wires
 them in.
 
-`binference start` runs the self-hosted engine in the foreground (`startSelfHosted` in
+`binference start` installs the background service and starts it (decision 0138): the OS runs
+`binference start --foreground` at each login and after a crash, from the state folder, with the
+`--set` flags of the `start` that installed it (`engineServiceDefinition` in `src/compose/`).
+It checks the config first, waits until the engine answers past `starting`, and names the engine
+log and the service's own output, `logs/service.log`. A service that runs is left as it is; an
+engine in a terminal, and a run with `BINFERENCE_HOME` set, are refused. `binference stop` asks
+the engine for its shutdown sequence over IPC, then has the OS stop the service, which starts it
+again at the next login; `binference restart` is a stop, then a start.
+
+`binference start --foreground` runs the self-hosted engine in this process (`startSelfHosted` in
 `src/compose/`). In order it takes the engine lock on the state folder, loads `config.json5` with
 its layers and secret sources, opens the engine log, opens `engine.sqlite` on its store workers
 (migrations, then the integrity check), makes sure the CLI token in `auth/cli.token` is known,
@@ -115,7 +124,10 @@ The reference of every key, generated from the schema, is
 | Command                              | What it does                                                        |
 | ------------------------------------ | ------------------------------------------------------------------- |
 | `binference init`                    | Sets up an install: Privy, owner key, first wallet and bot          |
-| `binference start [--set key=value]` | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
+| `binference start [--set key=value]` | Runs the engine as the background service, which login starts again |
+| `binference start --foreground`      | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
+| `binference stop`                    | Stops the engine; the background service starts again at login      |
+| `binference restart`                 | Stops the engine, then starts the background service again          |
 | `binference status`                  | The engine's state, release, agents and health signals              |
 | `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |
 | `binference logs [-n N] [--follow]`  | The engine log's last lines, then new ones until Ctrl+C             |

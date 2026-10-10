@@ -37,6 +37,7 @@ async function findings(machine: TestMachine, argv: readonly string[] = []) {
 async function start(machine: TestMachine): Promise<void> {
   const host = hostOn(machine, [
     "start",
+    "--foreground",
     "--json",
     "--set",
     `engine.port=${String(await freePort())}`,

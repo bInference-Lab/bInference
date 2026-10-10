@@ -11,8 +11,9 @@ export interface Poll {
 const pollMs = 250;
 
 /**
- * Asks `isDone` every 250 ms until it answers true, for a service manager that acts after it
- * answers, such as launchd letting a job go. Throws `poll.failure()` once `poll.until` has passed.
+ * Asks `isDone` every 250 ms until it answers true, for a program that acts after it answers,
+ * such as launchd letting a job go or an engine freeing its lock. Throws `poll.failure()` once
+ * `poll.until` has passed.
  */
 export async function pollUntil(clock: Clock, poll: Poll, signal: AbortSignal): Promise<void> {
   if (await poll.isDone()) {

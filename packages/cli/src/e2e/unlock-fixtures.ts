@@ -43,8 +43,9 @@ export interface RunningEngines {
   /** A machine set up by `binference init` in the file unlock mode, its keys in `keys/`. */
   setUp(): Promise<InitMachine>;
   /**
-   * Runs `binference start --json` on the machine and answers its first JSON line. Privy is the
-   * machine's fake, and the signer runs in this process, unless the options name others.
+   * Runs `binference start --foreground --json` on the machine and answers its first JSON line.
+   * Privy is the machine's fake, and the signer runs in this process, unless the options name
+   * others.
    */
   start(machine: InitMachine, options?: StartParts): Promise<JsonValue>;
 }
@@ -71,7 +72,7 @@ export function createRunningEngines(): RunningEngines {
     },
     async start(machine, options = {}) {
       const port = String(await freePort());
-      const argv = ["start", "--json", "--set", `engine.port=${port}`];
+      const argv = ["start", "--foreground", "--json", "--set", `engine.port=${port}`];
       const host = hostWith(machine, argv, {
         env: options.env ?? secretEnv(machine),
         parts: {

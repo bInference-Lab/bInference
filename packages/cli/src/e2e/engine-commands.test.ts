@@ -55,7 +55,13 @@ interface Started {
 /** Runs `binference start --json` in the foreground and waits for its ready line. */
 async function start(machine: TestMachine): Promise<Started> {
   const port = await freePort();
-  const host = hostOn(machine, ["start", "--json", "--set", `engine.port=${String(port)}`]);
+  const host = hostOn(machine, [
+    "start",
+    "--foreground",
+    "--json",
+    "--set",
+    `engine.port=${String(port)}`,
+  ]);
   const exit = runCli(host);
   running.push(exit);
   const line = await Promise.race([
@@ -158,7 +164,12 @@ describe("binference start, status, health and logs end to end", () => {
     await writeTestConfig(machine.folder);
     const first = await start(machine);
     const port = await freePort();
-    const second = await run(machine, ["start", "--set", `engine.port=${String(port)}`]);
+    const second = await run(machine, [
+      "start",
+      "--foreground",
+      "--set",
+      `engine.port=${String(port)}`,
+    ]);
     expect(second.code).toBe(1);
     expect(second.stderr).toBe(
       `binference already runs on the state folder ${machine.folder}. Stop it first, or set ` +
@@ -233,7 +244,7 @@ describe("binference start, status, health and logs end to end", () => {
       permissions: { restrictFolder: noop, restrictFile: noop },
       signal: live(),
     });
-    const failed = await run(machine, ["start", "--json"]);
+    const failed = await run(machine, ["start", "--foreground", "--json"]);
     expect(failed.code).toBe(1);
     expect(failed.stdout).toMatch(/^\{"error":\{"code":"store\.[a-z_]+"\}\}\n$/);
     const lines = await engineLogLines(machine);
@@ -246,7 +257,7 @@ describe("binference start, status, health and logs end to end", () => {
     slow,
     async () => {
       const machine = await newMachine();
-      const missing = await run(machine, ["start"]);
+      const missing = await run(machine, ["start", "--foreground"]);
       expect(missing.code).toBe(1);
       expect(missing.stderr).toBe(
         "config.json5 has 1 problem. Fix each one, then start again.\n" +
@@ -254,7 +265,7 @@ describe("binference start, status, health and logs end to end", () => {
           "Run `binference init` to write it.\n",
       );
       await writeTestConfig(machine.folder, '  engine: { port: "abc" },\n');
-      const bad = await run(machine, ["start", "--json"]);
+      const bad = await run(machine, ["start", "--foreground", "--json"]);
       expect(JSON.parse(bad.stdout)).toStrictEqual({
         error: {
           code: "config.invalid",
