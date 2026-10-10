@@ -1,13 +1,9 @@
-import {
-  type AccountRef,
-  accountRefParts,
-  accountRefSchema,
-  type ChainRegistry,
-} from "@binference/chain";
+import type { ChainRegistry } from "@binference/chain";
 import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { RescueMove } from "../install/rescue-record.js";
+import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { ConfigJournal } from "../ports.js";
@@ -32,19 +28,6 @@ export interface RescueAddressHandlersOptions extends RescueCeilingsOptions {
 }
 
 type RescueCall = EngineCall<"safety/setRescueAddress"> | EngineCall<"safety/cancelRescueChange">;
-
-// The address in its family's canonical form, on a chain the registry holds.
-function canonicalOf(
-  chains: ChainRegistry,
-  account: AccountRef,
-): Result<AccountRef, ProtocolErrorCode> {
-  const { chain, address } = accountRefParts(account);
-  const registered = chains.get(chain);
-  const parsed = registered.ok ? registered.value.family.parseAddress(address) : undefined;
-  return parsed?.ok === true
-    ? ok(accountRefSchema.parse(`${chain}:${parsed.value}`))
-    : err("protocol.bad_args");
-}
 
 function isSame(a: RescueState, b: RescueState): boolean {
   return (
@@ -101,7 +84,7 @@ async function setRescue(
   call: EngineCall<"safety/setRescueAddress">,
 ): Promise<Result<{ readonly effectiveAt: number }, ProtocolErrorCode>> {
   const ownerKey = ownerKeyOf(call);
-  const address = canonicalOf(options.chains, call.args.address);
+  const address = canonicalAccount(options.chains, call.args.address);
   if (!ownerKey.ok) {
     return ownerKey;
   }
