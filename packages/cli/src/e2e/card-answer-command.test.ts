@@ -11,13 +11,17 @@ import { createFormatter, messages } from "@binference/i18n";
 import { type IntentView, operations } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { skeletonCompositions } from "../compose/test-skeleton.js";
+import { runCli } from "../program/run-cli.js";
+import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import { type ServedSkeleton, serveSkeleton } from "./skeleton-machine.js";
-import { createTestMachines, runOn, type TestMachine } from "./test-host.js";
+import { createTestMachines, hostWith, runOn, type TestMachine } from "./test-host.js";
 
 const slow = { timeout: 60_000 };
 const machines = createTestMachines();
 const served: ServedSkeleton[] = [];
 const english = createFormatter({ locale: "en", timeZone: "UTC" });
+const en = (key: string, values: Readonly<Record<string, string>> = {}): string =>
+  english.message(`cli.${key}`, values);
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 const unknownIntent = "int_0190f1c2-3a4b-7c5d-8e6f-0000000000ff";
 
@@ -72,25 +76,26 @@ describe.each(skeletonCompositions)(
     it("confirms a paper swap from the terminal and shows its paper fill", slow, async () => {
       const { machine, skeleton } = await servedMachine();
       const proposed = await skeleton.client.call("intent/propose", swap(1_000_000n), live());
-      const confirmed = await runOn(machine, ["confirm", proposed.intent]);
-      expect(confirmed).toStrictEqual({
-        code: 0,
-        stdout:
-          `Confirmed ${proposed.intent}. Paper fill: ${shown(1_000_000n, "FAKE")} → ` +
-          `${shown(2_000_000n, "TKN")}.\n`,
-        stderr: "",
-      });
+      const confirmed = await runOn(machine, ["confirm", proposed.intent, "--yes"]);
+      expect([confirmed.code, confirmed.stderr]).toStrictEqual([0, ""]);
+      expect(confirmed.stdout).toContain(`Sell ${shown(1_000_000n, "FAKE")} → at least`);
+      expect(
+        confirmed.stdout.endsWith(
+          `\nConfirmed ${proposed.intent}. Paper fill: ${shown(1_000_000n, "FAKE")} → ` +
+            `${shown(2_000_000n, "TKN")}.\n`,
+        ),
+      ).toBe(true);
       const stored = await skeleton.client.call("intent/get", { intent: proposed.intent }, live());
       expect(stored.state).toBe("paper_filled");
       expect(skeleton.executor.taken()).toStrictEqual([]);
-      const again = await runOn(machine, ["confirm", proposed.intent, "--json"]);
+      const again = await runOn(machine, ["confirm", proposed.intent, "--json", "--yes"]);
       expect(again).toMatchObject({ code: 1, stdout: '{"error":{"code":"intent.wrong_state"}}\n' });
     });
 
     it("prints the intent after the answer as JSON", slow, async () => {
       const { machine, skeleton } = await servedMachine();
       const proposed = await skeleton.client.call("intent/propose", swap(1_000_000n), live());
-      const json = await runOn(machine, ["confirm", "--json", proposed.intent]);
+      const json = await runOn(machine, ["confirm", "--json", "--yes", proposed.intent]);
       const view: IntentView = operations["intent/get"].result.parse(JSON.parse(json.stdout));
       expect([json.code, view.intent, view.state]).toStrictEqual([
         0,
@@ -127,8 +132,9 @@ describe.each(skeletonCompositions)(
         moving.worsen();
         // Past the agent's re-quote age, so a Confirm quotes again and meets the worse price.
         await skeleton.clock.advance(11_000);
-        const reopened = await runOn(machine, ["confirm", proposed.intent]);
-        expect(reopened).toStrictEqual({
+        const reopened = await runOn(machine, ["confirm", proposed.intent, "--yes"]);
+        expect(reopened.stdout).toContain(`Sell ${shown(1_000_000n, "FAKE")} → at least`);
+        expect({ ...reopened, stdout: "" }).toStrictEqual({
           code: 1,
           stdout: "",
           stderr:
@@ -136,9 +142,10 @@ describe.each(skeletonCompositions)(
             `at least ${shown(995_000n, "TKN")}. Check it, then run \`binference confirm ` +
             `${proposed.intent}\` again.\n`,
         });
-        const confirmed = await runOn(machine, ["confirm", proposed.intent]);
-        expect(confirmed.stdout).toBe(
-          `Confirmed ${proposed.intent}. Paper fill: ${shown(1_000_000n, "FAKE")} → ` +
+        const confirmed = await runOn(machine, ["confirm", proposed.intent, "--yes"]);
+        expect(confirmed.stdout).toContain(`at least ${shown(995_000n, "TKN")}`);
+        expect(confirmed.stdout).toContain(
+          `\nConfirmed ${proposed.intent}. Paper fill: ${shown(1_000_000n, "FAKE")} → ` +
             `${shown(1_000_000n, "TKN")}.\n`,
         );
       },
@@ -146,7 +153,7 @@ describe.each(skeletonCompositions)(
 
     it("refuses an intent the engine has no record of, or one without a card", slow, async () => {
       const { machine, skeleton } = await servedMachine();
-      const unknown = await runOn(machine, ["confirm", unknownIntent]);
+      const unknown = await runOn(machine, ["confirm", unknownIntent, "--yes"]);
       expect(unknown).toStrictEqual({
         code: 1,
         stdout: "",
@@ -157,6 +164,46 @@ describe.each(skeletonCompositions)(
       expect([refused.state, refused.card]).toStrictEqual(["rejected_policy", undefined]);
       const json = await runOn(machine, ["deny", refused.intent, "--json"]);
       expect(json).toMatchObject({ code: 1, stdout: '{"error":{"code":"intent.wrong_state"}}\n' });
+    });
+
+    it("shows the card and asks, and leaves it open on a no", slow, async () => {
+      const { machine, skeleton } = await servedMachine();
+      const proposed = await skeleton.client.call("intent/propose", swap(1_000_000n), live());
+      const answered = async (answers: readonly string[]) => {
+        const prompter = createScriptedPrompter({ confirm: answers });
+        const host = hostWith(machine, ["confirm", proposed.intent], {
+          env: {},
+          parts: { prompter },
+        });
+        const code = await runCli(host);
+        return { code, stdout: host.stdout(), prompter };
+      };
+
+      const left = await answered(["maybe", "no"]);
+      const stored = await skeleton.client.call("intent/get", { intent: proposed.intent }, live());
+      const confirmed = await answered(["YES"]);
+
+      expect([left.code, stored.state]).toStrictEqual([1, "awaiting_confirmation"]);
+      expect(left.stdout).toContain(`Sell ${shown(1_000_000n, "FAKE")} → at least`);
+      expect(left.stdout).toContain(en("confirm.notConfirmed", { intent: proposed.intent }));
+      expect(left.prompter.transcript.lines).toStrictEqual([en("confirm.yesOrNo")]);
+      expect(confirmed.code).toBe(0);
+      expect(confirmed.stdout).toContain(`Confirmed ${proposed.intent}. Paper fill:`);
+    });
+
+    it("refuses to confirm without a terminal unless --yes", slow, async () => {
+      const { machine, skeleton } = await servedMachine();
+      const proposed = await skeleton.client.call("intent/propose", swap(1_000_000n), live());
+
+      const refused = await runOn(machine, ["confirm", proposed.intent]);
+      const stored = await skeleton.client.call("intent/get", { intent: proposed.intent }, live());
+
+      expect(refused).toStrictEqual({
+        code: 1,
+        stdout: "",
+        stderr: `${en("confirm.needsTerminal", { intent: proposed.intent })}\n`,
+      });
+      expect(stored.state).toBe("awaiting_confirmation");
     });
 
     it("refuses a command line without an intent id", slow, async () => {

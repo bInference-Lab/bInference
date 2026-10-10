@@ -71,10 +71,11 @@ describe.each(skeletonCompositions)(
         });
         const proposed = await skeleton.client.call("intent/propose", swapRequest, live());
         expect([proposed.paper, proposed.card?.paper]).toStrictEqual([false, false]);
-        await expect(runOn(machine, ["confirm", proposed.intent])).resolves.toMatchObject({
-          code: 0,
-          stdout: `Confirmed ${proposed.intent}. binference is sending it on chain.\n`,
-        });
+        const confirmed = await runOn(machine, ["confirm", proposed.intent, "--yes"]);
+        expect(confirmed.code).toBe(0);
+        expect(confirmed.stdout).toContain(
+          `\nConfirmed ${proposed.intent}. binference is sending it on chain.\n`,
+        );
         expect(skeleton.executor.taken()).toStrictEqual([proposed.intent]);
       },
     );

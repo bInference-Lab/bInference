@@ -1,7 +1,7 @@
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError } from "@binference/core";
 import type { CommonOptions } from "../program/cli-flags.schema.js";
-import type { ExitCode } from "../program/cli-output.js";
+import type { ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import type { Prompter } from "../term/prompter.js";
 import { withEngine } from "./connect-engine.js";
@@ -15,9 +15,7 @@ export interface OwnerKeyCall<T> {
 }
 
 /** What an owner-key command got: the call's answer, or the exit code it ended with. */
-export type OwnerKeyOutcome<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly code: ExitCode };
+export type OwnerKeyOutcome<T> = StepOutcome<T>;
 
 /** One call, a wrong owner key, or the code the CLI reported instead. */
 type Attempt<T> =

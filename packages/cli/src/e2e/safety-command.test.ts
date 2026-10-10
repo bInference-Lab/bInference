@@ -92,9 +92,9 @@ describe("binference freeze and unfreeze", () => {
       0,
       `${en("unfreeze.opened", { intent })}\n`,
     ]);
-    const confirmed = await runOn(machine, ["confirm", intent]);
+    const confirmed = await runOn(machine, ["confirm", intent, "--yes"]);
     expect([confirmed.code, confirmed.stderr]).toStrictEqual([0, ""]);
-    expect(confirmed.stdout).toBe(`Confirmed ${intent}. Every agent is unfrozen.\n`);
+    expect(confirmed.stdout).toContain(`\nConfirmed ${intent}. Every agent is unfrozen.\n`);
     const calm = await runOn(machine, ["safety", "status", "--json"]);
     expect(JSON.parse(calm.stdout)).toStrictEqual({ frozen: false, agents: [] });
   });
@@ -138,8 +138,10 @@ describe("binference rescue", () => {
     expect(opened.stdout).toBe(`${en("rescue.opened", { intent, address: "0x000000a1" })}\n`);
     const again = await runOn(machine, ["rescue", "--json"]);
     expect(JSON.parse(again.stdout)).toStrictEqual({ intent, address: rescueAccount });
-    const confirmed = await runOn(machine, ["confirm", intent]);
-    expect(confirmed.stdout).toBe(`Confirmed ${intent}. binference is sending it on chain.\n`);
+    const confirmed = await runOn(machine, ["confirm", intent, "--yes"]);
+    expect(confirmed.stdout).toContain(
+      `\nConfirmed ${intent}. binference is sending it on chain.\n`,
+    );
     expect(skeleton.executor.taken()).toStrictEqual([intent]);
   });
 

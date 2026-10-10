@@ -118,7 +118,7 @@ The reference of every key, generated from the schema, is
 | `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |
 | `binference logs [-n N] [--follow]`  | The engine log's last lines, then new ones until Ctrl+C             |
 | `binference approval [manual\|auto]` | Shows the agent's approval mode, or sets it                         |
-| `binference confirm <intent>`        | Confirms the intent's newest card version, as its button does       |
+| `binference confirm <intent>`        | Shows the open card, asks, then confirms it; `--yes` skips the ask  |
 | `binference deny <intent>`           | Cancels the intent's card, as its button does                       |
 | `binference live`                    | Goes live once the disclaimer is typed back, over IPC only          |
 | `binference paper`                   | Switches the agent back to paper mode                               |

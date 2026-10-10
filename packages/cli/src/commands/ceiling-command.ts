@@ -11,11 +11,11 @@ import { z } from "zod";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { baseUnitsOf } from "../init/base-units.js";
 import type { CeilingSetFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
-import type { ExitCode } from "../program/cli-output.js";
+import type { ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
-import { cannotAskOwnerKey, type OwnerKeyOutcome, withOwnerKey } from "./owner-key-prompt.js";
+import { cannotAskOwnerKey, withOwnerKey } from "./owner-key-prompt.js";
 import { chooseWallet } from "./wallet-choice.js";
 
 // A label is the owner's text from any surface: cut and made visible, as cards do.
@@ -125,7 +125,7 @@ function changesOf(options: CeilingSetFlags, ceiling: CeilingView): CeilingChang
 async function planOf(
   run: CommandRun,
   options: CeilingSetFlags,
-): Promise<OwnerKeyOutcome<CeilingPlan>> {
+): Promise<StepOutcome<CeilingPlan>> {
   const { host, output } = run;
   const planned: { plan?: CeilingPlan } = {};
   const code = await withEngine(host, output, async (client, signal) => {

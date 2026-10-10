@@ -6,6 +6,11 @@ import type { CliHost } from "./cli-host.js";
 /** How a command ends: 0 done, 1 an error, 2 refused by policy (ENGINEERING section 24.5). */
 export type ExitCode = 0 | 1 | 2;
 
+/** What a step of a command got: its value, or the exit code it ended the command with. */
+export type StepOutcome<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly code: ExitCode };
+
 /**
  * What a command prints. People get messages in the owner's language; with `--json`, scripts get
  * one JSON value per line on standard output and no message at all.

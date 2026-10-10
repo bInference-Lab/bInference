@@ -4,11 +4,11 @@ import { displayOutsideText } from "@binference/i18n";
 import type { WalletView } from "@binference/protocol";
 import { createKeyRecipient } from "../export/key-recipient.js";
 import type { WalletAddressFlags } from "../program/cli-flags.schema.js";
-import type { ExitCode } from "../program/cli-output.js";
+import type { ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import type { Prompter } from "../term/prompter.js";
 import { withEngine } from "./connect-engine.js";
-import { cannotAskOwnerKey, type OwnerKeyOutcome, withOwnerKey } from "./owner-key-prompt.js";
+import { cannotAskOwnerKey, withOwnerKey } from "./owner-key-prompt.js";
 import { chooseWallet } from "./wallet-choice.js";
 
 const command = "wallet export";
@@ -23,7 +23,7 @@ const maxKeyText = 256;
 async function walletOf(
   run: CommandRun,
   options: WalletAddressFlags,
-): Promise<OwnerKeyOutcome<WalletView>> {
+): Promise<StepOutcome<WalletView>> {
   const chosen: { wallet?: WalletView } = {};
   const code = await withEngine(run.host, run.output, async (client, signal) => {
     const wallet = await chooseWallet({ client, output: run.output, signal }, options);

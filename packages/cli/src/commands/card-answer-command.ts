@@ -1,11 +1,19 @@
 import type { Amount } from "@binference/chain";
 import { jsonValueSchema } from "@binference/core";
+import { cardLineText } from "@binference/engine/surfaces";
 import { displayOutsideText, type Formatter } from "@binference/i18n";
-import { type CardView, type IntentView, operations, type ProtocolId } from "@binference/protocol";
+import {
+  type CardLinesView,
+  type CardView,
+  type IntentView,
+  operations,
+  type ProtocolId,
+} from "@binference/protocol";
 import { z } from "zod";
 import type { CommonOptions } from "../program/cli-flags.schema.js";
-import type { CliOutput, ExitCode } from "../program/cli-output.js";
+import type { CliOutput, ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
+import type { Prompter } from "../term/prompter.js";
 import { withEngine } from "./connect-engine.js";
 
 /** What `binference confirm` or `binference deny` was asked: the answer and the intent. */
@@ -74,34 +82,104 @@ function reportConfirmed(run: CommandRun, view: IntentView): ExitCode {
   return 0;
 }
 
-/**
- * `binference confirm <intent>` and `binference deny <intent>`: answer the intent's newest card
- * version from the terminal, as its Confirm or Cancel button does, through `intent/confirm` with
- * that version or `intent/deny`. A confirmed paper intent shows its paper fill, and a confirmed
- * unfreeze what it unfroze; a worse re-quote opens the next card version and exits 1 with its
- * terms, to be checked and confirmed again. An intent with no card, an expired or answered card,
- * or a card that changed is refused with the engine's code. With `--json` it prints the intent
- * after the answer.
- */
-export async function runCardAnswer(
+// The words that answer yes or no: the owner's language's and English, in any case.
+function wordsOf(run: CommandRun, key: "confirm.yes" | "confirm.no"): readonly string[] {
+  const english = key === "confirm.yes" ? ["yes", "y"] : ["no", "n"];
+  return [run.formatter.message(`cli.${key}`).toLowerCase(), ...english];
+}
+
+function words(answer: string): string {
+  return answer.trim().toLowerCase();
+}
+
+// Asks whether to confirm the card shown; a word that is neither yes nor no asks again.
+async function isConfirmed(run: CommandRun, prompter: Prompter): Promise<boolean> {
+  const [yes, no] = [wordsOf(run, "confirm.yes"), wordsOf(run, "confirm.no")];
+  const answer = await prompter.ask({
+    id: "confirm",
+    message: run.formatter.message("cli.confirm.ask"),
+    check: (typed) =>
+      [...yes, ...no].includes(words(typed))
+        ? undefined
+        : run.formatter.message("cli.confirm.yesOrNo"),
+  });
+  return yes.includes(words(answer));
+}
+
+// The intent's open card version as the engine draws it; the exit code after a refusal.
+async function drawnCard(
   run: CommandRun,
-  request: CardAnswerRequest,
-): Promise<ExitCode> {
+  intent: ProtocolId<"intent">,
+): Promise<StepOutcome<CardLinesView>> {
+  const drawn: { card?: CardLinesView } = {};
+  const code = await withEngine(run.host, run.output, async (client, signal) => {
+    drawn.card = await client.call("intent/card", { intent }, { signal });
+    return 0;
+  });
+  return drawn.card === undefined ? { ok: false, code } : { ok: true, value: drawn.card };
+}
+
+// The card as its buttons' surface shows it, one line each, in the owner's language.
+function printCard(run: CommandRun, card: CardLinesView): void {
+  const display = { formatter: run.formatter, assets: card.assets };
+  for (const line of card.lines) {
+    run.output.line(cardLineText(line, display));
+  }
+}
+
+async function deny(run: CommandRun, intent: ProtocolId<"intent">): Promise<ExitCode> {
   const { host, output } = run;
   return withEngine(host, output, async (client, signal) => {
-    const { intent } = request;
     const { card } = await client.call("intent/get", { intent }, { signal });
     if (card === undefined) {
       output.refuse("intent.wrong_state");
       return 1;
     }
-    if (request.name === "deny") {
-      const denied = await client.call("intent/deny", { intent, card: card.card }, { signal });
-      printView(output, denied);
-      output.say("deny.done", { intent });
-      return 0;
-    }
-    const args = { intent, card: card.card, cardVersion: card.version };
+    const denied = await client.call("intent/deny", { intent, card: card.card }, { signal });
+    printView(output, denied);
+    output.say("deny.done", { intent });
+    return 0;
+  });
+}
+
+async function confirm(run: CommandRun, request: CardAnswerRequest): Promise<ExitCode> {
+  const { intent, options } = request;
+  const { prompter } = run.host;
+  if (!options.yes && (prompter === undefined || options.json)) {
+    const failure = { code: "cli.confirm_needs_terminal", key: "confirm.needsTerminal" };
+    run.output.fail({ ...failure, values: { intent } });
+    return 1;
+  }
+  const drawn = await drawnCard(run, intent);
+  if (!drawn.ok) {
+    return drawn.code;
+  }
+  printCard(run, drawn.value);
+  if (!options.yes && prompter !== undefined && !(await isConfirmed(run, prompter))) {
+    run.output.say("confirm.notConfirmed", { intent });
+    return 1;
+  }
+  const { card, version } = drawn.value;
+  return withEngine(run.host, run.output, async (client, signal) => {
+    const args = { intent, card, cardVersion: version };
     return reportConfirmed(run, await client.call("intent/confirm", args, { signal }));
   });
+}
+
+/**
+ * `binference confirm <intent>` and `binference deny <intent>`: answer the intent's newest card
+ * version from the terminal, as its Confirm or Cancel button does. Confirm shows the card first,
+ * line by line as the engine draws it through `intent/card`, and asks yes or no unless `--yes`
+ * says yes before; without `--yes` it needs someone at the terminal, so `--json` alone is
+ * refused. It then confirms that version through `intent/confirm`; a confirmed paper intent shows
+ * its paper fill, and a confirmed unfreeze what it unfroze; a worse re-quote opens the next card
+ * version and exits 1 with its terms, to be checked and confirmed again. Deny cancels through
+ * `intent/deny` at once. An intent with no open card, or a card that changed, is refused with the
+ * engine's code. With `--json` it prints the intent after the answer.
+ */
+export async function runCardAnswer(
+  run: CommandRun,
+  request: CardAnswerRequest,
+): Promise<ExitCode> {
+  return request.name === "deny" ? deny(run, request.intent) : confirm(run, request);
 }
