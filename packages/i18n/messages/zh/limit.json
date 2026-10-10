@@ -1,0 +1,9 @@
+{
+  "name": "{field, select, perTradeUsdMicros {单笔上限} rollingDayUsdMicros {24 小时上限} slippageRegistryBps {已验证代币的滑点上限} slippageOtherBps {其他代币的滑点上限} priceImpactBps {价格影响上限} taxBps {最高交易税} liquidityFloorUsdMicros {最低流动性} minHealthFactorBps {最低健康因子} gasReserve {网络费预留} venues {可用平台} allowTokens {可交易代币列表} denyTokens {禁止交易代币列表} modelBudgetUsdMicros {每日模型预算} cardTradeExpirySeconds {交易卡片的等待时间} cardOtherExpirySeconds {其他卡片的等待时间} requoteAfterSeconds {卡片重新报价的时间} requoteToleranceBps {新报价的允许变动} orderExpiryDays {自动订单的有效期} copyPerBuyUsdMicros {每笔跟单买入上限} copyPerLeaderDayUsdMicros {每个跟单钱包的每日上限} other {一项限额}}",
+  "seconds": "{count, plural, other {# 秒}}",
+  "days": "{count, plural, other {# 天}}",
+  "none": "无",
+  "allTokens": "所有通过风险检查的代币",
+  "gas": "{chain} 上的 {amount}",
+  "gasBase": "{chain} 上原生币的 {amount} 个最小单位"
+}

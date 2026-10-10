@@ -14,7 +14,7 @@ const english = createFormatter({ locale: "en", timeZone: "UTC" });
 const en = (key: string, values: Readonly<Record<string, string | number>> = {}): string =>
   english.message(`cli.${key}`, values);
 const perTrade = (value: string, when = "") => ({
-  name: en("limit.name", { field: "perTradeUsdMicros" }),
+  name: english.message("limit.name", { field: "perTradeUsdMicros" }),
   key: "limits.perTradeUsd",
   value,
   when,

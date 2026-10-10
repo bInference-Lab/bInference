@@ -1,0 +1,9 @@
+{
+  "name": "{field, select, perTradeUsdMicros {Per-trade cap} rollingDayUsdMicros {24-hour cap} slippageRegistryBps {Slippage limit on verified tokens} slippageOtherBps {Slippage limit on other tokens} priceImpactBps {Price impact limit} taxBps {Highest tax} liquidityFloorUsdMicros {Lowest liquidity} minHealthFactorBps {Lowest health factor} gasReserve {Gas reserve} venues {Venues it may use} allowTokens {Tokens it may trade} denyTokens {Tokens it may not trade} modelBudgetUsdMicros {Model budget a day} cardTradeExpirySeconds {How long a trade card waits} cardOtherExpirySeconds {How long other cards wait} requoteAfterSeconds {When a card gets a new quote} requoteToleranceBps {How far a new quote may move} orderExpiryDays {How long an auto order lasts} copyPerBuyUsdMicros {Copy trade cap per buy} copyPerLeaderDayUsdMicros {Daily copy trade cap per wallet followed} other {A limit}}",
+  "seconds": "{count, plural, one {# second} other {# seconds}}",
+  "days": "{count, plural, one {# day} other {# days}}",
+  "none": "none",
+  "allTokens": "every token that passes the risk check",
+  "gas": "{amount} on {chain}",
+  "gasBase": "{amount} of the native coin on {chain}, in base units"
+}

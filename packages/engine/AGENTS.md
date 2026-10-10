@@ -186,7 +186,8 @@ Rules for this package:
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and
-  answer presses; they decide nothing. A card version is drawn from the stored intent, a press is
+  answer presses; they decide nothing. What every surface shows alike, such as an agent's limits
+  (`limitLines`), is drawn there once. A card version is drawn from the stored intent, a press is
   answered only for the owner and only through the answer step, and every card version carries a
   callback reference from the `Random` port, never an id.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

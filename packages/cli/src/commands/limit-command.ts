@@ -1,5 +1,5 @@
-import { isChainRef } from "@binference/chain";
-import { isBps, jsonValueSchema } from "@binference/core";
+import { jsonValueSchema } from "@binference/core";
+import { type LimitLine, limitLines } from "@binference/engine/surfaces";
 import { type LimitChanges, type LimitsView, operations } from "@binference/protocol";
 import { z } from "zod";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
@@ -7,45 +7,7 @@ import type { AgentFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { withAgent } from "./agent-choice.js";
-import { chainName } from "./chain-name.js";
-import { gasReserveKey, type LimitKey, limitChangesOf, limitKeys } from "./limit-keys.js";
-
-// A limit's value as people read it, by its kind.
-function valueText(
-  run: CommandRun,
-  entry: LimitKey,
-  value: LimitChanges[LimitKey["field"]],
-): string {
-  const { formatter } = run;
-  if (value === undefined) {
-    return "";
-  }
-  if (typeof value === "bigint") {
-    return formatter.usd(value);
-  }
-  if (typeof value === "object") {
-    const empty = entry.field === "allowTokens" ? "cli.limit.allTokens" : "cli.limit.none";
-    return value.length === 0 ? formatter.message(empty) : value.join(", ");
-  }
-  if (entry.kind === "seconds" || entry.kind === "days") {
-    return formatter.message(`cli.limit.${entry.kind}`, { count: value });
-  }
-  if (entry.kind === "healthFactor") {
-    return formatter.tokenAmount(BigInt(value), 4);
-  }
-  return isBps(value) ? formatter.percent(value) : String(value);
-}
-
-function gasText(run: CommandRun, chain: string, base: bigint): string {
-  const served = isChainRef(chain) ? selfHostedChains().get(chain) : undefined;
-  const { formatter } = run;
-  if (served?.ok !== true) {
-    return formatter.message("cli.limit.gasBase", { amount: String(base), chain });
-  }
-  const { decimals, symbol } = served.value.definition.nativeAsset;
-  const amount = `${formatter.tokenAmount(base, decimals)} ${symbol}`;
-  return formatter.message("cli.limit.gas", { amount, chain: chainName(served.value.ref) });
-}
+import { gasReserveKey, limitChangesOf, limitConfigKeys } from "./limit-keys.js";
 
 /** How limits print: the line's message, its time, and the limits it leaves out. */
 interface LimitLines {
@@ -55,22 +17,27 @@ interface LimitLines {
   readonly except?: LimitChanges;
 }
 
+// The key `limit set` takes for the limit a line names.
+function keyOf(line: LimitLine): string {
+  return line.field === "gasReserve"
+    ? `${gasReserveKey}.${line.chain}`
+    : limitConfigKeys[line.field];
+}
+
+function isPrintedElsewhere(line: LimitLine, except: LimitChanges): boolean {
+  return line.field === "gasReserve"
+    ? Object.keys(except.gasReserve ?? {}).includes(line.chain)
+    : except[line.field] !== undefined;
+}
+
 // Each limit `changes` names, as a line under the message `lines.key`.
 function printLimits(run: CommandRun, changes: LimitChanges, lines: LimitLines): void {
   const except = lines.except ?? {};
-  const say = (field: string, key: string, value: string): void => {
-    const name = run.formatter.message("cli.limit.name", { field });
-    run.output.item(lines.key, { name, key, value, when: lines.when ?? "" });
-  };
-  for (const entry of limitKeys) {
-    if (changes[entry.field] !== undefined && except[entry.field] === undefined) {
-      say(entry.field, entry.key, valueText(run, entry, changes[entry.field]));
-    }
-  }
-  const exceptChains = Object.keys(except.gasReserve ?? {});
-  for (const [chain, base] of Object.entries(changes.gasReserve ?? {})) {
-    if (!exceptChains.includes(chain)) {
-      say("gasReserve", `${gasReserveKey}.${chain}`, gasText(run, chain, base));
+  const display = { formatter: run.formatter, chains: selfHostedChains() };
+  for (const line of limitLines(changes, display)) {
+    if (!isPrintedElsewhere(line, except)) {
+      const { name, value } = line;
+      run.output.item(lines.key, { name, key: keyOf(line), value, when: lines.when ?? "" });
     }
   }
 }

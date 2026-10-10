@@ -1,45 +1,48 @@
 import { type ChainRef, type ChainRegistry, isChainRef } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
-import { type LimitChanges, limitChangesSchema, type LimitSettings } from "@binference/protocol";
+import { type LimitField, type LimitUnit, limitUnits } from "@binference/engine/surfaces";
+import { type LimitChanges, limitChangesSchema } from "@binference/protocol";
 import { usdSchema } from "../config/schema/value-formats.schema.js";
 import { baseUnitsOf } from "../init/base-units.js";
 
-/** How a limit is typed on the command line and shown. */
-type LimitKind = "usd" | "bps" | "seconds" | "days" | "healthFactor" | "list";
+/** The key `defaults` gives each limit in config.json5, in the units the limit is set in. */
+export const limitConfigKeys: Readonly<Record<LimitField, string>> = {
+  perTradeUsdMicros: "limits.perTradeUsd",
+  rollingDayUsdMicros: "limits.rollingDayUsd",
+  slippageRegistryBps: "limits.slippageBps.registry",
+  slippageOtherBps: "limits.slippageBps.other",
+  priceImpactBps: "limits.priceImpactBps",
+  taxBps: "limits.taxBps",
+  liquidityFloorUsdMicros: "limits.liquidityFloorUsd",
+  minHealthFactorBps: "limits.minHealthFactor",
+  venues: "limits.venues",
+  allowTokens: "limits.allowTokens",
+  denyTokens: "limits.denyTokens",
+  modelBudgetUsdMicros: "modelBudgetUsdPerDay",
+  cardTradeExpirySeconds: "cards.tradeExpirySec",
+  cardOtherExpirySeconds: "cards.otherExpirySec",
+  requoteAfterSeconds: "cards.requoteAfterSec",
+  requoteToleranceBps: "cards.requoteToleranceBps",
+  orderExpiryDays: "orders.expiryDays",
+  copyPerBuyUsdMicros: "copy.perBuyUsd",
+  copyPerLeaderDayUsdMicros: "copy.perLeaderDayUsd",
+};
 
-/** A limit the CLI names: its key under config.json5's `defaults`, and its field in `limit/set`. */
-export interface LimitKey {
+/** A limit the CLI names: its key under config.json5's `defaults`, its field and its unit. */
+interface LimitKey {
   readonly key: string;
-  readonly field: Exclude<keyof LimitSettings, "gasReserve">;
-  readonly kind: LimitKind;
+  readonly field: LimitField;
+  readonly kind: LimitUnit;
 }
 
-/**
- * Every limit but the gas reserve, by the key `defaults` gives it in config.json5 and in the same
- * units: dollars, basis points, seconds, days, a health factor, or a comma-separated list. The gas
- * reserve of a chain is `limits.gasReserve.<chain>`, in its native coin.
- */
-export const limitKeys: readonly LimitKey[] = [
-  { key: "limits.perTradeUsd", field: "perTradeUsdMicros", kind: "usd" },
-  { key: "limits.rollingDayUsd", field: "rollingDayUsdMicros", kind: "usd" },
-  { key: "limits.slippageBps.registry", field: "slippageRegistryBps", kind: "bps" },
-  { key: "limits.slippageBps.other", field: "slippageOtherBps", kind: "bps" },
-  { key: "limits.priceImpactBps", field: "priceImpactBps", kind: "bps" },
-  { key: "limits.taxBps", field: "taxBps", kind: "bps" },
-  { key: "limits.liquidityFloorUsd", field: "liquidityFloorUsdMicros", kind: "usd" },
-  { key: "limits.minHealthFactor", field: "minHealthFactorBps", kind: "healthFactor" },
-  { key: "limits.venues", field: "venues", kind: "list" },
-  { key: "limits.allowTokens", field: "allowTokens", kind: "list" },
-  { key: "limits.denyTokens", field: "denyTokens", kind: "list" },
-  { key: "modelBudgetUsdPerDay", field: "modelBudgetUsdMicros", kind: "usd" },
-  { key: "cards.tradeExpirySec", field: "cardTradeExpirySeconds", kind: "seconds" },
-  { key: "cards.otherExpirySec", field: "cardOtherExpirySeconds", kind: "seconds" },
-  { key: "cards.requoteAfterSec", field: "requoteAfterSeconds", kind: "seconds" },
-  { key: "cards.requoteToleranceBps", field: "requoteToleranceBps", kind: "bps" },
-  { key: "orders.expiryDays", field: "orderExpiryDays", kind: "days" },
-  { key: "copy.perBuyUsd", field: "copyPerBuyUsdMicros", kind: "usd" },
-  { key: "copy.perLeaderDayUsd", field: "copyPerLeaderDayUsdMicros", kind: "usd" },
-];
+// Every limit but the gas reserve, by the key `defaults` gives it in config.json5 and in the same
+// units: dollars, basis points, seconds, days, a health factor, or a comma-separated list. The gas
+// reserve of a chain is `limits.gasReserve.<chain>`, in its native coin.
+const limitKeys: readonly LimitKey[] = limitUnits.map(({ field, unit }) => ({
+  key: limitConfigKeys[field],
+  field,
+  kind: unit,
+}));
 
 /** The gas reserve's key prefix: `limits.gasReserve.eip155:56=0.003`. */
 export const gasReserveKey = "limits.gasReserve";
@@ -77,7 +80,7 @@ function listWire(text: string): JsonValue {
 
 // How each kind's text becomes the value `limit/set` takes on the wire; `undefined` when it
 // cannot.
-const wireOf: Readonly<Record<LimitKind, (text: string) => JsonValue | undefined>> = {
+const wireOf: Readonly<Record<LimitUnit, (text: string) => JsonValue | undefined>> = {
   usd: usdWire,
   bps: wholeWire,
   seconds: wholeWire,

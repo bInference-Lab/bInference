@@ -142,7 +142,8 @@ asset it names, and gives the receipt of a version an answer or the timer closed
 fill once a confirmed paper intent recorded it. `createCardPresses` answers the owner's press of a
 Telegram button: it finds the card version by its reference, answers only for the owner's numeric
 Telegram id, and stores the answer through the confirmations before it resolves. It is the
-adapter of Telegram's `CardAnswers` port.
+adapter of Telegram's `CardAnswers` port. `limitLines` writes an agent's limits as every surface
+shows them, each with its name and its value in the owner's language.
 
 It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain through the
 `LedgerStore` from genesis or a trusted checkpoint and names the first entry that breaks it, so an
@@ -216,6 +217,7 @@ layout of Koinly's universal import, which tax tools read.
 | `WalletFactsSource`, `WalletFacts`, `WalletFactsQuery`           | What the money path reads about an agent's wallets              |
 | `createCardShowings`, `CardShowing`, `CardSettling` (subpath)    | A card version drawn for a button surface, and its receipt      |
 | `createCardPresses`, `CardPress`, `CardStanding` (subpath)       | Answers the owner's Telegram press through the confirmations    |
+| `limitLines`, `limitUnits`, `LimitLine` (subpath)                | An agent's limits as every surface shows them                   |
 
 ## Example
 
