@@ -35,7 +35,10 @@ Rules for this package:
   `ServiceManager` (decision 0138), the OS's own unless the host names one; the service runs
   `binference start --foreground`, which is `startSelfHosted`. Every test host gets a service
   manager that refuses, so no test touches the machine's login items; a test of the service passes
-  `src/e2e/test-services.ts`, which runs the service's command line in the test's process.
+  `src/e2e/test-services.ts`, which runs the service's command line in the test's process. The CI
+  job `Background service at login` runs `pnpm service:smoke` on each runner, with the OS's own
+  logout and login between its phases; it installs a real service, so never run it on your own
+  machine.
 - Tests run commands end to end through `runCli` on a host with a temporary state folder
   (`src/e2e/test-host.ts`), a manual clock and an emitter for stop signals; store workers run the
   TypeScript source. Each test stops its engine through the shutdown sequence. What only separate

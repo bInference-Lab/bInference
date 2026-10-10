@@ -127,6 +127,112 @@ jobs:
           BINFERENCE_OS_TESTS: "1"
         run: pnpm vitest run packages/platform/src/posix packages/platform/src/win32
 
+  # binference start installs the engine as the runner's background service; the OS then starts
+  # it again at a login, as each OS does: launchd loads the plist into the desktop session, the
+  # user's systemd manager starts again, Task Scheduler runs the task its logon trigger names.
+  # It changes the machine's login items, so only CI runs it.
+  service-smoke:
+    name: Background service at login (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.10.0"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # A runner has no login session, so the user's systemd manager runs only with lingering.
+      - name: Start the runner's systemd user manager
+        if: runner.os == 'Linux'
+        run: |
+          sudo loginctl enable-linger "$USER"
+          uid="$(id -u)"
+          for _ in $(seq 1 30); do
+            if [ -S "/run/user/$uid/systemd/private" ]; then break; fi
+            sleep 1
+          done
+          echo "XDG_RUNTIME_DIR=/run/user/$uid" >> "$GITHUB_ENV"
+
+      - name: binference start installs and runs the service
+        run: pnpm service:smoke start
+
+      - name: Log out and in again (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          job="gui/$(id -u)/io.binference.engine"
+          launchctl bootout "$job"
+          for _ in $(seq 1 60); do
+            if ! launchctl print "$job" > /dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/io.binference.engine.plist"
+
+      - name: Log out and in again (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          systemctl --user stop binference-engine.service
+          sudo systemctl restart "user@$(id -u).service"
+          for _ in $(seq 1 30); do
+            if [ -S "$XDG_RUNTIME_DIR/systemd/private" ]; then break; fi
+            sleep 1
+          done
+          systemctl --user is-enabled binference-engine.service
+
+      # A logon cannot be made on a runner: the task must hold its enabled logon trigger, and Task
+      # Scheduler runs it as that trigger does.
+      - name: Log out and in again (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $task = Get-ScheduledTask -TaskName "binference-engine"
+          $logon = @($task.Triggers | Where-Object { $_.CimClass.CimClassName -eq "MSFT_TaskLogonTrigger" -and $_.Enabled })
+          if ($logon.Count -ne 1) { throw "The task has no enabled logon trigger." }
+          schtasks /End /TN binference-engine
+          schtasks /Run /TN binference-engine
+
+      - name: The engine the OS started answers
+        run: pnpm service:smoke answers
+
+      - name: binference stop stops it and keeps the service
+        run: pnpm service:smoke stop
+
+      - name: Remove the service (macOS)
+        if: always() && runner.os == 'macOS'
+        run: |
+          launchctl bootout "gui/$(id -u)/io.binference.engine" || true
+          rm -f "$HOME/Library/LaunchAgents/io.binference.engine.plist"
+
+      - name: Remove the service (Linux)
+        if: always() && runner.os == 'Linux'
+        run: |
+          systemctl --user disable --now binference-engine.service || true
+          rm -f "$HOME/.config/systemd/user/binference-engine.service"
+          systemctl --user daemon-reload || true
+
+      - name: Remove the service (Windows)
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (Get-ScheduledTask -TaskName "binference-engine" -ErrorAction SilentlyContinue) {
+            schtasks /Delete /F /TN binference-engine
+          }
+
   pull-request:
     name: check:pr
     if: github.event_name == 'pull_request'
