@@ -31,6 +31,14 @@ export interface WalletAddressFlags extends AgentFlags {
   readonly wallet?: ProtocolId<"wallet">;
 }
 
+/** What `ceiling set` takes: the wallet, and the venues and the cap to set on its agent's ceilings. */
+export interface CeilingSetFlags extends WalletAddressFlags {
+  /** Every venue a contract call may use, each as the registry names it. */
+  readonly venues?: readonly string[];
+  /** The most native coin one contract call may carry, such as `0.5`, as `perTxBnb` in config. */
+  readonly perTx?: string;
+}
+
 /** What `address add` and `wallet create` take: the agent, and the label `--label` gives. */
 export interface LabelFlags extends AgentFlags {
   readonly label: string;
@@ -89,6 +97,15 @@ export const walletAddressFlagsSchema: z.ZodType<WalletAddressFlags> = z.object(
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
   wallet: protocolIdSchema("wallet").exactOptional(),
+});
+
+/** Parses the options of `ceiling set`; `--venues` arrives split at its commas. */
+export const ceilingSetFlagsSchema: z.ZodType<CeilingSetFlags> = z.object({
+  ...commonShape,
+  agent: protocolIdSchema("agent").exactOptional(),
+  wallet: protocolIdSchema("wallet").exactOptional(),
+  venues: z.array(z.string().min(1).max(64)).min(1).exactOptional(),
+  perTx: z.string().min(1).max(64).exactOptional(),
 });
 
 /** Parses the options of `address add` and `wallet create`; a label is 1 to 64 characters. */

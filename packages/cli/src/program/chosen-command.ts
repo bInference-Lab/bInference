@@ -2,6 +2,7 @@ import type { ProtocolId } from "@binference/protocol";
 import type {
   LabelFlags,
   AgentFlags,
+  CeilingSetFlags,
   CheckFlags,
   CommonOptions,
   InitFlags,
@@ -35,6 +36,7 @@ export type ChosenCommand =
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
   | { readonly name: "walletAddress" | "ceiling"; readonly options: WalletAddressFlags }
   | { readonly name: "walletCreate"; readonly options: LabelFlags }
+  | { readonly name: "ceilingSet"; readonly options: CeilingSetFlags }
   | { readonly name: "freeze" | "unfreeze"; readonly options: AgentFlags }
   | { readonly name: "rescue" | "rescueCancel" | "safetyStatus"; readonly options: CommonOptions }
   | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }

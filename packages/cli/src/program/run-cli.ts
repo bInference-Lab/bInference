@@ -5,7 +5,7 @@ import { CommanderError } from "commander";
 import { runAddressAdd, runAddressList, runAddressRemove } from "../commands/address-command.js";
 import { runApproval } from "../commands/approval-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
-import { runCeiling } from "../commands/ceiling-command.js";
+import { runCeiling, runCeilingSet } from "../commands/ceiling-command.js";
 import { runCheck } from "../commands/check-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runInitCommand } from "../commands/init-command.js";
@@ -99,6 +99,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   walletAddress: runWalletAddress,
   walletCreate: runWalletCreate,
   ceiling: runCeiling,
+  ceilingSet: runCeilingSet,
   freeze: runFreeze,
   unfreeze: runUnfreeze,
   rescue: async (context) => runRescue(context),

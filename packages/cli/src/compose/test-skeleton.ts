@@ -2,6 +2,7 @@ import { once } from "node:events";
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
 import {
   type ChainDefinition,
+  type ChainRegistry,
   type AccountRef,
   accountRefSchema,
   type Amount,
@@ -19,6 +20,7 @@ import {
   createFakeTxSimulator,
   createFakeVenue,
 } from "@binference/chain/testing";
+import { bsc } from "@binference/chains";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
 import { BinferenceError, idSchema, ok } from "@binference/core";
 import {
@@ -92,6 +94,15 @@ export interface SkeletonComposition {
   readonly parts: () => EngineParts;
 }
 
+// The fake chain and BNB Smart Chain, whose registries give each venue's contracts a ceiling lists.
+function fakeChains(): ChainRegistry {
+  return createChainRegistry({
+    chains: [createFakeChainDefinition(), bsc],
+    families: [createFakeFamily(), createEvmFamily()],
+    signingSchemes: [createFakeSigningScheme(), createEvmSigningScheme()],
+  });
+}
+
 /** The two compositions: the self-hosted one and the Cloud-shaped test root. */
 export const skeletonCompositions: readonly SkeletonComposition[] = [
   {
@@ -100,7 +111,7 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
     parts: () => {
       const held = new Map(wallets);
       const clock = createManualClock(testNowMs);
-      const ceilings = createFakeCeilingEditor({ clock });
+      const ceilings = createFakeCeilingEditor({ clock, chains: fakeChains() });
       return {
         custody: createFakeSigner(held),
         ceilings,

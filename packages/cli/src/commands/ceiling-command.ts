@@ -1,26 +1,39 @@
 import { accountRefParts, type ChainRef } from "@binference/chain";
 import { jsonValueSchema } from "@binference/core";
 import { displayOutsideText } from "@binference/i18n";
-import { type CeilingView, operations } from "@binference/protocol";
+import {
+  type CeilingChanges,
+  type CeilingView,
+  operations,
+  type WalletView,
+} from "@binference/protocol";
 import { z } from "zod";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
-import type { WalletAddressFlags } from "../program/cli-flags.schema.js";
+import { baseUnitsOf } from "../init/base-units.js";
+import type { CeilingSetFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
+import { cannotAskOwnerKey, type OwnerKeyOutcome, withOwnerKey } from "./owner-key-prompt.js";
 import { chooseWallet } from "./wallet-choice.js";
 
 // A label is the owner's text from any surface: cut and made visible, as cards do.
 const labelLength = 64;
 
+// The native coin of the ceiling's first chain, when this binference serves that chain.
+function nativeOf(ceiling: CeilingView) {
+  const [chain] = ceiling.chains;
+  const served = chain === undefined ? undefined : selfHostedChains().get(chain);
+  return served?.ok === true ? served.value.definition.nativeAsset : undefined;
+}
+
 // The cap in the native coin of the ceiling's first chain when this binference serves it, such as
 // 1 BNB; else in base units.
 function printCap(run: CommandRun, ceiling: CeilingView): void {
-  const [chain] = ceiling.chains;
-  const served = chain === undefined ? undefined : selfHostedChains().get(chain);
-  if (served?.ok === true) {
-    const { decimals, symbol } = served.value.definition.nativeAsset;
+  const native = nativeOf(ceiling);
+  if (native !== undefined) {
+    const { decimals, symbol } = native;
     const amount = run.formatter.tokenAmount(ceiling.perTxNative, decimals);
     run.output.say("ceiling.cap", { amount, symbol });
     return;
@@ -40,6 +53,28 @@ function namesOf(chains: readonly ChainRef[]): string {
   return chains.map(chainName).join(", ");
 }
 
+// The ceiling as the operation answers it with `--json`, else line by line under its heading.
+function printCeiling(
+  run: CommandRun,
+  shown: { readonly wallet: WalletView; readonly ceiling: CeilingView },
+): void {
+  const { output, formatter } = run;
+  const { wallet, ceiling } = shown;
+  output.json(jsonValueSchema.parse(z.encode(operations["ceiling/get"].result, ceiling)));
+  output.say("ceiling.heading", {
+    label: displayOutsideText(wallet.label, labelLength),
+    wallet: wallet.wallet,
+    readAt: formatter.dateTime(ceiling.readAt),
+  });
+  output.item("ceiling.chains", { chains: namesOf(ceiling.chains) });
+  output.item("ceiling.venues", {
+    count: ceiling.venues.length,
+    venues: ceiling.venues.join(", "),
+  });
+  printCap(run, ceiling);
+  printRecipients(run, ceiling);
+}
+
 /**
  * `binference ceiling [--agent <id>] [--wallet <id>]`: the ceiling of the agent's default wallet,
  * or of the wallet `--wallet` names, as custody holds it now, through `ceiling/get`: the chains it
@@ -51,26 +86,103 @@ export async function runCeiling(
   run: CommandRun,
   request: { readonly options: WalletAddressFlags },
 ): Promise<ExitCode> {
-  const { host, output, formatter } = run;
+  const { host, output } = run;
   return withEngine(host, output, async (client, signal) => {
     const wallet = await chooseWallet({ client, output, signal }, request.options);
     if (wallet === undefined) {
       return 1;
     }
     const ceiling = await client.call("ceiling/get", { wallet: wallet.wallet }, { signal });
-    output.json(jsonValueSchema.parse(z.encode(operations["ceiling/get"].result, ceiling)));
-    output.say("ceiling.heading", {
-      label: displayOutsideText(wallet.label, labelLength),
-      wallet: wallet.wallet,
-      readAt: formatter.dateTime(ceiling.readAt),
-    });
-    output.item("ceiling.chains", { chains: namesOf(ceiling.chains) });
-    output.item("ceiling.venues", {
-      count: ceiling.venues.length,
-      venues: ceiling.venues.join(", "),
-    });
-    printCap(run, ceiling);
-    printRecipients(run, ceiling);
+    printCeiling(run, { wallet, ceiling });
     return 0;
   });
+}
+
+/** What `ceiling set` asks for: the wallet it names, and the changes in the engine's units. */
+interface CeilingPlan {
+  readonly wallet: WalletView;
+  readonly changes: CeilingChanges;
+}
+
+// The changes the flags ask for, the cap in base units of the ceiling's native coin; undefined
+// for a cap that is no amount of it.
+function changesOf(options: CeilingSetFlags, ceiling: CeilingView): CeilingChanges | undefined {
+  const { venues, perTx } = options;
+  const native = nativeOf(ceiling);
+  const cap =
+    perTx === undefined || native === undefined ? undefined : baseUnitsOf(perTx, native.decimals);
+  if (perTx !== undefined && cap === undefined) {
+    return undefined;
+  }
+  return {
+    ...(venues === undefined ? {} : { venues }),
+    ...(cap === undefined ? {} : { perTxNative: cap }),
+  };
+}
+
+// The wallet `--agent` or `--wallet` names and the changes for its ceiling, read before the owner
+// key is asked for; the exit code after a refusal it printed.
+async function planOf(
+  run: CommandRun,
+  options: CeilingSetFlags,
+): Promise<OwnerKeyOutcome<CeilingPlan>> {
+  const { host, output } = run;
+  const planned: { plan?: CeilingPlan } = {};
+  const code = await withEngine(host, output, async (client, signal) => {
+    const wallet = await chooseWallet({ client, output, signal }, options);
+    if (wallet === undefined) {
+      return 1;
+    }
+    const ceiling = await client.call("ceiling/get", { wallet: wallet.wallet }, { signal });
+    const changes = changesOf(options, ceiling);
+    if (changes === undefined) {
+      const values = { amount: options.perTx ?? "" };
+      output.fail({ code: "protocol.bad_args", key: "ceiling.badCap", values });
+      return 1;
+    }
+    planned.plan = { wallet, changes };
+    return 0;
+  });
+  return planned.plan === undefined ? { ok: false, code } : { ok: true, value: planned.plan };
+}
+
+/**
+ * `binference ceiling set [--agent <id>] [--wallet <id>] [--venues <ids>] [--per-tx <amount>]`:
+ * changes, with the owner key the person types unseen, the ceiling of every wallet of the agent
+ * through `ceiling/set` (decision 0132): `--venues` the venues a contract call may use, each
+ * separated by a comma, and `--per-tx` the most native coin one call may carry, as `perTxBnb` in
+ * config. The chains stay. Every surface announces the change. It prints the named wallet's
+ * ceiling afterwards, or the agent's default wallet's. With `--yes`, `--json` or nobody at the
+ * terminal it reads nothing, as the owner key needs a terminal. Exits 1 when it names nothing to
+ * change or a cap that is no amount.
+ */
+export async function runCeilingSet(
+  run: CommandRun,
+  request: { readonly options: CeilingSetFlags },
+): Promise<ExitCode> {
+  const { options } = request;
+  if (options.venues === undefined && options.perTx === undefined) {
+    run.output.fail({ code: "protocol.bad_args", key: "ceiling.nothingToSet" });
+    return 1;
+  }
+  if (cannotAskOwnerKey(run, options, "ceiling set")) {
+    return 1;
+  }
+  const plan = await planOf(run, options);
+  if (!plan.ok) {
+    return plan.code;
+  }
+  const { wallet, changes } = plan.value;
+  run.output.say("ceiling.everyWallet");
+  const set = await withOwnerKey(run, options, {
+    command: "ceiling set",
+    call: async (client, ownerKey, signal) =>
+      client.call("ceiling/set", { wallet: wallet.wallet, changes, ownerKey }, { signal }),
+  });
+  if (!set.ok) {
+    return set.code;
+  }
+  run.output.say("ceiling.changed");
+  printCeiling(run, { wallet, ceiling: set.value });
+  return 0;
 }

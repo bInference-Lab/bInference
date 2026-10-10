@@ -56,7 +56,7 @@ describe("the binference command tree", () => {
       "list",
       "address",
       "create",
-      "ceiling",
+      "set",
       "freeze",
       "unfreeze",
       "set",

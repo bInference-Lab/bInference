@@ -264,7 +264,7 @@ new name here first, in the change that uses it.
 - **files**: `config.json5` (the config), `engine.sqlite` and `agent.sqlite` (the databases),
   `NOTICES.md` (third-party notices).
 - **commands**: `binference init`, `start`, `status`, `health`, `logs`, `approval`, `confirm`,
-  `deny`, `wallet list`, `wallet address`, `wallet create`, `ceiling`, `check`, `check --fix`, `check security`, `report`,
+  `deny`, `wallet list`, `wallet address`, `wallet create`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
   `limit cancel`, `unlock`, `expose`.

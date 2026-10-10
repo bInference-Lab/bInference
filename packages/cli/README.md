@@ -126,6 +126,7 @@ The reference of every key, generated from the schema, is
 | `binference wallet address`          | The address to fund the agent's default wallet at                   |
 | `binference wallet create --label x` | A new wallet under its own ceiling; asks for the owner key          |
 | `binference ceiling [--wallet <id>]` | The wallet's ceiling as custody holds it now                        |
+| `binference ceiling set --per-tx x`  | Venues and cap of every agent ceiling; asks for the owner key       |
 | `binference freeze [--agent <id>]`   | Freezes every agent and the install, or one agent                   |
 | `binference unfreeze`                | Opens the unfreeze card, which `confirm` or a tap answers           |
 | `binference rescue`                  | Opens the rescue card: everything to the rescue address             |

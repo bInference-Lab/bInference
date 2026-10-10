@@ -93,13 +93,28 @@ export async function withOwnerKey<T>(
   owner: OwnerKeyCall<T>,
 ): Promise<OwnerKeyOutcome<T>> {
   const { prompter } = run.host;
-  if (prompter === undefined || options.yes || options.json) {
-    run.output.fail({
-      code: "wallet.bad_owner_key",
-      key: "ownerKey.needsTerminal",
-      values: { command: owner.command },
-    });
+  if (cannotAskOwnerKey(run, options, owner.command) || prompter === undefined) {
     return { ok: false, code: 1 };
   }
   return askAndCall(run, { owner, prompter, tries: 1 });
+}
+
+/**
+ * Whether an owner-key command cannot ask for the code: with `--yes`, `--json` or nobody at the
+ * terminal it says why, so a command can stop before it reads anything.
+ */
+export function cannotAskOwnerKey(
+  run: CommandRun,
+  options: CommonOptions,
+  command: string,
+): boolean {
+  const cannot = run.host.prompter === undefined || options.yes || options.json;
+  if (cannot) {
+    run.output.fail({
+      code: "wallet.bad_owner_key",
+      key: "ownerKey.needsTerminal",
+      values: { command },
+    });
+  }
+  return cannot;
 }

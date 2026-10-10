@@ -1,6 +1,7 @@
 import type { ProtocolId } from "@binference/protocol";
 import { Argument, Command, InvalidArgumentError, Option, type OptionValues } from "commander";
 import { addAddressCommands } from "./address-commands.js";
+import { addCeilingCommands } from "./ceiling-commands.js";
 import type { ApprovalModeChoice, ProgramOptions } from "./chosen-command.js";
 import {
   agentFlagsSchema,
@@ -87,12 +88,6 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     .action((flags: OptionValues) =>
       choose({ name: "walletCreate", options: labelFlagsSchema.parse(flags) }),
     );
-  withCommon(program.command("ceiling").description(message("command.ceiling")), message)
-    .addOption(agentOption(message))
-    .addOption(new Option("--wallet <id>", message("option.wallet")).argParser(idOf("wallet")))
-    .action((flags: OptionValues) =>
-      choose({ name: "ceiling", options: walletAddressFlagsSchema.parse(flags) }),
-    );
 }
 
 function addInit(program: Command, options: ProgramOptions): void {
@@ -143,6 +138,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addAgentCommands(program, options);
   addCardCommands(program, options);
   addWalletCommands(program, options);
+  addCeilingCommands(program, options);
   addSafetyCommands(program, options);
   addAddressCommands(program, options);
   addLimitCommands(program, options);
