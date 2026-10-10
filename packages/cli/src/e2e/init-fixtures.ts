@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
-import { type Http, type HttpRequest, type Secret } from "@binference/core";
+import { type Clock, type Http, type HttpRequest, type Secret } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { createFakePrivy, type FakePrivy } from "@binference/custody-privy/testing";
 import type { AgentRecord } from "@binference/engine";
@@ -54,11 +54,16 @@ function recorded(privy: FakePrivy): RecordedPrivy {
   return { ...privy, http, sent };
 }
 
-/** Makes a test machine in a fresh folder, and hands its folder to `folders` for cleanup. */
-export async function newInitMachine(folders: TempFolder[]): Promise<InitMachine> {
+/**
+ * Makes a test machine in a fresh folder, and hands its folder to `folders` for cleanup. Its clock
+ * is a manual one unless the test gives its own, such as the system clock on a fork.
+ */
+export async function newInitMachine(
+  folders: TempFolder[],
+  clock: Clock = createManualClock(nowMs),
+): Promise<InitMachine> {
   const folder = await createTempFolder("bnf-init-");
   folders.push(folder);
-  const clock = createManualClock(nowMs);
   return {
     folder: folder.path,
     clock,

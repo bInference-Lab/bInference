@@ -33,7 +33,9 @@ Rules for this package:
   (`engine-process.test.ts`).
 - Fork tests in `src/fork/` run engine steps over the real chain parts they are composed from,
   such as the simulation check over the EVM transaction simulator, on the fork suite's BSC fork
-  through `@binference/chain-evm/fork`. They run in `pnpm test:fork`, never in `pnpm check`.
+  through `@binference/chain-evm/fork`. `self-hosted-start.test.ts` runs `binference start` itself
+  there, with the fake Privy, the test signer and KyberSwap's public API. They run in
+  `pnpm test:fork`, never in `pnpm check`.
 - Crash tests in `src/crash/` run `src/crash/crash-engine.ts` as a process of its own: the
   money path as `binference start` composes it. They kill it at each kill point and start it
   again. The engine reaches the chain only through the test's relays and RPC in front of anvil,
