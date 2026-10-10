@@ -222,6 +222,18 @@ const spaceid = createContracts("spaceid", {
   },
 });
 
+// Read only: one call through it reads an account's coin and token balances. Read on chain a few
+// days after the others.
+const multicall3 = createContracts(
+  "multicall3",
+  {
+    "https://www.multicall3.com/deployments": {
+      multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    },
+  },
+  "2026-10-10",
+);
+
 const rpcDocs = "https://docs.bnbchain.org/bnb-smart-chain/developers/json_rpc/json-rpc-endpoint/";
 const explorerDocs = "https://docs.bnbchain.org/bnb-smart-chain/developers/quick-guide/";
 
@@ -283,6 +295,7 @@ export const bsc: ChainDefinition = {
     ...chainlink,
     ...erc8004,
     ...spaceid,
+    ...multicall3,
   ],
 };
 
