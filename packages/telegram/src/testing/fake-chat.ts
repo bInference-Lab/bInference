@@ -26,6 +26,8 @@ export interface SentText {
   readonly chatId: number;
   readonly text: string;
   readonly threadId?: number;
+  /** The message it replies to, as its `reply_parameters` named it. */
+  readonly replyTo?: number;
 }
 
 /** A message the bot deleted. */
@@ -98,6 +100,7 @@ const contentShape = {
 const sendSchema = z.looseObject({
   chat_id: z.int(),
   message_thread_id: z.int().optional(),
+  reply_parameters: z.looseObject({ message_id: z.int() }).optional(),
   ...contentShape,
 });
 const editTextSchema = z.looseObject({ ...targetShape, ...contentShape });
@@ -203,7 +206,9 @@ function sendMessage(state: ChatsState, body: string): Result<JsonValue, string>
   const target = { chatId: call.value.chat_id, messageId: state.nextMessageId() };
   const message = { ...target, ...thread, ...content.value };
   state.messages.set(keyOf(target.chatId, target.messageId), message);
-  state.sent.push({ chatId: target.chatId, text: message.text, ...thread });
+  const replyTo = call.value.reply_parameters?.message_id;
+  const reply = replyTo === undefined ? {} : { replyTo };
+  state.sent.push({ chatId: target.chatId, text: message.text, ...thread, ...reply });
   return ok(messageJson(message));
 }
 

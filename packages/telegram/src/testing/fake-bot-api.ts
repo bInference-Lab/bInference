@@ -9,6 +9,7 @@ import {
   type FakeMessage,
   type SentText,
 } from "./fake-chat.js";
+import { createFakeMenus, type FakeMenu, type FakeMenus } from "./fake-commands.js";
 
 /** A token in the Bot API's shape, for tests only. */
 export const fakeBotToken = "7012345678:AAE_fakeTokenForTestsOnly_0123456789ab";
@@ -65,7 +66,7 @@ type Signal = AbortSignal | null | undefined;
  * A synthetic Telegram Bot API in memory for grammY's `fetch` option: no network. Updates come
  * in under Telegram's offset rules; messages, edits, deletes and button answers go out with the
  * Bot API's checks (HTML parse mode, 4,096 characters, 64-byte callback data, one answer per
- * press, no edit that changes nothing).
+ * press, no edit that changes nothing), and command menus with `setMyCommands`'s limits.
  */
 export interface FakeBotApi {
   readonly fetch: Fetch;
@@ -83,6 +84,8 @@ export interface FakeBotApi {
   edits(): readonly FakeEdit[];
   /** The bot's answers to button presses, in order. */
   answers(): readonly CallbackAnswer[];
+  /** The command menus the bot set with `setMyCommands`. */
+  menus(): readonly FakeMenu[];
   /** Every request in the order it arrived, refused ones too. */
   calls(): readonly FakeCall[];
   /**
@@ -111,6 +114,7 @@ interface State {
   readonly failures: Failure[];
   readonly calls: FakeCall[];
   readonly chats: FakeChats;
+  readonly menus: FakeMenus;
 }
 
 const pollSchema = z.looseObject({ offset: z.int().optional(), limit: z.int().optional() });
@@ -190,7 +194,10 @@ async function serve(state: State, request: FakeRequest): Promise<Response> {
   if (call.method === "getMe") {
     return answer(fakeBotUser);
   }
-  const chatCall = state.chats.calls[call.method];
+  const chatCall =
+    call.method === "setMyCommands"
+      ? (menuBody: string) => state.menus.setMyCommands(menuBody)
+      : state.chats.calls[call.method];
   const result = chatCall?.(body);
   if (result === undefined) {
     return refuse({ status: 404, description: "Not Found: method not found" });
@@ -247,6 +254,7 @@ export function createFakeBotApi(): FakeBotApi {
     failures: [],
     calls: [],
     chats,
+    menus: createFakeMenus(),
   };
   let presses = 0;
   const push = (...updates: readonly JsonValue[]): void => {
@@ -271,6 +279,7 @@ export function createFakeBotApi(): FakeBotApi {
     deleted: () => chats.deleted(),
     edits: () => chats.edits(),
     answers: () => chats.answers(),
+    menus: () => state.menus.menus(),
     calls: () => [...state.calls],
     failNext: (method, failure, target) => {
       state.failures.push({ method, failure, ...target });

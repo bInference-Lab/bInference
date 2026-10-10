@@ -18,4 +18,5 @@ export type {
   FakeMessage,
   SentText,
 } from "./testing/fake-chat.js";
+export type { FakeCommand, FakeMenu } from "./testing/fake-commands.js";
 export type { FakeEntity } from "./testing/fake-html.js";

@@ -20,6 +20,54 @@ async function refusalOf(call: Promise<unknown>): Promise<GrammyError> {
 }
 
 describe("the fake Bot API", () => {
+  it("keeps one command menu for each scope and language, the last set winning", async () => {
+    const { botApi, api } = setUp();
+    const help = [{ command: "help", description: "Commands" }];
+    await api.setMyCommands(help);
+    await api.setMyCommands(help, { scope: { type: "all_private_chats" }, language_code: "zh" });
+    await api.setMyCommands([{ command: "status", description: "State" }]);
+    expect(botApi.menus()).toStrictEqual([
+      { scope: "default", commands: [{ command: "status", description: "State" }] },
+      { scope: "all_private_chats", languageCode: "zh", commands: help },
+    ]);
+  });
+
+  it.each([
+    { name: "a command with a capital", commands: [{ command: "Help", description: "x" }] },
+    { name: "a long command", commands: [{ command: "a".repeat(33), description: "x" }] },
+    { name: "an empty description", commands: [{ command: "help", description: "" }] },
+    { name: "a long description", commands: [{ command: "help", description: "x".repeat(257) }] },
+    {
+      name: "more than 100 commands",
+      commands: Array.from({ length: 101 }, (_, at) => ({
+        command: `c${String(at)}`,
+        description: "x",
+      })),
+    },
+  ])("refuses a command menu with $name", async ({ commands }) => {
+    const { botApi, api } = setUp();
+    expect((await refusalOf(api.setMyCommands(commands))).error_code).toBe(400);
+    expect(botApi.menus()).toStrictEqual([]);
+  });
+
+  it("refuses a menu language that is not a two-letter code", async () => {
+    const { api } = setUp();
+    const help = [{ command: "help", description: "Commands" }];
+    expect(
+      (await refusalOf(api.setMyCommands(help, { language_code: "zh-hans" as never }))).error_code,
+    ).toBe(400);
+  });
+
+  it("records the message a reply answers", async () => {
+    const { botApi, api } = setUp();
+    await api.sendMessage(ownerId, "Card");
+    await api.sendMessage(ownerId, "About the card", { reply_parameters: { message_id: 1001 } });
+    expect(botApi.sent()).toStrictEqual([
+      { chatId: ownerId, text: "Card" },
+      { chatId: ownerId, text: "About the card", replyTo: 1001 },
+    ]);
+  });
+
   it("shows an HTML message with its buttons the way a reader sees it", async () => {
     const { botApi, api } = setUp();
     const sent = await api.sendMessage(ownerId, "<b>Card</b> for &lt;b&gt;", {
@@ -151,7 +199,7 @@ describe("the fake Bot API", () => {
     });
     expect(update).toMatchObject({
       callback_query: {
-        from: { id: strangerId, is_bot: true, language_code: "zh-hans" },
+        from: { id: strangerId, is_bot: true, language_code: "zh-hans" as never },
         message: { chat: { id: -100, type: "supergroup" } },
       },
     });
