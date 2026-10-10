@@ -107,11 +107,11 @@ describe("the kyberswap venue", () => {
     ]);
   });
 
-  it("names itself to KyberSwap with its client id on every call", async () => {
+  it("names itself to KyberSwap with its client id and a user agent on every call", async () => {
     const http = scriptedApi({ [buyRoutesUrl]: answer(buyRoute) });
     await venueOver(http).quote(buyRequest, { signal: live() });
     expect(http.requests().map((request) => request.headers)).toStrictEqual([
-      { "x-client-id": "binference" },
+      { "x-client-id": "binference", "user-agent": "binference" },
     ]);
   });
 
