@@ -187,7 +187,11 @@ Rules for this package:
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and
   answer presses; they decide nothing. What every surface shows alike, such as an agent's limits
-  (`limitLines`), is drawn there once. A card version is drawn from the stored intent, a press is
+  (`limitLines`), is drawn there once. The owner's Telegram fast commands run their operations
+  through `createOwnerCalls`, only for the owner's numeric Telegram id, as the caller
+  `{ kind: "telegram" }` with `read` and `confirm`: what they change is journaled, ledgered and
+  announced as done from Telegram, and an operation joins `ownerChatOperations` only when its
+  scope is one of those two. A card version is drawn from the stored intent, a press is
   answered only for the owner and only through the answer step, and every card version carries a
   callback reference from the `Random` port, never an id.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

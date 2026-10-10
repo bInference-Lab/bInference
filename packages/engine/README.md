@@ -142,7 +142,10 @@ asset it names, and gives the receipt of a version an answer or the timer closed
 fill once a confirmed paper intent recorded it. `createCardPresses` answers the owner's press of a
 Telegram button: it finds the card version by its reference, answers only for the owner's numeric
 Telegram id, and stores the answer through the confirmations before it resolves. It is the
-adapter of Telegram's `CardAnswers` port. `limitLines` writes an agent's limits as every surface
+adapter of Telegram's `CardAnswers` port. `createOwnerCalls` runs the operations of the owner's
+Telegram fast commands inside the engine: only for the owner's numeric Telegram id, as the owner
+on Telegram, with the `read` and `confirm` scopes of a chat that brakes but never loosens. It is
+the adapter of Telegram's `OwnerCalls` port. `limitLines` writes an agent's limits as every surface
 shows them, each with its name and its value in the owner's language.
 
 It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain through the
@@ -218,6 +221,7 @@ layout of Koinly's universal import, which tax tools read.
 | `createCardShowings`, `CardShowing`, `CardSettling` (subpath)    | A card version drawn for a button surface, and its receipt      |
 | `createCardPresses`, `CardPress`, `CardStanding` (subpath)       | Answers the owner's Telegram press through the confirmations    |
 | `limitLines`, `limitUnits`, `LimitLine` (subpath)                | An agent's limits as every surface shows them                   |
+| `createOwnerCalls`, `ownerChatOperations` (subpath)              | Runs the operations of the owner's Telegram fast commands       |
 
 ## Example
 

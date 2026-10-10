@@ -22,7 +22,7 @@ import {
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { AgentStore, IntentStore, RiskCheck } from "../ports.js";
 import { cardFactsOf } from "./card-facts-of.js";
-import { createCardShowings } from "./create-card-showings.js";
+import { createCardShowings, maxWaitingCards } from "./create-card-showings.js";
 import { present, worseAfterFirstQuote } from "./test-venues.js";
 
 const live = { signal: new AbortController().signal };
@@ -186,6 +186,35 @@ describe("the card showings", () => {
       live,
     );
     expect(settledWithout).toBe(undefined);
+  });
+
+  it("list the cards that wait for the owner, oldest first, until each is answered", async () => {
+    const first = await proposed();
+    const { test } = first;
+    const second = expectOk(
+      await test.engine.handlers["intent/propose"](testCall(testSwap(), testCallers.mcp)),
+    );
+    const waitingRefs = async () =>
+      (await showingsOf(test).waiting(live)).map((showing) => [
+        showing.intent,
+        showing.callbackRef,
+      ]);
+    const [secondCard] = await test.stores.intents.cards(second.intent, live);
+    expect(await waitingRefs()).toStrictEqual([
+      [first.intent, first.card.callbackRef],
+      [second.intent, present(secondCard).callbackRef],
+    ]);
+    await answer(first, "deny");
+    expect(await waitingRefs()).toStrictEqual([[second.intent, expect.any(String)]]);
+  });
+
+  it("list at most twenty waiting cards", async () => {
+    const shown = await proposed();
+    const proposals = Array.from({ length: maxWaitingCards }, async () =>
+      shown.test.engine.handlers["intent/propose"](testCall(testSwap(), testCallers.mcp)),
+    );
+    await Promise.all(proposals);
+    expect(await showingsOf(shown.test).waiting(live)).toHaveLength(maxWaitingCards);
   });
 
   it("fault when the intent's agent is not stored", async () => {

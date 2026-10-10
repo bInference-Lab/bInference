@@ -77,7 +77,19 @@ export interface CardShowings {
     intent: Id<"int">,
     options: { readonly signal: AbortSignal },
   ): Promise<CardSettling | undefined>;
+  /**
+   * Every card that waits for the owner's answer, its open version drawn with its callback
+   * reference, oldest first and at most {@link maxWaitingCards}: what the owner may still cancel.
+   */
+  waiting(options: { readonly signal: AbortSignal }): Promise<readonly CardShowing[]>;
 }
+
+/**
+ * The most waiting cards {@link CardShowings.waiting} reads at once. A trade card waits a minute
+ * and any other ten, so more than this many is an agent that floods the owner; the oldest come
+ * first, and the rest stay open on their other copies until they expire.
+ */
+export const maxWaitingCards = 20;
 
 /** What {@link createCardShowings} reads. */
 export interface CardShowingsOptions {
@@ -210,6 +222,20 @@ async function settled(
   return isFilling ? undefined : { ref: card.callbackRef, closing };
 }
 
+async function waiting(options: CardShowingsOptions, call: Call): Promise<readonly CardShowing[]> {
+  const query = { states: ["awaiting_confirmation"], limit: maxWaitingCards } as const;
+  const records = await options.intents.list(query, call);
+  const shown = await Promise.all(
+    records.map(async (record) => {
+      const last = (await options.intents.cards(record.id, call)).slice(-1);
+      return Promise.all(
+        last.map(async (card) => opened(options, { intent: record.id, card: card.id }, call)),
+      );
+    }),
+  );
+  return shown.flat().filter((showing) => showing !== undefined);
+}
+
 /**
  * Creates the {@link CardShowings} over the intent and agent stores: each card version is drawn
  * from the stored intent with the registry's info for the assets it names, and a closed version
@@ -220,5 +246,6 @@ export function createCardShowings(options: CardShowingsOptions): CardShowings {
     opened: async (ref, call) => opened(options, ref, call),
     newest: async (intent, call) => newest(options, intent, call),
     settled: async (intent, call) => settled(options, intent, call),
+    waiting: async (call) => waiting(options, call),
   };
 }
