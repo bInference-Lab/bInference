@@ -71,6 +71,8 @@ export { idempotencyStoreContract } from "./contracts/idempotency-store-contract
 export type { IdempotencyStoreHarness } from "./contracts/idempotency-store-contract.js";
 export { inboxStoreContract } from "./contracts/inbox-store-contract.js";
 export type { InboxStoreHarness } from "./contracts/inbox-store-contract.js";
+export { noticeStoreContract } from "./contracts/notice-store-contract.js";
+export type { NoticeStoreHarness, NoticeStoreSubject } from "./contracts/notice-store-contract.js";
 export type { IntentStoreSubject } from "./contracts/intent-fixtures.js";
 export { intentStoreContract } from "./contracts/intent-store-contract.js";
 export type { IntentStoreHarness } from "./contracts/intent-store-contract.js";
@@ -88,6 +90,8 @@ export { createMemoryEngineStores } from "./fakes/memory-engine-stores.js";
 export type { MemoryEngineStores } from "./fakes/memory-engine-stores.js";
 export { createMemoryIdempotencyStore } from "./fakes/memory-idempotency-store.js";
 export { createMemoryInboxStore } from "./fakes/memory-inbox-store.js";
+export { createMemoryNoticeStore } from "./fakes/memory-notice-store.js";
+export type { MemoryNoticeStoreOptions } from "./fakes/memory-notice-store.js";
 export { createMemoryInstallStore } from "./fakes/memory-install-store.js";
 export type { MemoryInstallStore } from "./fakes/memory-install-store.js";
 export { testWalletRecord } from "./install/test-wallet-record.js";

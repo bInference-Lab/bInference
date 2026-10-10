@@ -187,6 +187,11 @@ new name here first, in the change that uses it.
   the bot's updates, model billing, secrets, the store and market data. Each is a port.
 - **update source**: where the engine reads a bot's inbound updates, by long polling or through a
   webhook relay. The engine stores each update in the inbox before it acknowledges it.
+- **notice**: one owner notification of spec 4, section 4, such as a freeze or low gas. The engine
+  stores each for 90 days, pushes it as `notice/new` and sends it to the owner's chat through the
+  outbox.
+- **outbox**: the store's queue of what the engine sends to a chat surface. A delivery is `queued`,
+  `sent`, `unknown_after_send` or `failed`; one whose outcome is unknown is never sent again.
 - **model billing**: what pays for an agent's model calls and says what the agent may still spend:
   the model budget, or bInference AI credit.
 - **market data**: the blocks and prices the watchers stream.

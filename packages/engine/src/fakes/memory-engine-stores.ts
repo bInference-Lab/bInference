@@ -7,6 +7,7 @@ import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryInstallStore, type MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentStore } from "./memory-intent-store.js";
 import { createMemoryLedgerStore, type MemoryLedgerStore } from "./memory-ledger-store.js";
+import { createMemoryNoticeStore } from "./memory-notice-store.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 
 /**
@@ -38,5 +39,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     configJournal: createMemoryConfigJournal(),
     transactions: createMemoryTransactionStore(),
     install,
+    notices: createMemoryNoticeStore({ agents }),
   };
 }

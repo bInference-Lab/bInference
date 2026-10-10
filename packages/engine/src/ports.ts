@@ -50,6 +50,13 @@ import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
 import type { BalancesQuery, WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
+import type {
+  DeliveryMove,
+  NoticeDelivery,
+  NoticePage,
+  NoticeRecord,
+  QueuedQuery,
+} from "./notices/notice-record.js";
 import type { ArrivalRecord, ArrivalWrite, PaperReset } from "./positions/arrival-record.js";
 import type { DepartureOutcome, DepartureWrite } from "./positions/departure-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
@@ -382,6 +389,34 @@ export interface InboxStore {
   /** Entries not handled yet, oldest first, at most `limit`: the work a restart resumes. */
   unhandled(limit: number, options: StoreCall): Promise<readonly InboxEntry[]>;
   /** Deletes entries handled before `beforeMs` and returns how many. */
+  prune(beforeMs: number, options: StoreCall): Promise<number>;
+}
+
+/**
+ * Keeps every owner notice for 90 days and the outbox of its deliveries to the chat surfaces
+ * (decision 0133). Each move of a delivery changes its outbox row and the notice's `delivered` in
+ * one write, so the two never differ.
+ */
+export interface NoticeStore {
+  /**
+   * Stores a notice and, for each surface its `delivered` names, a delivery in that state, due at
+   * the notice's time. A notice naming an agent the store does not hold, or an id in use, fails
+   * with `store.constraint`.
+   */
+  record(record: NoticeRecord, options: StoreCall): Promise<void>;
+  /** Notices recorded after `page.after`, in id order, at most `page.limit`. */
+  list(page: NoticePage, options: StoreCall): Promise<readonly NoticeRecord[]>;
+  /** The `queued` deliveries to a surface, in the order their notices were recorded. */
+  queued(query: QueuedQuery, options: StoreCall): Promise<readonly NoticeDelivery[]>;
+  /**
+   * Moves a delivery from the state the mover read and answers it as it now stands. One the store
+   * does not hold is `not_found`; one in another state than `from` is `moved` and stays as it is.
+   */
+  move(
+    move: DeliveryMove,
+    options: StoreCall,
+  ): Promise<Result<NoticeDelivery, "not_found" | "moved">>;
+  /** Deletes the notices recorded before `beforeMs` with their deliveries; returns how many. */
   prune(beforeMs: number, options: StoreCall): Promise<number>;
 }
 

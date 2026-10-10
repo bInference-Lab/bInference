@@ -7,6 +7,7 @@ import type {
   InstallStore,
   IntentStore,
   LedgerStore,
+  NoticeStore,
   TransactionStore,
 } from "../ports.js";
 
@@ -26,4 +27,5 @@ export interface EngineStores {
   readonly configJournal: ConfigJournal;
   readonly transactions: TransactionStore;
   readonly install: InstallStore;
+  readonly notices: NoticeStore;
 }

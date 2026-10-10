@@ -7,6 +7,7 @@ import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
 import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
 import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
+import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
 import type { StoreHost } from "../tasks/store-host.js";
 import { createSqliteTransactionStore } from "../transactions/sqlite-transaction-store.js";
 
@@ -25,5 +26,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     configJournal: createSqliteConfigJournal(host),
     transactions: createSqliteTransactionStore(host),
     install: createSqliteInstallStore(host),
+    notices: createSqliteNoticeStore(host),
   };
 }

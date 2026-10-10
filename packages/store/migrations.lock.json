@@ -19,6 +19,7 @@
     "engine/0014_transaction_replacements.ts": "14e934bbc76776c739dbca26a940ad588b4131ba4c0ab62e75bf44b96238e56b",
     "engine/0015_positions_and_departures.ts": "df88198628dd08e39255c71725df7e1d4c54a89f8cda82eda3b49e864380ff77",
     "engine/0016_intent_values.ts": "c008c54cc1c4e5f1cf804844d9c29fa1ef351d98b9d0264e171168c3ee77534f",
-    "engine/0017_execution_realized.ts": "9e1d5c93b8eb1e47b9b8dcec6aa1f76989507e9fa53bf871f4e5b9cae5c05536"
+    "engine/0017_execution_realized.ts": "9e1d5c93b8eb1e47b9b8dcec6aa1f76989507e9fa53bf871f4e5b9cae5c05536",
+    "engine/0018_notice_intents.ts": "8fdd82d4ad1568a4142ff191e29f0c0a4c1a38da9aa15e1498a0cacefd0e7d80"
   }
 }

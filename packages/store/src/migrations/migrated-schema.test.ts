@@ -144,7 +144,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   risk_cache: names("asset source result fetched_at"),
   inbox: names("id source source_key payload received_at handled_at"),
   outbox: names("id surface target payload state attempts next_at ref created_at sent_at"),
-  notices: names("id agent_id kind i18n_key values level at delivered"),
+  notices: names("id agent_id kind i18n_key values level at delivered intent_id"),
   idempotency: names("credential op key args_hash result at"),
   model_usage: names(
     "id agent_id turn_id model input_tokens output_tokens cached_tokens usd_micros at",

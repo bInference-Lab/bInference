@@ -73,10 +73,15 @@
       "@binference/source": "./src/outflows.ts",
       "types": "./dist/outflows.d.mts",
       "default": "./dist/outflows.mjs"
+    },
+    "./notices": {
+      "@binference/source": "./src/notices.ts",
+      "types": "./dist/notices.d.mts",
+      "default": "./dist/notices.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts src/notices.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
