@@ -16,9 +16,10 @@ import { runUnlock } from "../commands/unlock-command.js";
 import { runWalletAddress, runWalletList } from "../commands/wallet-command.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { loadConfig } from "../config/load-config.js";
+import type { ChosenCommand } from "./chosen-command.js";
 import type { CliHost } from "./cli-host.js";
 import { type CliOutput, createCliOutput, type ExitCode } from "./cli-output.js";
-import { buildProgram, type ChosenCommand } from "./cli-program.js";
+import { buildProgram } from "./cli-program.js";
 import type { CommandRun } from "./command-run.js";
 import { systemDefaults } from "./system-defaults.js";
 

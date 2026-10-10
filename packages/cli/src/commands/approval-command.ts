@@ -1,7 +1,7 @@
 import type { ProtocolId, ResultOf } from "@binference/protocol";
+import type { ApprovalModeChoice } from "../program/chosen-command.js";
 import type { AgentFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
-import type { ApprovalModeChoice } from "../program/cli-program.js";
 import type { CommandRun } from "../program/command-run.js";
 import { chooseAgent } from "./agent-choice.js";
 import { withEngine } from "./connect-engine.js";

@@ -1,59 +1,17 @@
-import { type ProtocolId, protocolIdSchema } from "@binference/protocol";
+import type { ProtocolId } from "@binference/protocol";
 import { Argument, Command, InvalidArgumentError, Option, type OptionValues } from "commander";
+import type { ApprovalModeChoice, ProgramOptions } from "./chosen-command.js";
 import {
-  type AgentFlags,
   agentFlagsSchema,
-  type CheckFlags,
   checkFlagsSchema,
-  type CommonOptions,
   commonFlagsSchema,
-  type InitFlags,
   initFlagsSchema,
-  type LogsFlags,
   logsFlagsSchema,
   maxLogLines,
-  type StartFlags,
   startFlagsSchema,
-  type WalletAddressFlags,
   walletAddressFlagsSchema,
 } from "./cli-flags.schema.js";
-import type { CliHost } from "./cli-host.js";
-
-/** The approval mode `binference approval` sets. */
-export type ApprovalModeChoice = "manual" | "auto";
-
-/** The command that runs, with its options checked. */
-export type ChosenCommand =
-  | { readonly name: "init"; readonly options: InitFlags }
-  | { readonly name: "start"; readonly options: StartFlags }
-  | { readonly name: "status" | "health"; readonly options: CommonOptions }
-  | { readonly name: "unlock"; readonly options: CommonOptions }
-  | { readonly name: "logs"; readonly options: LogsFlags }
-  | {
-      readonly name: "approval";
-      readonly options: AgentFlags;
-      /** The mode to set; the command shows the mode when left out. */
-      readonly mode?: ApprovalModeChoice;
-    }
-  | {
-      readonly name: "confirm" | "deny";
-      readonly options: CommonOptions;
-      readonly intent: ProtocolId<"intent">;
-    }
-  | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
-  | { readonly name: "walletAddress"; readonly options: WalletAddressFlags }
-  | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }
-  | { readonly name: "check"; readonly options: CheckFlags };
-
-/** What the program is built from. */
-export interface ProgramOptions {
-  readonly version: string;
-  /** A message of the `cli` area in the owner's language. */
-  readonly message: (key: string) => string;
-  readonly host: Pick<CliHost, "out" | "err">;
-  /** Receives the command commander chose, before it runs. */
-  readonly choose: (command: ChosenCommand) => void;
-}
+import { agentOption, idOf, withCommon } from "./command-options.js";
 
 function linesOf(value: string): number {
   const lines = Number(value);
@@ -67,28 +25,6 @@ function linesOf(value: string): number {
 
 function addSet(value: string, earlier: readonly string[]): readonly string[] {
   return [...earlier, value];
-}
-
-// An id of the protocol's kind, or a command line commander refuses with one message.
-function idOf<K extends "agent" | "intent" | "wallet">(kind: K) {
-  return (value: string): ProtocolId<K> => {
-    const parsed = protocolIdSchema(kind).safeParse(value);
-    if (!parsed.success) {
-      throw new InvalidArgumentError(`${value} is not a ${kind} id.`);
-    }
-    return parsed.data;
-  };
-}
-
-function withCommon(command: Command, message: (key: string) => string): Command {
-  return command
-    .option("--json", message("option.json"))
-    .option("--yes", message("option.yes"))
-    .helpOption("-h, --help", message("option.help"));
-}
-
-function agentOption(message: (key: string) => string): Option {
-  return new Option("--agent <id>", message("option.agent")).argParser(idOf("agent"));
 }
 
 // Commands that act on one agent: its approval mode, and the switch between paper and live.
@@ -218,10 +154,6 @@ function addCommands(program: Command, options: ProgramOptions): void {
  * help in the owner's language. Commander never ends the process: a parse error, help or the
  * version throws a `CommanderError` for the caller to map, and its own English error lines are
  * never written.
- * Builds the `binference` command tree on commander: `init`, `start`, `status`, `health` and `logs`, each
- * with `--json` and `--yes`, and help in the owner's language. Commander never ends the process:
- * a parse error, help or the version throws a `CommanderError` for the caller to map, and its own
- * English error lines are never written.
  */
 export function buildProgram(options: ProgramOptions): Command {
   const { message } = options;
