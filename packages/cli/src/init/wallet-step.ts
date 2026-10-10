@@ -32,7 +32,12 @@ export interface WalletInputs {
 const ownerQuorumName = "binference owner key";
 const agentQuorumName = "binference agent key";
 
-async function policyOf(
+/**
+ * The policy Privy holds for a wallet it made and read back a moment ago: its ceiling as Privy
+ * reports it now, which the install store mirrors. A wallet whose policy Privy no longer gives is
+ * a fault.
+ */
+export async function walletPolicyOf(
   api: PrivyApi,
   wallet: PrivyWallet,
   signal: AbortSignal,
@@ -91,7 +96,7 @@ export async function makeFirstWallet(
   if (!made.ok) {
     return refused("init.read_back_failed", "refused.readBack", { problem: made.error });
   }
-  const policy = await policyOf(api, made.value, signal);
+  const policy = await walletPolicyOf(api, made.value, signal);
   context.prompter.say(words("wallet.made", { address: made.value.address }));
   return ok({ wallet: made.value, ownerQuorum: owner.id, agentQuorum: agent.id, policy });
 }

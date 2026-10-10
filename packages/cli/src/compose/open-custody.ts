@@ -1,4 +1,4 @@
-import type { ChainRef, ChainRegistry, Signer } from "@binference/chain";
+import type { ChainRef, ChainRegistry, Signer, VenueDeclaration } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -11,6 +11,7 @@ import {
   type Secret,
 } from "@binference/core";
 import {
+  type CeilingChain,
   checkPrivyApp,
   createPrivyApi,
   createPrivyOwnerSigner,
@@ -22,19 +23,26 @@ import type {
   CeilingEditor,
   InstallFacts,
   InstallStore,
+  WalletMaker,
   WalletRecord,
 } from "@binference/engine/install";
 import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
+import { ceilingRequestOf } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./compose-executor.js";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
+import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
 
-/** Custody once the keys opened: the `privy-owner` adapter, its ceilings, and its signer. */
+/**
+ * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker and its
+ * signer.
+ */
 export interface OpenedCustody {
   readonly signer: Signer;
   readonly ceilings: CeilingEditor;
+  readonly walletMaker: WalletMaker;
   /** Settles once the signer has stopped, whatever stopped it. */
   readonly stopped: Promise<void>;
   /** Stops the signer; at once when `signal` aborts. */
@@ -50,7 +58,9 @@ export interface OpenCustodyOptions {
   readonly startSigner: StartSigner;
   /** Hears each step the signer refuses. */
   readonly onRefusal: (notice: SignerRefusalNotice) => void;
-  readonly config: Pick<BinferenceConfig, "chains" | "custody">;
+  readonly config: Pick<BinferenceConfig, "chains" | "custody" | "defaults">;
+  /** The venues this install runs: a new wallet's ceiling lets it call theirs. */
+  readonly venues: readonly VenueDeclaration[];
   /** The install's wallets and the owner key's public half. */
   readonly install: Pick<InstallStore, "read">;
   readonly chains: ChainRegistry;
@@ -127,6 +137,24 @@ async function startCheckedSigner(
   return err("signer_failed");
 }
 
+// A new wallet's ceiling on each enabled chain, as init builds the first one, for the venues named
+// that this install runs. A config init would refuse is a fault here.
+function ceilingChainsOf(
+  options: OpenCustodyOptions,
+  venues: readonly string[],
+): readonly CeilingChain[] {
+  const named = options.venues.filter((venue) => venues.includes(venue.id));
+  const request = ceilingRequestOf(options.chains, options.config, { venues: named, rescue: "" });
+  if (!request.ok) {
+    throw new BinferenceError({
+      code: "cli.ceiling_unbuilt",
+      message: "The config gives no ceiling a wallet can have.",
+      details: { problem: request.refusal.code },
+    });
+  }
+  return request.value.chains;
+}
+
 // The chains a wallet signs on: those config enables of its family.
 function chainsOf(record: WalletRecord, options: OpenCustodyOptions): readonly ChainRef[] {
   return options.chains
@@ -139,7 +167,7 @@ function chainsOf(record: WalletRecord, options: OpenCustodyOptions): readonly C
 function walletsOf(
   records: readonly WalletRecord[],
   options: OpenCustodyOptions,
-): ReadonlyMap<Id<"wal">, PrivyWallet> {
+): Map<Id<"wal">, PrivyWallet> {
   return new Map(
     records
       .filter((record) => record.archivedAtMs === undefined)
@@ -189,9 +217,17 @@ export async function openCustody(
   const signer = started.value;
   const { install, http, clock } = options;
   const facts = await readInstall(install, signer, signal);
+  // A wallet made after the unlock joins the wallets the adapter signs for.
   const wallets = walletsOf(facts.wallets, options);
   const api = createPrivyApi({ http, clock, appId: app.value, appSecret: keys.appSecret });
   return ok({
+    walletMaker: createPrivyWalletMaker({
+      api,
+      clock,
+      custody: async (read) => (await install.read({ signal: read })).custody,
+      ceilingChains: (venues) => ceilingChainsOf(options, venues),
+      onMade: (wallet, made) => wallets.set(wallet, made),
+    }),
     signer: createPrivyOwnerSigner({
       api,
       signerProcess: signer.client,

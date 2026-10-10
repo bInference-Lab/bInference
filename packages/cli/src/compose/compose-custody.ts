@@ -41,6 +41,7 @@ export function composeCustody(
     startSigner: host.startSigner ?? startBuiltSigner,
     onRefusal,
     config: opened.config,
+    venues: opened.venues,
     install: opened.stores.install,
     chains,
     logger: opened.log.logger,

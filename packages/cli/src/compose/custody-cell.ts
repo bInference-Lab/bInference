@@ -66,8 +66,12 @@ export function createCustodyCell(): CustodyCell {
           ? refuseLocked(options)
           : cell.held.ceilings.sendSigned(change, options),
     },
-    // No custody adapter makes a wallet yet, so every new wallet is refused as custody down.
-    walletMaker: { make: async (_request, options) => refuseLocked(options) },
+    walletMaker: {
+      make: async (request, options) =>
+        cell.held === undefined
+          ? refuseLocked(options)
+          : cell.held.walletMaker.make(request, options),
+    },
     isOpen: () => cell.held !== undefined,
     hold: (opened) => {
       cell.held = opened;

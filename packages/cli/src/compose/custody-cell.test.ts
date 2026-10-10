@@ -10,6 +10,7 @@ const chain = chainRefSchema.parse("eip155:56");
 const account = accountRefSchema.parse("eip155:56:0x8894E0a0c962CB723c1976a4421c95949bE2D4E3");
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
 const signed = { chain, raw: "0x02" };
+const made = { account };
 
 function opened(): OpenedCustody {
   return {
@@ -22,6 +23,7 @@ function opened(): OpenedCustody {
       signRecipients: async () => Promise.resolve(ok([])),
       sendSigned: async () => Promise.resolve(ok(undefined)),
     },
+    walletMaker: { make: async () => Promise.resolve(ok(made)) },
     stopped: new Promise(() => undefined),
     stop: async () => Promise.resolve(),
   } as never;
@@ -48,6 +50,9 @@ describe("the custody cell", () => {
     await expect(cell.ceilings.signRecipients({} as never, live())).rejects.toMatchObject({
       code: "wallet.custody_down",
     });
+    await expect(cell.walletMaker.make({} as never, live())).rejects.toMatchObject({
+      code: "wallet.custody_down",
+    });
   });
 
   it("signs through the custody it holds, until that is released", async () => {
@@ -62,6 +67,7 @@ describe("the custody cell", () => {
     await expect(cell.ceilings.sendSigned({} as never, live())).resolves.toStrictEqual(
       ok(undefined),
     );
+    await expect(cell.walletMaker.make({} as never, live())).resolves.toStrictEqual(ok(made));
     expect(cell.release()).toBe(custody);
     expect([cell.isOpen(), cell.holds(custody), cell.release()]).toStrictEqual([
       false,

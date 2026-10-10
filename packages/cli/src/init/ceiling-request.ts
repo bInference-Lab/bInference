@@ -53,7 +53,7 @@ export function enabledVenues(
 
 function ceilingChainOf(
   registry: ChainRegistry,
-  config: BinferenceConfig,
+  config: Pick<BinferenceConfig, "chains" | "defaults">,
   request: { readonly chain: string; readonly venues: readonly VenueDeclaration[] },
 ): InitStep<CeilingChain> {
   const registered = registry.list().find((item) => item.ref === request.chain);
@@ -89,7 +89,7 @@ function ceilingChainOf(
  */
 export function ceilingRequestOf(
   registry: ChainRegistry,
-  config: BinferenceConfig,
+  config: Pick<BinferenceConfig, "chains" | "defaults">,
   ceiling: { readonly venues: readonly VenueDeclaration[]; readonly rescue: string },
 ): InitStep<CeilingRequest> {
   const chains: CeilingChain[] = [];
