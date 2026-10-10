@@ -31,7 +31,7 @@ function inThreadHost(database: DatabaseSync): StoreHost {
   return {
     run: async (task, input, options) => {
       options.signal.throwIfAborted();
-      const request = structuredClone(input);
+      const request = structuredClone(task.encodeInput(input));
       const work = (): WorkerValue => task.handle(database, request);
       try {
         const value =

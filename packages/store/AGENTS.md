@@ -13,7 +13,8 @@ Rules for this package:
   transaction. Reads run on reader workers, which open `query_only`.
 - A store task is defined with `defineTask` and listed in its database's definition
   (`src/databases/`). Its `run` is synchronous: plan the async work before the call, then reread
-  the rows that decide and write. Input and output pass through their zod schemas on each side.
+  the rows that decide and write. Input and output cross the thread encoded by their zod schemas
+  and are decoded on the other side, so a codec such as an amount's decimal text works.
 - Queries use Kysely through `createSyncKysely`. Raw SQL appears only in `src/migrations/`,
   `src/sqlite/` (opening pragmas, transaction control, integrity checks, `VACUUM INTO`) and the
   copied dialect in `src/dialect/`.

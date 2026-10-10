@@ -102,7 +102,7 @@ function createHandle(writer: WorkerLink, readers: readonly WorkerLink[]): Datab
     run: async (task, input, options) => {
       const link = task.access === "write" ? writer : reader();
       const value = await link.call(
-        { kind: "task", task: task.name, input },
+        { kind: "task", task: task.name, input: task.encodeInput(input) },
         waitFor(options, taskTimeoutMs),
       );
       return parseReply(task.output, value, task.name);
