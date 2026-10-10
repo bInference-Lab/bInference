@@ -28,6 +28,10 @@ Rules for this package:
   owner signs, at once or ahead. A change signed ahead is sent only while every rule lists what it
   listed when the change was signed, and never before every rule was checked, so it never undoes
   a later change. The owner signs only the request `ruleChangeRequest` writes, byte for byte.
+- A wallet's added signers change only through `src/wallets/signer-moves.ts`, with a `PATCH` the
+  wallet's owner signs: `swapSigner` makes one agent key each wallet's one signer in a single change
+  per wallet, so no wallet ever takes two machines' signatures, and `removeSigner` never leaves a
+  wallet without a signer. Every change is read back.
 - The signer is reached only through the `SignerProcess` port of `@binference/chain`, with its
   `AuthorizeInput` (spec 5, section 5.1). The port's suite runs against the fake signer here and
   against the signer's real process in `@binference/signer`. This package never holds the agent

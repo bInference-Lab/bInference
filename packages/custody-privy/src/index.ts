@@ -59,5 +59,12 @@ export type {
   SignedRuleChange,
 } from "./wallets/ceiling-recipients.js";
 export type { OwnerAuthorize } from "./wallets/rule-plans.js";
+export { removeSigner, swapSigner } from "./wallets/signer-moves.js";
+export type {
+  SignedWallet,
+  SignerMoveInput,
+  SignerRemovalRefusal,
+  SignerSwapRefusal,
+} from "./wallets/signer-moves.js";
 export { checkWallet, readBackWallet } from "./wallets/read-back.js";
 export type { ReadBackProblem, WalletExpectation, WalletView } from "./wallets/read-back.js";

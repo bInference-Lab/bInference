@@ -24,6 +24,7 @@ import {
   type TestCall,
   unsignedCall,
 } from "./privy-custody-setup.js";
+import { signerChecks } from "./wallet-signer-checks.js";
 
 const { router, permit2, rescue, saved, unsaved, token, unlisted } = testAddresses;
 const swapData: `0x${string}` = "0x12345678";
@@ -177,7 +178,7 @@ const refuseChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] =>
 /**
  * The contract the Privy fake and the Privy test app both pass: a wallet made and read back, the
  * calls the ceiling allows signed as the wallet, the ones it does not refused by Privy itself, even
- * with a valid agent key, and the recipients only the owner key changes.
+ * with a valid agent key, and the recipients and the signer only the owner key changes.
  */
 export function privyCustodyContract(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [
@@ -185,5 +186,6 @@ export function privyCustodyContract(harness: PrivyCustodyHarness): readonly Con
     ...allowChecks(harness),
     ...refuseChecks(harness),
     ...recipientChecks(harness),
+    ...signerChecks(harness),
   ];
 }

@@ -16,6 +16,7 @@ import { answerExport, exportOf } from "./fake-privy-export.js";
 import { parseJsonText } from "./fake-privy-request.schema.js";
 import { answerSignTransaction } from "./fake-privy-rpc.js";
 import { answerRuleChange, ruleChangeOf } from "./fake-privy-rules.js";
+import { answerSignersChange, signersChangeOf } from "./fake-privy-signers.js";
 import type { FakePrivyState } from "./fake-privy-state.js";
 
 /** Where the fake takes its ids, keys and time from. */
@@ -92,6 +93,21 @@ function answerRead(state: FakePrivyState, target: string): HttpResponse {
   return failure(404, "not_found", "No such route.");
 }
 
+// A `PATCH` of a policy's rule or of a wallet's signers; undefined for any other request.
+function answerPatch(
+  state: FakePrivyState,
+  request: HttpRequest,
+  target: { readonly path: string; readonly body: JsonValue },
+): HttpResponse | undefined {
+  const { path, body } = target;
+  const rule = ruleChangeOf(request, path);
+  if (rule !== undefined) {
+    return answerRuleChange(state, request, { ...rule, body });
+  }
+  const wallet = signersChangeOf(request, path);
+  return wallet === undefined ? undefined : answerSignersChange(state, request, { wallet, body });
+}
+
 async function answerWrite(
   state: FakePrivyState,
   request: HttpRequest,
@@ -105,9 +121,9 @@ async function answerWrite(
   if (!body.success) {
     return failure(400, "invalid_data", "The request body is not JSON.");
   }
-  const rule = ruleChangeOf(request, path);
-  if (rule !== undefined) {
-    return answerRuleChange(state, request, { ...rule, body: body.data });
+  const patched = answerPatch(state, request, { path, body: body.data });
+  if (patched !== undefined) {
+    return patched;
   }
   const exported = exportOf(request, path);
   if (exported !== undefined) {
@@ -130,7 +146,8 @@ async function answerWrite(
  * and secret; request bodies as strict as Privy's OpenAPI document; P-256 authorization signatures
  * over RFC 8785 payloads from the wallet's owner or an added signer; the request expiry; the
  * policy that binds the signing party, with Privy's semantics; a change of a policy rule, signed
- * by the policy's owner; and a wallet's export, signed by its owner and sealed with HPKE. Wallet
+ * by the policy's owner; a change of a wallet's added signers, signed by its owner; and a
+ * wallet's export, signed by its owner and sealed with HPKE. Wallet
  * keys are secp256k1 keys the fake holds and signs with. It supports Ethereum wallets and
  * `eth_signTransaction` only.
  */

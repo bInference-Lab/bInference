@@ -3,6 +3,7 @@ import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import type { Ceiling } from "../ceiling/ceiling.js";
 import type { PrivyTransaction } from "../signing/privy-transaction.js";
+import type { OwnerAuthorize } from "../wallets/rule-plans.js";
 import { callPrivy, type PrivyCall, privyFault, statusFault } from "./privy-call.js";
 import { type PrivyApiOptions, type PrivySettings, privySettings } from "./privy-client.js";
 import { readPayload } from "./privy-payload.schema.js";
@@ -28,6 +29,7 @@ import {
   type WalletExportRefusal,
   type WalletExportRequest,
 } from "./wallet-export.js";
+import { type SignersChange, type SignersRefusal, setWalletSigners } from "./wallet-signers.js";
 
 /** A call's options: every call stops when its signal aborts. */
 export interface CallOptions {
@@ -102,6 +104,14 @@ export interface PrivyApi {
   ): Promise<Result<void, RuleRefusal>>;
   /** The request a rule change sends, for the owner to sign now and Privy to read later. */
   ruleChangeRequest(change: RuleChange): PrivyRequest;
+  /**
+   * Sets a wallet's added signers, once, in place of the ones it has, signed now by the wallet's
+   * owner; answers the wallet as Privy reports it after the change.
+   */
+  setSigners(
+    change: SignersChange,
+    options: CallOptions & { readonly authorize: OwnerAuthorize },
+  ): Promise<Result<WalletRecord, SignersRefusal>>;
   /**
    * Asks Privy, once, for a wallet's private key sealed with HPKE to the recipient key, signed now
    * by the wallet's owner; Privy never answers the key in the clear (decision 0131).
@@ -316,5 +326,7 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
       changeRule(settings, change, { authorization, signal }),
     ruleChangeRequest: (change) => ruleChangeRequest(settings, change),
     exportWallet: async (request, { signal }) => exportWallet(settings, request, signal),
+    setSigners: async (change, { authorize, signal }) =>
+      setWalletSigners(settings, change, { authorize, signal }),
   };
 }
