@@ -1,6 +1,6 @@
 import { createIdSource, type Id, jsonValueSchema, ok } from "@binference/core";
 import type { AccessStore, AgentDraft, AgentStore } from "@binference/engine";
-import type { InstallSetup, InstallStore } from "@binference/engine/install";
+import type { InstallSetup, InstallStore, WalletDraft } from "@binference/engine/install";
 import { issueStartCode, type StartCode } from "@binference/telegram";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import type { RescueAddress } from "./rescue-step.js";
@@ -27,7 +27,7 @@ export interface InstallRecord {
 }
 
 /** The first wallet's label in the engine's records. */
-const walletLabel = "main";
+export const walletLabel = "main";
 
 /**
  * The install's first active agent, or the drafted one made when the install has none, so a run
@@ -49,9 +49,42 @@ export async function ensureFirstAgent(
     : refused("init.agent_name_taken", "refused.agentNameTaken", { name: draft.name });
 }
 
-function setupOf(context: InitContext, record: InstallRecord): InstallSetup {
+/** A wallet Privy holds, as the install store keeps it under an agent. */
+export interface WalletEntry {
+  readonly agent: Id<"agt">;
+  readonly first: FirstWallet;
+  /** The ceiling's cap per contract call on the first chain, in native base units. */
+  readonly perTxNativeBase: bigint;
+  readonly label: string;
+}
+
+/** The store's draft of a wallet Privy holds, with a new id and its ceiling as read now. */
+export function walletDraftOf(context: InitContext, entry: WalletEntry): WalletDraft {
   const atMs = context.host.clock.now();
   const ids = createIdSource({ clock: context.host.clock, random: context.host.random });
+  const { first } = entry;
+  return {
+    id: ids.next("wal"),
+    agentId: entry.agent,
+    family: "evm",
+    custody: "privy",
+    custodyWalletId: first.wallet.id,
+    policyId: first.policy.id,
+    signerId: first.agentQuorum,
+    address: first.wallet.address,
+    label: entry.label,
+    createdAtMs: atMs,
+    ceiling: {
+      policyId: first.policy.id,
+      policy: jsonValueSchema.parse(first.policy),
+      perTxNativeBase: entry.perTxNativeBase,
+      readAtMs: atMs,
+    },
+  };
+}
+
+function setupOf(context: InitContext, record: InstallRecord): InstallSetup {
+  const atMs = context.host.clock.now();
   const { first } = record;
   return {
     atMs,
@@ -65,24 +98,7 @@ function setupOf(context: InitContext, record: InstallRecord): InstallSetup {
       attachedAtMs: atMs,
     },
     rescueAddress: record.rescue.account,
-    wallet: {
-      id: ids.next("wal"),
-      agentId: record.agent,
-      family: "evm",
-      custody: "privy",
-      custodyWalletId: first.wallet.id,
-      policyId: first.policy.id,
-      signerId: first.agentQuorum,
-      address: first.wallet.address,
-      label: walletLabel,
-      createdAtMs: atMs,
-      ceiling: {
-        policyId: first.policy.id,
-        policy: jsonValueSchema.parse(first.policy),
-        perTxNativeBase: record.perTxNativeBase,
-        readAtMs: atMs,
-      },
-    },
+    wallet: walletDraftOf(context, { ...record, label: walletLabel }),
     isStartOver: context.flags.isStartOver,
   };
 }

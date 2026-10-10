@@ -1,13 +1,11 @@
 import { ok, type Secret } from "@binference/core";
 import {
   createPrivyApi,
-  isPrivyId,
   type OwnerAuthorize,
   type PrivyId,
   type SignedWallet,
   swapSigner,
 } from "@binference/custody-privy";
-import type { WalletRecord } from "@binference/engine/install";
 import { type InitContext, type InitStep, refused } from "../init/init-context.js";
 import { agentQuorumName } from "../init/wallet-step.js";
 
@@ -18,8 +16,8 @@ export interface SignerMoveInputs {
   readonly authorize: OwnerAuthorize;
   /** The new agent key's public half, DER SubjectPublicKeyInfo in base64. */
   readonly agentKey: string;
-  /** The install's live wallets. */
-  readonly wallets: readonly WalletRecord[];
+  /** The wallets that move, each with the ceiling its signer is bound to. */
+  readonly wallets: readonly SignedWallet[];
 }
 
 /** The new agent key's key quorum on Privy, and the signers it replaced. */
@@ -31,14 +29,8 @@ export interface MovedSigners {
 // A change the owner key signs goes out at once.
 const expiryMs = 5 * 60_000;
 
-function signedWalletsOf(wallets: readonly WalletRecord[]): readonly SignedWallet[] {
-  return wallets.flatMap(({ custodyWalletId: wallet, policyId: policy }) =>
-    isPrivyId(wallet) && isPrivyId(policy) ? [{ wallet, policy }] : [],
-  );
-}
-
 /**
- * Moves every live wallet to the new agent key on Privy (keys spec, section 6): a key quorum for
+ * Moves the wallets to the new agent key on Privy (keys spec, section 6): a key quorum for
  * the key, then for each wallet one change the owner key signs that makes it the wallet's one
  * signer, bound to the wallet's ceiling, and removes the signer it had. Each wallet is read back.
  * Privy refusing the owner key's signature, or holding a wallet no more, stops the move there;
@@ -49,11 +41,7 @@ export async function moveSigners(
   inputs: SignerMoveInputs,
 ): Promise<InitStep<MovedSigners>> {
   const { host, signal } = context;
-  const wallets = signedWalletsOf(inputs.wallets);
-  if (wallets.length < inputs.wallets.length) {
-    return refused("init.attach_wallet_gone", "refused.attachWalletGone");
-  }
-  const { appId, appSecret } = inputs;
+  const { appId, appSecret, wallets } = inputs;
   const api = createPrivyApi({ http: host.http, clock: host.clock, appId, appSecret });
   context.prompter.say(context.words("attach.moving", { count: wallets.length }));
   const quorum = await api.createKeyQuorum(

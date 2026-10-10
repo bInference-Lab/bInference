@@ -12,6 +12,7 @@ import {
   openDatabase,
 } from "@binference/store";
 import { runAttach } from "../attach/run-attach.js";
+import { runRebuild } from "../attach/run-rebuild.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
 import type { InitContext, InitRefusal } from "../init/init-context.js";
@@ -24,6 +25,7 @@ import type { CliOutput, ExitCode } from "../program/cli-output.js";
 import { createOutputPrompter } from "../term/output-prompter.js";
 import { attachSummary } from "./attach-summary.js";
 import { configIssueMessages } from "./config-issue-messages.js";
+import { rebuildSummary } from "./rebuild-summary.js";
 
 /** What the init command reports with: the command's output and the owner's formatter. */
 interface Report {
@@ -114,19 +116,35 @@ async function isSetUp(context: InitContext, stores: InitStores): Promise<boolea
   return config.ok || facts.custody !== undefined;
 }
 
-// Makes this machine the signer of the install's wallets in place of the one that was.
+// Makes this machine the signer of the install's wallets in place of the one that was; on a
+// folder with no install and no config, rebuilds what Privy holds (decision 0142).
 async function attachOnStores(
   context: InitContext,
   report: Report,
   stores: InitStores,
 ): Promise<ExitCode> {
-  const { host, signal } = context;
+  const { host, signal, platform } = context;
   const proposal = { id: createIdSource(host).next("ins"), atMs: host.clock.now() };
   const installId = await stores.install.installId(proposal, { signal });
-  const outcome = await runAttach(context, stores.install, installId);
-  return outcome.ok
-    ? attachSummary(context, report.output, outcome.value)
-    : refuse(context, report, outcome.refusal);
+  const { custody } = await stores.install.read({ signal });
+  if (custody !== undefined) {
+    const attached = await runAttach(context, stores.install, { custody, installId });
+    return attached.ok
+      ? attachSummary(context, report.output, attached.value)
+      : refuse(context, report, attached.refusal);
+  }
+  if ((await readTextFile(platform.stateFolder.configFile, signal)).ok) {
+    const values = { folder: platform.stateFolder.root };
+    return refuse(context, report, {
+      code: "init.attach_config_only",
+      key: "refused.attachConfigOnly",
+      values,
+    });
+  }
+  const rebuilt = await runRebuild(context, stores, installId);
+  return rebuilt.ok
+    ? rebuildSummary(context, report, rebuilt.value)
+    : refuse(context, report, rebuilt.refusal);
 }
 
 async function initOnStores(context: InitContext, report: Report): Promise<ExitCode> {

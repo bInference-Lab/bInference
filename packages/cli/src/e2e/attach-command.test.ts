@@ -247,14 +247,16 @@ describe("binference init --attach", () => {
     },
   );
 
-  it("refuses a folder that holds no install", slow, async () => {
+  it("refuses a folder with a config file but no install", slow, async () => {
     const empty = await newInitMachine(folders);
+    const files = { permissions: noPermissions, signal: live.signal };
+    await writePrivateFile(join(empty.folder, "config.json5"), "{ version: 1 }\n", files);
 
     const refused = await attach(empty, ["unused"]);
 
     expect([refused.code, refused.stderr]).toStrictEqual([
       1,
-      `${init("refused.attachNeedsInstall", { folder: empty.folder })}\n`,
+      `${init("refused.attachConfigOnly", { folder: empty.folder })}\n`,
     ]);
   });
 

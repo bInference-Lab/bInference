@@ -10,7 +10,7 @@ import { type RescueAddress, takeRescueAddress } from "./rescue-step.js";
 import { type SecretPlace, secretPlaceOf } from "./secret-places.js";
 
 /** Where the agent key is read at start: the unlock mode, and its program in `command` mode. */
-interface Unlock {
+export interface Unlock {
   readonly mode: UnlockMode;
   readonly command?: CommandSource;
 }
@@ -30,7 +30,7 @@ export interface Answers {
  * The unlock mode (keys spec, section 3): the one `--unlock` names, else the keychain with a
  * desktop session and an owner-only file without one, as headless Linux and Docker have.
  */
-function unlockOf(context: InitContext): InitStep<Unlock> {
+export function unlockOf(context: InitContext): InitStep<Unlock> {
   const mode = context.flags.unlock ?? (context.platform.hasDesktopSession ? "keychain" : "file");
   const command = unlockCommandOf(context, mode);
   if (!command.ok) {

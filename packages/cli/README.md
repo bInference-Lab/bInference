@@ -24,7 +24,13 @@ copies its state folder without `keys/` to this one. Attach then refuses a copy 
 `engine.sqlite` was left open, which `isDatabaseLeftOpen` reads from its `-wal` and `-shm` files,
 and a copied `keys/agent-key` that holds the key the wallets name now. It moves the secret sources
 of `config.json5` that name the old folder's `keys/` to this folder's `keys/`, asks for the Privy
-app secret and the bot token where this machine does not hold them, and keeps them there.
+app secret and the bot token where this machine does not hold them, and keeps them there. On an
+empty folder, for a machine lost with no backup, attach rebuilds what Privy holds instead
+(`runRebuild`): it warns that history, settings, labels, saved addresses and the bot's pairing
+start fresh, finds the wallets the owner key owns with `findOwnedWallets` of
+`@binference/custody-privy`, reads the rescue address when every ceiling shares exactly one send
+address, else asks for one of the shared ones, and changes nothing on Privy until the owner types
+the number of wallets found. It then sets the folder up as `init` does, around those wallets.
 `binference signer revoke` removes another machine's agent key from every wallet.
 
 `binference start --foreground` runs the self-hosted engine in this process (`startSelfHosted` in

@@ -1,8 +1,10 @@
+import type { VenueDeclaration } from "@binference/chain";
 import { createIdSource, type Id, ok, type Secret } from "@binference/core";
 import { buildCeiling, type Ceiling, type CeilingRequest } from "@binference/custody-privy";
 import type { AgentDraft } from "@binference/engine";
 import { ensurePrivateFolder, writePrivateFile } from "@binference/platform";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
+import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { UnlockMode } from "../config/schema/engine.schema.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import { type AgentKey, takeAgentKey } from "./agent-key-step.js";
@@ -30,7 +32,11 @@ export interface InitOutcome {
   readonly configFile: string;
 }
 
-async function configOf(context: InitContext, answers: Answers): Promise<InitStep<InitConfig>> {
+/** The config init writes from its answers, with the limits a person sets, built and loaded. */
+export async function configOf(
+  context: InitContext,
+  answers: Answers,
+): Promise<InitStep<InitConfig>> {
   const { app, bot, place, unlock } = answers;
   const settings = {
     unlockMode: unlock.mode,
@@ -44,8 +50,8 @@ async function configOf(context: InitContext, answers: Answers): Promise<InitSte
   return initConfig(context, settings, systemDefaults(context.host.env, context.platform));
 }
 
-// Stores each secret a person typed where the unlock mode keeps it; a flag's source stays put.
-async function storeTyped(context: InitContext, answers: Answers): Promise<void> {
+/** Stores each secret a person typed where the unlock mode keeps it; a flag's source stays put. */
+export async function storeTyped(context: InitContext, answers: Answers): Promise<void> {
   const typed = [
     [appSecretEntry, answers.app.secret],
     [botTokenEntry, answers.bot.token],
@@ -58,7 +64,8 @@ async function storeTyped(context: InitContext, answers: Answers): Promise<void>
   );
 }
 
-async function writeConfig(context: InitContext, text: string): Promise<string> {
+/** Writes config.json5 owner-only, its folder first, and answers its path. */
+export async function writeConfig(context: InitContext, text: string): Promise<string> {
   const { stateFolder, permissions } = context.platform;
   const files = { permissions, signal: context.signal };
   await ensurePrivateFolder(stateFolder.root, files);
@@ -90,6 +97,23 @@ function ceilingOf(request: CeilingRequest): InitStep<Ceiling> {
     : refused("init.bad_ceiling", "refused.badCeiling", { problem: ceiling.error });
 }
 
+/**
+ * The install's first agent as init makes it: the defaults of the config, the venues it enables,
+ * a new id and this moment.
+ */
+export function agentDraftOf(
+  context: InitContext,
+  config: BinferenceConfig,
+  venues: readonly VenueDeclaration[],
+): InitStep<AgentDraft> {
+  const { host } = context;
+  return firstAgentDraft(config, selfHostedChains(), {
+    id: createIdSource({ clock: host.clock, random: host.random }).next("agt"),
+    atMs: host.clock.now(),
+    venues: venues.map((venue) => venue.id),
+  });
+}
+
 async function prepare(context: InitContext): Promise<InitStep<Prepared>> {
   const answers = await takeAnswers(context);
   if (!answers.ok) {
@@ -114,12 +138,7 @@ async function prepare(context: InitContext): Promise<InitStep<Prepared>> {
   if (!ceiling.ok) {
     return ceiling;
   }
-  const { host } = context;
-  const agentDraft = firstAgentDraft(config, registry, {
-    id: createIdSource({ clock: host.clock, random: host.random }).next("agt"),
-    atMs: host.clock.now(),
-    venues: venues.value.map((venue) => venue.id),
-  });
+  const agentDraft = agentDraftOf(context, config, venues.value);
   return agentDraft.ok
     ? ok({
         answers: answers.value,

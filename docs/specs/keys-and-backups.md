@@ -228,7 +228,18 @@ A refusal is logged with the rule number, never with key material, and raises
   copied `keys/agent-key` that holds the key the wallets name now. A secret source of
   `config.json5` that names a file in the old folder's `keys/` moves to this folder's `keys/`, and
   attach asks for that secret, hidden. Once backups exist, `binference init --attach --restore
-  <file>` replaces the copy.
+<file>` replaces the copy.
+- **Lost machine with no backup** ([decision 0142](../DECISIONS.md#d0142)): `binference init
+--attach` on an empty folder rebuilds what Privy holds. It warns first that history, orders,
+  settings, wallet labels, saved addresses and the bot's pairing start fresh. It takes the Privy
+  app and the owner key, finds the wallets the app holds whose owner is the owner key alone (Privy's
+  `authorization_key` filter), each under one ceiling the same key owns, and reads the rescue
+  address when every ceiling lets sends pay exactly one address in common; otherwise the owner
+  names one of the shared addresses. Nothing changes on Privy until the owner types the number of
+  wallets found. Then, as `init` does, it takes the bot and the limits, makes one agent with the
+  default settings and this machine's agent key, moves every wallet's signer to that key, records
+  each wallet with its ceiling, and issues the bot's pairing link. A folder that holds a config
+  file but no install is refused.
 - **Machine compromised:** `binference signer revoke` from any other machine with the owner key, or
   the Privy dashboard, removes the agent key at once. Funds stay; the attacker could only have
   signed inside the ceiling until then. A revoke never removes the engine's own key or a wallet's

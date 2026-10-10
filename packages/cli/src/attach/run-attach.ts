@@ -1,5 +1,5 @@
 import { type Id, ok } from "@binference/core";
-import type { OwnerAuthorize } from "@binference/custody-privy";
+import { isPrivyId, type OwnerAuthorize } from "@binference/custody-privy";
 import type { CustodyRecord, InstallStore } from "@binference/engine/install";
 import { loadConfig } from "../config/load-config.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
@@ -100,7 +100,15 @@ async function check(
     : ok({ app: app.value, authorize: authorize.value, agentKey: agentKey.value, unlock, hasBot });
 }
 
-async function attachWith(
+/**
+ * Runs `binference init --attach` on a folder that holds the install, once its database is open
+ * (keys spec, section 6; decision 0140): it checks the install's config and Privy app, takes the
+ * owner key unseen, makes this machine's agent key where the unlock mode keeps it, makes that key
+ * each live wallet's one signer on Privy in a change the owner key signs, which removes the signer
+ * it had, and records the key in `engine.sqlite`. Nothing changes on Privy before the owner key is
+ * checked, and a machine that holds the wallets' key already changes nothing.
+ */
+export async function runAttach(
   context: InitContext,
   install: InstallStore,
   found: { readonly custody: CustodyRecord; readonly installId: Id<"ins"> },
@@ -112,11 +120,17 @@ async function attachWith(
   const { app, authorize, agentKey, unlock, hasBot } = checked.value;
   const { wallets } = await install.read({ signal: context.signal });
   const live = wallets.filter((wallet) => wallet.archivedAtMs === undefined);
+  const signed = live.flatMap(({ custodyWalletId: wallet, policyId: policy }) =>
+    isPrivyId(wallet) && isPrivyId(policy) ? [{ wallet, policy }] : [],
+  );
+  if (signed.length < live.length) {
+    return refused("init.attach_wallet_gone", "refused.attachWalletGone");
+  }
   const moved = await moveSigners(context, {
     ...app,
     authorize,
     agentKey: agentKey.publicKey,
-    wallets: live,
+    wallets: signed,
   });
   if (!moved.ok) {
     return moved;
@@ -143,27 +157,4 @@ async function record(
     atMs: context.host.clock.now(),
   };
   await install.attach(attachment, { signal: context.signal });
-}
-
-/**
- * Runs `binference init --attach` once its database is open (keys spec, section 6; decision
- * 0140): on a folder that holds the install, it checks the install's config and Privy app, takes
- * the owner key unseen, makes this machine's agent key where the unlock mode keeps it, makes that
- * key each live wallet's one signer on Privy in a change the owner key signs, which removes the
- * signer it had, and records the key in `engine.sqlite`. A folder with no install stops it, since
- * how a new machine receives an install is not decided yet. Nothing changes on Privy before the
- * owner key is checked, and a machine that holds the wallets' key already changes nothing.
- */
-export async function runAttach(
-  context: InitContext,
-  install: InstallStore,
-  installId: Id<"ins">,
-): Promise<InitStep<AttachOutcome>> {
-  const { custody } = await install.read({ signal: context.signal });
-  if (custody === undefined) {
-    return refused("init.attach_needs_install", "refused.attachNeedsInstall", {
-      folder: context.platform.stateFolder.root,
-    });
-  }
-  return attachWith(context, install, { custody, installId });
 }
