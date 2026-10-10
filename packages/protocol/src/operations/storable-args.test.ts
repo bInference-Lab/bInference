@@ -16,6 +16,27 @@ describe("storable args", () => {
     ).toStrictEqual({ address });
   });
 
+  it("leave out the owner key code of every operation that takes it", () => {
+    const ownerKey = "bnok1abcde fghij klmno pqrst uvwxy";
+    const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
+    const wallet = "wal_0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
+    const stored = [
+      storableArgs("wallet/create", { agent, label: "spare", ownerKey }),
+      storableArgs("wallet/exportKey", { wallet, ownerKey }),
+      storableArgs("address/add", { agent, ownerKey }),
+      storableArgs("ceiling/set", { wallet, changes: {}, ownerKey }),
+      storableArgs("signer/revoke", { signer: "s", ownerKey }),
+    ];
+    expect(stored).toStrictEqual([
+      { agent, label: "spare" },
+      { wallet },
+      { agent },
+      { wallet, changes: {} },
+      { signer: "s" },
+    ]);
+    expect(JSON.stringify(stored)).not.toContain("bnok1");
+  });
+
   it("keep the args of every other operation as they came", () => {
     const args = { agent: "agt_0190f1c2-3a4b-7c5d-8e6f-0123456789ab", passphrase: "kept" };
     expect(storableArgs("safety/freeze", args)).toBe(args);

@@ -8,7 +8,7 @@ import { type EngineState, engineStateSchema } from "../frames/ready-frame.schem
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
-import { ownerKeyCodeSchema } from "../values/owner-key-code.schema.js";
+import { optionalOwnerKeyCodeSchema } from "../values/owner-key-code.schema.js";
 import { type AgentMode, agentModeSchema } from "../views/agent-view.schema.js";
 import { type IntentState, intentStateSchema } from "../views/intent-state.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
@@ -190,7 +190,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     scope: "admin",
     args: z.strictObject({
       address: accountRefSchema,
-      ownerKey: ownerKeyCodeSchema.exactOptional(),
+      ownerKey: optionalOwnerKeyCodeSchema,
     }),
     result: z.object({ effectiveAt: epochMsSchema }),
   },
