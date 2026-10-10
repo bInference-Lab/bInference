@@ -209,6 +209,28 @@ async function replacesKeptCeilingChanges(subject: InstallStoreSubject): Promise
   assert.deepEqual([read.rescueCeiling, read.pendingRescue?.address], [resigned, rescue(7)]);
 }
 
+async function updatesALiveCeiling(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  const first = setup(subject, 1);
+  await store.setUp(first, live());
+  const ceiling = {
+    ...first.wallet.ceiling,
+    policy: ["changed"],
+    perTxNativeBase: 7n,
+    readAtMs: 9,
+  };
+  const update = { wallet: first.wallet.id, ceiling };
+  assert.deepEqual(await store.updateCeiling(update, live()), { ok: true, value: undefined });
+  assert.deepEqual((await store.read(live())).wallets, [{ ...first.wallet, ceiling }]);
+  const unknown = { ...update, wallet: fixtureId("wal", 9) };
+  assert.deepEqual(await store.updateCeiling(unknown, live()), { ok: false, error: "not_found" });
+  await store.setUp(setup(subject, 2, true), live());
+  const archived = { ...update, ceiling: { ...ceiling, perTxNativeBase: 8n } };
+  assert.deepEqual(await store.updateCeiling(archived, live()), { ok: false, error: "not_found" });
+  const [kept] = (await store.read(live())).wallets;
+  assert.deepEqual(kept?.ceiling, ceiling);
+}
+
 async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   await assertRefusesAborted(async (call) =>
@@ -223,6 +245,8 @@ async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> 
   await assertRefusesAborted(async (call) => store.clearRescueCeiling(call));
   await assertRefusesAborted(async (call) => store.keepRescueCeiling({}, call));
   await assertRefusesAborted(async (call) => store.createWallet(wallet(subject, 1), call));
+  const update = { wallet: fixtureId("wal", 1), ceiling: wallet(subject, 1).ceiling };
+  await assertRefusesAborted(async (call) => store.updateCeiling(update, call));
   assert.deepEqual(await store.read(live()), { wallets: [] });
 }
 
@@ -267,6 +291,11 @@ export function installStoreContract(harness: InstallStoreHarness): readonly Con
       "replaces the ceiling changes kept while a new rescue address waits",
       create,
       replacesKeptCeilingChanges,
+    ),
+    checkOn(
+      "replaces a live wallet's copy of its ceiling, and no other wallet's",
+      create,
+      updatesALiveCeiling,
     ),
     checkOn("refuses every call on an aborted signal", create, refusesAbortedCalls),
   ];

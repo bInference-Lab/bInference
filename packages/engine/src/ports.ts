@@ -24,21 +24,17 @@ import type {
 } from "./ingress/idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
 import type {
-  CeilingRead,
-  CeilingRefusal,
-  RecipientsRequest,
-  SignedCeilingChange,
-  SignedChangeRefusal,
-  SignRecipientsRequest,
-} from "./install/ceiling-change.js";
-import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/install-record.js";
+  CeilingUpdate,
+  InstallFacts,
+  InstallIdProposal,
+  InstallSetup,
+} from "./install/install-record.js";
 import type {
   RescueAddressChange,
   RescueCancel,
   RescueCeiling,
   RescueMove,
 } from "./install/rescue-record.js";
-import type { MadeWallet, WalletRefusal, WalletRequest } from "./install/wallet-request.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
 import type { FreezeOutcome, FreezeWrite } from "./intents/freeze-write.js";
@@ -548,59 +544,12 @@ export interface InstallStore {
    * holds already is a fault, which changes nothing.
    */
   createWallet(wallet: InstallSetup["wallet"], options: StoreCall): Promise<void>;
-}
-
-/**
- * Reads each agent wallet's ceiling, and changes whom it lets a send pay (spec 5, section 4;
- * decision 0110) with the owner key. Only a ceiling's owner changes it. Adapter: the owner's Privy
- * app, signed with the owner key. The key comes with each request, serves it alone and is kept
- * nowhere.
- */
-export interface CeilingEditor {
-  /** The ceiling as custody holds it now; `not_found` for one custody does not hold. */
-  read(ceiling: string, options: StoreCall): Promise<Result<CeilingRead, "not_found">>;
   /**
-   * Sets each ceiling's recipients now, signed with the owner key: every send rule lists exactly
-   * these accounts. Setting what a ceiling lists already changes nothing. A refusal changes no
-   * ceiling it names.
+   * Replaces a live wallet's copy of its ceiling with one custody read back after the owner key
+   * changed the ceiling (decision 0132). A wallet the store does not hold, or holds archived, is
+   * `not_found` and changes nothing.
    */
-  setRecipients(
-    request: RecipientsRequest,
-    options: { readonly signal: AbortSignal },
-  ): Promise<Result<void, CeilingRefusal>>;
-  /**
-   * Signs now, with the owner key, a change of each ceiling's recipients from `from` to `to`, to
-   * send with `sendSigned` before `untilMs`. It sends nothing.
-   */
-  signRecipients(
-    request: SignRecipientsRequest,
-    options: { readonly signal: AbortSignal },
-  ): Promise<Result<SignedCeilingChange, CeilingRefusal>>;
-  /**
-   * Sends a change signed ahead, while every ceiling still lists what it listed when the change
-   * was signed, or the new recipients already; `changed` when one does not, so a change signed
-   * earlier never undoes a later one. Sending it again changes nothing more.
-   */
-  sendSigned(
-    change: SignedCeilingChange,
-    options: { readonly signal: AbortSignal },
-  ): Promise<Result<void, SignedChangeRefusal>>;
-}
-
-/**
- * Makes agent wallets in custody (spec 5, section 2): each owned by the owner key, with this
- * machine's agent key as its one signer, under a ceiling of its own. Privy asks no signature to
- * make a wallet; the owner key's code is checked all the same before anything is made (decision
- * 0130). Adapter: the owner's Privy app. The key comes with each request and is kept nowhere.
- */
-export interface WalletMaker {
-  /**
-   * Makes a wallet whose ceiling lets it call the venues' registry contracts on each enabled
-   * chain, at the per-transaction cap, and send only to the recipients; reads it back, and signs
-   * for it from then on. A refusal makes nothing. A wallet Privy reads back otherwise than asked
-   * is a fault.
-   */
-  make(request: WalletRequest, options: StoreCall): Promise<Result<MadeWallet, WalletRefusal>>;
+  updateCeiling(update: CeilingUpdate, options: StoreCall): Promise<Result<void, "not_found">>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */

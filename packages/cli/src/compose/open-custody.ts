@@ -18,8 +18,10 @@ import {
   isPrivyId,
   privyApiOrigin,
   type PrivyWallet,
+  registryCeilingChain,
 } from "@binference/custody-privy";
 import type {
+  CeilingCalls,
   CeilingEditor,
   InstallFacts,
   InstallStore,
@@ -155,6 +157,33 @@ function ceilingChainsOf(
   return request.value.chains;
 }
 
+// What a contract call may do on a chain a ceiling enables, for the venues named that this install
+// runs, under the cap given. A chain the registry lacks is a fault here.
+function callsOn(
+  options: OpenCustodyOptions,
+  chain: ChainRef,
+  calls: Omit<CeilingCalls, "ceiling">,
+): CeilingChain {
+  const registered = options.chains.list().find((item) => item.ref === chain);
+  const venues = options.venues.filter((venue) => calls.venues.includes(venue.id));
+  const built =
+    registered === undefined
+      ? undefined
+      : registryCeilingChain({
+          definition: registered.definition,
+          venues,
+          perTxNativeCapBase: calls.perTxNativeBase,
+        });
+  if (built?.ok !== true) {
+    throw new BinferenceError({
+      code: "cli.ceiling_unbuilt",
+      message: `The registry gives no contract calls a ceiling on ${chain} can have.`,
+      details: { chain },
+    });
+  }
+  return built.value;
+}
+
 // The chains a wallet signs on: those config enables of its family.
 function chainsOf(record: WalletRecord, options: OpenCustodyOptions): readonly ChainRef[] {
   return options.chains
@@ -238,6 +267,7 @@ export async function openCustody(
       clock,
       ownerKeyPublic: async (read) =>
         (await install.read({ signal: read })).custody?.ownerKeyPublic,
+      callsOn: (chain, calls) => callsOn(options, chain, calls),
     }),
     stopped: signer.stopped,
     stop: async (stop) => signer.stop(stop),

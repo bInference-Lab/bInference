@@ -1,14 +1,22 @@
-import { type AccountRef, accountRefParts, accountRefSchema } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefParts,
+  accountRefSchema,
+  type ChainRef,
+  type ChainRegistry,
+} from "@binference/chain";
 import { type Clock, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import { z } from "zod";
 import type {
+  CallsRefusal,
+  CallsRequest,
   CeilingRead,
   CeilingRefusal,
   CeilingRecipients,
   SignedCeilingChange,
   SignedChangeRefusal,
 } from "../install/ceiling-change.js";
-import type { CeilingEditor } from "../ports.js";
+import type { CeilingEditor } from "../install/ports.js";
 import { memoryCall } from "./memory-call.js";
 
 /** The owner key code the fake ceiling editor takes; any other code is another key. */
@@ -109,19 +117,88 @@ function sendAll(
 
 const oneCoin: FakeCalls = { contracts: [], perTxNativeBase: 10n ** 18n };
 
+function chainsOf(recipients: readonly AccountRef[]): readonly ChainRef[] {
+  return [...new Set(recipients.map((account) => accountRefParts(account).chain))];
+}
+
 // A held ceiling as custody reads it: the chains of its recipients, and what its calls may do.
 function readOf(recipients: readonly AccountRef[], calls: FakeCalls): CeilingRead {
-  const chains = [...new Set(recipients.map((account) => accountRefParts(account).chain))];
-  return { chains, ...calls, recipients };
+  const { contracts, perTxNativeBase } = calls;
+  const policy = jsonValueSchema.parse({
+    contracts: [...contracts],
+    perTxNativeBase: String(perTxNativeBase),
+    recipients: [...recipients],
+  });
+  return { chains: chainsOf(recipients), contracts, perTxNativeBase, recipients, policy };
+}
+
+/** The ceilings and calls the fake holds, and the registry its venues' contracts come from. */
+interface Held {
+  readonly ceilings: Ceilings;
+  readonly calls: Map<string, FakeCalls>;
+  readonly chains?: ChainRegistry;
+}
+
+// A venue's contracts on a chain: the registry's, or without one the account named after it.
+function contractsOn(
+  held: Held,
+  chain: ChainRef,
+  venues: readonly string[],
+): readonly AccountRef[] {
+  const listed = held.chains?.list().find((item) => item.ref === chain)?.definition.contracts;
+  const addresses =
+    listed === undefined
+      ? venues
+      : listed.filter((item) => venues.includes(item.venue)).map((item) => item.address);
+  return [...new Set(addresses)].map((address) => accountRefSchema.parse(`${chain}:${address}`));
+}
+
+// Each ceiling's calls, all checked before any changes: on each of its chains, a contract or more.
+function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal> {
+  if (!isOwner(request.ownerKey)) {
+    return err("bad_owner_key");
+  }
+  const changes = new Map<string, FakeCalls>();
+  for (const { ceiling, venues, perTxNativeBase } of request.ceilings) {
+    const recipients = held.ceilings.get(ceiling);
+    if (recipients === undefined) {
+      return err("not_found");
+    }
+    const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, venues));
+    if (each.some((contracts) => contracts.length === 0)) {
+      return err("no_calls");
+    }
+    changes.set(ceiling, { contracts: each.flat(), perTxNativeBase });
+  }
+  for (const [ceiling, calls] of changes) {
+    held.calls.set(ceiling, calls);
+  }
+  return ok(undefined);
+}
+
+/** What the fake ceiling editor keeps time by, and where its venues' contracts come from. */
+export interface FakeCeilingEditorOptions {
+  readonly clock: Clock;
+  /**
+   * The registry whose contracts a venue's are, on each chain; without one, a venue's contract
+   * on a chain is the account named after the venue.
+   */
+  readonly chains?: ChainRegistry;
 }
 
 /**
  * Creates the {@link FakeCeilingEditor}: ceilings in memory, owned by {@link fakeOwnerKeyCode}.
- * A change signed ahead carries its changes in its payload, and expires by the clock.
+ * A change signed ahead carries its changes in its payload, and expires by the clock. A change of
+ * calls is checked on every ceiling before any changes.
  */
-export function createFakeCeilingEditor(options: { readonly clock: Clock }): FakeCeilingEditor {
+export function createFakeCeilingEditor(options: FakeCeilingEditorOptions): FakeCeilingEditor {
   const ceilings: Ceilings = new Map();
   const calls = new Map<string, FakeCalls>();
+  const store: Held = {
+    ceilings,
+    calls,
+    ...(options.chains === undefined ? {} : { chains: options.chains }),
+  };
   return {
     read: async (ceiling, call) =>
       memoryCall(call, () => {
@@ -151,5 +228,6 @@ export function createFakeCeilingEditor(options: { readonly clock: Clock }): Fak
       }),
     sendSigned: async (change, call) =>
       memoryCall(call, () => sendAll(ceilings, change, options.clock.now())),
+    setCalls: async (request, call) => memoryCall(call, () => setCalls(store, request)),
   };
 }

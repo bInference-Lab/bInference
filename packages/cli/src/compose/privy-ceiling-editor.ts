@@ -15,6 +15,8 @@ import {
   type Secret,
 } from "@binference/core";
 import {
+  type CallsRefusal as PrivyCallsRefusal,
+  type CeilingChain,
   isPrivyId,
   type OwnerAuthorize,
   readCeiling,
@@ -22,13 +24,17 @@ import {
   type PrivyId,
   type RecipientsRefusal,
   sendSignedRecipients,
+  setCeilingCalls,
   setCeilingRecipients,
   signCeilingRecipients,
   signedRecipientsSchema,
   type SignedRecipients,
 } from "@binference/custody-privy";
 import type {
+  CallsRefusal,
+  CallsRequest,
   CeilingEditor,
+  CeilingCalls,
   CeilingRead,
   CeilingRefusal,
   RecipientsRequest,
@@ -45,6 +51,11 @@ export interface PrivyCeilingEditorOptions {
   readonly clock: Clock;
   /** The owner key's public half the install's custody holds; undefined before `init`. */
   readonly ownerKeyPublic: (signal: AbortSignal) => Promise<string | undefined>;
+  /**
+   * What a contract call may do on a chain for the venues named: call and approve their registry
+   * contracts, none for venues with none there, sending at most the cap.
+   */
+  readonly callsOn: (chain: ChainRef, calls: Omit<CeilingCalls, "ceiling">) => CeilingChain;
 }
 
 // A change signed now goes out at once; five minutes covers every ceiling of an install.
@@ -57,7 +68,7 @@ function addressesOf(accounts: readonly AccountRef[]): readonly string[] {
   return [...new Set(accounts.map((account) => accountRefParts(account).address))];
 }
 
-type Authorized = Result<OwnerAuthorize, CeilingRefusal>;
+type Authorized = Result<OwnerAuthorize, "bad_owner_key">;
 
 // The owner key from its code, when it is the key that owns the install's ceilings.
 async function ownerOf(
@@ -75,7 +86,7 @@ async function ownerOf(
   return ok(async (request) => ok(signAuthorization(privateKey, request)));
 }
 
-function policyOf(ceiling: string): Result<PrivyId, CeilingRefusal> {
+function policyOf(ceiling: string): Result<PrivyId, "not_found"> {
   return isPrivyId(ceiling) ? ok(ceiling) : err("not_found");
 }
 
@@ -122,6 +133,7 @@ async function read(
     contracts: accountsOn(chains, rules.contracts),
     perTxNativeBase: rules.perTxNativeCapBase,
     recipients: accountsOn(chains, rules.recipients),
+    policy: jsonValueSchema.parse(held.value),
   });
 }
 
@@ -202,12 +214,72 @@ async function sendSigned(
   return ok(undefined);
 }
 
+function callsRefusalOf(error: PrivyCallsRefusal): CallsRefusal {
+  if (error === "refused") {
+    return "bad_owner_key";
+  }
+  if (error === "not_found") {
+    return error;
+  }
+  // The registry's contracts and a cap the engine checked are a ceiling Privy takes.
+  throw new BinferenceError({
+    code: "cli.ceiling_unbuilt",
+    message: "The venues give no contract calls a ceiling can have.",
+    details: { problem: error },
+  });
+}
+
+// One ceiling's calls on each chain it enables now; a chain the venues give no contract stops it.
+async function setOne(
+  options: Options,
+  change: { readonly calls: CeilingCalls; readonly authorize: OwnerAuthorize },
+  signal: AbortSignal,
+): Promise<Result<void, CallsRefusal>> {
+  const { calls, authorize } = change;
+  const policy = policyOf(calls.ceiling);
+  if (!policy.ok) {
+    return policy;
+  }
+  const held = await read(options, calls.ceiling, signal);
+  if (!held.ok) {
+    return held;
+  }
+  const chains = held.value.chains.map((chain) => options.callsOn(chain, calls));
+  if (chains.some((chain) => chain.contracts.length === 0)) {
+    return err("no_calls");
+  }
+  const expiresAtMs = options.clock.now() + nowExpiryMs;
+  const target = { policy: policy.value, chains };
+  const set = await setCeilingCalls(options.api, target, { authorize, expiresAtMs, signal });
+  return set.ok ? set : err(callsRefusalOf(set.error));
+}
+
+async function setCalls(
+  options: Options,
+  { ownerKey, ceilings }: CallsRequest,
+  signal: AbortSignal,
+): Promise<Result<void, CallsRefusal>> {
+  const authorize = await ownerOf(options, ownerKey, signal);
+  if (!authorize.ok) {
+    return authorize;
+  }
+  for (const calls of ceilings) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one ceiling at a time: a refusal stops the rest
+    const set = await setOne(options, { calls, authorize: authorize.value }, signal);
+    if (!set.ok) {
+      return set;
+    }
+  }
+  return ok(undefined);
+}
+
 /**
  * The {@link CeilingEditor} on the owner's Privy app (decision 0110): it reads a ceiling back from
  * its policy's rules with the app secret alone. To change one it reads the owner key from its
  * code, checks it is the key that owns the install's ceilings, and changes each ceiling's send
- * rules through Privy, signed with it. The key is used for the one request and kept nowhere.
- * Every account is listed by its address on every chain the ceiling enables.
+ * rules, or its contract-call and approval rules (decision 0132), through Privy, signed with it.
+ * The key is used for the one request and kept nowhere. Every account is listed by its address on
+ * every chain the ceiling enables.
  */
 export function createPrivyCeilingEditor(options: PrivyCeilingEditorOptions): CeilingEditor {
   return {
@@ -215,5 +287,6 @@ export function createPrivyCeilingEditor(options: PrivyCeilingEditorOptions): Ce
     setRecipients: async (request, { signal }) => setRecipients(options, request, signal),
     signRecipients: async (request, { signal }) => signRecipients(options, request, signal),
     sendSigned: async (change, { signal }) => sendSigned(options, change, signal),
+    setCalls: async (request, { signal }) => setCalls(options, request, signal),
   };
 }

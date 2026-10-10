@@ -1,5 +1,6 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type {
+  CeilingUpdate,
   InstallFacts,
   InstallSetup,
   WalletDraft,
@@ -139,6 +140,34 @@ function withWallet(state: InstallState, wallet: WalletDraft): InstallState {
   return { ...state, wallets: inOrder([...state.wallets, wallet]) };
 }
 
+// The state with a live wallet's copy of its ceiling replaced; a wallet not live is `not_found`.
+function withCeiling(
+  state: InstallState,
+  update: CeilingUpdate,
+): Result<InstallState, "not_found"> {
+  const live = state.wallets.some(
+    (wallet) => wallet.id === update.wallet && wallet.archivedAtMs === undefined,
+  );
+  if (!live) {
+    return err("not_found");
+  }
+  const wallets = state.wallets.map((wallet) =>
+    wallet.id === update.wallet ? { ...wallet, ceiling: update.ceiling } : wallet,
+  );
+  return ok({ ...state, wallets });
+}
+
+// The state with a wallet added as if a setup had stored it, and with its freeze set or cleared.
+function withAdded(state: InstallState, wallet: WalletRecord): InstallState {
+  return { ...state, wallets: inOrder([...state.wallets, wallet]) };
+}
+
+function withFreeze(state: InstallState, { atMs, isFrozen }: FreezeChange): InstallState {
+  const { frozenAtMs, ...rest } = state;
+  const at = isFrozen ? (frozenAtMs ?? atMs) : undefined;
+  return { ...rest, ...(at === undefined ? {} : { frozenAtMs: at }) };
+}
+
 // The state with the ceiling changes signed again for the new rescue address that waits.
 function withKept(state: InstallState, ceiling: RescueCeiling): InstallState {
   return state.pendingRescue === undefined
@@ -174,23 +203,14 @@ export function createMemoryInstallStore(): MemoryInstallStore {
     return structuredClone(moved.move);
   };
   return {
-    addWallet(wallet) {
-      update((state) => ({
-        ...state,
-        wallets: inOrder([...state.wallets, structuredClone(wallet)]),
-      }));
-    },
+    addWallet: (wallet) => update((state) => withAdded(state, structuredClone(wallet))),
     installId: async (proposal, call) =>
       memoryCall(call, () => {
         const installId = held.state.installId ?? proposal.id;
         held.state = { ...held.state, installId };
         return installId;
       }),
-    freezeNow({ atMs, isFrozen }) {
-      const { frozenAtMs, ...rest } = held.state;
-      const at = isFrozen ? (frozenAtMs ?? atMs) : undefined;
-      held.state = { ...rest, ...(at === undefined ? {} : { frozenAtMs: at }) };
-    },
+    freezeNow: (change) => update((state) => withFreeze(state, change)),
     frozenAt: () => held.state.frozenAtMs,
     read: async (call) => memoryCall(call, () => structuredClone(factsOf(held.state))),
     setUp: async (setup, call) =>
@@ -211,5 +231,11 @@ export function createMemoryInstallStore(): MemoryInstallStore {
       memoryCall(call, () => update((state) => withKept(state, structuredClone(ceiling)))),
     createWallet: async (wallet, call) =>
       memoryCall(call, () => update((state) => withWallet(state, structuredClone(wallet)))),
+    updateCeiling: async (change, call) =>
+      memoryCall(call, () => {
+        const next = withCeiling(held.state, structuredClone(change));
+        update((state) => (next.ok ? next.value : state));
+        return next.ok ? ok(undefined) : next;
+      }),
   };
 }

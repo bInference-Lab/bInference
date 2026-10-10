@@ -56,6 +56,10 @@ function ceilingsIn(cell: Held): CeilingEditor {
       cell.held === undefined
         ? refuseLocked(options)
         : cell.held.ceilings.sendSigned(change, options),
+    setCalls: async (request, options) =>
+      cell.held === undefined
+        ? refuseLocked(options)
+        : cell.held.ceilings.setCalls(request, options),
   };
 }
 

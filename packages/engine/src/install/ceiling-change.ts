@@ -44,6 +44,23 @@ export const signedCeilingChangeSchema: z.ZodType<SignedCeilingChange> = z.stric
   payload: jsonValueSchema,
 });
 
+/** What a ceiling lets a contract call do: reach its venues' registry contracts, under a cap. */
+export interface CeilingCalls {
+  /** The ceiling as custody names it: the wallet record's `policyId`. */
+  readonly ceiling: string;
+  /** The venues whose registry contracts a call may reach and approve, one or more. */
+  readonly venues: readonly string[];
+  /** The most native coin, in base units, one contract call may send. */
+  readonly perTxNativeBase: bigint;
+}
+
+/** What contract calls may do under each ceiling, with the owner key that owns every ceiling. */
+export interface CallsRequest {
+  /** The owner key code as the owner typed it; the editor uses it for this request only. */
+  readonly ownerKey: Secret;
+  readonly ceilings: readonly CeilingCalls[];
+}
+
 /** A ceiling as custody holds it now. */
 export interface CeilingRead {
   /** The chains it enables. */
@@ -54,6 +71,8 @@ export interface CeilingRead {
   readonly perTxNativeBase: bigint;
   /** Each account a send may pay, on each chain it enables. */
   readonly recipients: readonly AccountRef[];
+  /** The ceiling as custody reports it, which a wallet's stored copy of its ceiling mirrors. */
+  readonly policy: JsonValue;
 }
 
 /** Why the owner key's change of a ceiling was not made. */
@@ -64,6 +83,13 @@ export type CeilingRefusal =
   | "bad_recipients"
   /** Custody holds no such ceiling, or it lists no recipients to change. */
   | "not_found";
+
+/**
+ * Why the owner key's change of what contract calls may do was not made: `bad_owner_key` and
+ * `not_found` as for recipients, and `no_calls` for venues that give a chain a ceiling enables no
+ * contract to call.
+ */
+export type CallsRefusal = Exclude<CeilingRefusal, "bad_recipients"> | "no_calls";
 
 /**
  * Why a change signed ahead was not sent: a ceiling lists other recipients than it did when the

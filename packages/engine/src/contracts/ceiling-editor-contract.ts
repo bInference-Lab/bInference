@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type { AccountRef } from "@binference/chain";
 import { err, ok, type Secret } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import type { CeilingEditor } from "../ports.js";
+import type { CeilingEditor } from "../install/ports.js";
 import { assertRefusesAborted, checkOn, live } from "./store-fixtures.js";
 
 /** A ceiling editor under test, a ceiling it holds and the keys and accounts a check uses. */
@@ -17,6 +17,8 @@ export interface CeilingEditorSubject {
   /** A ceiling id custody does not hold. */
   readonly unknownCeiling: string;
   readonly accounts: readonly [AccountRef, AccountRef, AccountRef];
+  /** A venue with a contract on every chain the ceiling enables, and one with none. */
+  readonly venues: { readonly known: string; readonly unknown: string };
   /** What the ceiling lets a send pay now, sorted. */
   recipients(): Promise<readonly AccountRef[]>;
   /** The time custody checks a change's expiry against. */
@@ -101,6 +103,39 @@ async function refusesExpired(subject: CeilingEditorSubject): Promise<void> {
   assert.deepEqual(await subject.recipients(), sorted([accounts[0], accounts[1]]));
 }
 
+function callsOf(subject: CeilingEditorSubject, venue: string, ceiling = subject.ceiling) {
+  return {
+    ownerKey: subject.ownerKey,
+    ceilings: [{ ceiling, venues: [venue], perTxNativeBase: 7n }],
+  };
+}
+
+async function setsCalls(subject: CeilingEditorSubject): Promise<void> {
+  const { editor, ceiling } = subject;
+  const request = callsOf(subject, subject.venues.known);
+  assert.deepEqual(await editor.setCalls(request, live()), ok(undefined));
+  const read = await editor.read(ceiling, live());
+  assert.ok(read.ok);
+  assert.ok(read.value.perTxNativeBase === 7n && read.value.contracts.length > 0);
+  assert.deepEqual(sorted(read.value.recipients), await subject.recipients());
+  assert.deepEqual(await editor.setCalls(request, live()), ok(undefined));
+  assert.deepEqual(await editor.read(ceiling, live()), read);
+}
+
+async function refusesOtherCalls(subject: CeilingEditorSubject): Promise<void> {
+  const { editor, venues } = subject;
+  const before = await editor.read(subject.ceiling, live());
+  const byOther = { ...callsOf(subject, venues.known), ownerKey: subject.otherKey };
+  assert.deepEqual(await editor.setCalls(byOther, live()), err("bad_owner_key"));
+  const unknown = callsOf(subject, venues.known, subject.unknownCeiling);
+  assert.deepEqual(await editor.setCalls(unknown, live()), err("not_found"));
+  assert.deepEqual(
+    await editor.setCalls(callsOf(subject, venues.unknown), live()),
+    err("no_calls"),
+  );
+  assert.deepEqual(await editor.read(subject.ceiling, live()), before);
+}
+
 async function refusesAborted(subject: CeilingEditorSubject): Promise<void> {
   const { editor, ownerKey, ceiling, accounts } = subject;
   const request = { ownerKey, ceilings: [{ ceiling, recipients: [accounts[2]] }] };
@@ -110,6 +145,8 @@ async function refusesAborted(subject: CeilingEditorSubject): Promise<void> {
   const change = { untilMs: subject.now(), payload: [] };
   await assertRefusesAborted(async (options) => editor.sendSigned(change, options));
   await assertRefusesAborted(async (options) => editor.read(ceiling, options));
+  const calls = callsOf(subject, subject.venues.known);
+  await assertRefusesAborted(async (options) => editor.setCalls(calls, options));
   assert.deepEqual(await subject.recipients(), sorted([accounts[0], accounts[1]]));
 }
 
@@ -123,6 +160,12 @@ export function ceilingEditorContract(harness: CeilingEditorHarness): readonly C
     checkOn("signs a change ahead that changes nothing until it is sent", create, signsAhead),
     checkOn("never sends a change signed ahead over a later change", create, keepsLaterChanges),
     checkOn("refuses a change signed ahead once its time has passed", create, refusesExpired),
+    checkOn("sets what a contract call may do with the owner key, twice alike", create, setsCalls),
+    checkOn(
+      "refuses calls by another key, on an unknown ceiling or with no contract",
+      create,
+      refusesOtherCalls,
+    ),
     checkOn("refuses every call on an aborted signal and changes nothing", create, refusesAborted),
   ];
 }

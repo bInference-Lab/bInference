@@ -34,6 +34,7 @@ import {
 } from "../fakes/memory-engine-stores.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
+import type { CeilingEditor } from "../install/ports.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 import {
   testAgent,
@@ -45,7 +46,6 @@ import {
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type {
   AgentStore,
-  CeilingEditor,
   Executor,
   IntentStore,
   PositionStore,

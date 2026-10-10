@@ -12,6 +12,7 @@ import {
 } from "../audit/config-history-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
+import type { CeilingEditor, WalletMaker } from "../install/ports.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
@@ -25,15 +26,7 @@ import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfo
 import { withPaperSimulation } from "../paper/paper-simulation.js";
 import { withPaperBalances } from "../paper/paper-wallet-facts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
-import type {
-  CeilingEditor,
-  Executor,
-  PositionStore,
-  RiskCheck,
-  Simulator,
-  WalletFactsSource,
-  WalletMaker,
-} from "../ports.js";
+import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";

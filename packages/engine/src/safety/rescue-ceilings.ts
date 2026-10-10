@@ -3,9 +3,10 @@ import { type Clock, err, type Id, ok, type Result, type Secret } from "@binfere
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CeilingRefusal } from "../install/ceiling-change.js";
 import type { InstallFacts } from "../install/install-record.js";
+import type { CeilingEditor } from "../install/ports.js";
 import type { RescueCeiling } from "../install/rescue-record.js";
 import { type RescueState, rescueAt } from "../policy/rescue-change.js";
-import type { AgentStore, CeilingEditor, InstallStore } from "../ports.js";
+import type { AgentStore, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { ceilingOutdatedNotice } from "./rescue-address-notice.js";
 

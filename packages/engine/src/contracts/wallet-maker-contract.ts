@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { type AccountRef, accountRefParts } from "@binference/chain";
 import { err, type Id, type Secret } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
+import type { WalletMaker } from "../install/ports.js";
 import type { MadeWallet } from "../install/wallet-request.js";
-import type { WalletMaker } from "../ports.js";
 import { assertRefusesAborted, checkOn, live } from "./store-fixtures.js";
 
 /** A wallet maker under test, with the keys, venues and accounts a check uses. */

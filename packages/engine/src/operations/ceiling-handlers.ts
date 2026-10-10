@@ -1,7 +1,8 @@
 import type { ChainRegistry } from "@binference/chain";
 import { type Clock, err, ok } from "@binference/core";
 import type { CeilingRead } from "../install/ceiling-change.js";
-import type { CeilingEditor, InstallStore } from "../ports.js";
+import type { CeilingEditor } from "../install/ports.js";
+import type { InstallStore } from "../ports.js";
 import type { EngineHandler } from "./engine-call.js";
 
 /** The handler that reads a wallet's ceiling (protocol spec, section 7.2). */

@@ -1,7 +1,7 @@
 import { type AccountRef, accountRefSchema, type ChainRef } from "@binference/chain";
 import { type Clock, err, type Id, jsonValueSchema, ok, type Result } from "@binference/core";
+import type { WalletMaker } from "../install/ports.js";
 import type { MadeWallet, WalletRefusal, WalletRequest } from "../install/wallet-request.js";
-import type { WalletMaker } from "../ports.js";
 import { type FakeCeilingEditor, fakeOwnerKeyCode } from "./fake-ceiling-editor.js";
 import { memoryCall } from "./memory-call.js";
 

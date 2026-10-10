@@ -1,6 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, jsonValueSchema, ok, type Result } from "@binference/core";
 import {
+  type CeilingUpdate,
+  ceilingUpdateSchema,
   type InstallFacts,
   installFactsSchema,
   type InstallIdProposal,
@@ -264,5 +266,34 @@ export const createWalletTask: StoreTask<WalletDraft, null> = defineTask({
   run(database, wallet) {
     insertWallet(database, wallet);
     return null;
+  },
+});
+
+/**
+ * Replaces a live wallet's copy of its ceiling and raises its version; a wallet the store does
+ * not hold, or holds archived, is `not_found` and changes nothing.
+ */
+export const updateCeilingTask: StoreTask<CeilingUpdate, Result<void, "not_found">> = defineTask({
+  name: "install.update_ceiling",
+  access: "write",
+  input: ceilingUpdateSchema,
+  output: resultSchema(z.undefined(), ["not_found"]),
+  run(database, { wallet, ceiling }) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const live = kysely.selectFrom("wallets").select("id").where("archived_at", "is", null);
+    const updated = execute(
+      kysely
+        .updateTable("ceilings")
+        .set((eb) => ({
+          policy_id: ceiling.policyId,
+          policy: jsonText(ceiling.policy),
+          per_tx_native: decimalText(ceiling.perTxNativeBase),
+          read_at: ceiling.readAtMs,
+          version: eb("version", "+", 1),
+        }))
+        .where("wallet_id", "=", wallet)
+        .where("wallet_id", "in", live),
+    );
+    return updated.numAffectedRows === 1n ? ok(undefined) : err("not_found");
   },
 });

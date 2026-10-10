@@ -44,6 +44,12 @@ export interface CeilingMirror {
   readonly readAtMs: number;
 }
 
+/** A wallet's ceiling as custody read it back after a change, for the wallet's stored copy. */
+export interface CeilingUpdate {
+  readonly wallet: Id<"wal">;
+  readonly ceiling: CeilingMirror;
+}
+
 /** An agent wallet held in Privy, owned by the owner key with the agent key as its signer. */
 export interface WalletDraft {
   readonly id: Id<"wal">;
@@ -89,6 +95,12 @@ const walletShape = {
   createdAtMs: epochMsSchema,
   ceiling: ceilingMirrorSchema,
 };
+
+/** Parses a ceiling update. */
+export const ceilingUpdateSchema: z.ZodType<CeilingUpdate> = z.strictObject({
+  wallet: idSchema("wal"),
+  ceiling: ceilingMirrorSchema,
+});
 
 /** Parses a wallet draft. */
 export const walletDraftSchema: z.ZodType<WalletDraft> = z.strictObject(walletShape);

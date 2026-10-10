@@ -30,7 +30,11 @@ export type {
 export { createCreditBilling } from "./fakes/credit-billing.js";
 export type { CreditAccount } from "./fakes/credit-billing.js";
 export { createFakeCeilingEditor, fakeOwnerKeyCode } from "./fakes/fake-ceiling-editor.js";
-export type { FakeCalls, FakeCeilingEditor } from "./fakes/fake-ceiling-editor.js";
+export type {
+  FakeCalls,
+  FakeCeilingEditor,
+  FakeCeilingEditorOptions,
+} from "./fakes/fake-ceiling-editor.js";
 export { createFakeWalletMaker } from "./fakes/fake-wallet-maker.js";
 export type { FakeWalletMaker, FakeWalletMakerOptions } from "./fakes/fake-wallet-maker.js";
 export { createFakeConfirmationStore } from "./fakes/fake-confirmation-store.js";

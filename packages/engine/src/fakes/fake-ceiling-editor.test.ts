@@ -3,6 +3,7 @@ import { createSecret } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { ceilingEditorContract } from "../contracts/ceiling-editor-contract.js";
+import { testChains } from "../operations/test-engine.js";
 import { createFakeCeilingEditor, fakeOwnerKeyCode } from "./fake-ceiling-editor.js";
 
 const accounts = [
@@ -20,7 +21,7 @@ describe("the fake ceiling editor", () => {
     ceilingEditorContract({
       create: async () => {
         const clock = createManualClock(1_800_000_000_000);
-        const editor = createFakeCeilingEditor({ clock });
+        const editor = createFakeCeilingEditor({ clock, chains: testChains() });
         editor.put("ceiling-1", [accounts[0], accounts[1]]);
         return Promise.resolve({
           editor,
@@ -29,6 +30,7 @@ describe("the fake ceiling editor", () => {
           ceiling: "ceiling-1",
           unknownCeiling: "ceiling-9",
           accounts,
+          venues: { known: "fake-swap", unknown: "no-such-venue" },
           recipients: async () => Promise.resolve(listed(editor.recipients("ceiling-1"))),
           now: () => clock.now(),
         });
@@ -51,6 +53,20 @@ describe("the fake ceiling editor", () => {
     ).toStrictEqual({
       ok: false,
       error: "bad_recipients",
+    });
+  });
+
+  it("names a venue's contract after it without a registry", async () => {
+    const editor = createFakeCeilingEditor({ clock: createManualClock(1) });
+    editor.put("ceiling-1", [accounts[0]]);
+    const calls = { ceiling: "ceiling-1", venues: ["swap"], perTxNativeBase: 3n };
+    const request = { ownerKey: createSecret(fakeOwnerKeyCode), ceilings: [calls] };
+    const call = { signal: new AbortController().signal };
+
+    expect(await editor.setCalls(request, call)).toStrictEqual({ ok: true, value: undefined });
+    expect(await editor.read("ceiling-1", call)).toMatchObject({
+      ok: true,
+      value: { contracts: ["fake:1:swap"], perTxNativeBase: 3n },
     });
   });
 });

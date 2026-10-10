@@ -10,6 +10,7 @@ import {
   keepRescueCeilingTask,
   readInstallTask,
   setUpInstallTask,
+  updateCeilingTask,
 } from "./install-tasks.js";
 
 /** Every task of the SQLite install store. */
@@ -22,6 +23,7 @@ export const installTasks: readonly TaskRunner[] = [
   clearRescueCeilingTask,
   keepRescueCeilingTask,
   createWalletTask,
+  updateCeilingTask,
 ];
 
 /** The {@link InstallStore} on `engine.sqlite`: each call runs one store task. */
@@ -45,5 +47,6 @@ export function createSqliteInstallStore(host: StoreHost): InstallStore {
     createWallet: async (wallet, options) => {
       await createWallet(wallet, options);
     },
+    updateCeiling: bindTask(host, updateCeilingTask),
   };
 }

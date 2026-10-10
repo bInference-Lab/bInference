@@ -11,9 +11,10 @@ import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { WalletDraft } from "../install/install-record.js";
+import type { WalletMaker } from "../install/ports.js";
 import type { WalletRefusal } from "../install/wallet-request.js";
 import { rescueAt } from "../policy/rescue-change.js";
-import type { ConfigJournal, WalletMaker } from "../ports.js";
+import type { ConfigJournal } from "../ports.js";
 import {
   type RescueCeilingsOptions,
   resignRescueCeilings,

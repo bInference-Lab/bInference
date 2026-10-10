@@ -1,10 +1,11 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
-import { buildCeiling, createPrivyApi } from "@binference/custody-privy";
+import { buildCeiling, type CeilingChain, createPrivyApi } from "@binference/custody-privy";
 import {
   createFakePrivy,
-  testCeilingRequest,
   testAddresses,
+  testCeilingRequest,
+  testChain,
 } from "@binference/custody-privy/testing";
 import { ceilingEditorContract } from "@binference/engine/testing";
 import { createP256KeyPair, formatOwnerKeyCode } from "@binference/signer";
@@ -12,9 +13,23 @@ import { describe, expect, it } from "vitest";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
 
 const live = { signal: new AbortController().signal };
-const { rescue, saved, unsaved } = testAddresses;
+const { rescue, saved, unsaved, router } = testAddresses;
 const accountOf = (address: string): AccountRef => accountRefSchema.parse(`eip155:56:${address}`);
 const accounts = [accountOf(rescue), accountOf(saved), accountOf(unsaved)] as const;
+
+// The test venue "swap" has the router on the test chain; no other venue has a contract.
+function callsOn(
+  chain: unknown,
+  calls: { readonly venues: readonly string[]; readonly perTxNativeBase: bigint },
+): CeilingChain {
+  const contracts = calls.venues.includes("swap") ? [router] : [];
+  return {
+    chain: testChain,
+    contracts,
+    spenders: contracts,
+    perTxNativeCapBase: calls.perTxNativeBase,
+  };
+}
 
 interface RuleJson {
   readonly name: string;
@@ -49,6 +64,7 @@ async function subject() {
     api,
     clock,
     ownerKeyPublic: async () => Promise.resolve(owner.publicKey),
+    callsOn,
   });
   // The accounts the native send rule lists, as Privy holds the policy.
   const recipients = async (): Promise<readonly AccountRef[]> => {
@@ -64,6 +80,7 @@ async function subject() {
     ceiling: policy.id,
     unknownCeiling: "nosuchpolicy000000000000",
     accounts,
+    venues: { known: "swap", unknown: "none" },
     recipients,
     now: () => clock.now(),
   };
@@ -88,6 +105,7 @@ describe("the Privy ceiling editor", () => {
       }),
       clock: createManualClock(1),
       ownerKeyPublic: async () => Promise.resolve(undefined),
+      callsOn,
     });
     const request = {
       ownerKey: made.ownerKey,
