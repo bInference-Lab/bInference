@@ -39,7 +39,6 @@ function refuse(output: CliOutput, refusal: StartRefusal): ExitCode {
 function announce(output: CliOutput, engine: RunningEngine): void {
   const { host, port } = engine.http;
   output.say("start.ready", { host, port: String(port), ipc: engine.ipc, logFile: engine.logFile });
-  output.say("start.missingParts");
   const { lockReason } = engine;
   if (lockReason !== undefined) {
     output.say("start.locked", { reason: lockReason });

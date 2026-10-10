@@ -56,7 +56,6 @@
   "command.check": "Check this install: its config, who can open its files, its unlock mode and the engine",
   "usage.invalid": "binference cannot read this command line. Run `binference --help` to see the commands and what each one takes.",
   "start.ready": "binference is running. The console and the WebSocket are at http://{host}:{port}, the local IPC at {ipc}, and the log at {logFile}. Press Ctrl+C to stop.",
-  "start.missingParts": "This binference serves the protocol but cannot trade yet: prices and wallet facts are not built in, so it refuses every trade.",
   "start.stopped": "binference stopped.",
   "start.stoppedLate": "binference stopped, but these steps did not finish: {steps}. Run `binference logs` to see why.",
   "start.alreadyRunning": "binference already runs on the state folder {folder}. Stop it first, or set BINFERENCE_HOME to another folder.",
