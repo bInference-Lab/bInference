@@ -86,7 +86,8 @@ interface ChainLists {
   readonly spenders: readonly string[];
 }
 
-function chainRules(lists: ChainLists, recipients: readonly string[]): readonly PolicyRule[] {
+// The contract-call and approval rules of one chain; none for a list that is empty.
+function callRulesOf(lists: ChainLists): readonly PolicyRule[] {
   const { chainId } = lists.chain.chain;
   const onChain = onTransaction("chain_id", "eq", String(chainId));
   const noCoin = onTransaction("value", "lte", noValue);
@@ -104,6 +105,15 @@ function chainRules(lists: ChainLists, recipients: readonly string[]): readonly 
   return [
     ...(lists.contracts.length > 0 ? [calls] : []),
     ...(lists.spenders.length > 0 ? [approvals] : []),
+  ];
+}
+
+function chainRules(lists: ChainLists, recipients: readonly string[]): readonly PolicyRule[] {
+  const { chainId } = lists.chain.chain;
+  const onChain = onTransaction("chain_id", "eq", String(chainId));
+  const noCoin = onTransaction("value", "lte", noValue);
+  return [
+    ...callRulesOf(lists),
     ...recipientRules(String(chainId), recipients),
     allow(`Self cancel, chain ${String(chainId)}`, [
       onChain,
@@ -151,6 +161,17 @@ function eachChain(chains: readonly CeilingChain[]): Result<readonly ChainLists[
     lists.push(checked.value);
   }
   return ok(lists);
+}
+
+/**
+ * The rules of one chain that name what a contract call may do: reach the chain's listed
+ * contracts with at most its cap in native coin, and approve only its listed spenders. Changing a
+ * ceiling's venues or cap changes these rules and nothing else. A list that is empty gives no
+ * rule; a malformed address or a negative cap is refused.
+ */
+export function callRules(chain: CeilingChain): Result<readonly PolicyRule[], CeilingProblem> {
+  const lists = chainLists(chain);
+  return lists.ok ? ok(callRulesOf(lists.value)) : lists;
 }
 
 /**

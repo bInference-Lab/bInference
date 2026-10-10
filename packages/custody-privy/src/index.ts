@@ -38,6 +38,8 @@ export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
 export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner-signer.js";
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
+export { setCeilingCalls } from "./wallets/ceiling-calls.js";
+export type { CallsRefusal, PolicyCalls } from "./wallets/ceiling-calls.js";
 export {
   sendSignedRecipients,
   setCeilingRecipients,
