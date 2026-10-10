@@ -6,6 +6,7 @@ import { messages } from "@binference/i18n";
 import type { Command } from "commander";
 import { describe, expect, it } from "vitest";
 import { hostOn, type TestMachine } from "../e2e/test-host.js";
+import type { ChosenCommand } from "./chosen-command.js";
 import { buildProgram } from "./cli-program.js";
 import { runCli } from "./run-cli.js";
 
@@ -54,7 +55,10 @@ describe("the binference command tree", () => {
       "deny",
       "list",
       "address",
+      "freeze",
+      "unfreeze",
       "set",
+      "status",
       "check",
     ]);
     for (const command of commands) {
@@ -62,6 +66,23 @@ describe("the binference command tree", () => {
       expect(flags).toContain("--json");
       expect(flags).toContain("--yes");
     }
+  });
+
+  it("gives rescue its own --json and rescue set its --yes", async () => {
+    const chosen: ChosenCommand[] = [];
+    const parse = async (argv: readonly string[]) =>
+      buildProgram({
+        version: "1",
+        message: (key) => key,
+        host: { out: () => undefined, err: () => undefined },
+        choose: (command) => chosen.push(command),
+      }).parseAsync([...argv], { from: "user" });
+    await parse(["rescue", "--json"]);
+    await parse(["rescue", "set", "0xabc", "--yes"]);
+    expect(chosen).toStrictEqual([
+      { name: "rescue", options: { json: true, yes: false } },
+      { name: "rescueSet", options: { json: false, yes: true }, address: "0xabc" },
+    ]);
   });
 
   it("prints its help in the owner's language and exits 0", async () => {

@@ -12,6 +12,7 @@ import {
   walletAddressFlagsSchema,
 } from "./cli-flags.schema.js";
 import { agentOption, idOf, withCommon } from "./command-options.js";
+import { addSafetyCommands } from "./safety-commands.js";
 
 function linesOf(value: string): number {
   const lines = Number(value);
@@ -79,20 +80,6 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     );
 }
 
-function addRescueCommands(program: Command, options: ProgramOptions): void {
-  const { message, choose } = options;
-  const rescue = program
-    .command("rescue")
-    .description(message("command.rescue"))
-    .helpOption("-h, --help", message("option.help"))
-    .helpCommand("help [command]", message("option.help"));
-  withCommon(rescue.command("set").description(message("command.rescueSet")), message)
-    .addArgument(new Argument("<address>", message("argument.address")))
-    .action((address: string, flags: OptionValues) =>
-      choose({ name: "rescueSet", options: commonFlagsSchema.parse(flags), address }),
-    );
-}
-
 function addInit(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   withCommon(program.command("init").description(message("command.init")), message)
@@ -141,7 +128,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addAgentCommands(program, options);
   addCardCommands(program, options);
   addWalletCommands(program, options);
-  addRescueCommands(program, options);
+  addSafetyCommands(program, options);
   withCommon(program.command("check").description(message("command.check")), message)
     .option("--fix", message("option.fix"))
     .action((flags: OptionValues) =>
@@ -176,6 +163,8 @@ export function buildProgram(options: ProgramOptions): Command {
       outputError: () => undefined,
     })
     .showSuggestionAfterError(false)
+    // Options stop at a subcommand's name, so `rescue set --yes` gives `set` the flag.
+    .enablePositionalOptions()
     .exitOverride();
   addCommands(program, options);
   return program;

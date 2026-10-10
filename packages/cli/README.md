@@ -124,6 +124,11 @@ The reference of every key, generated from the schema, is
 | `binference paper`                   | Switches the agent back to paper mode                               |
 | `binference wallet list`             | The agent wallets with their labels and addresses                   |
 | `binference wallet address`          | The address to fund the agent's default wallet at                   |
+| `binference freeze [--agent <id>]`   | Freezes every agent and the install, or one agent                   |
+| `binference unfreeze`                | Opens the unfreeze card, which `confirm` or a tap answers           |
+| `binference rescue`                  | Opens the rescue card: everything to the rescue address             |
+| `binference rescue set <address>`    | A new rescue address in 24 hours; asks for the owner key            |
+| `binference safety status`           | What is frozen, the rescue under way and the rescue address         |
 | `binference check [--fix]`           | Checks the config, file access, unlock mode and the engine          |
 
 In development, run the source: `node --conditions=@binference/source --import tsx

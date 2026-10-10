@@ -41,11 +41,25 @@ function reportReopened(run: CommandRun, view: IntentView, card: CardView): Exit
   return 1;
 }
 
+// An unfreeze took effect at the tap: it names one agent, or every frozen agent and the install.
+function reportUnfrozen(
+  output: CliOutput,
+  intent: ProtocolId<"intent">,
+  agent: ProtocolId<"agent"> | undefined,
+): ExitCode {
+  const scope = agent === undefined ? "install" : "agent";
+  output.say("confirm.unfrozen", { intent, scope, agent: agent ?? "" });
+  return 0;
+}
+
 function reportConfirmed(run: CommandRun, view: IntentView): ExitCode {
   const { output, formatter } = run;
   printView(output, view);
   if (view.state === "awaiting_confirmation" && view.card !== undefined) {
     return reportReopened(run, view, view.card);
+  }
+  if (view.request.kind === "unfreeze") {
+    return reportUnfrozen(output, view.intent, view.request.agent);
   }
   const [fill] = view.outcome?.executions ?? [];
   if (view.paper && fill !== undefined) {
@@ -63,10 +77,11 @@ function reportConfirmed(run: CommandRun, view: IntentView): ExitCode {
 /**
  * `binference confirm <intent>` and `binference deny <intent>`: answer the intent's newest card
  * version from the terminal, as its Confirm or Cancel button does, through `intent/confirm` with
- * that version or `intent/deny`. A confirmed paper intent shows its paper fill; a worse re-quote
- * opens the next card version and exits 1 with its terms, to be checked and confirmed again. An
- * intent with no card, an expired or answered card, or a card that changed is refused with the
- * engine's code. With `--json` it prints the intent after the answer.
+ * that version or `intent/deny`. A confirmed paper intent shows its paper fill, and a confirmed
+ * unfreeze what it unfroze; a worse re-quote opens the next card version and exits 1 with its
+ * terms, to be checked and confirmed again. An intent with no card, an expired or answered card,
+ * or a card that changed is refused with the engine's code. With `--json` it prints the intent
+ * after the answer.
  */
 export async function runCardAnswer(
   run: CommandRun,

@@ -4,7 +4,9 @@ import {
   type ChainDefinition,
   type AccountRef,
   accountRefSchema,
+  type Amount,
   createChainRegistry,
+  type TxSimulator,
   type Venue,
 } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
@@ -181,6 +183,10 @@ export interface SkeletonOptions {
   readonly venues?: readonly Venue[];
   /** Chains the engine knows besides the fake chain, such as BNB Smart Chain. */
   readonly chains?: readonly ChainDefinition[];
+  /** What each account holds; nothing when left out. */
+  readonly held?: ReadonlyMap<AccountRef, readonly Amount[]>;
+  /** Runs a rescue's sends and the token round trips; nothing runs when left out. */
+  readonly chainSimulator?: TxSimulator;
 }
 
 /**
@@ -213,8 +219,11 @@ export async function composeSkeleton(
     chains,
     venues: options.venues ?? [createFakeVenue()],
     simulator: createQuoteSimulator(() => undefined),
-    risk: skeletonRisk,
-    wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts),
+    risk: {
+      ...skeletonRisk,
+      ...(options.chainSimulator === undefined ? {} : { simulator: options.chainSimulator }),
+    },
+    wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts, options.held),
     executor,
     positions,
     paperBalances: [{ asset: testCoin, base: 10n ** 18n }],
