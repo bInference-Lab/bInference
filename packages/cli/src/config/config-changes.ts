@@ -1,5 +1,6 @@
-import { type JsonValue, jsonValueSchema } from "@binference/core";
+import type { JsonValue } from "@binference/core";
 import type { BinferenceConfig } from "./schema/config.schema.js";
+import { asJson, isObject, secretKindOf } from "./shown-config.js";
 
 /** One key a reload of `config.json5` changed, with its value before and after it. */
 export interface ConfigChangeFound {
@@ -23,28 +24,10 @@ const keysReadOnEachUse: ReadonlySet<string> = new Set([
   "logging.level",
 ]);
 
-const secretKinds: ReadonlySet<string> = new Set([
-  "fromKeychain",
-  "fromEnv",
-  "fromFile",
-  "fromCommand",
-]);
-
 /** One value of the config: its JSON to compare, and what the journal shows. */
 interface Leaf {
   readonly raw: string;
   readonly shown: JsonValue;
-}
-
-function isObject(value: JsonValue): value is { readonly [key: string]: JsonValue } {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-// A secret source is a leaf, shown as its kind: the variable, file or program it names stays out.
-function secretKindOf(value: JsonValue): string | undefined {
-  const keys = isObject(value) ? Object.keys(value) : [];
-  const [only] = keys;
-  return keys.length === 1 && only !== undefined && secretKinds.has(only) ? only : undefined;
 }
 
 function leavesOf(value: JsonValue, path: readonly string[]): readonly (readonly [string, Leaf])[] {
@@ -53,14 +36,6 @@ function leavesOf(value: JsonValue, path: readonly string[]): readonly (readonly
     return Object.entries(value).flatMap(([key, child]) => leavesOf(child, [...path, key]));
   }
   return [[path.join("."), { raw: JSON.stringify(value), shown: kind ?? value }]];
-}
-
-// The config as JSON: the amounts the schema keeps as bigint become decimal text.
-function asJson(config: BinferenceConfig): JsonValue {
-  const text = JSON.stringify(config, (_key: string, value: JsonValue | bigint) =>
-    typeof value === "bigint" ? value.toString() : value,
-  );
-  return jsonValueSchema.parse(JSON.parse(text));
 }
 
 function flatten(config: BinferenceConfig): ReadonlyMap<string, Leaf> {
