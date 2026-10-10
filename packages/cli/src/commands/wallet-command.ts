@@ -89,7 +89,7 @@ export async function runWalletCreate(
   if (!chosen.ok) {
     return chosen.code;
   }
-  const agent = chosen.value;
+  const { agent } = chosen.value;
   const made = await withOwnerKey(run, options, {
     command: "wallet create",
     call: async (client, ownerKey, signal) =>

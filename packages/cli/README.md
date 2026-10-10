@@ -120,7 +120,7 @@ The reference of every key, generated from the schema, is
 | `binference approval [manual\|auto]` | Shows the agent's approval mode, or sets it                         |
 | `binference confirm <intent>`        | Confirms the intent's newest card version, as its button does       |
 | `binference deny <intent>`           | Cancels the intent's card, as its button does                       |
-| `binference live`                    | Switches the agent to live, over IPC only; its first card says so   |
+| `binference live`                    | Goes live once the disclaimer is typed back, over IPC only          |
 | `binference paper`                   | Switches the agent back to paper mode                               |
 | `binference wallet list`             | The agent wallets with their labels and addresses                   |
 | `binference wallet address`          | The address to fund the agent's default wallet at                   |

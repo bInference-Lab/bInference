@@ -54,26 +54,27 @@ export async function chooseAgent(
   return undefined;
 }
 
-/** The agent a command chose, or the exit code it ended with after saying why. */
+/** The agent a command chose, with its status, or the exit code it ended with after saying why. */
 export type AgentOutcome =
-  | { readonly ok: true; readonly value: ProtocolId<"agent"> }
+  | { readonly ok: true; readonly value: ChosenAgent }
   | { readonly ok: false; readonly code: ExitCode };
 
 /**
  * Chooses the agent as {@link chooseAgent} does, over a call of its own, before a command asks the
- * person anything: an owner-key command asks for the key only once it knows the agent.
+ * person anything: an owner-key command asks for the key, and going live for the disclaimer, only
+ * once it knows the agent.
  */
 export async function chooseAgentFirst(
   run: CommandRun,
   named: ProtocolId<"agent"> | undefined,
 ): Promise<AgentOutcome> {
-  const chosen: { agent?: ProtocolId<"agent"> } = {};
+  const chosen: { agent?: ChosenAgent } = {};
   const code = await withEngine(run.host, run.output, async (client, signal) => {
     const found = await chooseAgent({ client, output: run.output, signal }, named);
     if (found === undefined) {
       return 1;
     }
-    chosen.agent = found.agent;
+    chosen.agent = found;
     return 0;
   });
   return chosen.agent === undefined ? { ok: false, code } : { ok: true, value: chosen.agent };

@@ -75,7 +75,7 @@ export async function runAddressAdd(
     call: async (client, ownerKey, signal) =>
       client.call(
         "address/add",
-        { agent: agent.value, chain, address, label: request.options.label, ownerKey },
+        { agent: agent.value.agent, chain, address, label: request.options.label, ownerKey },
         { signal },
       ),
   });

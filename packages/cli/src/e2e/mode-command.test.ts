@@ -10,8 +10,10 @@ import { createFormatter, messages } from "@binference/i18n";
 import { operations } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { skeletonCompositions } from "../compose/test-skeleton.js";
+import { runCli } from "../program/run-cli.js";
+import { createScriptedPrompter, type ScriptedAnswer } from "../term/scripted-prompter.js";
 import { type ServedSkeleton, serveSkeleton } from "./skeleton-machine.js";
-import { createTestMachines, runOn } from "./test-host.js";
+import { createTestMachines, hostWith, runOn, type TestMachine } from "./test-host.js";
 
 const slow = { timeout: 60_000 };
 const machines = createTestMachines();
@@ -27,6 +29,18 @@ const swapRequest = {
   to: token,
   amount: { base: 1_000_000n },
 } as const;
+
+// A command line run by a person at the terminal, who types the disclaimer's phrase back.
+async function typed(
+  machine: TestMachine,
+  argv: readonly string[],
+  answers: readonly ScriptedAnswer[] = ["I understand"],
+) {
+  const prompter = createScriptedPrompter({ disclaimer: answers });
+  const host = hostWith(machine, argv, { env: {}, parts: { prompter } });
+  const code = await runCli(host);
+  return { code, stdout: host.stdout(), stderr: host.stderr(), prompter };
+}
 
 afterEach(async () => {
   await Promise.all(served.splice(0).map(async (skeleton) => skeleton.close()));
@@ -48,7 +62,7 @@ describe.each(skeletonCompositions)(
       slow,
       async () => {
         const { machine, skeleton } = await servedMachine();
-        await expect(runOn(machine, ["live"])).resolves.toStrictEqual({
+        await expect(typed(machine, ["live"])).resolves.toMatchObject({
           code: 0,
           stdout:
             `main (${agent}) is live now. Its trades use real money from its wallet, and its first ` +
@@ -67,6 +81,7 @@ describe.each(skeletonCompositions)(
 
     it("says when the agent is in the mode already, and brakes back to paper", slow, async () => {
       const { machine } = await servedMachine();
+      await typed(machine, ["live"]);
       const json = await runOn(machine, ["live", "--json"]);
       expect(operations["agent/goLive"].result.parse(JSON.parse(json.stdout))).toMatchObject({
         agent,
@@ -94,18 +109,12 @@ describe.each(skeletonCompositions)(
           testAgentDraft({ id: second, name: "second" }),
           live(),
         );
-        await expect(runOn(machine, ["live", "--agent", second])).resolves.toStrictEqual({
+        await expect(typed(machine, ["live", "--agent", second])).resolves.toMatchObject({
           code: 2,
           stdout: "",
           stderr:
             `${String(messages.en["error.wallet.unfunded"])}\n` +
             "Run `binference wallet address` to see the address to fund.\n",
-        });
-        const json = await runOn(machine, ["live", "--agent", second, "--json"]);
-        expect(json).toStrictEqual({
-          code: 2,
-          stdout: '{"error":{"code":"wallet.unfunded"}}\n',
-          stderr: "",
         });
         const stored = await skeleton.parts.stores.agents.get(second, live());
         expect(stored?.agent.mode).toBe("paper");
@@ -113,3 +122,49 @@ describe.each(skeletonCompositions)(
     );
   },
 );
+
+async function servedSelfHosted(): Promise<TestMachine> {
+  const [selfHosted] = skeletonCompositions;
+  if (selfHosted === undefined) {
+    throw new Error("Expected the self-hosted composition.");
+  }
+  const machine = await machines.create(testNowMs);
+  served.push(await serveSkeleton(machine, selfHosted));
+  return machine;
+}
+
+describe("going live", () => {
+  it("shows the disclaimer and goes live only once the phrase is typed back", slow, async () => {
+    const machine = await servedSelfHosted();
+    const en = createFormatter({ locale: "en", timeZone: "UTC" });
+    const phrase = { phrase: "I understand" };
+
+    const went = await typed(machine, ["live"], ["yes", " i UNDERSTAND "]);
+
+    expect(went.code).toBe(0);
+    expect(went.prompter.transcript.notes).toStrictEqual([
+      {
+        title: en.message("cli.live.disclaimerTitle", phrase),
+        text: en.message("cli.live.disclaimer", phrase),
+      },
+    ]);
+    expect(went.prompter.transcript.lines).toStrictEqual([
+      en.message("cli.live.wrongPhrase", phrase),
+    ]);
+    const again = await typed(machine, ["live"], []);
+    expect([again.code, again.prompter.transcript.asked]).toStrictEqual([0, []]);
+  });
+
+  it("never goes live with nobody at the terminal to read and type", slow, async () => {
+    const machine = await servedSelfHosted();
+
+    const refused = await runOn(machine, ["live", "--json"]);
+
+    expect([refused.code, refused.stdout]).toStrictEqual([
+      1,
+      `${JSON.stringify({ error: { code: "agent.disclaimer" } })}\n`,
+    ]);
+    const status = await runOn(machine, ["status", "--json"]);
+    expect(status.stdout).toContain('"mode":"paper"');
+  });
+});
