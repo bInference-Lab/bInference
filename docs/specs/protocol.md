@@ -255,26 +255,27 @@ Long operations return `{ job }` at once and report through the `job` topic. Fil
 
 ### 7.2 Agents and wallets
 
-| Operation          | Scope                                       | Write | Local | Args → result                                                                           |
-| ------------------ | ------------------------------------------- | ----- | ----- | --------------------------------------------------------------------------------------- |
-| `agent/list`       | `read`                                      |       |       | paging → agents                                                                         |
-| `agent/get`        | `read`                                      |       |       | `{ agent }` → `AgentView`                                                               |
-| `agent/create`     | `admin`                                     | ✓     |       | `{ name, locale? }` → `AgentView` (starts in paper mode with the defaults table)        |
-| `agent/rename`     | `admin`                                     | ✓     |       | `{ agent, name }` → `AgentView`                                                         |
-| `agent/archive`    | `admin`                                     | ✓     |       | `{ agent }` → `{}` (orders cancelled, funds untouched)                                  |
-| `agent/goLive`     | `admin`                                     | ✓     | ✓     | `{ agent }` → `AgentView`; fails `wallet.unfunded` or `agent.disclaimer` when not ready |
-| `agent/goPaper`    | `confirm`                                   | ✓     |       | `{ agent }` → `AgentView` (braking)                                                     |
-| `agent/readFile`   | `read`                                      |       |       | `{ agent, file }` → `{ text, updatedAt }`; `file` is one of the workspace files         |
-| `agent/writeFile`  | `admin`                                     | ✓     |       | `{ agent, file, text }` → `{ updatedAt }`                                               |
-| `wallet/list`      | `read`                                      |       |       | `{ agent? }` → wallets with addresses and labels                                        |
-| `wallet/create`    | `admin`                                     | ✓     | ✓     | `{ agent, label, ownerKey }` → `WalletView` (a new Privy wallet, spec 5)                |
-| `wallet/rename`    | `admin`                                     | ✓     |       | `{ wallet, label }` → `WalletView`                                                      |
-| `wallet/exportKey` | `admin`                                     | ✓     | ✓     | `{ wallet, ownerKey }` → `{ privateKey }` (Privy's export, decrypted in the CLI)        |
-| `ceiling/get`      | `read`                                      |       |       | `{ wallet }` → the wallet's Privy policy as `CeilingView`                               |
-| `ceiling/set`      | `admin`                                     | ✓     | ✓     | `{ wallet, changes, ownerKey }` → `CeilingView` (spec 5, section 4)                     |
-| `signer/revoke`    | `admin`                                     | ✓     | ✓     | `{ signer, ownerKey }` → `{}`: removes a machine's agent key from every wallet          |
-| `approval/get`     | `read`                                      |       |       | `{ agent }` → `{ mode, changedAt }` ([decision 0088](../DECISIONS.md#d0088))            |
-| `approval/set`     | `confirm` for `manual`, `loosen` for `auto` | ✓     |       | `{ agent, mode }` → `{ mode, changedAt }`; announced on every surface                   |
+| Operation             | Scope                                       | Write | Local | Args → result                                                                                                                                                                                       |
+| --------------------- | ------------------------------------------- | ----- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent/list`          | `read`                                      |       |       | paging → agents                                                                                                                                                                                     |
+| `agent/get`           | `read`                                      |       |       | `{ agent }` → `AgentView`                                                                                                                                                                           |
+| `agent/create`        | `admin`                                     | ✓     |       | `{ name, locale? }` → `AgentView` (starts in paper mode with the defaults table)                                                                                                                    |
+| `agent/rename`        | `admin`                                     | ✓     |       | `{ agent, name }` → `AgentView`                                                                                                                                                                     |
+| `agent/archive`       | `admin`                                     | ✓     |       | `{ agent }` → `{}` (orders cancelled, funds untouched)                                                                                                                                              |
+| `agent/goLive`        | `admin`                                     | ✓     | ✓     | `{ agent }` → `AgentView`; fails `wallet.unfunded` or `agent.disclaimer` when not ready                                                                                                             |
+| `agent/goPaper`       | `confirm`                                   | ✓     |       | `{ agent }` → `AgentView` (braking)                                                                                                                                                                 |
+| `agent/readFile`      | `read`                                      |       |       | `{ agent, file }` → `{ text, updatedAt }`; `file` is one of the workspace files                                                                                                                     |
+| `agent/writeFile`     | `admin`                                     | ✓     |       | `{ agent, file, text }` → `{ updatedAt }`                                                                                                                                                           |
+| `wallet/list`         | `read`                                      |       |       | `{ agent? }` → wallets with addresses and labels                                                                                                                                                    |
+| `wallet/create`       | `admin`                                     | ✓     | ✓     | `{ agent, label, ownerKey }` → `WalletView` (a new Privy wallet, spec 5)                                                                                                                            |
+| `wallet/rename`       | `admin`                                     | ✓     |       | `{ wallet, label }` → `WalletView`                                                                                                                                                                  |
+| `wallet/exportKey`    | `admin`                                     | ✓     | ✓     | `{ wallet, ownerKey }` → `{ privateKey }`; unserved since [decision 0131](../DECISIONS.md#d0131)                                                                                                    |
+| `wallet/exportSealed` | `admin`                                     |       | ✓     | `{ wallet, recipientPublicKey, ownerKey }` → `{ ciphertext, encapsulatedKey }`: the key sealed with HPKE to a key only the CLI holds; a read, never stored ([decision 0131](../DECISIONS.md#d0131)) |
+| `ceiling/get`         | `read`                                      |       |       | `{ wallet }` → the wallet's Privy policy as `CeilingView`                                                                                                                                           |
+| `ceiling/set`         | `admin`                                     | ✓     | ✓     | `{ wallet, changes, ownerKey }` → `CeilingView`: venues and the per-transaction cap of every live wallet of the wallet's agent; fails `limit.venue_in_use` ([decision 0132](../DECISIONS.md#d0132)) |
+| `signer/revoke`       | `admin`                                     | ✓     | ✓     | `{ signer, ownerKey }` → `{}`: removes a machine's agent key from every wallet                                                                                                                      |
+| `approval/get`        | `read`                                      |       |       | `{ agent }` → `{ mode, changedAt }` ([decision 0088](../DECISIONS.md#d0088))                                                                                                                        |
+| `approval/set`        | `confirm` for `manual`, `loosen` for `auto` | ✓     |       | `{ agent, mode }` → `{ mode, changedAt }`; announced on every surface                                                                                                                               |
 
 Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`, `FIRST-CHAT.md`.
 
@@ -297,14 +298,15 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 
 ### 7.4 Intents
 
-| Operation        | Scope                                                                   | Write | Args → result                                  |
-| ---------------- | ----------------------------------------------------------------------- | ----- | ---------------------------------------------- |
-| `intent/propose` | `propose`                                                               | ✓     | `IntentRequest` (section 8.1) → `IntentView`   |
-| `intent/get`     | `read`                                                                  |       | `{ intent }` → `IntentView`                    |
-| `intent/list`    | `read`                                                                  |       | paging, `{ agent?, state?, kind? }` → intents  |
-| `intent/confirm` | `confirm`                                                               | ✓     | `{ intent, card, cardVersion }` → `IntentView` |
-| `intent/deny`    | `confirm`                                                               | ✓     | `{ intent, card }` → `IntentView`              |
-| `intent/cancel`  | `confirm`, or `propose` for the client's own intent before confirmation | ✓     | `{ intent }` → `IntentView`                    |
+| Operation        | Scope                                                                   | Write | Args → result                                                                             |
+| ---------------- | ----------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------- |
+| `intent/propose` | `propose`                                                               | ✓     | `IntentRequest` (section 8.1) → `IntentView`                                              |
+| `intent/get`     | `read`                                                                  |       | `{ intent }` → `IntentView`                                                               |
+| `intent/card`    | `read`                                                                  |       | `{ intent }` → `CardLinesView`: the open card's lines and version, as Telegram draws them |
+| `intent/list`    | `read`                                                                  |       | paging, `{ agent?, state?, kind? }` → intents                                             |
+| `intent/confirm` | `confirm`                                                               | ✓     | `{ intent, card, cardVersion }` → `IntentView`                                            |
+| `intent/deny`    | `confirm`                                                               | ✓     | `{ intent, card }` → `IntentView`                                                         |
+| `intent/cancel`  | `confirm`, or `propose` for the client's own intent before confirmation | ✓     | `{ intent }` → `IntentView`                                                               |
 
 - `intent/propose` always answers with an intent when the args are valid. A refusal by policy or
   risk is an intent in a terminal state (`rejected_policy`, `risk_blocked`) with its reason, not a
