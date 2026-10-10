@@ -1,7 +1,8 @@
-import type { TxDraft } from "@binference/chain";
+import type { Signer, TxDraft } from "@binference/chain";
 import { fakeDraft } from "@binference/chain/testing";
-import { createIdSource, type Id } from "@binference/core";
+import { createIdSource, err, type Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
+import type { IntentRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
@@ -24,9 +25,12 @@ const chains = testChains();
 const fakeChain = expectOk(chains.get(benchChain));
 const otherAccount = "fake:2:0x0000000c" as typeof testAccount;
 
-async function tappedSnapshot(bench: ExecutorBench): Promise<IntentSnapshot> {
+async function tappedSnapshot(
+  bench: ExecutorBench,
+  request: IntentRequest = testSwap(),
+): Promise<IntentSnapshot> {
   const handlers = bench.test.engine.handlers;
-  const view = expectOk(await handlers["intent/propose"](testCall(testSwap())));
+  const view = expectOk(await handlers["intent/propose"](testCall(request)));
   const card = view.card?.card as Id<"crd">;
   expectOk(
     await handlers["intent/confirm"](testCall({ intent: view.intent, card, cardVersion: 1 })),
@@ -44,8 +48,11 @@ async function tappedSnapshot(bench: ExecutorBench): Promise<IntentSnapshot> {
   return snapshot;
 }
 
-function checkPartsOf(bench: ExecutorBench, options: { readonly wallets?: boolean } = {}) {
-  const wallets = options.wallets === false ? [] : [testWallet];
+function checkPartsOf(
+  bench: ExecutorBench,
+  options: { readonly wallets?: readonly Id<"wal">[] } = {},
+) {
+  const wallets = options.wallets ?? [testWallet];
   return {
     custody: bench.test.custody,
     wallets: createFakeWalletFacts(new Map([[testAgent, wallets]]), {
@@ -93,6 +100,15 @@ function atCap(snapshot: IntentSnapshot): IntentSnapshot {
   const { settings, record } = snapshot;
   const limits = { ...settings.limits, rollingDayUsdMicros: record.valueUsdMicros ?? 0n };
   return { ...snapshot, settings: { ...settings, limits } };
+}
+
+// Custody that holds no account of `missing`, and the others as `custody` does.
+function withoutWallet(custody: Signer, missing: Id<"wal">): Signer {
+  return {
+    ...custody,
+    account: async (wallet, chain, call) =>
+      wallet === missing ? err("unknown_wallet") : custody.account(wallet, chain, call),
+  };
 }
 
 function withStatus(
@@ -155,13 +171,26 @@ describe("the queue check", () => {
   it("fails the policy and the auto grant when the wallet no longer resolves", async () => {
     const bench = await startExecutorBench({ hold: true });
     const auto = withStatus(await tappedSnapshot(bench), { approvalMode: "auto", modeVersion: 0 });
-    const parts = checkPartsOf(bench, { wallets: false });
+    const parts = checkPartsOf(bench, { wallets: [] });
     const check = await checkForQueue(auto, { parts, chain: fakeChain }, live().signal);
     expect([
       check.facts.hasPolicyPassed,
       check.facts.isAuthorizationValid,
       check.terms,
     ]).toStrictEqual([false, false, undefined]);
+  });
+
+  it("judges the intent on its own wallet after the agent's default wallet changed", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const { wallet: _wallet, ...onDefault } = testSwap();
+    const snapshot = await tappedSnapshot(bench, onDefault);
+    const newDefault = fixtureId("wal", 9);
+    const parts = {
+      ...checkPartsOf(bench, { wallets: [newDefault, testWallet] }),
+      custody: withoutWallet(bench.test.custody, newDefault),
+    };
+    const check = await checkForQueue(snapshot, { parts, chain: fakeChain }, live().signal);
+    expect(check.facts.hasPolicyPassed).toBe(true);
   });
 
   it("has no terms for a tapped intent whose confirmation is not stored", async () => {
