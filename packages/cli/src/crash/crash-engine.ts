@@ -13,7 +13,8 @@ import { crashHttp } from "./crash-http.js";
 // and relays, Privy and KyberSwap's API on loopback, and the signer in this process with the agent
 // key the engine hands it. Like `main.ts`, it alone reads `process`.
 const env = crashEnvSchema.parse(process.env);
-const http = createSystemHttp();
+const version = "crash";
+const http = createSystemHttp({ version });
 const host: CliHost = {
   argv: ["start", "--json", "--set", `engine.port=${env.CRASH_PORT}`],
   env: process.env,
@@ -23,7 +24,7 @@ const host: CliHost = {
   random: createSystemRandom(),
   http: crashHttp(http, { relays: env.CRASH_RELAYS, services: env.CRASH_SERVICES }),
   signals: process,
-  version: "crash",
+  version,
   // Store workers run with this process's Node options, the TypeScript loader among them.
   workerExecArgv: process.execArgv,
   startSigner: createTestSigner().start,

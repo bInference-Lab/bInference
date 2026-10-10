@@ -39,7 +39,7 @@ describe("kyberswap's aggregator api", () => {
     const found = await api.findRoute({ ...query, excludedSources }, live());
     expect(successOf(found).amountOut).toBe(76_705_221_475_414_064_061n);
     expect(http.requests().map((request) => request.headers)).toStrictEqual([
-      { "x-client-id": "binference", "user-agent": "binference" },
+      { "x-client-id": "binference" },
     ]);
   });
 

@@ -306,7 +306,7 @@ async function listen(server: Server): Promise<string> {
  * with anvil's own, is what a run counts; nothing the engine says about itself counts.
  */
 export async function serveCrashChain(anvilUrl: string): Promise<CrashChain> {
-  const http = createSystemHttp();
+  const http = createSystemHttp({ version: "crash" });
   const upstream = upstreamOf(anvilUrl, http);
   const book = createChainBook();
   const handlers = handlersOf(book, upstream);

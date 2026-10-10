@@ -213,7 +213,7 @@ describe.runIf(liveTests)("binference init against the Privy test app", () => {
     { timeout: 120_000 },
     async () => {
       const machine = await newInitMachine(folders);
-      const http = createSystemHttp();
+      const http = createSystemHttp({ version: "test" });
       try {
         const parts = { http };
         const answer = await initOn(machine, ["--privy-app-id", liveAppId], {

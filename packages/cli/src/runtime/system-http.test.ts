@@ -19,6 +19,9 @@ const pages: Readonly<
       response.end(`${String(request.headers["x-test"])}:${Buffer.concat(parts).toString("utf8")}`);
     });
   },
+  "/agent": (request, response) => {
+    response.end(request.headers["user-agent"] ?? "none");
+  },
   "/large": (_, response) => {
     response.end(Buffer.alloc(8 * 1024 * 1024 + 1, 97));
   },
@@ -63,7 +66,7 @@ afterAll(async () => {
 });
 
 function adapter(): SystemHttp {
-  const created = createSystemHttp();
+  const created = createSystemHttp({ version: "1.2.3" });
   adapters.push(created);
   return created;
 }
@@ -95,6 +98,19 @@ describe("the system Http adapter", () => {
     expect(answer.body).toBe("yes:payload");
     expect(answer.headers["x-echo-method"]).toBe("POST");
     expect(answer.headers["set-cookie"]).toBe("a=1, b=2");
+  });
+
+  it("names binference and its version as the user agent of every request", async () => {
+    const http = adapter();
+    const url = `${held.origin}/agent`;
+    const bare = await http.request({ method: "GET", url, signal: live() });
+    const named = await http.request({
+      method: "GET",
+      url,
+      headers: { "User-Agent": "other/9", "user-agent": "other/8" },
+      signal: live(),
+    });
+    expect([bare.body, named.body]).toStrictEqual(["binference/1.2.3", "binference/1.2.3"]);
   });
 
   it("refuses an answer over 8 MiB", async () => {

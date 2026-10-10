@@ -40,7 +40,7 @@ const feedAbi = parseAbi([
 const terminal = new Set(["paper_filled", "reconciled", "failed_onchain", "failed_check"]);
 const folders: TempFolder[] = [];
 const engines = createRunningEngines();
-const network = createSystemHttp();
+const network = createSystemHttp({ version: "test" });
 
 afterEach(async () => {
   await engines.stopAll();

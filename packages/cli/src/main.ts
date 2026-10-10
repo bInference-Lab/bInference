@@ -16,7 +16,7 @@ const version = read.ok
   ? z.object({ version: z.string() }).parse(JSON.parse(read.value)).version
   : "unknown";
 
-const http = createSystemHttp();
+const http = createSystemHttp({ version });
 // A person answers questions only when both ends of the terminal are one.
 const hasTerminal = process.stdin.isTTY && process.stdout.isTTY;
 process.exitCode = await runCli({

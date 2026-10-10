@@ -51,9 +51,6 @@ export interface KyberswapApiOptions {
 }
 
 const origin = "https://aggregator-api.kyberswap.com";
-// Seen on the live API, not in its docs (2026-10-10): its edge answers a request without a
-// User-Agent with a 403 challenge page, so every trade would read as a venue that is down.
-const userAgent = "binference";
 // Route not found, amount above the maximum, no eligible pool, unknown token, and every source
 // filtered out: KyberSwap's answers for a trade it has no route for.
 const noRouteCodes: ReadonlySet<number> = new Set([4008, 4009, 4010, 4011, 40011]);
@@ -93,13 +90,14 @@ function buildBody(order: BuildOrder, source: string): string {
 
 /**
  * Creates the client of KyberSwap's aggregator API. Every call names binference with the client
- * id and a User-Agent, and carries the caller's signal. Each answer is checked by its schema and read into the
- * venue's own types; an answer that breaks it, or an error other than "no route", throws
- * `kyberswap.unavailable`.
+ * id and carries the caller's signal; the host's Http adapter names binference as the user agent,
+ * without which KyberSwap's edge answers with a 403 challenge page (seen on the live API, not in
+ * its docs, 2026-10-10). Each answer is checked by its schema and read into the venue's own types;
+ * an answer that breaks it, or an error other than "no route", throws `kyberswap.unavailable`.
  */
 export function createKyberswapApi(options: KyberswapApiOptions): KyberswapApi {
   const { http, clientId } = options;
-  const headers = { "x-client-id": clientId, "user-agent": userAgent };
+  const headers = { "x-client-id": clientId };
   return {
     async findRoute(query, signal) {
       const response = await http.request({

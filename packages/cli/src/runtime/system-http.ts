@@ -8,6 +8,12 @@ export interface SystemHttp extends Http {
   close(): Promise<void>;
 }
 
+/** What the adapter names itself with. */
+export interface SystemHttpOptions {
+  /** The running binference's version, which every request names in its `user-agent`. */
+  readonly version: string;
+}
+
 // An answer binference reads is small JSON; a larger one is refused before it fills memory.
 const maxBodyBytes = 8 * 1024 * 1024;
 
@@ -50,11 +56,23 @@ async function readBody(chunks: AsyncIterable<Uint8Array>, request: HttpRequest)
   return Buffer.concat(parts).toString("utf8");
 }
 
-async function exchange(agent: Agent, request: HttpRequest): Promise<HttpResponse> {
+// Header names match whatever their case, so a caller's own user agent gives way to binference's.
+function headersFor(request: HttpRequest, userAgent: string): Record<string, string> {
+  const kept = Object.entries(request.headers ?? {}).filter(
+    ([name]) => name.toLowerCase() !== "user-agent",
+  );
+  return { ...Object.fromEntries(kept), "user-agent": userAgent };
+}
+
+async function exchange(
+  agent: Agent,
+  request: HttpRequest,
+  userAgent: string,
+): Promise<HttpResponse> {
   const answer = await send(request.url, {
     dispatcher: agent,
     method: request.method,
-    headers: { ...request.headers },
+    headers: headersFor(request, userAgent),
     ...(request.body === undefined ? {} : { body: request.body }),
     signal: request.signal,
   });
@@ -68,17 +86,20 @@ async function exchange(agent: Agent, request: HttpRequest): Promise<HttpRespons
 /**
  * The CLI's outbound HTTP, over undici with a connection pool of its own: it follows no
  * redirect, answers every status as it came, and reads at most 8 MiB of an answer
- * (`http.answer_too_large`). A request that gets no answer rejects with a retryable
- * `http.unreachable` naming only the method and the origin, never the path, a header or a body;
- * one whose signal aborts rejects with the signal's reason.
+ * (`http.answer_too_large`). Every request names binference as `user-agent:
+ * binference/<version>`, in place of any user agent the caller set, so each service sees one
+ * name: some refuse a request with none, as KyberSwap's edge does. A request that gets no answer
+ * rejects with a retryable `http.unreachable` naming only the method and the origin, never the
+ * path, a header or a body; one whose signal aborts rejects with the signal's reason.
  */
-export function createSystemHttp(): SystemHttp {
+export function createSystemHttp(options: SystemHttpOptions): SystemHttp {
   const agent = new Agent();
+  const userAgent = `binference/${options.version}`;
   return {
     async request(request) {
       request.signal.throwIfAborted();
       try {
-        return await exchange(agent, request);
+        return await exchange(agent, request, userAgent);
       } catch (error) {
         if (request.signal.aborted) {
           throw request.signal.reason;
