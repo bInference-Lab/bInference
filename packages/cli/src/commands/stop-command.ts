@@ -15,7 +15,7 @@ import {
 } from "./service-start-command.js";
 
 /** How a stop ended. */
-type StopOutcome =
+export type StopOutcome =
   | { readonly kind: "stopped"; readonly isServiceKept: boolean }
   | { readonly kind: "not_running" }
   | { readonly kind: "late" };
@@ -57,10 +57,12 @@ async function hasLetGo(run: ServiceRun): Promise<boolean> {
   }
 }
 
-// The engine stops through its own shutdown sequence on every OS, Windows too, where the OS ends a
-// task without a signal Node hears. Then the OS stops the service, which keeps it for the next
-// login; that also ends an engine that did not take the request, such as one still starting.
-async function stopEngine(run: ServiceRun): Promise<StopOutcome> {
+/**
+ * Stops the engine through its own shutdown sequence on every OS, Windows too, where the OS ends a
+ * task without a signal Node hears. Then the OS stops the service, which keeps it for the next
+ * login; that also ends an engine that did not take the request, such as one still starting.
+ */
+export async function stopEngine(run: ServiceRun): Promise<StopOutcome> {
   const { host, manager, signal } = run;
   const wasRunning = isEngineRunning(run.platform);
   if (wasRunning) {
@@ -77,7 +79,8 @@ async function stopEngine(run: ServiceRun): Promise<StopOutcome> {
   return (await hasLetGo(run)) ? { kind: "stopped", isServiceKept: isInstalled } : { kind: "late" };
 }
 
-async function withStopRun(
+/** Runs `use` with this OS's service manager, or the host's, within the stop's time limit. */
+export async function withStopRun(
   host: CliHost,
   output: CliOutput,
   use: (run: ServiceRun) => Promise<ExitCode>,
@@ -98,7 +101,8 @@ async function withStopRun(
   }
 }
 
-function refuseLate(run: ServiceRun): ExitCode {
+/** Says the engine still runs on the state folder, and answers exit code 1. */
+export function refuseLate(run: ServiceRun): ExitCode {
   const folder = run.platform.stateFolder.root;
   run.output.fail({ code: "engine.still_running", key: "stop.late", values: { folder } });
   return 1;

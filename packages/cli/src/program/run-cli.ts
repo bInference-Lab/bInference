@@ -14,6 +14,7 @@ import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
+import { runServiceRemove } from "../commands/service-remove-command.js";
 import { runSignerRevoke } from "../commands/signer-revoke-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
@@ -88,6 +89,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
     runInitCommand(host, output, { flags: chosen.options, formatter }),
   start: async ({ host, output }, chosen) => runStart(host, output, chosen.options),
   stop: async ({ host, output }) => runStop(host, output),
+  serviceRemove: async ({ host, output }) => runServiceRemove(host, output),
   restart: async ({ host, output }, chosen) => runRestart(host, output, chosen.options),
   status: async ({ host, output, formatter }) => {
     const message = (key: string): string => formatter.message(`cli.${key}`);

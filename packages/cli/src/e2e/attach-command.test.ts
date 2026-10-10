@@ -122,6 +122,8 @@ describe("binference init --attach", () => {
 
       expect([attached.code, attached.stderr]).toStrictEqual([0, ""]);
       expect(attached.prompter.transcript.asked).toStrictEqual(["ownerKey"]);
+      const notes = attached.prompter.transcript.notes.map((note) => note.text).join("\n");
+      expect(notes).toContain("on the old machine, run `binference service remove`");
       const newKey = await heldKey(machine);
       const after = await storedInstall(machine);
       const { custody } = after.facts;

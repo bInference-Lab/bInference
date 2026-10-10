@@ -70,6 +70,7 @@ describe("binference signer revoke", () => {
       const ownRefused = await revoke(machine, own, ownerKey);
 
       expect([removed.code, removed.stderr]).toStrictEqual([0, ""]);
+      expect(removed.stdout).toContain("On that machine, run `binference service remove`");
       expect(await api.wallet(wallet, live)).toMatchObject(ok({ signers: [{ signerId: own }] }));
       expect([ownRefused.code, ownRefused.stderr]).toStrictEqual([
         1,

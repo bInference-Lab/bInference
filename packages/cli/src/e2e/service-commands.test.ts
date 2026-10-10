@@ -236,3 +236,55 @@ describe("binference stop and restart", () => {
     expect(home.services.installs()).toBe(2);
   });
 });
+
+describe("binference service remove", () => {
+  it("stops the engine and removes the service, and a second run finds none", slow, async () => {
+    const home = await setUpHome();
+    await start(home);
+
+    const removed = await cli(home, ["service", "remove", "--json"]);
+    const again = await cli(home, ["service", "remove", "--json"]);
+
+    expect(removed.code).toBe(0);
+    expect(JSON.parse(removed.stdout)).toStrictEqual({ state: "stopped", service: "removed" });
+    expect(isUnlocked(home.machine.folder)).toBe(true);
+    const signal = new AbortController().signal;
+    await expect(home.services.manager.status("engine", signal)).resolves.toMatchObject({
+      state: "not_installed",
+    });
+    expect(home.services.installed()).toBeUndefined();
+    expect(JSON.parse(again.stdout)).toStrictEqual({ state: "stopped", service: "none" });
+  });
+
+  it("tells a person the service is gone and the state folder stays", slow, async () => {
+    const home = await setUpHome();
+    await start(home);
+
+    const removed = await cli(home, ["service", "remove"]);
+
+    expect(removed).toStrictEqual({
+      code: 0,
+      stdout:
+        "binference stopped, and its background service is removed: it no longer starts when " +
+        `you log in. The state folder ${home.machine.folder} stays.\n`,
+      stderr: "",
+    });
+  });
+
+  it(
+    "only stops the engine of a folder BINFERENCE_HOME moves, which has no service",
+    slow,
+    async () => {
+      const home = await setUpHome();
+
+      const removed = await runOn(home.machine, ["service", "remove", "--json"], {
+        parts: { serviceManager: home.services.manager },
+      });
+
+      expect([removed.code, JSON.parse(removed.stdout)]).toStrictEqual([
+        0,
+        { state: "stopped", service: "none" },
+      ]);
+    },
+  );
+});

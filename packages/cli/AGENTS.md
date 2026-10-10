@@ -33,8 +33,9 @@ Rules for this package:
   then the poll worker. A token that cannot be read leaves the engine running without the bot.
 - `binference start` runs the engine as the background service through the platform's
   `ServiceManager` (decision 0138), the OS's own unless the host names one; the service runs
-  `binference start --foreground`, which is `startSelfHosted`. Every test host gets a service
-  manager that refuses, so no test touches the machine's login items; a test of the service passes
+  `binference start --foreground`, which is `startSelfHosted`; `binference service remove` stops
+  the engine as `stop` does and removes the service (decision 0141). Every test host gets a
+  service manager that refuses, so no test touches the machine's login items; a test of the service passes
   `src/e2e/test-services.ts`, which runs the service's command line in the test's process. The CI
   job `Background service at login` runs `pnpm service:smoke` on each runner, with the OS's own
   logout and login between its phases; it installs a real service, so never run it on your own

@@ -12,7 +12,10 @@ It checks the config first, waits until the engine answers past `starting`, and 
 log and the service's own output, `logs/service.log`. A service that runs is left as it is; an
 engine in a terminal, and a run with `BINFERENCE_HOME` set, are refused. `binference stop` asks
 the engine for its shutdown sequence over IPC, then has the OS stop the service, which starts it
-again at the next login; `binference restart` is a stop, then a start.
+again at the next login; `binference restart` is a stop, then a start. `binference service remove`
+stops the engine the same way, then has the OS remove the service, so it no longer starts at login
+(decision 0141); the state folder, the config and the keys stay, and a machine with no service only
+stops its engine. A machine another one replaced runs it.
 
 `binference start --foreground` runs the self-hosted engine in this process (`startSelfHosted` in
 `src/compose/`). In order it takes the engine lock on the state folder, loads `config.json5` with
@@ -139,6 +142,7 @@ The reference of every key, generated from the schema, is
 | `binference start --foreground`      | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
 | `binference stop`                    | Stops the engine; the background service starts again at login      |
 | `binference restart`                 | Stops the engine, then starts the background service again          |
+| `binference service remove`          | Stops the engine and takes its background service off login         |
 | `binference status`                  | The engine's state, release, agents and health signals              |
 | `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |
 | `binference logs [-n N] [--follow]`  | The engine log's last lines, then new ones until Ctrl+C             |
