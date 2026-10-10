@@ -17,6 +17,7 @@ import { migration as positionsAndDepartures } from "./0015_positions_and_depart
 import { migration as intentValues } from "./0016_intent_values.js";
 import { migration as executionRealized } from "./0017_execution_realized.js";
 import { migration as noticeIntents } from "./0018_notice_intents.js";
+import { migration as telegramOwner } from "./0019_telegram_owner.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -38,4 +39,5 @@ export const engineMigrations: readonly Migration[] = [
   intentValues,
   executionRealized,
   noticeIntents,
+  telegramOwner,
 ];

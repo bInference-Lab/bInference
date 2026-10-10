@@ -1,6 +1,7 @@
 import type { Generated } from "kysely";
 import type { NoticeTables } from "./notice-tables.js";
 import type { PositionTables } from "./position-tables.js";
+import type { TelegramTables } from "./telegram-tables.js";
 
 // The engine tables the store adapters query, as SQLite returns them: TEXT is a string, INTEGER a
 // number, and a nullable column may be null. The migrations in src/migrations/engine/ define them.
@@ -327,7 +328,7 @@ interface RiskCacheTable {
 }
 
 /** The engine tables the store adapters query, by name. */
-export interface EngineTables extends PositionTables, NoticeTables {
+export interface EngineTables extends PositionTables, NoticeTables, TelegramTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;

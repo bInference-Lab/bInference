@@ -1,4 +1,4 @@
-import { BinferenceError, err, type Logger, ok, type Result } from "@binference/core";
+import { BinferenceError, type Clock, err, type Logger, ok, type Result } from "@binference/core";
 import type {
   CardCopy,
   CardCopyStore,
@@ -66,6 +66,8 @@ export interface TelegramCardsOptions {
   readonly copies: CardCopyStore;
   /** The engine's side: it checks the presser and stores each answer. */
   readonly answers: CardAnswers;
+  /** Dates each copy kept as the time its message was sent. */
+  readonly clock: Clock;
   readonly logger: Logger;
   /**
    * The owner's language and timezone as they are now: cards, receipts and times follow them, read
@@ -106,7 +108,7 @@ async function send(
   sending: { readonly showing: CardShowing; readonly decisions: readonly Decision[] },
   call: Call,
 ): Promise<Result<CardCopy, "no_owner">> {
-  const { copies, owners, logger } = context.options;
+  const { copies, owners, clock, logger } = context.options;
   const { showing } = sending;
   const owner = await owners.get(call);
   if (owner === undefined) {
@@ -128,6 +130,7 @@ async function send(
     cardVersion: showing.card.version,
     chatId: owner.userId,
     messageId,
+    sentAtMs: clock.now(),
   };
   await copies.keep(copy, call);
   logger.info("telegram.card_shown", { intentId: showing.intent });

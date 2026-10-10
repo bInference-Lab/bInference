@@ -113,7 +113,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     ownerId: answersOwner(parts),
     chains,
   });
-  const cards = createTelegramCards({ ...parts, answers, logger, display });
+  const cards = createTelegramCards({ ...parts, answers, clock: wiring.clock, logger, display });
   const showings = createCardShowings({ intents: stores.intents, agents: stores.agents, chains });
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
   const commands = createFastCommands({

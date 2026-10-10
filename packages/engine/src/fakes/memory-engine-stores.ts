@@ -1,6 +1,7 @@
 import type { EngineStores } from "../records/engine-stores.js";
 import { createMemoryAccessStore } from "./memory-access-store.js";
 import { createMemoryAgentStore, type MemoryAgentStore } from "./memory-agent-store.js";
+import { createMemoryCardCopyStore } from "./memory-card-copy-store.js";
 import { createMemoryConfigJournal } from "./memory-config-journal.js";
 import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
 import { createMemoryInboxStore } from "./memory-inbox-store.js";
@@ -8,6 +9,7 @@ import { createMemoryInstallStore, type MemoryInstallStore } from "./memory-inst
 import { createMemoryIntentStore } from "./memory-intent-store.js";
 import { createMemoryLedgerStore, type MemoryLedgerStore } from "./memory-ledger-store.js";
 import { createMemoryNoticeStore } from "./memory-notice-store.js";
+import { createMemoryOwnerStore } from "./memory-owner-store.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 
 /**
@@ -40,5 +42,7 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     transactions: createMemoryTransactionStore(),
     install,
     notices: createMemoryNoticeStore({ agents }),
+    owners: createMemoryOwnerStore(),
+    cardCopies: createMemoryCardCopyStore(),
   };
 }

@@ -64,7 +64,7 @@ async function setUp(options: { readonly isPaired?: boolean; readonly throttled?
       return standing;
     },
   };
-  const cards = createTelegramCards({ api, owners, copies, answers, logger, display });
+  const cards = createTelegramCards({ api, owners, copies, answers, clock, logger, display });
   const ingress = createTelegramIngress({
     api,
     stores: { inbox: createMemoryInboxStore(), access: createMemoryAccessStore(), owners },
@@ -111,15 +111,17 @@ describe("the Telegram cards", () => {
     const context = await setUp();
     context.engine.open(ref);
     const shown = await context.cards.show(showing(), live);
+    const sentAtMs = context.clock.now();
     const copy = { ref, intent: cardIntent, cardVersion: 1, chatId: ownerId, messageId: 1001 };
-    expect(shown).toStrictEqual({ ok: true, value: copy });
+    expect(shown).toStrictEqual({ ok: true, value: { ...copy, sentAtMs } });
+    const kept = { ...copy, sentAtMs };
     expect(context.botApi.messages()).toMatchObject([
       { chatId: ownerId, messageId: 1001, threadId: 4, entities: [], buttons },
     ]);
     expect(context.botApi.messages()[0]?.text.split("\n")[1]).toBe(
       "Sell 0.5 BNB → at least 312.4 USDT",
     );
-    expect(await context.copies.find(ref, live)).toStrictEqual([copy]);
+    expect(await context.copies.find(ref, live)).toStrictEqual([kept]);
     expect(context.logger.records()).toMatchObject([
       { level: "info", event: "telegram.card_shown", fields: { intentId: cardIntent } },
     ]);
@@ -331,10 +333,11 @@ describe("the Telegram cards", () => {
       amountOut: { asset: refs.usdt, base: 31_395n * 10n ** 16n },
     };
     const filling = withPaperFill(context.engine, { fill, assets: assetsWith() });
-    const { api, copies, logger, botApi } = context;
+    const { api, copies, clock, logger, botApi } = context;
     const owners = createMemoryOwnerStore();
     await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
-    const cards = createTelegramCards({ api, owners, copies, answers: filling, logger, display });
+    const answers = filling;
+    const cards = createTelegramCards({ api, owners, copies, answers, clock, logger, display });
     await cards.show(showing(), live);
     const update = botApi.press({ from: ownerId, data: confirmData, messageId: 1001 });
     await cards.press(pressOf(update), live);

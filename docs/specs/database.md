@@ -144,19 +144,24 @@ transaction with their position changes.
 
 ### 2.7 Surfaces, delivery and idempotency
 
-| Table         | Columns                                                                                                                                                                                                                                                                                          | Keys and indexes           |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| `inbox`       | `id`, `source` (`telegram`, `webhook`), `source_key` (`tg:<bot>:<update>`), `payload JSON`, `received_at`, `handled_at`                                                                                                                                                                          | unique `source_key`        |
-| `outbox`      | `id`, `surface`, `target JSON`, `payload JSON`, `state` (`queued`, `sent`, `unknown_after_send`, `failed`), `attempts`, `next_at`, `ref`, `created_at`, `sent_at`                                                                                                                                | `(state, next_at)`         |
-| `notices`     | `id`, `agent_id`, `kind` (the notice's name), `i18n_key`, `values JSON` (the message's values, times and amounts), `level` (`info`, `warning`, `critical`), `at`, `delivered JSON` (each surface's delivery state), `intent_id` (the intent it is about, [decision 0133](../DECISIONS.md#d0133)) | `(at)`                     |
-| `idempotency` | `credential`, `op`, `key`, `args_hash`, `result JSON`, `at`                                                                                                                                                                                                                                      | PK `(credential, op, key)` |
-| `model_usage` | `id`, `agent_id`, `turn_id`, `model`, `input_tokens`, `output_tokens`, `cached_tokens`, `usd_micros`, `at`                                                                                                                                                                                       | `(agent_id, at)`           |
+| Table            | Columns                                                                                                                                                                                                                                                                                          | Keys and indexes           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| `inbox`          | `id`, `source` (`telegram`, `webhook`), `source_key` (`tg:<bot>:<update>`), `payload JSON`, `received_at`, `handled_at`                                                                                                                                                                          | unique `source_key`        |
+| `outbox`         | `id`, `surface`, `target JSON`, `payload JSON`, `state` (`queued`, `sent`, `unknown_after_send`, `failed`), `attempts`, `next_at`, `ref`, `created_at`, `sent_at`                                                                                                                                | `(state, next_at)`         |
+| `notices`        | `id`, `agent_id`, `kind` (the notice's name), `i18n_key`, `values JSON` (the message's values, times and amounts), `level` (`info`, `warning`, `critical`), `at`, `delivered JSON` (each surface's delivery state), `intent_id` (the intent it is about, [decision 0133](../DECISIONS.md#d0133)) | `(at)`                     |
+| `idempotency`    | `credential`, `op`, `key`, `args_hash`, `result JSON`, `at`                                                                                                                                                                                                                                      | PK `(credential, op, key)` |
+| `model_usage`    | `id`, `agent_id`, `turn_id`, `model`, `input_tokens`, `output_tokens`, `cached_tokens`, `usd_micros`, `at`                                                                                                                                                                                       | `(agent_id, at)`           |
+| `telegram_owner` | `id` (always `1`), `user_id` (the Telegram user the bot answers), `paired_at`                                                                                                                                                                                                                    | PK `id`                    |
 
 A notice is stored before any surface sends it, with an `outbox` row for each chat surface the
 install runs: `target` `{ "to": "owner" }`, `payload` `{ "notice": <id> }`. A delivery turns
 `unknown_after_send` before the surface is called and is never sent again from there; each move
 changes the row and the notice's `delivered` in one transaction
 ([decision 0133](../DECISIONS.md#d0133)).
+
+`telegram_owner` holds at most one row: the one Telegram user the bot answers. Pairing writes it
+and a new pairing replaces it; the bot's copies of each card live in `card_messages`, so both
+outlast a restart ([decision 0139](../DECISIONS.md#d0139)).
 
 <a id="section-2-8"></a>
 

@@ -24,9 +24,12 @@ export interface OwnerStore {
 export interface CardCopyStore {
   /** Keeps a copy; keeping the same message again changes nothing. */
   keep(copy: CardCopy, options: { readonly signal: AbortSignal }): Promise<void>;
-  /** The copies of the card version with this callback reference, in the order kept. */
+  /** The copies of the card version with this callback reference, in the order they were sent. */
   find(ref: string, options: { readonly signal: AbortSignal }): Promise<readonly CardCopy[]>;
-  /** The copies of every version of an intent's card, the oldest version first. */
+  /**
+   * The copies of every version of an intent's card, the oldest version first, each version's in
+   * the order they were sent.
+   */
   ofIntent(
     intent: Id<"int">,
     options: { readonly signal: AbortSignal },

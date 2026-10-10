@@ -72,7 +72,7 @@ export type { IdempotencyStoreHarness } from "./contracts/idempotency-store-cont
 export { inboxStoreContract } from "./contracts/inbox-store-contract.js";
 export type { InboxStoreHarness } from "./contracts/inbox-store-contract.js";
 export { cardCopyStoreContract } from "./contracts/card-copy-store-contract.js";
-export type { CardCopyStoreHarness } from "./contracts/card-copy-store-contract.js";
+export type { CardCopyStoreHarness, CardVersionKey } from "./contracts/card-copy-store-contract.js";
 export { noticeStoreContract } from "./contracts/notice-store-contract.js";
 export { ownerStoreContract } from "./contracts/owner-store-contract.js";
 export type { OwnerStoreHarness } from "./contracts/owner-store-contract.js";

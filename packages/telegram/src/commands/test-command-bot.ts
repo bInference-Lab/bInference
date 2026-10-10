@@ -81,7 +81,7 @@ async function partsOf(options: CommandBotOptions) {
   const answers = createFakeCardAnswers({ clock, ownerId });
   const display = () => ({ locale: options.locale ?? "en", timeZone: "UTC" }) as const;
   const copies = createMemoryCardCopyStore();
-  const cards = createTelegramCards({ api, owners, copies, answers, logger, display });
+  const cards = createTelegramCards({ api, owners, copies, answers, clock, logger, display });
   return { botApi, api, owners, clock, logger, answers, display, cards };
 }
 

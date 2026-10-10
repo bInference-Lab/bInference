@@ -10,6 +10,8 @@ import { engineMigrations } from "../migrations/engine/engine-migrations.js";
 import { noticeTasks } from "../notices/notice-tasks.js";
 import { positionTasks } from "../positions/sqlite-position-store.js";
 import { riskCacheTasks } from "../risk-cache/risk-cache-tasks.js";
+import { cardCopyTasks } from "../surfaces/sqlite-card-copy-store.js";
+import { ownerTasks } from "../surfaces/sqlite-owner-store.js";
 import { transactionTasks } from "../transactions/sqlite-transaction-store.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
@@ -31,6 +33,8 @@ export const engineDatabase: DatabaseDefinition = {
     ...riskCacheTasks,
     ...positionTasks,
     ...noticeTasks,
+    ...ownerTasks,
+    ...cardCopyTasks,
   ],
 };
 

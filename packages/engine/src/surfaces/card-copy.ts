@@ -9,6 +9,8 @@ export interface CardCopy {
   readonly cardVersion: number;
   readonly chatId: number;
   readonly messageId: number;
+  /** When the message was sent, in epoch milliseconds. */
+  readonly sentAtMs: number;
 }
 
 /** Parses a card copy as a store keeps it. */
@@ -18,4 +20,5 @@ export const cardCopySchema: z.ZodType<CardCopy> = z.strictObject({
   cardVersion: z.int().positive(),
   chatId: z.int(),
   messageId: z.int().positive(),
+  sentAtMs: z.int().nonnegative(),
 });

@@ -16,6 +16,8 @@ export { createSqlitePositionStore } from "./positions/sqlite-position-store.js"
 export { createSqliteRiskCacheStore } from "./risk-cache/sqlite-risk-cache-store.js";
 export type { ForeignKeyProblem, IntegrityReport } from "./sqlite/integrity-report.js";
 export type { VacuumCopy, VacuumOutcome } from "./sqlite/vacuum-into.js";
+export { createSqliteCardCopyStore } from "./surfaces/sqlite-card-copy-store.js";
+export { createSqliteOwnerStore } from "./surfaces/sqlite-owner-store.js";
 export type { StoreHost } from "./tasks/store-host.js";
 export type { StoreTask, TaskAccess, TaskRunner } from "./tasks/store-task.js";
 export { createSqliteTransactionStore } from "./transactions/sqlite-transaction-store.js";

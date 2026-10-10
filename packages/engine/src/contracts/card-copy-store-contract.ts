@@ -4,9 +4,15 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { CardCopy } from "../surfaces/card-copy.js";
 import type { CardCopyStore } from "../surfaces/ports.js";
 
-/** Makes a fresh, empty card copy store for each check. */
+/** A card version a copy belongs to, as the intent store keeps it. */
+export type CardVersionKey = Pick<CardCopy, "ref" | "intent" | "cardVersion">;
+
+/**
+ * Makes a fresh card copy store for each check, holding no copy, with the card versions the check
+ * names stored first, as the intent store stores each version before a surface shows it.
+ */
 export interface CardCopyStoreHarness {
-  create(): Promise<CardCopyStore>;
+  create(cards: readonly CardVersionKey[]): Promise<CardCopyStore>;
 }
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
@@ -18,8 +24,23 @@ const first: CardCopy = {
   cardVersion: 1,
   chatId: 7_012_345_678,
   messageId: 1001,
+  sentAtMs: 1_000,
 };
-const second: CardCopy = { ...first, ref: "BBBBBBBBBBBBBBBB", cardVersion: 2, messageId: 1002 };
+const second: CardCopy = {
+  ...first,
+  ref: "BBBBBBBBBBBBBBBB",
+  cardVersion: 2,
+  messageId: 1002,
+  sentAtMs: 2_000,
+};
+const elsewhere: CardCopy = {
+  ...first,
+  ref: "CCCCCCCCCCCCCCCC",
+  intent: otherIntent,
+  messageId: 1003,
+  sentAtMs: 3_000,
+};
+const cards: readonly CardVersionKey[] = [first, second, elsewhere];
 
 async function startsEmpty(store: CardCopyStore): Promise<void> {
   assert.deepEqual(await store.find(first.ref, live()), []);
@@ -27,7 +48,7 @@ async function startsEmpty(store: CardCopyStore): Promise<void> {
 }
 
 async function findsByRef(store: CardCopyStore): Promise<void> {
-  const inGroup = { ...first, chatId: -100, messageId: 7 };
+  const inGroup = { ...first, chatId: -100, messageId: 7, sentAtMs: 1_500 };
   await store.keep(first, live());
   await store.keep(inGroup, live());
   await store.keep(first, live());
@@ -36,7 +57,6 @@ async function findsByRef(store: CardCopyStore): Promise<void> {
 }
 
 async function listsByIntent(store: CardCopyStore): Promise<void> {
-  const elsewhere = { ...first, ref: "CCCCCCCCCCCCCCCC", intent: otherIntent, messageId: 1003 };
   await store.keep(second, live());
   await store.keep(elsewhere, live());
   await store.keep(first, live());
@@ -58,7 +78,7 @@ export function cardCopyStoreContract(harness: CardCopyStoreHarness): readonly C
   const on =
     (run: (store: CardCopyStore) => Promise<void>): (() => Promise<void>) =>
     async () =>
-      run(await harness.create());
+      run(await harness.create(cards));
   return [
     { name: "finds no copy before one is kept", run: on(startsEmpty) },
     { name: "finds a card version's copies by its reference, each once", run: on(findsByRef) },

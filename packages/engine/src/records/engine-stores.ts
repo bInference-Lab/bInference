@@ -10,6 +10,7 @@ import type {
   NoticeStore,
   TransactionStore,
 } from "../ports.js";
+import type { CardCopyStore, OwnerStore } from "../surfaces/ports.js";
 
 /**
  * Every store port of the engine database, as the composition root hands them to the engine, the
@@ -28,4 +29,8 @@ export interface EngineStores {
   readonly transactions: TransactionStore;
   readonly install: InstallStore;
   readonly notices: NoticeStore;
+  /** Who owns the install on Telegram, for the owner's bot. */
+  readonly owners: OwnerStore;
+  /** Where each card version was posted in Telegram. */
+  readonly cardCopies: CardCopyStore;
 }

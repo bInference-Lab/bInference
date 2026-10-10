@@ -7,6 +7,7 @@ const copy = {
   cardVersion: 1,
   chatId: 7_100_000_001,
   messageId: 1001,
+  sentAtMs: 1_760_000_000_000,
 };
 
 describe("cardCopySchema", () => {
@@ -14,7 +15,7 @@ describe("cardCopySchema", () => {
     expect(cardCopySchema.parse(copy)).toStrictEqual(copy);
   });
 
-  it.each([
+  it.each<readonly [string, Readonly<Record<string, unknown>>]>([
     ["a reference that is not 12 bytes in base64url", { ...copy, ref: "short" }],
     [
       "an intent id of another kind",
