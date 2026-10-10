@@ -27,6 +27,7 @@ import type { Closers } from "./closers.js";
 import type { SetUpInstall } from "./compose-lock.js";
 import type { ConfigCell } from "./config-cell.js";
 import { engineEndpoint, engineLogFile } from "./engine-locations.js";
+import type { OpenedBot } from "./open-bot.js";
 
 /** One start while its parts open: each part adds what closes it. */
 export interface Opening {
@@ -55,6 +56,8 @@ export interface Opened {
   readonly chains: ChainRegistry;
   /** The venues it quotes on, their keys read. */
   readonly venues: readonly Venue[];
+  /** The owner's bot, or `undefined` when its token could not be read. */
+  readonly bot: OpenedBot | undefined;
 }
 
 /** The engine's logger, its file, and whether the file lost lines. */

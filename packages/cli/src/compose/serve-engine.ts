@@ -3,6 +3,7 @@ import { lockedNotice } from "@binference/engine";
 import { privyUnreachableNotice } from "@binference/engine/install";
 import { createShutdown, type ShutdownReport, watchFile } from "@binference/platform";
 import type { LockReason } from "../unlock/unlock-keys.js";
+import { type BotChannel, startBotChannel } from "./bot-channel.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { startConfigReload } from "./config-reload.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
@@ -73,6 +74,21 @@ function startTimers(
   }
 }
 
+// The owner's bot, when its token was read, as the channels step of the startup order.
+function botChannelOf(
+  opening: Opening,
+  opened: Opened,
+  composed: ComposedSelfHosted,
+): BotChannel | undefined {
+  const { telegram } = composed;
+  if (telegram === undefined || opened.bot === undefined) {
+    return undefined;
+  }
+  const { host, closers } = opening;
+  const logger = opened.log.logger.child("telegram");
+  return startBotChannel({ telegram, token: opened.bot.token, host, closers, logger });
+}
+
 /**
  * Serves the engine in the startup order of ARCHITECTURE.md section 24, once the lock, the config,
  * the stores, their migrations and the integrity check are done: the protocol server listens at
@@ -82,8 +98,8 @@ function startTimers(
  * its place in its wallet's queue; once unlocked, the confirmed intents an earlier run left go to
  * the executor; the timer for work that waits for its time starts, the watch on `config.json5`
  * that reloads the settings (decision 0118), and after a start that found Privy out of reach, the
- * signer step's retries (decision 0119); then the engine is `ready`, or `locked`, and says so on
- * topic `engine`.
+ * signer step's retries (decision 0119); the owner's bot's channel; then the engine is `ready`, or
+ * `locked`, and says so on topic `engine`, and the bot starts polling.
  */
 export async function serveEngine(opening: Opening, opened: Opened): Promise<StartOutcome> {
   const { platform, signal } = opening;
@@ -102,11 +118,13 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
     await composed.resume(signal);
   }
   startTimers(opening, opened, { composed, isPrivyUnreachable: isUnreachable(unlocked) });
+  const channel = botChannelOf(opening, opened, composed);
   const { stop, finished } = startShutdown(opening, opened);
   composed.stopper.stop = stop;
   state.current = "ready";
   server.publish({ topic: "engine", kind: "engine/state", data: { state: locked.state() } });
   log.logger.info("engine.ready");
+  channel?.begin();
   if (!unlocked.ok) {
     log.logger.warn("engine.locked", { errorCode: `unlock.${unlocked.error}` });
     publish(lockedNotice());

@@ -20,6 +20,7 @@ import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { type ComposeEngineOptions, composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
+import type { ComposedTelegram } from "./compose-telegram.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
@@ -42,6 +43,8 @@ export interface ComposedSelfHosted {
   /** `starting` until the startup order ends, then `ready`. */
   readonly state: { current: EngineState };
   readonly locked: ComposedLock;
+  /** The owner's bot joined to the engine, when its token was read. */
+  readonly telegram?: ComposedTelegram;
 }
 
 const loopback = "127.0.0.1";
@@ -260,6 +263,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
       ownerChat: ownerChatOf(opening, opened),
+      ...(opened.bot === undefined ? {} : { telegram: opened.bot.parts }),
       handlers: engineHandlers(opening, opened, {
         rpc: () => rpcHealthOf(parts.reads, host.clock),
         executor: sending.health,
@@ -290,7 +294,12 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
 export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSelfHosted {
   const wiring = composeParts(opening, opened);
   const { sending, locked, state, stopper, resume } = wiring;
-  const { engine, server, publish } = composeServing(opening, opened, wiring);
+  const { engine, server, publish, telegram } = composeServing(opening, opened, wiring);
+  if (telegram !== undefined) {
+    // The bot's line to the chat closes after the server, so nothing new reaches it, and before
+    // the store; notices published later wait in the outbox for the next start.
+    opening.closers.add("telegram", async () => telegram.close());
+  }
   sending.pushes.publish = publish;
   locked.announce.publish = publish;
   wiring.signerRefused.run = ({ intent, refused }) => {
@@ -303,5 +312,16 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     publish(signerStoppedNotice());
   };
   const { executor } = sending;
-  return { server, publish, executor, settle: engine.settle, resume, stopper, state, locked };
+  const bot = telegram === undefined ? {} : { telegram };
+  return {
+    server,
+    publish,
+    executor,
+    settle: engine.settle,
+    resume,
+    stopper,
+    state,
+    locked,
+    ...bot,
+  };
 }

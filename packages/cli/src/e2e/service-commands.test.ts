@@ -47,7 +47,7 @@ function servicesOn(machine: InitMachine, home: string): TestServices {
     host: (argv) =>
       hostWith(machine, argv, {
         env: envOf(machine),
-        parts: { http: machine.privy.http, startSigner: createTestSigner().start, homeDir: home },
+        parts: { http: machine.world, startSigner: createTestSigner().start, homeDir: home },
       }),
   });
 }
@@ -142,7 +142,7 @@ describe("binference start as the background service", () => {
     const argv = ["start", "--foreground", "--set", `engine.port=${String(home.port)}`];
     const host = hostWith(home.machine, argv, {
       env: secretEnv(home.machine),
-      parts: { http: home.machine.privy.http, startSigner: createTestSigner().start },
+      parts: { http: home.machine.world, startSigner: createTestSigner().start },
     });
     const foreground = runCli(host);
     await host.waitForLine((line) => line.startsWith("binference is running"));

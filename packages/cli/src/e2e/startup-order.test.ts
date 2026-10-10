@@ -149,7 +149,7 @@ describe("the startup order", () => {
     async () => {
       const machine = await engines.setUp();
       const network = { isUp: false };
-      const http = networkThatComesUp(machine.privy.http, network);
+      const http = networkThatComesUp(machine.world, network);
       await expect(engines.start(machine, { parts: { http } })).resolves.toMatchObject({
         state: "locked",
         lockReason: "custody_unreachable",

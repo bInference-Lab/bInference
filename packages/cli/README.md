@@ -45,9 +45,19 @@ health signal follows the relays' last answers, and the `rpc` signal the RPC end
 live in `engine.sqlite`. A signer that stops while the engine runs locks it again, with
 `notice.signerStopped`. A stop signal, or `engine/stop` over IPC, runs the
 shutdown sequence within `engine.shutdownBudgetMs`, which closes the parts in the reverse order:
-the settle timer; server and IPC, so nothing new comes in; the health probe; the executor, which
-lets a signature or a send under way end; the signer; the store, the log and the lock. A second `start` on the same state folder
-refuses while the first runs, in another process too.
+the bot's polling; the settle timer; server and IPC, so nothing new comes in; the bot's line to
+the chat; the health probe; the executor, which lets a signature or a send under way end; the
+signer; the store, the log and the lock. A second `start` on the same state folder refuses while
+the first runs, in another process too.
+
+The owner's bot joins the engine when `telegram.botToken` can be read (`openBot`): grammY over the
+engine's outbound HTTP, with the token's throttler, its notices queued in the outbox from the
+start. Once the engine is ready, the bot's channel (`startBotChannel`) registers the fast
+commands' menu, sends the outbox's notices, handles the updates an earlier run stored but did not
+handle, and long-polls from the poll worker into the ingress; Telegram's calls skip the server's
+check for an engine still starting, so none runs before. The owner binding and the card copies
+last one run, as `engine.sqlite` has no table for them yet. A token that cannot be read is logged
+as `telegram.bot_skipped`, and the engine runs without the bot.
 
 `binference init` sets up a new install (keys spec, section 2) under the engine lock: the Privy
 app's id and secret, checked with one read; the owner key, shown once as its `bnok1` code, whose

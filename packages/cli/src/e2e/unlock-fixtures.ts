@@ -44,8 +44,8 @@ export interface RunningEngines {
   setUp(): Promise<InitMachine>;
   /**
    * Runs `binference start --foreground --json` on the machine and answers its first JSON line.
-   * Privy is the machine's fake, and the signer runs in this process, unless the options name
-   * others.
+   * Privy and the Bot API are the machine's fakes, and the signer runs in this process, unless the
+   * options name others.
    */
   start(machine: InitMachine, options?: StartParts): Promise<JsonValue>;
 }
@@ -76,7 +76,7 @@ export function createRunningEngines(): RunningEngines {
       const host = hostWith(machine, argv, {
         env: options.env ?? secretEnv(machine),
         parts: {
-          http: machine.privy.http,
+          http: machine.world,
           startSigner: createTestSigner().start,
           ...options.parts,
         },

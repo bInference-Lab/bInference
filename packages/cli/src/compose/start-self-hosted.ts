@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { BinferenceError, createDeadline } from "@binference/core";
 import { acquireFileLock, ensurePrivateFolder } from "@binference/platform";
 import { loadConfig } from "../config/load-config.js";
+import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
 import type { ConfigOutcome } from "../config/validate-config.js";
 import type { CliHost } from "../program/cli-host.js";
@@ -11,8 +12,10 @@ import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
 import { createConfigCell } from "./config-cell.js";
 import { platformOf } from "./engine-locations.js";
+import { openBot } from "./open-bot.js";
 import {
   type Opened,
+  type OpenedLog,
   openEngineLog,
   openEngineStores,
   type Opening,
@@ -50,26 +53,8 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   const settings = createConfigCell(loaded.config);
   const log = await openEngineLog(opening, settings);
   try {
-    const secrets = createSecretReader({
-      env: host.env,
-      keychain: platform.keychain,
-      homeDir: host.homeDir ?? homedir(),
-      clock: host.clock,
-    });
-    const { config } = loaded;
-    const call = { logger: log.logger, signal };
-    const tracers = await readTracers(config.chains, secrets, call);
-    const chains = selfHostedChains();
-    const venues = await readVenues({
-      ...call,
-      venues: config.venues,
-      chains: config.chains,
-      registry: chains,
-      secrets,
-      http: host.http,
-      clock: host.clock,
-    });
-    const opened = { config, settings, readConfig, log, tracers, chains, venues };
+    const parts = await readSecretParts(opening, loaded.config, log);
+    const opened = { config: loaded.config, settings, readConfig, log, ...parts };
     return await openStoresAndServe(opening, opened);
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.
@@ -77,6 +62,44 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
     log.logger.error("engine.start_failed", { errorCode });
     throw error;
   }
+}
+
+// The parts that read config's secret sources: the tracing RPCs, the venues and the bot.
+async function readSecretParts(
+  opening: Opening,
+  config: BinferenceConfig,
+  log: OpenedLog,
+): Promise<Pick<Opened, "tracers" | "chains" | "venues" | "bot">> {
+  const { host, platform, signal } = opening;
+  const secrets = createSecretReader({
+    env: host.env,
+    keychain: platform.keychain,
+    homeDir: host.homeDir ?? homedir(),
+    clock: host.clock,
+  });
+  const call = { logger: log.logger, signal };
+  const tracers = await readTracers(config.chains, secrets, call);
+  const chains = selfHostedChains();
+  const venues = await readVenues({
+    ...call,
+    venues: config.venues,
+    chains: config.chains,
+    registry: chains,
+    secrets,
+    http: host.http,
+    clock: host.clock,
+  });
+  const source = config.telegram.botToken;
+  const logger = log.logger.child("telegram");
+  const bot = await openBot({
+    source,
+    secrets,
+    http: host.http,
+    clock: host.clock,
+    logger,
+    signal,
+  });
+  return { tracers, chains, venues, bot };
 }
 
 async function openStoresAndServe(
