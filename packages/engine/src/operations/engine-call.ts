@@ -18,6 +18,12 @@ interface SurfaceClient {
   readonly kind: "telegram";
 }
 
+/** What the agent runtime knows of the turn it proposes in. */
+interface TurnMark {
+  /** The turn read the web, X, a Telegram group or token data (`turns.outside_content`). */
+  readonly hasOutsideContent: boolean;
+}
+
 /** Who makes a call: a client the protocol server signed in, or a surface the engine serves. */
 export interface EngineCaller {
   /**
@@ -34,6 +40,12 @@ export interface EngineCaller {
    * without it counts as not local, so an owner-key operation refuses it.
    */
   readonly transport?: "ipc" | "ws";
+  /**
+   * The turn of the agent runtime the engine runs in its own process. Only the composition root
+   * sets it, for that runtime; the protocol server never does, so no client can clear the mark.
+   * Without it, a proposal of the agent runtime counts as outside content.
+   */
+  readonly turn?: TurnMark;
 }
 
 /** One call the protocol server checked and routed to the engine. */
@@ -68,20 +80,25 @@ function isCredentialId(credential: string): credential is Id<"tok"> | Id<"dev">
  * Who proposes, from the scopes the server signed the caller in with: the agent runtime holds
  * `agent`, the owner's CLI and console devices hold `confirm`, and any other client is an MCP
  * client, which the auto test never lets skip a card. The owner's Telegram chat proposes as the
- * owner. Any other credential that is neither a token nor a device proposes nothing.
+ * owner. Any other credential that is neither a token nor a device proposes nothing. A proposal of
+ * the agent runtime carries the outside-content mark unless the caller's turn says it read none.
  */
 export function proposerOf(caller: EngineCaller): Proposer | undefined {
   const { credential, scopes } = caller;
   if (caller.client.kind === "telegram") {
-    return scopes.includes("confirm") ? { role: "owner", ref: "telegram" } : undefined;
+    return scopes.includes("confirm")
+      ? { role: "owner", ref: "telegram", hasOutsideContent: false }
+      : undefined;
   }
   if (!isCredentialId(credential)) {
     return undefined;
   }
   if (scopes.includes("agent")) {
-    return { role: "agent_runtime", ref: credential };
+    const hasOutsideContent = caller.turn?.hasOutsideContent ?? true;
+    return { role: "agent_runtime", ref: credential, hasOutsideContent };
   }
-  return { role: scopes.includes("confirm") ? "owner" : "mcp_client", ref: credential };
+  const role = scopes.includes("confirm") ? "owner" : "mcp_client";
+  return { role, ref: credential, hasOutsideContent: false };
 }
 
 /**

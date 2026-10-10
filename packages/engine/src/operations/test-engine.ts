@@ -58,7 +58,10 @@ import { createVenueHost } from "../venues/venue-host.js";
 import { createEngine, type Engine, type EngineOptions } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
 
-/** The owner's CLI, an MCP client and the agent runtime, as the server signs them in. */
+/**
+ * The owner's CLI and an MCP client, as the server signs them in, and the agent runtime the engine
+ * runs, proposing in a turn that read no outside content.
+ */
 export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCaller>> = {
   cli: {
     credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000001",
@@ -75,6 +78,7 @@ export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCalle
     credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000003",
     client: { kind: "runtime", version: "test" },
     scopes: ["read", "propose", "agent"],
+    turn: { hasOutsideContent: false },
   },
 };
 

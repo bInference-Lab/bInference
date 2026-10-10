@@ -12,6 +12,7 @@ import {
   testToken,
   testWallet,
 } from "../intents/test-intents.js";
+import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
   type TestEngine,
@@ -136,6 +137,14 @@ async function twoVenueEngine(
   });
 }
 
+// The agent runtime in a turn that read outside content, and as the protocol server signs it in,
+// with no turn the engine vouches for.
+const { turn: _clean, ...signedInRuntime } = testCallers.runtime;
+const runtimeTurns: Readonly<Record<"marked" | "unvouched", EngineCaller>> = {
+  marked: { ...signedInRuntime, turn: { hasOutsideContent: true } },
+  unvouched: signedInRuntime,
+};
+
 describe("the money path", () => {
   it("runs a paper swap through every check and opens its first card in manual mode", async () => {
     const test = await startTestEngine();
@@ -174,6 +183,19 @@ describe("the money path", () => {
     expect(view.outcome?.executions).toHaveLength(1);
     expect(await ledgerKinds(test)).toStrictEqual(["proposed", "confirmed", "paper_filled"]);
   });
+
+  it.each(["marked", "unvouched"] as const)(
+    "opens a card marked as outside content in auto mode for a %s runtime turn",
+    async (turn) => {
+      const test = await startTestEngine({ agent: { approvalMode: "auto" } });
+      const view = await propose(test, testSwap(), runtimeTurns[turn]);
+      expect(view).toMatchObject({
+        state: "awaiting_confirmation",
+        outsideContent: true,
+        card: { outsideContent: true },
+      });
+    },
+  );
 
   it("opens a card for an MCP client's proposal even in auto mode", async () => {
     const test = await startTestEngine({ agent: { approvalMode: "auto" } });

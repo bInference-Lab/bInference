@@ -22,6 +22,7 @@ import {
   testToken,
   testWallet,
 } from "../intents/test-intents.js";
+import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
   type TestEngine,
@@ -76,10 +77,17 @@ const otherRequests: readonly IntentRequest[] = [
 
 type CallerName = "runtime" | "mcp" | "cli";
 
+/**
+ * What the caller says of its turn: `clean` read no outside content, `marked` read some, and
+ * `unknown` is a caller the engine's own runtime does not vouch for.
+ */
+type TurnName = "clean" | "marked" | "unknown";
+
 interface Case {
   readonly approvalMode: ApprovalMode;
   readonly isLive: boolean;
   readonly caller: CallerName;
+  readonly turn: TurnName;
   /** The other request to propose, by its place in the list; `undefined`: a swap. */
   readonly other: number | undefined;
   /** The swap sells the token for the coin, instead of the coin for the token. */
@@ -148,12 +156,14 @@ function requestOf(c: Case): IntentRequest {
   return c.sellsToken ? testSwap({ from: testToken, to: testCoin, amount }) : testSwap({ amount });
 }
 
-// Spec 6, section 5, as this test models it: a swap the agent runtime proposes in auto mode, from
-// an honest venue, that buys no denied token and sells none, inside both caps and the fee cap.
+// Spec 6, section 5, as this test models it: a swap the agent runtime proposes in auto mode, in a
+// turn it says read no outside content, from an honest venue, that buys no denied token and sells
+// none, inside both caps and the fee cap.
 function mayRunAlone(c: Case): boolean {
   return (
     c.approvalMode === "auto" &&
     c.caller === "runtime" &&
+    c.turn === "clean" &&
     c.other === undefined &&
     !c.hasStrangerSpender &&
     !c.isTokenDenied &&
@@ -195,9 +205,7 @@ async function switchProblems(
   const manual = testCall({ agent: testAgent, mode: "manual" as const });
   expectOk(await test.engine.handlers["approval/set"](manual));
   const after = checkAutoModeGrant(grant, { ...signing, approvalMode: await modeOf(test) });
-  const again = await test.engine.handlers["intent/propose"](
-    testCall(requestOf(c), testCallers.runtime),
-  );
+  const again = await test.engine.handlers["intent/propose"](testCall(requestOf(c), callerOf(c)));
   const repeat = await testSnapshot(test, expectOk(again).intent);
   return [
     ...(before.ok ? [] : [`the grant failed before the switch: ${before.error}`]),
@@ -219,9 +227,19 @@ async function swapOutcome(test: TestEngine, c: Case, view: IntentView): Promise
   return { isAuto, problems };
 }
 
+function callerOf(c: Case): EngineCaller {
+  const { turn: _turn, ...signedIn } = testCallers[c.caller];
+  const turns: Readonly<Record<TurnName, EngineCaller>> = {
+    clean: { ...signedIn, turn: { hasOutsideContent: false } },
+    marked: { ...signedIn, turn: { hasOutsideContent: true } },
+    unknown: signedIn,
+  };
+  return turns[c.turn];
+}
+
 async function outcomeOf(c: Case): Promise<Outcome> {
   const test = await startTestEngine(optionsOf(c));
-  const call = testCall(requestOf(c), testCallers[c.caller]);
+  const call = testCall(requestOf(c), callerOf(c));
   const proposed = await test.engine.handlers["intent/propose"](call);
   if (c.other === undefined) {
     return swapOutcome(test, c, expectOk(proposed));
@@ -249,6 +267,7 @@ const cases: fc.Arbitrary<Case> = fc.record({
   approvalMode: mostly<ApprovalMode>("auto", "manual"),
   isLive: fc.boolean(),
   caller: mostly<CallerName>("runtime", "mcp", "cli"),
+  turn: mostly<TurnName>("clean", "marked", "unknown"),
   other: mostly<number | undefined>(undefined, ...otherRequests.keys()),
   sellsToken: fc.boolean(),
   amountBase: fc.bigInt({ min: 1n, max: 9n * 10n ** 17n }),

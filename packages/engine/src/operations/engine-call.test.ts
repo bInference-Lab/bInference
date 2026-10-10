@@ -10,7 +10,11 @@ const telegram: EngineCaller = {
 
 describe("who calls the engine", () => {
   it("proposes as the owner from the owner's Telegram chat, and answers there", () => {
-    expect(proposerOf(telegram)).toStrictEqual({ role: "owner", ref: "telegram" });
+    expect(proposerOf(telegram)).toStrictEqual({
+      role: "owner",
+      ref: "telegram",
+      hasOutsideContent: false,
+    });
     expect(answererOf(telegram)).toStrictEqual({ surface: "telegram", by: "tg:7012345678" });
   });
 
@@ -25,5 +29,17 @@ describe("who calls the engine", () => {
       proposerOf(testCallers.runtime)?.role,
       answererOf(testCallers.cli).surface,
     ]).toStrictEqual(["owner", "mcp_client", "agent_runtime", "cli"]);
+  });
+
+  it("marks the agent runtime's proposal as outside content unless its turn read none", () => {
+    const { turn: _turn, ...signedIn } = testCallers.runtime;
+    const marked = { ...signedIn, turn: { hasOutsideContent: true } };
+    expect([
+      proposerOf(signedIn)?.hasOutsideContent,
+      proposerOf(marked)?.hasOutsideContent,
+      proposerOf(testCallers.runtime)?.hasOutsideContent,
+      proposerOf(testCallers.mcp)?.hasOutsideContent,
+      proposerOf(testCallers.cli)?.hasOutsideContent,
+    ]).toStrictEqual([true, true, false, false, false]);
   });
 });

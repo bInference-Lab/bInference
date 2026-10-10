@@ -41,6 +41,8 @@ import { swapSubjectOf } from "./swap-trade.js";
 export interface Proposer {
   readonly role: IntentProposer;
   readonly ref: IntentProposerRef;
+  /** The proposal comes from a turn with the outside-content mark, which the intent keeps. */
+  readonly hasOutsideContent: boolean;
 }
 
 /**
@@ -319,7 +321,7 @@ async function propose(
     kind: request.kind,
     proposer: proposer.role,
     isPaper: settings?.agent.mode === "paper",
-    hasOutsideContent: false,
+    hasOutsideContent: proposer.hasOutsideContent,
     agentStatus: agentStatusOf(settings),
   });
   if (!step.ok || settings === undefined) {
