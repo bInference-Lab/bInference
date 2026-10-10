@@ -94,6 +94,13 @@ export const engineExamples: { readonly [N in keyof EngineOperationShapes]: Wire
       delivered: { telegram: "unknown_after_send" },
     }),
   },
+  "telegram/pair": {
+    args: empty,
+    result: {
+      link: "https://t.me/binference_test_bot?start=q3Zr_x9-AbCdEfGhIjKlMn",
+      expiresAt: at,
+    },
+  },
 };
 
 /** An example call of every agent and identity operation. */

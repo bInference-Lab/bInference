@@ -20,6 +20,7 @@ const retryableCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "name.resolver_down",
   "quote.venue_down",
   "chain.rpc_down",
+  "telegram.unreachable",
 ]);
 
 /**

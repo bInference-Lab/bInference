@@ -57,5 +57,7 @@
   "plugin.hash_mismatch": "此插件的文件与固定的哈希值不符，因此未加载。请从它的来源重新安装。",
   "plugin.review_needed": "此插件请求了新的权限。请先在控制台审核，然后它才能运行。",
   "job.not_found": "此任务不存在，或早已结束。如果仍需要，请重新开始。",
+  "telegram.not_running": "binference 正在运行，但没有启动 Telegram 机器人，因此没有生成链接。运行 `binference logs` 查看原因；修正机器人 Token 后，再运行 `binference restart`。",
+  "telegram.unreachable": "无法连接 Telegram，因此没有生成链接。请一分钟后再试。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

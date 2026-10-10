@@ -72,6 +72,16 @@ interface FreezeArgs {
   readonly agent?: ProtocolId<"agent">;
 }
 
+/**
+ * The answer of `telegram/pair`: a new start code's link, shown once, and when the code stops
+ * working (decision 0139).
+ */
+interface TelegramPairing {
+  /** `https://t.me/<bot>?start=<code>`: whoever opens it first becomes the bot's owner. */
+  readonly link: string;
+  readonly expiresAt: number;
+}
+
 /** The engine and safety operations of protocol spec section 7.1. */
 export interface EngineOperationShapes {
   readonly "engine/status": { readonly args: Empty; readonly result: EngineStatus };
@@ -107,6 +117,11 @@ export interface EngineOperationShapes {
    * recorded after it.
    */
   readonly "notice/list": { readonly args: PageArgs; readonly result: Page<NoticeView> };
+  /**
+   * A new single-use start code for the owner's bot, valid 10 minutes: whoever opens its link
+   * becomes the owner in place of the current one, who is told (decision 0139).
+   */
+  readonly "telegram/pair": { readonly args: Empty; readonly result: TelegramPairing };
 }
 
 const freezeArgs = z.strictObject({ agent: protocolIdSchema("agent").exactOptional() });
@@ -215,5 +230,14 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     scope: "read",
     args: pageArgsSchema,
     result: pageSchema(noticeViewSchema),
+  },
+  "telegram/pair": {
+    // A read: the engine keeps no answer, so no idempotency entry ever holds a start code.
+    ...readFlags,
+    transport: "ipc",
+    name: "telegram/pair",
+    scope: "admin",
+    args: emptyArgsSchema,
+    result: z.object({ link: z.url(), expiresAt: epochMsSchema }),
   },
 };

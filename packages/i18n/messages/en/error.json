@@ -57,5 +57,7 @@
   "plugin.hash_mismatch": "This plugin's files do not match their pinned hash, so it was not loaded. Install it again from its source.",
   "plugin.review_needed": "This plugin asks for new permissions. Review them in the console before it runs.",
   "job.not_found": "This task does not exist or ended long ago. Start it again if you still need it.",
+  "telegram.not_running": "binference is running without its Telegram bot, so no link was made. `binference logs` shows why; fix the bot token, then run `binference restart`.",
+  "telegram.unreachable": "Telegram could not be reached, so no link was made. Try again in a minute.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

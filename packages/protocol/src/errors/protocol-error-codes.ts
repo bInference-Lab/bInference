@@ -61,6 +61,8 @@ export const protocolErrorCodes = [
   "plugin.hash_mismatch",
   "plugin.review_needed",
   "job.not_found",
+  "telegram.not_running",
+  "telegram.unreachable",
   "internal.error",
 ] as const;
 

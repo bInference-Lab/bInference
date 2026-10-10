@@ -467,6 +467,8 @@
         "plugin.hash_mismatch",
         "plugin.review_needed",
         "job.not_found",
+        "telegram.not_running",
+        "telegram.unreachable",
         "internal.error"
       ]
     },
@@ -1648,6 +1650,84 @@
           },
           "required": [
             "items"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/telegram/pair": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "telegram/pair"
+        },
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "admin",
+      "kind": "read",
+      "transport": "ipc",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/telegram/pair": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "link": {
+              "type": "string",
+              "format": "uri"
+            },
+            "expiresAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "link",
+            "expiresAt"
           ]
         }
       },
