@@ -148,6 +148,11 @@ describe("the EVM relay sender", () => {
 
   it.each<[string, FakeRpcAnswer, string]>([
     ["already holds the bytes", { error: { code: -32_000, message: "already known" } }, "accepted"],
+    [
+      "runs a Reth-based client that holds the bytes",
+      { error: { code: -32_000, message: "transaction already imported" } },
+      "accepted",
+    ],
     ["answers in capitals", { result: hash.toUpperCase().replace("0X", "0x") }, "accepted"],
     [
       "refuses a replacement",

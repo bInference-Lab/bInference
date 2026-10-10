@@ -11,9 +11,11 @@ const gasQuotaCode = 4802;
 // (bnb-chain/bsc core/txpool/errors.go and core/error.go) under the generic -32000, so only the
 // message tells them apart. 48 Club adds "require GasPrice=%d, Provide=%d" and "insufficient
 // gasprice increasement for overwriting"; BlockRazor documents "rlp: element is larger than
-// containing list". The first pattern that matches wins.
+// containing list". A node on a Reth-based BSC client holds the bytes when it answers "transaction
+// already imported", the same as geth's "already known": read as a refusal, a step still in a pool
+// could be dropped. The first pattern that matches wins.
 const readings: readonly (readonly [RegExp, RelayErrorReading])[] = [
-  [/already known/i, "already_known"],
+  [/already known|already imported/i, "already_known"],
   [/nonce too low/i, "nonce_too_low"],
   [
     /replacement transaction underpriced|insufficient gasprice increasement/i,
