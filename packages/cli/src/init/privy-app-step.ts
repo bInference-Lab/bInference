@@ -35,7 +35,11 @@ async function appIdOf(context: InitContext): Promise<InitStep<string>> {
   return ok(typed.trim());
 }
 
-async function check(
+/**
+ * Checks the app id and secret with one read of Privy's, asked again with backoff while Privy is
+ * busy or does not answer; `rejected` when Privy refuses them.
+ */
+export async function checkAppOnPrivy(
   context: InitContext,
   appId: string,
   appSecret: Secret,
@@ -65,7 +69,7 @@ async function tryApp(context: InitContext): Promise<InitStep<PrivyApp | undefin
   if (!secret.ok) {
     return secret;
   }
-  const checked = await check(context, appId.value, secret.value.value);
+  const checked = await checkAppOnPrivy(context, appId.value, secret.value.value);
   return ok(checked.ok ? { appId: appId.value, secret: secret.value } : undefined);
 }
 

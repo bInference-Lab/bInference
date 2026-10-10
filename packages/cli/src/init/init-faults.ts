@@ -10,6 +10,7 @@ const faultKeys: Readonly<Record<string, string>> = {
   "custody.privy_refused": "fault.privyFailed",
   "custody.privy_malformed": "fault.privyFailed",
   "custody.privy_credentials": "fault.privyFailed",
+  "custody.signers_read_back": "fault.signersReadBack",
   "telegram.unreachable": "fault.telegramUnreachable",
   "telegram.flood": "fault.telegramBusy",
   "telegram.api_refused": "fault.telegramFailed",

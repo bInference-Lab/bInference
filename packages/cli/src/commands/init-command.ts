@@ -10,6 +10,7 @@ import {
   engineWorker,
   openDatabase,
 } from "@binference/store";
+import { runAttach } from "../attach/run-attach.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
 import type { InitContext, InitRefusal } from "../init/init-context.js";
@@ -20,6 +21,7 @@ import type { InitFlags } from "../program/cli-flags.schema.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { CliOutput, ExitCode } from "../program/cli-output.js";
 import { createOutputPrompter } from "../term/output-prompter.js";
+import { attachSummary } from "./attach-summary.js";
 import { configIssueMessages } from "./config-issue-messages.js";
 
 /** What the init command reports with: the command's output and the owner's formatter. */
@@ -111,6 +113,21 @@ async function isSetUp(context: InitContext, stores: InitStores): Promise<boolea
   return config.ok || facts.custody !== undefined;
 }
 
+// Makes this machine the signer of the install's wallets in place of the one that was.
+async function attachOnStores(
+  context: InitContext,
+  report: Report,
+  stores: InitStores,
+): Promise<ExitCode> {
+  const { host, signal } = context;
+  const proposal = { id: createIdSource(host).next("ins"), atMs: host.clock.now() };
+  const installId = await stores.install.installId(proposal, { signal });
+  const outcome = await runAttach(context, stores.install, installId);
+  return outcome.ok
+    ? attachSummary(context, report.output, outcome.value)
+    : refuse(context, report, outcome.refusal);
+}
+
 async function initOnStores(context: InitContext, report: Report): Promise<ExitCode> {
   const opened = await openStores(context);
   const folder = context.platform.stateFolder;
@@ -123,6 +140,9 @@ async function initOnStores(context: InitContext, report: Report): Promise<ExitC
   }
   try {
     const { stores } = opened;
+    if (context.flags.isAttach) {
+      return await attachOnStores(context, report, stores);
+    }
     if (!context.flags.isStartOver && (await isSetUp(context, stores))) {
       return refuse(context, report, {
         code: "init.already_set_up",
@@ -174,9 +194,10 @@ function contextOf(
 /**
  * `binference init`: sets up a new install (keys spec, section 2) under the engine lock, so no
  * engine runs on the folder meanwhile. It refuses a folder set up before unless the owner asks
- * to start over, and never replaces a stored agent key. A person at a terminal answers its
- * questions; with `--yes`, `--json` or no terminal, every answer comes from a flag. Exits 0 once
- * the install is set up, 1 when it refused or failed.
+ * to start over, and never replaces a stored agent key. With `--attach` it makes this machine the
+ * signer of the folder's install instead (keys spec, section 6; decision 0140). A person at a
+ * terminal answers its questions; with `--yes`, `--json` or no terminal, every answer comes from a
+ * flag. Exits 0 once the install is set up or attached, 1 when it refused or failed.
  */
 export async function runInitCommand(
   host: CliHost,
@@ -187,6 +208,12 @@ export async function runInitCommand(
   const context = contextOf(host, output, options);
   const report: Report = { output, formatter, isJson: flags.json };
   const folder = context.platform.stateFolder;
+  if (flags.isAttach && flags.isStartOver) {
+    return refuse(context, report, {
+      code: "init.attach_start_over",
+      key: "refused.attachStartOver",
+    });
+  }
   context.prompter.intro(context.words("title"));
   await ensurePrivateFolder(folder.root, {
     permissions: context.platform.permissions,

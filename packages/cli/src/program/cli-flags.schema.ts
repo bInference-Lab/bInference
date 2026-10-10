@@ -70,6 +70,11 @@ export interface InitFlags extends CommonOptions {
   readonly sets: readonly string[];
   /** Sets up a folder that was set up before, with a new owner key and a new wallet. */
   readonly isStartOver: boolean;
+  /**
+   * Makes this machine's new agent key the signer of the install's wallets, with the owner key
+   * (keys spec, section 6), in place of the key that signed for them.
+   */
+  readonly isAttach: boolean;
 }
 
 /** The most lines `logs --lines` takes. */
@@ -150,5 +155,11 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     unlockCommand: z.string().min(1).exactOptional(),
     set: z.array(z.string()).default([]),
     startOver: z.boolean().default(false),
+    attach: z.boolean().default(false),
   })
-  .transform(({ set, startOver, ...rest }) => ({ ...rest, sets: set, isStartOver: startOver }));
+  .transform(({ set, startOver, attach, ...rest }) => ({
+    ...rest,
+    sets: set,
+    isStartOver: startOver,
+    isAttach: attach,
+  }));

@@ -217,12 +217,14 @@ A refusal is logged with the rule number, never with key material, and raises
 - **Lost or replaced machine:** `binference init --attach` on the new machine asks for the Privy app
   details and the owner key, makes a new agent key, adds it as each wallet's signer and removes the
   old one, all signed with the owner key. The wallets, their addresses and their funds never move. A
-  backup (section 7) brings back orders, history and settings.
+  backup (section 7) brings back orders, history and settings. Each wallet changes in one request
+  the owner key signs, which sets the new key as its one signer, so no wallet takes two machines'
+  signatures; attach runs on a folder that holds the install and prints this machine's signer ID
+  ([decision 0140](../DECISIONS.md#d0140)).
 - **Machine compromised:** `binference signer revoke` from any other machine with the owner key, or
   the Privy dashboard, removes the agent key at once. Funds stay; the attacker could only have
   signed inside the ceiling until then. A revoke never removes the engine's own key or a wallet's
-  last signer: attaching the machine that replaces it does that
-  ([decision 0140](../DECISIONS.md#d0140)).
+  last signer: attaching the machine that replaces it does that.
 - **Owner key lost:** the wallets keep working inside the ceiling, but nothing can loosen it, export
   a key or attach a machine. The owner moves funds out to the rescue address (always allowed) and
   starts again with a new owner key. `init` says so when it shows the code.

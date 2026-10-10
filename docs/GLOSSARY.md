@@ -234,9 +234,12 @@ new name here first, in the change that uses it.
   `file`, `command` or `manual`.
 - **check-back**: the last 6 characters of the owner key's code, which the owner types back at
   `binference init` before anything is made.
+- **attach**: `binference init --attach`, which makes a new agent key on this machine the one
+  signer of every live wallet of the install, with the owner key; the key it replaces signs
+  nothing more, and that machine stays locked with `signer_revoked`.
 - **revoke (a signer)**: `binference signer revoke`, which removes a machine's agent key from every
   live wallet with the owner key, never this machine's own key or a wallet's last signer.
-- **signer ID**: Privy's id of the key quorum that holds a machine's agent key.
+- **signer ID**: Privy's id of the key quorum that holds a machine's agent key; attach prints it.
 - **start over**: `binference init --start-over`, which sets up a folder set up before with a new
   owner key and a new wallet, keeps the stored agent key, and archives the earlier wallets.
 - **passphrase store**: secrets in owner-only files in `~/.binference/keys/`, each sealed with the
@@ -462,6 +465,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | approve (a token allowance), approval    | 授权                   |                                  |
 | permit (a signed approval)               | 签名授权               |                                  |
 | revoke                                   | 撤销                   |                                  |
+| attach (a machine)                       | 接入                   | `binference init --attach`       |
 | key quorum                               | 密钥组                 | Privy's record of signing keys   |
 | connect wallet                           | 连接钱包               |                                  |
 | sign in, sign out                        | 登录, 退出登录         |                                  |

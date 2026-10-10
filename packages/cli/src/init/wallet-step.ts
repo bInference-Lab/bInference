@@ -30,7 +30,8 @@ export interface WalletInputs {
 
 // The labels Privy's dashboard shows for the two key quorums.
 const ownerQuorumName = "binference owner key";
-const agentQuorumName = "binference agent key";
+/** The label Privy's dashboard shows for the key quorum of an agent key. */
+export const agentQuorumName = "binference agent key";
 
 /**
  * The policy Privy holds for a wallet it made and read back a moment ago: its ceiling as Privy

@@ -111,5 +111,11 @@ Rules for this package:
   `binference rescue set`, travels only over IPC and is never logged or stored. The Privy ceiling
   editor (`src/compose/privy-ceiling-editor.ts`) uses it for one request and checks it is the key
   that owns the install's ceilings before Privy hears of it.
+- `binference init --attach` lives in `src/attach/` (decision 0140): on a folder that holds the
+  install, it takes the owner key from the hidden prompt only, makes this machine's agent key where
+  the unlock mode keeps it, and makes it each live wallet's one signer on Privy through
+  `swapSigner` of `@binference/custody-privy`, then records it with `InstallStore.attach`. At each
+  start and unlock, `checkAttached` (`src/compose/check-attached.ts`) locks an engine whose key a
+  wallet no longer lists with `signer_revoked`, and such an engine never starts the bot.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

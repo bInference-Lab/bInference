@@ -116,6 +116,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     .option("--unlock-command <source>", message("option.unlockCommand"))
     .option("--set <key=value>", message("option.setInit"), addSet, [])
     .option("--start-over", message("option.startOver"))
+    .option("--attach", message("option.attach"))
     .action((flags: OptionValues) =>
       choose({ name: "init", options: initFlagsSchema.parse(flags) }),
     );
