@@ -1,5 +1,5 @@
 import { createFakeSigner, createFakeVenue } from "@binference/chain/testing";
-import { createIdSource, type Id } from "@binference/core";
+import { bpsSchema, createIdSource, type Id } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { quoteSourceContract } from "../contracts/quote-source-contract.js";
@@ -31,6 +31,7 @@ const unquotable = "int_0190f1c2-3a4b-7c5d-8e6f-000000000009" as Id<"int">;
 function quoting(
   wallets = new Map([[testWallet, testAccount]]),
   other?: ReturnType<typeof otherVenue>,
+  first: ReturnType<typeof createFakeVenue> = createFakeVenue(),
 ): QuoteSource {
   const clock = createManualClock(testNowMs);
   const stores = createMemoryEngineStores();
@@ -41,7 +42,7 @@ function quoting(
     publish: () => undefined,
   });
   const chains = testChains(other === undefined ? [] : [otherVenueId]);
-  const venues = other === undefined ? [createFakeVenue()] : [createFakeVenue(), other];
+  const venues = other === undefined ? [first] : [first, other];
   const limits = { ...testLimits, venues: venues.map((venue) => venue.id) };
   const source = createVenueQuoteSource({
     stored,
@@ -87,5 +88,21 @@ describe("venue quote source", () => {
       ok: true,
       value: { quote: { route: [{ venue: otherVenueId }] } },
     });
+  });
+
+  it("skips a better route whose price impact is above the agent's maximum now", async () => {
+    const other = otherVenue({ numerator: 21n, denominator: 10n }, bpsSchema.parse(501));
+    const requoted = await quoting(undefined, other).requote(quotable, live);
+    expect(requoted).toMatchObject({
+      ok: true,
+      value: { quote: { route: [{ venue: "fake-swap" }] } },
+    });
+  });
+
+  it("fails the re-quote as price_impact when every quote is above the maximum", async () => {
+    const steep = createFakeVenue({ priceImpactBps: bpsSchema.parse(10_000) });
+    await expect(
+      quoting(undefined, undefined, steep).requote(quotable, live),
+    ).resolves.toStrictEqual({ ok: false, error: "price_impact" });
   });
 });

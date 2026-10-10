@@ -1,6 +1,6 @@
 import { assetRefSchema, type Venue } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
-import { type Bps, err, type Id, idSchema } from "@binference/core";
+import { type Bps, bpsSchema, err, type Id, idSchema } from "@binference/core";
 import type { IntentRequest, IntentView, RiskView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
@@ -252,6 +252,13 @@ describe("the money path", () => {
   it("fails the check when no venue can quote the swap", async () => {
     const view = await propose(await startTestEngine({ venues: [] }));
     expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "venue_down"]);
+    expect(view.quote).toBeUndefined();
+  });
+
+  it("fails the check with price_impact when the quote's impact is above the agent's maximum", async () => {
+    const steep = createFakeVenue({ priceImpactBps: bpsSchema.parse(10_000) });
+    const view = await propose(await startTestEngine({ venues: [steep] }));
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "price_impact"]);
     expect(view.quote).toBeUndefined();
   });
 

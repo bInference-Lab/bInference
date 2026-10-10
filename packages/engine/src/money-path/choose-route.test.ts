@@ -15,6 +15,7 @@ import type { SwapTrade } from "./swap-trade.js";
 import { otherVenue, otherVenueId } from "./test-routes.js";
 
 const noRefusal = (): undefined => undefined;
+const steep = bpsSchema.parse(301);
 
 const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
 const live = new AbortController().signal;
@@ -69,6 +70,7 @@ async function choose(
     prices: coinPrices,
     nativeAsset: testCoin,
     feePerGasBase: 1n,
+    maxPriceImpactBps: bpsSchema.parse(300),
     signal: live,
     ...(routing.isRequote === true ? {} : { policy }),
     ...routing.change,
@@ -166,6 +168,22 @@ describe("the best quote", () => {
     await expect(choose(0n, { venues, simulator })).resolves.toStrictEqual(err("venue_down"));
   });
 
+  it("never builds a better route whose price impact is above the agent's maximum", async () => {
+    const simulator = createQuoteSimulator(noRefusal);
+    const venues = [createFakeVenue(), otherVenue({ numerator: 3n, denominator: 1n }, steep)];
+    const route = chosenOf(await choose(0n, { venues, simulator }));
+    expect(venueOf(route)).toBe("fake-swap");
+  });
+
+  it("ends with price_impact when every quote is above the maximum, an unmeasured one too", async () => {
+    const venues = [
+      createFakeVenue({ priceImpactBps: bpsSchema.parse(301) }),
+      otherVenue({ numerator: 2n, denominator: 1n }, bpsSchema.parse(10_000)),
+    ];
+    const simulator = createQuoteSimulator(noRefusal);
+    await expect(choose(0n, { venues, simulator })).resolves.toStrictEqual(err("price_impact"));
+  });
+
   it("keeps the first venue's refusal when no venue quotes", async () => {
     const quotes: readonly QuoteOutcome[] = [err("no_route"), err("venue_down")];
     const clock = createManualClock(testNowMs);
@@ -183,6 +201,7 @@ describe("the best quote", () => {
       prices: coinPrices,
       nativeAsset: testCoin,
       feePerGasBase: 1n,
+      maxPriceImpactBps: bpsSchema.parse(300),
       signal: live,
     };
     await expect(chooseRoute(quotes, options)).resolves.toStrictEqual(err("no_route"));

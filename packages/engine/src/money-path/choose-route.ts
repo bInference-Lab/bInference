@@ -1,5 +1,5 @@
 import { type AssetRef, type PriceSource, withQuotePrice } from "@binference/chain";
-import { err, type Id, ok, type Ratio, type Result } from "@binference/core";
+import { type Bps, err, type Id, ok, type Ratio, type Result } from "@binference/core";
 import type { SimulationFailure, QuoteFailure } from "../intents/intent-reason.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { Simulator } from "../ports.js";
@@ -21,6 +21,8 @@ export interface RouteChoiceOptions {
   readonly nativeAsset: AssetRef;
   /** The most fee per gas a transaction pays now on the trade's chain, from the wallet's facts. */
   readonly feePerGasBase: bigint;
+  /** The agent's maximum price impact: a quote above it is never built. */
+  readonly maxPriceImpactBps: Bps;
   /**
    * The venue whose quote the policy priced the trade from, and how to check the policy again on
    * another venue's quote. A re-quote at a tap checks no policy and leaves both out.
@@ -160,13 +162,15 @@ function fallbackOf(
 }
 
 /**
- * The best quote (decision 0107): builds every venue's quote through the venue host and simulates
- * each plan, then ranks the plans whose simulation passed by what the wallet receives, net of the
- * network fee valued in the asset bought, so a transfer tax counts as the simulation measured it.
- * The policy checks the chosen route again unless it is the one it priced; a route it refuses
- * gives way to the next. With no route passing, the venue the policy priced keeps its build
- * failure or its failed simulation, so the intent ends with that reason; with no quote at all, the
- * first venue's refusal stands.
+ * The best quote (decision 0107): drops every quote whose price impact is above the agent's
+ * maximum, builds the others through the venue host and simulates each plan, then ranks the plans
+ * whose simulation passed by what the wallet receives, net of the network fee valued in the asset
+ * bought, so a transfer tax counts as the simulation measured it. The policy checks the chosen
+ * route again unless it is the one it priced; a route it refuses gives way to the next. With no
+ * route passing, the venue the policy priced keeps its build failure or its failed simulation, so
+ * the intent ends with that reason. With no quote at all, the first venue's refusal stands; with
+ * every quote above the maximum, `price_impact` (spec 6, section 4). An impact a venue cannot
+ * tell is the whole input, so it is dropped like any other above the maximum.
  */
 export async function chooseRoute(
   quotes: readonly QuoteOutcome[],
@@ -177,7 +181,11 @@ export async function chooseRoute(
     const [first] = quotes;
     return err(first !== undefined && !first.ok ? first.error : "venue_down");
   }
-  const candidates = await Promise.all(quoted.map(async (item) => candidateOf(item, options)));
+  const bounded = quoted.filter(({ quote }) => quote.priceImpactBps <= options.maxPriceImpactBps);
+  if (bounded.length === 0) {
+    return err("price_impact");
+  }
+  const candidates = await Promise.all(bounded.map(async (item) => candidateOf(item, options)));
   const passed = candidates.flatMap((candidate): Passed[] =>
     candidate.simulation?.ok === true ? [{ candidate, steps: candidate.simulation.value }] : [],
   );

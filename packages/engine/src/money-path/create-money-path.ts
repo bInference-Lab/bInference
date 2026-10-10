@@ -187,6 +187,7 @@ function routeChoiceOf(
     prices: options.prices,
     nativeAsset: resolved.nativeAsset,
     feePerGasBase: resolved.facts.feePerGasNativeBase,
+    maxPriceImpactBps: resolved.settings.limits.priceImpactBps,
     ...(first.ok ? { policy: { pricedVenue: first.value.trade.venue, recheck } } : {}),
     signal,
   };

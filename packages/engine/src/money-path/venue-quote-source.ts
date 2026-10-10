@@ -27,9 +27,10 @@ export interface VenueQuoteSourceOptions {
  * Creates the {@link QuoteSource} the confirmations ask when the owner taps a card whose quote is
  * old: it resolves the stored request again, with the agent's limits as they are now, asks every
  * venue the agent allows and picks the route as the money path does, by simulation, through the
- * venue host, which checks every step it builds. An intent the money path cannot route again, an
- * unknown one included, is `no_route`; a wallet the custodian no longer holds is `venue_down`, so
- * the card stays open and the owner can cancel it.
+ * venue host, which checks every step it builds. A quote above the agent's maximum price impact
+ * is dropped, and with none left the re-quote is `price_impact`. An intent the money path cannot
+ * route again, an unknown one included, is `no_route`; a wallet the custodian no longer holds is
+ * `venue_down`. Each failure leaves the card open, and the owner can cancel it.
  */
 export function createVenueQuoteSource(options: VenueQuoteSourceOptions): QuoteSource {
   return {
@@ -68,6 +69,7 @@ export function createVenueQuoteSource(options: VenueQuoteSourceOptions): QuoteS
         prices: options.prices,
         nativeAsset: nativeAssetOf(chain),
         feePerGasBase: facts.feePerGasNativeBase,
+        maxPriceImpactBps: limits.priceImpactBps,
         signal,
       });
       return chosen.ok ? ok(chosen.value.planned.built) : chosen;

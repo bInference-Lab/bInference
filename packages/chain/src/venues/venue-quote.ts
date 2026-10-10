@@ -23,6 +23,10 @@ export interface QuoteRequest {
 export interface VenueQuote {
   /** What the input buys at the quoted price, in base units of the asset out. */
   readonly expectedOut: Amount;
+  /**
+   * The share of the input's value the route loses, rounded up. An impact the venue cannot tell
+   * is the whole input, 10,000 bp, so an agent's maximum below that refuses the quote.
+   */
   readonly priceImpactBps: Bps;
   /**
    * The venue's own record of the route it quoted, given back to its builder. The host stores it

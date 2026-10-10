@@ -1,6 +1,6 @@
 import type { Signer, TxDraft } from "@binference/chain";
 import { fakeDraft } from "@binference/chain/testing";
-import { createIdSource, err, type Id } from "@binference/core";
+import { type Bps, bpsSchema, createIdSource, err, type Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, QuoteView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -237,6 +237,20 @@ describe("the queue check", () => {
     const routed = quoteOf(snapshot).route.map((leg) => leg.venue);
     expect((await check(["elsewhere", ...routed])).facts.hasPolicyPassed).toBe(true);
     expect((await check(["elsewhere"])).facts.hasPolicyPassed).toBe(false);
+  });
+
+  it("fails the policy once the confirmed quote's price impact is above the maximum", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const snapshot = await tappedSnapshot(bench);
+    const parts = checkPartsOf(bench);
+    const { priceImpactBps } = quoteOf(snapshot);
+    const check = async (max: Bps) => {
+      const limits = { ...snapshot.settings.limits, priceImpactBps: max };
+      const settings = { ...snapshot.settings, limits };
+      return checkForQueue({ ...snapshot, settings }, { parts, chain: fakeChain }, live().signal);
+    };
+    expect((await check(priceImpactBps)).facts.hasPolicyPassed).toBe(true);
+    expect((await check(bpsSchema.parse(priceImpactBps - 1))).facts.hasPolicyPassed).toBe(false);
   });
 
   it("fails the policy for an intent with no quote", async () => {

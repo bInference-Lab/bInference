@@ -1,5 +1,6 @@
 import {
   BinferenceError,
+  type Bps,
   bpsSchema,
   err,
   mulDiv,
@@ -23,11 +24,13 @@ import { fakeApprovalData, fakeCallOf, fakeDraft, isFakeUnsigned } from "./fake-
 export interface FakeVenueOptions {
   /** Base units out per base unit in; 2 to 1 when absent. */
   readonly rate?: Ratio;
+  /** The price impact every quote reports; 10 bp when absent. */
+  readonly priceImpactBps?: Bps;
 }
 
 const fakeChain = createFakeChainDefinition();
 const fakeChainRef = chainRefSchema.parse(fakeChain.id);
-const priceImpactBps = bpsSchema.parse(10);
+const defaultImpactBps = bpsSchema.parse(10);
 
 // Epoch milliseconds in decimal, up to 16 digits, which a number holds exactly.
 const deadlineSchema = z
@@ -135,6 +138,7 @@ function build(request: BuildRequest): readonly TxDraft[] {
  */
 export function createFakeVenue(options: FakeVenueOptions = {}): Venue {
   const rate = options.rate ?? { numerator: 2n, denominator: 1n };
+  const priceImpactBps = options.priceImpactBps ?? defaultImpactBps;
   return {
     id: "fake-swap",
     contracts: [{ chain: fakeChainRef, names: ["router"] }],
