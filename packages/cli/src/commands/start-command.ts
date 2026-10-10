@@ -41,7 +41,9 @@ function announce(output: CliOutput, engine: RunningEngine): void {
   output.say("start.ready", { host, port: String(port), ipc: engine.ipc, logFile: engine.logFile });
   const { lockReason } = engine;
   if (lockReason !== undefined) {
-    output.say("start.locked", { reason: lockReason });
+    output.say(lockReason === "signer_revoked" ? "start.revoked" : "start.locked", {
+      reason: lockReason,
+    });
   }
   output.json({
     state: engine.state,

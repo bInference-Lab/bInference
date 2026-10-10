@@ -34,7 +34,9 @@ export interface UnlockedKeys {
  * program printed no agent key. `app_secret_missing`: config names no Privy app secret;
  * `app_secret_unavailable`: its source holds none. Once the keys open (decision 0117):
  * `app_secret_rejected`: Privy refuses the app id and secret; `custody_unreachable`: Privy did
- * not answer; `signer_failed`: the signer did not start, stopped, or holds another key.
+ * not answer; `signer_failed`: the signer did not start, stopped, or holds another key;
+ * `signer_revoked`: a wallet no longer lists this machine's agent key as its signer, since another
+ * machine attached or the owner key removed it (decision 0140).
  */
 export type LockReason =
   | "needs_passphrase"
@@ -47,7 +49,8 @@ export type LockReason =
   | "app_secret_unavailable"
   | "app_secret_rejected"
   | "custody_unreachable"
-  | "signer_failed";
+  | "signer_failed"
+  | "signer_revoked";
 
 /** What the unlock reads: config, the platform's stores, and the manual mode's passphrase. */
 export interface UnlockOptions {

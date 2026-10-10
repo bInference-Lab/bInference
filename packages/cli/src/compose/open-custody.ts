@@ -34,6 +34,7 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { ceilingRequestOf } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
+import { checkAttached } from "./check-attached.js";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
@@ -228,10 +229,12 @@ async function readInstall(
 
 /**
  * Opens custody with the keys the unlock mode read (keys spec, section 5; decision 0117): Privy
- * checks the app id and secret with one read, the signer starts with the agent key and must answer
- * the public half the wallets name as their signer, and the `privy-owner` adapter signs for the
- * install's wallets through both. Answers why the engine stays locked instead:
- * `app_secret_rejected`, `custody_unreachable` or `signer_failed`. Nothing signs on a failure.
+ * checks the app id and secret with one read, every live wallet must still list this machine's
+ * key quorum as its signer on Privy (decision 0140), the signer starts with the agent key and must
+ * answer the public half the wallets name as their signer, and the `privy-owner` adapter signs for
+ * the install's wallets through both. Answers why the engine stays locked instead:
+ * `app_secret_rejected`, `custody_unreachable`, `signer_revoked` or `signer_failed`. Nothing signs
+ * on a failure.
  */
 export async function openCustody(
   keys: UnlockedKeys,
@@ -242,16 +245,20 @@ export async function openCustody(
   if (!app.ok) {
     return app;
   }
+  const { install, http, clock } = options;
+  const api = createPrivyApi({ http, clock, appId: app.value, appSecret: keys.appSecret });
+  const attached = await checkAttached({ install, api, logger: options.logger }, signal);
+  if (!attached.ok) {
+    return attached;
+  }
   const started = await startCheckedSigner(options, keys, signal);
   if (!started.ok) {
     return started;
   }
   const signer = started.value;
-  const { install, http, clock } = options;
   const facts = await readInstall(install, signer, signal);
   // A wallet made after the unlock joins the wallets the adapter signs for.
   const wallets = walletsOf(facts.wallets, options);
-  const api = createPrivyApi({ http, clock, appId: app.value, appSecret: keys.appSecret });
   const ownerKeyPublic = async (read: AbortSignal) =>
     (await install.read({ signal: read })).custody?.ownerKeyPublic;
   return ok({

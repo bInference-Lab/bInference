@@ -91,7 +91,10 @@ Once both secrets open, Privy checks the app with one read and the signer starts
 key, which must answer the public half the wallets name as their signer; only then does the engine
 unlock. A failure there runs the engine locked too, never stops it: `app_secret_rejected` when
 Privy refuses the app, `custody_unreachable` when Privy does not answer, `signer_failed` when the
-signer does not start or holds another key ([decision 0117](../DECISIONS.md#d0117)). A signer that
+signer does not start or holds another key ([decision 0117](../DECISIONS.md#d0117)), and
+`signer_revoked` when a live wallet on Privy no longer lists this machine's agent key as its
+signer, which `binference unlock` does not clear; such an engine leaves the owner's bot alone
+([decision 0140](../DECISIONS.md#d0140)). A signer that
 stops later locks the engine again with `notice.signerStopped`. `binference unlock` runs the whole
 step again. After a start that found Privy out of reach, the engine retries the step by itself, up
 to five more times within five minutes, each wait a random share of 10, 20, 40, 80 and 160

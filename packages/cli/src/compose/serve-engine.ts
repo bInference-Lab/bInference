@@ -71,13 +71,20 @@ function startTimers(
   }
 }
 
-// The owner's bot, when its token was read, as the channels step of the startup order.
+// The owner's bot, when its token was read, as the channels step of the startup order. An engine
+// whose agent key was removed leaves the bot to the machine that took its place (decision 0140):
+// Telegram ends the polling of one of two machines that poll one bot.
 function botChannelOf(
   opening: Opening,
   opened: Opened,
-  composed: ComposedSelfHosted,
+  started: { readonly composed: ComposedSelfHosted; readonly unlocked: Result<void, LockReason> },
 ): BotChannel | undefined {
-  const { telegram } = composed;
+  const { telegram } = started.composed;
+  const { unlocked } = started;
+  if (!unlocked.ok && unlocked.error === "signer_revoked") {
+    opened.log.logger.warn("telegram.bot_skipped", { errorCode: "unlock.signer_revoked" });
+    return undefined;
+  }
   if (telegram === undefined || opened.bot === undefined) {
     return undefined;
   }
@@ -95,8 +102,9 @@ function botChannelOf(
  * its place in its wallet's queue; once unlocked, the confirmed intents an earlier run left go to
  * the executor; the timer for work that waits for its time starts, the watch on `config.json5`
  * that reloads the settings (decision 0118), and after a start that found Privy out of reach, the
- * signer step's retries (decision 0119); the owner's bot's channel; then the engine is `ready`, or
- * `locked`, and says so on topic `engine`, and the bot starts polling.
+ * signer step's retries (decision 0119); the owner's bot's channel, unless another machine took
+ * over the wallets (decision 0140); then the engine is `ready`, or `locked`, and says so on topic
+ * `engine`, and the bot starts polling.
  */
 export async function serveEngine(opening: Opening, opened: Opened): Promise<StartOutcome> {
   const { platform, signal } = opening;
@@ -115,7 +123,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
     await composed.resume(signal);
   }
   startTimers(opening, opened, { composed, isPrivyUnreachable: isUnreachable(unlocked) });
-  const channel = botChannelOf(opening, opened, composed);
+  const channel = botChannelOf(opening, opened, { composed, unlocked });
   const { stop, finished } = startShutdown(opening, opened);
   composed.stopper.stop = stop;
   state.current = "ready";

@@ -24,11 +24,13 @@ export interface EngineOperationsOptions {
 
 type EngineStatus = ResultOf<"engine/status">;
 
-// A call sent again unchanged cannot pass for these: it needs another passphrase or a restart.
+// A call sent again unchanged cannot pass for these: it needs another passphrase, a restart, or
+// this machine attached again.
 const finalReasons: ReadonlySet<LockReason> = new Set([
   "needs_passphrase",
   "wrong_passphrase",
   "app_secret_missing",
+  "signer_revoked",
 ]);
 
 // The handler's answer carries no details, so the refusal travels as the protocol code it is.
