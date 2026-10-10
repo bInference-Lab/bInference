@@ -1,6 +1,6 @@
 # 0138. binference start runs the engine as the background service
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
