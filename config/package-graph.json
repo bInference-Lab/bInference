@@ -85,7 +85,7 @@
       "httpListener": true
     },
     "telegram": {
-      "imports": ["core", "protocol", "i18n", "engine", "grammy"],
+      "imports": ["core", "chain", "protocol", "i18n", "engine", "grammy"],
       "userText": true
     },
     "client": {

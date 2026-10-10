@@ -15,6 +15,12 @@ every copy into its receipt. One throttler per bot token paces the bot by Telegr
 waits out every 429, pausing only the chat Telegram named. A confirmed paper intent's card becomes
 the receipt of its paper fill.
 
+The owner's fast commands (`/balance`, `/positions`, `/orders`, `/cancel`, `/freeze`, `/rescue`,
+`/paper`, `/status`, `/limits`, `/lang`, `/help`) are answered by the engine's code, never by a
+model. Each runs its operations through the engine as the owner on Telegram, so a `/freeze` is
+journaled and announced as made from Telegram, and `/rescue` opens the rescue card while
+everything is frozen. Their menu is registered in English and Chinese.
+
 ## API
 
 | Export                             | What it does                                                                   |
@@ -32,7 +38,9 @@ the receipt of its paper fill.
 | `createTelegramCards`              | Shows card versions, settles them into receipts, takes the owner's presses     |
 | `CardAnswers`                      | The engine's side of a card press: checks the presser, stores the answer first |
 | `CardCopyStore`, `cardCopySchema`  | Where each card version was posted, so every copy can become the receipt       |
-| `@binference/telegram/testing`     | Contract suites and fakes of the three ports, and `createFakeBotApi`           |
+| `createFastCommands`               | Answers the owner's fast commands without a model and registers their menu     |
+| `OwnerCalls`                       | The engine's side of a fast command: runs its operations for the owner alone   |
+| `@binference/telegram/testing`     | Contract suites and fakes of the ports, and `createFakeBotApi`                 |
 
 `createFakeBotApi` is a synthetic Bot API for tests: updates in, messages, edits and button
 answers out, with Telegram's checks on HTML, lengths and callback data.

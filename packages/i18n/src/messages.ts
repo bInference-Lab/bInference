@@ -1,6 +1,7 @@
 import enAutoAsks from "../messages/en/autoAsks.json" with { type: "json" };
 import enCard from "../messages/en/card.json" with { type: "json" };
 import enCli from "../messages/en/cli.json" with { type: "json" };
+import enCmd from "../messages/en/cmd.json" with { type: "json" };
 import enError from "../messages/en/error.json" with { type: "json" };
 import enInit from "../messages/en/init.json" with { type: "json" };
 import enLimit from "../messages/en/limit.json" with { type: "json" };
@@ -11,6 +12,7 @@ import enTelegram from "../messages/en/telegram.json" with { type: "json" };
 import zhAutoAsks from "../messages/zh/autoAsks.json" with { type: "json" };
 import zhCard from "../messages/zh/card.json" with { type: "json" };
 import zhCli from "../messages/zh/cli.json" with { type: "json" };
+import zhCmd from "../messages/zh/cmd.json" with { type: "json" };
 import zhError from "../messages/zh/error.json" with { type: "json" };
 import zhInit from "../messages/zh/init.json" with { type: "json" };
 import zhLimit from "../messages/zh/limit.json" with { type: "json" };
@@ -46,6 +48,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("receipt", enReceipt),
     ...inArea("notice", enNotice),
     ...inArea("telegram", enTelegram),
+    ...inArea("cmd", enCmd),
     ...inArea("cli", enCli),
     ...inArea("init", enInit),
     ...inArea("limit", enLimit),
@@ -58,6 +61,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("receipt", zhReceipt),
     ...inArea("notice", zhNotice),
     ...inArea("telegram", zhTelegram),
+    ...inArea("cmd", zhCmd),
     ...inArea("cli", zhCli),
     ...inArea("init", zhInit),
     ...inArea("limit", zhLimit),

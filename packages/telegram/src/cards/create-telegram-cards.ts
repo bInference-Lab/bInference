@@ -25,10 +25,19 @@ export interface CardShowing extends DrawnCard {
 export interface TelegramCards {
   /**
    * Sends a card version to the owner's chat with its Confirm and Cancel buttons, keeps the copy,
-   * and removes the buttons of the intent's earlier versions. A version shown before is not sent
-   * again. `no_owner` before an owner is bound.
+   * and removes the buttons of the intent's earlier versions. A version shown before, or being
+   * shown, is not sent again: the copy is answered. `no_owner` before an owner is bound.
    */
   show(
+    showing: CardShowing,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<CardCopy, "no_owner">>;
+  /**
+   * Sends an open card version to the owner's chat again, with its Cancel button alone, and keeps
+   * the copy, so it becomes the receipt like every other: what `/cancel` offers. `no_owner`
+   * before an owner is bound.
+   */
+  offerCancel(
     showing: CardShowing,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<CardCopy, "no_owner">>;
@@ -73,40 +82,39 @@ interface CardsContext {
   readonly displayOf: (assets: AssetInfos) => CardDisplay;
 }
 
-function buttonsOf(context: CardsContext, ref: string) {
-  return [
-    {
-      text: context.words("telegram.button.confirm"),
-      data: cardCallbackData({ ref, decision: "confirm" }),
-    },
-    {
-      text: context.words("telegram.button.cancel"),
-      data: cardCallbackData({ ref, decision: "deny" }),
-    },
-  ];
+type Decision = "confirm" | "deny";
+
+const buttonWords: Readonly<Record<Decision, string>> = {
+  confirm: "telegram.button.confirm",
+  deny: "telegram.button.cancel",
+};
+
+function buttonsOf(context: CardsContext, ref: string, decisions: readonly Decision[]) {
+  return decisions.map((decision) => ({
+    text: context.words(buttonWords[decision]),
+    data: cardCallbackData({ ref, decision }),
+  }));
 }
 
-async function show(
+// Sends the card version with the buttons of these decisions and keeps the copy.
+async function send(
   context: CardsContext,
-  showing: CardShowing,
+  sending: { readonly showing: CardShowing; readonly decisions: readonly Decision[] },
   call: Call,
 ): Promise<Result<CardCopy, "no_owner">> {
   const { copies, owners, logger } = context.options;
-  const ref = showing.callbackRef;
-  const [shown] = await copies.find(ref, call);
-  if (shown !== undefined) {
-    return ok(shown);
-  }
+  const { showing } = sending;
   const owner = await owners.get(call);
   if (owner === undefined) {
     return err("no_owner");
   }
+  const ref = showing.callbackRef;
   const messageId = await context.calls.send(
     {
       chatId: owner.userId,
       ...(showing.threadId === undefined ? {} : { threadId: showing.threadId }),
       html: cardHtml(showing.card, context.displayOf(showing.assets)),
-      buttons: buttonsOf(context, ref),
+      buttons: buttonsOf(context, ref, sending.decisions),
     },
     call,
   );
@@ -119,11 +127,48 @@ async function show(
   };
   await copies.keep(copy, call);
   logger.info("telegram.card_shown", { intentId: showing.intent });
+  return ok(copy);
+}
+
+async function show(
+  context: CardsContext,
+  showing: CardShowing,
+  call: Call,
+): Promise<Result<CardCopy, "no_owner">> {
+  const { copies } = context.options;
+  const [shown] = await copies.find(showing.callbackRef, call);
+  if (shown !== undefined) {
+    return ok(shown);
+  }
+  const sent = await send(context, { showing, decisions: ["confirm", "deny"] }, call);
+  if (!sent.ok) {
+    return sent;
+  }
+  const copy = sent.value;
   const earlier = (await copies.ofIntent(showing.intent, call)).filter(
     (kept) => kept.cardVersion < copy.cardVersion,
   );
   await Promise.all(earlier.map(async (old) => context.calls.dropButtons(old, call)));
   return ok(copy);
+}
+
+// One showing of a card version at a time: a second asks while the first sends, and gets its copy,
+// so the relay and a command never post the same version twice.
+function oneShowAtATime(context: CardsContext): TelegramCards["show"] {
+  const showing = new Map<string, Promise<Result<CardCopy, "no_owner">>>();
+  return async (card, call) => {
+    const running = showing.get(card.callbackRef);
+    if (running !== undefined) {
+      return running;
+    }
+    const shown = show(context, card, call);
+    showing.set(card.callbackRef, shown);
+    try {
+      return await shown;
+    } finally {
+      showing.delete(card.callbackRef);
+    }
+  };
 }
 
 function sameMessage(left: MessageAt, right: MessageAt): boolean {
@@ -213,7 +258,8 @@ export function createTelegramCards(options: TelegramCardsOptions): TelegramCard
     displayOf: (assets) => ({ formatter: formatter(), assets }),
   };
   return {
-    show: async (showing, call) => show(context, showing, call),
+    show: oneShowAtATime(context),
+    offerCancel: async (showing, call) => send(context, { showing, decisions: ["deny"] }, call),
     settle: async (settling, call) => settle(context, settling, call),
     press: async (pressed, call) => press(context, pressed, call),
   };

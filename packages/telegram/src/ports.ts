@@ -1,5 +1,11 @@
 import type { Id, Result } from "@binference/core";
-import type { CardPress, CardStanding } from "@binference/engine/surfaces";
+import type {
+  CardPress,
+  CardStanding,
+  OwnerCall,
+  OwnerChatOperation,
+} from "@binference/engine/surfaces";
+import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { CardCopy } from "./cards/card-copy.js";
 import type { OwnerBinding } from "./owner/owner-binding.js";
 
@@ -41,4 +47,21 @@ export interface CardCopyStore {
     intent: Id<"int">,
     options: { readonly signal: AbortSignal },
   ): Promise<readonly CardCopy[]>;
+}
+
+/**
+ * Runs the operations of the owner's fast commands inside the engine; the engine owns it. An
+ * operation runs only for the owner's numeric Telegram id, as the owner on Telegram, so what it
+ * changes is journaled and announced as done from Telegram.
+ */
+export interface OwnerCalls {
+  /**
+   * Answers the operation's result, or the protocol error code it refused with: `auth.scope` for
+   * a sender who is not the owner, `protocol.unknown_op` for an operation the engine does not
+   * serve. Rejects with the signal's reason once it aborts, and runs nothing.
+   */
+  call<N extends OwnerChatOperation>(
+    request: OwnerCall<N>,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<ResultOf<N>, ProtocolErrorCode>>;
 }

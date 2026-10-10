@@ -20,8 +20,8 @@ Rules for this package:
 - Telegram names an update's chat message `message`, which the lint rule against reading error
   messages also matches. Only `src/updates/chat-update.schema.ts` reads it; everything else uses
   binference's `ChatUpdate`.
-- Every word the bot sends is a message key in `@binference/i18n`: `telegram.*`, and the card,
-  receipt and reason messages the engine's card lines name. Cards follow the owner's language;
+- Every word the bot sends is a message key in `@binference/i18n`: `telegram.*`, the fast
+  commands' `cmd.*`, and the card, receipt and reason messages the engine's card lines name. Cards follow the owner's language;
   ingress replies follow it too, or else the language of the sender's Telegram app. The owner's
   language and timezone are read for each message, so a change in config.json5 applies at once.
 - Messages go out in Telegram's HTML only as `src/cards/card-html.ts` builds them: each card line
@@ -29,6 +29,14 @@ Rules for this package:
   symbols and names, the agent's reason, venue and client names) goes through `displayOutsideText`
   of `@binference/i18n`, and then escaped whole with `escapeHtml`.
   Never build HTML from a value.
+- A fast command (`src/commands/`) runs the engine's operations only through the `OwnerCalls`
+  port, never a store or a model: the engine runs each for the owner's numeric Telegram id, as the
+  owner on Telegram. A command is a message the owner typed: an edit or a forward runs nothing,
+  and any other message goes on to the agent's chat. Replies go out as plain text, with no parse
+  mode, split at line breaks into messages of at most 4,096 characters (`src/split/`); a value
+  from outside in them goes through the engine's `cardLineText`. A refusal is answered with the
+  error message of its code. The menu is registered with `setMyCommands` for private chats, in
+  English and in Chinese.
 - Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
   does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the
   press is answered only after `answer` resolves.

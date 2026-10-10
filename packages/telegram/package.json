@@ -24,6 +24,7 @@
     "build": "tsdown src/index.ts src/testing.ts src/polling/poll.worker.ts --unbundle --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
+    "@binference/chain": "workspace:*",
     "@binference/core": "workspace:*",
     "@binference/engine": "workspace:*",
     "@binference/i18n": "workspace:*",

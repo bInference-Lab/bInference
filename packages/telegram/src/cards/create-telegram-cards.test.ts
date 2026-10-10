@@ -138,6 +138,35 @@ describe("the Telegram cards", () => {
     expect(context.botApi.sent()).toHaveLength(1);
   });
 
+  it("show a card version once when two ask for it at the same time", async () => {
+    const context = await setUp();
+    const [first, second] = await Promise.all([
+      context.cards.show(showing(), live),
+      context.cards.show(showing(), live),
+    ]);
+    expect(second).toStrictEqual(first);
+    expect(context.botApi.sent()).toHaveLength(1);
+    await context.cards.show(showing(), live);
+    expect(context.botApi.sent()).toHaveLength(1);
+  });
+
+  it("offer a card again with its Cancel button alone, and nothing before an owner is bound", async () => {
+    const context = await setUp();
+    await context.cards.show(showing(), live);
+    const offered = await context.cards.offerCancel(showing(), live);
+    const cancelOnly = [[{ text: `${icons.refused} Cancel`, data: `bnf1:c:n:${ref}` }]];
+    expect(context.botApi.messages().map((message) => message.buttons)).toStrictEqual([
+      buttons,
+      cancelOnly,
+    ]);
+    expect(offered).toMatchObject({ ok: true, value: { messageId: 1002 } });
+    const unpaired = await setUp({ isPaired: false });
+    expect(await unpaired.cards.offerCancel(showing(), live)).toStrictEqual({
+      ok: false,
+      error: "no_owner",
+    });
+  });
+
   it("take the buttons off earlier versions when a new version is shown", async () => {
     const context = await setUp();
     await context.cards.show(showing(), live);

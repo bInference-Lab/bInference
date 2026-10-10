@@ -2,6 +2,8 @@ export { cardAnswersContract } from "./contracts/card-answers-contract.js";
 export type { CardAnswersHarness, CardAnswersSubject } from "./contracts/card-answers-contract.js";
 export { cardCopyStoreContract } from "./contracts/card-copy-store-contract.js";
 export type { CardCopyStoreHarness } from "./contracts/card-copy-store-contract.js";
+export { ownerCallsContract } from "./contracts/owner-calls-contract.js";
+export type { OwnerCallsHarness, OwnerCallsSubject } from "./contracts/owner-calls-contract.js";
 export { ownerStoreContract } from "./contracts/owner-store-contract.js";
 export type { OwnerStoreHarness } from "./contracts/owner-store-contract.js";
 export { createFakeCardAnswers } from "./fakes/fake-card-answers.js";

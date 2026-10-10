@@ -696,6 +696,9 @@ importers:
 
   packages/telegram:
     dependencies:
+      '@binference/chain':
+        specifier: workspace:*
+        version: link:../chain
       '@binference/core':
         specifier: workspace:*
         version: link:../core
