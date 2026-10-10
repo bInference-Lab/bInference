@@ -20,9 +20,9 @@ import type { PrivyApi } from "../privy/privy-api.js";
 import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
 import { privyTransaction } from "../signing/privy-transaction.js";
 import { testCeilingRequest, testChain } from "../testing/custody-fixtures.js";
-import type { OwnerAuthorize } from "../wallets/ceiling-recipients.js";
 import { createAgentWallet } from "../wallets/create-agent-wallet.js";
 import type { WalletExpectation } from "../wallets/read-back.js";
+import type { OwnerAuthorize } from "../wallets/rule-plans.js";
 
 /** A Privy app under test, with the keys the suite makes a wallet for. */
 export interface PrivyCustodySubject {

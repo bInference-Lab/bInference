@@ -1,19 +1,11 @@
-import type { PrivyRequest } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
 import { type AddressProblem, addressList, recipientRules } from "../ceiling/build-ceiling.js";
-import { type PolicyRule, policyRuleJson } from "../ceiling/policy-rule.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
 import type { PolicyRuleRef } from "../privy/privy-wire.schema.js";
 import { readRuleRefs } from "../privy/privy-wire.schema.js";
-import { ruleTexts } from "./policy-rules.schema.js";
-
-/** Signs a request as the owner key, or refuses; a refusal changes nothing. */
-export type OwnerAuthorize = (
-  request: PrivyRequest,
-  signal: AbortSignal,
-) => Promise<Result<string, "refused">>;
+import { isWritten, type OwnerAuthorize, type RulePlan, writeRules } from "./rule-plans.js";
 
 /** A ceiling, and every address its send rules let a send pay, on each chain it enables. */
 export interface PolicyRecipients {
@@ -69,16 +61,6 @@ export type SignedRecipientsRefusal =
 
 const sendRuleName = /^(?:Native|Token) sends, chain (\d{1,10})$/;
 
-/** One send rule of a policy, and its version listing given recipients. */
-interface RulePlan {
-  readonly ref: PolicyRuleRef;
-  readonly body: PolicyRule;
-}
-
-function textOf(json: Parameters<typeof ruleTexts>[0][number]): string | undefined {
-  return ruleTexts([json])?.[0];
-}
-
 // The send rules of a policy as Privy holds them now; a policy without one is `not_found`.
 async function sendRulesOf(
   api: PrivyApi,
@@ -118,10 +100,6 @@ async function planOf(
   return rules.ok ? plansOf(rules.value, target.recipients) : rules;
 }
 
-function isListed(plan: RulePlan): boolean {
-  return textOf(plan.ref.json) === textOf(policyRuleJson(plan.body));
-}
-
 /**
  * Sets the recipients of a ceiling now, signed by the owner key: each send rule of each chain
  * lists exactly these addresses, checksummed. A rule that lists them already is left alone, so
@@ -133,20 +111,7 @@ export async function setCeilingRecipients(
   input: CallOptions & { readonly authorize: OwnerAuthorize; readonly expiresAtMs: number },
 ): Promise<Result<void, RecipientsRefusal>> {
   const plans = await planOf(api, target, input);
-  if (!plans.ok) {
-    return plans;
-  }
-  const { authorize, expiresAtMs, signal } = input;
-  for (const plan of plans.value.filter((each) => !isListed(each))) {
-    const change = { policy: target.policy, rule: plan.ref.id, body: plan.body, expiresAtMs };
-    const authorization = { kind: "sign", authorize } as const;
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one rule at a time: a refusal stops the rest
-    const changed = await api.changeRule(change, { authorization, signal });
-    if (!changed.ok) {
-      return err(changed.error === "expired" ? "refused" : changed.error);
-    }
-  }
-  return ok(undefined);
+  return plans.ok ? writeRules(api, { policy: target.policy, plans: plans.value }, input) : plans;
 }
 
 /**
@@ -197,10 +162,10 @@ function stillToSend(
   for (const change of signed.changes) {
     const next = plans.to.find((plan) => plan.ref.id === change.rule);
     const was = plans.from.find((plan) => plan.ref.id === change.rule);
-    if (next === undefined || was === undefined || (!isListed(next) && !isListed(was))) {
+    if (next === undefined || was === undefined || (!isWritten(next) && !isWritten(was))) {
       return err("changed");
     }
-    if (!isListed(next)) {
+    if (!isWritten(next)) {
       toSend.push({ change, next });
     }
   }

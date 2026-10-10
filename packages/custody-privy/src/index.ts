@@ -45,12 +45,12 @@ export {
   signedRecipientsSchema,
 } from "./wallets/ceiling-recipients.js";
 export type {
-  OwnerAuthorize,
   PolicyRecipients,
   RecipientsRefusal,
   SignedRecipients,
   SignedRecipientsRefusal,
   SignedRuleChange,
 } from "./wallets/ceiling-recipients.js";
+export type { OwnerAuthorize } from "./wallets/rule-plans.js";
 export { checkWallet, readBackWallet } from "./wallets/read-back.js";
 export type { ReadBackProblem, WalletExpectation, WalletView } from "./wallets/read-back.js";

@@ -6,11 +6,11 @@ import type { PrivyId } from "../privy/privy-records.js";
 import { testAddresses } from "../testing/custody-fixtures.js";
 import { ownerSigner } from "../testing/owner-signer.js";
 import {
-  type OwnerAuthorize,
   sendSignedRecipients,
   setCeilingRecipients,
   signCeilingRecipients,
 } from "../wallets/ceiling-recipients.js";
+import type { OwnerAuthorize } from "../wallets/rule-plans.js";
 import {
   askPrivy,
   check,

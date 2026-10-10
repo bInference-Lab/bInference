@@ -8,12 +8,12 @@ import {
   type FakeCustodySubject,
 } from "../testing/fake-custody-subject.js";
 import {
-  type OwnerAuthorize,
   sendSignedRecipients,
   setCeilingRecipients,
   signCeilingRecipients,
   signedRecipientsSchema,
 } from "./ceiling-recipients.js";
+import type { OwnerAuthorize } from "./rule-plans.js";
 
 const live = { signal: new AbortController().signal };
 const { rescue, saved, unsaved } = testAddresses;
