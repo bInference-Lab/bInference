@@ -20,6 +20,7 @@ import {
   type AlertView,
   alertViewSchema,
 } from "../views/alert-view.schema.js";
+import { type AssetInfos, assetInfosSchema } from "../views/asset-info.schema.js";
 import {
   type OrderState,
   orderStateSchema,
@@ -46,6 +47,14 @@ interface ListOrdersArgs extends PageArgs {
   readonly state?: OrderState;
 }
 
+/**
+ * One page of auto orders, with the info of every asset their requests name, once (protocol spec,
+ * section 8.3). Optional only so the field stays an addition within version 1.
+ */
+interface OrderPage extends Page<OrderView> {
+  readonly assets?: AssetInfos;
+}
+
 /** The args of `alert/create`. */
 interface CreateAlertArgs {
   readonly agent: ProtocolId<"agent">;
@@ -68,7 +77,7 @@ interface CreateScheduleArgs {
 export interface OrderOperationShapes {
   readonly "order/create": { readonly args: OrderRequest; readonly result: OrderView };
   readonly "order/get": { readonly args: OrderArgs; readonly result: OrderView };
-  readonly "order/list": { readonly args: ListOrdersArgs; readonly result: Page<OrderView> };
+  readonly "order/list": { readonly args: ListOrdersArgs; readonly result: OrderPage };
   readonly "order/cancel": { readonly args: OrderArgs; readonly result: OrderView };
   readonly "alert/create": { readonly args: CreateAlertArgs; readonly result: AlertView };
   readonly "alert/list": { readonly args: PageArgs; readonly result: Page<AlertView> };
@@ -128,7 +137,11 @@ export const orderOperations: OperationTable<OrderOperationShapes> = {
       agent: agent.exactOptional(),
       state: orderStateSchema.exactOptional(),
     }),
-    result: pageSchema(orderViewSchema),
+    result: z.object({
+      items: z.array(orderViewSchema),
+      next: z.string().min(1).exactOptional(),
+      assets: assetInfosSchema.exactOptional(),
+    }),
   },
   "order/cancel": {
     ...writeFlags,

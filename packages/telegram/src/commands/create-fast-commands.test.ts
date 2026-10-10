@@ -111,6 +111,9 @@ const stopLoss: OrderView = {
   changedAt: nowMs,
 } as unknown as OrderView;
 
+// The info of the orders' token, which an order page carries.
+const orderAssets = { [refs.bnb]: { symbol: "FAKE", name: "Fake", decimals: 18, verified: true } };
+
 // The stop-loss with another kind, side or trigger.
 function orderOf(request: Partial<OrderView["request"]>): OrderView {
   return { ...stopLoss, request: { ...stopLoss.request, ...request } } as OrderView;
@@ -125,7 +128,7 @@ const served: OwnerChatHandlers = {
   "agent/goPaper": async () => Promise.resolve(ok(agentView)),
   "limit/get": async () => Promise.resolve(ok(limits)),
   "portfolio/get": async () => Promise.resolve(ok(portfolio)),
-  "order/list": async () => Promise.resolve(ok({ items: [stopLoss] })),
+  "order/list": async () => Promise.resolve(ok({ items: [stopLoss], assets: orderAssets })),
   "wallet/list": async () =>
     Promise.resolve(
       ok({
@@ -333,7 +336,7 @@ describe("the fast commands' replies", () => {
     await bot.send("/orders");
     const empty = await startCommandBot({
       ...served,
-      "order/list": async () => Promise.resolve(ok({ items: [] })),
+      "order/list": async () => Promise.resolve(ok({ items: [], assets: {} })),
     });
     await empty.send("/orders");
     expect(empty.texts()).toStrictEqual(["No active auto orders."]);
@@ -356,7 +359,7 @@ describe("the fast commands' replies", () => {
     ];
     const bot = await startCommandBot({
       ...served,
-      "order/list": async () => Promise.resolve(ok({ items: orders })),
+      "order/list": async () => Promise.resolve(ok({ items: orders, assets: orderAssets })),
     });
     await bot.send("/orders");
     const ends = "0 fills · ends Oct 10, 2026, 09:30:00";

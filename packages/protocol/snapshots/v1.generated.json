@@ -18507,6 +18507,43 @@
             "next": {
               "type": "string",
               "minLength": 1
+            },
+            "assets": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "decimals": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "verified": {
+                    "type": "boolean"
+                  },
+                  "onCurve": {
+                    "type": "boolean"
+                  },
+                  "logo": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "name",
+                  "decimals",
+                  "verified"
+                ]
+              }
             }
           },
           "required": [

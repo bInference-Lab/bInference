@@ -326,7 +326,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | ----------------------- | --------- | ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `order/create`          | `propose` | ✓     |       | `OrderRequest` (section 8.2) → `OrderView` awaiting its one card ([decision 0004](../DECISIONS.md#d0004))                    |
 | `order/get`             | `read`    |       |       | `{ order }` → `OrderView` with fills                                                                                         |
-| `order/list`            | `read`    |       |       | paging, `{ agent?, state? }` → orders                                                                                        |
+| `order/list`            | `read`    |       |       | paging, `{ agent?, state? }` → orders with `assets` (section 8.3)                                                            |
 | `order/cancel`          | `propose` | ✓     |       | `{ order }` → `OrderView` (braking: no card)                                                                                 |
 | `alert/create`          | `propose` | ✓     |       | `{ agent, condition }` → `AlertView` (no transaction, no card)                                                               |
 | `alert/list`            | `read`    |       |       | paging → alerts                                                                                                              |

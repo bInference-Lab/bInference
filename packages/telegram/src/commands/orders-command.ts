@@ -1,5 +1,5 @@
-import { assetInfosOf, cardLineText } from "@binference/engine/surfaces";
-import type { CardLineView, CardValueView, OrderView } from "@binference/protocol";
+import { cardLineText } from "@binference/engine/surfaces";
+import type { AssetInfos, CardLineView, CardValueView, OrderView } from "@binference/protocol";
 import { assetValue } from "./asset-values.js";
 import { callOrSay, type CommandContext } from "./command-context.js";
 
@@ -35,9 +35,9 @@ function triggerLine(request: Request): CardLineView {
   return { key: "cmd.orders.copy", values: { leader } };
 }
 
-function orderLine(context: CommandContext, order: OrderView): string {
+// The token's info comes with the page, so a token outside the registry has its name too.
+function orderLine(context: CommandContext, order: OrderView, assets: AssetInfos): string {
   const { request } = order;
-  const assets = assetInfosOf(context.chains, [request.token]);
   const values = {
     kind: choice(request.kind),
     side: choice(request.side),
@@ -56,6 +56,6 @@ export async function runOrders(context: CommandContext): Promise<void> {
   if (page === undefined) {
     return;
   }
-  const lines = page.items.map((order) => orderLine(context, order));
+  const lines = page.items.map((order) => orderLine(context, order, page.assets ?? {}));
   await context.say(lines.length === 0 ? context.words("cmd.orders.none") : lines.join("\n"));
 }

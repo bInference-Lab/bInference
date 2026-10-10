@@ -166,7 +166,10 @@ export const orderExamples: { readonly [N in keyof OrderOperationShapes]: WireEx
     result: { ...orderView, state: "awaiting_confirmation", card: ids.card },
   },
   "order/get": { args: { order: ids.order }, result: orderView },
-  "order/list": { args: { agent: ids.agent, state: "active" }, result: pageOf(orderView) },
+  "order/list": {
+    args: { agent: ids.agent, state: "active" },
+    result: { items: [orderView], next: "cursor-2", assets },
+  },
   "order/cancel": { args: { order: ids.order }, result: { ...orderView, state: "cancelled" } },
   "alert/create": {
     args: { agent: ids.agent, condition: alertView.condition },
