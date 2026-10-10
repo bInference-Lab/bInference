@@ -1,5 +1,6 @@
 import { BinferenceError } from "@binference/core";
 import { GrammyError, HttpError } from "grammy";
+import { z } from "zod";
 
 const secondMs = 1000;
 const badRequestStatus = 400;
@@ -38,20 +39,59 @@ function refusal(method: string, error: GrammyError): BinferenceError {
   });
 }
 
+// The codes Node's network stack gives when no connection to Telegram opened, so no request left:
+// no DNS answer, a refused or unreachable host, a network that is down, a connect timeout.
+const unsentCodes: ReadonlySet<string> = new Set([
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "EHOSTUNREACH",
+  "ENETDOWN",
+  "ENETUNREACH",
+  "ENOTFOUND",
+  "UND_ERR_CONNECT_TIMEOUT",
+]);
+const codedSchema = z.object({ code: z.string() });
+const causedSchema = z.object({ cause: z.unknown() });
+// How deep a cause chain is read: grammY's error, the fetch error, the socket error.
+const maxCauses = 4;
+
+// Whether an error or one of its causes names a code that proves the request never left.
+function isUnsent(error: unknown, depth: number): boolean {
+  if (depth > maxCauses) {
+    return false;
+  }
+  const code = codedSchema.safeParse(error).data?.code;
+  if (code !== undefined && unsentCodes.has(code)) {
+    return true;
+  }
+  const inner =
+    error instanceof HttpError ? error.error : causedSchema.safeParse(error).data?.cause;
+  return inner !== undefined && isUnsent(inner, depth + 1);
+}
+
 /**
  * Maps a failed Bot API call to a `BinferenceError`: `telegram.bad_token`, `telegram.poll_conflict`,
- * `telegram.flood` (with `retryAfterMs`), `telegram.api_refused` or `telegram.unreachable`. The
- * Bot API's own error never becomes the cause: its request URL holds the bot token, and its payload
- * holds the chat text.
+ * `telegram.flood` (with `retryAfterMs`), `telegram.api_refused` or `telegram.unreachable`.
+ * `telegram.unreachable` carries `isUnsent: true` only when no connection opened, so the request
+ * never reached Telegram; any other network failure may have reached it. The Bot API's own error
+ * never becomes the cause: its request URL holds the bot token, and its payload holds the chat
+ * text.
  */
 export function botApiFault(error: unknown, method: string): BinferenceError {
   if (error instanceof GrammyError) {
     return refusal(method, error);
   }
+  if (error instanceof HttpError) {
+    return new BinferenceError({
+      code: "telegram.unreachable",
+      message: `The Bot API call ${method} got no answer.`,
+      retryable: true,
+      details: { method, isUnsent: isUnsent(error, 0) },
+    });
+  }
   return new BinferenceError({
-    code: error instanceof HttpError ? "telegram.unreachable" : "telegram.api_failed",
+    code: "telegram.api_failed",
     message: `The Bot API call ${method} got no answer.`,
-    retryable: error instanceof HttpError,
     details: { method },
   });
 }

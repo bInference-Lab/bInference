@@ -51,6 +51,8 @@ export interface TelegramIngressOptions {
   readonly display: () => { readonly locale?: MessageLocale; readonly timeZone: string };
   /** Takes the owner's messages and button presses. */
   readonly onOwnerUpdate: OwnerUpdateSink;
+  /** Hears that a start code bound the owner, once the binding is stored; nothing when absent. */
+  readonly onOwnerPaired?: () => void;
 }
 
 interface Call {
@@ -142,6 +144,7 @@ export function createTelegramIngress(options: TelegramIngressOptions): Telegram
     logger,
     words: wordsFor(options.display),
     onOwnerUpdate: options.onOwnerUpdate,
+    onOwnerPaired: options.onOwnerPaired ?? (() => undefined),
   };
   const isOurs = (entry: InboxEntry): boolean =>
     entry.source === "telegram" && entry.sourceKey.startsWith(keyPrefix);

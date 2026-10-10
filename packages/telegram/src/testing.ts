@@ -11,7 +11,13 @@ export type { FakeCardAnswers, FakeCardAnswersOptions } from "./fakes/fake-card-
 export { createMemoryCardCopyStore } from "./fakes/memory-card-copy-store.js";
 export { createMemoryOwnerStore } from "./fakes/memory-owner-store.js";
 export { createFakeBotApi, fakeBotToken, fakeBotUsername } from "./testing/fake-bot-api.js";
-export type { FakeBotApi, FakeCall, FakePress, FakeRefusal } from "./testing/fake-bot-api.js";
+export type {
+  FakeBotApi,
+  FakeCall,
+  FakeFailure,
+  FakePress,
+  FakeRefusal,
+} from "./testing/fake-bot-api.js";
 export type {
   CallbackAnswer,
   DeletedMessage,

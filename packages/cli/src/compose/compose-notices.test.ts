@@ -1,13 +1,16 @@
 import { BinferenceError } from "@binference/core";
+import { createSeededRandom } from "@binference/core/testing";
 import type { EngineCaller } from "@binference/engine";
 import { testAgent, testNowMs } from "@binference/engine/testing";
-import { createFormatter } from "@binference/i18n";
+import { createFormatter, messages } from "@binference/i18n";
+import { issueStartCode } from "@binference/telegram";
 import {
   createFakeBotApi,
   createMemoryCardCopyStore,
   createMemoryOwnerStore,
   type FakeBotApi,
   fakeBotToken,
+  fakeBotUsername,
 } from "@binference/telegram/testing";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
@@ -19,6 +22,7 @@ const ownerId = 7_012_345_678;
 const [selfHosted] = skeletonCompositions;
 const alarm = String.fromCodePoint(0x1f534);
 const dayMs = 86_400_000;
+const frozenText = `${alarm} main is frozen from the CLI. Unfreeze in the CLI, the console or the Mini App.`;
 const cli: EngineCaller = {
   credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000001",
   client: { kind: "cli", version: "test" },
@@ -62,20 +66,36 @@ async function freezeFromCli(test: Bot): Promise<void> {
   await test.telegram.idle();
 }
 
+// The owner opens the bot's start link: the ingress binds them and the notices that waited go.
+async function pairOwner(test: Bot): Promise<void> {
+  const issued = await issueStartCode(
+    {
+      access: test.parts.stores.access,
+      clock: test.clock,
+      random: createSeededRandom(5),
+      botUsername: fakeBotUsername,
+    },
+    live,
+  );
+  const code = new URL(issued.link.reveal()).searchParams.get("start");
+  const from = { id: ownerId, is_bot: false, first_name: "Owner" };
+  const chat = { id: ownerId, type: "private" };
+  const message = { message_id: 1, date: 1, chat, from, text: `/start ${code ?? ""}` };
+  await test.telegram.ingress.receive({ update_id: 1, message }, live);
+  await test.telegram.idle();
+}
+
 describe("the engine's notices in the owner's chat", () => {
   it("sends the frozen notice when the CLI freezes every agent", async () => {
     const test = await bot();
+    test.telegram.start();
     await freezeFromCli(test);
-    expect(test.botApi.sent()).toStrictEqual([
-      {
-        chatId: ownerId,
-        text: `${alarm} main is frozen from the CLI. Unfreeze in the CLI, the console or the Mini App.`,
-      },
-    ]);
+    expect(test.botApi.sent()).toStrictEqual([{ chatId: ownerId, text: frozenText }]);
   });
 
   it("announces a looser limit with its time, so the owner can cancel it", async () => {
     const test = await bot();
+    test.telegram.start();
     const args = { agent: testAgent, changes: { perTradeUsdMicros: 10_000_000_000n } };
     const set = await test.composed.engine.handlers["limit/set"]({ args, caller: cli, ...live });
     expect(set.ok).toBe(true);
@@ -86,51 +106,55 @@ describe("the engine's notices in the owner's chat", () => {
     ]);
   });
 
-  it("sends nothing before the owner pairs, and logs which agent's notice it held back", async () => {
-    const test = await bot({ isPaired: false });
+  it("keeps what the engine announced before the bot started, and sends it at the start", async () => {
+    const test = await bot();
     await freezeFromCli(test);
     expect(test.botApi.calls()).toStrictEqual([]);
-    expect(test.logger.records()).toContainEqual(
-      expect.objectContaining({
-        level: "info",
-        event: "telegram.notice_not_sent",
-        fields: { agentId: testAgent, errorCode: "no_owner" },
-      }),
-    );
+    test.telegram.start();
+    await test.telegram.idle();
+    expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([frozenText]);
   });
 
-  it("logs a notice the Bot API refused, and sends the next", async () => {
-    const test = await bot();
-    test.botApi.failNext("sendMessage", { status: 403, description: "Forbidden: bot was blocked" });
+  it("holds a notice until the owner pairs, then sends it after the welcome", async () => {
+    const test = await bot({ isPaired: false });
+    test.telegram.start();
     await freezeFromCli(test);
-    test.telegram.relay({
-      topic: "notice",
-      kind: "notice/new",
-      data: { key: "notice.locked", values: {} },
-    });
-    await test.telegram.idle();
-    expect(test.logger.records()).toContainEqual(
-      expect.objectContaining({
-        level: "warn",
-        event: "telegram.notice_not_sent",
-        fields: { agentId: testAgent, errorCode: "telegram.api_refused" },
-      }),
-    );
+    expect(test.botApi.calls()).toStrictEqual([]);
+    await pairOwner(test);
     expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([
-      `${alarm} binference restarted and is locked. Run \`binference unlock\`.`,
+      messages.en["telegram.paired"],
+      frozenText,
     ]);
   });
 
-  it("leaves an auto trade's receipt, which names its intent, and notice data it cannot read", async () => {
+  it("keeps a notice the Bot API refused, and sends it once its wait is over", async () => {
     const test = await bot();
+    test.telegram.start();
+    test.botApi.failNext("sendMessage", { status: 403, description: "Forbidden: bot was blocked" });
+    await freezeFromCli(test);
+    expect(test.botApi.sent()).toStrictEqual([]);
+    expect(test.logger.records()).toContainEqual(
+      expect.objectContaining({
+        event: "telegram.notice_waits",
+        fields: { agentId: testAgent, errorCode: "telegram.api_refused" },
+      }),
+    );
+    await test.clock.advance(5_000);
+    await test.telegram.idle();
+    expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([frozenText]);
+  });
+
+  it("stores nothing and sends nothing for an auto trade's receipt, which names its intent", async () => {
+    const test = await bot();
+    test.telegram.start();
     const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000009";
-    test.telegram.relay({
+    test.composed.publish({
       topic: "notice",
       kind: "notice/new",
       data: { key: "receipt.paper", agent: testAgent, intent, values: {} },
     });
-    test.telegram.relay({ topic: "notice", kind: "notice/new", data: { key: "notice.locked" } });
     await test.telegram.idle();
     expect(test.botApi.calls()).toStrictEqual([]);
+    expect(await test.parts.stores.notices.list({ limit: 10 }, live)).toStrictEqual([]);
   });
 });

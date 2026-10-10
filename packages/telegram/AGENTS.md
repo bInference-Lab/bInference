@@ -37,10 +37,15 @@ Rules for this package:
   from outside in them goes through the engine's `cardLineText`. A refusal is answered with the
   error message of its code. The menu is registered with `setMyCommands` for private chats, in
   English and in Chinese.
-- The engine's notices of spec 4, section 4 go to the owner's chat through `createTelegramNotices`,
-  written by the engine's `noticeText` in the owner's language and timezone, as plain text. They
-  are relayed in memory while the engine runs: one the Bot API refuses, or one before the owner
-  pairs, is logged by its code and dropped.
+- The engine's notices of spec 4, section 4 go to the owner's chat from the outbox through
+  `createNoticeOutbox` (decision 0133), written by the engine's `noticeText` in the owner's
+  language and timezone when each goes, as plain text. A delivery is marked `unknown_after_send`
+  before its `sendMessage` and never sent again from there: the Bot API has no idempotency key, so
+  a send that timed out or lost its answer may already show in the chat. Only a refusal Telegram
+  answered, or a connection that never opened (`isUnsent` of `telegram.unreachable`), puts it back
+  in the queue: a 429 for its `retry_after`, a 403, a refused token and a 5xx for the backoff of
+  `delivery-fate.ts`; any other 4xx fails it. Deliveries go oldest first, a waiting one holds
+  the rest, and before the owner pairs they all wait; the ingress's `onOwnerPaired` sends them.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, the one
   setting the chat changes, decision 0134), and only `commandCallbackSchema` reads it. A press

@@ -33,6 +33,7 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
   const clock = createManualClock(1_760_000_000_000);
   const logger = createMemoryLogger({ subsystem: "telegram" });
   const delivered: OwnerUpdate[] = [];
+  const pairings: number[] = [];
   const ingress = createTelegramIngress({
     api: new Api(fakeBotToken, { fetch: botApi.fetch }),
     stores,
@@ -46,6 +47,9 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
       delivered.push(update);
       await Promise.resolve();
     },
+    onOwnerPaired: () => {
+      pairings.push(clock.now());
+    },
   });
   if (options.owner !== undefined) {
     await stores.owners.bind({ userId: options.owner, pairedAtMs: 1 }, live);
@@ -55,7 +59,7 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
       await previous;
       await ingress.receive(update, live);
     }, Promise.resolve());
-  return { botApi, stores, clock, logger, delivered, ingress, receive };
+  return { botApi, stores, clock, logger, delivered, pairings, ingress, receive };
 }
 
 async function startCode(context: Awaited<ReturnType<typeof setUp>>): Promise<string> {
@@ -182,7 +186,7 @@ describe("the Telegram ingress", () => {
     expect(context.botApi.deleted()).toStrictEqual([]);
   });
 
-  it("makes the first person with a valid start code the owner", async () => {
+  it("makes the first person with a valid start code the owner, and says so once", async () => {
     const context = await setUp();
     const code = await startCode(context);
     await context.receive(
@@ -199,6 +203,7 @@ describe("the Telegram ingress", () => {
       { chatId: ownerId, text: messages.en["telegram.paired"] },
     ]);
     expect(context.delivered.map((update) => update.updateId)).toStrictEqual([20]);
+    expect(context.pairings).toStrictEqual([context.clock.now()]);
   });
 
   it("answers the owner who opens the link again, and pairs nobody from a forward or an edit", async () => {

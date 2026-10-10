@@ -134,6 +134,8 @@ async function bot(ownerChat: SkeletonOptions["ownerChat"] = {}): Promise<Bot> {
   const change = { address: rescueAccount, atMs: testNowMs - 2 * dayMs };
   await skeleton.parts.stores.install.changeRescue(change, live);
   const composed = skeleton.composed.telegram ?? never();
+  composed.start();
+  await composed.idle();
   let updateId = 0;
   return {
     ...skeleton,
@@ -161,7 +163,10 @@ describe("the owner's fast commands on the engine", () => {
     await test.send("/freeze");
     const frozen = await test.parts.stores.agents.get(testAgent, live);
     expect(frozen?.agent.frozenAtMs).toBe(testNowMs);
-    expect(test.botApi.sent().at(-1)?.text).toMatch(new RegExp(`^${alarm} Every agent is frozen`));
+    expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([
+      expect.stringMatching(new RegExp(`^${alarm} Every agent is frozen`)),
+      `${alarm} main is frozen from Telegram. Unfreeze in the CLI, the console or the Mini App.`,
+    ]);
   });
 
   it("opens the rescue card while every agent is frozen, and a tap sends the rescue on", async () => {

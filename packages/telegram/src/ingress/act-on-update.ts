@@ -24,6 +24,8 @@ export interface ActionContext {
   /** The text of a message key in the target's language. */
   readonly words: (key: IngressWords, target: ReplyTarget) => string;
   readonly onOwnerUpdate: OwnerUpdateSink;
+  /** Hears that a start code bound the owner. */
+  readonly onOwnerPaired: () => void;
 }
 
 interface Call {
@@ -55,7 +57,12 @@ async function pair(action: PairAction, context: ActionContext, call: Call): Pro
     return;
   }
   context.logger.info("telegram.owner_paired");
-  await say(context, { key: "telegram.paired", target: action.target }, call);
+  try {
+    await say(context, { key: "telegram.paired", target: action.target }, call);
+  } finally {
+    // The welcome goes first; what waited for the owner follows, sent or not.
+    context.onOwnerPaired();
+  }
 }
 
 // Deleted first, so the secret leaves the chat even when the warning cannot be sent yet.

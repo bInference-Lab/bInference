@@ -42,7 +42,7 @@ the owner's language.
 | `CardCopyStore`, `cardCopySchema`  | Where each card version was posted, so every copy can become the receipt       |
 | `createFastCommands`               | Answers the owner's fast commands without a model and registers their menu     |
 | `OwnerCalls`                       | The engine's side of a fast command: runs its operations for the owner alone   |
-| `createTelegramNotices`            | Sends the engine's notices to the owner's chat in the owner's language         |
+| `createNoticeOutbox`               | Sends the engine's notices from the outbox to the owner's chat, never twice    |
 | `@binference/telegram/testing`     | Contract suites and fakes of the ports, and `createFakeBotApi`                 |
 
 `createFakeBotApi` is a synthetic Bot API for tests: updates in, messages, edits and button

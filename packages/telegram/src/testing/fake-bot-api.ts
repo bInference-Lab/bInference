@@ -89,21 +89,22 @@ export interface FakeBotApi {
   /** Every request in the order it arrived, refused ones too. */
   calls(): readonly FakeCall[];
   /**
-   * The next call of `method` gets this refusal, or a network failure. With `chatId`, the next
-   * call of that method to that chat does.
+   * The next call of `method` gets this refusal, or a network failure: `network` before the
+   * request reaches the Bot API (the connection is refused), `lostAnswer` after the Bot API did
+   * the call (the connection resets before its answer). With `chatId`, the next call of that
+   * method to that chat does.
    */
-  failNext(
-    method: string,
-    failure: FakeRefusal | "network",
-    target?: { readonly chatId: number },
-  ): void;
+  failNext(method: string, failure: FakeFailure, target?: { readonly chatId: number }): void;
   /** Resolves once a `getUpdates` call waits with nothing to return. */
   idle(): Promise<void>;
 }
 
+/** How {@link FakeBotApi.failNext} fails a call. */
+export type FakeFailure = FakeRefusal | "network" | "lostAnswer";
+
 interface Failure {
   readonly method: string;
-  readonly failure: FakeRefusal | "network";
+  readonly failure: FakeFailure;
   readonly chatId?: number;
 }
 
@@ -168,7 +169,7 @@ async function getUpdates(state: State, body: string, signal: Signal): Promise<R
 }
 
 // The first failure set for this call: its method, and its chat when the failure names one.
-function takeFailure(state: State, call: FakeCall): FakeRefusal | "network" | undefined {
+function takeFailure(state: State, call: FakeCall): FakeFailure | undefined {
   const index = state.failures.findIndex(
     (failure) =>
       failure.method === call.method &&
@@ -214,13 +215,22 @@ function requestOf(input: Parameters<Fetch>[0], init: RequestInit | undefined): 
   return { call, bot, url, body, signal: init?.signal };
 }
 
+// A failed request as Node's fetch reports it, with the socket's code.
+function networkError(url: string, code: string): Error {
+  return Object.assign(new Error(`request to ${url} failed, reason: ${code}`), { code });
+}
+
 function fetchOf(state: State): Fetch {
   return async (input, init) => {
     const request = requestOf(input, init);
     state.calls.push(request.call);
     const failure = takeFailure(state, request.call);
     if (failure === "network") {
-      throw new Error(`request to ${request.url} failed, reason: connect ECONNREFUSED`);
+      throw networkError(request.url, "ECONNREFUSED");
+    }
+    if (failure === "lostAnswer") {
+      await serve(state, request);
+      throw networkError(request.url, "ECONNRESET");
     }
     if (failure !== undefined || request.bot !== `bot${fakeBotToken}`) {
       return refuse(failure ?? { status: 401, description: "Unauthorized" });

@@ -38,6 +38,14 @@ describe("botApiFault", () => {
     });
   });
 
+  it.each([
+    ["network", true],
+    ["lostAnswer", false],
+  ] as const)("says whether a %s failure left the request unsent", async (failure, isUnsent) => {
+    const fault = await failedCall(failure);
+    expect(fault).toMatchObject({ code: "telegram.unreachable", details: { isUnsent } });
+  });
+
   it("maps a network failure without the token or the text in any part of the fault", async () => {
     const fault = await failedCall("network");
     expect(fault).toMatchObject({ code: "telegram.unreachable", retryable: true });

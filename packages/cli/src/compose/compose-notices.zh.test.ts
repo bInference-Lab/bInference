@@ -41,6 +41,7 @@ async function chineseBot() {
 describe("the engine's notices in a Chinese owner's chat", () => {
   it("sends the frozen notice in Chinese", async () => {
     const { botApi, engine, telegram } = await chineseBot();
+    telegram.start();
     await engine.handlers["safety/freeze"]({ args: {}, caller: cli, ...live });
     await telegram.idle();
     expect(botApi.sent().map((sent) => sent.text)).toStrictEqual([

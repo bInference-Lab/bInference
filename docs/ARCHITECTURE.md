@@ -640,6 +640,10 @@ a hijacked Telegram account cannot redirect it.
 - **Chat.** The engine relays the owner's messages to the agent runtime and sends its replies.
   Streaming is one status message edited in place (about once a second), then the final answer as a
   new message, because edits do not notify and results must.
+- **Notices.** Every notice is stored before any surface sends it and goes to the owner's chat
+  from the outbox, oldest first, in the line it shares with the cards. A refusal Telegram answered
+  waits and is tried again; a send whose answer was lost is never sent again
+  ([decision 0133](DECISIONS.md#d0133)).
 - **Rate limits.**
   - One throttler per bot token owns every 429 wait. Previews are dropped; cards and results are
     retried.
@@ -1104,6 +1108,8 @@ Decided in decisions [0054](DECISIONS.md#d0054), [0057](DECISIONS.md#d0057),
   skipped fill; low gas; orders about to expire; security events (freeze, rescue, a new device, a
   send-level, limit or rescue address change, a plaintext secret found); a daily summary at 09:00
   owner time. No quiet hours by default. Each is configurable per agent.
+  Each notice is kept 90 days, and `notice/list` reads back what a client missed
+  ([decision 0133](DECISIONS.md#d0133)).
 
 <a id="section-28"></a>
 

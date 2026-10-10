@@ -21,8 +21,13 @@ export type {
   UpdateIntake,
 } from "./ingress/create-telegram-ingress.js";
 export type { OwnerUpdate, ReplyTarget } from "./ingress/decide-update.js";
-export { createTelegramNotices } from "./notices/create-telegram-notices.js";
-export type { TelegramNotices, TelegramNoticesOptions } from "./notices/create-telegram-notices.js";
+export { createNoticeOutbox } from "./notices/create-notice-outbox.js";
+export type {
+  NoticeOutbox,
+  NoticeOutboxOptions,
+  OutboxCall,
+  OutboxPass,
+} from "./notices/create-notice-outbox.js";
 export { ownerBindingSchema } from "./owner/owner-binding.js";
 export type { OwnerBinding } from "./owner/owner-binding.js";
 export { issueStartCode, startCodeHash, startCodeLifetimeMs } from "./pairing/start-code.js";

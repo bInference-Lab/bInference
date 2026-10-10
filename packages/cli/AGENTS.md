@@ -51,7 +51,9 @@ Rules for this package:
   (`src/compose/owner-locale-change.ts`, decision 0134), which the live reload then applies. Every push, a notice too,
   goes through the engine's one `publish`, so the server and the bot both get it; `publish` stores
   each notice first through the notice log (`src/compose/notice-log.ts`, decision 0133), and the
-  push carries its id. A push that fails, and a card that does not reach
+  push carries its id. Cards and notices reach the owner's chat in one line
+  (`src/compose/telegram-relay.ts`), notices from the outbox once `start` is called at the channels
+  step of the startup order. A push that fails, and a card that does not reach
   Telegram, is logged and never stops the money path. The skeleton tests run on every composition
   with `describe.each` through `src/compose/test-skeleton.ts`; a new profile part joins both
   compositions there.

@@ -116,7 +116,11 @@ const riskSourceTimeoutMs = 5_000;
 function joinTelegram(
   parts: EngineParts,
   options: ComposeEngineOptions,
-  engine: { readonly answer: Engine["answer"]; readonly handlers: EngineHandlerTable },
+  engine: {
+    readonly answer: Engine["answer"];
+    readonly handlers: EngineHandlerTable;
+    readonly notices: NoticeLog;
+  },
 ): ComposedTelegram | undefined {
   const { telegram, owner, chains, clock, logger } = options;
   return telegram === undefined
@@ -127,6 +131,7 @@ function joinTelegram(
         handlers: { ...engine.handlers, ...options.ownerChat },
         chains,
         owner,
+        stored: async () => engine.notices.idle(),
         clock,
         logger: logger.child("telegram"),
       });
@@ -194,7 +199,7 @@ function serverOf(
  * and routes calls to the engine's handlers; the engine's pushes reach the server, which numbers
  * them per topic. Every notice is stored first, with a delivery queued for the owner's bot when
  * there is one. A push that fails is logged and never stops the money path. With the owner's bot,
- * card pushes also reach Telegram.
+ * card pushes also reach Telegram, and notices go there from the outbox once the bot starts.
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
   const { clock, random, logger, chains } = options;
@@ -215,7 +220,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
       const code = error instanceof BinferenceError ? error.code : "unexpected";
       logger.warn("engine.push_failed", { errorCode: code });
     }
-    telegram?.relay(push);
+    telegram?.relay(stamped);
   };
   const engine = createEngine({
     stores: parts.stores,
@@ -241,7 +246,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     ...createNoticeHandlers(parts.stores.notices),
     ...options.handlers,
   };
-  const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers });
+  const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers, notices });
   const server = serverOf(parts, options, handlers);
   return { engine, server, publish, notices, ...(telegram === undefined ? {} : { telegram }) };
 }
