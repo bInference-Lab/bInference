@@ -15,6 +15,7 @@ import { migration as pendingLimits } from "./0013_pending_limits.js";
 import { migration as transactionReplacements } from "./0014_transaction_replacements.js";
 import { migration as positionsAndDepartures } from "./0015_positions_and_departures.js";
 import { migration as intentValues } from "./0016_intent_values.js";
+import { migration as executionRealized } from "./0017_execution_realized.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -34,4 +35,5 @@ export const engineMigrations: readonly Migration[] = [
   transactionReplacements,
   positionsAndDepartures,
   intentValues,
+  executionRealized,
 ];

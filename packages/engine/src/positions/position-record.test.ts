@@ -45,13 +45,16 @@ describe("position and execution records", () => {
     const write = {
       execution: executionWire,
       positions: [{ position: positionWire, readVersion: 2 }],
+      realizedUsdMicros: `-${huge}`,
     };
     const decoded = executionWriteSchema.parse(write);
     expect(decoded.execution.sold.base).toBe(18_446_744_073_709_551_617n);
     expect(decoded.positions[0]?.position.realizedUsdMicros).toBe(-1_500_000n);
+    expect(decoded.realizedUsdMicros).toBe(-18_446_744_073_709_551_617n);
     expect(z.encode(executionWriteSchema, decoded)).toStrictEqual(write);
-    const record = executionRecordSchema.parse({ ...executionWire, id: 4 });
-    expect(z.encode(executionRecordSchema, record)).toStrictEqual({ ...executionWire, id: 4 });
+    const stored = { ...executionWire, id: 4, realizedUsdMicros: "2500000" };
+    const record = executionRecordSchema.parse(stored);
+    expect(z.encode(executionRecordSchema, record)).toStrictEqual(stored);
     const position = positionRecordSchema.parse({ ...positionWire, version: 0 });
     expect(z.encode(positionRecordSchema, position)).toStrictEqual({ ...positionWire, version: 0 });
   });

@@ -4,7 +4,7 @@ import {
   type ArrivalDraft,
   type ArrivalRecord,
   arrivalRecordSchema,
-  type ExecutionDraft,
+  type ExecutionWrite,
   type ExecutionQuery,
   type ExecutionRecord,
   executionRecordSchema,
@@ -107,8 +107,9 @@ export function movePositions(database: DatabaseSync, writes: readonly PositionW
   return true;
 }
 
-/** An execution draft as its row stores it. */
-export function executionRow(draft: ExecutionDraft): Insertable<ExecutionsTable> {
+/** An execution as its row stores it, with what it realized. */
+export function executionRow(write: ExecutionWrite): Insertable<ExecutionsTable> {
+  const draft = write.execution;
   return {
     intent_id: draft.intentId,
     wallet_id: draft.walletId,
@@ -125,6 +126,7 @@ export function executionRow(draft: ExecutionDraft): Insertable<ExecutionsTable>
     gas_usd_micros: decimalText(draft.gasUsdMicros),
     paper: draft.isPaper ? 1 : 0,
     at: draft.atMs,
+    realized_usd_micros: write.realizedUsdMicros.toString(),
   };
 }
 
@@ -144,6 +146,7 @@ function toExecutionRecord(row: Selectable<ExecutionsTable>): ExecutionRecord {
     valueUsdMicros: row.value_usd_micros,
     feeUsdMicros: row.fee_usd_micros,
     gasUsdMicros: row.gas_usd_micros,
+    realizedUsdMicros: row.realized_usd_micros,
   });
 }
 

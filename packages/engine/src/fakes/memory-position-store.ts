@@ -116,7 +116,8 @@ export function createMemoryPositionStore(): PositionStore {
     if (!movePositions(positions, write.positions)) {
       return err("stale");
     }
-    const execution = { ...structuredClone(write.execution), id: executions.length + 1 };
+    const { execution: draft, realizedUsdMicros } = write;
+    const execution = { ...structuredClone(draft), id: executions.length + 1, realizedUsdMicros };
     executions.push(execution);
     return ok(structuredClone(execution));
   };

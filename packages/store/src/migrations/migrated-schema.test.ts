@@ -119,7 +119,8 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   tx_sends: names("tx_id attempt place relay outcome reason code at"),
   executions: names(
     "id intent_id wallet_id asset_in amount_in fee_amount asset_out amount_out gas_asset " +
-      "gas_amount tx_hash value_usd_micros fee_usd_micros gas_usd_micros paper at",
+      "gas_amount tx_hash value_usd_micros fee_usd_micros gas_usd_micros paper at " +
+      "realized_usd_micros",
   ),
   arrivals: names("id wallet_id asset amount value_usd_micros tx_hash paper at"),
   departures: names("id intent_id wallet_id asset amount gas_asset gas_amount tx_hash at"),

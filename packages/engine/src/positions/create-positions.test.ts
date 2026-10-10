@@ -166,6 +166,35 @@ describe("createPositions", () => {
     ]);
   });
 
+  it("stores what each execution realized: nothing on the buys, the sale's gain", async () => {
+    const store = createMemoryPositionStore();
+    await recordAll(store);
+    const stored = await store.executions({ after: 0, limit: 10, isPaper: false }, live());
+    expect(stored.map(({ realizedUsdMicros }) => realizedUsdMicros)).toStrictEqual([
+      0n,
+      0n,
+      98_786_350n,
+    ]);
+  });
+
+  it("counts the loss on the gas coin with the sale's in what an execution realized", async () => {
+    const store = createMemoryPositionStore();
+    const prices = createFakePriceSource(new Map([[coin, usd(600_000_000n)]]));
+    const positions = createPositions({ store, prices });
+    const received = { asset: coin, base: whole };
+    await positions.receive({ walletId, isPaper: false, atMs: 500, received }, live());
+    // Half the coin, bought at $600, sells at $500: $50 lost. The gas, 0.001 coin worth $0.50,
+    // cost $0.60: $0.10 more.
+    const sale = trade(1, {
+      sold: { asset: coin, base: whole / 2n },
+      gas: { asset: coin, base: whole / 1_000n },
+      soldPrice: usd(500_000_000n),
+      gasPrice: usd(500_000_000n),
+    });
+    const recorded = await positions.record(sale, live());
+    expect(recorded).toMatchObject({ ok: true, value: { realizedUsdMicros: -50_100_000n } });
+  });
+
   it("stores nothing and answers stale when another execution moved a position first", async () => {
     const store = createMemoryPositionStore();
     const prices = createFakePriceSource(pricesNow);

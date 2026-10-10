@@ -62,16 +62,22 @@ export const positionWriteSchema: z.ZodType<PositionWrite> = z.strictObject({
   readVersion: rowVersionSchema.exactOptional(),
 });
 
-/** An execution with the position changes it makes, stored all or nothing. */
+/**
+ * An execution with the position changes it makes and the profit or loss they realize, stored all
+ * or nothing.
+ */
 export interface ExecutionWrite {
   readonly execution: ExecutionDraft;
   readonly positions: readonly PositionWrite[];
+  /** What `positions` add to the realized P&L of the positions they move; below zero for a loss. */
+  readonly realizedUsdMicros: bigint;
 }
 
 /** Parses an execution write. */
 export const executionWriteSchema: z.ZodType<ExecutionWrite> = z.strictObject({
   execution: executionDraftSchema,
   positions: z.array(positionWriteSchema),
+  realizedUsdMicros: signedUsdMicrosSchema,
 });
 
 /** Which positions to list: one wallet's, paper or live. */

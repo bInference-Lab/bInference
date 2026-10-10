@@ -5,7 +5,7 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { PositionStore } from "../ports.js";
 import type { ArrivalDraft } from "../positions/arrival-record.js";
 import type { ExecutionDraft, ExecutionQuery } from "../positions/execution-record.js";
-import type { PositionState, PositionWrite } from "../positions/position-record.js";
+import type { ExecutionWrite, PositionState, PositionWrite } from "../positions/position-record.js";
 import { refusesStaleDeparture, storesDeparturesOnce } from "./departure-checks.js";
 import { refusesStaleReset, resetsPaper } from "./paper-reset-checks.js";
 import { assertRefusesAborted, checkOn, inOrder, live } from "./store-fixtures.js";
@@ -43,6 +43,20 @@ function draft(subject: PositionStoreSubject, n: number, isPaper = false): Execu
   };
 }
 
+// The execution with its position writes, and a gain or a loss beyond 2^64 that it realized.
+function written(
+  subject: PositionStoreSubject,
+  n: number,
+  moved: { readonly positions: readonly PositionWrite[]; readonly isPaper?: boolean },
+): ExecutionWrite {
+  const realizedUsdMicros = n % 2 === 0 ? huge : -huge;
+  return {
+    execution: draft(subject, n, moved.isPaper),
+    positions: moved.positions,
+    realizedUsdMicros,
+  };
+}
+
 function arrival(subject: PositionStoreSubject, n: number, isPaper = false): ArrivalDraft {
   return {
     walletId: subject.walletIds[n % 2 === 0 ? 1 : 0],
@@ -71,14 +85,12 @@ async function storesNewPositions(subject: PositionStoreSubject): Promise<void> 
     { position: state(walletId, token, huge) },
     { position: state(walletId, coin, 5n) },
   ];
-  const stored = await subject.store.record(
-    { execution: draft(subject, 1), positions: writes },
-    live(),
-  );
+  const stored = await subject.store.record(written(subject, 1, { positions: writes }), live());
   const other = [{ position: state(otherWalletId, token, 3n) }];
-  await subject.store.record({ execution: draft(subject, 2), positions: other }, live());
+  await subject.store.record(written(subject, 2, { positions: other }), live());
   assert.ok(stored.ok);
-  assert.deepEqual(stored.value, { ...draft(subject, 1), id: stored.value.id });
+  const realizedUsdMicros = -huge;
+  assert.deepEqual(stored.value, { ...draft(subject, 1), id: stored.value.id, realizedUsdMicros });
   assert.deepEqual(await subject.store.positions({ walletId, isPaper: false }, live()), [
     { ...state(walletId, coin, 5n), version: 0 },
     { ...state(walletId, token, huge), version: 0 },
@@ -90,17 +102,17 @@ async function movesFromTheVersionRead(subject: PositionStoreSubject): Promise<v
   const [walletId] = subject.walletIds;
   const { store } = subject;
   const first = { position: state(walletId, token, 10n) };
-  await store.record({ execution: draft(subject, 1), positions: [first] }, live());
+  await store.record(written(subject, 1, { positions: [first] }), live());
   const next = { position: state(walletId, token, 4n), readVersion: 0 };
-  const moved = await store.record({ execution: draft(subject, 3), positions: [next] }, live());
+  const moved = await store.record(written(subject, 3, { positions: [next] }), live());
   assert.ok(moved.ok);
   const stale = [
     { position: state(walletId, coin, 1n) },
     { ...next, position: state(walletId, token, 1n) },
   ];
-  const refused = await store.record({ execution: draft(subject, 5), positions: stale }, live());
+  const refused = await store.record(written(subject, 5, { positions: stale }), live());
   assert.deepEqual(refused, { ok: false, error: "stale" });
-  const again = await store.record({ execution: draft(subject, 5), positions: [first] }, live());
+  const again = await store.record(written(subject, 5, { positions: [first] }), live());
   assert.deepEqual(again, { ok: false, error: "stale" });
   assert.deepEqual(await store.positions({ walletId, isPaper: false }, live()), [
     { ...state(walletId, token, 4n), version: 1 },
@@ -115,10 +127,9 @@ async function refusesTwoWritesToOnePosition(subject: PositionStoreSubject): Pro
     { position: state(walletId, token, 1n) },
     { position: state(walletId, token, 2n) },
   ];
-  await assert.rejects(
-    subject.store.record({ execution: draft(subject, 1), positions: twice }, live()),
-    { code: "store.constraint" },
-  );
+  await assert.rejects(subject.store.record(written(subject, 1, { positions: twice }), live()), {
+    code: "store.constraint",
+  });
   assert.deepEqual(
     await subject.store.executions({ after: 0, limit: 10, isPaper: false }, live()),
     [],
@@ -187,8 +198,10 @@ async function listsExecutions(subject: PositionStoreSubject): Promise<void> {
   await listsInOrder(
     subject,
     async ({ n, isPaper }) => {
-      const execution = draft(subject, n, isPaper);
-      const recorded = await subject.store.record({ execution, positions: [] }, live());
+      const recorded = await subject.store.record(
+        written(subject, n, { positions: [], isPaper }),
+        live(),
+      );
       assert.ok(recorded.ok);
       return recorded.value;
     },
@@ -212,10 +225,7 @@ async function listsArrivals(subject: PositionStoreSubject): Promise<void> {
 async function refusesAborted(subject: PositionStoreSubject): Promise<void> {
   const [walletId] = subject.walletIds;
   const { store } = subject;
-  const write = {
-    execution: draft(subject, 1),
-    positions: [{ position: state(walletId, token, 1n) }],
-  };
+  const write = written(subject, 1, { positions: [{ position: state(walletId, token, 1n) }] });
   await assertRefusesAborted(async (options) => store.record(write, options));
   await assertRefusesAborted(async (options) =>
     store.positions({ walletId, isPaper: false }, options),
@@ -237,7 +247,7 @@ export function positionStoreContract(harness: PositionStoreHarness): readonly C
   const create = async (): Promise<PositionStoreSubject> => harness.create();
   return [
     checkOn(
-      "stores an execution with new positions at version 0, amounts exact",
+      "stores an execution, what it realized and new positions at version 0, amounts exact",
       create,
       storesNewPositions,
     ),

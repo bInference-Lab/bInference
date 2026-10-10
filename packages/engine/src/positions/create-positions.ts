@@ -8,6 +8,7 @@ import type { ArrivalDraft, ArrivalRecord } from "./arrival-record.js";
 import type { DepartureDraft, DepartureOutcome } from "./departure-record.js";
 import type { ExecutionRecord } from "./execution-record.js";
 import { paperResetOf } from "./paper-reset-of.js";
+import { realizedBy } from "./position-change.js";
 import type { PositionQuery, PositionRecord } from "./position-record.js";
 import { type ExecutedTrade, isUsablePrice, valueExecution } from "./value-execution.js";
 
@@ -29,7 +30,8 @@ export interface ValuedPosition {
  */
 export interface Positions {
   /**
-   * Values a trade at the prices of its time and stores it with the position changes it makes.
+   * Values a trade at the prices of its time and stores it with the position changes it makes and
+   * the profit or loss they realize at average cost (decision 0137).
    * `stale` means another execution moved one of the positions first: nothing was stored, and a
    * new call reads the positions again.
    */
@@ -138,7 +140,9 @@ export function createPositions(options: PositionsOptions): Positions {
       const execution = valueExecution(trade);
       const query = { walletId: trade.walletId, isPaper: trade.isPaper };
       const held = await store.positions(query, call);
-      return store.record({ execution, positions: applyExecution(held, execution) }, call);
+      const positions = applyExecution(held, execution);
+      const realizedUsdMicros = realizedBy(held, positions);
+      return store.record({ execution, positions, realizedUsdMicros }, call);
     },
     async receive(funds, call) {
       const price = await prices.usdPrice(funds.received.asset, call);

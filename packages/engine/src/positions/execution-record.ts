@@ -1,5 +1,6 @@
 import { type Amount, amountSchema, isTxHash, type TxHash } from "@binference/chain";
 import { decimalStringSchema, type Id, idSchema } from "@binference/core";
+import { signedUsdMicrosSchema } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema, pageLimitSchema, rowNumberSchema } from "../records/record-fields.js";
 import type { RowPage } from "../records/row-page.js";
@@ -52,12 +53,19 @@ export const executionDraftSchema: z.ZodType<ExecutionDraft> = z.strictObject(dr
 /** An execution as stored, numbered in the order it was recorded. */
 export interface ExecutionRecord extends ExecutionDraft {
   readonly id: number;
+  /**
+   * The profit or loss the execution realized at average cost when it was recorded, below zero
+   * for a loss: what its position changes added to the realized P&L of the positions it moved
+   * (decision 0137). An execution recorded before it was kept counts 0.
+   */
+  readonly realizedUsdMicros: bigint;
 }
 
 /** Parses a stored execution. */
 export const executionRecordSchema: z.ZodType<ExecutionRecord> = z.strictObject({
   ...draftShape,
   id: rowNumberSchema,
+  realizedUsdMicros: signedUsdMicrosSchema,
 });
 
 /**

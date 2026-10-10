@@ -59,3 +59,18 @@ export function positionWriteOf(move: PositionMove, change: PositionChange): Pos
     ...(held === undefined ? {} : { readVersion: held.version }),
   };
 }
+
+/**
+ * What position writes realize: the change each makes to its position's realized P&L, from the
+ * stored row in `held` it was computed from, or from nothing for a new row; below zero for a loss.
+ */
+export function realizedBy(
+  held: readonly PositionRecord[],
+  writes: readonly PositionWrite[],
+): bigint {
+  return writes.reduce(
+    (total, { position }) =>
+      total + position.realizedUsdMicros - (heldPosition(held, position)?.realizedUsdMicros ?? 0n),
+    0n,
+  );
+}

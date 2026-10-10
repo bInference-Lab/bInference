@@ -63,8 +63,9 @@ export const recordExecutionTask: StoreTask<
       return err("stale");
     }
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const inserted = execute(kysely.insertInto("executions").values(executionRow(write.execution)));
-    return ok({ ...write.execution, id: Number(inserted.insertId) });
+    const inserted = execute(kysely.insertInto("executions").values(executionRow(write)));
+    const { realizedUsdMicros } = write;
+    return ok({ ...write.execution, id: Number(inserted.insertId), realizedUsdMicros });
   },
 });
 

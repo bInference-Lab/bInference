@@ -34,6 +34,7 @@ function execution(id: number, fields: Partial<ExecutionRecord>): ExecutionRecor
     valueUsdMicros: 600_000_000n,
     feeUsdMicros: 1_500_000n,
     gasUsdMicros: 300_000n,
+    realizedUsdMicros: 0n,
     ...fields,
   };
 }

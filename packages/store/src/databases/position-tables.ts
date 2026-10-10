@@ -20,6 +20,8 @@ export interface ExecutionsTable {
   gas_usd_micros: string;
   paper: number;
   at: number;
+  /** Signed: below zero for a loss; '0' for a row recorded before migration 0017. */
+  realized_usd_micros: string;
 }
 
 /** `arrivals`: funds that reached a wallet without a trade; no value when no price was known. */
