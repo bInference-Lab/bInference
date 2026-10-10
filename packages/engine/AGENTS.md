@@ -59,8 +59,8 @@ Rules for this package:
 - Funds a send takes out of a live wallet are a departure (decision 0127): the units sent and the
   gas leave their positions at average cost, the cost rounding down, with nothing realized. An
   intent's departures are stored once, with their position writes.
-- `PositionStore` has its fake and contract suite; its SQLite adapter comes with the first step
-  that stores executions.
+- `PositionStore` has its fake and contract suite; its SQLite adapter is
+  `createSqlitePositionStore` in `@binference/store`.
 - The ledger chain check (`src/ledger/`) reads entries and never writes.
 - The stored intents (`src/intents/create-stored-intents.ts`) are the engine's one writer of
   intents: every new intent and every move goes through them, so each write lands as the state

@@ -1,4 +1,5 @@
 import type { Generated } from "kysely";
+import type { PositionTables } from "./position-tables.js";
 
 // The engine tables the store adapters query, as SQLite returns them: TEXT is a string, INTEGER a
 // number, and a nullable column may be null. The migrations in src/migrations/engine/ define them.
@@ -314,7 +315,6 @@ export interface ConfigJournalTable {
   reason: string | null;
 }
 
-/** The engine tables the store adapters query, by name. */
 /** `risk_cache`: one source's report for one token, as JSON text. */
 interface RiskCacheTable {
   asset: string;
@@ -323,7 +323,8 @@ interface RiskCacheTable {
   fetched_at: number;
 }
 
-export interface EngineTables {
+/** The engine tables the store adapters query, by name. */
+export interface EngineTables extends PositionTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;

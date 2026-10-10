@@ -118,9 +118,11 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   tx_sends: names("tx_id attempt place relay outcome reason code at"),
   executions: names(
-    "id intent_id wallet_id asset_in amount_in asset_out amount_out price_usd_micros " +
-      "fee_usd_micros gas_usd_micros paper at",
+    "id intent_id wallet_id asset_in amount_in fee_amount asset_out amount_out gas_asset " +
+      "gas_amount tx_hash value_usd_micros fee_usd_micros gas_usd_micros paper at",
   ),
+  arrivals: names("id wallet_id asset amount value_usd_micros tx_hash paper at"),
+  departures: names("id intent_id wallet_id asset amount gas_asset gas_amount tx_hash at"),
   positions: names(
     "wallet_id asset paper quantity cost_usd_micros realized_usd_micros changed_at version",
   ),
@@ -190,6 +192,8 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   txs: ["index|hash", "index|intent_id,step", "unique|account,nonce|partial"],
   tx_sends: ["unique|tx_id,attempt,relay"],
   executions: ["index|wallet_id,at"],
+  arrivals: ["index|wallet_id,at"],
+  departures: ["index|intent_id", "index|wallet_id,at"],
   orders: ["index|state,agent_id"],
   order_fills: ["index|order_id,at"],
   alerts: ["index|state"],

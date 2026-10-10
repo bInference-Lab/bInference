@@ -12,6 +12,7 @@ export { createSqliteInstallStore } from "./install/sqlite-install-store.js";
 export { createSqliteIntentStore } from "./intents/sqlite-intent-store.js";
 export { createSqliteLedgerStore } from "./ledger/sqlite-ledger-store.js";
 export type { MigrationReport } from "./migrations/migration-report.js";
+export { createSqlitePositionStore } from "./positions/sqlite-position-store.js";
 export { createSqliteRiskCacheStore } from "./risk-cache/sqlite-risk-cache-store.js";
 export type { ForeignKeyProblem, IntegrityReport } from "./sqlite/integrity-report.js";
 export type { VacuumCopy, VacuumOutcome } from "./sqlite/vacuum-into.js";

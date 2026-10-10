@@ -33,7 +33,7 @@ Rules for this package:
 - The store ports live in `@binference/engine` (`src/ports.ts`), which also holds their contract
   suites and in-memory fakes. An adapter here is a set of store tasks in a feature folder
   (`intents/`, `ledger/`, `ingress/`, `access/`, `agents/`, `audit/`, `transactions/`,
-  `risk-cache/`), listed in
+  `risk-cache/`, `positions/`), listed in
   `databases/engine-database.ts`, and a `createSqlite…` factory that binds them to a `StoreHost`.
   Its test runs the port's contract suite on a fresh migrated database from
   `testing/test-databases.worker.ts`, which runs tasks in the test's thread.
