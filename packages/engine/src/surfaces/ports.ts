@@ -1,4 +1,4 @@
-import type { Id, Result } from "@binference/core";
+import type { Id } from "@binference/core";
 import type { CardCopy } from "./card-copy.js";
 import type { OwnerBinding } from "./owner-binding.js";
 
@@ -10,11 +10,14 @@ import type { OwnerBinding } from "./owner-binding.js";
 export interface OwnerStore {
   /** The owner, or `undefined` before pairing. Rejects with the signal's reason once it aborts. */
   get(options: { readonly signal: AbortSignal }): Promise<OwnerBinding | undefined>;
-  /** Binds the owner; with an owner already bound it changes nothing and is `bound`. */
+  /**
+   * Binds the owner in place of any earlier one, as a spent start code allows (decision 0139), and
+   * answers the owner it replaced, or `undefined` for the first pairing.
+   */
   bind(
     binding: OwnerBinding,
     options: { readonly signal: AbortSignal },
-  ): Promise<Result<OwnerBinding, "bound">>;
+  ): Promise<OwnerBinding | undefined>;
 }
 
 /**

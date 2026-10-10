@@ -1,9 +1,7 @@
-import { err, ok, type Result } from "@binference/core";
 import { type OwnerBinding, ownerBindingSchema } from "@binference/engine/surfaces";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
-import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
 // The table holds one row, `id = 1`, once the owner paired.
@@ -24,23 +22,29 @@ export const getOwnerTask: StoreTask<null, OwnerBinding | null> = defineTask({
   },
 });
 
-/** Binds the owner; an owner bound already stays, and the task answers `bound`. */
-export const bindOwnerTask: StoreTask<OwnerBinding, Result<OwnerBinding, "bound">> = defineTask({
+/**
+ * Binds the owner in place of any earlier one, in one transaction, and answers the owner it
+ * replaced, or null for the first pairing.
+ */
+export const bindOwnerTask: StoreTask<OwnerBinding, OwnerBinding | null> = defineTask({
   name: "telegram.bind_owner",
   access: "write",
   input: ownerBindingSchema,
-  output: resultSchema(ownerBindingSchema, ["bound"]),
+  output: ownerBindingSchema.nullable(),
   run(database, binding) {
     const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
-    const bound = takeFirst(kysely.selectFrom("telegram_owner").select("id"));
-    if (bound !== undefined) {
-      return err("bound");
-    }
+    const replaced = takeFirst(
+      kysely.selectFrom("telegram_owner").selectAll().where("id", "=", ownerRow),
+    );
+    const row = { user_id: binding.userId, paired_at: binding.pairedAtMs };
     execute(
       kysely
         .insertInto("telegram_owner")
-        .values({ id: ownerRow, user_id: binding.userId, paired_at: binding.pairedAtMs }),
+        .values({ id: ownerRow, ...row })
+        .onConflict((conflict) => conflict.column("id").doUpdateSet(row)),
     );
-    return ok(binding);
+    return replaced === undefined
+      ? null
+      : { userId: replaced.user_id, pairedAtMs: replaced.paired_at };
   },
 });

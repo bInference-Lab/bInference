@@ -79,7 +79,7 @@ async function startCode(context: Awaited<ReturnType<typeof setUp>>): Promise<st
 }
 
 describe("the Telegram ingress", () => {
-  it("ignores every message and button from anyone but the owner", async () => {
+  it("ignores anyone but the owner, whose unknown start code pairs nobody", async () => {
     const context = await setUp({ owner: ownerId });
     await context.receive(
       textUpdate({ updateId: 1, from: strangerId, text: "hello" }),
@@ -88,7 +88,11 @@ describe("the Telegram ingress", () => {
       pressUpdate(4, strangerId, "bnf1:c:y:abc"),
     );
     expect(context.delivered).toStrictEqual([]);
-    expect(context.botApi.sent()).toStrictEqual([]);
+    expect(context.botApi.sent()).toStrictEqual([
+      { chatId: strangerId, text: messages.en["telegram.pairRefused"] },
+    ]);
+    expect(await context.stores.owners.get(live)).toStrictEqual({ userId: ownerId, pairedAtMs: 1 });
+    expect(context.pairings).toStrictEqual([]);
     expect(context.botApi.deleted()).toStrictEqual([]);
     expect(await context.stores.inbox.unhandled(10, live)).toStrictEqual([]);
   });
@@ -204,9 +208,34 @@ describe("the Telegram ingress", () => {
     });
     expect(context.botApi.sent()).toStrictEqual([
       { chatId: ownerId, text: messages.en["telegram.paired"] },
+      { chatId: strangerId, text: messages.en["telegram.pairRefused"] },
     ]);
     expect(context.delivered.map((update) => update.updateId)).toStrictEqual([20]);
     expect(context.pairings).toStrictEqual([context.clock.now()]);
+  });
+
+  it("pairs someone else in the owner's place with a new code, and tells the owner it replaced", async () => {
+    const context = await setUp({ owner: ownerId, locale: "zh" });
+    const code = await startCode(context);
+    await context.receive(
+      textUpdate({ updateId: 40, from: strangerId, text: `/start ${code}` }),
+      textUpdate({ updateId: 41, from: ownerId, text: "status" }),
+      textUpdate({ updateId: 42, from: strangerId, text: "status" }),
+    );
+    expect(await context.stores.owners.get(live)).toStrictEqual({
+      userId: strangerId,
+      pairedAtMs: context.clock.now(),
+    });
+    expect(context.botApi.sent()).toStrictEqual([
+      { chatId: strangerId, text: messages.zh["telegram.paired"] },
+      { chatId: ownerId, text: messages.zh["telegram.pairingEnded"] },
+    ]);
+    expect(messages.zh["telegram.pairingEnded"]).toContain("binference freeze");
+    expect(context.delivered.map((update) => update.updateId)).toStrictEqual([42]);
+    expect(context.pairings).toStrictEqual([context.clock.now()]);
+    expect(context.logger.records().map((record) => record.event)).toContain(
+      "telegram.owner_replaced",
+    );
   });
 
   it("answers the owner who opens the link again, and pairs nobody from a forward or an edit", async () => {

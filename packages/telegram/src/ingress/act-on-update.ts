@@ -1,12 +1,16 @@
 import type { Clock, Logger } from "@binference/core";
 import type { AccessStore } from "@binference/engine";
-import type { OwnerStore } from "@binference/engine/surfaces";
+import type { OwnerBinding, OwnerStore } from "@binference/engine/surfaces";
 import { startCodeHash } from "../pairing/start-code.js";
 import type { BotCalls } from "./bot-calls.js";
 import type { OwnerUpdate, ReplyTarget, UpdateAction } from "./decide-update.js";
 
 /** The words the ingress sends, each under its message key. */
-export type IngressWords = "telegram.paired" | "telegram.pairRefused" | "telegram.secretDeleted";
+export type IngressWords =
+  | "telegram.paired"
+  | "telegram.pairRefused"
+  | "telegram.pairingEnded"
+  | "telegram.secretDeleted";
 
 /** Takes an owner update and resolves once it holds it, not after acting on it. */
 export type OwnerUpdateSink = (
@@ -24,7 +28,7 @@ export interface ActionContext {
   /** The text of a message key in the target's language. */
   readonly words: (key: IngressWords, target: ReplyTarget) => string;
   readonly onOwnerUpdate: OwnerUpdateSink;
-  /** Hears that a start code bound the owner. */
+  /** Hears that a start code bound the owner, the first or one in an earlier owner's place. */
   readonly onOwnerPaired: () => void;
 }
 
@@ -44,24 +48,43 @@ async function say(context: ActionContext, line: Line, call: Call): Promise<void
   await context.calls.reply(line.target, context.words(line.key, line.target), call);
 }
 
-// The code is spent before the owner is bound: a code works once even if binding fails.
+// The owner a new pairing replaced hears it in their own chat, whose id is their user id, so
+// someone who paired without them knowing can be frozen out at once.
+async function tellReplaced(
+  replaced: OwnerBinding | undefined,
+  context: ActionContext,
+  call: Call,
+): Promise<void> {
+  if (replaced === undefined) {
+    return;
+  }
+  context.logger.warn("telegram.owner_replaced");
+  await say(context, { key: "telegram.pairingEnded", target: { chatId: replaced.userId } }, call);
+}
+
+// The code is spent before the owner is bound: a code works once even if binding fails. The earlier
+// owner, if any, stays until a code is spent.
 async function pair(action: PairAction, context: ActionContext, call: Call): Promise<void> {
   const codeHash = startCodeHash(action.code);
   const used = await context.access.usePairCode({ codeHash, atMs: context.clock.now() }, call);
-  const bound = used.ok
-    ? await context.owners.bind({ userId: action.userId, pairedAtMs: context.clock.now() }, call)
-    : used;
-  if (!bound.ok) {
+  if (!used.ok) {
     context.logger.warn("telegram.pairing_refused");
     await say(context, { key: "telegram.pairRefused", target: action.target }, call);
     return;
   }
+  const binding = { userId: action.userId, pairedAtMs: context.clock.now() };
+  const replaced = await context.owners.bind(binding, call);
   context.logger.info("telegram.owner_paired");
   try {
     await say(context, { key: "telegram.paired", target: action.target }, call);
   } finally {
-    // The welcome goes first; what waited for the owner follows, sent or not.
-    context.onOwnerPaired();
+    // The welcome goes first, then the word to the replaced owner and what waited for the owner,
+    // sent or not.
+    try {
+      await tellReplaced(replaced, context, call);
+    } finally {
+      context.onOwnerPaired();
+    }
   }
 }
 

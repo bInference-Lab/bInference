@@ -14,12 +14,19 @@ async function startsEmpty(store: OwnerStore): Promise<void> {
   assert.equal(await store.get(live()), undefined);
 }
 
-async function keepsTheFirst(store: OwnerStore): Promise<void> {
-  assert.deepEqual(await store.bind(owner, live()), { ok: true, value: owner });
-  const other = { userId: 42, pairedAtMs: 2_000 };
-  assert.deepEqual(await store.bind(other, live()), { ok: false, error: "bound" });
-  assert.deepEqual(await store.bind(owner, live()), { ok: false, error: "bound" });
+async function bindsTheFirst(store: OwnerStore): Promise<void> {
+  assert.equal(await store.bind(owner, live()), undefined);
   assert.deepEqual(await store.get(live()), owner);
+}
+
+async function replacesTheOwner(store: OwnerStore): Promise<void> {
+  const next = { userId: 7_100_000_042, pairedAtMs: 2_000 };
+  await store.bind(owner, live());
+  assert.deepEqual(await store.bind(next, live()), owner);
+  assert.deepEqual(await store.get(live()), next);
+  const again = { ...next, pairedAtMs: 3_000 };
+  assert.deepEqual(await store.bind(again, live()), next);
+  assert.deepEqual(await store.get(live()), again);
 }
 
 async function refusesAborted(store: OwnerStore): Promise<void> {
@@ -37,7 +44,8 @@ export function ownerStoreContract(harness: OwnerStoreHarness): readonly Contrac
       run(await harness.create());
   return [
     { name: "has no owner before one is bound", run: on(startsEmpty) },
-    { name: "keeps the first owner and refuses every later binding", run: on(keepsTheFirst) },
+    { name: "binds the first owner and answers no earlier one", run: on(bindsTheFirst) },
+    { name: "replaces the owner and answers the one it replaced", run: on(replacesTheOwner) },
     { name: "refuses every call on an aborted signal and binds nobody", run: on(refusesAborted) },
   ];
 }

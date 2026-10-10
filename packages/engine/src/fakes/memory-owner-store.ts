@@ -1,4 +1,3 @@
-import { err, ok } from "@binference/core";
 import type { OwnerBinding } from "../surfaces/owner-binding.js";
 import type { OwnerStore } from "../surfaces/ports.js";
 
@@ -12,11 +11,9 @@ export function createMemoryOwnerStore(): OwnerStore {
     },
     bind: async (binding, options) => {
       options.signal.throwIfAborted();
-      if (owner !== undefined) {
-        return Promise.resolve(err("bound"));
-      }
+      const replaced = owner;
       owner = { ...binding };
-      return Promise.resolve(ok({ ...binding }));
+      return Promise.resolve(replaced);
     },
   };
 }

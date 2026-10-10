@@ -1,6 +1,7 @@
 {
   "paired": "你现在是此机器人的所有者。你的 Agent 的卡片和提醒会发送到这里。",
-  "pairRefused": "此链接已过期或已被使用。请再次运行 `binference init` 获取新链接。",
+  "pairRefused": "此链接已过期或已被使用。请运行 `binference telegram pair` 获取新链接。",
+  "pairingEnded": "⚠️ 另一个 Telegram 账户现在是此机器人的所有者：有人打开了 `binference telegram pair` 生成的新链接。从现在起，卡片和提醒会发送到该账户。不是你？请立即冻结：在运行 binference 的机器上运行 `binference freeze`。",
   "secretDeleted": "⚠️ 消息已删除：内容看起来像助记词、私钥或所有者密钥。切勿在对话中粘贴这些内容。如果内容属实，请视为已泄露。如需分享交易，请改为粘贴该交易的区块浏览器链接，因为交易哈希和私钥看起来一样。",
   "button.confirm": "✅ 确认",
   "button.cancel": "❌ 取消"

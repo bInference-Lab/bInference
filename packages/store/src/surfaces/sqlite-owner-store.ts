@@ -12,8 +12,9 @@ export const ownerTasks: readonly TaskRunner[] = [getOwnerTask, bindOwnerTask];
  */
 export function createSqliteOwnerStore(host: StoreHost): OwnerStore {
   const get = bindTask(host, getOwnerTask);
+  const bind = bindTask(host, bindOwnerTask);
   return {
     get: async (options) => (await get(null, options)) ?? undefined,
-    bind: bindTask(host, bindOwnerTask),
+    bind: async (binding, options) => (await bind(binding, options)) ?? undefined,
   };
 }

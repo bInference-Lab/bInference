@@ -68,13 +68,12 @@ function decidePost(post: ChatPost, facts: UpdateFacts): UpdateAction {
     return ignore;
   }
   const code = facts.isRedacted ? undefined : startCodeOf(post);
-  if (facts.owner === undefined) {
+  // Anyone but the owner pairs with a start code: the first, or a new one from
+  // `binference telegram pair` that pairs them in the owner's place (decision 0139).
+  if (person.id !== facts.owner?.userId) {
     return code === undefined
       ? ignore
       : { kind: "pair", code, userId: person.id, target: targetOf(post, person) };
-  }
-  if (person.id !== facts.owner.userId) {
-    return ignore;
   }
   if (facts.isRedacted) {
     return { kind: "deleteSecret", messageId: post.messageId, target: targetOf(post, person) };
@@ -97,8 +96,9 @@ function decidePress(press: ButtonPress, facts: UpdateFacts): UpdateAction {
 
 /**
  * Decides what to do with a stored update. Only the owner's numeric id counts, only in the owner's
- * private chat: groups, channels, bots and every other person are ignored. Before an owner is
- * bound, only a typed `/start <code>` does anything. The owner's message that held a secret is
+ * private chat: groups, channels, bots and every other person are ignored, except that a typed
+ * `/start <code>` from them is a pairing, which a valid code wins in the owner's place. The owner's
+ * message that held a secret is
  * deleted with a warning and never handed on.
  */
 export function decideUpdate(facts: UpdateFacts): UpdateAction {
