@@ -183,6 +183,32 @@ async function keepsCeilingChanges(subject: InstallStoreSubject): Promise<void> 
   assert.equal((await store.read(live())).rescueCeiling, undefined);
 }
 
+async function storesANewWallet(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  const first = setup(subject, 2);
+  await store.setUp(first, live());
+  const made = wallet(subject, 1);
+  await store.createWallet(made, live());
+  assert.deepEqual((await store.read(live())).wallets, [made, first.wallet]);
+  await assert.rejects(
+    store.createWallet({ ...wallet(subject, 3), address: made.address }, live()),
+  );
+  assert.deepEqual((await store.read(live())).wallets, [made, first.wallet]);
+}
+
+async function replacesKeptCeilingChanges(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  await store.setUp(setup(subject, 1), live());
+  await store.keepRescueCeiling({ onEffect: signedChange(1) }, live());
+  assert.equal((await store.read(live())).rescueCeiling, undefined);
+  const ceiling = { onEffect: signedChange(2), onCancel: signedChange(3) };
+  await store.changeRescue({ address: rescue(7), atMs: 10_000, ceiling }, live());
+  const resigned = { onEffect: signedChange(4) };
+  await store.keepRescueCeiling(resigned, live());
+  const read = await store.read(live());
+  assert.deepEqual([read.rescueCeiling, read.pendingRescue?.address], [resigned, rescue(7)]);
+}
+
 async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   await assertRefusesAborted(async (call) =>
@@ -195,6 +221,8 @@ async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> 
   );
   await assertRefusesAborted(async (call) => store.cancelRescueChange(1, call));
   await assertRefusesAborted(async (call) => store.clearRescueCeiling(call));
+  await assertRefusesAborted(async (call) => store.keepRescueCeiling({}, call));
+  await assertRefusesAborted(async (call) => store.createWallet(wallet(subject, 1), call));
   assert.deepEqual(await store.read(live()), { wallets: [] });
 }
 
@@ -233,6 +261,12 @@ export function installStoreContract(harness: InstallStoreHarness): readonly Con
       "keeps the ceiling changes signed for a new rescue address while it waits",
       create,
       keepsCeilingChanges,
+    ),
+    checkOn("stores a new wallet beside the ones it holds", create, storesANewWallet),
+    checkOn(
+      "replaces the ceiling changes kept while a new rescue address waits",
+      create,
+      replacesKeptCeilingChanges,
     ),
     checkOn("refuses every call on an aborted signal", create, refusesAbortedCalls),
   ];

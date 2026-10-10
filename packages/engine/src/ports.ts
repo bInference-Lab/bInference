@@ -30,8 +30,18 @@ import type {
   SignedChangeRefusal,
   SignRecipientsRequest,
 } from "./install/ceiling-change.js";
-import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/install-record.js";
-import type { RescueAddressChange, RescueCancel, RescueMove } from "./install/rescue-record.js";
+import type {
+  InstallFacts,
+  InstallIdProposal,
+  InstallSetup,
+  WalletDraft,
+} from "./install/install-record.js";
+import type {
+  RescueAddressChange,
+  RescueCancel,
+  RescueCeiling,
+  RescueMove,
+} from "./install/rescue-record.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
 import type { FreezeOutcome, FreezeWrite } from "./intents/freeze-write.js";
@@ -530,6 +540,17 @@ export interface InstallStore {
   cancelRescueChange(atMs: number, options: StoreCall): Promise<RescueCancel>;
   /** Forgets the ceiling changes kept for the new rescue address, once they were sent. */
   clearRescueCeiling(options: StoreCall): Promise<void>;
+  /**
+   * Replaces the ceiling changes kept for the new rescue address that waits, once the owner key
+   * signed them again over every live wallet's ceiling; with no address waiting it keeps nothing.
+   */
+  keepRescueCeiling(ceiling: RescueCeiling, options: StoreCall): Promise<void>;
+  /**
+   * Stores a new live wallet beside the install's other wallets, with its ceiling as custody read
+   * it back. A wallet whose id, Privy id or address the store holds already is a fault, which
+   * changes nothing.
+   */
+  createWallet(wallet: WalletDraft, options: StoreCall): Promise<void>;
 }
 
 /**

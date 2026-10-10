@@ -1,5 +1,10 @@
 import { err, type Id, ok, type Result } from "@binference/core";
-import type { InstallFacts, InstallSetup, WalletRecord } from "../install/install-record.js";
+import type {
+  InstallFacts,
+  InstallSetup,
+  WalletDraft,
+  WalletRecord,
+} from "../install/install-record.js";
 import {
   type RescueAddressChange,
   type RescueCancel,
@@ -10,15 +15,14 @@ import {
 import { cancelRescue, changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { InstallStore } from "../ports.js";
 import type { FreezeChange } from "./memory-agent-store.js";
-import { constraintFault, memoryCall } from "./memory-call.js";
+import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 
 /** What the fake holds: the install's facts and its id. */
 interface InstallState extends InstallFacts {
   readonly installId?: Id<"ins">;
 }
 
-function isHeld(wallets: readonly WalletRecord[], setup: InstallSetup): boolean {
-  const { wallet } = setup;
+function isHeld(wallets: readonly WalletRecord[], wallet: WalletDraft): boolean {
   return wallets.some(
     (item) =>
       item.id === wallet.id ||
@@ -31,7 +35,7 @@ function setUp(state: InstallState, setup: InstallSetup): Result<InstallState, "
   if (state.custody !== undefined && !setup.isStartOver) {
     return err("set_up");
   }
-  if (isHeld(state.wallets, setup)) {
+  if (isHeld(state.wallets, setup.wallet)) {
     throw constraintFault("a wallet's id, Privy id or address is held already");
   }
   const archived = state.wallets.map((item) =>
@@ -122,6 +126,26 @@ function rescueChange(
   return { before, after };
 }
 
+// Wallets oldest first, as the SQLite store reads them.
+function inOrder(wallets: readonly WalletRecord[]): readonly WalletRecord[] {
+  return wallets.toSorted(byCreation);
+}
+
+// The state with a new wallet, refused as the SQLite store's unique columns refuse it.
+function withWallet(state: InstallState, wallet: WalletDraft): InstallState {
+  if (isHeld(state.wallets, wallet)) {
+    throw constraintFault("a wallet's id, Privy id or address is held already");
+  }
+  return { ...state, wallets: inOrder([...state.wallets, wallet]) };
+}
+
+// The state with the ceiling changes signed again for the new rescue address that waits.
+function withKept(state: InstallState, ceiling: RescueCeiling): InstallState {
+  return state.pendingRescue === undefined
+    ? state
+    : withRescue(state, storedRescue(state), ceiling);
+}
+
 /**
  * The in-memory install store, which also takes wallets a test adds and holds the install's freeze
  * the in-memory intent store writes.
@@ -141,6 +165,9 @@ export interface MemoryInstallStore extends InstallStore {
 /** Creates an empty in-memory {@link InstallStore} for tests. */
 export function createMemoryInstallStore(): MemoryInstallStore {
   const held: { state: InstallState } = { state: { wallets: [] } };
+  const update = (change: (state: InstallState) => InstallState): void => {
+    held.state = change(held.state);
+  };
   const write = (rescueWrite: RescueWrite): RescueCancel => {
     const moved = movedRescue(held.state, rescueWrite);
     held.state = moved.state;
@@ -148,11 +175,10 @@ export function createMemoryInstallStore(): MemoryInstallStore {
   };
   return {
     addWallet(wallet) {
-      const wallets = [...held.state.wallets, structuredClone(wallet)];
-      held.state = {
-        ...held.state,
-        wallets: wallets.toSorted((a, b) => a.createdAtMs - b.createdAtMs),
-      };
+      update((state) => ({
+        ...state,
+        wallets: inOrder([...state.wallets, structuredClone(wallet)]),
+      }));
     },
     installId: async (proposal, call) =>
       memoryCall(call, () => {
@@ -180,8 +206,10 @@ export function createMemoryInstallStore(): MemoryInstallStore {
     cancelRescueChange: async (atMs, call) =>
       memoryCall(call, () => write({ atMs, decide: (rescue) => cancelRescue(rescue, atMs) })),
     clearRescueCeiling: async (call) =>
-      memoryCall(call, () => {
-        held.state = withRescue(held.state, storedRescue(held.state), undefined);
-      }),
+      memoryCall(call, () => update((state) => withRescue(state, storedRescue(state), undefined))),
+    keepRescueCeiling: async (ceiling, call) =>
+      memoryCall(call, () => update((state) => withKept(state, structuredClone(ceiling)))),
+    createWallet: async (wallet, call) =>
+      memoryCall(call, () => update((state) => withWallet(state, structuredClone(wallet)))),
   };
 }

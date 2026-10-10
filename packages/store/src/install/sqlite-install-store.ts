@@ -5,7 +5,9 @@ import {
   cancelRescueChangeTask,
   changeRescueTask,
   clearRescueCeilingTask,
+  createWalletTask,
   installIdTask,
+  keepRescueCeilingTask,
   readInstallTask,
   setUpInstallTask,
 } from "./install-tasks.js";
@@ -18,12 +20,16 @@ export const installTasks: readonly TaskRunner[] = [
   changeRescueTask,
   cancelRescueChangeTask,
   clearRescueCeilingTask,
+  keepRescueCeilingTask,
+  createWalletTask,
 ];
 
 /** The {@link InstallStore} on `engine.sqlite`: each call runs one store task. */
 export function createSqliteInstallStore(host: StoreHost): InstallStore {
   const read = bindTask(host, readInstallTask);
   const clearRescue = bindTask(host, clearRescueCeilingTask);
+  const keepRescue = bindTask(host, keepRescueCeilingTask);
+  const createWallet = bindTask(host, createWalletTask);
   return {
     installId: bindTask(host, installIdTask),
     read: async (options) => read(null, options),
@@ -32,6 +38,12 @@ export function createSqliteInstallStore(host: StoreHost): InstallStore {
     cancelRescueChange: bindTask(host, cancelRescueChangeTask),
     clearRescueCeiling: async (options) => {
       await clearRescue(null, options);
+    },
+    keepRescueCeiling: async (ceiling, options) => {
+      await keepRescue(ceiling, options);
+    },
+    createWallet: async (wallet, options) => {
+      await createWallet(wallet, options);
     },
   };
 }

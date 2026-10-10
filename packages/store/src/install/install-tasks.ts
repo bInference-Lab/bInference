@@ -7,6 +7,8 @@ import {
   installIdProposalSchema,
   type InstallSetup,
   installSetupSchema,
+  type WalletDraft,
+  walletDraftSchema,
   cancelRescue,
   changeRescue,
   type RescueAddressChange,
@@ -15,6 +17,7 @@ import {
   rescueCancelSchema,
   type RescueCeiling,
   rescueCeilingAfter,
+  rescueCeilingSchema,
   type RescueMove,
   rescueMoveSchema,
   type RescueState,
@@ -71,12 +74,8 @@ function writeRescue(database: DatabaseSync, setup: InstallSetup): void {
   );
 }
 
-function writeWallet(database: DatabaseSync, setup: InstallSetup): void {
+function insertWallet(database: DatabaseSync, wallet: WalletDraft): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
-  const { wallet } = setup;
-  execute(
-    kysely.updateTable("wallets").set({ archived_at: setup.atMs }).where("archived_at", "is", null),
-  );
   execute(
     kysely.insertInto("wallets").values({
       id: wallet.id,
@@ -102,6 +101,14 @@ function writeWallet(database: DatabaseSync, setup: InstallSetup): void {
       version: 0,
     }),
   );
+}
+
+function writeWallet(database: DatabaseSync, setup: InstallSetup): void {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  execute(
+    kysely.updateTable("wallets").set({ archived_at: setup.atMs }).where("archived_at", "is", null),
+  );
+  insertWallet(database, setup.wallet);
 }
 
 /** Answers the install's id, storing the proposed one with its start time when there is none. */
@@ -225,6 +232,37 @@ export const clearRescueCeilingTask: StoreTask<null, null> = defineTask({
   run(database) {
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
     execute(kysely.updateTable("safety").set({ rescue_ceiling: null }).where("id", "=", 1));
+    return null;
+  },
+});
+
+/** Replaces the ceiling changes kept for the new rescue address that waits, if one waits. */
+export const keepRescueCeilingTask: StoreTask<RescueCeiling, null> = defineTask({
+  name: "install.keep_rescue_ceiling",
+  access: "write",
+  input: rescueCeilingSchema,
+  output: z.null(),
+  run(database, ceiling) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    execute(
+      kysely
+        .updateTable("safety")
+        .set({ rescue_ceiling: jsonText(jsonValueSchema.parse(ceiling)) })
+        .where("id", "=", 1)
+        .where("pending_rescue_address", "is not", null),
+    );
+    return null;
+  },
+});
+
+/** Stores a new live wallet with its ceiling; a held id, Privy id or address rolls it back. */
+export const createWalletTask: StoreTask<WalletDraft, null> = defineTask({
+  name: "install.create_wallet",
+  access: "write",
+  input: walletDraftSchema,
+  output: z.null(),
+  run(database, wallet) {
+    insertWallet(database, wallet);
     return null;
   },
 });
