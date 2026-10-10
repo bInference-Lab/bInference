@@ -1,14 +1,17 @@
 import { type Id, ok } from "@binference/core";
+import type { OwnerAuthorize } from "@binference/custody-privy";
 import type { CustodyRecord, InstallStore } from "@binference/engine/install";
 import { loadConfig } from "../config/load-config.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
-import type { UnlockMode } from "../config/schema/engine.schema.js";
+import type { UnlockConfig, UnlockMode } from "../config/schema/engine.schema.js";
 import { type AgentKey, takeAgentKey } from "../init/agent-key-step.js";
-import { type InitContext, type InitStep, refused } from "../init/init-context.js";
+import { type InitContext, type InitStep, type Refused, refused } from "../init/init-context.js";
 import { systemDefaults } from "../program/system-defaults.js";
-import { takeAttachApp } from "./attach-app.js";
+import { type AttachApp, takeAttachApp } from "./attach-app.js";
+import { takeAttachBot } from "./attach-bot.js";
 import { takeOwnerKey } from "./attach-owner-key.js";
 import { type MovedSigners, moveSigners } from "./attach-signers.js";
+import { movedSources, moveSources } from "./moved-sources.js";
 
 /** What an attach did, for its summary. */
 export interface AttachOutcome {
@@ -21,10 +24,23 @@ export interface AttachOutcome {
   readonly unlockMode: UnlockMode;
   /** False when the unlock mode held a key from an earlier attach that stopped part way. */
   readonly isAgentKeyNew: boolean;
+  /** Whether this machine reads the bot token; without it the engine starts without the bot. */
+  readonly hasBot: boolean;
 }
 
-// The install's config as `binference start` loads it; one that does not load stops attach.
+// The install's config as `binference start` loads it, its secret sources moved first when they
+// name the old machine's `keys/` (decision 0142); one that does not load stops attach.
 async function configOf(context: InitContext): Promise<InitStep<BinferenceConfig>> {
+  const loaded = await loadedConfig(context);
+  const moves = loaded.ok ? movedSources(context, loaded.value) : [];
+  if (!loaded.ok || moves.length === 0) {
+    return loaded;
+  }
+  const moved = await moveSources(context, moves);
+  return moved.ok ? loadedConfig(context) : moved;
+}
+
+async function loadedConfig(context: InitContext): Promise<InitStep<BinferenceConfig>> {
   const { host, platform, signal } = context;
   const loaded = await loadConfig({
     file: platform.stateFolder.configFile,
@@ -38,49 +54,80 @@ async function configOf(context: InitContext): Promise<InitStep<BinferenceConfig
     : refused("init.attach_config", "refused.attachConfig", { folder: platform.stateFolder.root });
 }
 
+/** What attach checked and made before it changes anything on Privy. */
+interface Checked {
+  readonly app: AttachApp;
+  readonly authorize: OwnerAuthorize;
+  readonly agentKey: AgentKey;
+  readonly unlock: UnlockConfig;
+  /** Whether the bot token is where config.json5 names it, or was typed and kept there. */
+  readonly hasBot: boolean;
+}
+
+// The key the wallets name now, in the folder the unlock mode reads: a copy of the old `keys/`
+// in the modes that keep it there, or a machine attached already.
+function heldCurrentKey(context: InitContext, unlock: UnlockConfig): Refused {
+  const keys = context.platform.stateFolder.keys;
+  return unlock.mode === "file" || unlock.mode === "manual"
+    ? refused("init.attach_copied_keys", "refused.attachCopiedKeys", { folder: keys })
+    : refused("init.attached_already", "refused.attachedAlready");
+}
+
+async function check(
+  context: InitContext,
+  found: { readonly custody: CustodyRecord; readonly installId: Id<"ins"> },
+): Promise<InitStep<Checked>> {
+  const config = await configOf(context);
+  if (!config.ok) {
+    return config;
+  }
+  const app = await takeAttachApp(context, config.value, found.custody);
+  if (!app.ok) {
+    return app;
+  }
+  const hasBot = await takeAttachBot(context, config.value);
+  const authorize = await takeOwnerKey(context, found.custody.ownerKeyPublic);
+  if (!authorize.ok) {
+    return authorize;
+  }
+  const { unlock } = config.value.engine;
+  const agentKey = await takeAgentKey(context, unlock, found.installId);
+  if (!agentKey.ok) {
+    return agentKey;
+  }
+  return agentKey.value.publicKey === found.custody.agentKeyPublic
+    ? heldCurrentKey(context, unlock)
+    : ok({ app: app.value, authorize: authorize.value, agentKey: agentKey.value, unlock, hasBot });
+}
+
 async function attachWith(
   context: InitContext,
   install: InstallStore,
   found: { readonly custody: CustodyRecord; readonly installId: Id<"ins"> },
 ): Promise<InitStep<AttachOutcome>> {
-  const { custody, installId } = found;
-  const config = await configOf(context);
-  if (!config.ok) {
-    return config;
+  const checked = await check(context, found);
+  if (!checked.ok) {
+    return checked;
   }
-  const app = await takeAttachApp(context, config.value, custody);
-  if (!app.ok) {
-    return app;
-  }
-  const authorize = await takeOwnerKey(context, custody.ownerKeyPublic);
-  if (!authorize.ok) {
-    return authorize;
-  }
-  const { unlock } = config.value.engine;
-  const agentKey = await takeAgentKey(context, unlock, installId);
-  if (!agentKey.ok) {
-    return agentKey;
-  }
-  if (agentKey.value.publicKey === custody.agentKeyPublic) {
-    return refused("init.attached_already", "refused.attachedAlready");
-  }
+  const { app, authorize, agentKey, unlock, hasBot } = checked.value;
   const { wallets } = await install.read({ signal: context.signal });
   const live = wallets.filter((wallet) => wallet.archivedAtMs === undefined);
   const moved = await moveSigners(context, {
-    ...app.value,
-    authorize: authorize.value,
-    agentKey: agentKey.value.publicKey,
+    ...app,
+    authorize,
+    agentKey: agentKey.publicKey,
     wallets: live,
   });
   if (!moved.ok) {
     return moved;
   }
-  await record(context, install, { moved: moved.value, agentKey: agentKey.value });
+  await record(context, install, { moved: moved.value, agentKey });
   return ok({
     wallets: live.length,
     ...moved.value,
     unlockMode: unlock.mode,
-    isAgentKeyNew: agentKey.value.isNew,
+    isAgentKeyNew: agentKey.isNew,
+    hasBot,
   });
 }
 

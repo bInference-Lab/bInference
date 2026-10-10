@@ -7,6 +7,7 @@ import { createFormatter } from "@binference/i18n";
 import { createFileSecretStore, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { parseAgentKey } from "@binference/signer";
+import { fakeBotToken } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
@@ -39,10 +40,18 @@ afterEach(async () => {
 });
 
 // The same install on a second folder, as the machine it was copied from left it.
-async function copyOf(machine: InitMachine): Promise<InitMachine> {
-  const folder = await createTempFolder("bnf-old-");
+async function copyOf(
+  machine: InitMachine,
+  options: { readonly withKeys: boolean } = { withKeys: true },
+): Promise<InitMachine> {
+  const folder = await createTempFolder("bnf-copy-");
   folders.push(folder);
-  await cp(machine.folder, folder.path, { recursive: true, force: true });
+  const keys = join(machine.folder, "keys");
+  // A running engine's IPC socket is no file to copy.
+  const socket = join(machine.folder, "run");
+  const filter = (source: string): boolean =>
+    !source.startsWith(socket) && (options.withKeys || !source.startsWith(keys));
+  await cp(machine.folder, folder.path, { recursive: true, force: true, filter });
   return machineOf({ ...machine, folder: folder.path, signals: new EventEmitter() });
 }
 
@@ -67,12 +76,14 @@ async function attach(
   options: {
     readonly argv?: readonly string[];
     readonly appSecrets?: readonly string[];
+    readonly botTokens?: readonly string[];
     readonly env?: Readonly<Record<string, string>>;
   } = {},
 ) {
   const prompter = createScriptedPrompter({
     ownerKey: ownerKeys,
     privyAppSecret: options.appSecrets ?? [],
+    botToken: options.botTokens ?? [],
   });
   const host = hostWith(machine, ["init", "--attach", ...(options.argv ?? [])], {
     env: options.env ?? secretEnv(machine),
@@ -155,7 +166,11 @@ describe("binference init --attach", () => {
 
       const twice = await attach(machine, [ownerKey]);
 
-      expect([twice.code, twice.stderr]).toStrictEqual([1, `${init("refused.attachedAlready")}\n`]);
+      const keys = join(machine.folder, "keys");
+      expect([twice.code, twice.stderr]).toStrictEqual([
+        1,
+        `${init("refused.attachCopiedKeys", { folder: keys })}\n`,
+      ]);
     },
   );
 
@@ -241,5 +256,98 @@ describe("binference init --attach", () => {
       1,
       `${init("refused.attachNeedsInstall", { folder: empty.folder })}\n`,
     ]);
+  });
+
+  it("attaches a copy of the stopped folder made without keys, on another path", slow, async () => {
+    const { machine: old, ownerKey } = await setUpWithOwnerKey(folders);
+    const moved = await copyOf(old, { withKeys: false });
+
+    const attached = await attach(moved, [ownerKey]);
+
+    expect([attached.code, attached.stderr]).toStrictEqual([0, ""]);
+    expect(await signsWith(moved, await heldKey(moved))).toBe("signed");
+    expect(await signsWith(old, await heldKey(old))).toBe("refused");
+  });
+
+  it("refuses a copy that brought the old keys along, and changes nothing", slow, async () => {
+    const { machine: old, ownerKey } = await setUpWithOwnerKey(folders);
+    const moved = await copyOf(old);
+    const sent = old.privy.sent.length;
+
+    const refused = await attach(moved, [ownerKey]);
+
+    const keys = join(moved.folder, "keys");
+    expect([refused.code, refused.stderr]).toStrictEqual([
+      1,
+      `${init("refused.attachCopiedKeys", { folder: keys })}\n`,
+    ]);
+    expect(old.privy.sent.slice(sent).map((request) => request.method)).not.toContain("PATCH");
+  });
+
+  it("refuses a copy made while the engine ran, before it opens the database", slow, async () => {
+    const { machine: old, ownerKey } = await setUpWithOwnerKey(folders);
+    expect(await engines.start(old)).toMatchObject({ state: "ready" });
+    const moved = await copyOf(old, { withKeys: false });
+
+    const refused = await attach(moved, [ownerKey]);
+
+    const file = join(moved.folder, "engine.sqlite");
+    expect([refused.code, refused.stderr]).toStrictEqual([
+      1,
+      `${init("refused.attachLeftOpen", { file })}\n`,
+    ]);
+    expect(refused.prompter.transcript.asked).toStrictEqual([]);
+  });
+
+  it(
+    "moves secret sources from the old keys folder to this one and asks for those secrets",
+    slow,
+    async () => {
+      const { machine: old, ownerKey } = await setUpWithOwnerKey(folders);
+      const oldKeys = join(old.folder, "keys");
+      await editConfig(old, (text) =>
+        text
+          .replace(
+            /appSecret: \{[^}]*\}/u,
+            `appSecret: { fromFile: ${JSON.stringify(join(oldKeys, "privy-app-secret"))} }`,
+          )
+          .replace(
+            /botToken: \{[^}]*\}/u,
+            `botToken: { fromFile: ${JSON.stringify(join(oldKeys, "telegram-bot"))} }`,
+          ),
+      );
+      const moved = await copyOf(old, { withKeys: false });
+      const secret = old.privy.appSecret.reveal();
+
+      const attached = await attach(moved, [ownerKey], {
+        appSecrets: [secret],
+        botTokens: [fakeBotToken],
+        env: {},
+      });
+
+      expect([attached.code, attached.stderr]).toStrictEqual([0, ""]);
+      expect(attached.prompter.transcript.asked).toStrictEqual([
+        "privyAppSecret",
+        "botToken",
+        "ownerKey",
+      ]);
+      expect(await keptAppSecret(moved)).toBe(secret);
+      const config = String(await configText(moved));
+      expect(config).toContain(JSON.stringify(join(moved.folder, "keys", "telegram-bot")));
+      expect(config).not.toContain(JSON.stringify(oldKeys).slice(0, -1));
+      expect(attached.prompter.transcript.lines.join("\n")).toContain("binference now reads them");
+    },
+  );
+
+  it("attaches without the bot when nobody can fill its token, and says so", slow, async () => {
+    const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+    await removeAgentKey(machine);
+    const env = { TEST_PRIVY_APP_SECRET: machine.privy.appSecret.reveal() };
+
+    const attached = await attach(machine, [ownerKey], { env });
+
+    expect(attached.code).toBe(0);
+    const notes = attached.prompter.transcript.notes.map((note) => note.text).join("\n");
+    expect(notes).toContain(init("attach.done.noBot"));
   });
 });

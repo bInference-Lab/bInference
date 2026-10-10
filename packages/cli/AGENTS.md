@@ -117,6 +117,8 @@ Rules for this package:
   the unlock mode keeps it, and makes it each live wallet's one signer on Privy through
   `swapSigner` of `@binference/custody-privy`, then records it with `InstallStore.attach`. At each
   start and unlock, `checkAttached` (`src/compose/check-attached.ts`) locks an engine whose key a
-  wallet no longer lists with `signer_revoked`, and such an engine never starts the bot.
+  wallet no longer lists with `signer_revoked`, and such an engine never starts the bot. A
+  planned move's copy is checked first (decision 0142): a database left open stops attach, and so
+  does a copied `keys/agent-key` holding the key the wallets name now.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

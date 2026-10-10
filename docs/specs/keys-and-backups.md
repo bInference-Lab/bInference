@@ -221,10 +221,19 @@ A refusal is logged with the rule number, never with key material, and raises
   the owner key signs, which sets the new key as its one signer, so no wallet takes two machines'
   signatures; attach runs on a folder that holds the install and prints this machine's signer ID
   ([decision 0140](../DECISIONS.md#d0140)).
+- **Planned move** ([decision 0142](../DECISIONS.md#d0142)): the owner runs
+  `binference service remove` on the old machine, copies its state folder without `keys/` to the
+  new machine, and runs `binference init --attach` there. Attach refuses a copy whose
+  `engine.sqlite` was left open (its `engine.sqlite-wal` or `engine.sqlite-shm` is there), and a
+  copied `keys/agent-key` that holds the key the wallets name now. A secret source of
+  `config.json5` that names a file in the old folder's `keys/` moves to this folder's `keys/`, and
+  attach asks for that secret, hidden. Once backups exist, `binference init --attach --restore
+  <file>` replaces the copy.
 - **Machine compromised:** `binference signer revoke` from any other machine with the owner key, or
   the Privy dashboard, removes the agent key at once. Funds stay; the attacker could only have
   signed inside the ceiling until then. A revoke never removes the engine's own key or a wallet's
-  last signer: attaching the machine that replaces it does that.
+  last signer: attaching the machine that replaces it does that. `binference service remove` on
+  the old machine keeps it from starting at login ([decision 0141](../DECISIONS.md#d0141)).
 - **Owner key lost:** the wallets keep working inside the ceiling, but nothing can loosen it, export
   a key or attach a machine. The owner moves funds out to the rescue address (always allowed) and
   starts again with a new owner key. `init` says so when it shows the code.

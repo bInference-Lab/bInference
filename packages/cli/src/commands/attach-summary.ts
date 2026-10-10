@@ -21,6 +21,7 @@ export function attachSummary(
       mode: outcome.unlockMode,
     }),
     ...(outcome.removed.length === 0 ? [] : [words("attach.done.removed", { signers: removed })]),
+    ...(outcome.hasBot ? [] : [words("attach.done.noBot")]),
     words("attach.done.next"),
   ];
   context.prompter.note(lines.join("\n\n"), words("attach.done.title"));
@@ -31,6 +32,7 @@ export function attachSummary(
     removedSigners: outcome.removed,
     unlockMode: outcome.unlockMode,
     agentKey: outcome.isAgentKeyNew ? "made" : "kept",
+    bot: outcome.hasBot ? "ready" : "missing",
   });
   return 0;
 }

@@ -8,6 +8,7 @@ import {
   createSqliteInstallStore,
   type DatabaseHandle,
   engineWorker,
+  isDatabaseLeftOpen,
   openDatabase,
 } from "@binference/store";
 import { runAttach } from "../attach/run-attach.js";
@@ -129,6 +130,16 @@ async function attachOnStores(
 }
 
 async function initOnStores(context: InitContext, report: Report): Promise<ExitCode> {
+  const { engineDatabase } = context.platform.stateFolder;
+  // A database copied while its engine ran, or one an engine did not close, is never attached:
+  // opening it would write over what the copy left half done (decision 0142).
+  if (context.flags.isAttach && (await isDatabaseLeftOpen(engineDatabase, context.signal))) {
+    return refuse(context, report, {
+      code: "init.attach_left_open",
+      key: "refused.attachLeftOpen",
+      values: { file: engineDatabase },
+    });
+  }
   const opened = await openStores(context);
   const folder = context.platform.stateFolder;
   if (opened === undefined) {

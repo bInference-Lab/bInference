@@ -4,6 +4,7 @@ export { createSqliteConfigJournal } from "./audit/sqlite-config-journal.js";
 export { agentWorker } from "./databases/agent-database.js";
 export { engineWorker } from "./databases/engine-database.js";
 export { createSqliteEngineStores } from "./databases/sqlite-engine-stores.js";
+export { isDatabaseLeftOpen } from "./host/database-left-open.js";
 export { openDatabase } from "./host/open-database.js";
 export type { CallOptions, DatabaseHandle, OpenDatabaseOptions } from "./host/open-database.js";
 export { createSqliteIdempotencyStore } from "./ingress/sqlite-idempotency-store.js";

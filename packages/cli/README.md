@@ -17,6 +17,16 @@ stops the engine the same way, then has the OS remove the service, so it no long
 (decision 0141); the state folder, the config and the keys stay, and a machine with no service only
 stops its engine. A machine another one replaced runs it.
 
+`binference init --attach` makes this machine's new agent key the one signer of every live wallet
+of the install, each in one change the owner key signs (decision 0140), from `src/attach/`. For a
+planned move (decision 0142), the owner runs `binference service remove` on the old machine and
+copies its state folder without `keys/` to this one. Attach then refuses a copy whose
+`engine.sqlite` was left open, which `isDatabaseLeftOpen` reads from its `-wal` and `-shm` files,
+and a copied `keys/agent-key` that holds the key the wallets name now. It moves the secret sources
+of `config.json5` that name the old folder's `keys/` to this folder's `keys/`, asks for the Privy
+app secret and the bot token where this machine does not hold them, and keeps them there.
+`binference signer revoke` removes another machine's agent key from every wallet.
+
 `binference start --foreground` runs the self-hosted engine in this process (`startSelfHosted` in
 `src/compose/`). In order it takes the engine lock on the state folder, loads `config.json5` with
 its layers and secret sources, opens the engine log, opens `engine.sqlite` on its store workers
@@ -138,6 +148,7 @@ The reference of every key, generated from the schema, is
 | Command                              | What it does                                                        |
 | ------------------------------------ | ------------------------------------------------------------------- |
 | `binference init`                    | Sets up an install: Privy, owner key, first wallet and bot          |
+| `binference init --attach`           | Makes this machine the wallets' signer; asks for the owner key      |
 | `binference start [--set key=value]` | Runs the engine as the background service, which login starts again |
 | `binference start --foreground`      | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
 | `binference stop`                    | Stops the engine; the background service starts again at login      |
@@ -164,6 +175,7 @@ The reference of every key, generated from the schema, is
 | `binference rescue cancel`           | Cancels a new rescue address that waits                             |
 | `binference safety status`           | What is frozen, the rescue under way and the rescue address         |
 | `binference telegram pair`           | A new link that pairs another Telegram account; shown once          |
+| `binference signer revoke <signer>`  | Removes a machine's agent key from every wallet; owner key          |
 | `binference address list`            | The agent's saved addresses and when a send may pay each            |
 | `binference address add <address>`   | Saves a send address in the ceilings; asks for the owner key        |
 | `binference address remove <entry>`  | Takes an address out of the book: nothing is sent to it again       |
