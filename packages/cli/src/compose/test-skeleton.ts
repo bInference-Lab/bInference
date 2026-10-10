@@ -37,6 +37,7 @@ import {
   createFakePriceSource,
   createFakeWalletFacts,
   createFakeCeilingEditor,
+  createFakeWalletExporter,
   createFakeWalletMaker,
   createMemoryEngineStores,
   createMemoryPositionStore,
@@ -53,6 +54,7 @@ import {
 } from "@binference/engine/testing";
 import { type ClientKind, operations } from "@binference/protocol";
 import { WebSocket } from "ws";
+import { sealTo } from "../export/key-recipient.js";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
 import {
   type ComposedEngine,
@@ -81,6 +83,9 @@ const walletRecord = testWalletRecord({
   label: "Main",
   createdAtMs: testNowMs - 1_000,
 });
+
+/** The test wallet's private key, which the self-hosted skeleton's custody exports, sealed. */
+export const skeletonWalletKey: string = `0x${"5e".repeat(32)}`;
 
 function withTestWallet<Stores extends MemoryEngineStores>(stores: Stores): Stores {
   stores.install.addWallet(walletRecord);
@@ -112,7 +117,9 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
       const held = new Map(wallets);
       const clock = createManualClock(testNowMs);
       const ceilings = createFakeCeilingEditor({ clock, chains: fakeChains() });
+      const keys = new Map([[walletRecord.custodyWalletId, skeletonWalletKey]]);
       return {
+        exporter: createFakeWalletExporter({ keys, seal: sealTo }),
         custody: createFakeSigner(held),
         ceilings,
         walletMaker: createFakeWalletMaker({

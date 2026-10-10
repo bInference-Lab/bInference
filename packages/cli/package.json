@@ -41,6 +41,8 @@
     "@binference/store": "workspace:*",
     "@binference/telegram": "workspace:*",
     "@clack/prompts": "catalog:",
+    "@hpke/chacha20poly1305": "catalog:",
+    "@hpke/core": "catalog:",
     "commander": "catalog:",
     "grammy": "catalog:",
     "json5": "catalog:",

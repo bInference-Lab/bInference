@@ -30,12 +30,12 @@ import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./co
 import type { ProfileParts } from "./profile-parts.js";
 
 /**
- * The profile parts the engine runs on: custody with its ceilings and wallet maker, stores,
- * prices and risk sources.
+ * The profile parts the engine runs on: custody with its ceilings, wallet maker and exporter,
+ * stores, prices and risk sources.
  */
 export type EngineParts = Pick<
   ProfileParts,
-  "custody" | "ceilings" | "walletMaker" | "stores" | "prices" | "riskSources"
+  "custody" | "ceilings" | "walletMaker" | "exporter" | "stores" | "prices" | "riskSources"
 >;
 
 /** What the token risk step runs on besides the venue host. */
@@ -143,6 +143,13 @@ function tradingOf(
   return { host, risk };
 }
 
+// The custody ports the engine takes: signing, ceilings, new wallets and, where custody gives one,
+// the sealed export.
+function custodyPartsOf(parts: EngineParts) {
+  const { custody, ceilings, walletMaker, exporter } = parts;
+  return { custody, ceilings, walletMaker, ...(exporter === undefined ? {} : { exporter }) };
+}
+
 /**
  * Wires the engine and its protocol server on the profile parts both profiles fill: the server
  * signs callers in through the access store, keeps each write's result under its idempotency key
@@ -165,9 +172,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   const engine = createEngine({
     stores: parts.stores,
     positions: options.positions,
-    custody: parts.custody,
-    ceilings: parts.ceilings,
-    walletMaker: parts.walletMaker,
+    ...custodyPartsOf(parts),
     prices: parts.prices,
     wallets: options.wallets,
     host,

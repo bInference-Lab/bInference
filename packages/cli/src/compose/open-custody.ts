@@ -25,6 +25,7 @@ import type {
   CeilingEditor,
   InstallFacts,
   InstallStore,
+  WalletExporter,
   WalletMaker,
   WalletRecord,
 } from "@binference/engine/install";
@@ -34,17 +35,19 @@ import { ceilingRequestOf } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./compose-executor.js";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
+import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
 
 /**
- * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker and its
- * signer.
+ * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker and
+ * exporter, and its signer.
  */
 export interface OpenedCustody {
   readonly signer: Signer;
   readonly ceilings: CeilingEditor;
   readonly walletMaker: WalletMaker;
+  readonly exporter: WalletExporter;
   /** Settles once the signer has stopped, whatever stopped it. */
   readonly stopped: Promise<void>;
   /** Stops the signer; at once when `signal` aborts. */
@@ -249,6 +252,8 @@ export async function openCustody(
   // A wallet made after the unlock joins the wallets the adapter signs for.
   const wallets = walletsOf(facts.wallets, options);
   const api = createPrivyApi({ http, clock, appId: app.value, appSecret: keys.appSecret });
+  const ownerKeyPublic = async (read: AbortSignal) =>
+    (await install.read({ signal: read })).custody?.ownerKeyPublic;
   return ok({
     walletMaker: createPrivyWalletMaker({
       api,
@@ -265,10 +270,10 @@ export async function openCustody(
     ceilings: createPrivyCeilingEditor({
       api,
       clock,
-      ownerKeyPublic: async (read) =>
-        (await install.read({ signal: read })).custody?.ownerKeyPublic,
+      ownerKeyPublic,
       callsOn: (chain, calls) => callsOn(options, chain, calls),
     }),
+    exporter: createPrivyWalletExporter({ api, clock, ownerKeyPublic }),
     stopped: signer.stopped,
     stop: async (stop) => signer.stop(stop),
   });

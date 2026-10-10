@@ -1,7 +1,7 @@
 import type { PriceSource, Signer } from "@binference/chain";
 import type { SecretStore } from "@binference/core";
 import type { BotUpdateSource, EngineStores, MarketData, ModelBilling } from "@binference/engine";
-import type { CeilingEditor, WalletMaker } from "@binference/engine/install";
+import type { CeilingEditor, WalletExporter, WalletMaker } from "@binference/engine/install";
 import type { RiskSourceUse } from "@binference/engine/risk";
 
 /**
@@ -16,6 +16,11 @@ export interface ProfileParts {
   readonly ceilings: CeilingEditor;
   /** Custody: makes agent wallets, each under a ceiling of its own, with the owner key. */
   readonly walletMaker: WalletMaker;
+  /**
+   * Custody: exports a wallet's key sealed to the CLI's recipient key, with the owner key. Cloud
+   * gives none: there the owner exports in Privy's own window.
+   */
+  readonly exporter?: WalletExporter;
   /** Telegram: the bot's inbound updates, by long polling or through a webhook relay. */
   readonly updates: BotUpdateSource;
   /** Models: who pays for model calls, and what each agent may still spend. */

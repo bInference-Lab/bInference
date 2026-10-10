@@ -12,7 +12,6 @@ import {
   jsonValueSchema,
   ok,
   type Result,
-  type Secret,
 } from "@binference/core";
 import {
   type CallsRefusal as PrivyCallsRefusal,
@@ -42,15 +41,13 @@ import type {
   SignedChangeRefusal,
   SignRecipientsRequest,
 } from "@binference/engine/install";
-import { parseOwnerKeyCode, signAuthorization } from "@binference/signer";
 import { z } from "zod";
+import { ownerAuthorize, type OwnerKeyHolder } from "./owner-authorize.js";
 
 /** What the Privy ceiling editor reaches Privy with, and the owner key it takes. */
-export interface PrivyCeilingEditorOptions {
+export interface PrivyCeilingEditorOptions extends OwnerKeyHolder {
   readonly api: PrivyApi;
   readonly clock: Clock;
-  /** The owner key's public half the install's custody holds; undefined before `init`. */
-  readonly ownerKeyPublic: (signal: AbortSignal) => Promise<string | undefined>;
   /**
    * What a contract call may do on a chain for the venues named: call and approve their registry
    * contracts, none for venues with none there, sending at most the cap.
@@ -66,24 +63,6 @@ const payloadSchema = z.array(signedRecipientsSchema);
 // Privy compares addresses as text: each account's address once, in the order given.
 function addressesOf(accounts: readonly AccountRef[]): readonly string[] {
   return [...new Set(accounts.map((account) => accountRefParts(account).address))];
-}
-
-type Authorized = Result<OwnerAuthorize, "bad_owner_key">;
-
-// The owner key from its code, when it is the key that owns the install's ceilings.
-async function ownerOf(
-  options: PrivyCeilingEditorOptions,
-  code: Secret,
-  signal: AbortSignal,
-): Promise<Authorized> {
-  signal.throwIfAborted();
-  const pair = parseOwnerKeyCode(code);
-  const expected = await options.ownerKeyPublic(signal);
-  if (!pair.ok || expected === undefined || pair.value.publicKey !== expected) {
-    return err("bad_owner_key");
-  }
-  const { privateKey } = pair.value;
-  return ok(async (request) => ok(signAuthorization(privateKey, request)));
 }
 
 function policyOf(ceiling: string): Result<PrivyId, "not_found"> {
@@ -142,7 +121,7 @@ async function setRecipients(
   { ownerKey, ceilings }: RecipientsRequest,
   signal: AbortSignal,
 ): Promise<Result<void, CeilingRefusal>> {
-  const authorize = await ownerOf(options, ownerKey, signal);
+  const authorize = await ownerAuthorize(options, ownerKey, signal);
   if (!authorize.ok) {
     return authorize;
   }
@@ -169,7 +148,7 @@ async function signRecipients(
   { ownerKey, changes, untilMs }: SignRecipientsRequest,
   signal: AbortSignal,
 ): Promise<Result<SignedCeilingChange, CeilingRefusal>> {
-  const authorize = await ownerOf(options, ownerKey, signal);
+  const authorize = await ownerAuthorize(options, ownerKey, signal);
   if (!authorize.ok) {
     return authorize;
   }
@@ -259,7 +238,7 @@ async function setCalls(
   { ownerKey, ceilings }: CallsRequest,
   signal: AbortSignal,
 ): Promise<Result<void, CallsRefusal>> {
-  const authorize = await ownerOf(options, ownerKey, signal);
+  const authorize = await ownerAuthorize(options, ownerKey, signal);
   if (!authorize.ok) {
     return authorize;
   }

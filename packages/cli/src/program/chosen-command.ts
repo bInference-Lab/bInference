@@ -34,7 +34,10 @@ export type ChosenCommand =
       readonly intent: ProtocolId<"intent">;
     }
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
-  | { readonly name: "walletAddress" | "ceiling"; readonly options: WalletAddressFlags }
+  | {
+      readonly name: "walletAddress" | "walletExport" | "ceiling";
+      readonly options: WalletAddressFlags;
+    }
   | { readonly name: "walletCreate"; readonly options: LabelFlags }
   | { readonly name: "ceilingSet"; readonly options: CeilingSetFlags }
   | { readonly name: "freeze" | "unfreeze"; readonly options: AgentFlags }

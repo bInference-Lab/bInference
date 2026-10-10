@@ -82,6 +82,12 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     .action((flags: OptionValues) =>
       choose({ name: "walletAddress", options: walletAddressFlagsSchema.parse(flags) }),
     );
+  withCommon(wallet.command("export").description(message("command.walletExport")), message)
+    .addOption(agentOption(message))
+    .addOption(new Option("--wallet <id>", message("option.wallet")).argParser(idOf("wallet")))
+    .action((flags: OptionValues) =>
+      choose({ name: "walletExport", options: walletAddressFlagsSchema.parse(flags) }),
+    );
   withCommon(wallet.command("create").description(message("command.walletCreate")), message)
     .requiredOption("--label <text>", message("option.walletLabel"))
     .addOption(agentOption(message))
