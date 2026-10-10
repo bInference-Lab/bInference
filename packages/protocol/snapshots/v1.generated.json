@@ -5394,6 +5394,37 @@
               "type": "string",
               "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
             },
+            "paperPositions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset": {
+                    "type": "string"
+                  },
+                  "realizedUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                  },
+                  "unrealizedUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                  }
+                },
+                "required": [
+                  "asset",
+                  "realizedUsdMicros"
+                ]
+              }
+            },
+            "paperRealizedUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+            },
+            "paperUnrealizedUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+            },
             "assets": {
               "type": "object",
               "propertyNames": {

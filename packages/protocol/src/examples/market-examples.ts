@@ -95,6 +95,11 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
       positions: [{ asset: refs.token, realizedUsdMicros: "-3000000" }],
       realizedUsdMicros: "-3000000",
       unrealizedUsdMicros: "1250000",
+      paperPositions: [
+        { asset: refs.token, realizedUsdMicros: "4500000", unrealizedUsdMicros: "-500000" },
+      ],
+      paperRealizedUsdMicros: "4500000",
+      paperUnrealizedUsdMicros: "-500000",
       assets,
     },
   },

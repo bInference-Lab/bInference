@@ -46,11 +46,19 @@ interface PositionPnl {
   readonly unrealizedUsdMicros?: bigint;
 }
 
-/** The answer of `portfolio/pnl`. */
+/**
+ * The answer of `portfolio/pnl`: the live P&L, and the paper P&L beside it, never added together
+ * (decision 0137). Each total is absent where a position's is.
+ */
 interface PnlView {
+  /** The live positions. */
   readonly positions: readonly PositionPnl[];
   readonly realizedUsdMicros: bigint;
   readonly unrealizedUsdMicros?: bigint;
+  /** The paper positions; an engine before decision 0137 answers live ones only. */
+  readonly paperPositions?: readonly PositionPnl[];
+  readonly paperRealizedUsdMicros?: bigint;
+  readonly paperUnrealizedUsdMicros?: bigint;
   readonly assets: AssetInfos;
 }
 
@@ -95,6 +103,11 @@ export interface MarketOperationShapes {
 
 const assetArgs = z.strictObject({ asset: assetRefSchema });
 const pnl = signedUsdMicrosSchema;
+const positionPnl = z.object({
+  asset: assetRefSchema,
+  realizedUsdMicros: pnl,
+  unrealizedUsdMicros: pnl.exactOptional(),
+});
 
 /** The market read operations, by name. */
 export const marketOperations: OperationTable<MarketOperationShapes> = {
@@ -118,15 +131,12 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
       to: epochMsSchema,
     }),
     result: z.object({
-      positions: z.array(
-        z.object({
-          asset: assetRefSchema,
-          realizedUsdMicros: pnl,
-          unrealizedUsdMicros: pnl.exactOptional(),
-        }),
-      ),
+      positions: z.array(positionPnl),
       realizedUsdMicros: pnl,
       unrealizedUsdMicros: pnl.exactOptional(),
+      paperPositions: z.array(positionPnl).exactOptional(),
+      paperRealizedUsdMicros: pnl.exactOptional(),
+      paperUnrealizedUsdMicros: pnl.exactOptional(),
       assets: assetInfosSchema,
     }),
   },

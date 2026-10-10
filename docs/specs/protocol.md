@@ -287,13 +287,19 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | Operation              | Scope            | Args → result                                                                                                                      |
 | ---------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag; live before paper, each with its own total, never summed |
-| `portfolio/pnl`        | `read`           | `{ agent, from, to }` → realized and unrealized P&L by position (average cost, [decision 0058](../DECISIONS.md#d0058))             |
+| `portfolio/pnl`        | `read`           | `{ agent, from, to }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137))                             |
 | `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                      |
 | `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                     |
 | `asset/search`         | `read`           | `{ chain, query }` → registry matches, or the pasted address when valid                                                            |
 | `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                                      |
 | `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                      |
 | `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                           |
+
+- `portfolio/pnl` sums what each execution recorded from `from` to `to`, both included, realized
+  when it was recorded at average cost ([decision 0058](../DECISIONS.md#d0058)), counted for the
+  asset it sold. The unrealized P&L is today's, of what the positions hold now, whatever the range.
+  Live and paper stay apart (`PnlView`, section 8.3), and every wallet the agent had counts,
+  archived ones too ([decision 0137](../DECISIONS.md#d0137)).
 
 <a id="section-7-4"></a>
 
@@ -529,6 +535,10 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
 - `CardView`: `{ card, version, opensAt, expiresAt, paper, outsideContent }`; its text is spec 4.
 - `IntentView`:
   `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets }`.
+- `PnlView`:
+  `{ positions: [{ asset, realizedUsdMicros, unrealizedUsdMicros? }], realizedUsdMicros, unrealizedUsdMicros?, paperPositions?, paperRealizedUsdMicros?, paperUnrealizedUsdMicros?, assets }`.
+  The first three are live, the `paper` ones paper, never added together; an unrealized figure is
+  absent where no price is known.
 - `OrderView`, `AlertView`, `ScheduleView`, `WalletView`, `AgentView`, `LimitsView`: the stored
   fields of spec 3 with ids and times as section 1 sets.
 

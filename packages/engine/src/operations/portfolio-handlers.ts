@@ -1,6 +1,6 @@
 import type { Amount, ChainRegistry } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
-import type { ProtocolErrorCode } from "@binference/protocol";
+import type { ArgsOf, ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
@@ -8,11 +8,16 @@ import type { AgentStore, InstallStore } from "../ports.js";
 import { activeAgent } from "./active-agent.js";
 import type { EngineHandler } from "./engine-call.js";
 import { type LiveHoldingsOptions, liveHoldingsOf } from "./live-holdings.js";
+import { pnlViewOf } from "./pnl-view.js";
 import { paperHoldingsOf, portfolioViewOf } from "./portfolio-view.js";
 
-/** The handlers of `portfolio/get` and `portfolio/resetPaper` (protocol spec, section 7.3). */
+/**
+ * The handlers of `portfolio/get`, `portfolio/pnl` and `portfolio/resetPaper` (protocol spec,
+ * section 7.3).
+ */
 export interface PortfolioHandlers {
   readonly "portfolio/get": EngineHandler<"portfolio/get">;
+  readonly "portfolio/pnl": EngineHandler<"portfolio/pnl">;
   readonly "portfolio/resetPaper": EngineHandler<"portfolio/resetPaper">;
 }
 
@@ -71,14 +76,35 @@ async function walletsOf(
   return scope.wallet !== undefined && named.length === 0 ? err("wallet.not_found") : ok(named);
 }
 
+// Every wallet the agent had counts, archived ones too: their trades happened.
+async function pnlOf(
+  options: PortfolioHandlersOptions,
+  args: ArgsOf<"portfolio/pnl">,
+  signal: AbortSignal,
+): Promise<Result<ResultOf<"portfolio/pnl">, ProtocolErrorCode>> {
+  if (args.from > args.to) {
+    return err("protocol.bad_args");
+  }
+  if ((await options.agents.get(args.agent, { signal })) === undefined) {
+    return err("agent.not_found");
+  }
+  const { wallets } = await options.install.read({ signal });
+  const owned = wallets.filter((wallet) => wallet.agentId === args.agent).map(({ id }) => id);
+  const query = { wallets: owned, fromMs: args.from, toMs: args.to };
+  return ok(await pnlViewOf(options, query, { signal }));
+}
+
 /**
  * Creates the portfolio handlers. `portfolio/get` answers the live and the paper holdings of the
  * wallets it names, live first, each with its own total (see {@link portfolioViewOf}): a live
  * wallet's balances are read on the chain (see {@link liveHoldingsOf}), a paper wallet's are its
  * paper positions. An unknown agent is `agent.not_found`, a wallet that is not one of its live
- * wallets `wallet.not_found`. `portfolio/resetPaper` starts the agent's paper portfolio again from
- * the balances it names, or from the starting balances, and answers the new paper portfolio with
- * its values now. It never changes the agent's mode or a live position.
+ * wallets `wallet.not_found`. `portfolio/pnl` answers the agent's P&L over the range, live and
+ * paper apart (see {@link pnlViewOf}), from every wallet the agent had, archived ones too, as
+ * their trades happened; a range that ends before it starts is `protocol.bad_args`.
+ * `portfolio/resetPaper` starts the agent's paper portfolio again from the balances it names, or
+ * from the starting balances, and answers the new paper portfolio with its values now. It never
+ * changes the agent's mode or a live position.
  */
 export function createPortfolioHandlers(options: PortfolioHandlersOptions): PortfolioHandlers {
   return {
@@ -97,6 +123,7 @@ export function createPortfolioHandlers(options: PortfolioHandlersOptions): Port
       );
       return ok(portfolioViewOf(holdings, options.chains));
     },
+    "portfolio/pnl": async ({ args, signal }) => pnlOf(options, args, signal),
     async "portfolio/resetPaper"({ args, signal }) {
       const agent = await activeAgent(options.agents, args.agent, { signal });
       if (!agent.ok) {
