@@ -7,7 +7,7 @@ import {
   type ViteUserConfig,
 } from "vitest/config";
 import { z } from "zod";
-import { sourceConditions } from "./config/vitest/source-conditions.js";
+import { sourceResolution } from "./config/vitest/source-resolution.js";
 
 const defaultBar = 80;
 // Amount math in core is money code: it meets the money bar that engine and chain meet.
@@ -86,8 +86,7 @@ function tierThresholds(): Record<string, Bar> {
 const folders = packageFolders();
 
 const config: ViteUserConfig = defineConfig({
-  resolve: { conditions: [...sourceConditions] },
-  ssr: { resolve: { conditions: [...sourceConditions] } },
+  ...sourceResolution,
   test: {
     // Vitest refuses an empty project list; until a package exists the root runs alone. The
     // include stays out of the root once projects exist, or every project inherits it.

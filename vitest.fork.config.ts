@@ -1,12 +1,11 @@
 import { defineConfig, type ViteUserConfig } from "vitest/config";
-import { sourceConditions } from "./config/vitest/source-conditions.js";
+import { sourceResolution } from "./config/vitest/source-resolution.js";
 
 // The fork suite: the tests in each package's src/fork/, against the one anvil fork of BSC that
 // the global setup starts and each file's setup pins again at a recent block. pnpm check never
 // runs it; `pnpm test:fork` and the nightly job do.
 const config: ViteUserConfig = defineConfig({
-  resolve: { conditions: [...sourceConditions] },
-  ssr: { resolve: { conditions: [...sourceConditions] } },
+  ...sourceResolution,
   test: {
     include: ["packages/*/src/fork/**/*.test.ts", "plugins/*/src/fork/**/*.test.ts"],
     globalSetup: ["config/vitest/fork-setup.ts"],
