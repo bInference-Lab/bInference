@@ -126,6 +126,10 @@ export const walletExamples: { readonly [N in keyof WalletOperationShapes]: Wire
     args: { wallet: ids.wallet, ownerKey },
     result: { privateKey: "encrypted-export" },
   },
+  "wallet/exportSealed": {
+    args: { wallet: ids.wallet, recipientPublicKey: "c2VhbGVkLXRv", ownerKey },
+    result: { ciphertext: "Y2lwaGVydGV4dA==", encapsulatedKey: "ZW5jYXBzdWxhdGVk" },
+  },
   "ceiling/get": {
     args: { wallet: ids.wallet },
     result: {

@@ -43,6 +43,26 @@ interface ExportKeyArgs extends WalletArgs {
   readonly ownerKey: string;
 }
 
+/**
+ * The args of `wallet/exportSealed`: the wallet, and the HPKE recipient key its private key is
+ * sealed to (decision 0131).
+ */
+interface ExportSealedArgs extends WalletArgs {
+  /** A P-256 public key as DER SubjectPublicKeyInfo in base64, which the CLI made for this call. */
+  readonly recipientPublicKey: string;
+  readonly ownerKey: string;
+}
+
+/**
+ * A wallet's private key as custody sealed it with HPKE (DHKEM P-256, HKDF-SHA256,
+ * ChaCha20-Poly1305, base mode) to the call's recipient key: only the recipient key's private
+ * half, which never leaves the CLI, opens it. Both in base64.
+ */
+interface SealedKeyView {
+  readonly ciphertext: string;
+  readonly encapsulatedKey: string;
+}
+
 /** The args of `ceiling/set`. */
 interface SetCeilingArgs extends WalletArgs {
   readonly changes: CeilingChanges;
@@ -91,6 +111,10 @@ export interface WalletOperationShapes {
     readonly args: ExportKeyArgs;
     /** Privy's export of the key, which the CLI decrypts. */
     readonly result: { readonly privateKey: string };
+  };
+  readonly "wallet/exportSealed": {
+    readonly args: ExportSealedArgs;
+    readonly result: SealedKeyView;
   };
   readonly "ceiling/get": { readonly args: WalletArgs; readonly result: CeilingView };
   readonly "ceiling/set": { readonly args: SetCeilingArgs; readonly result: CeilingView };
@@ -145,6 +169,22 @@ export const walletOperations: OperationTable<WalletOperationShapes> = {
     scope: "admin",
     args: z.strictObject({ wallet, ownerKey: ownerKeyCodeSchema }),
     result: z.object({ privateKey: z.string().min(1) }),
+  },
+  "wallet/exportSealed": {
+    // A read: the engine keeps no answer, so no idempotency entry ever holds a sealed key.
+    ...readFlags,
+    transport: "ipc",
+    name: "wallet/exportSealed",
+    scope: "admin",
+    args: z.strictObject({
+      wallet,
+      recipientPublicKey: z.base64().min(1).max(512),
+      ownerKey: ownerKeyCodeSchema,
+    }),
+    result: z.object({
+      ciphertext: z.base64().min(1).max(4096),
+      encapsulatedKey: z.base64().min(1).max(512),
+    }),
   },
   "ceiling/get": {
     ...readFlags,

@@ -31,6 +31,7 @@ const specTable = [
   ["wallet/create", "admin", "write local"],
   ["wallet/rename", "admin", "write"],
   ["wallet/exportKey", "admin", "write local"],
+  ["wallet/exportSealed", "admin", "local"],
   ["ceiling/get", "read", ""],
   ["ceiling/set", "admin", "write local"],
   ["signer/revoke", "admin", "write local"],
@@ -166,7 +167,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(127);
+    expect(table).toHaveLength(128);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 

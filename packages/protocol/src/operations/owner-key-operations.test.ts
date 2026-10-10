@@ -9,6 +9,7 @@ describe("owner-key operations", () => {
     expect(ownerKeyOperations).toStrictEqual([
       "wallet/create",
       "wallet/exportKey",
+      "wallet/exportSealed",
       "ceiling/set",
       "signer/revoke",
       "address/add",

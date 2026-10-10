@@ -4307,6 +4307,113 @@
         "result"
       ]
     },
+    "call/wallet/exportSealed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "wallet/exportSealed"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "wallet": {
+              "type": "string",
+              "pattern": "^wal_"
+            },
+            "recipientPublicKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            },
+            "ownerKey": {
+              "type": "string",
+              "pattern": "^bnok1[A-Za-z2-7][A-Za-z2-7 -]{20,200}$"
+            }
+          },
+          "required": [
+            "wallet",
+            "recipientPublicKey",
+            "ownerKey"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "admin",
+      "kind": "read",
+      "transport": "ipc",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/wallet/exportSealed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "ciphertext": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            },
+            "encapsulatedKey": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            }
+          },
+          "required": [
+            "ciphertext",
+            "encapsulatedKey"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
     "call/ceiling/get": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
