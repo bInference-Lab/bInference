@@ -10,9 +10,15 @@ export interface RiskSourceCache {
   readonly ttlMs: number;
 }
 
+// A report stamped in the future, after the clock stepped back, is never fresh.
+function isFresh(ageMs: number, ttlMs: number): boolean {
+  return ageMs >= 0 && ageMs < ttlMs;
+}
+
 /**
  * A risk source that answers from the cache while the source's last report for the token is
  * younger than the cache's time to live, and asks the source otherwise, storing what it reports.
+ * A report stamped later than now counts as stale.
  * A token the source does not cover, and a source that is down, are never stored, so the next
  * check asks again.
  */
@@ -23,7 +29,7 @@ export function cachedRiskSource(source: TokenRiskSource, cache: RiskSourceCache
     async check(asset, options) {
       const key = { asset, source: source.id };
       const cached = await store.read(key, options);
-      if (cached !== undefined && clock.now() - cached.fetchedAtMs < ttlMs) {
+      if (cached !== undefined && isFresh(clock.now() - cached.fetchedAtMs, ttlMs)) {
         return ok(cached.report);
       }
       const answer = await source.check(asset, options);

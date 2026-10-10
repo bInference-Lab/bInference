@@ -66,6 +66,14 @@ describe("cached risk source", () => {
     );
   });
 
+  it("asks the source again when the cached report is stamped later than now", async () => {
+    const { clock, store, source, cached } = cachedOf();
+    const ahead = { asset: unknownToken, source: "first", report, fetchedAtMs: clock.now() + 1 };
+    await store.write(ahead, live);
+    await cached.check(unknownToken, live);
+    expect(source.checks()).toBe(1);
+  });
+
   it("never stores a token the source does not cover, so the next check asks again", async () => {
     const { source, cached } = cachedOf();
     await cached.check(other, live);
