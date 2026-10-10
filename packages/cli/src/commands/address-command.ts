@@ -7,7 +7,7 @@ import { rescueAddressOf } from "../init/rescue-step.js";
 import type { LabelFlags, AgentFlags, CommonOptions } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
-import { chooseAgent, chooseAgentFirst } from "./agent-choice.js";
+import { chooseAgentFirst, withAgent } from "./agent-choice.js";
 import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
 import { withOwnerKey } from "./owner-key-prompt.js";
@@ -96,15 +96,11 @@ export async function runAddressList(
   run: CommandRun,
   request: { readonly options: AgentFlags },
 ): Promise<ExitCode> {
-  const { host, output } = run;
-  return withEngine(host, output, async (client, signal) => {
-    const chosen = await chooseAgent({ client, output, signal }, request.options.agent);
-    if (chosen === undefined) {
-      return 1;
-    }
-    const page = await client.call("address/list", { agent: chosen.agent }, { signal });
+  const { output } = run;
+  return withAgent(run, request.options.agent, async (client, agent, signal) => {
+    const page = await client.call("address/list", { agent }, { signal });
     output.json(jsonValueSchema.parse(z.encode(operations["address/list"].result, page)));
-    output.say("address.count", { agent: chosen.agent, count: page.items.length });
+    output.say("address.count", { agent, count: page.items.length });
     for (const entry of page.items) {
       output.item("address.item", entryValues(run, entry));
     }

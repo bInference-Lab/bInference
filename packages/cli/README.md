@@ -134,6 +134,9 @@ The reference of every key, generated from the schema, is
 | `binference address list`            | The agent's saved addresses and when a send may pay each            |
 | `binference address add <address>`   | Saves a send address in the ceilings; asks for the owner key        |
 | `binference address remove <entry>`  | Takes an address out of the book: nothing is sent to it again       |
+| `binference limit`                   | The agent's limits in effect, and the looser ones that wait         |
+| `binference limit set <key=value>`   | Stricter limits apply now, looser ones in 24 hours                  |
+| `binference limit cancel`            | Drops the looser limits that wait                                   |
 | `binference check [--fix]`           | Checks the config, file access, unlock mode and the engine          |
 
 In development, run the source: `node --conditions=@binference/source --import tsx

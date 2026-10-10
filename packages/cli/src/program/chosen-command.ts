@@ -38,7 +38,8 @@ export type ChosenCommand =
   | { readonly name: "freeze" | "unfreeze"; readonly options: AgentFlags }
   | { readonly name: "rescue" | "safetyStatus"; readonly options: CommonOptions }
   | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }
-  | { readonly name: "addressList"; readonly options: AgentFlags }
+  | { readonly name: "addressList" | "limit" | "limitCancel"; readonly options: AgentFlags }
+  | { readonly name: "limitSet"; readonly options: AgentFlags; readonly sets: readonly string[] }
   | { readonly name: "addressAdd"; readonly options: LabelFlags; readonly address: string }
   | {
       readonly name: "addressRemove";

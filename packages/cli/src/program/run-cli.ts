@@ -9,6 +9,7 @@ import { runCeiling } from "../commands/ceiling-command.js";
 import { runCheck } from "../commands/check-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runInitCommand } from "../commands/init-command.js";
+import { runLimit, runLimitCancel, runLimitSet } from "../commands/limit-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runRescueSet } from "../commands/rescue-command.js";
@@ -106,6 +107,9 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   addressList: runAddressList,
   addressAdd: runAddressAdd,
   addressRemove: runAddressRemove,
+  limit: runLimit,
+  limitSet: runLimitSet,
+  limitCancel: runLimitCancel,
   check: runCheck,
 };
 

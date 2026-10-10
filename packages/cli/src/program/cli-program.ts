@@ -14,6 +14,7 @@ import {
   walletAddressFlagsSchema,
 } from "./cli-flags.schema.js";
 import { agentOption, idOf, withCommon } from "./command-options.js";
+import { addLimitCommands } from "./limit-commands.js";
 import { addSafetyCommands } from "./safety-commands.js";
 
 function linesOf(value: string): number {
@@ -144,6 +145,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addWalletCommands(program, options);
   addSafetyCommands(program, options);
   addAddressCommands(program, options);
+  addLimitCommands(program, options);
   withCommon(program.command("check").description(message("command.check")), message)
     .option("--fix", message("option.fix"))
     .action((flags: OptionValues) =>

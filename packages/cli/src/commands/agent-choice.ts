@@ -78,3 +78,22 @@ export async function chooseAgentFirst(
   });
   return chosen.agent === undefined ? { ok: false, code } : { ok: true, value: chosen.agent };
 }
+
+/**
+ * Runs a command's calls on the agent it acts on: connects as `withEngine` does and chooses the
+ * agent as {@link chooseAgent} does; with none it exits 1 once it said why.
+ */
+export async function withAgent(
+  run: CommandRun,
+  named: ProtocolId<"agent"> | undefined,
+  use: (
+    client: ProtocolClient,
+    agent: ProtocolId<"agent">,
+    signal: AbortSignal,
+  ) => Promise<ExitCode>,
+): Promise<ExitCode> {
+  return withEngine(run.host, run.output, async (client, signal) => {
+    const chosen = await chooseAgent({ client, output: run.output, signal }, named);
+    return chosen === undefined ? 1 : use(client, chosen.agent, signal);
+  });
+}
