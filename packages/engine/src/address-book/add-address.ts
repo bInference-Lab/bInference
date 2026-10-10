@@ -18,6 +18,7 @@ import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { ConfigJournal } from "../ports.js";
 import {
   type RescueCeilingsOptions,
+  resignRescueCeilings,
   saveInCeilings,
   settleRescueCeilings,
 } from "../safety/rescue-ceilings.js";
@@ -113,11 +114,12 @@ async function storeEntry(
 /**
  * Saves an address in an agent's address book with the owner key (spec 5, section 4; decision
  * 0091): first in the ceiling of each of the agent's live wallets, then in the book, journaled and
- * pushed as `config/changed`. Send level 2 lets a send pay it from 24 hours after it was saved
- * (decision 0111). An address the book holds already is answered as it is, and nothing changes.
- * The owner key reaches this call over IPC only, as the protocol server keeps it; a wrong one is
- * `wallet.bad_owner_key`, an address its chain cannot read `protocol.bad_args`, and a ceiling
- * custody does not hold `wallet.not_found`.
+ * pushed as `config/changed`; while a new rescue address waits, the owner key signs its changes
+ * again over the ceilings as they list now. Send level 2 lets a send pay it from 24 hours after it
+ * was saved (decision 0111). An address the book holds already is answered as it is, and nothing
+ * changes. The owner key reaches this call over IPC only, as the protocol server keeps it; a wrong
+ * one is `wallet.bad_owner_key`, an address its chain cannot read `protocol.bad_args`, and a
+ * ceiling custody does not hold `wallet.not_found`.
  */
 export async function addAddress(
   options: AddAddressOptions,
@@ -141,7 +143,14 @@ export async function addAddress(
   const ownerKey = createSecret(args.ownerKey);
   const move = { facts, agent: args.agent, account: account.value, ownerKey, signal };
   const inCeiling = await saveInCeilings(options, move);
-  return inCeiling.ok
-    ? storeEntry(options, call, { account: account.value, name: found.value.agent.name })
-    : inCeiling;
+  if (!inCeiling.ok) {
+    return inCeiling;
+  }
+  const stored = await storeEntry(options, call, {
+    account: account.value,
+    name: found.value.agent.name,
+  });
+  // A refusal here keeps the changes signed before; custody refuses them once due, and says so.
+  await resignRescueCeilings(options, ownerKey, signal);
+  return stored;
 }

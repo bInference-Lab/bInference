@@ -106,6 +106,19 @@ describe("saving an address with the owner key", () => {
     );
   });
 
+  it("takes the saved address into a rescue address change that waits", async () => {
+    const test = await withCeilings();
+    const set = { address: pending, ownerKey: fakeOwnerKeyCode };
+    expectOk(await test.engine.handlers["safety/setRescueAddress"](testCall(set)));
+
+    expectOk(await add(test));
+    await test.clock.advance(looseningWaitMs);
+    await test.engine.settle(live);
+
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([pending, cold]);
+    expect(test.pushes.filter((push) => push.topic === "notice")).toHaveLength(1);
+  });
+
   it("refuses a wrong owner key, and changes no ceiling and no book", async () => {
     const test = await withCeilings();
 

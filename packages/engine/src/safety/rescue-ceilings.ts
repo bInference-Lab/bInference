@@ -164,9 +164,9 @@ export interface SavedAddressMove {
 /**
  * Saves an account in the ceiling of each of one agent's live wallets, with the owner key: each
  * lists the rescue address in effect, a new one that waits, the agent's saved addresses and the
- * account. A refusal is the protocol error code to answer; nothing changed then. A change signed
- * ahead for a new rescue address that waits no longer matches these ceilings, so custody refuses
- * it once it is due and the owner is told to set the rescue address again.
+ * account. A refusal is the protocol error code to answer; nothing changed then. The changes
+ * signed ahead for a new rescue address that waits no longer match these ceilings: sign them again
+ * with {@link resignRescueCeilings}.
  */
 export async function saveInCeilings(
   options: RescueCeilingsOptions,
@@ -183,6 +183,32 @@ export async function saveInCeilings(
     { signal: move.signal },
   );
   return set.ok ? ok(undefined) : err(refusalCodes[set.error]);
+}
+
+/**
+ * Signs again, with the owner key, the changes kept for a new rescue address that waits, once a
+ * ceiling joined the install or changed its recipients: each covers every live wallet's ceiling
+ * as it lists now (decision 0110). With no address waiting it changes nothing. A refusal is the
+ * protocol error code to answer; the changes kept before stay, and custody refuses them once due.
+ */
+export async function resignRescueCeilings(
+  options: RescueCeilingsOptions,
+  ownerKey: Secret,
+  signal: AbortSignal,
+): Promise<Result<void, ProtocolErrorCode>> {
+  const facts = await options.install.read({ signal });
+  const next = rescueAt(facts, options.clock.now());
+  if (next.pendingRescue === undefined) {
+    return ok(undefined);
+  }
+  const moved = await moveRescueCeilings(options, { facts, next, ownerKey, signal });
+  if (!moved.ok) {
+    return moved;
+  }
+  if (moved.value !== undefined) {
+    await options.install.keepRescueCeiling(moved.value, { signal });
+  }
+  return ok(undefined);
 }
 
 /**
