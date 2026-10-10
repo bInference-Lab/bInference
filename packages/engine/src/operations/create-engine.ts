@@ -315,7 +315,12 @@ export function createEngine(given: EngineOptions): Engine {
         chains: options.chains,
       }),
       ...createSendLevelHandlers(settingsParts),
-      ...createAddressBookHandlers(settingsParts),
+      ...createAddressBookHandlers({
+        ...rescueParts,
+        journal: settingsParts.journal,
+        chains: options.chains,
+        ids: options.ids,
+      }),
       ...createRescueAddressHandlers({
         ...rescueParts,
         journal: settingsParts.journal,

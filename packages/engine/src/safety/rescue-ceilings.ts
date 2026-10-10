@@ -4,7 +4,7 @@ import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CeilingRefusal } from "../install/ceiling-change.js";
 import type { InstallFacts } from "../install/install-record.js";
 import type { RescueCeiling } from "../install/rescue-record.js";
-import type { RescueState } from "../policy/rescue-change.js";
+import { type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { AgentStore, CeilingEditor, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { ceilingOutdatedNotice } from "./rescue-address-notice.js";
@@ -24,6 +24,7 @@ const effectWindowMs = 7 * 86_400_000;
 
 /** One live wallet's ceiling, and the addresses its agent saved with the owner key. */
 interface WalletCeiling {
+  readonly agent: Id<"agt">;
   readonly ceiling: string;
   readonly saved: readonly AccountRef[];
 }
@@ -57,6 +58,7 @@ async function walletCeilings(
     await Promise.all(agents.map(async (agent) => savedOf(options.agents, agent, signal))),
   );
   return live.map((wallet) => ({
+    agent: wallet.agentId,
     ceiling: wallet.policyId,
     saved: books.get(wallet.agentId) ?? [],
   }));
@@ -148,6 +150,39 @@ export async function moveRescueCeilings(
     onEffect: onEffect.value,
     ...(onCancel === undefined ? {} : { onCancel: onCancel.value }),
   });
+}
+
+/** An account the owner key saves for one agent (decision 0091). */
+export interface SavedAddressMove {
+  readonly facts: InstallFacts;
+  readonly agent: Id<"agt">;
+  readonly account: AccountRef;
+  readonly ownerKey: Secret;
+  readonly signal: AbortSignal;
+}
+
+/**
+ * Saves an account in the ceiling of each of one agent's live wallets, with the owner key: each
+ * lists the rescue address in effect, a new one that waits, the agent's saved addresses and the
+ * account. A refusal is the protocol error code to answer; nothing changed then. A change signed
+ * ahead for a new rescue address that waits no longer matches these ceilings, so custody refuses
+ * it once it is due and the owner is told to set the rescue address again.
+ */
+export async function saveInCeilings(
+  options: RescueCeilingsOptions,
+  move: SavedAddressMove,
+): Promise<Result<void, ProtocolErrorCode>> {
+  const { rescueAddress, pendingRescue } = rescueAt(move.facts, options.clock.now());
+  const listed = [rescueAddress, pendingRescue?.address, move.account];
+  const targets = await walletCeilings(options, move.facts, move.signal);
+  const ceilings = targets
+    .filter((wallet) => wallet.agent === move.agent)
+    .map((wallet) => ({ ceiling: wallet.ceiling, recipients: recipients(wallet, listed) }));
+  const set = await options.ceilings.setRecipients(
+    { ownerKey: move.ownerKey, ceilings },
+    { signal: move.signal },
+  );
+  return set.ok ? ok(undefined) : err(refusalCodes[set.error]);
 }
 
 /**
