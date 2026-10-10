@@ -31,6 +31,15 @@ export interface CardShowing {
   readonly assets: AssetInfos;
 }
 
+/** An intent's open card version as the engine draws it, for a surface without buttons. */
+export interface DrawnCard {
+  readonly intent: Id<"int">;
+  readonly cardId: Id<"crd">;
+  readonly card: Card;
+  /** Every asset the card names, with its symbol, decimals and verdict. */
+  readonly assets: AssetInfos;
+}
+
 /** A card version that closed with a receipt, and what its copies become. */
 export interface CardSettling {
   /** The card version's callback reference. */
@@ -50,6 +59,15 @@ export interface CardShowings {
     ref: CardVersionRef,
     options: { readonly signal: AbortSignal },
   ): Promise<CardShowing | undefined>;
+  /**
+   * The intent's newest card version drawn from the stored intent while it is open, with or
+   * without a callback reference. `undefined` once it closed, for an intent with no card, and for
+   * an intent the engine draws no card for.
+   */
+  newest(
+    intent: Id<"int">,
+    options: { readonly signal: AbortSignal },
+  ): Promise<DrawnCard | undefined>;
   /**
    * The receipt of the intent's newest card version that an answer or the timer closed. A
    * confirmed paper intent settles once it recorded its fill, with the fill. `undefined` before
@@ -113,17 +131,14 @@ async function settingsOf(
   return settings;
 }
 
-async function opened(
+// An open card version drawn from its stored intent, with the info of every asset it names.
+async function drawOpen(
   options: CardShowingsOptions,
-  ref: CardVersionRef,
+  stored: { readonly record: IntentRecord; readonly card: CardRecord },
   call: Call,
-): Promise<CardShowing | undefined> {
+): Promise<Pick<CardShowing, "card" | "assets"> | undefined> {
   const { intents, chains } = options;
-  const record = await intents.get(ref.intent, call);
-  const card = await versionOf(options, ref, call);
-  if (record === undefined || card?.callbackRef === undefined || card.closedAtMs !== undefined) {
-    return undefined;
-  }
+  const { record, card } = stored;
   const settings = await settingsOf(options, record, call);
   const isFirstLive = await isFirstLiveCard(intents, record, call);
   const facts = cardFactsOf({ record, card, settings, isFirstLive, chains });
@@ -132,7 +147,40 @@ async function opened(
   }
   const drawn = drawCard(facts);
   const assets = assetInfosOf(chains, [...new Set(drawn.lines.flatMap(assetsOfLine))]);
-  return { intent: ref.intent, card: drawn, callbackRef: card.callbackRef, assets };
+  return { card: drawn, assets };
+}
+
+async function opened(
+  options: CardShowingsOptions,
+  ref: CardVersionRef,
+  call: Call,
+): Promise<CardShowing | undefined> {
+  const record = await options.intents.get(ref.intent, call);
+  const card = await versionOf(options, ref, call);
+  if (record === undefined || card?.callbackRef === undefined || card.closedAtMs !== undefined) {
+    return undefined;
+  }
+  const drawn = await drawOpen(options, { record, card }, call);
+  return drawn === undefined
+    ? undefined
+    : { intent: ref.intent, callbackRef: card.callbackRef, ...drawn };
+}
+
+async function newest(
+  options: CardShowingsOptions,
+  intent: Id<"int">,
+  call: Call,
+): Promise<DrawnCard | undefined> {
+  const [record, cards] = await Promise.all([
+    options.intents.get(intent, call),
+    options.intents.cards(intent, call),
+  ]);
+  const card = cards.at(-1);
+  if (record === undefined || card === undefined || card.closedAtMs !== undefined) {
+    return undefined;
+  }
+  const drawn = await drawOpen(options, { record, card }, call);
+  return drawn === undefined ? undefined : { intent, cardId: card.id, ...drawn };
 }
 
 async function settled(
@@ -170,6 +218,7 @@ async function settled(
 export function createCardShowings(options: CardShowingsOptions): CardShowings {
   return {
     opened: async (ref, call) => opened(options, ref, call),
+    newest: async (intent, call) => newest(options, intent, call),
     settled: async (intent, call) => settled(options, intent, call),
   };
 }

@@ -34,5 +34,9 @@
   "warn.firstLive": "🔴 首笔实盘交易：此交易使用真实资金",
   "warn.autoAsks": "自动模式在此需要你确认：{why}",
   "reason": "Agent 说明  “{reason}”",
-  "expiry": "过期时间 {time}"
+  "expiry": "过期时间 {time}",
+  "value.unverifiedToken": "{symbol}（{address}）",
+  "value.route": "{venue}：{legs}",
+  "value.routeLeg": "{venue} {share}",
+  "value.legSeparator": "，"
 }

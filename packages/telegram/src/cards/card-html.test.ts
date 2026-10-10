@@ -204,7 +204,7 @@ describe("a card in Telegram HTML", () => {
 
   it("refuses to draw a card that names an asset without its symbol and decimals", () => {
     expect(() => cardHtml(drawCard(swapFacts), { ...display, assets: {} })).toThrow(
-      expect.objectContaining({ code: "telegram.unknown_asset" }),
+      expect.objectContaining({ code: "engine.card_asset_unknown" }),
     );
   });
 

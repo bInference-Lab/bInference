@@ -23,10 +23,10 @@ Rules for this package:
 - Every word the bot sends is a message key in `@binference/i18n`: `telegram.*`, and the card,
   receipt and reason messages the engine's card lines name. Cards follow the owner's language;
   ingress replies follow it too, or else the language of the sender's Telegram app.
-- Messages go out in Telegram's HTML only as `src/cards/card-html.ts` builds them: every value from
-  outside (token symbols and names, the agent's reason, venue and client names) goes through
-  `displayOutsideText` of `@binference/i18n`, and each line is escaped whole with `escapeHtml`
-  after it is filled in.
+- Messages go out in Telegram's HTML only as `src/cards/card-html.ts` builds them: each card line
+  is filled in as plain text by the engine's `cardLineText`, where every value from outside (token
+  symbols and names, the agent's reason, venue and client names) goes through `displayOutsideText`
+  of `@binference/i18n`, and then escaped whole with `escapeHtml`.
   Never build HTML from a value.
 - Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
   does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the

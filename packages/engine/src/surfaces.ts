@@ -9,4 +9,7 @@ export type {
   CardShowings,
   CardShowingsOptions,
   CardVersionRef,
+  DrawnCard,
 } from "./surfaces/create-card-showings.js";
+export { cardLineText } from "./surfaces/card-text.js";
+export type { CardDisplay } from "./surfaces/card-text.js";

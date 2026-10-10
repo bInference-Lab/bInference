@@ -22,7 +22,8 @@ Rules for this package:
   `PriceSource` port, rounds every USD value up, and names every rule an intent breaks in spec 6's
   order. A new rule takes its reason from that list and adds a property case.
 - A card is data: each line a key of `cardKeys` with typed values, never English text. Every key
-  has an English and Chinese message, and each surface renders the lines.
+  has an English and Chinese message, and each surface renders the lines as `cardLineText`
+  (`src/surfaces/card-text.ts`) writes them in plain text, escaping them for its own markup.
 - The confirmation step (`src/confirmations/`) picks the trigger an answer or the card timer is,
   and writes only through the `ConfirmationStore`, under the row version it read; the state machine
   decides each move.

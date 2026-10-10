@@ -1,10 +1,8 @@
-import type { AccountRef, Amount, AssetRef, ChainRef } from "@binference/chain";
-import type { Bps, Ratio } from "@binference/core";
-import type { RouteLeg } from "@binference/protocol";
+import type { CardValueView } from "@binference/protocol";
 
 /**
- * Every message key a card or its receipt uses (spec 4, section 3). Each key has an English and a
- * Chinese message in `@binference/i18n`.
+ * Every message key a card or its receipt uses (spec 4, section 3), the formats of its values
+ * among them. Each key has an English and a Chinese message in `@binference/i18n`.
  */
 export const cardKeys = [
   "card.header",
@@ -52,6 +50,10 @@ export const cardKeys = [
   "autoAsks.locked",
   "card.reason",
   "card.expiry",
+  "card.value.unverifiedToken",
+  "card.value.route",
+  "card.value.routeLeg",
+  "card.value.legSeparator",
   "receipt.confirmed",
   "receipt.denied",
   "receipt.expired",
@@ -67,21 +69,11 @@ export type CardKey = (typeof cardKeys)[number];
  * One argument of a card line, typed so every surface formats it with the one formatter: an
  * amount to 6 significant digits with its symbol, USD with 2 decimals, a time in the owner's
  * timezone. `text` is set by someone else (the agent, a token's deployer, a venue) and is escaped
- * by the surface. `choice` is the value of an ICU `select`, and `count` of an ICU `plural`.
+ * by the surface. `choice` is the value of an ICU `select`, and `count` of an ICU `plural`. The
+ * protocol's {@link CardValueView} carries the same values; a nested line here is a card line.
  */
 export type CardValue =
-  | { readonly type: "amount"; readonly amount: Amount }
-  | { readonly type: "asset"; readonly asset: AssetRef }
-  | { readonly type: "account"; readonly account: AccountRef }
-  | { readonly type: "chain"; readonly chain: ChainRef }
-  | { readonly type: "usd"; readonly usdMicros: bigint }
-  | { readonly type: "percent"; readonly bps: Bps }
-  | { readonly type: "ratio"; readonly ratio: Ratio }
-  | { readonly type: "time"; readonly atMs: number }
-  | { readonly type: "count"; readonly count: number }
-  | { readonly type: "choice"; readonly choice: string }
-  | { readonly type: "text"; readonly text: string }
-  | { readonly type: "route"; readonly venue: string; readonly legs: readonly RouteLeg[] }
+  | Exclude<CardValueView, { readonly type: "line" }>
   | { readonly type: "line"; readonly line: CardLine };
 
 /** One line of a card as data: a message key and the values of its arguments. */

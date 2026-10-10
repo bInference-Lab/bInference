@@ -1,8 +1,9 @@
 import type { ChainRegistry } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
-import type { IntentView, ProtocolErrorCode } from "@binference/protocol";
+import type { CardLinesView, IntentView, ProtocolErrorCode } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
+import type { CardShowings } from "../surfaces/create-card-showings.js";
 import { type AnswerCard, answerError } from "./answer-card.js";
 import { answererOf, type EngineCall, type EngineHandler, proposerOf } from "./engine-call.js";
 import { intentViewOf } from "./intent-view-of.js";
@@ -11,6 +12,7 @@ import { intentViewOf } from "./intent-view-of.js";
 export interface IntentHandlers {
   readonly "intent/propose": EngineHandler<"intent/propose">;
   readonly "intent/get": EngineHandler<"intent/get">;
+  readonly "intent/card": EngineHandler<"intent/card">;
   readonly "intent/confirm": EngineHandler<"intent/confirm">;
   readonly "intent/deny": EngineHandler<"intent/deny">;
 }
@@ -21,6 +23,8 @@ export interface IntentHandlersOptions {
   readonly moneyPath: MoneyPath;
   readonly answer: AnswerCard;
   readonly chains: ChainRegistry;
+  /** Draws an intent's open card version, as a surface without buttons shows it. */
+  readonly showings: Pick<CardShowings, "newest">;
 }
 
 interface Answering {
@@ -75,10 +79,28 @@ function viewOf(
     : ok(intentViewOf(snapshot, options.chains));
 }
 
+// The intent's open card version as the engine draws it; an intent with none is in the wrong
+// state for a card.
+async function drawnCard(
+  options: IntentHandlersOptions,
+  call: EngineCall<"intent/card">,
+): Promise<Result<CardLinesView, ProtocolErrorCode>> {
+  const { args, signal } = call;
+  const drawn = await options.showings.newest(args.intent, { signal });
+  if (drawn === undefined) {
+    const snapshot = await options.stored.snapshot(args.intent, { signal });
+    return err(snapshot === undefined ? "intent.not_found" : "intent.wrong_state");
+  }
+  const { card, assets } = drawn;
+  const { version, expiresAtMs: expiresAt, lines } = card;
+  return ok({ card: drawn.cardId, version, expiresAt, lines, assets });
+}
+
 /**
  * Creates the intent handlers. `intent/propose` answers with the intent once it waits for the
- * owner or ends; `intent/confirm` and `intent/deny` answer a card version the caller names and
- * answer with the intent after it, filled on paper when confirmed.
+ * owner or ends; `intent/card` answers its open card version as the engine draws it, line by
+ * line; `intent/confirm` and `intent/deny` answer a card version the caller names and answer with
+ * the intent after it, filled on paper when confirmed.
  */
 export function createIntentHandlers(options: IntentHandlersOptions): IntentHandlers {
   return {
@@ -92,6 +114,7 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
     },
     "intent/get": async ({ args, signal }) =>
       viewOf(options, await options.stored.snapshot(args.intent, { signal })),
+    "intent/card": async (call) => drawnCard(options, call),
     "intent/confirm": async (call) => answered(options, call, "confirm"),
     "intent/deny": async (call) => answered(options, call, "deny"),
   };

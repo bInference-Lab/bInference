@@ -34,5 +34,9 @@
   "warn.firstLive": "🔴 First live trade: this one uses real money",
   "warn.autoAsks": "Auto mode asks you here: {why}",
   "reason": "Agent says  \"{reason}\"",
-  "expiry": "Expires at {time}"
+  "expiry": "Expires at {time}",
+  "value.unverifiedToken": "{symbol} ({address})",
+  "value.route": "{venue}: {legs}",
+  "value.routeLeg": "{venue} {share}",
+  "value.legSeparator": ", "
 }

@@ -41,6 +41,7 @@ import {
   createSendLevelHandlers,
   type SendLevelHandlers,
 } from "../send-levels/send-level-handlers.js";
+import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
@@ -257,6 +258,7 @@ function intentParts(
   });
   const { isLocked } = options;
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked });
+  const showings = createCardShowings({ intents: stores.intents, agents: stores.agents, chains });
   const moneyPath = createMoneyPath({
     stored,
     agents: stores.agents,
@@ -277,7 +279,7 @@ function intentParts(
   return {
     answer,
     stored,
-    handlers: createIntentHandlers({ stored, moneyPath, answer, chains }),
+    handlers: createIntentHandlers({ stored, moneyPath, answer, chains, showings }),
   };
 }
 
