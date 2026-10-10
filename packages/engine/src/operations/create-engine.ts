@@ -12,7 +12,8 @@ import {
 } from "../audit/config-history-handlers.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
-import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
+import { createGasCheck } from "../gas/check-gas.js";
+import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { CeilingEditor, WalletExporter, WalletMaker } from "../install/ports.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
@@ -83,6 +84,12 @@ export interface Engine {
    * the rescue address operations call it too.
    */
   readonly settle: (options: { readonly signal: AbortSignal }) => Promise<void>;
+  /**
+   * Reads the coin of every live agent's wallets and raises the low-gas alert the money path
+   * raises, once per drop below twice the reserve (decision 0045). A timer of the composition root
+   * calls it while the engine is unlocked. A read that fails is thrown once every wallet is read.
+   */
+  readonly checkGas: (options: { readonly signal: AbortSignal }) => Promise<void>;
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -214,6 +221,8 @@ function intentParts(
   readonly handlers: IntentHandlers;
   readonly answer: AnswerCard;
   readonly stored: StoredIntents;
+  /** One alert for the money path and the gas check, so each drop is announced once. */
+  readonly lowGas: LowGasAlerts;
 } {
   const { stores, custody, host, chains, clock, ids, isLocked } = options;
   const stored = createStoredIntents({
@@ -231,6 +240,7 @@ function intentParts(
     simulator: paper.simulator,
   });
   const gate = createCapGate({ intents: stores.intents, clock });
+  const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
   const showings = createCardShowings({ intents: stores.intents, agents: stores.agents, chains });
   const moneyPath = createMoneyPath({
@@ -246,13 +256,13 @@ function intentParts(
     chains,
     execute,
     isLocked,
-    lowGas: createLowGasAlerts({ publish: options.publish }),
+    lowGas,
     gate,
     clock,
     ids,
   });
   const handlers = createIntentHandlers({ stored, moneyPath, answer, chains, showings });
-  return { answer, stored, handlers };
+  return { answer, stored, handlers, lowGas };
 }
 
 // The freeze, the safety status and the rescue, which reads every wallet's live balances, never
@@ -323,5 +333,6 @@ export function createEngine(given: EngineOptions): Engine {
     },
     answer: intents.answer,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
+    checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
   };
 }

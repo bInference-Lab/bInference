@@ -6,6 +6,7 @@ import type { LockReason } from "../unlock/unlock-keys.js";
 import { type BotChannel, startBotChannel } from "./bot-channel.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { startConfigReload } from "./config-reload.js";
+import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
@@ -38,9 +39,9 @@ function isUnreachable(unlocked: Result<void, LockReason>): boolean {
   return !unlocked.ok && unlocked.error === "custody_unreachable";
 }
 
-// What runs while the engine serves: the settle timer, the reload of `config.json5` when it
-// changes (decision 0118), and the retries of the signer step after a start that found Privy out
-// of reach (decision 0119).
+// What runs while the engine serves: the settle timer, the gas check, the reload of
+// `config.json5` when it changes (decision 0118), and the retries of the signer step after a start
+// that found Privy out of reach (decision 0119).
 function startTimers(
   opening: Opening,
   opened: Opened,
@@ -50,13 +51,9 @@ function startTimers(
   const { logger } = opened.log;
   const { composed } = started;
   const { lock } = composed.locked;
-  startSettleTimer({
-    settle: composed.settle,
-    isLocked: () => lock.isLocked(),
-    clock: host.clock,
-    closers,
-    logger,
-  });
+  const timers = { isLocked: () => lock.isLocked(), clock: host.clock, closers, logger };
+  startSettleTimer({ settle: composed.settle, ...timers });
+  startGasCheckTimer({ checkGas: composed.checkGas, ...timers });
   startConfigReload({
     file: opening.platform.stateFolder.configFile,
     readConfig: opened.readConfig,

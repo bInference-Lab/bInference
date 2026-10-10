@@ -182,7 +182,10 @@ Rules for this package:
 - The low-gas alert (`src/gas/`) reads each live wallet's native balance as the money path
   resolves a proposal, and announces `notice.lowGas` once the balance is below twice the reserve,
   then not again until a reading shows it back at or above that. It keeps that memory in a bounded
-  set and never throws; the policy, not the alert, keeps trades out of the reserve.
+  set and never throws; the policy, not the alert, keeps trades out of the reserve. `checkGas`
+  (`check-gas.ts`) hands the same alert a reading of every wallet of every live agent, on each
+  chain the agent keeps a reserve on, for the composition root's timer; a failed read is thrown
+  once every wallet is read.
 - Notices (`src/notices/`, exported as `@binference/engine/notices`, decision 0133):
   `noticeRecordOf` gives a notice its kind, its level and a `queued` delivery for each chat
   surface, and `createNoticeHandlers` answers `notice/list`. The composition root's notice log is

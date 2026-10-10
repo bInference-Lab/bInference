@@ -36,6 +36,8 @@ export interface ComposedSelfHosted {
   readonly executor: RunningExecutor;
   /** The work that waits for its time, such as a rescue address's ceiling change. */
   readonly settle: Engine["settle"];
+  /** Reads every live wallet's gas and raises the low-gas alert. */
+  readonly checkGas: Engine["checkGas"];
   /** Takes the confirmed intents the lock held; logs a failure and never rejects. */
   readonly resume: (signal: AbortSignal) => Promise<void>;
   /** The call that `engine/stop` makes once the shutdown sequence exists. */
@@ -318,6 +320,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     publish,
     executor,
     settle: engine.settle,
+    checkGas: engine.checkGas,
     resume,
     stopper,
     state,

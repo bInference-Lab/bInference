@@ -34,7 +34,8 @@ otherwise each changed key is journaled, and the parts that read the config cell
 start that found Privy out of reach, the engine retries the step by itself for five minutes
 (decision 0119). The
 executor recovers every unfinished live intent by hash and nonce, and once unlocked takes the
-confirmed intents an earlier run left; a timer runs the engine's settle every minute; then the
+confirmed intents an earlier run left; timers run the engine's settle and its gas check every
+minute, the gas check raising the low-gas alert for a live wallet below twice its reserve; then the
 engine is `ready`, or `locked`. Each enabled chain gets one RPC failover over `chains.rpc` and
 the chain's public RPCs (`composeChainReads`), which every part that reads the chain shares: the
 Chainlink prices, the wallet facts (balances in one Multicall3 call, the fee per gas, the
