@@ -1,15 +1,10 @@
-import { authorizationPayload, type PrivyRequest } from "@binference/chain";
-import { BinferenceError, err, ok, type Result } from "@binference/core";
+import type { PrivyRequest } from "@binference/chain";
+import { err, ok, type Result } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import type { PolicyRuleResponse } from "@privy-io/node/resources";
 import { type PolicyRule, policyRuleJson } from "../ceiling/policy-rule.js";
-import {
-  callPrivy,
-  type PrivyCall,
-  type PrivyOutcome,
-  privyFault,
-  statusFault,
-} from "./privy-call.js";
+import { callAsOwner, ownerSignFn } from "./owner-signing.js";
+import { type PrivyCall, privyFault, statusFault } from "./privy-call.js";
 import type { PrivySettings } from "./privy-client.js";
 import type { PrivyId } from "./privy-records.js";
 import { readRuleAnswer, refusalOf } from "./privy-wire.schema.js";
@@ -65,32 +60,6 @@ export function ruleChangeRequest(settings: PrivySettings, change: RuleChange): 
   };
 }
 
-// Never leaves this file: a refusal of the signer stops the SDK before it sends anything.
-const ownerRefused = "custody.owner_refused";
-
-/** One signing of a rule change: the request meant, and the bytes the SDK asks to sign. */
-interface Signing {
-  readonly meant: PrivyRequest;
-  readonly authorize: Extract<RuleAuthorization, { readonly kind: "sign" }>["authorize"];
-  readonly payload: Uint8Array;
-  readonly signal: AbortSignal;
-}
-
-// The owner signs only the request this adapter means to send: the SDK's bytes must be its own.
-async function signedBy({ meant, authorize, payload, signal }: Signing): Promise<string> {
-  if (!authorizationPayload(meant).equals(payload)) {
-    throw new BinferenceError({
-      code: "custody.payload_unreadable",
-      message: "The SDK asked to sign a rule change other than the one this adapter sends.",
-    });
-  }
-  const answer = await authorize(meant, signal);
-  if (!answer.ok) {
-    throw new BinferenceError({ code: ownerRefused, message: "The owner refused." });
-  }
-  return answer.value;
-}
-
 function changeCall(
   settings: PrivySettings,
   change: RuleChange,
@@ -109,13 +78,11 @@ function changeCall(
             ? { signatures: [authorization.signature] }
             : {
                 sign_fns: [
-                  async (payload) =>
-                    signedBy({
-                      meant: ruleChangeRequest(settings, change),
-                      authorize: authorization.authorize,
-                      payload,
-                      signal,
-                    }),
+                  ownerSignFn({
+                    meant: ruleChangeRequest(settings, change),
+                    authorize: authorization.authorize,
+                    signal,
+                  }),
                 ],
               },
       }),
@@ -135,14 +102,9 @@ export async function changeRule(
   input: { readonly authorization: RuleAuthorization; readonly signal: AbortSignal },
 ): Promise<Result<void, RuleRefusal>> {
   const call = changeCall(settings, change, input.authorization);
-  let outcome: PrivyOutcome<PolicyRuleResponse>;
-  try {
-    outcome = await callPrivy(settings, call, input.signal);
-  } catch (error) {
-    if (error instanceof BinferenceError && error.code === ownerRefused) {
-      return err("refused");
-    }
-    throw error;
+  const outcome = await callAsOwner(settings, call, input.signal);
+  if (outcome === "refused") {
+    return err("refused");
   }
   if (outcome.ok) {
     return readRuleAnswer(outcome.value)
