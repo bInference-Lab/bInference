@@ -48,6 +48,9 @@ names the keys and fixes the wording.
 - Callback data: `bnf1:<kind>:<decision>:<ref>`, at most 64 bytes. `kind` is `c` (card); `decision`
   is `y` (confirm), `n` (cancel) or `d` (details); `ref` is a random 12-byte base64url reference
   stored with the card version, never an id the presser could guess.
+- A `/limits` button carries `bnf1:t:h:<limit>`: it halves the limit its field names
+  (`perTradeUsdMicros`, `rollingDayUsdMicros`, `slippageRegistryBps` or `slippageOtherBps`) for the
+  only agent. It names no id: a press can only make the owner's own limit stricter.
 - The engine checks that the presser is the owner's numeric Telegram id, writes the decision
   durably, then answers `answerCallbackQuery`.
 - First answer wins: the other surfaces' buttons are removed, and every copy becomes the receipt.
@@ -250,7 +253,7 @@ realized P&L, fills, skipped fills, open orders, model spend, and anything waiti
 | `/rescue`    | `cmd.rescue`    | Opens the rescue card                                           |
 | `/paper`     | `cmd.paper`     | Switches the agent to paper (braking); going live needs the CLI |
 | `/agents`    | `cmd.agents`    | Agents with mode and state; `/use <agent>` picks one            |
-| `/limits`    | `cmd.limits`    | The agent's limits; buttons tighten a value                     |
+| `/limits`    | `cmd.limits`    | The agent's limits; a button halves a cap or a slippage limit   |
 | `/status`    | `cmd.status`    | Engine state, mode, frozen or not, health                       |
 | `/spend`     | `cmd.spend`     | Model spend today and this month against the budget             |
 | `/ai`        | `cmd.ai`        | The agent's models, with buttons to pick another configured one |
@@ -261,6 +264,12 @@ realized P&L, fills, skipped fills, open orders, model spend, and anything waiti
 | `/help`      | `cmd.help`      | The commands, one line each                                     |
 
 Command descriptions are registered with `setMyCommands` in both languages (`language_code`).
+
+A `/limits` button halves the per-trade cap, the 24-hour cap, or the slippage limit on verified or
+other tokens, rounding down: "Halve the per-trade cap" / 「单笔上限减半」. Half is always stricter,
+so it applies at once through `limit/set` and is announced like any limit change
+([decision 0111](../DECISIONS.md#d0111)); a second tap halves it again, and a limit at zero has no
+button. Nothing in Telegram loosens a limit.
 
 <a id="section-6"></a>
 

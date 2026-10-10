@@ -71,6 +71,18 @@ function confirmDataOf(card: FakeMessage): string {
   return card.buttons[0]?.[0]?.data ?? never();
 }
 
+// The agent's per-trade cap as the store keeps it.
+async function perTradeOf(test: Bot): Promise<bigint> {
+  const settings = await test.parts.stores.agents.get(testAgent, live);
+  return settings?.limits.perTradeUsdMicros ?? never();
+}
+
+// The message `/limits` answered with, which carries its buttons.
+function limitsMessageOf(botApi: FakeBotApi): number {
+  const message = botApi.messages().find((sent) => sent.text.startsWith("Limits of"));
+  return message?.messageId ?? never();
+}
+
 function textFrom(updateId: number, text: string): JsonValue {
   return {
     update_id: updateId,
@@ -143,6 +155,27 @@ describe("the owner's fast commands on the engine", () => {
     );
     expect(taken.map((record) => [record?.kind, record?.state])).toStrictEqual([
       ["rescue", "confirmed"],
+    ]);
+  });
+
+  it("halves the per-trade cap at a tap of /limits, at once and announced, and again at the next", async () => {
+    const test = await bot();
+    const before = await perTradeOf(test);
+    await test.send("/limits");
+    const message = limitsMessageOf(test.botApi);
+    const halve = { from: ownerId, data: "bnf1:t:h:perTradeUsdMicros", messageId: message };
+    await test.telegram.ingress.receive(test.botApi.press(halve), live);
+    await test.telegram.ingress.receive(test.botApi.press(halve), live);
+    await test.telegram.idle();
+    expect(await perTradeOf(test)).toBe(before / 4n);
+    expect(
+      test.botApi
+        .sent()
+        .map((sent) => sent.text)
+        .filter((text) => text.startsWith("Limit changed")),
+    ).toStrictEqual([
+      "Limit changed by Telegram: the per-trade cap changed now",
+      "Limit changed by Telegram: the per-trade cap changed now",
     ]);
   });
 

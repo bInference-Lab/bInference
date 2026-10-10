@@ -8,6 +8,7 @@ import type { MessageLocale } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
 import type { Api } from "grammy";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
+import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import type { CardAnswers, CardCopyStore, OwnerStore } from "../ports.js";
 import type { ButtonPress } from "../updates/chat-update.schema.js";
 import { cardCallbackData, cardCallbackSchema } from "./card-callback.schema.js";
@@ -78,6 +79,7 @@ interface Call {
 interface CardsContext {
   readonly options: TelegramCardsOptions;
   readonly calls: CardCalls;
+  readonly bot: BotCalls;
   readonly words: (key: string) => string;
   readonly displayOf: (assets: AssetInfos) => CardDisplay;
 }
@@ -212,7 +214,7 @@ function noticeOf(context: CardsContext, standing: CardStanding): string | undef
 async function answerPress(context: CardsContext, pressed: Pressed, call: Call): Promise<void> {
   try {
     const notice = noticeOf(context, pressed.standing);
-    await context.calls.answer(pressed.press.callbackId, notice, call);
+    await context.bot.answer(pressed.press.callbackId, notice, call);
   } catch (error) {
     call.signal.throwIfAborted();
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
@@ -253,6 +255,7 @@ export function createTelegramCards(options: TelegramCardsOptions): TelegramCard
   const context: CardsContext = {
     options,
     calls: createCardCalls(options.api),
+    bot: createBotCalls(options.api),
     // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
     words: (key) => formatter().message(key),
     displayOf: (assets) => ({ formatter: formatter(), assets }),

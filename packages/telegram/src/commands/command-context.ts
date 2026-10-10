@@ -3,6 +3,7 @@ import type { OwnerChatOperation } from "@binference/engine/surfaces";
 import type { Formatter, MessageValues } from "@binference/i18n";
 import type { ArgsOf, ResultOf } from "@binference/protocol";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
+import type { ButtonRows } from "../ingress/bot-calls.js";
 import type { OwnerCalls } from "../ports.js";
 
 /** What a fast command runs with: the engine's calls, the cards, and the chat it answers in. */
@@ -20,12 +21,29 @@ export interface CommandContext {
   /** The numeric Telegram id of the owner who sent the command. */
   readonly senderId: number;
   readonly signal: AbortSignal;
-  /** Sends text to the chat the command came from, split into messages at line breaks. */
-  readonly say: (text: string, options?: { readonly replyTo?: number }) => Promise<void>;
+  /**
+   * Sends text to the chat the command came from, split into messages at line breaks; the last
+   * one carries the buttons.
+   */
+  readonly say: (text: string, options?: SayOptions) => Promise<void>;
+}
+
+/** How a reply goes out: the message it answers, and its buttons. */
+interface SayOptions {
+  readonly replyTo?: number;
+  readonly buttons?: ButtonRows;
 }
 
 /** A fast command's run: it reads and acts through the context, then answers in the chat. */
 export type CommandRun = (context: CommandContext) => Promise<void>;
+
+/** What a press of a fast command's button runs with, besides what the command does. */
+export interface PressContext extends CommandContext {
+  /** Edits the message the pressed button sits on: its text and its buttons. */
+  readonly edit: (text: string, buttons: ButtonRows) => Promise<void>;
+  /** Answers the press: with a short notice, or silently to stop the button's spinner. */
+  readonly answer: (notice?: string) => Promise<void>;
+}
 
 /**
  * Runs an operation for the owner and answers its result. A refusal is said in the chat as the

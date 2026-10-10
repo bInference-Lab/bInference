@@ -291,13 +291,16 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     clock: wiring.clock,
     logger,
     display,
-    // A fast command is answered here; any other message waits for the agent runtime.
+    // A fast command and its buttons are answered here; any other message waits for the agent
+    // runtime.
     onOwnerUpdate: async (update, call) => {
-      if (update.kind === "callback") {
-        await cards.press(update, call);
+      if (update.kind !== "callback") {
+        await commands.answer(update, call);
         return;
       }
-      await commands.answer(update, call);
+      if (!(await commands.press(update, call))) {
+        await cards.press(update, call);
+      }
     },
   });
   const notices = createTelegramNotices({ ...parts, chains, display });

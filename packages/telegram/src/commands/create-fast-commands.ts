@@ -3,13 +3,14 @@ import { BinferenceError, type Logger } from "@binference/core";
 import type { MessageLocale, MessageValues } from "@binference/i18n";
 import type { Api } from "grammy";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
-import { createOwnerFormatters } from "../format/owner-formatters.js";
-import { createBotCalls } from "../ingress/bot-calls.js";
+import { createOwnerFormatters, type OwnerFormatters } from "../format/owner-formatters.js";
+import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import type { ReplyTarget } from "../ingress/decide-update.js";
 import type { OwnerCalls } from "../ports.js";
-import type { ChatPost } from "../updates/chat-update.schema.js";
-import { runLimits, runPaper } from "./agent-commands.js";
-import type { CommandContext, CommandRun } from "./command-context.js";
+import type { ButtonPress, ChatPost } from "../updates/chat-update.schema.js";
+import { runHalve, runLimits, runPaper } from "./agent-commands.js";
+import { commandCallbackSchema } from "./command-callback.schema.js";
+import type { CommandContext, CommandRun, PressContext } from "./command-context.js";
 import { commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
 import { runOrders } from "./orders-command.js";
 import { runBalance, runPositions } from "./portfolio-commands.js";
@@ -26,6 +27,12 @@ export interface FastCommands {
    * handled again.
    */
   answer(post: ChatPost, options: { readonly signal: AbortSignal }): Promise<boolean>;
+  /**
+   * Takes the owner's press of a fast command's button, such as a `/limits` button that halves a
+   * limit, and resolves `true` once it is answered; resolves `false` for data in any other form,
+   * such as a card button's, which it leaves alone.
+   */
+  press(press: ButtonPress, options: { readonly signal: AbortSignal }): Promise<boolean>;
   /** Registers the commands' menu in English and Chinese with `setMyCommands`. */
   register(options: { readonly signal: AbortSignal }): Promise<void>;
 }
@@ -93,15 +100,62 @@ async function runCaught(run: CommandRun, context: CommandContext, logger: Logge
   }
 }
 
+/** Where a command answers: the chat and topic, and who asked. */
+interface Asker {
+  readonly target: ReplyTarget;
+  readonly senderId: number;
+  readonly signal: AbortSignal;
+}
+
+/** What every command's context is made from: the options, the bot's calls and the formatters. */
+interface Parts {
+  readonly options: FastCommandsOptions;
+  readonly bot: BotCalls;
+  readonly formatters: OwnerFormatters;
+}
+
+function contextOf(parts: Parts, asker: Asker): CommandContext {
+  const { options, bot } = parts;
+  const { calls, cards, waiting, chains } = options;
+  const formatter = parts.formatters(options.display());
+  const { target, senderId, signal } = asker;
+  return {
+    calls,
+    cards,
+    waiting,
+    chains,
+    formatter,
+    // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
+    words: (key: string, values?: MessageValues) => formatter.message(key, values),
+    senderId,
+    signal,
+    say: async (text, sayOptions) => bot.say(target, text, { signal, ...sayOptions }),
+  };
+}
+
+function pressContextOf(
+  parts: Parts,
+  pressed: { readonly press: ButtonPress; readonly chatId: number; readonly messageId: number },
+  signal: AbortSignal,
+): PressContext {
+  const { bot } = parts;
+  const { press, chatId, messageId } = pressed;
+  const asker = { target: { chatId }, senderId: press.sender.id, signal };
+  return {
+    ...contextOf(parts, asker),
+    edit: async (text, buttons) => bot.edit({ chatId, messageId }, text, { signal, buttons }),
+    answer: async (notice) => bot.answer(press.callbackId, notice, { signal }),
+  };
+}
+
 /**
  * Creates the owner's fast commands (spec 4, section 5). Each runs the engine's operations as the
  * owner on Telegram through `calls` and answers in the chat it came from, in the owner's language,
  * split at line breaks into messages Telegram takes. No command reaches the agent's model.
  */
 export function createFastCommands(options: FastCommandsOptions): FastCommands {
-  const { calls, cards, waiting, chains, logger } = options;
-  const bot = createBotCalls(options.api);
-  const formatters = createOwnerFormatters();
+  const { logger } = options;
+  const parts = { options, bot: createBotCalls(options.api), formatters: createOwnerFormatters() };
   return {
     async answer(post, { signal }) {
       const command = commandOf(post);
@@ -109,21 +163,18 @@ export function createFastCommands(options: FastCommandsOptions): FastCommands {
       if (command === undefined || senderId === undefined) {
         return false;
       }
-      const formatter = formatters(options.display());
-      const target = targetOf(post);
-      const context: CommandContext = {
-        calls,
-        cards,
-        waiting,
-        chains,
-        formatter,
-        // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
-        words: (key: string, values?: MessageValues) => formatter.message(key, values),
-        senderId,
-        signal,
-        say: async (text, sayOptions) => bot.say(target, text, { signal, ...sayOptions }),
-      };
+      const context = contextOf(parts, { target: targetOf(post), senderId, signal });
       await runCaught(runs[command], context, logger);
+      return true;
+    },
+    async press(pressed, { signal }) {
+      const callback = commandCallbackSchema.safeParse(pressed.data ?? "");
+      const { chatId, messageId } = pressed;
+      if (!callback.success || chatId === undefined || messageId === undefined) {
+        return false;
+      }
+      const context = pressContextOf(parts, { press: pressed, chatId, messageId }, signal);
+      await runCaught(async () => runHalve(context, callback.data.limit), context, logger);
       return true;
     },
     register: async ({ signal }) => registerCommands(options.api, { signal }),

@@ -1,6 +1,6 @@
 import type { Api } from "grammy";
-import { isMessageGone } from "../api/bot-api-error.schema.js";
 import { callBotApi } from "../api/call-bot-api.js";
+import { unlessGone } from "../api/unless-gone.js";
 
 /** Where a card message sits in Telegram. */
 export interface MessageAt {
@@ -32,18 +32,6 @@ export interface CardCalls {
   receipt(at: MessageAt, html: string, call: Call): Promise<void>;
   /** Removes a message's buttons; one Telegram no longer has, or one without them, counts as done. */
   dropButtons(at: MessageAt, call: Call): Promise<void>;
-  /** Answers a button press: with a short notice, or silently to stop the button's spinner. */
-  answer(callbackId: string, notice: string | undefined, call: Call): Promise<void>;
-}
-
-async function unlessGone<T>(edit: Promise<T>): Promise<void> {
-  try {
-    await edit;
-  } catch (error) {
-    if (!isMessageGone(error)) {
-      throw error;
-    }
-  }
 }
 
 /** Binds the cards' Bot API calls to a grammY `Api` for the bot. */
@@ -81,10 +69,5 @@ export function createCardCalls(api: Api): CardCalls {
           api.editMessageReplyMarkup(at.chatId, at.messageId, {}, signal),
         ),
       ),
-    answer: async (callbackId, notice, call) => {
-      await callBotApi("answerCallbackQuery", call.signal, async (signal) =>
-        api.answerCallbackQuery(callbackId, notice === undefined ? {} : { text: notice }, signal),
-      );
-    },
   };
 }

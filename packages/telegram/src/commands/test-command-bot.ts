@@ -110,7 +110,9 @@ export async function startCommandBot(
     display,
     onOwnerUpdate: async (update, call) => {
       if (update.kind === "callback") {
-        await cards.press(update, call);
+        if (!(await commands.press(update, call))) {
+          await cards.press(update, call);
+        }
       } else if (!(await commands.answer(update, call))) {
         chat.push(update);
       }

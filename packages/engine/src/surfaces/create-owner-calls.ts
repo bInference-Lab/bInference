@@ -10,7 +10,8 @@ import type { EngineCaller, EngineHandler, EngineHandlerTable } from "../operati
 
 /**
  * The operations the owner's fast commands run from their Telegram chat: reads, and the braking
- * that rule 11 allows from any surface. None is local or takes the owner key.
+ * that rule 11 allows from any surface. None is local or takes the owner key. `limit/set` runs
+ * with `confirm` alone, so its handler takes only a stricter limit (decision 0111).
  */
 export const ownerChatOperations = [
   "engine/status",
@@ -19,6 +20,7 @@ export const ownerChatOperations = [
   "safety/rescue",
   "agent/goPaper",
   "limit/get",
+  "limit/set",
   "portfolio/get",
   "order/list",
   "wallet/list",

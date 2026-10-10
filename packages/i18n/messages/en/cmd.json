@@ -55,5 +55,9 @@
   "limits.heading": "Limits of {agent} in effect now:",
   "limits.item": "{name}: {value}",
   "limits.pendingHeading": "These looser limits apply at {when}. Not you? Run `binference limit cancel` on the machine.",
+  "limits.tapToHalve": "Each button halves its limit at once; a second tap halves it again. Nothing here loosens a limit.",
+  "limits.halve": "{limit, select, perTradeUsdMicros {Halve the per-trade cap} rollingDayUsdMicros {Halve the 24-hour cap} slippageRegistryBps {Halve the slippage limit on verified tokens} slippageOtherBps {Halve the slippage limit on other tokens} other {Halve the limit}}",
+  "limits.halved": "{name} is {value} now.",
+  "limits.lowest": "{name} is {value} already, the lowest it goes.",
   "lang.current": "binference uses {locale, select, zh {Chinese} other {English}} with you. To switch, set `owner.locale` to \"en\" or \"zh\" in config.json5; binference applies it at once."
 }

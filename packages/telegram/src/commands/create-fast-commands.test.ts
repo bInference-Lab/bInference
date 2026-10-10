@@ -462,7 +462,7 @@ describe("the fast commands' replies", () => {
     ]);
   });
 
-  it("lists the agent's limits in effect and the looser ones that wait", async () => {
+  it("lists the agent's limits in effect, the looser ones that wait, and a button to halve each cap", async () => {
     const bot = await startCommandBot(served);
     await bot.send("/limits");
     expect(bot.texts()).toStrictEqual([
@@ -472,7 +472,11 @@ describe("the fast commands' replies", () => {
         "How long an auto order lasts: 30 days",
         "These looser limits apply at Oct 11, 2026, 09:30:00. Not you? Run `binference limit cancel` on the machine.",
         "Per-trade cap: $500.00",
+        "Each button halves its limit at once; a second tap halves it again. Nothing here loosens a limit.",
       ].join("\n"),
+    ]);
+    expect(bot.botApi.messages()[0]?.buttons).toStrictEqual([
+      [{ text: "Halve the per-trade cap", data: "bnf1:t:h:perTradeUsdMicros" }],
     ]);
   });
 

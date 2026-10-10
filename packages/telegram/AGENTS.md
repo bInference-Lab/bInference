@@ -41,6 +41,9 @@ Rules for this package:
   written by the engine's `noticeText` in the owner's language and timezone, as plain text. They
   are relayed in memory while the engine runs: one the Bot API refuses, or one before the owner
   pairs, is logged by its code and dropped.
+- A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit), and
+  only `commandCallbackSchema` reads it. A press goes to the fast commands first, then to the
+  cards. A button never loosens anything.
 - Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
   does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the
   press is answered only after `answer` resolves.

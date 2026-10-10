@@ -55,5 +55,9 @@
   "limits.heading": "{agent} 当前生效的限额：",
   "limits.item": "{name}：{value}",
   "limits.pendingHeading": "以下较宽松的限额将于 {when} 生效。不是你操作？请在本机运行 `binference limit cancel`。",
+  "limits.tapToHalve": "每个按钮都会立即将对应限额减半；再点一次会再次减半。这里不会放宽任何限额。",
+  "limits.halve": "{limit, select, perTradeUsdMicros {单笔上限减半} rollingDayUsdMicros {24 小时上限减半} slippageRegistryBps {已验证代币的滑点上限减半} slippageOtherBps {其他代币的滑点上限减半} other {限额减半}}",
+  "limits.halved": "{name}现为 {value}。",
+  "limits.lowest": "{name}已是 {value}，不能再低。",
   "lang.current": "binference 与你沟通使用{locale, select, zh {中文} other {英文}}。如需切换，请在 config.json5 中将 `owner.locale` 设为 \"en\" 或 \"zh\"；binference 会立即生效。"
 }

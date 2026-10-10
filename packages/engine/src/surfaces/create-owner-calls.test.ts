@@ -2,7 +2,7 @@ import { createFakeTxSimulator } from "@binference/chain/testing";
 import { BinferenceError, ok } from "@binference/core";
 import { operations, takesOwnerKey } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { expectOk } from "../intents/test-intents.js";
+import { expectOk, testAgent } from "../intents/test-intents.js";
 import { startTestEngine, type TestEngine } from "../operations/test-engine.js";
 import { rescueCustody, rescueSteps, setUpRescue, testHeld } from "../safety/test-rescue.js";
 import {
@@ -49,10 +49,32 @@ describe("the owner's calls from Telegram", () => {
     const operation = operations[op];
     expect([
       ownerChatScopes.includes(operation.scope),
-      operation.scopeCase,
       operation.transport,
       takesOwnerKey(operation),
-    ]).toStrictEqual([true, undefined, "any", false]);
+    ]).toStrictEqual([true, "any", false]);
+  });
+
+  it("tightens a limit at once as the owner on Telegram, and never loosens one", async () => {
+    const test = await startTestEngine();
+    const calls = callsOf(test.engine.handlers);
+    const set = (perTradeUsdMicros: bigint) =>
+      calls.call(
+        {
+          op: "limit/set",
+          args: { agent: testAgent, changes: { perTradeUsdMicros } },
+          senderId: ownerId,
+        },
+        live,
+      );
+    const before = expectOk(
+      await calls.call({ op: "limit/get", args: { agent: testAgent }, senderId: ownerId }, live),
+    ).perTradeUsdMicros;
+    const tighter = expectOk(await set(before / 2n));
+    expect([tighter.perTradeUsdMicros, tighter.pending]).toStrictEqual([before / 2n, undefined]);
+    await expect(set(before * 2n)).resolves.toStrictEqual({ ok: false, error: "auth.scope" });
+    expect(test.pushes.filter((push) => push.kind === "notice/new")).toMatchObject([
+      { data: { key: "notice.limitChange", values: { surface: "telegram", pending: "no" } } },
+    ]);
   });
 
   it("freezes every agent as the owner on Telegram, and the notice names Telegram", async () => {
