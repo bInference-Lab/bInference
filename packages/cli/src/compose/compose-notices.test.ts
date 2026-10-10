@@ -1,13 +1,16 @@
 import { BinferenceError } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import type { EngineCaller } from "@binference/engine";
-import { testAgent, testNowMs } from "@binference/engine/testing";
+import {
+  createMemoryCardCopyStore,
+  createMemoryOwnerStore,
+  testAgent,
+  testNowMs,
+} from "@binference/engine/testing";
 import { createFormatter, messages } from "@binference/i18n";
 import { issueStartCode } from "@binference/telegram";
 import {
   createFakeBotApi,
-  createMemoryCardCopyStore,
-  createMemoryOwnerStore,
   type FakeBotApi,
   fakeBotToken,
   fakeBotUsername,

@@ -71,7 +71,11 @@ export { idempotencyStoreContract } from "./contracts/idempotency-store-contract
 export type { IdempotencyStoreHarness } from "./contracts/idempotency-store-contract.js";
 export { inboxStoreContract } from "./contracts/inbox-store-contract.js";
 export type { InboxStoreHarness } from "./contracts/inbox-store-contract.js";
+export { cardCopyStoreContract } from "./contracts/card-copy-store-contract.js";
+export type { CardCopyStoreHarness } from "./contracts/card-copy-store-contract.js";
 export { noticeStoreContract } from "./contracts/notice-store-contract.js";
+export { ownerStoreContract } from "./contracts/owner-store-contract.js";
+export type { OwnerStoreHarness } from "./contracts/owner-store-contract.js";
 export type { NoticeStoreHarness, NoticeStoreSubject } from "./contracts/notice-store-contract.js";
 export type { IntentStoreSubject } from "./contracts/intent-fixtures.js";
 export { intentStoreContract } from "./contracts/intent-store-contract.js";
@@ -85,12 +89,14 @@ export type {
 } from "./contracts/position-store-contract.js";
 export { createMemoryAccessStore } from "./fakes/memory-access-store.js";
 export { createMemoryAgentStore } from "./fakes/memory-agent-store.js";
+export { createMemoryCardCopyStore } from "./fakes/memory-card-copy-store.js";
 export { createMemoryConfigJournal } from "./fakes/memory-config-journal.js";
 export { createMemoryEngineStores } from "./fakes/memory-engine-stores.js";
 export type { MemoryEngineStores } from "./fakes/memory-engine-stores.js";
 export { createMemoryIdempotencyStore } from "./fakes/memory-idempotency-store.js";
 export { createMemoryInboxStore } from "./fakes/memory-inbox-store.js";
 export { createMemoryNoticeStore } from "./fakes/memory-notice-store.js";
+export { createMemoryOwnerStore } from "./fakes/memory-owner-store.js";
 export type { MemoryNoticeStoreOptions } from "./fakes/memory-notice-store.js";
 export { createMemoryInstallStore } from "./fakes/memory-install-store.js";
 export type { MemoryInstallStore } from "./fakes/memory-install-store.js";

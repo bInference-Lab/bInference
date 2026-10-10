@@ -7,12 +7,11 @@ import {
   type Logger,
 } from "@binference/core";
 import type { NoticeDelivery, NoticeStore } from "@binference/engine/notices";
-import { noticeText } from "@binference/engine/surfaces";
+import { noticeText, type OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
-import type { OwnerStore } from "../ports.js";
 import { splitText } from "../split/split-text.js";
 import { backoffAfter, type DeliveryFate, deliveryFateOf } from "./delivery-fate.js";
 

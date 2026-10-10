@@ -5,6 +5,7 @@ import { type Notice, noticeText } from "@binference/engine/surfaces";
 import {
   createMemoryAgentStore,
   createMemoryNoticeStore,
+  createMemoryOwnerStore,
   testAgent,
   testAgentDraft,
 } from "@binference/engine/testing";
@@ -13,7 +14,6 @@ import { parseMessage } from "@binference/i18n/check";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
 import { testChains } from "../commands/test-command-bot.js";
-import { createMemoryOwnerStore } from "../fakes/memory-owner-store.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
 import { ownerId } from "../testing/update-fixtures.js";
 import { createNoticeOutbox } from "./create-notice-outbox.js";

@@ -1,5 +1,10 @@
 import { err, type Id, ok } from "@binference/core";
-import type { CardCopy, CardCopyStore, OwnerBinding, OwnerStore } from "@binference/telegram";
+import type {
+  CardCopy,
+  CardCopyStore,
+  OwnerBinding,
+  OwnerStore,
+} from "@binference/engine/surfaces";
 
 /** The owner's bot's stores for one run of the engine. */
 export interface RunBotStores {

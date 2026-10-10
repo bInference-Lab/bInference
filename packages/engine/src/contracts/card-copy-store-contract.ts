@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { type Id, idSchema } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import type { CardCopy } from "../cards/card-copy.js";
-import type { CardCopyStore } from "../ports.js";
+import type { CardCopy } from "../surfaces/card-copy.js";
+import type { CardCopyStore } from "../surfaces/ports.js";
 
 /** Makes a fresh, empty card copy store for each check. */
 export interface CardCopyStoreHarness {

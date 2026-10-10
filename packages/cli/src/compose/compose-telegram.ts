@@ -2,22 +2,22 @@ import type { ChainRegistry } from "@binference/chain";
 import type { Clock, Logger } from "@binference/core";
 import type { AnswerCard, EngineStores } from "@binference/engine";
 import {
+  type CardCopyStore,
   createCardPresses,
   createCardShowings,
   createOwnerCalls,
   type EngineHandlerTable,
+  type OwnerStore,
 } from "@binference/engine/surfaces";
 import type { OwnerInfo } from "@binference/protocol";
 import {
   type CardAnswers,
-  type CardCopyStore,
   createFastCommands,
   createNoticeOutbox,
   createTelegramCards,
   createTelegramIngress,
   type FastCommands,
   type OwnerCalls,
-  type OwnerStore,
   type TelegramCards,
   type TelegramIngress,
 } from "@binference/telegram";

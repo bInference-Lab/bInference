@@ -4,11 +4,14 @@ import {
   createMemoryLogger,
   createSeededRandom,
 } from "@binference/core/testing";
-import { createMemoryAccessStore, createMemoryInboxStore } from "@binference/engine/testing";
+import {
+  createMemoryAccessStore,
+  createMemoryInboxStore,
+  createMemoryOwnerStore,
+} from "@binference/engine/testing";
 import { type MessageLocale, messages } from "@binference/i18n";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
-import { createMemoryOwnerStore } from "../fakes/memory-owner-store.js";
 import { issueStartCode, startCodeLifetimeMs } from "../pairing/start-code.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
 import { ownerId, pressUpdate, strangerId, textUpdate } from "../testing/update-fixtures.js";

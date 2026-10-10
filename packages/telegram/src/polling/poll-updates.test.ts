@@ -5,10 +5,13 @@ import {
   createSeededRandom,
 } from "@binference/core/testing";
 import type { InboxStore } from "@binference/engine";
-import { createMemoryAccessStore, createMemoryInboxStore } from "@binference/engine/testing";
+import {
+  createMemoryAccessStore,
+  createMemoryInboxStore,
+  createMemoryOwnerStore,
+} from "@binference/engine/testing";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
-import { createMemoryOwnerStore } from "../fakes/memory-owner-store.js";
 import { createTelegramIngress, type UpdateIntake } from "../ingress/create-telegram-ingress.js";
 import type { OwnerUpdate } from "../ingress/decide-update.js";
 import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";

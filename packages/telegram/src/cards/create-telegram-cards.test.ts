@@ -2,13 +2,16 @@ import type { JsonValue } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import { type CardFacts, checkReasons, drawCard } from "@binference/engine";
 import type { PaperReceipt } from "@binference/engine/surfaces";
-import { createMemoryAccessStore, createMemoryInboxStore } from "@binference/engine/testing";
+import {
+  createMemoryAccessStore,
+  createMemoryCardCopyStore,
+  createMemoryInboxStore,
+  createMemoryOwnerStore,
+} from "@binference/engine/testing";
 import { messages } from "@binference/i18n";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
 import { createFakeCardAnswers } from "../fakes/fake-card-answers.js";
-import { createMemoryCardCopyStore } from "../fakes/memory-card-copy-store.js";
-import { createMemoryOwnerStore } from "../fakes/memory-owner-store.js";
 import { createTelegramIngress } from "../ingress/create-telegram-ingress.js";
 import type { CardAnswers } from "../ports.js";
 import {

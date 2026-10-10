@@ -1,19 +1,21 @@
 import { BinferenceError, err, type Logger, ok, type Result } from "@binference/core";
 import type {
+  CardCopy,
+  CardCopyStore,
   CardSettling,
   CardShowing as DrawnCard,
   CardStanding,
+  OwnerStore,
 } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
 import type { Api } from "grammy";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
-import type { CardAnswers, CardCopyStore, OwnerStore } from "../ports.js";
+import type { CardAnswers } from "../ports.js";
 import type { ButtonPress } from "../updates/chat-update.schema.js";
 import { cardCallbackData, cardCallbackSchema } from "./card-callback.schema.js";
 import { type CardCalls, createCardCalls, type MessageAt } from "./card-calls.js";
-import type { CardCopy } from "./card-copy.js";
 import { type CardDisplay, cardHtml, receiptHtml } from "./card-html.js";
 
 /** One card version to show in the owner's Telegram chat, as the engine draws it. */

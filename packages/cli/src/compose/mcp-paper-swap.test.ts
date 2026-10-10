@@ -3,6 +3,8 @@ import { BinferenceError, type Id } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
 import { walkLedgerChain } from "@binference/engine";
 import {
+  createMemoryCardCopyStore,
+  createMemoryOwnerStore,
   testAgent as agent,
   testCoin as coin,
   testNowMs as nowMs,
@@ -11,13 +13,7 @@ import {
 } from "@binference/engine/testing";
 import { createMcpServer } from "@binference/mcp";
 import { createBotThrottlers } from "@binference/telegram";
-import {
-  createFakeBotApi,
-  createMemoryCardCopyStore,
-  createMemoryOwnerStore,
-  type FakeBotApi,
-  fakeBotToken,
-} from "@binference/telegram/testing";
+import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { Api } from "grammy";

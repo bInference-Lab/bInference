@@ -25,26 +25,24 @@ the owner's language.
 
 ## API
 
-| Export                             | What it does                                                                   |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| `createTelegramIngress`            | Screens and stores each update, then handles it; `resume` handles what is left |
-| `UpdateIntake`                     | Where updates come in: long polling and a webhook relay both feed it           |
-| `runPolling`                       | Long-polls one bot from a worker thread, under the token's lease               |
-| `createBotApiFetch`                | grammY's `fetch` over the Http port, so every Bot API call names binference    |
-| `createPollerLeases`               | One poller per bot token in the process                                        |
-| `openPollWorker`, `pollWorker`     | The poll worker thread and its entry                                           |
-| `checkBotToken`, `BotAccount`      | Checks a bot token with `getMe` and answers the bot it opens                   |
-| `issueStartCode`                   | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored    |
-| `OwnerStore`, `ownerBindingSchema` | Which Telegram user owns the install                                           |
-| `OwnerUpdate`, `ChatUpdate`        | Updates in binference's own shape                                              |
-| `createBotThrottlers`              | One throttler per bot token, installed on every grammY `Api` of the token      |
-| `createTelegramCards`              | Shows card versions, settles them into receipts, takes the owner's presses     |
-| `CardAnswers`                      | The engine's side of a card press: checks the presser, stores the answer first |
-| `CardCopyStore`, `cardCopySchema`  | Where each card version was posted, so every copy can become the receipt       |
-| `createFastCommands`               | Answers the owner's fast commands without a model and registers their menu     |
-| `OwnerCalls`                       | The engine's side of a fast command: runs its operations for the owner alone   |
-| `createNoticeOutbox`               | Sends the engine's notices from the outbox to the owner's chat, never twice    |
-| `@binference/telegram/testing`     | Contract suites and fakes of the ports, and `createFakeBotApi`                 |
+| Export                         | What it does                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------ |
+| `createTelegramIngress`        | Screens and stores each update, then handles it; `resume` handles what is left |
+| `UpdateIntake`                 | Where updates come in: long polling and a webhook relay both feed it           |
+| `runPolling`                   | Long-polls one bot from a worker thread, under the token's lease               |
+| `createBotApiFetch`            | grammY's `fetch` over the Http port, so every Bot API call names binference    |
+| `createPollerLeases`           | One poller per bot token in the process                                        |
+| `openPollWorker`, `pollWorker` | The poll worker thread and its entry                                           |
+| `checkBotToken`, `BotAccount`  | Checks a bot token with `getMe` and answers the bot it opens                   |
+| `issueStartCode`               | A single-use `t.me/<bot>?start=<code>` link; only the code's hash is stored    |
+| `OwnerUpdate`, `ChatUpdate`    | Updates in binference's own shape                                              |
+| `createBotThrottlers`          | One throttler per bot token, installed on every grammY `Api` of the token      |
+| `createTelegramCards`          | Shows card versions, settles them into receipts, takes the owner's presses     |
+| `CardAnswers`                  | The engine's side of a card press: checks the presser, stores the answer first |
+| `createFastCommands`           | Answers the owner's fast commands without a model and registers their menu     |
+| `OwnerCalls`                   | The engine's side of a fast command: runs its operations for the owner alone   |
+| `createNoticeOutbox`           | Sends the engine's notices from the outbox to the owner's chat, never twice    |
+| `@binference/telegram/testing` | Contract suites and fakes of the ports, and `createFakeBotApi`                 |
 
 `createFakeBotApi` is a synthetic Bot API for tests: updates in, messages, edits and button
 answers out, with Telegram's checks on HTML, lengths and callback data.

@@ -1,6 +1,8 @@
 import { BinferenceError, type Id } from "@binference/core";
 import type { EngineCaller } from "@binference/engine";
 import {
+  createMemoryCardCopyStore,
+  createMemoryOwnerStore,
   testAgent as agent,
   testCoin as coin,
   testToken as token,
@@ -10,8 +12,6 @@ import type { IntentRequest, OwnerInfo } from "@binference/protocol";
 import {
   cardAnswersContract,
   createFakeBotApi,
-  createMemoryCardCopyStore,
-  createMemoryOwnerStore,
   type FakeBotApi,
   fakeBotToken,
 } from "@binference/telegram/testing";

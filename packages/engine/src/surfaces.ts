@@ -43,3 +43,8 @@ export { noticeText } from "./surfaces/notice-text.js";
 export type { NoticeDisplay } from "./surfaces/notice-text.js";
 export { noticeSchema } from "./pushes/notice-push.js";
 export type { Notice, NoticeWire } from "./pushes/notice-push.js";
+export { cardCopySchema } from "./surfaces/card-copy.js";
+export type { CardCopy } from "./surfaces/card-copy.js";
+export { ownerBindingSchema } from "./surfaces/owner-binding.js";
+export type { OwnerBinding } from "./surfaces/owner-binding.js";
+export type { CardCopyStore, OwnerStore } from "./surfaces/ports.js";

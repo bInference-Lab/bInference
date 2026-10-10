@@ -1,5 +1,5 @@
-import type { CardCopy } from "../cards/card-copy.js";
-import type { CardCopyStore } from "../ports.js";
+import type { CardCopy } from "../surfaces/card-copy.js";
+import type { CardCopyStore } from "../surfaces/ports.js";
 
 function sameMessage(left: CardCopy, right: CardCopy): boolean {
   return left.chatId === right.chatId && left.messageId === right.messageId;

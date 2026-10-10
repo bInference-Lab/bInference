@@ -1,5 +1,5 @@
 import { idSchema } from "@binference/core";
-import { cardCopyStoreContract, ownerStoreContract } from "@binference/telegram/testing";
+import { cardCopyStoreContract, ownerStoreContract } from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
 import { createRunBotStores } from "./run-bot-stores.js";
 

@@ -1,7 +1,7 @@
 import type { Clock, Logger } from "@binference/core";
 import type { AccessStore } from "@binference/engine";
+import type { OwnerStore } from "@binference/engine/surfaces";
 import { startCodeHash } from "../pairing/start-code.js";
-import type { OwnerStore } from "../ports.js";
 import type { BotCalls } from "./bot-calls.js";
 import type { OwnerUpdate, ReplyTarget, UpdateAction } from "./decide-update.js";
 

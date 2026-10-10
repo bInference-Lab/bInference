@@ -8,14 +8,17 @@ import type { JsonValue } from "@binference/core";
 import { createManualClock, createMemoryLogger, type MemoryLogger } from "@binference/core/testing";
 import { drawCard } from "@binference/engine";
 import { createOwnerCalls, type OwnerChatHandlers } from "@binference/engine/surfaces";
-import { createMemoryAccessStore, createMemoryInboxStore } from "@binference/engine/testing";
+import {
+  createMemoryAccessStore,
+  createMemoryCardCopyStore,
+  createMemoryInboxStore,
+  createMemoryOwnerStore,
+} from "@binference/engine/testing";
 import type { MessageLocale } from "@binference/i18n";
 import { Api } from "grammy";
 import type { CardShowing } from "../cards/create-telegram-cards.js";
 import { createTelegramCards } from "../cards/create-telegram-cards.js";
 import { createFakeCardAnswers, type FakeCardAnswers } from "../fakes/fake-card-answers.js";
-import { createMemoryCardCopyStore } from "../fakes/memory-card-copy-store.js";
-import { createMemoryOwnerStore } from "../fakes/memory-owner-store.js";
 import { createTelegramIngress } from "../ingress/create-telegram-ingress.js";
 import type { OwnerUpdate } from "../ingress/decide-update.js";
 import { assetsWith, cardIntent, swapFacts } from "../testing/card-fixtures.js";

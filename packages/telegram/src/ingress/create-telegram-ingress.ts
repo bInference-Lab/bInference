@@ -1,9 +1,9 @@
 import { BinferenceError, type Clock, type JsonValue, type Logger } from "@binference/core";
 import type { AccessStore, InboxEntry, InboxStore } from "@binference/engine";
+import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
-import type { OwnerStore } from "../ports.js";
 import { screenUpdate } from "../screening/screen-update.js";
 import { type ChatUpdate, chatUpdateSchema } from "../updates/chat-update.schema.js";
 import type { IngressWords, OwnerUpdateSink } from "./act-on-update.js";

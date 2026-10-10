@@ -1,4 +1,4 @@
-import type { OwnerBinding } from "../owner/owner-binding.js";
+import type { OwnerBinding } from "@binference/engine/surfaces";
 import { startCodeIn } from "../pairing/start-code.js";
 import type {
   BotSender,

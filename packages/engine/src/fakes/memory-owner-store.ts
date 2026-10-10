@@ -1,6 +1,6 @@
 import { err, ok } from "@binference/core";
-import type { OwnerBinding } from "../owner/owner-binding.js";
-import type { OwnerStore } from "../ports.js";
+import type { OwnerBinding } from "../surfaces/owner-binding.js";
+import type { OwnerStore } from "../surfaces/ports.js";
 
 /** Creates an in-memory {@link OwnerStore} with no owner, for tests. */
 export function createMemoryOwnerStore(): OwnerStore {

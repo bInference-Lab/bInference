@@ -1,11 +1,7 @@
 import { BinferenceError } from "@binference/core";
 import type { EngineCaller } from "@binference/engine";
-import {
-  createFakeBotApi,
-  createMemoryCardCopyStore,
-  createMemoryOwnerStore,
-  fakeBotToken,
-} from "@binference/telegram/testing";
+import { createMemoryCardCopyStore, createMemoryOwnerStore } from "@binference/engine/testing";
+import { createFakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
 import { composeSkeleton, skeletonCompositions } from "./test-skeleton.js";

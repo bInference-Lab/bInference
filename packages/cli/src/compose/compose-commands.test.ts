@@ -6,11 +6,15 @@ import {
 } from "@binference/chain";
 import { createFakeFamily, createFakeTxSimulator } from "@binference/chain/testing";
 import { BinferenceError, type JsonValue, ok } from "@binference/core";
-import { testAgent, testCoin, testNowMs } from "@binference/engine/testing";
 import {
-  createFakeBotApi,
   createMemoryCardCopyStore,
   createMemoryOwnerStore,
+  testAgent,
+  testCoin,
+  testNowMs,
+} from "@binference/engine/testing";
+import {
+  createFakeBotApi,
   type FakeBotApi,
   type FakeMessage,
   fakeBotToken,

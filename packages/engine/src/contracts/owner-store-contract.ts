@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
-import type { OwnerStore } from "../ports.js";
+import type { OwnerStore } from "../surfaces/ports.js";
 
 /** Makes a fresh owner store, with no owner, for each check. */
 export interface OwnerStoreHarness {

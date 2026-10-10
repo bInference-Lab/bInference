@@ -4,8 +4,6 @@ export type { BotApiFetch } from "./api/bot-api-fetch.js";
 export type { BotAccount } from "./api/bot-account.schema.js";
 export { checkBotToken } from "./api/check-bot-token.js";
 export type { BotTokenProblem } from "./api/check-bot-token.js";
-export { cardCopySchema } from "./cards/card-copy.js";
-export type { CardCopy } from "./cards/card-copy.js";
 export { createTelegramCards } from "./cards/create-telegram-cards.js";
 export type {
   CardShowing,
@@ -30,8 +28,6 @@ export type {
   OutboxCall,
   OutboxPass,
 } from "./notices/create-notice-outbox.js";
-export { ownerBindingSchema } from "./owner/owner-binding.js";
-export type { OwnerBinding } from "./owner/owner-binding.js";
 export { issueStartCode, startCodeHash, startCodeLifetimeMs } from "./pairing/start-code.js";
 export type { StartCode, StartCodeOptions } from "./pairing/start-code.js";
 export { openPollWorker, pollWorker } from "./polling/open-poll-worker.js";
@@ -40,7 +36,7 @@ export { createPollerLeases } from "./polling/poller-leases.js";
 export type { PollerLease, PollerLeases } from "./polling/poller-leases.js";
 export { runPolling } from "./polling/run-polling.js";
 export type { RunPollingOptions } from "./polling/run-polling.js";
-export type { CardAnswers, CardCopyStore, OwnerCalls, OwnerStore } from "./ports.js";
+export type { CardAnswers, OwnerCalls } from "./ports.js";
 export type { BotThrottlerOptions } from "./throttle/create-bot-throttler.js";
 export { createBotThrottlers } from "./throttle/create-bot-throttlers.js";
 export type { BotThrottlers } from "./throttle/create-bot-throttlers.js";
