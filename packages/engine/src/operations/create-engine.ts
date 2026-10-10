@@ -12,7 +12,7 @@ import {
 } from "../audit/config-history-handlers.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
-import type { CeilingEditor, WalletMaker } from "../install/ports.js";
+import type { CeilingEditor, WalletExporter, WalletMaker } from "../install/ports.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
@@ -97,6 +97,11 @@ export interface EngineOptions {
   readonly ceilings: CeilingEditor;
   /** Makes agent wallets in custody with the owner key. */
   readonly walletMaker: WalletMaker;
+  /**
+   * Custody's export of a wallet's key, sealed to the CLI's recipient key; none where custody
+   * exports no key through the engine.
+   */
+  readonly exporter?: WalletExporter;
   readonly prices: PriceSource;
   /** The wallets' live facts; a paper intent's balance comes from the paper portfolio. */
   readonly wallets: WalletFactsSource;
@@ -180,6 +185,7 @@ function settingsHandlers(
     custody: options.custody,
     ceilings: options.ceilings,
     maker: options.walletMaker,
+    ...(options.exporter === undefined ? {} : { exporter: options.exporter }),
     journal: stores.configJournal,
     chains,
     clock: options.clock,

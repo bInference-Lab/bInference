@@ -34,7 +34,7 @@ import {
 } from "../fakes/memory-engine-stores.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
-import type { CeilingEditor } from "../install/ports.js";
+import type { CeilingEditor, WalletExporter } from "../install/ports.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 import {
   testAgent,
@@ -107,6 +107,8 @@ export interface TestEngineOptions {
   readonly risk?: RiskCheck;
   /** The ceilings the owner key changes; a fake holding none when absent. */
   readonly ceilings?: CeilingEditor;
+  /** Custody's export of a wallet's key; none when absent. */
+  readonly exporter?: WalletExporter;
   /** Runs a rescue's sends; one under which every send reverts when absent. */
   readonly chainSimulator?: TxSimulator;
   /** What each account holds, as the wallet facts read it live; nothing when absent. */
@@ -232,6 +234,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     positions,
     custody,
     ceilings: options.ceilings ?? ceilings,
+    ...(options.exporter === undefined ? {} : { exporter: options.exporter }),
     walletMaker,
     prices: createFakePriceSource(
       options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),

@@ -145,6 +145,9 @@ Rules for this package:
   `limit.venue_in_use`. Each wallet's stored copy of its ceiling is read back through
   `InstallStore.updateCeiling`, which `limit/set` checks venues against; a change that moved one is
   journaled, pushed as `config/changed`, and announced as `notice.ceilingChange`.
+- A wallet's key leaves custody only through `wallet/exportSealed`, a read over IPC with the owner
+  key (decision 0131): custody seals it with HPKE to the recipient key the CLI made, and the engine
+  passes the sealed key on and keeps it nowhere, not in the idempotency store either.
 - A freeze (`src/safety/freeze-agents.ts`, `safety/freeze`) is one write of the intent store's
   `freeze`: each agent marked frozen, keeping the time of an earlier freeze, and each unsigned
   intent of theirs moved to `cancelled` by the state machine, a rescue excepted (decision 0099),

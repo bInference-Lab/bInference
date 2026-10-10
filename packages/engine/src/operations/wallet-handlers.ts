@@ -3,19 +3,21 @@ import { err, type Ok, ok, type Result } from "@binference/core";
 import type { WalletView } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
 import type { EngineHandler } from "./engine-call.js";
+import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
 import { makeWallet, type MakeWalletOptions } from "./make-wallet.js";
 
 /** The handlers of the agent wallets (protocol spec, section 7.2). */
 export interface WalletHandlers {
   readonly "wallet/list": EngineHandler<"wallet/list">;
   readonly "wallet/create": EngineHandler<"wallet/create">;
+  readonly "wallet/exportSealed": EngineHandler<"wallet/exportSealed">;
 }
 
 /**
  * What the wallet handlers read and write: the agents, the install's wallets, custody for each
  * account, and what making a wallet asks custody and journals through.
  */
-export interface WalletHandlersOptions extends MakeWalletOptions {
+export interface WalletHandlersOptions extends MakeWalletOptions, ExportWalletOptions {
   readonly custody: Signer;
   readonly chains: ChainRegistry;
 }
@@ -55,11 +57,13 @@ async function viewOf(
  * the first registered chain where custody holds it. An unknown agent is `agent.not_found`; a
  * stored wallet custody holds on no chain fails the call with `wallet.custody_down`, so no wallet
  * is ever shown without the address custody signs for. `wallet/create` makes a wallet with the
- * owner key (see {@link makeWallet}).
+ * owner key (see {@link makeWallet}), and `wallet/exportSealed` exports one's key sealed to the
+ * caller's recipient key (see {@link exportWallet}).
  */
 export function createWalletHandlers(options: WalletHandlersOptions): WalletHandlers {
   return {
     "wallet/create": async (call) => makeWallet(options, call),
+    "wallet/exportSealed": async (call) => exportWallet(options, call),
     async "wallet/list"({ args, signal }) {
       if (
         args.agent !== undefined &&

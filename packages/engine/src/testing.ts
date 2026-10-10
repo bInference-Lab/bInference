@@ -5,6 +5,12 @@ export type {
 } from "./contracts/bot-update-source-contract.js";
 export { ceilingEditorContract } from "./contracts/ceiling-editor-contract.js";
 export { walletMakerContract } from "./contracts/wallet-maker-contract.js";
+export { walletExporterContract } from "./contracts/wallet-exporter-contract.js";
+export type {
+  ExportRecipient,
+  WalletExporterHarness,
+  WalletExporterSubject,
+} from "./contracts/wallet-exporter-contract.js";
 export type { WalletMakerHarness, WalletMakerSubject } from "./contracts/wallet-maker-contract.js";
 export type {
   CeilingEditorHarness,
@@ -36,6 +42,12 @@ export type {
   FakeCeilingEditorOptions,
 } from "./fakes/fake-ceiling-editor.js";
 export { createFakeWalletMaker } from "./fakes/fake-wallet-maker.js";
+export {
+  createFakeSeal,
+  createFakeWalletExporter,
+  fakeRecipient,
+} from "./fakes/fake-wallet-exporter.js";
+export type { FakeSeal, FakeWalletExporterOptions } from "./fakes/fake-wallet-exporter.js";
 export type { FakeWalletMaker, FakeWalletMakerOptions } from "./fakes/fake-wallet-maker.js";
 export { createFakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export type { FakeConfirmationStore } from "./fakes/fake-confirmation-store.js";

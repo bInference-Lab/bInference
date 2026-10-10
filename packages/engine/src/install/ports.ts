@@ -9,6 +9,7 @@ import type {
   SignedChangeRefusal,
   SignRecipientsRequest,
 } from "./ceiling-change.js";
+import type { ExportRefusal, ExportRequest, SealedKey } from "./wallet-export.js";
 import type { MadeWallet, WalletRefusal, WalletRequest } from "./wallet-request.js";
 
 /** What every call on custody's ceilings and wallet maker takes. */
@@ -75,4 +76,21 @@ export interface WalletMaker {
    * is a fault.
    */
   make(request: WalletRequest, options: CustodyCall): Promise<Result<MadeWallet, WalletRefusal>>;
+}
+
+/**
+ * Exports an agent wallet's private key from custody sealed to a recipient key (spec 5, section
+ * 6; decision 0131): custody encrypts the key with HPKE to the recipient's public key, so only the
+ * process that holds its private half, the CLI, opens it. The owner key authorizes each export.
+ * Adapter: the owner's Privy app. Neither the owner key nor the sealed key is kept.
+ */
+export interface WalletExporter {
+  /**
+   * The wallet's private key sealed to the request's recipient key, exported once. A refusal
+   * exports nothing.
+   */
+  exportSealed(
+    request: ExportRequest,
+    options: CustodyCall,
+  ): Promise<Result<SealedKey, ExportRefusal>>;
 }
