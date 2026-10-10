@@ -33,7 +33,7 @@ import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { ceilingRequestOf } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
-import { gweiToWei } from "./compose-executor.js";
+import { gweiToWei } from "./chain-reads.js";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";

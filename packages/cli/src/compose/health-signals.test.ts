@@ -22,46 +22,37 @@ describe("the health signals", () => {
     expect(memoryState(bytes)).toBe(state);
   });
 
-  it("reports the loop, the memory, the log file and each missing part as failed", () => {
+  it("reports the loop, the memory and the log file, then each part's own state", () => {
     const state = { failed: false };
+    const rpc = { state: "ok" as "ok" | "warn" | "fail" };
     const probe = startHealthProbe({
-      missing: ["custody", "prices"],
+      parts: [
+        { signal: "executor", state: () => "ok" },
+        { signal: "rpc", state: () => rpc.state },
+      ],
       logFailed: () => state.failed,
     });
     const first = probe.read();
     state.failed = true;
+    rpc.state = "fail";
     const second = probe.read();
     probe.stop();
     expect(first.map((signal) => signal.signal)).toStrictEqual([
       "event_loop",
       "memory",
       "logs",
-      "custody",
-      "prices",
+      "executor",
+      "rpc",
     ]);
     expect(first.slice(2)).toStrictEqual([
       { signal: "logs", state: "ok" },
-      { signal: "custody", state: "fail" },
-      { signal: "prices", state: "fail" },
-    ]);
-    expect(second[2]).toStrictEqual({ signal: "logs", state: "warn" });
-  });
-
-  it("reads each part's own state after the log file, before the missing parts", () => {
-    const executor = { state: "ok" as "ok" | "warn" | "fail" };
-    const probe = startHealthProbe({
-      missing: ["custody"],
-      parts: [{ signal: "executor", state: () => executor.state }],
-      logFailed: () => false,
-    });
-    const first = probe.read();
-    executor.state = "fail";
-    const second = probe.read();
-    probe.stop();
-    expect(first.slice(3)).toStrictEqual([
       { signal: "executor", state: "ok" },
-      { signal: "custody", state: "fail" },
+      { signal: "rpc", state: "ok" },
     ]);
-    expect(second[3]).toStrictEqual({ signal: "executor", state: "fail" });
+    expect(second.slice(2)).toStrictEqual([
+      { signal: "logs", state: "warn" },
+      { signal: "executor", state: "ok" },
+      { signal: "rpc", state: "fail" },
+    ]);
   });
 });

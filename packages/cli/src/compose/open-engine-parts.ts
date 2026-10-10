@@ -1,17 +1,20 @@
 import {
   type ChainRef,
   type ChainRegistry,
+  chainRefSchema,
   createChainRegistry,
+  type PriceFeedDefinition,
   type Venue,
 } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
-import { bsc } from "@binference/chains";
+import { bsc, bscPriceFeeds } from "@binference/chains";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
-import type { EngineStores, RiskCacheStore } from "@binference/engine";
+import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
 import { ensurePrivateFolder, openLogFile, type Platform } from "@binference/platform";
 import type { ProtocolServer, ServerAddress } from "@binference/server";
 import {
   createSqliteEngineStores,
+  createSqlitePositionStore,
   createSqliteRiskCacheStore,
   engineWorker,
   openDatabase,
@@ -103,9 +106,11 @@ export async function openEngineLog(opening: Opening, settings: ConfigCell): Pro
   return { logger, file, hasFailed: () => state.failed };
 }
 
-/** The store ports on `engine.sqlite`: the engine's, and the risk step's cache. */
+/** The store ports on `engine.sqlite`: the engine's, the risk step's cache and the positions. */
 export interface OpenedStores extends EngineStores {
   readonly riskCache: RiskCacheStore;
+  /** Executions, arrivals, departures and the positions they move, paper and live. */
+  readonly positions: PositionStore;
 }
 
 /**
@@ -133,6 +138,7 @@ export async function openEngineStores(
   return {
     ...createSqliteEngineStores(database),
     riskCache: createSqliteRiskCacheStore(database),
+    positions: createSqlitePositionStore(database),
   };
 }
 
@@ -143,6 +149,11 @@ export function selfHostedChains(): ChainRegistry {
     families: [createEvmFamily()],
     signingSchemes: [createEvmSigningScheme()],
   });
+}
+
+/** The Chainlink feeds of each chain this binference serves, as the registry names them. */
+export function selfHostedFeeds(): ReadonlyMap<ChainRef, readonly PriceFeedDefinition[]> {
+  return new Map([[chainRefSchema.parse(bsc.id), bscPriceFeeds]]);
 }
 
 /**

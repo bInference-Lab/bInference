@@ -19,8 +19,9 @@ Rules for this package:
   once (calls answer `engine.starting`), opens the keys, recovers, and turns `ready`. Each part it
   opens adds its closer, so a start that fails part way closes what it opened, and the shutdown
   sequence closes the parts in the reverse order: a part that must close before another, such as
-  the executor before the store, opens after it. A part without an adapter is a missing part (`createMissingParts`): it
-  refuses, never fakes a balance, a price or a signature, and shows as a failed health signal.
+  the executor before the store, opens after it. Every part that reads a chain (prices, wallet
+  facts, the simulators, the executor) shares the chain's one RPC failover from
+  `composeChainReads`, so they share its endpoints' health, which the `rpc` signal shows.
 - Commands live in `src/commands/`, one file each, and run on a `CliHost`, never on `process`
   directly: only `src/main.ts` reads `process`. Every command takes `--json` and `--yes`; people
   get messages from the i18n `cli` area through `CliOutput`, scripts get JSON. Log lines and JSON

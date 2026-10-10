@@ -7,18 +7,17 @@ import {
   createScriptedHttp,
   createSeededRandom,
 } from "@binference/core/testing";
-import { createMemoryEngineStores } from "@binference/engine/testing";
+import {
+  createFakePriceSource,
+  createFakeWalletFacts,
+  createMemoryEngineStores,
+  createMemoryPositionStore,
+} from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
-import {
-  composeExecutor,
-  gweiToWei,
-  nonceRouterOf,
-  relayEndpointsOf,
-  rpcEndpointsOf,
-} from "./compose-executor.js";
+import { composeChainReads } from "./chain-reads.js";
+import { composeExecutor, nonceRouterOf, relayEndpointsOf } from "./compose-executor.js";
 import { createCustodyCell } from "./custody-cell.js";
-import { createMissingParts } from "./missing-parts.js";
 import { selfHostedChains } from "./open-engine-parts.js";
 
 const chains = selfHostedChains();
@@ -40,17 +39,25 @@ const config: ChainsConfig = {
 };
 
 function composeWith(chainsConfig: ChainsConfig) {
-  const parts = createMissingParts();
+  const http = createScriptedHttp([]);
+  const clock = createManualClock();
   return composeExecutor({
     stores: createMemoryEngineStores(),
-    positions: parts.positions,
+    positions: createMemoryPositionStore(),
     custody: createCustodyCell().signer,
-    wallets: parts.wallets,
-    prices: parts.prices,
+    wallets: createFakeWalletFacts(new Map(), {
+      nativeBalanceBase: 0n,
+      ceilingPerTxNativeBase: 0n,
+      feePerGasNativeBase: 0n,
+      networkFeeCapNativeBase: 0n,
+      recentOutflows: [],
+    }),
+    prices: createFakePriceSource(new Map()),
     chains,
-    config: chainsConfig,
-    http: createScriptedHttp([]),
-    clock: createManualClock(),
+    reads: composeChainReads({ chains, config: chainsConfig, http, clock }),
+    relays: chainsConfig.relays,
+    http,
+    clock,
     random: createSeededRandom(1),
     publish: () => undefined,
     logger: createMemoryLogger({ subsystem: "engine" }),
@@ -58,21 +65,6 @@ function composeWith(chainsConfig: ChainsConfig) {
 }
 
 describe("the self-hosted executor", () => {
-  it.each([
-    ["1", 1_000_000_000n],
-    ["0.05", 50_000_000n],
-    ["2.5", 2_500_000_000n],
-    ["0.000000001", 1n],
-  ])("reads a fee cap of %s gwei as %d wei", (gwei, wei) => {
-    expect(gweiToWei(gwei, bscRef)).toBe(wei);
-  });
-
-  it.each(["0.0000000001", "1e9", "-1", ""])("refuses %j as a fee cap in gwei", (gwei) => {
-    expect(() => gweiToWei(gwei, bscRef)).toThrow(
-      expect.objectContaining({ code: "cli.bad_fee_cap" }),
-    );
-  });
-
   it("sends to every relay the chain lists until config names some", () => {
     const chain = bscChain;
     expect(relayEndpointsOf(chain, undefined).map(({ name }) => name)).toStrictEqual([
@@ -90,16 +82,6 @@ describe("the self-hosted executor", () => {
     expect(() => relayEndpointsOf(bscChain, [entry])).toThrow(
       expect.objectContaining({ code: "cli.unknown_relay" }),
     );
-  });
-
-  it("asks config's RPCs before the chain's public ones", () => {
-    const endpoints = rpcEndpointsOf(bsc, { urls: ["https://node.example.org"] });
-    expect(endpoints.map(({ name }) => name)).toStrictEqual([
-      "config-1",
-      "bnbchain-dataseed",
-      "bnbchain-dataseed-public",
-    ]);
-    expect(rpcEndpointsOf(bsc, undefined)).toHaveLength(2);
   });
 
   it("builds the executor with a healthy signal, and refuses a chain with no fee cap", async () => {

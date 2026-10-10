@@ -6,7 +6,7 @@ export type HealthSignal = ResultOf<"engine/status">["health"][number];
 
 /** What the engine's health signals read. */
 export interface HealthProbe {
-  /** The signals now: event-loop lag since the last read, memory, and each missing part. */
+  /** The signals now: event-loop lag since the last read, memory, the log file and each part. */
   read(): readonly HealthSignal[];
   /** Stops measuring the event loop. */
   stop(): void;
@@ -14,10 +14,8 @@ export interface HealthProbe {
 
 /** What the probe reports besides what it measures itself. */
 export interface HealthProbeOptions {
-  /** Parts with no adapter yet, each reported as failed. */
-  readonly missing: readonly string[];
   /** Parts that report their own state, such as the executor, read at each read. */
-  readonly parts?: readonly { readonly signal: string; readonly state: () => SignalState }[];
+  readonly parts: readonly { readonly signal: string; readonly state: () => SignalState }[];
   /** Whether the log file lost lines since the engine started. */
   readonly logFailed: () => boolean;
 }
@@ -50,8 +48,7 @@ const nanosPerMs = 1_000_000;
 
 /**
  * Starts measuring the event loop's delay. Each read reports the 99th percentile of the delay
- * since the read before, the resident memory, the log file, each part's own state, and every
- * missing part as failed.
+ * since the read before, the resident memory, the log file and each part's own state.
  */
 export function startHealthProbe(options: HealthProbeOptions): HealthProbe {
   const delay = monitorEventLoopDelay({ resolution: 20 });
@@ -64,11 +61,10 @@ export function startHealthProbe(options: HealthProbeOptions): HealthProbe {
         { signal: "event_loop", state: lagState(lagMs) },
         { signal: "memory", state: memoryState(process.memoryUsage().rss) },
         { signal: "logs", state: options.logFailed() ? "warn" : "ok" },
-        ...(options.parts ?? []).map((part): HealthSignal => ({
+        ...options.parts.map((part): HealthSignal => ({
           signal: part.signal,
           state: part.state(),
         })),
-        ...options.missing.map((part): HealthSignal => ({ signal: part, state: "fail" })),
       ];
     },
     stop: () => delay.disable(),

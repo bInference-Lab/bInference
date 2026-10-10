@@ -97,19 +97,13 @@ describe("binference start, status, health and logs end to end", () => {
         "logs",
         "executor",
         "custody",
-        "prices",
-        "wallets",
-        "simulator",
-        "positions",
+        "rpc",
       ]);
       expect(answer.health.slice(2)).toStrictEqual([
         { signal: "logs", state: "ok" },
         { signal: "executor", state: "ok" },
         { signal: "custody", state: "fail" },
-        { signal: "prices", state: "fail" },
-        { signal: "wallets", state: "fail" },
-        { signal: "simulator", state: "fail" },
-        { signal: "positions", state: "fail" },
+        { signal: "rpc", state: "ok" },
       ]);
 
       const people = await run(machine, ["status"]);

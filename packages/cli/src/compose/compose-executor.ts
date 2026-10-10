@@ -1,6 +1,5 @@
 import {
   accountRefParts,
-  type ChainDefinition,
   type ChainRef,
   type ChainRegistry,
   type NonceSource,
@@ -14,8 +13,6 @@ import {
   createEvmRelaySender,
   createEvmTxPreparer,
   createRpcFailover,
-  evmChainOf,
-  evmFamilyId,
   type RpcEndpoint,
 } from "@binference/chain-evm";
 import {
@@ -38,7 +35,8 @@ import {
   type RunningExecutor,
 } from "@binference/engine/executor";
 import { createWalletQueue } from "@binference/engine/wallet-queue";
-import type { ChainsConfig, RpcConfig } from "../config/schema/chains-venues.schema.js";
+import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
+import type { ChainReads } from "./chain-reads.js";
 import type { HealthSignal } from "./health-signals.js";
 import { createRelayHealth, type RelayHealth } from "./relay-health.js";
 
@@ -58,10 +56,13 @@ export interface ComposeExecutorOptions {
   readonly wallets: WalletFactsSource;
   readonly prices: PriceSource;
   readonly chains: ChainRegistry;
-  readonly config: ChainsConfig;
+  /** Each enabled chain's RPC failover and network fee cap. */
+  readonly reads: ReadonlyMap<ChainRef, ChainReads>;
+  /** The relays config names for each chain; every relay the chain lists when it names none. */
+  readonly relays: ChainsConfig["relays"];
   /** The owner's tracing RPC of each chain that has one (decision 0108). */
   readonly tracers?: ReadonlyMap<ChainRef, string>;
-  /** Outbound HTTP for the chains' RPCs and relays. */
+  /** Outbound HTTP for the chains' relays and tracing RPCs. */
   readonly http: Http;
   readonly clock: Clock;
   readonly random: Random;
@@ -69,39 +70,14 @@ export interface ComposeExecutorOptions {
   readonly logger: Logger;
 }
 
-// A node gets 5 s to answer a read and rests 30 s after a failure; a relay gets 3 s, several BSC
-// blocks, to take a transaction.
-const rpcTimeoutMs = 5_000;
+// A node rests 30 s after a failure; a relay gets 3 s, several BSC blocks, to take a transaction.
 const rpcRestMs = 30_000;
 const relayTimeoutMs = 3_000;
 // A tracer replays a whole transaction, so it gets longer than a read.
 const tracerTimeoutMs = 15_000;
-const gweiText = /^(\d+)(?:\.(\d{1,9}))?$/;
-const weiPerGwei = 1_000_000_000n;
 
 function refuse(code: `cli.${string}`, message: string, chain: ChainRef): BinferenceError {
   return new BinferenceError({ code, message, details: { chain } });
-}
-
-/** A fee cap in gwei, as config writes it, in wei: at most nine decimals. */
-export function gweiToWei(text: string, chain: ChainRef): bigint {
-  const [, whole, fraction = ""] = gweiText.exec(text) ?? [];
-  if (whole === undefined) {
-    throw refuse("cli.bad_fee_cap", `The network fee cap of ${chain} is not gwei.`, chain);
-  }
-  return BigInt(whole) * weiPerGwei + BigInt(fraction.padEnd(9, "0"));
-}
-
-/** The chain's RPCs: those config names first, then the chain's public ones. */
-export function rpcEndpointsOf(
-  definition: ChainDefinition,
-  rpc: RpcConfig | undefined,
-): readonly RpcEndpoint[] {
-  const configured = (rpc?.urls ?? []).map((url, index): RpcEndpoint => ({
-    name: `config-${String(index + 1)}`,
-    url,
-  }));
-  return [...configured, ...definition.rpcs.map(({ name, url }) => ({ name, url }))];
 }
 
 /**
@@ -153,26 +129,13 @@ interface ChainParts {
 }
 
 function chainPartsOf(
-  chain: RegisteredChain,
+  reads: ChainReads,
   options: ComposeExecutorOptions,
   health: RelayHealth,
 ): ChainParts {
-  const { http, clock, config } = options;
-  const { definition } = chain;
-  const evm = evmChainOf(definition);
-  const endpoints = rpcEndpointsOf(definition, config.rpc[chain.ref]);
-  const rpc = createRpcFailover({
-    endpoints,
-    http,
-    clock,
-    timeoutMs: rpcTimeoutMs,
-    restMs: rpcRestMs,
-  });
-  const capText = config.maxFeePerGasGwei[chain.ref];
-  if (capText === undefined) {
-    throw refuse("cli.no_fee_cap", `No network fee cap is set for ${chain.ref}.`, chain.ref);
-  }
-  const relays = relayEndpointsOf(chain, config.relays[chain.ref]);
+  const { http, clock } = options;
+  const { chain, evm, rpc } = reads;
+  const relays = relayEndpointsOf(chain, options.relays[chain.ref]);
   const sender = createEvmRelaySender({
     chain: evm,
     relays,
@@ -182,16 +145,12 @@ function chainPartsOf(
   });
   return {
     sending: {
-      preparer: createEvmTxPreparer({
-        rpc,
-        chain: evm,
-        networkFeeCap: gweiToWei(capText, chain.ref),
-      }),
+      preparer: createEvmTxPreparer({ rpc, chain: evm, networkFeeCap: reads.networkFeeCap }),
       sender: health.watch(chain.ref, sender),
       receipts: createEvmReceiptReader({
         rpc,
         chain: evm,
-        finality: definition.finality,
+        finality: chain.definition.finality,
         ...tracerOf(chain.ref, options),
       }),
     },
@@ -214,20 +173,18 @@ export function nonceRouterOf(sources: ReadonlyMap<ChainRef, NonceSource>): Nonc
 }
 
 /**
- * Builds the executor of a self-hosted engine: for each enabled chain of the EVM family, the RPC
- * failover over config's RPCs and the chain's public ones, the relay sender over every relay the
- * chain lists or config names (all of them until a measurement picks the fastest), the preparer
- * with config's network fee cap, the receipt reader by the chain's finality rule with the owner's
- * tracing RPC when there is one, and the nonce source; the wallet queue over the stored
- * transactions; custody as the composition gives it.
+ * Builds the executor of a self-hosted engine: for each chain the reads hold, the relay sender
+ * over every relay the chain lists or config names (all of them until a measurement picks the
+ * fastest), the preparer with the chain's network fee cap, the receipt reader by the chain's
+ * finality rule with the owner's tracing RPC when there is one, and the nonce source, all over the
+ * chain's one RPC failover; the wallet queue over the stored transactions; custody as the
+ * composition gives it.
  */
 export function composeExecutor(options: ComposeExecutorOptions): ComposedExecutor {
   const health = createRelayHealth();
-  const enabled = options.chains
-    .list()
-    .filter((chain) => chain.definition.family === evmFamilyId)
-    .filter((chain) => options.config.enabled.includes(chain.ref));
-  const parts = new Map(enabled.map((chain) => [chain.ref, chainPartsOf(chain, options, health)]));
+  const parts = new Map(
+    [...options.reads].map(([chain, reads]) => [chain, chainPartsOf(reads, options, health)]),
+  );
   const { stores, clock, random } = options;
   const executor = createExecutor({
     stores,

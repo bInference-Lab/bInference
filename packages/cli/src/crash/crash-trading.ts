@@ -29,6 +29,7 @@ import {
   createMemoryPositionStore,
   createQuoteSimulator,
 } from "@binference/engine/testing";
+import { composeChainReads } from "../compose/chain-reads.js";
 import { composeExecutor } from "../compose/compose-executor.js";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { agent, usdt, wallet } from "../fork/executor-rig.js";
@@ -155,10 +156,17 @@ export function composeCrashTrading(opened: CrashOpened, signing: CrashSigning):
     prices: createFakePriceSource(prices),
     wallets: createFakeWalletFacts(new Map([[agent, [wallet]]]), facts),
   };
+  const reads = composeChainReads({
+    chains: parts.chains,
+    config: config.chains,
+    http: host.http,
+    clock: host.clock,
+  });
   const { executor } = composeExecutor({
     ...parts,
     stores,
-    config: config.chains,
+    reads,
+    relays: config.chains.relays,
     http: host.http,
     clock: host.clock,
     random: host.random,

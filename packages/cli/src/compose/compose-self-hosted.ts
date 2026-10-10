@@ -1,20 +1,30 @@
-import type { ChainRegistry, Signer } from "@binference/chain";
+import type { Amount, ChainRef, ChainRegistry, PriceSource, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
-import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
+import {
+  type Engine,
+  type EnginePush,
+  type PositionStore,
+  signerStoppedNotice,
+  type WalletFactsSource,
+} from "@binference/engine";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
+import { composePrices } from "./chain-prices.js";
+import { type ChainReads, composeChainReads, rpcHealthOf } from "./chain-reads.js";
+import { type ComposedSimulators, composeSimulators } from "./chain-simulators.js";
+import { createChainWalletFacts } from "./chain-wallet-facts.js";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { type ComposeEngineOptions, composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
-import { createMissingParts, type MissingParts } from "./missing-parts.js";
-import type { Opened, Opening } from "./open-engine-parts.js";
+import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { createOwnerLocaleChange } from "./owner-locale-change.js";
+import { paperBalancesOf } from "./paper-balances.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 
 /** The self-hosted engine, built and not yet listening. */
@@ -36,12 +46,42 @@ export interface ComposedSelfHosted {
 
 const loopback = "127.0.0.1";
 
+/** What the self-hosted engine trades on, each part over the chains' one set of reads. */
+interface TradingParts {
+  readonly reads: ReadonlyMap<ChainRef, ChainReads>;
+  /** Chainlink feeds (decision 0059). */
+  readonly prices: PriceSource;
+  /** The install's wallets with their balances, fees and ceilings read on chain. */
+  readonly wallets: WalletFactsSource;
+  /** `eth_simulateV1`, and the engine's simulation check over it. */
+  readonly simulators: ComposedSimulators;
+  /** The positions on `engine.sqlite`. */
+  readonly positions: PositionStore;
+  /** What a paper portfolio starts with: config's `defaults.paper.balances`. */
+  readonly paperBalances: readonly Amount[];
+}
+
+function composeTrading(opening: Opening, opened: Opened): TradingParts {
+  const { clock, http } = opening.host;
+  const { config, stores, chains } = opened;
+  const reads = composeChainReads({ chains, config: config.chains, http, clock });
+  const { install, positions } = stores;
+  return {
+    reads,
+    prices: composePrices(reads, { feeds: selfHostedFeeds(), clock }),
+    wallets: createChainWalletFacts({ install, positions, reads, clock }),
+    simulators: composeSimulators(reads, { chains, clock }),
+    positions,
+    paperBalances: paperBalancesOf(config.defaults.paper.balances, reads),
+  };
+}
+
 // The executor sends through the chains' relays; its pushes reach the engine's once it exists.
 function composeSending(
   opening: Opening,
   opened: Opened,
   context: {
-    readonly parts: MissingParts;
+    readonly parts: TradingParts;
     readonly custody: Signer;
     readonly chains: ChainRegistry;
   },
@@ -58,7 +98,8 @@ function composeSending(
     wallets: parts.wallets,
     prices: parts.prices,
     chains,
-    config: config.chains,
+    reads: parts.reads,
+    relays: config.chains.relays,
     http: host.http,
     clock: host.clock,
     random: host.random,
@@ -74,7 +115,8 @@ function composeSending(
 
 /** What the engine's own operations answer from besides the stores. */
 interface EngineWiring extends Pick<ComposedSelfHosted, "stopper" | "locked"> {
-  readonly missing: MissingParts["missing"];
+  /** The `rpc` health signal: how the chains' RPC endpoints answered. */
+  readonly rpc: () => HealthSignal["state"];
   /** The executor's health signal. */
   readonly executor: () => HealthSignal["state"];
   /** The custody signal: ok while custody is open, failing while the engine is locked. */
@@ -88,10 +130,10 @@ function engineHandlers(
   wiring: EngineWiring,
 ): EngineHandlerTable {
   const probe = startHealthProbe({
-    missing: wiring.missing,
     parts: [
       { signal: "executor", state: wiring.executor },
       { signal: "custody", state: wiring.custody },
+      { signal: "rpc", state: wiring.rpc },
     ],
     logFailed: opened.log.hasFailed,
   });
@@ -122,7 +164,7 @@ function resumeOf(opened: Opened, executor: RunningExecutor) {
 /** The parts the server is built over, before it exists. */
 interface Wiring {
   readonly state: { current: EngineState };
-  readonly parts: MissingParts;
+  readonly parts: TradingParts;
   readonly chains: ChainRegistry;
   readonly custody: ComposedCustody;
   readonly sending: ReturnType<typeof composeSending>;
@@ -138,7 +180,7 @@ interface Wiring {
 function composeParts(opening: Opening, opened: Opened): Wiring {
   const { host, platform } = opening;
   const state: { current: EngineState } = { current: "starting" };
-  const parts = createMissingParts();
+  const parts = composeTrading(opening, opened);
   const { chains } = opened;
   const signerStopped = { run: (): void => undefined };
   const signerRefused = { run: (_notice: SignerRefusalNotice): void => undefined };
@@ -205,11 +247,11 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
     {
       chains: wiring.chains,
       venues: opened.venues,
-      simulator: parts.simulator,
+      simulator: parts.simulators.simulator,
       risk: {
         cache: stores.riskCache,
         cacheTtlMs: config.risk.cacheTtlSec * 1_000,
-        simulator: parts.txSimulator,
+        simulator: parts.simulators.txSimulator,
       },
       wallets: parts.wallets,
       version: host.version,
@@ -219,7 +261,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       isLocked: () => locked.lock.isLocked(),
       ownerChat: ownerChatOf(opening, opened),
       handlers: engineHandlers(opening, opened, {
-        missing: parts.missing,
+        rpc: () => rpcHealthOf(parts.reads, host.clock),
         executor: sending.health,
         custody: () => (custody.cell.isOpen() ? "ok" : "fail"),
         stopper: wiring.stopper,
@@ -230,17 +272,17 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       logger: log.logger,
       executor: sending.executor,
       positions: parts.positions,
-      // No agent holds a wallet until the wallet facts adapter exists, so a paper reset has nowhere
-      // to place the starting balance yet.
-      paperBalances: [],
+      paperBalances: parts.paperBalances,
     },
   );
 }
 
 /**
  * Builds the self-hosted engine on its opened config, log and stores: custody, empty until the
- * lock opens it; the executor over the chains' RPCs and relays; the lock over the install's keys;
- * the engine over the venues and the missing parts; and its protocol server, which answers `engine.starting`
+ * lock opens it; one RPC failover per chain, which the prices, the wallet facts, the simulators and
+ * the executor's reads share; the executor over it and the chains' relays; the lock over the
+ * install's keys; the engine over the venues, those parts and the stored positions; and its
+ * protocol server, which answers `engine.starting`
  * until the startup order ends. A signer that stops by itself locks the engine again, and every
  * surface hears it. Each part adds its closer, so the shutdown sequence closes the server first,
  * then lets the executor finish what it signs and sends, then stops the signer.

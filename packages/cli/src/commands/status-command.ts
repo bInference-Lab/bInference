@@ -13,11 +13,8 @@ const namedSignals: ReadonlySet<string> = new Set([
   "memory",
   "logs",
   "custody",
-  "prices",
-  "wallets",
-  "simulator",
+  "rpc",
   "executor",
-  "positions",
 ]);
 
 /** The name of a health signal in the owner's language, or the signal itself when it has none. */

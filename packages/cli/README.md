@@ -26,13 +26,15 @@ start that found Privy out of reach, the engine retries the step by itself for f
 (decision 0119). The
 executor recovers every unfinished live intent by hash and nonce, and once unlocked takes the
 confirmed intents an earlier run left; a timer runs the engine's settle every minute; then the
-engine is `ready`, or `locked`. The executor (`composeExecutor`) sends live intents through
-every private relay each enabled chain lists or `chains.relays` names, reads through the chain's
-RPCs and `chains.rpc`, and pays at most `chains.maxFeePerGasGwei` without a tap; its health signal
-follows the relays' last answers. A signer that stops while the engine runs locks it again, with
-`notice.signerStopped`. Parts that have no adapter yet (Chainlink prices, the wallet facts, the
-simulator, the stored positions) are missing parts: they refuse every live action and show as
-failed health signals. A stop signal, or `engine/stop` over IPC, runs the
+engine is `ready`, or `locked`. Each enabled chain gets one RPC failover over `chains.rpc` and
+the chain's public RPCs (`composeChainReads`), which every part that reads the chain shares: the
+Chainlink prices, the wallet facts (balances in one Multicall3 call, the fee per gas, the
+ceiling's cap and the day's trades), the `eth_simulateV1` simulator and the executor. The
+executor (`composeExecutor`) sends live intents through every private relay each enabled chain
+lists or `chains.relays` names and pays at most `chains.maxFeePerGasGwei` without a tap; its
+health signal follows the relays' last answers, and the `rpc` signal the RPC endpoints'. Positions
+live in `engine.sqlite`. A signer that stops while the engine runs locks it again, with
+`notice.signerStopped`. A stop signal, or `engine/stop` over IPC, runs the
 shutdown sequence within `engine.shutdownBudgetMs`, which closes the parts in the reverse order:
 the settle timer; server and IPC, so nothing new comes in; the health probe; the executor, which
 lets a signature or a send under way end; the signer; the store, the log and the lock. A second `start` on the same state folder
