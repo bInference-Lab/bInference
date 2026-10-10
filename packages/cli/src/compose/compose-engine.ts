@@ -112,7 +112,7 @@ function joinTelegram(
         stores: parts.stores,
         answer: engine.answer,
         chains,
-        owner: owner(),
+        owner,
         clock,
         logger: logger.child("telegram"),
       });

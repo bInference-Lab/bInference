@@ -26,6 +26,7 @@ import { type ButtonPress, chatUpdateSchema } from "../updates/chat-update.schem
 import { createTelegramCards } from "./create-telegram-cards.js";
 
 const live = { signal: new AbortController().signal };
+const display = () => ({ locale: "en", timeZone: "UTC" }) as const;
 const ref = "q3Zr_x9-AbCdEfGh";
 const nextRef = "Zz9_Yy8-XxWwVvUu";
 const icons = { done: String.fromCodePoint(0x2705), refused: String.fromCodePoint(0x274c) };
@@ -60,7 +61,6 @@ async function setUp(options: { readonly isPaired?: boolean; readonly throttled?
       return standing;
     },
   };
-  const display = { locale: "en", timeZone: "UTC" } as const;
   const cards = createTelegramCards({ api, owners, copies, answers, logger, display });
   const ingress = createTelegramIngress({
     api,
@@ -288,7 +288,6 @@ describe("the Telegram cards", () => {
     };
     const filling = withPaperFill(context.engine, { fill, assets: assetsWith() });
     const { api, copies, logger, botApi } = context;
-    const display = { locale: "en", timeZone: "UTC" } as const;
     const owners = createMemoryOwnerStore();
     await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
     const cards = createTelegramCards({ api, owners, copies, answers: filling, logger, display });

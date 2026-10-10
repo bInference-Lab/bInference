@@ -34,7 +34,7 @@ function startEngine(botApi: FakeBotApi, stores: { inbox: InboxStore }): Engine 
     stores: { ...sharedStores, ...stores },
     clock: createManualClock(1),
     logger: createMemoryLogger({ subsystem: "telegram" }),
-    display: { timeZone: "UTC" },
+    display: () => ({ timeZone: "UTC" }),
     onOwnerUpdate: async (update) => {
       delivered.push(update);
       await Promise.resolve();

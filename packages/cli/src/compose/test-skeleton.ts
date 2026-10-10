@@ -52,7 +52,7 @@ import {
   testWallet,
   testWalletRecord,
 } from "@binference/engine/testing";
-import { type ClientKind, operations } from "@binference/protocol";
+import { type ClientKind, type OwnerInfo, operations } from "@binference/protocol";
 import { WebSocket } from "ws";
 import { sealTo } from "../export/key-recipient.js";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
@@ -219,6 +219,8 @@ export interface SkeletonOptions {
   readonly held?: ReadonlyMap<AccountRef, readonly Amount[]>;
   /** Runs a rescue's sends and the token round trips; nothing runs when left out. */
   readonly chainSimulator?: TxSimulator;
+  /** The owner's language and timezone now; English in UTC when left out. */
+  readonly owner?: () => OwnerInfo;
 }
 
 /**
@@ -260,7 +262,7 @@ export async function composeSkeleton(
     positions,
     paperBalances: [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
-    owner: () => ({ locale: "en", timezone: "UTC" }),
+    owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),
     handlers: createEngineOperations({
       agents: parts.stores.agents,
       version: "2026.10.0",

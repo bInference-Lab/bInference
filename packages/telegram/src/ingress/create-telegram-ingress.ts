@@ -1,7 +1,8 @@
 import { BinferenceError, type Clock, type JsonValue, type Logger } from "@binference/core";
 import type { AccessStore, InboxEntry, InboxStore } from "@binference/engine";
-import { createFormatter, type Formatter, type MessageLocale } from "@binference/i18n";
+import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
+import { createOwnerFormatters } from "../format/owner-formatters.js";
 import type { OwnerStore } from "../ports.js";
 import { screenUpdate } from "../screening/screen-update.js";
 import { type ChatUpdate, chatUpdateSchema } from "../updates/chat-update.schema.js";
@@ -44,10 +45,10 @@ export interface TelegramIngressOptions {
   readonly clock: Clock;
   readonly logger: Logger;
   /**
-   * The owner's language and timezone. Without a language, a sender's Telegram language decides:
-   * `zh` and its variants mean Chinese.
+   * The owner's language and timezone as they are now, read for each reply. Without a language, a
+   * sender's Telegram language decides: `zh` and its variants mean Chinese.
    */
-  readonly display: { readonly locale?: MessageLocale; readonly timeZone: string };
+  readonly display: () => { readonly locale?: MessageLocale; readonly timeZone: string };
   /** Takes the owner's messages and button presses. */
   readonly onOwnerUpdate: OwnerUpdateSink;
 }
@@ -73,13 +74,11 @@ function botIdOf(token: string): string {
 }
 
 function wordsFor(display: TelegramIngressOptions["display"]) {
-  const formatters: Readonly<Record<MessageLocale, Formatter>> = {
-    en: createFormatter({ locale: "en", timeZone: display.timeZone }),
-    zh: createFormatter({ locale: "zh", timeZone: display.timeZone }),
-  };
+  const formatters = createOwnerFormatters();
   return (key: IngressWords, target: ReplyTarget): string => {
+    const { locale, timeZone } = display();
     const isChinese = target.languageCode?.toLowerCase().startsWith("zh") === true;
-    const formatter = formatters[display.locale ?? (isChinese ? "zh" : "en")];
+    const formatter = formatters({ locale: locale ?? (isChinese ? "zh" : "en"), timeZone });
     // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
     return formatter.message(key);
   };

@@ -36,7 +36,8 @@ export interface TelegramWiring {
   readonly stores: EngineStores;
   readonly answer: AnswerCard;
   readonly chains: ChainRegistry;
-  readonly owner: OwnerInfo;
+  /** The owner's language and timezone now, read for each message the bot sends. */
+  readonly owner: () => OwnerInfo;
   readonly clock: Clock;
   readonly logger: Logger;
 }
@@ -188,7 +189,10 @@ function createCardRelay(context: RelayContext): CardRelay {
  */
 export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): ComposedTelegram {
   const { stores, chains, logger } = wiring;
-  const display = { locale: wiring.owner.locale, timeZone: wiring.owner.timezone };
+  const display = () => {
+    const { locale, timezone } = wiring.owner();
+    return { locale, timeZone: timezone };
+  };
   const answers = createCardPresses({
     intents: stores.intents,
     answer: wiring.answer,

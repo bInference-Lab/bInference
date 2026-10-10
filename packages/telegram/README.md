@@ -53,7 +53,8 @@ import {
 
 const api = new Api(token.reveal());
 createBotThrottlers({ clock, logger: logger.child("telegram") }).install(api);
-const display = { locale: config.owner.locale, timeZone: config.owner.timezone };
+// Read on each message, so a change of owner.locale in config.json5 applies to the next one.
+const display = () => ({ locale: settings.owner.locale, timeZone: settings.owner.timezone });
 // The engine's side of each press: the owner's only, stored through the confirmations.
 const answers = createCardPresses({
   intents: stores.intents,

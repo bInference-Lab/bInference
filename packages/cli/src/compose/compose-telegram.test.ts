@@ -6,7 +6,7 @@ import {
   testToken as token,
   testWallet as wallet,
 } from "@binference/engine/testing";
-import type { IntentRequest } from "@binference/protocol";
+import type { IntentRequest, OwnerInfo } from "@binference/protocol";
 import {
   cardAnswersContract,
   createFakeBotApi,
@@ -55,7 +55,12 @@ interface Bot extends ComposedSkeleton {
   readonly botApi: FakeBotApi;
 }
 
-async function bot(options: { readonly isPaired?: boolean } = {}): Promise<Bot> {
+interface BotOptions {
+  readonly isPaired?: boolean;
+  readonly owner?: () => OwnerInfo;
+}
+
+async function bot(options: BotOptions = {}): Promise<Bot> {
   const botApi = createFakeBotApi();
   const owners = createMemoryOwnerStore();
   if (options.isPaired !== false) {
@@ -63,7 +68,8 @@ async function bot(options: { readonly isPaired?: boolean } = {}): Promise<Bot> 
   }
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
   const telegram = { api, owners, copies: createMemoryCardCopyStore() };
-  const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), { telegram });
+  const owner = options.owner === undefined ? {} : { owner: options.owner };
+  const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), { telegram, ...owner });
   const composed = skeleton.composed.telegram ?? never();
   const { handlers } = skeleton.composed.engine;
   await handlers["portfolio/resetPaper"]({ args: { agent }, caller: callers.cli, ...live });
@@ -109,6 +115,21 @@ describe("the bot joined to the engine", () => {
     await test.telegram.idle();
     expect(test.botApi.messages()).toMatchObject([
       { chatId: ownerId, buttons: [[{ data: `bnf1:c:y:${ref}` }, { data: `bnf1:c:n:${ref}` }]] },
+    ]);
+  });
+
+  it("shows the next card in the language the owner switched to while the engine runs", async () => {
+    const owner: { current: OwnerInfo } = { current: { locale: "en", timezone: "UTC" } };
+    const test = await bot({ owner: () => owner.current });
+    await propose(test);
+    await test.telegram.idle();
+    owner.current = { locale: "zh", timezone: "UTC" };
+    await propose(test);
+    await test.telegram.idle();
+    const han = /\p{Script=Han}/u;
+    expect(test.botApi.messages().map((message) => han.test(message.text))).toStrictEqual([
+      false,
+      true,
     ]);
   });
 

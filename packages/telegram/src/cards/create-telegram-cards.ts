@@ -4,9 +4,10 @@ import type {
   CardShowing as DrawnCard,
   CardStanding,
 } from "@binference/engine/surfaces";
-import { createFormatter, type MessageLocale } from "@binference/i18n";
+import type { MessageLocale } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
 import type { Api } from "grammy";
+import { createOwnerFormatters } from "../format/owner-formatters.js";
 import type { CardAnswers, CardCopyStore, OwnerStore } from "../ports.js";
 import type { ButtonPress } from "../updates/chat-update.schema.js";
 import { cardCallbackData, cardCallbackSchema } from "./card-callback.schema.js";
@@ -54,8 +55,11 @@ export interface TelegramCardsOptions {
   /** The engine's side: it checks the presser and stores each answer. */
   readonly answers: CardAnswers;
   readonly logger: Logger;
-  /** The owner's language and timezone: cards, receipts and times follow them. */
-  readonly display: { readonly locale: MessageLocale; readonly timeZone: string };
+  /**
+   * The owner's language and timezone as they are now: cards, receipts and times follow them, read
+   * again for each message.
+   */
+  readonly display: () => { readonly locale: MessageLocale; readonly timeZone: string };
 }
 
 interface Call {
@@ -199,13 +203,14 @@ async function press(context: CardsContext, pressed: ButtonPress, call: Call): P
  * every copy into its receipt.
  */
 export function createTelegramCards(options: TelegramCardsOptions): TelegramCards {
-  const formatter = createFormatter(options.display);
+  const formatters = createOwnerFormatters();
+  const formatter = () => formatters(options.display());
   const context: CardsContext = {
     options,
     calls: createCardCalls(options.api),
     // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
-    words: (key) => formatter.message(key),
-    displayOf: (assets) => ({ formatter, assets }),
+    words: (key) => formatter().message(key),
+    displayOf: (assets) => ({ formatter: formatter(), assets }),
   };
   return {
     show: async (showing, call) => show(context, showing, call),

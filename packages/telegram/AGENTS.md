@@ -22,7 +22,8 @@ Rules for this package:
   binference's `ChatUpdate`.
 - Every word the bot sends is a message key in `@binference/i18n`: `telegram.*`, and the card,
   receipt and reason messages the engine's card lines name. Cards follow the owner's language;
-  ingress replies follow it too, or else the language of the sender's Telegram app.
+  ingress replies follow it too, or else the language of the sender's Telegram app. The owner's
+  language and timezone are read for each message, so a change in config.json5 applies at once.
 - Messages go out in Telegram's HTML only as `src/cards/card-html.ts` builds them: each card line
   is filled in as plain text by the engine's `cardLineText`, where every value from outside (token
   symbols and names, the agent's reason, venue and client names) goes through `displayOutsideText`

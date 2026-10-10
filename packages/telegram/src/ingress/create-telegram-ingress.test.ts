@@ -38,10 +38,10 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
     stores,
     clock,
     logger,
-    display: {
+    display: () => ({
       timeZone: "UTC",
       ...(options.locale === undefined ? {} : { locale: options.locale }),
-    },
+    }),
     onOwnerUpdate: async (update) => {
       delivered.push(update);
       await Promise.resolve();
