@@ -1,5 +1,11 @@
 import { type CardDisplay, cardLineText } from "@binference/engine/surfaces";
-import type { BalanceView, CardValueView, PositionView, ProtocolId } from "@binference/protocol";
+import type {
+  BalanceView,
+  CardValueView,
+  PortfolioView,
+  PositionView,
+  ProtocolId,
+} from "@binference/protocol";
 import { amountValue, assetValue } from "./asset-values.js";
 import { callOrSay, type CommandContext } from "./command-context.js";
 
@@ -42,11 +48,17 @@ function line(display: CardDisplay, key: string, values: Values): string {
   return cardLineText({ key, values }, display);
 }
 
+function modeValue(mode: "paper" | "live"): CardValueView {
+  const choice = { type: "choice", choice: mode } as const;
+  return { type: "line", line: { key: "cmd.mode", values: { mode: choice } } };
+}
+
+const usd = (usdMicros: bigint): CardValueView => ({ type: "usd", usdMicros });
+
 function walletValues<T>(part: WalletPart<T>, labels: ReadonlyMap<string, string>): Values {
-  const mode = { type: "choice", choice: part.isPaper ? "paper" : "live" } as const;
   return {
     wallet: { type: "text", text: labels.get(part.wallet) ?? part.wallet },
-    mode: { type: "line", line: { key: "cmd.mode", values: { mode } } },
+    mode: modeValue(part.isPaper ? "paper" : "live"),
   };
 }
 
@@ -88,7 +100,22 @@ function balancePartLines(on: PartDisplay, part: WalletPart<BalanceView>): reado
   return [heading, ...[...named, ...rest].map((text) => `${indent}${text}`)];
 }
 
-/** `/balance`: each wallet's total in USD and its top holdings by value (spec 4, section 5). */
+// The live total and the paper total, each on its own line and never added together.
+function totalLines(display: CardDisplay, view: PortfolioView): readonly string[] {
+  const total = (mode: "paper" | "live", usdMicros: bigint): string =>
+    line(display, "cmd.balance.total", { mode: modeValue(mode), total: usd(usdMicros) });
+  const live = view.balances.some(({ paper }) => !paper)
+    ? [total("live", view.totalUsdMicros)]
+    : [];
+  const paper =
+    view.paperTotalUsdMicros === undefined ? [] : [total("paper", view.paperTotalUsdMicros)];
+  return [...live, ...paper];
+}
+
+/**
+ * `/balance`: each wallet's total in USD and its top holdings by value (spec 4, section 5), live
+ * holdings before paper ones, then the live total and the paper total apart.
+ */
 export async function runBalance(context: CommandContext): Promise<void> {
   const view = await callOrSay(context, "portfolio/get", {});
   if (view === undefined) {
@@ -98,16 +125,13 @@ export async function runBalance(context: CommandContext): Promise<void> {
     await context.say(context.words("cmd.balance.empty"));
     return;
   }
-  const total = context.words("cmd.balance.total", {
-    total: context.formatter.usd(view.totalUsdMicros),
-  });
   const on = {
     context,
     display: { formatter: context.formatter, assets: view.assets },
     labels: await labelsOf(context),
   };
   const lines = partsOf(view.balances).flatMap((part) => balancePartLines(on, part));
-  await context.say([...lines, total].join("\n"));
+  await context.say([...lines, ...totalLines(on.display, view)].join("\n"));
 }
 
 function positionValues(position: PositionView, display: CardDisplay): Values {

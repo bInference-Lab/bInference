@@ -61,7 +61,8 @@ export function portfolio(): ResultOf<"portfolio/get"> {
       },
     ],
     positions: [],
-    totalUsdMicros: "900000000",
+    totalUsdMicros: "0",
+    paperTotalUsdMicros: "900000000",
     assets,
   });
 }

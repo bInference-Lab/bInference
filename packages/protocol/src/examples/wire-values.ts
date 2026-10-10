@@ -183,7 +183,7 @@ export const walletView: WireObject = {
   createdAt: at,
 };
 
-/** An example portfolio with a loss on its position. */
+/** An example paper portfolio with a loss on its position, its total apart from the live one. */
 export const portfolioView: WireObject = {
   balances: [
     { wallet: ids.wallet, amount: nativeAmount, usdMicros: "900000000", paper: true },
@@ -200,7 +200,8 @@ export const portfolioView: WireObject = {
       paper: true,
     },
   ],
-  totalUsdMicros: "900000000",
+  totalUsdMicros: "0",
+  paperTotalUsdMicros: "900000000",
   assets,
 };
 

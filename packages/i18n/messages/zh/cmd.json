@@ -20,7 +20,7 @@
   "balance.holding": "{amount} · {value}",
   "balance.noPrice": "{amount} · 暂无价格",
   "balance.more": "还有 {count, plural, other {# 个持仓}}；/positions 会列出全部",
-  "balance.total": "总计：{total}",
+  "balance.total": "{mode} 总计：{total}",
   "balance.empty": "还没有任何 Agent 钱包持有资产。",
   "positions.wallet": "{wallet} · {mode}",
   "positions.open": "{amount} · 市值 {value} · 平均成本 {cost} · 盈亏 {pnl}",

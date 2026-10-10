@@ -28,12 +28,17 @@ export interface PositionView {
   readonly paper: boolean;
 }
 
-/** Balances, their dollar values, positions and profit or loss of one agent, wallet or all. */
+/**
+ * Balances, their dollar values, positions and profit or loss of one agent, wallet or all. Live
+ * holdings come first, then paper ones, and the two are never added together.
+ */
 export interface PortfolioView {
   readonly balances: readonly BalanceView[];
   readonly positions: readonly PositionView[];
-  /** The sum of the balances with a known price. */
+  /** The sum of the live balances with a known price; a paper balance never counts. */
   readonly totalUsdMicros: bigint;
+  /** The sum of the paper balances with a known price; absent when the view holds none. */
+  readonly paperTotalUsdMicros?: bigint;
   readonly assets: AssetInfos;
 }
 
@@ -59,5 +64,6 @@ export const portfolioViewSchema: z.ZodType<PortfolioView> = z.object({
     }),
   ),
   totalUsdMicros: decimalStringSchema,
+  paperTotalUsdMicros: decimalStringSchema.exactOptional(),
   assets: assetInfosSchema,
 });

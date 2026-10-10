@@ -20,7 +20,7 @@
   "balance.holding": "{amount} · {value}",
   "balance.noPrice": "{amount} · no price now",
   "balance.more": "{count, plural, one {and # more holding} other {and # more holdings}}; /positions lists every one",
-  "balance.total": "Total: {total}",
+  "balance.total": "{mode} total: {total}",
   "balance.empty": "No agent wallet holds anything yet.",
   "positions.wallet": "{wallet} · {mode}",
   "positions.open": "{amount} · value {value} · average cost {cost} · P&L {pnl}",

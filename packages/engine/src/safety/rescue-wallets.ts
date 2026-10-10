@@ -1,15 +1,9 @@
-import {
-  type AssetRef,
-  assetRefParts,
-  assetRefSchema,
-  type RegisteredChain,
-  type Signer,
-} from "@binference/chain";
+import type { RegisteredChain, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import type { WalletRecord } from "../install/install-record.js";
 import { policyLimitsOf } from "../money-path/policy-facts-of.js";
-import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import type { AgentStore, PositionStore, WalletFactsSource } from "../ports.js";
+import { heldAssetsOf } from "../positions/held-assets.js";
 import type { RescueWallet } from "./rescue-moves.js";
 
 /** What a rescue reads about the install's wallets: custody, their agents, positions, balances. */
@@ -19,29 +13,6 @@ export interface RescueWalletsParts {
   readonly positions: PositionStore;
   /** The wallets' live facts; never paper balances. */
   readonly wallets: WalletFactsSource;
-}
-
-// The registry's tokens of the chain, as assets of its family's token standard.
-function registryTokens(chain: RegisteredChain): readonly AssetRef[] {
-  const { tokenNamespace } = chain.family;
-  return chain.definition.tokens.map((token) =>
-    assetRefSchema.parse(`${chain.ref}/${tokenNamespace}:${token.address}`),
-  );
-}
-
-// The coin, every registry token, and every asset of the chain the wallet holds a live position
-// in, each once.
-async function assetsToRead(
-  parts: RescueWalletsParts,
-  wallet: WalletRecord,
-  call: { readonly chain: RegisteredChain; readonly signal: AbortSignal },
-): Promise<readonly AssetRef[]> {
-  const { chain, signal } = call;
-  const held = await parts.positions.positions({ walletId: wallet.id, isPaper: false }, { signal });
-  const positioned = held
-    .map(({ asset }) => asset)
-    .filter((asset) => assetRefParts(asset).chain === chain.ref);
-  return [...new Set([nativeAssetOf(chain), ...registryTokens(chain), ...positioned])];
 }
 
 async function gasReserveOf(
@@ -70,7 +41,7 @@ async function rescueWallet(
   if (!account.ok) {
     return undefined;
   }
-  const assets = await assetsToRead(parts, wallet, call);
+  const assets = await heldAssetsOf(parts.positions, wallet.id, call);
   const holdings = await parts.wallets.balances({ account: account.value, assets }, { signal });
   const gasReserveBase = await gasReserveOf(parts, wallet, call);
   const { id, agentId } = wallet;

@@ -284,16 +284,16 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 
 ### 7.3 Market reads
 
-| Operation              | Scope            | Args → result                                                                                                          |
-| ---------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag                                               |
-| `portfolio/pnl`        | `read`           | `{ agent, from, to }` → realized and unrealized P&L by position (average cost, [decision 0058](../DECISIONS.md#d0058)) |
-| `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                          |
-| `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                         |
-| `asset/search`         | `read`           | `{ chain, query }` → registry matches, or the pasted address when valid                                                |
-| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                          |
-| `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                          |
-| `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                               |
+| Operation              | Scope            | Args → result                                                                                                                      |
+| ---------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag; live before paper, each with its own total, never summed |
+| `portfolio/pnl`        | `read`           | `{ agent, from, to }` → realized and unrealized P&L by position (average cost, [decision 0058](../DECISIONS.md#d0058))             |
+| `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                      |
+| `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                     |
+| `asset/search`         | `read`           | `{ chain, query }` → registry matches, or the pasted address when valid                                                            |
+| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                                      |
+| `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                      |
+| `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                           |
 
 <a id="section-7-4"></a>
 

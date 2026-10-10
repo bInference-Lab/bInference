@@ -1,6 +1,7 @@
 import { type Amount, assetRefSchema } from "@binference/chain";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { testWalletRecord } from "../install/test-wallet-record.js";
 import {
   expectOk,
   testAgent,
@@ -10,7 +11,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { AgentStore } from "../ports.js";
-import { startTestEngine, testCall } from "./test-engine.js";
+import { startTestEngine, testAccount, testCall } from "./test-engine.js";
 
 const live = { signal: new AbortController().signal };
 const otherWallet = "wal_0190f1c2-3a4b-7c5d-8e6f-000000000002" as Id<"wal">;
@@ -56,7 +57,8 @@ describe("the paper portfolio reset", () => {
           paper: true,
         },
       ],
-      totalUsdMicros: 600_000_000n,
+      totalUsdMicros: 0n,
+      paperTotalUsdMicros: 600_000_000n,
       assets: { [testCoin]: { symbol: "FAKE", name: "Fake", decimals: 18, verified: true } },
     });
     const held = await test.positions.positions({ walletId: testWallet, isPaper: true }, live);
@@ -74,7 +76,7 @@ describe("the paper portfolio reset", () => {
     expect(reset.balances).toStrictEqual([
       { wallet: testWallet, amount: coin(2n * 10n ** 18n), usdMicros: 1_200_000_000n, paper: true },
     ]);
-    expect(reset.totalUsdMicros).toBe(1_200_000_000n);
+    expect([reset.totalUsdMicros, reset.paperTotalUsdMicros]).toStrictEqual([0n, 1_200_000_000n]);
     expect(
       await test.positions.positions({ walletId: otherWallet, isPaper: true }, live),
     ).toStrictEqual([]);
@@ -121,5 +123,65 @@ describe("the paper portfolio reset", () => {
       await lonely.engine.handlers["portfolio/resetPaper"](args),
       await archived.engine.handlers["portfolio/resetPaper"](args),
     ]).toStrictEqual([err("wallet.not_found"), err("agent.archived")]);
+  });
+});
+
+// A wallet of the test agent as setting up an install stores it.
+const record = (id: Id<"wal">, createdAtMs: number) =>
+  testWalletRecord({ id, agentId: testAgent, label: "main", createdAtMs });
+
+describe("the portfolio read", () => {
+  const coinPrice = { numerator: 600n, denominator: 10n ** 12n };
+
+  // The test wallet stored at the test account, and a second wallet of the agent, archived.
+  async function storedEngine() {
+    const test = await startTestEngine({
+      held: new Map([[testAccount, [coin(2n * 10n ** 18n), { asset: testToken, base: 7n }]]]),
+      prices: new Map([[testCoin, coinPrice]]),
+    });
+    test.stores.install.addWallet({ ...record(testWallet, 1), address: "0x0000000c" });
+    test.stores.install.addWallet({ ...record(otherWallet, 2), archivedAtMs: 3 });
+    return test;
+  }
+
+  it("shows the live holdings read on chain first, then the paper ones, each with its total", async () => {
+    const test = await storedEngine();
+    const view = expectOk(
+      await test.engine.handlers["portfolio/get"](testCall({ agent: testAgent })),
+    );
+    expect(view.balances).toStrictEqual([
+      {
+        wallet: testWallet,
+        amount: coin(2n * 10n ** 18n),
+        usdMicros: 1_200_000_000n,
+        paper: false,
+      },
+      { wallet: testWallet, amount: { asset: testToken, base: 7n }, paper: false },
+      { wallet: testWallet, amount: coin(10n ** 18n), usdMicros: 600_000_000n, paper: true },
+    ]);
+    expect([view.totalUsdMicros, view.paperTotalUsdMicros]).toStrictEqual([
+      1_200_000_000n,
+      600_000_000n,
+    ]);
+    expect(view.positions.map(({ paper }) => paper)).toStrictEqual([true]);
+    expect(Object.keys(view.assets).toSorted()).toStrictEqual([testCoin, testToken].toSorted());
+  });
+
+  it("reads one wallet, every agent's wallets, or refuses what it does not hold", async () => {
+    const test = await storedEngine();
+    const get = test.engine.handlers["portfolio/get"];
+    const one = expectOk(await get(testCall({ agent: testAgent, wallet: testWallet })));
+    const every = expectOk(await get(testCall({})));
+    expect(one).toStrictEqual(every);
+    expect([
+      await get(testCall({ agent: unknownAgent })),
+      await get(testCall({ wallet: otherWallet })),
+      await get(
+        testCall({
+          agent: testAgent,
+          wallet: "wal_0190f1c2-3a4b-7c5d-8e6f-00000000000f" as Id<"wal">,
+        }),
+      ),
+    ]).toStrictEqual([err("agent.not_found"), err("wallet.not_found"), err("wallet.not_found")]);
   });
 });

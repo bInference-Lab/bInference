@@ -83,12 +83,14 @@ const portfolio: PortfolioView = {
       paper: false,
     },
   ],
-  totalUsdMicros: 950_000_000n,
+  totalUsdMicros: 350_000_000n,
+  paperTotalUsdMicros: 600_000_000n,
   assets: {
     [refs.bnb]: { symbol: "BNB", name: "BNB", decimals: 18, verified: true },
     [refs.usdt]: { symbol: "USDT", name: "Tether USD", decimals: 18, verified: true },
   },
 };
+const { paperTotalUsdMicros: _paperTotal, ...liveOnly } = portfolio;
 const stopLoss: OrderView = {
   order,
   agent,
@@ -231,7 +233,7 @@ describe("the fast commands", () => {
 });
 
 describe("the fast commands' replies", () => {
-  it("totals each wallet's paper and live holdings and names the top ones by value", async () => {
+  it("totals live and paper holdings apart, live first, and names the top ones by value", async () => {
     const bot = await startCommandBot(served);
     await bot.send("/balance");
     expect(bot.texts()).toStrictEqual([
@@ -241,7 +243,8 @@ describe("the fast commands' replies", () => {
         "  50 USDT · $50.00",
         `main · ${icons.paper} Paper · $600.00`,
         "  1 BNB · $600.00",
-        "Total: $950.00",
+        `${icons.live} Live total: $350.00`,
+        `${icons.paper} Paper total: $600.00`,
       ].join("\n"),
     ]);
   });
@@ -295,7 +298,7 @@ describe("the fast commands' replies", () => {
       ...served,
       "portfolio/get": async () =>
         Promise.resolve(
-          ok({ ...portfolio, balances: [balance], positions: [unknown], totalUsdMicros: 0n }),
+          ok({ ...liveOnly, balances: [balance], positions: [unknown], totalUsdMicros: 0n }),
         ),
     });
     await bot.send("/positions");
@@ -305,7 +308,7 @@ describe("the fast commands' replies", () => {
       [
         `main · ${icons.live} Live · $0.00`,
         "  1000 base units of 0x6982…1933 · no price now",
-        "Total: $0.00",
+        `${icons.live} Live total: $0.00`,
       ].join("\n"),
     ]);
   });

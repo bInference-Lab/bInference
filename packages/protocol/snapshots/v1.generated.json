@@ -5230,6 +5230,10 @@
               "type": "string",
               "pattern": "^(?:0|[1-9]\\d{0,77})$"
             },
+            "paperTotalUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
             "assets": {
               "type": "object",
               "propertyNames": {
@@ -5610,6 +5614,10 @@
               }
             },
             "totalUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            },
+            "paperTotalUsdMicros": {
               "type": "string",
               "pattern": "^(?:0|[1-9]\\d{0,77})$"
             },

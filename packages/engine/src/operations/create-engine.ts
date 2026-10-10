@@ -167,8 +167,12 @@ function settingsHandlers(
   const { stores, chains } = options;
   const portfolio = createPortfolioHandlers({
     agents: stores.agents,
+    install: stores.install,
     portfolio: paper.portfolio,
     positions: paper.positions,
+    store: options.positions,
+    wallets: options.wallets,
+    prices: options.prices,
     chains,
   });
   const modes = createAgentModeHandlers({
