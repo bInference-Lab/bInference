@@ -29,7 +29,6 @@ export interface PolicyLimits {
   readonly rollingDayCapUsdMicros: bigint;
   /** The most slippage a request may ask: for a pair of registry tokens, and for any other pair. */
   readonly maxSlippageBps: { readonly registry: Bps; readonly other: Bps };
-  readonly maxTaxBps: Bps;
   /** The native coin a wallet keeps for network fees on its chain, in base units. */
   readonly gasReserveBase: bigint;
   /** The venues the agent may use. */
@@ -87,11 +86,6 @@ export interface PolicyFacts {
   readonly nativeBalanceBase: bigint;
   /** The ceiling's native value cap per transaction, in base units (spec 5, section 4). */
   readonly ceilingPerTxNativeBase: bigint;
-  /**
-   * The highest tax known for the intent's tokens, from the risk cache or a decoded quote. Absent
-   * when no source knows it yet; the risk step decodes it after the quote.
-   */
-  readonly knownTaxBps?: Bps;
   /**
    * The agent's outgoing trades and sends in the intent's mode (paper or live), each counted from
    * its confirmation at the USD value it was confirmed with, without the intent under check and
@@ -214,7 +208,8 @@ function asksTooMuchSlippage({ subject, facts }: PolicyInput): boolean {
 
 /**
  * The rules of spec 6, section 4, in its order. `price_impact` is checked after the quote, and
- * `health_factor` once a lending venue reads positions.
+ * `health_factor` once a lending venue reads positions. No rule stores `tax`: a token's tax is
+ * measured only by the risk step's round trip (decision 0113), which refuses with `high_tax`.
  */
 const intentRules: readonly PolicyRule[] = [
   { reason: "frozen", refuses: ({ facts }) => facts.isFrozen },
@@ -252,11 +247,6 @@ const intentRules: readonly PolicyRule[] = [
     },
   },
   { reason: "slippage", refuses: asksTooMuchSlippage },
-  {
-    reason: "tax",
-    refuses: ({ facts }) =>
-      facts.knownTaxBps !== undefined && facts.knownTaxBps > facts.limits.maxTaxBps,
-  },
   {
     reason: "venue_off",
     refuses: ({ subject, facts }) =>

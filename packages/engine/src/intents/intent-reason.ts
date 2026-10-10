@@ -1,6 +1,7 @@
 /**
  * Why policy refused an intent (spec 6, section 4). `price_impact` is checked after quoting, so it
- * is stored with `failed_check`; every other code is stored with `rejected_policy`.
+ * is stored with `failed_check`; every other code is stored with `rejected_policy`. No rule stores
+ * `tax` yet: the risk step measures a token's tax and refuses with `high_tax` (decision 0113).
  */
 export const policyReasons = [
   "frozen",

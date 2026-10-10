@@ -30,7 +30,6 @@ export function policyLimitsOf(limits: LimitsValues, chain: ChainRef): PolicyLim
     perTradeCapUsdMicros: limits.perTradeUsdMicros,
     rollingDayCapUsdMicros: limits.rollingDayUsdMicros,
     maxSlippageBps: { registry: limits.slippageRegistryBps, other: limits.slippageOtherBps },
-    maxTaxBps: limits.taxBps,
     gasReserveBase: reserve?.reserveBase ?? 0n,
     venues: limits.venues,
     allowTokens: limits.allowTokens,

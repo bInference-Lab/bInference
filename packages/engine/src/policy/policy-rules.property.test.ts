@@ -64,7 +64,6 @@ const factsArbitrary: fc.Arbitrary<PolicyFacts> = fc.record(
       perTradeCapUsdMicros: small,
       rollingDayCapUsdMicros: small,
       maxSlippageBps: fc.record({ registry: bps, other: bps }),
-      maxTaxBps: bps,
       gasReserveBase: small,
       venues: fc.subarray(venues),
       allowTokens: fc.oneof(fc.constant([]), fc.subarray(assets)),
@@ -76,7 +75,6 @@ const factsArbitrary: fc.Arbitrary<PolicyFacts> = fc.record(
     nativeAsset: fc.constant(coin),
     nativeBalanceBase: small,
     ceilingPerTxNativeBase: small,
-    knownTaxBps: bps,
     recentOutflows: fc.constant([]),
   },
   {
@@ -238,7 +236,6 @@ function tradeEarned(input: PolicyInput): Earned {
       : limits.maxSlippageBps.other;
   return {
     slippage: subject.slippage !== undefined && subject.slippage.bps > slippageLimit,
-    tax: facts.knownTaxBps !== undefined && facts.knownTaxBps > limits.maxTaxBps,
     venue_off: subject.venue !== undefined && !limits.venues.includes(subject.venue),
     token_denied: breaksTokenLists(input),
   };

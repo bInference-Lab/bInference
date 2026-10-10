@@ -72,7 +72,6 @@ const randomCases: fc.Arbitrary<Case> = fc.record({
       perTradeCapUsdMicros: fc.bigInt({ min: 0n, max: 12_000n }),
       rollingDayCapUsdMicros: fc.bigInt({ min: 0n, max: 24_000n }),
       maxSlippageBps: fc.constant({ registry: 100 as Bps, other: 500 as Bps }),
-      maxTaxBps: fc.constant(1000 as Bps),
       gasReserveBase: fc.bigInt({ min: 0n, max: 200n }),
       venues: fc.constant([]),
       allowTokens: fc.constant([]),
