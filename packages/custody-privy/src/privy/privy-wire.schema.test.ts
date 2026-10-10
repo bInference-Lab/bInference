@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readPrivyErrorCode, refusalOf } from "./privy-wire.schema.js";
+import { readPrivyErrorCode, readWalletList, refusalOf } from "./privy-wire.schema.js";
 
 // Each documented code with a description as Privy's API error page words it.
 const documented = [
@@ -64,5 +64,31 @@ describe("the API errors Privy documents", () => {
     expect(readPrivyErrorCode("plain text")).toBeUndefined();
     expect(readPrivyErrorCode(undefined)).toBeUndefined();
     expect(refusalOf(undefined)).toBeUndefined();
+  });
+});
+
+describe("a page of wallets", () => {
+  const wallet = {
+    id: "wallet0000000000000000001",
+    address: "0xF1DBff66C993EE895C8cb176c30b07A559d76496",
+    chain_type: "ethereum",
+    owner_id: "rkiz0ivz254drv1xw982v3jq",
+    policy_ids: [],
+    additional_signers: [],
+  };
+
+  it("reads the next cursor, and none on the last page, written null or empty", () => {
+    expect(
+      readWalletList({ data: [wallet], next_cursor: "wallet0000000000000000001" }),
+    ).toMatchObject({
+      nextCursor: "wallet0000000000000000001",
+    });
+    expect(readWalletList({ data: [wallet], next_cursor: null })).not.toHaveProperty("nextCursor");
+    expect(readWalletList({ data: [], next_cursor: "" })).toStrictEqual({ wallets: [] });
+  });
+
+  it("refuses a page of another shape", () => {
+    expect(readWalletList({ data: [{ id: "x" }] })).toBeUndefined();
+    expect(readWalletList({ wallets: [] })).toBeUndefined();
   });
 });

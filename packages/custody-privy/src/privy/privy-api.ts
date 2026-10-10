@@ -14,6 +14,8 @@ import {
   refusalOf,
   readSignedTransaction,
   readWallet,
+  readWalletList,
+  type WalletListPage,
 } from "./privy-wire.schema.js";
 import {
   changeRule,
@@ -57,6 +59,16 @@ export interface WalletRequest {
   readonly policy: PrivyId;
 }
 
+/** Which wallets a list asks for: those a key owns, a page at a time. */
+export interface WalletListQuery {
+  /** A P-256 public key, DER SubjectPublicKeyInfo in base64. */
+  readonly authorizationKey: string;
+  /** The cursor the page before gave; the first page has none. */
+  readonly cursor?: string;
+  /** How many wallets one page holds, 1 to 100. */
+  readonly limit: number;
+}
+
 /** One `eth_signTransaction` request, and who authorizes it. */
 export interface SignTransactionRequest {
   readonly wallet: PrivyId;
@@ -84,6 +96,12 @@ export interface PrivyApi {
   policy(id: PrivyId, options: CallOptions): Promise<Result<PrivyPolicy, "not_found">>;
   createWallet(request: WalletRequest, options: CallOptions): Promise<WalletRecord>;
   wallet(id: PrivyId, options: CallOptions): Promise<Result<WalletRecord, "not_found">>;
+  /**
+   * One page of the app's Ethereum wallets whose owner is a key quorum that holds the public key
+   * (Privy's `authorization_key` filter), from the cursor of an earlier page, at most `limit` of
+   * them (1 to 100).
+   */
+  listWallets(query: WalletListQuery, options: CallOptions): Promise<WalletListPage>;
   /**
    * Asks Privy to sign one transaction, once, with a `privy-request-expiry` five minutes ahead,
    * so a captured signature stops working. Answers the signed transaction's bytes; `refused` when
@@ -250,6 +268,17 @@ function readCall<A>(path: string, run: (client: PrivyClient) => Promise<A>): Pr
   return { kind: "read", path, run };
 }
 
+function listCall(query: WalletListQuery) {
+  return readCall("/v1/wallets", async (client) =>
+    client.wallets().list({
+      chain_type: "ethereum",
+      authorization_key: query.authorizationKey,
+      limit: query.limit,
+      ...(query.cursor === undefined ? {} : { cursor: query.cursor }),
+    }),
+  );
+}
+
 function quorumCreation({ publicKey, displayName }: KeyQuorumRequest) {
   return {
     kind: "write" as const,
@@ -315,6 +344,8 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
       ),
     createWallet: async (request, { signal }) =>
       made(settings, walletCreation(request), { reader: readWallet, signal }),
+    listWallets: async (query, { signal }) =>
+      made(settings, listCall(query), { reader: readWalletList, signal }),
     wallet: async (id, { signal }) =>
       found(
         settings,

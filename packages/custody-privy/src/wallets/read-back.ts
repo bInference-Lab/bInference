@@ -35,8 +35,8 @@ function keyText(text: string): string {
   return text.replaceAll(/\s/g, "");
 }
 
-// A quorum of exactly this one key, which alone authorizes for it.
-function isSoleKey(quorum: KeyQuorum | undefined, key: string): boolean {
+/** Whether a key quorum holds exactly this one key, which alone authorizes for it. */
+export function isSoleKey(quorum: KeyQuorum | undefined, key: string): boolean {
   return (
     quorum !== undefined &&
     quorum.publicKeys.length === 1 &&

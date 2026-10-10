@@ -17,6 +17,7 @@ export type { RegistryCeilingRequest } from "./ceiling/registry-ceiling-chain.js
 export { checkPrivyApp } from "./privy/check-privy-app.js";
 export { createPrivyApi } from "./privy/privy-api.js";
 export type {
+  WalletListQuery,
   CallOptions,
   KeyQuorumRequest,
   PolicyRequest,
@@ -59,6 +60,8 @@ export type {
   SignedRuleChange,
 } from "./wallets/ceiling-recipients.js";
 export type { OwnerAuthorize } from "./wallets/rule-plans.js";
+export { findOwnedWallets } from "./wallets/owned-wallets.js";
+export type { OwnedWallet } from "./wallets/owned-wallets.js";
 export { removeSigner, swapSigner } from "./wallets/signer-moves.js";
 export type {
   SignedWallet,

@@ -138,6 +138,32 @@ export function readWallet(answer: unknown): WalletRecord | undefined {
       };
 }
 
+const walletListWire = z.object({
+  data: z.array(walletWire).max(100),
+  // Privy answers null on the last page; the SDK's page writes it as an empty text.
+  next_cursor: z.string().max(512).nullish(),
+});
+
+/** One page of wallets as Privy lists them, and the cursor of the next page when there is one. */
+export interface WalletListPage {
+  readonly wallets: readonly WalletRecord[];
+  readonly nextCursor?: string;
+}
+
+/** Reads a page of wallets from the SDK's answer; an answer of another shape is undefined. */
+export function readWalletList(answer: unknown): WalletListPage | undefined {
+  const wire = parsed(walletListWire, answer);
+  if (wire === undefined) {
+    return undefined;
+  }
+  const wallets = wire.data.flatMap((item) => {
+    const wallet = readWallet(item);
+    return wallet === undefined ? [] : [wallet];
+  });
+  const next = wire.next_cursor ?? "";
+  return next === "" ? { wallets } : { wallets, nextCursor: next };
+}
+
 /** Whether the SDK's answer is a page of wallets: a list of at most 100, each with its id. */
 export function readWalletPage(answer: unknown): boolean {
   return walletPageWire.safeParse(answer).success;

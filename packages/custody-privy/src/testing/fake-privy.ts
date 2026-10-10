@@ -64,18 +64,39 @@ function found<T>(item: T | undefined, json: (value: T) => JsonValue): HttpRespo
   return item === undefined ? failure(404, "not_found", "Not found.") : answer(200, json(item));
 }
 
-// `GET /v1/wallets`: the app's wallets of one chain type, oldest first, at most `limit` (1 to
-// 100), on one page: the fake never pages.
+// Whether a wallet's owner is a key quorum that holds the key, as Privy's `authorization_key`
+// filter reads it; keys compare without the line breaks Privy's answers may carry.
+function isOwnedBy(state: FakePrivyState, ownerId: string | null, key: string): boolean {
+  const owner = ownerId === null ? undefined : state.quorums.get(ownerId);
+  return owner?.publicKeys.some((held) => keyText(held) === keyText(key)) === true;
+}
+
+function keyText(value: string): string {
+  return value.replaceAll(/\s/g, "");
+}
+
+// `GET /v1/wallets`: the app's wallets of one chain type, oldest first, those a key owns when the
+// query names one, a page of at most `limit` (1 to 100) after the cursor's wallet, with the
+// cursor of the next page while more follow.
 function listWallets(state: FakePrivyState, query: URLSearchParams): HttpResponse {
   const limit = query.get("limit") ?? "100";
   const chainType = query.get("chain_type") ?? "ethereum";
   if (!/^(?:[1-9]\d?|100)$/.test(limit) || chainType !== "ethereum") {
     return failure(400, "invalid_data", "Invalid query.");
   }
-  const page = [...state.wallets.values()]
-    .filter((_, index) => BigInt(index) < BigInt(limit))
-    .map(walletJson);
-  return answer(200, { data: page, next_cursor: null });
+  const key = query.get("authorization_key");
+  const listed = [...state.wallets.values()].filter(
+    (wallet) => key === null || isOwnedBy(state, wallet.ownerId, key),
+  );
+  const cursor = query.get("cursor");
+  const start = cursor === null ? 0 : listed.findIndex((wallet) => wallet.id === cursor) + 1;
+  const page = listed.filter((_, index) => index >= start && BigInt(index - start) < BigInt(limit));
+  const last = page.at(-1);
+  const hasMore = start + page.length < listed.length;
+  return answer(200, {
+    data: page.map(walletJson),
+    next_cursor: hasMore && last !== undefined ? last.id : null,
+  });
 }
 
 function answerRead(state: FakePrivyState, target: string): HttpResponse {
