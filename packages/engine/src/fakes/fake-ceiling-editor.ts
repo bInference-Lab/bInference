@@ -1,7 +1,8 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefParts, accountRefSchema } from "@binference/chain";
 import { type Clock, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import { z } from "zod";
 import type {
+  CeilingRead,
   CeilingRefusal,
   CeilingRecipients,
   SignedCeilingChange,
@@ -13,12 +14,21 @@ import { memoryCall } from "./memory-call.js";
 /** The owner key code the fake ceiling editor takes; any other code is another key. */
 export const fakeOwnerKeyCode = "bnok1fakeo wnerk eyfor tests only";
 
+/** What a ceiling lets a contract call do: the contracts it may reach and its native cap. */
+export interface FakeCalls {
+  readonly contracts: readonly AccountRef[];
+  readonly perTxNativeBase: bigint;
+}
+
 /** A ceiling editor in memory, whose ceilings a test sets up and reads. */
 export interface FakeCeilingEditor extends CeilingEditor {
   /** What a ceiling lists now, sorted; undefined for one the fake does not hold. */
   recipients(ceiling: string): readonly AccountRef[] | undefined;
-  /** Holds a ceiling that lists these recipients, as `binference init` leaves one. */
-  put(ceiling: string, recipients: readonly AccountRef[]): void;
+  /**
+   * Holds a ceiling that lists these recipients, as `binference init` leaves one; it lets a call
+   * reach no contract and carry one coin, unless `calls` says otherwise.
+   */
+  put(ceiling: string, recipients: readonly AccountRef[], calls?: FakeCalls): void;
 }
 
 interface FakeChange {
@@ -97,19 +107,36 @@ function sendAll(
   return ok(undefined);
 }
 
+const oneCoin: FakeCalls = { contracts: [], perTxNativeBase: 10n ** 18n };
+
+// A held ceiling as custody reads it: the chains of its recipients, and what its calls may do.
+function readOf(recipients: readonly AccountRef[], calls: FakeCalls): CeilingRead {
+  const chains = [...new Set(recipients.map((account) => accountRefParts(account).chain))];
+  return { chains, ...calls, recipients };
+}
+
 /**
  * Creates the {@link FakeCeilingEditor}: ceilings in memory, owned by {@link fakeOwnerKeyCode}.
  * A change signed ahead carries its changes in its payload, and expires by the clock.
  */
 export function createFakeCeilingEditor(options: { readonly clock: Clock }): FakeCeilingEditor {
   const ceilings: Ceilings = new Map();
+  const calls = new Map<string, FakeCalls>();
   return {
+    read: async (ceiling, call) =>
+      memoryCall(call, () => {
+        const held = ceilings.get(ceiling);
+        return held === undefined
+          ? err("not_found" as const)
+          : ok(readOf(held, calls.get(ceiling) ?? oneCoin));
+      }),
     recipients: (ceiling) => {
       const held = ceilings.get(ceiling);
       return held === undefined ? undefined : sorted(held);
     },
-    put: (ceiling, recipients) => {
+    put: (ceiling, recipients, held = oneCoin) => {
       ceilings.set(ceiling, sorted(recipients));
+      calls.set(ceiling, held);
     },
     setRecipients: async (request, call) => memoryCall(call, () => setAll(ceilings, request)),
     signRecipients: async ({ ownerKey, changes, untilMs }, call) =>

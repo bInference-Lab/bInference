@@ -1,4 +1,4 @@
-import type { AccountRef } from "@binference/chain";
+import type { AccountRef, ChainRef } from "@binference/chain";
 import { type JsonValue, jsonValueSchema, type Secret } from "@binference/core";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
@@ -43,6 +43,18 @@ export const signedCeilingChangeSchema: z.ZodType<SignedCeilingChange> = z.stric
   untilMs: epochMsSchema,
   payload: jsonValueSchema,
 });
+
+/** A ceiling as custody holds it now. */
+export interface CeilingRead {
+  /** The chains it enables. */
+  readonly chains: readonly ChainRef[];
+  /** Each contract a call may reach, on each chain it enables. */
+  readonly contracts: readonly AccountRef[];
+  /** The most native coin, in base units, one contract call may send; 0 when none may. */
+  readonly perTxNativeBase: bigint;
+  /** Each account a send may pay, on each chain it enables. */
+  readonly recipients: readonly AccountRef[];
+}
 
 /** Why the owner key's change of a ceiling was not made. */
 export type CeilingRefusal =

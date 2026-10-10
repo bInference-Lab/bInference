@@ -1,8 +1,23 @@
-import { accountRefParts, type AccountRef } from "@binference/chain";
-import { type Clock, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
+import {
+  accountRefParts,
+  type AccountRef,
+  accountRefSchema,
+  type ChainRef,
+  chainRefSchema,
+} from "@binference/chain";
+import {
+  BinferenceError,
+  type Clock,
+  err,
+  jsonValueSchema,
+  ok,
+  type Result,
+  type Secret,
+} from "@binference/core";
 import {
   isPrivyId,
   type OwnerAuthorize,
+  readCeiling,
   type PrivyApi,
   type PrivyId,
   type RecipientsRefusal,
@@ -14,6 +29,7 @@ import {
 } from "@binference/custody-privy";
 import type {
   CeilingEditor,
+  CeilingRead,
   CeilingRefusal,
   RecipientsRequest,
   SignedCeilingChange,
@@ -71,6 +87,43 @@ function refusalOf(error: RecipientsRefusal): CeilingRefusal {
 }
 
 type Options = PrivyCeilingEditorOptions;
+
+// Each address on each chain the ceiling enables, as custody's accounts.
+function accountsOn(
+  chains: readonly ChainRef[],
+  addresses: readonly string[],
+): readonly AccountRef[] {
+  return chains.flatMap((chain) =>
+    addresses.map((address) => accountRefSchema.parse(`${chain}:${address}`)),
+  );
+}
+
+async function read(
+  options: Options,
+  ceiling: string,
+  signal: AbortSignal,
+): Promise<Result<CeilingRead, "not_found">> {
+  const policy = policyOf(ceiling);
+  const held = policy.ok ? await options.api.policy(policy.value, { signal }) : undefined;
+  if (held?.ok !== true) {
+    return err("not_found");
+  }
+  const rules = readCeiling(held.value.rules);
+  if (rules === undefined) {
+    throw new BinferenceError({
+      code: "custody.privy_malformed",
+      message: "Privy holds a ceiling whose rules binference cannot read.",
+      details: { path: "/v1/policies" },
+    });
+  }
+  const chains = rules.chainIds.map((id) => chainRefSchema.parse(`eip155:${id}`));
+  return ok({
+    chains,
+    contracts: accountsOn(chains, rules.contracts),
+    perTxNativeBase: rules.perTxNativeCapBase,
+    recipients: accountsOn(chains, rules.recipients),
+  });
+}
 
 async function setRecipients(
   options: Options,
@@ -150,13 +203,15 @@ async function sendSigned(
 }
 
 /**
- * The {@link CeilingEditor} on the owner's Privy app (decision 0110): it reads the owner key from
- * its code, checks it is the key that owns the install's ceilings, and changes each ceiling's send
+ * The {@link CeilingEditor} on the owner's Privy app (decision 0110): it reads a ceiling back from
+ * its policy's rules with the app secret alone. To change one it reads the owner key from its
+ * code, checks it is the key that owns the install's ceilings, and changes each ceiling's send
  * rules through Privy, signed with it. The key is used for the one request and kept nowhere.
  * Every account is listed by its address on every chain the ceiling enables.
  */
 export function createPrivyCeilingEditor(options: PrivyCeilingEditorOptions): CeilingEditor {
   return {
+    read: async (ceiling, { signal }) => read(options, ceiling, signal),
     setRecipients: async (request, { signal }) => setRecipients(options, request, signal),
     signRecipients: async (request, { signal }) => signRecipients(options, request, signal),
     sendSigned: async (change, { signal }) => sendSigned(options, change, signal),

@@ -10,6 +10,8 @@ export type {
   PolicyRule,
   TransactionCondition,
 } from "./ceiling/policy-rule.js";
+export { readCeiling } from "./ceiling/read-ceiling.js";
+export type { CeilingHeld } from "./ceiling/read-ceiling.js";
 export { registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
 export type { RegistryCeilingRequest } from "./ceiling/registry-ceiling-chain.js";
 export { checkPrivyApp } from "./privy/check-privy-app.js";

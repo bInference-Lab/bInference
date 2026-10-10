@@ -53,6 +53,9 @@ describe("the custody cell", () => {
     await expect(cell.walletMaker.make({} as never, live())).rejects.toMatchObject({
       code: "wallet.custody_down",
     });
+    await expect(cell.ceilings.read("ceiling", live())).rejects.toMatchObject({
+      code: "wallet.custody_down",
+    });
   });
 
   it("signs through the custody it holds, until that is released", async () => {

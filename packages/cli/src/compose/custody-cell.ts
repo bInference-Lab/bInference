@@ -34,9 +34,34 @@ async function refuseLocked(options: { readonly signal: AbortSignal }): Promise<
   return Promise.reject(custodyDown());
 }
 
+/** Where the custody the unlock opened is held, or none while the engine is locked. */
+interface Held {
+  held: OpenedCustody | undefined;
+}
+
+// The ceilings of the custody held, refused while none is.
+function ceilingsIn(cell: Held): CeilingEditor {
+  return {
+    read: async (ceiling, options) =>
+      cell.held === undefined ? refuseLocked(options) : cell.held.ceilings.read(ceiling, options),
+    setRecipients: async (request, options) =>
+      cell.held === undefined
+        ? refuseLocked(options)
+        : cell.held.ceilings.setRecipients(request, options),
+    signRecipients: async (request, options) =>
+      cell.held === undefined
+        ? refuseLocked(options)
+        : cell.held.ceilings.signRecipients(request, options),
+    sendSigned: async (change, options) =>
+      cell.held === undefined
+        ? refuseLocked(options)
+        : cell.held.ceilings.sendSigned(change, options),
+  };
+}
+
 /** Creates an empty {@link CustodyCell}: the engine starts locked. */
 export function createCustodyCell(): CustodyCell {
-  const cell: { held: OpenedCustody | undefined } = { held: undefined };
+  const cell: Held = { held: undefined };
   return {
     signer: {
       async account(wallet, chain, options) {
@@ -52,20 +77,7 @@ export function createCustodyCell(): CustodyCell {
           : cell.held.signer.signTransaction(request, options);
       },
     },
-    ceilings: {
-      setRecipients: async (request, options) =>
-        cell.held === undefined
-          ? refuseLocked(options)
-          : cell.held.ceilings.setRecipients(request, options),
-      signRecipients: async (request, options) =>
-        cell.held === undefined
-          ? refuseLocked(options)
-          : cell.held.ceilings.signRecipients(request, options),
-      sendSigned: async (change, options) =>
-        cell.held === undefined
-          ? refuseLocked(options)
-          : cell.held.ceilings.sendSigned(change, options),
-    },
+    ceilings: ceilingsIn(cell),
     walletMaker: {
       make: async (request, options) =>
         cell.held === undefined

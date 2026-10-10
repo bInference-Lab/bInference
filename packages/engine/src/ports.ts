@@ -24,6 +24,7 @@ import type {
 } from "./ingress/idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
 import type {
+  CeilingRead,
   CeilingRefusal,
   RecipientsRequest,
   SignedCeilingChange,
@@ -172,8 +173,8 @@ export interface RiskCacheStore {
 }
 
 /**
- * What every store call takes. A call on an aborted signal rejects with the signal's reason and
- * changes nothing.
+ * What every store call takes, and every call custody's ceilings and wallet maker take. A call on
+ * an aborted signal rejects with the signal's reason and changes nothing.
  */
 interface StoreCall {
   readonly signal: AbortSignal;
@@ -550,11 +551,14 @@ export interface InstallStore {
 }
 
 /**
- * Changes whom each agent wallet's ceiling lets a send pay (spec 5, section 4; decision 0110), with
- * the owner key. Only a ceiling's owner changes it. Adapter: the owner's Privy app, signed with the
- * owner key. The key comes with each request, serves it alone and is kept nowhere.
+ * Reads each agent wallet's ceiling, and changes whom it lets a send pay (spec 5, section 4;
+ * decision 0110) with the owner key. Only a ceiling's owner changes it. Adapter: the owner's Privy
+ * app, signed with the owner key. The key comes with each request, serves it alone and is kept
+ * nowhere.
  */
 export interface CeilingEditor {
+  /** The ceiling as custody holds it now; `not_found` for one custody does not hold. */
+  read(ceiling: string, options: StoreCall): Promise<Result<CeilingRead, "not_found">>;
   /**
    * Sets each ceiling's recipients now, signed with the owner key: every send rule lists exactly
    * these accounts. Setting what a ceiling lists already changes nothing. A refusal changes no
@@ -596,10 +600,7 @@ export interface WalletMaker {
    * for it from then on. A refusal makes nothing. A wallet Privy reads back otherwise than asked
    * is a fault.
    */
-  make(
-    request: WalletRequest,
-    options: { readonly signal: AbortSignal },
-  ): Promise<Result<MadeWallet, WalletRefusal>>;
+  make(request: WalletRequest, options: StoreCall): Promise<Result<MadeWallet, WalletRefusal>>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */

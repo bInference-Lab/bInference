@@ -51,6 +51,7 @@ import {
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
+import { type CeilingHandlers, createCeilingHandlers } from "./ceiling-handlers.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
 import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
@@ -70,7 +71,8 @@ export interface EngineHandlers
     AddressBookHandlers,
     RescueAddressHandlers,
     SafetyHandlers,
-    WalletHandlers {}
+    WalletHandlers,
+    CeilingHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
@@ -162,7 +164,7 @@ function paperParts(options: EngineOptions): PaperParts {
 function settingsHandlers(
   options: EngineOptions,
   paper: PaperParts,
-): PortfolioHandlers & AgentModeHandlers & WalletHandlers {
+): PortfolioHandlers & AgentModeHandlers & WalletHandlers & CeilingHandlers {
   const { stores, chains } = options;
   const portfolio = createPortfolioHandlers({
     agents: stores.agents,
@@ -191,7 +193,13 @@ function settingsHandlers(
     ids: options.ids,
     publish: options.publish,
   });
-  return { ...portfolio, ...modes, ...wallets };
+  const ceilings = createCeilingHandlers({
+    install: stores.install,
+    ceilings: options.ceilings,
+    chains,
+    clock: options.clock,
+  });
+  return { ...portfolio, ...modes, ...wallets, ...ceilings };
 }
 
 // A re-quote at a tap weighs every venue as the money path does, on the paper balances.

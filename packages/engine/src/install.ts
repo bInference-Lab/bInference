@@ -33,6 +33,7 @@ export type {
 } from "./install/rescue-record.js";
 export { signedCeilingChangeSchema } from "./install/ceiling-change.js";
 export type {
+  CeilingRead,
   CeilingRecipients,
   CeilingRefusal,
   RecipientsRequest,

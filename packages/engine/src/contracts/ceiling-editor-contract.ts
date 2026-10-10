@@ -56,6 +56,15 @@ async function refusesOthers(subject: CeilingEditorSubject): Promise<void> {
   assert.deepEqual(await subject.recipients(), before);
 }
 
+async function readsCeilings(subject: CeilingEditorSubject): Promise<void> {
+  const { editor, ceiling, unknownCeiling } = subject;
+  const read = await editor.read(ceiling, live());
+  assert.ok(read.ok);
+  assert.deepEqual(sorted(read.value.recipients), await subject.recipients());
+  assert.ok(read.value.chains.length > 0 && read.value.perTxNativeBase >= 0n);
+  assert.deepEqual(await editor.read(unknownCeiling, live()), err("not_found"));
+}
+
 async function signsAhead(subject: CeilingEditorSubject): Promise<void> {
   const { editor, ownerKey, ceiling, accounts } = subject;
   const from = [accounts[0], accounts[1]];
@@ -100,6 +109,7 @@ async function refusesAborted(subject: CeilingEditorSubject): Promise<void> {
   await assertRefusesAborted(async (options) => editor.signRecipients(signing, options));
   const change = { untilMs: subject.now(), payload: [] };
   await assertRefusesAborted(async (options) => editor.sendSigned(change, options));
+  await assertRefusesAborted(async (options) => editor.read(ceiling, options));
   assert.deepEqual(await subject.recipients(), sorted([accounts[0], accounts[1]]));
 }
 
@@ -107,6 +117,7 @@ async function refusesAborted(subject: CeilingEditorSubject): Promise<void> {
 export function ceilingEditorContract(harness: CeilingEditorHarness): readonly ContractCheck[] {
   const create = async (): Promise<CeilingEditorSubject> => harness.create();
   return [
+    checkOn("reads what a ceiling lets a send pay, and no unknown ceiling", create, readsCeilings),
     checkOn("sets a ceiling's recipients with the owner key, twice alike", create, setsRecipients),
     checkOn("refuses another key and an unknown ceiling, changing nothing", create, refusesOthers),
     checkOn("signs a change ahead that changes nothing until it is sent", create, signsAhead),
