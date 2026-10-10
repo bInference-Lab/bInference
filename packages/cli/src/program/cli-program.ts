@@ -86,6 +86,12 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     .action((flags: OptionValues) =>
       choose({ name: "walletCreate", options: labelFlagsSchema.parse(flags) }),
     );
+  withCommon(program.command("ceiling").description(message("command.ceiling")), message)
+    .addOption(agentOption(message))
+    .addOption(new Option("--wallet <id>", message("option.wallet")).argParser(idOf("wallet")))
+    .action((flags: OptionValues) =>
+      choose({ name: "ceiling", options: walletAddressFlagsSchema.parse(flags) }),
+    );
 }
 
 function addInit(program: Command, options: ProgramOptions): void {
