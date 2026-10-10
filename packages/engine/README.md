@@ -59,6 +59,10 @@ notice when it settles, or the paper fill's receipt on paper.
 first: each with the owner's label from the `InstallStore`, which keeps the install's wallets, and
 its address from custody, the account on the first registered chain where custody holds it.
 A stored wallet custody holds nowhere fails the call with `wallet.custody_down`.
+`wallet/exportSealed` passes a wallet's key from the `WalletExporter`, sealed with HPKE to the
+recipient key the CLI made, and keeps nothing (decision 0131). `ceiling/set` changes the venues and
+the cap of every live wallet of an agent with the owner key, through the `CeilingEditor`, and
+refreshes each wallet's stored copy of its ceiling (decision 0132).
 
 It declares the store ports, the engine's view of the state it keeps
 ([docs/specs/database.md](../../docs/specs/database.md) section 2): `IntentStore` (intents with
