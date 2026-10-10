@@ -98,12 +98,10 @@ function buyDrafts(
   return [encodeEvmDraft({ from: request.wallet, to, value: request.amountIn.base, data })];
 }
 
-/**
- * PancakeSwap's v2 router as the fork suite trades on it, all but the quote: it buys a token with
- * `swapExactETHForTokens`, sells one for BNB with an exact approval and `swapExactTokensForETH`,
- * and its decoder reads both trade calls back. It reads nothing from a chain.
- */
-export function pancakeV2Trades(chain: EvmChain, nativeAsset: AssetRef): Omit<Venue, "quote"> {
+// PancakeSwap's v2 router as the fork suite trades on it, all but the quote: it buys a token with
+// `swapExactETHForTokens`, sells one for BNB with an exact approval and `swapExactTokensForETH`,
+// and its decoder reads both trade calls back. It reads nothing from a chain.
+function pancakeV2Trades(chain: EvmChain, nativeAsset: AssetRef): Omit<Venue, "quote"> {
   return {
     id: "pancakeswap",
     contracts: [{ chain: chain.ref, names: ["v2-router"] }],
@@ -118,8 +116,9 @@ export function pancakeV2Trades(chain: EvmChain, nativeAsset: AssetRef): Omit<Ve
 }
 
 /**
- * A venue for the fork suite on PancakeSwap's v2 router: {@link pancakeV2Trades}, quoted with
- * `getAmountsOut` on the fork.
+ * A venue for the fork suite on PancakeSwap's v2 router, quoted with `getAmountsOut` on the fork:
+ * it buys a token with `swapExactETHForTokens`, sells one for BNB with an exact approval and
+ * `swapExactTokensForETH`, and its decoder reads both trade calls back.
  */
 export function pancakeV2Venue(fork: Fork, nativeAsset: AssetRef): Venue {
   const { chain, client } = fork;

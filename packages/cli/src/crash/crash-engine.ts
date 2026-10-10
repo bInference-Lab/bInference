@@ -1,40 +1,32 @@
 import process from "node:process";
-import { BinferenceError } from "@binference/core";
+import { createTestSigner } from "../e2e/test-signer.js";
 import type { CliHost } from "../program/cli-host.js";
+import { runCli } from "../program/run-cli.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { createSystemHttp } from "../runtime/system-http.js";
 import { createSystemRandom } from "../runtime/system-random.js";
-import { crashEnvSchema, type CrashEvent } from "./crash-engine.schema.js";
+import { crashEnvSchema } from "./crash-engine.schema.js";
 import { crashHttp } from "./crash-http.js";
-import { runCrashEngine } from "./run-crash-engine.js";
 
-// The crash suite's engine process: what `binference start` composes of the money path, started
-// as a program of its own so the test can kill it outright. Like `main.ts`, it alone reads
-// `process`; it reports to the test in JSON lines on standard output.
+// The crash suite's engine process: `binference start` as `src/main.ts` runs it, started as a
+// program of its own so the test can kill it outright. Its outside world is the test's: the chain
+// and relays, Privy and KyberSwap's API on loopback, and the signer in this process with the agent
+// key the engine hands it. Like `main.ts`, it alone reads `process`.
 const env = crashEnvSchema.parse(process.env);
-const report = (event: CrashEvent): void => {
-  process.stdout.write(`${JSON.stringify(event)}\n`);
-};
 const http = createSystemHttp();
 const host: CliHost = {
-  argv: [],
+  argv: ["start", "--json", "--set", `engine.port=${env.CRASH_PORT}`],
   env: process.env,
   out: (text) => process.stdout.write(text),
   err: (text) => process.stderr.write(text),
   clock: createSystemClock(),
   random: createSystemRandom(),
-  http: crashHttp(http, env.CRASH_RELAYS),
+  http: crashHttp(http, { relays: env.CRASH_RELAYS, services: env.CRASH_SERVICES }),
   signals: process,
   version: "crash",
   // Store workers run with this process's Node options, the TypeScript loader among them.
   workerExecArgv: process.execArgv,
+  startSigner: createTestSigner().start,
 };
-try {
-  await runCrashEngine(host, env, report);
-} catch (error) {
-  const code = error instanceof BinferenceError ? error.code : "unexpected";
-  const message = error instanceof Error ? error.message : String(error);
-  report({ event: "failed", code, message });
-  process.exitCode = 1;
-}
+process.exitCode = await runCli(host);
 await http.close();

@@ -36,12 +36,14 @@ Rules for this package:
   through `@binference/chain-evm/fork`. `self-hosted-start.test.ts` runs `binference start` itself
   there, with the fake Privy, the test signer and KyberSwap's public API. They run in
   `pnpm test:fork`, never in `pnpm check`.
-- Crash tests in `src/crash/` run `src/crash/crash-engine.ts` as a process of its own: the
-  money path as `binference start` composes it. They kill it at each kill point and start it
-  again. The engine reaches the chain only through the test's relays and RPC in front of anvil,
-  which count every send and place the kills; custody signs with a test wallet, and the parts the
-  self-hosted root still misses are fakes. Like `src/main.ts`, the crash engine reads `process`
-  itself. They run in `pnpm test:crash`, never in `pnpm check`.
+- Crash tests in `src/crash/` run `src/crash/crash-engine.ts` as a process of its own:
+  `binference start` through `runCli`, as `src/main.ts` runs it, on a state folder
+  `binference init` set up (decision 0135). They kill it at each kill point and start it again.
+  The engine reaches the chain only through the test's relays and RPC in front of anvil, which
+  count every send and place the kills; Privy and KyberSwap's API are the test's, on loopback,
+  where Privy counts each signature; the signer runs in the engine with its agent key. Like
+  `src/main.ts`, the crash engine reads `process` itself. They run in `pnpm test:crash`, never in
+  `pnpm check`.
 - `composeEngine` is the one place that joins the engine to its protocol server, and to the
   owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
   handlers: the engine's and the root's own, such as `engine/status`. The bot alone also gets
