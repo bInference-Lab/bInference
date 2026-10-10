@@ -23,12 +23,9 @@ import {
   type VenueQuoteSourceOptions,
 } from "../money-path/venue-quote-source.js";
 import { createPaperFills } from "../paper/paper-fills.js";
-import { createPaperPortfolio, type PaperPortfolio } from "../paper/paper-portfolio.js";
-import { withPaperSimulation } from "../paper/paper-simulation.js";
-import { withPaperBalances } from "../paper/paper-wallet-facts.js";
+import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
-import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import {
@@ -131,34 +128,6 @@ export interface EngineOptions {
   readonly random: Random;
   /** Where pushes go: the protocol server, which numbers them with a `seq` per topic. */
   readonly publish: PublishPush;
-}
-
-interface PaperParts {
-  readonly positions: Positions;
-  readonly portfolio: PaperPortfolio;
-  /** The wallet facts with paper balances from the paper portfolio. */
-  readonly wallets: WalletFactsSource;
-  /** The simulate step with a paper intent's balances from the paper portfolio. */
-  readonly simulator: Simulator;
-}
-
-function paperParts(options: EngineOptions): PaperParts {
-  const positions = createPositions({ store: options.positions, prices: options.prices });
-  const portfolio = createPaperPortfolio({
-    positions,
-    store: options.positions,
-    wallets: options.wallets,
-    clock: options.clock,
-    startingBalances: options.paperBalances,
-  });
-  const wallets = withPaperBalances(options.wallets, { portfolio, chains: options.chains });
-  const simulator = withPaperSimulation(options.simulator, {
-    portfolio,
-    intents: options.stores.intents,
-    chains: options.chains,
-    clock: options.clock,
-  });
-  return { positions, portfolio, wallets, simulator };
 }
 
 function settingsHandlers(
@@ -311,7 +280,7 @@ export function createEngine(given: EngineOptions): Engine {
   // Every part reads an agent's limits as they are in effect now (decision 0111).
   const agents = withLimitsInEffect(given.stores.agents, given.clock);
   const options = { ...given, stores: { ...given.stores, agents } };
-  const paper = paperParts(options);
+  const paper = createPaperParts(options);
   const intents = intentParts(options, paper);
   const rescueParts = {
     install: options.stores.install,
