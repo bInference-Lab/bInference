@@ -17,6 +17,7 @@ import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
 import { runRestart, runStop } from "../commands/stop-command.js";
+import { runTelegramPair } from "../commands/telegram-pair-command.js";
 import { runUnlock } from "../commands/unlock-command.js";
 import { runWalletAddress, runWalletCreate, runWalletList } from "../commands/wallet-command.js";
 import { runWalletExport } from "../commands/wallet-export-command.js";
@@ -111,6 +112,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   rescueSet: runRescueSet,
   rescueCancel: async (context) => runRescueCancel(context),
   safetyStatus: async (context) => runSafetyStatus(context),
+  telegramPair: async (context) => runTelegramPair(context),
   addressList: runAddressList,
   addressAdd: runAddressAdd,
   addressRemove: runAddressRemove,

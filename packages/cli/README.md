@@ -159,6 +159,7 @@ The reference of every key, generated from the schema, is
 | `binference rescue set <address>`    | A new rescue address in 24 hours; asks for the owner key            |
 | `binference rescue cancel`           | Cancels a new rescue address that waits                             |
 | `binference safety status`           | What is frozen, the rescue under way and the rescue address         |
+| `binference telegram pair`           | A new link that pairs another Telegram account; shown once          |
 | `binference address list`            | The agent's saved addresses and when a send may pay each            |
 | `binference address add <address>`   | Saves a send address in the ceilings; asks for the owner key        |
 | `binference address remove <entry>`  | Takes an address out of the book: nothing is sent to it again       |

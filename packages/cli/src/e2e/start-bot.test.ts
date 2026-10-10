@@ -22,6 +22,9 @@ const folders: TempFolder[] = [];
 const ownerId = 7_012_345_678;
 const telegramOrigin = "https://api.telegram.org";
 const pairingSchema = z.object({ pairing: z.object({ link: z.url() }) });
+const repairingSchema = z.strictObject({ link: z.url(), expiresAt: z.int() });
+// The Telegram account `binference telegram pair` pairs in the owner's place.
+const nextOwnerId = 7_098_765_432;
 
 afterEach(async () => {
   await engines.stopAll();
@@ -72,6 +75,15 @@ function watchedWorld(machine: InitMachine) {
 const sent = (text: string) => (call: BotCall) =>
   call.method === "sendMessage" && call.isAnswered && call.body.includes(text);
 
+// A message with this text Telegram took for this chat.
+const sentTo = (chatId: number, text: string) => (call: BotCall) =>
+  sent(text)(call) && call.body.includes(`"chat_id":${String(chatId)}`);
+
+// The start code of a pairing link.
+function startCodeOf(link: string): string {
+  return new URL(link).searchParams.get("start") ?? "";
+}
+
 // The engine's nth long poll for updates, counted from its start.
 function poll(nth: number) {
   const seen = { polls: 0 };
@@ -84,11 +96,16 @@ function poll(nth: number) {
   };
 }
 
-// A text the owner types in the bot's private chat, as Telegram delivers it.
-function ownerText(updateId: number, text: string) {
-  const chat = { id: ownerId, type: "private" };
-  const from = { id: ownerId, is_bot: false, first_name: "Owner" };
+// A text a person types in their private chat with the bot, as Telegram delivers it.
+function textFrom(userId: number, updateId: number, text: string) {
+  const chat = { id: userId, type: "private" };
+  const from = { id: userId, is_bot: false, first_name: "Owner" };
   return { update_id: updateId, message: { message_id: updateId, date: 1, chat, from, text } };
+}
+
+// A text the owner types in the bot's private chat.
+function ownerText(updateId: number, text: string) {
+  return textFrom(ownerId, updateId, text);
 }
 
 interface SetUp {
@@ -103,7 +120,7 @@ async function setUp(): Promise<SetUp> {
   const machine = await newInitMachine(folders, clock);
   const init = await runOn(machine, ["init", "--json", "--yes", ...initFlags(machine)]);
   const { link } = pairingSchema.parse(JSON.parse(init.stdout)).pairing;
-  return { machine, clock, code: new URL(link).searchParams.get("start") ?? "" };
+  return { machine, clock, code: startCodeOf(link) };
 }
 
 describe("the owner's bot in binference start", () => {
@@ -145,6 +162,28 @@ describe("the owner's bot in binference start", () => {
     });
     machine.bot.push(ownerText(2, "/status"));
     await after.until(sent("binference 2026.10.0-test is running."));
+  });
+
+  it("pairs another account with binference telegram pair and tells the owner", slow, async () => {
+    const { machine, clock, code } = await setUp();
+    const world = watchedWorld(machine);
+    await engines.start(machine, { parts: { http: world.http } });
+    machine.bot.push(ownerText(1, `/start ${code}`));
+    await world.until(sent("You are now the owner of this bot."));
+    const paired = await runOn(machine, ["telegram", "pair", "--json"]);
+    expect([paired.code, paired.stderr]).toStrictEqual([0, ""]);
+    const { link, expiresAt } = repairingSchema.parse(JSON.parse(paired.stdout));
+    expect(expiresAt).toBe(clock.now() + 10 * 60 * 1000);
+    const next = startCodeOf(link);
+    expect(next).not.toBe(code);
+    await clock.advance(1_000);
+    machine.bot.push(textFrom(nextOwnerId, 2, `/start ${next}`));
+    await world.until(sentTo(ownerId, "Not you? Freeze now"));
+    await world.until(sentTo(nextOwnerId, "You are now the owner of this bot."));
+    await clock.advance(1_000);
+    machine.bot.push(textFrom(nextOwnerId, 3, "/status"));
+    await world.until(sent("binference 2026.10.0-test is running."));
+    expect((await engineLogLines(machine)).join("\n")).not.toContain(next);
   });
 
   it("starts without the bot when its token cannot be read, and says why", slow, async () => {

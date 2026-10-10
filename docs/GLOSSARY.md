@@ -220,6 +220,8 @@ new name here first, in the change that uses it.
 - **start code**: the single-use code in the `t.me/<bot>?start=<code>` link `binference init`
   prints; only its SHA-256 is stored. The first person who opens the link becomes the **owner
   binding**: the owner's numeric Telegram id, the only Telegram user binference obeys.
+  `binference telegram pair` prints a new one, valid 10 minutes, whose first opener replaces the
+  owner, who is told in their chat.
 - **update intake**: where Telegram updates come in. Long polling and a webhook relay both feed
   it, and Telegram learns an update arrived only after the intake has stored it, cut to its ids
   when a text in it looks like a secret.
@@ -269,7 +271,7 @@ new name here first, in the change that uses it.
   `deny`, `wallet list`, `wallet address`, `wallet create`, `wallet export`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
-  `limit cancel`, `unlock`, `expose`.
+  `limit cancel`, `telegram pair`, `unlock`, `expose`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,

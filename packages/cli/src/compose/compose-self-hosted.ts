@@ -28,6 +28,7 @@ import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.
 import { createOwnerLocaleChange } from "./owner-locale-change.js";
 import { paperBalancesOf } from "./paper-balances.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
+import { createTelegramPair } from "./telegram-pair.js";
 
 /** The self-hosted engine, built and not yet listening. */
 export interface ComposedSelfHosted {
@@ -129,7 +130,8 @@ interface EngineWiring extends Pick<ComposedSelfHosted, "stopper" | "locked"> {
   readonly custody: () => HealthSignal["state"];
 }
 
-// The engine's own operations: its status with the health signals, its stop and its unlock.
+// The engine's own operations: its status with the health signals, its stop, its unlock, and a new
+// pairing link for the owner's bot.
 function engineHandlers(
   opening: Opening,
   opened: Opened,
@@ -144,14 +146,18 @@ function engineHandlers(
     logFailed: opened.log.hasFailed,
   });
   opening.closers.add("health", async () => probe.stop());
-  return createEngineOperations({
-    agents: opened.stores.agents,
-    version: opening.host.version,
-    state: wiring.locked.state,
-    lock: wiring.locked.lock,
-    health: () => probe.read(),
-    stop: () => wiring.stopper.stop(),
-  });
+  const { clock, random } = opening.host;
+  return {
+    ...createEngineOperations({
+      agents: opened.stores.agents,
+      version: opening.host.version,
+      state: wiring.locked.state,
+      lock: wiring.locked.lock,
+      health: () => probe.read(),
+      stop: () => wiring.stopper.stop(),
+    }),
+    ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
+  };
 }
 
 // The confirmed intents an earlier run left wait for the keys (decision 0103); once the engine

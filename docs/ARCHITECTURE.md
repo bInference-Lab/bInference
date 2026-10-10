@@ -621,6 +621,9 @@ a hijacked Telegram account cannot redirect it.
   - `binference init` takes the BotFather token and prints a `t.me/<bot>?start=<code>` link.
   - The first DM carrying that code makes that Telegram user the owner. Only numeric user ids are
     ever trusted.
+  - `binference telegram pair` prints a new code, valid 10 minutes. The owner stays until someone
+    opens it; that person becomes the owner, and the earlier owner is told in their chat, with the
+    freeze command ([decision 0139](DECISIONS.md#d0139)).
   - Long polling runs in a worker thread, with each update stored before it is acknowledged. A lease
     keeps it to one poller per token.
   - Webhooks are optional; they require a secret checked in constant time, or the engine refuses to
