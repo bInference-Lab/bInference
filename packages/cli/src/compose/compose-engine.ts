@@ -78,6 +78,11 @@ export interface ComposeEngineOptions {
   readonly handlers?: EngineHandlerTable;
   /** The owner's bot; without it the engine shows no card in Telegram. */
   readonly telegram?: TelegramParts;
+  /**
+   * The handlers only the owner's bot runs: the `config/change` that sets `owner.locale`, the one
+   * setting the owner's chat changes (decision 0134). The protocol server never serves them.
+   */
+  readonly ownerChat?: Pick<EngineHandlerTable, "config/change">;
   readonly clock: Clock;
   readonly random: Random;
   readonly logger: Logger;
@@ -112,7 +117,7 @@ function joinTelegram(
     : composeTelegram(telegram, {
         stores: parts.stores,
         answer: engine.answer,
-        handlers: engine.handlers,
+        handlers: { ...engine.handlers, ...options.ownerChat },
         chains,
         owner,
         clock,

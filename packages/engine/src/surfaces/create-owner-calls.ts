@@ -1,17 +1,21 @@
 import { BinferenceError, err, type Result } from "@binference/core";
 import {
   type ArgsOf,
+  localeSchema,
   type ProtocolErrorCode,
   protocolErrorCodes,
   type ResultOf,
   type Scope,
 } from "@binference/protocol";
+import { z } from "zod";
 import type { EngineCaller, EngineHandler, EngineHandlerTable } from "../operations/engine-call.js";
 
 /**
  * The operations the owner's fast commands run from their Telegram chat: reads, and the braking
  * that rule 11 allows from any surface. None is local or takes the owner key. `limit/set` runs
  * with `confirm` alone, so its handler takes only a stricter limit (decision 0111).
+ * `config/change` runs only to set `owner.locale`, the one exception to its `admin` scope
+ * (decision 0134).
  */
 export const ownerChatOperations = [
   "engine/status",
@@ -24,6 +28,7 @@ export const ownerChatOperations = [
   "portfolio/get",
   "order/list",
   "wallet/list",
+  "config/change",
 ] as const;
 
 /** An operation the owner's fast commands run. */
@@ -73,6 +78,22 @@ export interface OwnerCallsOptions {
 
 const protocolCodes: ReadonlySet<string> = new Set(protocolErrorCodes);
 
+// The one setting the owner's chat changes past its scopes: the owner's language (decision 0134).
+const ownerLocalePatchSchema = z.strictObject({
+  owner: z.strictObject({ locale: localeSchema }),
+});
+
+function isConfigChange(
+  request: OwnerCall<OwnerChatOperation>,
+): request is OwnerCall<"config/change"> {
+  return request.op === "config/change";
+}
+
+// A call the chat's scopes allow, or the owner's language change, which alone passes `admin`.
+function isAllowed(request: OwnerCall<OwnerChatOperation>): boolean {
+  return !isConfigChange(request) || ownerLocalePatchSchema.safeParse(request.args.patch).success;
+}
+
 function isProtocolCode(code: string): code is ProtocolErrorCode {
   return protocolCodes.has(code);
 }
@@ -104,14 +125,15 @@ async function run<N extends OwnerChatOperation>(
 /**
  * Creates the {@link OwnerCalls} over the handlers. Each call runs as the owner on Telegram, with
  * the scopes {@link ownerChatScopes} names, so a freeze is journaled and announced as made from
- * Telegram and a rescue is proposed by the owner. A sender other than the owner runs nothing.
+ * Telegram and a rescue is proposed by the owner. A sender other than the owner runs nothing, and
+ * a `config/change` of anything but `owner.locale` is `auth.scope` (decision 0134).
  */
 export function createOwnerCalls(options: OwnerCallsOptions): OwnerCalls {
   return {
     async call(request, { signal }) {
       signal.throwIfAborted();
       const owner = await options.ownerId({ signal });
-      if (owner === undefined || owner !== request.senderId) {
+      if (owner === undefined || owner !== request.senderId || !isAllowed(request)) {
         return err("auth.scope");
       }
       const handler: EngineHandler<typeof request.op> | undefined = options.handlers[request.op];

@@ -480,11 +480,17 @@ describe("the fast commands' replies", () => {
     ]);
   });
 
-  it("says the language binference uses and how to switch it", async () => {
+  it("says the language binference uses, with a button for each language named in itself", async () => {
     const bot = await startCommandBot(served);
     await bot.send("/lang");
     expect(bot.texts()).toStrictEqual([
-      'binference uses English with you. To switch, set `owner.locale` to "en" or "zh" in config.json5; binference applies it at once.',
+      "binference uses English with you. Tap a language to switch; binference applies it at once.",
+    ]);
+    expect(bot.botApi.messages()[0]?.buttons).toStrictEqual([
+      [
+        { text: "English", data: "bnf1:l:s:en" },
+        { text: String.fromCodePoint(0x4e2d, 0x6587), data: "bnf1:l:s:zh" },
+      ],
     ]);
   });
 });

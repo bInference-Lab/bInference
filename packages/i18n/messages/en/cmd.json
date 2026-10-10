@@ -59,5 +59,6 @@
   "limits.halve": "{limit, select, perTradeUsdMicros {Halve the per-trade cap} rollingDayUsdMicros {Halve the 24-hour cap} slippageRegistryBps {Halve the slippage limit on verified tokens} slippageOtherBps {Halve the slippage limit on other tokens} other {Halve the limit}}",
   "limits.halved": "{name} is {value} now.",
   "limits.lowest": "{name} is {value} already, the lowest it goes.",
-  "lang.current": "binference uses {locale, select, zh {Chinese} other {English}} with you. To switch, set `owner.locale` to \"en\" or \"zh\" in config.json5; binference applies it at once."
+  "lang.current": "binference uses {locale, select, zh {Chinese} other {English}} with you. Tap a language to switch; binference applies it at once.",
+  "lang.switched": "binference uses {locale, select, zh {Chinese} other {English}} with you now."
 }

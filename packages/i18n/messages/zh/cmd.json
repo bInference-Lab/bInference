@@ -59,5 +59,6 @@
   "limits.halve": "{limit, select, perTradeUsdMicros {单笔上限减半} rollingDayUsdMicros {24 小时上限减半} slippageRegistryBps {已验证代币的滑点上限减半} slippageOtherBps {其他代币的滑点上限减半} other {限额减半}}",
   "limits.halved": "{name}现为 {value}。",
   "limits.lowest": "{name}已是 {value}，不能再低。",
-  "lang.current": "binference 与你沟通使用{locale, select, zh {中文} other {英文}}。如需切换，请在 config.json5 中将 `owner.locale` 设为 \"en\" 或 \"zh\"；binference 会立即生效。"
+  "lang.current": "binference 与你沟通使用{locale, select, zh {中文} other {英文}}。点按一种语言即可切换，binference 会立即生效。",
+  "lang.switched": "binference 现在与你沟通使用{locale, select, zh {中文} other {英文}}。"
 }

@@ -221,6 +221,17 @@ export interface SkeletonOptions {
   readonly chainSimulator?: TxSimulator;
   /** The owner's language and timezone now; English in UTC when left out. */
   readonly owner?: () => OwnerInfo;
+  /** The handlers only the owner's bot runs, such as the owner's language change. */
+  readonly ownerChat?: ComposeEngineOptions["ownerChat"];
+}
+
+// The owner's bot and the handlers it alone runs, when the options name them.
+function botOf(options: SkeletonOptions): Pick<ComposeEngineOptions, "telegram" | "ownerChat"> {
+  const { telegram, ownerChat } = options;
+  return {
+    ...(telegram === undefined ? {} : { telegram }),
+    ...(ownerChat === undefined ? {} : { ownerChat }),
+  };
 }
 
 /**
@@ -272,7 +283,7 @@ export async function composeSkeleton(
       health: () => [],
       stop: () => undefined,
     }),
-    ...(options.telegram === undefined ? {} : { telegram: options.telegram }),
+    ...botOf(options),
     clock,
     random: createSeededRandom(7),
     logger,

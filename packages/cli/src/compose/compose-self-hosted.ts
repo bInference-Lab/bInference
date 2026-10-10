@@ -7,13 +7,14 @@ import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
-import { composeEngine } from "./compose-engine.js";
+import { type ComposeEngineOptions, composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createMissingParts, type MissingParts } from "./missing-parts.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
+import { createOwnerLocaleChange } from "./owner-locale-change.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 
 /** The self-hosted engine, built and not yet listening. */
@@ -172,6 +173,20 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   };
 }
 
+// The owner's language change, the one setting the owner's bot changes (decision 0134).
+function ownerChatOf(
+  opening: Opening,
+  opened: Opened,
+): NonNullable<ComposeEngineOptions["ownerChat"]> {
+  const { stateFolder, permissions } = opening.platform;
+  const change = createOwnerLocaleChange({
+    file: stateFolder.configFile,
+    permissions,
+    settings: opened.settings,
+  });
+  return { "config/change": change };
+}
+
 // The engine and its protocol server over the wired parts.
 function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { host } = opening;
@@ -202,6 +217,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       http: { host: loopback, port: config.engine.port, extraOrigins: config.engine.extraOrigins },
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
+      ownerChat: ownerChatOf(opening, opened),
       handlers: engineHandlers(opening, opened, {
         missing: parts.missing,
         executor: sending.health,

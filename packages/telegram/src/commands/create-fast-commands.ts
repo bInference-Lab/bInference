@@ -12,6 +12,7 @@ import { runHalve, runLimits, runPaper } from "./agent-commands.js";
 import { commandCallbackSchema } from "./command-callback.schema.js";
 import type { CommandContext, CommandRun, PressContext } from "./command-context.js";
 import { commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
+import { runLang, runLanguage } from "./lang-command.js";
 import { runOrders } from "./orders-command.js";
 import { runBalance, runPositions } from "./portfolio-commands.js";
 import { registerCommands } from "./register-commands.js";
@@ -57,10 +58,6 @@ async function runHelp(context: CommandContext): Promise<void> {
     context.words("cmd.help.item", { command, description: context.words(`cmd.menu.${command}`) }),
   );
   await context.say([context.words("cmd.help.heading"), ...lines].join("\n"));
-}
-
-async function runLang(context: CommandContext): Promise<void> {
-  await context.say(context.words("cmd.lang.current", { locale: context.formatter.locale }));
 }
 
 const runs: Readonly<Record<FastCommandName, CommandRun>> = {
@@ -145,6 +142,11 @@ function pressContextOf(
     ...contextOf(parts, asker),
     edit: async (text, buttons) => bot.edit({ chatId, messageId }, text, { signal, buttons }),
     answer: async (notice) => bot.answer(press.callbackId, notice, { signal }),
+    wordsIn: (locale) => {
+      const formatter = parts.formatters({ ...parts.options.display(), locale });
+      // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
+      return (key, values) => formatter.message(key, values);
+    },
   };
 }
 
@@ -174,7 +176,10 @@ export function createFastCommands(options: FastCommandsOptions): FastCommands {
         return false;
       }
       const context = pressContextOf(parts, { press: pressed, chatId, messageId }, signal);
-      await runCaught(async () => runHalve(context, callback.data.limit), context, logger);
+      const { data } = callback;
+      const run = async (): Promise<void> =>
+        data.kind === "halve" ? runHalve(context, data.limit) : runLanguage(context, data.locale);
+      await runCaught(run, context, logger);
       return true;
     },
     register: async ({ signal }) => registerCommands(options.api, { signal }),

@@ -41,7 +41,9 @@ Rules for this package:
   itself. They run in `pnpm test:crash`, never in `pnpm check`.
 - `composeEngine` is the one place that joins the engine to its protocol server, and to the
   owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
-  handlers: the engine's and the root's own, such as `engine/status`. Every push, a notice too,
+  handlers: the engine's and the root's own, such as `engine/status`. The bot alone also gets
+  `ownerChat`: the `config/change` that sets `owner.locale` in config.json5 in place
+  (`src/compose/owner-locale-change.ts`, decision 0134), which the live reload then applies. Every push, a notice too,
   goes through the engine's one `publish`, so the server and the bot both get it. A push that fails, and a card that does not reach
   Telegram, is logged and never stops the money path. The skeleton tests run on every composition
   with `describe.each` through `src/compose/test-skeleton.ts`; a new profile part joins both

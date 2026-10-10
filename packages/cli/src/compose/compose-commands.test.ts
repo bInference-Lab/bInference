@@ -5,7 +5,7 @@ import {
   type TxSimulator,
 } from "@binference/chain";
 import { createFakeFamily, createFakeTxSimulator } from "@binference/chain/testing";
-import { BinferenceError, type JsonValue } from "@binference/core";
+import { BinferenceError, type JsonValue, ok } from "@binference/core";
 import { testAgent, testCoin, testNowMs } from "@binference/engine/testing";
 import {
   createFakeBotApi,
@@ -18,8 +18,16 @@ import {
 } from "@binference/telegram/testing";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
+import { currentConfigVersion } from "../config/migrations/config-migrations.js";
+import { configSchema } from "../config/schema/config.schema.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
-import { type ComposedSkeleton, composeSkeleton, skeletonCompositions } from "./test-skeleton.js";
+import { createOwnerLocaleChange } from "./owner-locale-change.js";
+import {
+  type ComposedSkeleton,
+  composeSkeleton,
+  type SkeletonOptions,
+  skeletonCompositions,
+} from "./test-skeleton.js";
 
 const live = { signal: new AbortController().signal };
 const ownerId = 7_012_345_678;
@@ -71,10 +79,24 @@ function confirmDataOf(card: FakeMessage): string {
   return card.buttons[0]?.[0]?.data ?? never();
 }
 
+// A config as the self-hosted engine runs on it, for the answer of a language change.
+function skeletonConfig() {
+  return configSchema.parse({
+    version: currentConfigVersion,
+    telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },
+  });
+}
+
 // The agent's per-trade cap as the store keeps it.
 async function perTradeOf(test: Bot): Promise<bigint> {
   const settings = await test.parts.stores.agents.get(testAgent, live);
   return settings?.limits.perTradeUsdMicros ?? never();
+}
+
+// The message `/lang` answered with, which carries its buttons.
+function langMessageOf(botApi: FakeBotApi): number {
+  const message = botApi.messages().find((sent) => sent.text.startsWith("binference uses"));
+  return message?.messageId ?? never();
 }
 
 // The message `/limits` answered with, which carries its buttons.
@@ -97,7 +119,7 @@ function textFrom(updateId: number, text: string): JsonValue {
 }
 
 // The skeleton with one coin in its wallet and a rescue address in effect, and the owner's bot.
-async function bot(): Promise<Bot> {
+async function bot(ownerChat: SkeletonOptions["ownerChat"] = {}): Promise<Bot> {
   const botApi = createFakeBotApi();
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
@@ -107,6 +129,7 @@ async function bot(): Promise<Bot> {
     telegram,
     held: new Map([[walletAccount, [{ asset: testCoin, base: 10n ** 18n }]]]),
     chainSimulator: rescueSimulator(),
+    ownerChat,
   });
   const change = { address: rescueAccount, atMs: testNowMs - 2 * dayMs };
   await skeleton.parts.stores.install.changeRescue(change, live);
@@ -177,6 +200,26 @@ describe("the owner's fast commands on the engine", () => {
       "Limit changed by Telegram: the per-trade cap changed now",
       "Limit changed by Telegram: the per-trade cap changed now",
     ]);
+  });
+
+  it("sets the owner's language in the config file at a tap of /lang, and nothing else", async () => {
+    const disk = { text: '{\n  // Mine.\n  owner: { locale: "en" },\n}\n' };
+    const test = await bot({
+      "config/change": createOwnerLocaleChange({
+        file: "config.json5",
+        permissions: {} as never,
+        settings: { current: () => skeletonConfig() },
+        readFile: async () => Promise.resolve(ok(disk.text)),
+        writeFile: async (_path, data) => {
+          disk.text = String(data);
+          await Promise.resolve();
+        },
+      }),
+    });
+    await test.send("/lang");
+    const press = { from: ownerId, data: "bnf1:l:s:zh", messageId: langMessageOf(test.botApi) };
+    await test.telegram.ingress.receive(test.botApi.press(press), live);
+    expect(disk.text).toBe('{\n  // Mine.\n  owner: { locale: "zh" },\n}\n');
   });
 
   it.each([

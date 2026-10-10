@@ -191,7 +191,8 @@ Rules for this package:
   through `createOwnerCalls`, only for the owner's numeric Telegram id, as the caller
   `{ kind: "telegram" }` with `read` and `confirm`: what they change is journaled, ledgered and
   announced as done from Telegram, and an operation joins `ownerChatOperations` only when its
-  scope is one of those two. A card version is drawn from the stored intent, a press is
+  scope is one of those two. The one exception is `config/change` with the patch
+  `{ owner: { locale } }` alone (decision 0134); any other patch from the chat is `auth.scope`. A card version is drawn from the stored intent, a press is
   answered only for the owner and only through the answer step, and every card version carries a
   callback reference from the `Random` port, never an id.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

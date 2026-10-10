@@ -1,6 +1,6 @@
 import type { ChainRegistry } from "@binference/chain";
 import type { OwnerChatOperation } from "@binference/engine/surfaces";
-import type { Formatter, MessageValues } from "@binference/i18n";
+import type { Formatter, MessageLocale, MessageValues } from "@binference/i18n";
 import type { ArgsOf, ResultOf } from "@binference/protocol";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
 import type { ButtonRows } from "../ingress/bot-calls.js";
@@ -43,6 +43,8 @@ export interface PressContext extends CommandContext {
   readonly edit: (text: string, buttons: ButtonRows) => Promise<void>;
   /** Answers the press: with a short notice, or silently to stop the button's spinner. */
   readonly answer: (notice?: string) => Promise<void>;
+  /** The text of a message key in a language, such as the one the owner switches to. */
+  readonly wordsIn: (locale: MessageLocale) => (key: string, values?: MessageValues) => string;
 }
 
 /**

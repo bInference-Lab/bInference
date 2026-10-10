@@ -3,7 +3,8 @@
 Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 [decision 0088](../DECISIONS.md#d0088) and [decision 0089](../DECISIONS.md#d0089); custody
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
-[0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125) and [0128](../DECISIONS.md#d0128).
+[0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128) and
+[0134](../DECISIONS.md#d0134).
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -440,6 +441,9 @@ no upload.
 | `upload/start`      | `chat`                     |       |       | `{ contentType, bytes }` → `{ url, expiresAt }` for `POST /upload/:ticket`         |
 | `push/subscribe`    | any                        |       |       | `{ topics }` → `{ seqs, resync? }`                                                 |
 | `push/unsubscribe`  | any                        |       |       | `{ topics }` → `{}`                                                                |
+
+The owner's Telegram chat may run `config/change` past its `admin` scope for one patch alone,
+`{ owner: { locale } }`, which a `/lang` button sends ([decision 0134](../DECISIONS.md#d0134)).
 
 <a id="section-7-10"></a>
 

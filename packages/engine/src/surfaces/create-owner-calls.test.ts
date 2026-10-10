@@ -1,6 +1,6 @@
 import { createFakeTxSimulator } from "@binference/chain/testing";
 import { BinferenceError, ok } from "@binference/core";
-import { operations, takesOwnerKey } from "@binference/protocol";
+import { type ArgsOf, operations, takesOwnerKey } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent } from "../intents/test-intents.js";
 import { startTestEngine, type TestEngine } from "../operations/test-engine.js";
@@ -45,14 +45,17 @@ async function rescuing(): Promise<TestEngine> {
 }
 
 describe("the owner's calls from Telegram", () => {
-  it.each(ownerChatOperations)("runs %s, a read or a brake the owner holds in the chat", (op) => {
-    const operation = operations[op];
-    expect([
-      ownerChatScopes.includes(operation.scope),
-      operation.transport,
-      takesOwnerKey(operation),
-    ]).toStrictEqual([true, "any", false]);
-  });
+  it.each(ownerChatOperations.filter((op) => op !== "config/change"))(
+    "runs %s, a read or a brake the owner holds in the chat",
+    (op) => {
+      const operation = operations[op];
+      expect([
+        ownerChatScopes.includes(operation.scope),
+        operation.transport,
+        takesOwnerKey(operation),
+      ]).toStrictEqual([true, "any", false]);
+    },
+  );
 
   it("tightens a limit at once as the owner on Telegram, and never loosens one", async () => {
     const test = await startTestEngine();
@@ -75,6 +78,28 @@ describe("the owner's calls from Telegram", () => {
     expect(test.pushes.filter((push) => push.kind === "notice/new")).toMatchObject([
       { data: { key: "notice.limitChange", values: { surface: "telegram", pending: "no" } } },
     ]);
+  });
+
+  it("changes the owner's language past the admin scope, and no other setting", async () => {
+    const seen: unknown[] = [];
+    const handlers: OwnerChatHandlers = {
+      "config/change": async ({ args, caller }) => {
+        seen.push([args.patch, caller.scopes]);
+        return Promise.resolve(ok({ config: {}, restartNeeded: false }));
+      },
+    };
+    const change = async (patch: Readonly<ArgsOf<"config/change">["patch"]>) =>
+      callsOf(handlers).call({ op: "config/change", args: { patch }, senderId: ownerId }, live);
+    expect(operations["config/change"].scope).toBe("admin");
+    await expect(change({ owner: { locale: "zh" } })).resolves.toMatchObject({ ok: true });
+    const others: readonly ArgsOf<"config/change">["patch"][] = [
+      { owner: { locale: "zh", timezone: "UTC" } },
+      { owner: { locale: "fr" } },
+      { logging: { level: "debug" } },
+    ];
+    const refused = await Promise.all(others.map(async (patch) => change(patch)));
+    expect(refused.map((result) => result.ok)).toStrictEqual([false, false, false]);
+    expect(seen).toStrictEqual([[{ owner: { locale: "zh" } }, ["read", "confirm"]]]);
   });
 
   it("freezes every agent as the owner on Telegram, and the notice names Telegram", async () => {

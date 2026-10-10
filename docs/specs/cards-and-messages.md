@@ -4,7 +4,7 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0101](../DECISIONS.md#d0101), [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103),
 [0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115),
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
-[0120](../DECISIONS.md#d0120) and [0128](../DECISIONS.md#d0128).
+[0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128) and [0134](../DECISIONS.md#d0134).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -50,7 +50,8 @@ names the keys and fixes the wording.
   stored with the card version, never an id the presser could guess.
 - A `/limits` button carries `bnf1:t:h:<limit>`: it halves the limit its field names
   (`perTradeUsdMicros`, `rollingDayUsdMicros`, `slippageRegistryBps` or `slippageOtherBps`) for the
-  only agent. It names no id: a press can only make the owner's own limit stricter.
+  only agent. It names no id: a press can only make the owner's own limit stricter. A `/lang`
+  button carries `bnf1:l:s:<en|zh>`: it sets the owner's language.
 - The engine checks that the presser is the owner's numeric Telegram id, writes the decision
   durably, then answers `answerCallbackQuery`.
 - First answer wins: the other surfaces' buttons are removed, and every copy becomes the receipt.
@@ -270,6 +271,12 @@ other tokens, rounding down: "Halve the per-trade cap" / 「单笔上限减半�
 so it applies at once through `limit/set` and is announced like any limit change
 ([decision 0111](../DECISIONS.md#d0111)); a second tap halves it again, and a limit at zero has no
 button. Nothing in Telegram loosens a limit.
+
+A `/lang` button names its language in that language, the same in every language: `English`,
+`中文`. A tap sets `owner.locale` in config.json5 through `config/change`, the one setting the
+owner's chat changes ([decision 0134](../DECISIONS.md#d0134)), and answers in the new language:
+"binference uses Chinese with you now." / 「binference 现在与你沟通使用中文。」 The live reload journals
+the change and announces it on every surface.
 
 <a id="section-6"></a>
 
