@@ -27,8 +27,8 @@ Rules for this package:
   get messages from the i18n `cli` area through `CliOutput`, scripts get JSON. Log lines and JSON
   stay English.
 - `startSelfHosted` opens the owner's bot from `telegram.botToken` (`src/compose/open-bot.ts`):
-  grammY over `host.http` with the token's throttler, and the bot's stores, which last one run
-  (`run-bot-stores.ts`). The bot's channel (`bot-channel.ts`) adds its closer at the channels
+  grammY over `host.http` with the token's throttler. Its owner and card copies come from
+  `engine.sqlite` (`botParts`, decision 0139), so a pairing outlasts a restart. The bot's channel (`bot-channel.ts`) adds its closer at the channels
   step and begins only once the engine is `ready`: the menu once, the outbox, the stored updates,
   then the poll worker. A token that cannot be read leaves the engine running without the bot.
 - `binference start` runs the engine as the background service through the platform's

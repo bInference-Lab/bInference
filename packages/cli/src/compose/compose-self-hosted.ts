@@ -23,6 +23,7 @@ import { type ComposedLock, composeLock } from "./compose-lock.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
+import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { createOwnerLocaleChange } from "./owner-locale-change.js";
 import { paperBalancesOf } from "./paper-balances.js";
@@ -265,7 +266,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
       ownerChat: ownerChatOf(opening, opened),
-      ...(opened.bot === undefined ? {} : { telegram: opened.bot.parts }),
+      ...(opened.bot === undefined ? {} : { telegram: botParts(opened.bot, stores) }),
       handlers: engineHandlers(opening, opened, {
         rpc: () => rpcHealthOf(parts.reads, host.clock),
         executor: sending.health,

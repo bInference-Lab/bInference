@@ -72,6 +72,18 @@ function watchedWorld(machine: InitMachine) {
 const sent = (text: string) => (call: BotCall) =>
   call.method === "sendMessage" && call.isAnswered && call.body.includes(text);
 
+// The engine's nth long poll for updates, counted from its start.
+function poll(nth: number) {
+  const seen = { polls: 0 };
+  return (call: BotCall): boolean => {
+    if (call.method !== "getUpdates" || call.isAnswered) {
+      return false;
+    }
+    seen.polls += 1;
+    return seen.polls >= nth;
+  };
+}
+
 // A text the owner types in the bot's private chat, as Telegram delivers it.
 function ownerText(updateId: number, text: string) {
   const chat = { id: ownerId, type: "private" };
@@ -115,6 +127,24 @@ describe("the owner's bot in binference start", () => {
     const frozen = await runOn(machine, ["freeze", "--yes", "--json"]);
     expect(frozen.code).toBe(0);
     await world.until(sent("is frozen from the CLI."));
+  });
+
+  it("still answers the owner it paired after the engine restarts", slow, async () => {
+    const { machine, clock, code } = await setUp();
+    const before = watchedWorld(machine);
+    await engines.start(machine, { parts: { http: before.http } });
+    machine.bot.push(ownerText(1, `/start ${code}`));
+    await before.until(sent("You are now the owner of this bot."));
+    // The next poll starts once the pairing message is handled, so the restart has nothing left.
+    await clock.advance(1_000);
+    await before.until(poll(2));
+    await engines.stopAll();
+    const after = watchedWorld(machine);
+    await expect(engines.start(machine, { parts: { http: after.http } })).resolves.toMatchObject({
+      state: "ready",
+    });
+    machine.bot.push(ownerText(2, "/status"));
+    await after.until(sent("binference 2026.10.0-test is running."));
   });
 
   it("starts without the bot when its token cannot be read, and says why", slow, async () => {
