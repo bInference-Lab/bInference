@@ -92,9 +92,9 @@ describe("binference rescue set", () => {
 
     expect(wrong.code).toBe(1);
     expect(
-      wrong.prompter.transcript.lines.filter((line) => line === en("rescue.wrongKey")),
+      wrong.prompter.transcript.lines.filter((line) => line === en("ownerKey.wrong")),
     ).toHaveLength(2);
-    expect(wrong.stderr).toContain(en("rescue.wrongKeyEnd"));
+    expect(wrong.stderr).toContain(en("ownerKey.wrongEnd"));
     expect(ceilings.recipients(ceiling)).toStrictEqual([accountOf(ownerAddress)]);
   });
 
@@ -107,6 +107,9 @@ describe("binference rescue set", () => {
       `${en("rescue.badAddress").replace("{address}", "0x12")}\n`,
     ]);
     const scripted = await runOn(machine, ["rescue", "set", newAddress, "--yes"]);
-    expect([scripted.code, scripted.stderr]).toStrictEqual([1, `${en("rescue.needsTerminal")}\n`]);
+    expect([scripted.code, scripted.stderr]).toStrictEqual([
+      1,
+      `${en("ownerKey.needsTerminal").replace("{command}", "rescue set")}\n`,
+    ]);
   });
 });
