@@ -34,6 +34,25 @@ interface RecordedPrivy extends FakePrivy {
 export interface InitMachine extends TestMachine {
   readonly privy: RecordedPrivy;
   readonly bot: FakeBotApi;
+  /** The outside world as the machine's commands reach it: Telegram's Bot API, then Privy. */
+  readonly world: Http;
+}
+
+const telegramOrigin = "https://api.telegram.org";
+
+/**
+ * A test machine on the given folder, clock and fake Privy, with a fake Bot API of its own and a
+ * world in which Telegram's origin reaches the fake bot and every other request the fake Privy.
+ */
+export function machineOf(machine: Omit<InitMachine, "bot" | "world">): InitMachine {
+  const bot = createFakeBotApi();
+  const world: Http = {
+    request: async (request) =>
+      new URL(request.url).origin === telegramOrigin
+        ? bot.http.request(request)
+        : machine.privy.http.request(request),
+  };
+  return { ...machine, bot, world };
 }
 
 /** What one `binference` run gave. */
@@ -64,13 +83,8 @@ export async function newInitMachine(
 ): Promise<InitMachine> {
   const folder = await createTempFolder("bnf-init-");
   folders.push(folder);
-  return {
-    folder: folder.path,
-    clock,
-    signals: new EventEmitter(),
-    privy: recorded(createFakePrivy({ clock, random: createSeededRandom(folders.length) })),
-    bot: createFakeBotApi(),
-  };
+  const privy = recorded(createFakePrivy({ clock, random: createSeededRandom(folders.length) }));
+  return machineOf({ folder: folder.path, clock, signals: new EventEmitter(), privy });
 }
 
 /** The flags of a run with no person: every answer from a flag, secrets from variables. */
@@ -108,7 +122,7 @@ export async function runOn(
 ): Promise<CliRun> {
   const host = hostWith(machine, argv, {
     env: options.env ?? secretEnv(machine),
-    parts: { http: machine.privy.http, botApiFetch: machine.bot.fetch, ...options.parts },
+    parts: { http: machine.world, ...options.parts },
   });
   const code = await runCli(host);
   return { code, stdout: host.stdout(), stderr: host.stderr() };

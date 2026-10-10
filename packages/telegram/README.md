@@ -30,6 +30,7 @@ the owner's language.
 | `createTelegramIngress`            | Screens and stores each update, then handles it; `resume` handles what is left |
 | `UpdateIntake`                     | Where updates come in: long polling and a webhook relay both feed it           |
 | `runPolling`                       | Long-polls one bot from a worker thread, under the token's lease               |
+| `createBotApiFetch`                | grammY's `fetch` over the Http port, so every Bot API call names binference    |
 | `createPollerLeases`               | One poller per bot token in the process                                        |
 | `openPollWorker`, `pollWorker`     | The poll worker thread and its entry                                           |
 | `checkBotToken`, `BotAccount`      | Checks a bot token with `getMe` and answers the bot it opens                   |
@@ -54,6 +55,7 @@ answers out, with Telegram's checks on HTML, lengths and callback data.
 import { createCardPresses } from "@binference/engine/surfaces";
 import { Api } from "grammy";
 import {
+  createBotApiFetch,
   createBotThrottlers,
   createPollerLeases,
   createTelegramCards,
@@ -62,7 +64,8 @@ import {
   runPolling,
 } from "@binference/telegram";
 
-const api = new Api(token.reveal());
+// Every Bot API call goes out through binference's outbound HTTP, which names binference.
+const api = new Api(token.reveal(), { fetch: createBotApiFetch(http) });
 createBotThrottlers({ clock, logger: logger.child("telegram") }).install(api);
 // Read on each message, so a change of owner.locale in config.json5 applies to the next one.
 const display = () => ({ locale: settings.owner.locale, timeZone: settings.owner.timezone });
@@ -92,7 +95,7 @@ const ingress = createTelegramIngress({
 });
 await ingress.resume({ signal });
 await runPolling(
-  { worker: pollWorker, token, leases: createPollerLeases(), intake: ingress, clock, random },
+  { worker: pollWorker, token, http, leases: createPollerLeases(), intake: ingress, clock, random },
   { signal },
 );
 ```

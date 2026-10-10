@@ -8,13 +8,13 @@ import { BinferenceError, type Id } from "@binference/core";
 import type { FakePrivy } from "@binference/custody-privy/testing";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
-import { createFakeBotApi } from "@binference/telegram/testing";
 import { type Address, getAddress, toHex } from "viem";
 import {
   type InitMachine,
   initFlags,
   runOn,
   secretEnv,
+  machineOf,
   storedInstall,
 } from "../e2e/init-fixtures.js";
 import { type SourceProgram, startSourceProgram } from "../e2e/source-program.js";
@@ -70,13 +70,12 @@ export async function setUpCrashInstall(
 ): Promise<CrashInstall> {
   const folder = await createTempFolder("bnf-crash-");
   folders.push(folder);
-  const machine: InitMachine = {
+  const machine = machineOf({
     folder: folder.path,
     clock: createSystemClock(),
     signals: new EventEmitter(),
     privy: { ...world.privy, sent: [] },
-    bot: createFakeBotApi(),
-  };
+  });
   const init = await runOn(machine, ["init", "--yes", ...initFlags(machine)]);
   if (init.code !== 0) {
     throw new BinferenceError({ code: "crash.init_failed", message: init.stderr });

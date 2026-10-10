@@ -100,7 +100,7 @@ const noServices: ServiceManager = {
 
 /** What a test gives a host in place of the outside world and the person at the terminal. */
 export type HostParts = Partial<
-  Pick<CliHost, "http" | "prompter" | "botApiFetch" | "startSigner" | "serviceManager" | "homeDir">
+  Pick<CliHost, "http" | "prompter" | "startSigner" | "serviceManager" | "homeDir">
 >;
 
 /** A host for one `binference` command line on a test machine. */

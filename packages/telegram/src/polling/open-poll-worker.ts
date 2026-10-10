@@ -1,7 +1,7 @@
 import { extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import { BinferenceError, type ErrorCode, type Secret } from "@binference/core";
+import { BinferenceError, type ErrorCode, type Http, type Secret } from "@binference/core";
 import {
   type PolledUpdate,
   type PollFault,
@@ -9,6 +9,7 @@ import {
   type PollRequest,
   pollReplyOf,
 } from "./poll-messages.schema.js";
+import { serveRelay } from "./serve-relay.js";
 import { fetchTimeoutMs, type UpdateFetcher } from "./update-fetcher.js";
 
 /** The poll worker's entry beside this module: a `.ts` file in the source, `.mjs` in the build. */
@@ -22,6 +23,8 @@ export interface PollWorkerOptions {
   /** The worker entry: {@link pollWorker}, or a test's own entry. */
   readonly worker: URL;
   readonly token: Secret;
+  /** Sends the worker's Bot API requests: binference's outbound HTTP, which names binference. */
+  readonly http: Http;
   /** A Bot API server other than Telegram's, without a trailing slash. */
   readonly apiRoot?: string;
   /** Node flags for the worker thread, such as a loader for TypeScript in tests. */
@@ -134,8 +137,8 @@ function link(worker: Worker, waiters: Map<number, Waiter>): WorkerLink {
 
 /**
  * Starts a poll worker: a thread that calls `getUpdates` with grammY for the parent, which stores
- * each update before it asks for the next offset. The token reaches the thread as worker data and
- * never appears in an error.
+ * each update before it asks for the next offset. grammY's requests in the thread go out through
+ * the parent's `http`. The token reaches the thread as worker data and never appears in an error.
  */
 export function openPollWorker(options: PollWorkerOptions): PollWorker {
   const worker = new Worker(options.worker, {
@@ -147,6 +150,7 @@ export function openPollWorker(options: PollWorkerOptions): PollWorker {
   });
   const waiters = new Map<number, Waiter>();
   const { send, exited, failure } = link(worker, waiters);
+  const relay = serveRelay(worker, options.http);
   let lastId = 0;
   return {
     fetch: async (offset, call) => {
@@ -164,6 +168,7 @@ export function openPollWorker(options: PollWorkerOptions): PollWorker {
       return reply;
     },
     close: async () => {
+      relay.close();
       await worker.terminate();
       await exited;
     },

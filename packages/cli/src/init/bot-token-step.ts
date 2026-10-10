@@ -3,6 +3,7 @@ import {
   type BotAccount,
   type BotTokenProblem,
   checkBotToken,
+  createBotApiFetch,
   createBotThrottlers,
 } from "@binference/telegram";
 import { Api } from "grammy";
@@ -31,8 +32,7 @@ async function check(
   token: Secret,
 ): Promise<Result<BotAccount, BotTokenProblem>> {
   const { host } = context;
-  const fetch = host.botApiFetch;
-  const api = new Api(token.reveal(), fetch === undefined ? {} : { fetch });
+  const api = new Api(token.reveal(), { fetch: createBotApiFetch(host.http) });
   createBotThrottlers({ clock: host.clock, logger: quiet }).install(api);
   return checkBotToken(api, { signal: context.signal });
 }

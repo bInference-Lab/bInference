@@ -55,7 +55,8 @@ const causedSchema = z.object({ cause: z.unknown() });
 // How deep a cause chain is read: grammY's error, the fetch error, the socket error.
 const maxCauses = 4;
 
-// Whether an error or one of its causes names a code that proves the request never left.
+// Whether an error or one of its causes names a code that proves the request never left, or is
+// the poll worker's word that the parent's request never left.
 function isUnsent(error: unknown, depth: number): boolean {
   if (depth > maxCauses) {
     return false;
@@ -64,9 +65,20 @@ function isUnsent(error: unknown, depth: number): boolean {
   if (code !== undefined && unsentCodes.has(code)) {
     return true;
   }
+  if (error instanceof BinferenceError && error.details["isUnsent"] === true) {
+    return true;
+  }
   const inner =
     error instanceof HttpError ? error.error : causedSchema.safeParse(error).data?.cause;
   return inner !== undefined && isUnsent(inner, depth + 1);
+}
+
+/**
+ * Whether a failed request never reached Telegram: no connection opened, by the codes Node's
+ * network stack gives anywhere in its causes.
+ */
+export function isUnsentRequest(error: unknown): boolean {
+  return isUnsent(error, 0);
 }
 
 /**

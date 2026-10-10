@@ -1,6 +1,9 @@
 // oxlint-disable-next-line eslint/no-restricted-imports -- the test serves the adapter's answers from a loopback server
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { httpContract } from "@binference/core/testing";
+import { createBotApiFetch } from "@binference/telegram";
+import { fakeBotToken } from "@binference/telegram/testing";
+import { Api } from "grammy";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createSystemHttp, type SystemHttp } from "./system-http.js";
 
@@ -21,6 +24,12 @@ const pages: Readonly<
   },
   "/agent": (request, response) => {
     response.end(request.headers["user-agent"] ?? "none");
+  },
+  // getMe as the Bot API answers it, with the user agent the request came with as the bot's name.
+  [`/bot${fakeBotToken}/getMe`]: (request, response) => {
+    const bot = { id: 1, is_bot: true, first_name: request.headers["user-agent"] ?? "none" };
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify({ ok: true, result: bot }));
   },
   "/large": (_, response) => {
     response.end(Buffer.alloc(8 * 1024 * 1024 + 1, 97));
@@ -111,6 +120,14 @@ describe("the system Http adapter", () => {
       signal: live(),
     });
     expect([bare.body, named.body]).toStrictEqual(["binference/1.2.3", "binference/1.2.3"]);
+  });
+
+  it("names binference to the Bot API too, as grammY's fetch", async () => {
+    const api = new Api(fakeBotToken, {
+      apiRoot: held.origin,
+      fetch: createBotApiFetch(adapter()),
+    });
+    await expect(api.getMe()).resolves.toMatchObject({ first_name: "binference/1.2.3" });
   });
 
   it("refuses an answer over 8 MiB", async () => {

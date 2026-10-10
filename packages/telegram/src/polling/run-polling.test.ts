@@ -2,13 +2,14 @@ import { createSecret, type JsonValue } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { UpdateIntake } from "../ingress/create-telegram-ingress.js";
-import { fakeBotToken } from "../testing/fake-bot-api.js";
+import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
+import { ownerId, textUpdate } from "../testing/update-fixtures.js";
+import { pollWorker } from "./open-poll-worker.js";
 import { createPollerLeases } from "./poller-leases.js";
 import { runPolling } from "./run-polling.js";
 
 // Workers run the TypeScript source, as the store's tests do.
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
-const fakeApiWorker = new URL("../testing/fake-api.worker.ts", import.meta.url);
 const workerTest = { timeout: 60_000 };
 const noop = (): void => undefined;
 
@@ -30,9 +31,15 @@ describe("runPolling", () => {
           [undefined, undefined, secondStored][received.length]?.();
         },
       };
+      const botApi = createFakeBotApi();
+      botApi.push(
+        textUpdate({ updateId: 1, from: ownerId, text: "one" }),
+        textUpdate({ updateId: 2, from: ownerId, text: "two" }),
+      );
       const options = {
-        worker: fakeApiWorker,
+        worker: pollWorker,
         token: createSecret(fakeBotToken),
+        http: botApi.http,
         execArgv,
         leases,
         intake,

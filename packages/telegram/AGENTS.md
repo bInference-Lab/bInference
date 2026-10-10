@@ -53,6 +53,11 @@ Rules for this package:
 - Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
   does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the
   press is answered only after `answer` resolves.
+- Every Bot API request goes out through binference's outbound HTTP, the `Http` port, so it names
+  binference in its user agent and shares its connections: an `Api` takes
+  `createBotApiFetch(http)` as grammY's `fetch`, and the poll worker's grammY relays each request
+  to the parent, which sends it through the `http` the worker was opened with. grammY's own
+  `connection` header and its polyfill signal stay behind.
 - Every grammY `Api` the package calls has its token's throttler installed
   (`createBotThrottlers().install(api)`). It paces each chat, bounds each attempt to 30 seconds
   and owns every 429 wait, so callers pass only a signal and never retry a 429 themselves.
@@ -61,8 +66,9 @@ Rules for this package:
   `CardAnswers` and `CardCopyStore`, with their fakes, live behind `src/testing.ts`
   (`@binference/telegram/testing`). Every export carries TSDoc.
 - Tests answer Bot API calls with the synthetic Bot API `createFakeBotApi` (in `src/testing/`,
-  exported from `@binference/telegram/testing`), through grammY's `fetch` option: no network. It
+  exported from `@binference/telegram/testing`), through grammY's `fetch` option or the `Http` port
+  as its `http`: no network. It
   holds updates under Telegram's offset rules, presses buttons as `callback_query` updates, parses
   HTML as strictly as Telegram, keeps each message with its buttons through every edit, and takes
-  one answer per press. Worker tests start `src/testing/fake-api.worker.ts` with `execArgv` set to
-  run the TypeScript source, and close every worker they start.
+  one answer per press. Worker tests start the poll worker itself with `execArgv` set to run the
+  TypeScript source, its requests answered by the fake's `http`, and close every worker they start.

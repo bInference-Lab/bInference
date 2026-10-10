@@ -51,11 +51,11 @@ function heldLock(machine: InitMachine): () => void {
   };
 }
 
-// The fake Privy, except that every wallet it reads back has no owner.
+// The machine's world, except that every wallet the fake Privy reads back has no owner.
 function ownerless(machine: InitMachine): Http {
   return {
     request: async (request) => {
-      const answer = await machine.privy.http.request(request);
+      const answer = await machine.world.request(request);
       const isWalletRead = request.method === "GET" && /\/v1\/wallets\/[^/?]+$/.test(request.url);
       return isWalletRead
         ? { ...answer, body: JSON.stringify({ ...JSON.parse(answer.body), owner_id: null }) }

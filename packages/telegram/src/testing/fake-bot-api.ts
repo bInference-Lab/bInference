@@ -1,4 +1,4 @@
-import type { JsonValue } from "@binference/core";
+import type { Http, JsonValue } from "@binference/core";
 import { z } from "zod";
 import {
   type CallbackAnswer,
@@ -10,6 +10,7 @@ import {
   type SentText,
 } from "./fake-chat.js";
 import { createFakeMenus, type FakeMenu, type FakeMenus } from "./fake-commands.js";
+import { httpOverFetch } from "./fetch-http.js";
 
 /** A token in the Bot API's shape, for tests only. */
 export const fakeBotToken = "7012345678:AAE_fakeTokenForTestsOnly_0123456789ab";
@@ -70,6 +71,8 @@ type Signal = AbortSignal | null | undefined;
  */
 export interface FakeBotApi {
   readonly fetch: Fetch;
+  /** The same Bot API behind the Http port, as binference's outbound HTTP reaches Telegram. */
+  readonly http: Http;
   /** Adds updates Telegram holds until a `getUpdates` offset passes them. */
   push(...updates: readonly JsonValue[]): void;
   /** Presses a button: pushes the `callback_query` update and returns it. */
@@ -254,6 +257,17 @@ function callbackUpdate(press: FakePress, updateId: number): JsonValue {
   };
 }
 
+// Resolves once the poller waits on an empty queue.
+async function idleOf(state: State): Promise<void> {
+  return new Promise((resolve) => {
+    if (state.wakers.size > 0 && state.updates.length === 0) {
+      resolve();
+    } else {
+      state.idlers.push(resolve);
+    }
+  });
+}
+
 /** Creates an empty in-memory Bot API that accepts {@link fakeBotToken} only. */
 export function createFakeBotApi(): FakeBotApi {
   const chats = createFakeChats();
@@ -274,8 +288,10 @@ export function createFakeBotApi(): FakeBotApi {
       wake();
     }
   };
+  const fetch = fetchOf(state);
   return {
-    fetch: fetchOf(state),
+    fetch,
+    http: httpOverFetch(fetch),
     push,
     press: (press) => {
       presses += 1;
@@ -294,13 +310,6 @@ export function createFakeBotApi(): FakeBotApi {
     failNext: (method, failure, target) => {
       state.failures.push({ method, failure, ...target });
     },
-    idle: async () =>
-      new Promise((resolve) => {
-        if (state.wakers.size > 0 && state.updates.length === 0) {
-          resolve();
-        } else {
-          state.idlers.push(resolve);
-        }
-      }),
+    idle: async () => idleOf(state),
   };
 }

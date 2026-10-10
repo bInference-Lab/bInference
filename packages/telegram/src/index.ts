@@ -1,4 +1,6 @@
 export { botAccountSchema } from "./api/bot-account.schema.js";
+export { createBotApiFetch } from "./api/bot-api-fetch.js";
+export type { BotApiFetch } from "./api/bot-api-fetch.js";
 export type { BotAccount } from "./api/bot-account.schema.js";
 export { checkBotToken } from "./api/check-bot-token.js";
 export type { BotTokenProblem } from "./api/check-bot-token.js";

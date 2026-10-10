@@ -1,11 +1,11 @@
-import { createSecret } from "@binference/core";
+import { createSecret, type Http, type HttpRequest } from "@binference/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { fakeBotToken } from "../testing/fake-bot-api.js";
+import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
+import { ownerId, textUpdate } from "../testing/update-fixtures.js";
 import { openPollWorker, type PollWorker, pollWorker } from "./open-poll-worker.js";
 
 // Workers run the TypeScript source, as the store's tests do.
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
-const fakeApiWorker = new URL("../testing/fake-api.worker.ts", import.meta.url);
 const workerTest = { timeout: 60_000 };
 // Each call gets its own 30 s: one signal made at import would bound the whole file.
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
@@ -15,8 +15,26 @@ afterEach(async () => {
   await Promise.all(opened.splice(0).map(async (worker) => worker.close()));
 });
 
-function open(token: string): PollWorker {
-  const worker = openPollWorker({ worker: fakeApiWorker, token: createSecret(token), execArgv });
+// A Bot API holding updates 1 and 2, and the requests that reached it through the parent's Http.
+function botApi(): { readonly api: FakeBotApi; readonly http: Http; readonly sent: HttpRequest[] } {
+  const api = createFakeBotApi();
+  api.push(
+    textUpdate({ updateId: 1, from: ownerId, text: "one" }),
+    textUpdate({ updateId: 2, from: ownerId, text: "two" }),
+  );
+  const sent: HttpRequest[] = [];
+  const http: Http = {
+    request: async (request) => {
+      sent.push(request);
+      return api.http.request(request);
+    },
+  };
+  return { api, http, sent };
+}
+
+function open(token: string, http: Http = botApi().http): PollWorker {
+  const options = { worker: pollWorker, token: createSecret(token), http, execArgv };
+  const worker = openPollWorker(options);
   opened.push(worker);
   return worker;
 }
@@ -59,6 +77,26 @@ describe("the poll worker", () => {
       expect((refused as Error).stack).not.toContain(token);
     },
   );
+
+  it("sends grammY's requests through the parent's outbound HTTP", workerTest, async () => {
+    const bot = botApi();
+    await open(fakeBotToken, bot.http).fetch(undefined, live());
+    expect(bot.sent).toHaveLength(1);
+    expect(bot.sent[0]).toMatchObject({
+      method: "POST",
+      url: `https://api.telegram.org/bot${fakeBotToken}/getUpdates`,
+      headers: { "content-type": "application/json" },
+    });
+  });
+
+  it("says a request that got no answer is unreachable, to try again", workerTest, async () => {
+    const bot = botApi();
+    bot.api.failNext("getUpdates", "network");
+    await expect(open(fakeBotToken, bot.http).fetch(undefined, live())).rejects.toMatchObject({
+      code: "telegram.unreachable",
+      retryable: true,
+    });
+  });
 
   it("names its entry beside its own module", () => {
     expect(pollWorker.pathname).toMatch(/\/polling\/poll\.worker\.ts$/);
