@@ -32,12 +32,19 @@ import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
 
 /**
- * The profile parts the engine runs on: custody with its ceilings, wallet maker and exporter,
- * stores, prices and risk sources.
+ * The profile parts the engine runs on: custody with its ceilings, wallet maker, exporter and
+ * signer revoker, stores, prices and risk sources.
  */
 export type EngineParts = Pick<
   ProfileParts,
-  "custody" | "ceilings" | "walletMaker" | "exporter" | "stores" | "prices" | "riskSources"
+  | "custody"
+  | "ceilings"
+  | "walletMaker"
+  | "exporter"
+  | "revoker"
+  | "stores"
+  | "prices"
+  | "riskSources"
 >;
 
 /** What the token risk step runs on besides the venue host. */
@@ -162,11 +169,17 @@ function tradingOf(
   return { host, risk };
 }
 
-// The custody ports the engine takes: signing, ceilings, new wallets and, where custody gives one,
-// the sealed export.
+// The custody ports the engine takes: signing, ceilings, new wallets and, where custody gives
+// them, the sealed export and the signer removal.
 function custodyPartsOf(parts: EngineParts) {
-  const { custody, ceilings, walletMaker, exporter } = parts;
-  return { custody, ceilings, walletMaker, ...(exporter === undefined ? {} : { exporter }) };
+  const { custody, ceilings, walletMaker, exporter, revoker } = parts;
+  return {
+    custody,
+    ceilings,
+    walletMaker,
+    ...(exporter === undefined ? {} : { exporter }),
+    ...(revoker === undefined ? {} : { revoker }),
+  };
 }
 
 // The protocol server over the handlers: it signs callers in through the access store and keeps

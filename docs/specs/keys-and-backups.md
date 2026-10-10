@@ -220,7 +220,9 @@ A refusal is logged with the rule number, never with key material, and raises
   backup (section 7) brings back orders, history and settings.
 - **Machine compromised:** `binference signer revoke` from any other machine with the owner key, or
   the Privy dashboard, removes the agent key at once. Funds stay; the attacker could only have
-  signed inside the ceiling until then.
+  signed inside the ceiling until then. A revoke never removes the engine's own key or a wallet's
+  last signer: attaching the machine that replaces it does that
+  ([decision 0140](../DECISIONS.md#d0140)).
 - **Owner key lost:** the wallets keep working inside the ceiling, but nothing can loosen it, export
   a key or attach a machine. The owner moves funds out to the rescue address (always allowed) and
   starts again with a new owner key. `init` says so when it shows the code.

@@ -1,19 +1,25 @@
 import type { Signer } from "@binference/chain";
 import { BinferenceError, err } from "@binference/core";
-import type { CeilingEditor, WalletExporter, WalletMaker } from "@binference/engine/install";
+import type {
+  CeilingEditor,
+  SignerRevoker,
+  WalletExporter,
+  WalletMaker,
+} from "@binference/engine/install";
 import type { OpenedCustody } from "./open-custody.js";
 
 /**
  * The custody the engine and the executor sign through: the custody the unlock opened, or none
  * while the engine is locked. With none it signs nothing (`refused`), knows no wallet, and every
  * ceiling change, new wallet and export fails with `wallet.custody_down`, so a locked engine fails
- * closed.
+ * closed. A signer removal fails alike.
  */
 export interface CustodyCell {
   readonly signer: Signer;
   readonly ceilings: CeilingEditor;
   readonly walletMaker: WalletMaker;
   readonly exporter: WalletExporter;
+  readonly revoker: SignerRevoker;
   /** Whether custody is open now, for the `custody` health signal. */
   isOpen(): boolean;
   /** Puts the custody the unlock opened in place. */
@@ -95,6 +101,12 @@ export function createCustodyCell(): CustodyCell {
         cell.held === undefined
           ? refuseLocked(options)
           : cell.held.exporter.exportSealed(request, options),
+    },
+    revoker: {
+      revoke: async (request, options) =>
+        cell.held === undefined
+          ? refuseLocked(options)
+          : cell.held.revoker.revoke(request, options),
     },
     isOpen: () => cell.held !== undefined,
     hold: (opened) => {

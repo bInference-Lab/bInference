@@ -14,6 +14,7 @@ import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
+import { runSignerRevoke } from "../commands/signer-revoke-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
 import { runRestart, runStop } from "../commands/stop-command.js";
@@ -113,6 +114,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   rescueCancel: async (context) => runRescueCancel(context),
   safetyStatus: async (context) => runSafetyStatus(context),
   telegramPair: async (context) => runTelegramPair(context),
+  signerRevoke: runSignerRevoke,
   addressList: runAddressList,
   addressAdd: runAddressAdd,
   addressRemove: runAddressRemove,

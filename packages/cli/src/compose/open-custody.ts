@@ -25,6 +25,7 @@ import type {
   CeilingEditor,
   InstallFacts,
   InstallStore,
+  SignerRevoker,
   WalletExporter,
   WalletMaker,
   WalletRecord,
@@ -36,19 +37,21 @@ import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
 import { checkAttached } from "./check-attached.js";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
+import { createPrivySignerRevoker } from "./privy-signer-revoker.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
 
 /**
- * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker and
- * exporter, and its signer.
+ * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker, its
+ * exporter and signer revoker, and its signer.
  */
 export interface OpenedCustody {
   readonly signer: Signer;
   readonly ceilings: CeilingEditor;
   readonly walletMaker: WalletMaker;
   readonly exporter: WalletExporter;
+  readonly revoker: SignerRevoker;
   /** Settles once the signer has stopped, whatever stopped it. */
   readonly stopped: Promise<void>;
   /** Stops the signer; at once when `signal` aborts. */
@@ -281,6 +284,7 @@ export async function openCustody(
       callsOn: (chain, calls) => callsOn(options, chain, calls),
     }),
     exporter: createPrivyWalletExporter({ api, clock, ownerKeyPublic }),
+    revoker: createPrivySignerRevoker({ api, clock, ownerKeyPublic }),
     stopped: signer.stopped,
     stop: async (stop) => signer.stop(stop),
   });

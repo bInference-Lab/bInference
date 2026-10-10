@@ -17,6 +17,7 @@ import {
 import { agentOption, idOf, withCommon } from "./command-options.js";
 import { addLimitCommands } from "./limit-commands.js";
 import { addSafetyCommands } from "./safety-commands.js";
+import { addSignerCommands } from "./signer-commands.js";
 import { addTelegramCommands } from "./telegram-commands.js";
 
 function linesOf(value: string): number {
@@ -154,6 +155,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addCeilingCommands(program, options);
   addSafetyCommands(program, options);
   addTelegramCommands(program, options);
+  addSignerCommands(program, options);
   addAddressCommands(program, options);
   addLimitCommands(program, options);
   withCommon(program.command("check").description(message("command.check")), message)
