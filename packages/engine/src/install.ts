@@ -1,4 +1,5 @@
 export {
+  agentKeyAttachmentSchema,
   ceilingUpdateSchema,
   custodyRecordSchema,
   installFactsSchema,
@@ -8,6 +9,7 @@ export {
   walletRecordSchema,
 } from "./install/install-record.js";
 export type {
+  AgentKeyAttachment,
   CeilingMirror,
   CeilingUpdate,
   CustodyRecord,

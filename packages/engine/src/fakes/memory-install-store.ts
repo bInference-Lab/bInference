@@ -1,5 +1,6 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type {
+  AgentKeyAttachment,
   CeilingUpdate,
   InstallFacts,
   InstallSetup,
@@ -157,6 +158,32 @@ function withCeiling(
   return ok({ ...state, wallets });
 }
 
+// Keeps the state a rule decided through `update`, and answers the outcome without the state.
+function written<E extends string>(
+  next: Result<InstallState, E>,
+  update: (change: (state: InstallState) => InstallState) => void,
+): Result<void, E> {
+  update((state) => (next.ok ? next.value : state));
+  return next.ok ? ok(undefined) : next;
+}
+
+// The state with this machine's agent key as the custody's and every live wallet's signer.
+function withAttached(
+  state: InstallState,
+  attachment: AgentKeyAttachment,
+): Result<InstallState, "not_set_up"> {
+  const { custody } = state;
+  if (custody === undefined) {
+    return err("not_set_up");
+  }
+  const { agentQuorumId, agentKeyPublic, atMs } = attachment;
+  const wallets = state.wallets.map((wallet) =>
+    wallet.archivedAtMs === undefined ? { ...wallet, signerId: agentQuorumId } : wallet,
+  );
+  const attached = { ...custody, agentQuorumId, agentKeyPublic, attachedAtMs: atMs };
+  return ok({ ...state, custody: attached, wallets });
+}
+
 // The state with a wallet added as if a setup had stored it, and with its freeze set or cleared.
 function withAdded(state: InstallState, wallet: WalletRecord): InstallState {
   return { ...state, wallets: inOrder([...state.wallets, wallet]) };
@@ -232,10 +259,10 @@ export function createMemoryInstallStore(): MemoryInstallStore {
     createWallet: async (wallet, call) =>
       memoryCall(call, () => update((state) => withWallet(state, structuredClone(wallet)))),
     updateCeiling: async (change, call) =>
-      memoryCall(call, () => {
-        const next = withCeiling(held.state, structuredClone(change));
-        update((state) => (next.ok ? next.value : state));
-        return next.ok ? ok(undefined) : next;
-      }),
+      memoryCall(call, () => written(withCeiling(held.state, structuredClone(change)), update)),
+    attach: async (attachment, call) =>
+      memoryCall(call, () =>
+        written(withAttached(held.state, structuredClone(attachment)), update),
+      ),
   };
 }

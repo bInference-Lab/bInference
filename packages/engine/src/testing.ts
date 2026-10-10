@@ -60,10 +60,7 @@ export { accessStoreContract } from "./contracts/access-store-contract.js";
 export type { AccessStoreHarness } from "./contracts/access-store-contract.js";
 export { agentStoreContract } from "./contracts/agent-store-contract.js";
 export { installStoreContract } from "./contracts/install-store-contract.js";
-export type {
-  InstallStoreHarness,
-  InstallStoreSubject,
-} from "./contracts/install-store-contract.js";
+export type { InstallStoreHarness, InstallStoreSubject } from "./contracts/install-store-setups.js";
 export type { AgentStoreHarness } from "./contracts/agent-store-contract.js";
 export { configJournalContract } from "./contracts/config-journal-contract.js";
 export type { ConfigJournalHarness } from "./contracts/config-journal-contract.js";

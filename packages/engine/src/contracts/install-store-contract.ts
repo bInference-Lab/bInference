@@ -1,66 +1,15 @@
 import assert from "node:assert/strict";
 import { type AccountRef, accountRefSchema } from "@binference/chain";
-import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import type { InstallSetup, WalletDraft } from "../install/install-record.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
-import type { InstallStore } from "../ports.js";
+import { attachChecks } from "./install-attach-checks.js";
+import {
+  type InstallStoreHarness,
+  type InstallStoreSubject,
+  setup,
+  wallet,
+} from "./install-store-setups.js";
 import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
-
-/** An install store under test, an agent its wallets may belong to, and a family it takes. */
-export interface InstallStoreSubject {
-  readonly store: InstallStore;
-  readonly agent: Id<"agt">;
-  /** A chain family the store's wallets may have. */
-  readonly family: string;
-}
-
-/** Makes a fresh install store, with no install id, custody or wallet, for each check. */
-export interface InstallStoreHarness {
-  create(): Promise<InstallStoreSubject>;
-}
-
-// 2^64 + 1 does not fit a SQLite integer: the cap must round-trip as decimal text.
-const beyond64Bits = 2n ** 64n + 1n;
-
-function wallet(subject: InstallStoreSubject, n: number): WalletDraft {
-  return {
-    id: fixtureId("wal", n),
-    agentId: subject.agent,
-    family: subject.family,
-    custody: "privy",
-    custodyWalletId: `privy-wallet-${String(n)}`,
-    policyId: `privy-policy-${String(n)}`,
-    signerId: "privy-agent-quorum",
-    address: `0x${n.toString(16).padStart(40, "a")}`,
-    label: `wallet ${String(n)}`,
-    createdAtMs: 1_000 * n,
-    ceiling: {
-      policyId: `privy-policy-${String(n)}`,
-      policy: [{ name: "Contract calls", action: "ALLOW" }],
-      perTxNativeBase: beyond64Bits + BigInt(n),
-      readAtMs: 1_000 * n + 1,
-    },
-  };
-}
-
-function setup(subject: InstallStoreSubject, n: number, isStartOver = false): InstallSetup {
-  return {
-    atMs: 1_000 * n,
-    custody: {
-      provider: "privy",
-      appId: `app-${String(n)}`,
-      ownerQuorumId: `owner-quorum-${String(n)}`,
-      ownerKeyPublic: "b3duZXIga2V5",
-      agentQuorumId: "privy-agent-quorum",
-      agentKeyPublic: "YWdlbnQga2V5",
-      attachedAtMs: 1_000 * n,
-    },
-    rescueAddress: accountRefSchema.parse(`fake:1:0x${String(n).repeat(40).slice(0, 40)}`),
-    wallet: wallet(subject, n),
-    isStartOver,
-  };
-}
 
 async function keepsTheFirstInstallId({ store }: InstallStoreSubject): Promise<void> {
   const first = { id: fixtureId("ins", 1), atMs: 1 };
@@ -250,7 +199,7 @@ async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> 
   assert.deepEqual(await store.read(live()), { wallets: [] });
 }
 
-/** The contract every {@link InstallStore} adapter passes. */
+/** The contract every `InstallStore` adapter passes. */
 export function installStoreContract(harness: InstallStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<InstallStoreSubject> => harness.create();
   return [
@@ -297,6 +246,7 @@ export function installStoreContract(harness: InstallStoreHarness): readonly Con
       create,
       updatesALiveCeiling,
     ),
+    ...attachChecks(create),
     checkOn("refuses every call on an aborted signal", create, refusesAbortedCalls),
   ];
 }

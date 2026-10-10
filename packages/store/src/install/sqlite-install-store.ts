@@ -1,6 +1,7 @@
 import type { InstallStore } from "@binference/engine/install";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import type { TaskRunner } from "../tasks/store-task.js";
+import { attachTask } from "./attach-task.js";
 import {
   cancelRescueChangeTask,
   changeRescueTask,
@@ -24,6 +25,7 @@ export const installTasks: readonly TaskRunner[] = [
   keepRescueCeilingTask,
   createWalletTask,
   updateCeilingTask,
+  attachTask,
 ];
 
 /** The {@link InstallStore} on `engine.sqlite`: each call runs one store task. */
@@ -48,5 +50,6 @@ export function createSqliteInstallStore(host: StoreHost): InstallStore {
       await createWallet(wallet, options);
     },
     updateCeiling: bindTask(host, updateCeilingTask),
+    attach: bindTask(host, attachTask),
   };
 }

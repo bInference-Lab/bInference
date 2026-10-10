@@ -34,6 +34,24 @@ export const custodyRecordSchema: z.ZodType<CustodyRecord> = z.strictObject({
   attachedAtMs: epochMsSchema,
 });
 
+/**
+ * This machine's agent key once it replaced the earlier one as the signer of every live wallet
+ * (keys spec, section 6): the key quorum that holds it on Privy, its public half and when.
+ */
+export interface AgentKeyAttachment {
+  readonly agentQuorumId: string;
+  /** DER SubjectPublicKeyInfo in base64. */
+  readonly agentKeyPublic: string;
+  readonly atMs: number;
+}
+
+/** Parses an agent key attachment. */
+export const agentKeyAttachmentSchema: z.ZodType<AgentKeyAttachment> = z.strictObject({
+  agentQuorumId: shortTextSchema,
+  agentKeyPublic: publicKeySchema,
+  atMs: epochMsSchema,
+});
+
 /** A wallet's ceiling as read back from Privy: its policy mirrored, and its native cap. */
 export interface CeilingMirror {
   readonly policyId: string;
