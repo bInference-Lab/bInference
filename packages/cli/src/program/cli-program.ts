@@ -7,6 +7,7 @@ import {
   checkFlagsSchema,
   commonFlagsSchema,
   initFlagsSchema,
+  labelFlagsSchema,
   logsFlagsSchema,
   maxLogLines,
   startFlagsSchema,
@@ -78,6 +79,12 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     .addOption(new Option("--wallet <id>", message("option.wallet")).argParser(idOf("wallet")))
     .action((flags: OptionValues) =>
       choose({ name: "walletAddress", options: walletAddressFlagsSchema.parse(flags) }),
+    );
+  withCommon(wallet.command("create").description(message("command.walletCreate")), message)
+    .requiredOption("--label <text>", message("option.walletLabel"))
+    .addOption(agentOption(message))
+    .action((flags: OptionValues) =>
+      choose({ name: "walletCreate", options: labelFlagsSchema.parse(flags) }),
     );
 }
 

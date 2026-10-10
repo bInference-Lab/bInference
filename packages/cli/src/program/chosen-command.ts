@@ -34,6 +34,7 @@ export type ChosenCommand =
     }
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
   | { readonly name: "walletAddress"; readonly options: WalletAddressFlags }
+  | { readonly name: "walletCreate"; readonly options: LabelFlags }
   | { readonly name: "freeze" | "unfreeze"; readonly options: AgentFlags }
   | { readonly name: "rescue" | "safetyStatus"; readonly options: CommonOptions }
   | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }

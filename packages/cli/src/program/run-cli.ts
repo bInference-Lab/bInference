@@ -15,7 +15,7 @@ import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
 import { runUnlock } from "../commands/unlock-command.js";
-import { runWalletAddress, runWalletList } from "../commands/wallet-command.js";
+import { runWalletAddress, runWalletCreate, runWalletList } from "../commands/wallet-command.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { loadConfig } from "../config/load-config.js";
 import type { ChosenCommand } from "./chosen-command.js";
@@ -95,6 +95,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   paper: runModeSwitch,
   walletList: runWalletList,
   walletAddress: runWalletAddress,
+  walletCreate: runWalletCreate,
   freeze: runFreeze,
   unfreeze: runUnfreeze,
   rescue: async (context) => runRescue(context),

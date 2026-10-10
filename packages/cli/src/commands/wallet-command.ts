@@ -3,12 +3,13 @@ import { jsonValueSchema } from "@binference/core";
 import { displayOutsideText } from "@binference/i18n";
 import { operations, type WalletView } from "@binference/protocol";
 import { z } from "zod";
-import type { AgentFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
+import type { AgentFlags, LabelFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
-import { chooseAgent } from "./agent-choice.js";
+import { chooseAgent, chooseAgentFirst } from "./agent-choice.js";
 import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
+import { withOwnerKey } from "./owner-key-prompt.js";
 
 // A label is the owner's text from any surface: cut and made visible, as cards do.
 const labelLength = 64;
@@ -83,4 +84,36 @@ export async function runWalletAddress(
     output.line(values.address);
     return 0;
   });
+}
+
+/**
+ * `binference wallet create --label <label> [--agent <id>]`: makes a new agent wallet through
+ * `wallet/create` over IPC, with the owner key the person types unseen (decision 0130). Custody
+ * makes it under a ceiling of its own, which lets it trade on the agent's venues and send only to
+ * the rescue address and the saved addresses; the command shows the address to fund it at, on its
+ * own line. With `--json` it prints the wallet as the operation answers it.
+ */
+export async function runWalletCreate(
+  run: CommandRun,
+  request: { readonly options: LabelFlags },
+): Promise<ExitCode> {
+  const { options } = request;
+  const chosen = await chooseAgentFirst(run, options.agent);
+  if (!chosen.ok) {
+    return chosen.code;
+  }
+  const agent = chosen.value;
+  const made = await withOwnerKey(run, options, {
+    command: "wallet create",
+    call: async (client, ownerKey, signal) =>
+      client.call("wallet/create", { agent, label: options.label, ownerKey }, { signal }),
+  });
+  if (!made.ok) {
+    return made.code;
+  }
+  run.output.json(jsonValueSchema.parse(z.encode(operations["wallet/create"].result, made.value)));
+  const values = walletValues(made.value);
+  run.output.say("wallet.created", values);
+  run.output.line(values.address);
+  return 0;
 }
