@@ -1,4 +1,10 @@
-import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
+import {
+  decimalStringSchema,
+  type Id,
+  idSchema,
+  type JsonValue,
+  jsonValueSchema,
+} from "@binference/core";
 import { intentKindSchema, intentStateSchema } from "@binference/protocol";
 import { z } from "zod";
 import { type LedgerDraft, ledgerDraftSchema } from "../ledger/ledger-entry.js";
@@ -41,6 +47,12 @@ export interface IntentFields {
   readonly risk?: JsonValue;
   readonly simulation?: JsonValue;
   readonly authorizedBy?: JsonValue;
+  /**
+   * The USD value, in micro-dollars rounded up, the policy judged the intent's outflows at: what
+   * the rolling 24-hour cap counts from the intent's confirmation (decision 0136). Absent for an
+   * intent the policy never valued, such as a rescue.
+   */
+  readonly valueUsdMicros?: bigint;
 }
 
 const fieldsShape = {
@@ -50,6 +62,7 @@ const fieldsShape = {
   risk: jsonValueSchema.exactOptional(),
   simulation: jsonValueSchema.exactOptional(),
   authorizedBy: jsonValueSchema.exactOptional(),
+  valueUsdMicros: decimalStringSchema.exactOptional(),
 };
 
 /** Parses the parts of an intent its steps fill in. */

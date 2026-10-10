@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "@binference/core";
+import type { ConfirmedIntent, ConfirmedQuery } from "../intents/confirmed-intent.js";
 import type { FreezeCommit, FreezeWrite } from "../intents/freeze-write.js";
 import type {
   IntentChange,
@@ -161,6 +162,37 @@ function matches(intent: IntentRecord, query: IntentQuery): boolean {
   );
 }
 
+// Each intent of the agent in the mode with a move to `confirmed` at or after the query's time.
+function confirmedSince(
+  tables: MemoryIntentTables,
+  query: ConfirmedQuery,
+): readonly ConfirmedIntent[] {
+  return tables
+    .intents()
+    .filter((intent) => intent.agentId === query.agentId && intent.isPaper === query.isPaper)
+    .flatMap((intent): readonly ConfirmedIntent[] => {
+      const moved = tables
+        .events(intent.id)
+        .find((event) => event.toState === "confirmed" && event.atMs >= query.fromMs);
+      return moved === undefined
+        ? []
+        : [
+            {
+              intentId: intent.id,
+              state: intent.state,
+              confirmedAtMs: moved.atMs,
+              ...(intent.valueUsdMicros === undefined
+                ? {}
+                : { valueUsdMicros: intent.valueUsdMicros }),
+            },
+          ];
+    })
+    .toSorted(
+      (left, right) =>
+        left.confirmedAtMs - right.confirmedAtMs || (left.intentId < right.intentId ? -1 : 1),
+    );
+}
+
 /**
  * Creates an empty in-memory {@link IntentStore} for tests. Each write checks everything first and
  * changes nothing when a check fails, as the SQLite store's transaction does.
@@ -181,6 +213,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Inte
           .toSorted(byChange)
           .slice(0, query.limit),
       ),
+    confirmedSince: async (query, call) => memoryCall(call, () => confirmedSince(tables, query)),
     events: async (id, call) => memoryCall(call, () => tables.events(id)),
     cards: async (id, call) =>
       memoryCall(call, () =>

@@ -189,20 +189,25 @@ function routeChoiceOf(
   };
 }
 
+// The intent stores its quote, its plan and the value the policy judged the chosen route at, which
+// the rolling cap counts once it is confirmed (decision 0136).
 async function build(
   run: Run,
   snapshot: IntentSnapshot,
-  quotes: readonly QuoteOutcome[],
+  priced: { readonly quotes: readonly QuoteOutcome[]; readonly pass: PolicyPass },
 ): Promise<Stepped<ChosenRoute>> {
+  const { quotes } = priced;
   const chosen = await chooseRoute(quotes, routeChoiceOf(run, snapshot, quotes));
   if (!chosen.ok) {
     const failed = { type: "quote_failed", reason: chosen.error } as const;
     return { snapshot: await advance(run, snapshot, { trigger: failed }) };
   }
   const { plan, built } = chosen.value.planned;
+  const { figures } = chosen.value.pass ?? priced.pass;
   const fields = {
     quote: quoteDocument.encode(built.quote),
     plan: planDocument.encode(built.steps),
+    ...(figures === undefined ? {} : { valueUsdMicros: figures.valueUsdMicros }),
   };
   const trigger = { type: "quote_built", quote: plan.terms } as const;
   const quoted = await advance(run, snapshot, { trigger, fields });
@@ -257,7 +262,7 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (policy.passed === undefined) {
     return policy.snapshot;
   }
-  const quoted = await build(run, policy.snapshot, quotes);
+  const quoted = await build(run, policy.snapshot, { quotes, pass: policy.passed });
   if (quoted.passed === undefined) {
     return quoted.snapshot;
   }

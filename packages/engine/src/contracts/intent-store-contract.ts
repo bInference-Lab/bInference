@@ -9,6 +9,7 @@ import {
   refusesClosedCard,
   refusesTakenVersion,
 } from "./intent-card-checks.js";
+import { listsConfirmedSince } from "./intent-confirmed-checks.js";
 import {
   intentDraft,
   intentLedger,
@@ -212,6 +213,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
       create,
       listsByState,
     ),
+    checkOn("lists an agent's confirmed intents since a time", create, listsConfirmedSince),
     checkOn("opens, replaces and closes card versions with the moves", create, closesWithMoves),
     checkOn("finds a card version by its callback reference", create, findsCardsByRef),
     checkOn("records one confirmation with the move to confirmed", create, confirmsOnce),

@@ -15,7 +15,7 @@ import type {
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
-import { jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
+import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
 import { writeCardChanges } from "./card-writes.js";
 import { toIntentEvent, toIntentRecord } from "./intent-rows.js";
 
@@ -70,6 +70,7 @@ function movedColumns(intent: IntentRecord): {
   readonly risk: string | null;
   readonly simulation: string | null;
   readonly authorized_by: string | null;
+  readonly value_usd_micros: string | null;
   readonly changed_at: number;
   readonly version: number;
 } {
@@ -81,6 +82,8 @@ function movedColumns(intent: IntentRecord): {
     risk: optionalJsonText(intent.risk),
     simulation: optionalJsonText(intent.simulation),
     authorized_by: optionalJsonText(intent.authorizedBy),
+    value_usd_micros:
+      intent.valueUsdMicros === undefined ? null : decimalText(intent.valueUsdMicros),
     changed_at: intent.changedAtMs,
     version: intent.version,
   };

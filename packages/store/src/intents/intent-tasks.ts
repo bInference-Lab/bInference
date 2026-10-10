@@ -28,6 +28,7 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
+import { confirmedSinceTask } from "./confirmed-tasks.js";
 import { writeFreeze } from "./freeze-writes.js";
 import { toCardRecord, toConfirmation, toIntentEvent, toIntentRecord } from "./intent-rows.js";
 import { createIntent, moveIntent } from "./intent-writes.js";
@@ -178,6 +179,7 @@ export const intentTasks: readonly TaskRunner[] = [
   freezeTask,
   getIntentTask,
   listIntentsTask,
+  confirmedSinceTask,
   intentEventsTask,
   intentCardsTask,
   intentConfirmationTask,

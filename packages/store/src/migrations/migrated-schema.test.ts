@@ -102,7 +102,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   identities: names("agent_id chain registry onchain_id tx_hash registered_at"),
   intents: names(
     "id agent_id wallet_id kind state reason request plan quote risk simulation authorized_by " +
-      "outside_content paper proposer created_at changed_at version",
+      "outside_content paper proposer created_at changed_at version value_usd_micros",
   ),
   intent_events: names("id intent_id from_state to_state cause at"),
   cards: names(
@@ -186,7 +186,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   address_book: ["unique|agent_id,chain,address|partial"],
   wallets: ["unique|address", "unique|custody_wallet_id"],
   intents: ["index|agent_id,state", "index|state,changed_at"],
-  intent_events: ["index|intent_id,at"],
+  intent_events: ["index|intent_id,at", "index|to_state,at"],
   cards: ["unique|callback_ref", "unique|intent_id,version"],
   confirmations: ["unique|intent_id"],
   txs: ["index|hash", "index|intent_id,step", "unique|account,nonce|partial"],

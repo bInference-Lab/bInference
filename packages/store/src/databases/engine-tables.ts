@@ -153,6 +153,8 @@ export interface IntentsTable {
   risk: string | null;
   simulation: string | null;
   authorized_by: string | null;
+  /** The USD value the policy judged the intent at, in micro-dollars (migration 0016). */
+  value_usd_micros: string | null;
   outside_content: number;
   paper: number;
   proposer: string;

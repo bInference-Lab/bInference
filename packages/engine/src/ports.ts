@@ -37,6 +37,7 @@ import type {
 } from "./install/rescue-record.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
+import type { ConfirmedIntent, ConfirmedQuery } from "./intents/confirmed-intent.js";
 import type { FreezeOutcome, FreezeWrite } from "./intents/freeze-write.js";
 import type {
   IntentChange,
@@ -206,6 +207,12 @@ export interface IntentStore {
   freeze(freeze: FreezeWrite, options: StoreCall): Promise<FreezeOutcome>;
   /** Intents in the query's states, the least recently changed first. */
   list(query: IntentQuery, options: StoreCall): Promise<readonly IntentRecord[]>;
+  /**
+   * One agent's intents in one mode that moved to `confirmed` at or after the query's time, each
+   * with the time of that move, its state now and its stored value; the first confirmed first,
+   * then by id. The rolling 24-hour cap reads them (decision 0136).
+   */
+  confirmedSince(query: ConfirmedQuery, options: StoreCall): Promise<readonly ConfirmedIntent[]>;
   /** An intent's events, oldest first. */
   events(id: Id<"int">, options: StoreCall): Promise<readonly IntentEventRecord[]>;
   /** An intent's card versions, oldest first. */

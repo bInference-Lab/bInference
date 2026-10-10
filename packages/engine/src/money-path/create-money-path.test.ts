@@ -403,4 +403,14 @@ describe("the money path", () => {
     const passed = await propose(await twoVenueEngine(2_010_000n), tokenSale(825n * 10n ** 15n));
     expect(passed.quote?.route).toStrictEqual([{ venue: otherVenueId, shareBps: 10_000 }]);
   });
+
+  it("stores the value the policy judged the route it chose at", async () => {
+    const sale = tokenSale(825n * 10n ** 15n);
+    const valueOf = async (test: TestEngine) => {
+      const view = await propose(test, sale);
+      return (await test.stores.intents.get(view.intent, live))?.valueUsdMicros;
+    };
+    expect(await valueOf(await twoVenueEngine(2_050_000n))).toBe(990_000_000n);
+    expect(await valueOf(await twoVenueEngine(2_010_000n))).toBe(994_950_000n);
+  });
 });
