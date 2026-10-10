@@ -1,23 +1,17 @@
-import { accountRefParts, type ChainRef } from "@binference/chain";
+import { accountRefParts } from "@binference/chain";
 import { jsonValueSchema } from "@binference/core";
 import { displayOutsideText } from "@binference/i18n";
 import { operations, type WalletView } from "@binference/protocol";
 import { z } from "zod";
-import { selfHostedChains } from "../compose/open-engine-parts.js";
 import type { AgentFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { chooseAgent } from "./agent-choice.js";
+import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
 
 // A label is the owner's text from any surface: cut and made visible, as cards do.
 const labelLength = 64;
-
-// The chain's name when this binference serves it, such as BNB Smart Chain; else its id.
-function chainName(chain: ChainRef): string {
-  const registered = selfHostedChains().get(chain);
-  return registered.ok ? registered.value.definition.name : chain;
-}
 
 function walletValues(wallet: WalletView) {
   const { chain, address } = accountRefParts(wallet.address);
