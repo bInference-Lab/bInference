@@ -112,4 +112,20 @@ describe("binference rescue set", () => {
       `${en("ownerKey.needsTerminal").replace("{command}", "rescue set")}\n`,
     ]);
   });
+
+  it("cancels the new address that waits, and says when none waits", slow, async () => {
+    const { machine, ceilings, ceiling } = await servedMachine();
+    await rescueSet(machine, [newAddress], [fakeOwnerKeyCode]);
+
+    const cancelled = await runOn(machine, ["rescue", "cancel"]);
+
+    expect([cancelled.code, cancelled.stderr]).toStrictEqual([0, ""]);
+    expect(cancelled.stdout).toBe(
+      `${en("rescue.cancelled").replace("{address}", newAddress)}\n` +
+        `${en("safety.rescueAddress").replace("{address}", ownerAddress)}\n`,
+    );
+    expect(ceilings.recipients(ceiling)).toStrictEqual([accountOf(ownerAddress)]);
+    const again = await runOn(machine, ["rescue", "cancel", "--json"]);
+    expect([again.code, again.stdout]).toStrictEqual([0, "{}\n"]);
+  });
 });

@@ -130,6 +130,7 @@ The reference of every key, generated from the schema, is
 | `binference unfreeze`                | Opens the unfreeze card, which `confirm` or a tap answers           |
 | `binference rescue`                  | Opens the rescue card: everything to the rescue address             |
 | `binference rescue set <address>`    | A new rescue address in 24 hours; asks for the owner key            |
+| `binference rescue cancel`           | Cancels a new rescue address that waits                             |
 | `binference safety status`           | What is frozen, the rescue under way and the rescue address         |
 | `binference address list`            | The agent's saved addresses and when a send may pay each            |
 | `binference address add <address>`   | Saves a send address in the ceilings; asks for the owner key        |

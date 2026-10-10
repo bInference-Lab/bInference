@@ -60,6 +60,7 @@ describe("the binference command tree", () => {
       "freeze",
       "unfreeze",
       "set",
+      "cancel",
       "status",
       "list",
       "add",

@@ -30,11 +30,15 @@ function addRescueCommands(program: Command, options: ProgramOptions): void {
     .action((address: string, flags: OptionValues) =>
       choose({ name: "rescueSet", options: commonFlagsSchema.parse(flags), address }),
     );
+  withCommon(rescue.command("cancel").description(message("command.rescueCancel")), message).action(
+    (flags: OptionValues) =>
+      choose({ name: "rescueCancel", options: commonFlagsSchema.parse(flags) }),
+  );
 }
 
 /**
  * Adds the safety commands (ARCHITECTURE.md section 11): `freeze`, `unfreeze`, `rescue`,
- * `rescue set` and `safety status`.
+ * `rescue set`, `rescue cancel` and `safety status`.
  */
 export function addSafetyCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;

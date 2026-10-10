@@ -12,7 +12,7 @@ import { runInitCommand } from "../commands/init-command.js";
 import { runLimit, runLimitCancel, runLimitSet } from "../commands/limit-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
-import { runRescueSet } from "../commands/rescue-command.js";
+import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
@@ -103,6 +103,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   unfreeze: runUnfreeze,
   rescue: async (context) => runRescue(context),
   rescueSet: runRescueSet,
+  rescueCancel: async (context) => runRescueCancel(context),
   safetyStatus: async (context) => runSafetyStatus(context),
   addressList: runAddressList,
   addressAdd: runAddressAdd,

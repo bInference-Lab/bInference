@@ -265,7 +265,7 @@ new name here first, in the change that uses it.
   `NOTICES.md` (third-party notices).
 - **commands**: `binference init`, `start`, `status`, `health`, `logs`, `approval`, `confirm`,
   `deny`, `wallet list`, `wallet address`, `wallet create`, `ceiling`, `check`, `check --fix`, `check security`, `report`,
-  `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`,
+  `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
   `limit cancel`, `unlock`, `expose`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
