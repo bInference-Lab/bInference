@@ -6,10 +6,11 @@ import { z } from "zod";
 import type { AgentFlags, LabelFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
-import { chooseAgent, chooseAgentFirst } from "./agent-choice.js";
+import { chooseAgentFirst } from "./agent-choice.js";
 import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
 import { withOwnerKey } from "./owner-key-prompt.js";
+import { chooseWallet } from "./wallet-choice.js";
 
 // A label is the owner's text from any surface: cut and made visible, as cards do.
 const labelLength = 64;
@@ -59,22 +60,8 @@ export async function runWalletAddress(
 ): Promise<ExitCode> {
   const { host, output } = run;
   return withEngine(host, output, async (client, signal) => {
-    const chosen = await chooseAgent({ client, output, signal }, request.options.agent);
-    if (chosen === undefined) {
-      return 1;
-    }
-    const { items } = await client.call("wallet/list", { agent: chosen.agent }, { signal });
-    const named = request.options.wallet;
-    const wallet =
-      named === undefined
-        ? items.find((item) => item.archivedAt === undefined)
-        : items.find((item) => item.wallet === named);
+    const wallet = await chooseWallet({ client, output, signal }, request.options);
     if (wallet === undefined) {
-      if (named === undefined) {
-        output.fail({ code: "cli.no_wallet", key: "wallet.none", values: { agent: chosen.agent } });
-      } else {
-        output.refuse("wallet.not_found");
-      }
       return 1;
     }
     const { agent, label, address } = wallet;
