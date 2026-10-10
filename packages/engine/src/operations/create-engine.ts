@@ -10,6 +10,7 @@ import {
   type ConfigHistoryHandlers,
   createConfigHistoryHandlers,
 } from "../audit/config-history-handlers.js";
+import { createCapGate } from "../confirmations/cap-gate.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createLowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { CeilingEditor, WalletExporter, WalletMaker } from "../install/ports.js";
@@ -245,7 +246,7 @@ function intentParts(
   readonly answer: AnswerCard;
   readonly stored: StoredIntents;
 } {
-  const { stores, custody, host, chains, clock, ids } = options;
+  const { stores, custody, host, chains, clock, ids, isLocked } = options;
   const stored = createStoredIntents({
     intents: stores.intents,
     agents: stores.agents,
@@ -260,8 +261,8 @@ function intentParts(
     quotes: createVenueQuoteSource(requoteOptions(options, { stored, paper })),
     simulator: paper.simulator,
   });
-  const { isLocked } = options;
-  const answer = createAnswerCard({ confirmations, stored, execute, isLocked });
+  const gate = createCapGate({ intents: stores.intents, clock });
+  const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
   const showings = createCardShowings({ intents: stores.intents, agents: stores.agents, chains });
   const moneyPath = createMoneyPath({
     stored,
@@ -275,16 +276,14 @@ function intentParts(
     simulator: paper.simulator,
     chains,
     execute,
-    isLocked: options.isLocked,
+    isLocked,
     lowGas: createLowGasAlerts({ publish: options.publish }),
+    gate,
     clock,
     ids,
   });
-  return {
-    answer,
-    stored,
-    handlers: createIntentHandlers({ stored, moneyPath, answer, chains, showings }),
-  };
+  const handlers = createIntentHandlers({ stored, moneyPath, answer, chains, showings });
+  return { answer, stored, handlers };
 }
 
 // The freeze, the safety status and the rescue, which reads every wallet's live balances, never

@@ -280,6 +280,18 @@ describe("the Telegram cards", () => {
     expect(context.botApi.messages()).toMatchObject([{ buttons }]);
   });
 
+  it("keep the card open and say why when the trade would pass the 24-hour cap", async () => {
+    const context = await setUp();
+    context.engine.open(ref);
+    context.engine.refuseNext(ref, "over_cap");
+    await context.cards.show(showing(), live);
+    await pressCard(context, confirmData);
+    expect(context.botApi.answers()).toStrictEqual([
+      { callbackId: "press-9001", text: messages.en["error.limit.daily_cap"] },
+    ]);
+    expect(context.botApi.messages()).toMatchObject([{ buttons }]);
+  });
+
   it.each(checkReasons)("say why a card stays open after a %s re-quote", async (reason) => {
     const context = await setUp();
     context.engine.open(ref);

@@ -972,7 +972,9 @@ Decided in decisions [0043](DECISIONS.md#d0043) to [0046](DECISIONS.md#d0046),
 - **Gas reserve.** Policy refuses any trade that would leave a wallet with less than its reserve
   (default 0.002 BNB, about 250 swaps of gas). Below twice the reserve the owner gets a low-gas
   alert. A stop-loss is never starved by an earlier buy.
-- **Rolling caps.** Caps sum the USD value of every outgoing trade and send in the last 24 hours.
+- **Rolling caps.** Caps sum the USD value of every outgoing trade and send confirmed in the last
+  24 hours, from the moment of its confirmation and at the value the policy judged it at, settled
+  or not ([decision 0136](DECISIONS.md#d0136)).
 - **USD values.**
   - BNB: Chainlink's BNB/USD feed on BSC (the 8-decimal one), read on chain, keyless, refused when
     older than that feed's heartbeat plus a margin.

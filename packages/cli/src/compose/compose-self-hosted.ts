@@ -65,11 +65,11 @@ function composeTrading(opening: Opening, opened: Opened): TradingParts {
   const { clock, http } = opening.host;
   const { config, stores, chains } = opened;
   const reads = composeChainReads({ chains, config: config.chains, http, clock });
-  const { install, positions } = stores;
+  const { install, intents, positions } = stores;
   return {
     reads,
     prices: composePrices(reads, { feeds: selfHostedFeeds(), clock }),
-    wallets: createChainWalletFacts({ install, positions, reads, clock }),
+    wallets: createChainWalletFacts({ install, intents, reads, clock }),
     simulators: composeSimulators(reads, { chains, clock }),
     positions,
     paperBalances: paperBalancesOf(config.defaults.paper.balances, reads),

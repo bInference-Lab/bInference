@@ -24,8 +24,8 @@ export interface FakeCardAnswersOptions {
   readonly ownerId: number;
 }
 
-/** Why the fake leaves a card open: a failed re-quote, or a locked engine. */
-type Refusal = QuoteFailure | SimulationFailure | "locked";
+/** Why the fake leaves a card open: a failed re-quote, a locked engine, or the rolling cap. */
+type Refusal = QuoteFailure | SimulationFailure | "locked" | "over_cap";
 
 interface CardState {
   readonly closing?: CardClosing;
@@ -33,7 +33,9 @@ interface CardState {
 }
 
 function refused(refusal: Refusal): CardStanding {
-  return refusal === "locked" ? { status: "locked" } : { status: "open", reason: refusal };
+  return refusal === "locked" || refusal === "over_cap"
+    ? { status: refusal }
+    : { status: "open", reason: refusal };
 }
 
 /**

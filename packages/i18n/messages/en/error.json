@@ -47,6 +47,7 @@
   "quote.venue_down": "The venue for this trade is not responding. Try again in a minute.",
   "chain.rpc_down": "binference cannot reach the network right now. Try again in a minute, and check your internet connection if it lasts.",
   "chain.simulation_failed": "The simulation of this transaction failed, so nothing was sent. Check the amounts and try again.",
+  "limit.daily_cap": "This trade would take the agent past its 24-hour cap, so it was not confirmed. Wait until earlier trades leave the window, or raise the cap.",
   "limit.needs_admin": "A looser limit needs the CLI, the console or the Mini App.",
   "limit.over_ceiling": "This limit is above the wallet's ceiling. Raise the ceiling with your owner key first.",
   "limit.venue_in_use": "The agent's limits still name a venue this ceiling change removes. Remove the venue from the limits first.",

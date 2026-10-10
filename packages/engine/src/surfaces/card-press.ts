@@ -16,7 +16,9 @@ export interface CardPress {
  * closed it; every copy becomes the receipt of `closing`, or of `paper` once a confirmed paper
  * intent recorded its fill. `open`: the card waits for another answer, with the reason when a
  * re-quote or its simulation failed. `locked`: a Confirm of a live intent while the engine is
- * locked; the card waits, and the presser is told to run `binference unlock`. `unknown`: no card
+ * locked; the card waits, and the presser is told to run `binference unlock`. `over_cap`: a
+ * Confirm that would take the agent past its rolling 24-hour cap (decision 0136); the card waits,
+ * and the presser is told why. `unknown`: no card
  * has this reference, the presser is not the owner, or the card closed without a receipt, as a
  * cancel closes it; nothing was answered.
  */
@@ -28,4 +30,5 @@ export type CardStanding =
     }
   | { readonly status: "open"; readonly reason?: QuoteFailure | SimulationFailure }
   | { readonly status: "locked" }
+  | { readonly status: "over_cap" }
   | { readonly status: "unknown" };

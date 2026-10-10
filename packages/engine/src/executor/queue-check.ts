@@ -46,8 +46,9 @@ interface Rechecked {
   readonly networkFeeCapNativeBase?: bigint;
 }
 
-// The policy runs again on the request and the confirmed quote, with the wallet's facts now. An
-// auto intent that now sells a denied token fails it: only a tap confirms that (decision 0101).
+// The policy runs again on the request and the confirmed quote, with the wallet's facts now, the
+// intent's own outflow left out of the agent's (decision 0136). An auto intent that now sells a
+// denied token fails it: only a tap confirms that (decision 0101).
 async function recheckPolicy(
   snapshot: IntentSnapshot,
   parts: QueueCheckParts,
@@ -55,7 +56,8 @@ async function recheckPolicy(
 ): Promise<Rechecked> {
   const { record, settings, stored } = snapshot;
   const request = requestDocument.decode(record.request);
-  const resolved = await resolveProposal(parts, { request, settings, signal });
+  const resolving = { request, settings, signal, intent: record.id };
+  const resolved = await resolveProposal(parts, resolving);
   if (!resolved.ok || record.quote === undefined) {
     return { hasPassed: false };
   }

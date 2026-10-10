@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
+import type { CapGate } from "../confirmations/cap-gate.js";
 import type { CardAnswer } from "../confirmations/card-answer.js";
 import type { AnswerOutcome, Confirmations } from "../confirmations/create-confirmations.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -14,9 +15,18 @@ export interface LockedOutcome {
   readonly verdict: "locked";
 }
 
+/**
+ * A Confirm that would pass the agent's rolling 24-hour cap with the intents confirmed before it
+ * (decision 0136): the answer is not taken, and the card stays open until it expires or the owner
+ * cancels it.
+ */
+interface OverCapOutcome {
+  readonly verdict: "over_cap";
+}
+
 /** An answer's outcome, with the intent as it stands after it. */
 export interface AnsweredCard {
-  readonly outcome: AnswerOutcome | LockedOutcome;
+  readonly outcome: AnswerOutcome | LockedOutcome | OverCapOutcome;
   readonly intent: IntentSnapshot;
 }
 
@@ -38,6 +48,8 @@ export interface AnswerCardOptions {
   readonly execute: ExecuteConfirmed;
   /** Whether the engine is locked, so a live intent cannot be signed. */
   readonly isLocked: () => boolean;
+  /** The rolling cap each confirmation is checked against, one agent's at a time. */
+  readonly gate: CapGate;
 }
 
 // The lock is read before the answer is stored: a Confirm that could not be signed never lands. An
@@ -58,6 +70,33 @@ async function lockedAnswer(
   return isWaitingLive ? { outcome: { verdict: "locked" }, intent: snapshot } : undefined;
 }
 
+// A Confirm runs in the agent's turn at the gate, so the outflows it is checked against are the
+// ones every earlier confirmation of the agent left.
+async function answerInTurn(
+  options: AnswerCardOptions,
+  answer: CardAnswer,
+  signal: AbortSignal,
+): Promise<AnsweredCard | undefined> {
+  const before = await options.stored.snapshot(answer.intent, { signal });
+  const answerNow = async (): Promise<AnsweredCard | undefined> => {
+    const now = await options.stored.snapshot(answer.intent, { signal });
+    const isWaiting = now?.record.state === "awaiting_confirmation";
+    if (answer.decision === "confirm" && isWaiting && !(await options.gate.fits(now, { signal }))) {
+      return { outcome: { verdict: "over_cap" }, intent: now };
+    }
+    const answered = await options.confirmations.answer(answer, { signal });
+    const after = answered.ok
+      ? await options.stored.snapshot(answer.intent, { signal })
+      : undefined;
+    return answered.ok && after !== undefined
+      ? { outcome: answered.value, intent: after }
+      : undefined;
+  };
+  return before === undefined || answer.decision !== "confirm"
+    ? answerNow()
+    : options.gate.serially(before.record.agentId, answerNow);
+}
+
 /** Creates the {@link AnswerCard} step over the confirmations and the execute step. */
 export function createAnswerCard(options: AnswerCardOptions): AnswerCard {
   return async (answer, { signal }) => {
@@ -65,15 +104,14 @@ export function createAnswerCard(options: AnswerCardOptions): AnswerCard {
     if (locked !== undefined) {
       return ok(locked);
     }
-    const answered = await options.confirmations.answer(answer, { signal });
-    const snapshot = answered.ok
-      ? await options.stored.snapshot(answer.intent, { signal })
-      : undefined;
-    if (!answered.ok || snapshot === undefined) {
+    const answered = await answerInTurn(options, answer, signal);
+    if (answered === undefined) {
       return err("not_found");
     }
-    const outcome: AnswerOutcome = answered.value;
-    return ok({ outcome, intent: await options.execute(snapshot, { signal }) });
+    const { outcome, intent } = answered;
+    return outcome.verdict === "over_cap"
+      ? ok(answered)
+      : ok({ outcome, intent: await options.execute(intent, { signal }) });
   };
 }
 
@@ -91,6 +129,7 @@ const verdictErrors: Readonly<
   closed: "intent.wrong_state",
   card_changed: "intent.card_changed",
   locked: "engine.locked",
+  over_cap: "limit.daily_cap",
 };
 
 const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolErrorCode>> = {
@@ -105,7 +144,8 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
 /**
  * The protocol error an answer's outcome is, or `undefined` when the answer took effect: it
  * confirmed, cancelled, or opened the next card version after a worse re-quote. A Confirm the
- * locked engine refused is `engine.locked`, which the owner retries once unlocked.
+ * locked engine refused is `engine.locked`, which the owner retries once unlocked; one past the
+ * rolling 24-hour cap is `limit.daily_cap`.
  */
 export function answerError(outcome: AnsweredCard["outcome"]): ProtocolErrorCode | undefined {
   return outcome.verdict === "requote_failed"

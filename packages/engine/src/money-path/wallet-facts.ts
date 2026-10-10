@@ -10,6 +10,11 @@ export interface WalletFactsQuery {
   readonly account: AccountRef;
   /** The intent runs on paper: its balance is the paper portfolio's. */
   readonly isPaper: boolean;
+  /**
+   * The intent the facts are read for once it is confirmed, as the wallet queue checks it again:
+   * its own outflow is left out of `recentOutflows`, so the policy does not count it twice.
+   */
+  readonly intent?: Id<"int">;
 }
 
 /**
@@ -25,7 +30,10 @@ export interface WalletFacts {
   readonly feePerGasNativeBase: bigint;
   /** The chain's network fee cap (decision 0102). */
   readonly networkFeeCapNativeBase: bigint;
-  /** The agent's outgoing trades and sends of the last 24 hours, in the intent's mode. */
+  /**
+   * The agent's outflows confirmed in the last 24 hours, in the intent's mode, each at the value
+   * the policy judged it at (decision 0136).
+   */
   readonly recentOutflows: readonly PastOutflow[];
 }
 

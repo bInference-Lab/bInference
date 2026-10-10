@@ -76,7 +76,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `simulated`                  | `awaiting_confirmation` | card opened                                                                          | not authorized by an order, a rule, the rescue's own tap or the auto mode                                                                                                                              |
 | `simulated`                  | `confirmed`             | authorization present                                                                | `authorizedBy` names an active order or webhook rule whose bounds hold, or the agent's auto mode and the intent passes section 5's auto test                                                           |
 | `awaiting_confirmation`      | `awaiting_confirmation` | tap with a stale quote                                                               | quote older than 10 s: re-quote and re-simulate; a minimum out worse by more than 0.5% opens card version n+1                                                                                          |
-| `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                                        | the card version tapped is the current one; the card has not expired                                                                                                                                   |
+| `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                                        | the card version tapped is the current one; the card has not expired; the rolling cap still holds ([decision 0136](../DECISIONS.md#d0136))                                                             |
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                                            |                                                                                                                                                                                                        |
 | `awaiting_confirmation`      | `expired`               | card timer                                                                           | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, unfreezes, identity, token launches and approval revokes                                                                      |
 | `confirmed`                  | `expired`               | recovery finds its authorization ran out                                             | the confirmation or the auto grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                          |
@@ -111,7 +111,7 @@ The reason stored with `rejected_policy` is one of:
 | `paper_only`           | A live-only action (a send, a bridge, a CEX order, identity) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))                         |
 | `per_trade_cap`        | USD value above the per-trade cap                                                                                                                                                                 |
 | `ceiling`              | Above the wallet's Privy policy, which only the owner can raise ([decision 0085](../DECISIONS.md#d0085), spec 5)                                                                                  |
-| `daily_cap`            | The rolling 24 hours would pass the cap ([decision 0046](../DECISIONS.md#d0046))                                                                                                                  |
+| `daily_cap`            | The rolling 24 hours would pass the cap ([decision 0046](../DECISIONS.md#d0046)), each confirmation counted at its judged value ([decision 0136](../DECISIONS.md#d0136))                          |
 | `gas_reserve`          | The wallet would drop below its reserve ([decision 0045](../DECISIONS.md#d0045))                                                                                                                  |
 | `slippage`             | Requested slippage above the agent's maximum                                                                                                                                                      |
 | `price_impact`         | Quoted impact above the maximum (checked after quoting; the intent moves to `failed_check` with this reason)                                                                                      |
@@ -316,6 +316,10 @@ state, who or what caused it (surface, device or token), and the hashes involved
   the worker reloads.
 - A card's timer and a tap race safely: the first committed write wins, and the loser sees a
   terminal state.
+- One agent's confirmations, by a tap or the auto mode, run one at a time against its rolling cap:
+  each reads the confirmations every earlier one left, so two that pass the cap together never both
+  land, and a tap that would pass it fails `limit.daily_cap` with its card left open
+  ([decision 0136](../DECISIONS.md#d0136)).
 
 <a id="section-10"></a>
 
@@ -339,3 +343,5 @@ Property tests (fast-check) hold these for every generated history:
    network fee cap, and never comes from an outside-content turn or an MCP client.
 9. A send's target is always the rescue address or a saved address
    ([decision 0091](../DECISIONS.md#d0091)).
+10. No 24-hour window holds confirmations of one agent in one mode whose values together pass its
+    rolling cap ([decision 0136](../DECISIONS.md#d0136)).

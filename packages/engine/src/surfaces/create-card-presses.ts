@@ -37,8 +37,8 @@ function standingOf({ outcome, intent }: AnsweredCard, chains: ChainRegistry): C
   if (outcome.verdict === "requote_failed") {
     return { status: "open", reason: outcome.reason };
   }
-  if (outcome.verdict === "locked") {
-    return { status: "locked" };
+  if (outcome.verdict === "locked" || outcome.verdict === "over_cap") {
+    return { status: outcome.verdict };
   }
   if (outcome.verdict === "reopened" || outcome.verdict === "card_changed") {
     return { status: "open" };

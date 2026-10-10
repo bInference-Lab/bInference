@@ -315,7 +315,9 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   are results.
 - `intent/confirm` must name the card's current `cardVersion`. A re-quote that changes the terms
   opens a new card version ([rule 4](../ARCHITECTURE.md#rule-4)), and confirming an old version
-  fails with `intent.card_changed`.
+  fails with `intent.card_changed`. A Confirm that would take the agent past its rolling 24-hour
+  cap with the intents confirmed before it fails with `limit.daily_cap` and changes nothing: the
+  card stays open ([decision 0136](../DECISIONS.md#d0136)).
 - Every state change pushes `intent/changed`; states and transitions are spec 6.
 
 <a id="section-7-5"></a>
@@ -567,7 +569,7 @@ later unchanged.
 | `name`     | `not_found`, `resolver_down`                                                                    |
 | `quote`    | `no_route`, `venue_down`                                                                        |
 | `chain`    | `rpc_down`, `simulation_failed`                                                                 |
-| `limit`    | `needs_admin`, `over_ceiling`                                                                   |
+| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`                                                      |
 | `config`   | `invalid`, `secret_inline`                                                                      |
 | `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                   |
 | `job`      | `not_found`                                                                                     |

@@ -1,55 +1,42 @@
 import type { Id } from "@binference/core";
+import type { IntentState } from "../intents/intent-state.js";
 import type { PastOutflow } from "../policy/policy-rules.js";
-import type { PositionStore } from "../ports.js";
-import type { ExecutionRecord } from "../positions/execution-record.js";
+import type { IntentStore } from "../ports.js";
 
-/** Whose outflows to read: an agent's wallets, in one mode, up to now. */
+/** Whose outflows to read: one agent's in one mode, up to now, without the intent under check. */
 export interface RecentOutflowsQuery {
-  readonly wallets: readonly Id<"wal">[];
+  readonly agentId: Id<"agt">;
   readonly isPaper: boolean;
   readonly nowMs: number;
+  /** The intent under check, whose own confirmation is left out. */
+  readonly exclude?: Id<"int">;
 }
 
 // The policy keeps 24 hours; an outflow exactly that old still counts, so the read keeps it too.
 const windowMs = 86_400_000;
-const pageLimit = 1_000;
-
-async function executionsOf(
-  positions: PositionStore,
-  query: { readonly walletId: Id<"wal">; readonly isPaper: boolean; readonly fromMs: number },
-  page: { readonly after: number; readonly signal: AbortSignal },
-): Promise<readonly ExecutionRecord[]> {
-  const { signal, after } = page;
-  const rows = await positions.executions({ ...query, after, limit: pageLimit }, { signal });
-  const last = rows.at(-1);
-  return rows.length < pageLimit || last === undefined
-    ? rows
-    : [...rows, ...(await executionsOf(positions, query, { signal, after: last.id }))];
-}
+// The ends of a confirmed intent that moved nothing: nothing was signed or sent, or it reverted.
+const movedNothing: ReadonlySet<IntentState> = new Set(["cancelled", "expired", "failed_onchain"]);
 
 /**
- * The outflows the policy's rolling cap counts for an agent (ARCHITECTURE.md section 23): every
- * trade its wallets settled or filled on paper in the query's mode over the last 24 hours, each
- * at what left the wallet then, its sold value and its venue fee in USD as the execution recorded
- * them. A trade counts once it is recorded; one confirmed and not yet settled is not in the list.
+ * The outflows the rolling 24-hour cap counts for an agent (decision 0136): every intent of the
+ * agent in the query's mode confirmed in the last 24 hours, by the owner's tap or the auto mode,
+ * each counted from its confirmation at the USD value the policy judged it at, settled or not.
+ * An intent that ended without moving anything (`cancelled`, `expired`, `failed_onchain`), one the
+ * policy never valued, such as a rescue, and the intent under check do not count.
  */
 export async function recentOutflowsOf(
-  positions: PositionStore,
+  intents: Pick<IntentStore, "confirmedSince">,
   query: RecentOutflowsQuery,
   options: { readonly signal: AbortSignal },
 ): Promise<readonly PastOutflow[]> {
-  const fromMs = query.nowMs - windowMs;
-  const read = await Promise.all(
-    query.wallets.map(async (walletId) =>
-      executionsOf(
-        positions,
-        { walletId, isPaper: query.isPaper, fromMs },
-        { after: 0, signal: options.signal },
-      ),
-    ),
+  const { agentId, isPaper, nowMs } = query;
+  const confirmed = await intents.confirmedSince(
+    { agentId, isPaper, fromMs: nowMs - windowMs },
+    options,
   );
-  return read.flat().map((execution) => ({
-    atMs: execution.atMs,
-    valueUsdMicros: execution.valueUsdMicros + execution.feeUsdMicros,
-  }));
+  return confirmed.flatMap(({ intentId, state, confirmedAtMs, valueUsdMicros }) =>
+    valueUsdMicros === undefined || movedNothing.has(state) || intentId === query.exclude
+      ? []
+      : [{ atMs: confirmedAtMs, valueUsdMicros }],
+  );
 }

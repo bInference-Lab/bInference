@@ -205,6 +205,9 @@ function noticeOf(context: CardsContext, standing: CardStanding): string | undef
   if (standing.status === "locked") {
     return context.words("error.engine.locked");
   }
+  if (standing.status === "over_cap") {
+    return context.words("error.limit.daily_cap");
+  }
   return standing.status === "open" && standing.reason !== undefined
     ? context.words(`reason.${standing.reason}`)
     : undefined;

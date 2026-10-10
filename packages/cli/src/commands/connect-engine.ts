@@ -132,6 +132,7 @@ const policyCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "agent.paper_only",
   "agent.disclaimer",
   "wallet.unfunded",
+  "limit.daily_cap",
   "limit.needs_admin",
   "limit.over_ceiling",
   "limit.venue_in_use",

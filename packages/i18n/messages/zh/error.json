@@ -47,6 +47,7 @@
   "quote.venue_down": "此交易所在的平台暂无响应。请一分钟后再试。",
   "chain.rpc_down": "binference 暂时无法连接网络。请一分钟后再试；如果持续出现，请检查你的网络连接。",
   "chain.simulation_failed": "此交易的模拟失败，未发送任何内容。请检查金额后再试。",
+  "limit.daily_cap": "此交易会使 Agent 超过其 24 小时上限，因此未确认。请等待较早的交易移出时间窗口，或提高上限。",
   "limit.needs_admin": "放宽限额需要在命令行、控制台或 Mini App 中操作。",
   "limit.over_ceiling": "此限额超过了钱包的上限。请先用你的所有者密钥提高上限。",
   "limit.venue_in_use": "此 Agent 的限额仍包含本次上限修改要移除的平台。请先从限额中移除该平台。",

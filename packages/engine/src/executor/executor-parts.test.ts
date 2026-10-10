@@ -10,9 +10,10 @@ import { createStoredIntents, type IntentSnapshot } from "../intents/create-stor
 import { planDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { expectOk, testAgent, testCoin, testSwap, testWallet } from "../intents/test-intents.js";
+import { recentOutflowsOf } from "../money-path/recent-outflows.js";
 import { testAccount, testCall, testChains } from "../operations/test-engine.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
-import type { IntentStore } from "../ports.js";
+import type { IntentStore, WalletFactsSource } from "../ports.js";
 import { intentPlanOf } from "./intent-plan.js";
 import { checkForQueue } from "./queue-check.js";
 import { signRequestOf } from "./step-request.js";
@@ -64,6 +65,34 @@ function checkPartsOf(bench: ExecutorBench, options: { readonly wallets?: boolea
     }),
     clock: bench.test.clock,
   };
+}
+
+// The facts with the agent's confirmed outflows read from the store, the intent the facts are
+// read for left out.
+function confirmedOutflows(bench: ExecutorBench): WalletFactsSource {
+  const fixed = checkPartsOf(bench).wallets;
+  const { clock, stores } = bench.test;
+  return {
+    ...fixed,
+    async facts(query, call) {
+      const { agent: agentId, isPaper, intent } = query;
+      const outflows = { agentId, isPaper, nowMs: clock.now() };
+      const recentOutflows = await recentOutflowsOf(
+        stores.intents,
+        intent === undefined ? outflows : { ...outflows, exclude: intent },
+        call,
+      );
+      return { ...(await fixed.facts(query, call)), recentOutflows };
+    },
+  };
+}
+
+// The snapshot with the agent's rolling cap at the intent's own value, so any other outflow of
+// the day passes it.
+function atCap(snapshot: IntentSnapshot): IntentSnapshot {
+  const { settings, record } = snapshot;
+  const limits = { ...settings.limits, rollingDayUsdMicros: record.valueUsdMicros ?? 0n };
+  return { ...snapshot, settings: { ...settings, limits } };
 }
 
 function withStatus(
@@ -145,6 +174,17 @@ describe("the queue check", () => {
     const parts = { ...checkPartsOf(bench), intents };
     const check = await checkForQueue(snapshot, { parts, chain: fakeChain }, live().signal);
     expect(check.terms).toBeUndefined();
+  });
+
+  it("checks the cap again with the intent's own confirmation left out of the day's", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const first = atCap(await tappedSnapshot(bench));
+    const parts = { ...checkPartsOf(bench), wallets: confirmedOutflows(bench) };
+    const check = async () => checkForQueue(first, { parts, chain: fakeChain }, live().signal);
+    expect(first.record.valueUsdMicros).toBeGreaterThan(0n);
+    expect((await check()).facts.hasPolicyPassed).toBe(true);
+    await tappedSnapshot(bench);
+    expect((await check()).facts.hasPolicyPassed).toBe(false);
   });
 
   it("fails the policy for an intent with no quote", async () => {

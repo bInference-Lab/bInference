@@ -1,77 +1,90 @@
-import { idSchema } from "@binference/core";
+import { type Id, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
-import { testCoin, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
-import type { ExecutionDraft } from "../positions/execution-record.js";
+import { inOrder } from "../contracts/store-fixtures.js";
+import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
+import type { IntentState } from "../intents/intent-state.js";
+import { testAgent, testNowMs, testWallet } from "../intents/test-intents.js";
 import { recentOutflowsOf } from "./recent-outflows.js";
 
-const other = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-000000000002");
-const stranger = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-000000000003");
-const intentId = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const dayMs = 86_400_000;
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
+const intentId = (n: number): Id<"int"> =>
+  idSchema("int").parse(`int_0190f1c2-3a4b-7c5d-8e6f-${n.toString(16).padStart(12, "0")}`);
 
-function execution(fields: Partial<ExecutionDraft>): ExecutionDraft {
-  return {
-    intentId,
-    walletId: testWallet,
-    isPaper: false,
-    atMs: testNowMs,
-    sold: { asset: testCoin, base: 10n },
-    feeBase: 0n,
-    bought: { asset: testToken, base: 20n },
-    gas: { asset: testCoin, base: 1n },
-    valueUsdMicros: 5_000_000n,
-    feeUsdMicros: 0n,
-    gasUsdMicros: 7n,
-    ...fields,
-  };
+interface Planted {
+  readonly n: number;
+  readonly atMs: number;
+  readonly valueUsdMicros?: bigint;
+  readonly isPaper?: boolean;
+  /** Where the intent went after its confirmation. */
+  readonly end?: IntentState;
 }
 
-async function stored(executions: readonly ExecutionDraft[]) {
-  const positions = createMemoryPositionStore();
-  await Promise.all(
-    executions.map(async (draft) => positions.record({ execution: draft, positions: [] }, live())),
-  );
-  return positions;
+async function stored(planted: readonly Planted[]) {
+  const { intents } = createMemoryEngineStores();
+  await inOrder(planted, async ({ n, atMs, valueUsdMicros, isPaper = false, end }) => {
+    const draft = {
+      id: intentId(n),
+      agentId: testAgent,
+      walletId: testWallet,
+      kind: "swap",
+      state: "confirmed",
+      request: {},
+      hasOutsideContent: false,
+      isPaper,
+      proposer: "engine",
+      atMs,
+      cause: {},
+      ...(valueUsdMicros === undefined ? {} : { valueUsdMicros }),
+    } as const;
+    await intents.create(draft, live());
+    const move = { id: intentId(n), expectedVersion: 0, atMs: atMs + 1, cause: {} };
+    return end === undefined ? undefined : intents.transition({ ...move, state: end }, live());
+  });
+  return intents;
 }
 
 describe("the recent outflows", () => {
-  it("counts each trade of the agent's wallets in the mode over the last 24 hours, fee in", async () => {
-    const positions = await stored([
-      execution({ atMs: testNowMs - dayMs, valueUsdMicros: 1n }),
-      execution({ atMs: testNowMs - dayMs - 1, valueUsdMicros: 2n }),
-      execution({ walletId: other, valueUsdMicros: 3n, feeUsdMicros: 4n }),
-      execution({ walletId: stranger, valueUsdMicros: 5n }),
-      execution({ isPaper: true, valueUsdMicros: 6n }),
+  it("counts each confirmation of the last 24 hours in the mode at its value, settled or not", async () => {
+    const intents = await stored([
+      { n: 1, atMs: testNowMs - dayMs, valueUsdMicros: 1n, end: "reconciled" },
+      { n: 2, atMs: testNowMs - dayMs - 1, valueUsdMicros: 2n },
+      { n: 3, atMs: testNowMs, valueUsdMicros: 3n },
+      { n: 4, atMs: testNowMs, valueUsdMicros: 4n, isPaper: true, end: "paper_filled" },
+      { n: 5, atMs: testNowMs, valueUsdMicros: 5n, end: "executing" },
     ]);
-    const query = { wallets: [testWallet, other], isPaper: false, nowMs: testNowMs };
-    await expect(recentOutflowsOf(positions, query, live())).resolves.toStrictEqual([
+    const query = { agentId: testAgent, isPaper: false, nowMs: testNowMs };
+    await expect(recentOutflowsOf(intents, query, live())).resolves.toStrictEqual([
       { atMs: testNowMs - dayMs, valueUsdMicros: 1n },
-      { atMs: testNowMs, valueUsdMicros: 7n },
+      { atMs: testNowMs, valueUsdMicros: 3n },
+      { atMs: testNowMs, valueUsdMicros: 5n },
     ]);
-    const paper = { ...query, isPaper: true };
-    await expect(recentOutflowsOf(positions, paper, live())).resolves.toStrictEqual([
-      { atMs: testNowMs, valueUsdMicros: 6n },
-    ]);
-  });
-
-  it("reads past a page of executions", async () => {
-    const many = Array.from({ length: 1_001 }, () => execution({ valueUsdMicros: 1n }));
-    const positions = await stored(many);
-    const query = { wallets: [testWallet], isPaper: false, nowMs: testNowMs };
-    const outflows = await recentOutflowsOf(positions, query, live());
-    expect(outflows).toHaveLength(1_001);
-  });
-
-  it("reads nothing for an agent without a wallet, and refuses an aborted signal", async () => {
-    const positions = await stored([execution({})]);
-    const none = { wallets: [], isPaper: false, nowMs: testNowMs };
-    await expect(recentOutflowsOf(positions, none, live())).resolves.toStrictEqual([]);
-    const reason = new Error("stopped");
-    const query = { ...none, wallets: [testWallet] };
     await expect(
-      recentOutflowsOf(positions, query, { signal: AbortSignal.abort(reason) }),
+      recentOutflowsOf(intents, { ...query, isPaper: true }, live()),
+    ).resolves.toStrictEqual([{ atMs: testNowMs, valueUsdMicros: 4n }]);
+  });
+
+  it("leaves out the intent under check, one with no value and one that moved nothing", async () => {
+    const intents = await stored([
+      { n: 1, atMs: testNowMs, valueUsdMicros: 1n },
+      { n: 2, atMs: testNowMs },
+      { n: 3, atMs: testNowMs, valueUsdMicros: 3n, end: "cancelled" },
+      { n: 4, atMs: testNowMs, valueUsdMicros: 4n, end: "expired" },
+      { n: 5, atMs: testNowMs, valueUsdMicros: 5n, end: "failed_onchain" },
+      { n: 6, atMs: testNowMs, valueUsdMicros: 6n },
+    ]);
+    const query = { agentId: testAgent, isPaper: false, nowMs: testNowMs, exclude: intentId(6) };
+    await expect(recentOutflowsOf(intents, query, live())).resolves.toStrictEqual([
+      { atMs: testNowMs, valueUsdMicros: 1n },
+    ]);
+  });
+
+  it("refuses an aborted signal", async () => {
+    const intents = await stored([]);
+    const reason = new Error("stopped");
+    const query = { agentId: testAgent, isPaper: false, nowMs: testNowMs };
+    await expect(
+      recentOutflowsOf(intents, query, { signal: AbortSignal.abort(reason) }),
     ).rejects.toBe(reason);
   });
 });

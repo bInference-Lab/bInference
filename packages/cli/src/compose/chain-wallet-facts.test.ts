@@ -3,8 +3,8 @@ import { bsc } from "@binference/chains";
 import { type Http, idSchema, type JsonValue } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import {
+  createMemoryEngineStores,
   createMemoryInstallStore,
-  createMemoryPositionStore,
   testWalletRecord,
   walletFactsSourceContract,
 } from "@binference/engine/testing";
@@ -91,9 +91,29 @@ function source() {
   const clock = createManualClock(nowMs);
   const config = { enabled: [bscRef], rpc: {}, relays: {}, maxFeePerGasGwei: { [bscRef]: "1" } };
   const reads = composeChainReads({ chains: selfHostedChains(), config, http: node, clock });
-  const positions = createMemoryPositionStore();
-  return { facts: createChainWalletFacts({ install, positions, reads, clock }), positions };
+  const { intents } = createMemoryEngineStores();
+  return { facts: createChainWalletFacts({ install, intents, reads, clock }), intents };
 }
+
+const intentId = (n: number) =>
+  idSchema("int").parse(`int_0190f1c2-3a4b-7c5d-8e6f-00000000000${n}`);
+
+// An intent of the agent confirmed a second ago at a judged value, as the policy stored it.
+const confirmedDraft = (n: number, valueUsdMicros: bigint) =>
+  ({
+    id: intentId(n),
+    agentId: agent,
+    walletId: second,
+    kind: "swap",
+    state: "confirmed",
+    request: {},
+    hasOutsideContent: false,
+    isPaper: false,
+    proposer: "engine",
+    atMs: nowMs - 1_000,
+    cause: {},
+    valueUsdMicros,
+  }) as const;
 
 describe("the self-hosted wallet facts", () => {
   it.each(
@@ -120,28 +140,22 @@ describe("the self-hosted wallet facts", () => {
     ]);
   });
 
-  it("reads a live wallet's coin, the fee per gas, the caps and the day's trades", async () => {
-    const { facts, positions } = source();
-    const execution = {
-      intentId: idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
-      walletId: second,
-      isPaper: false,
-      atMs: nowMs - 1_000,
-      sold: { asset: coin, base: 10n },
-      feeBase: 0n,
-      bought: { asset: usdt, base: 20n },
-      gas: { asset: coin, base: 1n },
-      valueUsdMicros: 7_000_000n,
-      feeUsdMicros: 1n,
-      gasUsdMicros: 2n,
-    };
-    await positions.record({ execution, positions: [] }, live());
+  it("reads a live wallet's coin, the fee per gas, the caps and the day's confirmations", async () => {
+    const { facts, intents } = source();
+    await intents.create(confirmedDraft(1, 7_000_001n), live());
+    await intents.create(confirmedDraft(2, 5n), live());
     const query = { agent, wallet: first, account, isPaper: false };
     await expect(facts.facts(query, live())).resolves.toStrictEqual({
       nativeBalanceBase: coinHeld,
       ceilingPerTxNativeBase: 10n ** 18n,
       feePerGasNativeBase: 2_050_000_000n,
       networkFeeCapNativeBase: 1_000_000_000n,
+      recentOutflows: [
+        { atMs: nowMs - 1_000, valueUsdMicros: 7_000_001n },
+        { atMs: nowMs - 1_000, valueUsdMicros: 5n },
+      ],
+    });
+    await expect(facts.facts({ ...query, intent: intentId(2) }, live())).resolves.toMatchObject({
       recentOutflows: [{ atMs: nowMs - 1_000, valueUsdMicros: 7_000_001n }],
     });
     await expect(facts.facts({ ...query, isPaper: true }, live())).resolves.toMatchObject({

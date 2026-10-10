@@ -1,14 +1,15 @@
 import { type AccountRef, accountRefParts, type ChainRef } from "@binference/chain";
 import { parseEvmAddress, readEvmBalances, readFees } from "@binference/chain-evm";
 import { BinferenceError, type Clock, type Id } from "@binference/core";
-import type { PositionStore, WalletFacts, WalletFactsSource } from "@binference/engine";
-import { type InstallStore, recentOutflowsOf } from "@binference/engine/install";
+import type { IntentStore, WalletFacts, WalletFactsSource } from "@binference/engine";
+import type { InstallStore } from "@binference/engine/install";
+import { recentOutflowsOf } from "@binference/engine/outflows";
 import { type ChainReads, chainReadsOf } from "./chain-reads.js";
 
-/** What the self-hosted wallet facts read: the install's wallets, the positions and the chains. */
+/** What the self-hosted wallet facts read: the install's wallets, the intents and the chains. */
 export interface ChainWalletFactsOptions {
   readonly install: InstallStore;
-  readonly positions: PositionStore;
+  readonly intents: Pick<IntentStore, "confirmedSince">;
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   readonly clock: Clock;
 }
@@ -63,11 +64,16 @@ async function factsOf(
   }
   const { chain, holder } = holderOf(query.account);
   const reads = chainReadsOf(options.reads, chain);
-  const outflows = { wallets: owned.map(({ id }) => id), isPaper: query.isPaper };
+  const nowMs = options.clock.now();
+  const { agent: agentId, isPaper, intent } = query;
+  const outflows =
+    intent === undefined
+      ? { agentId, isPaper, nowMs }
+      : { agentId, isPaper, nowMs, exclude: intent };
   const [nativeBalanceBase, fees, recentOutflows] = await Promise.all([
-    query.isPaper ? Promise.resolve(0n) : coinBalance(reads, holder, call),
+    isPaper ? Promise.resolve(0n) : coinBalance(reads, holder, call),
     readFees(reads.rpc, { maxFeePerGasCap: reads.networkFeeCap, signal: call.signal }),
-    recentOutflowsOf(options.positions, { ...outflows, nowMs: options.clock.now() }, call),
+    recentOutflowsOf(options.intents, outflows, call),
   ]);
   return {
     nativeBalanceBase,
@@ -83,8 +89,9 @@ async function factsOf(
  * its default leads, archived ones left out; a live wallet's coin and tokens read on its chain in
  * one Multicall3 call; the fee per gas from the chain's fee reader, which the auto test's fee cap
  * and the best quote read (decision 0107); the chain's network fee cap from config; the ceiling's
- * cap per transaction as custody last read it back; and the agent's recorded trades of the last
- * 24 hours in the intent's mode. A paper intent's coin balance is the paper portfolio's, which the
+ * cap per transaction as custody last read it back; and the agent's outflows confirmed in the
+ * last 24 hours in the intent's mode, at the values the policy judged them at (decision 0136),
+ * the confirmed intent the facts are read for left out. A paper intent's coin balance is the paper portfolio's, which the
  * engine puts in its place, so it is read as 0 here. A wallet that is not the agent's is a
  * `wallet.not_found` fault. Every read runs on the caller's signal and the RPC failover's timeout.
  */

@@ -51,6 +51,7 @@ export const protocolErrorCodes = [
   "quote.venue_down",
   "chain.rpc_down",
   "chain.simulation_failed",
+  "limit.daily_cap",
   "limit.needs_admin",
   "limit.over_ceiling",
   "limit.venue_in_use",

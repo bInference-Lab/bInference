@@ -2,6 +2,7 @@ import type { ChainRegistry, PriceSource, QuotedTrade, Signer } from "@binferenc
 import { BinferenceError, type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
+import type { CapGate } from "../confirmations/cap-gate.js";
 import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
@@ -83,6 +84,8 @@ export interface MoneyPathOptions {
   readonly isLocked: () => boolean;
   /** Told each live wallet's native balance as a proposal reads it. */
   readonly lowGas: LowGasAlerts;
+  /** The rolling cap each confirmation is checked against, one agent's at a time. */
+  readonly gate: CapGate;
   readonly clock: Clock;
   readonly ids: IdSource;
 }
@@ -274,16 +277,32 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (simulated.record.state !== "simulated") {
     return simulated;
   }
-  // The auto test reads the agent as the move to `simulated` read it back, so a switch to manual
-  // during the run asks at once.
-  const trigger = authorizationCheckOf({
-    settings: simulated.settings,
-    pass: quoted.passed.pass ?? policy.passed,
-    wallet: run.resolved.facts,
-    isLocked: run.options.isLocked() && !simulated.record.isPaper,
-  });
-  const authorized = await advance(run, simulated, { trigger });
+  const authorized = await authorize(run, simulated, quoted.passed.pass ?? policy.passed);
   return run.options.execute(authorized, { signal: run.signal });
+}
+
+// The auto test reads the agent as the move to `simulated` read it back, so a switch to manual
+// during the run asks at once, and reads what the agent spent in its turn at the gate, as every
+// earlier confirmation of the agent left it (decision 0136).
+async function authorize(
+  run: Run,
+  simulated: IntentSnapshot,
+  pass: PolicyPass,
+): Promise<IntentSnapshot> {
+  const { gate } = run.options;
+  return gate.serially(simulated.record.agentId, async () => {
+    const spent = await gate.spent(simulated, { signal: run.signal });
+    const trigger = authorizationCheckOf({
+      settings: simulated.settings,
+      pass:
+        pass.figures === undefined
+          ? pass
+          : { ...pass, figures: { ...pass.figures, rollingDaySpentUsdMicros: spent } },
+      wallet: run.resolved.facts,
+      isLocked: run.options.isLocked() && !simulated.record.isPaper,
+    });
+    return advance(run, simulated, { trigger });
+  });
 }
 
 async function propose(
