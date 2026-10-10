@@ -1,5 +1,6 @@
 import type { ProtocolId } from "@binference/protocol";
 import { Argument, Command, InvalidArgumentError, Option, type OptionValues } from "commander";
+import { addAddressCommands } from "./address-commands.js";
 import type { ApprovalModeChoice, ProgramOptions } from "./chosen-command.js";
 import {
   agentFlagsSchema,
@@ -129,6 +130,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addCardCommands(program, options);
   addWalletCommands(program, options);
   addSafetyCommands(program, options);
+  addAddressCommands(program, options);
   withCommon(program.command("check").description(message("command.check")), message)
     .option("--fix", message("option.fix"))
     .action((flags: OptionValues) =>

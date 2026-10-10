@@ -1,5 +1,6 @@
 import type { ProtocolId } from "@binference/protocol";
 import type {
+  AddressAddFlags,
   AgentFlags,
   CheckFlags,
   CommonOptions,
@@ -36,6 +37,13 @@ export type ChosenCommand =
   | { readonly name: "freeze" | "unfreeze"; readonly options: AgentFlags }
   | { readonly name: "rescue" | "safetyStatus"; readonly options: CommonOptions }
   | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }
+  | { readonly name: "addressList"; readonly options: AgentFlags }
+  | { readonly name: "addressAdd"; readonly options: AddressAddFlags; readonly address: string }
+  | {
+      readonly name: "addressRemove";
+      readonly options: CommonOptions;
+      readonly entry: ProtocolId<"addressBook">;
+    }
   | { readonly name: "check"; readonly options: CheckFlags };
 
 /** What the program is built from. */

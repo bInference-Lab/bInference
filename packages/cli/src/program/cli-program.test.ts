@@ -59,6 +59,9 @@ describe("the binference command tree", () => {
       "unfreeze",
       "set",
       "status",
+      "list",
+      "add",
+      "remove",
       "check",
     ]);
     for (const command of commands) {

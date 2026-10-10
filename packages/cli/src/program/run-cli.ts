@@ -2,6 +2,7 @@ import { BinferenceError } from "@binference/core";
 import { createFormatter, type Formatter } from "@binference/i18n";
 import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
+import { runAddressAdd, runAddressList, runAddressRemove } from "../commands/address-command.js";
 import { runApproval } from "../commands/approval-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runCheck } from "../commands/check-command.js";
@@ -99,6 +100,9 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   rescue: async (context) => runRescue(context),
   rescueSet: runRescueSet,
   safetyStatus: async (context) => runSafetyStatus(context),
+  addressList: runAddressList,
+  addressAdd: runAddressAdd,
+  addressRemove: runAddressRemove,
   check: runCheck,
 };
 

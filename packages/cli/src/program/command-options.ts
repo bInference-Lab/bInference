@@ -2,7 +2,7 @@ import { type ProtocolId, protocolIdSchema } from "@binference/protocol";
 import { type Command, InvalidArgumentError, Option } from "commander";
 
 /** An id of the protocol's kind, or a command line commander refuses with one message. */
-export function idOf<K extends "agent" | "intent" | "wallet">(
+export function idOf<K extends "agent" | "intent" | "wallet" | "addressBook">(
   kind: K,
 ): (value: string) => ProtocolId<K> {
   return (value: string): ProtocolId<K> => {

@@ -266,7 +266,7 @@ new name here first, in the change that uses it.
 - **commands**: `binference init`, `start`, `status`, `health`, `logs`, `approval`, `confirm`,
   `deny`, `wallet list`, `wallet address`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`,
-  `safety status`, `unlock`, `expose`.
+  `safety status`, `address list`, `address add`, `address remove`, `unlock`, `expose`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
