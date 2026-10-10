@@ -82,6 +82,16 @@ function withTestLimits(restrictions: Restrictions, row: PackageRow): Record<str
   };
 }
 
+// Each folder a row limits libraries to, with every library allowed there: one override per
+// folder, as a later override for the same files replaces an earlier one.
+function librariesByFolder(row: Scope["row"]): ReadonlyMap<string, readonly string[]> {
+  const folders = new Map<string, readonly string[]>();
+  for (const [library, folder] of Object.entries(row.only ?? {})) {
+    folders.set(folder, [...(folders.get(folder) ?? []), library]);
+  }
+  return folders;
+}
+
 function scopeOverrides(graph: PackageGraph, scope: Scope): readonly LintOverride[] {
   const base = { key: scope.key, row: scope.row, anyThirdParty: scope.anyThirdParty };
   const restrictions = restrictionsFor(graph, { ...base, exempt: [] });
@@ -92,8 +102,8 @@ function scopeOverrides(graph: PackageGraph, scope: Scope): readonly LintOverrid
     },
     { files: [`${scope.folder}/**/*.test.ts`], rules: withTestLimits(restrictions, scope.row) },
   ];
-  for (const [library, folder] of Object.entries(scope.row.only ?? {})) {
-    const exempt = restrictionsFor(graph, { ...base, exempt: [library] });
+  for (const [folder, libraries] of librariesByFolder(scope.row)) {
+    const exempt = restrictionsFor(graph, { ...base, exempt: libraries });
     const root = `${scope.folder}/${folder}`;
     overrides.push(
       { files: [`${root}/**`], rules: restrictionRules(exempt) },
