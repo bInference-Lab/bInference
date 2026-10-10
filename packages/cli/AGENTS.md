@@ -40,7 +40,8 @@ Rules for this package:
   self-hosted root still misses are fakes. Like `src/main.ts`, the crash engine reads `process`
   itself. They run in `pnpm test:crash`, never in `pnpm check`.
 - `composeEngine` is the one place that joins the engine to its protocol server, and to the
-  owner's bot through `composeTelegram`. A push that fails, and a card that does not reach
+  owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
+  handlers: the engine's and the root's own, such as `engine/status`. A push that fails, and a card that does not reach
   Telegram, is logged and never stops the money path. The skeleton tests run on every composition
   with `describe.each` through `src/compose/test-skeleton.ts`; a new profile part joins both
   compositions there.

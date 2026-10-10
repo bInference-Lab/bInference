@@ -7,13 +7,18 @@ import {
   type CardVersionRef,
   createCardPresses,
   createCardShowings,
+  createOwnerCalls,
+  type EngineHandlerTable,
 } from "@binference/engine/surfaces";
 import type { OwnerInfo } from "@binference/protocol";
 import {
   type CardAnswers,
   type CardCopyStore,
+  createFastCommands,
   createTelegramCards,
   createTelegramIngress,
+  type FastCommands,
+  type OwnerCalls,
   type OwnerStore,
   type TelegramCards,
   type TelegramIngress,
@@ -31,10 +36,15 @@ export interface TelegramParts {
   readonly copies: CardCopyStore;
 }
 
-/** What the bot is joined to: the engine's stores, its answer step and the owner's display. */
+/**
+ * What the bot is joined to: the engine's stores, its answer step, the handlers its fast commands
+ * run and the owner's display.
+ */
 export interface TelegramWiring {
   readonly stores: EngineStores;
   readonly answer: AnswerCard;
+  /** The engine's handlers and the composition root's, such as `engine/status`. */
+  readonly handlers: EngineHandlerTable;
   readonly chains: ChainRegistry;
   /** The owner's language and timezone now, read for each message the bot sends. */
   readonly owner: () => OwnerInfo;
@@ -47,6 +57,10 @@ export interface ComposedTelegram {
   readonly cards: TelegramCards;
   /** The engine's side of each press: the owner's only, stored before Telegram hears back. */
   readonly answers: CardAnswers;
+  /** The engine's side of the fast commands: each operation runs for the owner alone. */
+  readonly calls: OwnerCalls;
+  /** The owner's fast commands; whoever starts the bot registers their menu. */
+  readonly commands: FastCommands;
   /** Where the bot's updates come in: long polling and a webhook relay both feed it. */
   readonly ingress: TelegramIngress;
   /**
@@ -180,6 +194,11 @@ function createCardRelay(context: RelayContext): CardRelay {
   };
 }
 
+// The owner's numeric Telegram id, read for each press and command.
+function answersOwner(parts: TelegramParts) {
+  return async (call: Call): Promise<number | undefined> => (await parts.owners.get(call))?.userId;
+}
+
 /**
  * Joins the owner's bot to the engine: cards whose presses the engine answers (the owner's
  * numeric Telegram id only, stored before Telegram hears back), the ingress that hands the
@@ -196,23 +215,36 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
   const answers = createCardPresses({
     intents: stores.intents,
     answer: wiring.answer,
-    ownerId: async (call) => (await parts.owners.get(call))?.userId,
+    ownerId: answersOwner(parts),
     chains,
   });
   const cards = createTelegramCards({ ...parts, answers, logger, display });
+  const showings = createCardShowings({ intents: stores.intents, agents: stores.agents, chains });
+  const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
+  const commands = createFastCommands({
+    api: parts.api,
+    calls,
+    cards,
+    waiting: async (call) => showings.waiting(call),
+    chains,
+    display,
+    logger,
+  });
   const ingress = createTelegramIngress({
     api: parts.api,
     stores: { inbox: stores.inbox, access: stores.access, owners: parts.owners },
     clock: wiring.clock,
     logger,
     display,
-    onOwnerUpdate: async (update, call) =>
-      update.kind === "callback" ? cards.press(update, call) : Promise.resolve(),
+    // A fast command is answered here; any other message waits for the agent runtime.
+    onOwnerUpdate: async (update, call) => {
+      if (update.kind === "callback") {
+        await cards.press(update, call);
+        return;
+      }
+      await commands.answer(update, call);
+    },
   });
-  const context: RelayContext = {
-    showings: createCardShowings({ intents: stores.intents, agents: stores.agents, chains }),
-    cards,
-    logger,
-  };
-  return { cards, answers, ingress, ...createCardRelay(context) };
+  const context: RelayContext = { showings, cards, logger };
+  return { cards, answers, calls, commands, ingress, ...createCardRelay(context) };
 }

@@ -1,0 +1,161 @@
+import {
+  type AccountRef,
+  accountRefSchema,
+  type SimulatedStep,
+  type TxSimulator,
+} from "@binference/chain";
+import { createFakeFamily, createFakeTxSimulator } from "@binference/chain/testing";
+import { BinferenceError, type JsonValue } from "@binference/core";
+import { testAgent, testCoin, testNowMs } from "@binference/engine/testing";
+import {
+  createFakeBotApi,
+  createMemoryCardCopyStore,
+  createMemoryOwnerStore,
+  type FakeBotApi,
+  type FakeMessage,
+  fakeBotToken,
+  ownerCallsContract,
+} from "@binference/telegram/testing";
+import { Api } from "grammy";
+import { describe, expect, it } from "vitest";
+import type { ComposedTelegram } from "./compose-telegram.js";
+import { type ComposedSkeleton, composeSkeleton, skeletonCompositions } from "./test-skeleton.js";
+
+const live = { signal: new AbortController().signal };
+const ownerId = 7_012_345_678;
+const dayMs = 86_400_000;
+const [selfHosted] = skeletonCompositions;
+// The test wallet's account in the skeleton, and the owner's rescue address on the same chain.
+const walletAccount: AccountRef = accountRefSchema.parse("fake:1:0x0000000c");
+const rescueAccount: AccountRef = accountRefSchema.parse("fake:1:0x000000a1");
+// The test agent keeps 10^15 of the coin for gas, so a rescue moves the rest of one coin.
+const moved = { asset: testCoin, base: 10n ** 18n - 10n ** 15n };
+const alarm = String.fromCodePoint(0x1f534);
+
+/** The composed engine with the owner's bot on the synthetic Bot API. */
+interface Bot extends ComposedSkeleton {
+  readonly telegram: ComposedTelegram;
+  readonly botApi: FakeBotApi;
+  /** Sends a text from the owner, as Telegram delivers it, and waits until it is handled. */
+  send(text: string): Promise<void>;
+}
+
+function never(): never {
+  throw new BinferenceError({ code: "test.missing", message: "The fixture holds it." });
+}
+
+// The rescue's one send, the coin above the reserve, runs as planned.
+function rescueSimulator(): TxSimulator {
+  const draft = createFakeFamily().transferDraft({
+    from: walletAccount,
+    to: rescueAccount,
+    amount: moved,
+  });
+  const step: SimulatedStep = {
+    status: "success",
+    gasUsed: 21_000n,
+    transfers: [{ from: walletAccount, to: rescueAccount, amount: moved }],
+    approvals: [],
+  };
+  return createFakeTxSimulator(new Map([[draft.ok ? draft.value.payload : never(), step]]));
+}
+
+// The one message with buttons: the card the owner taps.
+function cardOf(botApi: FakeBotApi): FakeMessage {
+  const [card, ...others] = botApi.messages().filter((message) => message.buttons.length > 0);
+  return card !== undefined && others.length === 0 ? card : never();
+}
+
+// The data of a card's Confirm button, the first of its one row.
+function confirmDataOf(card: FakeMessage): string {
+  return card.buttons[0]?.[0]?.data ?? never();
+}
+
+function textFrom(updateId: number, text: string): JsonValue {
+  return {
+    update_id: updateId,
+    message: {
+      message_id: updateId + 500,
+      date: 1_760_000_000,
+      chat: { id: ownerId, type: "private" },
+      from: { id: ownerId, is_bot: false, first_name: "Owner" },
+      text,
+    },
+  };
+}
+
+// The skeleton with one coin in its wallet and a rescue address in effect, and the owner's bot.
+async function bot(): Promise<Bot> {
+  const botApi = createFakeBotApi();
+  const owners = createMemoryOwnerStore();
+  await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
+  const api = new Api(fakeBotToken, { fetch: botApi.fetch });
+  const telegram = { api, owners, copies: createMemoryCardCopyStore() };
+  const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), {
+    telegram,
+    held: new Map([[walletAccount, [{ asset: testCoin, base: 10n ** 18n }]]]),
+    chainSimulator: rescueSimulator(),
+  });
+  const change = { address: rescueAccount, atMs: testNowMs - 2 * dayMs };
+  await skeleton.parts.stores.install.changeRescue(change, live);
+  const composed = skeleton.composed.telegram ?? never();
+  let updateId = 0;
+  return {
+    ...skeleton,
+    telegram: composed,
+    botApi,
+    send: async (text) => {
+      updateId += 1;
+      await composed.ingress.receive(textFrom(updateId, text), live);
+      await composed.idle();
+    },
+  };
+}
+
+describe("the owner's fast commands on the engine", () => {
+  it.each(
+    ownerCallsContract({
+      create: async () => ({ calls: (await bot()).telegram.calls, ownerId }),
+    }),
+  )("runs the owner's calls as the owner calls contract says: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("freezes every agent from Telegram, and the engine says Telegram did", async () => {
+    const test = await bot();
+    await test.send("/freeze");
+    const frozen = await test.parts.stores.agents.get(testAgent, live);
+    expect(frozen?.agent.frozenAtMs).toBe(testNowMs);
+    expect(test.botApi.sent().at(-1)?.text).toMatch(new RegExp(`^${alarm} Every agent is frozen`));
+  });
+
+  it("opens the rescue card while every agent is frozen, and a tap sends the rescue on", async () => {
+    const test = await bot();
+    await test.send("/freeze");
+    await test.send("/rescue");
+    const card = cardOf(test.botApi);
+    expect(card.text).toContain("Move everything to your rescue address 0x000000a1");
+    const press = { from: ownerId, data: confirmDataOf(card), messageId: card.messageId };
+    await test.telegram.ingress.receive(test.botApi.press(press), live);
+    await test.telegram.idle();
+    const taken = await Promise.all(
+      test.executor.taken().map(async (intent) => test.parts.stores.intents.get(intent, live)),
+    );
+    expect(taken.map((record) => [record?.kind, record?.state])).toStrictEqual([
+      ["rescue", "confirmed"],
+    ]);
+  });
+
+  it.each([
+    ["/status", "binference 2026.10.0 is running."],
+    ["/limits", `Limits of ${testAgent} in effect now:`],
+    ["/paper", `${String.fromCodePoint(0x1f9ea)} `],
+    ["/balance", "This version of binference does not know that request."],
+    ["/orders", "This version of binference does not know that request."],
+    ["/cancel", "Nothing waits for your confirmation, so there is nothing to cancel."],
+  ])("answers %s from the engine with no agent runtime", async (command, start) => {
+    const test = await bot();
+    await test.send(command);
+    expect(test.botApi.sent()[0]?.text.startsWith(start)).toBe(true);
+  });
+});

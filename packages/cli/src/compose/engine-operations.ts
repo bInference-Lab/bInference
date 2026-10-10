@@ -1,7 +1,7 @@
 import { BinferenceError, createSecret, ok } from "@binference/core";
 import type { AgentStore } from "@binference/engine";
+import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { type EngineState, protocolVersion, type ResultOf } from "@binference/protocol";
-import type { OperationHandlers } from "@binference/server";
 import type { EngineLock } from "../unlock/engine-lock.js";
 import type { LockReason } from "../unlock/unlock-keys.js";
 import type { HealthSignal } from "./health-signals.js";
@@ -59,7 +59,7 @@ function agentsOf(records: Awaited<ReturnType<AgentStore["list"]>>): EngineStatu
  * `manual` mode, and fails with `engine.locked` and the reason in `details.reason` while it stays
  * locked (decision 0104).
  */
-export function createEngineOperations(options: EngineOperationsOptions): OperationHandlers {
+export function createEngineOperations(options: EngineOperationsOptions): EngineHandlerTable {
   return {
     "engine/status": async ({ signal }) => {
       const agents = agentsOf(await options.agents.list({ signal }));

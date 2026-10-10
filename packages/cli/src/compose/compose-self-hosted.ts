@@ -2,8 +2,9 @@ import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
+import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
-import type { OperationHandlers, ProtocolServer } from "@binference/server";
+import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
@@ -80,7 +81,11 @@ interface EngineWiring extends Pick<ComposedSelfHosted, "stopper" | "locked"> {
 }
 
 // The engine's own operations: its status with the health signals, its stop and its unlock.
-function engineHandlers(opening: Opening, opened: Opened, wiring: EngineWiring): OperationHandlers {
+function engineHandlers(
+  opening: Opening,
+  opened: Opened,
+  wiring: EngineWiring,
+): EngineHandlerTable {
   const probe = startHealthProbe({
     missing: wiring.missing,
     parts: [

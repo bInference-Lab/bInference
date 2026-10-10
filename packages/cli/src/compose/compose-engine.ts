@@ -19,11 +19,11 @@ import {
   type WalletFactsSource,
 } from "@binference/engine";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
+import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
   createProtocolServer,
   type HttpListenOptions,
-  type OperationHandlers,
   type ProtocolServer,
 } from "@binference/server";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
@@ -75,7 +75,7 @@ export interface ComposeEngineOptions {
    */
   readonly isLocked?: () => boolean;
   /** Handlers of operations the composition root answers, such as `engine/status`. */
-  readonly handlers?: OperationHandlers;
+  readonly handlers?: EngineHandlerTable;
   /** The owner's bot; without it the engine shows no card in Telegram. */
   readonly telegram?: TelegramParts;
   readonly clock: Clock;
@@ -99,11 +99,12 @@ const venueCallTimeoutMs = 5_000;
 // answered within half a second when measured.
 const riskSourceTimeoutMs = 5_000;
 
-// The owner's bot, when the options name one, answers its presses through the engine.
+// The owner's bot, when the options name one, answers its presses and fast commands through the
+// engine.
 function joinTelegram(
   parts: EngineParts,
   options: ComposeEngineOptions,
-  engine: Engine,
+  engine: { readonly answer: Engine["answer"]; readonly handlers: EngineHandlerTable },
 ): ComposedTelegram | undefined {
   const { telegram, owner, chains, clock, logger } = options;
   return telegram === undefined
@@ -111,6 +112,7 @@ function joinTelegram(
     : composeTelegram(telegram, {
         stores: parts.stores,
         answer: engine.answer,
+        handlers: engine.handlers,
         chains,
         owner,
         clock,
@@ -188,12 +190,13 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     random,
     publish,
   });
-  const telegram = joinTelegram(parts, options, engine);
+  const handlers: EngineHandlerTable = { ...engine.handlers, ...options.handlers };
+  const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers });
   const server = createProtocolServer({
     ...(options.http === undefined ? {} : { http: options.http }),
     auth: { access: parts.stores.access },
     idempotency: parts.stores.idempotency,
-    handlers: { ...engine.handlers, ...options.handlers },
+    handlers,
     engine: {
       version: options.version,
       state: options.state ?? (() => "ready"),
