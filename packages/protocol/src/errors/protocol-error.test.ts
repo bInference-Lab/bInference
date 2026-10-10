@@ -20,6 +20,7 @@ describe("protocolErrorCodes", () => {
       "wallet",
       "address",
       "rescue",
+      "signer",
       "intent",
       "order",
       "asset",

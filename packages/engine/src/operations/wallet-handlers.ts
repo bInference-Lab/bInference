@@ -5,19 +5,22 @@ import type { WalletRecord } from "../install/install-record.js";
 import type { EngineHandler } from "./engine-call.js";
 import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
 import { makeWallet, type MakeWalletOptions } from "./make-wallet.js";
+import { revokeSigner, type RevokeSignerOptions } from "./revoke-signer.js";
 
 /** The handlers of the agent wallets (protocol spec, section 7.2). */
 export interface WalletHandlers {
   readonly "wallet/list": EngineHandler<"wallet/list">;
   readonly "wallet/create": EngineHandler<"wallet/create">;
   readonly "wallet/exportSealed": EngineHandler<"wallet/exportSealed">;
+  readonly "signer/revoke": EngineHandler<"signer/revoke">;
 }
 
 /**
  * What the wallet handlers read and write: the agents, the install's wallets, custody for each
  * account, and what making a wallet asks custody and journals through.
  */
-export interface WalletHandlersOptions extends MakeWalletOptions, ExportWalletOptions {
+export interface WalletHandlersOptions
+  extends MakeWalletOptions, ExportWalletOptions, RevokeSignerOptions {
   readonly custody: Signer;
   readonly chains: ChainRegistry;
 }
@@ -58,12 +61,14 @@ async function viewOf(
  * stored wallet custody holds on no chain fails the call with `wallet.custody_down`, so no wallet
  * is ever shown without the address custody signs for. `wallet/create` makes a wallet with the
  * owner key (see {@link makeWallet}), and `wallet/exportSealed` exports one's key sealed to the
- * caller's recipient key (see {@link exportWallet}).
+ * caller's recipient key (see {@link exportWallet}); `signer/revoke` removes a machine's agent key
+ * from every live wallet with the owner key (see {@link revokeSigner}).
  */
 export function createWalletHandlers(options: WalletHandlersOptions): WalletHandlers {
   return {
     "wallet/create": async (call) => makeWallet(options, call),
     "wallet/exportSealed": async (call) => exportWallet(options, call),
+    "signer/revoke": async (call) => revokeSigner(options, call),
     async "wallet/list"({ args, signal }) {
       if (
         args.agent !== undefined &&

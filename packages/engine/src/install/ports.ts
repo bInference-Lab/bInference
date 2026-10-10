@@ -9,6 +9,7 @@ import type {
   SignedChangeRefusal,
   SignRecipientsRequest,
 } from "./ceiling-change.js";
+import type { RevokeRefusal, SignerRevocation } from "./signer-revocation.js";
 import type { ExportRefusal, ExportRequest, SealedKey } from "./wallet-export.js";
 import type { MadeWallet, WalletRefusal, WalletRequest } from "./wallet-request.js";
 
@@ -93,4 +94,21 @@ export interface WalletExporter {
     request: ExportRequest,
     options: CustodyCall,
   ): Promise<Result<SealedKey, ExportRefusal>>;
+}
+
+/**
+ * Removes a machine's agent key from the wallets' signers in custody, with the owner key (spec 5,
+ * section 6): from then on custody refuses whatever that key signs. It never leaves a wallet with
+ * no signer. Adapter: the owner's Privy app. The key comes with each request and is kept nowhere.
+ */
+export interface SignerRevoker {
+  /**
+   * Removes the signer from each of the wallets that lists it, every other signer staying, and
+   * answers the wallets it left. Every wallet is read first: a refusal there changes nothing. A
+   * fault part way keeps the wallets changed before it, and the same request again goes on.
+   */
+  revoke(
+    request: SignerRevocation,
+    options: CustodyCall,
+  ): Promise<Result<readonly string[], RevokeRefusal>>;
 }

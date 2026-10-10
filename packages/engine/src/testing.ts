@@ -6,6 +6,11 @@ export type {
 export { ceilingEditorContract } from "./contracts/ceiling-editor-contract.js";
 export { walletMakerContract } from "./contracts/wallet-maker-contract.js";
 export { walletExporterContract } from "./contracts/wallet-exporter-contract.js";
+export { signerRevokerContract } from "./contracts/signer-revoker-contract.js";
+export type {
+  SignerRevokerHarness,
+  SignerRevokerSubject,
+} from "./contracts/signer-revoker-contract.js";
 export type {
   ExportRecipient,
   WalletExporterHarness,
@@ -48,6 +53,8 @@ export {
   fakeRecipient,
 } from "./fakes/fake-wallet-exporter.js";
 export type { FakeSeal, FakeWalletExporterOptions } from "./fakes/fake-wallet-exporter.js";
+export { createFakeSignerRevoker } from "./fakes/fake-signer-revoker.js";
+export type { FakeSignerRevoker } from "./fakes/fake-signer-revoker.js";
 export type { FakeWalletMaker, FakeWalletMakerOptions } from "./fakes/fake-wallet-maker.js";
 export { createFakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export type { FakeConfirmationStore } from "./fakes/fake-confirmation-store.js";

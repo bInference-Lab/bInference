@@ -34,7 +34,7 @@ import {
 } from "../fakes/memory-engine-stores.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
-import type { CeilingEditor, WalletExporter } from "../install/ports.js";
+import type { CeilingEditor, SignerRevoker, WalletExporter } from "../install/ports.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 import {
   testAgent,
@@ -55,7 +55,7 @@ import type {
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import { createVenueHost } from "../venues/venue-host.js";
-import { createEngine, type Engine } from "./create-engine.js";
+import { createEngine, type Engine, type EngineOptions } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
 
 /** The owner's CLI, an MCP client and the agent runtime, as the server signs them in. */
@@ -109,6 +109,8 @@ export interface TestEngineOptions {
   readonly ceilings?: CeilingEditor;
   /** Custody's export of a wallet's key; none when absent. */
   readonly exporter?: WalletExporter;
+  /** Custody's removal of a machine's agent key; none when absent. */
+  readonly revoker?: SignerRevoker;
   /** Runs a rescue's sends; one under which every send reverts when absent. */
   readonly chainSimulator?: TxSimulator;
   /** What each account holds, as the wallet facts read it live; nothing when absent. */
@@ -211,6 +213,15 @@ function custodyOf(options: TestEngineOptions): readonly (readonly [Id<"wal">, A
 }
 
 /** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
+// Custody's export and its removal of a signer, each only when the test gives it.
+function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter" | "revoker"> {
+  const { exporter, revoker } = options;
+  return {
+    ...(exporter === undefined ? {} : { exporter }),
+    ...(revoker === undefined ? {} : { revoker }),
+  };
+}
+
 export async function startTestEngine(options: TestEngineOptions = {}): Promise<TestEngine> {
   const clock = createManualClock(testNowMs);
   const stores = createMemoryEngineStores();
@@ -234,7 +245,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     positions,
     custody,
     ceilings: options.ceilings ?? ceilings,
-    ...(options.exporter === undefined ? {} : { exporter: options.exporter }),
+    ...custodyParts(options),
     walletMaker,
     prices: createFakePriceSource(
       options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),

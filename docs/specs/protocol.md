@@ -276,7 +276,7 @@ Long operations return `{ job }` at once and report through the `job` topic. Fil
 | `wallet/exportSealed` | `admin`                                     |       | ✓     | `{ wallet, recipientPublicKey, ownerKey }` → `{ ciphertext, encapsulatedKey }`: the key sealed with HPKE to a key only the CLI holds; a read, never stored ([decision 0131](../DECISIONS.md#d0131)) |
 | `ceiling/get`         | `read`                                      |       |       | `{ wallet }` → the wallet's Privy policy as `CeilingView`                                                                                                                                           |
 | `ceiling/set`         | `admin`                                     | ✓     | ✓     | `{ wallet, changes, ownerKey }` → `CeilingView`: venues and the per-transaction cap of every live wallet of the wallet's agent; fails `limit.venue_in_use` ([decision 0132](../DECISIONS.md#d0132)) |
-| `signer/revoke`       | `admin`                                     | ✓     | ✓     | `{ signer, ownerKey }` → `{}`: removes a machine's agent key from every wallet                                                                                                                      |
+| `signer/revoke`       | `admin`                                     | ✓     | ✓     | `{ signer, ownerKey }` → `{}`: removes a machine's agent key from every live wallet; fails `signer.own_key`, `signer.not_found` or `signer.last_signer` ([decision 0140](../DECISIONS.md#d0140))    |
 | `approval/get`        | `read`                                      |       |       | `{ agent }` → `{ mode, changedAt }` ([decision 0088](../DECISIONS.md#d0088))                                                                                                                        |
 | `approval/set`        | `confirm` for `manual`, `loosen` for `auto` | ✓     |       | `{ agent, mode }` → `{ mode, changedAt }`; announced on every surface                                                                                                                               |
 
@@ -588,6 +588,7 @@ later unchanged.
 | `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`                                        |
 | `address`  | `not_found`                                                                                     |
 | `rescue`   | `no_address`, `nothing_to_move`                                                                 |
+| `signer`   | `not_found`, `last_signer`, `own_key`                                                           |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                              |
 | `order`    | `not_found`, `wrong_state`                                                                      |
 | `asset`    | `not_found`, `bad_address`                                                                      |

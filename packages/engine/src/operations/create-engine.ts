@@ -14,7 +14,12 @@ import { createCapGate } from "../confirmations/cap-gate.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
-import type { CeilingEditor, WalletExporter, WalletMaker } from "../install/ports.js";
+import type {
+  CeilingEditor,
+  SignerRevoker,
+  WalletExporter,
+  WalletMaker,
+} from "../install/ports.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
@@ -108,6 +113,8 @@ export interface EngineOptions {
    * exports no key through the engine.
    */
   readonly exporter?: WalletExporter;
+  /** Custody's removal of a machine's agent key; none where custody removes no signer here. */
+  readonly revoker?: SignerRevoker;
   readonly prices: PriceSource;
   /** The wallets' live facts; a paper intent's balance comes from the paper portfolio. */
   readonly wallets: WalletFactsSource;
@@ -168,6 +175,7 @@ function settingsHandlers(
     ceilings: options.ceilings,
     maker: options.walletMaker,
     ...(options.exporter === undefined ? {} : { exporter: options.exporter }),
+    ...(options.revoker === undefined ? {} : { revoker: options.revoker }),
     journal: stores.configJournal,
     chains,
     clock: options.clock,

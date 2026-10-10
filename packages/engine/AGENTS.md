@@ -150,6 +150,11 @@ Rules for this package:
 - A wallet's key leaves custody only through `wallet/exportSealed`, a read over IPC with the owner
   key (decision 0131): custody seals it with HPKE to the recipient key the CLI made, and the engine
   passes the sealed key on and keeps it nowhere, not in the idempotency store either.
+- A machine's agent key leaves the wallets only through `signer/revoke`
+  (`src/operations/revoke-signer.ts`), with the owner key over IPC (decision 0140): custody removes
+  it from every live wallet through the `SignerRevoker` port, never this engine's own key
+  (`signer.own_key`) and never a wallet's last signer (`signer.last_signer`), and the removal is
+  announced as `notice.signerRevoked`.
 - A freeze (`src/safety/freeze-agents.ts`, `safety/freeze`) is one write of the intent store's
   `freeze`: each agent marked frozen, keeping the time of an earlier freeze, and each unsigned
   intent of theirs moved to `cancelled` by the state machine, a rescue excepted (decision 0099),
