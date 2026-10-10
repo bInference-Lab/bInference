@@ -6,6 +6,7 @@ import {
   type SignAuthorization,
 } from "@binference/chain";
 import type { Clock } from "@binference/core";
+import type { QuoteView } from "@binference/protocol";
 import { autoModeGrantOf } from "../approval/auto-mode-grant-of.js";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
@@ -15,6 +16,7 @@ import { policyFactsOf } from "../money-path/policy-facts-of.js";
 import { type ResolveOptions, resolveProposal } from "../money-path/resolve-proposal.js";
 import { swapSubjectOf } from "../money-path/swap-trade.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
+import type { PolicyLimits } from "../policy/policy-rules.js";
 import type { IntentStore } from "../ports.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
@@ -64,14 +66,23 @@ async function recheckPolicy(
   const { swap, facts, chain, nativeAsset } = resolved.value;
   const quote = quoteDocument.decode(record.quote);
   const nowMs = parts.clock.now();
-  const verdict = await parts.policy.check(
-    swapSubjectOf(swap, stored.status),
-    policyFactsOf({ settings, wallet: facts, chain: chain.ref, nativeAsset, nowMs }),
-    { signal, quote: { amountIn: quote.amountIn, expectedOut: quote.expectedOut } },
-  );
+  const policyFacts = policyFactsOf({ settings, wallet: facts, chain: chain.ref, nativeAsset, nowMs });
+  const verdict = await parts.policy.check(swapSubjectOf(swap, stored.status), policyFacts, {
+    signal,
+    quote: { amountIn: quote.amountIn, expectedOut: quote.expectedOut },
+  });
   const isAuto = stored.status.authorizedBy !== undefined;
-  const hasPassed = verdict.ok && !(isAuto && verdict.value.sellsDeniedToken);
+  const hasPassed =
+    verdict.ok &&
+    !(isAuto && verdict.value.sellsDeniedToken) &&
+    isRouteAllowed(quote, policyFacts.limits);
   return { hasPassed, networkFeeCapNativeBase: facts.networkFeeCapNativeBase };
+}
+
+// Each venue of the confirmed route must still be one the agent allows: a venue the owner removed
+// since the tap stops the intent at once (decision 0111).
+function isRouteAllowed(quote: QuoteView, limits: PolicyLimits): boolean {
+  return quote.route.length > 0 && quote.route.every(({ venue }) => limits.venues.includes(venue));
 }
 
 /**

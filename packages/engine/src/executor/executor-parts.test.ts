@@ -2,13 +2,13 @@ import type { Signer, TxDraft } from "@binference/chain";
 import { fakeDraft } from "@binference/chain/testing";
 import { createIdSource, err, type Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
-import type { IntentRequest } from "@binference/protocol";
+import type { IntentRequest, QuoteView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
 import { createStoredIntents, type IntentSnapshot } from "../intents/create-stored-intents.js";
-import { planDocument } from "../intents/intent-documents.schema.js";
+import { planDocument, quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { expectOk, testAgent, testCoin, testSwap, testWallet } from "../intents/test-intents.js";
 import { recentOutflowsOf } from "../money-path/recent-outflows.js";
@@ -109,6 +109,15 @@ function withoutWallet(custody: Signer, missing: Id<"wal">): Signer {
     account: async (wallet, chain, call) =>
       wallet === missing ? err("unknown_wallet") : custody.account(wallet, chain, call),
   };
+}
+
+// The quote the owner confirmed for the intent.
+function quoteOf(snapshot: IntentSnapshot): QuoteView {
+  const { quote } = snapshot.record;
+  if (quote === undefined) {
+    throw new Error("Expected the tapped intent's quote.");
+  }
+  return quoteDocument.decode(quote);
 }
 
 function withStatus(
@@ -214,6 +223,20 @@ describe("the queue check", () => {
     expect((await check()).facts.hasPolicyPassed).toBe(true);
     await tappedSnapshot(bench);
     expect((await check()).facts.hasPolicyPassed).toBe(false);
+  });
+
+  it("fails the policy once a venue of the confirmed route is no longer allowed", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const snapshot = await tappedSnapshot(bench);
+    const parts = checkPartsOf(bench);
+    const check = async (venues: readonly string[]) => {
+      const limits = { ...snapshot.settings.limits, venues };
+      const settings = { ...snapshot.settings, limits };
+      return checkForQueue({ ...snapshot, settings }, { parts, chain: fakeChain }, live().signal);
+    };
+    const routed = quoteOf(snapshot).route.map((leg) => leg.venue);
+    expect((await check(["elsewhere", ...routed])).facts.hasPolicyPassed).toBe(true);
+    expect((await check(["elsewhere"])).facts.hasPolicyPassed).toBe(false);
   });
 
   it("fails the policy for an intent with no quote", async () => {
