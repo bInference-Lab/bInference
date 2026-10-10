@@ -116,6 +116,37 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
 export const intentExamples: { readonly [N in keyof IntentOperationShapes]: WireExample } = {
   "intent/propose": { args: swapRequest, result: intentView },
   "intent/get": { args: { intent: ids.intent }, result: intentView },
+  "intent/card": {
+    args: { intent: ids.intent },
+    result: {
+      card: ids.card,
+      version: 1,
+      expiresAt: at,
+      lines: [
+        {
+          key: "card.swap.action",
+          values: {
+            sell: { type: "amount", amount: nativeAmount },
+            buy: { type: "asset", asset: refs.token },
+          },
+        },
+        {
+          key: "card.route",
+          values: {
+            route: {
+              type: "route",
+              venue: "Fake Swap",
+              legs: [{ venue: "fake-swap", shareBps: 10_000 }],
+            },
+            impact: { type: "percent", bps: 12 },
+            slippage: { type: "percent", bps: 50 },
+          },
+        },
+        { key: "card.expiry", values: { time: { type: "time", atMs: at } } },
+      ],
+      assets,
+    },
+  },
   "intent/list": {
     args: { cursor: "cursor-1", limit: 10, agent: ids.agent, state: "reconciled", kind: "swap" },
     result: pageOf(intentView),

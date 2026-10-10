@@ -134,6 +134,12 @@ export { alertConditionSchema, alertViewSchema } from "./views/alert-view.schema
 export type { AlertCondition, AlertView, PriceCondition } from "./views/alert-view.schema.js";
 export { assetInfosSchema, assetViewSchema } from "./views/asset-info.schema.js";
 export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema.js";
+export {
+  cardLinesViewSchema,
+  cardLineViewSchema,
+  cardValueViewSchema,
+} from "./views/card-lines.schema.js";
+export type { CardLinesView, CardLineView, CardValueView } from "./views/card-lines.schema.js";
 export { cardViewSchema } from "./views/card-view.schema.js";
 export type { CardView } from "./views/card-view.schema.js";
 export { ceilingChangesSchema, ceilingViewSchema } from "./views/ceiling-view.schema.js";

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type IntentRequest, intentRequestSchema } from "../requests/intent-request.schema.js";
 import { type Page, type PageArgs, pageArgsShape, pageSchema } from "../values/page.schema.js";
+import { type CardLinesView, cardLinesViewSchema } from "../views/card-lines.schema.js";
 import { type IntentKind, intentKindSchema } from "../views/intent-kind.schema.js";
 import { type IntentState, intentStateSchema } from "../views/intent-state.schema.js";
 import { type IntentView, intentViewSchema } from "../views/intent-view.schema.js";
@@ -33,6 +34,8 @@ interface ConfirmArgs extends DenyArgs {
 export interface IntentOperationShapes {
   readonly "intent/propose": { readonly args: IntentRequest; readonly result: IntentView };
   readonly "intent/get": { readonly args: IntentArgs; readonly result: IntentView };
+  /** The intent's open card version as the engine draws it, for a surface without buttons. */
+  readonly "intent/card": { readonly args: IntentArgs; readonly result: CardLinesView };
   readonly "intent/list": { readonly args: ListIntentsArgs; readonly result: Page<IntentView> };
   readonly "intent/confirm": { readonly args: ConfirmArgs; readonly result: IntentView };
   readonly "intent/deny": { readonly args: DenyArgs; readonly result: IntentView };
@@ -58,6 +61,13 @@ export const intentOperations: OperationTable<IntentOperationShapes> = {
     scope: "read",
     args: intentArgs,
     result: intentViewSchema,
+  },
+  "intent/card": {
+    ...readFlags,
+    name: "intent/card",
+    scope: "read",
+    args: intentArgs,
+    result: cardLinesViewSchema,
   },
   "intent/list": {
     ...readFlags,
