@@ -33,7 +33,7 @@ const epochMsSchema = z.coerce.number<bigint>().int().nonnegative();
 async function pricesOn(fork: Fork): Promise<Priced> {
   const { timestamp } = await fork.client.getBlock({ blockNumber: fork.block });
   const clock = createManualClock(epochMsSchema.parse(timestamp * 1_000n));
-  const assets = bscFeedAssets(fork.chain);
+  const assets = bscFeedAssets();
   return {
     prices: createChainlinkPrices({ rpc: fork.rpc, clock, assets }),
     blockSeconds: timestamp,

@@ -1,5 +1,9 @@
-import type { ChainDefinition, ContractDefinition, TokenDefinition } from "@binference/chain";
-import type { PriceFeedDefinition } from "./feeds/price-feed-definition.js";
+import type {
+  ChainDefinition,
+  ContractDefinition,
+  PriceFeedDefinition,
+  TokenDefinition,
+} from "@binference/chain";
 
 // Every address here was read on chain on this day: its code, proxy slots and owner, and a call
 // that ties it to its siblings. KyberSwap's contracts were read a day later and OKX's three days

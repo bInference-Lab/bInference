@@ -14,6 +14,7 @@ export { evmFamilyId, evmNamespace } from "./evm-ids.js";
 export { readFees } from "./fees/read-fees.js";
 export type { EvmFees, FeeOptions, FeeReading } from "./fees/read-fees.js";
 export { createChainlinkPrices } from "./prices/chainlink-prices.js";
+export { feedAssetsOf } from "./prices/feed-assets.js";
 export type { ChainlinkPricesOptions } from "./prices/chainlink-prices.js";
 export type { FeedAsset, UsdFeed } from "./prices/price-from-round.js";
 export { createEvmClient } from "./rpc/create-evm-client.js";

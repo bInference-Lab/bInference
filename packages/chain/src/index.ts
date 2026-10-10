@@ -51,6 +51,7 @@ export type {
 } from "./registry/chain-definition.js";
 export { createChainRegistry } from "./registry/create-chain-registry.js";
 export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
+export type { PriceFeedDefinition } from "./registry/price-feed-definition.js";
 export type { RegisteredChain } from "./registry/registered-chain.js";
 export type { SignRequest } from "./sign-request.js";
 export { authorizationPayload } from "./signing/authorization-payload.js";
