@@ -219,7 +219,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   const pushes: EnginePush[] = [];
   const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
-  const ceilings = createFakeCeilingEditor({ clock });
+  const ceilings = createFakeCeilingEditor({ clock, chains });
   const walletMaker = createFakeWalletMaker({
     clock,
     chain: chainRefSchema.parse("fake:1"),

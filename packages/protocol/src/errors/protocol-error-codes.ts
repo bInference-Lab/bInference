@@ -53,6 +53,7 @@ export const protocolErrorCodes = [
   "chain.simulation_failed",
   "limit.needs_admin",
   "limit.over_ceiling",
+  "limit.venue_in_use",
   "config.invalid",
   "config.secret_inline",
   "plugin.not_found",

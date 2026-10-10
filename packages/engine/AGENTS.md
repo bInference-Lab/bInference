@@ -30,7 +30,8 @@ Rules for this package:
   copies what a venue returns, and refuses what it cannot read: a throw or a timeout is
   `venue_down`, a failed check `decode_mismatch` with the check named. A new check is a
   `BuildMismatch` code, a case in `build-checks.test.ts` and a property case.
-- Ports live in `src/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
+- Ports live in `src/ports.ts`, and custody's ceiling editor and wallet maker in
+  `src/install/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.
 - The store ports in `src/ports.ts` (`IntentStore`, `LedgerStore`, `IdempotencyStore`,
   `InboxStore`, `AccessStore`, `AgentStore`, `InstallStore`, `ConfigJournal`) are implemented in
@@ -137,6 +138,13 @@ Rules for this package:
   new address in every live wallet's ceiling through the `CeilingEditor` port at once and signs
   ahead the changes that leave the old or the new address out (decision 0110); `Engine.settle`
   sends the first once the change takes effect, a cancel the second.
+- A ceiling's contract calls (`src/ceilings/`) change only through `ceiling/set`, with the owner
+  key over IPC (decision 0132): the venues and the per-transaction cap of every live wallet of the
+  agent, on the chains each ceiling enables. Other chains are `protocol.bad_args`, as a new chain
+  needs a new wallet, and removing a venue the agent's limits name, in effect or waiting, is
+  `limit.venue_in_use`. Each wallet's stored copy of its ceiling is read back through
+  `InstallStore.updateCeiling`, which `limit/set` checks venues against; a change that moved one is
+  journaled, pushed as `config/changed`, and announced as `notice.ceilingChange`.
 - A freeze (`src/safety/freeze-agents.ts`, `safety/freeze`) is one write of the intent store's
   `freeze`: each agent marked frozen, keeping the time of an earlier freeze, and each unsigned
   intent of theirs moved to `cancelled` by the state machine, a rescue excepted (decision 0099),

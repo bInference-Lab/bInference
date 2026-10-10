@@ -187,10 +187,13 @@ function settingsHandlers(
     publish: options.publish,
   });
   const ceilings = createCeilingHandlers({
+    agents: stores.agents,
     install: stores.install,
     ceilings: options.ceilings,
+    journal: stores.configJournal,
     chains,
     clock: options.clock,
+    publish: options.publish,
   });
   return { ...portfolio, ...modes, ...wallets, ...ceilings };
 }
