@@ -1,6 +1,6 @@
 # 0140. A new machine takes every wallet in one owner-signed change
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 

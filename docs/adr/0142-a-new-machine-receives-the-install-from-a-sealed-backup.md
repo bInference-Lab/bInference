@@ -1,6 +1,6 @@
 # 0142. A new machine receives the install from a sealed backup
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -17,31 +17,36 @@ though its wallets, ceilings and funds are all still on Privy.
 
 ## Decision
 
-Proposed, for the owner to choose:
-
-- **Main path:** `binference init --attach --restore <file>` restores a sealed backup (spec 5,
-  section 7), which the owner key opens with the same code attach asks for, then attaches. Backups
-  are built first, with their daily schedule and `backups.copyTo`, so a copy outlives the machine.
-- **Planned move, until backups exist:** the owner runs `binference stop` on the old machine and
-  copies its state folder without `keys/` to the new one, then runs `binference init --attach`
-  there. The docs say so; the database is never copied while an engine runs.
+- **Main path, once backups exist:** `binference init --attach --restore <file>` restores a sealed
+  backup (spec 5, section 7), which the owner key opens with the same code attach asks for, then
+  attaches. It replaces the planned move below.
+- **Planned move, until then:** the owner runs `binference stop` on the old machine and copies its
+  state folder without `keys/` to the new one, then runs `binference init --attach` there. Attach
+  checks that the copy is of a stopped engine: `engine.sqlite-wal` and `engine.sqlite-shm` are
+  gone once an engine closes its database, so either one there stops attach. It checks that
+  `keys/agent-key` is absent or holds a key an earlier attach on this machine left. The key the
+  wallets name now there means a copy of the old `keys/`, or a machine attached already, and the
+  refusal names both: delete the copied `keys/`, or nothing needs attaching. A secret source of `config.json5` that names a file in another state
+  folder's `keys/` moves to this folder's `keys/`, and attach asks for that secret.
 - **Lost machine with no backup:** `binference init --attach` on an empty folder rebuilds what
-  Privy holds: the wallets the owner key's quorum owns, each ceiling's mirror, one agent for all of
-  them, the default limits, and the rescue address the owner types, which must be in every
-  ceiling. History, settings, labels and the bot's pairing are lost, and attach says so before it
-  changes anything.
+  Privy holds: the wallets the app holds whose owner is the owner key, found with Privy's
+  `authorization_key` filter, each ceiling's mirror, one agent with the default settings, and the
+  rescue address when it is readable: the one address every ceiling's sends allow in common.
+  Otherwise the owner names one of the addresses the ceilings allow. History, settings, labels,
+  the address book and the bot's pairing start fresh. Attach shows this warning first and goes on
+  only once the owner types the number of wallets it found.
 
 ## Consequences
 
 - Backups become a dependency of attach on a new machine; the empty-folder rebuild is a fallback
   of its own, with its own tests.
-- Until one is chosen, attach on a folder with no install stops with `init.attach_needs_install`.
+- A folder with a config file but no install, or an install but no config file, still stops
+  attach: neither a planned move nor a lost machine leaves one.
 
 ## Alternatives
 
 - **Only backups.** A machine lost before its first backup could never be attached; the owner would
-  start over with a new owner key and move funds through the rescue address. Kept as the default
-  if the rebuild is not wanted.
+  start over with a new owner key and move funds through the rescue address. Rejected.
 - **Only the rebuild from Privy.** Every move would lose history and settings, and the policy cannot
   tell the rescue address from a saved address, so the owner types it again. Rejected as the main
   path.

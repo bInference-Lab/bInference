@@ -555,6 +555,18 @@
     "0139": {
       "status": "Accepted",
       "sha256": "ab99d9371c810ba58552f7f64650fb4be9a9a00c154ef689282a7d1df999188b"
+    },
+    "0140": {
+      "status": "Accepted",
+      "sha256": "2f9176041c0eba1e1df4481a8c3886841738e15c7df684046181f05816e8743b"
+    },
+    "0141": {
+      "status": "Accepted",
+      "sha256": "914d48119aa6a2ea489b5b4e2f0666de97ad76f3793baf1bc87be6888c50d976"
+    },
+    "0142": {
+      "status": "Accepted",
+      "sha256": "40887d9b286ca5392c6cdd0094092dfb8ca26e3f1376a2fe30ed503276b0ac07"
     }
   }
 }

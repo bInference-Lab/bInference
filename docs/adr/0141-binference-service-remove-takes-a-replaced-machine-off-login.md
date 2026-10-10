@@ -1,6 +1,6 @@
 # 0141. binference service remove takes a replaced machine off login
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -18,10 +18,12 @@ with a wider job (the state folder and the keys too), and the owner would otherw
 
 - `binference service remove` stops the engine if it runs, then removes the background service
   through the platform's `ServiceManager`. It keeps the state folder, the config and the keys, so
-  the owner can still read the old history or attach this machine again.
+  the owner can still read the old history or attach this machine again. A machine with no
+  service, or a state folder `BINFERENCE_HOME` moves, which never has one, stops its engine and
+  says no service was there; running it twice is safe.
 - It needs no owner key: it changes nothing on Privy and nothing a wallet can sign.
 - The summaries of `binference init --attach` and `binference signer revoke` name it as the step
-  to run on the old machine, after `binference stop`.
+  to run on the old machine.
 - `binference uninstall` stays a later decision; it calls the same removal first.
 
 ## Consequences
