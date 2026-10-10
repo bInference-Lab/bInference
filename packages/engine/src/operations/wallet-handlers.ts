@@ -2,18 +2,20 @@ import type { AccountRef, ChainRegistry, Signer } from "@binference/chain";
 import { err, type Ok, ok, type Result } from "@binference/core";
 import type { WalletView } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
-import type { AgentStore, InstallStore } from "../ports.js";
 import type { EngineHandler } from "./engine-call.js";
+import { makeWallet, type MakeWalletOptions } from "./make-wallet.js";
 
-/** The handler of the wallet list (protocol spec, section 7.2). */
+/** The handlers of the agent wallets (protocol spec, section 7.2). */
 export interface WalletHandlers {
   readonly "wallet/list": EngineHandler<"wallet/list">;
+  readonly "wallet/create": EngineHandler<"wallet/create">;
 }
 
-/** What the wallet list reads: the agents, the install's wallets, and custody for each account. */
-export interface WalletHandlersOptions {
-  readonly agents: AgentStore;
-  readonly install: InstallStore;
+/**
+ * What the wallet handlers read and write: the agents, the install's wallets, custody for each
+ * account, and what making a wallet asks custody and journals through.
+ */
+export interface WalletHandlersOptions extends MakeWalletOptions {
   readonly custody: Signer;
   readonly chains: ChainRegistry;
 }
@@ -52,10 +54,12 @@ async function viewOf(
  * listed with the time they were archived. Each wallet's address is its account from custody on
  * the first registered chain where custody holds it. An unknown agent is `agent.not_found`; a
  * stored wallet custody holds on no chain fails the call with `wallet.custody_down`, so no wallet
- * is ever shown without the address custody signs for.
+ * is ever shown without the address custody signs for. `wallet/create` makes a wallet with the
+ * owner key (see {@link makeWallet}).
  */
 export function createWalletHandlers(options: WalletHandlersOptions): WalletHandlers {
   return {
+    "wallet/create": async (call) => makeWallet(options, call),
     async "wallet/list"({ args, signal }) {
       if (
         args.agent !== undefined &&

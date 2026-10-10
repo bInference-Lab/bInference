@@ -176,6 +176,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
     {
       custody: custody.cell.signer,
       ceilings: custody.cell.ceilings,
+      walletMaker: custody.cell.walletMaker,
       stores,
       prices: parts.prices,
       riskSources: selfHostedRiskSources(host.http),

@@ -1,18 +1,27 @@
-import { type AccountRef, accountRefSchema, createChainRegistry } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  chainRefSchema,
+  createChainRegistry,
+} from "@binference/chain";
 import {
   createFakeChainDefinition,
   createFakeFamily,
   createFakeSigner,
   createFakeSigningScheme,
 } from "@binference/chain/testing";
-import { err, type Id } from "@binference/core";
+import { createIdSource, err, type Id } from "@binference/core";
+import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
+import { createFakeCeilingEditor } from "../fakes/fake-ceiling-editor.js";
+import { createFakeWalletMaker } from "../fakes/fake-wallet-maker.js";
 import { createMemoryAgentStore } from "../fakes/memory-agent-store.js";
+import { createMemoryConfigJournal } from "../fakes/memory-config-journal.js";
 import { createMemoryInstallStore } from "../fakes/memory-install-store.js";
 import type { WalletRecord } from "../install/install-record.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { expectOk, testAgent, testAgentDraft } from "../intents/test-intents.js";
+import { expectOk, testAgent, testAgentDraft, testNowMs } from "../intents/test-intents.js";
 import { testCall } from "./test-engine.js";
 import { createWalletHandlers } from "./wallet-handlers.js";
 
@@ -60,11 +69,19 @@ async function walletList(
   await agents.create(testAgentDraft(), testCall({}));
   const install = createMemoryInstallStore();
   stored.forEach((wallet) => install.addWallet(wallet));
+  const clock = createManualClock(testNowMs);
   const handlers = createWalletHandlers({
     agents,
     install,
     custody: createFakeSigner(held),
     chains: twoChains(),
+    // The wallet list makes no wallet: these parts of `wallet/create` stay untouched.
+    ceilings: createFakeCeilingEditor({ clock }),
+    maker: createFakeWalletMaker({ clock, chain: chainRefSchema.parse("fake:1"), family: "fake" }),
+    journal: createMemoryConfigJournal(),
+    clock,
+    ids: createIdSource({ clock, random: createSeededRandom(1) }),
+    publish: () => undefined,
   });
   return handlers["wallet/list"];
 }

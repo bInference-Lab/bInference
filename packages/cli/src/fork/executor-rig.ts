@@ -42,6 +42,7 @@ import { createExecutor, type RunningExecutor } from "@binference/engine/executo
 import { createSimulationCheck } from "@binference/engine/simulation";
 import {
   createFakeCeilingEditor,
+  createFakeWalletMaker,
   createFakePriceSource,
   createFakeRiskCheck,
   createFakeWalletFacts,
@@ -207,6 +208,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
   return createEngine({
     ...parts,
     ceilings: createFakeCeilingEditor({ clock }),
+    walletMaker: createFakeWalletMaker({ clock, chain: chain.ref, family: "evm" }),
     host: createVenueHost({
       venues: [pancakeV2Venue(fork, chain.nativeAsset)],
       chains,

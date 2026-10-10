@@ -1,7 +1,7 @@
 import type { PriceSource, Signer } from "@binference/chain";
 import type { SecretStore } from "@binference/core";
 import type { BotUpdateSource, EngineStores, MarketData, ModelBilling } from "@binference/engine";
-import type { CeilingEditor } from "@binference/engine/install";
+import type { CeilingEditor, WalletMaker } from "@binference/engine/install";
 import type { RiskSourceUse } from "@binference/engine/risk";
 
 /**
@@ -14,6 +14,8 @@ export interface ProfileParts {
   readonly custody: Signer;
   /** Custody: changes whom each wallet's ceiling lets a send pay, with the owner key. */
   readonly ceilings: CeilingEditor;
+  /** Custody: makes agent wallets, each under a ceiling of its own, with the owner key. */
+  readonly walletMaker: WalletMaker;
   /** Telegram: the bot's inbound updates, by long polling or through a webhook relay. */
   readonly updates: BotUpdateSource;
   /** Models: who pays for model calls, and what each agent may still spend. */

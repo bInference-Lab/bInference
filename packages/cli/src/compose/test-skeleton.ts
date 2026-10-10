@@ -5,6 +5,7 @@ import {
   type AccountRef,
   accountRefSchema,
   type Amount,
+  chainRefSchema,
   createChainRegistry,
   type TxSimulator,
   type Venue,
@@ -34,6 +35,7 @@ import {
   createFakePriceSource,
   createFakeWalletFacts,
   createFakeCeilingEditor,
+  createFakeWalletMaker,
   createMemoryEngineStores,
   createMemoryPositionStore,
   createMemoryRiskCacheStore,
@@ -95,14 +97,26 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
   {
     // The self-hosted root's custody and Chainlink price adapters stand in as fakes here.
     name: "self-hosted",
-    parts: () => ({
-      custody: createFakeSigner(wallets),
-      ceilings: createFakeCeilingEditor({ clock: createManualClock(testNowMs) }),
-      stores: withTestWallet(createMemoryEngineStores()),
-      prices: createFakePriceSource(new Map([[testCoin, coinPrice]])),
-      // The self-hosted sources, over outbound HTTP that reaches no host.
-      riskSources: selfHostedRiskSources(createScriptedHttp([])),
-    }),
+    parts: () => {
+      const held = new Map(wallets);
+      const clock = createManualClock(testNowMs);
+      const ceilings = createFakeCeilingEditor({ clock });
+      return {
+        custody: createFakeSigner(held),
+        ceilings,
+        walletMaker: createFakeWalletMaker({
+          clock,
+          chain: chainRefSchema.parse("fake:1"),
+          family: "fake",
+          ceilings,
+          onMade: (wallet, made) => held.set(wallet, made),
+        }),
+        stores: withTestWallet(createMemoryEngineStores()),
+        prices: createFakePriceSource(new Map([[testCoin, coinPrice]])),
+        // The self-hosted sources, over outbound HTTP that reaches no host.
+        riskSources: selfHostedRiskSources(createScriptedHttp([])),
+      };
+    },
   },
   {
     name: "Cloud-shaped",

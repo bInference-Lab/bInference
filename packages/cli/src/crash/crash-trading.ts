@@ -22,6 +22,7 @@ import {
 import type { RunningExecutor } from "@binference/engine/executor";
 import {
   createFakeCeilingEditor,
+  createFakeWalletMaker,
   createFakePriceSource,
   createFakeRiskCheck,
   createFakeWalletFacts,
@@ -116,6 +117,7 @@ function engineOf(opened: CrashOpened, chain: EvmChain, parts: TradingParts): En
     ...parts,
     stores: opened.stores,
     ceilings: createFakeCeilingEditor({ clock }),
+    walletMaker: createFakeWalletMaker({ clock, chain: chain.ref, family: "evm" }),
     host: createVenueHost({ venues: [crashVenue(chain)], chains, clock, callTimeoutMs: 15_000 }),
     risk: createFakeRiskCheck({ chains, clock }),
     simulator: createQuoteSimulator(() => undefined),

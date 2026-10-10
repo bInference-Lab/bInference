@@ -30,18 +30,14 @@ import type {
   SignedChangeRefusal,
   SignRecipientsRequest,
 } from "./install/ceiling-change.js";
-import type {
-  InstallFacts,
-  InstallIdProposal,
-  InstallSetup,
-  WalletDraft,
-} from "./install/install-record.js";
+import type { InstallFacts, InstallIdProposal, InstallSetup } from "./install/install-record.js";
 import type {
   RescueAddressChange,
   RescueCancel,
   RescueCeiling,
   RescueMove,
 } from "./install/rescue-record.js";
+import type { MadeWallet, WalletRefusal, WalletRequest } from "./install/wallet-request.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
 import type { FreezeOutcome, FreezeWrite } from "./intents/freeze-write.js";
@@ -546,11 +542,11 @@ export interface InstallStore {
    */
   keepRescueCeiling(ceiling: RescueCeiling, options: StoreCall): Promise<void>;
   /**
-   * Stores a new live wallet beside the install's other wallets, with its ceiling as custody read
-   * it back. A wallet whose id, Privy id or address the store holds already is a fault, which
-   * changes nothing.
+   * Stores a new live wallet beside the install's other wallets, as a setup stores its first one:
+   * with its ceiling as custody read it back. A wallet whose id, Privy id or address the store
+   * holds already is a fault, which changes nothing.
    */
-  createWallet(wallet: WalletDraft, options: StoreCall): Promise<void>;
+  createWallet(wallet: InstallSetup["wallet"], options: StoreCall): Promise<void>;
 }
 
 /**
@@ -585,6 +581,25 @@ export interface CeilingEditor {
     change: SignedCeilingChange,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<void, SignedChangeRefusal>>;
+}
+
+/**
+ * Makes agent wallets in custody (spec 5, section 2): each owned by the owner key, with this
+ * machine's agent key as its one signer, under a ceiling of its own. Privy asks no signature to
+ * make a wallet; the owner key's code is checked all the same before anything is made (decision
+ * 0130). Adapter: the owner's Privy app. The key comes with each request and is kept nowhere.
+ */
+export interface WalletMaker {
+  /**
+   * Makes a wallet whose ceiling lets it call the venues' registry contracts on each enabled
+   * chain, at the per-transaction cap, and send only to the recipients; reads it back, and signs
+   * for it from then on. A refusal makes nothing. A wallet Privy reads back otherwise than asked
+   * is a fault.
+   */
+  make(
+    request: WalletRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<MadeWallet, WalletRefusal>>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */

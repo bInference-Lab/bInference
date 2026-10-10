@@ -1,16 +1,17 @@
 import type { Signer } from "@binference/chain";
 import { BinferenceError, err } from "@binference/core";
-import type { CeilingEditor } from "@binference/engine/install";
+import type { CeilingEditor, WalletMaker } from "@binference/engine/install";
 import type { OpenedCustody } from "./open-custody.js";
 
 /**
  * The custody the engine and the executor sign through: the custody the unlock opened, or none
  * while the engine is locked. With none it signs nothing (`refused`), knows no wallet, and every
- * ceiling change fails with `wallet.custody_down`, so a locked engine fails closed.
+ * ceiling change and new wallet fails with `wallet.custody_down`, so a locked engine fails closed.
  */
 export interface CustodyCell {
   readonly signer: Signer;
   readonly ceilings: CeilingEditor;
+  readonly walletMaker: WalletMaker;
   /** Whether custody is open now, for the `custody` health signal. */
   isOpen(): boolean;
   /** Puts the custody the unlock opened in place. */
@@ -28,7 +29,7 @@ function custodyDown(): BinferenceError {
   });
 }
 
-async function refuseCeiling(options: { readonly signal: AbortSignal }): Promise<never> {
+async function refuseLocked(options: { readonly signal: AbortSignal }): Promise<never> {
   options.signal.throwIfAborted();
   return Promise.reject(custodyDown());
 }
@@ -54,17 +55,19 @@ export function createCustodyCell(): CustodyCell {
     ceilings: {
       setRecipients: async (request, options) =>
         cell.held === undefined
-          ? refuseCeiling(options)
+          ? refuseLocked(options)
           : cell.held.ceilings.setRecipients(request, options),
       signRecipients: async (request, options) =>
         cell.held === undefined
-          ? refuseCeiling(options)
+          ? refuseLocked(options)
           : cell.held.ceilings.signRecipients(request, options),
       sendSigned: async (change, options) =>
         cell.held === undefined
-          ? refuseCeiling(options)
+          ? refuseLocked(options)
           : cell.held.ceilings.sendSigned(change, options),
     },
+    // No custody adapter makes a wallet yet, so every new wallet is refused as custody down.
+    walletMaker: { make: async (_request, options) => refuseLocked(options) },
     isOpen: () => cell.held !== undefined,
     hold: (opened) => {
       cell.held = opened;

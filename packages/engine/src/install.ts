@@ -40,5 +40,6 @@ export type {
   SignedChangeRefusal,
   SignRecipientsRequest,
 } from "./install/ceiling-change.js";
-export type { CeilingEditor } from "./ports.js";
+export type { CeilingEditor, WalletMaker } from "./ports.js";
+export type { MadeWallet, WalletRefusal, WalletRequest } from "./install/wallet-request.js";
 export { privyUnreachableNotice } from "./pushes/locked-notice.js";

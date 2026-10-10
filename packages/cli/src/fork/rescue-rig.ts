@@ -21,6 +21,7 @@ import { createExecutor } from "@binference/engine/executor";
 import type { WalletRecord } from "@binference/engine/install";
 import {
   createFakeCeilingEditor,
+  createFakeWalletMaker,
   createFakePriceSource,
   createFakeRiskCheck,
   createFakeSimulator,
@@ -251,6 +252,7 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     positions: createMemoryPositionStore(),
     custody,
     ceilings: createFakeCeilingEditor({ clock }),
+    walletMaker: createFakeWalletMaker({ clock, chain: fork.chain.ref, family: "evm" }),
     prices: createFakePriceSource(prices),
     wallets: forkWalletFacts(fork),
     host: createVenueHost({ venues: [], chains, clock, callTimeoutMs: 5_000 }),

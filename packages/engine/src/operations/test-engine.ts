@@ -4,6 +4,7 @@ import {
   type Amount,
   type AssetRef,
   type ChainRegistry,
+  chainRefSchema,
   createChainRegistry,
   type TxSimulator,
   type Venue,
@@ -26,6 +27,7 @@ import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
+import { createFakeWalletMaker, type FakeWalletMaker } from "../fakes/fake-wallet-maker.js";
 import {
   createMemoryEngineStores,
   type MemoryEngineStores,
@@ -126,6 +128,8 @@ export interface TestEngine {
   readonly pushes: readonly EnginePush[];
   /** The ceilings the engine changes, when the test gave none of its own. */
   readonly ceilings: FakeCeilingEditor;
+  /** Makes the wallets `wallet/create` asks for, each signed for by the fake custody at once. */
+  readonly walletMaker: FakeWalletMaker;
 }
 
 /** What the fake wallet facts say of the test wallet unless a test changes them. */
@@ -208,18 +212,27 @@ function custodyOf(options: TestEngineOptions): readonly (readonly [Id<"wal">, A
 export async function startTestEngine(options: TestEngineOptions = {}): Promise<TestEngine> {
   const clock = createManualClock(testNowMs);
   const stores = createMemoryEngineStores();
-  const custody = createFakeSigner(new Map([[testWallet, testAccount], ...custodyOf(options)]));
+  const held = new Map([[testWallet, testAccount], ...custodyOf(options)]);
+  const custody = createFakeSigner(held);
   const chains = options.chains ?? testChains();
   const venues = options.venues ?? [createFakeVenue()];
   const pushes: EnginePush[] = [];
   const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
   const ceilings = createFakeCeilingEditor({ clock });
+  const walletMaker = createFakeWalletMaker({
+    clock,
+    chain: chainRefSchema.parse("fake:1"),
+    family: "fake",
+    ceilings,
+    onMade: (wallet, account) => held.set(wallet, account),
+  });
   const engine = createEngine({
     stores: wrapped(stores, options),
     positions,
     custody,
     ceilings: options.ceilings ?? ceilings,
+    walletMaker,
     prices: createFakePriceSource(
       options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
     ),
@@ -237,7 +250,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   });
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });
   await openPaper(engine, options.paper ?? testPaperBalances);
-  return { engine, stores, clock, custody, positions, executor, pushes, ceilings };
+  return { engine, stores, clock, custody, positions, executor, pushes, ceilings, walletMaker };
 }
 
 /** One call with its args, from a caller, with a signal that never aborts. */

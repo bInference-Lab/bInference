@@ -4,6 +4,8 @@ export type {
   BotUpdateSourceSubject,
 } from "./contracts/bot-update-source-contract.js";
 export { ceilingEditorContract } from "./contracts/ceiling-editor-contract.js";
+export { walletMakerContract } from "./contracts/wallet-maker-contract.js";
+export type { WalletMakerHarness, WalletMakerSubject } from "./contracts/wallet-maker-contract.js";
 export type {
   CeilingEditorHarness,
   CeilingEditorSubject,
@@ -29,6 +31,8 @@ export { createCreditBilling } from "./fakes/credit-billing.js";
 export type { CreditAccount } from "./fakes/credit-billing.js";
 export { createFakeCeilingEditor, fakeOwnerKeyCode } from "./fakes/fake-ceiling-editor.js";
 export type { FakeCeilingEditor } from "./fakes/fake-ceiling-editor.js";
+export { createFakeWalletMaker } from "./fakes/fake-wallet-maker.js";
+export type { FakeWalletMaker, FakeWalletMakerOptions } from "./fakes/fake-wallet-maker.js";
 export { createFakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export type { FakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export { createFakePriceSource } from "./fakes/fake-price-source.js";

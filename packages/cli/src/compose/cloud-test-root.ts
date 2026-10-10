@@ -1,4 +1,4 @@
-import type { AccountRef } from "@binference/chain";
+import { type AccountRef, chainRefSchema } from "@binference/chain";
 import { createFakeRiskSource, createFakeSigner, type FakeSigner } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
@@ -6,6 +6,7 @@ import {
   type CreditAccount,
   createCreditBilling,
   createFakeCeilingEditor,
+  createFakeWalletMaker,
   createMemoryEngineStores,
   createRelayUpdateSource,
   type MemoryEngineStores,
@@ -49,9 +50,20 @@ export interface CloudTestRoot extends ProfileParts {
  */
 export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudTestRoot {
   const market = createSharedMarketData();
+  const clock = createManualClock(0);
+  const wallets = new Map(options.wallets ?? []);
+  const ceilings = createFakeCeilingEditor({ clock });
   return {
-    custody: createFakeSigner(options.wallets ?? new Map()),
-    ceilings: createFakeCeilingEditor({ clock: createManualClock(0) }),
+    custody: createFakeSigner(wallets),
+    ceilings,
+    // The signer service signs for each wallet made in the owner's Privy account at once.
+    walletMaker: createFakeWalletMaker({
+      clock,
+      chain: chainRefSchema.parse("fake:1"),
+      family: "fake",
+      ceilings,
+      onMade: (wallet, account) => wallets.set(wallet, account),
+    }),
     updates: createRelayUpdateSource(),
     billing: createCreditBilling(options.credits ?? []),
     secrets: createSecretVault().storeFor("owner"),

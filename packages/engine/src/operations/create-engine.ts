@@ -32,6 +32,7 @@ import type {
   RiskCheck,
   Simulator,
   WalletFactsSource,
+  WalletMaker,
 } from "../ports.js";
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -99,6 +100,8 @@ export interface EngineOptions {
   readonly custody: Signer;
   /** Custody's ceilings, which the owner key changes. */
   readonly ceilings: CeilingEditor;
+  /** Makes agent wallets in custody with the owner key. */
+  readonly walletMaker: WalletMaker;
   readonly prices: PriceSource;
   /** The wallets' live facts; a paper intent's balance comes from the paper portfolio. */
   readonly wallets: WalletFactsSource;
@@ -180,7 +183,13 @@ function settingsHandlers(
     agents: stores.agents,
     install: stores.install,
     custody: options.custody,
+    ceilings: options.ceilings,
+    maker: options.walletMaker,
+    journal: stores.configJournal,
     chains,
+    clock: options.clock,
+    ids: options.ids,
+    publish: options.publish,
   });
   return { ...portfolio, ...modes, ...wallets };
 }
