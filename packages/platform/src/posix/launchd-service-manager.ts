@@ -171,6 +171,21 @@ async function uninstall(
   return ok(undefined);
 }
 
+// The plist stays in the agents folder, so launchd loads the job again at the next login.
+async function stop(
+  launchd: Launchd,
+  name: string,
+  signal: AbortSignal,
+): Promise<Result<void, "not_installed">> {
+  checkServiceName(name);
+  signal.throwIfAborted();
+  if ((await readJob(launchd, name, signal)) !== "absent") {
+    await unload(launchd, name, signal);
+    return ok(undefined);
+  }
+  return (await hasFile(plistOf(launchd, name))) ? ok(undefined) : err("not_installed");
+}
+
 async function status(launchd: Launchd, name: string, signal: AbortSignal): Promise<ServiceStatus> {
   checkServiceName(name);
   signal.throwIfAborted();
@@ -188,7 +203,8 @@ async function status(launchd: Launchd, name: string, signal: AbortSignal): Prom
 /**
  * Services as LaunchAgents on macOS: a plist in `~/Library/LaunchAgents`, loaded with
  * `launchctl bootstrap` into the owner's desktop session, so launchd starts it at every login.
- * Install waits up to 10 s for the job to run; removal waits until launchd has let it go.
+ * Install waits up to 10 s for the job to run; a stop unloads the job and keeps its plist; stop
+ * and removal wait until launchd has let the job go.
  */
 export function createLaunchdServiceManager(options: LaunchdServiceManagerOptions): ServiceManager {
   const launchd: Launchd = {
@@ -200,6 +216,7 @@ export function createLaunchdServiceManager(options: LaunchdServiceManagerOption
   };
   return {
     install: async (definition, signal) => install(launchd, definition, signal),
+    stop: async (name, signal) => stop(launchd, name, signal),
     uninstall: async (name, signal) => uninstall(launchd, name, signal),
     status: async (name, signal) => status(launchd, name, signal),
   };

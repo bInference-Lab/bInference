@@ -83,6 +83,7 @@ function fakeSystemctl(unitFolder: string) {
       "daemon-reload": reload,
       enable: () => change(unit, (current) => ({ ...current, enabled: true })),
       restart: () => change(unit, (current) => ({ ...current, active: fake.startsUnits })),
+      stop: () => change(unit, (current) => ({ ...current, active: false })),
       disable: () => change(unit, () => ({ enabled: false, active: false })),
       show: () => show(unit),
       "reset-failed": () => exit(1, "", "Unit not loaded."),
@@ -184,6 +185,19 @@ describe.skipIf(process.platform === "win32")(
       await expect(readFile(join(tested.unitFolder, unit), "utf8")).resolves.toBe(
         renderSystemdUnit(engine),
       );
+    });
+
+    it("stops the unit and leaves it enabled for the next login", async () => {
+      const tested = await subject();
+      await managerOf(tested).install(await definition(), signal());
+
+      await managerOf(tested).stop("engine", signal());
+
+      expect(tested.fake.calls.slice(4)).toStrictEqual([
+        show,
+        ["systemctl", "--user", "stop", unit],
+      ]);
+      expect(tested.fake.loaded.get(unit)).toStrictEqual({ enabled: true, active: false });
     });
 
     it("disables and stops the unit, then removes its file and forgets it", async () => {

@@ -202,6 +202,24 @@ describe("schtasks service manager, with a fake Task Scheduler", () => {
     expect(tested.fake.tasks.get(task)?.xml).toContain("--again");
   });
 
+  it("ends a running task at a stop and keeps it with its logon trigger", async () => {
+    const tested = await subject();
+    await managerOf(tested).install(engine, signal());
+
+    await managerOf(tested).stop("engine", signal());
+
+    expect(tested.fake.calls.slice(5)).toStrictEqual([
+      ["powershell.exe", "-NoProfile"],
+      ["powershell.exe", "-NoProfile"],
+      ["schtasks", "/End"],
+      ["powershell.exe", "-NoProfile"],
+    ]);
+    await expect(managerOf(tested).status("engine", signal())).resolves.toStrictEqual({
+      state: "stopped",
+      startsAtLogin: true,
+    });
+  });
+
   it("refuses a % in the command, since Task Scheduler would expand it", async () => {
     const tested = await subject();
 

@@ -11,18 +11,33 @@ async function start(signal: AbortSignal): Promise<void> {
   await Promise.resolve();
 }
 
+interface Held {
+  readonly definition: ServiceDefinition;
+  readonly isRunning: boolean;
+}
+
 /**
  * Creates a {@link ServiceManager} for tests that keeps its services in memory: an installed
- * service runs and starts at login until it is uninstalled. It checks names and definitions as
- * every adapter does.
+ * service runs and starts at login until it is stopped, which keeps it for the next login, or
+ * uninstalled. It checks names and definitions as every adapter does.
  */
 export function createMemoryServiceManager(): ServiceManager {
-  const installed = new Map<string, ServiceDefinition>();
+  const installed = new Map<string, Held>();
   return {
     install: async (definition, signal) => {
       checkServiceDefinition(definition);
       await start(signal);
-      installed.set(definition.name, definition);
+      installed.set(definition.name, { definition, isRunning: true });
+    },
+    stop: async (name, signal) => {
+      checkServiceName(name);
+      await start(signal);
+      const held = installed.get(name);
+      if (held === undefined) {
+        return err("not_installed");
+      }
+      installed.set(name, { ...held, isRunning: false });
+      return ok(undefined);
     },
     uninstall: async (name, signal) => {
       checkServiceName(name);
@@ -32,9 +47,11 @@ export function createMemoryServiceManager(): ServiceManager {
     status: async (name, signal) => {
       checkServiceName(name);
       await start(signal);
-      return installed.has(name)
-        ? { state: "running", startsAtLogin: true }
-        : { state: "not_installed" };
+      const held = installed.get(name);
+      if (held === undefined) {
+        return { state: "not_installed" };
+      }
+      return { state: held.isRunning ? "running" : "stopped", startsAtLogin: true };
     },
   };
 }

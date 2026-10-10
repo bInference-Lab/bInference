@@ -233,6 +233,21 @@ describe.skipIf(process.platform === "win32")(
       expect(tested.clock.slept).toStrictEqual([250, 250]);
     });
 
+    it("unloads the job at a stop and keeps its plist for the next login", async () => {
+      const tested = await subject();
+      await managerOf(tested).install(await definition(), signal());
+
+      await managerOf(tested).stop("engine", signal());
+
+      expect(tested.fake.calls.slice(4)).toStrictEqual([
+        ["launchctl", "print", target],
+        ["launchctl", "bootout", target],
+        ["launchctl", "print", target],
+      ]);
+      const plist = join(tested.agentsFolder, `${launchdLabel("engine")}.plist`);
+      await expect(exists(plist)).resolves.toBe(true);
+    });
+
     it("says the desktop session is needed when launchd refuses the bootstrap", async () => {
       const tested = await subject();
       tested.fake.bootstrapExit = exit(5, "", "Bootstrap failed: 5: Input/output error");

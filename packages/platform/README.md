@@ -45,7 +45,7 @@ ports:
 | `createPassphraseSecretStore`       | Secrets sealed with the owner's passphrase, one file each in `keys/`  |
 | `createFileSecretStore`             | The `file` unlock mode: each secret in its own owner-only file        |
 | `Platform.hasDesktopSession`        | Whether a desktop session runs, so the OS keychain is there           |
-| `ServiceManager`                    | The port that installs, removes and reports a background service      |
+| `ServiceManager`                    | The port that installs, stops, removes and reports a service          |
 | `Platform.serviceManager`           | This OS's service manager, given a clock for its waits                |
 | `readTextFile`                      | Reads a text file of at most 1 MiB, or `not_found`                    |
 | `openLogFile`, `LogFile`            | Appends log lines without blocking; sets a full file aside by size    |
@@ -109,6 +109,12 @@ an exit with an error, not after a clean exit. macOS and Linux append its output
 `definition.logFile`; Task Scheduler keeps none, so the program writes its own log. On a Linux
 server with no login session, the user manager runs only with `loginctl enable-linger`.
 
+`stop(name, signal)` stops the program and keeps the service, so it starts again at the next
+login or `install`: launchd unloads the job and keeps its plist, systemd stops the unit and keeps
+it enabled, and Task Scheduler ends the task's program and keeps the task. macOS and Linux send
+`SIGTERM` and wait the definition's stop timeout; Windows ends the program without a signal Node
+hears, so a program that must shut down cleanly is asked to stop before.
+
 ## Tests on the real OS
 
 Unit tests never touch the machine's keychain or login items: they replace `@napi-rs/keyring`,
@@ -118,4 +124,4 @@ Two switches run the contracts on the real OS, and only CI sets them:
 - `BINFERENCE_KEYCHAIN_TESTS=1`: the keychain contract on the real keychain, under a service name
   of its own, deleting every entry it wrote (macOS, Windows, and Linux with GNOME Keyring).
 - `BINFERENCE_SERVICE_TESTS=1`: the service contract with a sample program that installs, runs,
-  starts at login and uninstalls, and a check that its arguments arrive intact.
+  stops, starts at login and uninstalls, and a check that its arguments arrive intact.

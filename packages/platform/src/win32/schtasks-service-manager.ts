@@ -161,6 +161,21 @@ async function install(
   await waitFor(schtasks, { name, wanted: "running", until }, signal);
 }
 
+// The task and its logon trigger stay, so it starts again at the next logon.
+async function stop(
+  schtasks: Schtasks,
+  name: string,
+  signal: AbortSignal,
+): Promise<Result<void, "not_installed">> {
+  checkServiceName(name);
+  signal.throwIfAborted();
+  if (!(await probe(schtasks, name, signal)).found) {
+    return err("not_installed");
+  }
+  await stopIfRunning(schtasks, name, signal);
+  return ok(undefined);
+}
+
 async function uninstall(
   schtasks: Schtasks,
   name: string,
@@ -197,7 +212,8 @@ async function status(
  * Services as scheduled tasks on Windows: `schtasks /Create /XML` registers a task that starts at
  * the owner's logon with their interactive token, so it runs only while they are logged on, where
  * Credential Manager answers. Install starts it with `schtasks /Run` and waits up to 10 s for it to
- * run. Task Scheduler keeps no output of the program, which writes its own log.
+ * run; a stop ends it with `schtasks /End` and keeps the task. Task Scheduler keeps no output of
+ * the program, which writes its own log.
  */
 export function createSchtasksServiceManager(
   options: SchtasksServiceManagerOptions,
@@ -209,6 +225,7 @@ export function createSchtasksServiceManager(
   };
   return {
     install: async (definition, signal) => install(schtasks, definition, signal),
+    stop: async (name, signal) => stop(schtasks, name, signal),
     uninstall: async (name, signal) => uninstall(schtasks, name, signal),
     status: async (name, signal) => status(schtasks, name, signal),
   };

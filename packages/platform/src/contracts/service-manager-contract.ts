@@ -59,6 +59,7 @@ function withSample(harness: ServiceManagerHarness, check: SampleCheck): () => P
 }
 
 const running = { state: "running", startsAtLogin: true };
+const stopped = { state: "stopped", startsAtLogin: true };
 const notInstalled = { state: "not_installed" };
 
 const installChecks = (harness: ServiceManagerHarness): readonly ContractCheck[] => [
@@ -78,6 +79,17 @@ const installChecks = (harness: ServiceManagerHarness): readonly ContractCheck[]
     }),
   },
   {
+    name: "stops a service, keeps it for the next login, and an install runs it again",
+    run: withSample(harness, async (manager, definition) => {
+      await manager.install(definition, signal());
+      assert.deepEqual(await manager.stop(definition.name, signal()), ok(undefined));
+      assert.deepEqual(await manager.status(definition.name, signal()), stopped);
+      assert.deepEqual(await manager.stop(definition.name, signal()), ok(undefined));
+      await manager.install(definition, signal());
+      assert.deepEqual(await manager.status(definition.name, signal()), running);
+    }),
+  },
+  {
     name: "uninstalls a service and leaves nothing behind",
     run: withSample(harness, async (manager, definition) => {
       await manager.install(definition, signal());
@@ -93,6 +105,7 @@ const refusalChecks = (harness: ServiceManagerHarness): readonly ContractCheck[]
     name: "answers not_installed for a service it never installed",
     run: withSample(harness, async (manager, definition) => {
       assert.deepEqual(await manager.status(definition.name, signal()), notInstalled);
+      assert.deepEqual(await manager.stop(definition.name, signal()), err("not_installed"));
       assert.deepEqual(await manager.uninstall(definition.name, signal()), err("not_installed"));
     }),
   },
@@ -104,6 +117,7 @@ const refusalChecks = (harness: ServiceManagerHarness): readonly ContractCheck[]
       await assert.rejects(manager.install({ ...definition, program: "node" }, signal()), refusal);
       await assert.rejects(manager.status("../engine", signal()), refusal);
       await assert.rejects(manager.uninstall("", signal()), refusal);
+      await assert.rejects(manager.stop("Engine", signal()), refusal);
       assert.deepEqual(await manager.status(definition.name, signal()), notInstalled);
     }),
   },

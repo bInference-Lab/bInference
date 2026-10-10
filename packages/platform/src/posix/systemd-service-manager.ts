@@ -98,6 +98,19 @@ async function install(
   }
 }
 
+// The unit stays enabled, so the user manager starts it again at the next login.
+async function stop(
+  systemd: Systemd,
+  name: string,
+  signal: AbortSignal,
+): Promise<Result<void, "not_installed">> {
+  if ((await status(systemd, name, signal)).state === "not_installed") {
+    return err("not_installed");
+  }
+  await systemctl(systemd, ["stop", systemdUnitName(name)], signal);
+  return ok(undefined);
+}
+
 async function uninstall(
   systemd: Systemd,
   name: string,
@@ -118,8 +131,9 @@ async function uninstall(
 
 /**
  * Services as units of the owner's systemd user manager on Linux (`systemctl --user`): a unit file
- * in `unitFolder`, enabled for `default.target`, so it starts when the owner logs in. On a server
- * with no login session the user manager runs only with lingering on (`loginctl enable-linger`).
+ * in `unitFolder`, enabled for `default.target`, so it starts when the owner logs in; a stop
+ * leaves it enabled. On a server with no login session the user manager runs only with lingering
+ * on (`loginctl enable-linger`).
  */
 export function createSystemdServiceManager(options: SystemdServiceManagerOptions): ServiceManager {
   const systemd: Systemd = {
@@ -129,6 +143,7 @@ export function createSystemdServiceManager(options: SystemdServiceManagerOption
   };
   return {
     install: async (definition, signal) => install(systemd, definition, signal),
+    stop: async (name, signal) => stop(systemd, name, signal),
     uninstall: async (name, signal) => uninstall(systemd, name, signal),
     status: async (name, signal) => status(systemd, name, signal),
   };

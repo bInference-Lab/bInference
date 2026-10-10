@@ -21,6 +21,7 @@ describe("service manager contract", () => {
         return {
           manager: {
             install: async () => undefined,
+            stop: async () => ok(undefined),
             uninstall: async () => ok(undefined),
             status: async () => ({ state: "stopped", startsAtLogin: false }),
           },
@@ -33,6 +34,6 @@ describe("service manager contract", () => {
       checks.map(async (check: ContractCheck) => check.run()),
     );
     expect(results.map((result) => result.status)).toStrictEqual(checks.map(() => "rejected"));
-    expect(checks).toHaveLength(6);
+    expect(checks).toHaveLength(7);
   });
 });

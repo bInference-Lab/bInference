@@ -67,6 +67,14 @@ export interface ServiceManager {
    * running. A service of the same name is stopped and replaced.
    */
   install(definition: ServiceDefinition, signal: AbortSignal): Promise<void>;
+  /**
+   * Stops the service now and keeps it, so the OS starts it again at the owner's next login, or at
+   * the next `install`. On macOS and Linux the program gets `SIGTERM` and the definition's stop
+   * timeout to exit; Windows ends the task's program without a signal it can hear, so a caller
+   * that needs a clean exit asks the program to stop first. Returns `not_installed` when there is
+   * no such service.
+   */
+  stop(name: string, signal: AbortSignal): Promise<Result<void, "not_installed">>;
   /** Stops the service and removes it. Returns `not_installed` when there is no such service. */
   uninstall(name: string, signal: AbortSignal): Promise<Result<void, "not_installed">>;
   /** Whether the service is installed, running, and set to start at login. */
