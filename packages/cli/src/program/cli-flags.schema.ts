@@ -31,8 +31,8 @@ export interface WalletAddressFlags extends AgentFlags {
   readonly wallet?: ProtocolId<"wallet">;
 }
 
-/** What `address add` takes: the agent, and the label `--label` gives the address. */
-export interface AddressAddFlags extends AgentFlags {
+/** What `address add` and `wallet create` take: the agent, and the label `--label` gives. */
+export interface LabelFlags extends AgentFlags {
   readonly label: string;
 }
 
@@ -91,8 +91,8 @@ export const walletAddressFlagsSchema: z.ZodType<WalletAddressFlags> = z.object(
   wallet: protocolIdSchema("wallet").exactOptional(),
 });
 
-/** Parses the options commander read for `address add`; a label is 1 to 64 characters. */
-export const addressAddFlagsSchema: z.ZodType<AddressAddFlags> = z.object({
+/** Parses the options of `address add` and `wallet create`; a label is 1 to 64 characters. */
+export const labelFlagsSchema: z.ZodType<LabelFlags> = z.object({
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
   label: z.string().min(1).max(64),

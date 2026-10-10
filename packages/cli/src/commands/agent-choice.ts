@@ -1,6 +1,8 @@
 import type { ProtocolClient } from "@binference/client";
 import type { ProtocolId, ResultOf } from "@binference/protocol";
-import type { CliOutput } from "../program/cli-output.js";
+import type { CliOutput, ExitCode } from "../program/cli-output.js";
+import type { CommandRun } from "../program/command-run.js";
+import { withEngine } from "./connect-engine.js";
 
 // An agent as `engine/status` lists it: its id, its mode and whether it is frozen.
 type AgentStatus = ResultOf<"engine/status">["agents"][number];
@@ -50,4 +52,29 @@ export async function chooseAgent(
     details: { agents: ids },
   });
   return undefined;
+}
+
+/** The agent a command chose, or the exit code it ended with after saying why. */
+export type AgentOutcome =
+  | { readonly ok: true; readonly value: ProtocolId<"agent"> }
+  | { readonly ok: false; readonly code: ExitCode };
+
+/**
+ * Chooses the agent as {@link chooseAgent} does, over a call of its own, before a command asks the
+ * person anything: an owner-key command asks for the key only once it knows the agent.
+ */
+export async function chooseAgentFirst(
+  run: CommandRun,
+  named: ProtocolId<"agent"> | undefined,
+): Promise<AgentOutcome> {
+  const chosen: { agent?: ProtocolId<"agent"> } = {};
+  const code = await withEngine(run.host, run.output, async (client, signal) => {
+    const found = await chooseAgent({ client, output: run.output, signal }, named);
+    if (found === undefined) {
+      return 1;
+    }
+    chosen.agent = found.agent;
+    return 0;
+  });
+  return chosen.agent === undefined ? { ok: false, code } : { ok: true, value: chosen.agent };
 }

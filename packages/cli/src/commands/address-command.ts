@@ -4,10 +4,10 @@ import { displayOutsideText } from "@binference/i18n";
 import { operations, type ProtocolId, type ResultOf } from "@binference/protocol";
 import { z } from "zod";
 import { rescueAddressOf } from "../init/rescue-step.js";
-import type { AddressAddFlags, AgentFlags, CommonOptions } from "../program/cli-flags.schema.js";
+import type { LabelFlags, AgentFlags, CommonOptions } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
-import { chooseAgent } from "./agent-choice.js";
+import { chooseAgent, chooseAgentFirst } from "./agent-choice.js";
 import { chainName } from "./chain-name.js";
 import { withEngine } from "./connect-engine.js";
 import { withOwnerKey } from "./owner-key-prompt.js";
@@ -19,7 +19,7 @@ const labelLength = 64;
 
 /** What `binference address add` was asked: the address as typed, its label and the agent. */
 export interface AddressAddRequest {
-  readonly options: AddressAddFlags;
+  readonly options: LabelFlags;
   readonly address: string;
 }
 
@@ -65,7 +65,7 @@ export async function runAddressAdd(
     });
     return 1;
   }
-  const agent = await agentOf(run, request.options);
+  const agent = await chooseAgentFirst(run, request.options.agent);
   if (!agent.ok) {
     return agent.code;
   }
@@ -84,24 +84,6 @@ export async function runAddressAdd(
   }
   printEntry(run, saved.value, startedAtMs);
   return 0;
-}
-
-type AgentOutcome =
-  | { readonly ok: true; readonly value: ProtocolId<"agent"> }
-  | { readonly ok: false; readonly code: ExitCode };
-
-// The agent before the owner key is asked for, so a missing agent never costs a typed key.
-async function agentOf(run: CommandRun, options: AgentFlags): Promise<AgentOutcome> {
-  const chosen: { agent?: ProtocolId<"agent"> } = {};
-  const code = await withEngine(run.host, run.output, async (client, signal) => {
-    const found = await chooseAgent({ client, output: run.output, signal }, options.agent);
-    if (found === undefined) {
-      return 1;
-    }
-    chosen.agent = found.agent;
-    return 0;
-  });
-  return chosen.agent === undefined ? { ok: false, code } : { ok: true, value: chosen.agent };
 }
 
 /**
