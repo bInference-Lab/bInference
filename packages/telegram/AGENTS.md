@@ -37,6 +37,10 @@ Rules for this package:
   from outside in them goes through the engine's `cardLineText`. A refusal is answered with the
   error message of its code. The menu is registered with `setMyCommands` for private chats, in
   English and in Chinese.
+- The engine's notices of spec 4, section 4 go to the owner's chat through `createTelegramNotices`,
+  written by the engine's `noticeText` in the owner's language and timezone, as plain text. They
+  are relayed in memory while the engine runs: one the Bot API refuses, or one before the owner
+  pairs, is logged by its code and dropped.
 - Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
   does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the
   press is answered only after `answer` resolves.

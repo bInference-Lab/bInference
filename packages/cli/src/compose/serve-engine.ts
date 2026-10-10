@@ -68,7 +68,7 @@ function startTimers(
   });
   if (started.isPrivyUnreachable) {
     const { clock, random } = host;
-    const onGiveUp = (): void => void composed.server.publish(privyUnreachableNotice());
+    const onGiveUp = (): void => composed.publish(privyUnreachableNotice());
     startUnlockRetry({ lock, clock, random, closers, logger, onGiveUp });
   }
 }
@@ -89,7 +89,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   const { platform, signal } = opening;
   const { config, log } = opened;
   const composed = composeSelfHosted(opening, opened);
-  const { server, executor, state, locked } = composed;
+  const { server, executor, state, locked, publish } = composed;
   const listening = await listenForProtocol(opening, server);
   if (!listening.ok) {
     return listening.error === "port_taken"
@@ -109,7 +109,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   log.logger.info("engine.ready");
   if (!unlocked.ok) {
     log.logger.warn("engine.locked", { errorCode: `unlock.${unlocked.error}` });
-    server.publish(lockedNotice());
+    publish(lockedNotice());
   }
   const engine: RunningEngine = {
     ...listening.value,

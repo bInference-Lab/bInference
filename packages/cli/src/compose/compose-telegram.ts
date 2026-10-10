@@ -1,5 +1,12 @@
 import type { ChainRegistry } from "@binference/chain";
-import { BinferenceError, type Clock, type Id, idSchema, type Logger } from "@binference/core";
+import {
+  BinferenceError,
+  type Clock,
+  type Id,
+  idSchema,
+  type LogFields,
+  type Logger,
+} from "@binference/core";
 import type { AnswerCard, EnginePush, EngineStores } from "@binference/engine";
 import {
   type CardSettling,
@@ -9,6 +16,8 @@ import {
   createCardShowings,
   createOwnerCalls,
   type EngineHandlerTable,
+  type Notice,
+  noticeSchema,
 } from "@binference/engine/surfaces";
 import type { OwnerInfo } from "@binference/protocol";
 import {
@@ -17,11 +26,13 @@ import {
   createFastCommands,
   createTelegramCards,
   createTelegramIngress,
+  createTelegramNotices,
   type FastCommands,
   type OwnerCalls,
   type OwnerStore,
   type TelegramCards,
   type TelegramIngress,
+  type TelegramNotices,
 } from "@binference/telegram";
 import type { Api } from "grammy";
 import { z } from "zod";
@@ -66,8 +77,9 @@ export interface ComposedTelegram {
   /**
    * Takes one engine push. A card version that opens is shown in the owner's chat, and one that
    * closes on another surface or by its timer becomes its receipt there, with the paper fill once
-   * a paper intent records it, in the order the pushes came. A failure is logged and never
-   * reaches the engine; past 1,000 pushes waiting, a push is dropped and logged.
+   * a paper intent records it; each notice of spec 4, section 4 is sent there in the owner's
+   * language; all in the order the pushes came. A failure is logged and never reaches the engine;
+   * past 1,000 pushes waiting, a push is dropped and logged. Nothing is kept across a restart.
    */
   relay(push: EnginePush): void;
   /** Resolves once every push relayed so far reached Telegram, or failed and was logged. */
@@ -82,16 +94,22 @@ const openedSchema: z.ZodType<CardVersionRef> = z.object({
 });
 const movedSchema = z.object({ intent: idSchema("int"), state: z.string().optional() });
 
-/** What the relay does for one push: show a card version, or settle an intent's card. */
+/** What the relay does for one push: show a card version, settle an intent's card, or notify. */
 type RelayWork =
   | { readonly kind: "show"; readonly ref: CardVersionRef }
-  | { readonly kind: "settle"; readonly intent: Id<"int"> };
+  | { readonly kind: "settle"; readonly intent: Id<"int"> }
+  | { readonly kind: "notify"; readonly notice: Notice };
 
 interface RelayContext {
   readonly showings: CardShowings;
   readonly cards: TelegramCards;
+  readonly notices: TelegramNotices;
   readonly logger: Logger;
 }
+
+// The notices of spec 4, section 4. An auto trade's receipt names its intent instead, and is drawn
+// from the stored intent, which no surface does yet.
+const noticeArea = "notice.";
 
 interface Call {
   readonly signal: AbortSignal;
@@ -99,7 +117,17 @@ interface Call {
 
 // A card version that opens is shown. One that closes is settled, and so is a paper intent's card
 // once the intent records its fill, which the receipt shows.
+function noticeWorkOf(push: EnginePush): RelayWork | undefined {
+  const notice = noticeSchema.safeParse(push.data);
+  return notice.success && notice.data.key.startsWith(noticeArea)
+    ? { kind: "notify", notice: notice.data }
+    : undefined;
+}
+
 function workOf(push: EnginePush): RelayWork | undefined {
+  if (push.kind === "notice/new") {
+    return noticeWorkOf(push);
+  }
   if (push.kind === "card/opened") {
     const opened = openedSchema.safeParse(push.data);
     return opened.success ? { kind: "show", ref: opened.data } : undefined;
@@ -138,22 +166,49 @@ async function settle(context: RelayContext, intent: Id<"int">, call: Call): Pro
   }
 }
 
-function intentOf(work: RelayWork): Id<"int"> {
-  return work.kind === "show" ? work.ref.intent : work.intent;
+async function notify(context: RelayContext, notice: Notice, call: Call): Promise<void> {
+  const sent = await context.notices.send(notice, call);
+  if (!sent.ok) {
+    context.logger.info("telegram.notice_not_sent", { ...fieldsOf(notice), errorCode: sent.error });
+  }
+}
+
+function fieldsOf(notice: Notice): LogFields {
+  const { agent, intent } = notice;
+  return {
+    ...(agent === undefined ? {} : { agentId: agent }),
+    ...(intent === undefined ? {} : { intentId: intent }),
+  };
+}
+
+// The ids a work's log lines name, never the text of a notice.
+function workFields(work: RelayWork): LogFields {
+  if (work.kind === "notify") {
+    return fieldsOf(work.notice);
+  }
+  return { intentId: work.kind === "show" ? work.ref.intent : work.intent };
+}
+
+async function perform(context: RelayContext, work: RelayWork, call: Call): Promise<void> {
+  if (work.kind === "notify") {
+    await notify(context, work.notice, call);
+    return;
+  }
+  await (work.kind === "show" ? show(context, work.ref, call) : settle(context, work.intent, call));
 }
 
 async function run(context: RelayContext, work: RelayWork, call: Call): Promise<void> {
   try {
-    await (work.kind === "show"
-      ? show(context, work.ref, call)
-      : settle(context, work.intent, call));
+    await perform(context, work, call);
   } catch (error) {
     // A stopped relay drops what it was sending; nothing failed.
     if (call.signal.aborted) {
       return;
     }
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
-    context.logger.warn("telegram.card_relay_failed", { intentId: intentOf(work), errorCode });
+    const event =
+      work.kind === "notify" ? "telegram.notice_not_sent" : "telegram.card_relay_failed";
+    context.logger.warn(event, { ...workFields(work), errorCode });
   }
 }
 
@@ -161,7 +216,7 @@ async function run(context: RelayContext, work: RelayWork, call: Call): Promise<
 type CardRelay = Pick<ComposedTelegram, "relay" | "idle" | "close">;
 
 // Pushes wait in one line, in order; past this many waiting, a push is dropped and logged, and
-// the card stays on the other surfaces.
+// the card or notice stays on the other surfaces.
 const maxWaiting = 1_000;
 
 function createCardRelay(context: RelayContext): CardRelay {
@@ -175,7 +230,7 @@ function createCardRelay(context: RelayContext): CardRelay {
         return;
       }
       if (waiting >= maxWaiting) {
-        context.logger.warn("telegram.card_relay_full", { intentId: intentOf(work) });
+        context.logger.warn("telegram.card_relay_full", workFields(work));
         return;
       }
       waiting += 1;
@@ -245,6 +300,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
       await commands.answer(update, call);
     },
   });
-  const context: RelayContext = { showings, cards, logger };
+  const notices = createTelegramNotices({ ...parts, chains, display });
+  const context: RelayContext = { showings, cards, notices, logger };
   return { cards, answers, calls, commands, ingress, ...createCardRelay(context) };
 }

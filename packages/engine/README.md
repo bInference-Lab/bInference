@@ -146,7 +146,8 @@ adapter of Telegram's `CardAnswers` port. `createOwnerCalls` runs the operations
 Telegram fast commands inside the engine: only for the owner's numeric Telegram id, as the owner
 on Telegram, with the `read` and `confirm` scopes of a chat that brakes but never loosens. It is
 the adapter of Telegram's `OwnerCalls` port. `limitLines` writes an agent's limits as every surface
-shows them, each with its name and its value in the owner's language.
+shows them, each with its name and its value in the owner's language. `noticeText` writes a
+`notice/new` push's notice, read back through `noticeSchema`, with its times and amounts formatted.
 
 It checks the ledger and keeps the books. `walkLedgerChain` walks the hash chain through the
 `LedgerStore` from genesis or a trusted checkpoint and names the first entry that breaks it, so an
@@ -222,6 +223,7 @@ layout of Koinly's universal import, which tax tools read.
 | `createCardPresses`, `CardPress`, `CardStanding` (subpath)       | Answers the owner's Telegram press through the confirmations    |
 | `limitLines`, `limitUnits`, `LimitLine` (subpath)                | An agent's limits as every surface shows them                   |
 | `createOwnerCalls`, `ownerChatOperations` (subpath)              | Runs the operations of the owner's Telegram fast commands       |
+| `noticeText`, `noticeSchema`, `Notice` (subpath)                 | A notice as every surface writes it                             |
 
 ## Example
 

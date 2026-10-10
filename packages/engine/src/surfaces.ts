@@ -39,3 +39,7 @@ export { maxWaitingCards } from "./surfaces/create-card-showings.js";
 export { addressPartOf, shortAddress } from "./surfaces/short-address.js";
 export { assetInfosOf } from "./money-path/asset-infos.js";
 export type { EngineHandlerTable } from "./operations/engine-call.js";
+export { noticeText } from "./surfaces/notice-text.js";
+export type { NoticeDisplay } from "./surfaces/notice-text.js";
+export { noticeSchema } from "./pushes/notice-push.js";
+export type { Notice, NoticeWire } from "./pushes/notice-push.js";

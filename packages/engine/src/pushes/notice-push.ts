@@ -1,6 +1,7 @@
-import { type Amount, amountSchema } from "@binference/chain";
-import type { Id } from "@binference/core";
+import { type Amount, type AmountWire, amountSchema } from "@binference/chain";
+import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
+import { epochMsSchema } from "../records/record-fields.js";
 import type { EnginePush } from "./engine-push.js";
 
 /**
@@ -26,6 +27,29 @@ export interface Notice {
    */
   readonly amounts?: Readonly<Record<string, Amount>>;
 }
+
+/** A notice as the `notice/new` push carries it as JSON: each amount's base units as decimal text. */
+export interface NoticeWire {
+  readonly key: string;
+  readonly agent?: string;
+  readonly intent?: string;
+  readonly values: Readonly<Record<string, string>>;
+  readonly times?: Readonly<Record<string, number>>;
+  readonly amounts?: Readonly<Record<string, AmountWire>>;
+}
+
+/**
+ * Parses the data of a `notice/new` push back into its {@link Notice}, each amount's base units a
+ * `bigint` again. A surface that formats a notice reads it through this schema.
+ */
+export const noticeSchema: z.ZodType<Notice, NoticeWire> = z.strictObject({
+  key: z.string().min(1),
+  agent: idSchema("agt").exactOptional(),
+  intent: idSchema("int").exactOptional(),
+  values: z.record(z.string(), z.string()),
+  times: z.record(z.string(), epochMsSchema).exactOptional(),
+  amounts: z.record(z.string(), amountSchema).exactOptional(),
+});
 
 // Each amount as JSON carries it, with its base units as decimal text.
 function amountWires(

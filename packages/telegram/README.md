@@ -19,7 +19,9 @@ The owner's fast commands (`/balance`, `/positions`, `/orders`, `/cancel`, `/fre
 `/paper`, `/status`, `/limits`, `/lang`, `/help`) are answered by the engine's code, never by a
 model. Each runs its operations through the engine as the owner on Telegram, so a `/freeze` is
 journaled and announced as made from Telegram, and `/rescue` opens the rescue card while
-everything is frozen. Their menu is registered in English and Chinese.
+everything is frozen. Their menu is registered in English and Chinese. The engine's notices,
+such as a limit change that waits ("Not you? Cancel now") or a freeze, reach the owner's chat in
+the owner's language.
 
 ## API
 
@@ -40,6 +42,7 @@ everything is frozen. Their menu is registered in English and Chinese.
 | `CardCopyStore`, `cardCopySchema`  | Where each card version was posted, so every copy can become the receipt       |
 | `createFastCommands`               | Answers the owner's fast commands without a model and registers their menu     |
 | `OwnerCalls`                       | The engine's side of a fast command: runs its operations for the owner alone   |
+| `createTelegramNotices`            | Sends the engine's notices to the owner's chat in the owner's language         |
 | `@binference/telegram/testing`     | Contract suites and fakes of the ports, and `createFakeBotApi`                 |
 
 `createFakeBotApi` is a synthetic Bot API for tests: updates in, messages, edits and button
