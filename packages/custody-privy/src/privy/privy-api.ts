@@ -22,6 +22,12 @@ import {
   type RuleRefusal,
 } from "./rule-update.js";
 import { sdkRule } from "./sdk-rule.js";
+import {
+  exportWallet,
+  type SealedWalletKey,
+  type WalletExportRefusal,
+  type WalletExportRequest,
+} from "./wallet-export.js";
 
 /** A call's options: every call stops when its signal aborts. */
 export interface CallOptions {
@@ -96,6 +102,14 @@ export interface PrivyApi {
   ): Promise<Result<void, RuleRefusal>>;
   /** The request a rule change sends, for the owner to sign now and Privy to read later. */
   ruleChangeRequest(change: RuleChange): PrivyRequest;
+  /**
+   * Asks Privy, once, for a wallet's private key sealed with HPKE to the recipient key, signed now
+   * by the wallet's owner; Privy never answers the key in the clear (decision 0131).
+   */
+  exportWallet(
+    request: WalletExportRequest,
+    options: CallOptions,
+  ): Promise<Result<SealedWalletKey, WalletExportRefusal>>;
 }
 
 const policyName = "binference ceiling";
@@ -301,5 +315,6 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
     changeRule: async (change, { authorization, signal }) =>
       changeRule(settings, change, { authorization, signal }),
     ruleChangeRequest: (change) => ruleChangeRequest(settings, change),
+    exportWallet: async (request, { signal }) => exportWallet(settings, request, signal),
   };
 }

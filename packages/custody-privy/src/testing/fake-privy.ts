@@ -12,6 +12,7 @@ import {
 } from "@binference/core";
 import { answer, failure, policyJson, quorumJson, walletJson } from "./fake-privy-answers.js";
 import { createPolicy, createQuorum, createWallet } from "./fake-privy-creates.js";
+import { answerExport, exportOf } from "./fake-privy-export.js";
 import { parseJsonText } from "./fake-privy-request.schema.js";
 import { answerSignTransaction } from "./fake-privy-rpc.js";
 import { answerRuleChange, ruleChangeOf } from "./fake-privy-rules.js";
@@ -108,6 +109,10 @@ async function answerWrite(
   if (rule !== undefined) {
     return answerRuleChange(state, request, { ...rule, body: body.data });
   }
+  const exported = exportOf(request, path);
+  if (exported !== undefined) {
+    return answerExport(state, request, { wallet: exported, body: body.data });
+  }
   switch (path) {
     case "/v1/key_quorums":
       return createQuorum(state, body.data);
@@ -123,10 +128,11 @@ async function answerWrite(
 /**
  * Creates a fake Privy app that enforces what binference relies on: Basic auth with the app id
  * and secret; request bodies as strict as Privy's OpenAPI document; P-256 authorization signatures
- * over RFC 8785 payloads from the wallet's owner or an added signer; the request expiry; and the
- * policy that binds the signing party, with Privy's semantics; and a change of a policy rule,
- * signed by the policy's owner. Wallet keys are secp256k1 keys the fake holds and signs with. It
- * supports Ethereum wallets and `eth_signTransaction` only.
+ * over RFC 8785 payloads from the wallet's owner or an added signer; the request expiry; the
+ * policy that binds the signing party, with Privy's semantics; a change of a policy rule, signed
+ * by the policy's owner; and a wallet's export, signed by its owner and sealed with HPKE. Wallet
+ * keys are secp256k1 keys the fake holds and signs with. It supports Ethereum wallets and
+ * `eth_signTransaction` only.
  */
 export function createFakePrivy(options: FakePrivyOptions): FakePrivy {
   const state: FakePrivyState = {

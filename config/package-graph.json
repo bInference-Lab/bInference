@@ -61,9 +61,19 @@
       "mutation": true
     },
     "custody-privy": {
-      "imports": ["core", "chain", "chain-evm", "@privy-io/node", "viem"],
+      "imports": [
+        "core",
+        "chain",
+        "chain-evm",
+        "@privy-io/node",
+        "viem",
+        "@hpke/core",
+        "@hpke/chacha20poly1305"
+      ],
       "only": {
-        "viem": "src/testing"
+        "viem": "src/testing",
+        "@hpke/core": "src/testing",
+        "@hpke/chacha20poly1305": "src/testing"
       },
       "money": true
     },

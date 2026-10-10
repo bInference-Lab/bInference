@@ -33,6 +33,11 @@ export type {
   WalletSigner,
 } from "./privy/privy-records.js";
 export { privyApiOrigin } from "./privy/privy-client.js";
+export type {
+  SealedWalletKey,
+  WalletExportRefusal,
+  WalletExportRequest,
+} from "./privy/wallet-export.js";
 export type { PrivyApiOptions } from "./privy/privy-client.js";
 export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
 export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner-signer.js";
