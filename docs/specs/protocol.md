@@ -535,6 +535,11 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
 - `CardView`: `{ card, version, opensAt, expiresAt, paper, outsideContent }`; its text is spec 4.
 - `IntentView`:
   `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets }`.
+- `PortfolioView`:
+  `{ balances: [{ wallet, amount, usdMicros?, paper }], positions: [{ wallet, asset, quantity, costUsdMicros, realizedUsdMicros, unrealizedUsdMicros?, paper }], totalUsdMicros, paperTotalUsdMicros?, assets }`.
+  Live holdings come first, then paper ones. `totalUsdMicros` sums the live balances with a known
+  price, never a paper one; `paperTotalUsdMicros` sums the paper balances beside it, absent when
+  the view holds none. The two are never added together.
 - `PnlView`:
   `{ positions: [{ asset, realizedUsdMicros, unrealizedUsdMicros? }], realizedUsdMicros, unrealizedUsdMicros?, paperPositions?, paperRealizedUsdMicros?, paperUnrealizedUsdMicros?, assets }`.
   The first three are live, the `paper` ones paper, never added together; an unrealized figure is
@@ -554,6 +559,14 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   can check before calling.
 - `engine/describe` returns JSON Schemas made from the zod schemas (`z.toJSONSchema`); the MCP
   server and docs use the same output.
+- Notes on v1 for clients:
+  - `PortfolioView.totalUsdMicros` is the live total only. The paper total is
+    `paperTotalUsdMicros`, an optional field beside it, and a client never adds the two. A client
+    that showed `totalUsdMicros` as the whole portfolio shows the live part of it.
+  - `PnlView`'s `positions`, `realizedUsdMicros` and `unrealizedUsdMicros` are live. The paper P&L
+    is in the optional `paperPositions`, `paperRealizedUsdMicros` and `paperUnrealizedUsdMicros`
+    ([decision 0137](../DECISIONS.md#d0137)); an engine that sends none of them has no paper P&L
+    to show.
 
 <a id="section-10"></a>
 
