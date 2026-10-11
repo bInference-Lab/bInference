@@ -2,7 +2,10 @@
 
 Status: accepted on 2026-10-06 ([decision 0095](../DECISIONS.md#d0095)), amended by decisions
 [0127](../DECISIONS.md#d0127) and [0133](../DECISIONS.md#d0133); the agent runtime's additions
-follow [spec 8](runtime.md) (proposed).
+follow [spec 8](runtime.md) (proposed). Proposed on 2026-10-12 and waiting for the owner's
+approval: `launches`, `tracked_wallets`, `wallet_activity` and `watch_cursors` (section 2.6);
+`questions` and `question_messages` (section 2.7); `orders.end_reason` and `alerts.wake`, `fires`
+and `expires_at` (section 2.4); and their retention (section 4).
 
 <a id="section-1"></a>
 
@@ -121,14 +124,14 @@ transaction with their position changes.
 
 ### 2.4 Orders, alerts, webhook rules and schedules
 
-| Table            | Columns                                                                                                                                                                                                                                                                                                                                                                    | Keys and indexes                                |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `orders`         | `id`, `agent_id`, `wallet_id`, `kind`, `state` (`awaiting_confirmation`, `active`, `filled`, `cancelled`, `expired`, `ended`), `request JSON`, `trigger_state JSON` (for example a trailing stop's highest price), `fills`, `max_fills`, `expires_at`, `card_id`, `outside_content` (the proposing turn's mark, spec 8 section 4.3), `created_at`, `changed_at`, `version` | `(state, agent_id)`                             |
-| `order_fills`    | `id`, `order_id`, `intent_id`, `outcome` (`filled`, `skipped`), `reason`, `at`                                                                                                                                                                                                                                                                                             | `(order_id, at)`                                |
-| `alerts`         | `id`, `agent_id`, `condition JSON`, `state` (`active`, `fired`, `deleted`), `outside_content`, `created_at`, `fired_at`                                                                                                                                                                                                                                                    | `(state)`                                       |
-| `webhook_rules`  | `id`, `agent_id`, `name`, `secret_hash`, `action JSON`, `state` (`awaiting_confirmation`, `active`, `deleted`), `rate_per_min`, `fills`, `max_fills`, `expires_at`, `card_id`, `created_at`, `changed_at`, `version`                                                                                                                                                       | `(state)`                                       |
-| `webhook_events` | `id`, `rule_id`, `alert_id`, `body_hash`, `received_at`, `outcome` (`accepted`, `repeat`, `rate`, `rejected`), `intent_id`                                                                                                                                                                                                                                                 | `(rule_id, received_at)`; `(rule_id, alert_id)` |
-| `schedules`      | `id`, `agent_id`, `when JSON`, `prompt`, `next_at`, `last_at`, `state` (`active`, `cancelled`), `created_by`, `outside_content`, `created_at`                                                                                                                                                                                                                              | `(state, next_at)`                              |
+| Table            | Columns                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Keys and indexes                                |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `orders`         | `id`, `agent_id`, `wallet_id`, `kind`, `state` (`awaiting_confirmation`, `active`, `filled`, `cancelled`, `expired`, `ended`), `request JSON`, `trigger_state JSON` (for example a trailing stop's highest price), `fills`, `max_fills`, `expires_at`, `card_id`, `outside_content` (the proposing turn's mark, spec 8 section 4.3), `end_reason` (why an `ended` order ended: `position_closed`, spec 6 section 5), `created_at`, `changed_at`, `version` | `(state, agent_id)`                             |
+| `order_fills`    | `id`, `order_id`, `intent_id`, `outcome` (`filled`, `skipped`), `reason`, `at`                                                                                                                                                                                                                                                                                                                                                                             | `(order_id, at)`                                |
+| `alerts`         | `id`, `agent_id`, `condition JSON`, `state` (`active`, `fired`, `deleted`, `ended`), `wake` (start a turn when it fires, spec 1 section 8.4), `fires` (how many times it fired), `outside_content`, `created_at`, `fired_at` (the last fire), `expires_at`                                                                                                                                                                                                 | `(state)`                                       |
+| `webhook_rules`  | `id`, `agent_id`, `name`, `secret_hash`, `action JSON`, `state` (`awaiting_confirmation`, `active`, `deleted`), `rate_per_min`, `fills`, `max_fills`, `expires_at`, `card_id`, `created_at`, `changed_at`, `version`                                                                                                                                                                                                                                       | `(state)`                                       |
+| `webhook_events` | `id`, `rule_id`, `alert_id`, `body_hash`, `received_at`, `outcome` (`accepted`, `repeat`, `rate`, `rejected`), `intent_id`                                                                                                                                                                                                                                                                                                                                 | `(rule_id, received_at)`; `(rule_id, alert_id)` |
+| `schedules`      | `id`, `agent_id`, `when JSON`, `prompt`, `next_at`, `last_at`, `state` (`active`, `cancelled`), `created_by`, `outside_content`, `created_at`                                                                                                                                                                                                                                                                                                              | `(state, next_at)`                              |
 
 <a id="section-2-5"></a>
 
@@ -148,30 +151,61 @@ transaction with their position changes.
 
 ### 2.6 Market data and caches
 
-| Table        | Columns                                                                             | Keys                 |
-| ------------ | ----------------------------------------------------------------------------------- | -------------------- |
-| `prices`     | `asset`, `source` (`chainlink`, `quote`, `dexscreener`), `usd_micros`, `at`         | PK `(asset, source)` |
-| `risk_cache` | `asset`, `source` (`goplus`, `honeypot`, `simulation`), `result JSON`, `fetched_at` | PK `(asset, source)` |
+| Table             | Columns                                                                                                                                                                                                             | Keys                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `prices`          | `asset`, `source` (`chainlink`, `quote`, `dexscreener`), `usd_micros`, `at`                                                                                                                                         | PK `(asset, source)`                                                  |
+| `risk_cache`      | `asset`, `source` (`goplus`, `honeypot`, `simulation`), `result JSON`, `fetched_at`                                                                                                                                 | PK `(asset, source)`                                                  |
+| `launches`        | `chain`, `token`, `launchpad`, `creator`, `quote_token`, `tax_bps`, `snipe_tax_bps`, `curve_progress_bps`, `graduated`, `insiders JSON`, `block`, `block_hash`, `tx_hash`, `log_index`, `launched_at`, `changed_at` | PK `(chain, token)`; `(chain, launched_at)`; `(creator, launched_at)` |
+| `tracked_wallets` | `account` (CAIP-10), `since_block` (the first block read), `last_block` (the last block read), `overflow_blocks` (blocks whose reads the per-block budget cut), `added_at`, `untracked_at`                          | PK `account`                                                          |
+| `wallet_activity` | `id`, `account`, `block`, `tx_hash`, `log_index`, `side` (`buy`, `sell`), `asset`, `amount`, `counter_asset`, `counter_amount`, `value_usd_micros`, `share_sold_bps`, `venue`, `at`                                 | unique `(account, tx_hash, log_index)`; `(account, at)`               |
+| `watch_cursors`   | `watcher` (`launches`, `wallets`), `chain`, `block`, `block_hash`, `at`                                                                                                                                             | PK `(watcher, chain)`                                                 |
+
+- **`launches`** holds one row per token a launchpad created, written by the launch watcher from
+  the launchpad plugin's decoded create event, insert-or-ignore on its key, so a block read twice
+  records each launch once. `curve_progress_bps` and `graduated` are updated in place as the
+  watchers read them; `insiders` holds the wallets the launchpad or the risk step names as exempt
+  or first holders. A launch whose block a reorganization removed, and that no block holds once
+  that height is final, is deleted.
+- **`tracked_wallets`** holds each account an active `copy` order names as its leader, or an active
+  `wallet` alert names. The write that makes such an order or alert active adds the row, or clears
+  its `untracked_at`; the write that ends the last of them sets `untracked_at`, and the leader
+  watcher stops reading it. A wallet tracked again reads on from the block it is added at: a gap
+  is never filled from history.
+- **`wallet_activity`** holds the trades the leader watcher read for tracked wallets: transfers of
+  an ERC-20 to and from the wallet and its native value, matched into buys and sells, with the
+  share of its holding a sale took. `wallet/activity` reads a tracked wallet here, and the
+  agent's own wallets from `executions`.
+- **`watch_cursors`** holds where each log watcher stopped. After an outage it checks that the
+  stored block still has `block_hash`, then reads on from the block after it; when the hash
+  differs, it reads again from the chain's last final block.
 
 <a id="section-2-7"></a>
 
 ### 2.7 Surfaces, delivery and idempotency
 
-| Table            | Columns                                                                                                                                                                                                                                                                                          | Keys and indexes           |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| `inbox`          | `id`, `source` (`telegram`, `webhook`), `source_key` (`tg:<bot>:<update>`), `payload JSON`, `received_at`, `handled_at`                                                                                                                                                                          | unique `source_key`        |
-| `outbox`         | `id`, `surface`, `target JSON`, `payload JSON`, `state` (`queued`, `sent`, `unknown_after_send`, `failed`), `attempts`, `next_at`, `ref`, `created_at`, `sent_at`                                                                                                                                | `(state, next_at)`         |
-| `notices`        | `id`, `agent_id`, `kind` (the notice's name), `i18n_key`, `values JSON` (the message's values, times and amounts), `level` (`info`, `warning`, `critical`), `at`, `delivered JSON` (each surface's delivery state), `intent_id` (the intent it is about, [decision 0133](../DECISIONS.md#d0133)) | `(at)`                     |
-| `idempotency`    | `credential`, `op`, `key`, `args_hash`, `result JSON`, `at`                                                                                                                                                                                                                                      | PK `(credential, op, key)` |
-| `agent_inbox`    | `id` (`msg_…`), `agent_id`, `session_id`, `kind` (the `inbox` push kind), `turn_id` (the turn reserved for it), `payload JSON`, `created_at`, `taken_at`                                                                                                                                         | `(agent_id, taken_at)`     |
-| `model_usage`    | `id`, `agent_id`, `turn_id`, `model`, `input_tokens`, `output_tokens`, `cached_tokens`, `usd_micros`, `at`                                                                                                                                                                                       | `(agent_id, at)`           |
-| `telegram_owner` | `id` (always `1`), `user_id` (the Telegram user the bot answers), `paired_at`                                                                                                                                                                                                                    | PK `id`                    |
+| Table               | Columns                                                                                                                                                                                                                                                                                          | Keys and indexes                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `inbox`             | `id`, `source` (`telegram`, `webhook`), `source_key` (`tg:<bot>:<update>`), `payload JSON`, `received_at`, `handled_at`                                                                                                                                                                          | unique `source_key`                                      |
+| `outbox`            | `id`, `surface`, `target JSON`, `payload JSON`, `state` (`queued`, `sent`, `unknown_after_send`, `failed`), `attempts`, `next_at`, `ref`, `created_at`, `sent_at`                                                                                                                                | `(state, next_at)`                                       |
+| `notices`           | `id`, `agent_id`, `kind` (the notice's name), `i18n_key`, `values JSON` (the message's values, times and amounts), `level` (`info`, `warning`, `critical`), `at`, `delivered JSON` (each surface's delivery state), `intent_id` (the intent it is about, [decision 0133](../DECISIONS.md#d0133)) | `(at)`                                                   |
+| `idempotency`       | `credential`, `op`, `key`, `args_hash`, `result JSON`, `at`                                                                                                                                                                                                                                      | PK `(credential, op, key)`                               |
+| `agent_inbox`       | `id` (`msg_…`), `agent_id`, `session_id`, `kind` (the `inbox` push kind), `turn_id` (the turn reserved for it), `payload JSON`, `created_at`, `taken_at`                                                                                                                                         | `(agent_id, taken_at)`                                   |
+| `model_usage`       | `id`, `agent_id`, `turn_id`, `model`, `input_tokens`, `output_tokens`, `cached_tokens`, `usd_micros`, `at`                                                                                                                                                                                       | `(agent_id, at)`                                         |
+| `questions`         | `id` (`qst_…`), `agent_id`, `session_id`, `turn_id`, `text`, `choices JSON`, `ref` (a random 12-byte base64url reference for its buttons), `state` (`open`, `answered`, `closed`), `answer JSON`, `close_reason` (`replaced`, `cleared`, `expired`), `created_at`, `closes_at`, `closed_at`      | unique `ref`; unique `(agent_id)` where `state = 'open'` |
+| `question_messages` | `question_id`, `surface` (`telegram`, `console`, `mini`), `chat_id`, `topic_id`, `message_id`, `sent_at`                                                                                                                                                                                         | PK `(question_id, surface, chat_id)`                     |
+| `telegram_owner`    | `id` (always `1`), `user_id` (the Telegram user the bot answers), `paired_at`                                                                                                                                                                                                                    | PK `id`                                                  |
 
 A notice is stored before any surface sends it, with an `outbox` row for each chat surface the
 install runs: `target` `{ "to": "owner" }`, `payload` `{ "notice": <id> }`. A delivery turns
 `unknown_after_send` before the surface is called and is never sent again from there; each move
 changes the row and the notice's `delivered` in one transaction
 ([decision 0133](../DECISIONS.md#d0133)).
+
+`questions` holds the agent's questions to the owner (spec 1, section 7.7): at most one open per
+agent, which the partial unique index keeps. The write that answers a question also stores its
+`inbox/message` in `agent_inbox`, so the answer reaches the runtime once. `question_messages`
+holds each surface's copy, as `card_messages` does for cards, so the buttons can be removed from
+every copy after the answer, and after a restart.
 
 `telegram_owner` holds at most one row: the one Telegram user the bot answers. Pairing writes it
 and a new pairing replaces it; the bot's copies of each card live in `card_messages`, so both
@@ -260,8 +294,11 @@ A daily job (inside the engine's schedule queue) prunes:
 | `inbox` handled, `outbox` sent, `agent_inbox` taken                                                                                            | 30 days                                                            |
 | `webhook_events`                                                                                                                               | 90 days                                                            |
 | `notices`                                                                                                                                      | 90 days                                                            |
+| `launches`, `wallet_activity`                                                                                                                  | 90 days                                                            |
+| `tracked_wallets` untracked                                                                                                                    | 90 days after `untracked_at`                                       |
+| `questions` and their `question_messages`, once closed or answered                                                                             | 30 days                                                            |
 | `model_usage`                                                                                                                                  | 400 days                                                           |
-| `prices`, `risk_cache`                                                                                                                         | replaced in place                                                  |
+| `prices`, `risk_cache`, `watch_cursors`                                                                                                        | replaced in place                                                  |
 | `jobs` ended                                                                                                                                   | 30 days                                                            |
 
 <a id="section-5"></a>
