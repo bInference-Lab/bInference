@@ -5,6 +5,8 @@ import { mcpTools } from "./mcp-tools.js";
 describe("mcpTools", () => {
   it("maps each tool of the spec one to one onto its operation", () => {
     expect(mcpTools.map((tool) => [tool.name, tool.operation])).toStrictEqual([
+      ["binference_agents", "agent/list"],
+      ["binference_token_search", "asset/search"],
       ["binference_portfolio", "portfolio/get"],
       ["binference_token_info", "asset/get"],
       ["binference_token_risk", "risk/check"],

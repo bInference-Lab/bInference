@@ -28,12 +28,13 @@ engine's read and propose tools over stdio. The spec is section 11 of
 
 | Tool                      | Operation       | Tool                       | Operation        |
 | ------------------------- | --------------- | -------------------------- | ---------------- |
-| `binference_portfolio`    | `portfolio/get` | `binference_propose`       | `intent/propose` |
-| `binference_token_info`   | `asset/get`     | `binference_intent_status` | `intent/get`     |
-| `binference_token_risk`   | `risk/check`    | `binference_order_create`  | `order/create`   |
-| `binference_quote`        | `quote/get`     | `binference_order_cancel`  | `order/cancel`   |
-| `binference_orders`       | `order/list`    | `binference_alert_create`  | `alert/create`   |
-| `binference_resolve_name` | `name/resolve`  | `binference_ledger`        | `ledger/list`    |
+| `binference_agents`       | `agent/list`    | `binference_propose`       | `intent/propose` |
+| `binference_token_search` | `asset/search`  | `binference_intent_status` | `intent/get`     |
+| `binference_portfolio`    | `portfolio/get` | `binference_order_create`  | `order/create`   |
+| `binference_token_info`   | `asset/get`     | `binference_order_cancel`  | `order/cancel`   |
+| `binference_token_risk`   | `risk/check`    | `binference_alert_create`  | `alert/create`   |
+| `binference_quote`        | `quote/get`     | `binference_ledger`        | `ledger/list`    |
+| `binference_orders`       | `order/list`    | `binference_resolve_name`  | `name/resolve`   |
 
 ## Set up an MCP client
 
@@ -96,8 +97,9 @@ folder into the client's skills folder:
 | Claude Code | `~/.claude/skills/binference-tools/`, or a project's `.claude/skills/` |
 | Codex       | `~/.agents/skills/binference-tools/`, or a repo's `.agents/skills/`    |
 
-No MCP tool lists agents, so tell the client your agent's id once, for example in the project's
-`CLAUDE.md` or `AGENTS.md`; `binference status` prints it.
+The client finds your agent with `binference_agents` and each token's id with
+`binference_token_search`, so it needs no id from you. The token search reads only binference's
+token list and what your wallets hold, and asks you when a symbol matches several tokens.
 
 `pnpm skill:run` checks the skill with Claude Code. It runs `claude -p "swap 0.01 BNB to USDT"`
 headless, in a home and config folder of its own with the skill installed there, against an engine

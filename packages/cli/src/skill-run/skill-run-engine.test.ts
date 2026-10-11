@@ -99,6 +99,32 @@ describe("the recorded run's MCP server", () => {
     });
   }, 30_000);
 
+  it("finds the agent, its chain and the ids of BNB and USDT through the tools alone", async () => {
+    served = await serve();
+    await served.mcp.callTool({ name: "binference_agents", arguments: {} });
+    const [agentsCall] = served.calls();
+    const agents = jsonOf(agentsCall);
+    expect(agents).toMatchObject({
+      items: [
+        { agent: skillRunIds.agent, mode: "paper", defaultWallet: { wallet: skillRunIds.wallet } },
+      ],
+    });
+    const address = String(
+      (agents as { items: { defaultWallet: { address: string } }[] }).items[0]?.defaultWallet
+        .address,
+    );
+    const chain = address.slice(0, address.lastIndexOf(":"));
+    const search = async (query: string) =>
+      served?.mcp.callTool({ name: "binference_token_search", arguments: { chain, query } });
+    await search("BNB");
+    await search("usdt");
+    const [, bnb, usdt] = served.calls();
+    expect(jsonOf(bnb)).toStrictEqual({
+      items: [{ asset: skillRunIds.bnb, symbol: "BNB", name: "BNB", decimals: 18, verified: true }],
+    });
+    expect(jsonOf(usdt)).toMatchObject({ items: [{ asset: skillRunIds.usdt, symbol: "USDT" }] });
+  }, 30_000);
+
   it("records a refused call as an error answer", async () => {
     served = await serve();
     const unknownAgent = { ...swap, agent: "agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff" };

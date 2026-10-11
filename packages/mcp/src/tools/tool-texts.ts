@@ -21,6 +21,15 @@ export const requestIdText =
  * from the protocol; these texts only tell the model when to use the tool.
  */
 export const toolTexts: Readonly<Record<string, ToolText>> = {
+  binference_agents: {
+    title: "Agents",
+    description:
+      "Lists the owner's agents, a page at a time: each agent's id, name, mode (paper or live), when it was frozen or archived, and its default wallet with its address. Call it first: every proposal names an agent by this id, and a frozen or archived agent cannot trade. With several agents, ask the user which one. The part of a wallet's address before its last colon is the chain it trades on, such as eip155:56 for BNB Smart Chain.",
+  },
+  binference_token_search: {
+    title: "Find a token",
+    description: `Finds a token's asset id on one chain by its symbol, its name or its contract address, in binference's own token list and the tokens the wallets hold; it never searches the web. Use it for every asset before a quote or a proposal, and never write an id yourself. chain is a CAIP-2 chain id, such as eip155:56 for BNB Smart Chain. With ambiguous: true several tokens match: ask the user which one they mean, and never pick one yourself. An address the list does not hold comes back in unlisted, with held saying whether a wallet holds some; check such a token with binference_token_risk before you use it. ${ids}`,
+  },
   binference_portfolio: {
     title: "Portfolio",
     description: `Reads an agent's portfolio: the balance of each wallet, open positions with their profit and loss, and whether they are paper. ${units}`,

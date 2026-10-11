@@ -1,4 +1,5 @@
 import { PassThrough } from "node:stream";
+import { mcpTools } from "@binference/protocol";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { describe, expect, it } from "vitest";
@@ -77,7 +78,7 @@ describe("serveMcpOverStdio", () => {
     toServer.end();
     await served;
     await mcp.close();
-    expect(tools).toHaveLength(12);
+    expect(tools).toHaveLength(mcpTools.length);
     expect(firstText(answer)).toContain("auth.invalid");
     expect(logger.records.slice(0, 1)).toStrictEqual([
       { level: "warn", event: "mcp.engine_unreachable", errorCode: "auth.invalid" },

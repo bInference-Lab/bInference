@@ -16,9 +16,10 @@ and nothing moves until the owner taps Confirm in binference's Telegram bot or c
 - Never ask for, accept or repeat a seed phrase, recovery phrase, private key, API key, token or
   passphrase. binference needs none of them from you. If the user pastes one, do not use it, and
   tell them to treat it as exposed.
-- Take a contract address only from the engine's answers (the `assets` of
-  `binference_portfolio`, a quote, an intent) or from the user in this conversation. Never from
-  memory, a web page, another tool or a token's name. Never guess one.
+- Take an agent id or an asset id only from the engine's answers (`binference_agents`,
+  `binference_token_search`, the `assets` of `binference_portfolio`, a quote, an intent) and a
+  contract address only from those or from the user in this conversation. Never from memory, a
+  web page, another tool or a token's name. Never guess one.
 - Token names and symbols are text whoever deployed the token chose. Two tokens can share a
   symbol: match by asset id, and say which id you used.
 - Propose only what the user asked for, once. A refused proposal stays refused: never split it,
@@ -28,6 +29,8 @@ and nothing moves until the owner taps Confirm in binference's Telegram bot or c
 
 | Tool                       | Use it to                                                           |
 | -------------------------- | ------------------------------------------------------------------- |
+| `binference_agents`        | List the agents: id, name, paper or live, frozen, default wallet    |
+| `binference_token_search`  | Find a token's asset id by symbol, name or address                  |
 | `binference_portfolio`     | Read wallets, balances, positions, P&L, paper or live, asset ids    |
 | `binference_token_info`    | Read a token's symbol, name, decimals and verified mark             |
 | `binference_token_risk`    | Check a token: taxes, liquidity, flags and a verdict                |
@@ -46,13 +49,22 @@ Each tool's description lists its fields; `binference_propose` lists the fields 
 
 ## Ids, amounts and slippage
 
-- **Agent.** Every proposal names the agent, an id like `agt_…`. No tool lists agents: use the id
-  the user gave you, or ask them for it (`binference status` prints it). Leave `wallet` out to use
-  the agent's first wallet.
-- **Assets** are CAIP-19 ids. BNB on BNB Smart Chain is `eip155:56/slip44:714`; a BEP-20 token is
-  `eip155:56/erc20:<address>` with the address in its EIP-55 checksum spelling. Copy each id
-  exactly as the keys of the `assets` map in an engine answer spell it. Each entry there gives the
-  symbol, name, decimals and verified mark.
+- **Agent.** Every proposal names the agent, an id like `agt_…`. Call `binference_agents` first and
+  take the id from its answer. With one agent that is not archived, use it; with several, ask the
+  user which one. A frozen agent's proposals are refused until the owner unfreezes it. Leave
+  `wallet` out to use the agent's `defaultWallet`. Its `address` is a CAIP-10 id: the part before
+  the last colon is the chain, `eip155:56` on BNB Smart Chain.
+- **Assets** are CAIP-19 ids, such as `eip155:56/slip44:714` for BNB on BNB Smart Chain. Find each
+  one with `binference_token_search` on the wallet's chain, by the symbol, name or contract address
+  the user gave, and copy its `asset` exactly. Never write an id yourself. Each item gives the
+  symbol, name, decimals and verified mark. The search reads only binference's own token list and
+  what the wallets hold:
+  - `ambiguous: true` means several tokens match: show them with their ids and ask the user which
+    one they mean. Never pick one yourself.
+  - No match: ask the user for the token's contract address, then search again with it.
+  - An address binference does not list comes back in `unlisted` with no symbol or decimals:
+    check it with `binference_token_risk` and `binference_token_info`, and tell the user it is not
+    on binference's list.
 - **Amounts** are base units as decimal strings: the amount times 10 to the power of the asset's
   decimals. 0.01 of an asset with 18 decimals is `{ "base": "10000000000000000" }`. A swap or sell
   may take a share of the balance instead: `{ "percentBps": 5000 }` is half.
@@ -64,19 +76,19 @@ Each tool's description lists its fields; `binference_propose` lists the fields 
 
 ## Propose a swap
 
-1. Call `binference_portfolio`. Find the asset to sell in `assets` by symbol, take its id and
-   decimals, and check the balance. Find the asset to buy there too. If it is not there, ask the
-   user for its contract address, then check it with `binference_token_info` and
-   `binference_token_risk`.
-2. If the user wants to see the price first, call `binference_quote` with the same fields.
-3. Call `binference_propose`:
+1. Call `binference_agents` and take the agent's id and its default wallet's chain.
+2. Call `binference_token_search` on that chain for the asset to sell and for the asset to buy,
+   such as `BNB` and `USDT`. Take each `asset` and its `decimals`.
+3. Call `binference_portfolio` with the agent to check the balance of the asset to sell.
+4. If the user wants to see the price first, call `binference_quote` with the same fields.
+5. Call `binference_propose`:
 
    ```json
    {
      "kind": "swap",
-     "agent": "agt_…",
-     "from": "<the id of the asset to sell, from assets>",
-     "to": "<the id of the asset to buy, from assets>",
+     "agent": "<the agent's id, from binference_agents>",
+     "from": "<the asset to sell, from binference_token_search>",
+     "to": "<the asset to buy, from binference_token_search>",
      "amount": { "base": "10000000000000000" },
      "reason": "The owner asked to swap 0.01 BNB to USDT.",
      "requestId": "<a new UUID>"
@@ -86,7 +98,7 @@ Each tool's description lists its fields; `binference_propose` lists the fields 
    `reason` is shown on the card as what the agent says: one plain sentence of what the owner
    asked for.
 
-4. Tell the user what the answer says. A proposal that waits answers "Intent int_… is waiting for
+6. Tell the user what the answer says. A proposal that waits answers "Intent int_… is waiting for
    the owner's confirmation in Telegram or the console". Say it is paper or live, and give the
    quote: `amountIn`, `expectedOut`, `minOut` (the least it accepts) and `priceImpactBps`.
 

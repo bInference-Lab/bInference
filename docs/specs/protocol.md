@@ -629,15 +629,19 @@ carry the `binference_` prefix and map one to one onto operations:
 
 | Tool                      | Operation       | Tool                       | Operation        |
 | ------------------------- | --------------- | -------------------------- | ---------------- |
-| `binference_portfolio`    | `portfolio/get` | `binference_propose`       | `intent/propose` |
-| `binference_token_info`   | `asset/get`     | `binference_intent_status` | `intent/get`     |
-| `binference_token_risk`   | `risk/check`    | `binference_order_create`  | `order/create`   |
-| `binference_quote`        | `quote/get`     | `binference_order_cancel`  | `order/cancel`   |
-| `binference_orders`       | `order/list`    | `binference_alert_create`  | `alert/create`   |
-| `binference_resolve_name` | `name/resolve`  | `binference_ledger`        | `ledger/list`    |
+| `binference_agents`       | `agent/list`    | `binference_propose`       | `intent/propose` |
+| `binference_token_search` | `asset/search`  | `binference_intent_status` | `intent/get`     |
+| `binference_portfolio`    | `portfolio/get` | `binference_order_create`  | `order/create`   |
+| `binference_token_info`   | `asset/get`     | `binference_order_cancel`  | `order/cancel`   |
+| `binference_token_risk`   | `risk/check`    | `binference_alert_create`  | `alert/create`   |
+| `binference_quote`        | `quote/get`     | `binference_ledger`        | `ledger/list`    |
+| `binference_orders`       | `order/list`    | `binference_resolve_name`  | `name/resolve`   |
 
 Each tool's input schema is the operation's args schema from `engine/describe`. A proposal answers
-with the intent and "waiting for the owner's confirmation in Telegram or the console".
+with the intent and "waiting for the owner's confirmation in Telegram or the console". A client
+finds its ids with the first two: the agent and its wallet's chain with `binference_agents`, each
+asset's id with `binference_token_search`, which reads only the engine's registry and the held
+tokens and says when a symbol is ambiguous.
 
 <a id="section-12"></a>
 

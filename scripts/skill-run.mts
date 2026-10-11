@@ -19,7 +19,7 @@ import { z } from "zod";
 // from this process's environment; nothing else of the owner's Claude setup is read or changed.
 
 const prompt = "swap 0.01 BNB to USDT";
-// The skeleton's agent, which the run's engine stores; the record names it, and the script checks.
+// The skeleton's agent, which the run's engine stores and the run must find; the record names it.
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const skillFolder = join(root, "skills", "binference-tools");
@@ -62,13 +62,14 @@ function foldersOf(out: string): RunFolders {
   };
 }
 
-// The scratch home with the skill where Claude Code reads personal skills, a project whose
-// CLAUDE.md names the owner's agent (no MCP tool lists agents), and the MCP server's config.
+// The scratch home with the skill where Claude Code reads personal skills, an empty project, and
+// the MCP server's config. Nothing names the agent or a token's id: the run finds them through the
+// MCP tools.
 function prepare(folders: RunFolders): void {
   rmSync(folders.record, { force: true });
+  rmSync(folders.project, { recursive: true, force: true });
   cpSync(skillFolder, join(folders.config, "skills", "binference-tools"), { recursive: true });
   mkdirSync(folders.project, { recursive: true });
-  writeFileSync(join(folders.project, "CLAUDE.md"), `My binference agent is ${agent}.\n`);
   const server = {
     type: "stdio",
     command: process.execPath,
