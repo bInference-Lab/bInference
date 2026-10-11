@@ -17,7 +17,9 @@ export interface WalletSlot {
   readonly account: AccountRef;
   /**
    * Takes the account's next nonce by the lowest free nonce rule, from the chain's count read now
-   * and the stored transactions. Asking again before a save gives the same nonce.
+   * and the stored transactions. Asking again before a save gives the same nonce. A node's pending
+   * count past the mined count by a nonce no stored transaction of the account holds throws
+   * `wallet_queue.nonce_ahead`.
    */
   nextNonce(options: { readonly signal: AbortSignal }): Promise<NonceGrant>;
   /**
@@ -69,6 +71,54 @@ function notGivenFault(account: AccountRef, transaction: SignedTransaction): Bin
   });
 }
 
+// More than the queue ever keeps waiting on one account: a pending count this far past the mined
+// one is no count of the wallet's own.
+const mostPending = 100;
+
+function aheadFault(
+  account: AccountRef,
+  counts: Readonly<Record<string, number>>,
+): BinferenceError {
+  return new BinferenceError({
+    code: "wallet_queue.nonce_ahead",
+    message: "A node counts transactions of this wallet that binference did not store.",
+    retryable: true,
+    details: { account, ...counts },
+  });
+}
+
+// The node's pending count, refused when it runs past the mined count by nonces no stored
+// transaction of the account holds or used: a wrong or hostile node never moves a step to a far
+// nonce that leaves a gap behind it.
+async function chainNonceOf(
+  account: AccountRef,
+  ports: WalletSlotPorts,
+  signal: AbortSignal,
+): Promise<number> {
+  const [pending, mined] = await Promise.all([
+    ports.nonces.next(account, { signal }),
+    ports.nonces.mined(account, { signal }),
+  ]);
+  if (pending <= mined) {
+    return pending;
+  }
+  if (pending - mined > mostPending) {
+    throw aheadFault(account, { pending, mined });
+  }
+  const query = { account, fromNonce: mined, limit: mostPending };
+  const stored = await ports.transactions.list(query, { signal });
+  const ours = new Set(
+    stored.filter(({ state }) => state !== "dropped" && state !== "superseded").map((t) => t.nonce),
+  );
+  const isOurs = Array.from({ length: pending - mined }, (_, gap) => mined + gap).every((nonce) =>
+    ours.has(nonce),
+  );
+  if (!isOurs) {
+    throw aheadFault(account, { pending, mined });
+  }
+  return pending;
+}
+
 /** Opens the slot of one work on `account`'s queue. */
 export function openWalletSlot(account: AccountRef, ports: WalletSlotPorts): OpenSlot {
   let isOpen = true;
@@ -82,7 +132,7 @@ export function openWalletSlot(account: AccountRef, ports: WalletSlotPorts): Ope
     account,
     async nextNonce({ signal }) {
       assertOpen();
-      const chainNonce = await ports.nonces.next(account, { signal });
+      const chainNonce = await chainNonceOf(account, ports, signal);
       const request = { account, chainNonce, atMs: ports.clock.now() };
       const grant = await ports.transactions.nextNonce(request, { signal });
       given = grant.nonce;

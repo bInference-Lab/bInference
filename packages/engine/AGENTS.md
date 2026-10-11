@@ -218,6 +218,8 @@ Rules for this package:
   work per account at a time and is the only way to take a nonce and store a signed transaction.
   It gives nonces by the lowest free nonce rule in `lowest-free-nonce.ts`, which the fake and the
   SQLite store both call, and keeps nothing across a restart that the store does not hold. A
+  node's pending count past the mined count by a nonce no stored transaction of the wallet holds
+  is refused as `wallet_queue.nonce_ahead`, so no step signs at a nonce that leaves a gap. A
   change to the rule changes its property test and the `TransactionStore` contract suite.
 - The executor (`src/executor/`, exported as `@binference/engine/executor`) runs a confirmed live
   intent on its wallet's queue and moves it only through the stored intents. Everything that can

@@ -77,6 +77,36 @@ describe("a wallet slot", () => {
     await expect(slot.nextNonce(live)).resolves.toStrictEqual({ nonce: 8, refillsGap: false });
   });
 
+  it("refuses a pending count past the mined one that no stored transaction explains", async () => {
+    const transactions = createMemoryTransactionStore();
+    const ahead = { next: async () => Promise.resolve(9), mined: async () => Promise.resolve(7) };
+    const { slot } = openWalletSlot(account, {
+      transactions,
+      nonces: ahead,
+      clock: createManualClock(5_000),
+    });
+    await expect(slot.nextNonce(live)).rejects.toMatchObject({
+      code: "wallet_queue.nonce_ahead",
+      details: { pending: 9, mined: 7 },
+    });
+    await transactions.nextNonce({ account, chainNonce: 7, atMs: 1 }, live);
+    await transactions.saveSigned(signed(1, 7), live);
+    await expect(slot.nextNonce(live)).rejects.toMatchObject({ code: "wallet_queue.nonce_ahead" });
+    await transactions.nextNonce({ account, chainNonce: 8, atMs: 1 }, live);
+    await transactions.saveSigned(signed(2, 8), live);
+    await expect(slot.nextNonce(live)).resolves.toStrictEqual({ nonce: 9, refillsGap: false });
+  });
+
+  it("refuses a pending count more than a full queue past the mined one", async () => {
+    const far = { next: async () => Promise.resolve(108), mined: async () => Promise.resolve(7) };
+    const { slot } = openWalletSlot(account, {
+      transactions: createMemoryTransactionStore(),
+      nonces: far,
+      clock: createManualClock(5_000),
+    });
+    await expect(slot.nextNonce(live)).rejects.toMatchObject({ code: "wallet_queue.nonce_ahead" });
+  });
+
   it("asks the store for nothing when the chain gives no count", async () => {
     const { slot, transactions } = setUp();
     const down = new BinferenceError({ code: "chain.rpc_down", message: "no node answered" });
