@@ -136,6 +136,38 @@ describe("pairing a console device", () => {
     expect(read.status).toBe(405);
   });
 
+  it("keeps pairing and health off the public address, and opens sockets through it", async () => {
+    test = await startTestServer({ publicOrigin: "https://owner.example.ts.net" });
+    const server = test;
+    const browser = browserKey();
+    const code = await issueCode(server);
+    const body = JSON.stringify(pairBody(code, browser));
+    const json = { "content-type": "application/json" };
+    const published = [
+      {
+        path: "/pair",
+        method: "POST",
+        headers: { ...json, origin: "https://owner.example.ts.net" },
+      },
+      {
+        path: "/pair",
+        method: "POST",
+        headers: { ...json, host: "owner.example.ts.net", origin: server.origin },
+      },
+      { path: "/health", headers: { host: "owner.example.ts.net" } },
+      { path: "/health", headers: { "x-forwarded-host": "owner.example.ts.net" } },
+    ];
+    const answers = await Promise.all(
+      published.map(async (sent) => requestLocal(server.httpPort, { ...sent, body })),
+    );
+    expect(answers.map((answer) => answer.status)).toStrictEqual([404, 404, 404, 404]);
+    expect((await requestLocal(server.httpPort, { path: "/health" })).status).toBe(200);
+    expect((await postPair(server, pairBody(code, browser))).status).toBe(201);
+    const raw = await openRawSocket(server.wsUrl, { origin: "https://owner.example.ts.net" });
+    raw.send(openFrame({ token: server.cliToken.secret }));
+    await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.local_only" });
+  });
+
   it("serves no pairing on the IPC listener", async () => {
     const server = await start();
     const port = Number(new URL(server.ipcUrl).port);

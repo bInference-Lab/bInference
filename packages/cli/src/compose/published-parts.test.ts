@@ -12,13 +12,14 @@ const remote = { mini: false, webhooks: false } as const;
 const bot = { name: "bot" };
 
 describe("publishedParts", () => {
-  it("lets the public origin reach the engine and opens the Mini App at its /mini", () => {
+  it("lets the public origin open sockets and opens the Mini App at its /mini", () => {
     const published = { ...remote, publicUrl: "https://owner.example.ts.net/" };
     expect(publishedParts({ engine, remote: published }, bot)).toStrictEqual({
       http: {
         host: "127.0.0.1",
         port: 7456,
-        extraOrigins: ["https://console.example.invalid", "https://owner.example.ts.net"],
+        extraOrigins: ["https://console.example.invalid"],
+        publicOrigin: "https://owner.example.ts.net",
       },
       telegram: { name: "bot", miniAppUrl: "https://owner.example.ts.net/mini" },
     });
@@ -31,7 +32,7 @@ describe("publishedParts", () => {
       publishedParts({ engine, remote: { ...remote, publicUrl: "https://x.ts.net" } }, undefined),
     ]).toStrictEqual([
       { http, telegram: bot },
-      { http: { ...http, extraOrigins: [...engine.extraOrigins, "https://x.ts.net"] } },
+      { http: { ...http, publicOrigin: "https://x.ts.net" } },
     ]);
   });
 });

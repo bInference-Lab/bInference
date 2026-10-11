@@ -86,8 +86,11 @@ The engine listens on two transports. Both carry the same frames (section 3) ove
 | `GET /health`          | `200 {"state":"ready"}`, `200 {"state":"locked"}` or `503 {"state":"starting"}`                   |
 
 Browser requests to `/ws` and `/pair` must carry an `Origin` from the allowed list:
-`http://127.0.0.1:<port>`, `http://localhost:<port>` and the Tailscale `serve` origin from config.
-Any other origin fails with `auth.origin`.
+`http://127.0.0.1:<port>`, `http://localhost:<port>` and the Tailscale `serve` origin from config
+(`engine.extraOrigins`). The origin of `remote.publicUrl` opens `/ws` and the console's files only:
+pairing links always name `127.0.0.1`, so a request through the public address (its `Host`,
+`X-Forwarded-Host` or `Origin` names that host) gets 404 at `/pair` and `/health`. Any other origin
+fails with `auth.origin`.
 
 <a id="section-2-2"></a>
 

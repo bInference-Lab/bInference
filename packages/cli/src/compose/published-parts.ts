@@ -8,14 +8,16 @@ interface PublishedParts<Bot> {
     readonly host: string;
     readonly port: number;
     readonly extraOrigins: readonly string[];
+    readonly publicOrigin?: string;
   };
   readonly telegram?: Bot & { readonly miniAppUrl?: string };
 }
 
 /**
  * The engine's HTTP listener on loopback, and the owner's bot, as `remote.publicUrl` publishes the
- * engine's port: the HTTPS origin it names may reach the engine besides `engine.extraOrigins`, and
- * `/console` opens the Mini App at its `/mini`. Without it, nothing is added.
+ * engine's port: the HTTPS origin it names may open WebSockets and the console's files, never
+ * pairing or health, and `/console` opens the Mini App at its `/mini`. Without it, nothing is
+ * added.
  */
 export function publishedParts<Bot extends object>(
   config: Pick<BinferenceConfig, "engine" | "remote">,
@@ -23,9 +25,12 @@ export function publishedParts<Bot extends object>(
 ): PublishedParts<Bot> {
   const { engine, remote } = config;
   const origin = remote.publicUrl === undefined ? undefined : new URL(remote.publicUrl).origin;
-  const extraOrigins =
-    origin === undefined ? engine.extraOrigins : [...engine.extraOrigins, origin];
-  const http = { host: loopback, port: engine.port, extraOrigins };
+  const http = {
+    host: loopback,
+    port: engine.port,
+    extraOrigins: engine.extraOrigins,
+    ...(origin === undefined ? {} : { publicOrigin: origin }),
+  };
   if (bot === undefined) {
     return { http };
   }

@@ -21,7 +21,7 @@ import type { EngineFacts } from "./engine-facts.js";
 import { answerRequest, pathOf, refuseUpgrade } from "./http-routes.js";
 import { createIdempotentWrites } from "./idempotent-writes.js";
 import type { OperationHandlers, Transport } from "./operation-handlers.js";
-import { createOriginCheck } from "./origin-check.js";
+import { createOriginRules, type OriginRules } from "./origin-check.js";
 import { createPushHub, type PushEvent } from "./push-hub.js";
 import { type Connection, serveConnection } from "./serve-connection.js";
 import { defaultServerLimits, type ServerLimits } from "./server-limits.js";
@@ -36,6 +36,11 @@ export interface HttpListenOptions {
   readonly port: number;
   /** Browser origins allowed besides the two loopback ones (config `engine.extraOrigins`). */
   readonly extraOrigins?: readonly string[];
+  /**
+   * The HTTPS origin a tunnel publishes the listener at (config `remote.publicUrl`): it opens
+   * `/ws` and the console's files; `POST /pair` and `GET /health` answer 404 through it.
+   */
+  readonly publicOrigin?: string;
 }
 
 /** What a protocol server is built from. */
@@ -166,10 +171,17 @@ interface ServerState {
   readonly webSocketServer: WebSocketServer;
   /** Every open connection, at most `maxConnections`. */
   readonly connections: Set<Connection>;
-  readonly isAllowedOrigin: Cell<(origin: string | undefined) => boolean>;
+  readonly origins: Cell<OriginRules>;
   /** The shutdown once `close` was called. */
   readonly closing: Cell<Promise<void> | undefined>;
 }
+
+// Before the listener binds, no origin may connect or pair.
+const closedOrigins: OriginRules = {
+  isSocketOrigin: () => false,
+  isPairingOrigin: () => false,
+  isPublished: () => false,
+};
 
 function createState(options: ProtocolServerOptions): ServerState {
   const limits = { ...defaultServerLimits, ...options.limits };
@@ -210,7 +222,7 @@ function createState(options: ProtocolServerOptions): ServerState {
     context: { dispatch, signIn, pushes, engine, ids, clock, logger, limits },
     webSocketServer,
     connections: new Set(),
-    isAllowedOrigin: cell<(origin: string | undefined) => boolean>(() => false),
+    origins: cell<OriginRules>(closedOrigins),
     closing: cell<Promise<void> | undefined>(undefined),
   };
 }
@@ -236,7 +248,7 @@ function upgrade(state: ServerState, upgrading: Upgrade): void {
     const { origin } = request.headers;
     const peer = {
       transport,
-      isOriginAllowed: transport === "ipc" || state.isAllowedOrigin.get()(origin),
+      isOriginAllowed: transport === "ipc" || state.origins.get().isSocketOrigin(origin),
       ...(origin === undefined ? {} : { origin }),
     };
     const connection = serveConnection(webSocket, peer, state.context);
@@ -257,7 +269,7 @@ function createListener(state: ServerState, options: ListenerOptions): Server {
     answerRequest(request, response, {
       ...options.browser,
       state: state.context.engine.state,
-      isAllowedOrigin: (origin) => state.isAllowedOrigin.get()(origin),
+      origins: () => state.origins.get(),
       signal: state.lifetime.signal,
     }),
   );
@@ -313,7 +325,9 @@ export function createProtocolServer(options: ProtocolServerOptions): ProtocolSe
       checkBind({ host: http.host, hasAuth: options.auth !== undefined });
       const address = await listen(listeners.http, http, signal);
       const extraOrigins = http.extraOrigins ?? [];
-      state.isAllowedOrigin.set(createOriginCheck({ port: address.port, extraOrigins }));
+      const publicOrigin =
+        http.publicOrigin === undefined ? {} : { publicOrigin: http.publicOrigin };
+      state.origins.set(createOriginRules({ port: address.port, extraOrigins, ...publicOrigin }));
       options.logger.info("server.listening");
       return address;
     },

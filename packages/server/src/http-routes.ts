@@ -3,6 +3,7 @@ import type { Duplex } from "node:stream";
 import type { DevicePairing } from "@binference/engine/access";
 import type { EngineState } from "@binference/protocol";
 import { answerConsole, type ConsoleFiles } from "./console-route.js";
+import type { OriginRules, RequestNames } from "./origin-check.js";
 import { answerPair } from "./pair-route.js";
 
 /** The path of a request, `/` when it has none. */
@@ -15,10 +16,26 @@ export function pathOf(request: IncomingMessage): string {
 
 const plain = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
 
+function headerOf(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+// The names a request carries of where it was sent: by the browser, and by a proxy before us.
+function namesOf(request: IncomingMessage): RequestNames {
+  const { host, origin } = request.headers;
+  const forwardedHost = headerOf(request.headers["x-forwarded-host"]);
+  return {
+    ...(host === undefined ? {} : { host }),
+    ...(origin === undefined ? {} : { origin }),
+    ...(forwardedHost === undefined ? {} : { forwardedHost }),
+  };
+}
+
 /** What the plain HTTP routes answer from. */
 export interface HttpRoutesContext {
   readonly state: () => EngineState;
-  readonly isAllowedOrigin: (origin: string | undefined) => boolean;
+  /** Which origins may pair, and whether a request came through the public address. */
+  readonly origins: () => OriginRules;
   /** Pairs console devices at `POST /pair`; without it the path is 404. */
   readonly pairing?: DevicePairing;
   /** The console's built files; without them `/` and `/mini` are 404. */
@@ -47,7 +64,7 @@ function answerHealth(
  * {"state":"locked"}` for an engine that serves calls but signs nothing yet, or
  * `503 {"state":"starting"}`. `POST /pair` pairs a console device, and every other `GET` the
  * console's files serve (`answerConsole`). A wrong method on `/health` or `/pair` is 405, and
- * anything else 404.
+ * anything else 404. Through the public address, `/health` and `/pair` are 404.
  */
 export function answerRequest(
   request: IncomingMessage,
@@ -55,13 +72,20 @@ export function answerRequest(
   context: HttpRoutesContext,
 ): void {
   const path = pathOf(request);
+  const origins = context.origins();
+  // Pairing and health stay on this machine: through the public address they do not exist.
+  const isLocalOnly = path === "/health" || path === "/pair";
+  if (isLocalOnly && origins.isPublished(namesOf(request))) {
+    response.writeHead(404, plain).end();
+    return;
+  }
   if (path === "/health") {
     answerHealth(request, response, context.state);
     return;
   }
-  const { pairing, consoleFiles } = context;
+  const { pairing, consoleFiles, signal } = context;
   if (path === "/pair" && pairing !== undefined) {
-    answerPair(request, response, { ...context, pairing });
+    answerPair(request, response, { pairing, isAllowedOrigin: origins.isPairingOrigin, signal });
     return;
   }
   const isConsole =

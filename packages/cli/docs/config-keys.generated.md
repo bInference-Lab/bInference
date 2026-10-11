@@ -143,7 +143,7 @@ Remote access.
 
 - `remote.mini`: Publishes the Mini App over Tailscale serve. Takes true or false. Default: `false`. Variable: `BINFERENCE_REMOTE__MINI`.
 - `remote.webhooks`: Publishes the webhook path over Tailscale funnel. Takes true or false. Default: `false`. Variable: `BINFERENCE_REMOTE__WEBHOOKS`.
-- `remote.publicUrl`: The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may reach the engine. Takes an HTTPS address with no path, such as `https://owner.example.ts.net`. Default: none. Variable: `BINFERENCE_REMOTE__PUBLIC_URL`.
+- `remote.publicUrl`: The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may open the engine's socket and console, never pairing; it must serve nothing else. Takes an HTTPS address with no path, such as `https://owner.example.ts.net`. Default: none. Variable: `BINFERENCE_REMOTE__PUBLIC_URL`.
 
 ## `backups`
 

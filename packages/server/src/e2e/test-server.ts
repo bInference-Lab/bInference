@@ -82,6 +82,8 @@ export interface TestServerOptions {
   readonly miniApp?: MiniAppAuth;
   /** Browser origins allowed besides the loopback ones, such as a Tailscale `serve` origin. */
   readonly extraOrigins?: readonly string[];
+  /** The origin a tunnel publishes the listener at, which opens `/ws` only. */
+  readonly publicOrigin?: string;
   /** Wraps the access store the server signs in with, such as to hold a write open. */
   readonly wrapAccess?: (access: AccessStore) => AccessStore;
   /** Wraps the clock the server reads, such as to hold its timers back. */
@@ -141,6 +143,13 @@ function pairingOn(parts: {
   return { pairing, pairingPushes };
 }
 
+// The HTTP listener on loopback, with the origins the test lets in.
+function httpOf(options: TestServerOptions) {
+  const { extraOrigins = [], publicOrigin } = options;
+  const published = publicOrigin === undefined ? {} : { publicOrigin };
+  return { host: "127.0.0.1", port: 0, extraOrigins, ...published };
+}
+
 // The parts a test may change: the console's files, the limits and the clock the server reads.
 function optionalPartsOf(options: TestServerOptions, clock: ManualClock) {
   return {
@@ -167,7 +176,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
   const random = createSeededRandom(7);
   const { pairing, pairingPushes } = pairingOn({ access, clock, random });
   const server = createProtocolServer({
-    http: { host: "127.0.0.1", port: 0, extraOrigins: options.extraOrigins ?? [] },
+    http: httpOf(options),
     auth: authOf(access, options),
     pairing,
     idempotency,
