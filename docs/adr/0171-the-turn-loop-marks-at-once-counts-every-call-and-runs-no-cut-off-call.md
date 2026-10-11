@@ -1,6 +1,6 @@
 # 0171. The turn loop marks at once, counts every call, and runs no cut-off call
 
-Status: Accepted
+Status: Amended by 0172
 
 Accepted by the owner on 2026-10-12.
 
