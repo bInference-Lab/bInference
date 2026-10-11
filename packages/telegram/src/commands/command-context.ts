@@ -20,6 +20,8 @@ export interface CommandContext {
   readonly words: (key: string, values?: MessageValues) => string;
   /** The numeric Telegram id of the owner who sent the command. */
   readonly senderId: number;
+  /** The Mini App's HTTPS URL, which `/console` opens; none when no public address is set. */
+  readonly miniAppUrl?: string;
   readonly signal: AbortSignal;
   /**
    * Sends text to the chat the command came from, split into messages at line breaks; the last

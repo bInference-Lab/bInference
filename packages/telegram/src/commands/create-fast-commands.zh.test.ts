@@ -33,6 +33,7 @@ describe("the fast commands in Chinese", () => {
       ["paper", "将 Agent 切换回模拟模式"],
       ["status", "binference 的状态、Agent、冻结情况和健康状况"],
       ["limits", "Agent 的限额"],
+      ["console", "在 Telegram 中打开控制台"],
       ["lang", "binference 与你沟通使用的语言"],
       ["help", "所有命令，每行一个"],
     ]);

@@ -12,6 +12,7 @@ import { runHalve, runLimits, runPaper } from "./agent-commands.js";
 import { commandCallbackSchema } from "./command-callback.schema.js";
 import type { CommandContext, CommandRun, PressContext } from "./command-context.js";
 import { commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
+import { runConsole } from "./console-command.js";
 import { runLang, runLanguage } from "./lang-command.js";
 import { runOrders } from "./orders-command.js";
 import { runBalance, runPositions } from "./portfolio-commands.js";
@@ -50,6 +51,11 @@ export interface FastCommandsOptions {
   readonly chains: ChainRegistry;
   /** The owner's language and timezone as they are now, read for each command. */
   readonly display: () => { readonly locale: MessageLocale; readonly timeZone: string };
+  /**
+   * The Mini App's address, `/mini` on the HTTPS origin the owner publishes the engine's port at;
+   * without one, `/console` says how to set it.
+   */
+  readonly miniAppUrl?: string;
   readonly logger: Logger;
 }
 
@@ -70,6 +76,7 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   paper: runPaper,
   status: runStatus,
   limits: runLimits,
+  console: runConsole,
   lang: runLang,
   help: runHelp,
 };
@@ -125,6 +132,7 @@ function contextOf(parts: Parts, asker: Asker): CommandContext {
     // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
     words: (key: string, values?: MessageValues) => formatter.message(key, values),
     senderId,
+    ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
     signal,
     say: async (text, sayOptions) => bot.say(target, text, { signal, ...sayOptions }),
   };

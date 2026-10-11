@@ -49,6 +49,8 @@ export const waitingSwap: CardShowing = {
 export interface CommandBotOptions {
   readonly locale?: MessageLocale;
   readonly waiting?: readonly CardShowing[];
+  /** The Mini App's address `/console` opens; none when left out. */
+  readonly miniAppUrl?: string;
 }
 
 /** The owner's bot with fast commands over the fake Bot API, and what a test drives it by. */
@@ -102,6 +104,7 @@ export async function startCommandBot(
     waiting: async () => Promise.resolve(options.waiting ?? []),
     chains: testChains(),
     display,
+    ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
     logger,
   });
   const chat: OwnerUpdate[] = [];

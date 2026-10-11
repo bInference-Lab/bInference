@@ -11,6 +11,7 @@ export const fastCommandNames = [
   "paper",
   "status",
   "limits",
+  "console",
   "lang",
   "help",
 ] as const;

@@ -4,8 +4,13 @@ import { unlessGone } from "../api/unless-gone.js";
 import { splitText } from "../split/split-text.js";
 import type { ReplyTarget } from "./decide-update.js";
 
-/** Rows of inline buttons, each with its text and the callback data a press carries. */
-export type ButtonRows = readonly (readonly { readonly text: string; readonly data: string }[])[];
+/** An inline button: a press carries its callback data, or opens the Mini App at an HTTPS URL. */
+type Button =
+  | { readonly text: string; readonly data: string }
+  | { readonly text: string; readonly webApp: string };
+
+/** Rows of inline buttons. */
+export type ButtonRows = readonly (readonly Button[])[];
 
 /** How a plain-text message goes out: the message it answers, and its buttons. */
 interface SendOptions {
@@ -52,7 +57,11 @@ export interface BotCalls {
 /** Binds the ingress's and the fast commands' Bot API calls to a grammY `Api` for the bot. */
 function markupOf(buttons: ButtonRows | undefined) {
   const inlineKeyboard = (buttons ?? []).map((row) =>
-    row.map((button) => ({ text: button.text, callback_data: button.data })),
+    row.map((button) =>
+      "webApp" in button
+        ? { text: button.text, web_app: { url: button.webApp } }
+        : { text: button.text, callback_data: button.data },
+    ),
   );
   return { reply_markup: { inline_keyboard: inlineKeyboard } };
 }
