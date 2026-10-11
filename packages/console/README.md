@@ -11,13 +11,13 @@ the built files from memory at `/`, and at `/mini` for the Telegram Mini App.
 
 The package exports its build only.
 
-| Path              | What it holds                                     |
-| ----------------- | ------------------------------------------------- |
-| `dist/index.html` | The page the engine serves at `/` and `/mini`     |
-| `dist/assets/*`   | The script, the stylesheet and the fonts, by hash |
-| `dist/hermes.svg` | The Hermes mark of the sign-in page               |
-| `dist/mark.svg`   | The mark, as the page's icon                      |
-| `dist/*-ofl.txt`  | The licence of the shipped font                   |
+| Path               | What it holds                                                    |
+| ------------------ | ---------------------------------------------------------------- |
+| `dist/index.html`  | The page the engine serves at `/` and `/mini`                    |
+| `dist/assets/*`    | The script, the stylesheet and the fonts, by hash                |
+| `dist/hermes.webp` | The Hermes mark of the sign-in page, 357 by 480 pixels, lossless |
+| `dist/mark.svg`    | The mark, as the page's icon                                     |
+| `dist/*-ofl.txt`   | The licence of the shipped font                                  |
 
 ## Example
 

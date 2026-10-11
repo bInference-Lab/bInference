@@ -31,7 +31,14 @@ export function SignInScreen(props: {
   return (
     <main className="flex min-h-svh items-center justify-center px-4 py-10">
       <section className="flex w-full max-w-md flex-col items-center gap-6 text-center">
-        <img src="/hermes.svg" alt="" aria-hidden="true" className="h-40 w-auto" />
+        <img
+          src="/hermes.webp"
+          alt=""
+          aria-hidden="true"
+          width={357}
+          height={480}
+          className="h-40 w-auto"
+        />
         <BrandLockup className="h-8 w-auto text-foreground" />
         <h1 className="text-lg font-semibold">{text("console.signIn.title")}</h1>
         {state.kind === "signed_out" ? (
