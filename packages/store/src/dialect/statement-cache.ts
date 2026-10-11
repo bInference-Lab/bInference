@@ -1,192 +1,180 @@
-// Adapted from MIT-licensed code; NOTICES.md holds its notice. Changed: the Kysely and
-// query-error maps, dispose callbacks and the global singleton are left out; symbol keys are
-// renamed; long functions are split.
+// Prepared statements kept per connection, so SQL that repeats is compiled by SQLite only once.
+
 import type { DatabaseSync, SQLInputValue, StatementSync } from "node:sqlite";
 
-// Cached statements retain their database. The wrappers installed below clear the cache before
-// close, so statements release their native back references.
-const statementCacheKey: unique symbol = Symbol.for("binference.store.statementCache");
-const invalidationKey: unique symbol = Symbol.for("binference.store.statementInvalidation");
-const cacheEnabledKey: unique symbol = Symbol.for("binference.store.statementCacheEnabled");
-const authorizerActiveKey: unique symbol = Symbol.for("binference.store.authorizerActive");
-// Up to 4 MiB of SQL plus bindings per enabled connection.
-const statementCacheCapacity = 64;
-const statementCacheEntryBytes = 64 * 1024;
+/** How many prepared statements one connection keeps. */
+const maxStatements = 64;
+/** How many SQL texts one connection remembers as run once, waiting for a second run. */
+const maxCandidates = 64;
+/**
+ * The largest SQL text plus bound text and bytes a kept statement may hold, in bytes. SQLite keeps
+ * the last bound values with the statement, so a large value would stay in memory with it.
+ */
+const maxKeptBytes = 64 * 1024;
 
-type SqliteAuthorizer = Parameters<DatabaseSync["setAuthorizer"]>[0];
+type Authorizer = Parameters<DatabaseSync["setAuthorizer"]>[0];
 
-interface StatementCache {
-  readonly statements: Map<string, StatementSync>;
+/** The statements of one connection, and whether they may be used now. */
+interface Statements {
+  /** Kept statements by SQL text, least recently used first. */
+  readonly kept: Map<string, StatementSync>;
+  /** SQL texts that ran once and are kept if they run again, oldest first. */
   readonly candidates: Set<string>;
-  readonly active: WeakSet<StatementSync>;
+  /** Statements running right now; a nested run of the same SQL gets a statement of its own. */
+  readonly running: Set<StatementSync>;
+  /** Set while an authorizer is installed: it must see every statement as it is prepared. */
+  authorized: boolean;
 }
 
-type StatementCacheOwner = DatabaseSync & {
-  [statementCacheKey]?: StatementCache;
-  [invalidationKey]?: true;
-  [cacheEnabledKey]?: true;
-  [authorizerActiveKey]?: boolean;
-};
-
-function clearStatementCache(owner: StatementCacheOwner): void {
-  Reflect.deleteProperty(owner, statementCacheKey);
+/** SQL text with the values it binds. */
+export interface BoundSql {
+  readonly sql: string;
+  readonly parameters: readonly SQLInputValue[];
 }
 
-// Authorization is decided while SQL compiles, so every change drops every statement.
-function wrapAuthorizer(owner: StatementCacheOwner): void {
-  const setAuthorizer = owner.setAuthorizer.bind(owner);
-  Object.defineProperty(owner, "setAuthorizer", {
-    configurable: true,
-    writable: true,
-    value(this: StatementCacheOwner, callback: SqliteAuthorizer): void {
-      setAuthorizer(callback);
-      this[authorizerActiveKey] = callback !== null;
-      clearStatementCache(this);
-    },
-  });
-}
+const connections = new WeakMap<DatabaseSync, Statements>();
 
-// Node finalizes every statement before it deserializes, even when that fails.
-function wrapDeserialize(owner: StatementCacheOwner): void {
-  const deserialize = owner.deserialize.bind(owner);
-  Object.defineProperty(owner, "deserialize", {
-    configurable: true,
-    writable: true,
-    value(this: StatementCacheOwner, ...values: Parameters<DatabaseSync["deserialize"]>): void {
-      try {
-        deserialize(...values);
-      } finally {
-        clearStatementCache(this);
-      }
-    },
-  });
-}
-
-function wrapClose(owner: StatementCacheOwner): void {
-  for (const method of ["close", Symbol.dispose] as const) {
-    const dispose = owner[method].bind(owner);
-    Object.defineProperty(owner, method, {
-      configurable: true,
-      writable: true,
-      value(this: StatementCacheOwner): void {
-        clearStatementCache(this);
-        dispose();
-      },
-    });
-  }
-}
-
-function installStatementInvalidation(owner: StatementCacheOwner): void {
-  if (owner[invalidationKey] === true) {
-    return;
-  }
-  wrapAuthorizer(owner);
-  wrapDeserialize(owner);
-  wrapClose(owner);
-  Object.defineProperty(owner, invalidationKey, { configurable: true, value: true });
+function forget(statements: Statements): void {
+  statements.kept.clear();
+  statements.candidates.clear();
 }
 
 /**
- * Keeps up to 64 prepared statements on this connection, each admitted on its second use. Call it
- * once, right after the connection opens and before any authorizer is set.
+ * Sets up the statements of a connection, and wraps the connection methods after which a kept
+ * statement could act wrongly: `setAuthorizer` (an authorizer only sees statements as they are
+ * prepared), `deserialize` (the content is replaced) and `close` (the statements end with it).
+ */
+function watchConnection(database: DatabaseSync): Statements {
+  const statements: Statements = {
+    kept: new Map(),
+    candidates: new Set(),
+    running: new Set(),
+    authorized: false,
+  };
+  const setAuthorizer = database.setAuthorizer.bind(database);
+  const deserialize = database.deserialize.bind(database);
+  const close = database.close.bind(database);
+  Object.defineProperties(database, {
+    setAuthorizer: {
+      configurable: true,
+      value: (callback: Authorizer): void => {
+        forget(statements);
+        statements.authorized = callback !== null;
+        setAuthorizer(callback);
+      },
+    },
+    deserialize: {
+      configurable: true,
+      value: (...args: Parameters<DatabaseSync["deserialize"]>): void => {
+        forget(statements);
+        deserialize(...args);
+      },
+    },
+    close: {
+      configurable: true,
+      value: (): void => {
+        forget(statements);
+        close();
+      },
+    },
+  });
+  return statements;
+}
+
+/**
+ * Lets {@link executeWithCachedStatement} keep prepared statements for this connection. Call it
+ * once, right after the connection opens.
  */
 export function enableStatementCache(database: DatabaseSync): void {
-  const owner: StatementCacheOwner = database;
-  installStatementInvalidation(owner);
-  owner[cacheEnabledKey] = true;
+  if (!connections.has(database)) {
+    connections.set(database, watchConnection(database));
+  }
 }
 
-function fitsStatementCache(sql: string, parameters: readonly SQLInputValue[]): boolean {
-  let bytes = Buffer.byteLength(sql);
-  for (const parameter of parameters) {
-    if (typeof parameter === "string") {
-      // UTF-8 is never shorter than UTF-16 code units, so an oversized value stops here.
-      if (parameter.length > statementCacheEntryBytes - bytes) {
-        return false;
-      }
-      bytes += Buffer.byteLength(parameter);
-    } else if (ArrayBuffer.isView(parameter)) {
-      bytes += parameter.byteLength;
+function byteSize(value: SQLInputValue): number {
+  if (typeof value === "string") {
+    return Buffer.byteLength(value, "utf8");
+  }
+  return ArrayBuffer.isView(value) ? value.byteLength : 8;
+}
+
+function smallEnoughToKeep(sql: string, parameters: readonly SQLInputValue[]): boolean {
+  let total = Buffer.byteLength(sql, "utf8");
+  for (const value of parameters) {
+    total += byteSize(value);
+    if (total > maxKeptBytes) {
+      return false;
     }
   }
-  return bytes <= statementCacheEntryBytes;
+  return total <= maxKeptBytes;
 }
 
-function cacheOf(owner: StatementCacheOwner): StatementCache {
-  const existing = owner[statementCacheKey];
-  if (existing !== undefined) {
-    return existing;
-  }
-  const cache: StatementCache = {
-    statements: new Map(),
-    candidates: new Set(),
-    active: new WeakSet(),
-  };
-  Object.defineProperty(owner, statementCacheKey, { configurable: true, value: cache });
-  return cache;
-}
-
-function dropOldest<T>(entries: Map<T, StatementSync> | Set<T>): void {
+function dropOldest(entries: Map<string, StatementSync> | Set<string>): void {
   const oldest = entries.keys().next();
   if (oldest.done !== true) {
     entries.delete(oldest.value);
   }
 }
 
-// Admits SQL on its second use, so one-shot SQL with a varying placeholder count never fills the
-// cache. A statement in use by an outer call is never handed out again: a SQLite callback can
-// re-enter here synchronously, and resetting the outer statement would corrupt its read.
-function statementFor(cache: StatementCache, database: DatabaseSync, sql: string): StatementSync {
-  const cached = cache.statements.get(sql);
-  if (cached !== undefined && !cache.active.has(cached)) {
-    cache.statements.delete(sql);
-    cache.statements.set(sql, cached);
-    return cached;
+/**
+ * The statement to run `sql` with: the kept one when it is idle, otherwise a new one, which is
+ * kept when this is the SQL's second run. SQL that may not be kept always gets a new statement.
+ */
+function pickStatement(
+  database: DatabaseSync,
+  statements: Statements,
+  { sql, parameters }: BoundSql,
+): StatementSync {
+  const keepable = !statements.authorized && smallEnoughToKeep(sql, parameters);
+  const kept = keepable ? statements.kept.get(sql) : undefined;
+  if (kept !== undefined && !statements.running.has(kept)) {
+    // Move it to the most recently used end.
+    statements.kept.delete(sql);
+    statements.kept.set(sql, kept);
+    return kept;
   }
   const statement = database.prepare(sql);
-  if (cached === undefined && cache.candidates.delete(sql)) {
-    cache.statements.set(sql, statement);
-    if (cache.statements.size > statementCacheCapacity) {
-      dropOldest(cache.statements);
+  if (!keepable || kept !== undefined) {
+    return statement;
+  }
+  if (!statements.candidates.delete(sql)) {
+    statements.candidates.add(sql);
+    if (statements.candidates.size > maxCandidates) {
+      dropOldest(statements.candidates);
     }
-  } else if (cached === undefined) {
-    cache.candidates.add(sql);
-    if (cache.candidates.size > statementCacheCapacity) {
-      dropOldest(cache.candidates);
-    }
+    return statement;
+  }
+  statements.kept.set(sql, statement);
+  if (statements.kept.size > maxStatements) {
+    dropOldest(statements.kept);
   }
   return statement;
 }
 
-/** SQL and the values it binds. */
-export interface BoundSql {
-  readonly sql: string;
-  readonly parameters: readonly SQLInputValue[];
-}
-
 /**
- * Runs `execute` with a prepared statement for the SQL, from the cache when the connection
- * enabled it. `execute` must finish with the statement before it returns.
+ * Runs `execute` with a prepared statement for `sql`. A connection set up with
+ * {@link enableStatementCache} prepares SQL that runs a second time once and reuses it after;
+ * statements whose text and bound values are large, and every statement while an authorizer is
+ * installed, are prepared for the one run.
  */
 export function executeWithCachedStatement<Output>(
   database: DatabaseSync,
-  { sql, parameters }: BoundSql,
+  bound: BoundSql,
   execute: (statement: StatementSync) => Output,
 ): Output {
-  const owner: StatementCacheOwner = database;
-  if (
-    owner[cacheEnabledKey] !== true ||
-    owner[authorizerActiveKey] === true ||
-    !fitsStatementCache(sql, parameters)
-  ) {
-    return execute(database.prepare(sql));
+  const statements = connections.get(database);
+  if (statements === undefined || !database.isOpen) {
+    // A closed connection makes prepare() throw its "not open" error.
+    if (statements !== undefined) {
+      forget(statements);
+    }
+    return execute(database.prepare(bound.sql));
   }
-  const cache = cacheOf(owner);
-  const statement = statementFor(cache, database, sql);
-  cache.active.add(statement);
+  const statement = pickStatement(database, statements, bound);
+  statements.running.add(statement);
   try {
     return execute(statement);
   } finally {
-    cache.active.delete(statement);
+    statements.running.delete(statement);
   }
 }
