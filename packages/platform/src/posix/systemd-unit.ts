@@ -1,52 +1,62 @@
-// Adapted from MIT-licensed code (the unit policy lines); NOTICES.md holds its notice.
+// The systemd user unit that runs a service in the owner's session on Linux.
 import type { ServiceDefinition } from "../service/service-definition.js";
 
-/** The unit of a service in the owner's systemd user manager: `binference-<name>.service`. */
+/** The file name of the service's unit, under the user's unit folder. */
 export function systemdUnitName(name: string): string {
   return `binference-${name}.service`;
 }
 
-// systemd expands `%` specifiers in every value below, so a literal `%` is written twice.
-const literal = (value: string): string => value.replaceAll("%", "%%");
+/** systemd expands `%` specifiers in most settings (systemd.unit(5)); `%%` is a literal `%`. */
+function withoutSpecifiers(text: string): string {
+  return text.replaceAll("%", "%%");
+}
 
-// Each word of a command line goes in double quotes; inside them a backslash and a quote are
-// escaped, and `$` is doubled so systemd expands no variable.
-function quoteWord(word: string): string {
-  const escaped = literal(word)
-    .replaceAll("\\", "\\\\")
-    .replaceAll('"', '\\"')
-    .replaceAll("$", () => "$$");
-  return `"${escaped}"`;
+const execEscapes: Readonly<Record<string, string>> = {
+  "\\": "\\\\",
+  '"': '\\"',
+  "%": "%%",
+  $: "$$",
+};
+
+/**
+ * One word of a command line in double quotes, as systemd.service(5) reads it: a backslash and a
+ * double quote are escaped, `%%` is a literal `%` and `$$` a literal `$`, so systemd neither
+ * splits the word nor expands specifiers or environment variables in it.
+ */
+function execWord(word: string): string {
+  return `"${word.replaceAll(/[\\"%$]/g, (character) => execEscapes[character] ?? character)}"`;
 }
 
 /**
- * Renders the systemd user unit of a service. `WantedBy=default.target` starts it when the owner's
- * user manager starts, at login; it restarts after an exit with an error, appends its output to the
- * log file, creates its files owner-only and never dumps core, since a dump of the engine could
- * hold the Privy app secret.
+ * The unit of the service, for `systemctl --user`: started with the user's default target, run
+ * again 10 seconds after an exit with an error, stopped with SIGTERM to the main process and
+ * SIGKILL to all of it after the stop timeout (rounded up to whole seconds), with new files the
+ * owner's alone, no core files, no input, and output and errors appended to the log file.
  */
 export function renderSystemdUnit(definition: ServiceDefinition): string {
-  const commandLine = [definition.program, ...definition.args].map(quoteWord).join(" ");
-  const log = literal(definition.logFile);
-  return [
-    "[Unit]",
-    `Description=${literal(definition.description)}`,
-    "",
-    "[Service]",
-    `ExecStart=${commandLine}`,
-    `WorkingDirectory=${literal(definition.workingFolder)}`,
-    "Restart=on-failure",
-    "RestartSec=10",
-    `TimeoutStopSec=${String(Math.ceil(definition.stopTimeoutMs / 1000))}`,
-    "KillMode=mixed",
-    "UMask=0077",
-    "LimitCORE=0",
-    "StandardInput=null",
-    `StandardOutput=append:${log}`,
-    `StandardError=append:${log}`,
-    "",
-    "[Install]",
-    "WantedBy=default.target",
-    "",
-  ].join("\n");
+  const command = [definition.program, ...definition.args].map((word) => execWord(word));
+  const log = `append:${withoutSpecifiers(definition.logFile)}`;
+  const sections: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
+    Unit: [["Description", withoutSpecifiers(definition.description)]],
+    Service: [
+      ["ExecStart", command.join(" ")],
+      ["WorkingDirectory", withoutSpecifiers(definition.workingFolder)],
+      ["Restart", "on-failure"],
+      ["RestartSec", "10"],
+      ["TimeoutStopSec", String(Math.ceil(definition.stopTimeoutMs / 1000))],
+      ["KillMode", "mixed"],
+      ["UMask", "0077"],
+      ["LimitCORE", "0"],
+      ["StandardInput", "null"],
+      ["StandardOutput", log],
+      ["StandardError", log],
+    ],
+    Install: [["WantedBy", "default.target"]],
+  };
+  return Object.entries(sections)
+    .map(
+      ([section, settings]) =>
+        `[${section}]\n${settings.map(([key, value]) => `${key}=${value}\n`).join("")}`,
+    )
+    .join("\n");
 }
