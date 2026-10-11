@@ -20,6 +20,7 @@ import {
   testCallers,
 } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
+import type { AgentStore } from "../ports.js";
 
 const live = { signal: new AbortController().signal };
 // The Mini App holds `confirm` and `loosen`; these callers hold one of the two.
@@ -69,6 +70,21 @@ function changeNotice(limit: string, when?: number) {
 async function proposedState(test: TestEngine): Promise<string> {
   const proposed = await test.engine.handlers["intent/propose"](testCall(testSwap()));
   return expectOk(proposed).state;
+}
+
+// An agent store whose limit writes another write beats `times` times first.
+function staleLimits(times: number): (store: AgentStore) => AgentStore {
+  const left = { times };
+  return (store) => ({
+    ...store,
+    async setLimits(change, options) {
+      if (left.times === 0) {
+        return store.setLimits(change, options);
+      }
+      left.times -= 1;
+      return err("stale");
+    },
+  });
 }
 
 async function withWallet(ceiling: WalletRecord["ceiling"]["policy"]): Promise<TestEngine> {
@@ -151,6 +167,22 @@ describe("a stricter limit", () => {
     );
   });
 
+  it("takes the health factor, card expiries and re-quote wait by their protocol names", async () => {
+    const test = await startTestEngine();
+    const changes = {
+      minHealthFactorBps: 16_000,
+      cardTradeExpirySeconds: 30,
+      cardOtherExpirySeconds: 300,
+      requoteAfterSeconds: 5,
+    };
+
+    const set = expectOk(await setLimits(test, changes, braking));
+
+    expect(set).toMatchObject(changes);
+    expect(set.pending).toBeUndefined();
+    expect(await getLimits(test)).toMatchObject(changes);
+  });
+
   it("changes a gas reserve only on the chain it names", async () => {
     const test = await startTestEngine();
 
@@ -159,6 +191,27 @@ describe("a stricter limit", () => {
 
     expect(set.gasReserve).toStrictEqual({ "fake:1": 10n ** 16n });
     expect(notices(test)).toStrictEqual([changeNotice("gasReserve")]);
+  });
+});
+
+describe("a limit write another write beats", () => {
+  it("reads the limits again and applies the change", async () => {
+    const test = await startTestEngine({ agents: staleLimits(2) });
+
+    const set = expectOk(await setLimits(test, { perTradeUsdMicros: lower }, braking));
+
+    expect(set.perTradeUsdMicros).toBe(lower);
+    expect((await getLimits(test)).perTradeUsdMicros).toBe(lower);
+  });
+
+  it("gives up once every attempt lost, and keeps the limits", async () => {
+    const test = await startTestEngine({ agents: staleLimits(1_000) });
+
+    await expect(setLimits(test, { perTradeUsdMicros: lower }, braking)).rejects.toMatchObject({
+      code: "engine.agent_stale",
+    });
+    expect((await getLimits(test)).perTradeUsdMicros).toBe(testLimits.perTradeUsdMicros);
+    expect(notices(test)).toStrictEqual([]);
   });
 });
 
