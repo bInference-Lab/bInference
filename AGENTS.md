@@ -156,6 +156,10 @@ Skills live in `.agents/skills/`. Run the first two on every change, in this ord
 - `review-tests`: judges whether a test earns its place.
 - `speed-up-tests`: measures a slow test and fixes the cause.
 - `debug-failure`: finds a failure's cause from the evidence at its boundary.
+- `test-telegram`: proves what the owner sees in Telegram, on the synthetic and a live bot.
+- `tune-ci`: changes a workflow without making CI slower, costlier or less safe.
+- `vet-release`: checks a release against its checklist, npm and a fresh install.
+- `handle-security-report`: weighs a security report or a leaked secret and drafts the answer.
 
 ## Before you finish
 
