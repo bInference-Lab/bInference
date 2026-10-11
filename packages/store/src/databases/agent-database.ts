@@ -1,4 +1,10 @@
 import { raiseFenceTask } from "../chats/fence-tasks.js";
+import {
+  addQueuedTask,
+  dropQueuedTask,
+  takeQueuedTask,
+  waitingTask,
+} from "../chats/queue-tasks.js";
 import { closeSessionTask, getSessionTask, openSessionTask } from "../chats/session-tasks.js";
 import { appendEventsTask, listEventsTask } from "../chats/transcript-tasks.js";
 import {
@@ -10,6 +16,12 @@ import {
   unfinishedTurnsTask,
 } from "../chats/turn-tasks.js";
 import { agentMigrations } from "../migrations/agent/agent-migrations.js";
+import {
+  deleteNoteTask,
+  listNotesTask,
+  searchNotesTask,
+  writeNoteTask,
+} from "../notes/note-tasks.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
 /** `agent.sqlite`: sessions, transcripts and notes. `synchronous=NORMAL`. */
@@ -30,6 +42,14 @@ export const agentDatabase: DatabaseDefinition = {
     unfinishedTurnsTask,
     appendEventsTask,
     listEventsTask,
+    addQueuedTask,
+    waitingTask,
+    takeQueuedTask,
+    dropQueuedTask,
+    writeNoteTask,
+    deleteNoteTask,
+    listNotesTask,
+    searchNotesTask,
   ],
 };
 

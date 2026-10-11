@@ -1,6 +1,8 @@
+import type { QueuedMessage } from "../chats/queued-message.js";
 import type { SessionRecord } from "../chats/session-record.js";
 import type { TranscriptEvent } from "../chats/transcript-event.js";
 import type { TurnRecord } from "../chats/turn-record.js";
+import type { NoteRecord } from "../notes/note-record.js";
 
 /** A number that only grows. */
 interface Counter {
@@ -31,6 +33,9 @@ export interface MemoryAgentDatabase {
   readonly events: TranscriptEvent[];
   /** The last number given to an event; numbers are never reused, as SQLite's are not. */
   readonly eventIds: Counter;
+  readonly queue: Map<string, QueuedMessage>;
+  readonly notes: Map<number, NoteRecord>;
+  readonly noteIds: Counter;
 }
 
 /** Creates an empty in-memory agent database, with no fence raised yet. */
@@ -41,6 +46,9 @@ export function createMemoryAgentDatabase(): MemoryAgentDatabase {
     turns: new Map(),
     events: [],
     eventIds: createCounter(),
+    queue: new Map(),
+    notes: new Map(),
+    noteIds: createCounter(),
   };
 }
 

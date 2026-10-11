@@ -1,7 +1,16 @@
+export { createSqliteChatQueueStore } from "./chats/sqlite-chat-queue-store.js";
 export { createSqliteSessionStore } from "./chats/sqlite-session-store.js";
 export { createSqliteTranscriptStore } from "./chats/sqlite-transcript-store.js";
 export { createSqliteWriterFence } from "./chats/sqlite-writer-fence.js";
 export type { Fenced, FenceRefusal } from "./chats/fenced.js";
+export type {
+  InboxKind,
+  QueueDraft,
+  QueueDrop,
+  QueuedMessage,
+  QueueTake,
+  WaitingQuery,
+} from "./chats/queued-message.js";
 export type { SessionClose, SessionDraft, SessionRecord } from "./chats/session-record.js";
 export type {
   EventAppend,
@@ -12,7 +21,22 @@ export type {
   TranscriptEvent,
 } from "./chats/transcript-event.js";
 export type { TurnDraft, TurnEnd, TurnOutcome, TurnRecord, TurnRef } from "./chats/turn-record.js";
-export type { SessionStore, TranscriptStore, WriterFence } from "./ports.js";
+export { createSqliteNoteStore } from "./notes/sqlite-note-store.js";
+export type {
+  NoteDelete,
+  NoteDraft,
+  NoteList,
+  NoteOrigin,
+  NoteRecord,
+  NoteSearch,
+} from "./notes/note-record.js";
+export type {
+  ChatQueueStore,
+  NoteStore,
+  SessionStore,
+  TranscriptStore,
+  WriterFence,
+} from "./ports.js";
 export { createSqliteAccessStore } from "./access/sqlite-access-store.js";
 export { createSqliteAgentStore } from "./agents/sqlite-agent-store.js";
 export { createSqliteConfigJournal } from "./audit/sqlite-config-journal.js";

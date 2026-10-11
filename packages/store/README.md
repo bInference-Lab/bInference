@@ -27,7 +27,7 @@ on worker threads, so no query blocks the main thread:
   `ConfigJournal`, `TransactionStore`);
   each adapter here runs one store task per call and passes the port's contract suite.
 - **The agent database's ports.** The runtime's stores of `agent.sqlite` (`WriterFence`,
-  `SessionStore`, `TranscriptStore`) are declared here, in `src/ports.ts` (decision 0170). Every
+  `SessionStore`, `TranscriptStore`, `ChatQueueStore`, `NoteStore`) are declared here, in `src/ports.ts` (decision 0170). Every
   write takes the writer fence its runtime raised and is refused `fenced` once a later start raised
   it. Their contract suites and in-memory fakes are in `@binference/store/testing`.
 - **Maintenance.** SQLite's integrity and foreign key checks, and compact copies with
@@ -58,6 +58,8 @@ on worker threads, so no query blocks the main thread:
 | `createSqliteWriterFence`      | Raises `agent.sqlite`'s writer fence at each runtime start           |
 | `createSqliteSessionStore`     | Chat sessions and their turns, with the committed and outside marks  |
 | `createSqliteTranscriptStore`  | Each session's append-only transcript, numbered in order             |
+| `createSqliteChatQueueStore`   | The chat queue: each inbox message once, until a turn takes it       |
+| `createSqliteNoteStore`        | An agent's labelled notes, searched by trigrams in any language      |
 | `StoreHost`                    | What an adapter sends its tasks to: a `DatabaseHandle`               |
 
 Error codes start with `store.`: `store.newer_schema` when the file is newer than the build,

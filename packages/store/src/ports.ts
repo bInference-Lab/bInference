@@ -1,8 +1,22 @@
 import type { Id, Result } from "@binference/core";
 import type { FenceRefusal, Fenced } from "./chats/fenced.js";
+import type {
+  QueueDraft,
+  QueueDrop,
+  QueuedMessage,
+  QueueTake,
+  WaitingQuery,
+} from "./chats/queued-message.js";
 import type { SessionClose, SessionDraft, SessionRecord } from "./chats/session-record.js";
 import type { EventAppend, EventQuery, TranscriptEvent } from "./chats/transcript-event.js";
 import type { TurnDraft, TurnEnd, TurnRecord, TurnRef } from "./chats/turn-record.js";
+import type {
+  NoteDelete,
+  NoteDraft,
+  NoteList,
+  NoteRecord,
+  NoteSearch,
+} from "./notes/note-record.js";
 
 // The ports of `agent.sqlite` (database spec, section 3), which the agent runtime owns. They live
 // here, beside their SQLite adapters, because the runtime builds on this package (decision 0170).
@@ -75,4 +89,47 @@ export interface TranscriptStore {
   ): Promise<Result<readonly TranscriptEvent[], FenceRefusal | "no_session" | "no_turn">>;
   /** A session's events after `afterSeq`, in order, at most `limit`. */
   events(query: EventQuery, options: StoreCall): Promise<readonly TranscriptEvent[]>;
+}
+
+/**
+ * The chat queue (runtime spec, section 3.4): the messages the runtime took from the agent inbox,
+ * each once, until a turn takes them or they are dropped.
+ */
+export interface ChatQueueStore {
+  /** Adds a message; one already in the queue is `exists` and stays as it was. */
+  add(
+    draft: Fenced<QueueDraft>,
+    options: StoreCall,
+  ): Promise<Result<QueuedMessage, FenceRefusal | "exists">>;
+  /** A session's waiting messages, oldest first, at most `limit`. */
+  waiting(query: WaitingQuery, options: StoreCall): Promise<readonly QueuedMessage[]>;
+  /** Gives the messages to a turn, all or none; one that does not wait is `not_waiting`. */
+  take(
+    take: Fenced<QueueTake>,
+    options: StoreCall,
+  ): Promise<Result<readonly QueuedMessage[], FenceRefusal | "not_waiting">>;
+  /** Drops a waiting message with its reason. */
+  drop(
+    drop: Fenced<QueueDrop>,
+    options: StoreCall,
+  ): Promise<Result<QueuedMessage, FenceRefusal | "not_found" | "not_waiting">>;
+}
+
+/** Keeps each agent's notes, searchable by full text in any language. */
+export interface NoteStore {
+  /** Writes a note with its origin and answers it with its number. */
+  write(draft: Fenced<NoteDraft>, options: StoreCall): Promise<Result<NoteRecord, FenceRefusal>>;
+  /** Removes a note from lists and searches; one removed before is `not_found`. */
+  delete(
+    removal: Fenced<NoteDelete>,
+    options: StoreCall,
+  ): Promise<Result<NoteRecord, FenceRefusal | "not_found">>;
+  /** An agent's notes that are not removed, oldest first. */
+  list(query: NoteList, options: StoreCall): Promise<readonly NoteRecord[]>;
+  /**
+   * An agent's notes that are not removed and whose text holds the query, the best match first.
+   * Matching is by runs of three characters, ignoring letter case, so it finds a word inside
+   * Chinese text; a query shorter than three characters matches no note.
+   */
+  search(query: NoteSearch, options: StoreCall): Promise<readonly NoteRecord[]>;
 }

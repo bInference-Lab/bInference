@@ -71,11 +71,12 @@ interface NotesTable {
   deleted_at: number | null;
 }
 
-/** The FTS5 index over `notes.text`. */
+/** The FTS5 index over `notes.text`: `notes_fts` is the column a `match` names, `rank` its order. */
 interface NotesFtsTable {
   rowid: number;
   text: string;
   notes_fts: string;
+  rank: number;
 }
 
 /** Every table of `agent.sqlite` the store adapters query. */
@@ -91,3 +92,9 @@ export interface AgentTables {
 
 /** A `sessions` row as a query reads it. */
 export type SessionRow = Selectable<SessionsTable>;
+
+/** A `chat_queue` row as a query reads it. */
+export type QueueRow = Selectable<ChatQueueTable>;
+
+/** A `notes` row as a query reads it. */
+export type NoteRow = Selectable<NotesTable>;
