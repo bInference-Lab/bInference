@@ -265,11 +265,15 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (quoted.passed === undefined) {
     return quoted.snapshot;
   }
-  const assessed = await assessRisk(run, quoted.snapshot, quoted.passed.planned);
-  if (assessed.record.state !== "assessed") {
+  // A chosen route whose simulation failed ends with that reason; no risk check weighs it.
+  const { simulation, planned } = quoted.passed;
+  const assessed = simulation.ok
+    ? await assessRisk(run, quoted.snapshot, planned)
+    : quoted.snapshot;
+  if (simulation.ok && assessed.record.state !== "assessed") {
     return assessed;
   }
-  const simulated = await simulate(run, assessed, quoted.passed.simulation);
+  const simulated = await simulate(run, assessed, simulation);
   if (simulated.record.state !== "simulated") {
     return simulated;
   }

@@ -343,6 +343,17 @@ describe("the money path", () => {
     ]);
   });
 
+  it("ends with the failed simulation's reason before the risk check weighs the token", async () => {
+    const unknown = assetRefSchema.parse("fake:1/token:0x0000000f");
+    const test = await startTestEngine({ refusal: "simulation_reverted" });
+    const view = await propose(test, testSwap({ to: unknown }));
+    expect([view.state, view.outcome?.reason]).toStrictEqual([
+      "failed_check",
+      "simulation_reverted",
+    ]);
+    expect(view.risk).toBeUndefined();
+  });
+
   it("stops where another write left the intent when a move loses its race", async () => {
     const test = await startTestEngine({ intents: losingFirstMove });
     const view = await propose(test);

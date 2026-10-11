@@ -82,7 +82,7 @@ export const transitionTable: TransitionTable = {
   risk_passed: [{ from: ["quoted"], to: "assessed", guard: pass }],
   risk_refused: [{ from: ["quoted"], to: "risk_blocked", guard: storeReason }],
   simulation_matched: [{ from: ["assessed"], to: "simulated", guard: pass }],
-  simulation_failed: [{ from: ["assessed"], to: "failed_check", guard: storeReason }],
+  simulation_failed: [{ from: ["quoted", "assessed"], to: "failed_check", guard: storeReason }],
   authorization_checked: [
     { from: ["simulated"], to: "confirmed", guard: authorizeIntent },
     { from: ["simulated"], to: "awaiting_confirmation", guard: openCard },

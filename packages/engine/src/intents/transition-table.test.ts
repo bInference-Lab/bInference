@@ -20,6 +20,7 @@ const expected: readonly (readonly [IntentState, string, IntentState])[] = [
   ["checked", "quote_built", "quoted"],
   ["checked", "quote_failed", "failed_check"],
   ["quoted", "risk_passed", "assessed"],
+  ["quoted", "simulation_failed", "failed_check"],
   ["quoted", "risk_refused", "risk_blocked"],
   ["assessed", "simulation_matched", "simulated"],
   ["assessed", "simulation_failed", "failed_check"],

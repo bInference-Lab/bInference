@@ -76,7 +76,10 @@ Rules for this package:
   every quote and ranks the plans in `rank-routes.ts` by what arrives net of the network fee; a
   change to the ranking changes its case in `rank-routes.property.test.ts`. A quote whose price
   impact is above the agent's maximum is never built, at a re-quote either, and the queue's recheck
-  refuses one; with none left the intent ends `failed_check` with `price_impact`. A request it cannot route yet is a protocol error before anything is stored; every
+  refuses one; with none left the intent ends `failed_check` with `price_impact`.
+  A chosen route whose simulation failed ends `failed_check` with that reason right after
+  `quote_built`, before any risk check (decision 0145).
+  A request it cannot route yet is a protocol error before anything is stored; every
   refusal after that is the intent's state. What it reads about wallets outside the store comes
   through `WalletFactsSource`, and a fact it cannot read fails closed (no rescue address).
 - The execute step (`src/money-path/execute-confirmed.ts`) is the one place a confirmed intent
