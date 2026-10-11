@@ -14,6 +14,7 @@ import {
   reconcileUnknown,
   rivalsOf,
 } from "./step-fate.js";
+import type { DroppedStep } from "./watch-dropped.js";
 
 /**
  * Each step's transaction as recovery reads it: the last one stored for the step that a later
@@ -50,7 +51,10 @@ interface RecoveringStep extends NonceTransactions {
 // A stored step no receipt was recorded for: a block holds one of its transactions, its nonce is
 // free and the same bytes go again, or another transaction used its nonce and its fate is unknown
 // until a final block says whose it is (spec 6, section 7). Nothing is signed.
-async function settleSent(run: ExecutionRun, step: RecoveringStep): Promise<KnownStep | undefined> {
+async function settleSent(
+  run: ExecutionRun,
+  step: RecoveringStep,
+): Promise<KnownStep | DroppedStep | undefined> {
   const { snapshot, transaction, rivals } = step;
   const fate = await fateOf(run, step);
   if (fate === undefined) {
@@ -65,7 +69,7 @@ async function settleSent(run: ExecutionRun, step: RecoveringStep): Promise<Know
     const { transaction: resent } = await sendOnce(run, intent, transaction);
     const watched = await sendAndWatch(run, { intent, transaction: resent, rivals });
     if (watched.outcome === "dropped") {
-      return endDropped(run, snapshot, transaction.step);
+      return endDropped(run, snapshot, watched.transaction);
     }
     return watched.outcome === "stuck"
       ? stopped(run, snapshot, watched.problem)
@@ -86,7 +90,10 @@ async function settleUnknown(
 }
 
 // A step a block holds goes on as it is; the step with no receipt is the one whose fate decides.
-async function settleStep(run: ExecutionRun, step: RecoveringStep): Promise<KnownStep | undefined> {
+async function settleStep(
+  run: ExecutionRun,
+  step: RecoveringStep,
+): Promise<KnownStep | DroppedStep | undefined> {
   const { snapshot, transaction } = step;
   if (inBlockStates.includes(transaction.state)) {
     return goOn(run, step);
@@ -111,7 +118,10 @@ interface Walk {
 // A step with no current transaction: one never signed ends the intent. One whose transactions
 // were all replaced or dropped goes on when a block holds one of them after all, ends once one
 // was dropped (decision 0115), and is left as it is otherwise.
-async function settleMissing(run: ExecutionRun, walk: Walk): Promise<KnownStep | undefined> {
+async function settleMissing(
+  run: ExecutionRun,
+  walk: Walk,
+): Promise<KnownStep | DroppedStep | undefined> {
   const { snapshot, index } = walk;
   const [last, ...earlier] = walk.stored.filter(({ step }) => step === index).toReversed();
   if (last === undefined) {
@@ -122,11 +132,16 @@ async function settleMissing(run: ExecutionRun, walk: Walk): Promise<KnownStep |
     const recorded = await recordReceipt(run, fate.transaction, fate.receipt);
     return goOn(run, { snapshot, transaction: recorded });
   }
-  const isDropped = [last, ...earlier].some(({ state }) => state === "dropped");
-  return isDropped ? endDropped(run, snapshot, index) : stopped(run, snapshot, "replaced_step");
+  const dropped = [last, ...earlier].find(({ state }) => state === "dropped");
+  return dropped === undefined
+    ? stopped(run, snapshot, "replaced_step")
+    : endDropped(run, snapshot, dropped);
 }
 
-async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | undefined> {
+async function walkFrom(
+  run: ExecutionRun,
+  walk: Walk,
+): Promise<IncludedSteps | DroppedStep | undefined> {
   const { snapshot, steps, index, done } = walk;
   if (index === run.plan.steps.length) {
     const included = await moveIntent(run, snapshot, { type: "steps_included" });
@@ -141,8 +156,8 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
           transaction,
           rivals: rivalsOf(walk.stored, transaction),
         });
-  if (known === undefined) {
-    return undefined;
+  if (known === undefined || "dropped" in known) {
+    return known;
   }
   const next = { ...walk, snapshot: known.snapshot, index: index + 1 };
   return walkFrom(run, { ...next, done: [...done, known.transaction] });
@@ -155,7 +170,8 @@ async function walkFrom(run: ExecutionRun, walk: Walk): Promise<IncludedSteps | 
  * once every step is in a block, whichever of a step's transactions at its nonce landed. A step
  * whose cancel landed ends the intent `failed_onchain` with `stuck_cancelled`; one every relay
  * refused for `droppedAfterBlocks` blocks, or one recorded dropped before the stop, ends it with
- * `stuck_dropped` (decision 0115); a step never signed ends it (decision 0109). A step that stays
+ * `stuck_dropped` (decision 0115), and the dropped step comes back to be watched off the queue; a
+ * step never signed ends it (decision 0109). A step that stays
  * stuck, since recovery never replaces one, whose transactions were all replaced, or whose fate
  * stays unknown stops the recovery and leaves the intent where it is, logged.
  */
@@ -163,7 +179,7 @@ export async function recoverSteps(
   run: ExecutionRun,
   snapshot: IntentSnapshot,
   stored: readonly TransactionRecord[],
-): Promise<IncludedSteps | undefined> {
+): Promise<IncludedSteps | DroppedStep | undefined> {
   const steps = currentSteps(stored);
   return walkFrom(run, { snapshot, stored, steps, index: 0, done: [] });
 }

@@ -5,6 +5,7 @@ import { endDropped } from "./end-dropped.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import { sendAndWatch } from "./send-and-watch.js";
 import { rivalsOf } from "./step-fate.js";
+import { watchDropped } from "./watch-dropped.js";
 
 /** The steps still waiting for finality, and one a reorg took out of its block, if any. */
 interface FinalCheck {
@@ -105,7 +106,11 @@ async function recoverReorg(
     return undefined;
   }
   if (watched.outcome === "dropped") {
-    return endDropped(run, executing, back.value.step);
+    const dropped = await endDropped(run, executing, watched.transaction);
+    if (dropped !== undefined) {
+      await watchDropped(run, dropped);
+    }
+    return undefined;
   }
   if (watched.outcome !== "included") {
     const type = watched.outcome === "cancelled" ? "step_cancelled" : "step_reverted";

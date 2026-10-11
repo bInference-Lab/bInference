@@ -11,6 +11,7 @@ import { type PreparedStep, prepareStep, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
 import { stuckRulesOf } from "./stuck-rules.js";
 import { termsNow } from "./terms-now.js";
+import type { DroppedStep } from "./watch-dropped.js";
 
 /** Every step of an intent in a block, with the intent moved to `included`. */
 export interface IncludedSteps {
@@ -26,11 +27,11 @@ interface Taken {
 }
 
 /**
- * What became of a confirmed intent on its wallet's slot: its steps all in blocks, a fee per gas
- * above the network fee cap that may fall before its authorization runs out, or nothing more to do
- * here (`undefined`).
+ * What became of a confirmed intent on its wallet's slot: its steps all in blocks, a step dropped
+ * whose transactions are watched off the queue, a fee per gas above the network fee cap that may
+ * fall before its authorization runs out, or nothing more to do here (`undefined`).
  */
-export type SlotOutcome = IncludedSteps | "over_fee_cap" | undefined;
+export type SlotOutcome = IncludedSteps | DroppedStep | "over_fee_cap" | undefined;
 
 function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefined {
   run.parts.log.warn("executor.not_taken", { intentId: intent, errorCode: problem });
@@ -88,11 +89,11 @@ async function endLanded(
   taken: Taken,
   ended: {
     readonly outcome: Exclude<Watched["outcome"], "included" | "stuck">;
-    readonly index: number;
+    readonly transaction: TransactionRecord;
   },
-): Promise<undefined> {
+): Promise<DroppedStep | undefined> {
   if (ended.outcome === "dropped") {
-    return endDropped(run, taken.snapshot, ended.index);
+    return endDropped(run, taken.snapshot, ended.transaction);
   }
   const type = ended.outcome === "cancelled" ? "step_cancelled" : "step_reverted";
   await moveIntent(run, taken.snapshot, { type });
@@ -133,7 +134,7 @@ async function runFrom(
     readonly index: number;
     readonly done: readonly TransactionRecord[];
   },
-): Promise<IncludedSteps | undefined> {
+): Promise<IncludedSteps | DroppedStep | undefined> {
   const { taken, index, done } = step;
   const { snapshot } = taken;
   const draft = run.plan.steps[index];
@@ -164,7 +165,7 @@ async function runFrom(
     return stopStep(run, taken, watched.problem);
   }
   if (watched.outcome !== "included") {
-    return endLanded(run, taken, { outcome: watched.outcome, index });
+    return endLanded(run, taken, { outcome: watched.outcome, transaction: watched.transaction });
   }
   return runFrom(run, slot, { taken, index: index + 1, done: [...done, watched.transaction] });
 }

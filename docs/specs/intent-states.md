@@ -253,7 +253,9 @@ Stuck steps ([ARCHITECTURE.md section 7](../ARCHITECTURE.md#section-7)):
    step's transactions: the step is recorded `dropped`, which frees its nonce, and the intent ends
    `failed_onchain` with reason `stuck_dropped` ([decision 0115](../DECISIONS.md#d0115)). A step
    no rule can move waits 60 blocks for this, getting the same bytes every 20, before it is handed
-   over still `executing`.
+   over still `executing`. The executor watches a dropped step's transactions for 600 more blocks,
+   off the wallet's queue; one that lands after all raises `notice.droppedLanded`, and the intent
+   stays `failed_onchain`.
 
 "Simulate again" means preparing the step's draft again on the latest state, whose gas estimate
 runs the call there. No speed-up or cancel is signed with a fee per gas above the network fee cap

@@ -7,6 +7,7 @@ import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
 import { reconcileTrade } from "./reconcile-trade.js";
 import { currentSteps, recoverSteps } from "./recover-steps.js";
 import { settleIncluded } from "./settle-included.js";
+import { watchDropped } from "./watch-dropped.js";
 
 // The states a stop can leave a live intent in before it reconciles.
 const unsettledStates: readonly IntentState[] = [
@@ -109,5 +110,8 @@ export async function recoverIntent(run: ExecutionRun, unsettled: Unsettled): Pr
     },
     { signal: run.stopping },
   );
-  return included === undefined ? undefined : settleIncluded(run, included);
+  if (included === undefined) {
+    return undefined;
+  }
+  return "dropped" in included ? watchDropped(run, included) : settleIncluded(run, included);
 }

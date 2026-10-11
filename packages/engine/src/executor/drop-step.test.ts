@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
+  benchChain,
   driveUntil,
   eventsOf,
   type ExecutorBench,
@@ -39,6 +40,13 @@ function noticeKeysOf(bench: ExecutorBench): readonly string[] {
   return bench.pushes
     .filter(({ kind }) => kind === "notice/new")
     .map(({ data }) => /"key":"([^"]+)"/.exec(JSON.stringify(data))?.[1] ?? "");
+}
+
+function rawOf(transaction: TransactionRecord | undefined): string {
+  if (transaction === undefined) {
+    throw new Error("Expected a stored transaction.");
+  }
+  return transaction.raw;
 }
 
 async function ofIntent(bench: ExecutorBench, intent: Id<"int">) {
@@ -83,6 +91,19 @@ describe("a stuck step every relay refuses", () => {
       ({ step, state }) => `${String(step)}:${state}`,
     );
     expect(states).toStrictEqual(["0:included", "1:superseded", "1:dropped"]);
+  });
+
+  it("alarms the owner when a dropped step lands after all", async () => {
+    const bench = await startExecutorBench({ limits });
+    refuseAll(bench);
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    const [, speedUp] = await ofIntent(bench, intent);
+    acceptAll(bench);
+    await bench.network.send({ chain: benchChain, raw: rawOf(speedUp) }, live());
+    await driveUntil(bench, intent, { states: [], blocks: 2 });
+    expect(noticeKeysOf(bench)).toStrictEqual(["notice.stepDropped", "notice.droppedLanded"]);
+    expect(eventsOf(bench)).toContain("executor.dropped_landed:");
   });
 
   it("is not dropped while a node still holds its bytes in its pool", async () => {

@@ -20,6 +20,7 @@ import {
   unsettledIntents,
 } from "./recover-intents.js";
 import { settleIncluded } from "./settle-included.js";
+import { watchDropped } from "./watch-dropped.js";
 
 /** The executor of a running engine, which the engine's startup recovers and shutdown closes. */
 export interface RunningExecutor extends Executor {
@@ -142,7 +143,7 @@ async function runTaken(run: ExecutionRun, taken: Taken): Promise<void> {
     return;
   }
   if (outcome !== "over_fee_cap") {
-    await settleIncluded(run, outcome);
+    await ("dropped" in outcome ? watchDropped(run, outcome) : settleIncluded(run, outcome));
     return;
   }
   if (await expireIfLapsed(run.parts, taken.intent, run.signal)) {
