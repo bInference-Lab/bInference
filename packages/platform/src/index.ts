@@ -34,6 +34,8 @@ export type { ReadPiecesOptions } from "./read-file-pieces.js";
 export { readTextFile } from "./read-text-file.js";
 export { realFilePath } from "./real-file-path.js";
 export { runCommand, runCommandToExit } from "./run-command.js";
+export { startTerminalProgram } from "./terminal-program.js";
+export type { TerminalExit, TerminalProgram, TerminalProgramOptions } from "./terminal-program.js";
 export type { ProgramExit, RunProgram, RunToExit } from "./run-command.js";
 export { pollUntil } from "./service/poll-until.js";
 export type { Poll } from "./service/poll-until.js";

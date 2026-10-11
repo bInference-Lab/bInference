@@ -53,6 +53,7 @@ ports:
 | `runCommand`, `RunProgram`          | Runs a program with an argument array, no shell and a time limit                           |
 | `runCommandToExit`, `ProgramExit`   | The same, and answers its exit code and output whatever the code                           |
 | `startNodeProgram`, `NodeProgram`   | Starts a Node program with pipes and only the environment it is given                      |
+| `startTerminalProgram`              | Starts a program on this terminal with only the environment it is given                    |
 | `realFilePath`                      | A file's path with every link on the way resolved                                          |
 | `watchFile`, `FileWatch`            | Hears each change to a file through its folder, renames included                           |
 | `@binference/platform/testing`      | Contract suites, service and secret vault fakes, `createTempFolder`, `writeStandInProgram` |
