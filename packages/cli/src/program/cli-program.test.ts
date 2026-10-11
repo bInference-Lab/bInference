@@ -67,6 +67,7 @@ describe("the binference command tree", () => {
       "status",
       "pair",
       "revoke",
+      "create",
       "remove",
       "list",
       "add",
@@ -96,6 +97,23 @@ describe("the binference command tree", () => {
     expect(chosen).toStrictEqual([
       { name: "rescue", options: { json: true, yes: false } },
       { name: "rescueSet", options: { json: false, yes: true }, address: "0xabc" },
+    ]);
+  });
+
+  it("reads init's owner key public half and chooses owner-key create", async () => {
+    const chosen: ChosenCommand[] = [];
+    const parse = async (argv: readonly string[]) =>
+      buildProgram({
+        version: "1",
+        message: (key) => key,
+        host: { out: () => undefined, err: () => undefined },
+        choose: (command) => chosen.push(command),
+      }).parseAsync([...argv], { from: "user" });
+    await parse(["init", "--yes", "--owner-key-public", "MFkw"]);
+    await parse(["owner-key", "create"]);
+    expect(chosen).toMatchObject([
+      { name: "init", options: { yes: true, ownerKeyPublic: "MFkw" } },
+      { name: "ownerKeyCreate", options: { json: false, yes: false } },
     ]);
   });
 

@@ -12,7 +12,7 @@ import {
 } from "@binference/custody-privy";
 import { createFileSecretStore, createPlatform } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
-import { openAgentKey, parseOwnerKeyCode } from "@binference/signer";
+import { openAgentKey } from "@binference/signer";
 import { fakeBotToken, fakeBotUsername } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -39,13 +39,13 @@ afterEach(async () => {
   await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
 });
 
-const answerSchema = z.object({
+// Strict: the answer carries no owner key code, nor any field this does not name.
+const answerSchema = z.strictObject({
   state: z.literal("set_up"),
-  wallet: z.object({ address: z.string(), privyWalletId: z.string() }),
+  wallet: z.strictObject({ address: z.string(), privyWalletId: z.string() }),
   unlockMode: z.string(),
   agentKey: z.enum(["made", "kept"]),
-  ownerKeyCode: z.string(),
-  pairing: z.object({ link: z.string(), expiresAtMs: z.number() }),
+  pairing: z.strictObject({ link: z.string(), expiresAtMs: z.number() }),
   configFile: z.string(),
 });
 
@@ -73,14 +73,6 @@ function walletIdOf(answer: InitAnswer): PrivyId {
     throw new Error(`${id} is no Privy id.`);
   }
   return id;
-}
-
-function ownerKeyOf(answer: InitAnswer): string {
-  const owner = parseOwnerKeyCode(createSecret(answer.ownerKeyCode));
-  if (!owner.ok) {
-    throw new Error(`The owner key code is refused: ${owner.error}.`);
-  }
-  return owner.value.publicKey;
 }
 
 async function agentKeyOf(machine: InitMachine): Promise<string> {
@@ -137,7 +129,7 @@ describe("binference init with no person at the terminal", () => {
     expect(config.custody.privy).toStrictEqual({
       appId: machine.privy.appId,
       appSecret: { fromEnv: secretVariables.appSecret },
-      ownerKeyPublic: ownerKeyOf(answer),
+      ownerKeyPublic: machine.ownerKey.publicKey,
     });
     expect(config.telegram.botToken).toStrictEqual({ fromEnv: secretVariables.botToken });
     expect(config.engine.unlock).toStrictEqual({ mode: "file" });
@@ -155,7 +147,7 @@ describe("binference init with no person at the terminal", () => {
       appSecret: machine.privy.appSecret,
     });
     const expected = {
-      ownerKey: ownerKeyOf(answer),
+      ownerKey: machine.ownerKey.publicKey,
       agentKey: await agentKeyOf(machine),
       ceiling: expectedCeiling(machine.privy.http),
     };
@@ -178,7 +170,7 @@ describe("binference init with no person at the terminal", () => {
     expect(facts.custody).toMatchObject({
       provider: "privy",
       appId: machine.privy.appId,
-      ownerKeyPublic: ownerKeyOf(answer),
+      ownerKeyPublic: machine.ownerKey.publicKey,
       agentKeyPublic: await agentKeyOf(machine),
     });
     expect(facts.wallets).toMatchObject([
@@ -223,7 +215,7 @@ describe.runIf(liveTests)("binference init against the Privy test app", () => {
         const appSecret = createSecret(liveSecret);
         const api = createPrivyApi({ http, clock: machine.clock, appId: liveAppId, appSecret });
         const expected = {
-          ownerKey: ownerKeyOf(answer),
+          ownerKey: machine.ownerKey.publicKey,
           agentKey: await agentKeyOf(machine),
           ceiling: expectedCeiling(http),
         };

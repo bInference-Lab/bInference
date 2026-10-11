@@ -1,8 +1,8 @@
 # Spec 5: custody, keys, signing and backups
 
 Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by decisions
-[0103](../DECISIONS.md#d0103), [0116](../DECISIONS.md#d0116), [0117](../DECISIONS.md#d0117) and
-[0119](../DECISIONS.md#d0119). It follows Privy custody (decisions
+[0103](../DECISIONS.md#d0103), [0116](../DECISIONS.md#d0116), [0117](../DECISIONS.md#d0117),
+[0119](../DECISIONS.md#d0119) and [0148](../DECISIONS.md#d0148). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
@@ -33,6 +33,11 @@ any signature outside the policy, whatever the machine asks.
    the terminal only, as a code: `bnok1` followed by the key in base32, in groups of five, with a
    4-byte checksum so a typo is caught. The owner types back its last 6 characters. Init keeps only
    the public half (`custody.privy.ownerKeyPublic`) and forgets the private half when it exits.
+   With nobody at a terminal (`--yes`, `--json`, a container or a service), init never makes an
+   owner key and never prints a code: it takes the public half from `--owner-key-public`, which
+   `binference owner-key create` made on a machine with a terminal, showing the code there with
+   the same check-back, and is refused without it
+   ([decision 0148](../DECISIONS.md#d0148)).
 3. **Agent key.** Init makes a second P-256 key pair for this machine and stores the private half
    through the unlock mode (section 3).
 4. **On Privy, with the app secret:** a key quorum for the owner key, a key quorum for the agent

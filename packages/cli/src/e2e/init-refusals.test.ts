@@ -11,6 +11,7 @@ import {
   initFlags,
   type InitMachine,
   newInitMachine,
+  newOwnerKey,
   runOn,
   secretEnv,
   storedInstall,
@@ -89,7 +90,9 @@ describe("binference init on a folder set up before", () => {
       const machine = await newInitMachine(folders);
       const first = await init(machine, initFlags(machine));
       const firstKey = (await storedInstall(machine)).facts.custody;
-      const again = await init(machine, [...initFlags(machine), "--start-over"]);
+      const newOwner = ["--owner-key-public", newOwnerKey().publicKey];
+      const flags = withoutFlag(initFlags(machine), "--owner-key-public");
+      const again = await init(machine, [...flags, ...newOwner, "--start-over"]);
       expect(again.code).toBe(0);
       expect(JSON.parse(again.stdout)).toMatchObject({ agentKey: "kept" });
       const { facts, agents } = await storedInstall(machine);
@@ -122,6 +125,48 @@ describe("binference init on a folder set up before", () => {
 });
 
 describe("binference init refusals before anything is made", () => {
+  it("makes no owner key with nobody at a terminal, and prints no code", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const flags = withoutFlag(initFlags(machine), "--owner-key-public");
+
+    const json = await init(machine, flags);
+    const plain = await runOn(machine, ["init", "--yes", ...flags]);
+
+    expect([json.code, errorCode(json.stdout)]).toStrictEqual([
+      1,
+      { code: "init.owner_key_needs_terminal" },
+    ]);
+    expect([plain.code, plain.stderr]).toStrictEqual([1, `${en("refused.ownerKeyTerminal")}\n`]);
+    expect(`${json.stdout}${plain.stdout}${plain.stderr}`).not.toContain("bnok1");
+    expect(posts(machine)).toBe(0);
+    expect(await configText(machine)).toBeUndefined();
+  });
+
+  it("refuses an owner key public half that is no P-256 key", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const flags = withoutFlag(initFlags(machine), "--owner-key-public");
+
+    const run = await init(machine, [...flags, "--owner-key-public", "bnok1notakey"]);
+
+    expect([run.code, errorCode(run.stdout)]).toStrictEqual([
+      1,
+      { code: "init.bad_owner_key_public" },
+    ]);
+    expect(posts(machine)).toBe(0);
+  });
+
+  it("refuses --owner-key-public with --attach", slow, async () => {
+    const machine = await newInitMachine(folders);
+
+    const run = await init(machine, ["--attach", ...initFlags(machine)]);
+
+    expect([run.code, errorCode(run.stdout)]).toStrictEqual([
+      1,
+      { code: "init.attach_owner_key_public" },
+    ]);
+    expect(machine.privy.sent).toHaveLength(0);
+  });
+
   it("names the flag a run with no person lacks", slow, async () => {
     const machine = await newInitMachine(folders);
     const flags = withoutFlag(initFlags(machine), "--rescue");

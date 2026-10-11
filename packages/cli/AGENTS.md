@@ -111,7 +111,10 @@ Rules for this package:
 - The owner key code comes only from the terminal's hidden prompt of an owner-key command, such as
   `binference rescue set`, travels only over IPC and is never logged or stored. The Privy ceiling
   editor (`src/compose/privy-ceiling-editor.ts`) uses it for one request and checks it is the key
-  that owns the install's ceilings before Privy hears of it.
+  that owns the install's ceilings before Privy hears of it. A new owner key's code is shown only
+  to a person at a terminal, by `init` or `binference owner-key create`; a headless `init` takes
+  the public half from `--owner-key-public`, and no output or JSON answer carries a code
+  (decision 0148).
 - `binference init --attach` lives in `src/attach/` (decision 0140): on a folder that holds the
   install, it takes the owner key from the hidden prompt only, makes this machine's agent key where
   the unlock mode keeps it, and makes it each live wallet's one signer on Privy through

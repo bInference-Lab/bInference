@@ -44,7 +44,7 @@ async function ownedBy(
   const authorize = await ownerAuthorize(holder, code, signal);
   return owned.length === 0 || !authorize.ok
     ? undefined
-    : { ownerKey: { publicKey, code }, authorize: authorize.value, owned };
+    : { ownerKey: { publicKey }, authorize: authorize.value, owned };
 }
 
 async function askOwner(

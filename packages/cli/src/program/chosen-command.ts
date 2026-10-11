@@ -46,6 +46,7 @@ export type ChosenCommand =
   | { readonly name: "rescue" | "rescueCancel" | "safetyStatus"; readonly options: CommonOptions }
   | { readonly name: "telegramPair"; readonly options: CommonOptions }
   | { readonly name: "signerRevoke"; readonly options: CommonOptions; readonly signer: string }
+  | { readonly name: "ownerKeyCreate"; readonly options: CommonOptions }
   | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }
   | { readonly name: "addressList" | "limit" | "limitCancel"; readonly options: AgentFlags }
   | { readonly name: "limitSet"; readonly options: AgentFlags; readonly sets: readonly string[] }

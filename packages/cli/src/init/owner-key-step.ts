@@ -1,15 +1,16 @@
 import { timingSafeEqual } from "node:crypto";
-import { ok, type Secret } from "@binference/core";
-import { createP256KeyPair, formatOwnerKeyCode } from "@binference/signer";
+import { ok } from "@binference/core";
+import { createP256KeyPair, formatOwnerKeyCode, parseP256PublicKey } from "@binference/signer";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 
-/** The owner key as init keeps it: its public half, and its code until the run ends. */
+/** The owner key as init keeps it: its public half only. */
 export interface OwnerKey {
   /** DER SubjectPublicKeyInfo in base64: what owns the wallets on Privy. */
   readonly publicKey: string;
-  /** The `bnok1` code, shown once; a run without a person gives it in its JSON answer. */
-  readonly code: Secret;
 }
+
+/** What making an owner key needs: the person at the terminal, and the `init` messages. */
+export type OwnerKeyContext = Pick<InitContext, "prompter" | "isInteractive" | "words">;
 
 // How many check-backs a person may type before init stops and forgets the key.
 const maxTries = 3;
@@ -26,7 +27,11 @@ function matches(typed: string, expected: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-async function checkBack(context: InitContext, expected: string, tries: number): Promise<boolean> {
+async function checkBack(
+  context: OwnerKeyContext,
+  expected: string,
+  tries: number,
+): Promise<boolean> {
   const typed = await context.prompter.ask({
     id: "ownerKeyCheck",
     message: context.words("ownerKey.checkBack"),
@@ -39,12 +44,16 @@ async function checkBack(context: InitContext, expected: string, tries: number):
 }
 
 /**
- * The owner key step (keys spec, section 2, step 2): makes a P-256 key pair from the OS CSPRNG
- * and shows its private half once, as its `bnok1` code. A person types back the code's last 6
- * characters, its base32 characters without the group spaces; three wrong check-backs stop init
- * before anything is made, and the key is gone. Init keeps only the public half.
+ * Makes the owner key (keys spec, section 2, step 2): a P-256 key pair from the OS CSPRNG, whose
+ * private half it shows once as its `bnok1` code, to a person at a terminal only. The person
+ * types back the code's last 6 characters, its base32 characters without the group spaces; three
+ * wrong check-backs stop before anything is made, and the key is gone. Only the public half is
+ * kept. Without a person it makes no key (decision 0148).
  */
-export async function makeOwnerKey(context: InitContext): Promise<InitStep<OwnerKey>> {
+export async function makeOwnerKey(context: OwnerKeyContext): Promise<InitStep<OwnerKey>> {
+  if (!context.isInteractive) {
+    return refused("init.owner_key_needs_terminal", "refused.ownerKeyTerminal");
+  }
   const pair = createP256KeyPair();
   const code = formatOwnerKeyCode(pair);
   context.prompter.note(
@@ -52,11 +61,26 @@ export async function makeOwnerKey(context: InitContext): Promise<InitStep<Owner
     context.words("ownerKey.title"),
   );
   const expected = codeCharacters(code.reveal()).slice(-checkLength);
-  if (context.isInteractive && !(await checkBack(context, expected, 1))) {
+  if (!(await checkBack(context, expected, 1))) {
     return refused("init.owner_key_unconfirmed", "refused.ownerKeyUnconfirmed");
   }
-  if (context.isInteractive) {
-    context.prompter.say(context.words("ownerKey.checked"));
+  context.prompter.say(context.words("ownerKey.checked"));
+  return ok({ publicKey: pair.publicKey });
+}
+
+/**
+ * The owner key step of init: the public half `--owner-key-public` gives, made on a machine with
+ * a terminal by `binference owner-key create`, else a new key a person at this terminal writes
+ * down. A run with nobody at a terminal and no public half is refused, so no owner key code ever
+ * reaches a log or a script's output (decision 0148).
+ */
+export async function takeOwnerKey(context: InitContext): Promise<InitStep<OwnerKey>> {
+  const given = context.flags.ownerKeyPublic;
+  if (given === undefined) {
+    return makeOwnerKey(context);
   }
-  return ok({ publicKey: pair.publicKey, code });
+  const publicKey = parseP256PublicKey(given);
+  return publicKey.ok
+    ? ok({ publicKey: publicKey.value })
+    : refused("init.bad_owner_key_public", "refused.ownerKeyPublic");
 }

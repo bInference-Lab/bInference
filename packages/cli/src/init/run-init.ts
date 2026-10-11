@@ -23,8 +23,6 @@ export interface InitOutcome {
   readonly walletAddress: string;
   readonly privyWalletId: string;
   readonly unlockMode: UnlockMode;
-  /** The owner key's code, shown once; a run with no person gives it in its JSON answer. */
-  readonly ownerKeyCode: Secret;
   readonly isAgentKeyNew: boolean;
   readonly pairingLink: Secret;
   readonly pairingExpiresAtMs: number;
@@ -195,7 +193,6 @@ async function record(
     walletAddress: made.first.wallet.address,
     privyWalletId: made.first.wallet.id,
     unlockMode: unlock.mode,
-    ownerKeyCode: ownerKey.code,
     isAgentKeyNew: made.agentKey.isNew,
     pairingLink: pairing.link,
     pairingExpiresAtMs: pairing.expiresAtMs,

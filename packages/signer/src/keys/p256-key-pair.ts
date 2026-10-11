@@ -75,6 +75,33 @@ function publicPointOf(scalar: Uint8Array): Buffer | undefined {
   }
 }
 
+const base64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * Reads a P-256 public half written as DER SubjectPublicKeyInfo in base64, such as one
+ * `binference owner-key create` printed, and gives it back as Privy takes it: the same encoding,
+ * without spaces or line breaks. `not_p256` for text that is no such key, another curve or a
+ * private key.
+ */
+export function parseP256PublicKey(text: string): Result<string, "not_p256"> {
+  const compact = text.replaceAll(/\s/g, "");
+  if (!base64.test(compact)) {
+    return err("not_p256");
+  }
+  try {
+    const key = createPublicKey({
+      key: Buffer.from(compact, "base64"),
+      format: "der",
+      type: "spki",
+    });
+    const spki = key.export({ type: "spki", format: "der" }).toString("base64");
+    const isP256 = key.asymmetricKeyDetails?.namedCurve === curve;
+    return isP256 && spki === compact ? ok(spki) : err("not_p256");
+  } catch {
+    return err("not_p256");
+  }
+}
+
 /**
  * The 32-byte private scalar of a pair, big-endian. The caller zeroes the buffer once it is done
  * with it.

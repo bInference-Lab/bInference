@@ -4,7 +4,7 @@ import type { CommandSource } from "../config/schema/secret-source.schema.js";
 import { unlockCommandOf } from "./agent-key-step.js";
 import { type OwnerBot, takeOwnerBot } from "./bot-token-step.js";
 import type { InitContext, InitStep } from "./init-context.js";
-import { makeOwnerKey, type OwnerKey } from "./owner-key-step.js";
+import { type OwnerKey, takeOwnerKey } from "./owner-key-step.js";
 import { type PrivyApp, takePrivyApp } from "./privy-app-step.js";
 import { type RescueAddress, takeRescueAddress } from "./rescue-step.js";
 import { type SecretPlace, secretPlaceOf } from "./secret-places.js";
@@ -41,7 +41,8 @@ export function unlockOf(context: InitContext): InitStep<Unlock> {
 
 /**
  * Takes init's answers in the order of the onboarding (ARCHITECTURE section 27): the unlock
- * mode, the Privy app, the owner key with its check-back, the rescue address and the bot.
+ * mode, the Privy app, the owner key (its public half from a flag, or a new one with its
+ * check-back), the rescue address and the bot.
  */
 export async function takeAnswers(context: InitContext): Promise<InitStep<Answers>> {
   const unlock = unlockOf(context);
@@ -52,7 +53,7 @@ export async function takeAnswers(context: InitContext): Promise<InitStep<Answer
   if (!app.ok) {
     return app;
   }
-  const ownerKey = await makeOwnerKey(context);
+  const ownerKey = await takeOwnerKey(context);
   if (!ownerKey.ok) {
     return ownerKey;
   }

@@ -7,6 +7,7 @@ import type { AgentRecord } from "@binference/engine";
 import type { InstallFacts } from "@binference/engine/install";
 import { readTextFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import { createP256KeyPair, formatOwnerKeyCode } from "@binference/signer";
 import {
   createSqliteAgentStore,
   createSqliteInstallStore,
@@ -30,12 +31,26 @@ interface RecordedPrivy extends FakePrivy {
   readonly sent: readonly HttpRequest[];
 }
 
+/** An owner key a test made where `binference owner-key create` would: its code and public half. */
+export interface TestOwnerKey {
+  readonly code: string;
+  readonly publicKey: string;
+}
+
 /** A test machine with the outside world init reaches: Privy and the Bot API, both fakes. */
 export interface InitMachine extends TestMachine {
   readonly privy: RecordedPrivy;
   readonly bot: FakeBotApi;
   /** The outside world as the machine's commands reach it: Telegram's Bot API, then Privy. */
   readonly world: Http;
+  /** The owner key whose public half `initFlags` passes, made apart from init as an owner would. */
+  readonly ownerKey: TestOwnerKey;
+}
+
+/** A new owner key, as `binference owner-key create` makes one on another machine. */
+export function newOwnerKey(): TestOwnerKey {
+  const pair = createP256KeyPair();
+  return { code: formatOwnerKeyCode(pair).reveal(), publicKey: pair.publicKey };
 }
 
 const telegramOrigin = "https://api.telegram.org";
@@ -43,8 +58,11 @@ const telegramOrigin = "https://api.telegram.org";
 /**
  * A test machine on the given folder, clock and fake Privy, with a fake Bot API of its own and a
  * world in which Telegram's origin reaches the fake bot and every other request the fake Privy.
+ * It keeps the owner key it is given, else makes one.
  */
-export function machineOf(machine: Omit<InitMachine, "bot" | "world">): InitMachine {
+export function machineOf(
+  machine: Omit<InitMachine, "bot" | "world" | "ownerKey"> & { readonly ownerKey?: TestOwnerKey },
+): InitMachine {
   const bot = createFakeBotApi();
   const world: Http = {
     request: async (request) =>
@@ -52,7 +70,7 @@ export function machineOf(machine: Omit<InitMachine, "bot" | "world">): InitMach
         ? bot.http.request(request)
         : machine.privy.http.request(request),
   };
-  return { ...machine, bot, world };
+  return { ...machine, ownerKey: machine.ownerKey ?? newOwnerKey(), bot, world };
 }
 
 /** What one `binference` run gave. */
@@ -98,6 +116,8 @@ export function initFlags(machine: InitMachine): readonly string[] {
     `{ fromEnv: "${secretVariables.botToken}" }`,
     "--rescue",
     rescueAddress,
+    "--owner-key-public",
+    machine.ownerKey.publicKey,
     "--unlock",
     "file",
   ];

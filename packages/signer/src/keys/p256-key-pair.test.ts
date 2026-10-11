@@ -8,6 +8,7 @@ import {
   p256KeyPairFromScalar,
   p256KeyPairOf,
   p256ScalarOf,
+  parseP256PublicKey,
 } from "./p256-key-pair.js";
 
 // SEC 2, section 2.4.2: the curve's prime, its order and its generator.
@@ -106,5 +107,40 @@ describe("key pairs on P-256", () => {
 
     expect(privateForms(pair).filter((form) => shown.includes(form))).toStrictEqual([]);
     expect(shown).toContain(pair.publicKey);
+  });
+});
+
+describe("parseP256PublicKey", () => {
+  it("reads the public half a pair gives, with or without line breaks", () => {
+    const { publicKey } = createP256KeyPair();
+    const wrapped = publicKey.replaceAll(/(.{40})/g, "$1\n");
+
+    expect(parseP256PublicKey(publicKey)).toStrictEqual({ ok: true, value: publicKey });
+    expect(parseP256PublicKey(` ${wrapped} `)).toStrictEqual({ ok: true, value: publicKey });
+    expect(parseP256PublicKey(spkiOf(generatorX, generatorY))).toStrictEqual({
+      ok: true,
+      value: spkiOf(generatorX, generatorY),
+    });
+  });
+
+  it("refuses text that is no P-256 public key", () => {
+    const secp256k1 = generateKeyPairSync("ec", { namedCurve: "secp256k1" })
+      .publicKey.export({ type: "spki", format: "der" })
+      .toString("base64");
+    const pkcs8 = createP256KeyPair()
+      .privateKey.export({ type: "pkcs8", format: "der" })
+      .toString("base64");
+    const offCurve = spkiOf(generatorX, generatorY + 1n);
+
+    for (const text of [
+      "",
+      "not a key",
+      secp256k1,
+      pkcs8,
+      offCurve,
+      `${spkiOf(generatorX, generatorY)}AA`,
+    ]) {
+      expect(parseP256PublicKey(text)).toStrictEqual({ ok: false, error: "not_p256" });
+    }
   });
 });

@@ -8,7 +8,6 @@ import {
 } from "@binference/custody-privy";
 import type { TempFolder } from "@binference/platform/testing";
 import { parseAgentKey, parseOwnerKeyCode, signAuthorization } from "@binference/signer";
-import { z } from "zod";
 import {
   type InitMachine,
   initFlags,
@@ -20,23 +19,23 @@ import {
 
 const live = { signal: new AbortController().signal };
 
-/** An install `binference init` set up, and the owner key code it gave the script. */
+/** An install `binference init` set up, and the code of the owner key it took the public half of. */
 export interface SetUp {
   readonly machine: InitMachine;
   readonly ownerKey: string;
 }
 
-const answerSchema = z.object({ ownerKeyCode: z.string() });
-
 /**
- * Sets up a machine with `binference init --yes --json` in a fresh folder: the answer gives the
- * owner key code, as nobody saw it on a terminal.
+ * Sets up a machine with `binference init --yes --json` in a fresh folder, with the public half
+ * of an owner key made apart, as `binference owner-key create` makes one; init shows no code.
  */
 export async function setUpWithOwnerKey(folders: TempFolder[]): Promise<SetUp> {
   const machine = await newInitMachine(folders);
   const run = await runOn(machine, ["init", "--yes", "--json", ...initFlags(machine)]);
-  const answer = answerSchema.parse(JSON.parse(run.stdout.trim().split("\n").at(-1) ?? "{}"));
-  return { machine, ownerKey: answer.ownerKeyCode };
+  if (run.code !== 0) {
+    throw new Error(`init failed: ${run.stdout} ${run.stderr}`);
+  }
+  return { machine, ownerKey: machine.ownerKey.code };
 }
 
 /** A client of the machine's fake Privy app. */

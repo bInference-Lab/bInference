@@ -12,6 +12,7 @@ import { runInitCommand } from "../commands/init-command.js";
 import { runLimit, runLimitCancel, runLimitSet } from "../commands/limit-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
+import { runOwnerKeyCreate } from "../commands/owner-key-create-command.js";
 import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
 import { runServiceRemove } from "../commands/service-remove-command.js";
@@ -117,6 +118,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   safetyStatus: async (context) => runSafetyStatus(context),
   telegramPair: async (context) => runTelegramPair(context),
   signerRevoke: runSignerRevoke,
+  ownerKeyCreate: runOwnerKeyCreate,
   addressList: runAddressList,
   addressAdd: runAddressAdd,
   addressRemove: runAddressRemove,

@@ -16,6 +16,7 @@ import {
 } from "./cli-flags.schema.js";
 import { agentOption, idOf, withCommon } from "./command-options.js";
 import { addLimitCommands } from "./limit-commands.js";
+import { addOwnerKeyCommands } from "./owner-key-commands.js";
 import { addSafetyCommands } from "./safety-commands.js";
 import { addServiceCommands } from "./service-commands.js";
 import { addSignerCommands } from "./signer-commands.js";
@@ -106,6 +107,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     .option("--privy-app-secret <source>", message("option.privyAppSecret"))
     .option("--bot-token <source>", message("option.botToken"))
     .option("--rescue <address>", message("option.rescue"))
+    .option("--owner-key-public <key>", message("option.ownerKeyPublic"))
     .addOption(
       new Option("--unlock <mode>", message("option.unlock")).choices([
         "keychain",
@@ -158,6 +160,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addSafetyCommands(program, options);
   addTelegramCommands(program, options);
   addSignerCommands(program, options);
+  addOwnerKeyCommands(program, options);
   addServiceCommands(program, options);
   addAddressCommands(program, options);
   addLimitCommands(program, options);

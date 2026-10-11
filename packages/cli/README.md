@@ -89,9 +89,11 @@ the ceiling and the first wallet on Privy and reads the wallet back, records the
 rescue address, the first agent (paper mode, manual approval) and its wallet in `engine.sqlite`,
 issues the bot's pairing link, and writes `config.json5` last, owner-only, with secrets only as
 secret sources. A person answers its questions through a prompter over `@clack/prompts`
-(`src/term/`); with `--yes`, `--json` or no terminal, every answer comes from a flag and the
-owner key's code is printed once. A folder set up before is refused unless the owner passes
-`--start-over`, and a stored agent key is never replaced.
+(`src/term/`); with `--yes`, `--json` or no terminal, every answer comes from a flag. Such a run
+never makes an owner key: it takes the public half `--owner-key-public` gives, which
+`binference owner-key create` made on a machine with a terminal, and is refused without it, so no
+owner key code reaches a log (decision 0148). A folder set up before is refused unless the owner
+passes `--start-over`, and a stored agent key is never replaced.
 
 `binference status` and `binference health` sign in over IPC with the CLI token and call
 `engine/status`; `status` prints the state, the agents and the health signals, and `health`
@@ -155,6 +157,7 @@ The reference of every key, generated from the schema, is
 | ------------------------------------ | ------------------------------------------------------------------- |
 | `binference init`                    | Sets up an install: Privy, owner key, first wallet and bot          |
 | `binference init --attach`           | Makes this machine the wallets' signer; asks for the owner key      |
+| `binference owner-key create`        | A new owner key shown once in this terminal, for a headless init    |
 | `binference start [--set key=value]` | Runs the engine as the background service, which login starts again |
 | `binference start --foreground`      | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
 | `binference stop`                    | Stops the engine; the background service starts again at login      |

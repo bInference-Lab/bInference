@@ -75,8 +75,6 @@ function summary(context: InitContext, report: Report, outcome: InitOutcome): Ex
     wallet: { address: outcome.walletAddress, privyWalletId: outcome.privyWalletId },
     unlockMode: outcome.unlockMode,
     agentKey: outcome.isAgentKeyNew ? "made" : "kept",
-    // Nobody saw the code on a terminal: the script that ran init takes it from here, once.
-    ...(context.isInteractive ? {} : { ownerKeyCode: outcome.ownerKeyCode.reveal() }),
     pairing: { link: outcome.pairingLink.reveal(), expiresAtMs: outcome.pairingExpiresAtMs },
     configFile: outcome.configFile,
   };
@@ -242,6 +240,12 @@ export async function runInitCommand(
     return refuse(context, report, {
       code: "init.attach_start_over",
       key: "refused.attachStartOver",
+    });
+  }
+  if (flags.isAttach && flags.ownerKeyPublic !== undefined) {
+    return refuse(context, report, {
+      code: "init.attach_owner_key_public",
+      key: "refused.attachOwnerKeyPublic",
     });
   }
   context.prompter.intro(context.words("title"));

@@ -63,6 +63,11 @@ export interface InitFlags extends CommonOptions {
   readonly botToken?: string;
   /** The rescue address. */
   readonly rescue?: string;
+  /**
+   * The owner key's public half, made on a machine with a terminal by `owner-key create`: DER
+   * SubjectPublicKeyInfo in base64. Init then makes no owner key and shows no code.
+   */
+  readonly ownerKeyPublic?: string;
   readonly unlock?: UnlockMode;
   /** The `{ fromCommand: [...] }` that prints the agent key, for the `command` unlock mode. */
   readonly unlockCommand?: string;
@@ -151,6 +156,7 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     privyAppSecret: z.string().min(1).exactOptional(),
     botToken: z.string().min(1).exactOptional(),
     rescue: z.string().min(1).exactOptional(),
+    ownerKeyPublic: z.string().min(1).max(512).exactOptional(),
     unlock: z.enum(["keychain", "file", "manual", "command"]).exactOptional(),
     unlockCommand: z.string().min(1).exactOptional(),
     set: z.array(z.string()).default([]),

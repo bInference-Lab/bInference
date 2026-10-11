@@ -51,9 +51,13 @@ async function rebuild(
   machine: InitMachine,
   answers: { readonly ownerKeys: readonly string[]; readonly count: string },
 ) {
-  // Every flag of init's but the rescue address, which the rebuild reads from the ceilings.
+  // Every flag of init's but the rescue address, which the rebuild reads from the ceilings, and
+  // the owner key's public half, as attach asks for its code.
   const all = initFlags(machine);
-  const flags = all.filter((flag, index) => flag !== "--rescue" && all[index - 1] !== "--rescue");
+  const dropped = new Set(["--rescue", "--owner-key-public"]);
+  const flags = all.filter(
+    (flag, index) => !dropped.has(flag) && !dropped.has(all[index - 1] ?? ""),
+  );
   const argv = ["init", "--attach", ...flags];
   const prompter = createScriptedPrompter({
     ownerKey: answers.ownerKeys,
