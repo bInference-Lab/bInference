@@ -161,8 +161,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
   caps; its fee per gas is at most the chain's network fee cap
   ([decision 0102](../DECISIONS.md#d0102)); any approval goes to a registry spender; the proposing
   turn carries no outside-content mark; and the proposer is the agent runtime, not an MCP client.
-  Only the agent runtime the engine runs in its own process can say its turn read no outside
-  content; any other proposal of the agent runtime carries the mark, so no client can clear it.
+  Only the agent runtime the engine started, signed in with the token the engine made at that
+  start, can say its turn read no outside content: its proposal takes the mark of its agent's
+  running turn ([spec 8, section 4.3](runtime.md#section-4-3)). Any other proposal of the agent
+  runtime carries the mark, so no client can clear it.
   Anything else opens a card. A receipt is sent when it settles. The test checks these conditions in
   this order and names the first that fails: `manual` (the agent is in manual mode), `locked` (the
   engine is locked and the intent is live), `send`, `kind`, `deniedToken` (it sells a token on the

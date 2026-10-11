@@ -4,7 +4,8 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 [decision 0088](../DECISIONS.md#d0088) and [decision 0089](../DECISIONS.md#d0089); custody
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
-[0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134) and [0155](../DECISIONS.md#d0155).
+[0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134) and [0155](../DECISIONS.md#d0155);
+the agent runtime's operations follow [spec 8](runtime.md) (proposed).
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -34,19 +35,20 @@ below.
 
 ### 1.1 Id prefixes
 
-| Prefix | Thing        | Prefix | Thing            |
-| ------ | ------------ | ------ | ---------------- |
-| `agt_` | agent        | `ord_` | auto order       |
-| `wal_` | wallet       | `fil_` | order fill       |
-| `int_` | intent       | `alr_` | alert            |
-| `crd_` | card         | `whr_` | webhook rule     |
-| `cnf_` | confirmation | `sch_` | schedule         |
-| `tx_`  | transaction  | `ses_` | chat session     |
-| `led_` | ledger entry | `trn_` | chat turn        |
-| `adr_` | address book | `dev_` | console device   |
-| `tok_` | client token | `con_` | connection       |
-| `job_` | long job     | `bkp_` | backup           |
-| `ntc_` | notice       | `plg_` | installed plugin |
+| Prefix | Thing         | Prefix | Thing            |
+| ------ | ------------- | ------ | ---------------- |
+| `agt_` | agent         | `ord_` | auto order       |
+| `wal_` | wallet        | `fil_` | order fill       |
+| `int_` | intent        | `alr_` | alert            |
+| `crd_` | card          | `whr_` | webhook rule     |
+| `cnf_` | confirmation  | `sch_` | schedule         |
+| `tx_`  | transaction   | `ses_` | chat session     |
+| `led_` | ledger entry  | `trn_` | chat turn        |
+| `adr_` | address book  | `dev_` | console device   |
+| `tok_` | client token  | `con_` | connection       |
+| `job_` | long job      | `bkp_` | backup           |
+| `ntc_` | notice        | `plg_` | installed plugin |
+| `msg_` | inbox message |        |                  |
 
 <a id="section-2"></a>
 
@@ -251,7 +253,7 @@ A Telegram tap is handled inside the engine and never travels over this protocol
 | `alert`         | `read`  | `alert/fired`                                                                                                                                                                                                                                                                                                                                               |
 | `notice`        | `read`  | `notice/new`: the owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#section-27), as an i18n key and its values, with the times (epoch milliseconds) and amounts (base units) among them for each surface to format, and the notice's `id` and `at`; `notice/list` reads on from the last `id` ([decision 0133](../DECISIONS.md#d0133)) |
 | `chat:<agt_id>` | `read`  | `chat/message`, `chat/status`, `chat/turnStarted`, `chat/turnEnded`                                                                                                                                                                                                                                                                                         |
-| `inbox`         | `agent` | `inbox/message`, `inbox/intentSettled`, `inbox/scheduleDue`, `inbox/resumeReport`                                                                                                                                                                                                                                                                           |
+| `inbox`         | `agent` | `inbox/message`, `inbox/intentSettled`, `inbox/orderSettled`, `inbox/scheduleDue`, `inbox/resumeReport`, `inbox/stop`, `inbox/clear`; each is a stored message, with the data of [spec 8, section 3.3](runtime.md#section-3-3)                                                                                                                              |
 | `config`        | `read`  | `config/changed` (a config journal entry)                                                                                                                                                                                                                                                                                                                   |
 | `job`           | `read`  | `job/progress`, `job/done`, `job/failed`                                                                                                                                                                                                                                                                                                                    |
 | `log`           | `admin` | `log/line` (after `log/follow`)                                                                                                                                                                                                                                                                                                                             |
@@ -420,21 +422,30 @@ key adds it to the ceiling ([decision 0111](../DECISIONS.md#d0111)).
 
 ### 7.7 Chat, notes and usage
 
-| Operation       | Scope                  | Write | Args → result                                                                                         |
-| --------------- | ---------------------- | ----- | ----------------------------------------------------------------------------------------------------- |
-| `chat/post`     | `chat`                 | ✓     | `{ agent, text, images? }` → `{ session, turn }`                                                      |
-| `chat/messages` | `read` (R)             |       | `{ agent, session?, cursor?, limit? }` → messages                                                     |
-| `chat/stop`     | `chat`                 | ✓     | `{ agent }` → `{}`: ends the running turn; confirmed transactions are untouched                       |
-| `chat/clear`    | `chat`                 | ✓     | `{ agent }` → `{ session }`: starts a new session (`/clear`)                                          |
-| `turn/say`      | `agent`                | ✓     | `{ agent, session, turn, text, final }` → `{}`; drafts are edited in place until `final`              |
-| `turn/status`   | `agent`                |       | `{ agent, turn, statusKey, values? }` → `{}`                                                          |
-| `turn/end`      | `agent`                | ✓     | `{ agent, turn, outcome }` → `{}`                                                                     |
-| `usage/record`  | `agent`                | ✓     | `{ agent, turn, model, inputTokens, outputTokens, cachedTokens, usdMicros }` → `{ budgetLeftMicros }` |
-| `usage/get`     | `read`                 |       | `{ agent?, from, to }` → spend by day and model, and the budget                                       |
-| `notes/search`  | `read` (R)             |       | `{ agent, query, limit? }` → notes with their origin label                                            |
-| `notes/list`    | `read` (R)             |       | `{ agent, cursor?, limit? }` → notes                                                                  |
-| `notes/write`   | `agent` or `admin` (R) | ✓     | `{ agent, text, origin }` → note; `origin` is set by the engine from the caller                       |
-| `notes/delete`  | `admin` (R)            | ✓     | `{ note }` → `{}`                                                                                     |
+| Operation       | Scope                  | Write | Args → result                                                                                                                                                                                                                                 |
+| --------------- | ---------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chat/post`     | `chat`                 | ✓     | `{ agent, text, images? }` → `{ session, turn }`                                                                                                                                                                                              |
+| `chat/messages` | `read` (R)             |       | `{ agent, session?, cursor?, limit? }` → messages                                                                                                                                                                                             |
+| `chat/stop`     | `chat`                 | ✓     | `{ agent }` → `{}`: ends the running turn; confirmed transactions are untouched                                                                                                                                                               |
+| `chat/clear`    | `chat`                 | ✓     | `{ agent }` → `{ session }`: starts a new session (`/clear`)                                                                                                                                                                                  |
+| `turn/start`    | `agent`                | ✓     | `{ agent, session, turn, messages, outsideContent }` → `{ budgetLeftMicros }`; fails `agent.budget` with `details.resumesAt`, or `agent.frozen` for a turn only a schedule or an alert starts ([spec 8, section 4.3](runtime.md#section-4-3)) |
+| `turn/mark`     | `agent`                | ✓     | `{ agent, turn }` → `{}`: the turn holds outside content from now on                                                                                                                                                                          |
+| `turn/say`      | `agent`                | ✓     | `{ agent, session, turn, text, final }` → `{}`; drafts are edited in place until `final`                                                                                                                                                      |
+| `turn/status`   | `agent`                |       | `{ agent, turn, statusKey, values? }` → `{}`                                                                                                                                                                                                  |
+| `turn/end`      | `agent`                | ✓     | `{ agent, turn, outcome }` → `{}`                                                                                                                                                                                                             |
+| `usage/record`  | `agent`                | ✓     | `{ agent, turn, model, inputTokens, outputTokens, cachedTokens, usdMicros }` → `{ budgetLeftMicros }`                                                                                                                                         |
+| `inbox/list`    | `agent`                |       | paging, `{ agent? }` → the untaken inbox messages, oldest first                                                                                                                                                                               |
+| `inbox/take`    | `agent`                | ✓     | `{ messages }` → `{}`: the runtime holds them in its chat queue                                                                                                                                                                               |
+| `usage/get`     | `read`                 |       | `{ agent?, from, to }` → spend by day and model, and the budget                                                                                                                                                                               |
+| `notes/search`  | `read` (R)             |       | `{ agent, query, limit? }` → notes with their origin label                                                                                                                                                                                    |
+| `notes/list`    | `read` (R)             |       | `{ agent, cursor?, limit? }` → notes                                                                                                                                                                                                          |
+| `notes/write`   | `agent` or `admin` (R) | ✓     | `{ agent, text, origin }` → note; `origin` is set by the engine from the caller                                                                                                                                                               |
+| `notes/delete`  | `admin` (R)            | ✓     | `{ note }` → `{}`                                                                                                                                                                                                                             |
+
+`chat/post` stores an `inbox/message` before it replies; its `turn` is the turn reserved for the
+message, which a message that joins a running turn leaves unused
+([spec 8, section 3.2](runtime.md#section-3-2)). A proposal of the agent runtime takes the
+outside-content mark of its agent's running turn ([spec 8, section 4.3](runtime.md#section-4-3)).
 
 `images` are upload ids from `upload/start` (section 7.9): at most 4 per message, each a PNG, JPEG
 or WebP of at most 5 MiB. A message with images marks the turn as outside content
@@ -642,7 +653,7 @@ later unchanged.
 | `auth`     | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`     |
 | `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                     |
 | `runtime`  | `unavailable`                                                                                   |
-| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`                                   |
+| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`                         |
 | `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`                                        |
 | `address`  | `not_found`                                                                                     |
 | `rescue`   | `no_address`, `nothing_to_move`                                                                 |

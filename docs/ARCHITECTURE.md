@@ -234,15 +234,16 @@ macOS and Windows.
 
 ### 4. The agent runtime
 
-binference runs its own agent loop on thin transports over the official `openai` and
-`@anthropic-ai/sdk` clients. Their retries are off, because the runner owns retries and the AI
-gateway's 429 answers carry `Retry-After`. A committed turn ends after its tool batch; a message
-queued meanwhile starts a fresh turn.
+binference runs its own agent loop on thin transports over the official `openai` (Chat
+Completions) and `@anthropic-ai/sdk` (Messages) clients, never a provider layer of its own. Their
+retries are off, because the runner owns retries and the AI gateway's 429 answers carry
+`Retry-After`. The full rules are [spec 8](specs/runtime.md).
 
 The loop needs control that general-purpose SDK loops hide:
 
 - side-effect tracking;
-- new messages merged only at tool boundaries;
+- new messages merged only at tool boundaries: nothing is sent into a model response while it
+  streams, and no tool runs before the response that called it has ended;
 - no fallback once a propose tool has run.
 
 One turn:
@@ -257,8 +258,11 @@ One turn:
    confirmation". The turn ends there and does not wait for the tap. When the intent settles
    (filled, denied, expired or failed), the engine sends the runtime a hidden result message, so the
    agent can report back and continue.
-6. Once a propose tool has run, the turn becomes a committed turn. There is no automatic retry and
-   no model fallback after that point; errors are reconciled and reported.
+6. Once a propose tool has run, the turn becomes a committed turn. It ends after its tool batch,
+   with no further model call, so no automatic retry and no model fallback follow; errors are
+   reconciled and reported. A message queued meanwhile starts a fresh turn.
+7. One turn sends at most one proposal ([decision 0167](DECISIONS.md#d0167)). A later propose call
+   in the same response is not run, and the agent proposes it after the owner answers the first.
 
 A message that arrives during a turn is merged in at the next tool boundary (`merge`, the default),
 or waits for the turn to end (`after`). Cancelling a turn never cancels a confirmed transaction.
@@ -320,7 +324,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `tx_status`, `orders`                 | A transaction's state; the agent's auto orders                                             |
 | `cex_*` (plugin)                      | Binance balances, positions, tickers and open orders through Agent OS                      |
 | `search_web`, `search_x`, `read_page` | Outside content; marks the turn                                                            |
-| `notes_search`, `notes_write`         | Labelled memory                                                                            |
+| `notes_search`                        | Labelled memory                                                                            |
 | `open_skill`                          | Reads one installed skill's `SKILL.md` and its files, when the model needs the playbook    |
 
 **Propose tools** (each creates an intent in the engine and a card; none signs):
@@ -338,8 +342,8 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `cex_order` (plugin)                     | Binance spot and convert orders through Agent OS; futures and margin off by default                                              |
 | `token_launch`                           | A token on Flap, four.meme, Genius.fun or Brew; every launch setting is on its card ([decision 0082](DECISIONS.md#d0082))        |
 
-**Control tools:** `order_cancel` (braking, so no confirmation), `alert_create` (price and wallet
-alerts, no transaction), `schedule_create`, `schedule_list` and `schedule_cancel` (model turns on a
+**Control tools:** `order_cancel` (braking, so no confirmation), `notes_write` (labelled memory),
+`alert_create` (price and wallet alerts, no transaction), `schedule_create`, `schedule_list` and `schedule_cancel` (model turns on a
 schedule, counted against the model budget; [section 26](#section-26)) and `ask_owner` (a question
 with buttons).
 
@@ -1149,6 +1153,10 @@ was written:
 4. [the cards and messages](specs/cards-and-messages.md), in both languages;
 5. [the keys, unlocking, signing and backups](specs/keys-and-backups.md);
 6. [the intent state machine](specs/intent-states.md), with every transition and terminal state.
+
+Two more come before the code they govern: spec 7, Binance Agents ([section 29](#section-29)), and
+spec 8, [the agent runtime](specs/runtime.md): the turn, tools, the proposal rule, the chat queue,
+context, compaction, model calls, the budget and the process.
 
 **Default limits for a new agent ([decision 0064](DECISIONS.md#d0064))**, all changeable per agent;
 onboarding shows the caps for the owner to confirm:

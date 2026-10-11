@@ -184,7 +184,22 @@ new name here first, in the change that uses it.
 - **queues**: the wallet queue and the chat queue, one per session. A message that arrives during a
   turn is merged at the next tool boundary (**merge**, the default) or waits for the turn to end
   (**after**).
-- **session**: one conversation between the owner and an agent, with an id `ses_…`.
+- **session**: one conversation between the owner and an agent, with an id `ses_…`. An agent has
+  one open session, shared by every surface.
+- **agent inbox**: the engine's store of messages for the agent runtime (`msg_…`), kept until the
+  runtime takes each into its chat queue.
+- **merge point**: a place in a turn where a waiting message joins it: before a later call of an
+  ordered batch, after a batch, or when the model would end the turn.
+- **held-back proposal**: a propose call after the first in one model response; it is not run, and
+  the agent proposes it in a later turn.
+- **stable prefix, volatile tail**: the parts of a model call's context that stay the same from
+  call to call (instructions, workspace files, skills index, tools), and the live facts after the
+  history.
+- **compaction**: replacing the oldest part of a session's history, in what the model sees, by a
+  summary that keeps every id, hash and address.
+- **loop guard**: the check that ends a turn when one tool returns the same result for the same
+  arguments three times.
+- **routed operation**: a protocol operation the engine passes to the agent runtime to answer.
 - **workspace files**: each agent's `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   and `FIRST-CHAT.md`.
 - **notes**: the agent's long-term memory, each item labelled by its origin.
@@ -193,8 +208,9 @@ new name here first, in the change that uses it.
   teaches Claude Code, Codex and other MCP clients the engine's MCP tools.
 - **skill lint**: `lintSkill`, which names each sentence of a skill that tells the agent to ask for
   a seed phrase, a private key, an API key or a passphrase; the install refuses such a skill.
-- **read, propose and control tools**: tools that read data, tools that create an intent and a card,
-  and tools that cancel or schedule.
+- **read, propose and control tools**: tools that read data, tools that create an intent or an auto
+  order and its card, and tools that change something without moving money or opening a card
+  (cancel an order, set an alert or a schedule, write a note, ask the owner).
 - **vision model**: `models.vision`, which reads images when the main model cannot.
 - **model budget**: the daily dollar budget for an agent's model calls.
 
