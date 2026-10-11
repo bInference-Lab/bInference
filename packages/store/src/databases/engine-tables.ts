@@ -1,4 +1,5 @@
 import type { Generated } from "kysely";
+import type { BackupTables } from "./backup-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
 import type { PositionTables } from "./position-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
@@ -328,7 +329,7 @@ interface RiskCacheTable {
 }
 
 /** The engine tables the store adapters query, by name. */
-export interface EngineTables extends PositionTables, NoticeTables, TelegramTables {
+export interface EngineTables extends PositionTables, NoticeTables, TelegramTables, BackupTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;

@@ -44,6 +44,11 @@
       "types": "./dist/surfaces.d.mts",
       "default": "./dist/surfaces.mjs"
     },
+    "./backups": {
+      "@binference/source": "./src/backups.ts",
+      "types": "./dist/backups.d.mts",
+      "default": "./dist/backups.mjs"
+    },
     "./install": {
       "@binference/source": "./src/install.ts",
       "types": "./dist/install.d.mts",
@@ -81,7 +86,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts src/notices.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts src/notices.ts src/backups.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
