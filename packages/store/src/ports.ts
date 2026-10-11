@@ -1,4 +1,5 @@
 import type { Id, Result } from "@binference/core";
+import type { ChatPrune, ChatPruned } from "./chats/chat-prune.js";
 import type { FenceRefusal, Fenced } from "./chats/fenced.js";
 import type {
   QueueDraft,
@@ -132,4 +133,15 @@ export interface NoteStore {
    * Chinese text; a query shorter than three characters matches no note.
    */
   search(query: NoteSearch, options: StoreCall): Promise<readonly NoteRecord[]>;
+}
+
+/**
+ * Removes the chats older than `chats.keepDays` (database spec, section 4; decision 0169), in one
+ * write: the transcript events older than the cutoff, the turns that ended before it and hold no
+ * event, and the chat queue's messages received before it that a turn took or that were dropped.
+ * Sessions, notes and waiting messages stay.
+ */
+export interface ChatRetention {
+  /** Prunes before the cutoff and answers how many rows of each table went. */
+  prune(prune: Fenced<ChatPrune>, options: StoreCall): Promise<Result<ChatPruned, FenceRefusal>>;
 }

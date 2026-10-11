@@ -1,4 +1,6 @@
+export type { ChatPrune, ChatPruned } from "./chats/chat-prune.js";
 export { createSqliteChatQueueStore } from "./chats/sqlite-chat-queue-store.js";
+export { createSqliteChatRetention } from "./chats/sqlite-chat-retention.js";
 export { createSqliteSessionStore } from "./chats/sqlite-session-store.js";
 export { createSqliteTranscriptStore } from "./chats/sqlite-transcript-store.js";
 export { createSqliteWriterFence } from "./chats/sqlite-writer-fence.js";
@@ -32,6 +34,7 @@ export type {
 } from "./notes/note-record.js";
 export type {
   ChatQueueStore,
+  ChatRetention,
   NoteStore,
   SessionStore,
   TranscriptStore,

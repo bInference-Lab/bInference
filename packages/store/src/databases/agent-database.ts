@@ -5,6 +5,7 @@ import {
   takeQueuedTask,
   waitingTask,
 } from "../chats/queue-tasks.js";
+import { pruneChatsTask } from "../chats/retention-tasks.js";
 import { closeSessionTask, getSessionTask, openSessionTask } from "../chats/session-tasks.js";
 import { appendEventsTask, listEventsTask } from "../chats/transcript-tasks.js";
 import {
@@ -50,6 +51,7 @@ export const agentDatabase: DatabaseDefinition = {
     deleteNoteTask,
     listNotesTask,
     searchNotesTask,
+    pruneChatsTask,
   ],
 };
 
