@@ -10,6 +10,7 @@ import { checkForQueue, type SigningTerms } from "./queue-check.js";
 import { type PreparedStep, prepareStep, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
 import { stuckRulesOf } from "./stuck-rules.js";
+import { termsNow } from "./terms-now.js";
 
 /** Every step of an intent in a block, with the intent moved to `included`. */
 export interface IncludedSteps {
@@ -144,9 +145,13 @@ async function runFrom(
   if (!ready.ok || ready.value.prepared.isAboveFeeCap) {
     return endStep(run, taken, { index, problem: ready.ok ? "over_fee_cap" : ready.error });
   }
+  const terms = await termsNow(run, taken.terms, { record: snapshot.record, kind: "step" });
+  if (terms === undefined) {
+    return endStep(run, taken, { index, problem: "authorization_lapsed" });
+  }
   const stored = await signAndStore(run, slot, {
     record: snapshot.record,
-    terms: taken.terms,
+    terms,
     ready: ready.value,
   });
   if (!stored.ok) {

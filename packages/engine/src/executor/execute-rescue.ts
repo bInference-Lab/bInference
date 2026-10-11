@@ -14,6 +14,7 @@ import { prepareStep, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
 import { rivalsOf } from "./step-fate.js";
 import { stuckRulesOf } from "./stuck-rules.js";
+import { termsNow } from "./terms-now.js";
 import { watchFinality } from "./watch-finality.js";
 
 /** One wallet's part of a rescue: its account, which keys its queue, and its steps in order. */
@@ -94,7 +95,11 @@ async function sendFresh(
   if (!ready.ok || ready.value.prepared.isAboveFeeCap) {
     return undefined;
   }
-  const { record, terms } = step;
+  const { record } = step;
+  const terms = await termsNow(run, step.terms, { record, kind: "step" });
+  if (terms === undefined) {
+    return undefined;
+  }
   const stored = await signAndStore(run, slot, { record, terms, ready: ready.value });
   return stored.ok ? watchStored(run, slot, { ...step, transaction: stored.value }) : undefined;
 }

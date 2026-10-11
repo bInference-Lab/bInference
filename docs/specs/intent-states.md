@@ -259,7 +259,11 @@ step's; the store supersedes the others in the same write.
 
 A signature for a speed-up or a cancel is a new signature for the same confirmed intent; the signer
 checks it against the same confirmation record, and signs a cancel for one minute after that
-record expired ([decision 0116](../DECISIONS.md#d0116)).
+record expired ([decision 0116](../DECISIONS.md#d0116)). The executor reads the authorization
+again right before each later step, speed-up and cancel: an auto grant carries the agent's approval
+mode as it stands then, so a switch to manual stops every later signature of the intent, and no
+later step or speed-up is signed once the confirmation expired. A later step that nothing
+authorizes any more ends the intent as a step never signed; a stuck step waits for the drop rule.
 
 <a id="section-7"></a>
 

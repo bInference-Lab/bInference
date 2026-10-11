@@ -5,6 +5,7 @@ import type { SigningTerms } from "./queue-check.js";
 import { sendOnce, signAndStore } from "./run-step.js";
 import type { StuckAt, StuckMove, StuckRules } from "./send-and-watch.js";
 import { readFate } from "./step-fate.js";
+import { termsNow } from "./terms-now.js";
 
 /** What signs a stuck step's replacement: the slot that holds its wallet, and the intent's terms. */
 interface StuckSigning {
@@ -83,6 +84,10 @@ async function replace(
   if (prepared.value.isAboveFeeCap) {
     return stopped("over_fee_cap");
   }
+  const terms = await termsNow(run, signing.terms, { record: intent, kind });
+  if (terms === undefined) {
+    return stopped("authorization_lapsed");
+  }
   // Once the engine begins to stop, no replacement is signed; the watch's next wait ends it.
   if (run.stopping.aborted) {
     return waiting;
@@ -90,12 +95,7 @@ async function replace(
   const { step, nonce } = transaction;
   const ready = { index: step, draft, nonce, prepared: prepared.value };
   const replacing = { transaction, replaces: prepared.value.replaces };
-  const stored = await signAndStore(run, signing.slot, {
-    record: intent,
-    terms: signing.terms,
-    ready,
-    replacing,
-  });
+  const stored = await signAndStore(run, signing.slot, { record: intent, terms, ready, replacing });
   if (!stored.ok) {
     return stopped(stored.error);
   }
@@ -142,9 +142,11 @@ async function moveStuck(
  * gets the same bytes again at the first rule and a speed-up at the second, the same call at its
  * nonce for at least 10% more; no longer valid, it gets a cancel, a 0-value transfer to the
  * wallet itself at its nonce for at least 10% more. Each replacement is a new signature for the
- * same authorization, which the signer checks again; the transaction it replaces becomes
- * `superseded`. A replacement custody refuses, the store cannot keep, that would fail, or whose
- * fee passes the network fee cap stops them, and the step is handed over.
+ * same authorization, read again before it (`termsNow`), which the signer checks again; the
+ * transaction it replaces becomes `superseded`. A replacement custody refuses, the store cannot
+ * keep, that would fail, whose fee passes the network fee cap, or that nothing authorizes any more
+ * (a speed-up after the confirmation expired, an auto grant after a switch to manual) stops them,
+ * and the step is handed over.
  */
 export function stuckRulesOf(run: ExecutionRun, signing: StuckSigning): StuckRules {
   return async (at) => moveStuck(run, signing, at);
