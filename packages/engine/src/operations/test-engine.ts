@@ -19,9 +19,10 @@ import {
   createFakeVenue,
   type FakeSigner,
 } from "@binference/chain/testing";
-import { createIdSource, type Id } from "@binference/core";
+import { createIdSource, type Id, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom, type ManualClock } from "@binference/core/testing";
 import type { AgentDraft, AgentRecord } from "../agents/agent-record.js";
+import { createRunningTurns, type RunningTurns } from "../chat/running-turns.js";
 import { createFakeCeilingEditor, type FakeCeilingEditor } from "../fakes/fake-ceiling-editor.js";
 import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
@@ -138,6 +139,8 @@ export interface TestEngine {
   readonly ceilings: FakeCeilingEditor;
   /** Makes the wallets `wallet/create` asks for, each signed for by the fake custody at once. */
   readonly walletMaker: FakeWalletMaker;
+  /** The runtime's running turns, started with the test runtime's token. */
+  readonly turns: RunningTurns;
 }
 
 /** What the fake wallet facts say of the test wallet unless a test changes them. */
@@ -216,7 +219,6 @@ function custodyOf(options: TestEngineOptions): readonly (readonly [Id<"wal">, A
   return [...(options.custodyWallets ?? [])];
 }
 
-/** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
 // Custody's export and its removal of a signer, each only when the test gives it.
 function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter" | "revoker"> {
   const { exporter, revoker } = options;
@@ -226,6 +228,14 @@ function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter
   };
 }
 
+// The runtime's running turns, started with the test runtime's token.
+function testTurns(): RunningTurns {
+  const turns = createRunningTurns();
+  turns.startRuntime(idSchema("tok").parse(testCallers.runtime.credential));
+  return turns;
+}
+
+/** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
 export async function startTestEngine(options: TestEngineOptions = {}): Promise<TestEngine> {
   const clock = createManualClock(testNowMs);
   const stores = createMemoryEngineStores();
@@ -244,7 +254,9 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     ceilings,
     onMade: (wallet, account) => held.set(wallet, account),
   });
+  const turns = testTurns();
   const engine = createEngine({
+    turns,
     stores: wrapped(stores, options),
     positions,
     custody,
@@ -268,7 +280,8 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   });
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });
   await openPaper(engine, options.paper ?? testPaperBalances);
-  return { engine, stores, clock, custody, positions, executor, pushes, ceilings, walletMaker };
+  const fakes = { custody, positions, executor, pushes, ceilings, walletMaker, turns };
+  return { engine, stores, clock, ...fakes };
 }
 
 /** One call with its args, from a caller, with a signal that never aborts. */

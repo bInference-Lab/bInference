@@ -18,3 +18,5 @@ export type { AgentInboxStore } from "./chat/ports.js";
 export { markRuntimeTurns } from "./chat/mark-runtime-turns.js";
 export { createRunningTurns } from "./chat/running-turns.js";
 export type { RunningTurn, RunningTurns } from "./chat/running-turns.js";
+export { createChatRelay } from "./chat/chat-relay.js";
+export type { ChatHandlers, ChatRelay } from "./chat/chat-relay.js";

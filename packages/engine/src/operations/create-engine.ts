@@ -10,6 +10,9 @@ import {
   type ConfigHistoryHandlers,
   createConfigHistoryHandlers,
 } from "../audit/config-history-handlers.js";
+import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import type { ChatHandlers } from "../chat/chat-relay.js";
+import type { RunningTurns } from "../chat/running-turns.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createGasCheck } from "../gas/check-gas.js";
@@ -40,7 +43,7 @@ import {
   type RescueAddressHandlers,
 } from "../safety/rescue-address-handlers.js";
 import { settleRescueCeilings } from "../safety/rescue-ceilings.js";
-import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
+import type { SafetyHandlers } from "../safety/safety-handlers.js";
 import { writeUnfreeze } from "../safety/write-unfreeze.js";
 import {
   createSendLevelHandlers,
@@ -51,6 +54,7 @@ import type { VenueHost } from "../venues/venue-host.js";
 import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import { type CeilingHandlers, createCeilingHandlers } from "./ceiling-handlers.js";
+import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
 import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
@@ -59,6 +63,7 @@ import { createWalletHandlers, type WalletHandlers } from "./wallet-handlers.js"
 /** The operation handlers the engine gives the protocol server, by operation name. */
 export interface EngineHandlers
   extends
+    ChatHandlers,
     IntentHandlers,
     LedgerHandlers,
     ConfigHistoryHandlers,
@@ -149,6 +154,11 @@ export interface EngineOptions {
   readonly random: Random;
   /** Where pushes go: the protocol server, which numbers them with a `seq` per topic. */
   readonly publish: PublishPush;
+  /**
+   * The agent runtime's running turns and the token of its current start, which the supervisor
+   * that starts the runtime keeps; an engine with no runtime has none started.
+   */
+  readonly turns?: RunningTurns;
 }
 
 function settingsHandlers(
@@ -229,9 +239,20 @@ function executeOf(
   });
 }
 
+// The one writer of intents, which tells the chat relay of each settle message it stores.
+function storedIntentsOf(
+  options: EngineOptions,
+  settled: (message: AgentInboxMessage) => void,
+): StoredIntents {
+  const { stores, ids, random, publish } = options;
+  const { intents, agents } = stores;
+  return createStoredIntents({ intents, agents, ids, random, publish, settled });
+}
+
 function intentParts(
   options: EngineOptions,
   paper: PaperParts,
+  settled: (message: AgentInboxMessage) => void,
 ): {
   readonly handlers: IntentHandlers;
   readonly answer: AnswerCard;
@@ -240,13 +261,7 @@ function intentParts(
   readonly lowGas: LowGasAlerts;
 } {
   const { stores, custody, host, chains, clock, ids, isLocked } = options;
-  const stored = createStoredIntents({
-    intents: stores.intents,
-    agents: stores.agents,
-    ids,
-    random: options.random,
-    publish: options.publish,
-  });
+  const stored = storedIntentsOf(options, settled);
   const execute = executeOf(options, { stored, paper });
   const confirmations = createConfirmations({
     clock,
@@ -280,22 +295,6 @@ function intentParts(
   return { answer, stored, handlers, lowGas };
 }
 
-// The freeze, the safety status and the rescue, which reads every wallet's live balances, never
-// paper ones (decision 0100).
-function safetyHandlers(options: EngineOptions, stored: StoredIntents): SafetyHandlers {
-  const { stores, clock } = options;
-  const { agents, intents, install } = stores;
-  return createSafetyHandlers({
-    ...options,
-    stored,
-    intents,
-    agents,
-    install,
-    simulator: options.chainSimulator,
-    policy: createPolicyCheck({ prices: options.prices, clock }),
-  });
-}
-
 // The startup's repair of paper fills a crash left without positions.
 function paperRepairOf(
   options: EngineOptions,
@@ -311,6 +310,15 @@ function paperRepairOf(
   return async (call) => repairPaperFills(repair, call);
 }
 
+// What the rescue address, the address book and the settings operations each read and push.
+function sharedParts(options: EngineOptions) {
+  const { stores, ceilings, clock, publish } = options;
+  return {
+    rescueParts: { install: stores.install, agents: stores.agents, ceilings, clock, publish },
+    settingsParts: { agents: stores.agents, journal: stores.configJournal, clock, publish },
+  };
+}
+
 /**
  * Creates the {@link Engine}. Every write of an intent goes through one writer, which pushes
  * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
@@ -321,20 +329,10 @@ export function createEngine(given: EngineOptions): Engine {
   const agents = withLimitsInEffect(given.stores.agents, given.clock);
   const options = { ...given, stores: { ...given.stores, agents } };
   const paper = createPaperParts(options);
-  const intents = intentParts(options, paper);
-  const rescueParts = {
-    install: options.stores.install,
-    agents: options.stores.agents,
-    ceilings: options.ceilings,
-    clock: options.clock,
-    publish: options.publish,
-  };
-  const settingsParts = {
-    agents: options.stores.agents,
-    journal: options.stores.configJournal,
-    clock: options.clock,
-    publish: options.publish,
-  };
+  const chat = engineChatOf(options);
+  const intents = intentParts(options, paper, chat.settled);
+  chat.attach(intents.stored);
+  const { rescueParts, settingsParts } = sharedParts(options);
   return {
     handlers: {
       ...intents.handlers,
@@ -359,7 +357,8 @@ export function createEngine(given: EngineOptions): Engine {
         journal: settingsParts.journal,
         chains: options.chains,
       }),
-      ...safetyHandlers(options, intents.stored),
+      ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
+      ...chat.relay.handlers,
     },
     answer: intents.answer,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),

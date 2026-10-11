@@ -22,6 +22,15 @@ export interface RunningTurns {
   startRuntime(credential: Id<"tok">): void;
   /** The runtime exited: every running turn ends. */
   clearAll(): void;
+  /**
+   * Whether a call comes from the runtime the engine runs now: made with the token of its current
+   * start. A token of an earlier start, or of any other client, is not.
+   */
+  isRuntime(credential: string): boolean;
+  /** The agent's running turn, if one runs. */
+  runningOf(agent: ProtocolId<"agent">): RunningTurn | undefined;
+  /** The agents with a running turn. */
+  agents(): readonly ProtocolId<"agent">[];
   /** Records the agent's running turn, in place of any before it. */
   start(turn: RunningTurn): void;
   /** Marks the turn as holding outside content; the mark never clears. False when it is not running. */
@@ -46,6 +55,12 @@ export function createRunningTurns(): RunningTurns {
       state.runtime = credential;
     },
     clearAll: () => turns.clear(),
+    isRuntime: (credential) => state.runtime !== undefined && credential === state.runtime,
+    runningOf: (agent) => {
+      const running = turns.get(agent);
+      return running === undefined ? undefined : { ...running };
+    },
+    agents: () => [...turns.values()].map((running) => running.agent),
     start(turn) {
       turns.set(turn.agent, { ...turn });
     },

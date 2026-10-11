@@ -10,6 +10,7 @@ import {
 } from "@binference/core";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { cardRulesOf } from "../agents/card-rules-of.js";
+import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { StoredIntent } from "../confirmations/stored-intent.js";
 import { ledgerEntryViewOf } from "../ledger/ledger-entry-view.js";
 import type { AgentStore, ConfirmationStore, IntentStore } from "../ports.js";
@@ -18,7 +19,7 @@ import { intentPushes } from "../pushes/intent-pushes.js";
 import type { StoredConfirmation } from "./confirmation-record.js";
 import type { FreezeCommit, FreezeWrite } from "./freeze-write.js";
 import { changeOf, type IntentMove } from "./intent-change-of.js";
-import type { IntentChange, IntentQuery } from "./intent-change.js";
+import type { IntentChange, IntentCommit, IntentQuery } from "./intent-change.js";
 import { draftOf, type NewIntent } from "./intent-draft-of.js";
 import { closingOf, type IntentHistory, statusOf } from "./intent-history.js";
 import type { IntentRecord } from "./intent-record.js";
@@ -94,6 +95,19 @@ export interface StoredIntentsOptions {
    */
   readonly random?: Random;
   readonly publish: PublishPush;
+  /**
+   * Hears each settle message a write stored for the agent runtime, after the write's own pushes,
+   * so it reaches the `inbox` topic.
+   */
+  readonly settled?: (message: AgentInboxMessage) => void;
+}
+
+// A write's pushes, then the settle message it stored, if any.
+function announce(options: StoredIntentsOptions, commit: IntentCommit, change?: IntentChange) {
+  intentPushes(commit, change).forEach(options.publish);
+  if (commit.settled !== undefined) {
+    options.settled?.(commit.settled);
+  }
 }
 
 function confirmationRecord(confirmation: StoredConfirmation | undefined): Partial<StoredIntent> {
@@ -202,7 +216,7 @@ async function moveIntent(
   if (!commit.ok) {
     return err("stale");
   }
-  intentPushes(commit.value, change).forEach(options.publish);
+  announce(options, commit.value, change);
   return ok(await written(options, move.intent, signal));
 }
 
@@ -237,7 +251,7 @@ async function freezeIntents(
   changes.forEach((change, index) => {
     const moved = commit.value.moves[index];
     if (moved !== undefined) {
-      intentPushes(moved, change).forEach(options.publish);
+      announce(options, moved, change);
     }
   });
   commit.value.ledgerEntries.forEach((entry) =>
@@ -258,7 +272,7 @@ export function createStoredIntents(options: StoredIntentsOptions): StoredIntent
       if (!commit.ok) {
         return err("exists");
       }
-      intentPushes(commit.value).forEach(options.publish);
+      announce(options, commit.value);
       return ok(await written(options, intent.id, signal));
     },
     list: async (query, { signal }) => options.intents.list(query, { signal }),
