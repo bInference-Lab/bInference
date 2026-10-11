@@ -28,6 +28,7 @@ const braking: EngineCaller = {
 const loosening: EngineCaller = { ...braking, scopes: ["read", "loosen"] };
 const mini: EngineCaller = {
   ...braking,
+  credential: "tg:7012345678",
   client: { kind: "mini", version: "test" },
   scopes: ["read", "chat", "confirm", "loosen"],
 };

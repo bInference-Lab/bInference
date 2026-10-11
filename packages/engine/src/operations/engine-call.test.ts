@@ -55,6 +55,19 @@ describe("who calls the engine", () => {
     ]).toStrictEqual(["owner", "mcp_client", "agent_runtime", "cli"]);
   });
 
+  it("names the surface by the credential, whatever client kind the caller says", () => {
+    const device: EngineCaller = {
+      credential: "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+      client: { kind: "cli", version: "console" },
+      scopes: ["read", "confirm"],
+    };
+    const token = { ...testCallers.cli, client: { kind: "console", version: "test" } } as const;
+    const mini = { ...telegram, client: { kind: "cli", version: "test" } } as const;
+    expect(
+      [answererOf(device), answererOf(token), answererOf(mini)].map((a) => a.surface),
+    ).toStrictEqual(["console", "cli", "mini"]);
+  });
+
   it("marks the agent runtime's proposal as outside content unless its turn read none", () => {
     const { turn: _turn, ...signedIn } = testCallers.runtime;
     const marked = { ...signedIn, turn: { hasOutsideContent: true } };

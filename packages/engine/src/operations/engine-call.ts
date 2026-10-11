@@ -108,12 +108,23 @@ export function proposerOf(caller: EngineCaller): Proposer | undefined {
   return { role, ref: credential, hasOutsideContent: false };
 }
 
+// The surface by the credential the server signed the caller in with, never by the client kind
+// the client says it is: Telegram for the chat the engine serves itself, the Mini App for a `tg:`
+// connection, the console for a device, and the CLI for a token.
+function surfaceOf(caller: EngineCaller): Answerer["surface"] {
+  if (caller.client.kind === "telegram") {
+    return "telegram";
+  }
+  if (isTelegramOwner(caller)) {
+    return "mini";
+  }
+  return isId("dev", caller.credential) ? "console" : "cli";
+}
+
 /**
- * The surface a caller answers and changes things on: Telegram, the console or the Mini App, and
- * the CLI for every other client.
+ * The surface a caller answers and changes things on, as journals and receipts name it: decided by
+ * its credential, so a client cannot pass itself off as another surface.
  */
 export function answererOf(caller: EngineCaller): Answerer {
-  const { kind } = caller.client;
-  const surface = kind === "console" || kind === "mini" || kind === "telegram" ? kind : "cli";
-  return { surface, by: caller.credential };
+  return { surface: surfaceOf(caller), by: caller.credential };
 }

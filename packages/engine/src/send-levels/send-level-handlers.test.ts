@@ -17,7 +17,7 @@ const live = { signal: new AbortController().signal };
 const unknownAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000009" as Id<"agt">;
 // The Mini App holds `confirm` and `loosen`; these callers hold one of the two.
 const braking: EngineCaller = {
-  credential: "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  credential: "tg:7012345678",
   client: { kind: "mini", version: "test" },
   scopes: ["read", "confirm"],
 };

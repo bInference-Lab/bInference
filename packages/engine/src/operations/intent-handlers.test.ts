@@ -86,12 +86,13 @@ describe("the intent handlers", () => {
     });
   });
 
-  it("names the console or the Mini App as the surface a device answered on", async () => {
+  it("names the console or the Mini App as the surface a device or a launch answered on", async () => {
     const consoleIntent = await proposed();
     const device = { ...testCallers.cli, credential: "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001" };
     await confirm(consoleIntent, { ...device, client: { kind: "console", version: "test" } });
     const miniIntent = await proposed();
-    await confirm(miniIntent, { ...device, client: { kind: "mini", version: "test" } });
+    const launch = { ...testCallers.cli, credential: "tg:7012345678" };
+    await confirm(miniIntent, { ...launch, client: { kind: "mini", version: "test" } });
     const surfaces = await Promise.all(
       [consoleIntent, miniIntent].map(async ({ test, view }) =>
         test.stores.intents.confirmation(view.intent, live),
