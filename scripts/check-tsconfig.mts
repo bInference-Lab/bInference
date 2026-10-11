@@ -32,10 +32,14 @@ const strictFamily = [
   "useUnknownInCatchVariables",
 ];
 
-// Scripts never emit declarations; the console bundles with Vite.
+// Scripts never emit declarations; the console bundles with Vite and emits none either.
 const allowedOverrides: Readonly<Record<string, Readonly<Record<string, boolean | string>>>> = {
   "scripts/tsconfig.json": { isolatedDeclarations: false },
-  "packages/console/tsconfig.json": { moduleResolution: "Bundler", module: "ESNext" },
+  "packages/console/tsconfig.json": {
+    moduleResolution: "Bundler",
+    module: "ESNext",
+    isolatedDeclarations: false,
+  },
 };
 
 const tsconfigSchema = z.looseObject({

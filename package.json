@@ -43,7 +43,7 @@
     "test": "vitest run --coverage",
     "test:crash": "vitest run --config vitest.crash.config.ts",
     "test:fork": "vitest run --config vitest.fork.config.ts",
-    "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p packages/console/tsconfig.json"
   },
   "devDependencies": {
     "@binference/i18n": "workspace:*",

@@ -28,6 +28,7 @@
     "@binference/chain-evm": "workspace:*",
     "@binference/chains": "workspace:*",
     "@binference/client": "workspace:*",
+    "@binference/console": "workspace:*",
     "@binference/core": "workspace:*",
     "@binference/custody-privy": "workspace:*",
     "@binference/engine": "workspace:*",

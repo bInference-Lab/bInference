@@ -20,5 +20,10 @@
   "tabWidth": 2,
   "trailingComma": "all",
   "useTabs": false,
-  "ignorePatterns": ["pnpm-lock.yaml", "**/*.generated.json"],
+  // The console's shadcn components stay as the shadcn CLI writes them.
+  "ignorePatterns": [
+    "pnpm-lock.yaml",
+    "**/*.generated.json",
+    "packages/console/src/components/ui/**",
+  ],
 }

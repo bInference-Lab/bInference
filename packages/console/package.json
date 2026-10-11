@@ -1,0 +1,44 @@
+{
+  "name": "@binference/console",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The web console: confirmations, the ledger and limits in the browser, signed in with a paired device key.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    "./dist/*": "./dist/*"
+  },
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@binference/client": "workspace:*",
+    "@binference/i18n": "workspace:*",
+    "@binference/protocol": "workspace:*",
+    "@fontsource-variable/hanken-grotesk": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "class-variance-authority": "catalog:",
+    "cn": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "fake-indexeddb": "catalog:",
+    "jsdom": "catalog:",
+    "tailwindcss": "catalog:",
+    "vite": "catalog:"
+  }
+}

@@ -2,6 +2,7 @@ import enAutoAsks from "../messages/en/autoAsks.json" with { type: "json" };
 import enCard from "../messages/en/card.json" with { type: "json" };
 import enCli from "../messages/en/cli.json" with { type: "json" };
 import enCmd from "../messages/en/cmd.json" with { type: "json" };
+import enConsole from "../messages/en/console.json" with { type: "json" };
 import enError from "../messages/en/error.json" with { type: "json" };
 import enInit from "../messages/en/init.json" with { type: "json" };
 import enLanguage from "../messages/en/language.json" with { type: "json" };
@@ -14,6 +15,7 @@ import zhAutoAsks from "../messages/zh/autoAsks.json" with { type: "json" };
 import zhCard from "../messages/zh/card.json" with { type: "json" };
 import zhCli from "../messages/zh/cli.json" with { type: "json" };
 import zhCmd from "../messages/zh/cmd.json" with { type: "json" };
+import zhConsole from "../messages/zh/console.json" with { type: "json" };
 import zhError from "../messages/zh/error.json" with { type: "json" };
 import zhInit from "../messages/zh/init.json" with { type: "json" };
 import zhLanguage from "../messages/zh/language.json" with { type: "json" };
@@ -55,6 +57,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("init", enInit),
     ...inArea("language", enLanguage),
     ...inArea("limit", enLimit),
+    ...inArea("console", enConsole),
   },
   zh: {
     ...inArea("error", zhError),
@@ -69,5 +72,6 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("init", zhInit),
     ...inArea("language", zhLanguage),
     ...inArea("limit", zhLimit),
+    ...inArea("console", zhConsole),
   },
 };

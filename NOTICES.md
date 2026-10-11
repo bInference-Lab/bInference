@@ -77,3 +77,9 @@ THE SOFTWARE.
 
 The logos in `.github/assets/logos/` belong to their owners. They appear only to name the services
 binference works with.
+
+## Fonts
+
+The console ships Hanken Grotesk, copyright 2021 The Hanken Grotesk Project Authors, under the SIL
+Open Font License 1.1. Its full licence ships beside it in the console's build, from
+`packages/console/public/hanken-grotesk-ofl.txt`.

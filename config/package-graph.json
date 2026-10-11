@@ -122,8 +122,19 @@
         "react-dom",
         "@tanstack/react-router",
         "@tanstack/react-query",
+        "@base-ui/react",
+        "lucide-react",
+        "class-variance-authority",
+        "cn",
+        "@fontsource-variable/hanken-grotesk",
         "tailwindcss",
-        "vite"
+        "@tailwindcss/vite",
+        "vite",
+        "@vitejs/plugin-react",
+        "jsdom",
+        "@testing-library/react",
+        "@testing-library/dom",
+        "fake-indexeddb"
       ],
       "userText": true,
       "browser": true

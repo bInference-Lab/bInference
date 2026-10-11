@@ -19,6 +19,13 @@
       "entry": ["src/skill-run/skill-run-server.ts"],
       "project": ["src/**/*.ts"],
     },
+    // The console is a Vite app: index.html loads its entry and its stylesheet. Its shadcn
+    // components stay as the shadcn CLI writes them, every one whether used yet or not.
+    "packages/console": {
+      "entry": ["src/app/theme.css"],
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignore": ["src/components/ui/**"],
+    },
     "packages/telegram": {
       "entry": ["src/**/*.worker.ts"],
       "project": ["src/**/*.ts"],

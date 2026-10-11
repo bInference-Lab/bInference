@@ -22,6 +22,10 @@ const version = read.ok
   ? z.object({ version: z.string() }).parse(JSON.parse(read.value)).version
   : "unknown";
 
+// The console's build, which the engine serves; it is missing until the console is built.
+const consoleIndex = import.meta.resolve("@binference/console/dist/index.html");
+const consoleFolder = fileURLToPath(new URL(".", consoleIndex));
+
 const http = createSystemHttp({ version });
 // A person answers questions only when both ends of the terminal are one.
 const hasTerminal = process.stdin.isTTY && process.stdout.isTTY;
@@ -41,6 +45,7 @@ process.exitCode = await runCli({
   // Store workers run with this process's Node options, such as a TypeScript loader.
   workerExecArgv: process.execArgv,
   entry,
+  consoleFolder,
   mcpStdio: { input: process.stdin, output: process.stdout },
 });
 await http.close();

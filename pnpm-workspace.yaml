@@ -5,9 +5,11 @@ packages:
 # Every version lives here; package.json files write "catalog:".
 catalogMode: strict
 catalog:
+  "@base-ui/react": 1.8.0
   "@clack/prompts": 1.8.1
   "@commitlint/cli": 21.2.3
   "@commitlint/types": 21.2.3
+  "@fontsource-variable/hanken-grotesk": 5.3.0
   "@hpke/chacha20poly1305": 1.8.0
   "@hpke/core": 1.9.0
   "@modelcontextprotocol/client": 2.2.0
@@ -16,22 +18,38 @@ catalog:
   "@noble/curves": 2.4.0
   "@privy-io/node": 0.35.0
   "@stryker-mutator/core": 10.0.0
+  "@tailwindcss/vite": 4.3.3
+  "@tanstack/react-query": 5.104.1
+  "@tanstack/react-router": 1.170.41
+  "@testing-library/dom": 10.4.2
+  "@testing-library/react": 16.3.3
   "@types/node": 26.6.3
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
   "@types/ws": 8.18.2
+  "@vitejs/plugin-react": 6.1.1
   "@vitest/coverage-v8": 5.0.2
+  class-variance-authority: 0.7.1
+  cn: 0.4.0
   commander: 15.0.0
   execa: 10.0.1
+  fake-indexeddb: 6.2.5
   fast-check: 4.10.2
   grammy: 1.46.0
   intl-messageformat: 12.1.2
   jscpd: 5.3.3
+  jsdom: 30.1.1
   json5: 2.2.3
   knip: 6.38.0
   kysely: 0.29.6
+  lucide-react: 1.51.0
   markdownlint-cli2: 0.23.3
   oxfmt: 0.71.0
   oxlint: 1.86.0
   oxlint-tsgolint: 7.0.2003
+  react: 19.3.0
+  react-dom: 19.3.0
+  tailwindcss: 4.3.3
   tsdown: 0.23.0
   tslog: 5.2.0
   tsx: 4.23.15
@@ -39,6 +57,7 @@ catalog:
   typescript: 7.0.2
   undici: 8.11.2
   viem: 2.57.1
+  vite: 8.3.2
   vitest: 5.0.2
   which-command: 0.1.0
   ws: 8.22.0

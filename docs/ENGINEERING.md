@@ -251,9 +251,10 @@ Rules:
   `exactOptionalPropertyTypes`, `noImplicitOverride`, `noImplicitReturns`,
   `noPropertyAccessFromIndexSignature`, `noUncheckedSideEffectImports`, `verbatimModuleSyntax`,
   `isolatedDeclarations`, `erasableSyntaxOnly`, `module` and `moduleResolution` `NodeNext`, target
-  ES2023. The console uses `Bundler` resolution. Enforcer: `tsc` (TypeScript 7); `check:tsconfig`
-  (every package `tsconfig` extends the base and overrides none of these flags, except the console's
-  resolution).
+  ES2023. The console uses `Bundler` resolution, and, emitting no declarations, turns
+  `isolatedDeclarations` off for its shadcn components ([decision 0156](DECISIONS.md#d0156)).
+  Enforcer: `tsc` (TypeScript 7); `check:tsconfig` (every package `tsconfig` extends the base and
+  overrides none of these flags, except the console's resolution and declarations).
 - **TS-2** ESM only, Node `>=26.1` ([decision 0092](DECISIONS.md#d0092): Node 24 cannot sandbox
   plugins). Relative imports end in `.js`. Enforcer: `engines` with pnpm `engineStrict: true` for
   the Node range; `tsc` (TypeScript 7) with NodeNext for ESM and `.js` endings (TS2835); Oxlint

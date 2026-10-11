@@ -145,9 +145,23 @@
     "**/dist/**",
     "coverage/**",
     "reports/**",
-    ".stryker-tmp/**"
+    ".stryker-tmp/**",
+    "packages/console/src/components/ui/**"
   ],
   "overrides": [
+    {
+      "files": ["packages/console/**"],
+      "plugins": ["react", "jsx-a11y"],
+      "rules": {
+        "react/react-in-jsx-scope": "off",
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "error",
+        "react/jsx-key": "error",
+        "react/no-danger": "error",
+        "jsx-a11y/alt-text": "error",
+        "jsx-a11y/anchor-is-valid": "error"
+      }
+    },
     {
       "files": ["packages/**", "plugins/**"],
       "rules": {
@@ -187,7 +201,7 @@
       }
     },
     {
-      "files": ["**/*.test.ts"],
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "eslint/max-lines": [
           "error",

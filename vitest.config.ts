@@ -37,6 +37,23 @@ const crashFolders = "**/src/crash/**";
 // files gets a fresh module graph.
 const isolatedFolders = new Set(["packages/platform"]);
 
+// The console is a React app: its tests are TSX too, its `@/` imports name its src, and a test
+// that renders sets `@vitest-environment jsdom` itself.
+const consoleFolder = "packages/console";
+
+function consoleProject(): TestProjectInlineConfiguration {
+  return {
+    extends: true,
+    resolve: { alias: { "@": join(import.meta.dirname, consoleFolder, "src") } },
+    oxc: { jsx: { runtime: "automatic" } },
+    test: {
+      name: "console",
+      include: [`${consoleFolder}/src/**/*.test.{ts,tsx}`],
+      isolate: false,
+    },
+  };
+}
+
 // Two projects, split by isolation: every project starts its own workers and module graph, which
 // cost more than the tests themselves when each package was a project.
 function project(
@@ -56,10 +73,13 @@ function project(
 
 function projects(): readonly TestProjectInlineConfiguration[] {
   const isolated = folders.filter((folder) => isolatedFolders.has(folder));
-  const shared = folders.filter((folder) => !isolatedFolders.has(folder));
+  const shared = folders.filter(
+    (folder) => !isolatedFolders.has(folder) && folder !== consoleFolder,
+  );
   return [
     ...(shared.length === 0 ? [] : [project("shared", shared)]),
     ...(isolated.length === 0 ? [] : [project("isolated", isolated)]),
+    ...(folders.includes(consoleFolder) ? [consoleProject()] : []),
   ];
 }
 
@@ -109,8 +129,14 @@ const config: ViteUserConfig = defineConfig({
     setupFiles: ["config/vitest/setup.ts"],
     coverage: {
       provider: "v8",
-      include: ["packages/*/src/**/*.ts", "plugins/*/src/**/*.ts"],
-      exclude: ["**/*.test.ts", forkFolders, crashFolders],
+      include: ["packages/*/src/**/*.{ts,tsx}", "plugins/*/src/**/*.ts"],
+      exclude: [
+        "**/*.test.{ts,tsx}",
+        forkFolders,
+        crashFolders,
+        `${consoleFolder}/src/components/ui/**`,
+        `${consoleFolder}/src/main.tsx`,
+      ],
       reporter: ["text", "json-summary"],
       thresholds: { lines: defaultBar, branches: defaultBar, ...tierThresholds() },
     },
