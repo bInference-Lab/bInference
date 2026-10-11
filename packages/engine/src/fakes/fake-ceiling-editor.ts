@@ -159,13 +159,29 @@ function contractsOn(
   return [...new Set(addresses)].map((address) => accountRefSchema.parse(`${chain}:${address}`));
 }
 
+// Each cap at the size asked: its limit scaled from its old size in dollars, rounded up.
+function resized(
+  dayCaps: readonly DayCapView[] | undefined,
+  usdMicros: bigint | undefined,
+): readonly DayCapView[] | undefined {
+  if (dayCaps === undefined || usdMicros === undefined) {
+    return dayCaps;
+  }
+  return dayCaps.map((cap) => {
+    const { limit, floorUsdMicros } = cap;
+    const scaled =
+      floorUsdMicros === 0n ? limit : (limit * usdMicros + floorUsdMicros - 1n) / floorUsdMicros;
+    return { ...cap, limit: scaled, floorUsdMicros: usdMicros };
+  });
+}
+
 // Each ceiling's calls, all checked before any changes: on each of its chains, a contract or more.
 function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal> {
   if (!isOwner(request.ownerKey)) {
     return err("bad_owner_key");
   }
   const changes = new Map<string, FakeCalls>();
-  for (const { ceiling, venues, perTxNativeBase } of request.ceilings) {
+  for (const { ceiling, venues, perTxNativeBase, dayCapUsdMicros } of request.ceilings) {
     const recipients = held.ceilings.get(ceiling);
     if (recipients === undefined) {
       return err("not_found");
@@ -174,7 +190,7 @@ function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal>
     if (each.some((contracts) => contracts.length === 0)) {
       return err("no_calls");
     }
-    const dayCaps = held.calls.get(ceiling)?.dayCaps;
+    const dayCaps = resized(held.calls.get(ceiling)?.dayCaps, dayCapUsdMicros);
     const kept = dayCaps === undefined ? {} : { dayCaps };
     changes.set(ceiling, { contracts: each.flat(), perTxNativeBase, ...kept });
   }

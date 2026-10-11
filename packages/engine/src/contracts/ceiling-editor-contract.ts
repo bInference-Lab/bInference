@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { AccountRef } from "@binference/chain";
 import { err, ok, type Secret } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
+import type { CeilingRead } from "../install/ceiling-change.js";
 import type { CeilingEditor } from "../install/ports.js";
 import { assertRefusesAborted, checkOn, live } from "./store-fixtures.js";
 
@@ -12,7 +13,10 @@ export interface CeilingEditorSubject {
   readonly ownerKey: Secret;
   /** A well-formed code of another key. */
   readonly otherKey: Secret;
-  /** The ceiling the checks change; it lists `accounts[0]` and `accounts[1]` at the start. */
+  /**
+   * The ceiling the checks change; it lists `accounts[0]` and `accounts[1]` at the start, and
+   * names one 24-hour cap or more.
+   */
   readonly ceiling: string;
   /** A ceiling id custody does not hold. */
   readonly unknownCeiling: string;
@@ -136,6 +140,36 @@ async function refusesOtherCalls(subject: CeilingEditorSubject): Promise<void> {
   assert.deepEqual(await editor.read(subject.ceiling, live()), before);
 }
 
+// The size of every cap after the resize: $2,000 at each floor price.
+const dayCapUsdMicros = 2_000_000_000n;
+
+function shapeOf(caps: CeilingRead["dayCaps"]) {
+  return caps.map((cap) => [cap.asset, cap.windowSeconds]);
+}
+
+async function resizesDayCaps(subject: CeilingEditorSubject): Promise<void> {
+  const { editor, ceiling } = subject;
+  const before = await editor.read(ceiling, live());
+  assert.ok(before.ok && before.value.dayCaps.length > 0, "The subject's ceiling names no caps.");
+  const [calls] = callsOf(subject, subject.venues.known).ceilings;
+  assert.ok(calls !== undefined);
+  const request = {
+    ownerKey: subject.ownerKey,
+    ceilings: [{ ...calls, dayCapUsdMicros }],
+  };
+  assert.deepEqual(await editor.setCalls(request, live()), ok(undefined));
+  const after = await editor.read(ceiling, live());
+  assert.ok(after.ok);
+  assert.deepEqual(shapeOf(after.value.dayCaps), shapeOf(before.value.dayCaps));
+  assert.ok(after.value.dayCaps.every((cap) => cap.floorUsdMicros >= dayCapUsdMicros));
+  assert.deepEqual(sorted(after.value.recipients), await subject.recipients());
+  assert.deepEqual(await editor.setCalls(request, live()), ok(undefined));
+  assert.deepEqual(await editor.read(ceiling, live()), after);
+  const byOther = { ...request, ownerKey: subject.otherKey };
+  assert.deepEqual(await editor.setCalls(byOther, live()), err("bad_owner_key"));
+  assert.deepEqual(await editor.read(ceiling, live()), after);
+}
+
 async function refusesAborted(subject: CeilingEditorSubject): Promise<void> {
   const { editor, ownerKey, ceiling, accounts } = subject;
   const request = { ownerKey, ceilings: [{ ceiling, recipients: [accounts[2]] }] };
@@ -165,6 +199,11 @@ export function ceilingEditorContract(harness: CeilingEditorHarness): readonly C
       "refuses calls by another key, on an unknown ceiling or with no contract",
       create,
       refusesOtherCalls,
+    ),
+    checkOn(
+      "resizes every 24-hour cap with the owner key, each still counting what it did",
+      create,
+      resizesDayCaps,
     ),
     checkOn("refuses every call on an aborted signal and changes nothing", create, refusesAborted),
   ];

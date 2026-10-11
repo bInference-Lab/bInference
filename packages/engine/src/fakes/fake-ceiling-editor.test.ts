@@ -1,4 +1,4 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefSchema, assetRefSchema } from "@binference/chain";
 import { createSecret } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
@@ -12,6 +12,14 @@ const accounts = [
   accountRefSchema.parse("fake:1:0x000000a3"),
 ] as const;
 
+// The one 24-hour cap the subject's ceiling names: 10 coins, $1,000 at the floor.
+const dayCap = {
+  asset: assetRefSchema.parse("fake:1/slip44:1"),
+  limit: 10n * 10n ** 18n,
+  windowSeconds: 86_400,
+  floorUsdMicros: 1_000_000_000n,
+};
+
 function listed(recipients: readonly AccountRef[] | undefined): readonly AccountRef[] {
   return recipients ?? [];
 }
@@ -22,7 +30,8 @@ describe("the fake ceiling editor", () => {
       create: async () => {
         const clock = createManualClock(1_800_000_000_000);
         const editor = createFakeCeilingEditor({ clock, chains: testChains() });
-        editor.put("ceiling-1", [accounts[0], accounts[1]]);
+        const calls = { contracts: [], perTxNativeBase: 10n ** 18n, dayCaps: [dayCap] };
+        editor.put("ceiling-1", [accounts[0], accounts[1]], calls);
         return Promise.resolve({
           editor,
           ownerKey: createSecret(fakeOwnerKeyCode),

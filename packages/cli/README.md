@@ -153,45 +153,46 @@ The reference of every key, generated from the schema, is
 
 ## Commands
 
-| Command                              | What it does                                                        |
-| ------------------------------------ | ------------------------------------------------------------------- |
-| `binference init`                    | Sets up an install: Privy, owner key, first wallet and bot          |
-| `binference init --attach`           | Makes this machine the wallets' signer; asks for the owner key      |
-| `binference owner-key create`        | A new owner key shown once in this terminal, for a headless init    |
-| `binference start [--set key=value]` | Runs the engine as the background service, which login starts again |
-| `binference start --foreground`      | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
-| `binference stop`                    | Stops the engine; the background service starts again at login      |
-| `binference restart`                 | Stops the engine, then starts the background service again          |
-| `binference service remove`          | Stops the engine and takes its background service off login         |
-| `binference status`                  | The engine's state, release, agents and health signals              |
-| `binference health`                  | Exits 0 when the engine runs and is ready; a container health check |
-| `binference logs [-n N] [--follow]`  | The engine log's last lines, then new ones until Ctrl+C             |
-| `binference approval [manual\|auto]` | Shows the agent's approval mode, or sets it                         |
-| `binference confirm <intent>`        | Shows the open card, asks, then confirms it; `--yes` skips the ask  |
-| `binference deny <intent>`           | Cancels the intent's card, as its button does                       |
-| `binference live`                    | Goes live once the disclaimer is typed back, over IPC only          |
-| `binference paper`                   | Switches the agent back to paper mode                               |
-| `binference wallet list`             | The agent wallets with their labels and addresses                   |
-| `binference wallet address`          | The address to fund the agent's default wallet at                   |
-| `binference wallet create --label x` | A new wallet under its own ceiling; asks for the owner key          |
-| `binference wallet export`           | Shows a wallet's private key once; asks for the owner key           |
-| `binference ceiling [--wallet <id>]` | The wallet's ceiling as custody holds it now                        |
-| `binference ceiling set --per-tx x`  | Venues and cap of every agent ceiling; asks for the owner key       |
-| `binference freeze [--agent <id>]`   | Freezes every agent and the install, or one agent                   |
-| `binference unfreeze`                | Opens the unfreeze card, which `confirm` or a tap answers           |
-| `binference rescue`                  | Opens the rescue card: everything to the rescue address             |
-| `binference rescue set <address>`    | A new rescue address in 24 hours; asks for the owner key            |
-| `binference rescue cancel`           | Cancels a new rescue address that waits                             |
-| `binference safety status`           | What is frozen, the rescue under way and the rescue address         |
-| `binference telegram pair`           | A new link that pairs another Telegram account; shown once          |
-| `binference signer revoke <signer>`  | Removes a machine's agent key from every wallet; owner key          |
-| `binference address list`            | The agent's saved addresses and when a send may pay each            |
-| `binference address add <address>`   | Saves a send address in the ceilings; asks for the owner key        |
-| `binference address remove <entry>`  | Takes an address out of the book: nothing is sent to it again       |
-| `binference limit`                   | The agent's limits in effect, and the looser ones that wait         |
-| `binference limit set <key=value>`   | Stricter limits apply now, looser ones in 24 hours                  |
-| `binference limit cancel`            | Drops the looser limits that wait                                   |
-| `binference check [--fix]`           | Checks the config, file access, unlock mode and the engine          |
+| Command                                  | What it does                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| `binference init`                        | Sets up an install: Privy, owner key, first wallet and bot          |
+| `binference init --attach`               | Makes this machine the wallets' signer; asks for the owner key      |
+| `binference owner-key create`            | A new owner key shown once in this terminal, for a headless init    |
+| `binference start [--set key=value]`     | Runs the engine as the background service, which login starts again |
+| `binference start --foreground`          | Runs the engine in this terminal until Ctrl+C or `engine/stop`      |
+| `binference stop`                        | Stops the engine; the background service starts again at login      |
+| `binference restart`                     | Stops the engine, then starts the background service again          |
+| `binference service remove`              | Stops the engine and takes its background service off login         |
+| `binference status`                      | The engine's state, release, agents and health signals              |
+| `binference health`                      | Exits 0 when the engine runs and is ready; a container health check |
+| `binference logs [-n N] [--follow]`      | The engine log's last lines, then new ones until Ctrl+C             |
+| `binference approval [manual\|auto]`     | Shows the agent's approval mode, or sets it                         |
+| `binference confirm <intent>`            | Shows the open card, asks, then confirms it; `--yes` skips the ask  |
+| `binference deny <intent>`               | Cancels the intent's card, as its button does                       |
+| `binference live`                        | Goes live once the disclaimer is typed back, over IPC only          |
+| `binference paper`                       | Switches the agent back to paper mode                               |
+| `binference wallet list`                 | The agent wallets with their labels and addresses                   |
+| `binference wallet address`              | The address to fund the agent's default wallet at                   |
+| `binference wallet create --label x`     | A new wallet under its own ceiling; asks for the owner key          |
+| `binference wallet export`               | Shows a wallet's private key once; asks for the owner key           |
+| `binference ceiling [--wallet <id>]`     | The wallet's ceiling as custody holds it now, with its 24-hour caps |
+| `binference ceiling set --per-tx x`      | Venues and cap of every agent ceiling; asks for the owner key       |
+| `binference ceiling set --day-cap-usd x` | The 24-hour caps every wallet shares; asks for the owner key        |
+| `binference freeze [--agent <id>]`       | Freezes every agent and the install, or one agent                   |
+| `binference unfreeze`                    | Opens the unfreeze card, which `confirm` or a tap answers           |
+| `binference rescue`                      | Opens the rescue card: everything to the rescue address             |
+| `binference rescue set <address>`        | A new rescue address in 24 hours; asks for the owner key            |
+| `binference rescue cancel`               | Cancels a new rescue address that waits                             |
+| `binference safety status`               | What is frozen, the rescue under way and the rescue address         |
+| `binference telegram pair`               | A new link that pairs another Telegram account; shown once          |
+| `binference signer revoke <signer>`      | Removes a machine's agent key from every wallet; owner key          |
+| `binference address list`                | The agent's saved addresses and when a send may pay each            |
+| `binference address add <address>`       | Saves a send address in the ceilings; asks for the owner key        |
+| `binference address remove <entry>`      | Takes an address out of the book: nothing is sent to it again       |
+| `binference limit`                       | The agent's limits in effect, and the looser ones that wait         |
+| `binference limit set <key=value>`       | Stricter limits apply now, looser ones in 24 hours                  |
+| `binference limit cancel`                | Drops the looser limits that wait                                   |
+| `binference check [--fix]`               | Checks the config, file access, unlock mode and the engine          |
 
 In development, run the source: `node --conditions=@binference/source --import tsx
 packages/cli/src/main.ts status`. The store workers get the same Node options.

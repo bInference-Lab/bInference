@@ -63,6 +63,17 @@ async function readAll(
   return held;
 }
 
+function isCapsChange(changes: CeilingChanges): boolean {
+  return changes.dayCapUsdMicros !== undefined;
+}
+
+// 24-hour caps come alone, above 0.
+function capsRefusal(changes: CeilingChanges): ProtocolErrorCode | undefined {
+  const { chains, venues, perTxNative, dayCapUsdMicros = 0n } = changes;
+  const isAlone = chains === undefined && venues === undefined && perTxNative === undefined;
+  return isAlone && dayCapUsdMicros > 0n ? undefined : "protocol.bad_args";
+}
+
 function lowerSet(items: readonly string[]): ReadonlySet<string> {
   return new Set(items.map((item) => item.toLowerCase()));
 }
@@ -72,8 +83,9 @@ function isSameSet(left: readonly string[], right: readonly string[]): boolean {
   return a.size === b.size && [...a].every((item) => b.has(item));
 }
 
-// A chain change, venues none or unknown, or a venue removed that the limits in effect or waiting
-// still name; undefined when the changes may apply to every ceiling.
+// A chain change, venues none or unknown, a venue removed that the limits in effect or waiting
+// still name, or 24-hour caps that are not above 0 or come with another change; undefined when
+// the changes may apply to every ceiling.
 function refusalOf(
   options: SetCeilingOptions,
   planned: {
@@ -84,6 +96,9 @@ function refusalOf(
 ): ProtocolErrorCode | undefined {
   const { changes, held, settings } = planned;
   const { chains, venues } = changes;
+  if (isCapsChange(changes)) {
+    return capsRefusal(changes);
+  }
   const isChainChange = (enabled: readonly ChainRef[]) =>
     chains !== undefined && !isSameSet(enabled, chains);
   if (held.some((item) => isChainChange(item.read.chains))) {
@@ -103,17 +118,27 @@ function refusalOf(
   return removed.some((venue) => named.has(venue)) ? "limit.venue_in_use" : undefined;
 }
 
-// What each ceiling's calls become: the venues and cap asked, else the ones it holds.
+// What each ceiling's calls become: the venues, cap and 24-hour caps asked, else the ones it holds.
 function callsOf(
   options: SetCeilingOptions,
   changes: CeilingChanges,
   held: readonly HeldCeiling[],
 ): readonly CeilingCalls[] {
-  return held.map(({ wallet, read }) => ({
-    ceiling: wallet.policyId,
-    venues: [...new Set(changes.venues ?? venuesIn(options.chains, read))],
-    perTxNativeBase: changes.perTxNative ?? read.perTxNativeBase,
-  }));
+  const { dayCapUsdMicros } = changes;
+  // A ceiling that allows no call names no cap, so a change of the caps leaves it as it is.
+  const changed =
+    dayCapUsdMicros === undefined ? held : held.filter(({ read }) => read.dayCaps.length > 0);
+  const resize = dayCapUsdMicros === undefined ? {} : { dayCapUsdMicros };
+  return changed.map(({ wallet, read }) =>
+    Object.assign(
+      {
+        ceiling: wallet.policyId,
+        venues: [...new Set(changes.venues ?? venuesIn(options.chains, read))],
+        perTxNativeBase: changes.perTxNative ?? read.perTxNativeBase,
+      },
+      resize,
+    ),
+  );
 }
 
 // Each wallet's stored copy of its ceiling, as custody holds it after the change.
@@ -138,6 +163,10 @@ interface ReadPair {
   readonly next: CeilingRead;
 }
 
+function limitsOf(caps: CeilingRead["dayCaps"]): string {
+  return caps.map((cap) => `${cap.asset} ${cap.limit}`).join(",");
+}
+
 // What moved between the reads before and after: the contracts a call may reach, the cap, both.
 function kindOf(
   before: readonly HeldCeiling[],
@@ -147,6 +176,12 @@ function kindOf(
     const earlier = before.find((item) => item.wallet.id === next.wallet.id);
     return earlier === undefined ? [] : [{ earlier: earlier.read, next: next.read }];
   });
+  const caps = pairs.some(
+    ({ earlier, next }) => limitsOf(earlier.dayCaps) !== limitsOf(next.dayCaps),
+  );
+  if (caps) {
+    return "dayCaps";
+  }
   const venues = pairs.some(({ earlier, next }) => !isSameSet(earlier.contracts, next.contracts));
   const cap = pairs.some(({ earlier, next }) => earlier.perTxNativeBase !== next.perTxNativeBase);
   if (venues && cap) {
@@ -208,14 +243,19 @@ async function walletsOf(
     return err("wallet.not_found");
   }
   const found = await activeAgent(options.agents, named.agentId, { signal: call.signal });
-  const agentWallets = live.filter((wallet) => wallet.agentId === named.agentId);
-  return found.ok ? ok({ settings: found.value, wallets: agentWallets }) : found;
+  // The 24-hour caps are the install's: a change of them reaches every live wallet.
+  const changed = isCapsChange(call.args.changes)
+    ? live
+    : live.filter((wallet) => wallet.agentId === named.agentId);
+  return found.ok ? ok({ settings: found.value, wallets: changed }) : found;
 }
 
 /**
  * Changes what the ceiling of every live wallet of an agent lets a contract call do, with the
  * owner key over IPC (decision 0132): the venues whose registry contracts it may reach and the
- * most native coin one call may carry, on the chains each ceiling enables. Its chains and
+ * most native coin one call may carry, on the chains each ceiling enables. A change of the 24-hour
+ * caps comes alone, above 0, and resizes the caps of every live wallet of the install, whose sums
+ * they share (decision 0151); any other is `protocol.bad_args`. Its chains and
  * recipients stay: naming other chains is `protocol.bad_args`, as a new chain needs a new wallet.
  * No venue or an unknown one is `protocol.bad_args`; removing a venue the agent's limits name, in
  * effect or waiting, is `limit.venue_in_use`; a wrong key is `wallet.bad_owner_key`. Each wallet's

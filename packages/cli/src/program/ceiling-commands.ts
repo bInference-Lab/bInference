@@ -16,8 +16,9 @@ function walletOption(message: (key: string) => string): Option {
 }
 
 /**
- * Adds the ceiling commands (decisions 0110 and 0132): `ceiling` shows a wallet's ceiling, and
- * `ceiling set` changes the venues and the cap of every wallet of the agent with the owner key.
+ * Adds the ceiling commands (decisions 0110, 0132 and 0151): `ceiling` shows a wallet's ceiling,
+ * and `ceiling set` changes, with the owner key, the venues and the cap of every wallet of the
+ * agent, or the 24-hour caps every wallet shares.
  */
 export function addCeilingCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
@@ -37,6 +38,7 @@ export function addCeilingCommands(program: Command, options: ProgramOptions): v
     .addOption(walletOption(message))
     .option("--venues <ids>", message("option.venues"), venuesOf)
     .option("--per-tx <amount>", message("option.perTx"))
+    .option("--day-cap-usd <dollars>", message("option.dayCapUsd"))
     .action((flags: OptionValues) =>
       choose({ name: "ceilingSet", options: ceilingSetFlagsSchema.parse(flags) }),
     );

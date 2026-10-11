@@ -1,4 +1,9 @@
-import { accountRefSchema, chainRefSchema, createChainRegistry } from "@binference/chain";
+import {
+  accountRefSchema,
+  assetRefSchema,
+  chainRefSchema,
+  createChainRegistry,
+} from "@binference/chain";
 import {
   createFakeChainDefinition,
   createFakeFamily,
@@ -49,6 +54,14 @@ const fakeAccounts = [
 ] as const;
 
 // A cell holding custody whose ceilings are the engine's fake editor, on the fake chain.
+// The one 24-hour cap the subject's ceiling names: 10 coins, $1,000 at the floor.
+const dayCap = {
+  asset: assetRefSchema.parse("fake:1/slip44:1"),
+  limit: 10n * 10n ** 18n,
+  windowSeconds: 86_400,
+  floorUsdMicros: 1_000_000_000n,
+};
+
 async function editorSubject() {
   const clock = createManualClock(1_800_000_000_000);
   const chains = createChainRegistry({
@@ -57,7 +70,8 @@ async function editorSubject() {
     signingSchemes: [createFakeSigningScheme()],
   });
   const editor = createFakeCeilingEditor({ clock, chains });
-  editor.put("ceiling-1", [fakeAccounts[0], fakeAccounts[1]]);
+  const calls = { contracts: [], perTxNativeBase: 10n ** 18n, dayCaps: [dayCap] };
+  editor.put("ceiling-1", [fakeAccounts[0], fakeAccounts[1]], calls);
   const cell = createCustodyCell();
   cell.hold({ ...opened(), ceilings: editor });
   return Promise.resolve({

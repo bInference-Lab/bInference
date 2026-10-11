@@ -153,12 +153,15 @@ field says, and Privy reads only a function's top-level inputs.
 **The 24-hour caps** are Privy aggregations: rolling sums Privy records after it signs, at most 10
 per app. Init makes them once, owned by the owner key's quorum, and every ceiling of the install
 names the same ones, so they bound all its wallets together. Each is twice
-`defaults.limits.rollingDayUsd`, counting BNB and WBNB at $100 and each stablecoin at $1: 10 BNB,
-10 WBNB, 1,000 USDT and 1,000 USDC by default. The native sum counts every transaction on the
-chain, sends to saved addresses among them; a send itself is never capped. They are disaster
-limits: parallel requests can pass together and a request counts once signed, landed or not, so
-the engine's rolling caps stay the main money limit. `binference ceiling` and `ceiling/get` show each cap: what it
-counts, its size in the asset's units and in dollars at the floor price, and its window.
+`defaults.limits.rollingDayUsd`, counting BNB and WBNB at $100 and each stablecoin at $1: 10 BNB, 10
+WBNB, 1,000 USDT and 1,000 USDC by default. The native sum counts every transaction on the chain,
+sends to saved addresses among them; a send itself is never capped. They are disaster limits:
+parallel requests can pass together and a request counts once signed, landed or not, so the engine's
+rolling caps stay the main money limit. `binference ceiling` and `ceiling/get` show each cap: what
+it counts, its size in the asset's units and in dollars at the floor price, and its window. The
+owner key resizes them with `binference ceiling set --day-cap-usd <dollars>`: each cap becomes that
+many dollars at its floor price in every ceiling of the install, through the rules that compare it;
+the aggregations and their sums stay ([decision 0151](../DECISIONS.md#d0151)).
 
 Nor can it pin a transaction's calldata: Privy's transaction conditions read only `to`, `value`
 and `chain_id`, so the self-cancel rule allows any calldata to the wallet itself. The ceiling

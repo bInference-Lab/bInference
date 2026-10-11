@@ -100,10 +100,16 @@ interface CeilingPlan {
   readonly changes: CeilingChanges;
 }
 
-// The changes the flags ask for, the cap in base units of the ceiling's native coin; undefined
-// for a cap that is no amount of it.
+// Dollars carry six decimals as micro-dollars, as the protocol's USD values do.
+const usdDecimals = 6;
+
+// The changes the flags ask for, the cap in base units of the ceiling's native coin and the
+// 24-hour caps in micro-dollars; undefined for a cap that is no amount of it.
 function changesOf(options: CeilingSetFlags, ceiling: CeilingView): CeilingChanges | undefined {
-  const { venues, perTx } = options;
+  const { venues, perTx, dayCapUsd } = options;
+  if (dayCapUsd !== undefined) {
+    return { dayCapUsdMicros: baseUnitsOf(dayCapUsd, usdDecimals) ?? 0n };
+  }
   const native = nativeOf(ceiling);
   const cap =
     perTx === undefined || native === undefined ? undefined : baseUnitsOf(perTx, native.decimals);
@@ -137,23 +143,47 @@ async function planOf(
   return planned.plan === undefined ? { ok: false, code } : { ok: true, value: planned.plan };
 }
 
+// Nothing to change; 24-hour caps with another change, as they reach every wallet of the install;
+// or caps that are no dollar amount above 0.
+function flagsRefusal(
+  options: CeilingSetFlags,
+): { readonly key: string; readonly values?: Readonly<Record<string, string>> } | undefined {
+  const { venues, perTx, dayCapUsd } = options;
+  if (dayCapUsd === undefined) {
+    return venues === undefined && perTx === undefined
+      ? { key: "ceiling.nothingToSet" }
+      : undefined;
+  }
+  if (venues !== undefined || perTx !== undefined) {
+    return { key: "ceiling.dayCapsAlone" };
+  }
+  const micros = baseUnitsOf(dayCapUsd, usdDecimals);
+  return micros === undefined || micros === 0n
+    ? { key: "ceiling.badDayCap", values: { amount: dayCapUsd } }
+    : undefined;
+}
+
 /**
- * `binference ceiling set [--agent <id>] [--wallet <id>] [--venues <ids>] [--per-tx <amount>]`:
+ * `binference ceiling set [--agent <id>] [--wallet <id>] [--venues <ids>] [--per-tx <amount>]
+ * [--day-cap-usd <dollars>]`:
  * changes, with the owner key the person types unseen, the ceiling of every wallet of the agent
  * through `ceiling/set` (decision 0132): `--venues` the venues a contract call may use, each
  * separated by a comma, and `--per-tx` the most native coin one call may carry, as `perTxBnb` in
- * config. The chains stay. Every surface announces the change. It prints the named wallet's
+ * config. `--day-cap-usd` sizes every 24-hour cap at that many dollars at its floor price, on the
+ * ceiling of every live wallet of the install, which share the caps (decision 0151); it comes
+ * alone. The chains stay. Every surface announces the change. It prints the named wallet's
  * ceiling afterwards, or the agent's default wallet's. With `--yes`, `--json` or nobody at the
  * terminal it reads nothing, as the owner key needs a terminal. Exits 1 when it names nothing to
- * change or a cap that is no amount.
+ * change, caps with another change, or a cap that is no amount.
  */
 export async function runCeilingSet(
   run: CommandRun,
   request: { readonly options: CeilingSetFlags },
 ): Promise<ExitCode> {
   const { options } = request;
-  if (options.venues === undefined && options.perTx === undefined) {
-    run.output.fail({ code: "protocol.bad_args", key: "ceiling.nothingToSet" });
+  const refusal = flagsRefusal(options);
+  if (refusal !== undefined) {
+    run.output.fail({ code: "protocol.bad_args", ...refusal });
     return 1;
   }
   if (cannotAskOwnerKey(run, options, "ceiling set")) {
@@ -164,7 +194,9 @@ export async function runCeilingSet(
     return plan.code;
   }
   const { wallet, changes } = plan.value;
-  run.output.say("ceiling.everyWallet");
+  run.output.say(
+    changes.dayCapUsdMicros === undefined ? "ceiling.everyWallet" : "ceiling.dayCapsEveryWallet",
+  );
   const set = await withOwnerKey(run, options, {
     command: "ceiling set",
     call: async (client, ownerKey, signal) =>

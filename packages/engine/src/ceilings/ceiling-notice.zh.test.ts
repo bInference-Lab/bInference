@@ -10,10 +10,11 @@ function say(change: string, surface = "cli"): string {
 
 describe("the ceiling change notice in Chinese", () => {
   it("names the agent, the surface and what moved in the glossary's words", () => {
-    expect([say("venues"), say("cap", "console"), say("both")]).toStrictEqual([
+    expect([say("venues"), say("cap", "console"), say("both"), say("dayCaps")]).toStrictEqual([
       "⚠️ 已从 命令行 用所有者密钥修改 main 钱包的上限：合约调用可以使用的平台。不是你操作？请立即冻结。",
       "⚠️ 已从 控制台 用所有者密钥修改 main 钱包的上限：一次合约调用最多可携带的金额。不是你操作？请立即冻结。",
       "⚠️ 已从 命令行 用所有者密钥修改 main 钱包的上限：合约调用可以使用的平台，以及一次合约调用最多可携带的金额。不是你操作？请立即冻结。",
+      "⚠️ 已从 命令行 用所有者密钥修改 main 钱包的上限：所有钱包共用的 24 小时上限。不是你操作？请立即冻结。",
     ]);
   });
 });

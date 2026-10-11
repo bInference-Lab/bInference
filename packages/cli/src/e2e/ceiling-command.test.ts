@@ -141,14 +141,26 @@ describe("binference ceiling", () => {
   });
 });
 
+const pancakeswap = accountRefSchema.parse(
+  `${bsc.id}:${bsc.contracts.find((item) => item.venue === "pancakeswap")?.address ?? ""}`,
+);
+
+// 10 BNB in 24 hours, $1,000 at the $100 floor.
+const bnbDayCap = {
+  asset: assetRefSchema.parse(`${bsc.id}/slip44:714`),
+  limit: 10n * 10n ** 18n,
+  windowSeconds: 86_400,
+  floorUsdMicros: 1_000_000_000n,
+};
+
 interface ServedOnBsc {
   readonly machine: TestMachine;
   readonly ceilings: FakeCeilingEditor;
   readonly ceiling: string;
 }
 
-// The skeleton on BNB Smart Chain too, whose wallet's ceiling pays the owner on it and lets a call
-// reach no contract, with at most one BNB.
+// The skeleton on BNB Smart Chain too, whose wallet's ceiling pays the owner on it, lets a call
+// reach PancakeSwap with at most one BNB, and caps the BNB sent in 24 hours.
 async function servedOnBsc(): Promise<ServedOnBsc> {
   if (selfHosted === undefined) {
     throw new Error("Expected the self-hosted composition.");
@@ -160,8 +172,14 @@ async function servedOnBsc(): Promise<ServedOnBsc> {
   const ceilings = skeleton.parts.ceilings as FakeCeilingEditor;
   const ceiling = wallet?.policyId ?? "";
   const recipient = accountRefSchema.parse(`eip155:56:${ownerAddress}`);
-  ceilings.put(ceiling, [recipient], { contracts: [], perTxNativeBase: 10n ** 18n });
+  const calls = { contracts: [pancakeswap], perTxNativeBase: 10n ** 18n, dayCaps: [bnbDayCap] };
+  ceilings.put(ceiling, [recipient], calls);
   return { machine, ceilings, ceiling };
+}
+
+async function dayCapOf(ceilings: FakeCeilingEditor, ceiling: string) {
+  const read = await ceilings.read(ceiling, live);
+  return read.ok ? read.value.dayCaps : undefined;
 }
 
 async function ceilingSet(
@@ -239,4 +257,43 @@ describe("binference ceiling set", () => {
       expect(await capOf(ceilings, ceiling)).toBe(10n ** 18n);
     },
   );
+
+  it(
+    "resizes the 24-hour caps of every wallet with the owner key, and prints them",
+    slow,
+    async () => {
+      const { machine, ceilings, ceiling } = await servedOnBsc();
+
+      const set = await ceilingSet(machine, ["--day-cap-usd", "2000"]);
+
+      expect([set.code, set.stderr]).toStrictEqual([0, ""]);
+      expect(set.prompter.transcript.asked).toStrictEqual(["ownerKey"]);
+      expect(set.stdout).toContain(
+        `${en("ceiling.dayCapsEveryWallet")}\n${en("ceiling.changed")}\n`,
+      );
+      const day = { amount: "20", symbol: "BNB", hours: 24, usd: "$2,000.00" };
+      expect(set.stdout).toContain(`  ${en("ceiling.dayCapSent", day)}\n`);
+      expect(await dayCapOf(ceilings, ceiling)).toStrictEqual([
+        { ...bnbDayCap, limit: 20n * 10n ** 18n, floorUsdMicros: 2_000_000_000n },
+      ]);
+    },
+  );
+
+  it("refuses caps with another change, and caps that are no amount above 0", slow, async () => {
+    const { machine, ceilings, ceiling } = await servedOnBsc();
+
+    const runs = [
+      await ceilingSet(machine, ["--day-cap-usd", "2000", "--per-tx", "0.5"]),
+      await ceilingSet(machine, ["--day-cap-usd", "0"]),
+      await ceilingSet(machine, ["--day-cap-usd", "1.0000001"]),
+    ];
+
+    expect(runs.map((run) => [run.code, run.stderr])).toStrictEqual([
+      [1, `${en("ceiling.dayCapsAlone")}\n`],
+      [1, `${en("ceiling.badDayCap", { amount: "0" })}\n`],
+      [1, `${en("ceiling.badDayCap", { amount: "1.0000001" })}\n`],
+    ]);
+    expect(runs.map((run) => run.prompter.transcript.asked)).toStrictEqual([[], [], []]);
+    expect(await dayCapOf(ceilings, ceiling)).toStrictEqual([bnbDayCap]);
+  });
 });

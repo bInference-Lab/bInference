@@ -100,11 +100,9 @@ export interface CapAssets {
   readonly tokens: readonly (CapAsset & { readonly token: string })[];
 }
 
-/**
- * The {@link CapAssets} of one chain. A chain whose data names no caps, or a capped token its
- * registry lacks, is a fault of this build.
- */
-export function capAssetsOf(definition: ChainDefinition): CapAssets {
+// The cap assets of one chain. A chain whose data names no caps, or a capped token its registry
+// lacks, is a fault of this build.
+function capAssetsOf(definition: ChainDefinition): CapAssets {
   const caps = ceilingCapsByChain.get(definition.id);
   if (caps === undefined) {
     throw unbuilt(definition.id, "no_caps");
@@ -128,17 +126,30 @@ export function capAssetsOf(definition: ChainDefinition): CapAssets {
 }
 
 /**
- * One chain's 24-hour caps (decision 0149), sized from `defaults.limits.rollingDayUsd`: twice it,
- * in each unit at the floor price the chain's data names, rounded up. A chain whose data names no
- * caps, or a capped token its registry lacks, is a fault of this build.
+ * The {@link CapAssets} of a chain of the registry; undefined for a chain it lacks. A chain whose
+ * data names no caps, or a capped token its registry lacks, is a fault of this build.
  */
-export function capPlanOf(
-  definition: ChainDefinition,
-  config: Pick<BinferenceConfig, "defaults">,
-): ChainCapPlan {
-  const dayUsd = capHeadroom * config.defaults.limits.rollingDayUsd;
+export function capAssetsOn(registry: ChainRegistry, chain: string): CapAssets | undefined {
+  const registered = registry.list().find((item) => item.ref === chain);
+  return registered === undefined ? undefined : capAssetsOf(registered.definition);
+}
+
+/**
+ * The size of each 24-hour cap init makes (decision 0149): twice `defaults.limits.rollingDayUsd`,
+ * since a speed-up or a reverted transaction counts again at Privy, in micro-dollars.
+ */
+export function initialDayCapUsd(config: Pick<BinferenceConfig, "defaults">): bigint {
+  return capHeadroom * config.defaults.limits.rollingDayUsd;
+}
+
+/**
+ * One chain's 24-hour caps, each the dollars given in its unit at the floor price the chain's data
+ * names, rounded up (decisions 0149 and 0151). A chain whose data names no caps, or a capped token
+ * its registry lacks, is a fault of this build.
+ */
+export function capPlanOf(definition: ChainDefinition, dayUsdMicros: bigint): ChainCapPlan {
   const unitsOf = (item: CapAsset) =>
-    (dayUsd * 10n ** BigInt(item.decimals) + item.floorUsd - 1n) / item.floorUsd;
+    (dayUsdMicros * 10n ** BigInt(item.decimals) + item.floorUsd - 1n) / item.floorUsd;
   const { native, tokens } = capAssetsOf(definition);
   const approvals = tokens.map((item) => ({ token: item.token, limitBase: unitsOf(item) }));
   return { chain: evmChainOf(definition), nativeLimitBase: unitsOf(native), approvals };
@@ -172,7 +183,7 @@ function ceilingChainOf(
       details: { chain: request.chain, problem: chain.error },
     });
   }
-  return ok({ plan: chain.value, caps: capPlanOf(definition, config) });
+  return ok({ plan: chain.value, caps: capPlanOf(definition, initialDayCapUsd(config)) });
 }
 
 /**

@@ -53,6 +53,11 @@ export interface CeilingCalls {
   readonly venues: readonly string[];
   /** The most native coin, in base units, one contract call may send. */
   readonly perTxNativeBase: bigint;
+  /**
+   * The size every 24-hour cap the ceiling names becomes, in micro-dollars at each asset's floor
+   * price; the caps stay as they are when absent. The sums they cap stay (decision 0151).
+   */
+  readonly dayCapUsdMicros?: bigint;
 }
 
 /** What contract calls may do under each ceiling, with the owner key that owns every ceiling. */

@@ -39,6 +39,8 @@ export interface CeilingSetFlags extends WalletAddressFlags {
   readonly venues?: readonly string[];
   /** The most native coin one contract call may carry, such as `0.5`, as `perTxBnb` in config. */
   readonly perTx?: string;
+  /** The size of every 24-hour cap in US dollars at its floor price, such as `2000`. */
+  readonly dayCapUsd?: string;
 }
 
 /** What `address add` and `wallet create` take: the agent, and the label `--label` gives. */
@@ -126,6 +128,7 @@ export const ceilingSetFlagsSchema: z.ZodType<CeilingSetFlags> = z.object({
   wallet: protocolIdSchema("wallet").exactOptional(),
   venues: z.array(z.string().min(1).max(64)).min(1).exactOptional(),
   perTx: z.string().min(1).max(64).exactOptional(),
+  dayCapUsd: z.string().min(1).max(64).exactOptional(),
 });
 
 /** Parses the options of `address add` and `wallet create`; a label is 1 to 64 characters. */

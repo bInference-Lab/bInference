@@ -1,4 +1,4 @@
-import { accountRefSchema, chainRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, chainRefSchema } from "@binference/chain";
 import { err, type Id, idSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import type { CeilingChanges } from "@binference/protocol";
@@ -36,13 +36,22 @@ const [first, second, archived, others] = [
   wallet(4, otherAgent),
 ];
 
+// A 24-hour cap of 10 base units of the coin, worth $0.001 at its floor.
+const dayCap = {
+  asset: assetRefSchema.parse("fake:1/slip44:1"),
+  limit: 10n,
+  windowSeconds: 86_400,
+  floorUsdMicros: 1_000n,
+};
+
 // The agent's two live wallets, an archived one and another agent's, each under a ceiling that
-// lets a call reach the fake swap with at most 5 base units of the coin.
+// lets a call reach the fake swap with at most 5 base units of the coin, and names the cap.
 async function started(): Promise<TestEngine> {
   const test = await startTestEngine({ chains: testChains(["other-swap"]) });
+  const calls = { contracts: [swapRouter], perTxNativeBase: 5n, dayCaps: [dayCap] };
   for (const item of [first, second, archived, others]) {
     test.stores.install.addWallet(item);
-    test.ceilings.put(item.policyId, [owner], { contracts: [swapRouter], perTxNativeBase: 5n });
+    test.ceilings.put(item.policyId, [owner], calls);
   }
   return test;
 }
@@ -73,6 +82,11 @@ async function capOf(test: TestEngine, policyId: string): Promise<bigint | undef
   return read.ok ? read.value.perTxNativeBase : undefined;
 }
 
+async function dayCapsOf(test: TestEngine, policyId: string) {
+  const read = await test.ceilings.read(policyId, { signal: new AbortController().signal });
+  return read.ok ? read.value.dayCaps.map((cap) => [cap.limit, cap.floorUsdMicros]) : undefined;
+}
+
 async function storedCaps(test: TestEngine): Promise<readonly bigint[]> {
   const { wallets } = await test.stores.install.read({ signal: new AbortController().signal });
   return wallets.map((item) => item.ceiling.perTxNativeBase);
@@ -96,7 +110,7 @@ describe("changing a ceiling with the owner key", () => {
       venues: ["fake-swap", "other-swap"],
       perTxNative: 9n,
       recipients: [owner],
-      dayCaps: [],
+      dayCaps: [dayCap],
       readAt: testNowMs,
     });
     const caps = await Promise.all(
@@ -213,5 +227,68 @@ describe("changing a ceiling with the owner key", () => {
     expect(await setCeiling(test, both)).toStrictEqual(err("wallet.not_found"));
     expect(notices(test)).toStrictEqual([]);
     expect(await storedCaps(test)).toStrictEqual([5n, 5n]);
+  });
+});
+
+describe("changing the 24-hour caps with the owner key", () => {
+  it("resizes them on every live wallet of the install, whatever its agent", async () => {
+    const test = await started();
+
+    const view = expectOk(await setCeiling(test, { dayCapUsdMicros: 2_000n }));
+
+    expect(view.dayCaps).toStrictEqual([{ ...dayCap, limit: 20n, floorUsdMicros: 2_000n }]);
+    const caps = await Promise.all(
+      [first, second, archived, others].map(async (item) => dayCapsOf(test, item.policyId)),
+    );
+    expect(caps).toStrictEqual([
+      [[20n, 2_000n]],
+      [[20n, 2_000n]],
+      [[10n, 1_000n]],
+      [[20n, 2_000n]],
+    ]);
+    expect(await capOf(test, first.policyId)).toBe(5n);
+    expect(notices(test)).toStrictEqual([
+      {
+        key: "notice.ceilingChange",
+        agent: testAgent,
+        values: { agent: "main", surface: "cli", change: "dayCaps" },
+      },
+    ]);
+  });
+
+  it("refuses caps of 0 and caps that come with another change", async () => {
+    const test = await started();
+
+    const answers = [
+      await setCeiling(test, { dayCapUsdMicros: 0n }),
+      await setCeiling(test, { dayCapUsdMicros: 2_000n, perTxNative: 7n }),
+      await setCeiling(test, { dayCapUsdMicros: 2_000n, venues: ["fake-swap"] }),
+    ];
+
+    expect(answers).toStrictEqual([
+      err("protocol.bad_args"),
+      err("protocol.bad_args"),
+      err("protocol.bad_args"),
+    ]);
+    expect(await dayCapsOf(test, first.policyId)).toStrictEqual([[10n, 1_000n]]);
+    expect(notices(test)).toStrictEqual([]);
+  });
+
+  it("leaves a ceiling that names no cap as it is", async () => {
+    const test = await started();
+    test.ceilings.put(second.policyId, [owner], { contracts: [], perTxNativeBase: 5n });
+
+    expectOk(await setCeiling(test, { dayCapUsdMicros: 2_000n }));
+
+    expect(await dayCapsOf(test, second.policyId)).toStrictEqual([]);
+    expect(await dayCapsOf(test, first.policyId)).toStrictEqual([[20n, 2_000n]]);
+  });
+
+  it("announces nothing when the caps already hold the size asked", async () => {
+    const test = await started();
+
+    expectOk(await setCeiling(test, { dayCapUsdMicros: 1_000n }));
+
+    expect(notices(test)).toStrictEqual([]);
   });
 });

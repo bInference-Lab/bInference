@@ -51,6 +51,7 @@ import { z } from "zod";
 import type { CapAssets } from "../init/ceiling-request.js";
 import { dayCapViewsOf } from "./day-cap-views.js";
 import { ownerAuthorize, type OwnerKeyHolder } from "./owner-authorize.js";
+import { withDayCaps } from "./resized-caps.js";
 
 /** What the Privy ceiling editor reaches Privy with, and the owner key it takes. */
 export interface PrivyCeilingEditorOptions extends OwnerKeyHolder {
@@ -61,8 +62,11 @@ export interface PrivyCeilingEditorOptions extends OwnerKeyHolder {
    * contracts, none for venues with none there, sending at most the cap.
    */
   readonly callsOn: (chain: ChainRef, calls: Omit<CeilingCalls, "ceiling">) => CeilingChainPlan;
-  /** The plan of a chain's 24-hour caps, for a ceiling that names none on it yet. */
-  readonly capPlanOn: (chain: ChainRef) => ChainCapPlan;
+  /**
+   * The plan of a chain's 24-hour caps, each the micro-dollars given at its floor price, else as
+   * init sizes them: for a ceiling that names none on the chain yet, or caps the owner resizes.
+   */
+  readonly capPlanOn: (chain: ChainRef, dayUsdMicros?: bigint) => ChainCapPlan;
   /** What a chain's 24-hour caps count and their floors; undefined for a chain unknown here. */
   readonly capAssetsOn: (chain: ChainRef) => CapAssets | undefined;
   /** The 24-hour caps the install's live ceilings name now. */
@@ -296,7 +300,9 @@ async function setOne(
   if (plans.some((plan) => plan.calls.length === 0)) {
     return err("no_calls");
   }
-  const chains = await cappedChains(options, { held: held.value, plans }, signal);
+  const capped = await cappedChains(options, { held: held.value, plans }, signal);
+  const dayUsdMicros = calls.dayCapUsdMicros;
+  const chains = withDayCaps(capped, { dayUsdMicros, capPlanOn: options.capPlanOn });
   const expiresAtMs = options.clock.now() + nowExpiryMs;
   const target = { policy: policy.value, chains };
   const set = await setCeilingCalls(options.api, target, { authorize, expiresAtMs, signal });
@@ -326,7 +332,8 @@ async function setCalls(
  * The {@link CeilingEditor} on the owner's Privy app (decision 0110): it reads a ceiling back from
  * its policy's rules with the app secret alone. To change one it reads the owner key from its
  * code, checks it is the key that owns the install's ceilings, and changes each ceiling's send
- * rules, or its contract-call and approval rules (decision 0132), through Privy, signed with it.
+ * rules, or its contract-call and approval rules (decision 0132) with the 24-hour caps they
+ * compare (decision 0151), through Privy, signed with it.
  * The key is used for the one request and kept nowhere. Every account is listed by its address on
  * every chain the ceiling enables.
  */

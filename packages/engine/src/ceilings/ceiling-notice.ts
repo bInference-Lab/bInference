@@ -5,8 +5,11 @@ import { noticePush } from "../pushes/notice-push.js";
 /** The message key of the notice that announces a ceiling change (decision 0132). */
 export const ceilingChangeKey = "notice.ceilingChange";
 
-/** What a ceiling change moved: the venues a contract call may use, its native cap, or both. */
-export type CeilingChangeKind = "venues" | "cap" | "both";
+/**
+ * What a ceiling change moved: the venues a contract call may use, its native cap, both, or the
+ * 24-hour caps every wallet shares.
+ */
+export type CeilingChangeKind = "venues" | "cap" | "both" | "dayCaps";
 
 /**
  * The notice that announces on every surface that the owner key changed the ceiling of an agent's

@@ -1,6 +1,11 @@
 import { type AccountRef, accountRefSchema, assetRefSchema } from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
-import { buildCeiling, type CeilingChainPlan, createPrivyApi } from "@binference/custody-privy";
+import {
+  buildCeiling,
+  type CeilingChainPlan,
+  type ChainCapPlan,
+  createPrivyApi,
+} from "@binference/custody-privy";
 import {
   createFakePrivy,
   testAddresses,
@@ -37,8 +42,21 @@ const nativeAsset = assetRefSchema.parse("eip155:56/slip44:714");
 const tokenAsset = assetRefSchema.parse(`eip155:56/erc20:${testAddresses.token}`);
 
 // BNB at a $100 floor; the test token, of no decimals, at $1.
+// The test plan, or at a size asked: BNB at $100 and the test token at $1, as the floors below.
+function capPlanOn(chain: unknown, dayUsdMicros?: bigint): ChainCapPlan {
+  if (dayUsdMicros === undefined) {
+    return testCapPlan;
+  }
+  const [token] = testCapPlan.approvals;
+  return {
+    ...testCapPlan,
+    nativeLimitBase: (dayUsdMicros * 10n ** 18n) / 100_000_000n,
+    approvals: token === undefined ? [] : [{ ...token, limitBase: dayUsdMicros / 1_000_000n }],
+  };
+}
+
 const capsOptions = {
-  capPlanOn: () => testCapPlan,
+  capPlanOn,
   capAssetsOn: () => ({
     native: { asset: nativeAsset, decimals: 18, floorUsd: 100_000_000n },
     tokens: [{ asset: tokenAsset, token: testAddresses.token, decimals: 0, floorUsd: 1_000_000n }],

@@ -4863,6 +4863,10 @@
                 "perTxNative": {
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "dayCapUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
                 }
               },
               "additionalProperties": false

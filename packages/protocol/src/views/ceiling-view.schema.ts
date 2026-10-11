@@ -53,6 +53,11 @@ export interface CeilingChanges {
   readonly chains?: readonly ChainRef[];
   readonly venues?: readonly string[];
   readonly perTxNative?: bigint;
+  /**
+   * The size of every 24-hour cap in micro-dollars at its floor price, above 0. The caps are the
+   * install's, so this changes every live wallet's ceiling, and it comes alone.
+   */
+  readonly dayCapUsdMicros?: bigint;
 }
 
 /** Parses the changes of `ceiling/set`. Unknown fields are refused. */
@@ -60,6 +65,7 @@ export const ceilingChangesSchema: z.ZodType<CeilingChanges> = z.strictObject({
   chains: z.array(chainRefSchema).min(1).exactOptional(),
   venues: z.array(venueIdSchema).exactOptional(),
   perTxNative: decimalStringSchema.exactOptional(),
+  dayCapUsdMicros: decimalStringSchema.exactOptional(),
 });
 
 const dayCapViewSchema: z.ZodType<DayCapView> = z.object({

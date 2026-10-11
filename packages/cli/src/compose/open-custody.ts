@@ -38,9 +38,10 @@ import { z } from "zod";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import {
   type CeilingDraft,
-  capAssetsOf,
+  capAssetsOn,
   capPlanOf,
   ceilingRequestOf,
+  initialDayCapUsd,
 } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
@@ -221,8 +222,13 @@ function callsOn(
   return built.value;
 }
 
-// The plan of a chain's 24-hour caps, as init sizes them; a chain the registry lacks is a fault.
-function capPlanOn(options: OpenCustodyOptions, chain: ChainRef): ChainCapPlan {
+// The plan of a chain's 24-hour caps, at the size given or as init sizes them; a chain the
+// registry lacks is a fault.
+function capPlanOn(
+  options: OpenCustodyOptions,
+  chain: ChainRef,
+  dayUsdMicros = initialDayCapUsd(options.config),
+): ChainCapPlan {
   const registered = options.chains.list().find((item) => item.ref === chain);
   if (registered === undefined) {
     throw new BinferenceError({
@@ -231,7 +237,7 @@ function capPlanOn(options: OpenCustodyOptions, chain: ChainRef): ChainCapPlan {
       details: { chain },
     });
   }
-  return capPlanOf(registered.definition, options.config);
+  return capPlanOf(registered.definition, dayUsdMicros);
 }
 
 // The chains a wallet signs on: those config enables of its family.
@@ -282,11 +288,8 @@ function ceilingEditorOf(
     ...parts,
     clock: options.clock,
     callsOn: (chain, calls) => callsOn(options, chain, calls),
-    capPlanOn: (chain) => capPlanOn(options, chain),
-    capAssetsOn: (chain) => {
-      const registered = options.chains.list().find((item) => item.ref === chain);
-      return registered === undefined ? undefined : capAssetsOf(registered.definition);
-    },
+    capPlanOn: (chain, dayUsdMicros) => capPlanOn(options, chain, dayUsdMicros),
+    capAssetsOn: (chain) => capAssetsOn(options.chains, chain),
     heldCaps: async (read) => heldCapsOf(options.install, read),
   });
 }
