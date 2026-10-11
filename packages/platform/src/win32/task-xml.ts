@@ -1,88 +1,104 @@
-// Adapted from MIT-licensed code (the task settings and principal); NOTICES.md holds its notice.
+// The scheduled task that runs a service at the owner's logon, in Task Scheduler's XML format.
 import { escapeXml } from "../service/escape-xml.js";
 import type { ServiceDefinition } from "../service/service-definition.js";
 
-/** The scheduled task of a service, `binference-<name>`, in the root folder of Task Scheduler. */
+/** The name Task Scheduler lists the service's task under. */
 export function scheduledTaskName(name: string): string {
   return `binference-${name}`;
 }
 
+// A space, tab, line feed, vertical tab or double quote splits or ends an unquoted argument.
+const splitsArgument = /[ \t\n\v"]/;
+
 /**
- * Quotes one argument the way Windows programs split their command line: in double quotes when it
- * holds a space, a tab or a quote, with each quote escaped and the backslashes before a quote or
- * the closing quote doubled.
+ * Quotes one argument so that a Windows program, which splits its command line by the Microsoft C
+ * runtime's rules, reads it back unchanged. Inside quotes, backslashes count only before a double
+ * quote: those are doubled and the quote escaped, and so are the backslashes before the closing
+ * quote.
  */
 export function quoteWindowsArgument(argument: string): string {
-  if (argument !== "" && !/[\s"]/.test(argument)) {
+  if (argument !== "" && !splitsArgument.test(argument)) {
     return argument;
   }
-  const escaped = argument
-    .replace(/(\\*)"/g, (_match, slashes: string) => `${slashes}${slashes}\\"`)
-    .replace(/(\\+)$/, (slashes: string) => `${slashes}${slashes}`);
-  return `"${escaped}"`;
+  const body = argument
+    .replaceAll(/(\\*)"/g, (_match, backslashes: string) => `${backslashes}${backslashes}\\"`)
+    .replace(/(\\+)$/, "$1$1");
+  return `"${body}"`;
 }
 
-// The settings that keep a long-running task alive: no stop on battery, no time limit, a restart
-// after a failure, and one instance at a time.
+/**
+ * Task Scheduler's priority 4 starts the program with a normal process, I/O and memory priority;
+ * its default, 7, is the below-normal priority of background work.
+ */
+const normalPriority = 4;
+/** A failed task is started again after a minute, the shortest interval Task Scheduler takes. */
+const restartInterval = "PT1M";
+/** The most restarts the schema allows (`Count` is an unsigned byte). */
+const maxRestarts = 255;
+
+/** One element per line, indented by two spaces a level. */
+function element(depth: number, name: string, text: string): string {
+  return `${"  ".repeat(depth)}<${name}>${text}</${name}>`;
+}
+
+/**
+ * One instance at a time, on battery too, ended on request, with no time limit, at a normal
+ * priority, and started again after a failure.
+ */
 const settings = [
   "  <Settings>",
-  "    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>",
-  "    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>",
-  "    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>",
-  "    <AllowHardTerminate>true</AllowHardTerminate>",
-  "    <StartWhenAvailable>false</StartWhenAvailable>",
-  "    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>",
-  "    <IdleSettings>",
-  "      <StopOnIdleEnd>false</StopOnIdleEnd>",
-  "      <RestartOnIdle>false</RestartOnIdle>",
-  "    </IdleSettings>",
-  "    <AllowStartOnDemand>true</AllowStartOnDemand>",
-  "    <Enabled>true</Enabled>",
-  "    <Hidden>false</Hidden>",
-  "    <RunOnlyIfIdle>false</RunOnlyIfIdle>",
-  "    <WakeToRun>false</WakeToRun>",
-  "    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>",
+  element(2, "MultipleInstancesPolicy", "IgnoreNew"),
+  element(2, "DisallowStartIfOnBatteries", "false"),
+  element(2, "StopIfGoingOnBatteries", "false"),
+  element(2, "AllowHardTerminate", "true"),
+  element(2, "AllowStartOnDemand", "true"),
+  element(2, "Enabled", "true"),
+  element(2, "Hidden", "false"),
+  element(2, "ExecutionTimeLimit", "PT0S"),
+  element(2, "Priority", String(normalPriority)),
   "    <RestartOnFailure>",
-  "      <Interval>PT1M</Interval>",
-  "      <Count>3</Count>",
+  element(3, "Interval", restartInterval),
+  element(3, "Count", String(maxRestarts)),
   "    </RestartOnFailure>",
-  "    <Priority>7</Priority>",
   "  </Settings>",
 ];
 
 /**
- * Renders the Task Scheduler definition of a service for `schtasks /Create /XML`: it starts at
- * the owner's logon and runs with their interactive token, so only while they are logged on and
- * with their Credential Manager. `ownerSid` names the owner in both places.
+ * The XML of the service's scheduled task, for `schtasks /Create /XML`: started at the logon of
+ * `ownerSid` with their interactive token and without elevation, so it runs only while they are
+ * logged on, with the settings above. Lines end with CR LF, as in the files Task Scheduler writes.
  */
 export function renderTaskXml(definition: ServiceDefinition, ownerSid: string): string {
+  const command = escapeXml(quoteWindowsArgument(definition.program));
+  const args = escapeXml(
+    definition.args.map((argument) => quoteWindowsArgument(argument)).join(" "),
+  );
   const owner = escapeXml(ownerSid);
-  const args = definition.args.map(quoteWindowsArgument).join(" ");
   return [
     '<?xml version="1.0" encoding="UTF-16"?>',
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
     "  <RegistrationInfo>",
-    `    <Description>${escapeXml(definition.description)}</Description>`,
+    element(2, "Description", escapeXml(definition.description)),
     "  </RegistrationInfo>",
     "  <Triggers>",
     "    <LogonTrigger>",
-    "      <Enabled>true</Enabled>",
-    `      <UserId>${owner}</UserId>`,
+    element(3, "Enabled", "true"),
+    element(3, "UserId", owner),
     "    </LogonTrigger>",
     "  </Triggers>",
     "  <Principals>",
-    '    <Principal id="Author">',
-    `      <UserId>${owner}</UserId>`,
-    "      <LogonType>InteractiveToken</LogonType>",
-    "      <RunLevel>LeastPrivilege</RunLevel>",
+    '    <Principal id="owner">',
+    element(3, "UserId", owner),
+    element(3, "LogonType", "InteractiveToken"),
+    element(3, "RunLevel", "LeastPrivilege"),
     "    </Principal>",
     "  </Principals>",
     ...settings,
-    '  <Actions Context="Author">',
+    '  <Actions Context="owner">',
     "    <Exec>",
-    `      <Command>${escapeXml(quoteWindowsArgument(definition.program))}</Command>`,
-    `      <Arguments>${escapeXml(args)}</Arguments>`,
-    `      <WorkingDirectory>${escapeXml(definition.workingFolder)}</WorkingDirectory>`,
+    element(3, "Command", command),
+    element(3, "Arguments", args),
+    element(3, "WorkingDirectory", escapeXml(definition.workingFolder)),
     "    </Exec>",
     "  </Actions>",
     "</Task>",
