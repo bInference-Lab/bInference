@@ -5,13 +5,13 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134) and [0155](../DECISIONS.md#d0155);
-the agent runtime's operations follow [spec 8](runtime.md) (proposed). Proposed on 2026-10-12
-and waiting for the owner's approval: the market reads `market/scan`, `market/chart`,
-`wallet/activity` and `launch/list`; the agent's questions (`turn/ask`, `chat/answer`); alert
-conditions and wake-ups (section 8.4); the pushes `launch/new`, `inbox/alertFired`,
-`chat/question` and `chat/questionClosed`; `QuoteView.place`, the P&L fields of `PnlView`,
-`OrderView.endReason`, `update/check`'s `releaseNotes`; the id prefix `qst_`; and the error areas
-`question`, `alert` and `market`.
+the agent runtime's operations follow [spec 8](runtime.md) (proposed). Accepted by the owner on
+2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
+the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
+tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
+`chat/questionClosed`; `QuoteView.place`, the P&L fields of `PnlView`, `OrderView.endReason`, the
+alert state `ended`, `update/check`'s `releaseNotes`; the id prefix `qst_`; the error areas
+`question`, `alert` and `market`, and `wallet.track_limit`.
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -726,6 +726,11 @@ With `wake: true`, it also starts a turn of the agent (below).
 every field given must hold, and an empty filter passes every launch. `launch/list` and
 `market/scan` take the same filter.
 
+- **Tracked wallets.** An install tracks at most 50 wallets: the leaders of its active copy orders
+  and the accounts of its active wallet alerts, across every agent
+  ([spec 3, section 2.6](database.md#section-2-6)), counting the leaders of copy orders that await
+  their card. An `alert/create` or `order/create` that would track a 51st fails
+  `wallet.track_limit`; one that names a wallet already tracked passes.
 - **Ends.** An alert with `expiresAt` ends then, in the state `ended`; `wallet` and `launch` alerts default to 30 days,
   as auto orders do. A `price` alert has no default expiry.
 - **`AlertFired`**, the data of `alert/fired`:
@@ -766,6 +771,11 @@ every field given must hold, and an empty filter passes every launch. `launch/li
     to show.
   - `alert/list` may hold `wallet` and `launch` conditions beside `price` (section 8.4). A client
     that does not know a condition's kind shows the alert by its id and state.
+  - `AlertView.state` has a new value, `ended`, beside `active`, `fired` and `deleted`: an alert
+    whose `expiresAt` passed (section 8.4). It is a new value of an existing field, which this
+    version allows as an addition. An alert in `ended` fires no more, like `fired` and `deleted`; a
+    client that meets a state it does not know treats the alert as no longer active and shows the
+    state's name as it came.
 
 <a id="section-10"></a>
 
@@ -785,7 +795,7 @@ later unchanged.
 | `question` | `not_found`, `closed`                                                                           |
 | `alert`    | `not_found`, `too_many`                                                                         |
 | `market`   | `no_data`, `source_down`                                                                        |
-| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`                                        |
+| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`                         |
 | `address`  | `not_found`                                                                                     |
 | `rescue`   | `no_address`, `nothing_to_move`                                                                 |
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                           |

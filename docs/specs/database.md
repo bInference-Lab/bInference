@@ -2,10 +2,11 @@
 
 Status: accepted on 2026-10-06 ([decision 0095](../DECISIONS.md#d0095)), amended by decisions
 [0127](../DECISIONS.md#d0127) and [0133](../DECISIONS.md#d0133); the agent runtime's additions
-follow [spec 8](runtime.md) (proposed). Proposed on 2026-10-12 and waiting for the owner's
-approval: `launches`, `tracked_wallets`, `wallet_activity` and `watch_cursors` (section 2.6);
-`questions` and `question_messages` (section 2.7); `orders.end_reason` and `alerts.wake`, `fires`
-and `expires_at` (section 2.4); and their retention (section 4).
+follow [spec 8](runtime.md) (proposed). Accepted by the owner on 2026-10-12: `launches`,
+`tracked_wallets` and its cap, `wallet_activity` and `watch_cursors` (section 2.6); `questions`
+and `question_messages` (section 2.7); `orders.end_reason` and `alerts.wake`, `fires` and
+`expires_at` (section 2.4); the versions of `safety.disclaimer_version` (section 2.1); and their
+retention (section 4).
 
 <a id="section-1"></a>
 
@@ -54,6 +55,11 @@ Conventions ([ENGINEERING.md section 24.2](../ENGINEERING.md#section-24-2)):
 | `meta`    | `key TEXT PK`, `value TEXT`. Keys: `schema_version`, `install_id`, `created_at`                                                                                                                                                                                                                                               |
 | `safety`  | one row, `id = 1`: `frozen_at`, `rescue_address`, `pending_rescue_address`, `pending_rescue_at`, `disclaimer_version`, `disclaimer_accepted_at`, `version`                                                                                                                                                                    |
 | `custody` | one row, `id = 1` (spec 5): `provider` (`privy`), `app_id`, `owner_quorum_id`, `owner_key_public`, `agent_quorum_id`, `agent_key_public`, `attached_at`, `version`, `seal_key_public` (the sealing key's public half, NULL until the owner key derived it; [decision 0164](../DECISIONS.md#d0164)). No secret is stored here. |
+
+`safety.disclaimer_version` holds the version of the disclaimer and privacy statement the owner
+accepted (spec 4, section 9): `1` for the text of `binference live` before 2026-10-12, `2` for the
+text with the wider privacy statement. An install whose stored version is below the current one
+asks again before an agent goes live.
 
 <a id="section-2-2"></a>
 
@@ -171,6 +177,14 @@ transaction with their position changes.
   its `untracked_at`; the write that ends the last of them sets `untracked_at`, and the leader
   watcher stops reading it. A wallet tracked again reads on from the block it is added at: a gap
   is never filled from history.
+- **At most 50 tracked wallets per install**, the rows without `untracked_at`. The leader watcher
+  reads each block with a fixed budget, whatever the number of wallets: one log query for ERC-20
+  transfers to the tracked set and one for transfers from it, each with every tracked address in
+  its topic filter, and the block's transactions once for native value. The cap keeps those topic
+  filters short; 50 is a starting value, which the leader watcher's task checks against the
+  log-capable endpoints, and only a decision record raises. The cap also counts the leaders of copy
+  orders still awaiting their card, so a confirmation never passes it; a call that would pass it
+  fails `wallet.track_limit` (spec 1, section 8.4).
 - **`wallet_activity`** holds the trades the leader watcher read for tracked wallets: transfers of
   an ERC-20 to and from the wallet and its native value, matched into buys and sells, with the
   share of its holding a sale took. `wallet/activity` reads a tracked wallet here, and the

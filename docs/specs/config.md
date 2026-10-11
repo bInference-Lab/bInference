@@ -1,7 +1,9 @@
 # Spec 2: the config file
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
-[0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108) and [0118](../DECISIONS.md#d0118).
+[0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108) and [0118](../DECISIONS.md#d0118);
+`defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
+the owner on 2026-10-12.
 
 <a id="section-1"></a>
 
@@ -182,7 +184,7 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 | `defaults.copy.perLeaderDayUsd`        | `"200"`                                                                                                                  |
 | `defaults.paper.balances`              | `{ "BNB": "1", "USDT": "500" }`                                                                                          |
 | `defaults.modelBudgetUsdPerDay`        | `"3"`                                                                                                                    |
-| `defaults.notifications`               | the [decision 0057](../DECISIONS.md#d0057) set, daily summary at `09:00`                                                 |
+| `defaults.notifications`               | [decision 0057](../DECISIONS.md#d0057)'s set with alerts, exits, updates (spec 4, section 4), summary at `09:00`         |
 
 Dollar values in the file are decimal text, such as `"100"` or `"0.25"`, with at most six
 decimals; the engine reads them as micro-dollars on load, never through a floating-point number.

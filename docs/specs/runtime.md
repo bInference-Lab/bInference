@@ -617,15 +617,17 @@ Made with this spec:
 - **Spec 6, section 5.** The runtime the engine starts is a child process; the sentence on who may
   say a turn read no outside content names its token.
 
-Still to come, each with its own change:
+Made later, accepted by the owner on 2026-10-12:
 
-- **Spec 1** gains `turn/ask` with the question buttons, and `inbox/alertFired` with alert
-  wake-ups.
-- **Spec 4** gains the chat status lines this spec uses, in both languages: a proposal waits for
-  the owner; more proposals follow this card ({count}); chat paused until {when} by the budget; the
-  turn reached its tool call limit; the agent repeated itself; the agent was stopped; a model
-  failure by class; a proposal's outcome unknown after a restart; the session is too long to
-  continue, so clear it.
+- **Spec 1.** `turn/ask` and `chat/answer` with the question buttons
+  ([section 7.7](protocol.md#section-7-7)), and `inbox/alertFired` with alert wake-ups
+  ([section 8.4](protocol.md#section-8-4)).
+- **Spec 3.** `questions` and `question_messages`
+  ([section 2.7](database.md#section-2-7)).
+- **Spec 4.** The chat status lines this spec uses, in both languages, for every way a turn ends
+  ([section 8.1](cards-and-messages.md#section-8-1)); the agent's questions
+  ([section 8.2](cards-and-messages.md#section-8-2)); and the first chat
+  ([section 8.3](cards-and-messages.md#section-8-3)).
 
 <a id="section-13"></a>
 

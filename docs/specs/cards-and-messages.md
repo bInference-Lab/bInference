@@ -5,11 +5,12 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115),
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
 [0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128) and [0134](../DECISIONS.md#d0134).
-Proposed on 2026-10-12 and waiting for the owner's approval: callback kind `q` (section 2); sales
-by share, the paper launch refusal, the P&L card and the auto order summaries (sections 3.6 to
-3.8); update notes (section 4.2); the alert, launch feed, fill and exit messages (section 4.3); the
-glossary rows they need (section 7); the chat's status lines, the agent's questions and the first
-chat (section 8); and the disclaimer and privacy statement (section 9).
+Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
+launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
+by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
+(section 4.3); the glossary rows they need (section 7); the chat's status lines, the agent's
+questions and the first chat (section 8); and the disclaimer and privacy statement as version 2,
+which owners accept again (section 9).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -382,6 +383,13 @@ The owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#secti
 **Daily summary** (`notice.daily`), at 09:00 owner time: total value and its 24-hour change,
 realized P&L, fills, skipped fills, open orders, model spend, and anything waiting for the owner.
 
+**On by default.** A new agent gets [decision 0057](../DECISIONS.md#d0057)'s set, and, accepted by
+the owner on 2026-10-12, every notice of sections 4.2 and 4.3 as well: the alert notices (price,
+wallet and launch alerts, with their wake-up lines), the exit order notices, and the update
+notices. The owner set each alert, so its notice is what it is for; the update notices carry the
+release notes and the rollback. `defaults.notifications` ([spec 2](config.md#section-6-4)) holds
+the set, and each kind can be turned off per agent.
+
 <a id="section-4-1"></a>
 
 ### 4.1 Browser push
@@ -704,6 +712,21 @@ after the language step, and by `binference live` when the owner has not accepte
 text. The owner types the phrase in either language, in any letter case; `binference init --yes`
 prints the text and needs its explicit flag. `safety.disclaimer_version` records the version
 accepted, and a change of meaning in either text raises the version, so going live asks again.
+
+The text below is **version 2**, accepted by the owner on 2026-10-12: its privacy statement names
+more of what leaves the machine than version 1, the text `binference live` showed before. An
+install that accepted version 1 is asked again:
+
+- `binference live` and the console's go-live step show version 2 and refuse with
+  `agent.disclaimer` until the owner types the phrase. For an agent already live, `binference live`
+  asks for version 2 too and changes nothing else.
+- Agents already live keep trading. The owner gets `notice.disclaimerChanged` once, and
+  `binference status` names the older version until version 2 is accepted.
+
+| Key                        | English                                                                                                                                   | 中文                                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `notice.disclaimerChanged` | The privacy statement changed: it now names more of what leaves this machine. Run `binference live` on the machine to read and accept it. | 隐私声明已更新：现在列出了更多会离开本机的信息。请在本机运行 `binference live` 阅读并接受。 |
+
 The CLI's `cli.live.disclaimer` holds the same words today; onboarding moves them to these keys,
 which `init`, `live` and the console read.
 

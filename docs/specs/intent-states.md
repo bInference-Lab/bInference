@@ -9,9 +9,10 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), and
-[0157](../DECISIONS.md#d0157). Proposed on 2026-10-12 and waiting for the owner's approval: a token
-launch refused in paper mode (section 4), the place of a `buy` or `sell`, exit orders on one
-position and a copy order's own skip (section 5), and invariants 11 to 13.
+[0157](../DECISIONS.md#d0157). Accepted by the owner on 2026-10-12: a token launch refused in
+paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
+whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
+to 13.
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an unfreeze, an
 order fill. It
