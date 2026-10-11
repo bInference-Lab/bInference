@@ -19,6 +19,8 @@ new name here first, in the change that uses it.
 - **Mini App**: the console opened inside Telegram with `/console`.
 - **terminal chat**: chat in the terminal (`binference chat`), from the `tui` package.
 - **MCP server**: `binference mcp`, which gives any MCP client the read and propose tools.
+- **MCP setup**: `binference mcp setup`, which gives Claude Code or Codex a client token of its own,
+  its MCP server entry and the `binference-tools` skill, and with `--remove` takes them back.
 - **surfaces**: the places the owner reads cards and acts: Telegram, the console, the Mini App and
   the CLI.
 - **composition root**: the one place, `cli/src/compose/`, that builds adapters and wires them in.

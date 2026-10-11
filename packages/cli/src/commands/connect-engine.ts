@@ -59,11 +59,31 @@ export async function connectEngine(host: CliHost, signal: AbortSignal): Promise
   if (token === undefined) {
     return { ok: false, reason: "no_sign_in", file };
   }
+  return signIn(host, { token, kind: "cli" }, signal);
+}
+
+/** Who signs in: a client token and the kind of client it is for. */
+export interface SignInAs {
+  readonly token: string;
+  readonly kind: "cli" | "mcp";
+}
+
+/**
+ * Signs in to the engine of the host's state folder over its IPC endpoint with a token: the CLI's,
+ * or an MCP client's to check that it still signs in. A refusal is `refused`, any other failure
+ * `failed`. The caller closes the client.
+ */
+export async function signIn(
+  host: CliHost,
+  as: SignInAs,
+  signal: AbortSignal,
+): Promise<EngineConnection> {
+  const endpoint = engineEndpoint(platformOf(host));
   const client = createProtocolClient({
     operations,
     openSocket: () => ipcWebSocket(endpoint.address),
-    client: { kind: "cli", version: host.version },
-    credential: { token },
+    client: { kind: as.kind, version: host.version },
+    credential: { token: as.token },
     clock: host.clock,
     random: host.random,
     logger: createFileLogger({

@@ -8,7 +8,8 @@
     "binference": "./dist/main.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "type": "module",
   "exports": {
@@ -19,7 +20,8 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/main.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/main.ts --format esm --dts --tsconfig tsconfig.json",
+    "prepack": "node -e \"require('node:fs').cpSync('../../skills', 'skills', { recursive: true })\""
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
@@ -36,6 +38,7 @@
     "@binference/mcp": "workspace:*",
     "@binference/okx": "workspace:*",
     "@binference/platform": "workspace:*",
+    "@binference/plugin-sdk": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/server": "workspace:*",
     "@binference/signer": "workspace:*",
@@ -53,7 +56,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@binference/plugin-sdk": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@types/ws": "catalog:",

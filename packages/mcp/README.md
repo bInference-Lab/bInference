@@ -38,59 +38,36 @@ engine's read and propose tools over stdio. The spec is section 11 of
 
 ## Set up an MCP client
 
-`binference mcp` reads `~/.binference/auth/mcp.token`, which holds only the `read` and `propose`
-scopes. Create it once:
+One command sets a client up with the engine running: a client token of its own, its MCP server
+entry and the `binference-tools` skill.
 
 ```sh
-binference token create --for mcp
+binference mcp setup --client claude-code
+binference mcp setup --client codex
 ```
 
-**Claude Code.** Add the server for every project of your user:
+Run it again after an update: it changes only what differs. `--dry-run` shows the changes and makes
+none; `--remove` undoes the setup and revokes the client's token. The entry runs
+`binference mcp --client <client>`, which signs in with `auth/mcp-<client>.token` in the state
+folder, so the client's config holds no secret.
 
-```sh
-claude mcp add --scope user binference -- binference mcp
-```
+| Client      | MCP server entry                                            | Skill                                |
+| ----------- | ----------------------------------------------------------- | ------------------------------------ |
+| Claude Code | User scope, through `claude mcp add-json` or `.claude.json` | `~/.claude/skills/binference-tools/` |
+| Codex       | `[mcp_servers.binference]` in `~/.codex/config.toml`        | `~/.agents/skills/binference-tools/` |
 
-Or share it with everyone who works in a project:
-
-```sh
-claude mcp add --scope project binference -- binference mcp
-```
-
-That command writes the server to the project's `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "binference": { "type": "stdio", "command": "binference", "args": ["mcp"], "env": {} }
-  }
-}
-```
-
-**Codex.** Add the server:
-
-```sh
-codex mcp add binference -- binference mcp
-```
-
-That command writes this table to `~/.codex/config.toml`, which you can also write by hand:
-
-```toml
-[mcp_servers.binference]
-command = "binference"
-args = ["mcp"]
-```
-
-Check it with `claude mcp list` or `codex mcp list`. Each proposal waits for your tap in
-binference's Telegram bot or the console.
+`CLAUDE_CONFIG_DIR` and `CODEX_HOME` move Claude Code's and Codex's folders as they do for the
+clients. Check the result with `claude mcp list` or `codex mcp list`. Each proposal waits for your
+tap in binference's Telegram bot or the console.
 
 ## Teach the client the tools
 
 The `binference-tools` skill tells the client's model how to use these tools: the ids and amounts
 a proposal takes, that every proposal waits for your tap, how to read the answer and its states,
 and what only you can do (limits, paper or live, freeze and rescue). It never asks for a key or a
-seed phrase. Copy the repo's [`skills/binference-tools`](../../skills/binference-tools/SKILL.md)
-folder into the client's skills folder:
+seed phrase. `binference mcp setup` installs it; to add it by hand, copy the repo's
+[`skills/binference-tools`](../../skills/binference-tools/SKILL.md) folder into the client's skills
+folder:
 
 | Client      | Folder                                                                 |
 | ----------- | ---------------------------------------------------------------------- |

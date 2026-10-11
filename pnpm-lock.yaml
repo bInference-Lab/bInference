@@ -440,6 +440,9 @@ importers:
       '@binference/platform':
         specifier: workspace:*
         version: link:../platform
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -486,9 +489,6 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
-      '@binference/plugin-sdk':
-        specifier: workspace:*
-        version: link:../plugin-sdk
       '@modelcontextprotocol/client':
         specifier: 'catalog:'
         version: 2.2.0

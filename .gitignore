@@ -8,6 +8,9 @@ CLAUDE.local.md
 /.claude/skills
 /.claude/settings.local.json
 
+# The cli package copies the bundled skills in when it is packed.
+/packages/cli/skills/
+
 .DS_Store
 node_modules/
 dist/

@@ -282,5 +282,18 @@
   "limit.badValue": "{key} 不接受 {value}。运行 `binference limit` 查看它当前的值。",
   "command.mcp": "通过 stdio 向 MCP 客户端提供 MCP 工具；由客户端启动",
   "option.mcpClient": "用哪个 MCP 客户端的访问令牌登录：claude-code 或 codex",
-  "mcp.noToken": "MCP 服务器无法登录：{file} 不存在。请运行 `binference mcp setup --client claude-code` 或 `--client codex` 生成它。"
+  "mcp.noToken": "MCP 服务器无法登录：{file} 不存在。请运行 `binference mcp setup --client claude-code` 或 `--client codex` 生成它。",
+  "command.mcpSetup": "设置 MCP 客户端：它自己的访问令牌、MCP 服务器条目和 binference-tools 技能",
+  "option.mcpSetupClient": "要设置的 MCP 客户端：claude-code 或 codex",
+  "option.dryRun": "只显示改动，不做任何改动",
+  "option.mcpRemove": "撤销设置：移除 MCP 服务器条目和技能，并撤销访问令牌",
+  "mcpSetup.change": "{part, select, token {访问令牌} server {MCP 服务器条目} other {技能}} {action, select, created {已创建} updated {已更新} unchanged {未改动} removed {已移除} other {不存在}}：{path}",
+  "mcpSetup.plan": "{part, select, token {访问令牌} server {MCP 服务器条目} other {技能}} {action, select, created {将创建} updated {将更新} unchanged {保持不变} removed {将移除} other {不存在}}：{path}",
+  "mcpSetup.done": "{client} 已设置好。请开启新的 {client} 会话以加载 binference 工具和技能；每个提议都会等你在 Telegram 或控制台中确认。",
+  "mcpSetup.removed": "{client} 已不再有 binference 工具、技能或访问令牌。",
+  "mcpSetup.dryRun": "未做任何改动。去掉 `--dry-run` 再运行同一命令即可完成这些改动。",
+  "mcpSetup.noSkill": "此 binference 未附带 binference-tools 技能，因此未做任何设置。请重新安装 binference。",
+  "mcpSetup.skillLint": "附带的技能在第 {line} 行要求 Agent 索取密钥，因此未做任何设置。请重新安装 binference。",
+  "mcpSetup.unreadable": "无法按客户端的格式读取 {file}，因此未改动它。请修正该文件后再次运行设置。",
+  "mcpSetup.claudeFailed": "`claude mcp` 运行失败，因此 MCP 服务器条目未改动。请运行 `claude mcp list` 检查 Claude Code，然后再次运行设置。"
 }

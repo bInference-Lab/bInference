@@ -647,6 +647,32 @@ finds its ids with the first two: the agent and its wallet's chain with `binfere
 asset's id with `binference_token_search`, which reads only the engine's registry and the held
 tokens and says when a symbol is ambiguous.
 
+<a id="section-11-1"></a>
+
+### 11.1 Setting up a client
+
+`binference mcp setup --client <claude-code|codex>` sets an MCP client up over IPC with the CLI's
+token ([decision 0154](../DECISIONS.md#d0154)), in this order:
+
+1. **The skill passes `lintSkill`.** A bundled skill with a finding stops the setup before anything
+   changes.
+2. **A client token of its own.** The token in `auth/mcp-<client>.token` stays while it still signs
+   in. Otherwise the CLI revokes the client's tokens (label `mcp-<client>`), makes a new `bnt_`
+   secret, registers its SHA-256 with `token/register` (`kind: "mcp"`, `read` and `propose`) and
+   writes the secret owner-only to that file.
+3. **The MCP server entry**, named `binference`, which runs this binference's
+   `mcp --client <client>` with `BINFERENCE_HOME` when set, and holds no secret. Claude Code: user
+   scope, through `claude mcp add-json --scope user` when `claude` is on PATH, else the
+   `mcpServers` of `.claude.json` in `CLAUDE_CONFIG_DIR` or the home folder. Codex: the
+   `[mcp_servers.binference]` table of `config.toml` in `CODEX_HOME` or `~/.codex`, every other
+   line kept; a server written another way leaves the file as it is.
+4. **The bundled `binference-tools` skill**: `skills/binference-tools/` in `CLAUDE_CONFIG_DIR` or
+   `~/.claude` for Claude Code, `~/.agents/skills/binference-tools/` for Codex.
+
+Each step changes only what differs, so a second run changes nothing, and each prints whether it
+made, updated or kept its part. `--dry-run` prints the changes and makes none. `--remove` removes
+the entry and the skill, revokes the client's tokens and deletes the token file.
+
 <a id="section-12"></a>
 
 ## 12. Security checklist for this spec

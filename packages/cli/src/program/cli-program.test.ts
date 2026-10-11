@@ -77,7 +77,7 @@ describe("the binference command tree", () => {
       "remove",
       "set",
       "cancel",
-      "mcp",
+      "setup",
       "check",
     ]);
     for (const command of commands) {
@@ -102,6 +102,27 @@ describe("the binference command tree", () => {
       { name: "rescue", options: { json: true, yes: false } },
       { name: "rescueSet", options: { json: false, yes: true }, address: "0xabc" },
     ]);
+  });
+
+  it("gives mcp its --client and mcp setup its own --client, --dry-run and --remove", async () => {
+    const chosen: ChosenCommand[] = [];
+    const parse = async (argv: readonly string[]) =>
+      buildProgram({
+        version: "1",
+        message: (key) => key,
+        host: { out: () => undefined, err: () => undefined },
+        choose: (command) => chosen.push(command),
+      }).parseAsync([...argv], { from: "user" });
+    await parse(["mcp", "--client", "codex"]);
+    await parse(["mcp", "setup", "--client", "claude-code", "--dry-run", "--remove"]);
+    expect(chosen).toStrictEqual([
+      { name: "mcp", options: { json: false, yes: false, client: "codex" } },
+      {
+        name: "mcpSetup",
+        options: { json: false, yes: false, client: "claude-code", isDryRun: true, isRemove: true },
+      },
+    ]);
+    await expect(parse(["mcp", "setup"])).rejects.toThrow("--client");
   });
 
   it("reads init's owner key public half and chooses owner-key create", async () => {

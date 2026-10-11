@@ -101,6 +101,24 @@ over IPC with the client's token, `auth/mcp-<client>.token` for `--client <clien
 until the client closes them or a stop signal arrives. Stdout carries MCP messages only; its log
 lines go to stderr. A missing token file is one message and exit 1.
 
+`binference mcp setup --client claude-code` or `--client codex` sets an MCP client up
+(`src/mcp-setup/`, decision 0154), against the running engine. It gives the client a client token
+of its own: the CLI makes the secret, writes it owner-only to `auth/mcp-<client>.token` and sends
+only its SHA-256 through `token/register`; a token file that still signs in is kept, and the
+client's earlier tokens are revoked. It then writes the client's MCP server entry, which starts
+this binference as the background service does with `mcp --client <client>` and
+`BINFERENCE_HOME` when set, and holds no secret: for Claude Code at user scope through
+`claude mcp add-json --scope user` when `claude` is on PATH, else in `.claude.json` (in
+`CLAUDE_CONFIG_DIR` when set, else the home folder); for Codex as the `[mcp_servers.binference]`
+table of `config.toml` in `CODEX_HOME` (`~/.codex` when unset), every other line kept. Last it
+installs the bundled `binference-tools` skill, after `lintSkill` passes it, into
+`skills/binference-tools/` of Claude Code's config folder (`CLAUDE_CONFIG_DIR` or `~/.claude`) or
+into `~/.agents/skills/binference-tools/` for Codex. A second run changes only what differs, and
+each part prints whether it was made, updated or unchanged. `--dry-run` prints the changes and
+makes none; `--remove` takes the entry and the skill away and revokes the client's tokens. A config
+that names the server another way, or that is not the client's format, is left as it is. The npm
+package ships the skill in `skills/`, which `prepack` copies from the repo's `skills/`.
+
 `binference status` and `binference health` sign in over IPC with the CLI token and call
 `engine/status`; `status` prints the state, the agents and the health signals, and `health`
 exits 0 only when the engine is ready. `binference logs` reads the engine log itself, so it works

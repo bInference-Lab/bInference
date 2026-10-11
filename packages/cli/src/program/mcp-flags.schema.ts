@@ -14,3 +14,23 @@ export const mcpFlagsSchema: z.ZodType<McpFlags> = z.object({
   yes: z.boolean().default(false),
   client: z.enum(mcpClients).exactOptional(),
 });
+
+/** What `binference mcp setup` takes: the client, and whether it only shows or undoes the setup. */
+export interface McpSetupFlags extends CommonOptions {
+  readonly client: McpClient;
+  /** `--dry-run`: say what would change, and change nothing. */
+  readonly isDryRun: boolean;
+  /** `--remove`: undo the setup and revoke the client's token. */
+  readonly isRemove: boolean;
+}
+
+/** Parses the options commander read for `binference mcp setup`. */
+export const mcpSetupFlagsSchema: z.ZodType<McpSetupFlags> = z
+  .object({
+    json: z.boolean().default(false),
+    yes: z.boolean().default(false),
+    client: z.enum(mcpClients),
+    dryRun: z.boolean().default(false),
+    remove: z.boolean().default(false),
+  })
+  .transform(({ dryRun, remove, ...rest }) => ({ ...rest, isDryRun: dryRun, isRemove: remove }));

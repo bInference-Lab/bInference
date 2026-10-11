@@ -282,5 +282,18 @@
   "limit.badValue": "{key} does not take {value}. Run `binference limit` to see what it holds now.",
   "command.mcp": "Serve the MCP tools to an MCP client over stdio; the client starts it",
   "option.mcpClient": "The MCP client whose client token to sign in with: claude-code or codex",
-  "mcp.noToken": "The MCP server cannot sign in: {file} is missing. Run `binference mcp setup --client claude-code` or `--client codex` to make it."
+  "mcp.noToken": "The MCP server cannot sign in: {file} is missing. Run `binference mcp setup --client claude-code` or `--client codex` to make it.",
+  "command.mcpSetup": "Set up an MCP client: its own client token, its MCP server entry and the binference-tools skill",
+  "option.mcpSetupClient": "The MCP client to set up: claude-code or codex",
+  "option.dryRun": "Show the changes and make none",
+  "option.mcpRemove": "Undo the setup: remove the MCP server entry and the skill, and revoke the client token",
+  "mcpSetup.change": "{part, select, token {Client token} server {MCP server entry} other {Skill}} {action, select, created {made} updated {updated} unchanged {unchanged} removed {removed} other {not there}}: {path}",
+  "mcpSetup.plan": "{part, select, token {Client token} server {MCP server entry} other {Skill}} {action, select, created {would be made} updated {would be updated} unchanged {stays unchanged} removed {would be removed} other {is not there}}: {path}",
+  "mcpSetup.done": "{client} is set up. Start a new {client} session to load the binference tools and skill; every proposal waits for your tap in Telegram or the console.",
+  "mcpSetup.removed": "{client} no longer has the binference tools, the skill or a client token.",
+  "mcpSetup.dryRun": "Nothing was changed. Run the same command without `--dry-run` to make these changes.",
+  "mcpSetup.noSkill": "This binference has no bundled binference-tools skill, so nothing was set up. Install binference again.",
+  "mcpSetup.skillLint": "The bundled skill tells the agent to ask for a secret at line {line}, so nothing was set up. Install binference again.",
+  "mcpSetup.unreadable": "{file} could not be read as the client writes it, so it was left as it is. Fix the file, then run the setup again.",
+  "mcpSetup.claudeFailed": "`claude mcp` failed, so the MCP server entry was not changed. Run `claude mcp list` to check Claude Code, then run the setup again."
 }

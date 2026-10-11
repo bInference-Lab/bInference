@@ -14,6 +14,7 @@ import { runInitCommand } from "../commands/init-command.js";
 import { runLimit, runLimitCancel, runLimitSet } from "../commands/limit-command.js";
 import { runLogs } from "../commands/logs-command.js";
 import { runMcp } from "../commands/mcp-command.js";
+import { runMcpSetup } from "../commands/mcp-setup-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runOwnerKeyCreate } from "../commands/owner-key-create-command.js";
 import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
@@ -133,6 +134,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   limitCancel: runLimitCancel,
   check: runCheck,
   mcp: async (context, chosen) => runMcp(context, chosen.options),
+  mcpSetup: async (context, chosen) => runMcpSetup(context, chosen.options),
 };
 
 async function runChosen<N extends ChosenCommand["name"]>(
