@@ -13,6 +13,21 @@ export interface ClockHarness {
   create(): ClockSubject;
 }
 
+// A sleeper of `delayMs` sleeps on 1 ms before its delay and wakes at it.
+async function wakesAfter(harness: ClockHarness, delayMs: number): Promise<void> {
+  const { clock, advance } = harness.create();
+  const state = { isAwake: false };
+  const sleeping = (async (): Promise<void> => {
+    await clock.sleep(delayMs, new AbortController().signal);
+    state.isAwake = true;
+  })();
+  await advance(delayMs - 1);
+  assert.equal(state.isAwake, false);
+  await advance(1);
+  await sleeping;
+  assert.equal(state.isAwake, true);
+}
+
 /** The contract every `Clock` adapter passes. */
 export function clockContract(harness: ClockHarness): readonly ContractCheck[] {
   return [
@@ -29,19 +44,11 @@ export function clockContract(harness: ClockHarness): readonly ContractCheck[] {
     },
     {
       name: "wakes a sleeper once its delay has passed",
-      run: async () => {
-        const { clock, advance } = harness.create();
-        const state = { isAwake: false };
-        const sleeping = (async (): Promise<void> => {
-          await clock.sleep(100, new AbortController().signal);
-          state.isAwake = true;
-        })();
-        await advance(99);
-        assert.equal(state.isAwake, false);
-        await advance(1);
-        await sleeping;
-        assert.equal(state.isAwake, true);
-      },
+      run: async () => wakesAfter(harness, 100),
+    },
+    {
+      name: "wakes a 30-day sleeper only once the 30 days have passed",
+      run: async () => wakesAfter(harness, 30 * 24 * 60 * 60_000),
     },
     {
       name: "refuses to sleep on an aborted signal",
