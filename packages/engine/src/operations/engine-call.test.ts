@@ -18,6 +18,30 @@ describe("who calls the engine", () => {
     expect(answererOf(telegram)).toStrictEqual({ surface: "telegram", by: "tg:7012345678" });
   });
 
+  it("proposes as the owner on Telegram from the Mini App, and answers there", () => {
+    const mini: EngineCaller = {
+      credential: "tg:7012345678",
+      client: { kind: "mini", version: "console" },
+      scopes: ["read", "chat", "confirm", "loosen"],
+      transport: "ws",
+    };
+    expect(proposerOf(mini)).toStrictEqual({
+      role: "owner",
+      ref: "telegram",
+      hasOutsideContent: false,
+    });
+    expect(answererOf(mini)).toStrictEqual({ surface: "mini", by: "tg:7012345678" });
+  });
+
+  it("proposes nothing from a credential that only looks like a Telegram id", () => {
+    const caller: EngineCaller = {
+      credential: "tg:owner",
+      client: { kind: "mini", version: "console" },
+      scopes: ["read", "confirm"],
+    };
+    expect(proposerOf(caller)).toBeUndefined();
+  });
+
   it("proposes nothing from a Telegram caller that may only read", () => {
     expect(proposerOf({ ...telegram, scopes: ["read"] })).toBeUndefined();
   });

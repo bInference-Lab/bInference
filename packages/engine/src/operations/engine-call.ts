@@ -76,16 +76,23 @@ function isCredentialId(credential: string): credential is Id<"tok"> | Id<"dev">
   return isId("tok", credential) || isId("dev", credential);
 }
 
+// The owner on Telegram: the chat the engine serves itself, or a Mini App connection the server
+// signed in with the owner's Telegram id, which no other credential carries.
+function isTelegramOwner(caller: EngineCaller): boolean {
+  return caller.client.kind === "telegram" || /^tg:[1-9][0-9]*$/.test(caller.credential);
+}
+
 /**
  * Who proposes, from the scopes the server signed the caller in with: the agent runtime holds
  * `agent`, the owner's CLI and console devices hold `confirm`, and any other client is an MCP
- * client, which the auto test never lets skip a card. The owner's Telegram chat proposes as the
- * owner. Any other credential that is neither a token nor a device proposes nothing. A proposal of
+ * client, which the auto test never lets skip a card. The owner's Telegram chat and the Mini App
+ * propose as the owner on Telegram. Any other credential that is neither a token nor a device
+ * proposes nothing. A proposal of
  * the agent runtime carries the outside-content mark unless the caller's turn says it read none.
  */
 export function proposerOf(caller: EngineCaller): Proposer | undefined {
   const { credential, scopes } = caller;
-  if (caller.client.kind === "telegram") {
+  if (isTelegramOwner(caller)) {
     return scopes.includes("confirm")
       ? { role: "owner", ref: "telegram", hasOutsideContent: false }
       : undefined;
