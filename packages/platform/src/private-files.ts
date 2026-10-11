@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, open, rename, rm } from "node:fs/promises";
+import { type FileHandle, mkdir, open, rename, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import { BinferenceError } from "@binference/core";
 import type { FilePermissions } from "./ports.js";
@@ -32,9 +32,27 @@ export async function ensurePrivateFolder(
   await options.permissions.restrictFolder(path, options.signal);
 }
 
+// What a private file holds: text, bytes, or bytes that arrive in pieces, such as a stream.
+type PrivateFileData = string | Uint8Array | AsyncIterable<Uint8Array>;
+
+async function writeData(
+  handle: FileHandle,
+  data: PrivateFileData,
+  signal: AbortSignal,
+): Promise<void> {
+  if (typeof data === "string" || data instanceof Uint8Array) {
+    await handle.writeFile(data, { signal });
+    return;
+  }
+  for await (const piece of data) {
+    signal.throwIfAborted();
+    await handle.write(piece);
+  }
+}
+
 async function fillPrivately(
   temporary: string,
-  data: string | Uint8Array,
+  data: PrivateFileData,
   options: PrivateFileOptions,
 ): Promise<void> {
   await (await open(temporary, "wx", 0o600)).close();
@@ -42,22 +60,16 @@ async function fillPrivately(
   await options.permissions.restrictFile(temporary, options.signal);
   const handle = await open(temporary, "r+");
   try {
-    await handle.writeFile(data, { signal: options.signal });
+    await writeData(handle, data, options.signal);
     await handle.datasync();
   } finally {
     await handle.close();
   }
 }
 
-/**
- * Writes a file only its owner can read, replacing any file at `path`. The data goes into a new
- * owner-only file beside it, which then takes its place, so no reader sees part of the data or a
- * looser access list; the folder is then synced, so the new file outlives a crash. The folder
- * must exist; make it with {@link ensurePrivateFolder}.
- */
-export async function writePrivateFile(
+async function writePrivately(
   path: string,
-  data: string | Uint8Array,
+  data: PrivateFileData,
   options: PrivateFileOptions,
 ): Promise<void> {
   options.signal.throwIfAborted();
@@ -78,4 +90,32 @@ export async function writePrivateFile(
           details: { path },
         });
   }
+}
+
+/**
+ * Writes a file only its owner can read, replacing any file at `path`. The data goes into a new
+ * owner-only file beside it, which then takes its place, so no reader sees part of the data or a
+ * looser access list; the folder is then synced, so the new file outlives a crash. The folder
+ * must exist; make it with {@link ensurePrivateFolder}.
+ */
+export async function writePrivateFile(
+  path: string,
+  data: string | Uint8Array,
+  options: PrivateFileOptions,
+): Promise<void> {
+  await writePrivately(path, data, options);
+}
+
+/**
+ * Writes a file only its owner can read from bytes that arrive in pieces, such as an encrypted
+ * stream, as {@link writePrivateFile} writes one: each piece goes to disk as it comes, so a large
+ * file never sits in memory whole, and the file takes its place only once every piece is
+ * written. A source that throws leaves the old file and no temporary file.
+ */
+export async function writePrivateStream(
+  path: string,
+  pieces: AsyncIterable<Uint8Array>,
+  options: PrivateFileOptions,
+): Promise<void> {
+  await writePrivately(path, pieces, options);
 }

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { BinferenceError } from "@binference/core";
 import { afterEach, describe, expect, it } from "vitest";
 import type { FilePermissions } from "./ports.js";
-import { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
+import { ensurePrivateFolder, writePrivateFile, writePrivateStream } from "./private-files.js";
 
 const folders: string[] = [];
 
@@ -42,6 +42,16 @@ function recordingPermissions(failOn?: string) {
 }
 
 const signal = (): AbortSignal => new AbortController().signal;
+
+async function* pieces(): AsyncGenerator<Uint8Array> {
+  yield await Promise.resolve(new Uint8Array([1, 2]));
+  yield new Uint8Array([3]);
+}
+
+async function* failing(): AsyncGenerator<Uint8Array> {
+  yield await Promise.resolve(new Uint8Array([1]));
+  throw new BinferenceError({ code: "backup.source_failed", message: "gone" });
+}
 
 describe("private files", () => {
   it("restricts the new file while it is still empty, then moves it into place", async () => {
@@ -82,6 +92,28 @@ describe("private files", () => {
 
     await expect(readFile(target, "utf8")).resolves.toBe("old");
     await expect(readdir(folder)).resolves.toStrictEqual(["config.json5"]);
+  });
+
+  it("writes data that arrives in pieces, in order", async () => {
+    const folder = await scratchFolder();
+    const target = join(folder, "backup.bnfbak");
+
+    await writePrivateStream(target, pieces(), { ...recordingPermissions(), signal: signal() });
+
+    await expect(readFile(target)).resolves.toStrictEqual(Buffer.from([1, 2, 3]));
+  });
+
+  it("keeps the old file and no temporary file when the pieces fail part way", async () => {
+    const folder = await scratchFolder();
+    const target = join(folder, "backup.bnfbak");
+    await writePrivateFile(target, "old", { ...recordingPermissions(), signal: signal() });
+
+    await expect(
+      writePrivateStream(target, failing(), { ...recordingPermissions(), signal: signal() }),
+    ).rejects.toMatchObject({ code: "backup.source_failed" });
+
+    await expect(readFile(target, "utf8")).resolves.toBe("old");
+    await expect(readdir(folder)).resolves.toStrictEqual(["backup.bnfbak"]);
   });
 
   it("names the fault when the folder is missing", async () => {

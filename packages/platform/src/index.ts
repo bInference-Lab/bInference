@@ -24,8 +24,13 @@ export type {
 } from "./ports.js";
 export { startNodeProgram } from "./node-program.js";
 export type { NodeProgram, NodeProgramOptions } from "./node-program.js";
-export { ensurePrivateFolder, writePrivateFile } from "./private-files.js";
+export { ensurePrivateFolder, writePrivateFile, writePrivateStream } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
+export { fileSize } from "./file-size.js";
+export { listFolderFiles } from "./list-folder-files.js";
+export { movePath, removePath } from "./move-path.js";
+export { readFilePieces } from "./read-file-pieces.js";
+export type { ReadPiecesOptions } from "./read-file-pieces.js";
 export { readTextFile } from "./read-text-file.js";
 export { realFilePath } from "./real-file-path.js";
 export { runCommand } from "./run-command.js";
