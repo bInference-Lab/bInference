@@ -74,6 +74,29 @@ function faulting(custody: Signer): Signer {
   };
 }
 
+// Custody whose library fails as it signs, with a fault that is no engine error.
+function crashingCustody(custody: Signer): Signer {
+  return {
+    account: async (wallet, chain, options) => custody.account(wallet, chain, options),
+    signTransaction: async () => Promise.reject(new TypeError("fetch failed")),
+  };
+}
+
+// A preparer whose library fails once, with a fault that is no engine error.
+function crashingOnce(network: FakeNetwork): TxPreparer {
+  const state = { isDown: true };
+  return {
+    replace: async (request, options) => network.replace(request, options),
+    async prepare(request, options) {
+      if (state.isDown) {
+        state.isDown = false;
+        throw new TypeError("fetch failed");
+      }
+      return network.prepare(request, options);
+    },
+  };
+}
+
 // A preparer whose first answer is a node that is down.
 function downOnce(network: FakeNetwork): TxPreparer {
   let isDown = true;
@@ -320,6 +343,21 @@ describe("the executor's refusals", () => {
       "executor.step_unsent:cancelled",
     ]);
     expect(await transactionsOf(bench)).toStrictEqual([]);
+  });
+
+  it("logs a custody fault that is no engine error as unexpected, and cancels the intent", async () => {
+    const { bench, intent } = await heldTap({ custody: crashingCustody });
+    await bench.release();
+    await flush();
+    expect(await stateOf(bench, intent)).toBe("cancelled");
+    expect(eventsOf(bench)).toContain("executor.sign_failed:unexpected");
+  });
+
+  it("logs a preparer fault that is no engine error as unexpected, and tries a block later", async () => {
+    const { bench, intent } = await heldTap({ preparer: crashingOnce });
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(eventsOf(bench)).toContain("executor.prepare_failed:unexpected");
   });
 
   it("cancels an intent whose first step custody refuses, with nothing stored or sent", async () => {

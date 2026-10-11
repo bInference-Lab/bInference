@@ -284,6 +284,15 @@ describe("a dropped step that lands late", () => {
     expect(await stateOf(bench, intent)).toBe("failed_onchain");
   });
 
+  it("stops watching a dropped step after the finality wait, and a later landing raises nothing", async () => {
+    const { bench, intent } = await droppedSwap({ limits: { finalAfterBlocks: 3 } });
+    await driveUntil(bench, intent, { states: [], blocks: 5 });
+    await landLate(bench, intent);
+    await driveUntil(bench, intent, { states: [], blocks: 5 });
+    expect(eventsOf(bench)).not.toContain("executor.dropped_landed:");
+    expect(noticeKeysOf(bench)).toStrictEqual(["notice.stepDropped"]);
+  });
+
   it("leaves the trade out of the positions when the late block is not final within the wait", async () => {
     const options = { network: { finalityDepth: 100n }, limits: { finalAfterBlocks: 3 } };
     const { bench, intent } = await droppedSwap(options);
