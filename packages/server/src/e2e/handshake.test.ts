@@ -1,4 +1,5 @@
-import { idSchema } from "@binference/core";
+import { type Clock, idSchema } from "@binference/core";
+import type { ManualClock } from "@binference/core/testing";
 import { sha256Hex } from "@binference/engine";
 import { protocolIdSchema } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
@@ -6,6 +7,22 @@ import { challengeNonce, openFrame, openRawSocket } from "./raw-socket.js";
 import { proofSignature, startTestServer, type TestServer } from "./test-server.js";
 
 const device = protocolIdSchema("consoleDevice").parse("dev_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+
+// A sleep that ends only when its signal aborts.
+async function stalled(signal: AbortSignal): Promise<void> {
+  await new Promise((_resolve, reject) => {
+    signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+  });
+}
+
+// A clock whose sleeps of a minute or more never end, as a timer stalls while the machine sleeps.
+function heldBack(clock: ManualClock): Clock {
+  return {
+    now: () => clock.now(),
+    sleep: async (delayMs, signal) =>
+      delayMs < 60_000 ? clock.sleep(delayMs, signal) : stalled(signal),
+  };
+}
 
 describe("the sign-in handshake", () => {
   let test: TestServer | undefined;
@@ -122,6 +139,29 @@ describe("the sign-in handshake", () => {
     const again = await openRawSocket(server.ipcUrl);
     again.send(openFrame({ token: secret }));
     await expect(again.next()).resolves.toMatchObject({ t: "bye", code: "auth.expired" });
+  });
+
+  it("ends a connection whose token expired at its next call, when no timer fired", async () => {
+    // A timer stops while the machine sleeps; the expiry's timer here never fires.
+    const server = await startTestServer({ wrapClock: heldBack });
+    test = server;
+    const secret = `bnt_${"9".repeat(43)}`;
+    const record = {
+      id: idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000089"),
+      label: "mcp-claude-code-session",
+      kind: "mcp",
+      scopes: ["read", "propose"],
+      secretHash: sha256Hex(secret),
+      createdAtMs: 0,
+      expiresAtMs: server.clock.now() + 60_000,
+    } as const;
+    await server.access.addToken(record, { signal: AbortSignal.timeout(1_000) });
+    const raw = await openRawSocket(server.ipcUrl);
+    raw.send(openFrame({ token: secret }));
+    await expect(raw.next()).resolves.toMatchObject({ t: "ready" });
+    await server.clock.advance(60_000);
+    raw.send({ t: "call", id: "s", op: "engine/status", args: {} });
+    await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.expired" });
   });
 
   it("refuses a binary frame", async () => {

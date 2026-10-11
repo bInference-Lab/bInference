@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { generateKeyPairSync, type KeyObject, sign } from "node:crypto";
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
-import { createIdSource, type Id, idSchema, type Random } from "@binference/core";
+import { type Clock, createIdSource, type Id, idSchema, type Random } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
@@ -84,6 +84,8 @@ export interface TestServerOptions {
   readonly extraOrigins?: readonly string[];
   /** Wraps the access store the server signs in with, such as to hold a write open. */
   readonly wrapAccess?: (access: AccessStore) => AccessStore;
+  /** Wraps the clock the server reads, such as to hold its timers back. */
+  readonly wrapClock?: (clock: ManualClock) => Clock;
 }
 
 const cliScopes: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
@@ -139,6 +141,15 @@ function pairingOn(parts: {
   return { pairing, pairingPushes };
 }
 
+// The parts a test may change: the console's files, the limits and the clock the server reads.
+function optionalPartsOf(options: TestServerOptions, clock: ManualClock) {
+  return {
+    ...(options.consoleFiles === undefined ? {} : { consoleFiles: options.consoleFiles }),
+    ...(options.limits === undefined ? {} : { limits: options.limits }),
+    clock: options.wrapClock?.(clock) ?? clock,
+  };
+}
+
 // The credentials the server checks: the test's access store, wrapped if asked, and its bot.
 function authOf(access: AccessStore, options: TestServerOptions): ServerAuth {
   return {
@@ -159,7 +170,6 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
     http: { host: "127.0.0.1", port: 0, extraOrigins: options.extraOrigins ?? [] },
     auth: authOf(access, options),
     pairing,
-    ...(options.consoleFiles === undefined ? {} : { consoleFiles: options.consoleFiles }),
     idempotency,
     handlers: options.handlers ?? {},
     engine: {
@@ -167,10 +177,9 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
       state: options.state ?? (() => "ready"),
       owner: () => ({ locale: "en", timezone: "UTC" }),
     },
-    clock,
     random,
     logger,
-    ...(options.limits === undefined ? {} : { limits: options.limits }),
+    ...optionalPartsOf(options, clock),
   });
   const address = await server.start(AbortSignal.timeout(5_000));
   const ipc = createNetServer((socket) => server.acceptIpc(socket));

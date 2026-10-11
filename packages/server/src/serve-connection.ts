@@ -13,7 +13,6 @@ import {
 } from "@binference/protocol";
 import type { RawData, WebSocket } from "ws";
 import { createCallBudget } from "./call-budget.js";
-import type { Session } from "./call-dispatch.js";
 import {
   type ConnectionContext,
   type Link,
@@ -41,13 +40,16 @@ export interface Connection {
   readonly closed: Promise<void>;
 }
 
-// A token with an expiry ends its connection when the expiry comes (decision 0159).
+const expiredMessage = "The sign-in expired.";
+
+// A sign-in with an expiry, such as a token's (decision 0159), ends its connection when the
+// expiry comes. A timer stops while the machine sleeps, so each call checks the expiry too.
 function endAtExpiry(link: Link, expiresAtMs: number | undefined): void {
   if (expiresAtMs === undefined) {
     return;
   }
   const { clock } = link.context;
-  const expired = (): void => sayBye(link, "auth.expired", "The token expired.");
+  const expired = (): void => sayBye(link, "auth.expired", expiredMessage);
   const leftMs = Math.max(0, expiresAtMs - clock.now());
   void clock.sleep(leftMs, link.closed.signal).then(expired, () => undefined);
 }
@@ -66,7 +68,9 @@ function becomeReady(link: Link, open: OpenFrame, identity: Identity): void {
     scopes: identity.scopes,
     send: (push: PushFrame) => sendFrame(link, push),
   };
-  link.phase.set({ name: "ready", session: { caller, subscriber, closed: link.closed.signal } });
+  const session = { caller, subscriber, closed: link.closed.signal };
+  const { expiresAtMs } = identity;
+  link.phase.set({ name: "ready", session, ...(expiresAtMs === undefined ? {} : { expiresAtMs }) });
   link.signedIn.abort();
   sendFrame(link, {
     t: "ready",
@@ -124,8 +128,13 @@ async function prove(
   sayBye(link, proved.error, "The device proof failed.");
 }
 
-function call(link: Link, session: Session, frame: CallFrame): void {
-  const { limits, dispatch } = link.context;
+function call(link: Link, phase: Extract<Phase, { name: "ready" }>, frame: CallFrame): void {
+  const { limits, dispatch, clock } = link.context;
+  if (phase.expiresAtMs !== undefined && clock.now() >= phase.expiresAtMs) {
+    sayBye(link, "auth.expired", expiredMessage);
+    return;
+  }
+  const { session } = phase;
   if (link.inFlight.has(frame.id)) {
     sayBye(link, "protocol.bad_frame", "A call id is still in use on this connection.");
     return;
@@ -158,7 +167,7 @@ function route(link: Link, frame: ClientFrame): void {
   const phase = link.phase.get();
   if (phase.name === "ready") {
     if (frame.t === "call") {
-      call(link, phase.session, frame);
+      call(link, phase, frame);
       return;
     }
     sayBye(link, "protocol.bad_frame", "Only calls follow ready.");

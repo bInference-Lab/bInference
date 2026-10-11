@@ -39,7 +39,12 @@ export type Phase =
   | { readonly name: "opening" }
   | { readonly name: "signing_in"; readonly credential?: string }
   | { readonly name: "proving"; readonly open: OpenFrame; readonly challenge: Challenge }
-  | { readonly name: "ready"; readonly session: Session }
+  | {
+      readonly name: "ready";
+      readonly session: Session;
+      /** When the sign-in stops working; a call from then on ends the connection. */
+      readonly expiresAtMs?: number;
+    }
   | { readonly name: "closed" };
 
 /** One connection's socket and state. */
