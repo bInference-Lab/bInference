@@ -16,6 +16,11 @@ import {
   markTokenUsedTask,
   revokeTokenTask,
 } from "./token-tasks.js";
+import {
+  dropWebPushSubscriptionTask,
+  listWebPushSubscriptionsTask,
+  saveWebPushSubscriptionTask,
+} from "./web-push-tasks.js";
 
 /** Every task of the SQLite access store. */
 export const accessTasks: readonly TaskRunner[] = [
@@ -29,6 +34,9 @@ export const accessTasks: readonly TaskRunner[] = [
   listDevicesTask,
   markDeviceSeenTask,
   revokeDeviceTask,
+  saveWebPushSubscriptionTask,
+  listWebPushSubscriptionsTask,
+  dropWebPushSubscriptionTask,
   addPairCodeTask,
   usePairCodeTask,
 ];
@@ -37,6 +45,7 @@ export const accessTasks: readonly TaskRunner[] = [
 export function createSqliteAccessStore(host: StoreHost): AccessStore {
   const listTokens = bindTask(host, listTokensTask);
   const listDevices = bindTask(host, listDevicesTask);
+  const listSubscriptions = bindTask(host, listWebPushSubscriptionsTask);
   return {
     addToken: bindTask(host, addTokenTask),
     findToken: bindTask(host, findTokenTask),
@@ -48,6 +57,9 @@ export function createSqliteAccessStore(host: StoreHost): AccessStore {
     listDevices: async (options) => listDevices(null, options),
     markDeviceSeen: bindTask(host, markDeviceSeenTask),
     revokeDevice: bindTask(host, revokeDeviceTask),
+    saveWebPushSubscription: bindTask(host, saveWebPushSubscriptionTask),
+    listWebPushSubscriptions: async (options) => listSubscriptions(null, options),
+    dropWebPushSubscription: bindTask(host, dropWebPushSubscriptionTask),
     addPairCode: bindTask(host, addPairCodeTask),
     usePairCode: bindTask(host, usePairCodeTask),
   };

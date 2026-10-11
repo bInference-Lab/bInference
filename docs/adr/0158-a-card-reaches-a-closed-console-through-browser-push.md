@@ -53,9 +53,11 @@ database spec has no table for one.
   endpoint; it cannot read the message.
 - The engine makes outbound HTTPS requests to push services. A device that pairs again, or a new
   machine's key, means the console subscribes again; it does so when it next opens.
-- A stolen subscription lets its holder read nothing and only lets the engine send to it; a stolen
-  VAPID private key lets its holder send notifications to the owner's browsers until the engine
-  makes a new one.
+- `engine.sqlite` holds each browser's authentication secret, which every message is encrypted
+  with, so it cannot be a hash. A copy of the database alone sends nothing: the push service takes
+  a message for the subscription only with the VAPID key's signature, and that key stays in
+  `keys/`. A stolen VAPID private key lets its holder send notifications to the owner's browsers
+  until the engine makes a new one.
 
 ## Alternatives
 

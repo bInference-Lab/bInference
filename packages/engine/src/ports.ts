@@ -3,6 +3,7 @@ import type { Id, Result } from "@binference/core";
 import type { DeviceRecord } from "./access/device-record.js";
 import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
 import type { TokenRecord } from "./access/token-record.js";
+import type { WebPushSubscriptions } from "./access/web-push-subscription-record.js";
 import type { AddressEntryRecord, AddressEntryRemoval } from "./agents/address-entry-record.js";
 import type {
   AgentDraft,
@@ -441,8 +442,11 @@ export interface BotUpdateSource {
   acknowledge(updateId: number, options: { readonly signal: AbortSignal }): Promise<void>;
 }
 
-/** Keeps client tokens, console devices and pairing codes: who may open the protocol. */
-export interface AccessStore {
+/**
+ * Keeps client tokens, console devices with their browser push subscriptions, and pairing codes:
+ * who may open the protocol.
+ */
+export interface AccessStore extends WebPushSubscriptions {
   /** Saves a new token; an id or secret hash in use is `exists`. */
   addToken(token: TokenRecord, options: StoreCall): Promise<Result<TokenRecord, "exists">>;
   /** The token whose secret has this SHA-256, revoked or not. */
@@ -470,7 +474,10 @@ export interface AccessStore {
     seen: StampedId<"dev">,
     options: StoreCall,
   ): Promise<Result<DeviceRecord, "not_found">>;
-  /** Revokes a device; a second revoke keeps the first time. */
+  /**
+   * Revokes a device and drops its browser push subscriptions; a second revoke keeps the first
+   * time.
+   */
   revokeDevice(
     revoke: StampedId<"dev">,
     options: StoreCall,

@@ -38,6 +38,7 @@ export { deviceRecordSchema, type DeviceAlg, type DeviceRecord } from "./access/
 export { pairCodeRecordSchema, pairCodeUseSchema } from "./access/pair-code-record.js";
 export type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
 export { tokenRecordSchema, type TokenKind, type TokenRecord } from "./access/token-record.js";
+
 export {
   agentDraftSchema,
   agentModeChangeSchema,

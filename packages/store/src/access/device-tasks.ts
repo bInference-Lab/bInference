@@ -14,6 +14,7 @@ import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
+import { dropDeviceSubscriptions } from "./web-push-tasks.js";
 
 function toDevice(row: Selectable<DevicesTable>): DeviceRecord {
   return deviceRecordSchema.parse({
@@ -119,7 +120,7 @@ export const markDeviceSeenTask: StoreTask<
     })),
 });
 
-/** Revokes a device; a second revoke keeps the first time. */
+/** Revokes a device and drops its browser push subscriptions; a second revoke keeps the first time. */
 export const revokeDeviceTask: StoreTask<
   StampedId<"dev">,
   Result<DeviceRecord, "not_found">
@@ -128,9 +129,14 @@ export const revokeDeviceTask: StoreTask<
   access: "write",
   input: stampedIdSchema("dev"),
   output: deviceResult,
-  run: (database, revoke) =>
-    stampDevice(database, revoke.id, (row) => ({
+  run(database, revoke) {
+    const revoked = stampDevice(database, revoke.id, (row) => ({
       last_seen_at: row.last_seen_at,
       revoked_at: row.revoked_at ?? revoke.atMs,
-    })),
+    }));
+    if (revoked.ok) {
+      dropDeviceSubscriptions(database, revoke.id);
+    }
+    return revoked;
+  },
 });

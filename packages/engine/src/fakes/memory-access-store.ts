@@ -2,6 +2,10 @@ import { err, ok, type Result } from "@binference/core";
 import type { DeviceRecord } from "../access/device-record.js";
 import type { PairCodeRecord, PairCodeUse } from "../access/pair-code-record.js";
 import type { TokenRecord } from "../access/token-record.js";
+import type {
+  WebPushDrop,
+  WebPushSubscriptionRecord,
+} from "../access/web-push-subscription-record.js";
 import type { AccessStore } from "../ports.js";
 import { byCreation, memoryCall } from "./memory-call.js";
 
@@ -72,11 +76,51 @@ function tokenMethods(): Pick<
   };
 }
 
-function deviceMethods(): Pick<
-  AccessStore,
-  "addDevice" | "findDevice" | "listDevices" | "markDeviceSeen" | "revokeDevice"
-> {
+function bySaving(left: WebPushSubscriptionRecord, right: WebPushSubscriptionRecord): number {
+  return left.createdAtMs - right.createdAtMs || left.endpoint.localeCompare(right.endpoint);
+}
+
+// The subscriptions by endpoint; one saved again replaces the row at its endpoint.
+function createSubscriptions() {
+  const rows = new Map<string, WebPushSubscriptionRecord>();
+  return {
+    save(subscription: WebPushSubscriptionRecord): WebPushSubscriptionRecord {
+      rows.set(subscription.endpoint, structuredClone(subscription));
+      return structuredClone(subscription);
+    },
+    list: (): readonly WebPushSubscriptionRecord[] =>
+      structuredClone([...rows.values()].toSorted(bySaving)),
+    drop(drop: WebPushDrop): Result<WebPushSubscriptionRecord, "not_found"> {
+      const row = rows.get(drop.endpoint);
+      if (row === undefined || (drop.deviceId !== undefined && row.deviceId !== drop.deviceId)) {
+        return err("not_found");
+      }
+      rows.delete(drop.endpoint);
+      return ok(structuredClone(row));
+    },
+    dropDevice(deviceId: string): void {
+      for (const row of [...rows.values()].filter((stored) => stored.deviceId === deviceId)) {
+        rows.delete(row.endpoint);
+      }
+    },
+  };
+}
+
+type DeviceMethods =
+  | "addDevice"
+  | "findDevice"
+  | "listDevices"
+  | "markDeviceSeen"
+  | "revokeDevice"
+  | "saveWebPushSubscription"
+  | "listWebPushSubscriptions"
+  | "dropWebPushSubscription";
+
+function deviceMethods(): Pick<AccessStore, DeviceMethods> {
   const devices = createRows<DeviceRecord>();
+  const subscriptions = createSubscriptions();
+  const isActive = (id: string): boolean =>
+    devices.find((row) => row.id === id && row.revokedAtMs === undefined) !== undefined;
   return {
     addDevice: async (device, call) => memoryCall(call, () => devices.add(device, () => false)),
     findDevice: async (id, call) => memoryCall(call, () => devices.find((row) => row.id === id)),
@@ -89,12 +133,22 @@ function deviceMethods(): Pick<
         })),
       ),
     revokeDevice: async (revoke, call) =>
-      memoryCall(call, () =>
-        devices.change(revoke.id, (row) => ({
+      memoryCall(call, () => {
+        const revoked = devices.change(revoke.id, (row) => ({
           ...row,
           revokedAtMs: row.revokedAtMs ?? revoke.atMs,
-        })),
+        }));
+        if (revoked.ok) {
+          subscriptions.dropDevice(revoke.id);
+        }
+        return revoked;
+      }),
+    saveWebPushSubscription: async (subscription, call) =>
+      memoryCall(call, () =>
+        isActive(subscription.deviceId) ? ok(subscriptions.save(subscription)) : err("no_device"),
       ),
+    listWebPushSubscriptions: async (call) => memoryCall(call, () => subscriptions.list()),
+    dropWebPushSubscription: async (drop, call) => memoryCall(call, () => subscriptions.drop(drop)),
   };
 }
 

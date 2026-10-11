@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
 import type { DeviceRecord } from "../access/device-record.js";
 import type { TokenRecord } from "../access/token-record.js";
+import type { WebPushSubscriptionRecord } from "../access/web-push-subscription-record.js";
 import type { AccessStore } from "../ports.js";
 import { assertRefusesAborted, checkOn, fixtureHash, fixtureId, live } from "./store-fixtures.js";
 
@@ -79,6 +80,60 @@ async function keepsDevices(store: AccessStore): Promise<void> {
   assert.deepEqual(await store.revokeDevice(unknown, live()), { ok: false, error: "not_found" });
 }
 
+function subscription(endpoint: string, n: number, atMs: number): WebPushSubscriptionRecord {
+  return {
+    endpoint: `https://push.example.invalid/${endpoint}`,
+    deviceId: device(n).id,
+    p256dh: `BKey${endpoint}${String(atMs)}`,
+    auth: `secret${endpoint}`,
+    serverKey: "BServerKey",
+    createdAtMs: atMs,
+  };
+}
+
+async function keepsSubscriptions(store: AccessStore): Promise<void> {
+  await store.addDevice(device(1), live());
+  await store.addDevice(device(2), live());
+  const first = subscription("a", 1, 10);
+  assert.deepEqual(await store.saveWebPushSubscription(first, live()), { ok: true, value: first });
+  await store.saveWebPushSubscription(subscription("b", 2, 5), live());
+  const moved = subscription("a", 2, 20);
+  await store.saveWebPushSubscription(moved, live());
+  assert.deepEqual(await store.listWebPushSubscriptions(live()), [subscription("b", 2, 5), moved]);
+  const unknown = subscription("c", 9, 30);
+  assert.deepEqual(await store.saveWebPushSubscription(unknown, live()), {
+    ok: false,
+    error: "no_device",
+  });
+  await store.revokeDevice({ id: device(1).id, atMs: 40 }, live());
+  const revoked = subscription("d", 1, 50);
+  assert.deepEqual(await store.saveWebPushSubscription(revoked, live()), {
+    ok: false,
+    error: "no_device",
+  });
+}
+
+async function dropsSubscriptions(store: AccessStore): Promise<void> {
+  await store.addDevice(device(1), live());
+  await store.addDevice(device(2), live());
+  const own = subscription("a", 1, 10);
+  await store.saveWebPushSubscription(own, live());
+  await store.saveWebPushSubscription(subscription("b", 2, 20), live());
+  const other = { endpoint: own.endpoint, deviceId: device(2).id };
+  assert.deepEqual(await store.dropWebPushSubscription(other, live()), {
+    ok: false,
+    error: "not_found",
+  });
+  const mine = { endpoint: own.endpoint, deviceId: device(1).id };
+  assert.deepEqual(await store.dropWebPushSubscription(mine, live()), { ok: true, value: own });
+  assert.deepEqual(await store.dropWebPushSubscription(mine, live()), {
+    ok: false,
+    error: "not_found",
+  });
+  await store.revokeDevice({ id: device(2).id, atMs: 30 }, live());
+  assert.deepEqual(await store.listWebPushSubscriptions(live()), []);
+}
+
 async function usesCodesOnce(store: AccessStore): Promise<void> {
   const code = { codeHash: fixtureHash("482913"), expiresAtMs: 10_000 };
   const late = { codeHash: fixtureHash("771205"), expiresAtMs: 10_000 };
@@ -106,6 +161,11 @@ async function refusesAborted(store: AccessStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.revokeToken(stamp, options));
   await assertRefusesAborted(async (options) => store.addDevice(device(1), options));
   await assertRefusesAborted(async (options) => store.listDevices(options));
+  const saved = subscription("a", 1, 1);
+  await assertRefusesAborted(async (options) => store.saveWebPushSubscription(saved, options));
+  await assertRefusesAborted(async (options) => store.listWebPushSubscriptions(options));
+  const drop = { endpoint: saved.endpoint };
+  await assertRefusesAborted(async (options) => store.dropWebPushSubscription(drop, options));
   const code = { codeHash: fixtureHash("1"), expiresAtMs: 5 };
   await assertRefusesAborted(async (options) => store.addPairCode(code, options));
   const use = { codeHash: code.codeHash, atMs: 1 };
@@ -125,6 +185,16 @@ export function accessStoreContract(harness: AccessStoreHarness): readonly Contr
     ),
     checkOn("moves a token's last use forward and keeps its first revoke", create, stampsTokens),
     checkOn("keeps devices with their last proof and first revoke", create, keepsDevices),
+    checkOn(
+      "keeps one browser push subscription per endpoint, only for a device that is not revoked",
+      create,
+      keepsSubscriptions,
+    ),
+    checkOn(
+      "drops a subscription at its endpoint, for its own device only, and those of a revoked device",
+      create,
+      dropsSubscriptions,
+    ),
     checkOn("uses a pairing code once, before it expires", create, usesCodesOnce),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];

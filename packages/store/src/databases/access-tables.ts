@@ -1,4 +1,5 @@
-// The access tables of `engine.sqlite`, as SQLite returns them: migration 0009 defines them.
+// The access tables of `engine.sqlite`, as SQLite returns them: migration 0009 defines them, and
+// migration 0021 adds `web_push_subscriptions`.
 
 /** `tokens`. */
 export interface TokensTable {
@@ -30,9 +31,20 @@ interface PairCodesTable {
   used_at: number | null;
 }
 
+/** `web_push_subscriptions`: a console device's browser push subscriptions (decision 0158). */
+export interface WebPushSubscriptionsTable {
+  endpoint: string;
+  device_id: string;
+  p256dh: string;
+  auth: string;
+  server_key: string;
+  created_at: number;
+}
+
 /** The access tables, by name. */
 export interface AccessTables {
   tokens: TokensTable;
   devices: DevicesTable;
   pair_codes: PairCodesTable;
+  web_push_subscriptions: WebPushSubscriptionsTable;
 }

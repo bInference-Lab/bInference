@@ -153,6 +153,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   tokens: names("id label kind scopes secret_hash created_at last_used_at revoked_at"),
   devices: names("id label alg public_key created_at last_seen_at revoked_at"),
+  web_push_subscriptions: names("endpoint device_id p256dh auth server_key created_at"),
   pair_codes: names("code_hash expires_at used_at"),
   config_journal: names("id at by surface path before after reason"),
   plugins: names("id name version tier source hash permissions enabled installed_at"),
@@ -181,6 +182,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   risk_cache: ["asset", "source"],
   idempotency: ["credential", "op", "key"],
   pair_codes: ["code_hash"],
+  web_push_subscriptions: ["endpoint"],
   cex_connections: ["provider"],
 };
 
@@ -210,6 +212,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   notices: ["index|at"],
   model_usage: ["index|agent_id,at"],
   tokens: ["unique|secret_hash"],
+  web_push_subscriptions: ["index|device_id"],
   config_journal: ["index|at"],
   plugins: ["unique|name"],
   skills: ["unique|agent_id,name"],
