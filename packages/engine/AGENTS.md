@@ -228,13 +228,14 @@ Rules for this package:
   intent on its wallet's queue and moves it only through the stored intents. Everything that can
   refuse before a signature (the `queue_took` check, a draft that would fail, a fee per gas above
   the network fee cap) runs before the move to `executing`, so such an intent stays `confirmed` with
-  nothing signed; one above the cap tries again each block until its authorization runs out and it
-  expires (decision 0143). No step or replacement is signed above the cap. Each step's raw bytes are
-  stored before any send; a send no relay accepts goes again with the same stored bytes. A stuck
-  step follows spec 6, section 6 in `stuck-rules.ts`, only on its wallet's slot: the same bytes
-  again while it still runs, a speed-up after `replaceAfterBlocks`, a cancel once it would fail,
-  each at its nonce for at least `leastReplacementFee` and never above the network fee cap. A step
-  every relay turns away for `droppedAfterBlocks` blocks, its nonce still free by the latest and the
+  nothing signed; one above the cap tries again each block until the fee falls, and a tapped one
+  whose confirmation runs out meanwhile gets the next card version with `notice.feeAboveCap`
+  (decision 0143). No step or replacement is signed above the cap. Each step's raw bytes are stored
+  before any send; a send no relay accepts goes again with the same stored bytes. A stuck step
+  follows spec 6, section 6 in `stuck-rules.ts`, only on its wallet's slot: the same bytes again
+  while it still runs, a speed-up after `replaceAfterBlocks`, a cancel once it would fail, each at
+  its nonce for at least `leastReplacementFee` and never above the network fee cap. A step every
+  relay turns away for `droppedAfterBlocks` blocks, its nonce still free by the latest and the
   pending count and none of its transactions known to a node, is dropped: its nonce goes to the next
   step and the intent ends with `stuck_dropped` (decision 0115). A step no rule can move waits as
   long for that, then hands over at the seam `executor.step_stopped` logs and holds its wallet's

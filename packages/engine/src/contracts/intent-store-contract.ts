@@ -4,7 +4,7 @@ import type { IntentQuery } from "../intents/intent-change.js";
 import { genesisLedgerHash } from "../ledger/ledger-hash.js";
 import {
   closesWithMoves,
-  confirmsOnce,
+  confirmsAgain,
   findsCardsByRef,
   refusesClosedCard,
   refusesTakenVersion,
@@ -216,7 +216,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     checkOn("lists an agent's confirmed intents since a time", create, listsConfirmedSince),
     checkOn("opens, replaces and closes card versions with the moves", create, closesWithMoves),
     checkOn("finds a card version by its callback reference", create, findsCardsByRef),
-    checkOn("records one confirmation with the move to confirmed", create, confirmsOnce),
+    checkOn("keeps one confirmation, a later card version's in its place", create, confirmsAgain),
     checkOn("refuses to close a card version that is not open", create, refusesClosedCard),
     checkOn("refuses a card version the intent already has", create, refusesTakenVersion),
     checkOn(

@@ -13,6 +13,7 @@
   "fillUnknown": "⚠️ A trade settled, but no RPC can say what it received any more. Add a tracing RPC to the config and restart binference to finish it.",
   "notSigned": "⚠️ A trade was cancelled before its first transaction was signed. Nothing was sent.",
   "confirmationLapsed": "⚠️ A trade was not sent: its confirmation ran out before it could go out. Nothing was signed.",
+  "feeAboveCap": "⚠️ A trade waited because the network fee was above your cap, and its confirmation ran out. Confirm it again on its new card, or cancel it.",
   "stepUnsent": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.",
   "stepDropped": "⚠️ A trade was stuck and did not go through. Nothing moved, and the wallet is free again.",
   "stepDroppedPartWay": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was stuck and did not go through. The wallet is free again. Check the wallet.",

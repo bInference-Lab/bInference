@@ -31,8 +31,8 @@ function closeCard(database: DatabaseSync, change: IntentChange): void {
 /**
  * Writes the card and confirmation parts of a move inside its transaction: closes the open card
  * version it names, opens the new one, and records the confirmation. A card that is not open
- * throws `store.card_not_open`; a taken card version or a second confirmation fails SQLite's
- * constraints. Either rolls the whole move back.
+ * throws `store.card_not_open`; a taken card version, or a confirmation of a card version no later
+ * than the stored one, fails SQLite's constraints. Either rolls the whole move back.
  */
 export function writeCardChanges(database: DatabaseSync, change: IntentChange): void {
   closeCard(database, change);
@@ -54,18 +54,36 @@ export function writeCardChanges(database: DatabaseSync, change: IntentChange): 
     );
   }
   if (confirmation !== undefined) {
-    execute(
-      kysely.insertInto("confirmations").values({
-        id: confirmation.id,
-        intent_id: change.id,
-        card_id: confirmation.cardId,
-        card_version: confirmation.cardVersion,
-        terms_hash: confirmation.termsHash,
-        by_surface: confirmation.bySurface,
-        by_ref: confirmation.byRef,
-        at: change.atMs,
-        expires_at: confirmation.expiresAtMs,
-      }),
-    );
+    writeConfirmation(database, change, confirmation);
+  }
+}
+
+// One confirmation per intent: a later card version's replaces the earlier one (decision 0143),
+// and a second one for the same or an older version fails like the unique key it stands in for.
+function writeConfirmation(
+  database: DatabaseSync,
+  change: IntentChange,
+  confirmation: NonNullable<IntentChange["confirmation"]>,
+): void {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const row = {
+    id: confirmation.id,
+    card_id: confirmation.cardId,
+    card_version: confirmation.cardVersion,
+    terms_hash: confirmation.termsHash,
+    by_surface: confirmation.bySurface,
+    by_ref: confirmation.byRef,
+    at: change.atMs,
+    expires_at: confirmation.expiresAtMs,
+  };
+  const replaced = execute(
+    kysely
+      .updateTable("confirmations")
+      .set(row)
+      .where("intent_id", "=", change.id)
+      .where("card_version", "<", confirmation.cardVersion),
+  );
+  if (replaced.numAffectedRows === 0n) {
+    execute(kysely.insertInto("confirmations").values({ ...row, intent_id: change.id }));
   }
 }

@@ -89,6 +89,25 @@ export async function confirmsOnce(subject: IntentStoreSubject): Promise<void> {
   assert.equal((await store.events(intentId, live())).length, 3);
 }
 
+/**
+ * The move to `confirmed` records the owner's one confirmation; a confirmation of a later card
+ * version, after a fee wait reopened the card (decision 0143), takes the earlier one's place.
+ */
+export async function confirmsAgain(subject: IntentStoreSubject): Promise<void> {
+  const { store } = subject;
+  await confirmsOnce(subject);
+  const reopen = { ...intentMove(1, 2, "awaiting_confirmation"), openCard: cardOf(1, 2) };
+  assert.ok((await store.transition(reopen, live())).ok);
+  const confirm = {
+    ...intentMove(1, 3, "confirmed"),
+    closeCard: { id: cardOf(1, 2).id, reason: "confirmed" },
+    confirmation: confirmationOf(1, 2),
+  } as const;
+  assert.ok((await store.transition(confirm, live())).ok);
+  const confirmation = { ...confirmationOf(1, 2), intentId, atMs: confirm.atMs };
+  assert.deepEqual(await store.confirmation(intentId, live()), confirmation);
+}
+
 /** A move that closes a card version that is not open fails and writes nothing. */
 export async function refusesClosedCard(subject: IntentStoreSubject): Promise<void> {
   const { store, ledger } = subject;

@@ -28,11 +28,15 @@ interface Taken {
 
 /**
  * What became of a confirmed intent on its wallet's slot: its steps all in blocks, a step dropped
- * whose transactions are watched off the queue, `retry` when it stays `confirmed` for a reason
- * that may pass before its authorization runs out (a fee per gas above the network fee cap, or no
- * node that answered while its first step was prepared), or nothing more to do here (`undefined`).
+ * whose transactions are watched off the queue, a {@link Retry} when it stays `confirmed` for a
+ * reason that may pass before its authorization runs out (a fee per gas above the network fee
+ * cap, or no node that answered while its first step was prepared), or nothing more to do here
+ * (`undefined`).
  */
-export type SlotOutcome = IncludedSteps | DroppedStep | "retry" | undefined;
+export type SlotOutcome = IncludedSteps | DroppedStep | Retry | undefined;
+
+/** Why the queue left a confirmed intent to try again a block later. */
+export type Retry = "over_fee_cap" | "unprepared";
 
 function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefined {
   run.parts.log.warn("executor.not_taken", { intentId: intent, errorCode: problem });
@@ -46,7 +50,7 @@ async function takeIn(
   run: ExecutionRun,
   slot: WalletSlot,
   intent: Id<"int">,
-): Promise<Taken | "retry" | undefined> {
+): Promise<Taken | Retry | undefined> {
   const { parts, plan, signal } = run;
   const snapshot = await parts.stored.snapshot(intent, { signal });
   if (snapshot?.record.state !== "confirmed") {
@@ -60,7 +64,7 @@ async function takeIn(
   if (!first.ok || first.value.prepared.isAboveFeeCap) {
     const problem = first.ok ? "over_fee_cap" : first.error;
     notTaken(run, intent, problem);
-    return problem === "would_fail" ? undefined : "retry";
+    return problem === "would_fail" ? undefined : problem;
   }
   // An intent the engine's stop meets here stays `confirmed`, with nothing signed.
   if (run.stopping.aborted) {
@@ -173,7 +177,7 @@ async function runFrom(
  * The work of one confirmed intent on its wallet's queue (ARCHITECTURE.md section 7, step 8): the
  * `queue_took` check, then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
- * so the slot frees the wallet before finality, `retry` when the first step's fee per gas is
+ * so the slot frees the wallet before finality, a retry when the first step's fee per gas is
  * above the network fee cap or no node answered as it was prepared, which leaves the intent
  * `confirmed`, and `undefined` when the run stopped. A step that cannot be signed or stored, or whose fee per gas is above the cap, ends the
  * intent (decision 0109). A stuck step is sent again, sped up
@@ -188,7 +192,7 @@ export async function executeInSlot(
   intent: Id<"int">,
 ): Promise<SlotOutcome> {
   const taken = await takeIn(run, slot, intent);
-  return taken === undefined || taken === "retry"
+  return taken === undefined || typeof taken === "string"
     ? taken
     : runFrom(run, slot, { taken, index: 0, done: [] });
 }

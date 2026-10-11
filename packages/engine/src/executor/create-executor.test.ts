@@ -287,15 +287,25 @@ describe("the executor's refusals", () => {
     await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
   });
 
-  it("expires a tapped intent whose fee per gas stays above the cap", async () => {
+  it("gives a tapped intent a new card once the fee stayed above the cap past its tap", async () => {
     const { bench, intent } = await heldTap();
     bench.network.setFeePerGas(2_000_000_000n);
     await bench.release();
-    await expect(driveUntil(bench, intent, { states: ["expired"], blocks: 80 })).resolves.toBe(
-      "expired",
-    );
-    expect(eventsOf(bench)).toContain("executor.lapsed:");
+    const waiting = { states: ["awaiting_confirmation"], blocks: 80 } as const;
+    await expect(driveUntil(bench, intent, waiting)).resolves.toBe("awaiting_confirmation");
+    expect(eventsOf(bench)).toContain("executor.fee_wait_lapsed:");
+    expect(JSON.stringify(bench.pushes)).toContain("notice.feeAboveCap");
     expect(bench.signed).toStrictEqual([]);
+    const cards = await bench.test.stores.intents.cards(intent, live());
+    expect(cards.map(({ version, closeReason }) => [version, closeReason])).toStrictEqual([
+      [1, "confirmed"],
+      [2, undefined],
+    ]);
+    bench.network.setFeePerGas(50_000_000n);
+    const args = { intent, card: cards[1]?.id as Id<"crd">, cardVersion: 2 };
+    expectOk(await bench.test.engine.handlers["intent/confirm"](testCall(args)));
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
   });
 
   it("cancels an intent whose custody faults as it signs the first step", async () => {

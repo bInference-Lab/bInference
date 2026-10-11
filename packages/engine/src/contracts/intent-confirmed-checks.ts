@@ -31,8 +31,8 @@ async function plant(subject: IntentStoreSubject, planted: Planted): Promise<voi
 }
 
 /**
- * Lists one agent's intents of one mode confirmed since a time, each with when it was confirmed,
- * its state now and its stored value, oldest first.
+ * Lists one agent's intents of one mode confirmed since a time, each once with when it was first
+ * confirmed, its state now and its stored value, oldest first.
  */
 export async function listsConfirmedSince(subject: IntentStoreSubject): Promise<void> {
   const { store, agentId } = subject;
@@ -45,6 +45,8 @@ export async function listsConfirmedSince(subject: IntentStoreSubject): Promise<
   await plant(subject, { n: 2, isPaper: true, moves: ["confirmed", "cancelled"] });
   await plant(subject, { n: 3, isPaper: false, moves: ["confirmed"], valueUsdMicros: 5n });
   await plant(subject, { n: 4, isPaper: true, moves: ["checked"], valueUsdMicros: 7n });
+  const again: readonly IntentState[] = ["confirmed", "awaiting_confirmation", "confirmed"];
+  await plant(subject, { n: 5, isPaper: true, moves: again });
   const paper = { agentId, isPaper: true, fromMs: 0 };
   assert.deepEqual(await store.confirmedSince(paper, live()), [
     {
@@ -54,12 +56,13 @@ export async function listsConfirmedSince(subject: IntentStoreSubject): Promise<
       valueUsdMicros: huge,
     },
     { intentId: fixtureId("int", 2), state: "cancelled", confirmedAtMs: 2_001 },
+    { intentId: fixtureId("int", 5), state: "confirmed", confirmedAtMs: 5_001 },
   ]);
   assert.deepEqual(
     (await store.confirmedSince({ ...paper, fromMs: 1_002 }, live())).map(
       ({ intentId }) => intentId,
     ),
-    [fixtureId("int", 2)],
+    [fixtureId("int", 2), fixtureId("int", 5)],
   );
   assert.deepEqual(await store.confirmedSince({ ...paper, isPaper: false }, live()), [
     { intentId: fixtureId("int", 3), state: "confirmed", confirmedAtMs: 3_001, valueUsdMicros: 5n },

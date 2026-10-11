@@ -52,7 +52,8 @@ export interface StoredIntents extends ConfirmationStore {
   ): Promise<IntentSnapshot | undefined>;
   /**
    * Stores one move under the version it read and answers the intent after it. A row that moved
-   * on, an unknown intent, or a second confirmation is `stale` and stores nothing.
+   * on, an unknown intent, or a second confirmation of one card version is `stale` and stores
+   * nothing.
    */
   move(
     move: IntentMove,
@@ -154,11 +155,16 @@ async function written(
   return snapshot;
 }
 
-// A version the row has moved past, or a second confirmation, could only fail in the store.
+// A version the row has moved past, or a second confirmation of the same card version, could
+// only fail in the store. A later card version's confirmation replaces the earlier one (decision
+// 0143).
 function isStale(before: IntentSnapshot, move: IntentMove): boolean {
+  const earlier = before.stored.confirmation?.cardVersion;
   return (
     before.record.version !== move.version ||
-    (move.confirmation !== undefined && before.stored.confirmation !== undefined)
+    (move.confirmation !== undefined &&
+      earlier !== undefined &&
+      earlier >= move.confirmation.cardVersion)
   );
 }
 

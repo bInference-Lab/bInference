@@ -58,7 +58,9 @@ function checkConfirmation(
   const known = [...cards, ...(openCard === undefined ? [] : [openCard])].some(
     (card) => card.id === confirmation?.cardId && card.version === confirmation.cardVersion,
   );
-  if (confirmation !== undefined && (confirmations.has(change.id) || !known)) {
+  const earlier = confirmations.get(change.id);
+  const isTaken = earlier !== undefined && earlier.cardVersion >= (confirmation?.cardVersion ?? 0);
+  if (confirmation !== undefined && (isTaken || !known)) {
     throw constraintFault(`intent ${change.id} has a confirmation, or no such card version`);
   }
 }

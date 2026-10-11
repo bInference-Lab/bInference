@@ -1,6 +1,6 @@
 # 0102. A network fee above its cap asks the owner
 
-Status: Accepted
+Status: Amended by 0143
 
 ## Context
 

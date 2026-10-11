@@ -56,6 +56,47 @@ export async function expireIfLapsed(
   return false;
 }
 
+/** The owner's notice of a trade whose confirmation ran out while the fee was above the cap. */
+const feeAboveCapNoticeKey = "notice.feeAboveCap";
+
+/**
+ * Gives a tapped intent whose confirmation ran out while the queue waited for the fee per gas to
+ * fall to the network fee cap the next card version, for a new confirmation, and tells the owner
+ * with `notice.feeAboveCap` (decision 0143); nothing is signed. Any other intent is left to
+ * {@link expireIfLapsed}. Answers whether it still waits for a queue.
+ */
+export async function reopenIfFeeLapsed(
+  parts: ExecutorParts,
+  intent: Id<"int">,
+  signal: AbortSignal,
+): Promise<boolean> {
+  const snapshot = await parts.stored.snapshot(intent, { signal });
+  const expiresAtMs = snapshot?.stored.confirmation?.expiresAtMs;
+  if (
+    snapshot?.record.state !== "confirmed" ||
+    snapshot.stored.status.authorizedBy !== undefined ||
+    expiresAtMs === undefined
+  ) {
+    return expireIfLapsed(parts, intent, signal);
+  }
+  if (parts.clock.now() < expiresAtMs) {
+    return true;
+  }
+  const { cards } = snapshot.stored;
+  const reopened = await moveIntent({ parts, signal }, snapshot, {
+    type: "fee_wait_lapsed",
+    expiresAtMs,
+    cards,
+  });
+  if (reopened === undefined) {
+    return true;
+  }
+  const { agentId } = snapshot.record;
+  parts.log.warn("executor.fee_wait_lapsed", { intentId: intent });
+  parts.publish(noticePush({ key: feeAboveCapNoticeKey, agent: agentId, intent, values: {} }));
+  return false;
+}
+
 /**
  * Moves each confirmed live intent whose confirmation or auto grant ran out while the engine was
  * stopped or locked to `expired`, and tells the owner with `notice.confirmationLapsed`; nothing is

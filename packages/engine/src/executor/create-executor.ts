@@ -11,7 +11,7 @@ import { executeInSlot } from "./execute-in-slot.js";
 import { executeRescue, recoverRescue, rescueGroupsOf } from "./execute-rescue.js";
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
 import { type ExecutionRun, type ExecutorParts, nextBlock } from "./executor-run.js";
-import { expireIfLapsed, expireLapsed } from "./expire-lapsed.js";
+import { expireIfLapsed, expireLapsed, reopenIfFeeLapsed } from "./expire-lapsed.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
 import {
   liveIntentsIn,
@@ -132,7 +132,8 @@ async function workOf(
 // A confirmed intent on its wallet's queue, then off it until it reconciles. One the queue left
 // `confirmed` expires once its authorization ran out (decision 0120); one whose fee per gas is
 // above the network fee cap, or whose first step no node could prepare, leaves the queue and
-// tries again a block later until then.
+// tries again a block later until then. A tapped one that waited for the fee gets a new card
+// instead of expiring (decision 0143).
 async function runTaken(run: ExecutionRun, taken: Taken): Promise<void> {
   // A work still waiting for its wallet when the engine stops leaves the queue unrun.
   const outcome = await run.parts.queue.run(
@@ -140,12 +141,13 @@ async function runTaken(run: ExecutionRun, taken: Taken): Promise<void> {
     async (slot) => executeInSlot(run, slot, taken.intent),
     { signal: run.stopping },
   );
-  if (outcome !== undefined && outcome !== "retry") {
+  if (outcome !== undefined && typeof outcome !== "string") {
     await ("dropped" in outcome ? watchDropped(run, outcome) : settleIncluded(run, outcome));
     return;
   }
-  const waits = await expireIfLapsed(run.parts, taken.intent, run.signal);
-  if (waits && outcome === "retry") {
+  const lapse = outcome === "over_fee_cap" ? reopenIfFeeLapsed : expireIfLapsed;
+  const waits = await lapse(run.parts, taken.intent, run.signal);
+  if (waits && outcome !== undefined) {
     await nextBlock(run);
     await runTaken(run, taken);
   }

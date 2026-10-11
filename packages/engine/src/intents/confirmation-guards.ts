@@ -104,3 +104,27 @@ export function lapseAuthorization({
 }: GuardInput<"authorization_lapsed">): Result<IntentChange, TransitionProblem> {
   return nowMs >= trigger.expiresAtMs ? ok({}) : err("not_expired");
 }
+
+/**
+ * `confirmed` to `awaiting_confirmation` after a fee wait (decision 0143): a tapped intent whose
+ * confirmation ran out while the fee per gas stayed above the network fee cap gets the next card
+ * version, for a new confirmation. An auto, order or webhook intent expires instead.
+ */
+export function reopenAfterFeeWait({
+  status,
+  trigger,
+  nowMs,
+}: GuardInput<"fee_wait_lapsed">): Result<IntentChange, TransitionProblem> {
+  if (status.authorizedBy !== undefined || status.card === undefined) {
+    return err("authorization_mismatch");
+  }
+  if (nowMs < trigger.expiresAtMs) {
+    return err("not_expired");
+  }
+  const card: CardTerms = {
+    version: status.card.version + 1,
+    openedAtMs: nowMs,
+    expiresAtMs: cardExpiresAt(status.kind, nowMs, trigger.cards),
+  };
+  return ok({ card });
+}

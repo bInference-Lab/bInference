@@ -85,6 +85,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                                            |                                                                                                                                                                                                        |
 | `awaiting_confirmation`      | `expired`               | card timer                                                                           | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, unfreezes, identity, token launches and approval revokes                                                                      |
 | `confirmed`                  | `expired`               | the executor finds its authorization ran out                                         | the confirmation or the auto grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                          |
+| `confirmed`                  | `awaiting_confirmation` | the fee wait outlasted the confirmation                                              | a tapped intent held while the fee per gas was above the cap, its confirmation run out: card version n+1, and `notice.feeAboveCap` ([decision 0143](../DECISIONS.md#d0143))                            |
 | any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                                             | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099))                                                                                                                |
 | `confirmed`                  | `paper_filled`          | paper mode                                                                           | a paper intent, which a rescue never is ([decision 0100](../DECISIONS.md#d0100))                                                                                                                       |
 | `confirmed`                  | `executing`             | wallet queue takes it                                                                | the agent is live, or the intent is a rescue; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                     |
@@ -174,9 +175,12 @@ and `step_unsent` (a step never signed after an earlier one landed,
   card, in either mode. No card shows a fee per gas yet, so no transaction is signed above the cap,
   tapped or not ([decision 0143](../DECISIONS.md#d0143)): the fee is read again when the queue takes
   the intent, at each later step and at each speed-up or cancel. Above the cap at the take, the
-  intent stays `confirmed` and the queue tries again a block later, until the fee falls or its
-  authorization runs out and it expires (section 7, item 5); a later step above it ends the intent
-  as a step never signed (section 3).
+  intent stays `confirmed` and the queue tries again each block until the fee falls. A tapped
+  intent whose confirmation runs out during that wait gets the next card version, for a new
+  confirmation, and the owner gets `notice.feeAboveCap`; an auto intent expires (section 7, item
+  5). A later step above the cap ends the intent as a step never signed (section 3). The card's
+  fees line (spec 4, section 3) will show the fee per gas; until it does, a tap never raises the
+  cap.
 - **Rescue** ([decision 0044](../DECISIONS.md#d0044)): one intent, one card, one step per token per
   agent wallet, sent to the rescue address. It works while frozen and at every send level: a freeze
   does not cancel a pending rescue, since it pays only the owner's own rescue address
@@ -309,9 +313,10 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    still holds waits for the queue until the engine holds its keys
    ([decision 0120](../DECISIONS.md#d0120)). A running engine does the same for an intent its
    queue refused or left `confirmed`: one whose authorization ran out while it waited behind the
-   wallet's other intents, and one whose fee per gas stayed above the cap
-   ([decision 0143](../DECISIONS.md#d0143)) or whose first step no node could prepare, which the
-   queue tries again each block until then.
+   wallet's other intents, one whose first step no node could prepare, which the queue tries
+   again each block until then, and an auto intent whose fee per gas stayed above the cap. A
+   tapped intent that waited for the fee gets a new card version instead
+   ([decision 0143](../DECISIONS.md#d0143)).
 
 <a id="section-8"></a>
 

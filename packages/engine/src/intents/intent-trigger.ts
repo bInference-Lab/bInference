@@ -27,6 +27,7 @@ export const triggerTypes = [
   "deny_tapped",
   "card_timer_fired",
   "authorization_lapsed",
+  "fee_wait_lapsed",
   "cancel_requested",
   "paper_fill_recorded",
   "queue_took",
@@ -125,6 +126,11 @@ export interface TriggerFacts {
    * `expiresAtMs` before any queue took it (decision 0120).
    */
   readonly authorization_lapsed: { readonly expiresAtMs: number };
+  /**
+   * The owner's confirmation expired at `expiresAtMs` while the queue waited for the fee per gas
+   * to fall to the network fee cap (decision 0143): the owner gets a new card version.
+   */
+  readonly fee_wait_lapsed: { readonly expiresAtMs: number; readonly cards: CardRules };
   readonly cancel_requested: {
     readonly cause: Exclude<CancelCause, "step_unsent">;
     readonly hasSignedStep: boolean;

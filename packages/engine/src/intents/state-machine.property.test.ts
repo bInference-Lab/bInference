@@ -99,6 +99,8 @@ function queueFacts(facts: Facts, at: At): QueueFacts {
   return facts.hasConfirmation ? { ...base, confirmation } : base;
 }
 
+const lapsing = (facts: Facts, at: At) => ({ expiresAtMs: at.nowMs + facts.confirmationTtlMs });
+
 const builders: Builders = {
   policy_passed: () => ({ type: "policy_passed" }),
   policy_refused: (facts) => ({ type: "policy_refused", reason: facts.policyRejection }),
@@ -129,10 +131,8 @@ const builders: Builders = {
   }),
   deny_tapped: () => ({ type: "deny_tapped" }),
   card_timer_fired: () => ({ type: "card_timer_fired" }),
-  authorization_lapsed: (facts, at) => ({
-    type: "authorization_lapsed",
-    expiresAtMs: at.nowMs + facts.confirmationTtlMs,
-  }),
+  authorization_lapsed: (facts, at) => ({ type: "authorization_lapsed", ...lapsing(facts, at) }),
+  fee_wait_lapsed: (facts, at) => ({ type: "fee_wait_lapsed", ...lapsing(facts, at), cards }),
   cancel_requested: (facts) => ({
     type: "cancel_requested",
     cause: facts.cancelCause,

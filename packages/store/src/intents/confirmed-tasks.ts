@@ -12,7 +12,8 @@ import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
 /**
  * Lists one agent's intents of one mode with a move to `confirmed` at or after the query's time,
- * the first confirmed first.
+ * each once at its first such move, the first confirmed first: a confirmation again on a new card
+ * version (decision 0143) is still one trade.
  */
 export const confirmedSinceTask: StoreTask<ConfirmedQuery, readonly ConfirmedIntent[]> = defineTask(
   {
@@ -26,17 +27,18 @@ export const confirmedSinceTask: StoreTask<ConfirmedQuery, readonly ConfirmedInt
         kysely
           .selectFrom("intent_events")
           .innerJoin("intents", "intents.id", "intent_events.intent_id")
-          .select([
+          .select(({ fn }) => [
             "intents.id as id",
             "intents.state as state",
             "intents.value_usd_micros as value",
-            "intent_events.at as at",
+            fn.min("intent_events.at").as("at"),
           ])
           .where("intent_events.to_state", "=", "confirmed")
           .where("intent_events.at", ">=", query.fromMs)
           .where("intents.agent_id", "=", query.agentId)
           .where("intents.paper", "=", query.isPaper ? 1 : 0)
-          .orderBy("intent_events.at")
+          .groupBy(["intents.id", "intents.state", "intents.value_usd_micros"])
+          .orderBy("at")
           .orderBy("intents.id"),
       ).rows;
       return rows.map((row) =>

@@ -5,6 +5,7 @@ import {
   confirmTap,
   expireCard,
   lapseAuthorization,
+  reopenAfterFeeWait,
   reopenCard,
 } from "./confirmation-guards.js";
 import {
@@ -95,6 +96,9 @@ export const transitionTable: TransitionTable = {
   deny_tapped: [{ from: ["awaiting_confirmation"], to: "denied", guard: pass }],
   card_timer_fired: [{ from: ["awaiting_confirmation"], to: "expired", guard: expireCard }],
   authorization_lapsed: [{ from: ["confirmed"], to: "expired", guard: lapseAuthorization }],
+  fee_wait_lapsed: [
+    { from: ["confirmed"], to: "awaiting_confirmation", guard: reopenAfterFeeWait },
+  ],
   cancel_requested: [{ from: statesBeforeSigning, to: "cancelled", guard: cancelIntent }],
   paper_fill_recorded: [{ from: ["confirmed"], to: "paper_filled", guard: fillOnPaper }],
   queue_took: [{ from: ["confirmed"], to: "executing", guard: takeIntoQueue }],
