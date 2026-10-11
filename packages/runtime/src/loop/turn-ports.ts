@@ -147,6 +147,8 @@ export type TurnStatusLine =
   | { readonly line: "moreProposals"; readonly count: number }
   | { readonly line: "proposalRefused" }
   | { readonly line: "stopped" }
+  /** Stopped after the engine took the turn's proposal: its card is still open. */
+  | { readonly line: "stoppedCardOpen" }
   | { readonly line: "failed"; readonly failure: TurnFailure }
   | { readonly line: "toolCallLimit" }
   | { readonly line: "modelCallLimit" };

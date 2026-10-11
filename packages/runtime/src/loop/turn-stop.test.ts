@@ -118,6 +118,38 @@ describe("stopping a turn", () => {
     ]);
   });
 
+  it("says the card is still open when a stop ends a turn whose proposal the engine took", async () => {
+    const answer = createGate<ToolOutcome>();
+    const { turn, recorder, clock } = createTestTurn({
+      replies: [callsReply([{ name: "swap" }])],
+      tools: [{ name: "swap", kind: "propose", run: async () => answer.promise }],
+    });
+    const report = turn.run();
+    await clock.advance(0);
+    turn.stop("freeze");
+    answer.open({ text: "int_1 waits for the owner's confirmation", isError: false });
+    await expect(report).resolves.toMatchObject({ outcome: "stopped", committed: true });
+    expect(recorder.steps.filter((step) => step.kind === "status")).toStrictEqual([
+      { kind: "status", line: { line: "stoppedCardOpen" } },
+    ]);
+  });
+
+  it("keeps the plain stop line when the engine refused the stopped turn's proposal", async () => {
+    const answer = createGate<ToolOutcome>();
+    const { turn, recorder, clock } = createTestTurn({
+      replies: [callsReply([{ name: "swap" }])],
+      tools: [{ name: "swap", kind: "propose", run: async () => answer.promise }],
+    });
+    const report = turn.run();
+    await clock.advance(0);
+    turn.stop("owner");
+    answer.open({ text: "refused: the wallet is not the agent's", isError: true });
+    await expect(report).resolves.toMatchObject({ outcome: "stopped", committed: true });
+    expect(recorder.steps.filter((step) => step.kind === "status")).toStrictEqual([
+      { kind: "status", line: { line: "stopped" } },
+    ]);
+  });
+
   it("calls a proposal with no answer 5 seconds after a stop unknown, and never sends it again", async () => {
     const { turn, recorder, clock, transport } = createTestTurn({
       replies: [callsReply([{ name: "swap" }])],

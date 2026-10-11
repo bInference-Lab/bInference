@@ -59,9 +59,18 @@ async function keepResponse(run: TurnRun, response: ModelAnswer | ModelFault): P
   run.tally.keepText(response.text);
 }
 
+// A halted turn ends as its halt says; a stop after the engine took the turn's proposal says its
+// card is still open (decision 0173).
+function haltedEnd(run: TurnRun): LoopEnd {
+  const end = endOfHalt(haltOf(run.halted));
+  const { committed, proposal } = run.tally.now();
+  const cardOpen = end.outcome === "stopped" && committed && proposal === "waits";
+  return cardOpen ? { outcome: "stopped", status: { line: "stoppedCardOpen" } } : end;
+}
+
 function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
   if (run.halted.aborted) {
-    return endOfHalt(haltOf(run.halted));
+    return haltedEnd(run);
   }
   // A provider that refused for its own safety rules ends the turn with what the model wrote.
   if (fault.failure === "refused") {
@@ -83,7 +92,7 @@ function committedStatus(run: TurnRun): TurnStatusLine {
 async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
   await join(run, batch.joined);
   if (run.halted.aborted) {
-    return endOfHalt(haltOf(run.halted));
+    return haltedEnd(run);
   }
   const { committed } = run.tally.now();
   if (committed) {
@@ -104,7 +113,7 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
 // Merge point 3: a response with no tool call would end the turn, unless messages wait to join.
 async function afterAnswer(run: TurnRun): Promise<StepEnd> {
   if (run.halted.aborted) {
-    return endOfHalt(haltOf(run.halted));
+    return haltedEnd(run);
   }
   if (!canMerge(run)) {
     return ok;
@@ -132,7 +141,7 @@ async function onAnswer(run: TurnRun, answer: ModelAnswer): Promise<StepEnd> {
  */
 export async function takeStep(run: TurnRun): Promise<StepEnd> {
   if (run.halted.aborted) {
-    return endOfHalt(haltOf(run.halted));
+    return haltedEnd(run);
   }
   if (run.tally.now().modelCalls >= run.limits.maxModelCalls) {
     return { outcome: "loop", status: { line: "modelCallLimit" } };
