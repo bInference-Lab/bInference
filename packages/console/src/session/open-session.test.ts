@@ -143,6 +143,16 @@ describe("opening the console's session", () => {
     expect(test.credentials).toStrictEqual([{ kind: "telegram", initData: "query=1", ticket }]);
   });
 
+  it("never uses or pairs a device at /mini without Telegram's launch data", async () => {
+    const test = setUp({ pathname: "/mini", hash: "#pair=abc", stored });
+    await expect(openSession(test.context)).resolves.toStrictEqual({
+      kind: "signed_out",
+      reason: "mini_failed",
+    });
+    expect(test.credentials).toStrictEqual([]);
+    expect(test.memory.kept()).toBe(stored);
+  });
+
   it("says a Mini App launch the engine refused could not sign in", async () => {
     const test = setUp({
       pathname: "/mini",

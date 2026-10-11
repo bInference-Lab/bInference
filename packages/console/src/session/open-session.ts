@@ -32,18 +32,25 @@ function signedOut(reason: SignedOutReason): Found {
   return { kind: "signed_out", reason };
 }
 
+function isMiniPath(pathname: string): boolean {
+  return pathname === "/mini" || pathname.startsWith("/mini/");
+}
+
 // A Mini App launch: Telegram's launch data and the launch ticket `/console` put beside it in the
 // address's fragment.
-function miniLaunch(context: SessionContext): ConsoleCredential | undefined {
-  const { pathname } = context.browser;
-  const isMini = pathname === "/mini" || pathname.startsWith("/mini/");
+function miniLaunch(context: SessionContext): Found {
   const fields = new URLSearchParams(context.browser.readHash().slice(1));
-  const initData = isMini ? fields.get("tgWebAppData") : null;
+  const initData = fields.get("tgWebAppData");
   if (initData === null) {
-    return undefined;
+    return signedOut("mini_failed");
   }
   const ticket = fields.get("ticket");
-  return { kind: "telegram", initData, ...(ticket === null ? {} : { ticket }) };
+  const credential: ConsoleCredential = {
+    kind: "telegram",
+    initData,
+    ...(ticket === null ? {} : { ticket }),
+  };
+  return { kind: "credential", credential };
 }
 
 // Pairs this browser with the link's code and keeps the new device in place of any earlier one.
@@ -73,10 +80,11 @@ async function pair(context: SessionContext, code: string, store: DeviceStore): 
   return { kind: "credential", credential: { kind: "device", device } };
 }
 
+// `/mini` signs in with its launch alone: it never pairs nor uses a device key this browser keeps,
+// as it is the one page Telegram may frame.
 async function findCredential(context: SessionContext): Promise<Found> {
-  const launch = miniLaunch(context);
-  if (launch !== undefined) {
-    return { kind: "credential", credential: launch };
+  if (isMiniPath(context.browser.pathname)) {
+    return miniLaunch(context);
   }
   const { store } = context;
   if (store === undefined || context.browser.subtle === undefined) {
@@ -117,8 +125,9 @@ async function refusalOf(
 }
 
 /**
- * Signs the console in: a Mini App launch with its Telegram data; otherwise a `#pair=` link pairs
- * a new device key first, or the device this browser keeps signs in. Resolves with the session
+ * Signs the console in: at `/mini`, only a Mini App launch with its Telegram data, and without one
+ * the page says to open it from the bot; elsewhere a `#pair=` link pairs a new device key first,
+ * or the device this browser keeps signs in. Resolves with the session
  * ready, or signed out with the reason the sign-in page shows.
  */
 export async function openSession(context: SessionContext): Promise<SessionState> {
