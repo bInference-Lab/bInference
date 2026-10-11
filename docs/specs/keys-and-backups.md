@@ -236,7 +236,9 @@ A refusal is logged with the rule number, never with key material, and raises
   backup (section 7) brings back orders, history and settings. Each wallet changes in one request
   the owner key signs, which sets the new key as its one signer, so no wallet takes two machines'
   signatures; attach runs on a folder that holds the install and prints this machine's signer ID
-  ([decision 0140](../DECISIONS.md#d0140)).
+  ([decision 0140](../DECISIONS.md#d0140)). Each change of attach and of `signer revoke`
+  expires 5 minutes after it is signed; one Privy reads later stops the move there as expired,
+  and the same command again goes on from where it stopped.
 - **Planned move** ([decision 0142](../DECISIONS.md#d0142)): the owner runs
   `binference service remove` on the old machine, copies its state folder without `keys/` to the
   new machine, and runs `binference init --attach` there. Attach refuses a copy whose

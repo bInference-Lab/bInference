@@ -10,16 +10,22 @@ export interface SignedWallet {
   readonly policy: PrivyId;
 }
 
-/** How a move is signed: by the owner key, each change expiring at `expiresAtMs`. */
+/** How a move is signed: by the owner key, each change with an expiry of its own. */
 export interface SignerMoveInput extends CallOptions {
   readonly authorize: OwnerAuthorize;
-  readonly expiresAtMs: number;
+  /**
+   * The expiry of one change, in epoch milliseconds, read as that change is signed, so a move of
+   * many wallets gives the last as long as the first.
+   */
+  readonly expiry: () => number;
 }
 
 /** Why a signer could not become each wallet's one signer. */
 export type SignerSwapRefusal =
   /** The owner key did not sign, or Privy did not take its signature as the wallet owner's. */
   | "refused"
+  /** A change's expiry passed before Privy read it; the wallets before it keep their change. */
+  | "expired"
   /** Privy holds no such wallet. */
   | "not_found";
 
@@ -78,11 +84,11 @@ async function setSigners(
   target: { readonly before: WalletRecord; readonly signers: readonly SignerEntry[] },
   input: SignerMoveInput,
 ): Promise<Result<void, SignerSwapRefusal>> {
-  const { authorize, expiresAtMs, signal } = input;
-  const change = { wallet: target.before.id, signers: target.signers, expiresAtMs };
+  const { authorize, signal } = input;
+  const change = { wallet: target.before.id, signers: target.signers, expiresAtMs: input.expiry() };
   const set = await api.setSigners(change, { authorize, signal });
   if (!set.ok) {
-    return err(set.error === "expired" ? "refused" : set.error);
+    return err(set.error);
   }
   await readBack(api, target, { signal });
   return ok(undefined);

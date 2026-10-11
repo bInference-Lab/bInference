@@ -109,6 +109,7 @@
   "refused.rebuildRescue": "紧急转出地址必须是所有上限都允许转账的地址：{addresses}。请用 --rescue 指定其中一个，或在终端中运行 `binference init --attach`。",
   "refused.rebuildNotConfirmed": "你没有输入钱包数量，因此没有重建任何内容，Privy 上也没有任何更改。",
   "refused.attachRefused": "Privy 未接受所有者密钥的签名，因此尚未处理的钱包保留原签名方。请再次运行 `binference init --attach`。",
+  "refused.attachExpired": "有一项更改在过期后才到达 Privy，因此其后的钱包仍列有旧的签名方。请再次运行 `binference init --attach`，它会从中断处继续。",
   "refused.attachWalletGone": "Privy 已不再持有此安装的某个钱包，因此其后的钱包保留原签名方。请在 Privy 控制面板中检查这些钱包。",
   "fault.signersReadBack": "Privy 读回的钱包签名方与此机器设置的不一致。请再次运行 `binference init --attach`；如果 Privy 仍然这样读回，请在 Privy 控制面板中检查该钱包。",
   "fault.cancelled": "binference init 已停止，没有在 Privy 上创建任何内容。",

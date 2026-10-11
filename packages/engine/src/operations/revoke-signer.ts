@@ -20,6 +20,7 @@ const refusalCodes: Readonly<Record<RevokeRefusal, ProtocolErrorCode>> = {
   not_found: "wallet.not_found",
   not_signer: "signer.not_found",
   last_signer: "signer.last_signer",
+  expired: "signer.change_expired",
 };
 
 /**
@@ -28,7 +29,8 @@ const refusalCodes: Readonly<Record<RevokeRefusal, ProtocolErrorCode>> = {
  * key is `signer.own_key`, since the engine would sign nothing more; the machine that replaces it
  * removes it as it attaches. A signer no live wallet lists is `signer.not_found`, one a wallet
  * lists alone `signer.last_signer`, and either changes nothing; a wrong key is
- * `wallet.bad_owner_key`. A removal is announced as the `notice.signerRevoked` notice. Without
+ * `wallet.bad_owner_key`; a change custody read after its expiry is `signer.change_expired`,
+ * and the wallets before it keep their change. A removal is announced as the `notice.signerRevoked` notice. Without
  * custody's removal it is `wallet.custody_down`.
  */
 export async function revokeSigner(

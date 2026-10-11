@@ -36,7 +36,7 @@ async function heldOf(setup: CustodySetup): Promise<Held> {
 }
 
 function signed(setup: CustodySetup, authorize: OwnerAuthorize = setup.subject.ownerAuthorize) {
-  return { authorize, expiresAtMs: setup.subject.clock.now() + 5 * minuteMs, ...live() };
+  return { authorize, expiry: () => setup.subject.clock.now() + 5 * minuteMs, ...live() };
 }
 
 // The stranger's key as a key quorum of its own, as an attached machine's agent key would be.
@@ -82,8 +82,9 @@ async function removesButNeverTheLast(setup: CustodySetup): Promise<void> {
   const held = await heldOf(setup);
   const signer = await strangerQuorum(setup);
   const both = [held.signer, signer].map((id) => ({ signer: id, policies: [held.policy] }));
-  const change = { wallet: setup.wallet.id, signers: both, ...signed(setup) };
-  assert.ok((await api.setSigners(change, change)).ok);
+  const options = signed(setup);
+  const change = { wallet: setup.wallet.id, signers: both, expiresAtMs: options.expiry() };
+  assert.ok((await api.setSigners(change, options)).ok);
   const wallets = [setup.wallet.id];
   const removed = await removeSigner(api, { wallets, signer }, signed(setup));
   assert.deepEqual(removed, { ok: true, value: wallets });

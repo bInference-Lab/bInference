@@ -35,6 +35,7 @@
   "signer.not_found": "No wallet lists this signer. Check the signer ID that `binference init --attach` printed, or the key quorums on Privy's dashboard.",
   "signer.last_signer": "This signer is the only one some wallets have, so nothing was removed. Attach the machine that replaces it with `binference init --attach`, which removes this one.",
   "signer.own_key": "This is this machine's own agent key, so nothing was removed. Run `binference init --attach` on the machine that replaces this one; it removes this key.",
+  "signer.change_expired": "A change reached Privy after its expiry, so the wallets after it still list this signer. Run `binference signer revoke` again; it goes on from where it stopped.",
   "intent.not_found": "binference has no record of this action. Refresh and try again.",
   "intent.wrong_state": "This action already moved on: it was confirmed, cancelled or sent. Refresh to see where it stands.",
   "intent.expired": "This action expired before you confirmed it. Ask your agent again.",

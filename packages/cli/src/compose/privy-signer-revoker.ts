@@ -9,7 +9,7 @@ export interface PrivySignerRevokerOptions extends OwnerKeyHolder {
   readonly clock: Clock;
 }
 
-// Each change is signed and sent at once.
+// Each change is signed and sent at once, so each expires 5 minutes after it is signed.
 const expiryMs = 5 * 60_000;
 
 async function revoke(
@@ -32,10 +32,9 @@ async function revoke(
     wallets,
     signer: request.signer,
   };
-  const expiresAtMs = options.clock.now() + expiryMs;
   const removed = await removeSigner(options.api, target, {
     authorize: authorize.value,
-    expiresAtMs,
+    expiry: () => options.clock.now() + expiryMs,
     signal,
   });
   if (removed.ok) {

@@ -11,8 +11,13 @@ export interface SignerRevocation {
 }
 
 /**
- * Why custody removed no signer: the code is not the key that owns the wallets, custody holds one
- * of the wallets no more, no wallet lists the signer, or a wallet lists it alone and would keep
- * no signer.
+ * Why custody removed no signer, or stopped part way: the code is not the key that owns the
+ * wallets, custody holds one of the wallets no more, no wallet lists the signer, a wallet lists it
+ * alone and would keep no signer, or custody read a change after its expiry.
  */
-export type RevokeRefusal = "bad_owner_key" | "not_found" | "not_signer" | "last_signer";
+export type RevokeRefusal =
+  | "bad_owner_key"
+  | "not_found"
+  | "not_signer"
+  | "last_signer"
+  | "expired";

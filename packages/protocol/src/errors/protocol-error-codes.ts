@@ -39,6 +39,7 @@ export const protocolErrorCodes = [
   "signer.not_found",
   "signer.last_signer",
   "signer.own_key",
+  "signer.change_expired",
   "intent.not_found",
   "intent.wrong_state",
   "intent.expired",
