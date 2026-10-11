@@ -47,7 +47,10 @@ binference mcp setup --client codex
 ```
 
 Run it again after an update: it changes only what differs. `--dry-run` shows the changes and makes
-none; `--remove` undoes the setup and revokes the client's token. The entry runs
+none; `--remove` undoes the setup and revokes the client's token. `--ttl <duration>` (`30m`, `12h`,
+`7d`, at most `90d`) gives the client a new token that expires after that long; without it the token
+works until it is revoked. Once it expires, the tools fail with `auth.expired` until you run the
+setup again. The entry runs
 `binference mcp --client <client>`, which signs in with `auth/mcp-<client>.token` in the state
 folder, so the client's config holds no secret.
 

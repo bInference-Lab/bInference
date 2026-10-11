@@ -154,6 +154,26 @@ describe("binference mcp setup for Codex", () => {
     expect(await mcpTokens(at)).toHaveLength(1);
   });
 
+  it("makes a token that expires with --ttl, and replaces it without one", slow, async () => {
+    const at = withCodexHome(await servedSetup());
+    const timed = await setup(at, ["--client", "codex", "--ttl", "2h", "--json"]);
+    expect(timed.code).toBe(0);
+    const expiresAt = testNowMs + 7_200_000;
+    const { changes } = JSON.parse(timed.stdout) as { changes: { expiresAt?: number }[] };
+    expect(changes[0]?.expiresAt).toBe(expiresAt);
+    expect((await mcpTokens(at)).map((token) => token.expiresAtMs)).toStrictEqual([expiresAt]);
+    const file = await read(codexToken(at));
+
+    const plain = await setup(at, ["--client", "codex"]);
+    expect(plain.stdout).toContain("Client token updated");
+    expect(await read(codexToken(at))).not.toBe(file);
+    const tokens = await mcpTokens(at);
+    expect(tokens.map((token) => [token.revokedAtMs, token.expiresAtMs])).toStrictEqual([
+      [testNowMs, expiresAt],
+      [undefined, undefined],
+    ]);
+  });
+
   it("removes the table and the skill and revokes the token, keeping the rest", slow, async () => {
     const at = withCodexHome(await servedSetup());
     await write(codexConfig(at), 'model = "gpt-5"\n');

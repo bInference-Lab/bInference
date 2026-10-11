@@ -170,7 +170,9 @@ A Telegram tap is handled inside the engine and never travels over this protocol
   engine starts it. `binference mcp --client <client>` reads `auth/mcp-<client>.token`, and
   `binference mcp` alone `auth/mcp.token`, each with `read` and `propose` only.
   `binference mcp setup` makes a client's token in the CLI and registers only its SHA-256 with
-  `token/register` ([decision 0154](../DECISIONS.md#d0154)). `open.auth` is `{ token }`.
+  `token/register` ([decision 0154](../DECISIONS.md#d0154)). `open.auth` is `{ token }`. A token
+  can have an expiry: from then on its sign-in fails with `auth.expired`, and a connection signed
+  in with it ends with `bye auth.expired` ([decision 0159](../DECISIONS.md#d0159)).
 - **Console devices (WS only).**
   1. `binference console` prints a link `http://127.0.0.1:7456/#pair=<code>` from `device/pair`; the
      code is single-use and valid 10 minutes ([decision 0155](../DECISIONS.md#d0155)).
@@ -448,10 +450,10 @@ no upload.
 | `webPush/status`     | `read`                     |       |       | → `{ publicKey, registered }`: the engine's VAPID public key (RFC 8292) and whether the calling console device holds a browser push subscription ([decision 0158](../DECISIONS.md#d0158))                                                                                                                                                |
 | `webPush/register`   | `confirm`, device only     | ✓     |       | `{ subscription: { endpoint, keys: { p256dh, auth } } }` → `{}`: the calling console device's browser push subscription, as `PushSubscription.toJSON()` gives it; the endpoint is HTTPS on a named host; an endpoint registered before takes the new keys and device                                                                     |
 | `webPush/unregister` | `confirm`, device only     | ✓     |       | `{ endpoint }` → `{}`: drops the calling device's subscription at that endpoint; one it does not hold changes nothing                                                                                                                                                                                                                    |
-| `token/list`         | `admin`                    |       |       | → tokens without secrets                                                                                                                                                                                                                                                                                                                 |
+| `token/list`         | `admin`                    |       |       | → tokens without secrets, with `expiresAt` for one that expires                                                                                                                                                                                                                                                                          |
 | `token/create`       | `admin`                    | ✓     | ✓     | `{ label, scopes }` → `{ token }`, shown once; unserved since [decision 0154](../DECISIONS.md#d0154), as its result would keep the secret in the idempotency store                                                                                                                                                                       |
 | `token/revoke`       | `confirm`                  | ✓     |       | `{ token }` → `{}`; fails `token.not_found`                                                                                                                                                                                                                                                                                              |
-| `token/register`     | `admin`                    | ✓     | ✓     | `{ label, kind, scopes, secretHash }` → the token as `token/list` shows it: a token the CLI made, of which the engine gets only the SHA-256 in lowercase hex; `kind` is `mcp` or `custom`; a hash the store holds is `protocol.bad_args` ([decision 0154](../DECISIONS.md#d0154))                                                        |
+| `token/register`     | `admin`                    | ✓     | ✓     | `{ label, kind, scopes, secretHash, expiresAt? }` → the token as `token/list` shows it, from the SHA-256 (hex) of a secret the CLI made; `kind`: `mcp` or `custom`; `expiresAt` at most 90 days ahead; a held hash or another expiry is `protocol.bad_args` (decisions [0154](../DECISIONS.md#d0154), [0159](../DECISIONS.md#d0159))     |
 | `backup/list`        | `read`                     |       |       | → backups, newest first, each `{ backup, kind, bytes, createdAt, verifiedAt? }`                                                                                                                                                                                                                                                          |
 | `backup/create`      | `admin`                    | ✓     |       | `{ copyTo? }` → `{ job }`: a `manual` backup, kept until the owner removes it, its second copy in `copyTo` (an absolute folder) or else `backups.copyTo`; the job ends with the backup as `backup/list` shows it, or fails with a `backup` code; while one runs, the answer is its job                                                   |
 | `backup/restore`     | `admin`                    | ✓     | ✓     | `{ backup }` → `{ job }`; unserved in v1 ([decision 0152](../DECISIONS.md#d0152)): the restore needs the owner key for its whole length and replaces the database the engine holds open, then the engine must start again, which it cannot do itself; `binference backup restore <file>` restores in the CLI, between a stop and a start |
@@ -673,9 +675,11 @@ token ([decision 0154](../DECISIONS.md#d0154)), in this order:
 1. **The skill passes `lintSkill`.** A bundled skill with a finding stops the setup before anything
    changes.
 2. **A client token of its own.** The token in `auth/mcp-<client>.token` stays while it still signs
-   in. Otherwise the CLI revokes the client's tokens (label `mcp-<client>`), makes a new `bnt_`
-   secret, registers its SHA-256 with `token/register` (`kind: "mcp"`, `read` and `propose`) and
-   writes the secret owner-only to that file.
+   in and has no expiry. Otherwise the CLI revokes the client's tokens (label `mcp-<client>`), makes
+   a new `bnt_` secret, registers its SHA-256 with `token/register` (`kind: "mcp"`, `read` and
+   `propose`) and writes the secret owner-only to that file. `--ttl <duration>` (`30m`, `12h`,
+   `7d`, at most `90d`) always makes a new token, which expires that long after it is made
+   ([decision 0159](../DECISIONS.md#d0159)).
 3. **The MCP server entry**, named `binference`, which runs this binference's
    `mcp --client <client>` with `BINFERENCE_HOME` when set, and holds no secret. Claude Code: user
    scope, through `claude mcp add-json --scope user` when `claude` is on PATH, else the

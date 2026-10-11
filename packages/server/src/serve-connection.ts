@@ -40,6 +40,17 @@ export interface Connection {
   readonly closed: Promise<void>;
 }
 
+// A token with an expiry ends its connection when the expiry comes (decision 0159).
+function endAtExpiry(link: Link, expiresAtMs: number | undefined): void {
+  if (expiresAtMs === undefined) {
+    return;
+  }
+  const { clock } = link.context;
+  const expired = (): void => sayBye(link, "auth.expired", "The token expired.");
+  const leftMs = Math.max(0, expiresAtMs - clock.now());
+  void clock.sleep(leftMs, link.closed.signal).then(expired, () => undefined);
+}
+
 function becomeReady(link: Link, open: OpenFrame, identity: Identity): void {
   const { engine } = link.context;
   const caller = {
@@ -65,6 +76,7 @@ function becomeReady(link: Link, open: OpenFrame, identity: Identity): void {
     owner: engine.owner(),
   });
   link.context.logger.info("server.ready", { traceId: link.id });
+  endAtExpiry(link, identity.expiresAtMs);
 }
 
 async function signIn(link: Link, open: OpenFrame): Promise<void> {

@@ -151,7 +151,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   model_usage: names(
     "id agent_id turn_id model input_tokens output_tokens cached_tokens usd_micros at",
   ),
-  tokens: names("id label kind scopes secret_hash created_at last_used_at revoked_at"),
+  tokens: names("id label kind scopes secret_hash created_at last_used_at revoked_at expires_at"),
   devices: names("id label alg public_key created_at last_seen_at revoked_at"),
   web_push_subscriptions: names("endpoint device_id p256dh auth server_key created_at"),
   pair_codes: names("code_hash expires_at used_at"),

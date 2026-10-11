@@ -12,12 +12,19 @@ export interface ServerAuth {
 }
 
 /** Why a sign-in fails; the connection ends with a `bye` of this code. */
-type SignInRefusal = "auth.required" | "auth.invalid" | "auth.revoked" | "auth.local_only";
+type SignInRefusal =
+  | "auth.required"
+  | "auth.invalid"
+  | "auth.expired"
+  | "auth.revoked"
+  | "auth.local_only";
 
-/** A credential that signed in: its id and the scopes it holds. */
+/** A credential that signed in: its id, the scopes it holds and when it stops working. */
 export interface Identity {
   readonly credential: string;
   readonly scopes: readonly Scope[];
+  /** When a token with an expiry stops working; its connections end then. */
+  readonly expiresAtMs?: number;
 }
 
 /** A device sign-in that waits for the device to sign the challenge's nonce. */
@@ -80,8 +87,14 @@ async function signInWithToken(
   if (record.revokedAtMs !== undefined) {
     return err("auth.revoked");
   }
-  await access.markTokenUsed({ id: record.id, atMs: options.clock.now() }, options);
-  return ok({ kind: "signed_in", identity: { credential: record.id, scopes: record.scopes } });
+  const nowMs = options.clock.now();
+  if (record.expiresAtMs !== undefined && nowMs >= record.expiresAtMs) {
+    return err("auth.expired");
+  }
+  await access.markTokenUsed({ id: record.id, atMs: nowMs }, options);
+  const expiry = record.expiresAtMs === undefined ? {} : { expiresAtMs: record.expiresAtMs };
+  const identity = { credential: record.id, scopes: record.scopes, ...expiry };
+  return ok({ kind: "signed_in", identity });
 }
 
 interface DeviceStart {
@@ -131,7 +144,8 @@ async function signInWithDevice(
  * with the scopes stored beside it; over WS it fails with `auth.local_only`. A console device signs
  * in over WS only, by signing a fresh nonce and the page's origin with its paired key. A Telegram
  * Mini App launch fails with `auth.invalid` until the server is given a way to check it. An
- * unknown credential is `auth.invalid`, a revoked one `auth.revoked`.
+ * unknown credential is `auth.invalid`, a revoked one `auth.revoked`, a token at or past its
+ * expiry `auth.expired`.
  */
 export function createSignIn(options: SignInOptions): SignIn {
   return {

@@ -27020,6 +27020,11 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "expiresAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -27270,6 +27275,11 @@
             "secretHash": {
               "type": "string",
               "pattern": "^[0-9a-f]{64}$"
+            },
+            "expiresAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -27357,6 +27367,11 @@
               "maximum": 9007199254740991
             },
             "revokedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "expiresAt": {
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991

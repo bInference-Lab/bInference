@@ -12,6 +12,8 @@ export interface SetupChange {
   readonly part: SetupPart;
   readonly action: SetupAction;
   readonly path: string;
+  /** When a token made by this run stops working, if it expires. */
+  readonly expiresAt?: number;
 }
 
 /** One run of the setup: the host, the client, whether it only shows the changes, its signal. */
@@ -20,4 +22,6 @@ export interface SetupRun {
   readonly client: McpClient;
   readonly isDryRun: boolean;
   readonly signal: AbortSignal;
+  /** How long a new token works; it works until it is revoked when left out. */
+  readonly ttlMs?: number;
 }

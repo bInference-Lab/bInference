@@ -105,7 +105,7 @@ describe("the binference command tree", () => {
     ]);
   });
 
-  it("gives mcp its --client and mcp setup its own --client, --dry-run and --remove", async () => {
+  it("gives mcp its --client and mcp setup its own --client, --dry-run, --remove and --ttl", async () => {
     const chosen: ChosenCommand[] = [];
     const parse = async (argv: readonly string[]) =>
       buildProgram({
@@ -116,11 +116,24 @@ describe("the binference command tree", () => {
       }).parseAsync([...argv], { from: "user" });
     await parse(["mcp", "--client", "codex"]);
     await parse(["mcp", "setup", "--client", "claude-code", "--dry-run", "--remove"]);
+    await parse(["mcp", "setup", "--client", "codex", "--ttl", "90d"]);
+    const day = 86_400_000;
     expect(chosen).toStrictEqual([
       { name: "mcp", options: { json: false, yes: false, client: "codex" } },
       {
         name: "mcpSetup",
         options: { json: false, yes: false, client: "claude-code", isDryRun: true, isRemove: true },
+      },
+      {
+        name: "mcpSetup",
+        options: {
+          json: false,
+          yes: false,
+          client: "codex",
+          isDryRun: false,
+          isRemove: false,
+          ttlMs: 90 * day,
+        },
       },
     ]);
     await expect(parse(["mcp", "setup"])).rejects.toThrow("--client");
@@ -173,6 +186,10 @@ describe("the binference command tree", () => {
     [["status", "--colour"]],
     [["logs", "--lines", "0"]],
     [["logs", "-n", "x"]],
+    [["mcp", "setup", "--client", "codex", "--ttl", "91d"]],
+    [["mcp", "setup", "--client", "codex", "--ttl", "0m"]],
+    [["mcp", "setup", "--client", "codex", "--ttl", "1w"]],
+    [["mcp", "setup", "--client", "codex", "--ttl", "1h", "--remove"]],
   ])("refuses %j with one message in the owner's language and exits 1", async (argv) => {
     const refused = await run(argv);
     expect(refused).toMatchObject({ code: 1, stdout: "" });

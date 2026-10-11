@@ -137,6 +137,7 @@ export const accessExamples: { readonly [N in keyof AccessOperationShapes]: Wire
       kind: "mcp",
       scopes: ["read", "propose"],
       secretHash: "ab".repeat(32),
+      expiresAt: at + 3_600_000,
     },
     result: {
       token: ids.token,
@@ -144,6 +145,7 @@ export const accessExamples: { readonly [N in keyof AccessOperationShapes]: Wire
       kind: "mcp",
       scopes: ["read", "propose"],
       createdAt: at,
+      expiresAt: at + 3_600_000,
     },
   },
   "remote/status": {

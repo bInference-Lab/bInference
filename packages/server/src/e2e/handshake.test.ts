@@ -1,3 +1,5 @@
+import { idSchema } from "@binference/core";
+import { sha256Hex } from "@binference/engine";
 import { protocolIdSchema } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { challengeNonce, openFrame, openRawSocket } from "./raw-socket.js";
@@ -96,6 +98,30 @@ describe("the sign-in handshake", () => {
     const raw = await openRawSocket(server.ipcUrl);
     raw.send(openFrame({ token: server.cliToken.secret }));
     await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.revoked" });
+  });
+
+  it("ends a connection signed in with a token when the token expires", async () => {
+    const server = await start();
+    const secret = `bnt_${"8".repeat(43)}`;
+    const expiresAtMs = server.clock.now() + 60_000;
+    const record = {
+      id: idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000088"),
+      label: "mcp-claude-code-session",
+      kind: "mcp",
+      scopes: ["read", "propose"],
+      secretHash: sha256Hex(secret),
+      createdAtMs: 0,
+      expiresAtMs,
+    } as const;
+    await server.access.addToken(record, { signal: AbortSignal.timeout(1_000) });
+    const raw = await openRawSocket(server.ipcUrl);
+    raw.send(openFrame({ token: secret }));
+    await expect(raw.next()).resolves.toMatchObject({ t: "ready" });
+    await server.clock.advance(60_000);
+    await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.expired" });
+    const again = await openRawSocket(server.ipcUrl);
+    again.send(openFrame({ token: secret }));
+    await expect(again.next()).resolves.toMatchObject({ t: "bye", code: "auth.expired" });
   });
 
   it("refuses a binary frame", async () => {

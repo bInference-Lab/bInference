@@ -173,18 +173,20 @@ outlast a restart ([decision 0139](../DECISIONS.md#d0139)).
 
 ### 2.8 Access, plugins and operations
 
-| Table                    | Columns                                                                                                                             | Keys                         |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| `tokens`                 | `id`, `label`, `kind` (`cli`, `runtime`, `mcp`, `custom`), `scopes JSON`, `secret_hash`, `created_at`, `last_used_at`, `revoked_at` | unique `secret_hash`         |
-| `devices`                | `id`, `label`, `alg` (`ed25519`, `p256`), `public_key`, `created_at`, `last_seen_at`, `revoked_at`                                  |                              |
-| `pair_codes`             | `code_hash`, `expires_at`, `used_at`                                                                                                | PK `code_hash`               |
-| `web_push_subscriptions` | `endpoint`, `device_id`, `p256dh`, `auth`, `server_key` (the VAPID public key it was made for), `created_at`                        | PK `endpoint`, `(device_id)` |
-| `config_journal`         | `id`, `at`, `by`, `surface`, `path`, `before JSON`, `after JSON`, `reason`                                                          | `(at)`                       |
-| `plugins`                | `id`, `name`, `version`, `tier` (`core`, `community`), `source`, `hash`, `permissions JSON`, `enabled`, `installed_at`              | unique `name`                |
-| `skills`                 | `id`, `agent_id`, `name`, `source`, `hash`, `installed_at`                                                                          | unique `(agent_id, name)`    |
-| `jobs`                   | `id`, `kind`, `state` (`running`, `done`, `failed`), `progress JSON`, `result JSON`, `error JSON`, `started_at`, `ended_at`         | `(state)`                    |
-| `backups`                | `id`, `path`, `bytes`, `kind` (`daily`, `weekly`, `manual`, `before_update`, `before_migration`), `created_at`, `verified_at`       | `(created_at)`               |
-| `cex_connections`        | `provider` (`binance`), `state`, `secret_ref` (a keychain name), `scopes JSON`, `connected_at`                                      | PK `provider`                |
+| Table                    | Columns                                                                                                                                           | Keys                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `tokens`                 | `id`, `label`, `kind` (`cli`, `runtime`, `mcp`, `custom`), `scopes JSON`, `secret_hash`, `created_at`, `last_used_at`, `revoked_at`, `expires_at` | unique `secret_hash`         |
+| `devices`                | `id`, `label`, `alg` (`ed25519`, `p256`), `public_key`, `created_at`, `last_seen_at`, `revoked_at`                                                |                              |
+| `pair_codes`             | `code_hash`, `expires_at`, `used_at`                                                                                                              | PK `code_hash`               |
+| `web_push_subscriptions` | `endpoint`, `device_id`, `p256dh`, `auth`, `server_key` (the VAPID public key it was made for), `created_at`                                      | PK `endpoint`, `(device_id)` |
+| `config_journal`         | `id`, `at`, `by`, `surface`, `path`, `before JSON`, `after JSON`, `reason`                                                                        | `(at)`                       |
+| `plugins`                | `id`, `name`, `version`, `tier` (`core`, `community`), `source`, `hash`, `permissions JSON`, `enabled`, `installed_at`                            | unique `name`                |
+| `skills`                 | `id`, `agent_id`, `name`, `source`, `hash`, `installed_at`                                                                                        | unique `(agent_id, name)`    |
+| `jobs`                   | `id`, `kind`, `state` (`running`, `done`, `failed`), `progress JSON`, `result JSON`, `error JSON`, `started_at`, `ended_at`                       | `(state)`                    |
+| `backups`                | `id`, `path`, `bytes`, `kind` (`daily`, `weekly`, `manual`, `before_update`, `before_migration`), `created_at`, `verified_at`                     | `(created_at)`               |
+| `cex_connections`        | `provider` (`binance`), `state`, `secret_ref` (a keychain name), `scopes JSON`, `connected_at`                                                    | PK `provider`                |
+
+A token without `expires_at` works until it is revoked ([decision 0159](../DECISIONS.md#d0159)).
 
 Secrets are never stored here: tokens, webhook secrets and pairing codes appear only as SHA-256
 hashes; provider tokens live in the keychain and are named by `secret_ref`.

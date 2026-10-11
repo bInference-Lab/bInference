@@ -1,7 +1,8 @@
+import { tokenLifetimeMaxMs } from "@binference/protocol";
 import { type Command, Option, type OptionValues } from "commander";
 import { mcpClients } from "../compose/mcp-token.js";
 import type { ProgramOptions } from "./chosen-command.js";
-import { withCommon } from "./command-options.js";
+import { ttlOption, withCommon } from "./command-options.js";
 import { mcpFlagsSchema, mcpSetupFlagsSchema } from "./mcp-flags.schema.js";
 
 /**
@@ -23,6 +24,7 @@ export function addMcpCommands(program: Command, options: ProgramOptions): void 
     )
     .option("--dry-run", message("option.dryRun"))
     .option("--remove", message("option.mcpRemove"))
+    .addOption(ttlOption(message("option.mcpSetupTtl"), tokenLifetimeMaxMs).conflicts("remove"))
     .action((flags: OptionValues) =>
       choose({ name: "mcpSetup", options: mcpSetupFlagsSchema.parse(flags) }),
     );

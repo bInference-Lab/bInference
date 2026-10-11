@@ -11,6 +11,7 @@ export interface TokensTable {
   created_at: number;
   last_used_at: number | null;
   revoked_at: number | null;
+  expires_at: number | null;
 }
 
 /** `devices`. */

@@ -39,11 +39,14 @@ async function keepsTokens(store: AccessStore): Promise<void> {
   assert.deepEqual(await store.findToken(token(2).secretHash, live()), token(2));
   assert.equal(await store.findToken(fixtureHash("unknown"), live()), undefined);
   assert.deepEqual(await store.listTokens(live()), [token(1), token(2), token(3)]);
+  const expiring = { ...token(5), expiresAtMs: 9_000 };
+  await store.addToken(expiring, live());
+  assert.deepEqual(await store.findToken(expiring.secretHash, live()), expiring);
   const sameId = { ...token(1), secretHash: fixtureHash("other") };
   const sameSecret = { ...token(4), secretHash: token(1).secretHash };
   assert.deepEqual(await store.addToken(sameId, live()), { ok: false, error: "exists" });
   assert.deepEqual(await store.addToken(sameSecret, live()), { ok: false, error: "exists" });
-  assert.equal((await store.listTokens(live())).length, 3);
+  assert.equal((await store.listTokens(live())).length, 4);
 }
 
 async function stampsTokens(store: AccessStore): Promise<void> {

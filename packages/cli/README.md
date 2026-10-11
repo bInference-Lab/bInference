@@ -104,8 +104,9 @@ lines go to stderr. A missing token file is one message and exit 1.
 `binference mcp setup --client claude-code` or `--client codex` sets an MCP client up
 (`src/mcp-setup/`, decision 0154), against the running engine. It gives the client a client token
 of its own: the CLI makes the secret, writes it owner-only to `auth/mcp-<client>.token` and sends
-only its SHA-256 through `token/register`; a token file that still signs in is kept, and the
-client's earlier tokens are revoked. It then writes the client's MCP server entry, which starts
+only its SHA-256 through `token/register`; a token file that still signs in and has no expiry is
+kept, and the client's earlier tokens are revoked. `--ttl <duration>` (`30m`, `12h`, `7d`, at most
+`90d`) makes a new token that expires that long after it is made (decision 0159). It then writes the client's MCP server entry, which starts
 this binference as the background service does with `mcp --client <client>` and
 `BINFERENCE_HOME` when set, and holds no secret: for Claude Code at user scope through
 `claude mcp add-json --scope user` when `claude` is on PATH, else in `.claude.json` (in

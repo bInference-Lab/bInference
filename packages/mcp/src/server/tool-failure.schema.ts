@@ -27,6 +27,8 @@ type KnownCode = ProtocolErrorCode | ClientErrorCode | "core.timeout";
 
 const tokenStep =
   "The engine refused the MCP token. Create a new one with `binference token create --for mcp`, then restart the MCP client.";
+const expiredStep =
+  "The MCP token expired. Run `binference mcp setup` for this client again, then restart the MCP client.";
 const engineStep =
   "The engine is not reachable. Check it with `binference status`, start it with `binference start`, then try again.";
 
@@ -34,7 +36,7 @@ const engineStep =
 const nextSteps: Readonly<Partial<Record<KnownCode, string>>> = {
   "auth.required": tokenStep,
   "auth.invalid": tokenStep,
-  "auth.expired": tokenStep,
+  "auth.expired": expiredStep,
   "auth.revoked": tokenStep,
   "auth.scope":
     "The MCP server holds the read and propose scopes only. The owner confirms, denies and changes settings in Telegram, the console or the CLI.",

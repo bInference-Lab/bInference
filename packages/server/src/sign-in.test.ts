@@ -10,7 +10,9 @@ const tokenId = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000001"
 const deviceId = idSchema("dev").parse("dev_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const live = { signal: new AbortController().signal };
 
-async function accessWithToken(): Promise<AccessStore> {
+async function accessWithToken(
+  expiry: { readonly expiresAtMs?: number } = {},
+): Promise<AccessStore> {
   const access = createMemoryAccessStore();
   await access.addToken(
     {
@@ -20,6 +22,7 @@ async function accessWithToken(): Promise<AccessStore> {
       scopes: ["read", "propose"],
       secretHash: sha256Hex(token),
       createdAtMs: 0,
+      ...expiry,
     },
     live,
   );
@@ -65,6 +68,27 @@ describe("createSignIn", () => {
       ok: false,
       error: code,
     });
+  });
+
+  it("signs a token in before its expiry, carrying it, and refuses it from then on", async () => {
+    const before = createSignIn({
+      auth: { access: await accessWithToken({ expiresAtMs: 501 }) },
+      clock,
+      random,
+    });
+    const request = { credential: { token }, transport: "ipc" } as const;
+    await expect(before.start(request, live.signal)).resolves.toMatchObject({
+      ok: true,
+      value: { identity: { credential: tokenId, expiresAtMs: 501 } },
+    });
+    const access = await accessWithToken({ expiresAtMs: 500 });
+    const at = createSignIn({ auth: { access }, clock, random });
+    await expect(at.start(request, live.signal)).resolves.toStrictEqual({
+      ok: false,
+      error: "auth.expired",
+    });
+    const [stored] = await access.listTokens(live);
+    expect(stored?.lastUsedAtMs).toBeUndefined();
   });
 
   it("refuses every sign-in when the server holds no credentials", async () => {

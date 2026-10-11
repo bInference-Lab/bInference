@@ -40,7 +40,7 @@ new name here first, in the change that uses it.
   engine stores only its SHA-256.
 - **client token**: a `bnt_` token a client signs in with over IPC, with its label, kind and
   scopes; the engine stores only its SHA-256. The CLI makes an MCP client's and registers its hash
-  with `token/register`.
+  with `token/register`. A client token can have an expiry, after which it signs in no more.
 
 ### Money and safety
 

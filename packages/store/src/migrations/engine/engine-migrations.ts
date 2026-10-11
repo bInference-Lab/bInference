@@ -20,6 +20,7 @@ import { migration as noticeIntents } from "./0018_notice_intents.js";
 import { migration as telegramOwner } from "./0019_telegram_owner.js";
 import { migration as lateLandings } from "./0020_late_landings.js";
 import { migration as webPushSubscriptions } from "./0021_web_push_subscriptions.js";
+import { migration as tokenExpiry } from "./0022_token_expiry.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -44,4 +45,5 @@ export const engineMigrations: readonly Migration[] = [
   telegramOwner,
   lateLandings,
   webPushSubscriptions,
+  tokenExpiry,
 ];

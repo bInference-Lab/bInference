@@ -134,7 +134,9 @@ Reasons in `outcome.reason`:
 
 A call the engine refuses outright comes back as a tool error with a code and the next step, such
 as `agent.not_found` (a wrong agent id), `protocol.bad_args` (fix the arguments),
-`protocol.key_reused` (a `requestId` used for other arguments) or `agent.frozen`.
+`protocol.key_reused` (a `requestId` used for other arguments) or `agent.frozen`. After
+`auth.expired` or `auth.revoked` this client's binference token has ended: stop calling the tools
+and tell the user the step the error names.
 
 ## Paper and live
 

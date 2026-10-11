@@ -22,6 +22,8 @@ export interface McpSetupFlags extends CommonOptions {
   readonly isDryRun: boolean;
   /** `--remove`: undo the setup and revoke the client's token. */
   readonly isRemove: boolean;
+  /** `--ttl`: a new token that expires this long after it is made; none expires when left out. */
+  readonly ttlMs?: number;
 }
 
 /** Parses the options commander read for `binference mcp setup`. */
@@ -32,5 +34,11 @@ export const mcpSetupFlagsSchema: z.ZodType<McpSetupFlags> = z
     client: z.enum(mcpClients),
     dryRun: z.boolean().default(false),
     remove: z.boolean().default(false),
+    ttl: z.int().positive().exactOptional(),
   })
-  .transform(({ dryRun, remove, ...rest }) => ({ ...rest, isDryRun: dryRun, isRemove: remove }));
+  .transform(({ dryRun, remove, ttl, ...rest }) => ({
+    ...rest,
+    isDryRun: dryRun,
+    isRemove: remove,
+    ...(ttl === undefined ? {} : { ttlMs: ttl }),
+  }));

@@ -1,5 +1,5 @@
 import { type Clock, err, type IdSource, ok } from "@binference/core";
-import type { ResultOf } from "@binference/protocol";
+import { type ResultOf, tokenLifetimeMaxMs } from "@binference/protocol";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AccessStore } from "../ports.js";
 import { sha256HexSchema } from "../records/sha256-hex.js";
@@ -31,14 +31,22 @@ function tokenViewOf(record: TokenRecord): TokenView {
     createdAt: record.createdAtMs,
     ...(record.lastUsedAtMs === undefined ? {} : { lastUsedAt: record.lastUsedAtMs }),
     ...(record.revokedAtMs === undefined ? {} : { revokedAt: record.revokedAtMs }),
+    ...(record.expiresAtMs === undefined ? {} : { expiresAt: record.expiresAtMs }),
   };
 }
 
+// An expiry must lie ahead, and no further than the longest lifetime (decision 0159).
+function isExpiryAllowed(expiresAtMs: number | undefined, nowMs: number): boolean {
+  return (
+    expiresAtMs === undefined || (expiresAtMs > nowMs && expiresAtMs - nowMs <= tokenLifetimeMaxMs)
+  );
+}
+
 /**
- * Creates the token handlers. `token/list` answers every client token, oldest first, revoked ones
- * too, without their hashes. `token/register` stores a token the CLI made from the SHA-256 of its
- * secret alone, so no secret reaches the engine or its idempotency store; a hash the store holds
- * is `protocol.bad_args`. `token/revoke` revokes a token, keeping the time of an earlier revoke;
+ * Creates the token handlers. `token/list` answers every client token, oldest first, revoked and
+ * expired ones too, without their hashes. `token/register` stores a token the CLI made from the
+ * SHA-256 of its secret alone, so no secret reaches the engine or its idempotency store; a hash the
+ * store holds, or an expiry not ahead or more than 90 days ahead, is `protocol.bad_args`. `token/revoke` revokes a token, keeping the time of an earlier revoke;
  * an unknown one is `token.not_found`.
  */
 export function createTokenHandlers(options: TokenHandlersOptions): TokenHandlers {
@@ -49,7 +57,11 @@ export function createTokenHandlers(options: TokenHandlersOptions): TokenHandler
     },
     async "token/register"({ args, signal }) {
       const secretHash = sha256HexSchema.parse(args.secretHash);
-      if ((await options.access.findToken(secretHash, { signal })) !== undefined) {
+      const nowMs = options.clock.now();
+      if (
+        !isExpiryAllowed(args.expiresAt, nowMs) ||
+        (await options.access.findToken(secretHash, { signal })) !== undefined
+      ) {
         return err("protocol.bad_args");
       }
       const added = await options.access.addToken(
@@ -59,7 +71,8 @@ export function createTokenHandlers(options: TokenHandlersOptions): TokenHandler
           kind: args.kind,
           scopes: args.scopes,
           secretHash,
-          createdAtMs: options.clock.now(),
+          createdAtMs: nowMs,
+          ...(args.expiresAt === undefined ? {} : { expiresAtMs: args.expiresAt }),
         },
         { signal },
       );

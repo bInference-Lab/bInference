@@ -50,17 +50,26 @@ function endKey(flags: McpSetupFlags): string {
   return flags.isRemove ? "mcpSetup.removed" : "mcpSetup.done";
 }
 
-function report(output: CliOutput, flags: McpSetupFlags, changes: readonly SetupChange[]): void {
+function report(run: CommandRun, flags: McpSetupFlags, changes: readonly SetupChange[]): void {
+  const { output, formatter } = run;
   const client = clientNames[flags.client];
-  const listed = changes.map(({ part, action, path }) => ({ part, action, path }));
+  const listed = changes.map(({ part, action, path, expiresAt }) => ({
+    part,
+    action,
+    path,
+    ...(expiresAt === undefined ? {} : { expiresAt }),
+  }));
   output.json({
     client: flags.client,
     dryRun: flags.isDryRun,
     remove: flags.isRemove,
     changes: listed,
   });
-  for (const change of changes) {
+  for (const { expiresAt, ...change } of changes) {
     output.say(flags.isDryRun ? "mcpSetup.plan" : "mcpSetup.change", { ...change });
+    if (expiresAt !== undefined) {
+      output.say("mcpSetup.expires", { at: formatter.dateTime(expiresAt) });
+    }
   }
   output.say(endKey(flags), { client });
 }
@@ -109,12 +118,13 @@ export async function runMcpSetup(run: CommandRun, flags: McpSetupFlags): Promis
   return withEngineWithin(host, output, {
     budgetMs: setupBudgetMs,
     use: async (engine, signal) => {
-      const setup = { host, client: flags.client, isDryRun: flags.isDryRun, signal };
+      const ttl = flags.ttlMs === undefined ? {} : { ttlMs: flags.ttlMs };
+      const setup = { host, client: flags.client, isDryRun: flags.isDryRun, signal, ...ttl };
       try {
         const changes = flags.isRemove
           ? await undo(setup, clientPlaces(host, flags.client), engine)
           : await setUp(setup, skill, engine);
-        report(output, flags, changes);
+        report(run, flags, changes);
         return 0;
       } catch (error) {
         return reportSetupFault(output, error);

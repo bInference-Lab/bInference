@@ -28,6 +28,8 @@ interface TokenView {
   readonly createdAt: number;
   readonly lastUsedAt?: number;
   readonly revokedAt?: number;
+  /** When the token stops signing in; absent for a token that works until it is revoked. */
+  readonly expiresAt?: number;
 }
 
 /** The args of `token/create`. */
@@ -46,6 +48,11 @@ interface RegisterTokenArgs {
   readonly scopes: readonly Scope[];
   /** The SHA-256 of the `bnt_` secret, in lowercase hex. */
   readonly secretHash: string;
+  /**
+   * When the token stops signing in, after the engine's time and at most 90 days later (decision
+   * 0159); absent for a token that works until it is revoked.
+   */
+  readonly expiresAt?: number;
 }
 
 /** The answer of `remote/status`: Tailscale's state and the published URLs. */
@@ -114,6 +121,7 @@ const tokenView = z.object({
   createdAt: epochMsSchema,
   lastUsedAt: epochMsSchema.exactOptional(),
   revokedAt: epochMsSchema.exactOptional(),
+  expiresAt: epochMsSchema.exactOptional(),
 });
 
 /** The device, token, remote access and exchange operations, by name. */
@@ -180,6 +188,7 @@ export const accessOperations: OperationTable<AccessOperationShapes> = {
       kind: z.enum(["mcp", "custom"]),
       scopes: z.array(scopeSchema).min(1),
       secretHash: z.string().regex(/^[0-9a-f]{64}$/),
+      expiresAt: epochMsSchema.exactOptional(),
     }),
     result: tokenView,
   },

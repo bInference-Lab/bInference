@@ -20,6 +20,8 @@ export interface TokenRecord {
   readonly createdAtMs: number;
   readonly lastUsedAtMs?: number;
   readonly revokedAtMs?: number;
+  /** When the token stops signing in; absent for a token that works until it is revoked. */
+  readonly expiresAtMs?: number;
 }
 
 /** Parses a token record. */
@@ -32,4 +34,5 @@ export const tokenRecordSchema: z.ZodType<TokenRecord> = z.strictObject({
   createdAtMs: epochMsSchema,
   lastUsedAtMs: epochMsSchema.exactOptional(),
   revokedAtMs: epochMsSchema.exactOptional(),
+  expiresAtMs: epochMsSchema.exactOptional(),
 });

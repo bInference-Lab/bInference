@@ -27,6 +27,7 @@ function toToken(row: Selectable<TokensTable>): TokenRecord {
     createdAtMs: row.created_at,
     ...field("lastUsedAtMs", row.last_used_at),
     ...field("revokedAtMs", row.revoked_at),
+    ...field("expiresAtMs", row.expires_at),
   });
 }
 
@@ -84,6 +85,7 @@ export const addTokenTask: StoreTask<TokenRecord, Result<TokenRecord, "exists">>
         created_at: token.createdAtMs,
         last_used_at: token.lastUsedAtMs ?? null,
         revoked_at: token.revokedAtMs ?? null,
+        expires_at: token.expiresAtMs ?? null,
       }),
     );
     return ok(token);

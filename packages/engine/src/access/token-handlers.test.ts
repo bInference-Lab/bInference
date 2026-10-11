@@ -1,5 +1,6 @@
 import { createIdSource, err } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
+import { tokenLifetimeMaxMs } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createMemoryAccessStore } from "../fakes/memory-access-store.js";
@@ -46,6 +47,22 @@ describe("the token handlers", () => {
     await expect(handlers["token/register"](testCall(register))).resolves.toStrictEqual(
       err("protocol.bad_args"),
     );
+  });
+
+  it("keeps an expiry and lists it, refusing one not ahead or past the longest", async () => {
+    const { access, handlers } = tokens();
+    const expiresAt = testNowMs + tokenLifetimeMaxMs;
+    const view = expectOk(await handlers["token/register"](testCall({ ...register, expiresAt })));
+    expect(view.expiresAt).toBe(expiresAt);
+    const stored = await access.findToken(sha256Hex(secret), testCall({}));
+    expect(stored?.expiresAtMs).toBe(expiresAt);
+    const other = { ...register, secretHash: sha256Hex(`${secret}b`) };
+    const refusals = await Promise.all(
+      [testNowMs, testNowMs - 1, expiresAt + 1].map(async (refused) =>
+        handlers["token/register"](testCall({ ...other, expiresAt: refused })),
+      ),
+    );
+    expect(refusals).toStrictEqual(Array.from({ length: 3 }, () => err("protocol.bad_args")));
   });
 
   it("revokes a token, and refuses one it does not know", async () => {
