@@ -19,9 +19,13 @@ export interface DeviceCredential {
   readonly device: ProtocolId<"consoleDevice">;
 }
 
-/** The Telegram Mini App's credential: the `initData` Telegram signed for this launch. */
+/**
+ * The Telegram Mini App's credential: the `initData` Telegram signed for this launch, and the
+ * single-use launch ticket `/console` put in the Mini App's address (decision 0161), a secret the
+ * engine keeps only as a hash and spends at this sign-in.
+ */
 export interface TelegramCredential {
-  readonly telegram: { readonly initData: string };
+  readonly telegram: { readonly initData: string; readonly ticket?: string };
 }
 
 /** What `open.auth` carries: exactly one credential. */
@@ -35,5 +39,13 @@ export type Credential = TokenCredential | DeviceCredential | TelegramCredential
 export const credentialSchema: z.ZodType<Credential> = z.union([
   z.strictObject({ token: clientTokenSchema }),
   z.strictObject({ device: protocolIdSchema("consoleDevice") }),
-  z.strictObject({ telegram: z.object({ initData: z.string().min(1) }) }),
+  z.strictObject({
+    telegram: z.object({
+      initData: z.string().min(1),
+      ticket: z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{43}$/)
+        .exactOptional(),
+    }),
+  }),
 ]);

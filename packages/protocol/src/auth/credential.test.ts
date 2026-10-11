@@ -11,6 +11,10 @@ describe("credentialSchema", () => {
     ["a client token", { token }],
     ["a console device", { device }],
     ["a Telegram launch", { telegram: { initData: "query_id=1&hash=ab" } }],
+    [
+      "a Telegram launch with its ticket",
+      { telegram: { initData: "a=1", ticket: "T".repeat(43) } },
+    ],
   ] as const)("parses %s", (_name, credential) => {
     expect(credentialSchema.parse(credential)).toStrictEqual(credential);
   });
@@ -21,6 +25,10 @@ describe("credentialSchema", () => {
     ["a token with base64 padding", { token: `${token}=` }],
     ["a device id of another kind", { device: device.replace("dev_", "con_") }],
     ["empty Telegram data", { telegram: { initData: "" } }],
+    [
+      "a launch ticket of another length",
+      { telegram: { initData: "a=1", ticket: "T".repeat(42) } },
+    ],
     ["two credentials", { token, device }],
     ["no credential", {}],
   ] as const)("refuses %s", (_name, credential) => {

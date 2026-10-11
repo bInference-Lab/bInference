@@ -136,6 +136,13 @@ describe("opening the console's session", () => {
     expect(test.credentials).toStrictEqual([{ kind: "telegram", initData: "query=1" }]);
   });
 
+  it("sends the launch ticket /console put beside Telegram's launch data", async () => {
+    const ticket = "T".repeat(43);
+    const test = setUp({ pathname: "/mini", hash: `#ticket=${ticket}&tgWebAppData=query%3D1` });
+    await openSession(test.context);
+    expect(test.credentials).toStrictEqual([{ kind: "telegram", initData: "query=1", ticket }]);
+  });
+
   it("says a Mini App launch the engine refused could not sign in", async () => {
     const test = setUp({
       pathname: "/mini",

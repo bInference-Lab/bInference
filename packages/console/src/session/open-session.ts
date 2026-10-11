@@ -32,11 +32,18 @@ function signedOut(reason: SignedOutReason): Found {
   return { kind: "signed_out", reason };
 }
 
-function miniLaunch(context: SessionContext): string | undefined {
+// A Mini App launch: Telegram's launch data and the launch ticket `/console` put beside it in the
+// address's fragment.
+function miniLaunch(context: SessionContext): ConsoleCredential | undefined {
   const { pathname } = context.browser;
-  const hash = context.browser.readHash();
   const isMini = pathname === "/mini" || pathname.startsWith("/mini/");
-  return isMini ? (new URLSearchParams(hash.slice(1)).get("tgWebAppData") ?? undefined) : undefined;
+  const fields = new URLSearchParams(context.browser.readHash().slice(1));
+  const initData = isMini ? fields.get("tgWebAppData") : null;
+  if (initData === null) {
+    return undefined;
+  }
+  const ticket = fields.get("ticket");
+  return { kind: "telegram", initData, ...(ticket === null ? {} : { ticket }) };
 }
 
 // Pairs this browser with the link's code and keeps the new device in place of any earlier one.
@@ -67,9 +74,9 @@ async function pair(context: SessionContext, code: string, store: DeviceStore): 
 }
 
 async function findCredential(context: SessionContext): Promise<Found> {
-  const initData = miniLaunch(context);
-  if (initData !== undefined) {
-    return { kind: "credential", credential: { kind: "telegram", initData } };
+  const launch = miniLaunch(context);
+  if (launch !== undefined) {
+    return { kind: "credential", credential: launch };
   }
   const { store } = context;
   if (store === undefined || context.browser.subtle === undefined) {

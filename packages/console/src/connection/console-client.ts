@@ -8,7 +8,7 @@ import { browserClock, browserRandom, quietLogger } from "./browser-ports";
 /** How the console signs in: a paired device, or a Telegram Mini App launch. */
 export type ConsoleCredential =
   | { readonly kind: "device"; readonly device: StoredDevice }
-  | { readonly kind: "telegram"; readonly initData: string };
+  | { readonly kind: "telegram"; readonly initData: string; readonly ticket?: string };
 
 /** The version the console reports in `open`. */
 const consoleVersion = "console";
@@ -16,7 +16,12 @@ const consoleVersion = "console";
 function credentialOf(credential: ConsoleCredential) {
   return credential.kind === "device"
     ? { device: protocolIdSchema("consoleDevice").parse(credential.device.deviceId) }
-    : { telegram: { initData: credential.initData } };
+    : {
+        telegram: {
+          initData: credential.initData,
+          ...(credential.ticket === undefined ? {} : { ticket: credential.ticket }),
+        },
+      };
 }
 
 /**
