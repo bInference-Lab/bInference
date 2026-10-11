@@ -10,9 +10,10 @@ Rules for this package:
   on an amount; wei travels as `bigint` and as hex quantities on the wire.
 - Privy is called through its official Node SDK, `@privy-io/node`, never by hand. Each call makes
   its own SDK client whose `fetch` rides on the core `Http` port and stops with the call's signal;
-  the SDK's retries and logs stay off. The one exception is `POST /v1/aggregations`, which the SDK
-  does not offer: `src/privy/aggregations.ts` sends it on the same port, as Privy's recipe does
-  (decision 0149). Remove it once the SDK has the call. A signing request is sent once; a lost answer is
+  the SDK's retries and logs stay off. The exceptions are `POST /v1/aggregations` and
+  `DELETE /v1/aggregations/<id>`, which the SDK does not offer: `src/privy/aggregations.ts` sends
+  them on the same port, as Privy's recipe does (decision 0149). Only the custody suite's cleanup
+  deletes one. Remove them once the SDK has the calls. A signing request is sent once; a lost answer is
   `custody.sign_unknown`, and the engine decides what follows.
 - Every answer the SDK gives passes a zod schema in a `*.schema.ts` file and leaves the package as
   our own types. Privy may add fields to its answers: objects keep the fields read and drop the

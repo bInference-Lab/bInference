@@ -1,9 +1,12 @@
-import { err } from "@binference/core";
+import { err, ok } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { Ceiling } from "../ceiling/ceiling.js";
-import { askPrivy, setUp } from "../contracts/privy-custody-setup.js";
+import type { Ceiling, DayCap } from "../ceiling/ceiling.js";
+import { policyRuleJson } from "../ceiling/policy-rule.js";
+import { readCeiling } from "../ceiling/read-ceiling.js";
+import { askPrivy, type CustodySetup, setUp, tearDown } from "../contracts/privy-custody-setup.js";
+import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
 import { oneBnbWei, swapData, testAddresses, testCapPlan } from "./custody-fixtures.js";
 import { createAggregation, windowSum } from "./fake-aggregations.js";
 import { createFakeCustodySubject } from "./fake-custody-subject.js";
@@ -124,17 +127,37 @@ describe("the ceiling's 24-hour native cap on the fake", () => {
     expect((await askPrivy(setup, { call })).ok).toBe(true);
 
     const id = nativeAggregationOf(setup.expected.ceiling);
-    const basic = Buffer.from(
-      `${subject.privy.appId}:${subject.privy.appSecret.reveal()}`,
-    ).toString("base64");
-    const deleted = await subject.privy.http.request({
-      method: "DELETE",
-      url: `${subject.privy.origin}/v1/aggregations/${id}`,
-      headers: { authorization: `Basic ${basic}`, "privy-app-id": subject.privy.appId },
-      signal: new AbortController().signal,
-    });
-
-    expect(deleted.status).toBe(200);
+    expect(isPrivyId(id)).toBe(true);
+    const removal = { signal: AbortSignal.timeout(5_000) };
+    await expect(subject.api.deleteAggregation(id as PrivyId, removal)).resolves.toStrictEqual(
+      ok(undefined),
+    );
+    await expect(subject.api.deleteAggregation(id as PrivyId, removal)).resolves.toStrictEqual(
+      err("not_found"),
+    );
     expect(await askPrivy(setup, { call })).toStrictEqual(err("refused"));
+  });
+});
+
+// The aggregations the suite's wallet names in its ceiling.
+function capsOf(setup: CustodySetup): readonly DayCap[] {
+  const [held] = readCeiling(setup.expected.ceiling.rules.map(policyRuleJson))?.caps ?? [];
+  return held === undefined ? [] : [held.caps.native, ...held.caps.approvals];
+}
+
+describe("the custody suite's cleanup", () => {
+  it("deletes every aggregation its setup made, so a live app never fills up", async () => {
+    const subject = createFakeCustodySubject(7);
+    const ids = capsOf(await setUp(subject));
+    expect(ids).toHaveLength(1 + testCapPlan.approvals.length);
+    await tearDown(subject);
+    const removal = { signal: AbortSignal.timeout(5_000) };
+    const again = await Promise.all(
+      ids.map(async ({ aggregation }) =>
+        subject.api.deleteAggregation(aggregation as PrivyId, removal),
+      ),
+    );
+    expect(again).toStrictEqual(ids.map(() => err("not_found")));
+    await expect(tearDown(subject)).resolves.toBeUndefined();
   });
 });

@@ -9,17 +9,18 @@ import {
   type HttpRequest,
   type HttpResponse,
 } from "@binference/core";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { checkPrivyApp } from "../privy/check-privy-app.js";
 import { createPrivyApi } from "../privy/privy-api.js";
 import { createFakeSignerProcess } from "../testing/fake-signer-process.js";
 import { ownerSigner } from "../testing/owner-signer.js";
 import { privyCustodyContract } from "./privy-custody-contract.js";
-import type { PrivyCustodySubject } from "./privy-custody-setup.js";
+import { type PrivyCustodySubject, tearDown } from "./privy-custody-setup.js";
 
 // The live half of the custody contract: it runs against the Privy test app only when this switch
 // is set, with the app's id and secret in the environment, never in the repository. It makes key
-// quorums, one policy and one wallet on the app, and signs without broadcasting.
+// quorums, the caps' aggregations, one policy and one wallet on the app, signs without
+// broadcasting, and deletes the aggregations at the end, as the app keeps at most 10.
 // oxlint-disable-next-line node/no-process-env -- the switch and the test app's credentials, read only here
 const environment = process.env;
 const {
@@ -109,6 +110,10 @@ function sharedSubject(): PrivyCustodySubject {
 }
 
 describe.runIf(liveTests)("the Privy test app", () => {
+  afterAll(async () => {
+    await (subject === undefined ? Promise.resolve() : tearDown(subject));
+  }, 120_000);
+
   it.each(privyCustodyContract({ create: sharedSubject }))(
     "follows the custody contract: $name",
     async ({ run }) => {

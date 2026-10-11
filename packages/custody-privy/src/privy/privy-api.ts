@@ -4,7 +4,7 @@ import type { PrivyClient } from "@privy-io/node";
 import type { Ceiling } from "../ceiling/ceiling.js";
 import type { PrivyTransaction } from "../signing/privy-transaction.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
-import { type AggregationRequest, createAggregation } from "./aggregations.js";
+import { type AggregationRequest, createAggregation, deleteAggregation } from "./aggregations.js";
 import { callPrivy, type PrivyCall, privyFault, statusFault } from "./privy-call.js";
 import { type PrivyApiOptions, type PrivySettings, privySettings } from "./privy-client.js";
 import type { KeyQuorum, PrivyId, PrivyPolicy, WalletRecord } from "./privy-records.js";
@@ -98,6 +98,11 @@ export interface PrivyApi {
    * id. Sent once, and never asked again (decision 0149).
    */
   createAggregation(request: AggregationRequest, options: CallOptions): Promise<PrivyId>;
+  /**
+   * Deletes one aggregation with the app secret; every condition that names it then reads false.
+   * Only the custody suite's cleanup calls it. One Privy does not hold is `not_found`.
+   */
+  deleteAggregation(id: PrivyId, options: CallOptions): Promise<Result<void, "not_found">>;
   policy(id: PrivyId, options: CallOptions): Promise<Result<PrivyPolicy, "not_found">>;
   createWallet(request: WalletRequest, options: CallOptions): Promise<WalletRecord>;
   wallet(id: PrivyId, options: CallOptions): Promise<Result<WalletRecord, "not_found">>;
@@ -267,6 +272,7 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
     createPolicy: async (request, { signal }) =>
       made(settings, policyCreation(request), { reader: readPolicy, signal }),
     createAggregation: async (request, { signal }) => createAggregation(settings, request, signal),
+    deleteAggregation: async (id, { signal }) => deleteAggregation(settings, id, signal),
     policy: async (id, { signal }) =>
       found(
         settings,

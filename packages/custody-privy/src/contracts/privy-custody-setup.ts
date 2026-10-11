@@ -17,6 +17,7 @@ import type { ContractCheck } from "@binference/core/testing";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import type { Ceiling, ChainCaps } from "../ceiling/ceiling.js";
 import type { PrivyApi } from "../privy/privy-api.js";
+import { isPrivyId } from "../privy/privy-records.js";
 import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
 import { privyTransaction } from "../signing/privy-transaction.js";
 import {
@@ -98,6 +99,10 @@ async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
   );
   const caps = await createDayCaps(api, { plans: [testCapPlan], owner: ownerQuorum.id }, live());
   assert.ok(caps.ok && caps.value[0] !== undefined, "Privy made no aggregations for the caps.");
+  madeCaps.set(
+    subject,
+    caps.value.flatMap((chain) => [chain.native, ...chain.approvals].map((cap) => cap.aggregation)),
+  );
   const expected = { ownerKey, agentKey, ceiling: testCeiling(caps.value[0]) };
   const created = await createAgentWallet(
     api,
@@ -115,6 +120,21 @@ async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
 }
 
 const setups = new WeakMap<PrivyCustodySubject, Promise<CustodySetup>>();
+// The aggregations each subject's setup made, which the cleanup deletes: an app keeps 10.
+const madeCaps = new WeakMap<PrivyCustodySubject, readonly string[]>();
+
+/**
+ * Deletes the aggregations the suite made for a subject, once its checks are done, so runs on a
+ * live app never use up its 10. An aggregation already gone is no fault.
+ */
+export async function tearDown(subject: PrivyCustodySubject): Promise<void> {
+  for (const aggregation of madeCaps.get(subject) ?? []) {
+    assert.ok(isPrivyId(aggregation));
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one delete at a time, as every write
+    await subject.api.deleteAggregation(aggregation, live());
+  }
+  madeCaps.delete(subject);
+}
 
 /** The suite's wallet for a subject, made on first use. */
 export async function setUp(subject: PrivyCustodySubject): Promise<CustodySetup> {

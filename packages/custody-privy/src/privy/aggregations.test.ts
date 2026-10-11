@@ -3,7 +3,7 @@ import { createManualClock, createScriptedHttp } from "@binference/core/testing"
 import { describe, expect, it } from "vitest";
 import { aggregationsOf } from "../ceiling/day-caps.js";
 import { testCapPlan } from "../testing/custody-fixtures.js";
-import { createAggregation } from "./aggregations.js";
+import { createAggregation, deleteAggregation } from "./aggregations.js";
 import { privySettings } from "./privy-client.js";
 import type { PrivyId } from "./privy-records.js";
 
@@ -96,5 +96,50 @@ describe("createAggregation", () => {
 
     expect(thrown).toMatchObject({ code: "custody.privy_unreachable" });
     expect(JSON.stringify(thrown)).not.toContain("privy-secret-value-1234");
+  });
+});
+
+function deleteOver(response: HttpResponse) {
+  const http = createScriptedHttp([{ method: "DELETE", url: `${url}/${made.id}`, response }]);
+  const settings = privySettings({
+    http,
+    clock: createManualClock(0),
+    appId: "app-id",
+    appSecret: createSecret("privy-secret-value-1234"),
+  });
+  return { http, settings };
+}
+
+describe("deleteAggregation", () => {
+  it("deletes the aggregation with the app's Basic auth and no body", async () => {
+    const { http, settings } = deleteOver(answer(200, { success: true }));
+    const deleted = await deleteAggregation(
+      settings,
+      made.id as PrivyId,
+      AbortSignal.timeout(5_000),
+    );
+    const [sent] = http.requests();
+
+    expect(deleted).toStrictEqual({ ok: true, value: undefined });
+    expect(sent?.headers?.["authorization"]).toMatch(/^Basic /);
+    expect(sent?.body).toBeUndefined();
+  });
+
+  it("answers not_found for one Privy does not hold", async () => {
+    const { settings } = deleteOver(answer(404, { error: "Not found." }));
+    await expect(
+      deleteAggregation(settings, made.id as PrivyId, AbortSignal.timeout(5_000)),
+    ).resolves.toStrictEqual({ ok: false, error: "not_found" });
+  });
+
+  it.each([
+    ["custody.privy_busy", answer(429, { error: "Too many requests" })],
+    ["custody.privy_credentials", answer(401, { error: "Invalid app ID or app secret." })],
+    ["custody.privy_failed", answer(500, { error: "Internal error." })],
+  ])("throws %s for an answer it cannot take", async (code, response) => {
+    const { settings } = deleteOver(response);
+    await expect(
+      deleteAggregation(settings, made.id as PrivyId, AbortSignal.timeout(5_000)),
+    ).rejects.toMatchObject({ code });
   });
 });
