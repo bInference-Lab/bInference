@@ -26,6 +26,11 @@ export {
   type TokenHandlersOptions,
 } from "./access/token-handlers.js";
 export {
+  createWebPushHandlers,
+  type WebPushHandlers,
+  type WebPushHandlersOptions,
+} from "./access/web-push-handlers.js";
+export {
   webPushDropSchema,
   webPushSubscriptionRecordSchema,
   type WebPushDrop,
