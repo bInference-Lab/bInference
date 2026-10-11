@@ -1,5 +1,6 @@
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { planDocument } from "../intents/intent-documents.schema.js";
 import { expectOk, testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import {
@@ -24,6 +25,13 @@ async function reasonOf(bench: ExecutorBench, intent: Id<"int">) {
 async function proposeAuto(bench: ExecutorBench, request = testSwap()): Promise<Id<"int">> {
   const handlers = bench.test.engine.handlers;
   return expectOk(await handlers["intent/propose"](testCall(request, testCallers.runtime))).intent;
+}
+
+// The payload of the intent's one step, which a test makes fail now.
+async function stepPayload(bench: ExecutorBench, intent: Id<"int">): Promise<string> {
+  const record = await bench.test.stores.intents.get(intent, live());
+  const [step] = planDocument.decode(record?.plan ?? null);
+  return step?.payload ?? "";
 }
 
 async function goManual(bench: ExecutorBench): Promise<void> {
@@ -77,5 +85,22 @@ describe("the authorization read again before each signature", () => {
     await driveUntil(bench, intent, { states: [], blocks: 18 });
     expect(eventsOf(bench)).toContain("executor.step_stopped:authorization_lapsed");
     expect(bench.signed).toHaveLength(1);
+  });
+
+  it("cancels a stuck auto step that fails now, under the approval mode as it stands", async () => {
+    const bench = await startExecutorBench({ agent: { approvalMode: "auto" }, limits });
+    bench.network.holdBelow(52_000_000n);
+    const intent = await proposeAuto(bench);
+    await flush();
+    bench.network.failing(await stepPayload(bench, intent));
+    const settled = { states: ["reconciled", "failed_onchain"] } as const;
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    expect(await reasonOf(bench, intent)).toBe("stuck_cancelled");
+    expect(
+      bench.signed.map(({ step, authorization }) => [step.replaces?.kind, authorization.kind]),
+    ).toStrictEqual([
+      [undefined, "approvalMode"],
+      ["cancel", "approvalMode"],
+    ]);
   });
 });

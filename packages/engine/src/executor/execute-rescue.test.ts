@@ -1,6 +1,6 @@
-import type { AccountRef, AssetRef, Signer, StepAction } from "@binference/chain";
+import type { AccountRef, AssetRef, Signer, StepAction, TxPreparer } from "@binference/chain";
 import { accountRefSchema } from "@binference/chain";
-import { createFakeTxSimulator } from "@binference/chain/testing";
+import { createFakeTxSimulator, type FakeNetwork } from "@binference/chain/testing";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -30,7 +30,7 @@ import {
   startExecutorBench,
   stateOf,
 } from "./test-executor.js";
-import { restartBench } from "./test-restart.js";
+import { restartBench, restartEvents } from "./test-restart.js";
 
 const live = { signal: new AbortController().signal };
 const engine = {
@@ -103,6 +103,16 @@ async function positionsOf(bench: ExecutorBench, walletId: Id<"wal">): Promise<r
   ]);
 }
 
+// The rescue's first transaction, recorded dropped as the drop rule records one.
+async function droppedFirst(bench: ExecutorBench, intent: Id<"int">): Promise<TransactionRecord> {
+  const [first] = await bench.test.stores.transactions.ofIntent(intent, live);
+  if (first === undefined) {
+    throw new Error("Expected the rescue's first transaction.");
+  }
+  await bench.test.stores.transactions.recordDropped({ id: first.id, atMs: 1 }, live);
+  return first;
+}
+
 // A new rescue address that took effect a moment ago.
 async function moveRescueAddress(bench: ExecutorBench): Promise<void> {
   const other = accountRefSchema.parse("fake:1:0x000000b2");
@@ -117,6 +127,18 @@ function noticeKeysOf(bench: ExecutorBench): readonly string[] {
 }
 
 const dayMs = 24 * 60 * 60 * 1_000;
+
+// Custody that answers another account for the second wallet than the one its moves send from.
+function strangerForSecond(custody: Signer): Signer {
+  const stranger = accountRefSchema.parse("fake:1:0x000000ff");
+  return {
+    account: async (wallet, chain, options) =>
+      wallet === secondWallet
+        ? Promise.resolve({ ok: true, value: stranger })
+        : custody.account(wallet, chain, options),
+    signTransaction: async (request, options) => custody.signTransaction(request, options),
+  };
+}
 
 // Custody that refuses to sign the rescue's step at `index`.
 function refusingStep(index: number): (custody: Signer) => Signer {
@@ -145,6 +167,27 @@ function movingAtStep(index: number) {
         }
         return custody.signTransaction(request, options);
       },
+    }),
+  };
+}
+
+// A preparer that moves the bound bench's rescue address as it prepares the step at `index`, as
+// a change that takes effect between the step's checks would.
+function movingAtPrepare(index: number) {
+  const bound: { bench?: ExecutorBench } = {};
+  const payload = payloadOf(moveAt(index));
+  return {
+    bind: (bench: ExecutorBench) => {
+      bound.bench = bench;
+    },
+    wrap: (network: FakeNetwork): TxPreparer => ({
+      async prepare(request, options) {
+        if (request.draft.payload === payload && bound.bench !== undefined) {
+          await moveRescueAddress(bound.bench);
+        }
+        return network.prepare(request, options);
+      },
+      replace: async (request, options) => network.replace(request, options),
     }),
   };
 }
@@ -300,14 +343,55 @@ describe("a confirmed rescue on its wallets' queues", () => {
     bench.network.holdBelow(10n ** 18n);
     const intent = await rescueConfirmed(bench);
     await flush();
-    const [first] = await bench.test.stores.transactions.ofIntent(intent, live);
-    const dropped = { id: first?.id, atMs: 1 } as { readonly id: Id<"tx">; readonly atMs: number };
-    await bench.test.stores.transactions.recordDropped(dropped, live);
+    await droppedFirst(bench, intent);
     bench.network.holdBelow(0n);
     bench.network.mine();
     const restarted = await restartBench(bench);
     await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     expect(restarted.signed.map(({ step }) => step.index)).toStrictEqual([1, 2]);
+  });
+
+  it("signs a dropped step again when none of its transactions landed", async () => {
+    const bench = await benchWithRescue();
+    bench.network.holdBelow(10n ** 18n);
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    const first = await droppedFirst(bench, intent);
+    bench.network.drop(first.hash);
+    bench.network.holdBelow(0n);
+    const restarted = await restartBench(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(restarted.signed.map(({ step }) => step.index)).toStrictEqual([0, 1, 2]);
+  });
+
+  it("tries a dropped step that landed and reverted again, as any step that reverts", async () => {
+    const reverting = testMoves.slice(0, 1).map(payloadOf);
+    const bench = await benchWithRescue({ network: { reverting } });
+    bench.network.holdBelow(10n ** 18n);
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    await droppedFirst(bench, intent);
+    bench.network.holdBelow(0n);
+    bench.network.mine();
+    const restarted = await restartBench(bench);
+    const goal = { states: ["reconciled" as const], blocks: 200 };
+    await expect(driveUntil(bench, intent, goal)).resolves.toBe("reconciled");
+    expect(restarted.signed.map(({ step }) => step.index)).toStrictEqual([0, 0, 0, 1, 2]);
+  });
+
+  it("waits a block when no node says whether a dropped step landed", async () => {
+    const bench = await benchWithRescue();
+    bench.network.holdBelow(10n ** 18n);
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    await droppedFirst(bench, intent);
+    bench.network.holdBelow(0n);
+    bench.network.mine();
+    bench.network.failReads(1);
+    const restarted = await restartBench(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(restarted.signed.map(({ step }) => step.index)).toStrictEqual([1, 2]);
+    expect(restartEvents(restarted)).toContain("executor.read_failed:chain.rpc_down");
   });
 
   it("takes a rescue once while its first work still waits for the queue", async () => {
@@ -381,6 +465,15 @@ describe("a confirmed rescue on its wallets' queues", () => {
     ).toHaveLength(2);
   });
 
+  it("is not taken when custody holds another account for a wallet it moves from", async () => {
+    const bench = await benchWithRescue({ custody: strangerForSecond });
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    await expect(stateOf(bench, intent)).resolves.toBe("confirmed");
+    expect(eventsOf(bench)).toStrictEqual(["executor.not_taken:other_sender"]);
+    expect(bench.signed).toStrictEqual([]);
+  });
+
   it("is not taken once the owner's confirmation ran out before the queue", async () => {
     const bench = await benchWithRescue({ hold: true });
     const intent = await rescueConfirmed(bench);
@@ -399,6 +492,17 @@ describe("a confirmed rescue on its wallets' queues", () => {
     const intent = await rescueConfirmed(bench);
     await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0, 1]);
+    expect(noticeKeysOf(bench)).toContain("notice.rescueStopped");
+  });
+
+  it("signs no step whose rescue address changed while it was prepared", async () => {
+    const moving = movingAtPrepare(1);
+    const bench = await benchWithRescue({ preparer: moving.wrap });
+    moving.bind(bench);
+    const intent = await rescueConfirmed(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0]);
+    expect(eventsOf(bench)).toContain("executor.rescue_step_failed:");
     expect(noticeKeysOf(bench)).toContain("notice.rescueStopped");
   });
 
