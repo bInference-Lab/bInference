@@ -1,0 +1,38 @@
+{
+  "name": "@binference/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The agent runtime: the process the engine starts to run each agent's model loop, sessions and tools.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    },
+    "./process": "./dist/runtime-process.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "@binference/client": "workspace:*",
+    "@binference/core": "workspace:*",
+    "@binference/protocol": "workspace:*",
+    "ws": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/ws": "catalog:"
+  }
+}

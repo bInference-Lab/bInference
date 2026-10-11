@@ -99,6 +99,7 @@
         "client",
         "i18n",
         "store",
+        "ws",
         "openai",
         "@anthropic-ai/sdk",
         "partial-json",
