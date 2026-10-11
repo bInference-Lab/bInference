@@ -1,6 +1,6 @@
 # 0159. An MCP client token can expire, and one client session gets its own token
 
-Status: Accepted
+Status: Amended by 0165
 
 Accepted by the owner on 2026-10-11.
 

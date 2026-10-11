@@ -1,6 +1,6 @@
 # 0161. A Mini App launch needs a one-time ticket from /console and lasts 12 hours
 
-Status: Accepted
+Status: Amended by 0166
 
 Accepted by the owner on 2026-10-11.
 

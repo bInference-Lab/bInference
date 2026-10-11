@@ -74,7 +74,10 @@ The engine listens on two transports. Both carry the same frames (section 3) ove
   proxy on this machine) and per credential: one that fails 10 times within a minute is refused
   for 5 minutes, a sign-in with `bye protocol.busy` and `POST /pair` with 429 `protocol.busy`. Each
   failure is logged with its error code and the connection's id, never the credential or a
-  pairing code.
+  pairing code. Each lockout sends the owner `notice.signInsLocked`
+  ([spec 4, section 4](cards-and-messages.md#section-4)), naming the address, the local connection,
+  or the device's or token's label, never a secret; one per lockout, and at most one per 15 minutes
+  for each address or credential.
 
 <a id="section-2-1"></a>
 
@@ -195,11 +198,12 @@ A Telegram tap is handled inside the engine and never travels over this protocol
      `"binference-device-v2\n" + connection + "\n" + deviceId + "\n" + nonce + "\n" + origin` and
      sends `prove`, so a proof holds for one connection of one device on one origin.
 - **Telegram Mini App (WS only).** `open.auth` is `{ telegram: { initData, ticket } }`. The engine
-  checks Telegram's signature with the owner's bot token, requires `auth_date` within 5 minutes and
-  the owner's numeric user id, and refuses an `initData` hash it has seen in the last 24 hours,
-  kept in `engine.sqlite` across restarts. How it counts the 5 minutes, which code each refusal
-  gets, how it keeps the hashes, and how a new owner ends the old one's Mini App are in
-  [decision 0160](../DECISIONS.md#d0160). `ticket` is the single-use launch ticket `/console` put
+  checks Telegram's signature with the owner's bot token, requires an `auth_date` at most 5
+  minutes before the engine's time and at most 1 minute after it
+  ([decision 0166](../DECISIONS.md#d0166)) and the owner's numeric user id, and refuses an
+  `initData` hash it has seen in the last 24 hours, kept in `engine.sqlite` across restarts. Which
+  code each refusal gets, how it keeps the hashes, and how a new owner ends the old one's Mini App
+  are in [decision 0160](../DECISIONS.md#d0160). `ticket` is the single-use launch ticket `/console` put
   in the button's fragment (`/mini#ticket=<ticket>`): 32 random bytes in base64url, kept only as a
   hash, valid 5 minutes, for the owner who sent `/console`. The engine spends it in the write that
   claims the launch; a launch without a live ticket ends with `bye auth.invalid`, or
@@ -725,12 +729,17 @@ the client once with a token of its own ([decision 0159](../DECISIONS.md#d0159))
    `token/register` (label `mcp-<client>-session`, `kind: "mcp"`, `read` and `propose`) and an
    expiry: 1 hour, or `--ttl` (`30m`, `2h`, at most `24h`). Setup and session tokens never revoke
    each other.
-2. **The client, with the secret in its environment.** The secret goes in `BINFERENCE_MCP_TOKEN`,
-   never in an argument or a file; `binference mcp` signs in with that variable before any token
-   file. Claude Code starts with `--strict-mcp-config --mcp-config <file>`, the file owner-only in
-   the state folder's `tmp/` with only the `binference` server. Codex starts with `-c` overrides of
-   `mcp_servers.binference`, `env_vars = ["BINFERENCE_MCP_TOKEN"]` among them; its other servers
-   stay. The arguments after `--` follow.
+2. **The client, the secret reaching only binference's server.** `binference mcp` signs in with
+   `BINFERENCE_MCP_TOKEN` before any token file; the secret is never in an argument
+   ([decision 0165](../DECISIONS.md#d0165)). Claude Code starts with
+   `--strict-mcp-config --mcp-config <file>`, the file owner-only in the state folder's `tmp/` with
+   only the `binference` server, whose `env` holds the variable; Claude Code's own environment
+   never holds it, so its tools and hooks cannot read it there. Codex, which takes a server's
+   literal values only in its config files or arguments, gets the variable in its environment and
+   `-c` overrides of `mcp_servers.binference`, `env_vars = ["BINFERENCE_MCP_TOKEN"]` among them,
+   and `shell_environment_policy.filters.BINFERENCE_MCP_TOKEN = "exclude"`, which keeps it out of
+   the commands Codex's shell runs; its other servers stay. A `BINFERENCE_MCP_TOKEN` already in
+   the CLI's environment is never passed on. The arguments after `--` follow.
 3. **The end.** When the client exits, the CLI revokes the token and removes the config file. A
    `SIGTERM`, `SIGHUP` or `SIGBREAK` to the CLI is passed to the client first; a `SIGINT` is left
    to the client, which gets its own from the terminal. A fault in the CLI revokes the token too;
