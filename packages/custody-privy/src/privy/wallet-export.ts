@@ -61,10 +61,7 @@ function bodyOf(request: WalletExportRequest) {
  * export with the HPKE recipient key and no seed phrase, and the app id and expiry headers. The
  * SDK sends the same request, so a signature made over this one holds.
  */
-function walletExportRequest(
-  settings: PrivySettings,
-  request: WalletExportRequest,
-): PrivyRequest {
+function walletExportRequest(settings: PrivySettings, request: WalletExportRequest): PrivyRequest {
   return {
     method: "POST",
     url: `${settings.origin}/v1/wallets/${request.wallet}/export`,

@@ -70,7 +70,13 @@ function callsOf(request: FakeRpcRequest): readonly (readonly [Address, Hex])[] 
 }
 
 const signal = new AbortController().signal;
-const request = (assets: readonly (typeof coin)[]) => ({ chain, holder, assets, multicall, signal });
+const request = (assets: readonly (typeof coin)[]) => ({
+  chain,
+  holder,
+  assets,
+  multicall,
+  signal,
+});
 
 describe("read evm balances", () => {
   it("reads the coin alone through eth_getBalance, once for every time it is asked", async () => {
