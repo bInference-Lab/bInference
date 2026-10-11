@@ -1,4 +1,5 @@
 import type { Generated } from "kysely";
+import type { AccessTables } from "./access-tables.js";
 import type { BackupTables } from "./backup-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
 import type { PositionTables } from "./position-tables.js";
@@ -278,36 +279,6 @@ export interface InboxTable {
   handled_at: number | null;
 }
 
-/** `tokens`. */
-export interface TokensTable {
-  id: string;
-  label: string;
-  kind: string;
-  scopes: string;
-  secret_hash: string;
-  created_at: number;
-  last_used_at: number | null;
-  revoked_at: number | null;
-}
-
-/** `devices`. */
-export interface DevicesTable {
-  id: string;
-  label: string;
-  alg: string;
-  public_key: string;
-  created_at: number;
-  last_seen_at: number | null;
-  revoked_at: number | null;
-}
-
-/** `pair_codes`. */
-interface PairCodesTable {
-  code_hash: string;
-  expires_at: number;
-  used_at: number | null;
-}
-
 /** `config_journal`: `before` and `after` hold JSON text, NULL when absent. */
 export interface ConfigJournalTable {
   id: Generated<number>;
@@ -329,7 +300,8 @@ interface RiskCacheTable {
 }
 
 /** The engine tables the store adapters query, by name. */
-export interface EngineTables extends PositionTables, NoticeTables, TelegramTables, BackupTables {
+export interface EngineTables
+  extends PositionTables, NoticeTables, TelegramTables, BackupTables, AccessTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;
@@ -348,9 +320,6 @@ export interface EngineTables extends PositionTables, NoticeTables, TelegramTabl
   ledger: LedgerTable;
   idempotency: IdempotencyTable;
   inbox: InboxTable;
-  tokens: TokensTable;
-  devices: DevicesTable;
-  pair_codes: PairCodesTable;
   config_journal: ConfigJournalTable;
   risk_cache: RiskCacheTable;
   txs: TxsTable;

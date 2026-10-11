@@ -10,7 +10,8 @@ import {
 } from "@binference/engine";
 import type { Selectable } from "kysely";
 import { z } from "zod";
-import type { EngineTables, TokensTable } from "../databases/engine-tables.js";
+import type { TokensTable } from "../databases/access-tables.js";
+import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
