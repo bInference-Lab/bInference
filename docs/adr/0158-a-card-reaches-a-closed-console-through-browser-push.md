@@ -1,6 +1,8 @@
 # 0158. A card reaches a closed console through browser push
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 ## Context
 
