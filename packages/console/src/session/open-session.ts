@@ -59,6 +59,8 @@ async function pair(context: SessionContext, code: string, store: DeviceStore): 
   if (subtle === undefined) {
     return signedOut("no_crypto");
   }
+  // The code leaves the address before anything can fail, so a timeout leaves no code behind.
+  context.browser.clearHash();
   context.report({ kind: "pairing" });
   const key = await createDeviceKey(subtle);
   const paired = await pairDevice(fetcher, {
@@ -67,7 +69,6 @@ async function pair(context: SessionContext, code: string, store: DeviceStore): 
     label: context.label,
     signal: context.signal,
   });
-  context.browser.clearHash();
   if (!paired.ok) {
     return signedOut(paired.refusal);
   }

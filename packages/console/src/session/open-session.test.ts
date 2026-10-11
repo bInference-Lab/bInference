@@ -38,6 +38,8 @@ interface Setup {
   /** The code a failed connect carries; the connect succeeds when left out. */
   readonly connectError?: string;
   readonly hasCrypto?: boolean;
+  /** Whether the engine never answers the pairing request. */
+  readonly pairHangsUp?: boolean;
 }
 
 function setUp(setup: Setup) {
@@ -47,7 +49,9 @@ function setUp(setup: Setup) {
   const steps: SessionState["kind"][] = [];
   const answer = setup.pairAnswer ?? { status: 201, body: { deviceId: "dev_new" } };
   const fetcher: Fetcher = async () =>
-    new Response(JSON.stringify(answer.body), { status: answer.status });
+    setup.pairHangsUp === true
+      ? Promise.reject(new DOMException("The operation timed out.", "TimeoutError"))
+      : new Response(JSON.stringify(answer.body), { status: answer.status });
   const connect = (credential: ConsoleCredential): ProtocolClient => {
     credentials.push(credential);
     const failure = Object.assign(new Error("refused"), { code: setup.connectError });
@@ -175,6 +179,12 @@ describe("opening the console's session", () => {
       kind: "signed_out",
       reason: "mini_expired",
     });
+  });
+
+  it("takes the pairing code out of the address before the request, even one that fails", async () => {
+    const test = setUp({ hash: "#pair=abc", pairHangsUp: true });
+    await openSession(test.context).catch(() => undefined);
+    expect(test.hash()).toBe("");
   });
 
   it("needs WebCrypto to keep a device key", async () => {
