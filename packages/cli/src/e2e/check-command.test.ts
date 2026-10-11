@@ -101,6 +101,16 @@ describe("binference check", () => {
     expect(json.byCheck.has("unlock.mode")).toBe(false);
   });
 
+  it("says what the ceiling promises, in the owner's language", slow, async () => {
+    const machine = await machines.create(nowMs);
+    await writeTestConfig(machine.folder);
+    const english = await runOn(machine, ["check"]);
+    const chinese = await runOn(machine, ["check"], { LANG: "zh_CN.UTF-8" });
+
+    expect(english.stdout).toContain(`${String(messages.en["cli.check.ceilingPromise"])}\n`);
+    expect(chinese.stdout).toContain(`${String(messages.zh["cli.check.ceilingPromise"])}\n`);
+  });
+
   it("leaves no path others can open after --fix", slow, async () => {
     const machine = await machines.create(nowMs);
     await writeTestConfig(machine.folder);

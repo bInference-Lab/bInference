@@ -34,6 +34,7 @@ function printFindings(output: CliOutput, findings: readonly CheckFinding[]): vo
     problems: at("fail").length,
     warnings: at("warn").length,
   });
+  output.say("check.ceilingPromise");
   const fixed = findings.flatMap((finding) => (finding.fixed === undefined ? [] : [finding.fixed]));
   if (fixed.length > 0) {
     output.say("check.fixes");
@@ -52,8 +53,9 @@ function printFindings(output: CliOutput, findings: readonly CheckFinding[]): vo
  * under a stable check id: `config.valid` (config.json5 loads and passes its schema),
  * `permissions.*` (the state folder and the files the specs keep owner-only), `unlock.mode` (a
  * warning in `file` mode, spec 5 section 3) and `engine.reachable`. `--fix` makes owner-only every
- * path others can open, the one fix the config spec names for it. Exits 1 while a problem
- * remains, else 0; warnings do not fail it. With `--json` it prints every finding.
+ * path others can open, the one fix the config spec names for it. It then says what the wallets'
+ * ceiling promises against a machine whose keys are stolen (decision 0149). Exits 1 while a
+ * problem remains, else 0; warnings do not fail it. With `--json` it prints every finding.
  */
 export async function runCheck(
   run: CommandRun,
