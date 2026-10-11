@@ -19,28 +19,40 @@ export interface ConnectionOptions {
 /** How long a statement waits for another connection's lock before it fails. */
 export const busyTimeoutMs = 5_000;
 
-const walRetryMs = 10;
-const pause = new Int32Array(new SharedArrayBuffer(4));
+/** How long to wait between two attempts to switch the journal to WAL. */
+const walAttemptGapMs = 10;
+const gapClock = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
 
-// SQLite skips the busy handler where waiting could deadlock, as when two connections switch a
-// new file to WAL at once, so the switch is retried until the busy timeout runs out.
-function enableWal(database: DatabaseSync): string {
+function journalMode(database: DatabaseSync, pragma: string): string {
+  const [mode] = Object.values(database.prepare(pragma).get() ?? {});
+  return typeof mode === "string" ? mode.toLowerCase() : String(mode);
+}
+
+/**
+ * Puts the database in WAL mode and returns the journal mode SQLite reports afterwards. WAL is
+ * kept in the file, so a database already in WAL needs no change. Changing the mode takes an
+ * exclusive lock, and SQLite may answer a busy or locked error at once instead of calling the busy
+ * handler (when waiting could deadlock, or while another connection recovers the log), so the
+ * switch is tried again until the busy timeout has passed.
+ */
+function switchToWal(database: DatabaseSync): string {
   const deadline = performance.now() + busyTimeoutMs;
   for (;;) {
     try {
-      const row = database.prepare("PRAGMA journal_mode = WAL").get();
-      return String(row?.["journal_mode"] ?? "");
+      const current = journalMode(database, "PRAGMA journal_mode");
+      return current === "wal" ? current : journalMode(database, "PRAGMA journal_mode = WAL");
     } catch (error) {
       if (!isSqliteLockError(error) || performance.now() >= deadline) {
         throw error;
       }
-      Atomics.wait(pause, 0, 0, walRetryMs);
+      // A worker thread may block; nothing else runs on it while the database opens.
+      Atomics.wait(gapClock, 0, 0, walAttemptGapMs);
     }
   }
 }
 
 function applySettings(database: DatabaseSync, options: ConnectionOptions): void {
-  const mode = enableWal(database);
+  const mode = switchToWal(database);
   if (mode !== "wal") {
     throw new BinferenceError({
       code: "store.wal_unavailable",
