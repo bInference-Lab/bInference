@@ -107,6 +107,18 @@ describe("defineTool", () => {
     );
   });
 
+  it("takes strict objects, records, lists, options and codecs that never coerce", () => {
+    const args = z.strictObject({
+      amountBase: decimalStringSchema,
+      legs: z.array(z.strictObject({ to: z.string(), bps: z.int().optional() })),
+      labels: z.record(z.string(), z.string()),
+      side: z.enum(["buy", "sell"]),
+    });
+    expect(
+      defineTool({ name: "plan", kind: "read", description: "Plan.", args, run: noText }).name,
+    ).toBe("plan");
+  });
+
   it("lets only a read run beside others, and carries the outside-content flag", () => {
     const empty = z.strictObject({});
     const read = defineTool({
@@ -161,6 +173,26 @@ describe("defineTool", () => {
   it.each([
     ["a name that is not lowercase words", { ...swapSpec, name: "Swap Now" }],
     ["arguments that are not an object", { ...swapSpec, args: z.string() }],
+    [
+      "an object that allows fields it does not name",
+      { ...swapSpec, args: z.object({ reason: z.string() }) },
+    ],
+    [
+      "a nested object that allows fields it does not name",
+      { ...swapSpec, args: z.strictObject({ leg: z.object({ to: z.string() }) }) },
+    ],
+    ["a field that coerces", { ...swapSpec, args: z.strictObject({ count: z.coerce.number() }) }],
+    [
+      "a coercing field inside a list",
+      {
+        ...swapSpec,
+        args: z.strictObject({ legs: z.array(z.strictObject({ at: z.coerce.date() })) }),
+      },
+    ],
+    [
+      "a coercing field behind an option",
+      { ...swapSpec, args: z.strictObject({ max: z.coerce.bigint().optional() }) },
+    ],
   ])("refuses a tool declared with %s", (_case, spec) => {
     expect(() => defineTool(spec as ToolSpec<unknown>)).toThrow(
       expect.objectContaining({ code: "runtime.tool_invalid" }),

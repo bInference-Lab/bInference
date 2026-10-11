@@ -1,4 +1,4 @@
-import { BinferenceError, type JsonValue, jsonValueSchema } from "@binference/core";
+import { BinferenceError, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import type { ToolDeclaration } from "../loop/model-message.js";
 import type { PreparedCall, ToolKind, ToolOutcome, ToolRunContext } from "../loop/turn-ports.js";
@@ -8,6 +8,7 @@ import {
   maxArgumentsDepth,
   parseArgumentsJson,
 } from "./arguments-json.schema.js";
+import { allowsUnnamedFields, coerces, inputJsonSchema } from "./schema-rules.schema.js";
 
 /** How a tool is declared: its name, kind and description, its arguments' schema, and its body. */
 export interface ToolSpec<Args> {
@@ -39,7 +40,6 @@ export interface AgentTool {
 export const maxResultChars = 12_000;
 
 const toolName = /^[a-z][a-z0-9_]{0,63}$/;
-const parametersSchema = z.record(z.string(), jsonValueSchema);
 
 function invalidTool(name: string, reason: string): BinferenceError {
   return new BinferenceError({
@@ -48,13 +48,20 @@ function invalidTool(name: string, reason: string): BinferenceError {
   });
 }
 
-// The model sees the schema of what it writes: the input side, where money is a string.
+// The model sees the schema of what it writes: the input side, where money is a string. Every
+// object is strict and nothing coerces, so a call is checked as the model wrote it.
 function parametersOf(name: string, args: z.ZodType): { readonly [key: string]: JsonValue } {
-  const parsed = parametersSchema.safeParse(z.toJSONSchema(args, { io: "input" }));
-  if (!parsed.success || parsed.data["type"] !== "object") {
+  if (coerces(args)) {
+    throw invalidTool(name, "a field of its arguments coerces what it reads");
+  }
+  const parameters = inputJsonSchema(args);
+  if (parameters?.["type"] !== "object") {
     throw invalidTool(name, "its arguments are not a JSON object");
   }
-  return parsed.data;
+  if (allowsUnnamedFields(parameters)) {
+    throw invalidTool(name, "an object of its arguments allows fields it does not name");
+  }
+  return parameters;
 }
 
 /** Cuts a result to {@link maxResultChars}, with a line saying how much was cut. */
