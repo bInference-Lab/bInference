@@ -1,6 +1,6 @@
 # 0172. The turn loop bounds every wait and answers only what it can
 
-Status: Accepted
+Status: Amended by 0173
 
 Accepted by the owner on 2026-10-12.
 

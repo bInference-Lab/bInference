@@ -606,6 +606,7 @@ than the agent's words (italics in Telegram).
 | Proposals held back                  | `turn.moreProposals`          | {count, plural, one {One more proposal follows} other {# more proposals follow}} once you answer this card | 你回复此卡片后，还会有 {count} 个提议                                        |
 | The budget is spent                  | `turn.budget`                 | Chat paused until {when}: today's model budget is spent. Orders keep running.                              | 对话暂停至 {when}：今日模型预算已用完。自动订单继续运行。                    |
 | Stopped                              | `turn.stopped`                | Stopped. Anything you already confirmed still goes through.                                                | 已停止。你已确认的操作仍会执行。                                             |
+| Stopped, a proposal's card open      | `turn.stoppedCardOpen`        | 🟡 Stopped. The card of its proposal is still open: answer it there.                                       | 🟡 已停止。其提议的卡片仍待处理，请在卡片上回复。                            |
 | 25 tool calls                        | `turn.toolCallLimit`          | Stopped: this answer reached its limit of 25 tool calls. Ask again to go on.                               | 已停止：本次回答已达到 25 次工具调用上限。请再次提问以继续。                 |
 | 40 model calls                       | `turn.modelCallLimit`         | Stopped: this answer reached its limit of 40 model calls. Ask again to go on.                              | 已停止：本次回答已达到 40 次模型调用上限。请再次提问以继续。                 |
 | The loop guard                       | `turn.loop`                   | Stopped: the agent repeated the same step three times.                                                     | 已停止：Agent 连续三次重复同一步骤。                                         |
@@ -627,6 +628,8 @@ than the agent's words (italics in Telegram).
 - A proposal whose outcome is unknown after a restart ([spec 8, section 2.4](runtime.md#section-2-4))
   gets `turn.failed.proposalUnknown` too.
 - The loop guard also sends `notice.loop` (section 4); the status line says it in the chat.
+- A turn stopped after the engine took its proposal ends with `turn.stoppedCardOpen` in place of
+  `turn.stopped` ([decision 0173](../DECISIONS.md#d0173)).
 
 <a id="section-8-2"></a>
 

@@ -275,7 +275,8 @@ schedule starts its turn marked.
 - **Stop.** `inbox/stop` aborts the running model call and every tool call that can stop. A propose
   call already sent finishes, up to 5 seconds. Calls not started get "not run: the owner stopped
   the agent". The turn ends `stopped`, and the messages that waited before the stop are dropped.
-  Stopping never cancels an intent: the owner cancels a proposal on its card.
+  Stopping never cancels an intent: the owner cancels a proposal on its card. A stopped turn whose
+  proposal the engine took says its card is still open ([decision 0173](../DECISIONS.md#d0173)).
 - **Freeze.** A freeze of the agent or the install sends `inbox/stop` with `reason: freeze`. While
   frozen, owner messages and settle messages still start turns, and proposals end
   `rejected_policy` with `frozen`. `turn/start` refuses a turn that only a schedule or an alert
@@ -410,7 +411,9 @@ was answered.
 it with the question buttons) and returns "asked; the answer comes as the owner's next message".
 The turn ends after its batch with outcome `ok`, without another model call. The answer arrives as
 `inbox/message` with `answer`, and starts the next turn once. A typed message in place of a button
-is the answer too.
+is the answer too. A proposal wins over a question: in a batch with a propose call that passed its
+check, every `ask_owner` call gets "not run: the card already asks the owner"
+([decision 0173](../DECISIONS.md#d0173)).
 
 <a id="section-7"></a>
 
