@@ -1,4 +1,5 @@
-import type { Http } from "@binference/core";
+import type { ProtocolClient } from "@binference/client";
+import type { Clock, Http } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
 import type { TempFolder } from "@binference/platform/testing";
 import { fakeBotToken } from "@binference/telegram/testing";
@@ -12,7 +13,8 @@ import {
   secretEnv,
   secretVariables,
 } from "./init-fixtures.js";
-import { engineLogLines } from "./test-host.js";
+import { miniAppClient, signedLaunch } from "./mini-app-fixtures.js";
+import { engineLogLines, freePort } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
 
 const slow = { timeout: 60_000 };
@@ -26,7 +28,11 @@ const repairingSchema = z.strictObject({ link: z.url(), expiresAt: z.int() });
 // The Telegram account `binference telegram pair` pairs in the owner's place.
 const nextOwnerId = 7_098_765_432;
 
+// The Mini App clients a test opened, closed before their engine stops.
+const minis: ProtocolClient[] = [];
+
 afterEach(async () => {
+  minis.splice(0).forEach((client) => client.close());
   await engines.stopAll();
   await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
 });
@@ -108,6 +114,13 @@ function ownerText(updateId: number, text: string) {
   return textFrom(ownerId, updateId, text);
 }
 
+// A Mini App that signs in with a launch over the engine's WS at `origin`.
+function openMini(origin: string, initData: string, clock: Clock): ProtocolClient {
+  const client = miniAppClient({ origin, initData, clock });
+  minis.push(client);
+  return client;
+}
+
 interface SetUp {
   readonly machine: InitMachine;
   readonly clock: ManualClock;
@@ -163,6 +176,36 @@ describe("the owner's bot in binference start", () => {
     machine.bot.push(ownerText(2, "/status"));
     await after.until(sent("binference 2026.10.0-test is running."));
   });
+
+  it(
+    "still refuses a Mini App launch that signed in before the engine restarted",
+    slow,
+    async () => {
+      const { machine, clock, code } = await setUp();
+      const port = await freePort();
+      const origin = `http://127.0.0.1:${String(port)}`;
+      const before = watchedWorld(machine);
+      await engines.start(machine, { port, parts: { http: before.http } });
+      machine.bot.push(ownerText(1, `/start ${code}`));
+      await before.until(sent("You are now the owner of this bot."));
+      const initData = signedLaunch(ownerId, clock.now());
+      const signal = AbortSignal.timeout(10_000);
+      await expect(openMini(origin, initData, clock).connect(signal)).resolves.toMatchObject({
+        t: "ready",
+      });
+      minis.splice(0).forEach((client) => client.close());
+      await clock.advance(1_000);
+      await before.until(poll(2));
+      await engines.stopAll();
+      await engines.start(machine, { port, parts: { http: watchedWorld(machine).http } });
+      const replay = openMini(origin, initData, clock);
+      await expect(replay.connect(signal)).rejects.toMatchObject({ code: "auth.invalid" });
+      const fresh = signedLaunch(ownerId, clock.now(), "AAHdF6IQAAAAAN0XohDhrOrd");
+      await expect(openMini(origin, fresh, clock).connect(signal)).resolves.toMatchObject({
+        t: "ready",
+      });
+    },
+  );
 
   it("pairs another account with binference telegram pair and tells the owner", slow, async () => {
     const { machine, clock, code } = await setUp();

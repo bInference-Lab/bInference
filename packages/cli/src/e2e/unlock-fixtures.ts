@@ -34,6 +34,8 @@ interface StartParts {
   readonly parts?: HostParts;
   /** The engine's environment; the machine's secrets when left out. */
   readonly env?: Readonly<Record<string, string>>;
+  /** The engine's HTTP port; a free one when left out. */
+  readonly port?: number;
 }
 
 /** Engines a test file starts, so each test stops its own before its folder goes. */
@@ -71,7 +73,7 @@ export function createRunningEngines(): RunningEngines {
       return machine;
     },
     async start(machine, options = {}) {
-      const port = String(await freePort());
+      const port = String(options.port ?? (await freePort()));
       const argv = ["start", "--foreground", "--json", "--set", `engine.port=${port}`];
       const host = hostWith(machine, argv, {
         env: options.env ?? secretEnv(machine),

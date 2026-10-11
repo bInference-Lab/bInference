@@ -35,11 +35,6 @@ export interface ServerLimits {
   readonly maxTopics: number;
   /** The most topics one connection may subscribe to. */
   readonly maxTopicsPerConnection: number;
-  /**
-   * The most Mini App launches the server keeps across connections to refuse a repeat; past it, the
-   * oldest goes first.
-   */
-  readonly maxSeenLaunches: number;
   /** How long `close` waits for clients to answer `bye` before it cuts their sockets. */
   readonly closeGraceMs: number;
 }
@@ -66,6 +61,5 @@ export const defaultServerLimits: ServerLimits = {
   pushRetentionMs: 10 * 60_000,
   maxTopics: 1_024,
   maxTopicsPerConnection: 64,
-  maxSeenLaunches: 1_024,
   closeGraceMs: 1_000,
 };

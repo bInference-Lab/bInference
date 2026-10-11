@@ -3,8 +3,7 @@ import { createManualClock, createSeededRandom } from "@binference/core/testing"
 import { type AccessStore, sha256Hex } from "@binference/engine";
 import { createMemoryAccessStore } from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
-import { createSeenLaunches } from "./seen-launches.js";
-import { createSignIn, launchRetentionMs, type MiniAppAuth } from "./sign-in.js";
+import { createSignIn, type MiniAppAuth } from "./sign-in.js";
 import { telegramLaunchHash } from "./telegram-launch.js";
 
 const token = `bnt_${"t".repeat(43)}`;
@@ -31,18 +30,13 @@ async function accessWithToken(
   return access;
 }
 
-function launchesOf() {
-  return createSeenLaunches({ retentionMs: launchRetentionMs, maxEntries: 16 });
-}
-
 describe("createSignIn", () => {
   const clock = createManualClock(500);
   const random = createSeededRandom(3);
-  const launches = launchesOf();
 
   it("signs a token in over IPC with its scopes and marks its use", async () => {
     const access = await accessWithToken();
-    const signIn = createSignIn({ auth: { access }, launches, clock, random });
+    const signIn = createSignIn({ auth: { access }, clock, random });
     const step = await signIn.start({ credential: { token }, transport: "ipc" }, live.signal);
     expect(step).toStrictEqual({
       ok: true,
@@ -72,7 +66,6 @@ describe("createSignIn", () => {
   ] as const)("refuses %s", async (_name, request, code) => {
     const signIn = createSignIn({
       auth: { access: await accessWithToken() },
-      launches,
       clock,
       random,
     });
@@ -85,7 +78,6 @@ describe("createSignIn", () => {
   it("signs a token in before its expiry, carrying it, and refuses it from then on", async () => {
     const before = createSignIn({
       auth: { access: await accessWithToken({ expiresAtMs: 501 }) },
-      launches,
       clock,
       random,
     });
@@ -95,7 +87,7 @@ describe("createSignIn", () => {
       value: { identity: { credential: tokenId, expiresAtMs: 501 } },
     });
     const access = await accessWithToken({ expiresAtMs: 500 });
-    const at = createSignIn({ auth: { access }, launches, clock, random });
+    const at = createSignIn({ auth: { access }, clock, random });
     await expect(at.start(request, live.signal)).resolves.toStrictEqual({
       ok: false,
       error: "auth.expired",
@@ -105,7 +97,7 @@ describe("createSignIn", () => {
   });
 
   it("refuses every sign-in when the server holds no credentials", async () => {
-    const signIn = createSignIn({ launches, clock, random });
+    const signIn = createSignIn({ clock, random });
     const step = await signIn.start({ credential: { token }, transport: "ipc" }, live.signal);
     expect(step).toStrictEqual({ ok: false, error: "auth.required" });
   });
@@ -117,7 +109,7 @@ describe("createSignIn", () => {
       live,
     );
     await access.revokeDevice({ id: deviceId, atMs: 1 }, live);
-    const signIn = createSignIn({ auth: { access }, launches, clock, random });
+    const signIn = createSignIn({ auth: { access }, clock, random });
     const request = {
       credential: { device: deviceId },
       transport: "ws",
@@ -160,7 +152,7 @@ describe("createSignIn for the Telegram Mini App", () => {
     const clock = createManualClock(launchAtMs + 30_000);
     const miniApp: MiniAppAuth = { botToken, ownerId: async () => owner };
     const auth = { access: createMemoryAccessStore(), miniApp };
-    return { clock, signIn: createSignIn({ auth, launches: launchesOf(), clock, random }) };
+    return { clock, auth, signIn: createSignIn({ auth, clock, random }) };
   }
 
   it("signs the owner's launch in with the Mini App's scopes", async () => {
@@ -224,6 +216,35 @@ describe("createSignIn for the Telegram Mini App", () => {
     ]);
   });
 
+  it("refuses a launch that signed in before the engine restarted on the same store", async () => {
+    const { signIn, auth, clock } = setUp(ownerId);
+    const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
+    const first = await signIn.start(miniRequest(initData), live.signal);
+    const restarted = createSignIn({ auth, clock, random });
+    const again = await restarted.start(miniRequest(initData), live.signal);
+    expect([first.ok, again]).toStrictEqual([true, { ok: false, error: "auth.invalid" }]);
+  });
+
+  it("claims the SHA-256 of the launch's hash, at the engine's time, for 24 hours", async () => {
+    const { auth, clock } = setUp(ownerId);
+    const claims: unknown[] = [];
+    const access = {
+      ...auth.access,
+      claimLaunch: async (...args: Parameters<AccessStore["claimLaunch"]>) => {
+        claims.push(args[0]);
+        return auth.access.claimLaunch(...args);
+      },
+    };
+    const signIn = createSignIn({ auth: { ...auth, access }, clock, random });
+    const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
+    await signIn.start(miniRequest(initData), live.signal);
+    const hash = String(new URLSearchParams(initData).get("hash"));
+    const atMs = launchAtMs + 30_000;
+    expect(claims).toStrictEqual([
+      { launchHash: sha256Hex(hash), atMs, sinceMs: atMs - 24 * 60 * 60_000 + 1 },
+    ]);
+  });
+
   it("refuses a launch someone changed after Telegram signed it", async () => {
     const { signIn } = setUp(ownerId);
     const initData = launchOf({ userId: ownerId + 1, atMs: launchAtMs }).replace(
@@ -241,7 +262,7 @@ describe("createSignIn for the Telegram Mini App", () => {
     const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
     const clock = createManualClock(launchAtMs);
     const auth = { access: createMemoryAccessStore() };
-    const botless = createSignIn({ auth, launches: launchesOf(), clock, random });
+    const botless = createSignIn({ auth, clock, random });
     expect([
       await signIn.start(miniRequest(initData, "ipc"), live.signal),
       await botless.start(miniRequest(initData), live.signal),

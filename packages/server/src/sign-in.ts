@@ -4,7 +4,6 @@ import { type AccessStore, type DeviceRecord, sha256Hex } from "@binference/engi
 import type { Credential, ProtocolId, Scope } from "@binference/protocol";
 import { isDeviceProofValid } from "./device-proof.js";
 import type { Transport } from "./operation-handlers.js";
-import type { SeenLaunches } from "./seen-launches.js";
 import { checkTelegramLaunch, type TelegramLaunchRefusal } from "./telegram-launch.js";
 
 /** What a Telegram Mini App launch is checked against: the owner's bot and the owner. */
@@ -71,8 +70,6 @@ export interface SignIn {
 /** What a {@link SignIn} reads. Without `auth`, every sign-in fails with `auth.required`. */
 export interface SignInOptions {
   readonly auth?: ServerAuth;
-  /** The Mini App launches that signed in, refused if they come again. */
-  readonly launches: SeenLaunches;
   readonly clock: Clock;
   readonly random: Random;
 }
@@ -94,7 +91,7 @@ const miniAppScopes: readonly Scope[] = ["read", "chat", "confirm", "loosen"];
 const launchMaxAgeMs: number = 5 * 60_000;
 
 /** How long a launch that signed in is refused if it comes again (protocol spec, section 4.2). */
-export const launchRetentionMs: number = 24 * 60 * 60_000;
+const launchRetentionMs: number = 24 * 60 * 60_000;
 
 const nonceBytes = 32;
 
@@ -114,13 +111,15 @@ export function telegramCredentialOf(userId: number): string {
 
 // A launch signs in when Telegram signed it with the owner's bot token, its `auth_date` is fresh,
 // the owner opened it, and it never signed in before. The hash is claimed last, after the owner
-// check, in one step, so two connections with the same launch never both pass.
+// check, in one write to `engine.sqlite` that also forgets the claims older than the retention,
+// so two connections with the same launch never both pass, even across a restart.
 async function signInWithLaunch(
-  miniApp: MiniAppAuth,
+  auth: { readonly access: AccessStore; readonly miniApp: MiniAppAuth },
   initData: string,
-  context: { readonly options: SignInOptions; readonly signal: AbortSignal },
+  context: { readonly clock: Clock; readonly signal: AbortSignal },
 ): Promise<Result<SignInStep, SignInRefusal>> {
-  const { clock, launches } = context.options;
+  const { access, miniApp } = auth;
+  const { clock, signal } = context;
   const launch = checkTelegramLaunch({
     initData,
     botToken: miniApp.botToken,
@@ -130,11 +129,14 @@ async function signInWithLaunch(
   if (!launch.ok) {
     return err(launchRefusals[launch.error]);
   }
-  const ownerId = await miniApp.ownerId({ signal: context.signal });
+  const ownerId = await miniApp.ownerId({ signal });
   if (ownerId === undefined || ownerId !== launch.value.userId) {
     return err("auth.invalid");
   }
-  if (!launches.claim(launch.value.hash, clock.now())) {
+  const atMs = clock.now();
+  const sinceMs = Math.max(0, atMs - launchRetentionMs + 1);
+  const claim = { launchHash: sha256Hex(launch.value.hash), atMs, sinceMs };
+  if ((await access.claimLaunch(claim, { signal })) === "seen") {
     return err("auth.invalid");
   }
   const identity = { credential: telegramCredentialOf(ownerId), scopes: miniAppScopes };
@@ -211,7 +213,8 @@ async function signInWithDevice(
  * in over WS only, by signing a fresh nonce and the page's origin with its paired key. A Telegram
  * Mini App launch signs in over WS only, with the Mini App's scopes, when Telegram signed its
  * `initData` with the owner's bot token, its `auth_date` lies within 5 minutes of now, the owner's
- * numeric Telegram id opened it, and its hash has not signed in within 24 hours; a stale one is
+ * numeric Telegram id opened it, and its hash has not signed in within 24 hours, as `engine.sqlite`
+ * keeps them across restarts; a stale one is
  * `auth.expired`, any other `auth.invalid`, as is every launch without the owner's bot. An
  * unknown credential is `auth.invalid`, a revoked one `auth.revoked`, a token at or past its
  * expiry `auth.expired`.
@@ -240,7 +243,10 @@ export function createSignIn(options: SignInOptions): SignIn {
       const miniApp = options.auth?.miniApp;
       return miniApp === undefined
         ? err("auth.invalid")
-        : signInWithLaunch(miniApp, credential.telegram.initData, { options, signal });
+        : signInWithLaunch({ access, miniApp }, credential.telegram.initData, {
+            clock: options.clock,
+            signal,
+          });
     },
   };
 }
