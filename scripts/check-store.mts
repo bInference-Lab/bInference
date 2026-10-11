@@ -18,7 +18,7 @@ import {
 } from "./store/migration-lock.mjs";
 
 // Raw SQL is legal in migrations, the connection layer (opening pragmas, transactions,
-// integrity checks, VACUUM INTO) and the copied dialect. The engine lock in platform takes an OS
+// integrity checks, VACUUM INTO) and the dialect. The engine lock in platform takes an OS
 // file lock through one node:sqlite statement on the main thread (ENGINEERING.md 2.6).
 const rawSqlAllowed = [
   "packages/store/src/migrations/",

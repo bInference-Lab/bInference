@@ -17,7 +17,7 @@ Rules for this package:
   and are decoded on the other side, so a codec such as an amount's decimal text works.
 - Queries use Kysely through `createSyncKysely`. Raw SQL appears only in `src/migrations/`,
   `src/sqlite/` (opening pragmas, transaction control, integrity checks, `VACUUM INTO`) and the
-  copied dialect in `src/dialect/`.
+  dialect in `src/dialect/`.
 - Migrations are `src/migrations/<database>/NNNN_name.ts`, numbered from 0001 with no gap, listed
   in order in `<database>-migrations.ts`, forward-only, with no `down`. Each runs in one
   transaction with its version bump. `pnpm check:store --write` locks a new file's hash in
@@ -43,5 +43,5 @@ Rules for this package:
 - Tests that start workers pass `execArgv` with `--conditions=@binference/source` and
   `--import tsx`, so the workers run the TypeScript source. They close every handle before they
   delete a file: Windows refuses to delete a file a connection holds.
-- `src/dialect/` holds code adapted from an MIT-licensed project; `NOTICES.md` holds its notice.
-  Keep each file's header.
+- `src/dialect/` runs Kysely's compiled SQL synchronously on `node:sqlite`, with a cache of
+  prepared statements per connection that `openConnection` turns on.
