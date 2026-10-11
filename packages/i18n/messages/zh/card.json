@@ -1,5 +1,6 @@
 {
   "header": "🟡 确认{action, select, swap {兑换} buy {买入} sell {卖出} send {转账} revoke {撤销授权} supply {存入} withdraw {取出} borrow {借款} repay {还款} stake {质押} unstake {解除质押} claim {领取} bridge {跨链} order {Binance 订单} register {链上登记} launch {发射} rescue {紧急转出} unfreeze {解除冻结} other {操作}} · {agent} · {mode, select, paper {🧪 模拟} other {🔴 实盘}}",
+  "header.console": "🟡 确认{action, select, swap {兑换} buy {买入} sell {卖出} send {转账} revoke {撤销授权} supply {存入} withdraw {取出} borrow {借款} repay {还款} stake {质押} unstake {解除质押} claim {领取} bridge {跨链} order {Binance 订单} register {链上登记} launch {发射} rescue {紧急转出} unfreeze {解除冻结} other {操作}} · {agent}{mode, select, paper {} other { · 🔴 实盘}}",
   "swap.action": "卖出 {in} → 至少收到 {minOut}",
   "buy.action": "用 {spend} 买入 {token} · 在 {place}",
   "sell.action": "卖出 {amount} → 至少收到 {minOut} · 在 {place}",

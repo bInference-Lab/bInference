@@ -1,5 +1,6 @@
 {
   "header": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} supply {supply} withdraw {withdraw} borrow {borrow} repay {repay} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} unfreeze {unfreeze} other {action}} · {agent} · {mode, select, paper {🧪 Paper} other {🔴 Live}}",
+  "header.console": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} supply {supply} withdraw {withdraw} borrow {borrow} repay {repay} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} unfreeze {unfreeze} other {action}} · {agent}{mode, select, paper {} other { · 🔴 Live}}",
   "swap.action": "Sell {in} → at least {minOut}",
   "buy.action": "Buy {token} with {spend} · on {place}",
   "sell.action": "Sell {amount} → at least {minOut} · on {place}",

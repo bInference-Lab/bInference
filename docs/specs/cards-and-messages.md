@@ -67,16 +67,17 @@ names the keys and fixes the wording.
 
 Every card has these lines, in order; a line without data is left out.
 
-| Line       | Key                  | Content                                                         |
-| ---------- | -------------------- | --------------------------------------------------------------- |
-| Header     | `card.header`        | Status icon, the action, the agent's name, 🧪 Paper or 🔴 Live  |
-| Action     | `card.<kind>.action` | The kind's main line (section 3.3)                              |
-| Route      | `card.route`         | Venues with their shares, price impact, maximum slippage        |
-| Fees       | `card.fees`          | Network fee in USD, and "private send"                          |
-| Check      | `card.check`         | Simulation result and token verdict                             |
-| Warnings   | `card.warn.*`        | Outside content, unusual characters, new address, risk warnings |
-| Agent says | `card.reason`        | The agent's reason, escaped                                     |
-| Expiry     | `card.expiry`        | "Expires at 14:32:05"                                           |
+| Line             | Key                   | Content                                                                       |
+| ---------------- | --------------------- | ----------------------------------------------------------------------------- |
+| Header           | `card.header`         | Status icon, the action, the agent's name, 🧪 Paper or 🔴 Live                |
+| Header (console) | `card.header.console` | The same, without the mode: the Paper label marks a paper card, 🔴 Live stays |
+| Action           | `card.<kind>.action`  | The kind's main line (section 3.3)                                            |
+| Route            | `card.route`          | Venues with their shares, price impact, maximum slippage                      |
+| Fees             | `card.fees`           | Network fee in USD, and "private send"                                        |
+| Check            | `card.check`          | Simulation result and token verdict                                           |
+| Warnings         | `card.warn.*`         | Outside content, unusual characters, new address, risk warnings               |
+| Agent says       | `card.reason`         | The agent's reason, escaped                                                   |
+| Expiry           | `card.expiry`         | "Expires at 14:32:05"                                                         |
 
 <a id="section-3-2"></a>
 

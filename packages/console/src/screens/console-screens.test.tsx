@@ -128,14 +128,14 @@ describe("the confirmations screen", () => {
     const { container } = renderSignedIn(<ConfirmationsScreen />, { client });
     await settle();
     const title = container.querySelector("[data-slot=card-title]");
-    // Each icon's name is read to screen readers: the waiting icon, then the paper icon.
-    expect(title?.textContent).toBe("Waiting Confirm swap · main · Paper PaperPaper");
+    // The waiting icon's name is read to screen readers; the Paper label alone marks the mode.
+    expect(title?.textContent).toBe("Waiting Confirm swap · mainPaper");
     expect(title?.textContent).not.toMatch(new RegExp(`${waiting}|${paperIcon}`, "u"));
-    expect(title?.querySelectorAll("svg[aria-hidden=true]")).toHaveLength(2);
+    expect(title?.querySelectorAll("svg[aria-hidden=true]")).toHaveLength(1);
     expect(screen.getByText("Sell 0.5 BNB → at least 312.4 USDT")).toBeDefined();
     expect(screen.getByText("Expires at 08:01:00")).toBeDefined();
-    // The paper icon's name, the header's word and the Paper label.
-    expect(screen.getAllByText("Paper")).toHaveLength(3);
+    // Only the Paper label: the console's header leaves the mode out.
+    expect(screen.getAllByText("Paper")).toHaveLength(1);
   });
 
   it("confirms the card version it shows", async () => {

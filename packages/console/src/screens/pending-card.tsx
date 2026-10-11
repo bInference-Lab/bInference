@@ -1,4 +1,4 @@
-import { cardLineText } from "@binference/i18n";
+import { cardLineText, type Formatter } from "@binference/i18n";
 import type { CardLinesView, IntentView } from "@binference/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, XIcon } from "lucide-react";
@@ -67,6 +67,17 @@ function AnswerButtons(props: {
  * icons as line icons, with Confirm and Cancel for a connection that holds the `confirm` scope. A Confirm names the card
  * version it shows, so a new quote is never confirmed unseen.
  */
+// The card's lines as the console shows them: the Paper label marks the mode, so the header line
+// is the console's own, without it.
+function consoleLines(shown: CardLinesView | undefined, formatter: Formatter): readonly string[] {
+  return (shown?.lines ?? []).map((line) =>
+    cardLineText(line.key === "card.header" ? { ...line, key: "card.header.console" } : line, {
+      formatter,
+      assets: shown?.assets ?? {},
+    }),
+  );
+}
+
 export function PendingCard(props: { readonly intent: IntentView }): React.JSX.Element {
   const { intent } = props;
   const { isFocused, showIn } = useFocusedCard(intent.intent);
@@ -79,9 +90,7 @@ export function PendingCard(props: { readonly intent: IntentView }): React.JSX.E
       client.call("intent/card", { intent: intent.intent }, { signal }),
   });
   const answer = useAnswer(intent.intent);
-  const lines = (card.data?.lines ?? []).map((line) =>
-    cardLineText(line, { formatter, assets: card.data?.assets ?? {} }),
-  );
+  const lines = consoleLines(card.data, formatter);
   const [header, ...rest] = lines;
   const shown = card.data;
   return (
