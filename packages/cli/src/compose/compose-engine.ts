@@ -19,13 +19,7 @@ import {
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
-import {
-  createDeviceHandlers,
-  createDevicePairing,
-  createLockoutNotices,
-  createTokenHandlers,
-} from "@binference/engine/access";
-import { createNoticeHandlers } from "@binference/engine/notices";
+import { createDevicePairing, createLockoutNotices } from "@binference/engine/access";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
@@ -38,9 +32,10 @@ import {
   telegramCredentialOf,
 } from "@binference/server";
 import type { WebPushRelay } from "../web-push/web-push-relay.js";
+import { accessHandlersOf } from "./access-handlers.js";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
 import { composeWebPush, type WebPushParts } from "./compose-web-push.js";
-import { type ConsoleOrigin, consoleOriginCell } from "./console-origin.js";
+import { consoleOriginCell } from "./console-origin.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
 
@@ -256,46 +251,6 @@ function serverOf(
   });
 }
 
-// The notice, token and device handlers; a device or token revoke also ends the open connections
-// signed in with it (decisions 0155 and 0159).
-function accessHandlersOf(
-  parts: EngineParts,
-  options: ComposeEngineOptions,
-  context: {
-    readonly ids: IdSource;
-    readonly origin: ConsoleOrigin;
-    readonly server: () => ProtocolServer;
-  },
-): EngineHandlerTable {
-  const { clock, random } = options;
-  const devices = createDeviceHandlers({
-    access: parts.stores.access,
-    clock,
-    random,
-    consoleOrigin: context.origin.get,
-  });
-  const tokens = createTokenHandlers({ access: parts.stores.access, clock, ids: context.ids });
-  return {
-    ...createNoticeHandlers(parts.stores.notices),
-    ...tokens,
-    "token/revoke": async (call) => {
-      const revoked = await tokens["token/revoke"](call);
-      if (revoked.ok) {
-        context.server().endSessions(call.args.token, "auth.revoked");
-      }
-      return revoked;
-    },
-    ...devices,
-    "device/revoke": async (call) => {
-      const revoked = await devices["device/revoke"](call);
-      if (revoked.ok) {
-        context.server().endSessions(call.args.device, "auth.revoked");
-      }
-      return revoked;
-    },
-  };
-}
-
 // The engine on the profile parts, its venue host and risk check, publishing through `publish`.
 function engineOf(
   parts: EngineParts,
@@ -359,7 +314,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   const origin = consoleOriginCell();
   const handlers: EngineHandlerTable = {
     ...engine.handlers,
-    ...accessHandlersOf(parts, options, { ids, origin, server: () => server }),
+    ...accessHandlersOf({ ...options, stores: parts.stores, ids, origin, server: () => server }),
     ...webPush.handlers,
     ...options.handlers,
   };

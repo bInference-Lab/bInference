@@ -8,12 +8,10 @@ import {
   type WalletFactsSource,
 } from "@binference/engine";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
-import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
 import { isPublicEndpoint } from "../runtime/public-address.js";
-import { composeBackupOperations } from "./backup-operations.js";
 import { composePrices } from "./chain-prices.js";
 import { type ChainReads, composeChainReads, rpcHealthOf } from "./chain-reads.js";
 import { type ComposedSimulators, composeSimulators } from "./chain-simulators.js";
@@ -23,8 +21,7 @@ import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
-import { createEngineOperations } from "./engine-operations.js";
-import { type HealthSignal, startHealthProbe } from "./health-signals.js";
+import { engineHandlers } from "./engine-handlers.js";
 import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
@@ -32,7 +29,6 @@ import { paperBalancesOf } from "./paper-balances.js";
 import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
-import { createTelegramPair } from "./telegram-pair.js";
 
 /** The self-hosted engine, built and not yet listening. */
 export interface ComposedSelfHosted {
@@ -123,52 +119,6 @@ function composeSending(
   // The executor finishes a signature or a send under way within the shutdown's budget.
   closers.add("executor", async (signal) => composed.executor.close({ signal }));
   return { ...composed, pushes };
-}
-
-/** What the engine's own operations answer from besides the stores. */
-interface EngineWiring extends Pick<ComposedSelfHosted, "stopper" | "locked"> {
-  /** Where a long job's end goes, once the engine's publish exists. */
-  readonly jobs: { publish: (push: EnginePush) => void };
-  /** The `rpc` health signal: how the chains' RPC endpoints answered. */
-  readonly rpc: () => HealthSignal["state"];
-  /** The executor's health signal. */
-  readonly executor: () => HealthSignal["state"];
-  /** The custody signal: ok while custody is open, failing while the engine is locked. */
-  readonly custody: () => HealthSignal["state"];
-  /** The backup key signal: a warning while backups are still sealed to the owner key itself. */
-  readonly backupKey: () => HealthSignal["state"];
-}
-
-// The engine's own operations: its status with the health signals, its stop, its unlock, a new
-// pairing link for the owner's bot, and the backups.
-function engineHandlers(
-  opening: Opening,
-  opened: Opened,
-  wiring: EngineWiring,
-): EngineHandlerTable {
-  const probe = startHealthProbe({
-    parts: [
-      { signal: "executor", state: wiring.executor },
-      { signal: "custody", state: wiring.custody },
-      { signal: "rpc", state: wiring.rpc },
-      { signal: "backup_key", state: wiring.backupKey },
-    ],
-    logFailed: opened.log.hasFailed,
-  });
-  opening.closers.add("health", async () => probe.stop());
-  const { clock, random } = opening.host;
-  return {
-    ...createEngineOperations({
-      agents: opened.stores.agents,
-      version: opening.host.version,
-      state: wiring.locked.state,
-      lock: wiring.locked.lock,
-      health: () => probe.read(),
-      stop: () => wiring.stopper.stop(),
-    }),
-    ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
-    ...composeBackupOperations(opening, opened, (push) => wiring.jobs.publish(push)),
-  };
 }
 
 // The confirmed intents an earlier run left wait for the keys (decision 0103); once the engine
