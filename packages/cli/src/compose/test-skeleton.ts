@@ -99,8 +99,11 @@ export interface SkeletonComposition {
   readonly parts: () => EngineParts;
 }
 
-// The fake chain and BNB Smart Chain, whose registries give each venue's contracts a ceiling lists.
-function fakeChains(): ChainRegistry {
+/**
+ * The skeleton's chains: the fake chain and BNB Smart Chain, whose registries give each venue's
+ * contracts a ceiling lists.
+ */
+export function skeletonChains(): ChainRegistry {
   return createChainRegistry({
     chains: [createFakeChainDefinition(), bsc],
     families: [createFakeFamily(), createEvmFamily()],
@@ -116,7 +119,7 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
     parts: () => {
       const held = new Map(wallets);
       const clock = createManualClock(testNowMs);
-      const ceilings = createFakeCeilingEditor({ clock, chains: fakeChains() });
+      const ceilings = createFakeCeilingEditor({ clock, chains: skeletonChains() });
       const keys = new Map([[walletRecord.custodyWalletId, skeletonWalletKey]]);
       return {
         exporter: createFakeWalletExporter({ keys, seal: sealTo }),
