@@ -1,7 +1,12 @@
 import type { Http, HttpRequest } from "@binference/core";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
-import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
+import {
+  createFakeBotApi,
+  type FakeBotApi,
+  fakeBotApiBase,
+  fakeBotToken,
+} from "../testing/fake-bot-api.js";
 import { botApiRequestOf, createBotApiFetch } from "./bot-api-fetch.js";
 import { callBotApi } from "./call-bot-api.js";
 
@@ -33,7 +38,7 @@ describe("grammY's fetch over the Http port", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({
       method: "POST",
-      url: `https://api.telegram.org/bot${fakeBotToken}/sendMessage`,
+      url: `${fakeBotApiBase}/sendMessage`,
       headers: { "content-type": "application/json" },
     });
     expect(sent[0]?.body).toBe('{"chat_id":42,"text":"hello"}');

@@ -1,6 +1,11 @@
 import { createSecret, type Http, type HttpRequest } from "@binference/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
+import {
+  createFakeBotApi,
+  type FakeBotApi,
+  fakeBotApiBase,
+  fakeBotToken,
+} from "../testing/fake-bot-api.js";
 import { ownerId, textUpdate } from "../testing/update-fixtures.js";
 import { openPollWorker, type PollWorker, pollWorker } from "./open-poll-worker.js";
 
@@ -84,7 +89,7 @@ describe("the poll worker", () => {
     expect(bot.sent).toHaveLength(1);
     expect(bot.sent[0]).toMatchObject({
       method: "POST",
-      url: `https://api.telegram.org/bot${fakeBotToken}/getUpdates`,
+      url: `${fakeBotApiBase}/getUpdates`,
       headers: { "content-type": "application/json" },
     });
   });
