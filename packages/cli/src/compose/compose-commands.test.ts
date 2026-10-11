@@ -174,9 +174,11 @@ describe("the owner's fast commands on the engine", () => {
   it("opens the Mini App from /console at the published address", async () => {
     const test = await bot({}, { miniAppUrl: "https://owner.example.ts.net/mini" });
     await test.send("/console");
-    expect(test.botApi.messages().map(({ buttons }) => buttons)).toStrictEqual([
-      [[{ text: "Open the console", webApp: "https://owner.example.ts.net/mini" }]],
-    ]);
+    const buttons = test.botApi.messages().flatMap((message) => message.buttons.flat());
+    expect(buttons.map((button) => button.text)).toStrictEqual(["Open the console"]);
+    expect(buttons[0]?.webApp).toMatch(
+      /^https:\/\/owner\.example\.ts\.net\/mini#ticket=[\w-]{43}$/,
+    );
   });
 
   it("freezes every agent from Telegram, and the engine says Telegram did", async () => {

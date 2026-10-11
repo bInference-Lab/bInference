@@ -56,6 +56,14 @@ export interface FastCommandsOptions {
    * without one, `/console` says how to set it.
    */
   readonly miniAppUrl?: string;
+  /**
+   * Makes a single-use Mini App launch ticket for a Telegram user and keeps only its hash
+   * (`issueLaunchTicket` of `@binference/engine/access`).
+   */
+  readonly issueLaunchTicket: (request: {
+    readonly userId: number;
+    readonly signal: AbortSignal;
+  }) => Promise<string>;
   readonly logger: Logger;
 }
 
@@ -133,6 +141,7 @@ function contextOf(parts: Parts, asker: Asker): CommandContext {
     words: (key: string, values?: MessageValues) => formatter.message(key, values),
     senderId,
     ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
+    issueLaunchTicket: async () => options.issueLaunchTicket({ userId: senderId, signal }),
     signal,
     say: async (text, sayOptions) => bot.say(target, text, { signal, ...sayOptions }),
   };

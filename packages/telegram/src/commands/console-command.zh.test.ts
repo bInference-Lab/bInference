@@ -2,17 +2,19 @@ import { describe, expect, it } from "vitest";
 import { startCommandBot } from "./test-command-bot.js";
 
 const miniAppUrl = "https://owner.example.ts.net/mini";
+const ticketAddress = /^https:\/\/owner\.example\.ts\.net\/mini#ticket=[\w-]{43}$/;
 
 describe("the /console command in Chinese", () => {
   it("sends the button in the owner's language", async () => {
     const bot = await startCommandBot({}, { locale: "zh", miniAppUrl });
     await bot.send("/console");
-    expect(bot.botApi.messages().map(({ text, buttons }) => ({ text, buttons }))).toStrictEqual([
-      {
-        text: "点击按钮，在 Telegram 中打开控制台。",
-        buttons: [[{ text: "打开控制台", webApp: miniAppUrl }]],
-      },
+    const messages = bot.botApi.messages();
+    expect(messages.map(({ text }) => text)).toStrictEqual([
+      "点击按钮，在 Telegram 中打开控制台。",
     ]);
+    const buttons = messages.flatMap((message) => message.buttons.flat());
+    expect(buttons.map((button) => button.text)).toStrictEqual(["打开控制台"]);
+    expect(buttons[0]?.webApp).toMatch(ticketAddress);
   });
 
   it("says how to set the address without one", async () => {

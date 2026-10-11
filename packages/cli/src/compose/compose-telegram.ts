@@ -1,6 +1,7 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { Clock, Logger, Secret } from "@binference/core";
+import type { Clock, Logger, Random, Secret } from "@binference/core";
 import type { AnswerCard, EngineStores } from "@binference/engine";
+import { issueLaunchTicket } from "@binference/engine/access";
 import {
   type CardCopyStore,
   createCardPresses,
@@ -59,6 +60,8 @@ export interface TelegramWiring {
   /** Hears the numeric Telegram id of an owner a new pairing replaced. */
   readonly ownerReplaced: (userId: number) => void;
   readonly clock: Clock;
+  /** Makes the Mini App's launch tickets. */
+  readonly random: Random;
   readonly logger: Logger;
 }
 
@@ -85,6 +88,13 @@ type OwnerDisplay = () => { readonly locale: OwnerInfo["locale"]; readonly timeZ
 // The owner's numeric Telegram id, read for each press and command.
 function answersOwner(parts: TelegramParts) {
   return async (call: Call): Promise<number | undefined> => (await parts.owners.get(call))?.userId;
+}
+
+// `/console`'s launch tickets, kept as hashes in the engine's access store.
+function launchTicketsOf(wiring: TelegramWiring) {
+  const { stores, clock, random } = wiring;
+  return async (request: { readonly userId: number; readonly signal: AbortSignal }) =>
+    issueLaunchTicket({ access: stores.access, clock, random }, request);
 }
 
 // The line to the owner's chat: the cards, and the notices from the outbox.
@@ -130,6 +140,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     chains,
     display,
     ...(parts.miniAppUrl === undefined ? {} : { miniAppUrl: parts.miniAppUrl }),
+    issueLaunchTicket: launchTicketsOf(wiring),
     logger,
   });
   const relay = relayOf(parts, wiring, { showings, cards, display });

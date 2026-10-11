@@ -223,9 +223,14 @@ describe("the owner's bot in binference start", () => {
       await clock.advance(1_000);
       machine.bot.push(ownerText(2, "/console"));
       await world.until(sent("open the console inside Telegram"));
-      expect(machine.bot.messages().at(-1)?.buttons).toStrictEqual([
-        [{ text: "Open the console", webApp: `${origin}/mini` }],
-      ]);
+      const buttons = machine.bot
+        .messages()
+        .slice(-1)
+        .flatMap((message) => message.buttons.flat());
+      expect(buttons.map((button) => button.text)).toStrictEqual(["Open the console"]);
+      expect(buttons[0]?.webApp).toMatch(
+        /^https:\/\/owner\.example\.ts\.net\/mini#ticket=[\w-]{43}$/,
+      );
       const address = `http://127.0.0.1:${String(port)}`;
       const initData = signedLaunch(ownerId, clock.now());
       const mini = miniAppClient({ origin, address, initData, clock });

@@ -153,7 +153,7 @@ function joinTelegram(
     readonly server: () => ProtocolServer;
   },
 ): ComposedTelegram | undefined {
-  const { telegram, owner, chains, clock, logger } = options;
+  const { telegram, owner, chains, clock, random, logger } = options;
   return telegram === undefined
     ? undefined
     : composeTelegram(telegram, {
@@ -167,6 +167,7 @@ function joinTelegram(
         ownerReplaced: (userId) =>
           engine.server().endSessions(telegramCredentialOf(userId), "auth.revoked"),
         clock,
+        random,
         logger: logger.child("telegram"),
       });
 }

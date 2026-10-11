@@ -9,9 +9,10 @@ function httpsUrlOf(address: string | undefined): string | undefined {
 }
 
 /**
- * `/console`: a button that opens the console inside Telegram, at the Mini App's HTTPS address.
- * Without one it says how to publish the engine's port and set `remote.publicUrl`, and sends no
- * button.
+ * `/console`: a button that opens the console inside Telegram, at the Mini App's HTTPS address,
+ * with a new single-use launch ticket in its fragment (decision 0161), which the engine never
+ * receives in a request and Telegram adds its launch data beside. Without an address it says how
+ * to publish the engine's port and set `remote.publicUrl`, and sends no button.
  */
 export async function runConsole(context: CommandContext): Promise<void> {
   const url = httpsUrlOf(context.miniAppUrl);
@@ -19,6 +20,8 @@ export async function runConsole(context: CommandContext): Promise<void> {
     await context.say(context.words("cmd.console.noAddress"));
     return;
   }
-  const button = { text: context.words("cmd.console.button"), webApp: url };
+  const address = new URL(url);
+  address.hash = new URLSearchParams({ ticket: await context.issueLaunchTicket() }).toString();
+  const button = { text: context.words("cmd.console.button"), webApp: address.href };
   await context.say(context.words("cmd.console.open"), { buttons: [[button]] });
 }

@@ -304,8 +304,10 @@ owner's chat changes ([decision 0134](../DECISIONS.md#d0134)), and answers in th
 the change and announces it on every surface.
 
 `/console` sends one button, "Open the console" / 「打开控制台」, that opens the Mini App at
-`remote.publicUrl` followed by `/mini` ([spec 2, section 6.6](config.md#section-6-6)). Telegram
-opens a Mini App only from an HTTPS address, and only in a private chat. Without that address the
+`remote.publicUrl` followed by `/mini` ([spec 2, section 6.6](config.md#section-6-6)), with a new
+single-use launch ticket in the fragment, `#ticket=<ticket>`, valid 5 minutes
+([decision 0161](../DECISIONS.md#d0161)). Telegram opens a Mini App only from an HTTPS address,
+and only in a private chat. Without that address the
 reply has no button and says how to set it: "The console opens inside Telegram only from an HTTPS
 address, and binference has none yet. Publish binference's port over HTTPS, …" /
 「控制台只能从 HTTPS 地址在 Telegram 中打开，而 binference 还没有这样的地址。请先通过 HTTPS 发布 binference 的端口，…」

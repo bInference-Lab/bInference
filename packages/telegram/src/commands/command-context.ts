@@ -22,6 +22,11 @@ export interface CommandContext {
   readonly senderId: number;
   /** The Mini App's HTTPS URL, which `/console` opens; none when no public address is set. */
   readonly miniAppUrl?: string;
+  /**
+   * Makes a single-use Mini App launch ticket for the owner who sent the command; a secret that
+   * goes only into the button's address.
+   */
+  readonly issueLaunchTicket: () => Promise<string>;
   readonly signal: AbortSignal;
   /**
    * Sends text to the chat the command came from, split into messages at line breaks; the last

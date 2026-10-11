@@ -5,8 +5,14 @@ import {
   createFakeSigningScheme,
 } from "@binference/chain/testing";
 import type { JsonValue } from "@binference/core";
-import { createManualClock, createMemoryLogger, type MemoryLogger } from "@binference/core/testing";
-import { drawCard } from "@binference/engine";
+import {
+  createManualClock,
+  createMemoryLogger,
+  createSeededRandom,
+  type MemoryLogger,
+} from "@binference/core/testing";
+import { type AccessStore, drawCard } from "@binference/engine";
+import { issueLaunchTicket } from "@binference/engine/access";
 import { createOwnerCalls, type OwnerChatHandlers } from "@binference/engine/surfaces";
 import {
   createMemoryAccessStore,
@@ -59,6 +65,8 @@ export interface CommandBot {
   readonly commands: FastCommands;
   readonly answers: FakeCardAnswers;
   readonly logger: MemoryLogger;
+  /** Where `/console` keeps the hashes of the launch tickets it makes. */
+  readonly access: AccessStore;
   /** Every owner message the bot handed on to the agent's chat, where a model would read it. */
   readonly chat: readonly OwnerUpdate[];
   /** Sends a text from the owner, as Telegram delivers it, and waits until it is handled. */
@@ -84,7 +92,29 @@ async function partsOf(options: CommandBotOptions) {
   const display = () => ({ locale: options.locale ?? "en", timeZone: "UTC" }) as const;
   const copies = createMemoryCardCopyStore();
   const cards = createTelegramCards({ api, owners, copies, answers, clock, logger, display });
-  return { botApi, api, owners, clock, logger, answers, display, cards };
+  const access = createMemoryAccessStore();
+  return { botApi, api, owners, clock, logger, answers, display, cards, access };
+}
+
+// The fast commands over the test bot's parts, each operation run on `handlers`.
+function commandsOf(
+  parts: Awaited<ReturnType<typeof partsOf>>,
+  given: { readonly handlers: OwnerChatHandlers; readonly options: CommandBotOptions },
+): FastCommands {
+  const { api, cards, display, logger, access, clock } = parts;
+  const { handlers, options } = given;
+  return createFastCommands({
+    api,
+    calls: createOwnerCalls({ handlers, ownerId: async () => Promise.resolve(ownerId) }),
+    cards,
+    waiting: async () => Promise.resolve(options.waiting ?? []),
+    chains: testChains(),
+    display,
+    ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
+    issueLaunchTicket: async (request) =>
+      issueLaunchTicket({ access, clock, random: createSeededRandom(9) }, request),
+    logger,
+  });
 }
 
 /**
@@ -96,21 +126,13 @@ export async function startCommandBot(
   handlers: OwnerChatHandlers,
   options: CommandBotOptions = {},
 ): Promise<CommandBot> {
-  const { botApi, api, owners, clock, logger, answers, display, cards } = await partsOf(options);
-  const commands = createFastCommands({
-    api,
-    calls: createOwnerCalls({ handlers, ownerId: async () => Promise.resolve(ownerId) }),
-    cards,
-    waiting: async () => Promise.resolve(options.waiting ?? []),
-    chains: testChains(),
-    display,
-    ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
-    logger,
-  });
+  const parts = await partsOf(options);
+  const { botApi, api, owners, clock, logger, answers, display, cards, access } = parts;
+  const commands = commandsOf(parts, { handlers, options });
   const chat: OwnerUpdate[] = [];
   const ingress = createTelegramIngress({
     api,
-    stores: { inbox: createMemoryInboxStore(), access: createMemoryAccessStore(), owners },
+    stores: { inbox: createMemoryInboxStore(), access, owners },
     clock,
     logger,
     display,
@@ -131,6 +153,7 @@ export async function startCommandBot(
     commands,
     answers,
     logger,
+    access,
     chat,
     receive,
     send: async (text, fixture = {}) => {
