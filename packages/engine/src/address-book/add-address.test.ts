@@ -6,6 +6,7 @@ import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import { startTestEngine, type TestEngine, testCall } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
+import type { AgentStore } from "../ports.js";
 import { secondAgent } from "../safety/test-rescue.js";
 import { saveTestAddress, sendRefusals, testSaved } from "../send-levels/test-sends.js";
 
@@ -50,6 +51,29 @@ async function withCeilings(): Promise<TestEngine> {
   test.stores.install.addWallet(otherWallet);
   test.ceilings.put(wallet.policyId, [owner]);
   test.ceilings.put(otherWallet.policyId, [owner]);
+  return test;
+}
+
+// An agent store where another call saves each address first, so this write finds it held.
+function savedFirst(store: AgentStore): AgentStore {
+  return {
+    ...store,
+    async addAddress(entry, call) {
+      expectOk(await store.addAddress({ ...entry, label: "first" }, call));
+      return err("exists");
+    },
+  };
+}
+
+// An agent store that refuses every address as held while it holds none.
+function refusingUnheld(store: AgentStore): AgentStore {
+  return { ...store, addAddress: async () => Promise.resolve(err("exists")) };
+}
+
+async function withCeilingsOver(agents: (store: AgentStore) => AgentStore): Promise<TestEngine> {
+  const test = await startTestEngine({ agents });
+  test.stores.install.addWallet(wallet);
+  test.ceilings.put(wallet.policyId, [owner]);
   return test;
 }
 
@@ -146,5 +170,27 @@ describe("saving an address with the owner key", () => {
     expect(await add(test, { address: "not-an-address" })).toStrictEqual(err("protocol.bad_args"));
     expect(await add(test, { agent: unknownAgent })).toStrictEqual(err("agent.not_found"));
     expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
+  });
+
+  it("answers the entry another call saved first, and journals nothing", async () => {
+    const test = await withCeilingsOver(savedFirst);
+
+    const added = expectOk(await add(test));
+
+    expect(added).toMatchObject({ address: cold, label: "first" });
+    const entries = await test.stores.configJournal.list({ after: 0, limit: 10 }, live);
+    expect(entries).toStrictEqual([]);
+  });
+
+  it("throws when the agent store refuses an address it does not hold", async () => {
+    const test = await withCeilingsOver(refusingUnheld);
+
+    await expect(add(test)).rejects.toMatchObject({ code: "engine.address_unsaved" });
+  });
+
+  it("refuses an empty address", async () => {
+    const test = await withCeilings();
+
+    expect(await add(test, { address: "" })).toStrictEqual(err("protocol.bad_args"));
   });
 });
