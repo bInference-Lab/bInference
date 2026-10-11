@@ -15,6 +15,7 @@ export type {
 } from "./chats/queued-message.js";
 export type { SessionClose, SessionDraft, SessionRecord } from "./chats/session-record.js";
 export type {
+  CommittingAppend,
   EventAppend,
   EventDraft,
   EventKind,

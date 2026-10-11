@@ -9,7 +9,12 @@ import type {
   WaitingQuery,
 } from "./chats/queued-message.js";
 import type { SessionClose, SessionDraft, SessionRecord } from "./chats/session-record.js";
-import type { EventAppend, EventQuery, TranscriptEvent } from "./chats/transcript-event.js";
+import type {
+  CommittingAppend,
+  EventAppend,
+  EventQuery,
+  TranscriptEvent,
+} from "./chats/transcript-event.js";
 import type { TurnDraft, TurnEnd, TurnRecord, TurnRef } from "./chats/turn-record.js";
 import type {
   NoteDelete,
@@ -88,6 +93,16 @@ export interface TranscriptStore {
     append: Fenced<EventAppend>,
     options: StoreCall,
   ): Promise<Result<readonly TranscriptEvent[], FenceRefusal | "no_session" | "no_turn">>;
+  /**
+   * Appends a turn's events and sets its committed mark, in one write (runtime spec, section 6.1):
+   * a propose call is stored with the mark before the engine hears of it. Refused as `append` is,
+   * and `no_turn` when the turn is not the session's or an event names another, `ended` once the
+   * turn ended; nothing is written unless all of it is.
+   */
+  appendCommitting(
+    append: Fenced<CommittingAppend>,
+    options: StoreCall,
+  ): Promise<Result<readonly TranscriptEvent[], FenceRefusal | "no_session" | "no_turn" | "ended">>;
   /** A session's events after `afterSeq`, in order, at most `limit`. */
   events(query: EventQuery, options: StoreCall): Promise<readonly TranscriptEvent[]>;
 }

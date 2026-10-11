@@ -1,5 +1,5 @@
 import { err, ok, type Result } from "@binference/core";
-import type { EventAppend, TranscriptEvent } from "../chats/transcript-event.js";
+import type { CommittingAppend, EventAppend, TranscriptEvent } from "../chats/transcript-event.js";
 import type { TranscriptStore } from "../ports.js";
 import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-database.js";
 
@@ -27,6 +27,23 @@ function numbered(database: MemoryAgentDatabase, append: EventAppend): Appended 
   );
 }
 
+// Why a committing append may not be written beyond an append's refusal.
+function commitRefusal(database: MemoryAgentDatabase, append: CommittingAppend) {
+  const turn = database.turns.get(append.turn);
+  if (turn?.sessionId !== append.sessionId) {
+    return "no_turn";
+  }
+  if (append.events.some((event) => event.turnId !== append.turn)) {
+    return "no_turn";
+  }
+  return turn.endedAtMs === undefined ? undefined : "ended";
+}
+
+function write(database: MemoryAgentDatabase, events: readonly TranscriptEvent[]): void {
+  database.events.push(...structuredClone(events));
+  database.eventIds.add(events.length);
+}
+
 /** The {@link TranscriptStore} of an in-memory agent database. */
 export function createMemoryTranscriptStore(database: MemoryAgentDatabase): TranscriptStore {
   return {
@@ -37,8 +54,27 @@ export function createMemoryTranscriptStore(database: MemoryAgentDatabase): Tran
         }
         const events = numbered(database, append);
         if (events.ok) {
-          database.events.push(...structuredClone(events.value));
-          database.eventIds.add(events.value.length);
+          write(database, events.value);
+        }
+        return events;
+      }),
+    appendCommitting: async ({ fence, ...append }, options) =>
+      inMemory(options, () => {
+        if (!holdsFence(database, fence)) {
+          return err("fenced");
+        }
+        const events = numbered(database, append);
+        if (!events.ok) {
+          return events;
+        }
+        const refusal = commitRefusal(database, append);
+        if (refusal !== undefined) {
+          return err(refusal);
+        }
+        write(database, events.value);
+        const turn = database.turns.get(append.turn);
+        if (turn !== undefined) {
+          database.turns.set(turn.id, { ...turn, committed: true });
         }
         return events;
       }),

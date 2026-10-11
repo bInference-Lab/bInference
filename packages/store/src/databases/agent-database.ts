@@ -7,7 +7,11 @@ import {
 } from "../chats/queue-tasks.js";
 import { pruneChatsTask } from "../chats/retention-tasks.js";
 import { closeSessionTask, getSessionTask, openSessionTask } from "../chats/session-tasks.js";
-import { appendEventsTask, listEventsTask } from "../chats/transcript-tasks.js";
+import {
+  appendCommittingTask,
+  appendEventsTask,
+  listEventsTask,
+} from "../chats/transcript-tasks.js";
 import {
   commitTurnTask,
   endTurnTask,
@@ -42,6 +46,7 @@ export const agentDatabase: DatabaseDefinition = {
     getTurnTask,
     unfinishedTurnsTask,
     appendEventsTask,
+    appendCommittingTask,
     listEventsTask,
     addQueuedTask,
     waitingTask,

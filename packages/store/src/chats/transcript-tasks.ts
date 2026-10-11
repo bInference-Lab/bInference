@@ -11,6 +11,8 @@ import { holdsFence } from "./fence-tasks.js";
 import type { Fenced, FenceRefusal } from "./fenced.js";
 import { readSession } from "./session-tasks.js";
 import {
+  type CommittingAppend,
+  committingAppendSchema,
   type EventAppend,
   eventAppendSchema,
   type EventQuery,
@@ -21,6 +23,11 @@ import {
 import { readTurn } from "./turn-tasks.js";
 
 type Appended = Result<readonly TranscriptEvent[], FenceRefusal | "no_session" | "no_turn">;
+
+type Committed = Result<
+  readonly TranscriptEvent[],
+  FenceRefusal | "no_session" | "no_turn" | "ended"
+>;
 
 function toEvent(row: Selectable<TranscriptEventsTable>): TranscriptEvent {
   return transcriptEventSchema.parse({
@@ -61,6 +68,43 @@ function refusalOf(database: DatabaseSync, append: Fenced<EventAppend>) {
   return append.events.every((event) => isOwn(event.turnId)) ? undefined : "no_turn";
 }
 
+// Writes the events after the session's last, numbered in order, and answers them as stored.
+function insertEvents(database: DatabaseSync, append: EventAppend): readonly TranscriptEvent[] {
+  const first = lastSeq(database, append.sessionId) + 1;
+  const { kysely, execute } = createSyncKysely<AgentTables>(database);
+  const rows = execute(
+    kysely
+      .insertInto("transcript_events")
+      .values(
+        append.events.map((event, index) => ({
+          session_id: append.sessionId,
+          turn_id: event.turnId ?? null,
+          seq: first + index,
+          role: event.role,
+          kind: event.kind,
+          content: jsonText(event.content),
+          at: event.atMs,
+          outside: event.outside ? 1 : 0,
+        })),
+      )
+      .returningAll(),
+  ).rows;
+  return rows.map(toEvent);
+}
+
+// Why a committing append may not be written beyond any append's refusal: its turn is not one of
+// the session's, an event names another turn, or the turn has ended.
+function commitRefusalOf(database: DatabaseSync, append: CommittingAppend) {
+  const turn = readTurn(database, append.turn);
+  if (turn?.sessionId !== append.sessionId) {
+    return "no_turn";
+  }
+  if (append.events.some((event) => event.turnId !== append.turn)) {
+    return "no_turn";
+  }
+  return turn.endedAtMs === undefined ? undefined : "ended";
+}
+
 /** Appends events to one session, numbered after its last. */
 export const appendEventsTask: StoreTask<Fenced<EventAppend>, Appended> = defineTask({
   name: "chats.append_events",
@@ -69,29 +113,30 @@ export const appendEventsTask: StoreTask<Fenced<EventAppend>, Appended> = define
   output: resultSchema(z.array(transcriptEventSchema), ["fenced", "no_session", "no_turn"]),
   run(database, append) {
     const refusal = refusalOf(database, append);
+    return refusal === undefined ? ok(insertEvents(database, append)) : err(refusal);
+  },
+});
+
+/** Appends a turn's events and sets its committed mark, in one transaction. */
+export const appendCommittingTask: StoreTask<Fenced<CommittingAppend>, Committed> = defineTask({
+  name: "chats.append_committing",
+  access: "write",
+  input: committingAppendSchema,
+  output: resultSchema(z.array(transcriptEventSchema), [
+    "fenced",
+    "no_session",
+    "no_turn",
+    "ended",
+  ]),
+  run(database, append) {
+    const refusal = refusalOf(database, append) ?? commitRefusalOf(database, append);
     if (refusal !== undefined) {
       return err(refusal);
     }
-    const first = lastSeq(database, append.sessionId) + 1;
+    const events = insertEvents(database, append);
     const { kysely, execute } = createSyncKysely<AgentTables>(database);
-    const rows = execute(
-      kysely
-        .insertInto("transcript_events")
-        .values(
-          append.events.map((event, index) => ({
-            session_id: append.sessionId,
-            turn_id: event.turnId ?? null,
-            seq: first + index,
-            role: event.role,
-            kind: event.kind,
-            content: jsonText(event.content),
-            at: event.atMs,
-            outside: event.outside ? 1 : 0,
-          })),
-        )
-        .returningAll(),
-    ).rows;
-    return ok(rows.map(toEvent));
+    execute(kysely.updateTable("turns").set({ committed: 1 }).where("id", "=", append.turn));
+    return ok(events);
   },
 });
 

@@ -58,7 +58,7 @@ on worker threads, so no query blocks the main thread:
 | `createSqliteTransactionStore` | Each wallet's transactions, their nonces, relay answers and blocks   |
 | `createSqliteWriterFence`      | Raises `agent.sqlite`'s writer fence at each runtime start           |
 | `createSqliteSessionStore`     | Chat sessions and their turns, with the committed and outside marks  |
-| `createSqliteTranscriptStore`  | Each session's append-only transcript, numbered in order             |
+| `createSqliteTranscriptStore`  | The append-only transcript; a proposal with its mark in one write    |
 | `createSqliteChatQueueStore`   | The chat queue: each inbox message once, until a turn takes it       |
 | `createSqliteNoteStore`        | An agent's labelled notes, searched by trigrams in any language      |
 | `createSqliteChatRetention`    | Removes the chats older than `chats.keepDays` in one write           |

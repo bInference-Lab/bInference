@@ -33,6 +33,15 @@ export interface EventAppend {
   readonly events: readonly EventDraft[];
 }
 
+/**
+ * Events of one turn appended with that turn's committed mark, in one write (runtime spec,
+ * section 6.1): a propose call is stored with the mark before the engine hears of it.
+ */
+export interface CommittingAppend extends EventAppend {
+  /** The turn whose mark the write sets; every event names it. */
+  readonly turn: Id<"trn">;
+}
+
 /** Which of a session's events to read: those after `afterSeq`, in order, at most `limit`. */
 export interface EventQuery {
   readonly sessionId: Id<"ses">;
@@ -61,6 +70,14 @@ export const transcriptEventSchema: z.ZodType<TranscriptEvent> = z.strictObject(
 /** Parses a fenced append: 1 to 100 events. */
 export const eventAppendSchema: z.ZodType<Fenced<EventAppend>> = z.strictObject({
   sessionId: idSchema("ses"),
+  events: z.array(z.strictObject(draftShape)).min(1).max(100),
+  fence: fenceSchema,
+});
+
+/** Parses a fenced committing append: 1 to 100 events of one turn. */
+export const committingAppendSchema: z.ZodType<Fenced<CommittingAppend>> = z.strictObject({
+  sessionId: idSchema("ses"),
+  turn: idSchema("trn"),
   events: z.array(z.strictObject(draftShape)).min(1).max(100),
   fence: fenceSchema,
 });
