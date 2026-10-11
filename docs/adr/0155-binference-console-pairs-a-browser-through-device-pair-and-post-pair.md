@@ -1,6 +1,8 @@
 # 0155. binference console pairs a browser through device/pair and POST /pair
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 ## Context
 

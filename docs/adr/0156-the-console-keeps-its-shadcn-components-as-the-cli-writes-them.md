@@ -1,6 +1,8 @@
 # 0156. The console keeps its shadcn components as the CLI writes them
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 ## Context
 

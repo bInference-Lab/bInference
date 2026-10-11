@@ -1,6 +1,8 @@
 # 0157. A paper intent's ledger entries say paper
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 ## Context
 
