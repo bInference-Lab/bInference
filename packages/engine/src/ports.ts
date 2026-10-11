@@ -38,7 +38,7 @@ import type {
 } from "./install/rescue-record.js";
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
-import type { ConfirmedIntent, ConfirmedQuery } from "./intents/confirmed-intent.js";
+import type { ConfirmedIntent, ConfirmedQuery, LandedLate } from "./intents/confirmed-intent.js";
 import type { FreezeOutcome, FreezeWrite } from "./intents/freeze-write.js";
 import type {
   IntentChange,
@@ -190,7 +190,7 @@ interface StoreCall {
  * It is the one writer of an intent's state: the state machine decides, and this store writes each
  * move all or nothing, together with its ledger entry.
  */
-export interface IntentStore {
+export interface IntentStore extends LandedLate {
   /** Writes a new intent with its first event and ledger entry; an id in use is `exists`. */
   create(draft: IntentDraft, options: StoreCall): Promise<Result<IntentCommit, "exists">>;
   /** One intent, or `undefined` when the store has none with that id. */

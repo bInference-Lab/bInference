@@ -17,7 +17,7 @@
   "stepUnsent": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.",
   "stepDropped": "⚠️ A trade was stuck and did not go through. Nothing moved, and the wallet is free again.",
   "stepDroppedPartWay": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was stuck and did not go through. The wallet is free again. Check the wallet.",
-  "droppedLanded": "🔴 A trade binference reported as stuck went through after all, but binference did not count it. Check the wallet.",
+  "droppedLanded": "🔴 A trade binference reported as stuck went through after all. binference has now counted it toward your limits and positions. Check the wallet.",
   "walletHeld": "⚠️ A transaction of {wallet} is stuck, so the wallet's later trades wait behind it. binference keeps sending it until a block holds it or every relay drops it.",
   "sendLevel": "Send level {from} → {to} {pending, select, yes {at {when}} other {now}}",
   "rescueStopped": "🔴 A rescue stopped part way: the rescue address changed while it ran. What was not sent stays in the wallets. Check them, then start a rescue again.",

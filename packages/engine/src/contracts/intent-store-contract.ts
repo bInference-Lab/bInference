@@ -9,7 +9,7 @@ import {
   refusesClosedCard,
   refusesTakenVersion,
 } from "./intent-card-checks.js";
-import { listsConfirmedSince } from "./intent-confirmed-checks.js";
+import { listsConfirmedSince, recordsLateLandings } from "./intent-confirmed-checks.js";
 import {
   intentDraft,
   intentLedger,
@@ -192,6 +192,33 @@ async function refusesAborted(subject: IntentStoreSubject): Promise<void> {
   assert.equal(await ledger.last(live()), undefined);
 }
 
+// The freeze and unfreeze writes.
+function freezeChecks(create: () => Promise<IntentStoreSubject>): readonly ContractCheck[] {
+  return [
+    checkOn(
+      "freezes agents and cancels their intents in one write, its own entries last",
+      create,
+      freezesInOneWrite,
+    ),
+    checkOn(
+      "refuses a freeze that read a row at another version or names an unknown one",
+      create,
+      refusesStaleFreeze,
+    ),
+    checkOn("keeps the time an agent was first frozen", create, keepsFirstFreeze),
+    checkOn(
+      "marks the install in a whole-install freeze, and a later agent starts frozen",
+      create,
+      freezesTheWholeInstall,
+    ),
+    checkOn(
+      "unfreezes the agents and the install in one write, and a later agent starts unfrozen",
+      create,
+      unfreezesInOneWrite,
+    ),
+  ];
+}
+
 /** The contract every `IntentStore` adapter passes. */
 export function intentStoreContract(harness: IntentStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<IntentStoreSubject> => harness.create();
@@ -214,32 +241,13 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
       listsByState,
     ),
     checkOn("lists an agent's confirmed intents since a time", create, listsConfirmedSince),
+    checkOn("links one late landing to an intent it leaves as it is", create, recordsLateLandings),
     checkOn("opens, replaces and closes card versions with the moves", create, closesWithMoves),
     checkOn("finds a card version by its callback reference", create, findsCardsByRef),
     checkOn("keeps one confirmation, a later card version's in its place", create, confirmsAgain),
     checkOn("refuses to close a card version that is not open", create, refusesClosedCard),
     checkOn("refuses a card version the intent already has", create, refusesTakenVersion),
-    checkOn(
-      "freezes agents and cancels their intents in one write, its own entries last",
-      create,
-      freezesInOneWrite,
-    ),
-    checkOn(
-      "refuses a freeze that read a row at another version or names an unknown one",
-      create,
-      refusesStaleFreeze,
-    ),
-    checkOn("keeps the time an agent was first frozen", create, keepsFirstFreeze),
-    checkOn(
-      "marks the install in a whole-install freeze, and a later agent starts frozen",
-      create,
-      freezesTheWholeInstall,
-    ),
-    checkOn(
-      "unfreezes the agents and the install in one write, and a later agent starts unfrozen",
-      create,
-      unfreezesInOneWrite,
-    ),
+    ...freezeChecks(create),
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
   ];
 }

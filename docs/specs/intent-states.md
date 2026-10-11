@@ -6,9 +6,9 @@ Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended
 [0115](../DECISIONS.md#d0115), [0116](../DECISIONS.md#d0116), [0120](../DECISIONS.md#d0120) and 0121
 to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](../DECISIONS.md#d0123),
 [0124](../DECISIONS.md#d0124), [0125](../DECISIONS.md#d0125), [0126](../DECISIONS.md#d0126)),
-[0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128) and 0143 to 0146
+[0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128) and 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
-[0146](../DECISIONS.md#d0146)).
+[0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an unfreeze, an
 order fill. It
@@ -268,8 +268,10 @@ Stuck steps ([ARCHITECTURE.md section 7](../ARCHITECTURE.md#section-7)):
    gets the same bytes every 20 blocks until a block holds one of its transactions or the drop
    rule drops it, no later step of the wallet signs behind it, and the owner gets
    `notice.walletHeld`. The executor watches a dropped step's transactions for 600 more blocks,
-   off the wallet's queue; one that lands after all raises `notice.droppedLanded`, and the intent
-   stays `failed_onchain`.
+   off the wallet's queue. One that lands after all raises `notice.droppedLanded` and is booked as
+   a late landing, a record of its own linked to the intent, which stays `failed_onchain`: the
+   rolling cap counts the intent again (section 9), and once every step of the plan is in a final
+   block the trade goes into the positions and realized P&L ([decision 0147](../DECISIONS.md#d0147)).
 
 "Simulate again" means preparing the step's draft again on the latest state, whose gas estimate
 runs the call there. No speed-up or cancel is signed with a fee per gas above the network fee cap
@@ -358,7 +360,8 @@ state, who or what caused it (surface, device or token), and the hashes involved
 - One agent's confirmations, by a tap or the auto mode, run one at a time against its rolling cap:
   each reads the confirmations every earlier one left, so two that pass the cap together never both
   land, and a tap that would pass it fails `limit.daily_cap` with its card left open
-  ([decision 0136](../DECISIONS.md#d0136)).
+  ([decision 0136](../DECISIONS.md#d0136)). An intent that ended `failed_onchain` counts again
+  once a late landing is linked to it ([decision 0147](../DECISIONS.md#d0147)).
 
 <a id="section-10"></a>
 

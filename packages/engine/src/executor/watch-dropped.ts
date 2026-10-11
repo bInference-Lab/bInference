@@ -1,6 +1,7 @@
 import type { IntentRecord } from "../intents/intent-record.js";
 import { noticePush } from "../pushes/notice-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { bookLateLanding } from "./book-late-landing.js";
 import { type ExecutionRun, nextBlock } from "./executor-run.js";
 import { finalFate, type NonceTransactions, readFate, rivalsOf } from "./step-fate.js";
 
@@ -33,6 +34,10 @@ async function watchFrom(run: ExecutionRun, watch: Watch): Promise<void> {
     run.parts.publish(
       noticePush({ key: droppedLandedNoticeKey, agent: agentId, intent: id, values: {} }),
     );
+    const dropped = await run.parts.stored.snapshot(id, { signal: run.signal });
+    if (dropped !== undefined) {
+      await bookLateLanding(run, dropped, fate);
+    }
     return;
   }
   if (fate?.kind === "taken") {
@@ -45,9 +50,9 @@ async function watchFrom(run: ExecutionRun, watch: Watch): Promise<void> {
 /**
  * Watches a dropped step's transactions each block for `finalAfterBlocks` blocks, off the wallet's
  * queue: a relay or a node the drop rule could not see may still put one in a block. One that
- * lands is logged as `executor.dropped_landed` and raises `notice.droppedLanded`; its intent stays
- * `failed_onchain`. The watch ends early once a final block holds the step's nonce without any of
- * them. It signs and sends nothing.
+ * lands is logged as `executor.dropped_landed`, raises `notice.droppedLanded`, and is booked as a
+ * late landing linked to its intent, which stays `failed_onchain` (decision 0147). The watch ends
+ * early once a final block holds the step's nonce without any of them. It signs and sends nothing.
  */
 export async function watchDropped(run: ExecutionRun, step: DroppedStep): Promise<void> {
   const stored = await run.parts.stores.transactions.ofIntent(step.intent.id, {

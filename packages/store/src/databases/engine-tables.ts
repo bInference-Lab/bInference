@@ -343,6 +343,7 @@ export interface EngineTables extends PositionTables, NoticeTables, TelegramTabl
   intent_events: IntentEventsTable;
   cards: CardsTable;
   confirmations: ConfirmationsTable;
+  late_landings: { intent_id: string; tx_id: string; at: number };
   ledger: LedgerTable;
   idempotency: IdempotencyTable;
   inbox: InboxTable;

@@ -71,3 +71,38 @@ export async function listsConfirmedSince(subject: IntentStoreSubject): Promise<
   assert.deepEqual(await store.confirmedSince(stranger, live()), []);
   await assertRefusesAborted(async (options) => store.confirmedSince(paper, options));
 }
+
+/**
+ * Links a late landing to its intent once (decision 0147), leaves the intent as it is, and lists
+ * the landing's time with the intent among the confirmed ones.
+ */
+export async function recordsLateLandings(subject: IntentStoreSubject): Promise<void> {
+  const { store, agentId } = subject;
+  await plant(subject, {
+    n: 1,
+    isPaper: false,
+    moves: ["confirmed", "executing", "failed_onchain"],
+  });
+  const landing = { intentId: fixtureId("int", 1), txId: fixtureId("tx", 1), atMs: 9_000 };
+  const before = await store.get(landing.intentId, live());
+  assert.deepEqual(await store.recordLandedLate(landing, live()), { ok: true, value: landing });
+  assert.deepEqual(await store.recordLandedLate({ ...landing, atMs: 9_001 }, live()), {
+    ok: false,
+    error: "exists",
+  });
+  const unknown = { ...landing, intentId: fixtureId("int", 9) };
+  assert.deepEqual(await store.recordLandedLate(unknown, live()), {
+    ok: false,
+    error: "not_found",
+  });
+  assert.deepEqual(await store.get(landing.intentId, live()), before);
+  assert.deepEqual(await store.confirmedSince({ agentId, isPaper: false, fromMs: 0 }, live()), [
+    {
+      intentId: landing.intentId,
+      state: "failed_onchain",
+      confirmedAtMs: 1_001,
+      landedLateAtMs: 9_000,
+    },
+  ]);
+  await assertRefusesAborted(async (options) => store.recordLandedLate(landing, options));
+}

@@ -78,6 +78,7 @@ Conventions ([ENGINEERING.md section 24.2](../ENGINEERING.md#section-24-2)):
 | `cards`         | `id`, `intent_id`, `version`, `terms_hash`, `opened_at`, `expires_at`, `closed_at`, `close_reason`                                                                                                                                                                                                                                                                                                                                                                                 | unique `(intent_id, version)`                                                                                |
 | `card_messages` | `card_id`, `surface` (`telegram`, `console`, `mini`), `chat_id`, `topic_id`, `message_id`, `sent_at`                                                                                                                                                                                                                                                                                                                                                                               | PK `(card_id, surface, message_id)`                                                                          |
 | `confirmations` | `id`, `intent_id`, `card_id`, `card_version`, `terms_hash`, `by_surface`, `by_ref`, `at`, `expires_at`                                                                                                                                                                                                                                                                                                                                                                             | unique `intent_id`; a later card version's confirmation replaces the row (decision 0143)                     |
+| `late_landings` | `intent_id`, `tx_id` (the dropped step's transaction a block holds after all), `at`                                                                                                                                                                                                                                                                                                                                                                                                | key `intent_id`                                                                                              |
 | `txs`           | `id`, `intent_id`, `step`, `chain`, `account`, `nonce`, `state`, `raw`, `hash`, `gas_price`, `relays JSON`, `supersedes`, `replacement` (`speedUp`, `cancel`, set with `supersedes`), `block_number`, `receipt JSON`, `signed_at`, `sent_at`, `included_at`, `final_at`                                                                                                                                                                                                            | unique `(account, nonce)` where `state IN ('signed','sent','included','final')`; `hash`; `(intent_id, step)` |
 | `executions`    | `id`, `intent_id`, `wallet_id`, `asset_in`, `amount_in`, `fee_amount` (the venue's fee, in `asset_in`), `asset_out`, `amount_out`, `gas_asset`, `gas_amount`, `tx_hash` (null on paper), `value_usd_micros` (`amount_in` then), `fee_usd_micros`, `gas_usd_micros`, `paper`, `at`, `realized_usd_micros` (what it realized at average cost when recorded, below zero for a loss; 0 for a row from before, [decision 0137](../DECISIONS.md#d0137))                                  | `(wallet_id, at)`                                                                                            |
 | `arrivals`      | `id`, `wallet_id`, `asset`, `amount`, `value_usd_micros` (null when no price was known), `tx_hash`, `paper`, `at`                                                                                                                                                                                                                                                                                                                                                                  | `(wallet_id, at)`                                                                                            |
@@ -97,6 +98,11 @@ their quantity and that value to the position, so a later sale realizes a real g
 no usable price is known then, the row keeps no value and the position does not change. A later
 price never values them after the fact: units sold beyond what a position holds leave at their
 own proceeds, with no gain or loss.
+
+A step the drop rule ended can still land ([decision 0147](../DECISIONS.md#d0147)). Its intent
+stays `failed_onchain`; a `late_landings` row links the landing to it, which the rolling 24-hour
+cap counts, and once every step of the plan is in a final block the trade is an `executions` row
+with its position changes, as a reconciliation writes it.
 
 Funds a send takes out of a live wallet, such as a rescue's transfers, are a `departures` row once
 the send is final ([decision 0127](../DECISIONS.md#d0127)): the units sent, and the native coin it
@@ -205,17 +211,17 @@ address.
 
 A daily job (inside the engine's schedule queue) prunes:
 
-| What                                                                                                      | Kept                                                               |
-| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `ledger`, `executions`, `arrivals`, `departures`, `positions`, `intents`, `txs`, `cards`, `confirmations` | forever                                                            |
-| `transcript_events`, `turns`                                                                              | 90 days ([decision 0056](../DECISIONS.md#d0056); `chats.keepDays`) |
-| `idempotency`                                                                                             | 24 hours                                                           |
-| `inbox` handled, `outbox` sent                                                                            | 30 days                                                            |
-| `webhook_events`                                                                                          | 90 days                                                            |
-| `notices`                                                                                                 | 90 days                                                            |
-| `model_usage`                                                                                             | 400 days                                                           |
-| `prices`, `risk_cache`                                                                                    | replaced in place                                                  |
-| `jobs` ended                                                                                              | 30 days                                                            |
+| What                                                                                                                       | Kept                                                               |
+| -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `ledger`, `executions`, `arrivals`, `departures`, `positions`, `intents`, `txs`, `cards`, `confirmations`, `late_landings` | forever                                                            |
+| `transcript_events`, `turns`                                                                                               | 90 days ([decision 0056](../DECISIONS.md#d0056); `chats.keepDays`) |
+| `idempotency`                                                                                                              | 24 hours                                                           |
+| `inbox` handled, `outbox` sent                                                                                             | 30 days                                                            |
+| `webhook_events`                                                                                                           | 90 days                                                            |
+| `notices`                                                                                                                  | 90 days                                                            |
+| `model_usage`                                                                                                              | 400 days                                                           |
+| `prices`, `risk_cache`                                                                                                     | replaced in place                                                  |
+| `jobs` ended                                                                                                               | 30 days                                                            |
 
 <a id="section-5"></a>
 

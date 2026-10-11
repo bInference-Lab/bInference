@@ -1,6 +1,6 @@
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { testCoin, testSwap, testToken } from "../intents/test-intents.js";
+import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
   benchChain,
@@ -9,6 +9,7 @@ import {
   type ExecutorBench,
   flush,
   startExecutorBench,
+  stateOf,
   tapped,
   transactionsOf,
 } from "./test-executor.js";
@@ -104,6 +105,27 @@ describe("a stuck step every relay refuses", () => {
     await driveUntil(bench, intent, { states: [], blocks: 2 });
     expect(noticeKeysOf(bench)).toStrictEqual(["notice.stepDropped", "notice.droppedLanded"]);
     expect(eventsOf(bench)).toContain("executor.dropped_landed:");
+  });
+
+  it("books a dropped step that landed after all, and leaves its intent failed", async () => {
+    const bench = await startExecutorBench({ limits });
+    refuseAll(bench);
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    const [, speedUp] = await ofIntent(bench, intent);
+    acceptAll(bench);
+    await bench.network.send({ chain: benchChain, raw: rawOf(speedUp) }, live());
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    expect(eventsOf(bench)).toContain("executor.landed_late_booked:");
+    expect(await stateOf(bench, intent)).toBe("failed_onchain");
+    const executions = await bench.test.positions.executions(
+      { isPaper: false, after: 0, limit: 10 },
+      live(),
+    );
+    expect(executions.map(({ intentId }) => intentId)).toStrictEqual([intent]);
+    const query = { agentId: testAgent, isPaper: false, fromMs: 0 };
+    const [confirmed] = await bench.test.stores.intents.confirmedSince(query, live());
+    expect(confirmed?.landedLateAtMs).toBeGreaterThan(0);
   });
 
   it("is not dropped while a node still holds its bytes in its pool", async () => {

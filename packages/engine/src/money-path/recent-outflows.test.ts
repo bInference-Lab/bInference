@@ -87,4 +87,17 @@ describe("the recent outflows", () => {
       recentOutflowsOf(intents, query, { signal: AbortSignal.abort(reason) }),
     ).rejects.toBe(reason);
   });
+
+  it("counts a failed intent again once a dropped step of it landed late", async () => {
+    const intents = await stored([
+      { n: 1, atMs: testNowMs, valueUsdMicros: 1n, end: "failed_onchain" },
+      { n: 2, atMs: testNowMs, valueUsdMicros: 2n, end: "failed_onchain" },
+    ]);
+    const txId = idSchema("tx").parse("tx_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+    await intents.recordLandedLate({ intentId: intentId(1), txId, atMs: testNowMs + 5 }, live());
+    const query = { agentId: testAgent, isPaper: false, nowMs: testNowMs };
+    await expect(recentOutflowsOf(intents, query, live())).resolves.toStrictEqual([
+      { atMs: testNowMs, valueUsdMicros: 1n },
+    ]);
+  });
 });

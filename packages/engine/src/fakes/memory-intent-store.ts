@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@binference/core";
+import { err, type Id, ok, type Result } from "@binference/core";
 import type { ConfirmedIntent, ConfirmedQuery } from "../intents/confirmed-intent.js";
 import type { FreezeCommit, FreezeWrite } from "../intents/freeze-write.js";
 import type {
@@ -8,6 +8,7 @@ import type {
   IntentQuery,
 } from "../intents/intent-change.js";
 import type { IntentDraft, IntentRecord } from "../intents/intent-record.js";
+import type { LateLanding } from "../intents/late-landing.js";
 import type { LedgerDraft, LedgerEntry } from "../ledger/ledger-entry.js";
 import type { IntentStore } from "../ports.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
@@ -165,6 +166,7 @@ function matches(intent: IntentRecord, query: IntentQuery): boolean {
 // Each intent of the agent in the mode with a move to `confirmed` at or after the query's time.
 function confirmedSince(
   tables: MemoryIntentTables,
+  landings: ReadonlyMap<Id<"int">, LateLanding>,
   query: ConfirmedQuery,
 ): readonly ConfirmedIntent[] {
   return tables
@@ -174,6 +176,7 @@ function confirmedSince(
       const moved = tables
         .events(intent.id)
         .find((event) => event.toState === "confirmed" && event.atMs >= query.fromMs);
+      const landed = landings.get(intent.id);
       return moved === undefined
         ? []
         : [
@@ -184,6 +187,7 @@ function confirmedSince(
               ...(intent.valueUsdMicros === undefined
                 ? {}
                 : { valueUsdMicros: intent.valueUsdMicros }),
+              ...(landed === undefined ? {} : { landedLateAtMs: landed.atMs }),
             },
           ];
     })
@@ -193,12 +197,29 @@ function confirmedSince(
     );
 }
 
+// One late landing per known intent (decision 0147).
+function recordLandedLate(
+  tables: MemoryIntentTables,
+  landings: Map<Id<"int">, LateLanding>,
+  landing: LateLanding,
+): Result<LateLanding, "exists" | "not_found"> {
+  if (tables.intent(landing.intentId) === undefined) {
+    return err("not_found");
+  }
+  if (landings.has(landing.intentId)) {
+    return err("exists");
+  }
+  landings.set(landing.intentId, structuredClone(landing));
+  return ok(landing);
+}
+
 /**
  * Creates an empty in-memory {@link IntentStore} for tests. Each write checks everything first and
  * changes nothing when a check fails, as the SQLite store's transaction does.
  */
 export function createMemoryIntentStore(options: MemoryIntentStoreOptions): IntentStore {
   const tables = createMemoryIntentTables();
+  const landings = new Map<Id<"int">, LateLanding>();
   return {
     create: async (draft, call) => memoryCall(call, () => create(tables, options.ledger, draft)),
     get: async (id, call) => memoryCall(call, () => tables.intent(id)),
@@ -213,7 +234,10 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Inte
           .toSorted(byChange)
           .slice(0, query.limit),
       ),
-    confirmedSince: async (query, call) => memoryCall(call, () => confirmedSince(tables, query)),
+    confirmedSince: async (query, call) =>
+      memoryCall(call, () => confirmedSince(tables, landings, query)),
+    recordLandedLate: async (landing, call) =>
+      memoryCall(call, () => recordLandedLate(tables, landings, landing)),
     events: async (id, call) => memoryCall(call, () => tables.events(id)),
     cards: async (id, call) =>
       memoryCall(call, () =>

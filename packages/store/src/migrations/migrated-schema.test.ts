@@ -146,6 +146,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   outbox: names("id surface target payload state attempts next_at ref created_at sent_at"),
   notices: names("id agent_id kind i18n_key values level at delivered intent_id"),
   telegram_owner: names("id user_id paired_at"),
+  late_landings: names("intent_id tx_id at"),
   idempotency: names("credential op key args_hash result at"),
   model_usage: names(
     "id agent_id turn_id model input_tokens output_tokens cached_tokens usd_micros at",
@@ -167,6 +168,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   meta: ["key"],
   limits: ["agent_id"],
   approval_modes: ["agent_id"],
+  late_landings: ["intent_id"],
   send_levels: ["agent_id"],
   ceilings: ["wallet_id"],
   nonces: ["account"],

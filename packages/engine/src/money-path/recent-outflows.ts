@@ -22,7 +22,8 @@ const movedNothing: ReadonlySet<IntentState> = new Set(["cancelled", "expired", 
  * agent in the query's mode confirmed in the last 24 hours, by the owner's tap or the auto mode,
  * each counted from its confirmation at the USD value the policy judged it at, settled or not.
  * An intent that ended without moving anything (`cancelled`, `expired`, `failed_onchain`), one the
- * policy never valued, such as a rescue, and the intent under check do not count.
+ * policy never valued, such as a rescue, and the intent under check do not count; one whose
+ * dropped step landed after all counts again (decision 0147).
  */
 export async function recentOutflowsOf(
   intents: Pick<IntentStore, "confirmedSince">,
@@ -34,8 +35,10 @@ export async function recentOutflowsOf(
     { agentId, isPaper, fromMs: nowMs - windowMs },
     options,
   );
-  return confirmed.flatMap(({ intentId, state, confirmedAtMs, valueUsdMicros }) =>
-    valueUsdMicros === undefined || movedNothing.has(state) || intentId === query.exclude
+  return confirmed.flatMap(({ intentId, state, confirmedAtMs, valueUsdMicros, landedLateAtMs }) =>
+    valueUsdMicros === undefined ||
+    (movedNothing.has(state) && landedLateAtMs === undefined) ||
+    intentId === query.exclude
       ? []
       : [{ atMs: confirmedAtMs, valueUsdMicros }],
   );
