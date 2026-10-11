@@ -6,6 +6,10 @@ import { type Empty, emptyResultSchema } from "../values/empty.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { type Page, type PageArgs, pageArgsShape, pageSchema } from "../values/page.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
+import {
+  type InboxMessageView,
+  inboxMessageViewSchema,
+} from "../views/inbox-message-view.schema.js";
 import { readFlags, routedReadFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /** The args of `chat/post`: the owner's message, with at most 4 uploaded images. */
@@ -34,6 +38,30 @@ interface ChatMessageView {
   readonly kind: "text" | "tool_call" | "tool_result" | "image" | "summary";
   readonly text?: string;
   readonly at: number;
+}
+
+/**
+ * The args of `turn/start`: the turn the runtime starts, the inbox messages it takes, and whether
+ * its context already holds outside content (runtime spec, section 4.3).
+ */
+interface StartTurnArgs extends AgentArgs, TurnRef {
+  readonly messages: readonly ProtocolId<"inboxMessage">[];
+  readonly outsideContent: boolean;
+}
+
+/** The args of `turn/mark`: the turn holds outside content from now on. */
+interface MarkTurnArgs extends AgentArgs {
+  readonly turn: ProtocolId<"chatTurn">;
+}
+
+/** The args of `inbox/list`: one agent's untaken messages, or every agent's, oldest first. */
+interface InboxListArgs extends PageArgs {
+  readonly agent?: ProtocolId<"agent">;
+}
+
+/** The args of `inbox/take`: the messages the runtime now holds in its chat queue. */
+interface InboxTakeArgs {
+  readonly messages: readonly ProtocolId<"inboxMessage">[];
 }
 
 /** The args of `turn/say`: a draft edited in place until `final`. */
@@ -105,6 +133,12 @@ export interface ChatOperationShapes {
     readonly args: AgentArgs;
     readonly result: { readonly session: ProtocolId<"chatSession"> };
   };
+  readonly "turn/start": {
+    readonly args: StartTurnArgs;
+    /** What is left of today's model budget. */
+    readonly result: { readonly budgetLeftMicros: bigint };
+  };
+  readonly "turn/mark": { readonly args: MarkTurnArgs; readonly result: Empty };
   readonly "turn/say": { readonly args: SayArgs; readonly result: Empty };
   readonly "turn/status": { readonly args: StatusArgs; readonly result: Empty };
   readonly "turn/end": { readonly args: EndTurnArgs; readonly result: Empty };
@@ -114,6 +148,11 @@ export interface ChatOperationShapes {
     readonly result: { readonly budgetLeftMicros: bigint };
   };
   readonly "usage/get": { readonly args: UsageArgs; readonly result: UsageView };
+  readonly "inbox/list": {
+    readonly args: InboxListArgs;
+    readonly result: Page<InboxMessageView>;
+  };
+  readonly "inbox/take": { readonly args: InboxTakeArgs; readonly result: Empty };
 }
 
 const agent = protocolIdSchema("agent");
@@ -121,6 +160,7 @@ const turn = protocolIdSchema("chatTurn");
 const session = protocolIdSchema("chatSession");
 const tokens = z.int().nonnegative();
 const model = z.string().min(1).max(128);
+const message = protocolIdSchema("inboxMessage");
 
 /** The chat, turn and usage operations, by name. */
 export const chatOperations: OperationTable<ChatOperationShapes> = {
@@ -165,6 +205,26 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
     scope: "chat",
     args: agentArgsSchema,
     result: z.object({ session }),
+  },
+  "turn/start": {
+    ...writeFlags,
+    name: "turn/start",
+    scope: "agent",
+    args: z.strictObject({
+      agent,
+      session,
+      turn,
+      messages: z.array(message).min(1).max(20),
+      outsideContent: z.boolean(),
+    }),
+    result: z.object({ budgetLeftMicros: decimalStringSchema }),
+  },
+  "turn/mark": {
+    ...writeFlags,
+    name: "turn/mark",
+    scope: "agent",
+    args: z.strictObject({ agent, turn }),
+    result: emptyResultSchema,
   },
   "turn/say": {
     ...writeFlags,
@@ -236,5 +296,19 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
         }),
       ),
     }),
+  },
+  "inbox/list": {
+    ...readFlags,
+    name: "inbox/list",
+    scope: "agent",
+    args: z.strictObject({ ...pageArgsShape, agent: agent.exactOptional() }),
+    result: pageSchema(inboxMessageViewSchema),
+  },
+  "inbox/take": {
+    ...writeFlags,
+    name: "inbox/take",
+    scope: "agent",
+    args: z.strictObject({ messages: z.array(message).min(1).max(200) }),
+    result: emptyResultSchema,
   },
 };

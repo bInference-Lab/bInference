@@ -513,6 +513,7 @@
         "sch",
         "ses",
         "trn",
+        "msg",
         "dev",
         "con",
         "bkp",
@@ -23421,6 +23422,189 @@
         "result"
       ]
     },
+    "call/turn/start": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "turn/start"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            },
+            "messages": {
+              "minItems": 1,
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^msg_"
+              }
+            },
+            "outsideContent": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "agent",
+            "session",
+            "turn",
+            "messages",
+            "outsideContent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "agent",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/turn/start": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "budgetLeftMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            }
+          },
+          "required": [
+            "budgetLeftMicros"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/turn/mark": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "turn/mark"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            }
+          },
+          "required": [
+            "agent",
+            "turn"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "agent",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/turn/mark": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
     "call/turn/say": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -23965,6 +24149,1552 @@
             "rows",
             "budgets"
           ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/inbox/list": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "inbox/list"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/inbox/list": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string",
+                        "pattern": "^msg_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "session": {
+                        "type": "string",
+                        "pattern": "^ses_"
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "type": "string",
+                        "const": "inbox/message"
+                      },
+                      "turn": {
+                        "type": "string",
+                        "pattern": "^trn_"
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "images": {
+                        "minItems": 1,
+                        "maxItems": 4,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                        }
+                      },
+                      "surface": {
+                        "type": "string",
+                        "enum": [
+                          "telegram",
+                          "console",
+                          "cli",
+                          "mini"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "message",
+                      "agent",
+                      "session",
+                      "at",
+                      "kind",
+                      "turn",
+                      "text",
+                      "surface"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string",
+                        "pattern": "^msg_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "session": {
+                        "type": "string",
+                        "pattern": "^ses_"
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "type": "string",
+                        "const": "inbox/intentSettled"
+                      },
+                      "turn": {
+                        "type": "string",
+                        "pattern": "^trn_"
+                      },
+                      "intent": {
+                        "type": "object",
+                        "properties": {
+                          "intent": {
+                            "type": "string",
+                            "pattern": "^int_"
+                          },
+                          "agent": {
+                            "type": "string",
+                            "pattern": "^agt_"
+                          },
+                          "wallet": {
+                            "type": "string",
+                            "pattern": "^wal_"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "swap",
+                              "buy",
+                              "sell",
+                              "send",
+                              "revokeApproval",
+                              "lend",
+                              "stake",
+                              "bridge",
+                              "cexOrder",
+                              "registerIdentity",
+                              "launchToken",
+                              "rescue",
+                              "unfreeze"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "proposed",
+                              "checked",
+                              "quoted",
+                              "assessed",
+                              "simulated",
+                              "awaiting_confirmation",
+                              "confirmed",
+                              "executing",
+                              "included",
+                              "finalized",
+                              "reconciled",
+                              "paper_filled",
+                              "rejected_policy",
+                              "risk_blocked",
+                              "failed_check",
+                              "denied",
+                              "expired",
+                              "cancelled",
+                              "failed_onchain",
+                              "unknown_after_send"
+                            ]
+                          },
+                          "request": {
+                            "anyOf": [
+                              {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "swap"
+                                      },
+                                      "from": {
+                                        "type": "string"
+                                      },
+                                      "to": {
+                                        "type": "string"
+                                      },
+                                      "amount": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "base": {
+                                                "type": "string",
+                                                "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                              }
+                                            },
+                                            "required": [
+                                              "base"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "percentBps": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            "required": [
+                                              "percentBps"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "maxSlippageBps": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "from",
+                                      "to",
+                                      "amount"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "buy"
+                                      },
+                                      "token": {
+                                        "type": "string"
+                                      },
+                                      "spend": {
+                                        "type": "object",
+                                        "properties": {
+                                          "asset": {
+                                            "type": "string"
+                                          },
+                                          "base": {
+                                            "type": "string",
+                                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                          }
+                                        },
+                                        "required": [
+                                          "asset",
+                                          "base"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "maxSlippageBps": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "token",
+                                      "spend"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "sell"
+                                      },
+                                      "token": {
+                                        "type": "string"
+                                      },
+                                      "amount": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "base": {
+                                                "type": "string",
+                                                "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                              }
+                                            },
+                                            "required": [
+                                              "base"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "percentBps": {
+                                                "type": "number"
+                                              }
+                                            },
+                                            "required": [
+                                              "percentBps"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      },
+                                      "receive": {
+                                        "type": "string"
+                                      },
+                                      "maxSlippageBps": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "token",
+                                      "amount"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "send"
+                                      },
+                                      "amount": {
+                                        "type": "object",
+                                        "properties": {
+                                          "asset": {
+                                            "type": "string"
+                                          },
+                                          "base": {
+                                            "type": "string",
+                                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                          }
+                                        },
+                                        "required": [
+                                          "asset",
+                                          "base"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "to": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "address": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "address"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "name": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 255
+                                              }
+                                            },
+                                            "required": [
+                                              "name"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "entry": {
+                                                "type": "string",
+                                                "pattern": "^adr_"
+                                              }
+                                            },
+                                            "required": [
+                                              "entry"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "amount",
+                                      "to"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "revokeApproval"
+                                      },
+                                      "token": {
+                                        "type": "string"
+                                      },
+                                      "spender": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "token",
+                                      "spender"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "lend"
+                                      },
+                                      "action": {
+                                        "type": "string",
+                                        "enum": [
+                                          "supply",
+                                          "withdraw",
+                                          "borrow",
+                                          "repay"
+                                        ]
+                                      },
+                                      "venue": {
+                                        "type": "string",
+                                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                                      },
+                                      "amount": {
+                                        "type": "object",
+                                        "properties": {
+                                          "asset": {
+                                            "type": "string"
+                                          },
+                                          "base": {
+                                            "type": "string",
+                                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                          }
+                                        },
+                                        "required": [
+                                          "asset",
+                                          "base"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "action",
+                                      "venue",
+                                      "amount"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "stake"
+                                      },
+                                      "action": {
+                                        "type": "string",
+                                        "enum": [
+                                          "stake",
+                                          "unstake",
+                                          "claim"
+                                        ]
+                                      },
+                                      "venue": {
+                                        "type": "string",
+                                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                                      },
+                                      "validator": {
+                                        "type": "string"
+                                      },
+                                      "amount": {
+                                        "type": "object",
+                                        "properties": {
+                                          "asset": {
+                                            "type": "string"
+                                          },
+                                          "base": {
+                                            "type": "string",
+                                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                          }
+                                        },
+                                        "required": [
+                                          "asset",
+                                          "base"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "action",
+                                      "venue"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "bridge"
+                                      },
+                                      "amount": {
+                                        "type": "object",
+                                        "properties": {
+                                          "asset": {
+                                            "type": "string"
+                                          },
+                                          "base": {
+                                            "type": "string",
+                                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                          }
+                                        },
+                                        "required": [
+                                          "asset",
+                                          "base"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "toChain": {
+                                        "type": "string"
+                                      },
+                                      "to": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "entry": {
+                                                "type": "string",
+                                                "pattern": "^adr_"
+                                              }
+                                            },
+                                            "required": [
+                                              "entry"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "rescue": {
+                                                "type": "boolean",
+                                                "const": true
+                                              }
+                                            },
+                                            "required": [
+                                              "rescue"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "amount",
+                                      "toChain",
+                                      "to"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "cexOrder"
+                                      },
+                                      "market": {
+                                        "type": "string",
+                                        "pattern": "^[A-Z0-9][A-Z0-9_-]{0,31}$"
+                                      },
+                                      "side": {
+                                        "type": "string",
+                                        "enum": [
+                                          "buy",
+                                          "sell"
+                                        ]
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "market",
+                                          "limit"
+                                        ]
+                                      },
+                                      "size": {
+                                        "type": "string",
+                                        "pattern": "^(?:0|[1-9]\\d{0,30})(?:\\.\\d{1,18})?$"
+                                      },
+                                      "price": {
+                                        "type": "string",
+                                        "pattern": "^(?:0|[1-9]\\d{0,30})(?:\\.\\d{1,18})?$"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "market",
+                                      "side",
+                                      "type",
+                                      "size"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "registerIdentity"
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "agent": {
+                                        "type": "string",
+                                        "pattern": "^agt_"
+                                      },
+                                      "wallet": {
+                                        "type": "string",
+                                        "pattern": "^wal_"
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "launchToken"
+                                      },
+                                      "venue": {
+                                        "type": "string",
+                                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "symbol": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 16
+                                      },
+                                      "image": {
+                                        "type": "string",
+                                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                                      },
+                                      "description": {
+                                        "type": "string"
+                                      },
+                                      "links": {
+                                        "type": "object",
+                                        "properties": {
+                                          "website": {
+                                            "type": "string",
+                                            "maxLength": 512,
+                                            "format": "uri"
+                                          },
+                                          "x": {
+                                            "type": "string",
+                                            "maxLength": 512,
+                                            "format": "uri"
+                                          },
+                                          "telegram": {
+                                            "type": "string",
+                                            "maxLength": 512,
+                                            "format": "uri"
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      "pairWith": {
+                                        "type": "string"
+                                      },
+                                      "firstBuy": {
+                                        "type": "object",
+                                        "properties": {
+                                          "asset": {
+                                            "type": "string"
+                                          },
+                                          "base": {
+                                            "type": "string",
+                                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                          }
+                                        },
+                                        "required": [
+                                          "asset",
+                                          "base"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "venueOptions": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                          "type": "string"
+                                        },
+                                        "additionalProperties": {}
+                                      }
+                                    },
+                                    "required": [
+                                      "agent",
+                                      "reason",
+                                      "kind",
+                                      "venue",
+                                      "name",
+                                      "symbol",
+                                      "image",
+                                      "pairWith"
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "rescue"
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "unfreeze"
+                                  },
+                                  "agent": {
+                                    "type": "string",
+                                    "pattern": "^agt_"
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              }
+                            ]
+                          },
+                          "quote": {
+                            "type": "object",
+                            "properties": {
+                              "route": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "venue": {
+                                      "type": "string",
+                                      "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                                    },
+                                    "shareBps": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "venue",
+                                    "shareBps"
+                                  ]
+                                }
+                              },
+                              "amountIn": {
+                                "type": "object",
+                                "properties": {
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "base": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "asset",
+                                  "base"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "expectedOut": {
+                                "type": "object",
+                                "properties": {
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "base": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "asset",
+                                  "base"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "minOut": {
+                                "type": "object",
+                                "properties": {
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "base": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "asset",
+                                  "base"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "priceImpactBps": {
+                                "type": "number"
+                              },
+                              "gas": {
+                                "type": "object",
+                                "properties": {
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "base": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "asset",
+                                  "base"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "quotedAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "expiresAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "route",
+                              "amountIn",
+                              "expectedOut",
+                              "minOut",
+                              "priceImpactBps",
+                              "gas",
+                              "quotedAt",
+                              "expiresAt"
+                            ]
+                          },
+                          "risk": {
+                            "type": "object",
+                            "properties": {
+                              "verdict": {
+                                "type": "string",
+                                "enum": [
+                                  "pass",
+                                  "warn",
+                                  "block"
+                                ]
+                              },
+                              "flags": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "code": {
+                                      "type": "string",
+                                      "pattern": "^[a-z][a-z0-9_]*$"
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "pattern": "^[a-z][a-z0-9_]*$"
+                                    }
+                                  },
+                                  "required": [
+                                    "code",
+                                    "source"
+                                  ]
+                                }
+                              },
+                              "buyTaxBps": {
+                                "type": "number"
+                              },
+                              "sellTaxBps": {
+                                "type": "number"
+                              },
+                              "liquidityUsdMicros": {
+                                "type": "string",
+                                "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                              },
+                              "onCurve": {
+                                "type": "boolean"
+                              },
+                              "checkedAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "verdict",
+                              "flags",
+                              "onCurve",
+                              "checkedAt"
+                            ]
+                          },
+                          "simulation": {
+                            "type": "object",
+                            "properties": {
+                              "spent": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "asset": {
+                                      "type": "string"
+                                    },
+                                    "base": {
+                                      "type": "string",
+                                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                    }
+                                  },
+                                  "required": [
+                                    "asset",
+                                    "base"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "received": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "asset": {
+                                      "type": "string"
+                                    },
+                                    "base": {
+                                      "type": "string",
+                                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                    }
+                                  },
+                                  "required": [
+                                    "asset",
+                                    "base"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "simulatedAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "estimated": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "spent",
+                              "received",
+                              "simulatedAt"
+                            ]
+                          },
+                          "card": {
+                            "type": "object",
+                            "properties": {
+                              "card": {
+                                "type": "string",
+                                "pattern": "^crd_"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "opensAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "expiresAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "paper": {
+                                "type": "boolean"
+                              },
+                              "outsideContent": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "card",
+                              "version",
+                              "opensAt",
+                              "expiresAt",
+                              "paper",
+                              "outsideContent"
+                            ]
+                          },
+                          "outcome": {
+                            "type": "object",
+                            "properties": {
+                              "reason": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z_]*$"
+                              },
+                              "txHashes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "executions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "amountIn": {
+                                      "type": "object",
+                                      "properties": {
+                                        "asset": {
+                                          "type": "string"
+                                        },
+                                        "base": {
+                                          "type": "string",
+                                          "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                        }
+                                      },
+                                      "required": [
+                                        "asset",
+                                        "base"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "amountOut": {
+                                      "type": "object",
+                                      "properties": {
+                                        "asset": {
+                                          "type": "string"
+                                        },
+                                        "base": {
+                                          "type": "string",
+                                          "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                        }
+                                      },
+                                      "required": [
+                                        "asset",
+                                        "base"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "priceUsdMicros": {
+                                      "type": "string",
+                                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                    },
+                                    "feeUsdMicros": {
+                                      "type": "string",
+                                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                    },
+                                    "gasUsdMicros": {
+                                      "type": "string",
+                                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                    },
+                                    "at": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "amountIn",
+                                    "amountOut",
+                                    "at"
+                                  ]
+                                }
+                              }
+                            }
+                          },
+                          "paper": {
+                            "type": "boolean"
+                          },
+                          "outsideContent": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "changedAt": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "assets": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "symbol": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "decimals": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 255
+                                },
+                                "verified": {
+                                  "type": "boolean"
+                                },
+                                "onCurve": {
+                                  "type": "boolean"
+                                },
+                                "logo": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "symbol",
+                                "name",
+                                "decimals",
+                                "verified"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "intent",
+                          "agent",
+                          "wallet",
+                          "kind",
+                          "state",
+                          "request",
+                          "paper",
+                          "outsideContent",
+                          "createdAt",
+                          "changedAt",
+                          "assets"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "message",
+                      "agent",
+                      "session",
+                      "at",
+                      "kind",
+                      "turn",
+                      "intent"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string",
+                        "pattern": "^msg_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "session": {
+                        "type": "string",
+                        "pattern": "^ses_"
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "type": "string",
+                        "const": "inbox/stop"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "owner",
+                          "freeze"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "message",
+                      "agent",
+                      "session",
+                      "at",
+                      "kind",
+                      "reason"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string",
+                        "pattern": "^msg_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "session": {
+                        "type": "string",
+                        "pattern": "^ses_"
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "type": "string",
+                        "const": "inbox/clear"
+                      },
+                      "next": {
+                        "type": "string",
+                        "pattern": "^ses_"
+                      }
+                    },
+                    "required": [
+                      "message",
+                      "agent",
+                      "session",
+                      "at",
+                      "kind",
+                      "next"
+                    ]
+                  }
+                ]
+              }
+            },
+            "next": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "items"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/inbox/take": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "inbox/take"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "messages": {
+              "minItems": 1,
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^msg_"
+              }
+            }
+          },
+          "required": [
+            "messages"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "agent",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/inbox/take": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
         }
       },
       "required": [

@@ -34,6 +34,7 @@ type IdName =
   | "schedule"
   | "session"
   | "turn"
+  | "message"
   | "device"
   | "backup"
   | "plugin"
@@ -56,6 +57,7 @@ export const ids: Readonly<Record<IdName, string>> = {
   schedule: `sch_${uuid}`,
   session: `ses_${uuid}`,
   turn: `trn_${uuid}`,
+  message: `msg_${uuid}`,
   device: `dev_${uuid}`,
   backup: `bkp_${uuid}`,
   plugin: `plg_${uuid}`,

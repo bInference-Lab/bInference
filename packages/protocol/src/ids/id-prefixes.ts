@@ -25,6 +25,7 @@ export const idPrefixes = {
   schedule: "sch",
   chatSession: "ses",
   chatTurn: "trn",
+  inboxMessage: "msg",
   consoleDevice: "dev",
   connection: "con",
   backup: "bkp",

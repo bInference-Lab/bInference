@@ -79,6 +79,17 @@ export const chatExamples: { readonly [N in keyof ChatOperationShapes]: WireExam
   },
   "chat/stop": { args: { agent: ids.agent }, result: empty },
   "chat/clear": { args: { agent: ids.agent }, result: { session: ids.session } },
+  "turn/start": {
+    args: {
+      agent: ids.agent,
+      session: ids.session,
+      turn: ids.turn,
+      messages: [ids.message],
+      outsideContent: false,
+    },
+    result: { budgetLeftMicros: "2995900" },
+  },
+  "turn/mark": { args: { agent: ids.agent, turn: ids.turn }, result: empty },
   "turn/say": {
     args: { agent: ids.agent, session: ids.session, turn: ids.turn, text: "Done.", final: true },
     result: empty,
@@ -122,6 +133,30 @@ export const chatExamples: { readonly [N in keyof ChatOperationShapes]: WireExam
       budgets: [{ agent: ids.agent, dailyUsdMicros: "3000000", leftUsdMicros: "2995900" }],
     },
   },
+  "inbox/list": {
+    args: { agent: ids.agent, limit: 50 },
+    result: pageOf(
+      {
+        message: ids.message,
+        kind: "inbox/message",
+        agent: ids.agent,
+        session: ids.session,
+        at,
+        turn: ids.turn,
+        text: "Buy 0.1 BNB of the token I sent.",
+        surface: "telegram",
+      },
+      {
+        message: ids.message,
+        kind: "inbox/stop",
+        agent: ids.agent,
+        session: ids.session,
+        at,
+        reason: "owner",
+      },
+    ),
+  },
+  "inbox/take": { args: { messages: [ids.message] }, result: empty },
 };
 
 /** An example call of every notes operation. */
