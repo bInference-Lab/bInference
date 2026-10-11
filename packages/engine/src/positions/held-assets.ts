@@ -8,8 +8,8 @@ import type { Id } from "@binference/core";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import type { PositionStore } from "../ports.js";
 
-// The registry's tokens of the chain, as assets of its family's token standard.
-function registryTokens(chain: RegisteredChain): readonly AssetRef[] {
+/** The registry's tokens of the chain, as assets of its family's token standard, in its order. */
+export function registryTokens(chain: RegisteredChain): readonly AssetRef[] {
   const { tokenNamespace } = chain.family;
   return chain.definition.tokens.map((token) =>
     assetRefSchema.parse(`${chain.ref}/${tokenNamespace}:${token.address}`),

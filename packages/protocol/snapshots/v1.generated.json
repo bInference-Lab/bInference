@@ -6437,6 +6437,10 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 128
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
             }
           },
           "required": [
@@ -6577,6 +6581,28 @@
             "next": {
               "type": "string",
               "minLength": 1
+            },
+            "unlisted": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset": {
+                    "type": "string"
+                  },
+                  "held": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "asset",
+                  "held"
+                ]
+              }
+            },
+            "ambiguous": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [

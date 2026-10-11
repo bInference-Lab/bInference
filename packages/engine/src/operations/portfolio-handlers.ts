@@ -6,16 +6,17 @@ import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
 import type { AgentStore, InstallStore } from "../ports.js";
 import { activeAgent } from "./active-agent.js";
+import { type AssetSearchHandlers, createAssetSearchHandlers } from "./asset-search-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { type LiveHoldingsOptions, liveHoldingsOf } from "./live-holdings.js";
 import { pnlViewOf } from "./pnl-view.js";
 import { paperHoldingsOf, portfolioViewOf } from "./portfolio-view.js";
 
 /**
- * The handlers of `portfolio/get`, `portfolio/pnl` and `portfolio/resetPaper` (protocol spec,
- * section 7.3).
+ * The handlers of `portfolio/get`, `portfolio/pnl`, `portfolio/resetPaper` and `asset/search`
+ * (protocol spec, section 7.3).
  */
-export interface PortfolioHandlers {
+export interface PortfolioHandlers extends AssetSearchHandlers {
   readonly "portfolio/get": EngineHandler<"portfolio/get">;
   readonly "portfolio/pnl": EngineHandler<"portfolio/pnl">;
   readonly "portfolio/resetPaper": EngineHandler<"portfolio/resetPaper">;
@@ -104,10 +105,12 @@ async function pnlOf(
  * their trades happened; a range that ends before it starts is `protocol.bad_args`.
  * `portfolio/resetPaper` starts the agent's paper portfolio again from the balances it names, or
  * from the starting balances, and answers the new paper portfolio with its values now. It never
- * changes the agent's mode or a live position.
+ * changes the agent's mode or a live position. `asset/search` finds a token's id in the registry
+ * and the wallets' positions (see {@link createAssetSearchHandlers}).
  */
 export function createPortfolioHandlers(options: PortfolioHandlersOptions): PortfolioHandlers {
   return {
+    ...createAssetSearchHandlers(options),
     async "portfolio/get"({ args, signal }) {
       const wallets = await walletsOf(options, args, signal);
       if (!wallets.ok) {

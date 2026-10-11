@@ -296,11 +296,18 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `portfolio/pnl`        | `read`           | `{ agent, from, to }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137))                             |
 | `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                      |
 | `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                     |
-| `asset/search`         | `read`           | `{ chain, query }` → registry matches, or the pasted address when valid                                                            |
+| `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)        |
 | `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                                      |
 | `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                      |
 | `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                           |
 
+- `asset/search` reads the chain registry and the positions store, never the web. A query the
+  chain's family reads as an address names that token: `items` holds it with the registry's
+  `AssetInfo` when the registry lists it, else `unlisted` holds its canonical id and `held`,
+  whether a wallet of `agent` (of every agent when absent) holds some of it, live or on paper. Other
+  text matches the registry's symbols whole, in any case, the chain's coin among them; only when
+  none does, the names that hold the text. Every match is on one page, and `ambiguous` is `true`
+  when more than one matched, so the client asks the owner which one they mean.
 - `portfolio/pnl` sums what each execution recorded from `from` to `to`, both included, realized
   when it was recorded at average cost ([decision 0058](../DECISIONS.md#d0058)), counted for the
   asset it sold. The unrealized P&L is today's, of what the positions hold now, whatever the range.

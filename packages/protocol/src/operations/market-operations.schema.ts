@@ -12,7 +12,7 @@ import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type SwapRequest, swapRequestSchema } from "../requests/intent-request.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
-import { type Page, pageSchema } from "../values/page.schema.js";
+import type { Page } from "../values/page.schema.js";
 import { signedUsdMicrosSchema } from "../values/signed-usd-micros.schema.js";
 import {
   type AssetInfos,
@@ -73,6 +73,34 @@ interface AssetArgs {
   readonly asset: AssetRef;
 }
 
+/** The args of `asset/search`: the text to find on one chain, and whose held tokens count. */
+interface AssetSearchArgs {
+  readonly chain: ChainRef;
+  /** A symbol, a name or a token's address. */
+  readonly query: string;
+  /** The agent whose wallets' held tokens count; every agent's when absent. */
+  readonly agent?: ProtocolId<"agent">;
+}
+
+/** A token the registry does not list, found by its address. */
+interface UnlistedAsset {
+  /** The token's asset id in its family's canonical form. */
+  readonly asset: AssetRef;
+  /** A wallet of the agent, or of any agent, holds a position in it. */
+  readonly held: boolean;
+}
+
+/**
+ * The answer of `asset/search`: the registry's assets that match, every one on a single page, and
+ * a pasted address the registry does not list.
+ */
+interface AssetSearchView extends Page<AssetView> {
+  /** The address the query names, when the registry does not list it; it has no known symbol. */
+  readonly unlisted?: readonly UnlistedAsset[];
+  /** More than one asset matches: the caller asks the owner which one they mean. */
+  readonly ambiguous?: true;
+}
+
 /** The answer of `name/resolve`. */
 interface ResolvedName {
   readonly name: string;
@@ -89,10 +117,7 @@ export interface MarketOperationShapes {
     readonly result: PortfolioView;
   };
   readonly "asset/get": { readonly args: AssetArgs; readonly result: AssetView };
-  readonly "asset/search": {
-    readonly args: { readonly chain: ChainRef; readonly query: string };
-    readonly result: Page<AssetView>;
-  };
+  readonly "asset/search": { readonly args: AssetSearchArgs; readonly result: AssetSearchView };
   readonly "name/resolve": {
     readonly args: { readonly name: string };
     readonly result: ResolvedName;
@@ -161,8 +186,17 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
     ...readFlags,
     name: "asset/search",
     scope: "read",
-    args: z.strictObject({ chain: chainRefSchema, query: z.string().min(1).max(128) }),
-    result: pageSchema(assetViewSchema),
+    args: z.strictObject({
+      chain: chainRefSchema,
+      query: z.string().min(1).max(128),
+      agent: protocolIdSchema("agent").exactOptional(),
+    }),
+    result: z.object({
+      items: z.array(assetViewSchema),
+      next: z.string().min(1).exactOptional(),
+      unlisted: z.array(z.object({ asset: assetRefSchema, held: z.boolean() })).exactOptional(),
+      ambiguous: z.literal(true).exactOptional(),
+    }),
   },
   "name/resolve": {
     ...readFlags,
