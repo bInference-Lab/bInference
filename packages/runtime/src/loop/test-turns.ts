@@ -12,7 +12,7 @@ import {
 } from "../testing/turn-recorder.js";
 import { type ChatTurn, createChatTurn } from "./chat-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
-import type { ToolBox, ToolKind, ToolOutcome, ToolRunContext } from "./turn-ports.js";
+import type { ToolBox, ToolKind, ToolOutcome, ToolRunContext, TurnEngine } from "./turn-ports.js";
 import { type TurnLimits, turnLimits } from "./turn-run.js";
 
 /** The turn id every test turn runs under. */
@@ -80,6 +80,10 @@ export interface TestTurnOptions {
   readonly history?: readonly ModelMessage[];
   readonly outsideContent?: boolean;
   readonly limits?: Partial<TurnLimits>;
+  /** The engine's side of the turn in place of the recorder's, such as a protocol client's. */
+  readonly engine?: TurnEngine;
+  /** The turn id the engine reserved; {@link testTurnId} when absent. */
+  readonly turnId?: string;
 }
 
 /** A test turn with its transport, recorder and clock. */
@@ -97,12 +101,12 @@ export function createTestTurn(options: TestTurnOptions): TestTurn {
   const clock = createManualClock(1_000);
   const tools = typeof options.tools === "function" ? options.tools(recorder) : options.tools;
   const turn = createChatTurn({
-    turnId: testTurnId,
+    turnId: options.turnId ?? testTurnId,
     parts: {
       transport,
       tools: options.box ?? testToolBox(tools ?? []),
       journal: recorder.journal,
-      engine: recorder.engine,
+      engine: options.engine ?? recorder.engine,
       merge: recorder.merge,
       clock,
     },
