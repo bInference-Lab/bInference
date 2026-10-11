@@ -32,6 +32,7 @@
     "@binference/client": "workspace:*",
     "@binference/core": "workspace:*",
     "@binference/protocol": "workspace:*",
+    "@binference/store": "workspace:*",
     "ws": "catalog:",
     "zod": "catalog:"
   },

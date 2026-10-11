@@ -18,3 +18,6 @@ this package:
   dependency of the entry is bundled into it; a new file, folder or permission it needs is granted
   in `runtimeNodeArguments` and nowhere else.
 - Model clients are built only in `src/providers/` (spec 8, section 8.1).
+- The turn loop in `src/loop/` depends only on its ports (`turn-ports.ts`) and reads a tool's kind,
+  never its name. Keep each step a small function: a new rule of the turn is a new step or a new
+  port method, never another branch in `takeStep`.

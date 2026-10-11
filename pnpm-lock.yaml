@@ -797,6 +797,9 @@ importers:
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@binference/store':
+        specifier: workspace:*
+        version: link:../store
       ws:
         specifier: 'catalog:'
         version: 8.22.0
