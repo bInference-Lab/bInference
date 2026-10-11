@@ -114,6 +114,19 @@ describe("the card showings", () => {
     expect(tax?.values).toStrictEqual({ tax: { type: "percent", bps: 450 } });
   });
 
+  it("say the buy's tax when the buy takes more than the sale", async () => {
+    const view = { verdict: "warn", flags: [], onCurve: false, checkedAt: testNowMs } as const;
+    const risk: RiskCheck = {
+      assess: async () =>
+        await Promise.resolve({ view: { ...view, buyTaxBps: 450 as Bps, sellTaxBps: 200 as Bps } }),
+    };
+    const shown = await proposed({ risk });
+    const ref = { intent: shown.intent, card: shown.card.id };
+    const showing = present(await showingsOf(shown.test).opened(ref, live));
+    const tax = showing.card.lines.find((line) => line.key === "card.warn.highTax");
+    expect(tax?.values).toStrictEqual({ tax: { type: "percent", bps: 450 } });
+  });
+
   it("say a paper sale of a token nothing can simulate fills as an estimate, with no check line", async () => {
     const unset = new BinferenceError({
       code: "chain.balance_unset",
@@ -311,5 +324,16 @@ describe("the card showings", () => {
     const routeless = { ...unsimulated, quote: quoteDocument.encode({ ...quote, route: [] }) };
     const facts = present(cardFactsOf({ ...source, record: routeless }));
     expect([facts.route, facts.check]).toStrictEqual([undefined, undefined]);
+    expect(cardFactsOf({ ...source, record: { ...unquoted, kind: "rescue" } })).toBe(undefined);
+    expect(cardFactsOf({ ...source, record: { ...unquoted, kind: "unfreeze" } })).toBe(undefined);
+  });
+
+  it("read no tax for an intent the risk step left no report on", async () => {
+    const shown = await proposed();
+    const { risk: _risk, ...unassessed } = await recordOf(shown);
+    const settings = present(await shown.test.stores.agents.get(unassessed.agentId, live));
+    const source = { card: shown.card, settings, isFirstLive: false, chains: testChains() };
+    const facts = present(cardFactsOf({ ...source, record: unassessed }));
+    expect(facts.warnings.taxBps).toBe(undefined);
   });
 });
