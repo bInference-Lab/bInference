@@ -178,6 +178,7 @@
   "walletExport.wrongEnd": "这不是 {address} 的最后 4 个字符。请重试。",
   "walletExport.shown": "{label}（{address}）的私钥，仅显示一次：",
   "walletExport.after": "请离线保存，然后清除此终端的滚动记录。",
+  "walletExport.mismatch": "托管方发来的密钥不属于 {address}，因此 binference 不显示任何内容。请运行 `binference wallet list` 核对钱包后重试。",
   "check.summary": "已运行 {checks, plural, other {# 项检查}}：{problems, plural, =0 {没有问题} other {# 个问题}}，{warnings, plural, =0 {没有警告} other {# 个警告}}。",
   "check.problems": "问题：",
   "check.warnings": "警告：",

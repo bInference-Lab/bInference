@@ -178,6 +178,7 @@
   "walletExport.wrongEnd": "Those are not the last 4 characters of {address}. Try again.",
   "walletExport.shown": "The private key of {label} ({address}), shown once:",
   "walletExport.after": "Store it offline, then clear this terminal's scrollback.",
+  "walletExport.mismatch": "The key custody sent does not belong to {address}, so binference shows nothing. Run `binference wallet list` to check the wallet, then try again.",
   "check.summary": "{checks, plural, one {# check} other {# checks}} ran: {problems, plural, =0 {no problem} one {# problem} other {# problems}} and {warnings, plural, =0 {no warning} one {# warning} other {# warnings}}.",
   "check.problems": "Problems:",
   "check.warnings": "Warnings:",

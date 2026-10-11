@@ -2,6 +2,7 @@ import { accountRefParts } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { displayOutsideText } from "@binference/i18n";
 import type { WalletView } from "@binference/protocol";
+import { keyBelongs } from "../export/key-belongs.js";
 import { createKeyRecipient } from "../export/key-recipient.js";
 import type { WalletAddressFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode, StepOutcome } from "../program/cli-output.js";
@@ -62,7 +63,8 @@ function keyText(opened: Uint8Array): string {
  * with the key controls every token in the wallet, and asks the person to type the address's last
  * 4 characters. It then makes a fresh HPKE recipient key, asks for the owner key unseen and calls
  * `wallet/exportSealed` over IPC with the recipient key's public half alone; custody seals the
- * wallet's key to it, and only this process opens it. The key is printed once and its bytes are
+ * wallet's key to it, and only this process opens it. A key that does not derive the wallet's
+ * address is never shown (`cli.export_mismatch`). The key is printed once and its bytes are
  * zeroed; nothing keeps it. With `--yes`, `--json` or nobody at the terminal it reads nothing.
  */
 export async function runWalletExport(
@@ -96,9 +98,19 @@ export async function runWalletExport(
   }
   const opened = await recipient.open(sealed.value);
   try {
+    const key = keyText(opened);
+    // A wrong custody id, or an engine that lies, must never show another key under this label.
+    if (!keyBelongs(key, wallet.address)) {
+      run.output.fail({
+        code: "cli.export_mismatch",
+        key: "walletExport.mismatch",
+        values: { address },
+      });
+      return 1;
+    }
     const label = displayOutsideText(wallet.label, labelLength);
     run.output.say("walletExport.shown", { label, address });
-    run.output.line(keyText(opened));
+    run.output.line(key);
     run.output.say("walletExport.after");
   } finally {
     opened.fill(0);
