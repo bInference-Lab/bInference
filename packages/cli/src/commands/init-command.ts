@@ -217,6 +217,7 @@ export function initContextOf(
       isInteractive && host.prompter !== undefined ? host.prompter : createOutputPrompter(output),
     isInteractive,
     words: (key: string, values?: MessageValues) => formatter.message(`init.${key}`, values),
+    message: (key: string, values?: MessageValues) => formatter.message(key, values),
     dateTime: (epochMs: number) => formatter.dateTime(epochMs),
     secrets: createSecretReader({
       env: host.env,

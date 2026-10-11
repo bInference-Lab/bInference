@@ -195,6 +195,25 @@ export function cancelLimits(state: LimitsState, nowMs: number): LimitsState {
   return { values: limitsAt(state, nowMs).values };
 }
 
+/**
+ * Whether `after` allows nothing that `before` refuses: every limit is the same or clearly
+ * stricter, as {@link moveLimits} judges it.
+ */
+export function isNoLooser(before: LimitsValues, after: LimitsValues): boolean {
+  return limitNames.every((name) => comparisons[name].isStricter(before, after));
+}
+
+/**
+ * The stricter of two sets of limits, limit by limit: each takes `other`'s value when it is the
+ * same or clearly stricter than `base`'s, and keeps `base`'s otherwise, so the result is never
+ * looser than `base`. Two values neither of which is stricter, such as two venue lists that each
+ * hold a venue the other lacks, keep `base`'s.
+ */
+export function stricterLimits(base: LimitsValues, other: LimitsValues): LimitsValues {
+  const names = limitNames.filter((name) => comparisons[name].isStricter(base, other));
+  return withLimits(base, other, names);
+}
+
 /** The limits that differ between two sets, in the order `LimitsValues` names them. */
 export function limitsChanged(before: LimitsValues, after: LimitsValues): readonly LimitName[] {
   return limitNames.filter((name) => !comparisons[name].isSame(before, after));

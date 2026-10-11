@@ -2,6 +2,7 @@ import { accessTasks } from "../access/sqlite-access-store.js";
 import { agentTasks } from "../agents/sqlite-agent-store.js";
 import { configJournalTasks } from "../audit/config-journal-tasks.js";
 import { backupTasks } from "../backups/backup-tasks.js";
+import { installGuardsTasks } from "../backups/install-guards-tasks.js";
 import { idempotencyTasks } from "../ingress/idempotency-tasks.js";
 import { inboxTasks } from "../ingress/inbox-tasks.js";
 import { installTasks } from "../install/sqlite-install-store.js";
@@ -33,6 +34,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...installTasks,
     ...riskCacheTasks,
     ...backupTasks,
+    ...installGuardsTasks,
     ...positionTasks,
     ...noticeTasks,
     ...ownerTasks,

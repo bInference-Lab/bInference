@@ -291,6 +291,16 @@ export interface ConfigJournalTable {
   reason: string | null;
 }
 
+/** `carried_outflows`: outflows a restore carried from the state it replaced (migration 0025). */
+interface CarriedOutflowsTable {
+  intent_id: string;
+  agent_id: string;
+  paper: number;
+  confirmed_at: number;
+  value_usd_micros: string;
+  carried_at: number;
+}
+
 /** `risk_cache`: one source's report for one token, as JSON text. */
 interface RiskCacheTable {
   asset: string;
@@ -317,6 +327,7 @@ export interface EngineTables
   cards: CardsTable;
   confirmations: ConfirmationsTable;
   late_landings: { intent_id: string; tx_id: string; at: number };
+  carried_outflows: CarriedOutflowsTable;
   ledger: LedgerTable;
   idempotency: IdempotencyTable;
   inbox: InboxTable;

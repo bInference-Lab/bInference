@@ -1,9 +1,16 @@
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, ok } from "@binference/core";
 import { acquireFileLock, removePath } from "@binference/platform";
 import { prepareRestore } from "../attach/prepare-restore.js";
 import type { Unpacked } from "../attach/restore-backup.js";
+import {
+  carryReplaced,
+  confirmRestore,
+  type ReplacedState,
+  readReplaced,
+  readRestored,
+} from "../attach/restore-guards-step.js";
 import { type StateSwap, swapInRestored } from "../backups/state-swap.js";
-import type { InitContext } from "../init/init-context.js";
+import type { InitContext, InitStep } from "../init/init-context.js";
 import type { StartFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
@@ -51,6 +58,7 @@ async function stopFor(run: CommandRun): Promise<EngineRun | undefined> {
 type Swapped =
   | { readonly kind: "swapped"; readonly swap: StateSwap }
   | { readonly kind: "locked" }
+  | { readonly kind: "not_carried" }
   | { readonly kind: "put_back" }
   | { readonly kind: "mixed"; readonly aside: string; readonly staged: string };
 
@@ -63,15 +71,28 @@ function failedSwap(error: Error): Swapped {
   return { kind: "put_back" };
 }
 
-// Puts the restored files in place under the engine lock; `locked` when an engine holds it. A
-// swap that fails puts every file back before it answers (keys spec, section 7.4).
-async function swapUnderLock(context: InitContext, unpacked: Unpacked): Promise<Swapped> {
+// Carries the replaced state's guards into the restored copy, then puts the restored files in
+// place, all under the engine lock; `locked` when an engine holds it. A swap that fails puts every
+// file back before it answers (keys spec, section 7.4).
+async function swapUnderLock(
+  context: InitContext,
+  unpacked: Unpacked,
+  replaced: ReplacedState["kind"],
+): Promise<Swapped> {
   const { platform, host, signal } = context;
   const lock = acquireFileLock(platform.stateFolder.engineLock);
   if (!lock.ok) {
     return { kind: "locked" };
   }
   try {
+    try {
+      await carryReplaced(context, { unpacked: unpacked.unpacked, replaced });
+    } catch (error) {
+      if (signal.aborted || !(error instanceof BinferenceError)) {
+        throw error;
+      }
+      return { kind: "not_carried" };
+    }
     const swap = await swapInRestored(platform.stateFolder, unpacked.unpacked, {
       permissions: platform.permissions,
       atMs: host.clock.now(),
@@ -185,46 +206,57 @@ async function startAs(
     : { isStarted: false, code };
 }
 
+// Refuses a swap that did not happen, after which the engine runs as it did: an engine held the
+// lock, the folder mixes both states, or nothing moved and the engine starts again as it ran.
+async function refuseSwap(
+  restore: RestoreRun,
+  swapped: Exclude<Swapped, { readonly kind: "swapped" }>,
+  ran: EngineRun,
+): Promise<ExitCode> {
+  const { context, report } = restore;
+  const folder = context.platform.stateFolder.root;
+  if (swapped.kind === "locked") {
+    return refuse(context, report, {
+      code: "engine.already_running",
+      key: "refused.restoreEngineStarted",
+      values: { folder },
+    });
+  }
+  if (swapped.kind === "mixed") {
+    return refuseMixed(restore, swapped);
+  }
+  const isCarry = swapped.kind === "not_carried";
+  const code = refuse(context, report, {
+    code: isCarry ? "backup.restore_carry_failed" : "backup.restore_move_failed",
+    key: isCarry ? "refused.restoreCarryFailed" : "refused.restoreMoveFailed",
+    values: { folder },
+  });
+  const again = ran === "stopped" ? undefined : await startAs(restore, ran);
+  if (again?.isStarted === true) {
+    await again.serve();
+  }
+  return code;
+}
+
 // Stops the engine and puts the checked backup in place; answers how the engine ran with the
 // swap, or the exit code of a refusal, after which the engine runs as it did.
 async function stopAndSwap(
   restore: RestoreRun,
   unpacked: Unpacked,
+  replaced: ReplacedState["kind"],
 ): Promise<{ readonly ran: EngineRun; readonly swap: StateSwap } | ExitCode> {
   const { run, context, report } = restore;
-  const folder = context.platform.stateFolder.root;
   const ran = await stopFor(run);
   if (ran === undefined) {
     return refuse(context, report, {
       code: "engine.still_running",
       key: "refused.restoreStopLate",
-      values: { folder },
+      values: { folder: context.platform.stateFolder.root },
     });
   }
-  const swapped = await swapUnderLock(context, unpacked);
-  switch (swapped.kind) {
-    case "locked":
-      return refuse(context, report, {
-        code: "engine.already_running",
-        key: "refused.restoreEngineStarted",
-        values: { folder },
-      });
-    case "mixed":
-      return refuseMixed(restore, swapped);
-    case "put_back": {
-      const code = refuse(context, report, {
-        code: "backup.restore_move_failed",
-        key: "refused.restoreMoveFailed",
-        values: { folder },
-      });
-      const again = ran === "stopped" ? undefined : await startAs(restore, ran);
-      if (again?.isStarted === true) {
-        await again.serve();
-      }
-      return code;
-    }
-    case "swapped":
-      break;
+  const swapped = await swapUnderLock(context, unpacked, replaced);
+  if (swapped.kind !== "swapped") {
+    return refuseSwap(restore, swapped, ran);
   }
   const { swap } = swapped;
   const when = context.dateTime(unpacked.manifest.createdAt);
@@ -234,6 +266,26 @@ async function stopAndSwap(
       : context.words("restore.placedAside", { when, folder: swap.aside }),
   );
   return { ran, swap };
+}
+
+// Shows the owner what the restore changes while the engine still runs, and asks to go on; answers
+// how the state it replaces read, for the carry after the stop.
+async function preview(
+  context: InitContext,
+  unpacked: Unpacked,
+): Promise<InitStep<ReplacedState["kind"]>> {
+  const replaced = await readReplaced(context);
+  if (!replaced.ok) {
+    return replaced;
+  }
+  const restored = await readRestored(context, unpacked.unpacked);
+  const confirmed = await confirmRestore(context, {
+    createdAtMs: unpacked.manifest.createdAt,
+    replaced: replaced.value,
+    restored,
+    warnings: [],
+  });
+  return confirmed.ok ? ok(replaced.value.kind) : confirmed;
 }
 
 /**
@@ -271,7 +323,11 @@ export async function runBackupRestore(
   };
   const restore: RestoreRun = { run, context, report, options, staged };
   try {
-    const swapped = await stopAndSwap(restore, prepared.value);
+    const previewed = await preview(context, prepared.value);
+    if (!previewed.ok) {
+      return refuse(context, report, previewed.refusal);
+    }
+    const swapped = await stopAndSwap(restore, prepared.value, previewed.value);
     return typeof swapped === "number" ? swapped : await startOrUndo(restore, swapped);
   } finally {
     if (!staged.isKept()) {

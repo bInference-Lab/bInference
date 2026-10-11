@@ -26,6 +26,7 @@
     "engine/0021_web_push_subscriptions.ts": "0b2ba0e09beee7a2e266857e701d00c31ce3ab204856addf80694a8dd40415ff",
     "engine/0022_token_expiry.ts": "0dacb43b2dcc790c08773dfa5d98fa9e647664d440d0c05929d678fa6fa25c03",
     "engine/0023_mini_app_launches.ts": "49cde09d5fd4d55a02457dd497d202ea118d81a19fa987060892c60a9b9b351b",
-    "engine/0024_mini_app_tickets.ts": "551b0d8f12b14ae085d865339c42adc516e5750a937742fe428fcf236118fb1d"
+    "engine/0024_mini_app_tickets.ts": "551b0d8f12b14ae085d865339c42adc516e5750a937742fe428fcf236118fb1d",
+    "engine/0025_carried_outflows.ts": "35ddc0b54f81f62db7edb0e58cc4a7d8cf305c99951621d6d8eadf2062b794c7"
   }
 }

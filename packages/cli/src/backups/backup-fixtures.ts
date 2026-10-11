@@ -1,4 +1,7 @@
 import type { Result } from "@binference/core";
+import { readFilePieces } from "@binference/platform";
+import { backupDay } from "../attach/restore-guards-step.js";
+import { parseHeader, splitHeader } from "./header-line.js";
 
 /** Bytes that arrive in the given pieces, one after another. */
 export async function* piecesOf(pieces: readonly Uint8Array[]): AsyncGenerator<Uint8Array> {
@@ -39,4 +42,13 @@ export async function testOwnerKey(): Promise<{
   ]);
   const spki = await subtle.exportKey("spki", pair.publicKey);
   return { pair, publicKey: Buffer.from(spki).toString("base64") };
+}
+
+/** The day a person types to confirm restoring a backup file, from the time its header names. */
+export async function dayOfBackup(file: string): Promise<string> {
+  const split = valueOf(
+    await splitHeader(readFilePieces(file, { signal: new AbortController().signal })),
+  );
+  await split.close();
+  return backupDay(valueOf(parseHeader(split.line)).createdAt);
 }

@@ -147,6 +147,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   notices: names("id agent_id kind i18n_key values level at delivered intent_id"),
   telegram_owner: names("id user_id paired_at"),
   late_landings: names("intent_id tx_id at"),
+  carried_outflows: names("intent_id agent_id paper confirmed_at value_usd_micros carried_at"),
   idempotency: names("credential op key args_hash result at"),
   model_usage: names(
     "id agent_id turn_id model input_tokens output_tokens cached_tokens usd_micros at",
@@ -172,6 +173,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   limits: ["agent_id"],
   approval_modes: ["agent_id"],
   late_landings: ["intent_id"],
+  carried_outflows: ["intent_id"],
   send_levels: ["agent_id"],
   ceilings: ["wallet_id"],
   nonces: ["account"],
@@ -197,6 +199,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   wallets: ["unique|address", "unique|custody_wallet_id"],
   intents: ["index|agent_id,state", "index|state,changed_at"],
   intent_events: ["index|intent_id,at", "index|to_state,at"],
+  carried_outflows: ["index|agent_id,paper,confirmed_at"],
   cards: ["unique|callback_ref", "unique|intent_id,version"],
   confirmations: ["unique|intent_id"],
   txs: ["index|hash", "index|intent_id,step", "unique|account,nonce|partial"],

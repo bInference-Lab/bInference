@@ -17,7 +17,7 @@ import {
   openDatabase,
 } from "@binference/store";
 import { afterEach, describe, expect, it } from "vitest";
-import { joined } from "../backups/backup-fixtures.js";
+import { dayOfBackup, joined } from "../backups/backup-fixtures.js";
 import { type BackupRun, takeBackup } from "../backups/take-backup.js";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
@@ -94,7 +94,8 @@ async function newMachineLike(machine: InitMachine): Promise<InitMachine> {
 }
 
 async function restore(machine: InitMachine, file: string, ownerKeys: readonly string[]) {
-  const prompter = createScriptedPrompter({ ownerKey: ownerKeys });
+  const day = (await fileSize(file, signal())).ok ? [await dayOfBackup(file)] : [];
+  const prompter = createScriptedPrompter({ ownerKey: ownerKeys, restoreConfirm: day });
   const argv = ["init", "--attach", "--restore", file];
   const host = hostWith(machine, argv, {
     env: secretEnv(machine),
@@ -123,7 +124,7 @@ describe("binference init --attach --restore", () => {
       const restored = await restore(fresh, file, [ownerKey]);
 
       expect([restored.code, restored.stderr]).toStrictEqual([0, ""]);
-      expect(restored.prompter.transcript.asked).toStrictEqual(["ownerKey"]);
+      expect(restored.prompter.transcript.asked).toStrictEqual(["ownerKey", "restoreConfirm"]);
       const after = await storedInstall(fresh);
       expect(after.facts.wallets.map((wallet) => wallet.custodyWalletId)).toStrictEqual(
         before.facts.wallets.map((wallet) => wallet.custodyWalletId),

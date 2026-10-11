@@ -1,4 +1,5 @@
 import type { Id } from "@binference/core";
+import type { ConfirmedIntent } from "../intents/confirmed-intent.js";
 import type { IntentState } from "../intents/intent-state.js";
 import type { PastOutflow } from "../policy/policy-rules.js";
 import type { IntentStore } from "../ports.js";
@@ -18,6 +19,19 @@ const windowMs = 86_400_000;
 const movedNothing: ReadonlySet<IntentState> = new Set(["cancelled", "expired", "failed_onchain"]);
 
 /**
+ * Whether the rolling 24-hour cap counts a confirmed intent (decision 0136): one the policy
+ * valued, unless it ended without moving anything and no dropped step of it landed late.
+ */
+export function isCounted(
+  intent: ConfirmedIntent,
+): intent is ConfirmedIntent & { readonly valueUsdMicros: bigint } {
+  return (
+    intent.valueUsdMicros !== undefined &&
+    (!movedNothing.has(intent.state) || intent.landedLateAtMs !== undefined)
+  );
+}
+
+/**
  * The outflows the rolling 24-hour cap counts for an agent (decision 0136): every intent of the
  * agent in the query's mode confirmed in the last 24 hours, by the owner's tap or the auto mode,
  * each counted from its confirmation at the USD value the policy judged it at, settled or not.
@@ -35,11 +49,9 @@ export async function recentOutflowsOf(
     { agentId, isPaper, fromMs: nowMs - windowMs },
     options,
   );
-  return confirmed.flatMap(({ intentId, state, confirmedAtMs, valueUsdMicros, landedLateAtMs }) =>
-    valueUsdMicros === undefined ||
-    (movedNothing.has(state) && landedLateAtMs === undefined) ||
-    intentId === query.exclude
-      ? []
-      : [{ atMs: confirmedAtMs, valueUsdMicros }],
+  return confirmed.flatMap((intent) =>
+    isCounted(intent) && intent.intentId !== query.exclude
+      ? [{ atMs: intent.confirmedAtMs, valueUsdMicros: intent.valueUsdMicros }]
+      : [],
   );
 }

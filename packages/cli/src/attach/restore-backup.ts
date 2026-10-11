@@ -11,6 +11,13 @@ import { type StateSwap, swapInRestored } from "../backups/state-swap.js";
 import { unpackBackup } from "../backups/unpack-backup.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { type InitContext, type InitStep, type Refused, refused } from "../init/init-context.js";
+import {
+  carryReplaced,
+  confirmRestore,
+  type ReplacedState,
+  readReplaced,
+  readRestored,
+} from "./restore-guards-step.js";
 
 /** A backup restored in place, before attach goes on. */
 export interface Restored {
@@ -139,8 +146,15 @@ export async function restoreBackup(
   if (!unpacked.ok) {
     return unpacked;
   }
+  const staged = unpacked.value.unpacked;
+  const confirmed = await previewOver(context, unpacked.value);
+  const carried = confirmed.ok ? await carryOver(context, staged, confirmed.value) : confirmed;
+  if (!carried.ok) {
+    await removePath(staged, signal);
+    return carried;
+  }
   try {
-    const swap = await swapInRestored(platform.stateFolder, unpacked.value.unpacked, {
+    const swap = await swapInRestored(platform.stateFolder, staged, {
       permissions: platform.permissions,
       signal,
       atMs: host.clock.now(),
@@ -152,8 +166,48 @@ export async function restoreBackup(
     }
     const refusal = swapRefusal(error, platform.stateFolder.root);
     if (refusal.refusal.code !== "backup.restore_rollback_failed") {
-      await removePath(unpacked.value.unpacked, signal);
+      await removePath(staged, signal);
     }
     return refusal;
   }
+}
+
+// Carries the guards of the state in the folder into the restored copy; a carry that fails is
+// refused, and nothing moved.
+async function carryOver(
+  context: InitContext,
+  staged: string,
+  replaced: ReplacedState["kind"],
+): Promise<InitStep<void>> {
+  try {
+    await carryReplaced(context, { unpacked: staged, replaced });
+    return ok(undefined);
+  } catch (error) {
+    if (context.signal.aborted || !(error instanceof BinferenceError)) {
+      throw error;
+    }
+    const folder = context.platform.stateFolder.root;
+    return refused("backup.restore_carry_failed", "refused.restoreCarryFailed", { folder });
+  }
+}
+
+// Shows the owner what the restore changes over the state in the folder, if any, and asks to go
+// on; answers how that state read, for the carry.
+async function previewOver(
+  context: InitContext,
+  unpacked: Unpacked,
+): Promise<InitStep<ReplacedState["kind"]>> {
+  const replaced = await readReplaced(context);
+  if (!replaced.ok) {
+    return replaced;
+  }
+  const restored =
+    replaced.value.kind === "guards" ? await readRestored(context, unpacked.unpacked) : undefined;
+  const asked = await confirmRestore(context, {
+    createdAtMs: unpacked.manifest.createdAt,
+    replaced: replaced.value,
+    ...(restored === undefined ? {} : { restored }),
+    warnings: [],
+  });
+  return asked.ok ? ok(replaced.value.kind) : asked;
 }

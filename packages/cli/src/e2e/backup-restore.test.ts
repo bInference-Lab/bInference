@@ -11,6 +11,7 @@ import {
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { dayOfBackup } from "../backups/backup-fixtures.js";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import { setUpWithOwnerKey } from "./attach-fixtures.js";
@@ -69,14 +70,17 @@ async function startHere(machine: InitMachine): Promise<{ readonly exit: Promise
   return { exit };
 }
 
-// Runs `binference backup restore` with the owner key codes a person types.
-function restoreOn(
+// Runs `binference backup restore` with the owner key codes a person types, and the backup's day.
+async function restoreOn(
   machine: InitMachine,
   restore: { readonly file: string; readonly ownerKeys: readonly string[] },
   port: number,
 ) {
   const { file, ownerKeys } = restore;
-  const prompter = createScriptedPrompter({ ownerKey: ownerKeys });
+  const prompter = createScriptedPrompter({
+    ownerKey: ownerKeys,
+    restoreConfirm: [await dayOfBackup(file)],
+  });
   const argv = ["backup", "restore", file, "--set", `engine.port=${String(port)}`];
   const host = hostWith(machine, argv, {
     env: secretEnv(machine),
@@ -111,7 +115,7 @@ describe("binference backup restore", () => {
       const file = await backupOf(machine);
       await writeMarker(machine);
 
-      const restore = restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
+      const restore = await restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
       await expect(engine.exit).resolves.toBe(0);
       // The stop looks every 250 ms, by the machine's clock, whether the engine let go.
       await (machine.clock as ManualClock).advance(250);
@@ -121,7 +125,7 @@ describe("binference backup restore", () => {
       ]);
 
       expect(line).toMatch(/^binference is running/);
-      expect(restore.prompter.transcript.asked).toStrictEqual(["ownerKey"]);
+      expect(restore.prompter.transcript.asked).toStrictEqual(["ownerKey", "restoreConfirm"]);
       const said = restore.prompter.transcript.lines.join("\n");
       expect(said).toContain(init("restore.startHere"));
       await expect(stateOf(machine)).resolves.toBe("ready");
@@ -143,7 +147,7 @@ describe("binference backup restore", () => {
       await writeMarker(machine);
       const taken = await holdPort();
 
-      const restore = restoreOn(machine, { file, ownerKeys: [ownerKey] }, taken.port);
+      const restore = await restoreOn(machine, { file, ownerKeys: [ownerKey] }, taken.port);
       await expect(engine.exit).resolves.toBe(0);
       await (machine.clock as ManualClock).advance(250);
 
@@ -159,6 +163,29 @@ describe("binference backup restore", () => {
     },
   );
 
+  it(
+    "keeps a freeze made after the backup, and shows what it keeps before anything moves",
+    slow,
+    async () => {
+      const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+      const engine = await startHere(machine);
+      const file = await backupOf(machine);
+      expect((await runOn(machine, ["freeze"])).code).toBe(0);
+      machine.signals.emit("SIGINT", "SIGINT");
+      await expect(engine.exit).resolves.toBe(0);
+
+      const restore = await restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
+
+      await expect(restore.exit).resolves.toBe(0);
+      const notes = restore.prompter.transcript.notes.map((note) => note.text).join("\n");
+      expect(notes).toContain(init("restore.changes.kept"));
+      const after = await engines.start(machine);
+      expect(after).toMatchObject({ state: "ready" });
+      const frozen = await runOn(machine, ["safety", "status", "--json"]);
+      expect(JSON.parse(frozen.stdout)).toMatchObject({ frozen: true });
+    },
+  );
+
   it("restores on an engine that is not running, and leaves it stopped", slow, async () => {
     const { machine, ownerKey } = await setUpWithOwnerKey(folders);
     const engine = await startHere(machine);
@@ -167,7 +194,7 @@ describe("binference backup restore", () => {
     await expect(engine.exit).resolves.toBe(0);
     await writeMarker(machine);
 
-    const restore = restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
+    const restore = await restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
 
     await expect(restore.exit).resolves.toBe(0);
     const said = restore.prompter.transcript.lines.join("\n");
@@ -183,7 +210,7 @@ describe("binference backup restore", () => {
     await writeMarker(machine);
     const other = newOwnerKey().code;
 
-    const restore = restoreOn(
+    const restore = await restoreOn(
       machine,
       { file, ownerKeys: [other, other, other] },
       await freePort(),
@@ -205,7 +232,10 @@ describe("binference backup restore", () => {
       const folder = await createTempFolder("bnf-new-");
       folders.push(folder);
       const fresh = machineOf({ ...machine, folder: folder.path, signals: new EventEmitter() });
-      const prompter = createScriptedPrompter({ ownerKey: [ownerKey] });
+      const prompter = createScriptedPrompter({
+        ownerKey: [ownerKey],
+        restoreConfirm: [await dayOfBackup(file)],
+      });
       const moved = await runCli(
         hostWith(fresh, ["init", "--attach", "--restore", file], {
           env: secretEnv(fresh),
@@ -214,7 +244,7 @@ describe("binference backup restore", () => {
       );
       expect(moved).toBe(0);
 
-      const restore = restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
+      const restore = await restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
 
       await expect(restore.exit).resolves.toBe(1);
       expect(restore.host.stderr()).toBe(`${init("refused.restoreOtherSigner")}\n`);

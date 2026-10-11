@@ -18,6 +18,8 @@ export interface InitContext {
   readonly isInteractive: boolean;
   /** A message of the `init` area in the owner's language. */
   readonly words: (key: string, values?: MessageValues) => string;
+  /** A message of any area, by its full key such as `limit.name`, in the owner's language. */
+  readonly message: (key: string, values?: MessageValues) => string;
   /** A time, in epoch milliseconds, as the owner's language writes a date and time. */
   readonly dateTime: (epochMs: number) => string;
   /** Reads the secrets that flags name by their sources. */
