@@ -32,7 +32,7 @@ can check what they move. Nothing here names a chain or a venue.
 | `UnsignedTx`, `SignedTx`, `TxHash`                                    | Transactions as the core passes them, opaque inside                                                        |
 | `TxDraft`, `txDraftSchema`, `DraftCall`, `TokenApproval`              | A venue's transaction before its nonce and fees, and its read                                              |
 | `Venue`, `Quoter`, `TxBuilder`, `TxDecoder`                           | The venue ports: quote, build and decode one protocol's trades                                             |
-| `VenueDeclaration`, `venueDeclarationSchema`                          | A venue's id and its contracts per chain, by registry name                                                 |
+| `VenueDeclaration`, `venueDeclarationSchema`, `VenueCall`             | A venue's id, its contracts per chain by registry name, the calls its trades make and its spenders         |
 | `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`         | What the venue host asks a venue, and what the venue answers                                               |
 | `TxSimulator`, `SimulatedStep`, `AssetTransfer`, `AssetApproval`      | Runs drafts unsent and reports what each moved and allowed                                                 |
 | `TxPreparer`, `PreparedTx`, `PreparedReplacement`                     | A draft at its nonce, or a speed-up or cancel at a signed one's, with gas and fees read now, ready to sign |

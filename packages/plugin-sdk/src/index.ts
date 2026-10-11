@@ -14,6 +14,7 @@ export type {
   TxDecoder,
   TxDraft,
   Venue,
+  VenueCall,
   VenueContracts,
   VenueDeclaration,
   VenueQuote,
@@ -35,5 +36,14 @@ export {
   isBps,
   ok,
 } from "@binference/core";
-export type { Bps, Clock, Http, HttpRequest, HttpResponse, Result, Secret } from "@binference/core";
+export type {
+  Bps,
+  Clock,
+  Http,
+  HttpRequest,
+  HttpResponse,
+  JsonValue,
+  Result,
+  Secret,
+} from "@binference/core";
 export { defineVenue } from "./define-venue.js";

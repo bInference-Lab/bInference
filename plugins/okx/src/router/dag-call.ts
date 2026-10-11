@@ -1,7 +1,9 @@
-import { aggregatorNativeToken, decodeCall } from "@binference/plugin-sdk/evm";
+import type { JsonValue } from "@binference/plugin-sdk";
+import { aggregatorNativeToken, callAbiJson, decodeCall } from "@binference/plugin-sdk/evm";
 import {
   type Address,
   encodeFunctionData,
+  getAbiItem,
   getAddress,
   type Hex,
   numberToHex,
@@ -21,6 +23,16 @@ const routerAbi = parseAbi([
   "function dagSwapByOrderId(uint256 orderId, BaseRequest baseRequest, RouterPath[] paths) payable returns (uint256 returnAmount)",
   "function dagSwapTo(uint256 orderId, address receiver, BaseRequest baseRequest, RouterPath[] paths) payable returns (uint256 returnAmount)",
 ]);
+
+/** `dagSwapByOrderId`, which pays the sender, as its JSON ABI entry. */
+export const dagSwapByOrderIdJson: JsonValue = callAbiJson(
+  getAbiItem({ abi: routerAbi, name: "dagSwapByOrderId" }),
+);
+
+/** `dagSwapTo`, which pays its `receiver`, as its JSON ABI entry. */
+export const dagSwapToJson: JsonValue = callAbiJson(
+  getAbiItem({ abi: routerAbi, name: "dagSwapTo" }),
+);
 
 /** The router's base request, as its ABI decodes it. */
 interface BaseRequest {

@@ -1,11 +1,26 @@
-import { type Venue, type VenueContracts, venueDeclarationSchema } from "@binference/chain";
+import {
+  type Venue,
+  type VenueCall,
+  type VenueContracts,
+  venueDeclarationSchema,
+} from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { z } from "zod";
+
+function frozenCall(call: VenueCall): VenueCall {
+  const { contract, abi, walletInputs } = call;
+  return Object.freeze({ contract, abi, walletInputs: Object.freeze([...walletInputs]) });
+}
 
 function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueContracts[] {
   return Object.freeze(
     contracts.map((item) =>
-      Object.freeze({ chain: item.chain, names: Object.freeze([...item.names]) }),
+      Object.freeze({
+        chain: item.chain,
+        names: Object.freeze([...item.names]),
+        ...(item.calls === undefined ? {} : { calls: Object.freeze(item.calls.map(frozenCall)) }),
+        ...(item.spenders === undefined ? {} : { spenders: Object.freeze([...item.spenders]) }),
+      }),
     ),
   );
 }
@@ -14,7 +29,8 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
  * Defines a venue plugin: a protocol the agent trades on. The definition declares the venue's id
  * and, for each chain it serves, the names of its contracts in that chain's registry entry; the
  * engine gives the venue those contracts' addresses with every request and refuses a transaction
- * to any other contract.
+ * to any other contract. It also names the functions its transactions call and the contracts an
+ * approval may name as spender: a wallet's ceiling allows those and nothing else of the venue.
  *
  * The venue quotes, builds and decodes. `build` must spend exactly the request's input, pay its
  * output to the request's wallet, revert below `minOut` and after `deadlineMs`; `decode` reads

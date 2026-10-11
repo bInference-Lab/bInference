@@ -1,5 +1,6 @@
 export { readEvmBalances } from "./balances/read-balances.js";
 export type { BalancesRequest } from "./balances/read-balances.js";
+export { callAbiJson } from "./decoding/call-abi-json.js";
 export { decodeCall } from "./decoding/decode-call.js";
 export { encodeEvmApproval } from "./drafts/evm-approval.js";
 export type { EvmApproval } from "./drafts/evm-approval.js";

@@ -116,6 +116,7 @@ export { declaredContracts } from "./venues/declared-contracts.js";
 export { venueDeclarationSchema } from "./venues/venue.js";
 export type {
   Venue,
+  VenueCall,
   VenueContracts,
   VenueDeclaration,
   VenueDeclarationWire,

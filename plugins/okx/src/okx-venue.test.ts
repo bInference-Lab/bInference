@@ -106,7 +106,17 @@ describe("the okx venue", () => {
   it("declares OKX's DEX router and TokenApprove on each chain it trades on", () => {
     const venue = venueOver(scriptedApi({}));
     expect(venue.id).toBe("okx");
-    expect(venue.contracts).toStrictEqual([{ chain: bsc, names: ["dex-router", "token-approve"] }]);
+    expect(venue.contracts).toMatchObject([
+      {
+        chain: bsc,
+        names: ["dex-router", "token-approve"],
+        calls: [
+          { contract: "dex-router", abi: { name: "dagSwapByOrderId" }, walletInputs: [] },
+          { contract: "dex-router", abi: { name: "dagSwapTo" }, walletInputs: ["receiver"] },
+        ],
+        spenders: ["token-approve"],
+      },
+    ]);
   });
 
   it("quotes OKX's expected output and its price impact, rounded up", () => {

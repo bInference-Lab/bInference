@@ -102,8 +102,19 @@ describe("the kyberswap venue", () => {
   it("declares KyberSwap's router and executor proxy on each chain it trades on", () => {
     const venue = venueOver(scriptedApi({}));
     expect(venue.id).toBe("kyberswap");
-    expect(venue.contracts).toStrictEqual([
-      { chain: bscChain, names: ["meta-aggregation-router-v2", "aggregation-executor-proxy"] },
+    expect(venue.contracts).toMatchObject([
+      {
+        chain: bscChain,
+        names: ["meta-aggregation-router-v2", "aggregation-executor-proxy"],
+        calls: [
+          {
+            contract: "meta-aggregation-router-v2",
+            abi: { type: "function", name: "swap", stateMutability: "payable" },
+            walletInputs: [],
+          },
+        ],
+        spenders: ["meta-aggregation-router-v2"],
+      },
     ]);
   });
 

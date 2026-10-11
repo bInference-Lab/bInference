@@ -9,6 +9,7 @@ import { chainSetupsOf } from "./chain-setup.js";
 import { approverName, routerName } from "./okx-contracts.js";
 import type { OkxChain, OkxKeys, OkxOptions } from "./okx-options.js";
 import { buildSwap } from "./router/build-swap.js";
+import { dagSwapByOrderIdJson, dagSwapToJson } from "./router/dag-call.js";
 import { decodeSwap } from "./router/decode-swap.js";
 import { quoteTrade } from "./routes/quote-trade.js";
 
@@ -27,7 +28,8 @@ function keysOf(keys: OkxKeys): OkxKeys {
 
 /**
  * What the `okx` venue declares on the chains it is given: its id, and OKX's DEX router and
- * TokenApprove by their registry names. It needs no key, so the composition root can list the
+ * TokenApprove by their registry names. Its trades call the router's two DAG swaps, `dagSwapTo`
+ * only with the wallet as its receiver, and approve only TokenApprove. It needs no key, so the composition root can list the
  * venue's contracts, such as for a wallet's ceiling, before it reads one. Bad chains are a fault
  * (`okx.bad_options`).
  */
@@ -35,7 +37,15 @@ export function okxDeclaration(chains: readonly OkxChain[]): VenueDeclaration {
   const setups = chainSetupsOf(chains);
   return {
     id: "okx",
-    contracts: [...setups.keys()].map((chain) => ({ chain, names: [routerName, approverName] })),
+    contracts: [...setups.keys()].map((chain) => ({
+      chain,
+      names: [routerName, approverName],
+      calls: [
+        { contract: routerName, abi: dagSwapByOrderIdJson, walletInputs: [] },
+        { contract: routerName, abi: dagSwapToJson, walletInputs: ["receiver"] },
+      ],
+      spenders: [approverName],
+    })),
   };
 }
 

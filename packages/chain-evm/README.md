@@ -26,6 +26,7 @@ come in as data from `@binference/chains`; nothing here names a chain.
 | `createEvmRelaySender`                                                   | The `RelaySender` port: `eth_sendRawTransaction` to every private relay at once, each with its own timeout, each answer read                                     |
 | `createEvmReceiptReader`, `createEvmNonceSource`                         | Receipts, the head by the finality rule, a transaction's value and `Transfer` logs, a nonce or the native coin received at a block; the pending nonce            |
 | `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                                                                                                    |
+| `callAbiJson`                                                            | One function of an ABI as plain JSON, as a venue declares the calls its trades make                                                                              |
 | `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions                                                                                             |
 | `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                                                                                                 |
 

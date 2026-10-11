@@ -4,6 +4,7 @@ export {
   aggregatorNativeToken,
   aggregatorPairOf,
   aggregatorTokenOf,
+  callAbiJson,
   decodeCall,
   decodeEvmDraft,
   encodeEvmApproval,

@@ -1,5 +1,13 @@
-import { aggregatorNativeToken, decodeCall } from "@binference/plugin-sdk/evm";
-import { type Address, encodeFunctionData, type Hex, parseAbi, zeroAddress } from "viem";
+import type { JsonValue } from "@binference/plugin-sdk";
+import { aggregatorNativeToken, callAbiJson, decodeCall } from "@binference/plugin-sdk/evm";
+import {
+  type Address,
+  encodeFunctionData,
+  getAbiItem,
+  type Hex,
+  parseAbi,
+  zeroAddress,
+} from "viem";
 import { readExecutorPayload } from "./executor-payload.js";
 
 // The `swap` function of KyberSwap's MetaAggregationRouterV2, from its verified source. The router
@@ -10,6 +18,11 @@ const routerAbi = parseAbi([
   "struct SwapExecutionParams { address callTarget; address approveTarget; bytes targetData; SwapDescriptionV2 desc; bytes clientData; }",
   "function swap(SwapExecutionParams execution) payable returns (uint256 returnAmount, uint256 gasUsed)",
 ]);
+
+/** The router's `swap`, the one function the venue's trades call, as its JSON ABI entry. */
+export const swapFunctionJson: JsonValue = callAbiJson(
+  getAbiItem({ abi: routerAbi, name: "swap" }),
+);
 
 // The router's own flags, bits 0 to 8 in its source: partial fill, extra native coin, claim, two
 // burns, the mode that pays the first pools directly, fee on the output, fee in basis points and

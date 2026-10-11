@@ -34,6 +34,45 @@ describe("venue schemas", () => {
     );
   });
 
+  it("accepts the calls and spenders of declared contracts, a call with no wallet input", () => {
+    const abi = { type: "function", name: "swap", inputs: [] };
+    const wire: VenueDeclarationWire = {
+      ...declaration,
+      contracts: [
+        {
+          chain: "fake:1",
+          names: ["router", "quoter"],
+          calls: [{ contract: "router", abi }],
+          spenders: ["router"],
+        },
+      ],
+    };
+    const [parsed] = venueDeclarationSchema.parse(wire).contracts;
+    expect(parsed?.calls).toStrictEqual([{ contract: "router", abi, walletInputs: [] }]);
+    expect(parsed?.spenders).toStrictEqual(["router"]);
+  });
+
+  it.each<[string, VenueDeclarationWire["contracts"][number]]>([
+    [
+      "a call to no declared contract",
+      { chain: "fake:1", names: ["router"], calls: [{ contract: "pool", abi: {} }] },
+    ],
+    ["a spender no contract declares", { chain: "fake:1", names: ["router"], spenders: ["pool"] }],
+    ["a spender twice", { chain: "fake:1", names: ["router"], spenders: ["router", "router"] }],
+    [
+      "a wallet input twice",
+      {
+        chain: "fake:1",
+        names: ["router"],
+        calls: [{ contract: "router", abi: {}, walletInputs: ["to", "to"] }],
+      },
+    ],
+  ])("refuses a declaration with %s", (_case, contracts) => {
+    expect(
+      venueDeclarationSchema.safeParse({ ...declaration, contracts: [contracts] }).success,
+    ).toBe(false);
+  });
+
   it.each<[string, VenueDeclarationWire]>([
     ["an id outside kebab-case", { ...declaration, id: "Fake_Swap" }],
     ["an id over 32 characters", { ...declaration, id: "a".repeat(33) }],

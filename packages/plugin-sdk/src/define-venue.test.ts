@@ -64,6 +64,23 @@ describe("defineVenue", () => {
     expect(venue.contracts).not.toBe(definition.contracts);
   });
 
+  it("keeps the calls and spenders a chain declares, frozen", () => {
+    const definition = createFakeVenue();
+    const call = { contract: "router", abi: { type: "function", name: "swap" }, walletInputs: [] };
+    const contracts = definition.contracts.map((item) => ({
+      ...item,
+      calls: [call],
+      spenders: ["router"],
+    }));
+    const venue = defineVenue({ ...definition, contracts });
+    const [declared] = venue.contracts;
+
+    expect(declared?.calls).toStrictEqual([call]);
+    expect(declared?.spenders).toStrictEqual(["router"]);
+    expect(Object.isFrozen(declared?.calls?.[0]?.walletInputs)).toBe(true);
+    expect(Object.isFrozen(declared?.spenders)).toBe(true);
+  });
+
   it("calls the definition's own methods", () => {
     const definition = {
       ...createFakeVenue(),
