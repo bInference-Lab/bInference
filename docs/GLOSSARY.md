@@ -408,6 +408,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | brakes (pause, resume, stop)            | 刹车 (暂停, 恢复, 停止) |                             |
 | approve (an agent, an order, a rule)    | 批准                    | Token approvals are 授权    |
 | question (the agent asks the owner)     | 问题                    | "asks" = 想问你             |
+| question (asked before an action)       | 询问                    |                             |
 | status line                             | 状态行                  |                             |
 | first chat                              | 初次对话                |                             |
 | disclaimer, privacy statement           | 免责声明, 隐私声明      |                             |
@@ -506,6 +507,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | exit order                                         | 平仓订单                     |                                         |
 | P&L card                                           | 盈亏卡片                     |                                         |
 | share (of a holding)                               | 持仓比例                     | "50% of your X" = 你持有的 X 的 50%     |
+| share (use in common), shared                      | 共用                         |                                         |
+| share (send to someone)                            | 分享                         |                                         |
 | DEX pools                                          | DEX 交易池                   |                                         |
 | venue fee                                          | 平台手续费                   |                                         |
 | launch feed                                        | 发射动态                     |                                         |
