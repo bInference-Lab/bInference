@@ -26,6 +26,38 @@ function isMiniPath(path: string): boolean {
   return path === "/mini" || path.startsWith("/mini/");
 }
 
+// Every browser feature a policy can gate that the console never uses, each turned off for the
+// page and every frame it could hold. Notifications are no such feature: the owner allows them.
+const unusedFeatures = [
+  "accelerometer",
+  "autoplay",
+  "bluetooth",
+  "browsing-topics",
+  "camera",
+  "clipboard-read",
+  "display-capture",
+  "encrypted-media",
+  "fullscreen",
+  "geolocation",
+  "gyroscope",
+  "hid",
+  "idle-detection",
+  "magnetometer",
+  "microphone",
+  "midi",
+  "payment",
+  "picture-in-picture",
+  "publickey-credentials-create",
+  "publickey-credentials-get",
+  "screen-wake-lock",
+  "serial",
+  "usb",
+  "web-share",
+  "xr-spatial-tracking",
+];
+
+const permissionsPolicy = unusedFeatures.map((feature) => `${feature}=()`).join(", ");
+
 // The page loads only its own files and talks only to its own origin. Telegram shows the Mini
 // App in a frame, so only `/mini` may be framed, and only by Telegram's web client.
 function securityHeaders(path: string): Record<string, string> {
@@ -45,6 +77,7 @@ function securityHeaders(path: string): Record<string, string> {
       `frame-ancestors ${frames}`,
     ].join("; "),
     "referrer-policy": "no-referrer",
+    "permissions-policy": permissionsPolicy,
     "x-content-type-options": "nosniff",
     "cross-origin-opener-policy": "same-origin",
     ...(isMini ? {} : { "x-frame-options": "DENY" }),

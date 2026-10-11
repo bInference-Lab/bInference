@@ -42,6 +42,19 @@ describe("the console's files", () => {
     expect(answer.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
   });
 
+  it("turns off every browser feature the console does not use", async () => {
+    const server = await start();
+    const policy = String(
+      (await requestLocal(server.httpPort, { path: "/" })).headers["permissions-policy"],
+    );
+    const features = policy.split(", ");
+    expect(features).toContain("camera=()");
+    expect(features).toContain("microphone=()");
+    expect(features).toContain("geolocation=()");
+    expect(features).toContain("payment=()");
+    expect(features.every((feature) => /^[a-z-]+=\(\)$/.test(feature))).toBe(true);
+  });
+
   it("serves the same page at /mini, framable by Telegram's web client only", async () => {
     const server = await start();
     const answer = await requestLocal(server.httpPort, { path: "/mini" });
