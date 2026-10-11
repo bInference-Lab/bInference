@@ -11,6 +11,7 @@ import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
 import { createConfigCell } from "./config-cell.js";
+import { openConsoleFiles } from "./console-files.js";
 import { platformOf } from "./engine-locations.js";
 import { openBot } from "./open-bot.js";
 import {
@@ -54,7 +55,8 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   const log = await openEngineLog(opening, settings);
   try {
     const parts = await readSecretParts(opening, loaded.config, log);
-    const opened = { config: loaded.config, settings, readConfig, log, ...parts };
+    const consoleFiles = await openConsoleFiles(host.consoleFolder, { logger: log.logger, signal });
+    const opened = { config: loaded.config, settings, readConfig, log, consoleFiles, ...parts };
     return await openStoresAndServe(opening, opened);
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.

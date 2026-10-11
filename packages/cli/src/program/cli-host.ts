@@ -50,6 +50,11 @@ export interface CliHost {
    * fake, so no test touches the machine's login items.
    */
   readonly serviceManager?: ServiceManager;
+  /**
+   * The folder of the console's build, which the engine serves; when left out, or before the
+   * console is built, the engine serves no console.
+   */
+  readonly consoleFolder?: string;
   /** The streams `binference mcp` serves over: the process's stdin and stdout. */
   readonly mcpStdio?: McpStdio;
 }

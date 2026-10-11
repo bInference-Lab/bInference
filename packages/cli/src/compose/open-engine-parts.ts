@@ -12,7 +12,7 @@ import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
 import type { BackupFailure } from "@binference/engine/backups";
 import { ensurePrivateFolder, openLogFile, type Platform } from "@binference/platform";
-import type { ProtocolServer, ServerAddress } from "@binference/server";
+import type { ConsoleFiles, ProtocolServer, ServerAddress } from "@binference/server";
 import {
   createSqliteBackupStore,
   createSqliteEngineStores,
@@ -61,6 +61,8 @@ export interface Opened {
   readonly venues: readonly Venue[];
   /** The owner's bot, or `undefined` when its token could not be read. */
   readonly bot: OpenedBot | undefined;
+  /** The console's built files, or `undefined` when the engine serves no console. */
+  readonly consoleFiles: ConsoleFiles | undefined;
 }
 
 /** The engine's logger, its file, and whether the file lost lines. */

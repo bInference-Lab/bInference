@@ -281,6 +281,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       version: host.version,
       owner: () => opened.settings.current().owner,
       http: { host: loopback, port: config.engine.port, extraOrigins: config.engine.extraOrigins },
+      ...(opened.consoleFiles === undefined ? {} : { consoleFiles: opened.consoleFiles }),
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
       ownerChat: ownerChatOf(opening, opened),

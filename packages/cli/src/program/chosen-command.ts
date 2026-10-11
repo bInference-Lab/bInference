@@ -45,7 +45,7 @@ export type ChosenCommand =
   | { readonly name: "ceilingSet"; readonly options: CeilingSetFlags }
   | { readonly name: "freeze" | "unfreeze"; readonly options: AgentFlags }
   | { readonly name: "rescue" | "rescueCancel" | "safetyStatus"; readonly options: CommonOptions }
-  | { readonly name: "telegramPair"; readonly options: CommonOptions }
+  | { readonly name: "telegramPair" | "console"; readonly options: CommonOptions }
   | { readonly name: "backupCreate" | "backupList"; readonly options: CommonOptions }
   | { readonly name: "backupRestore"; readonly options: StartFlags; readonly file: string }
   | { readonly name: "signerRevoke"; readonly options: CommonOptions; readonly signer: string }

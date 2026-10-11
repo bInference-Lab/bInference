@@ -230,14 +230,20 @@ export interface SkeletonOptions {
   readonly owner?: () => OwnerInfo;
   /** The handlers only the owner's bot runs, such as the owner's language change. */
   readonly ownerChat?: ComposeEngineOptions["ownerChat"];
+  /** The HTTP listener with the console's files; the server serves IPC only when left out. */
+  readonly browser?: Pick<ComposeEngineOptions, "http" | "consoleFiles">;
 }
 
-// The owner's bot and the handlers it alone runs, when the options name them.
-function botOf(options: SkeletonOptions): Pick<ComposeEngineOptions, "telegram" | "ownerChat"> {
+// The owner's bot and the handlers it alone runs, and the HTTP listener with the console's
+// files, when the options name them.
+function surfacesOf(
+  options: SkeletonOptions,
+): Pick<ComposeEngineOptions, "telegram" | "ownerChat" | "http" | "consoleFiles"> {
   const { telegram, ownerChat } = options;
   return {
     ...(telegram === undefined ? {} : { telegram }),
     ...(ownerChat === undefined ? {} : { ownerChat }),
+    ...options.browser,
   };
 }
 
@@ -290,7 +296,7 @@ export async function composeSkeleton(
       health: () => [],
       stop: () => undefined,
     }),
-    ...botOf(options),
+    ...surfacesOf(options),
     clock,
     random: createSeededRandom(7),
     logger,

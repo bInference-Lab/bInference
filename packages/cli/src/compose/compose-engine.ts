@@ -3,6 +3,7 @@ import {
   BinferenceError,
   type Clock,
   createIdSource,
+  type IdSource,
   type Logger,
   type Random,
 } from "@binference/core";
@@ -18,12 +19,17 @@ import {
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
-import { createTokenHandlers } from "@binference/engine/access";
+import {
+  createDeviceHandlers,
+  createDevicePairing,
+  createTokenHandlers,
+} from "@binference/engine/access";
 import { createNoticeHandlers } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
+  type ConsoleFiles,
   createProtocolServer,
   type HttpListenOptions,
   type ProtocolServer,
@@ -77,6 +83,8 @@ export interface ComposeEngineOptions {
   readonly owner: () => OwnerInfo;
   /** The HTTP listener; without it the server serves IPC connections only. */
   readonly http?: HttpListenOptions;
+  /** The console's built files, which the HTTP listener serves at `/` and `/mini`. */
+  readonly consoleFiles?: ConsoleFiles;
   /** Whether the engine serves calls yet; `ready` when left out. */
   readonly state?: () => EngineState;
   /**
@@ -183,19 +191,30 @@ function custodyPartsOf(parts: EngineParts) {
   };
 }
 
-// The protocol server over the handlers: it signs callers in through the access store and keeps
-// each write's result under its idempotency key.
+/** What the server is built from besides the profile parts and the options. */
+interface ServerParts {
+  readonly handlers: EngineHandlerTable;
+  readonly publish: (push: EnginePush) => void;
+  readonly ids: IdSource;
+}
+
+// The protocol server over the handlers: it signs callers in through the access store, keeps
+// each write's result under its idempotency key, pairs console devices and serves the console.
 function serverOf(
   parts: EngineParts,
   options: ComposeEngineOptions,
-  handlers: EngineHandlerTable,
+  given: ServerParts,
 ): ProtocolServer {
-  const { clock, random, logger } = options;
+  const { clock, random, logger, consoleFiles } = options;
+  const { access } = parts.stores;
+  const pairing = createDevicePairing({ access, clock, ids: given.ids, publish: given.publish });
   return createProtocolServer({
     ...(options.http === undefined ? {} : { http: options.http }),
-    auth: { access: parts.stores.access },
+    auth: { access },
+    pairing,
+    ...(consoleFiles === undefined ? {} : { consoleFiles }),
     idempotency: parts.stores.idempotency,
-    handlers,
+    handlers: given.handlers,
     engine: {
       version: options.version,
       state: options.state ?? (() => "ready"),
@@ -205,6 +224,60 @@ function serverOf(
     random,
     logger: logger.child("server"),
   });
+}
+
+/** The console's origin once the HTTP listener bound, which the pairing links name. */
+interface ConsoleOrigin {
+  readonly get: () => string | undefined;
+  /** The server, whose `start` records the origin of the port it bound. */
+  readonly watch: (server: ProtocolServer) => ProtocolServer;
+}
+
+function consoleOriginCell(): ConsoleOrigin {
+  let origin: string | undefined;
+  return {
+    get: () => origin,
+    watch: (server) => ({
+      ...server,
+      async start(signal) {
+        const address = await server.start(signal);
+        origin = address === undefined ? undefined : `http://127.0.0.1:${String(address.port)}`;
+        return address;
+      },
+    }),
+  };
+}
+
+// The notice, token and device handlers; a device revoke also ends the device's open connections
+// (decision 0155).
+function accessHandlersOf(
+  parts: EngineParts,
+  options: ComposeEngineOptions,
+  context: {
+    readonly ids: IdSource;
+    readonly origin: ConsoleOrigin;
+    readonly server: () => ProtocolServer;
+  },
+): EngineHandlerTable {
+  const { clock, random } = options;
+  const devices = createDeviceHandlers({
+    access: parts.stores.access,
+    clock,
+    random,
+    consoleOrigin: context.origin.get,
+  });
+  return {
+    ...createNoticeHandlers(parts.stores.notices),
+    ...createTokenHandlers({ access: parts.stores.access, clock, ids: context.ids }),
+    ...devices,
+    "device/revoke": async (call) => {
+      const revoked = await devices["device/revoke"](call);
+      if (revoked.ok) {
+        context.server().endSessions(call.args.device, "auth.revoked");
+      }
+      return revoked;
+    },
+  };
 }
 
 /**
@@ -255,13 +328,13 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     random,
     publish,
   });
+  const origin = consoleOriginCell();
   const handlers: EngineHandlerTable = {
     ...engine.handlers,
-    ...createNoticeHandlers(parts.stores.notices),
-    ...createTokenHandlers({ access: parts.stores.access, clock, ids }),
+    ...accessHandlersOf(parts, options, { ids, origin, server: () => server }),
     ...options.handlers,
   };
   const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers, notices });
-  const server = serverOf(parts, options, handlers);
+  const server = origin.watch(serverOf(parts, options, { handlers, publish, ids }));
   return { engine, server, publish, notices, ...(telegram === undefined ? {} : { telegram }) };
 }

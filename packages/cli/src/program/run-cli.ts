@@ -9,6 +9,7 @@ import { runBackupRestore } from "../commands/backup-restore-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runCeiling, runCeilingSet } from "../commands/ceiling-command.js";
 import { runCheck } from "../commands/check-command.js";
+import { runConsole } from "../commands/console-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runInitCommand } from "../commands/init-command.js";
 import { runLimit, runLimitCancel, runLimitSet } from "../commands/limit-command.js";
@@ -121,6 +122,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   rescueCancel: async (context) => runRescueCancel(context),
   safetyStatus: async (context) => runSafetyStatus(context),
   telegramPair: async (context) => runTelegramPair(context),
+  console: async (context) => runConsole(context),
   backupCreate: async (context) => runBackupCreate(context),
   backupList: async (context) => runBackupList(context),
   backupRestore: runBackupRestore,
