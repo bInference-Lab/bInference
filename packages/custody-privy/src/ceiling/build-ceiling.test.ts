@@ -7,6 +7,7 @@ import {
   testCeilingRequest,
   testChain,
 } from "../testing/custody-fixtures.js";
+import { evaluatePolicy } from "../testing/fake-policy-engine.js";
 import { fakePolicyBodySchema } from "../testing/fake-privy-request.schema.js";
 import { buildCeiling } from "./build-ceiling.js";
 import type { Ceiling, CeilingRequest } from "./ceiling.js";
@@ -121,6 +122,12 @@ const expectedRules = [
     ],
   },
   { name: "Owner export", method: "exportPrivateKey", action: "ALLOW", conditions: [] },
+  {
+    name: "No EIP-7702 delegation",
+    method: "eth_sign7702Authorization",
+    action: "DENY",
+    conditions: [],
+  },
 ];
 
 function built(request: CeilingRequest): ReturnType<typeof buildCeiling> {
@@ -179,6 +186,26 @@ describe("buildCeiling", () => {
       rules: rulesOf(testCeilingRequest()),
     };
     expect(fakePolicyBodySchema.safeParse(body).success).toBe(true);
+  });
+
+  it("denies an EIP-7702 authorization even beside a rule that allows every method", () => {
+    const body = {
+      version: "1.0",
+      name: "binference ceiling",
+      chain_type: "ethereum",
+      rules: [...rulesOf(testCeilingRequest()), { ...expectedRules[0], method: "*" }],
+    };
+    const rules = fakePolicyBodySchema.parse(body).rules;
+    const request = {
+      to: router,
+      valueWei: 0n,
+      chainId: 56n,
+      data: "0x" as const,
+      walletAddress: rescue,
+    };
+
+    expect(evaluatePolicy(rules, { ...request, method: "eth_sign7702Authorization" })).toBe("DENY");
+    expect(evaluatePolicy(rules, { ...request, method: "eth_signTransaction" })).toBe("ALLOW");
   });
 
   it("checksums every address and lists each once", () => {

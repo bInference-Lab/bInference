@@ -127,11 +127,18 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    (spec 6, section 6). Saving an address changes the policy, so it needs the owner key
    (self-hosted) or the user's Privy sign-in (Cloud).
 5. **Signing method** `eth_signTransaction` only. No `personal_sign`, no typed data except named
-   Permit2 domains towards a registry spender, no EIP-7702 authorization except Privy's own.
+   Permit2 domains towards a registry spender, and no EIP-7702 authorization: a `DENY` rule names
+   `eth_sign7702Authorization`, so no later allow rule can let one through.
 
 Everything else is refused by Privy. What the policy cannot do: count dollars. Privy's spending
 counters sum token units, count after signing and are at most 10 per app, so the engine's rolling
 caps stay the main money limit and the counters are only a backstop on BNB.
+
+Nor can it pin a transaction's calldata: Privy's transaction conditions read only `to`, `value`
+and `chain_id`, so the self-cancel rule allows any calldata to the wallet itself. The ceiling
+relies on the wallets never carrying delegated code, which only an EIP-7702 authorization the
+wallet signs could set; the policy denies every one, and the signer refuses a type 4 transaction
+or an authorization list (section 5.2, rule 4).
 
 Nor can it deny one function on every contract. Privy denies every transaction that a `DENY` rule
 on calldata cannot decode, plain sends among them, so the policy holds allow rules only. A call to

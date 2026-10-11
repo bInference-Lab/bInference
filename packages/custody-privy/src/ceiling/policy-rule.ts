@@ -50,7 +50,7 @@ export type PolicyCondition = TransactionCondition | CalldataCondition;
 export interface PolicyRule {
   /** At most 50 characters, as Privy requires. */
   readonly name: string;
-  readonly method: "eth_signTransaction" | "exportPrivateKey";
+  readonly method: "eth_signTransaction" | "eth_sign7702Authorization" | "exportPrivateKey";
   readonly action: "ALLOW" | "DENY";
   readonly conditions: readonly PolicyCondition[];
 }

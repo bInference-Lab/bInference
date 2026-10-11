@@ -131,6 +131,16 @@ const ownerExport: PolicyRule = {
   conditions: [],
 };
 
+// A wallet with delegated code would run it on a self call, which the self-cancel rule allows with
+// any calldata: no EIP-7702 authorization is ever signed. Privy denies a method no rule allows;
+// this rule keeps it denied if an allow rule for it is ever added.
+const noDelegation: PolicyRule = {
+  name: "No EIP-7702 delegation",
+  method: "eth_sign7702Authorization",
+  action: "DENY",
+  conditions: [],
+};
+
 function chainLists(chain: CeilingChain): Result<ChainLists, CeilingProblem> {
   if (chain.perTxNativeCapBase < 0n) {
     return err("negative_cap");
@@ -180,8 +190,8 @@ export function callRules(chain: CeilingChain): Result<readonly PolicyRule[], Ce
  * contracts with at most the cap in native coin; an exact `approve` to a registry spender; a
  * native send or a token `transfer` to the rescue address or a saved address; a zero-value
  * transfer to the wallet itself, which cancels a stuck transaction. It lets the owner, never a
- * signer, export the key. Privy denies everything else, typed data and `personal_sign` among it.
- * It holds no `DENY` rule on calldata: Privy denies every transaction whose calldata such a rule
+ * signer, export the key, and denies every EIP-7702 authorization. Privy denies everything else,
+ * typed data and `personal_sign` among it. It holds no `DENY` rule on calldata: Privy denies every transaction whose calldata such a rule
  * cannot decode, plain sends among them (seen on a Privy app, 2026-10-07). So `setApprovalForAll`
  * is refused by the allowed sets, and on a listed contract by the signer's hard rules.
  */
@@ -197,6 +207,6 @@ export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingPr
   const rules = lists.value.flatMap((item) => chainRules(item, recipients.value));
   return ok({
     chains: request.chains.map((item) => item.chain.ref),
-    rules: [...rules, ownerExport],
+    rules: [...rules, ownerExport, noDelegation],
   });
 }
