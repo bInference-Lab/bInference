@@ -1,6 +1,5 @@
 import type { VenueDeclaration } from "@binference/chain";
 import { createIdSource, type Id, ok, type Secret } from "@binference/core";
-import { buildCeiling, type Ceiling, type CeilingRequest } from "@binference/custody-privy";
 import type { AgentDraft } from "@binference/engine";
 import { ensurePrivateFolder, writePrivateFile } from "@binference/platform";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
@@ -8,11 +7,16 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { UnlockMode } from "../config/schema/engine.schema.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import { type AgentKey, takeAgentKey } from "./agent-key-step.js";
-import { ceilingRequestOf, coreVenues, enabledVenues } from "./ceiling-request.js";
+import {
+  type CeilingDraft,
+  ceilingRequestOf,
+  coreVenues,
+  enabledVenues,
+} from "./ceiling-request.js";
 import { firstAgentDraft } from "./first-agent.js";
 import { type Answers, takeAnswers } from "./init-answers.js";
 import { type InitConfig, initConfig } from "./init-config.js";
-import { type InitContext, type InitStep, refused } from "./init-context.js";
+import type { InitContext, InitStep } from "./init-context.js";
 import { ensureFirstAgent, type InitStores, issuePairing, recordInstall } from "./install-step.js";
 import { takeLimits } from "./limits-step.js";
 import { appSecretEntry, botTokenEntry } from "./secret-places.js";
@@ -75,8 +79,8 @@ export async function writeConfig(context: InitContext, text: string): Promise<s
 interface Prepared {
   readonly answers: Answers;
   readonly built: InitConfig;
-  /** The first wallet's ceiling, and its cap per contract call on the first chain. */
-  readonly ceiling: Ceiling;
+  /** What the first wallet's ceiling is built from, and its cap per call on the first chain. */
+  readonly draft: CeilingDraft;
   readonly perTxNativeBase: bigint;
   /** The first agent, made when the install has none. */
   readonly agentDraft: AgentDraft;
@@ -86,13 +90,6 @@ interface Prepared {
 interface Made {
   readonly first: FirstWallet;
   readonly agentKey: AgentKey;
-}
-
-function ceilingOf(request: CeilingRequest): InitStep<Ceiling> {
-  const ceiling = buildCeiling(request);
-  return ceiling.ok
-    ? ceiling
-    : refused("init.bad_ceiling", "refused.badCeiling", { problem: ceiling.error });
 }
 
 /**
@@ -132,16 +129,12 @@ async function prepare(context: InitContext): Promise<InitStep<Prepared>> {
   if (!request.ok) {
     return request;
   }
-  const ceiling = ceilingOf(request.value);
-  if (!ceiling.ok) {
-    return ceiling;
-  }
   const agentDraft = agentDraftOf(context, config, venues.value);
   return agentDraft.ok
     ? ok({
         answers: answers.value,
         built: built.value,
-        ceiling: ceiling.value,
+        draft: request.value,
         perTxNativeBase: request.value.chains[0]?.perTxNativeCapBase ?? 0n,
         agentDraft: agentDraft.value,
       })
@@ -164,7 +157,7 @@ async function makeWallet(
     appSecret: app.secret.value,
     ownerKey: ownerKey.publicKey,
     agentKey: agentKey.value.publicKey,
-    ceiling: prepared.ceiling,
+    draft: prepared.draft,
   });
   return first.ok ? ok({ first: first.value, agentKey: agentKey.value }) : first;
 }

@@ -10,8 +10,10 @@ interface VenueContract {
 }
 
 /**
- * The venues a ceiling lets a call reach every registry contract of, on the chains it enables.
- * A venue with no contract on those chains is not one of them.
+ * The venues a ceiling lets a call reach, on the chains it enables: those it names a registry
+ * contract of. A ceiling lists the contracts a venue's trades call, never the ones only those
+ * contracts reach, so one is enough (decision 0149). A venue with no contract on those chains is
+ * not one of them.
  */
 export function venuesIn(chains: ChainRegistry, read: CeilingRead): readonly string[] {
   const reached = new Set(read.contracts.map((account) => account.toLowerCase()));
@@ -28,7 +30,7 @@ export function venuesIn(chains: ChainRegistry, read: CeilingRead): readonly str
   return venues.filter((venue) =>
     contracts
       .filter((contract) => contract.venue === venue)
-      .every((contract) => reached.has(contract.account)),
+      .some((contract) => reached.has(contract.account)),
   );
 }
 

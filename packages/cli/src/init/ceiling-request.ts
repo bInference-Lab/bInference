@@ -1,10 +1,15 @@
-import type { ChainRegistry, VenueDeclaration } from "@binference/chain";
+import type {
+  CeilingCapsDefinition,
+  ChainDefinition,
+  ChainRegistry,
+  VenueDeclaration,
+} from "@binference/chain";
 import { evmChainOf } from "@binference/chain-evm";
-import { bsc } from "@binference/chains";
+import { bsc, bscCeilingCaps } from "@binference/chains";
 import { BinferenceError, type Http, ok } from "@binference/core";
 import {
-  type CeilingChain,
-  type CeilingRequest,
+  type CeilingChainPlan,
+  type ChainCapPlan,
   registryCeilingChain,
 } from "@binference/custody-privy";
 import { createKyberswapVenue } from "@binference/kyberswap";
@@ -51,11 +56,64 @@ export function enabledVenues(
     : refused("init.unknown_venue", "refused.unknownVenue", { venue: unknown });
 }
 
+/** What a wallet's ceiling is built from before Privy holds the aggregations of its caps. */
+export interface CeilingDraft {
+  readonly chains: readonly CeilingChainPlan[];
+  /** Each chain's 24-hour caps, in the order of `chains`. */
+  readonly capPlans: readonly ChainCapPlan[];
+  readonly rescue: string;
+  readonly saved: readonly string[];
+}
+
+// What each chain this binference serves caps per rolling 24 hours (decision 0149).
+const ceilingCapsByChain: ReadonlyMap<string, CeilingCapsDefinition> = new Map([
+  [bsc.id, bscCeilingCaps],
+]);
+
+// Twice the agent-wide daily cap: a speed-up or a reverted transaction counts again at Privy.
+const capHeadroom = 2n;
+
+function unbuilt(chain: string, problem: string): BinferenceError {
+  return new BinferenceError({
+    code: "cli.ceiling_unbuilt",
+    message: `The registry gives no ceiling caps on ${chain}.`,
+    details: { chain, problem },
+  });
+}
+
+/**
+ * One chain's 24-hour caps (decision 0149), sized from `defaults.limits.rollingDayUsd`: twice it,
+ * in each unit at the floor price the chain's data names, rounded up. A chain whose data names no
+ * caps, or a capped token its registry lacks, is a fault of this build.
+ */
+export function capPlanOf(
+  definition: ChainDefinition,
+  config: Pick<BinferenceConfig, "defaults">,
+): ChainCapPlan {
+  const caps = ceilingCapsByChain.get(definition.id);
+  if (caps === undefined) {
+    throw unbuilt(definition.id, "no_caps");
+  }
+  const dayUsd = capHeadroom * config.defaults.limits.rollingDayUsd;
+  const unitsOf = (decimals: number, floorUsd: bigint) =>
+    (dayUsd * 10n ** BigInt(decimals) + floorUsd - 1n) / floorUsd;
+  const chain = evmChainOf(definition);
+  const approvals = caps.tokens.map((item) => {
+    const token = definition.tokens.find((each) => each.symbol === item.symbol);
+    if (token === undefined) {
+      throw unbuilt(definition.id, "unknown_token");
+    }
+    return { token: token.address, limitBase: unitsOf(token.decimals, item.floorUsd) };
+  });
+  const nativeLimitBase = unitsOf(chain.nativeDecimals, caps.nativeFloorUsd);
+  return { chain, nativeLimitBase, approvals };
+}
+
 function ceilingChainOf(
   registry: ChainRegistry,
   config: Pick<BinferenceConfig, "chains" | "defaults">,
   request: { readonly chain: string; readonly venues: readonly VenueDeclaration[] },
-): InitStep<CeilingChain> {
+): InitStep<{ readonly plan: CeilingChainPlan; readonly caps: ChainCapPlan }> {
   const registered = registry.list().find((item) => item.ref === request.chain);
   if (registered === undefined) {
     return refused("init.unknown_chain", "refused.unknownChain", { chain: request.chain });
@@ -76,29 +134,32 @@ function ceilingChainOf(
     throw new BinferenceError({
       code: "cli.venue_contract_missing",
       message: `A venue names a contract the registry of ${request.chain} does not hold.`,
-      details: { chain: request.chain },
+      details: { chain: request.chain, problem: chain.error },
     });
   }
-  return chain;
+  return ok({ plan: chain.value, caps: capPlanOf(definition, config) });
 }
 
 /**
- * What the first wallet's ceiling is built from (keys spec, section 4): on each enabled chain,
- * the enabled venues' registry contracts and the per-transaction cap of
- * `defaults.ceiling.perTxBnb`; sends only to the rescue address, as no address is saved yet.
+ * What the first wallet's ceiling is built from (keys spec, section 4; decision 0149): on each
+ * enabled chain, the functions and spenders the enabled venues declare, the per-transaction cap
+ * of `defaults.ceiling.perTxBnb` and the chain's 24-hour caps; sends only to the rescue address,
+ * as no address is saved yet.
  */
 export function ceilingRequestOf(
   registry: ChainRegistry,
   config: Pick<BinferenceConfig, "chains" | "defaults">,
   ceiling: { readonly venues: readonly VenueDeclaration[]; readonly rescue: string },
-): InitStep<CeilingRequest> {
-  const chains: CeilingChain[] = [];
+): InitStep<CeilingDraft> {
+  const chains: CeilingChainPlan[] = [];
+  const capPlans: ChainCapPlan[] = [];
   for (const chain of config.chains.enabled) {
     const made = ceilingChainOf(registry, config, { chain, venues: ceiling.venues });
     if (!made.ok) {
       return made;
     }
-    chains.push(made.value);
+    chains.push(made.value.plan);
+    capPlans.push(made.value.caps);
   }
-  return ok({ chains, rescue: ceiling.rescue, saved: [] });
+  return ok({ chains, capPlans, rescue: ceiling.rescue, saved: [] });
 }

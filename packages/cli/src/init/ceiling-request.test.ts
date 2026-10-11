@@ -1,6 +1,8 @@
+import { bsc } from "@binference/chains";
 import { createScriptedHttp } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
-import { coreVenues } from "./ceiling-request.js";
+import { agentDefaultsSchema } from "../config/schema/defaults.schema.js";
+import { capPlanOf, coreVenues } from "./ceiling-request.js";
 
 const http = createScriptedHttp([]);
 const okxKeys = {
@@ -30,6 +32,35 @@ describe("core venues", () => {
         ],
       ],
       [["okx", "eip155:56", ["dex-router", "token-approve"], ["token-approve"]]],
+    ]);
+  });
+});
+
+const bnb = 10n ** 18n;
+
+function tokenOf(symbol: string): string | undefined {
+  return bsc.tokens.find((token) => token.symbol === symbol)?.address;
+}
+
+describe("the 24-hour caps of a ceiling", () => {
+  it("are twice the default day, BNB and WBNB at $100, USDT and USDC at $1", () => {
+    const plan = capPlanOf(bsc, { defaults: agentDefaultsSchema.parse({}) });
+    expect(plan.nativeLimitBase).toBe(10n * bnb);
+    expect(plan.approvals).toStrictEqual([
+      { token: tokenOf("WBNB"), limitBase: 10n * bnb },
+      { token: tokenOf("USDT"), limitBase: 1_000n * bnb },
+      { token: tokenOf("USDC"), limitBase: 1_000n * bnb },
+    ]);
+  });
+
+  it("follow the agent-wide day the config sets, rounded up to a whole base unit", () => {
+    const defaults = agentDefaultsSchema.parse({ limits: { rollingDayUsd: "0.000001" } });
+    const plan = capPlanOf(bsc, { defaults });
+    expect(plan.nativeLimitBase).toBe(20_000_000_000n);
+    expect(plan.approvals.map((item) => item.limitBase)).toStrictEqual([
+      20_000_000_000n,
+      2_000_000_000_000n,
+      2_000_000_000_000n,
     ]);
   });
 });

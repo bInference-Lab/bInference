@@ -1,11 +1,22 @@
 import { parseEvmAddress } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
+import { isPrivyId } from "../privy/privy-records.js";
+import { type CallRuleLists, callListsOf, callRuleName } from "./call-lists.js";
 import { approveAbi, transferAbi } from "./ceiling-abis.js";
-import type { Ceiling, CeilingChain, CeilingProblem, CeilingRequest } from "./ceiling.js";
+import {
+  type Ceiling,
+  type CeilingChain,
+  type CeilingProblem,
+  type CeilingRequest,
+  type ChainCaps,
+  type DayCap,
+  maxAggregations,
+} from "./ceiling.js";
 import type {
   CalldataCondition,
   PolicyCondition,
   PolicyRule,
+  ReferenceCondition,
   TransactionCondition,
 } from "./policy-rule.js";
 
@@ -34,6 +45,10 @@ export function addressList(texts: readonly string[]): Result<readonly string[],
   return listed.size > maxListed ? err("too_many_addresses") : ok([...listed]);
 }
 
+function hexOf(value: bigint): string {
+  return `0x${value.toString(16)}`;
+}
+
 function onTransaction(
   field: TransactionCondition["field"],
   operator: TransactionCondition["operator"],
@@ -54,6 +69,11 @@ function onCalldata(
     operator: typeof value === "string" ? "eq" : "in",
     value,
   };
+}
+
+function onCap(cap: DayCap): ReferenceCondition {
+  const field = `aggregation.${cap.aggregation}`;
+  return { field_source: "reference", field, operator: "lte", value: hexOf(cap.limitBase) };
 }
 
 function allow(name: string, conditions: readonly PolicyCondition[]): PolicyRule {
@@ -79,36 +99,55 @@ export function recipientRules(
   ];
 }
 
+/** The caps one chain's rules name: a chain whose rules allow no call names no native cap. */
+interface CapLists {
+  readonly native?: DayCap;
+  readonly approvals: readonly DayCap[];
+}
+
 /**
- * What one chain's rules of a ceiling list: its EIP-155 id, the contracts a call may reach, the
- * spenders an approval may name and the native cap of one call. Addresses are checksummed.
+ * What one chain's rules of a ceiling list: its EIP-155 id, the calls each function may make, the
+ * spenders an approval may name, the native cap of one call and the 24-hour caps. Addresses are
+ * checksummed.
  */
 export interface CeilingChainLists {
   /** The EIP-155 chain id as decimal text, as the rules write it. */
   readonly chainId: string;
-  readonly contracts: readonly string[];
+  readonly calls: readonly CallRuleLists[];
   readonly spenders: readonly string[];
   readonly perTxNativeCapBase: bigint;
+  readonly caps: CapLists;
 }
 
-// The contract-call and approval rules of one chain; none for a list that is empty.
+// One function's calls: on the chain, to its contracts, with at most the cap in native coin and
+// the 24-hour native cap not passed, its pinned inputs the wallet itself.
+function callRule(lists: CeilingChainLists, call: CallRuleLists): PolicyRule {
+  const { abi } = call;
+  const { native } = lists.caps;
+  const pins = call.walletInputs.map((input) =>
+    onCalldata(abi, `${abi.name}.${input}`, walletAddress),
+  );
+  return allow(callRuleName(abi.name, lists.chainId), [
+    onTransaction("chain_id", "eq", lists.chainId),
+    onTransaction("to", "in", call.contracts),
+    onTransaction("value", "lte", hexOf(lists.perTxNativeCapBase)),
+    onCalldata(abi, "function_name", abi.name),
+    ...pins,
+    ...(native === undefined ? [] : [onCap(native)]),
+  ]);
+}
+
+// The call rules and the approval rule of one chain; no approval rule for no spender.
 function callRulesOf(lists: CeilingChainLists): readonly PolicyRule[] {
   const { chainId } = lists;
-  const onChain = onTransaction("chain_id", "eq", chainId);
-  const noCoin = onTransaction("value", "lte", noValue);
-  const cap = `0x${lists.perTxNativeCapBase.toString(16)}`;
-  const calls = allow(`Contract calls, chain ${chainId}`, [
-    onChain,
-    onTransaction("to", "in", lists.contracts),
-    onTransaction("value", "lte", cap),
-  ]);
   const approvals = allow(`Approvals, chain ${chainId}`, [
-    onChain,
-    noCoin,
+    onTransaction("chain_id", "eq", chainId),
+    onTransaction("value", "lte", noValue),
     onCalldata(approveAbi, "approve.spender", lists.spenders),
+    ...lists.caps.approvals.map(onCap),
   ]);
   return [
-    ...(lists.contracts.length > 0 ? [calls] : []),
+    ...lists.calls.map((call) => callRule(lists, call)),
     ...(lists.spenders.length > 0 ? [approvals] : []),
   ];
 }
@@ -118,15 +157,13 @@ function chainRules(
   recipients: readonly string[],
 ): readonly PolicyRule[] {
   const { chainId } = lists;
-  const onChain = onTransaction("chain_id", "eq", chainId);
-  const noCoin = onTransaction("value", "lte", noValue);
   return [
     ...callRulesOf(lists),
     ...recipientRules(chainId, recipients),
     allow(`Self cancel, chain ${chainId}`, [
-      onChain,
+      onTransaction("chain_id", "eq", chainId),
       onTransaction("to", "eq", walletAddress),
-      noCoin,
+      onTransaction("value", "lte", noValue),
     ]),
   ];
 }
@@ -149,20 +186,38 @@ const noDelegation: PolicyRule = {
   conditions: [],
 };
 
+function capsChecked(caps: ChainCaps): Result<ChainCaps, CeilingProblem> {
+  const all = [caps.native, ...caps.approvals];
+  if (all.some((cap) => cap.limitBase < 0n)) {
+    return err("negative_cap");
+  }
+  return all.every((cap) => isPrivyId(cap.aggregation)) ? ok(caps) : err("bad_cap");
+}
+
 function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProblem> {
   if (chain.perTxNativeCapBase < 0n) {
     return err("negative_cap");
   }
-  const contracts = addressList(chain.contracts);
-  if (!contracts.ok) {
-    return contracts;
+  const chainId = String(chain.chain.chainId);
+  const calls = callListsOf(chain.calls, chainId);
+  if (!calls.ok) {
+    return calls;
   }
   const spenders = addressList(chain.spenders);
-  const chainId = String(chain.chain.chainId);
+  if (!spenders.ok) {
+    return spenders;
+  }
+  const caps = capsChecked(chain.caps);
   const { perTxNativeCapBase } = chain;
-  return spenders.ok
-    ? ok({ chainId, contracts: contracts.value, spenders: spenders.value, perTxNativeCapBase })
-    : spenders;
+  return caps.ok
+    ? ok({
+        chainId,
+        calls: calls.value,
+        spenders: spenders.value,
+        perTxNativeCapBase,
+        caps: caps.value,
+      })
+    : caps;
 }
 
 function eachChain(
@@ -182,14 +237,17 @@ function eachChain(
     }
     lists.push(checked.value);
   }
-  return ok(lists);
+  const aggregations = chains.flatMap(({ caps }) => [caps.native, ...caps.approvals]);
+  const distinct = new Set(aggregations.map((cap) => cap.aggregation));
+  return distinct.size > maxAggregations ? err("too_many_caps") : ok(lists);
 }
 
 /**
- * The rules of one chain that name what a contract call may do: reach the chain's listed
- * contracts with at most its cap in native coin, and approve only its listed spenders. Changing a
- * ceiling's venues or cap changes these rules and nothing else. A list that is empty gives no
- * rule; a malformed address or a negative cap is refused.
+ * The rules of one chain that name what a contract call may do: call each listed function on its
+ * contracts with at most the cap in native coin while the 24-hour native cap holds, and approve
+ * only the listed spenders while each token's 24-hour cap holds. Changing a ceiling's venues or cap
+ * changes these rules and nothing else. No call gives no call rule and no spender no approval
+ * rule; a malformed address, call or cap is refused.
  */
 export function callRules(chain: CeilingChain): Result<readonly PolicyRule[], CeilingProblem> {
   const lists = chainLists(chain);
@@ -197,16 +255,17 @@ export function callRules(chain: CeilingChain): Result<readonly PolicyRule[], Ce
 }
 
 /**
- * Builds a wallet's ceiling (spec 5, section 4) as Privy policy rules for `eth_signTransaction`,
- * the one signing method it allows. On each enabled chain it allows: calls to the listed
- * contracts with at most the cap in native coin; an exact `approve` to a registry spender; a
- * native send or a token `transfer` to the rescue address or a saved address; a zero-value
- * transfer to the wallet itself, which cancels a stuck transaction. It lets the owner, never a
- * signer, export the key, and denies every EIP-7702 authorization. Privy denies everything else,
- * typed data and `personal_sign` among it. It holds no `DENY` rule on calldata: Privy denies
- * every transaction whose calldata such a rule cannot decode, plain sends among them (seen on a
- * Privy app, 2026-10-07). So `setApprovalForAll` is refused by the allowed sets, and on a listed
- * contract by the signer's hard rules.
+ * Builds a wallet's ceiling (spec 5, section 4; decision 0149) as Privy policy rules for
+ * `eth_signTransaction`, the one signing method it allows. On each enabled chain it allows: each
+ * venue function its venues declare, by `function_name`, on the contracts they declare it on,
+ * with at most the cap in native coin, its pinned inputs the signing wallet itself, while the
+ * 24-hour native cap holds; an `approve` with no native coin to a declared spender, while each
+ * capped token's 24-hour cap holds; a native send or a token `transfer` to the rescue address or a
+ * saved address; a zero-value transfer to the wallet itself, which cancels a stuck transaction. It
+ * lets the owner, never a signer, export the key, and denies every EIP-7702 authorization. Privy
+ * denies everything else, typed data and `personal_sign` among it. It holds no `DENY` rule on
+ * calldata: Privy denies every transaction whose calldata such a rule cannot decode, plain sends
+ * among them (seen on a Privy app, 2026-10-07).
  */
 export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingProblem> {
   const lists = eachChain(request.chains);

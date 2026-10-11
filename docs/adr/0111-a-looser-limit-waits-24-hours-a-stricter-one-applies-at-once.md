@@ -1,6 +1,6 @@
 # 0111. A looser limit waits 24 hours, a stricter one applies at once
 
-Status: Accepted
+Status: Amended by 0149
 
 ## Context
 

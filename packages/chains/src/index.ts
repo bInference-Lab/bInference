@@ -1,1 +1,1 @@
-export { bsc, bscPriceFeeds } from "./bsc.js";
+export { bsc, bscCeilingCaps, bscPriceFeeds } from "./bsc.js";

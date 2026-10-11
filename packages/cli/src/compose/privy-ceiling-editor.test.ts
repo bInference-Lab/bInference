@@ -1,9 +1,11 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
-import { buildCeiling, type CeilingChain, createPrivyApi } from "@binference/custody-privy";
+import { buildCeiling, type CeilingChainPlan, createPrivyApi } from "@binference/custody-privy";
 import {
   createFakePrivy,
   testAddresses,
+  testCalls,
+  testCapPlan,
   testCeilingRequest,
   testChain,
 } from "@binference/custody-privy/testing";
@@ -17,19 +19,24 @@ const { rescue, saved, unsaved, router } = testAddresses;
 const accountOf = (address: string): AccountRef => accountRefSchema.parse(`eip155:56:${address}`);
 const accounts = [accountOf(rescue), accountOf(saved), accountOf(unsaved)] as const;
 
-// The test venue "swap" has the router on the test chain; no other venue has a contract.
+// The test venue "swap" calls the router on the test chain; no other venue has a contract.
 function callsOn(
   chain: unknown,
   calls: { readonly venues: readonly string[]; readonly perTxNativeBase: bigint },
-): CeilingChain {
-  const contracts = calls.venues.includes("swap") ? [router] : [];
+): CeilingChainPlan {
+  const swap = calls.venues.includes("swap");
   return {
     chain: testChain,
-    contracts,
-    spenders: contracts,
+    calls: swap ? testCalls : [],
+    spenders: swap ? [router] : [],
     perTxNativeCapBase: calls.perTxNativeBase,
   };
 }
+
+const capsOptions = {
+  capPlanOn: () => testCapPlan,
+  heldCaps: async () => Promise.resolve([]),
+};
 
 interface RuleJson {
   readonly name: string;
@@ -65,6 +72,7 @@ async function subject() {
     clock,
     ownerKeyPublic: async () => Promise.resolve(owner.publicKey),
     callsOn,
+    ...capsOptions,
   });
   // The accounts the native send rule lists, as Privy holds the policy.
   const recipients = async (): Promise<readonly AccountRef[]> => {
@@ -106,6 +114,7 @@ describe("the Privy ceiling editor", () => {
       clock: createManualClock(1),
       ownerKeyPublic: async () => Promise.resolve(undefined),
       callsOn,
+      ...capsOptions,
     });
     const request = {
       ownerKey: made.ownerKey,

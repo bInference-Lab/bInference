@@ -1,16 +1,24 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
 import { type Http, type Id, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
-import { createPrivyApi, isPrivyId, type PrivyWallet } from "@binference/custody-privy";
+import {
+  createPrivyApi,
+  type HeldCaps,
+  isPrivyId,
+  type PrivyWallet,
+  readCeiling,
+} from "@binference/custody-privy";
 import {
   createFakePrivy,
   testAddresses,
+  testCapPlan,
   testCeilingRequest,
 } from "@binference/custody-privy/testing";
 import type { CustodyRecord } from "@binference/engine/install";
 import { walletMakerContract } from "@binference/engine/testing";
 import { createP256KeyPair, formatOwnerKeyCode } from "@binference/signer";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
 
 const live = { signal: new AbortController().signal };
@@ -29,18 +37,42 @@ function listedIn(rule: RuleJson | undefined): readonly string[] {
   return typeof value === "string" ? [value] : value;
 }
 
-// Privy's API as the fake serves it, counting each wallet it is asked to make.
-function countingWallets(http: Http): { readonly http: Http; readonly made: () => number } {
-  const count = { made: 0 };
+// The test ceiling's chains as the composition root plans them, before Privy holds their caps.
+const draft = {
+  chains: testCeilingRequest().chains.map(({ caps: _caps, ...plan }) => plan),
+  capPlans: [testCapPlan],
+};
+
+interface Counted {
+  readonly http: Http;
+  readonly made: () => number;
+  readonly aggregations: () => number;
+  /** The caps the ceilings made so far name, as the install store would mirror them. */
+  readonly heldCaps: () => Promise<readonly HeldCaps[]>;
+}
+
+// Privy's API as the fake serves it, counting each wallet and aggregation it is asked to make.
+function countingWallets(http: Http): Counted {
+  const count = { made: 0, aggregations: 0, caps: [] as readonly HeldCaps[] };
   const counting: Http = {
     request: async (request) => {
-      if (request.method === "POST" && new URL(request.url).pathname === "/v1/wallets") {
-        count.made += 1;
+      const path = new URL(request.url).pathname;
+      count.made += request.method === "POST" && path === "/v1/wallets" ? 1 : 0;
+      count.aggregations += request.method === "POST" && path === "/v1/aggregations" ? 1 : 0;
+      const answer = await http.request(request);
+      if (request.method === "POST" && path === "/v1/policies" && count.caps.length === 0) {
+        const policy = z.object({ rules: z.array(z.json()) }).parse(JSON.parse(answer.body));
+        count.caps = readCeiling(policy.rules)?.caps ?? [];
       }
-      return http.request(request);
+      return answer;
     },
   };
-  return { http: counting, made: () => count.made };
+  return {
+    http: counting,
+    made: () => count.made,
+    aggregations: () => count.aggregations,
+    heldCaps: async () => Promise.resolve(count.caps),
+  };
 }
 
 async function subject() {
@@ -77,7 +109,8 @@ async function subject() {
     api,
     clock,
     custody: async () => Promise.resolve(custody),
-    ceilingChains: () => testCeilingRequest().chains,
+    ceilingChains: () => draft,
+    heldCaps: counted.heldCaps,
     onMade: (wallet, made) => signedFor.set(wallet, made),
   });
   const next = { n: 0 };
@@ -97,6 +130,7 @@ async function subject() {
       return listedIn(sends).map(accountOf).toSorted();
     },
     made: counted.made,
+    aggregations: counted.aggregations,
     signedFor,
   };
 }
@@ -122,6 +156,17 @@ describe("the Privy wallet maker", () => {
     expect(made.signedFor.get(wallet)?.chains).toStrictEqual(["eip155:56"]);
   });
 
+  it("makes the caps' aggregations once, and names them in every later ceiling", async () => {
+    const made = await subject();
+    const request = { ownerKey: made.ownerKey, venues: made.venues, recipients };
+
+    const first = await made.maker.make({ ...request, wallet: made.nextWallet() }, live);
+    const second = await made.maker.make({ ...request, wallet: made.nextWallet() }, live);
+
+    expect([first.ok, second.ok]).toStrictEqual([true, true]);
+    expect(made.aggregations()).toBe(1 + testCapPlan.approvals.length);
+  });
+
   it("refuses every owner key before the install holds custody", async () => {
     const made = await subject();
     const bare = createPrivyWalletMaker({
@@ -133,7 +178,8 @@ describe("the Privy wallet maker", () => {
       }),
       clock: createManualClock(1),
       custody: async () => Promise.resolve(undefined),
-      ceilingChains: () => testCeilingRequest().chains,
+      ceilingChains: () => draft,
+      heldCaps: async () => Promise.resolve([]),
       onMade: () => undefined,
     });
     const request = { wallet: made.nextWallet(), ownerKey: made.ownerKey, venues: [], recipients };

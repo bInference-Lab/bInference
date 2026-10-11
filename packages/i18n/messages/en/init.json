@@ -90,7 +90,7 @@
   "refused.badCeilingCap": "`defaults.ceiling.perTxBnb` is {cap}, which BNB cannot hold. Give a decimal with at most 18 places.",
   "refused.badGasReserve": "`defaults.limits.gasReserve` names {chain}, which this binference does not serve, or an amount its coin cannot hold.",
   "refused.badToken": "{token} is no token on a chain this binference serves, as CAIP-19 writes it. Fix `defaults.limits.allowTokens` or `defaults.limits.denyTokens`.",
-  "refused.badCeiling": "The ceiling cannot be built: {problem, select, too_many_addresses {it names more than 100 addresses} malformed_address {it names an address that is not valid} other {its chains are not valid}}.",
+  "refused.badCeiling": "The ceiling cannot be built: {problem, select, too_many_addresses {it names more than 100 addresses} malformed_address {it names an address that is not valid} too_many_caps {it needs more 24-hour caps than the 10 Privy keeps for an app} other {its chains are not valid}}.",
   "refused.readBack": "Privy's new wallet is not what binference asked for: {problem, select, owner {its owner differs} signer {its signer differs} policy {its ceiling differs} not_found {Privy does not hold it} other {it is no Ethereum wallet}}. binference will not use it. Run `binference init --start-over` to make another.",
   "refused.agentNameTaken": "An agent named {name} exists already. Rename it, then run `binference init --start-over`.",
   "refused.attachStartOver": "--attach and --start-over cannot go together: attach keeps the install and its wallets, and a start over replaces them.",

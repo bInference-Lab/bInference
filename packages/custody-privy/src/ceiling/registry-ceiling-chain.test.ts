@@ -2,10 +2,12 @@ import {
   type ChainDefinition,
   chainRefSchema,
   type ContractDefinition,
+  type VenueContracts,
   type VenueDeclaration,
 } from "@binference/chain";
 import { describe, expect, it } from "vitest";
-import { oneBnbWei, testAddresses, testChain } from "../testing/custody-fixtures.js";
+import { oneBnbWei, testAddresses, testChain, testRouterAbi } from "../testing/custody-fixtures.js";
+import { abiFunctionJson } from "./policy-rule.js";
 import { registryCeilingChain } from "./registry-ceiling-chain.js";
 
 const verification = {
@@ -46,54 +48,91 @@ const definition: ChainDefinition = {
   ],
 };
 
+const swapJson = abiFunctionJson(testRouterAbi.swap);
+const swapToJson = abiFunctionJson(testRouterAbi.swapTo);
+
 function declaredVenue(
   id: string,
-  names: readonly string[],
+  contracts: Omit<VenueContracts, "chain">,
   chain = "eip155:56",
 ): VenueDeclaration {
-  return { id, contracts: [{ chain: chainRefSchema.parse(chain), names }] };
+  return { id, contracts: [{ chain: chainRefSchema.parse(chain), ...contracts }] };
 }
 
+const swapper = declaredVenue("swapper", {
+  names: ["router", "permit2"],
+  calls: [
+    { contract: "router", abi: swapJson, walletInputs: [] },
+    { contract: "router", abi: swapToJson, walletInputs: ["receiver"] },
+  ],
+  spenders: ["router"],
+});
+
 describe("registryCeilingChain", () => {
-  it("lists the contracts each enabled venue declares on the chain, and only those", () => {
+  it("lists the calls and spenders each enabled venue declares on the chain, and only those", () => {
     const chain = registryCeilingChain({
       definition,
-      venues: [declaredVenue("swapper", ["router", "permit2"])],
+      venues: [swapper],
       perTxNativeCapBase: oneBnbWei,
     });
     expect(chain).toStrictEqual({
       ok: true,
       value: {
         chain: testChain,
-        contracts: [testAddresses.router, testAddresses.permit2],
-        spenders: [testAddresses.router, testAddresses.permit2],
+        calls: [
+          { contract: testAddresses.router, abi: testRouterAbi.swap, walletInputs: [] },
+          { contract: testAddresses.router, abi: testRouterAbi.swapTo, walletInputs: ["receiver"] },
+        ],
+        spenders: [testAddresses.router],
         perTxNativeCapBase: oneBnbWei,
       },
     });
   });
 
-  it("lists a contract two venues share once, and nothing for a venue on another chain", () => {
+  it("lets a venue that declares no call or spender add nothing, nor one on another chain", () => {
+    const chain = registryCeilingChain({
+      definition,
+      venues: [
+        declaredVenue("swapper", { names: ["router", "permit2"] }),
+        declaredVenue("lender", { names: ["pool"], spenders: ["pool"] }, "eip155:1"),
+      ],
+      perTxNativeCapBase: 0n,
+    });
+    expect(chain).toMatchObject({ ok: true, value: { calls: [], spenders: [] } });
+  });
+
+  it("lists a spender two venues share once", () => {
     const chain = registryCeilingChain({
       definition: {
         ...definition,
         contracts: [...definition.contracts, contract("other", "router", testAddresses.router)],
       },
-      venues: [
-        declaredVenue("swapper", ["router"]),
-        declaredVenue("other", ["router"]),
-        declaredVenue("lender", ["pool"], "eip155:1"),
-      ],
+      venues: [swapper, declaredVenue("other", { names: ["router"], spenders: ["router"] })],
       perTxNativeCapBase: 0n,
     });
-    expect(chain).toMatchObject({ ok: true, value: { contracts: [testAddresses.router] } });
+    expect(chain).toMatchObject({ ok: true, value: { spenders: [testAddresses.router] } });
   });
 
   it("refuses a contract name the chain definition does not hold for the venue", () => {
     const chain = registryCeilingChain({
       definition,
-      venues: [declaredVenue("swapper", ["router", "pool"])],
+      venues: [declaredVenue("swapper", { names: ["router", "pool"] })],
       perTxNativeCapBase: oneBnbWei,
     });
     expect(chain).toStrictEqual({ ok: false, error: "unknown_contract" });
+  });
+
+  it("refuses a call whose function is no JSON ABI entry", () => {
+    const chain = registryCeilingChain({
+      definition,
+      venues: [
+        declaredVenue("swapper", {
+          names: ["router"],
+          calls: [{ contract: "router", abi: { name: "swap" }, walletInputs: [] }],
+        }),
+      ],
+      perTxNativeCapBase: oneBnbWei,
+    });
+    expect(chain).toStrictEqual({ ok: false, error: "bad_call" });
   });
 });

@@ -17,8 +17,8 @@ export type CeilingHandlersOptions = SetCeilingOptions;
 
 /**
  * Creates the ceiling handlers. `ceiling/get` answers a wallet's ceiling as custody holds it now,
- * read on each call. Its venues are those whose every registry contract, on the chains the
- * ceiling enables, a call may reach. A wallet the install does not hold, or whose ceiling custody
+ * read on each call. Its venues are those it names a registry contract of, on the chains the
+ * ceiling enables (decision 0149). A wallet the install does not hold, or whose ceiling custody
  * does not hold, is `wallet.not_found`; while the engine is locked, custody answers
  * `wallet.custody_down`. `ceiling/set` changes the venues and cap of every live wallet of the
  * wallet's agent with the owner key, as `setCeiling` decides (decision 0132).

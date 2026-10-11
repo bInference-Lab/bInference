@@ -24,7 +24,10 @@ Use test values. Never send a real private key, owner key, recovery phrase or bo
 - The wallet keys live in Privy, never on the machine. The machine holds an agent key that can ask
   Privy for a signature only inside the wallet's ceiling.
 - A hacked machine can sign only inside the ceiling, and only until the owner removes its agent key
-  with the owner key.
+  with the owner key. Inside it, the machine cannot send to an address the owner did not save, nor
+  call a contract or approve a spender no enabled venue declares; through venue calls it can lose
+  at most the ceiling's 24-hour caps, trading at a bad price
+  ([decision 0149](docs/DECISIONS.md#d0149)).
 - Whoever controls the owner's Telegram account can confirm cards, so the Telegram account is a
   key.
 

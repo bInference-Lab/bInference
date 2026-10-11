@@ -90,7 +90,7 @@
   "refused.badCeilingCap": "`defaults.ceiling.perTxBnb` 为 {cap}，BNB 无法表示该值。请提供最多 18 位小数的数字。",
   "refused.badGasReserve": "`defaults.limits.gasReserve` 指定了此 binference 不支持的链 {chain}，或指定了该链原生币无法表示的数额。",
   "refused.badToken": "{token} 不是此 binference 支持的链上 CAIP-19 格式的代币。请修正 `defaults.limits.allowTokens` 或 `defaults.limits.denyTokens`。",
-  "refused.badCeiling": "无法生成上限：{problem, select, too_many_addresses {其中的地址超过 100 个} malformed_address {其中有无效地址} other {其中的链无效}}。",
+  "refused.badCeiling": "无法生成上限：{problem, select, too_many_addresses {其中的地址超过 100 个} malformed_address {其中有无效地址} too_many_caps {它需要的 24 小时上限超过 Privy 每个应用最多保存的 10 个} other {其中的链无效}}。",
   "refused.readBack": "Privy 新建的钱包与 binference 的要求不符：{problem, select, owner {所有者不同} signer {签名方不同} policy {上限不同} not_found {Privy 中没有这个钱包} other {它不是以太坊钱包}}。binference 不会使用它。请运行 `binference init --start-over` 重新创建。",
   "refused.agentNameTaken": "名为 {name} 的 Agent 已存在。请先重命名它，然后运行 `binference init --start-over`。",
   "refused.attachStartOver": "--attach 和 --start-over 不能同时使用：接入会保留该安装及其钱包，而重新设置会替换它们。",

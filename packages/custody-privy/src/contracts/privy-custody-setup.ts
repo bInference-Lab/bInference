@@ -15,12 +15,18 @@ import {
 import { type Clock, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
-import type { Ceiling } from "../ceiling/ceiling.js";
+import type { Ceiling, ChainCaps } from "../ceiling/ceiling.js";
 import type { PrivyApi } from "../privy/privy-api.js";
 import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
 import { privyTransaction } from "../signing/privy-transaction.js";
-import { testCeilingRequest, testChain } from "../testing/custody-fixtures.js";
+import {
+  testCapPlan,
+  testCaps,
+  testCeilingRequest,
+  testChain,
+} from "../testing/custody-fixtures.js";
 import { createAgentWallet } from "../wallets/create-agent-wallet.js";
+import { createDayCaps } from "../wallets/create-day-caps.js";
 import type { WalletExpectation } from "../wallets/read-back.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
 
@@ -72,9 +78,9 @@ export const live = (): { readonly signal: AbortSignal } => ({
 const uuid = "0190f1c2-3b4c-7d5e-8f60-718293a4b5c6";
 const agentWallet = idSchema("wal").parse(`wal_${uuid}`);
 
-/** The test ceiling, built. */
-export function testCeiling(): Ceiling {
-  const ceiling = buildCeiling(testCeilingRequest());
+/** The test ceiling, built with the caps given: by default ones no Privy app holds. */
+export function testCeiling(caps: ChainCaps = testCaps): Ceiling {
+  const ceiling = buildCeiling(testCeilingRequest(caps));
   assert.ok(ceiling.ok);
   return ceiling.value;
 }
@@ -90,7 +96,9 @@ async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
     { publicKey: agentKey, displayName: "binference test agent" },
     live(),
   );
-  const expected = { ownerKey, agentKey, ceiling: testCeiling() };
+  const caps = await createDayCaps(api, { plans: [testCapPlan], owner: ownerQuorum.id }, live());
+  assert.ok(caps.ok && caps.value[0] !== undefined, "Privy made no aggregations for the caps.");
+  const expected = { ownerKey, agentKey, ceiling: testCeiling(caps.value[0]) };
   const created = await createAgentWallet(
     api,
     { ownerQuorum: ownerQuorum.id, signerQuorum: signerQuorum.id, expected },

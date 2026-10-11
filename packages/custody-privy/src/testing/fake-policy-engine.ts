@@ -16,6 +16,15 @@ export interface PolicyInput {
 
 type Compared = string | bigint;
 
+/**
+ * The sum a reference condition compares, for an aggregation and a request: what the aggregation
+ * holds over its window plus what the request would add. Undefined for an aggregation the app no
+ * longer holds, whose conditions then fail.
+ */
+export type FakeReferences = (aggregation: string, input: PolicyInput) => bigint | undefined;
+
+const aggregationPrefix = "aggregation.";
+
 const walletVariable = "{{wallet.address}}";
 
 const numeric: Readonly<
@@ -84,17 +93,28 @@ function transactionField(field: string, input: PolicyInput): Compared | undefin
   }
 }
 
+function fieldOf(
+  condition: FakeCondition,
+  input: PolicyInput,
+  references: FakeReferences | undefined,
+): Compared | undefined {
+  if (condition.field_source === "reference") {
+    return references?.(condition.field.slice(aggregationPrefix.length), input);
+  }
+  return condition.field_source === "ethereum_transaction"
+    ? transactionField(condition.field, input)
+    : readCalldataField(condition.abi ?? [], condition.field, input.data);
+}
+
 // Privy fails closed: a DENY rule's calldata condition that cannot decode the call's data holds,
 // so the rule denies a plain send as well (seen on a Privy app, 2026-10-07).
 function conditionHolds(
   condition: FakeCondition,
   input: PolicyInput,
-  action: FakeRule["action"],
+  rule: { readonly action: FakeRule["action"]; readonly references?: FakeReferences | undefined },
 ): boolean {
-  const left =
-    condition.field_source === "ethereum_transaction"
-      ? transactionField(condition.field, input)
-      : readCalldataField(condition.abi ?? [], condition.field, input.data);
+  const left = fieldOf(condition, input, rule.references);
+  const { action } = rule;
   if (left === undefined) {
     return action === "DENY" && condition.field_source === "ethereum_calldata";
   }
@@ -102,15 +122,30 @@ function conditionHolds(
 }
 
 /**
+ * Whether every condition of an aggregation holds for a request, as an `ALLOW` rule's would:
+ * calldata the ABI cannot decode fails its condition.
+ */
+export function conditionsHold(conditions: readonly FakeCondition[], input: PolicyInput): boolean {
+  return conditions.every((condition) => conditionHolds(condition, input, { action: "ALLOW" }));
+}
+
+/**
  * Privy's policy semantics: only the rules of the request's method (or `*`) apply; a rule applies
  * when every condition holds; a `DENY` that applies wins; with no `ALLOW` that applies, the
- * request is denied. A `DENY` rule whose calldata condition cannot decode the data applies.
+ * request is denied. A `DENY` rule whose calldata condition cannot decode the data applies. A
+ * reference condition compares the sum `references` gives, and fails without one.
  */
-export function evaluatePolicy(rules: readonly FakeRule[], input: PolicyInput): "ALLOW" | "DENY" {
+export function evaluatePolicy(
+  rules: readonly FakeRule[],
+  input: PolicyInput,
+  references?: FakeReferences,
+): "ALLOW" | "DENY" {
   const applying = rules.filter(
     (rule) =>
       (rule.method === input.method || rule.method === "*") &&
-      rule.conditions.every((condition) => conditionHolds(condition, input, rule.action)),
+      rule.conditions.every((condition) =>
+        conditionHolds(condition, input, { action: rule.action, references }),
+      ),
   );
   if (applying.some((rule) => rule.action === "DENY")) {
     return "DENY";

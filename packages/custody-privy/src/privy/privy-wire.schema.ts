@@ -94,6 +94,46 @@ export function readPolicy(answer: unknown): PrivyPolicy | undefined {
       };
 }
 
+const aggregationWire = z.object({
+  id: privyId,
+  owner_id: privyId.nullable(),
+  window: z.object({ type: z.literal("rolling"), seconds: z.int().positive() }),
+});
+
+/** An aggregation as Privy reports it: its id, its owner and its window. */
+export interface AggregationRecord {
+  readonly id: PrivyId;
+  readonly ownerId: PrivyId | null;
+  readonly windowSeconds: number;
+}
+
+function jsonOf(text: string): unknown {
+  try {
+    const value: unknown = JSON.parse(text);
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Reads Privy's answer to `POST /v1/aggregations` from its body text: the aggregation, when the
+ * body is one, and the documented error code the body names, when it names one.
+ */
+export function readAggregationAnswer(body: string): {
+  readonly record?: AggregationRecord;
+  readonly code?: PrivyErrorCode;
+} {
+  const json = jsonOf(body);
+  const wire = parsed(aggregationWire, json);
+  const code = readPrivyErrorCode(json);
+  const record =
+    wire === undefined
+      ? undefined
+      : { id: wire.id, ownerId: wire.owner_id, windowSeconds: wire.window.seconds };
+  return { ...(record === undefined ? {} : { record }), ...(code === undefined ? {} : { code }) };
+}
+
 const ruleRefWire = z.object({ id: privyId, name: z.string() });
 
 /** A rule of a policy as Privy reports it: its id and name, and its JSON as Privy wrote it. */
@@ -114,6 +154,11 @@ export function readRuleRefs(rules: readonly JsonValue[]): readonly PolicyRuleRe
     refs.push({ id: wire.id, name: wire.name, json });
   }
   return refs;
+}
+
+/** Whether the SDK's answer is Privy's `{ success: true }`, as a deletion answers. */
+export function readSuccess(answer: unknown): boolean {
+  return z.object({ success: z.literal(true) }).safeParse(answer).success;
 }
 
 /** Whether the SDK's answer to a rule change is a rule with its id. */

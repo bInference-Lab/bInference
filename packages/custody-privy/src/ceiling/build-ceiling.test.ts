@@ -4,16 +4,19 @@ import { describe, expect, it } from "vitest";
 import {
   oneBnbWei,
   testAddresses,
+  testCalls,
+  testCaps,
   testCeilingRequest,
   testChain,
+  testRouterAbi,
 } from "../testing/custody-fixtures.js";
 import { evaluatePolicy } from "../testing/fake-policy-engine.js";
 import { fakePolicyBodySchema } from "../testing/fake-privy-request.schema.js";
 import { buildCeiling } from "./build-ceiling.js";
-import type { Ceiling, CeilingRequest } from "./ceiling.js";
-import { policyRuleJson } from "./policy-rule.js";
+import type { Ceiling, CeilingChain, CeilingRequest } from "./ceiling.js";
+import { abiFunctionJson, policyRuleJson } from "./policy-rule.js";
 
-const { router, permit2, rescue, saved } = testAddresses;
+const { router, rescue, saved } = testAddresses;
 
 const approve = {
   type: "function",
@@ -42,27 +45,70 @@ const noCoin = {
   operator: "lte",
   value: "0x0",
 };
+const toRouter = {
+  field_source: "ethereum_transaction",
+  field: "to",
+  operator: "in",
+  value: [router],
+};
+const oneBnbCap = {
+  field_source: "ethereum_transaction",
+  field: "value",
+  operator: "lte",
+  value: "0xde0b6b3a7640000",
+};
+const nativeDayCap = {
+  field_source: "reference",
+  field: "aggregation.testcapnative000000000000",
+  operator: "lte",
+  value: "0x29a2241af62c0000",
+};
+const swapAbi = abiFunctionJson(testRouterAbi.swap);
+const swapToAbi = abiFunctionJson(testRouterAbi.swapTo);
 
 // Written out by hand from spec 5, section 4: a change to the ceiling changes this test.
 const expectedRules = [
   {
-    name: "Contract calls, chain 56",
+    name: "Call swap, chain 56",
     method: "eth_signTransaction",
     action: "ALLOW",
     conditions: [
       onChain,
+      toRouter,
+      oneBnbCap,
       {
-        field_source: "ethereum_transaction",
-        field: "to",
-        operator: "in",
-        value: [router, permit2],
+        field_source: "ethereum_calldata",
+        field: "function_name",
+        abi: [swapAbi],
+        operator: "eq",
+        value: "swap",
+      },
+      nativeDayCap,
+    ],
+  },
+  {
+    name: "Call swapTo, chain 56",
+    method: "eth_signTransaction",
+    action: "ALLOW",
+    conditions: [
+      onChain,
+      toRouter,
+      oneBnbCap,
+      {
+        field_source: "ethereum_calldata",
+        field: "function_name",
+        abi: [swapToAbi],
+        operator: "eq",
+        value: "swapTo",
       },
       {
-        field_source: "ethereum_transaction",
-        field: "value",
-        operator: "lte",
-        value: "0xde0b6b3a7640000",
+        field_source: "ethereum_calldata",
+        field: "swapTo.receiver",
+        abi: [swapToAbi],
+        operator: "eq",
+        value: "{{wallet.address}}",
       },
+      nativeDayCap,
     ],
   },
   {
@@ -77,7 +123,13 @@ const expectedRules = [
         field: "approve.spender",
         abi: [approve],
         operator: "in",
-        value: [router, permit2],
+        value: [router],
+      },
+      {
+        field_source: "reference",
+        field: "aggregation.testcaptoken0000000000000",
+        operator: "lte",
+        value: "0x3e8",
       },
     ],
   },
@@ -146,25 +198,13 @@ function rulesOf(request: CeilingRequest): readonly JsonValue[] {
   return ceilingOf(request).rules.map(policyRuleJson);
 }
 
-interface Lists {
-  readonly contracts?: readonly string[];
-  readonly spenders?: readonly string[];
-  readonly perTxNativeCapBase?: bigint;
-}
-
 // The test request with other lists on its one chain.
-function withLists(lists: Lists): CeilingRequest {
-  return {
-    ...testCeilingRequest(),
-    chains: [
-      {
-        chain: testChain,
-        contracts: lists.contracts ?? [router, permit2],
-        spenders: lists.spenders ?? [router, permit2],
-        perTxNativeCapBase: lists.perTxNativeCapBase ?? oneBnbWei,
-      },
-    ],
-  };
+function withLists(lists: Partial<Omit<CeilingChain, "chain">>): CeilingRequest {
+  const [chain] = testCeilingRequest().chains;
+  if (chain === undefined) {
+    throw new Error("The test request has a chain.");
+  }
+  return { ...testCeilingRequest(), chains: [{ ...chain, ...lists }] };
 }
 
 function lower(text: string): string {
@@ -193,7 +233,10 @@ describe("buildCeiling", () => {
       version: "1.0",
       name: "binference ceiling",
       chain_type: "ethereum",
-      rules: [...rulesOf(testCeilingRequest()), { ...expectedRules[0], method: "*" }],
+      rules: [
+        ...rulesOf(testCeilingRequest()),
+        { name: "Every call", method: "*", action: "ALLOW", conditions: [onChain] },
+      ],
     };
     const rules = fakePolicyBodySchema.parse(body).rules;
     const request = {
@@ -209,32 +252,51 @@ describe("buildCeiling", () => {
   });
 
   it("checksums every address and lists each once", () => {
+    const calls = [
+      ...testCalls,
+      { contract: lower(router), abi: testRouterAbi.swap, walletInputs: [] },
+    ];
     const rules = rulesOf({
-      ...withLists({ contracts: [lower(router), router, permit2] }),
+      ...withLists({ calls, spenders: [lower(router), router] }),
       saved: [lower(saved), saved, lower(rescue)],
     });
     expect(rules).toStrictEqual(expectedRules);
   });
 
-  it("leaves out the call and approval rules of a chain with no listed contract or spender", () => {
-    const ceiling = ceilingOf(withLists({ contracts: [], spenders: [] }));
+  it("lists every contract a function is declared on in its one rule", () => {
+    const other = { contract: testAddresses.unlisted, abi: testRouterAbi.swap, walletInputs: [] };
+    const ceiling = ceilingOf(withLists({ calls: [...testCalls, other] }));
+    const swap = ceiling.rules.find((rule) => rule.name === "Call swap, chain 56");
+    expect(swap?.conditions[1]).toStrictEqual({
+      ...toRouter,
+      value: [router, testAddresses.unlisted],
+    });
+  });
+
+  it("leaves out the call and approval rules of a chain with no listed call or spender", () => {
+    const ceiling = ceilingOf(withLists({ calls: [], spenders: [] }));
     expect(ceiling.rules.map((rule) => rule.name)).toStrictEqual(
-      expectedRules.slice(2).map((rule) => rule.name),
+      expectedRules.slice(3).map((rule) => rule.name),
     );
   });
 
   it("writes one set of rules per chain, each bound to its own chain id", () => {
     const request = testCeilingRequest();
     const other = { ...testChain, ref: chainRefSchema.parse("eip155:204"), chainId: 204 };
+    const caps = {
+      native: { aggregation: "othernative", limitBase: 5n },
+      approvals: [{ aggregation: "othertoken", limitBase: 5n }],
+    };
     const second = {
       chain: other,
-      contracts: [router],
+      calls: testCalls,
       spenders: [router],
       perTxNativeCapBase: 5n,
+      caps,
     };
     const ceiling = ceilingOf({ ...request, chains: [...request.chains, second] });
     const names = ceiling.rules.map((rule) => rule.name);
-    expect(names.filter((name) => name.endsWith("chain 204"))).toHaveLength(5);
+    expect(names.filter((name) => name.endsWith("chain 204"))).toHaveLength(6);
     expect(ceiling.chains).toStrictEqual([testChain.ref, other.ref]);
   });
 
@@ -260,15 +322,60 @@ describe("buildCeiling", () => {
       },
     ],
     ["negative_cap", withLists({ perTxNativeCapBase: -1n })],
+    [
+      "negative_cap",
+      withLists({ caps: { ...testCaps, native: { ...testCaps.native, limitBase: -1n } } }),
+    ],
+    [
+      "bad_cap",
+      withLists({ caps: { ...testCaps, approvals: [{ aggregation: "a b", limitBase: 1n }] } }),
+    ],
+    [
+      "bad_call",
+      withLists({
+        calls: [{ contract: router, abi: testRouterAbi.swap, walletInputs: ["amountIn"] }],
+      }),
+    ],
+    [
+      "bad_call",
+      withLists({
+        calls: [
+          {
+            contract: router,
+            abi: { ...testRouterAbi.swap, name: "s".repeat(40) },
+            walletInputs: [],
+          },
+        ],
+      }),
+    ],
+    [
+      "clashing_calls",
+      withLists({
+        calls: [
+          { contract: router, abi: testRouterAbi.swapTo, walletInputs: ["receiver"] },
+          { contract: testAddresses.unlisted, abi: testRouterAbi.swapTo, walletInputs: [] },
+        ],
+      }),
+    ],
+    [
+      "too_many_caps",
+      withLists({
+        caps: {
+          ...testCaps,
+          approvals: Array.from({ length: 10 }, (_, n) => ({
+            aggregation: `cap${String(n)}`,
+            limitBase: 1n,
+          })),
+        },
+      }),
+    ],
   ] as const)("refuses a request with %s", (problem, request) => {
     expect(built(request)).toStrictEqual({ ok: false, error: problem });
   });
 
   it("refuses a malformed contract or spender", () => {
-    expect(built(withLists({ contracts: ["router"] }))).toStrictEqual({
-      ok: false,
-      error: "malformed_address",
-    });
+    const calls = [{ contract: "router", abi: testRouterAbi.swap, walletInputs: [] }];
+    expect(built(withLists({ calls }))).toStrictEqual({ ok: false, error: "malformed_address" });
     expect(built(withLists({ spenders: ["router"] }))).toStrictEqual({
       ok: false,
       error: "malformed_address",

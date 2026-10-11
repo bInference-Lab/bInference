@@ -44,18 +44,19 @@ export function unknownVenues(chains: ChainRegistry, venues: readonly string[]):
 
 /**
  * The venues a live wallet of the agent cannot use because its ceiling, as last read back from
- * custody, names some registry contract of the venue nowhere (decision 0111). Only the owner key
- * adds a contract to a ceiling, so `limit/set` refuses them with `limit.over_ceiling`.
+ * custody, names none of the venue's registry contracts (decisions 0111 and 0149): a ceiling
+ * lists the contracts a venue's trades call and approve, never the ones only those reach. Only
+ * the owner key adds a venue to a ceiling, so `limit/set` refuses them with `limit.over_ceiling`.
  */
 export function venuesOutsideCeiling(check: VenueCheck): readonly string[] {
   const live = check.wallets.filter(
     (wallet) => wallet.agentId === check.agent && wallet.archivedAtMs === undefined,
   );
   return check.venues.filter((venue) =>
-    live.some((wallet) =>
-      contractsOf(check.chains, venue, wallet.family).some(
-        (address) => !mentions(wallet.ceiling.policy, address),
-      ),
-    ),
+    live.some((wallet) => {
+      const contracts = contractsOf(check.chains, venue, wallet.family);
+      const named = contracts.some((address) => mentions(wallet.ceiling.policy, address));
+      return contracts.length > 0 && !named;
+    }),
   );
 }

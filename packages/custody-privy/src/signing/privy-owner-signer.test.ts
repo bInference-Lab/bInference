@@ -24,7 +24,7 @@ import {
   unsignedCall,
 } from "../contracts/privy-custody-setup.js";
 import { createPrivyApi } from "../privy/privy-api.js";
-import { testAddresses, testChain } from "../testing/custody-fixtures.js";
+import { swapData, testAddresses, testChain } from "../testing/custody-fixtures.js";
 import {
   createFakeCustodySubject,
   type FakeCustodySubject,
@@ -34,7 +34,7 @@ import { createPrivyOwnerSigner } from "./privy-owner-signer.js";
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
 const otherChain = { ...testChain, ref: chainRefSchema.parse("eip155:97"), chainId: 97 };
 const unknownWallet = "wal_0190f1c2-3b4c-7d5e-8f60-718293a4b5c7" as Id<"wal">;
-const call: TestCall = { to: testAddresses.router, valueWei: 1n, data: "0x12345678" };
+const call: TestCall = { to: testAddresses.router, valueWei: 1n, data: swapData(5n) };
 
 interface World {
   readonly subject: FakeCustodySubject;

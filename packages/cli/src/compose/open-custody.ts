@@ -11,13 +11,16 @@ import {
   type Secret,
 } from "@binference/core";
 import {
-  type CeilingChain,
+  type CeilingChainPlan,
+  type ChainCapPlan,
   checkPrivyApp,
   createPrivyApi,
   createPrivyOwnerSigner,
+  type HeldCaps,
   isPrivyId,
   privyApiOrigin,
   type PrivyWallet,
+  readCeiling,
   registryCeilingChain,
 } from "@binference/custody-privy";
 import type {
@@ -31,12 +34,16 @@ import type {
   WalletRecord,
 } from "@binference/engine/install";
 import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
+import { z } from "zod";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
-import { ceilingRequestOf } from "../init/ceiling-request.js";
+import { type CeilingDraft, capPlanOf, ceilingRequestOf } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
 import { checkAttached } from "./check-attached.js";
-import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
+import {
+  createPrivyCeilingEditor,
+  type PrivyCeilingEditorOptions,
+} from "./privy-ceiling-editor.js";
 import { createPrivySignerRevoker } from "./privy-signer-revoker.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
@@ -151,7 +158,7 @@ async function startCheckedSigner(
 function ceilingChainsOf(
   options: OpenCustodyOptions,
   venues: readonly string[],
-): readonly CeilingChain[] {
+): Pick<CeilingDraft, "chains" | "capPlans"> {
   const named = options.venues.filter((venue) => venues.includes(venue.id));
   const request = ceilingRequestOf(options.chains, options.config, { venues: named, rescue: "" });
   if (!request.ok) {
@@ -161,7 +168,25 @@ function ceilingChainsOf(
       details: { problem: request.refusal.code },
     });
   }
-  return request.value.chains;
+  return request.value;
+}
+
+const storedPolicy = z.object({ rules: z.array(z.json()) });
+
+// The 24-hour caps the live wallets' ceilings name, as the store mirrors them: those of the first
+// ceiling that names any, which every ceiling of the install shares.
+async function heldCapsOf(
+  install: OpenCustodyOptions["install"],
+  signal: AbortSignal,
+): Promise<readonly HeldCaps[]> {
+  const { wallets } = await install.read({ signal });
+  const held = wallets
+    .filter((wallet) => wallet.archivedAtMs === undefined)
+    .map((wallet) => {
+      const policy = storedPolicy.safeParse(wallet.ceiling.policy);
+      return policy.success ? (readCeiling(policy.data.rules)?.caps ?? []) : [];
+    });
+  return held.find((caps) => caps.length > 0) ?? [];
 }
 
 // What a contract call may do on a chain a ceiling enables, for the venues named that this install
@@ -170,7 +195,7 @@ function callsOn(
   options: OpenCustodyOptions,
   chain: ChainRef,
   calls: Omit<CeilingCalls, "ceiling">,
-): CeilingChain {
+): CeilingChainPlan {
   const registered = options.chains.list().find((item) => item.ref === chain);
   const venues = options.venues.filter((venue) => calls.venues.includes(venue.id));
   const built =
@@ -189,6 +214,19 @@ function callsOn(
     });
   }
   return built.value;
+}
+
+// The plan of a chain's 24-hour caps, as init sizes them; a chain the registry lacks is a fault.
+function capPlanOn(options: OpenCustodyOptions, chain: ChainRef): ChainCapPlan {
+  const registered = options.chains.list().find((item) => item.ref === chain);
+  if (registered === undefined) {
+    throw new BinferenceError({
+      code: "cli.ceiling_unbuilt",
+      message: `The registry gives no ceiling caps on ${chain}.`,
+      details: { chain },
+    });
+  }
+  return capPlanOf(registered.definition, options.config);
 }
 
 // The chains a wallet signs on: those config enables of its family.
@@ -228,6 +266,20 @@ async function readInstall(
     await signer.stop(AbortSignal.abort());
     throw error;
   }
+}
+
+// The ceiling editor on the owner's app: calls and caps as init plans them for this install.
+function ceilingEditorOf(
+  options: OpenCustodyOptions,
+  parts: Pick<PrivyCeilingEditorOptions, "api" | "ownerKeyPublic">,
+) {
+  return createPrivyCeilingEditor({
+    ...parts,
+    clock: options.clock,
+    callsOn: (chain, calls) => callsOn(options, chain, calls),
+    capPlanOn: (chain) => capPlanOn(options, chain),
+    heldCaps: async (read) => heldCapsOf(options.install, read),
+  });
 }
 
 /**
@@ -270,6 +322,7 @@ export async function openCustody(
       clock,
       custody: async (read) => (await install.read({ signal: read })).custody,
       ceilingChains: (venues) => ceilingChainsOf(options, venues),
+      heldCaps: async (read) => heldCapsOf(install, read),
       onMade: (wallet, made) => wallets.set(wallet, made),
     }),
     signer: createPrivyOwnerSigner({
@@ -277,12 +330,7 @@ export async function openCustody(
       signerProcess: signer.client,
       walletOf: (wallet) => wallets.get(wallet),
     }),
-    ceilings: createPrivyCeilingEditor({
-      api,
-      clock,
-      ownerKeyPublic,
-      callsOn: (chain, calls) => callsOn(options, chain, calls),
-    }),
+    ceilings: ceilingEditorOf(options, { api, ownerKeyPublic }),
     exporter: createPrivyWalletExporter({ api, clock, ownerKeyPublic }),
     revoker: createPrivySignerRevoker({ api, clock, ownerKeyPublic }),
     stopped: signer.stopped,

@@ -1,5 +1,17 @@
 export { buildCeiling } from "./ceiling/build-ceiling.js";
-export type { Ceiling, CeilingChain, CeilingProblem, CeilingRequest } from "./ceiling/ceiling.js";
+export { maxAggregations } from "./ceiling/ceiling.js";
+export type {
+  Ceiling,
+  CeilingCall,
+  CeilingChain,
+  CeilingChainPlan,
+  CeilingProblem,
+  CeilingRequest,
+  ChainCaps,
+  DayCap,
+} from "./ceiling/ceiling.js";
+export { dayCapWindowSeconds } from "./ceiling/day-caps.js";
+export type { AggregationDefinition, ChainCapPlan, TokenCapPlan } from "./ceiling/day-caps.js";
 export { policyRuleJson } from "./ceiling/policy-rule.js";
 export type {
   AbiFunction,
@@ -8,14 +20,20 @@ export type {
   ConditionOperator,
   PolicyCondition,
   PolicyRule,
+  ReferenceCondition,
   TransactionCondition,
 } from "./ceiling/policy-rule.js";
 export { readCeiling } from "./ceiling/read-ceiling.js";
-export type { CeilingHeld } from "./ceiling/read-ceiling.js";
+export type { CeilingHeld, HeldCaps } from "./ceiling/read-ceiling.js";
 export { registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
-export type { RegistryCeilingRequest } from "./ceiling/registry-ceiling-chain.js";
+export type {
+  RegistryCeilingProblem,
+  RegistryCeilingRequest,
+} from "./ceiling/registry-ceiling-chain.js";
 export { checkPrivyApp } from "./privy/check-privy-app.js";
 export { createPrivyApi } from "./privy/privy-api.js";
+export type { AggregationRequest } from "./privy/aggregations.js";
+export type { RuleAddition, RuleRemoval } from "./privy/rule-edits.js";
 export type {
   WalletListQuery,
   CallOptions,
@@ -45,6 +63,7 @@ export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
 export { setCeilingCalls } from "./wallets/ceiling-calls.js";
+export { createDayCaps } from "./wallets/create-day-caps.js";
 export type { CallsRefusal, PolicyCalls } from "./wallets/ceiling-calls.js";
 export {
   sendSignedRecipients,

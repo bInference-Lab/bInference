@@ -1,4 +1,5 @@
 import type {
+  CeilingCapsDefinition,
   ChainDefinition,
   ContractDefinition,
   PriceFeedDefinition,
@@ -300,6 +301,20 @@ export const bsc: ChainDefinition = {
     ...erc8004,
     ...spaceid,
     ...multicall3,
+  ],
+};
+
+/**
+ * What a wallet's ceiling caps on BSC per rolling 24 hours (decision 0149): the BNB its
+ * transactions send, and its approvals of WBNB and the two main stablecoins. BNB and WBNB count
+ * at a floor of $100, well below BNB's price in every year since 2021; each stablecoin at $1.
+ */
+export const bscCeilingCaps: CeilingCapsDefinition = {
+  nativeFloorUsd: 100_000_000n,
+  tokens: [
+    { symbol: "WBNB", floorUsd: 100_000_000n },
+    { symbol: "USDT", floorUsd: 1_000_000n },
+    { symbol: "USDC", floorUsd: 1_000_000n },
   ],
 };
 

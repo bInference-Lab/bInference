@@ -2,9 +2,30 @@ import { type JsonValue, stableJson } from "@binference/core";
 import { z } from "zod";
 
 // What decides a rule's effect, and nothing else: Privy's ids, its echoed defaults and any field
-// it adds later are left out. An ABI counts by its function names and named, typed inputs, since
-// Privy decodes calldata and names fields with them.
-const parameter = z.object({ name: z.string().default(""), type: z.string() });
+// it adds later are left out. An ABI counts by its function names and named, typed inputs with
+// their tuple parts, since Privy decodes calldata and names fields with them.
+
+/** An ABI input as the read-back compares it. */
+interface Parameter {
+  readonly name: string;
+  readonly type: string;
+  readonly components?: readonly Parameter[] | undefined;
+}
+
+const parameter: z.ZodType<Parameter> = z.lazy(() =>
+  z.object({
+    name: z.string().default(""),
+    type: z.string(),
+    components: z.array(parameter).optional(),
+  }),
+);
+
+function parameterText(input: Parameter): string {
+  const parts = input.components?.map(parameterText).join(",");
+  return parts === undefined
+    ? `${input.type} ${input.name}`
+    : `${input.type}(${parts}) ${input.name}`;
+}
 
 const abiItem = z.object({
   type: z.string(),
@@ -31,7 +52,7 @@ type Condition = z.infer<typeof condition>;
 
 function abiText(abi: Condition["abi"]): JsonValue {
   return (abi ?? []).map((item) => {
-    const inputs = item.inputs.map((input) => `${input.type} ${input.name}`).join(",");
+    const inputs = item.inputs.map(parameterText).join(",");
     return `${item.type} ${item.name}(${inputs})`;
   });
 }

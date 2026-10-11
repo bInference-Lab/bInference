@@ -1,4 +1,4 @@
-import type { HttpResponse, JsonValue } from "@binference/core";
+import { type HttpResponse, type JsonValue, jsonValueSchema } from "@binference/core";
 import type { FakePolicy, FakeQuorum, FakeWallet } from "./fake-privy-state.js";
 
 /** An answer with a JSON body. */
@@ -40,17 +40,7 @@ export function ruleJson(rule: FakePolicy["rules"][number]): JsonValue {
     conditions: rule.conditions.map((condition) => ({
       field_source: condition.field_source,
       field: condition.field,
-      ...(condition.abi === undefined
-        ? {}
-        : {
-            abi: condition.abi.map((item) => ({
-              type: item.type,
-              name: item.name,
-              inputs: item.inputs.map((input) => ({ ...input })),
-              outputs: item.outputs.map((output) => ({ ...output })),
-              stateMutability: item.stateMutability,
-            })),
-          }),
+      ...(condition.abi === undefined ? {} : { abi: jsonValueSchema.parse(condition.abi) }),
       operator: condition.operator,
       value: typeof condition.value === "string" ? condition.value : [...condition.value],
     })),

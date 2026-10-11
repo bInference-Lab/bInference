@@ -53,6 +53,7 @@ export { canonicalAsset } from "./registry/canonical-asset.js";
 export { createChainRegistry } from "./registry/create-chain-registry.js";
 export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
 export type { PriceFeedDefinition } from "./registry/price-feed-definition.js";
+export type { CeilingCapsDefinition, CeilingCapToken } from "./registry/ceiling-caps-definition.js";
 export type { RegisteredChain } from "./registry/registered-chain.js";
 export type { SignRequest } from "./sign-request.js";
 export { authorizationPayload } from "./signing/authorization-payload.js";
@@ -112,7 +113,7 @@ export type { BuildRequest } from "./venues/build-request.js";
 export { decodedEffectSchema } from "./venues/decoded-effect.js";
 export type { DecodedEffect, DecodedEffectWire } from "./venues/decoded-effect.js";
 export type { Quoter, TxBuilder, TxDecoder } from "./venues/ports.js";
-export { declaredContracts } from "./venues/declared-contracts.js";
+export { declaredAddress, declaredContracts } from "./venues/declared-contracts.js";
 export { venueDeclarationSchema } from "./venues/venue.js";
 export type {
   Venue,

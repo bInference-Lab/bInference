@@ -89,9 +89,11 @@ function changeCall(
   };
 }
 
-// What a rule call Privy answered gives, as `ownerOutcome` reads it: nothing once `isAnswer` reads
-// Privy's answer.
-async function ruleOutcome<T>(
+/**
+ * What a rule call Privy answered gives, as {@link ownerOutcome} reads it: nothing once `isAnswer`
+ * reads Privy's answer.
+ */
+export async function ruleOutcome<T>(
   call: PrivyCall<T>,
   outcome: Awaited<ReturnType<typeof callAsOwner<T>>>,
   isAnswer: (answer: T) => boolean,

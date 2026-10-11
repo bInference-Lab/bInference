@@ -7,8 +7,9 @@ import {
 } from "@binference/core";
 import { hexToBigInt, hexToNumber } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { namedAggregations, recordSigned, referencesOf } from "./fake-aggregations.js";
 import { authorizingParty, type FakeParty } from "./fake-authorization.js";
-import { evaluatePolicy } from "./fake-policy-engine.js";
+import { evaluatePolicy, type PolicyInput } from "./fake-policy-engine.js";
 import { answer, failure } from "./fake-privy-answers.js";
 import {
   type FakeQuantity,
@@ -55,13 +56,8 @@ function policiesFor(wallet: FakeWallet, party: FakeParty): readonly string[] {
     : wallet.policyIds;
 }
 
-function allowed(
-  state: FakePrivyState,
-  wallet: FakeWallet,
-  input: { readonly party: FakeParty; readonly tx: FakeTransaction },
-): boolean {
-  const { tx } = input;
-  const policyInput = {
+function policyInputOf(wallet: FakeWallet, tx: FakeTransaction): PolicyInput {
+  return {
     method: "eth_signTransaction",
     to: tx.to,
     valueWei: bigOf(tx.value ?? 0),
@@ -69,10 +65,34 @@ function allowed(
     data: tx.data ?? "0x",
     walletAddress: wallet.address,
   };
+}
+
+function allowed(
+  state: FakePrivyState,
+  wallet: FakeWallet,
+  input: { readonly party: FakeParty; readonly tx: FakeTransaction },
+): boolean {
+  const policyInput = policyInputOf(wallet, input.tx);
+  const references = referencesOf(state);
   return policiesFor(wallet, input.party).every((id) => {
     const policy = state.policies.get(id);
-    return policy !== undefined && evaluatePolicy(policy.rules, policyInput) === "ALLOW";
+    return (
+      policy !== undefined && evaluatePolicy(policy.rules, policyInput, references) === "ALLOW"
+    );
   });
+}
+
+// Privy updates every aggregation the wallet's own policies and the signer's override policies
+// name, once the request is signed.
+function recordIn(
+  state: FakePrivyState,
+  wallet: FakeWallet,
+  request: { readonly party: FakeParty; readonly tx: FakeTransaction },
+): void {
+  const ids = new Set([...wallet.policyIds, ...policiesFor(wallet, request.party)]);
+  const policies = [...ids].flatMap((id) => state.policies.get(id) ?? []);
+  const aggregations = namedAggregations(policies);
+  recordSigned(state, { aggregations, input: policyInputOf(wallet, request.tx) });
 }
 
 async function signed(wallet: FakeWallet, tx: FakeTransaction): Promise<string> {
@@ -126,8 +146,9 @@ function partyOf(
 /**
  * Answers `POST /v1/wallets/<id>/rpc` with `eth_signTransaction` as Privy does: the body must
  * parse, the expiry must not have passed, the owner or an added signer must have signed the RFC
- * 8785 payload, and every policy that binds that party must allow the transaction. Then the
- * wallet's own key signs it.
+ * 8785 payload, and every policy that binds that party must allow the transaction, the sums of
+ * the aggregations it names included. Then the wallet's own key signs it, and each aggregation its
+ * policies name records what the request adds.
  */
 export async function answerSignTransaction(
   state: FakePrivyState,
@@ -151,6 +172,7 @@ export async function answerSignTransaction(
     return failure(400, "policy_violation", "Policy violation: the request is denied.");
   }
   const raw = await signed(wallet, tx.data);
+  recordIn(state, wallet, { party, tx: tx.data });
   return answer(200, {
     method: "eth_signTransaction",
     data: { signed_transaction: raw, encoding: "rlp" },

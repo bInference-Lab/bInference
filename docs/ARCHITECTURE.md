@@ -459,12 +459,14 @@ interface Signer {
     keychain, an owner-only file or a secret command ([decision 0065](DECISIONS.md#d0065)), together
     with the Privy app secret.
   - Cloud: our signer service, whose authorization key sits in KMS ([section 30](#section-30)).
-- **The policy is the ceiling ([rule 18](#rule-18)).** Chain 56 only; `to` in the registry's router
-  and token set for the agent's enabled venues; a per-transaction value cap; exact approvals; no
-  EIP-7702 except Privy's own; no `personal_sign`. Only the owner changes it. The engine's limits
-  sit under the ceiling and move freely up to it ([decision 0089](DECISIONS.md#d0089)). Privy's
-  spending counters are a backstop only: they sum token units, count after signing, and an app has
-  at most 10.
+- **The policy is the ceiling ([rule 18](#rule-18)).** Chain 56 only; each function the agent's
+  enabled venues declare, on the contracts that declare it, its receiver pinned to the wallet where
+  Privy can read it; a per-transaction value cap; approvals only to declared spenders; sends only to
+  saved addresses; no EIP-7702 except Privy's own; no `personal_sign`. Only the owner changes it.
+  The engine's limits sit under the ceiling and move freely up to it
+  ([decision 0089](DECISIONS.md#d0089)). Privy's 24-hour sums cap the BNB the wallets send and
+  their approvals of WBNB, USDT and USDC ([decision 0149](DECISIONS.md#d0149)): disaster limits,
+  recorded after signing, at most 10 per app.
 - **The signer process** re-checks the hard rules itself (spec 5, 5.2) before it asks Privy to sign
   with `eth_signTransaction`. The engine stores the raw transaction and broadcasts it through
   private relays ([rule 6](#rule-6)), so private sends and crash recovery work as before.
@@ -475,8 +477,10 @@ interface Signer {
 - **Export.** Self-hosted: `binference wallet export` asks for the owner key and decrypts Privy's
   export in the CLI only. Cloud: in Privy's own window on binference.io.
 - **Honest limit.** A compromised machine can sign whatever the policy allows, up to the ceiling,
-  until the owner removes the agent key. The ceiling is the real bound: keep it tight
-  ([decision 0002](DECISIONS.md#d0002)).
+  until the owner removes the agent key: it cannot pay an address the owner did not save, but it
+  can trade at a bad price, into a pool it owns, up to the 24-hour caps, and sell any other token
+  the wallet holds ([decision 0149](DECISIONS.md#d0149)). The ceiling is the real bound: keep it
+  tight ([decision 0002](DECISIONS.md#d0002)).
 
 <a id="section-9"></a>
 

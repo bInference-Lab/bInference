@@ -4,10 +4,13 @@ import { createSecret, type Http } from "@binference/core";
 import {
   buildCeiling,
   type Ceiling,
+  type ChainCaps,
   createPrivyApi,
   isPrivyId,
+  type PrivyApi,
   type PrivyId,
   readBackWallet,
+  readCeiling,
   registryCeilingChain,
 } from "@binference/custody-privy";
 import { createFileSecretStore, createPlatform } from "@binference/platform";
@@ -101,15 +104,37 @@ async function loadedConfig(machine: InitMachine): Promise<BinferenceConfig> {
   return loaded.config;
 }
 
-// The ceiling init asks for: KyberSwap's contracts on BSC, a cap of 1 BNB, the rescue address.
-function expectedCeiling(http: Http): Ceiling {
+const bnb = 10n ** 18n;
+
+// The 24-hour caps the wallet's ceiling names on Privy, read from its policy. Their limits are
+// twice the default $500 day: 10 BNB and 10 WBNB at the $100 floor, 1,000 USDT and 1,000 USDC.
+async function heldCaps(api: PrivyApi, wallet: PrivyId): Promise<ChainCaps> {
+  const record = await api.wallet(wallet, live());
+  const policyId = record.ok ? record.value.policyIds[0] : undefined;
+  const policy = policyId === undefined ? undefined : await api.policy(policyId, live());
+  const [held] = policy?.ok === true ? (readCeiling(policy.value.rules)?.caps ?? []) : [];
+  if (held === undefined) {
+    throw new Error("The wallet's ceiling names no caps.");
+  }
+  expect(held.caps.native.limitBase).toBe(10n * bnb);
+  expect(held.caps.approvals.map((cap) => cap.limitBase)).toStrictEqual([
+    10n * bnb,
+    1_000n * bnb,
+    1_000n * bnb,
+  ]);
+  return held.caps;
+}
+
+// The ceiling init asks for: KyberSwap's calls on BSC, a cap of 1 BNB, the caps Privy holds and
+// the rescue address.
+function expectedCeiling(http: Http, caps: ChainCaps): Ceiling {
   const chain = registryCeilingChain({
     definition: bsc,
     venues: coreVenues(http, { keys: {}, kyberClientId: "binference" }),
-    perTxNativeCapBase: 10n ** 18n,
+    perTxNativeCapBase: bnb,
   });
   const ceiling = chain.ok
-    ? buildCeiling({ chains: [chain.value], rescue: rescueAddress, saved: [] })
+    ? buildCeiling({ chains: [{ ...chain.value, caps }], rescue: rescueAddress, saved: [] })
     : undefined;
   if (ceiling?.ok !== true) {
     throw new Error("The expected ceiling does not build.");
@@ -146,12 +171,12 @@ describe("binference init with no person at the terminal", () => {
       appId: machine.privy.appId,
       appSecret: machine.privy.appSecret,
     });
+    const wallet = walletIdOf(answer);
     const expected = {
       ownerKey: machine.ownerKey.publicKey,
       agentKey: await agentKeyOf(machine),
-      ceiling: expectedCeiling(machine.privy.http),
+      ceiling: expectedCeiling(machine.privy.http, await heldCaps(api, wallet)),
     };
-    const wallet = walletIdOf(answer);
     await expect(readBackWallet(api, { wallet, expected }, live())).resolves.toMatchObject({
       ok: true,
       value: { address: answer.wallet.address },
@@ -217,7 +242,7 @@ describe.runIf(liveTests)("binference init against the Privy test app", () => {
         const expected = {
           ownerKey: machine.ownerKey.publicKey,
           agentKey: await agentKeyOf(machine),
-          ceiling: expectedCeiling(http),
+          ceiling: expectedCeiling(http, await heldCaps(api, walletIdOf(answer))),
         };
         await expect(
           readBackWallet(api, { wallet: walletIdOf(answer), expected }, live()),

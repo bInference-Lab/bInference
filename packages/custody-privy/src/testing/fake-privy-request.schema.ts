@@ -4,6 +4,13 @@ import { z } from "zod";
 // strict as Privy is: an unknown key is refused. Condition kinds binference never writes
 // (typed data, Solana, system time) are refused by the fake, never silently ignored.
 
+/** An input or output of an ABI function, with a tuple's parts. */
+interface FakeAbiParameter {
+  readonly name: string;
+  readonly type: string;
+  readonly components?: readonly FakeAbiParameter[] | undefined;
+}
+
 /** The operators of Privy's conditions. */
 type FakeOperator = "eq" | "gt" | "gte" | "lt" | "lte" | "in" | "in_condition_set";
 
@@ -11,14 +18,14 @@ type FakeOperator = "eq" | "gt" | "gte" | "lt" | "lte" | "in" | "in_condition_se
 export interface FakeAbiFunction {
   readonly type: "function";
   readonly name: string;
-  readonly inputs: readonly { readonly name: string; readonly type: string }[];
-  readonly outputs: readonly { readonly name: string; readonly type: string }[];
+  readonly inputs: readonly FakeAbiParameter[];
+  readonly outputs: readonly FakeAbiParameter[];
   readonly stateMutability: "pure" | "view" | "nonpayable" | "payable";
 }
 
-/** A condition, either on the transaction or on its decoded calldata. */
+/** A condition on the transaction, on its decoded calldata, or on an aggregation's sum. */
 export interface FakeCondition {
-  readonly field_source: "ethereum_transaction" | "ethereum_calldata";
+  readonly field_source: "ethereum_transaction" | "ethereum_calldata" | "reference";
   readonly field: string;
   readonly abi?: readonly FakeAbiFunction[];
   readonly operator: FakeOperator;
@@ -31,6 +38,21 @@ export interface FakeRule {
   readonly method: string;
   readonly action: "ALLOW" | "DENY";
   readonly conditions: readonly FakeCondition[];
+}
+
+/** An aggregation create body, as `POST /v1/aggregations` takes it. */
+export interface FakeAggregationBody {
+  readonly name: string;
+  readonly method: "eth_signTransaction" | "eth_signUserOperation";
+  readonly metric: {
+    readonly field: string;
+    readonly field_source: "ethereum_transaction" | "ethereum_calldata";
+    readonly function: "sum";
+    readonly abi?: readonly FakeAbiFunction[] | undefined;
+  };
+  readonly window: { readonly type: "rolling"; readonly seconds: number };
+  readonly conditions: readonly FakeCondition[];
+  readonly owner_id?: string | null | undefined;
 }
 
 /** A policy create body. */
@@ -98,7 +120,13 @@ function hexOf(pattern: RegExp): z.ZodType<FakeHex, string> {
 }
 
 const quantity = z.union([hexOf(/^0x[0-9a-fA-F]+$/), z.int().nonnegative()]);
-const parameter = z.object({ name: z.string(), type: z.string().min(1) });
+const parameter: z.ZodType<FakeAbiParameter> = z.lazy(() =>
+  z.object({
+    name: z.string(),
+    type: z.string().min(1),
+    components: z.array(parameter).optional(),
+  }),
+);
 
 const abiFunction = z.object({
   type: z.literal("function"),
@@ -129,8 +157,43 @@ const conditionSchema: z.ZodType<FakeCondition> = z
       operator: z.enum(operators),
       value: z.union([z.string(), z.array(z.string())]),
     }),
+    z.strictObject({
+      field_source: z.literal("reference"),
+      field: z.string().regex(/^aggregation\./),
+      operator: z.enum(operators),
+      value: z.union([z.string(), z.array(z.string())]),
+    }),
   ])
   .refine(valueFits);
+
+// An aggregation's own conditions read the request, never another aggregation.
+const requestCondition = conditionSchema.refine((item) => item.field_source !== "reference");
+
+/**
+ * Parses an aggregation create body: a `sum` over a rolling window of 1 to 72 hours, an ABI
+ * when the metric reads calldata, at most 100 conditions and no `group_by`, which binference
+ * never writes.
+ */
+export const fakeAggregationBodySchema: z.ZodType<FakeAggregationBody> = z.strictObject({
+  name: z.string().min(1).max(255),
+  method: z.enum(["eth_signTransaction", "eth_signUserOperation"]),
+  metric: z
+    .strictObject({
+      field: z.string().min(1),
+      field_source: z.enum(["ethereum_transaction", "ethereum_calldata"]),
+      function: z.literal("sum"),
+      abi: z.array(abiFunction).min(1).max(200).optional(),
+    })
+    .refine(
+      (metric) => (metric.field_source === "ethereum_calldata") === (metric.abi !== undefined),
+    ),
+  window: z.strictObject({
+    type: z.literal("rolling"),
+    seconds: z.int().min(3_600).max(259_200),
+  }),
+  conditions: z.array(requestCondition).max(100).default([]),
+  owner_id: z.string().nullish(),
+});
 
 /** Parses one policy rule, as a policy's body holds it and a rule change sends it. */
 export const fakeRuleSchema: z.ZodType<FakeRule> = z

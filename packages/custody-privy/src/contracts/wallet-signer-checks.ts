@@ -3,7 +3,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { err } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { PrivyId } from "../privy/privy-records.js";
-import { testAddresses } from "../testing/custody-fixtures.js";
+import { swapData, testAddresses } from "../testing/custody-fixtures.js";
 import { ownerSigner } from "../testing/owner-signer.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
 import { removeSigner, swapSigner } from "../wallets/signer-moves.js";
@@ -16,7 +16,7 @@ import {
 } from "./privy-custody-setup.js";
 
 // A call inside the ceiling: Privy signs it for the wallet's signer and for nobody else.
-const inside = { to: testAddresses.router, valueWei: 0n, data: "0x12345678" as const };
+const inside = { to: testAddresses.router, valueWei: 0n, data: swapData(5n) };
 const refused = err("refused");
 const minuteMs = 60_000;
 

@@ -10,7 +10,9 @@ Rules for this package:
   on an amount; wei travels as `bigint` and as hex quantities on the wire.
 - Privy is called through its official Node SDK, `@privy-io/node`, never by hand. Each call makes
   its own SDK client whose `fetch` rides on the core `Http` port and stops with the call's signal;
-  the SDK's retries and logs stay off. A signing request is sent once; a lost answer is
+  the SDK's retries and logs stay off. The one exception is `POST /v1/aggregations`, which the SDK
+  does not offer: `src/privy/aggregations.ts` sends it on the same port, as Privy's recipe does
+  (decision 0149). Remove it once the SDK has the call. A signing request is sent once; a lost answer is
   `custody.sign_unknown`, and the engine decides what follows.
 - Every answer the SDK gives passes a zod schema in a `*.schema.ts` file and leaves the package as
   our own types. Privy may add fields to its answers: objects keep the fields read and drop the
@@ -20,8 +22,9 @@ Rules for this package:
   `@binference/chain` writes. That function is the only copy of Privy's payload.
 - The app secret is a core `Secret`, revealed only into the Basic auth header. Faults carry the
   path and the status, never a header, a body or a key.
-- The ceiling is Privy's policy language. A change to `src/ceiling/` changes what every wallet may
-  sign: the known-answer test and the property test against the fake's policy engine change with
+- The ceiling is Privy's policy language: one rule per function a venue declares, and 24-hour
+  caps as aggregations the app sums over every wallet (decision 0149). A change to `src/ceiling/`
+  changes what every wallet may sign: the known-answer test and the property test against the fake's policy engine change with
   it, and the change needs the owner key on every existing wallet.
 - The owner key changes a ceiling's recipients only through `src/wallets/ceiling-recipients.ts`:
   each send rule of each chain, found by its name, is written over with a `PATCH` the policy's

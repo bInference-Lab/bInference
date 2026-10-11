@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { approveData, testAddresses } from "./custody-fixtures.js";
+import {
+  approveData,
+  swapData,
+  swapToData,
+  testAddresses,
+  testRouterAbi,
+} from "./custody-fixtures.js";
 import { evaluatePolicy, type PolicyInput } from "./fake-policy-engine.js";
 import type { FakeCondition, FakeRule } from "./fake-privy-request.schema.js";
 
@@ -143,5 +149,39 @@ describe("the fake's policy engine", () => {
       "DENY",
     );
     expect(evaluatePolicy([rule("ALLOW", [on("gas", "lte", "0x1")])], input)).toBe("DENY");
+  });
+});
+
+describe("the fake's function names, pins and references", () => {
+  const swapTo = testRouterAbi.swapTo;
+  const named: FakeCondition = {
+    field_source: "ethereum_calldata",
+    field: "function_name",
+    abi: [swapTo],
+    operator: "eq",
+    value: "swapTo",
+  };
+  const pinned: FakeCondition = { ...named, field: "swapTo.receiver", value: "{{wallet.address}}" };
+  const capped: FakeCondition = {
+    field_source: "reference",
+    field: "aggregation.cap",
+    operator: "lte",
+    value: "0x64",
+  };
+  const pinnedCall = rule("ALLOW", [named, pinned]);
+
+  it("matches a call by its function name and pins an input to the signing wallet", () => {
+    const toWallet = { ...input, data: swapToData(wallet.toLowerCase(), 5n) };
+    expect(evaluatePolicy([pinnedCall], toWallet)).toBe("ALLOW");
+    expect(evaluatePolicy([pinnedCall], { ...input, data: swapToData(rescue, 5n) })).toBe("DENY");
+    expect(evaluatePolicy([pinnedCall], { ...input, data: swapData(5n) })).toBe("DENY");
+  });
+
+  it("compares a reference's sum, and fails it for an aggregation the app no longer holds", () => {
+    const capRule = rule("ALLOW", [capped]);
+    expect(evaluatePolicy([capRule], input, () => 100n)).toBe("ALLOW");
+    expect(evaluatePolicy([capRule], input, () => 101n)).toBe("DENY");
+    expect(evaluatePolicy([capRule], input, () => undefined)).toBe("DENY");
+    expect(evaluatePolicy([capRule], input)).toBe("DENY");
   });
 });

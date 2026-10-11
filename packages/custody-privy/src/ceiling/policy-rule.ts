@@ -3,10 +3,12 @@ import type { JsonValue } from "@binference/core";
 /** An operator of Privy's policy conditions that the ceiling uses. */
 export type ConditionOperator = "eq" | "in" | "lte";
 
-/** One input or output of an ABI function, by its name and its Solidity type. */
+/** One input or output of an ABI function: its name, its Solidity type and a tuple's parts. */
 export interface AbiParameter {
   readonly name: string;
   readonly type: string;
+  /** The parts of a `tuple` or `tuple[]`, in order. */
+  readonly components?: readonly AbiParameter[];
 }
 
 /** One function of a contract ABI, as Privy decodes calldata with it. */
@@ -15,7 +17,7 @@ export interface AbiFunction {
   readonly name: string;
   readonly inputs: readonly AbiParameter[];
   readonly outputs: readonly AbiParameter[];
-  readonly stateMutability: "nonpayable";
+  readonly stateMutability: "pure" | "view" | "nonpayable" | "payable";
 }
 
 /** A condition on the transaction itself: its `to`, its value in wei or its chain id. */
@@ -39,8 +41,21 @@ export interface CalldataCondition {
   readonly value: string | readonly string[];
 }
 
+/**
+ * A condition on one of Privy's aggregations (`aggregation.<id>`): it holds while the sum the
+ * aggregation keeps over its window, plus what the request adds, is at most the value. A deleted
+ * aggregation makes it fail.
+ */
+export interface ReferenceCondition {
+  readonly field_source: "reference";
+  readonly field: string;
+  readonly operator: "lte";
+  /** The most the sum may reach, in base units, as a hex quantity. */
+  readonly value: string;
+}
+
 /** A condition of a ceiling rule. Every condition of a rule must hold for the rule to apply. */
-export type PolicyCondition = TransactionCondition | CalldataCondition;
+export type PolicyCondition = TransactionCondition | CalldataCondition | ReferenceCondition;
 
 /**
  * One rule of a Privy policy, in Privy's own policy language: when every condition holds, the
@@ -56,10 +71,14 @@ export interface PolicyRule {
 }
 
 function parameterJson(parameter: AbiParameter): JsonValue {
-  return { name: parameter.name, type: parameter.type };
+  const { name, type, components } = parameter;
+  return components === undefined
+    ? { name, type }
+    : { name, type, components: components.map(parameterJson) };
 }
 
-function abiJson(item: AbiFunction): JsonValue {
+/** A function's ABI entry as the JSON Privy's API takes in a condition's `abi`. */
+export function abiFunctionJson(item: AbiFunction): JsonValue {
   return {
     type: item.type,
     name: item.name,
@@ -69,11 +88,12 @@ function abiJson(item: AbiFunction): JsonValue {
   };
 }
 
-function conditionJson(condition: PolicyCondition): JsonValue {
+/** A condition as the JSON Privy's API takes in a rule's or an aggregation's `conditions`. */
+export function policyConditionJson(condition: PolicyCondition): JsonValue {
   const value = typeof condition.value === "string" ? condition.value : [...condition.value];
   const { field_source: source, field, operator } = condition;
   return condition.field_source === "ethereum_calldata"
-    ? { field_source: source, field, abi: condition.abi.map(abiJson), operator, value }
+    ? { field_source: source, field, abi: condition.abi.map(abiFunctionJson), operator, value }
     : { field_source: source, field, operator, value };
 }
 
@@ -83,6 +103,6 @@ export function policyRuleJson(rule: PolicyRule): JsonValue {
     name: rule.name,
     method: rule.method,
     action: rule.action,
-    conditions: rule.conditions.map(conditionJson),
+    conditions: rule.conditions.map(policyConditionJson),
   };
 }

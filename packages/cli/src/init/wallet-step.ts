@@ -1,13 +1,17 @@
-import { BinferenceError, ok, type Secret } from "@binference/core";
+import { BinferenceError, err, ok, type Result, type Secret } from "@binference/core";
 import {
+  buildCeiling,
   type Ceiling,
+  type CeilingProblem,
   createAgentWallet,
+  createDayCaps,
   createPrivyApi,
   type PrivyApi,
   type PrivyId,
   type PrivyPolicy,
   type PrivyWallet,
 } from "@binference/custody-privy";
+import type { CeilingDraft } from "./ceiling-request.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 
 /** The first wallet as Privy holds it, read back, with what the store mirrors. */
@@ -25,7 +29,7 @@ export interface WalletInputs {
   readonly appSecret: Secret;
   readonly ownerKey: string;
   readonly agentKey: string;
-  readonly ceiling: Ceiling;
+  readonly draft: CeilingDraft;
 }
 
 // The labels Privy's dashboard shows for the two key quorums.
@@ -57,9 +61,32 @@ export async function walletPolicyOf(
 }
 
 /**
+ * The ceiling a draft gives once Privy holds its caps' aggregations, made now and owned by the
+ * owner key's quorum (decision 0149); every later wallet of the install names the same ones.
+ */
+async function ceilingWithCaps(
+  api: PrivyApi,
+  draft: CeilingDraft,
+  input: { readonly owner: PrivyId; readonly signal: AbortSignal },
+): Promise<Result<Ceiling, CeilingProblem>> {
+  const caps = await createDayCaps(api, { plans: draft.capPlans, owner: input.owner }, input);
+  if (!caps.ok) {
+    return caps;
+  }
+  const chains = draft.chains.flatMap((plan, index) => {
+    const held = caps.value[index];
+    return held === undefined ? [] : [{ ...plan, caps: held }];
+  });
+  if (chains.length !== draft.chains.length) {
+    return err("too_many_caps");
+  }
+  return buildCeiling({ chains, rescue: draft.rescue, saved: draft.saved });
+}
+
+/**
  * Makes the first wallet on Privy (keys spec, section 2, steps 4 and 5): a key quorum for the
- * owner key and one for the agent key, the ceiling as a policy the owner quorum owns, and the
- * wallet, owned by the owner quorum with the agent quorum as its signer bound to the ceiling.
+ * owner key and one for the agent key, the aggregations of the ceiling's 24-hour caps and the
+ * ceiling as a policy, both owned by the owner quorum, and the wallet, owned by the owner quorum with the agent quorum as its signer bound to the ceiling.
  * Then it reads the wallet back and refuses to go on unless the owner, the signer and the policy
  * are exactly what it asked for.
  */
@@ -84,10 +111,14 @@ export async function makeFirstWallet(
     { publicKey: inputs.agentKey, displayName: agentQuorumName },
     call,
   );
+  const ceiling = await ceilingWithCaps(api, inputs.draft, { owner: owner.id, signal });
+  if (!ceiling.ok) {
+    return refused("init.bad_ceiling", "refused.badCeiling", { problem: ceiling.error });
+  }
   const expected = {
     ownerKey: inputs.ownerKey,
     agentKey: inputs.agentKey,
-    ceiling: inputs.ceiling,
+    ceiling: ceiling.value,
   };
   const made = await createAgentWallet(
     api,

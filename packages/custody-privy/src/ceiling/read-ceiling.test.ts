@@ -5,6 +5,8 @@ import { z } from "zod";
 import {
   oneBnbWei,
   testAddresses,
+  testCalls,
+  testCaps,
   testCeilingRequest,
   testChain,
 } from "../testing/custody-fixtures.js";
@@ -22,28 +24,58 @@ function rulesOf(request: CeilingRequest) {
   return ceiling.value.rules.map((rule) => jsonValueSchema.parse(policyRuleJson(rule)));
 }
 
+// The test request's one chain.
+const testChainLists = {
+  chain: testChain,
+  calls: testCalls,
+  spenders: [testAddresses.router],
+  perTxNativeCapBase: oneBnbWei,
+  caps: testCaps,
+};
+
+function builtRules(): readonly PolicyRule[] {
+  const ceiling = buildCeiling(testCeilingRequest());
+  if (!ceiling.ok) {
+    throw new Error("Expected the test ceiling.");
+  }
+  return ceiling.value.rules;
+}
+
+// The rule named, without its 24-hour cap; any other rule as it is.
+function withoutCap(rule: PolicyRule, name: string): PolicyRule {
+  const conditions = rule.conditions.filter((item) => item.field_source !== "reference");
+  return rule.name === name ? { ...rule, conditions } : rule;
+}
+
 describe("readCeiling", () => {
-  it("reads back the chains, contracts, cap and recipients a ceiling was built with", () => {
+  it("reads back the chains, contracts, caps and recipients a ceiling was built with", () => {
     expect(readCeiling(rulesOf(testCeilingRequest()))).toStrictEqual({
       chainIds: ["56"],
-      contracts: [testAddresses.router, testAddresses.permit2],
+      contracts: [testAddresses.router],
       perTxNativeCapBase: oneBnbWei,
       recipients: [testAddresses.rescue, testAddresses.saved],
+      caps: [{ chainId: "56", caps: testCaps }],
     });
   });
 
-  it("reads a cap of nothing from a ceiling that allows no contract call", () => {
-    const chain = { chain: testChain, contracts: [], spenders: [], perTxNativeCapBase: oneBnbWei };
+  it("reads a cap of nothing, and no 24-hour caps, from a ceiling that allows no call", () => {
+    const chain = { ...testChainLists, calls: [] };
     const request = { ...testCeilingRequest(), chains: [chain] };
 
-    expect(readCeiling(rulesOf(request))).toMatchObject({ contracts: [], perTxNativeCapBase: 0n });
+    expect(readCeiling(rulesOf(request))).toMatchObject({
+      contracts: [],
+      perTxNativeCapBase: 0n,
+      caps: [],
+    });
   });
 
   it("reads nothing from a rule it cannot read or a cap that is no quantity", () => {
     const rules = rulesOf(testCeilingRequest());
     const badCap = {
-      name: "Contract calls, chain 56",
-      conditions: [{ field: "value", operator: "lte", value: "one bnb" }],
+      name: "Call swap, chain 56",
+      conditions: [
+        { field_source: "ethereum_transaction", field: "value", operator: "lte", value: "one bnb" },
+      ],
     };
 
     expect(readCeiling([...rules, { name: 7 }])).toBeUndefined();
@@ -57,7 +89,9 @@ function ruleWithValue(
   change: { readonly field: string; readonly value: readonly string[] },
 ): PolicyRule {
   const conditions = rule.conditions.map((condition) =>
-    condition.field === change.field ? { ...condition, value: change.value } : condition,
+    condition.field_source !== "reference" && condition.field === change.field
+      ? { ...condition, value: change.value }
+      : condition,
   );
   return { ...rule, conditions };
 }
@@ -80,12 +114,13 @@ function withValue(change: {
 }
 
 describe("isBuiltCeiling", () => {
-  const { rescue, saved, unsaved, router } = testAddresses;
+  const { rescue, saved, unsaved } = testAddresses;
 
   it("holds for a ceiling buildCeiling built, on one chain or two, in any rule order", () => {
     const request = testCeilingRequest();
     const other = { ...testChain, ref: chainRefSchema.parse("eip155:204"), chainId: 204 };
-    const second = { chain: other, contracts: [router], spenders: [], perTxNativeCapBase: 5n };
+    const caps = { native: { aggregation: "othernative", limitBase: 5n }, approvals: [] };
+    const second = { ...testChainLists, chain: other, perTxNativeCapBase: 5n, caps };
     const two = rulesOf({ ...request, chains: [...request.chains, second] });
 
     expect(isBuiltCeiling(rulesOf(request))).toBe(true);
@@ -114,9 +149,29 @@ describe("isBuiltCeiling", () => {
     });
 
     expect(isBuiltCeiling([...rules, extra])).toBe(false);
-    expect(isBuiltCeiling(rules.filter((_, index) => index !== 4))).toBe(false);
+    expect(isBuiltCeiling(rules.filter((_, index) => index !== 5))).toBe(false);
     expect(isBuiltCeiling(lower)).toBe(false);
     expect(isBuiltCeiling([...rules, { name: 7 }])).toBe(false);
+  });
+
+  it("fails a call rule without its 24-hour cap, or with a pin or a function it does not build", () => {
+    const uncapped = builtRules().map((rule) =>
+      jsonValueSchema.parse(policyRuleJson(withoutCap(rule, "Call swap, chain 56"))),
+    );
+    const unpinned = withValue({
+      rule: "Call swapTo, chain 56",
+      field: "swapTo.receiver",
+      value: [rescue],
+    });
+    const renamed = withValue({
+      rule: "Call swap, chain 56",
+      field: "function_name",
+      value: ["swapTo"],
+    });
+
+    expect(isBuiltCeiling(uncapped)).toBe(false);
+    expect(isBuiltCeiling(unpinned)).toBe(false);
+    expect(isBuiltCeiling(renamed)).toBe(false);
   });
 
   it("fails a ceiling that names no chain or no recipient", () => {

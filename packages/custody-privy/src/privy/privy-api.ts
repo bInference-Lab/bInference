@@ -4,6 +4,7 @@ import type { PrivyClient } from "@privy-io/node";
 import type { Ceiling } from "../ceiling/ceiling.js";
 import type { PrivyTransaction } from "../signing/privy-transaction.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
+import { type AggregationRequest, createAggregation } from "./aggregations.js";
 import { callPrivy, type PrivyCall, privyFault, statusFault } from "./privy-call.js";
 import { type PrivyApiOptions, type PrivySettings, privySettings } from "./privy-client.js";
 import type { KeyQuorum, PrivyId, PrivyPolicy, WalletRecord } from "./privy-records.js";
@@ -14,6 +15,7 @@ import {
   readWalletList,
   type WalletListPage,
 } from "./privy-wire.schema.js";
+import { addRule, removeRule, type RuleAddition, type RuleRemoval } from "./rule-edits.js";
 import {
   changeRule,
   type RuleAuthorization,
@@ -91,6 +93,11 @@ export interface PrivyApi {
   createKeyQuorum(request: KeyQuorumRequest, options: CallOptions): Promise<KeyQuorum>;
   keyQuorum(id: PrivyId, options: CallOptions): Promise<Result<KeyQuorum, "not_found">>;
   createPolicy(request: PolicyRequest, options: CallOptions): Promise<PrivyPolicy>;
+  /**
+   * Makes one aggregation, a rolling sum a ceiling's caps read, owned by a key quorum; answers its
+   * id. Sent once, and never asked again (decision 0149).
+   */
+  createAggregation(request: AggregationRequest, options: CallOptions): Promise<PrivyId>;
   policy(id: PrivyId, options: CallOptions): Promise<Result<PrivyPolicy, "not_found">>;
   createWallet(request: WalletRequest, options: CallOptions): Promise<WalletRecord>;
   wallet(id: PrivyId, options: CallOptions): Promise<Result<WalletRecord, "not_found">>;
@@ -120,6 +127,16 @@ export interface PrivyApi {
   ): Promise<Result<void, RuleRefusal>>;
   /** The request a rule change sends, for the owner to sign now and Privy to read later. */
   ruleChangeRequest(change: RuleChange): PrivyRequest;
+  /** Adds one rule to a policy, once, signed now by the policy's owner. */
+  addRule(
+    addition: RuleAddition,
+    options: CallOptions & { readonly authorize: OwnerAuthorize },
+  ): Promise<Result<void, RuleRefusal>>;
+  /** Takes one rule out of a policy, once, signed now by the policy's owner. */
+  removeRule(
+    removal: RuleRemoval,
+    options: CallOptions & { readonly authorize: OwnerAuthorize },
+  ): Promise<Result<void, RuleRefusal>>;
   /**
    * Sets a wallet's added signers, once, in place of the ones it has, signed now by the wallet's
    * owner; answers the wallet as Privy reports it after the change.
@@ -249,6 +266,7 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
       ),
     createPolicy: async (request, { signal }) =>
       made(settings, policyCreation(request), { reader: readPolicy, signal }),
+    createAggregation: async (request, { signal }) => createAggregation(settings, request, signal),
     policy: async (id, { signal }) =>
       found(
         settings,
@@ -269,6 +287,10 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
     changeRule: async (change, { authorization, signal }) =>
       changeRule(settings, change, { authorization, signal }),
     ruleChangeRequest: (change) => ruleChangeRequest(settings, change),
+    addRule: async (addition, { authorize, signal }) =>
+      addRule(settings, addition, { authorize, signal }),
+    removeRule: async (removal, { authorize, signal }) =>
+      removeRule(settings, removal, { authorize, signal }),
     exportWallet: async (request, { signal }) => exportWallet(settings, request, signal),
     setSigners: async (change, { authorize, signal }) =>
       setWalletSigners(settings, change, { authorize, signal }),

@@ -16,11 +16,17 @@ import {
 import {
   type CallsRefusal as PrivyCallsRefusal,
   type CeilingChain,
+  type CeilingChainPlan,
+  type CeilingHeld,
+  type ChainCapPlan,
+  createDayCaps,
+  type HeldCaps,
   isPrivyId,
   type OwnerAuthorize,
   readCeiling,
   type PrivyApi,
   type PrivyId,
+  type PrivyPolicy,
   type RecipientsRefusal,
   sendSignedRecipients,
   setCeilingCalls,
@@ -52,7 +58,11 @@ export interface PrivyCeilingEditorOptions extends OwnerKeyHolder {
    * What a contract call may do on a chain for the venues named: call and approve their registry
    * contracts, none for venues with none there, sending at most the cap.
    */
-  readonly callsOn: (chain: ChainRef, calls: Omit<CeilingCalls, "ceiling">) => CeilingChain;
+  readonly callsOn: (chain: ChainRef, calls: Omit<CeilingCalls, "ceiling">) => CeilingChainPlan;
+  /** The plan of a chain's 24-hour caps, for a ceiling that names none on it yet. */
+  readonly capPlanOn: (chain: ChainRef) => ChainCapPlan;
+  /** The 24-hour caps the install's live ceilings name now. */
+  readonly heldCaps: (signal: AbortSignal) => Promise<readonly HeldCaps[]>;
 }
 
 // A change signed now goes out at once; five minutes covers every ceiling of an install.
@@ -88,11 +98,17 @@ function accountsOn(
   );
 }
 
-async function read(
+/** A ceiling's policy as Privy holds it, and its rules read. */
+interface Held {
+  readonly policy: PrivyPolicy;
+  readonly rules: CeilingHeld;
+}
+
+async function heldOf(
   options: Options,
   ceiling: string,
   signal: AbortSignal,
-): Promise<Result<CeilingRead, "not_found">> {
+): Promise<Result<Held, "not_found">> {
   const policy = policyOf(ceiling);
   const held = policy.ok ? await options.api.policy(policy.value, { signal }) : undefined;
   if (held?.ok !== true) {
@@ -106,13 +122,26 @@ async function read(
       details: { path: "/v1/policies" },
     });
   }
+  return ok({ policy: held.value, rules });
+}
+
+async function read(
+  options: Options,
+  ceiling: string,
+  signal: AbortSignal,
+): Promise<Result<CeilingRead, "not_found">> {
+  const held = await heldOf(options, ceiling, signal);
+  if (!held.ok) {
+    return held;
+  }
+  const { rules, policy } = held.value;
   const chains = rules.chainIds.map((id) => chainRefSchema.parse(`eip155:${id}`));
   return ok({
     chains,
     contracts: accountsOn(chains, rules.contracts),
     perTxNativeBase: rules.perTxNativeCapBase,
     recipients: accountsOn(chains, rules.recipients),
-    policy: jsonValueSchema.parse(held.value),
+    policy: jsonValueSchema.parse(policy),
   });
 }
 
@@ -208,6 +237,40 @@ function callsRefusalOf(error: PrivyCallsRefusal): CallsRefusal {
   });
 }
 
+// Each chain's plan with its 24-hour caps: those the ceiling names, else those the install's
+// ceilings name, else new ones its owner's quorum owns, as Privy keeps 10 aggregations an app.
+async function cappedChains(
+  options: Options,
+  target: { readonly held: Held; readonly plans: readonly CeilingChainPlan[] },
+  signal: AbortSignal,
+): Promise<readonly CeilingChain[]> {
+  const known = [...target.held.rules.caps, ...(await options.heldCaps(signal))];
+  const capsOn = (plan: CeilingChainPlan) =>
+    known.find((item) => item.chainId === String(plan.chain.chainId))?.caps;
+  const missing = target.plans.filter((plan) => capsOn(plan) === undefined);
+  const owner = target.held.policy.ownerId;
+  const made =
+    missing.length === 0 || owner === null
+      ? ok([])
+      : await createDayCaps(
+          options.api,
+          { plans: missing.map((plan) => options.capPlanOn(plan.chain.ref)), owner },
+          { signal },
+        );
+  const fresh = made.ok ? [...made.value] : [];
+  return target.plans.map((plan) => {
+    const caps = capsOn(plan) ?? fresh.shift();
+    if (caps === undefined) {
+      throw new BinferenceError({
+        code: "cli.ceiling_unbuilt",
+        message: "The ceiling names no 24-hour caps binference can make.",
+        details: { problem: made.ok ? "no_caps" : made.error },
+      });
+    }
+    return { ...plan, caps };
+  });
+}
+
 // One ceiling's calls on each chain it enables now; a chain the venues give no contract stops it.
 async function setOne(
   options: Options,
@@ -219,14 +282,16 @@ async function setOne(
   if (!policy.ok) {
     return policy;
   }
-  const held = await read(options, calls.ceiling, signal);
+  const held = await heldOf(options, calls.ceiling, signal);
   if (!held.ok) {
     return held;
   }
-  const chains = held.value.chains.map((chain) => options.callsOn(chain, calls));
-  if (chains.some((chain) => chain.contracts.length === 0)) {
+  const refs = held.value.rules.chainIds.map((id) => chainRefSchema.parse(`eip155:${id}`));
+  const plans = refs.map((chain) => options.callsOn(chain, calls));
+  if (plans.some((plan) => plan.calls.length === 0)) {
     return err("no_calls");
   }
+  const chains = await cappedChains(options, { held: held.value, plans }, signal);
   const expiresAtMs = options.clock.now() + nowExpiryMs;
   const target = { policy: policy.value, chains };
   const set = await setCeilingCalls(options.api, target, { authorize, expiresAtMs, signal });

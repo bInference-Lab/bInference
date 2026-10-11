@@ -1,5 +1,5 @@
 import type { Clock, Random } from "@binference/core";
-import type { FakeRule } from "./fake-privy-request.schema.js";
+import type { FakeAggregationBody, FakeRule } from "./fake-privy-request.schema.js";
 
 /** A key quorum the fake holds: P-256 public keys in base64 DER and a threshold. */
 export interface FakeQuorum {
@@ -35,6 +35,20 @@ export interface FakeWallet {
   readonly createdAt: number;
 }
 
+/** An aggregation the fake holds: what it sums and who owns it. */
+export interface FakeAggregation {
+  readonly id: string;
+  readonly body: FakeAggregationBody;
+  readonly ownerId: string | null;
+  readonly createdAt: number;
+}
+
+/** What one signed request added to an aggregation, and when. */
+export interface FakeAddition {
+  readonly atMs: number;
+  readonly value: bigint;
+}
+
 /** Everything the fake keeps, and where its ids, keys and time come from. */
 export interface FakePrivyState {
   readonly appId: string;
@@ -44,6 +58,9 @@ export interface FakePrivyState {
   readonly quorums: Map<string, FakeQuorum>;
   readonly policies: Map<string, FakePolicy>;
   readonly wallets: Map<string, FakeWallet>;
+  readonly aggregations: Map<string, FakeAggregation>;
+  /** Each aggregation's additions, oldest first. */
+  readonly additions: Map<string, readonly FakeAddition[]>;
 }
 
 const idAlphabet = "abcdefghijklmnopqrstuvwxyz0123456789";

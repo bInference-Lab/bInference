@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by decisions
 [0103](../DECISIONS.md#d0103), [0116](../DECISIONS.md#d0116), [0117](../DECISIONS.md#d0117),
-[0119](../DECISIONS.md#d0119) and [0148](../DECISIONS.md#d0148). It follows Privy custody (decisions
+[0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148) and [0149](../DECISIONS.md#d0149). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
@@ -121,11 +121,16 @@ owner removes the agent key.
 The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows only:
 
 1. **Chain 56** (BSC), and later each chain the owner enables.
-2. **Contract calls** whose `to` is in the registry's set for the agent's enabled venues (routers,
-   launchpads, lending markets, staking, bridges), with a native value at most the per-transaction
-   cap (`defaults.ceiling.perTxBnb`, 1 BNB by default, [decision 0094](../DECISIONS.md#d0094)).
-3. **Approvals:** `approve(spender, amount)` on any token, only when `spender` is in the registry's
-   spender set; never `setApprovalForAll`.
+2. **Venue calls** ([decision 0149](../DECISIONS.md#d0149)): each function an enabled venue
+   declares its trades call, matched by `function_name` with its JSON ABI, on the contracts that
+   declare it, with a native value at most the per-transaction cap (`defaults.ceiling.perTxBnb`, 1
+   BNB by default, [decision 0094](../DECISIONS.md#d0094)). An input the venue pins, such as
+   `dagSwapTo.receiver` on OKX's router, must be the wallet itself. Each call holds only while the
+   native coin the wallets sent in the last 24 hours stays within the chain's cap. No rule names an
+   executor, a token or a Permit2.
+3. **Approvals:** `approve(spender, amount)` on any token, only when `spender` is a contract an
+   enabled venue declares as its spender, and only while each capped token's approvals in the last
+   24 hours stay within its cap; never `setApprovalForAll`.
 4. **Sends** ([decision 0091](../DECISIONS.md#d0091)): a native transfer, or a token
    `transfer(to, amount)`, only when the recipient is the rescue address or a saved address. One
    exception: a 0-value transfer to the wallet itself, which is how a stuck transaction is cancelled
@@ -135,9 +140,24 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    Permit2 domains towards a registry spender, and no EIP-7702 authorization: a `DENY` rule names
    `eth_sign7702Authorization`, so no later allow rule can let one through.
 
-Everything else is refused by Privy. What the policy cannot do: count dollars. Privy's spending
-counters sum token units, count after signing and are at most 10 per app, so the engine's rolling
-caps stay the main money limit and the counters are only a backstop on BNB.
+Everything else is refused by Privy.
+
+**What it promises** ([decision 0149](../DECISIONS.md#d0149)). A machine whose keys are stolen
+cannot send BNB or a token to an address the owner did not save, cannot call a contract or a
+function no enabled venue declares, and cannot approve a spender no enabled venue declares. Through
+venue calls it can lose at most the 24-hour caps: the BNB the wallets send, and the approvals of
+WBNB, USDT and USDC. It can trade at a bad price inside them, and sell any other token the wallet
+holds at any price: a swap into a pool its caller owns pays the caller, whatever its receiver
+field says, and Privy reads only a function's top-level inputs.
+
+**The 24-hour caps** are Privy aggregations: rolling sums Privy records after it signs, at most 10
+per app. Init makes them once, owned by the owner key's quorum, and every ceiling of the install
+names the same ones, so they bound all its wallets together. Each is twice
+`defaults.limits.rollingDayUsd`, counting BNB and WBNB at $100 and each stablecoin at $1: 10 BNB,
+10 WBNB, 1,000 USDT and 1,000 USDC by default. The native sum counts every transaction on the
+chain, sends to saved addresses among them; a send itself is never capped. They are disaster
+limits: parallel requests can pass together and a request counts once signed, landed or not, so
+the engine's rolling caps stay the main money limit.
 
 Nor can it pin a transaction's calldata: Privy's transaction conditions read only `to`, `value`
 and `chain_id`, so the self-cancel rule allows any calldata to the wallet itself. The ceiling
@@ -146,14 +166,14 @@ wallet signs could set; the policy denies every one, and the signer refuses a ty
 or an authorization list (section 5.2, rule 4).
 
 Nor can it deny one function on every contract. Privy denies every transaction that a `DENY` rule
-on calldata cannot decode, plain sends among them, so the policy holds allow rules only. A call to
-a listed contract may then carry any function, and the signer's hard rules (section 5.2) refuse
-`setApprovalForAll` there; outside the listed contracts, no rule allows it.
+on calldata cannot decode, plain sends among them, so the policy holds allow rules only. A venue
+call carries only a function its venue declares, so no rule allows `setApprovalForAll` on a
+contract, and the signer's hard rules (section 5.2) refuse it too.
 
 **Under the ceiling,** the engine's limits (per-trade and daily caps, send levels, allow and deny
 lists) can be loosened from the CLI, the console or the Mini App
 ([decision 0089](../DECISIONS.md#d0089)), never past the ceiling. Raising the ceiling, adding a
-venue's contracts to it, or saving a send address is an owner-key action in the CLI:
+venue to it, or saving a send address is an owner-key action in the CLI:
 `binference ceiling set` and `binference address add`, each asking for the owner key code. The owner
 key never enters a browser or a chat.
 
