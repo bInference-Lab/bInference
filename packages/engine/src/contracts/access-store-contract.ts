@@ -155,6 +155,26 @@ async function usesCodesOnce(store: AccessStore): Promise<void> {
   assert.deepEqual(await store.usePairCode(unknown, live()), { ok: false, error: "unknown" });
 }
 
+async function claimsLaunchesOnce(store: AccessStore): Promise<void> {
+  const first = { launchHash: fixtureHash("launch-a"), atMs: 1_000, sinceMs: 0 };
+  const other = { launchHash: fixtureHash("launch-b"), atMs: 2_000, sinceMs: 0 };
+  assert.equal(await store.claimLaunch(first, live()), "claimed");
+  assert.equal(await store.claimLaunch(other, live()), "claimed");
+  const again = { ...first, atMs: 3_000, sinceMs: 1_000 };
+  assert.equal(await store.claimLaunch(again, live()), "seen");
+  assert.equal(await store.claimLaunch(again, live()), "seen");
+  const later = { ...first, atMs: 5_000, sinceMs: 1_001 };
+  assert.equal(await store.claimLaunch(later, live()), "claimed");
+  const otherAgain = { ...other, atMs: 5_000, sinceMs: 1_001 };
+  assert.equal(await store.claimLaunch(otherAgain, live()), "seen");
+  const past = { ...other, atMs: 9_000, sinceMs: 5_001 };
+  assert.equal(await store.claimLaunch(past, live()), "claimed");
+  assert.equal(
+    await store.claimLaunch({ ...past, launchHash: first.launchHash }, live()),
+    "claimed",
+  );
+}
+
 async function refusesAborted(store: AccessStore): Promise<void> {
   const stamp = { id: token(1).id, atMs: 1 };
   await assertRefusesAborted(async (options) => store.addToken(token(1), options));
@@ -173,6 +193,9 @@ async function refusesAborted(store: AccessStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.addPairCode(code, options));
   const use = { codeHash: code.codeHash, atMs: 1 };
   await assertRefusesAborted(async (options) => store.usePairCode(use, options));
+  const launch = { launchHash: fixtureHash("launch"), atMs: 1, sinceMs: 0 };
+  await assertRefusesAborted(async (options) => store.claimLaunch(launch, options));
+  assert.equal(await store.claimLaunch(launch, live()), "claimed");
   assert.deepEqual(await store.listTokens(live()), []);
   assert.deepEqual(await store.listDevices(live()), []);
 }
@@ -199,6 +222,11 @@ export function accessStoreContract(harness: AccessStoreHarness): readonly Contr
       dropsSubscriptions,
     ),
     checkOn("uses a pairing code once, before it expires", create, usesCodesOnce),
+    checkOn(
+      "claims a Mini App launch once, and forgets the claims from before the given time",
+      create,
+      claimsLaunchesOnce,
+    ),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

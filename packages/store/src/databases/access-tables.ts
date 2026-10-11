@@ -1,5 +1,5 @@
-// The access tables of `engine.sqlite`, as SQLite returns them: migration 0009 defines them, and
-// migration 0021 adds `web_push_subscriptions`.
+// The access tables of `engine.sqlite`, as SQLite returns them: migration 0009 defines them,
+// migration 0021 adds `web_push_subscriptions` and migration 0023 `mini_app_launches`.
 
 /** `tokens`. */
 export interface TokensTable {
@@ -42,10 +42,17 @@ export interface WebPushSubscriptionsTable {
   created_at: number;
 }
 
+/** `mini_app_launches`: the SHA-256 of each Mini App launch that signed in (decision 0160). */
+interface MiniAppLaunchesTable {
+  launch_hash: string;
+  seen_at: number;
+}
+
 /** The access tables, by name. */
 export interface AccessTables {
   tokens: TokensTable;
   devices: DevicesTable;
   pair_codes: PairCodesTable;
   web_push_subscriptions: WebPushSubscriptionsTable;
+  mini_app_launches: MiniAppLaunchesTable;
 }

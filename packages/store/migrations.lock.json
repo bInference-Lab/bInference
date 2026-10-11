@@ -24,6 +24,7 @@
     "engine/0019_telegram_owner.ts": "779db8d757d20a4b116f226d6fb6e86f8d09a9af42cc3137241a91eaf2bcd0f8",
     "engine/0020_late_landings.ts": "6dd4af564ea89f93194df4131214f2f24900901f1014fe649859c9d475ef982d",
     "engine/0021_web_push_subscriptions.ts": "0b2ba0e09beee7a2e266857e701d00c31ce3ab204856addf80694a8dd40415ff",
-    "engine/0022_token_expiry.ts": "0dacb43b2dcc790c08773dfa5d98fa9e647664d440d0c05929d678fa6fa25c03"
+    "engine/0022_token_expiry.ts": "0dacb43b2dcc790c08773dfa5d98fa9e647664d440d0c05929d678fa6fa25c03",
+    "engine/0023_mini_app_launches.ts": "49cde09d5fd4d55a02457dd497d202ea118d81a19fa987060892c60a9b9b351b"
   }
 }

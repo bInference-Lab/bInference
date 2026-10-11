@@ -1,6 +1,7 @@
 import type { Amount, AssetRef, ChainRef, RelayAnswer, SimulationOptions } from "@binference/chain";
 import type { Id, Result } from "@binference/core";
 import type { DeviceRecord } from "./access/device-record.js";
+import type { MiniAppLaunches } from "./access/launch-claim.js";
 import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
 import type { TokenRecord } from "./access/token-record.js";
 import type { WebPushSubscriptions } from "./access/web-push-subscription-record.js";
@@ -443,10 +444,10 @@ export interface BotUpdateSource {
 }
 
 /**
- * Keeps client tokens, console devices with their browser push subscriptions, and pairing codes:
- * who may open the protocol.
+ * Keeps client tokens, console devices with their browser push subscriptions, pairing codes and
+ * the Mini App launches that signed in: who may open the protocol.
  */
-export interface AccessStore extends WebPushSubscriptions {
+export interface AccessStore extends WebPushSubscriptions, MiniAppLaunches {
   /** Saves a new token; an id or secret hash in use is `exists`. */
   addToken(token: TokenRecord, options: StoreCall): Promise<Result<TokenRecord, "exists">>;
   /** The token whose secret has this SHA-256, revoked or not. */

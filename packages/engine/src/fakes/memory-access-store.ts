@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
 import type { DeviceRecord } from "../access/device-record.js";
+import type { LaunchClaim, LaunchClaimOutcome } from "../access/launch-claim.js";
 import type { PairCodeRecord, PairCodeUse } from "../access/pair-code-record.js";
 import type { TokenRecord } from "../access/token-record.js";
 import type {
@@ -182,7 +183,25 @@ function pairCodeMethods(): Pick<AccessStore, "addPairCode" | "usePairCode"> {
   };
 }
 
+// The claimed launches by hash; each claim first forgets those from before its `sinceMs`.
+function launchMethods(): Pick<AccessStore, "claimLaunch"> {
+  const claims = new Map<string, number>();
+  const claim = (launch: LaunchClaim): LaunchClaimOutcome => {
+    for (const [hash, atMs] of claims) {
+      if (atMs < launch.sinceMs) {
+        claims.delete(hash);
+      }
+    }
+    if (claims.has(launch.launchHash)) {
+      return "seen";
+    }
+    claims.set(launch.launchHash, launch.atMs);
+    return "claimed";
+  };
+  return { claimLaunch: async (launch, call) => memoryCall(call, () => claim(launch)) };
+}
+
 /** Creates an empty in-memory {@link AccessStore} for tests. */
 export function createMemoryAccessStore(): AccessStore {
-  return { ...tokenMethods(), ...deviceMethods(), ...pairCodeMethods() };
+  return { ...tokenMethods(), ...deviceMethods(), ...pairCodeMethods(), ...launchMethods() };
 }

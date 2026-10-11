@@ -12,6 +12,13 @@ export {
 } from "./access/device-handlers.js";
 export { deviceKeyObject, type DeviceKey } from "./access/device-key.js";
 export {
+  launchClaimOutcomeSchema,
+  launchClaimSchema,
+  type LaunchClaim,
+  type LaunchClaimOutcome,
+  type MiniAppLaunches,
+} from "./access/launch-claim.js";
+export {
   createDevicePairing,
   newDeviceNotice,
   newDeviceNoticeKey,
