@@ -110,21 +110,19 @@ function advanceOk(
   return a.state === "active" && unexpired && fillsLeft;
 }
 
-// Decision 0116: a cancel still signs up to a minute after its confirmation expired, at no more
-// than the step chain's network fee cap, which the settings hold for chain 56 only.
+// Decision 0116: a cancel still signs up to a minute after its confirmation expired.
 function cancelGraceOk(m: Model, expiresAtMs: number): boolean {
-  return (
-    m.replaces.kind === "cancel" &&
-    m.nowMs < expiresAtMs + 60_000 &&
-    m.stepChain === c56 &&
-    m.fee !== undefined &&
-    m.fee <= gwei
-  );
+  return m.replaces.kind === "cancel" && m.nowMs < expiresAtMs + 60_000;
 }
+
+// Decision 0143: nothing pays more per gas than the step chain's network fee cap, which the
+// settings hold for chain 56 only.
+const feeUnderCap = (m: Model): boolean =>
+  m.stepChain === c56 && m.fee !== undefined && m.fee <= gwei;
 
 function authorizationOk(m: Model): boolean {
   const a = m.authorization;
-  if (a.termsHash !== m.termsHash) {
+  if (!feeUnderCap(m) || a.termsHash !== m.termsHash) {
     return false;
   }
   if (a.kind === "confirmation") {

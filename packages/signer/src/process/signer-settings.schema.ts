@@ -12,9 +12,9 @@ export interface SignerSettings {
   /** The origin of Privy's API, such as `https://api.privy.io`; every request URL starts with it. */
   readonly privyApi: string;
   /**
-   * Each enabled chain's network fee cap: a cancel signed after its confirmation expired pays at
-   * most this (decision 0116), in base units of the chain's native coin per gas (decision 0102). A
-   * chain with no cap here signs no such cancel.
+   * Each enabled chain's network fee cap, in base units of the chain's native coin per gas
+   * (decision 0102): no transaction the signer signs pays more (decision 0143). A chain with no
+   * cap here signs nothing.
    */
   readonly networkFeeCaps: readonly { readonly chain: ChainRef; readonly feePerGasBase: bigint }[];
 }

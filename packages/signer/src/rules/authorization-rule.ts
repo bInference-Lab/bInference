@@ -48,34 +48,34 @@ function autoHolds(view: RuleView, grant: AutoModeGrant, current: ApprovalModeNo
  */
 const cancelGraceMs = 60_000;
 
-// A cancel moves nothing, so it still signs shortly after the owner's confirmation expired, at no
-// more than the chain's network fee cap per gas (decision 0116).
+// A cancel moves nothing, so it still signs shortly after the owner's confirmation expired
+// (decision 0116).
 function isCancelInGrace(view: RuleView, expiresAtMs: number): boolean {
-  const { step } = view.input;
+  return view.input.step.replaces?.kind === "cancel" && view.nowMs < expiresAtMs + cancelGraceMs;
+}
+
+// No card shows a fee per gas, so nothing authorizes one above the chain's network fee cap in the
+// settings (decision 0143); a chain with no cap there signs nothing.
+function isFeeUnderCap(view: RuleView): boolean {
   const fee = view.transaction.feePerGas;
-  const cap = view.settings.networkFeeCaps.find(({ chain }) => chain === step.chain);
-  return (
-    step.replaces?.kind === "cancel" &&
-    view.nowMs < expiresAtMs + cancelGraceMs &&
-    cap !== undefined &&
-    fee !== undefined &&
-    fee <= cap.feePerGasBase
-  );
+  const cap = view.settings.networkFeeCaps.find(({ chain }) => chain === view.input.step.chain);
+  return cap !== undefined && fee !== undefined && fee <= cap.feePerGasBase;
 }
 
 const termsHashOf = (authorization: SignAuthorization): string =>
   authorization.kind === "approvalMode" ? authorization.grant.termsHash : authorization.termsHash;
 
 /**
- * Rule 5: `termsHash` is the authorization's, and the authorization holds now: a confirmation of
- * this intent that has not expired, or expired less than a minute ago for a cancel at most at
- * the network fee cap (decision 0116); an active auto order or webhook rule within its expiry and
- * its fills; or the agent's auto grant for this intent, unexpired, with the agent's mode still
- * auto at the grant's version, for a transaction that passes the auto test's checks.
+ * Rule 5: the transaction pays at most the chain's network fee cap per gas (decision 0143),
+ * `termsHash` is the authorization's, and the authorization holds now: a confirmation of this
+ * intent that has not expired, or expired less than a minute ago for a cancel (decision 0116); an
+ * active auto order or webhook rule within its expiry and its fills; or the agent's auto grant for
+ * this intent, unexpired, with the agent's mode still auto at the grant's version, for a
+ * transaction that passes the auto test's checks.
  */
 export function authorizationHolds(view: RuleView): boolean {
   const { authorization, intent } = view.input;
-  if (termsHashOf(authorization) !== view.input.termsHash) {
+  if (!isFeeUnderCap(view) || termsHashOf(authorization) !== view.input.termsHash) {
     return false;
   }
   if (authorization.kind === "confirmation") {

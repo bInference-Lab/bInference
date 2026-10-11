@@ -199,11 +199,13 @@ says without checking it:
    amount, and never unlimited.
 4. The method is `eth_signTransaction`; no EIP-7702 authorization, no `personal_sign`, and typed
    data only for a named domain.
-5. `termsHash` matches the authorization's: a confirmation that has not expired, an active order or
-   webhook rule whose bounds hold, or the agent's current auto-mode grant for an intent that passes
-   the auto test (spec 6, section 5). One exception: a cancel (rule 6) of the confirmed intent
-   signs for 60 seconds after its confirmation expired, at a fee per gas at most the chain's
-   network fee cap from the signer's settings ([decision 0116](../DECISIONS.md#d0116)).
+5. The fee per gas is at most the chain's network fee cap from the signer's settings, whatever
+   authorized the transaction, and a chain with no cap there signs nothing
+   ([decision 0143](../DECISIONS.md#d0143)). `termsHash` matches the authorization's: a
+   confirmation that has not expired, an active order or webhook rule whose bounds hold, or the
+   agent's current auto-mode grant for an intent that passes the auto test (spec 6, section 5).
+   One exception: a cancel (rule 6) of the confirmed intent signs for 60 seconds after its
+   confirmation expired ([decision 0116](../DECISIONS.md#d0116)).
 6. For a speed-up or a cancel at an already used nonce: the calldata is identical (speed-up) or the
    transaction is a 0-value transfer to the wallet itself (cancel).
 

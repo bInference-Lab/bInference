@@ -58,7 +58,7 @@ const tokenSend = withStep(
 const cancel = withStep(withTransaction(call, { to: wallet, value: 0, data: "0x", nonce: 3 }), {
   replaces: { kind: "cancel", nonce: 3 },
 });
-const speedUp = withStep(withTransaction(call, { nonce: 3, max_fee_per_gas: "0x41cdb400" }), {
+const speedUp = withStep(withTransaction(call, { nonce: 3, max_fee_per_gas: "0x3b9aca00" }), {
   replaces: {
     kind: "speedUp",
     nonce: 3,
@@ -107,16 +107,9 @@ const autoWith = (change: {
     current: { agent, mode: "auto", version: 4, ...change.current },
   });
 const auto = withAuthorization(call, autoAuthorization);
-const autoCancel = withAuthorization(
-  withTransaction(cancel, {
-    to: wallet,
-    value: 0,
-    data: "0x",
-    nonce: 3,
-    max_fee_per_gas: "0x77359400",
-  }),
-  autoAuthorization,
-);
+const autoCancel = withAuthorization(cancel, autoAuthorization);
+// One wei per gas above the fixture chain's network fee cap of 1 gwei.
+const overCap = { max_fee_per_gas: "0x3b9aca01" };
 
 const bases: readonly (readonly [string, AuthorizeInput])[] = [
   ["a venue call", call],
@@ -128,7 +121,7 @@ const bases: readonly (readonly [string, AuthorizeInput])[] = [
   ["an auto order fill", order],
   ["a webhook rule fill", webhookRule],
   ["an auto mode trade", auto],
-  ["a cancel in auto mode above the fee cap", autoCancel],
+  ["a cancel in auto mode", autoCancel],
 ];
 
 const otherChain = chainRefSchema.parse("eip155:97");
@@ -316,6 +309,20 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
     cancel,
     { ...afterExpiry(1), settings: { ...fixtureSettings, networkFeeCaps: [] } },
   ],
+  [5, "a tapped call above the network fee cap", withTransaction(call, overCap)],
+  [
+    5,
+    "a tapped speed-up above the network fee cap",
+    withTransaction(speedUp, { nonce: 3, ...overCap }),
+  ],
+  [
+    5,
+    "a cancel in auto mode above the network fee cap",
+    withTransaction(autoCancel, { to: wallet, value: 0, data: "0x", nonce: 3, ...overCap }),
+  ],
+  [5, "an order fill above the network fee cap", withTransaction(order, overCap)],
+  [5, "a call on a chain with no fee cap", call, settingsWith({ networkFeeCaps: [] })],
+  [5, "no fee on a tapped call", withTransaction(call, {}, ["max_fee_per_gas"])],
   [
     5,
     "an order that is no longer active",
