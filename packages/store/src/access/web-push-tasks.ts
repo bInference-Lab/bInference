@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
+  maxWebPushSubscriptionsPerDevice,
   type WebPushDrop,
   webPushDropSchema,
   type WebPushSubscriptionRecord,
@@ -42,7 +43,10 @@ export function dropDeviceSubscriptions(database: DatabaseSync, deviceId: string
   execute(kysely.deleteFrom("web_push_subscriptions").where("device_id", "=", deviceId));
 }
 
-/** Saves a device's subscription in place of one at its endpoint; a revoked device is refused. */
+/**
+ * Saves a device's subscription in place of one at its endpoint, then deletes the device's oldest
+ * past `maxWebPushSubscriptionsPerDevice`; a revoked device is refused.
+ */
 export const saveWebPushSubscriptionTask: StoreTask<
   WebPushSubscriptionRecord,
   Result<WebPushSubscriptionRecord, "no_device">
@@ -68,6 +72,19 @@ export const saveWebPushSubscriptionTask: StoreTask<
         .insertInto("web_push_subscriptions")
         .values({ endpoint: subscription.endpoint, ...replaced })
         .onConflict((conflict) => conflict.column("endpoint").doUpdateSet(replaced)),
+    );
+    const newest = kysely
+      .selectFrom("web_push_subscriptions")
+      .select("endpoint")
+      .where("device_id", "=", subscription.deviceId)
+      .orderBy("created_at", "desc")
+      .orderBy("endpoint", "desc")
+      .limit(maxWebPushSubscriptionsPerDevice);
+    execute(
+      kysely
+        .deleteFrom("web_push_subscriptions")
+        .where("device_id", "=", subscription.deviceId)
+        .where("endpoint", "not in", newest),
     );
     return ok(subscription);
   },

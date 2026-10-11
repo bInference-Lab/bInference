@@ -193,8 +193,9 @@ A token without `expires_at` works until it is revoked ([decision 0159](../DECIS
 Secrets are never stored here: tokens, webhook secrets and pairing codes appear only as SHA-256
 hashes; provider tokens live in the keychain and are named by `secret_ref`.
 `web_push_subscriptions` holds each console device's browser push subscriptions: the browser's own
-keys, which every message is encrypted to, so they stay as the browser gave them. Revoking a device
-drops its rows, and the VAPID private key that signs the messages lives in `keys/`, never here
+keys, which every message is encrypted to, so they stay as the browser gave them. A device keeps
+its newest 4: saving a fifth deletes its oldest, so one device cannot turn a card into a flood of
+requests. Revoking a device drops its rows, and the VAPID private key that signs the messages lives in `keys/`, never here
 ([decision 0158](../DECISIONS.md#d0158)).
 
 `mini_app_launches` holds the Telegram Mini App launches that signed in within the last 24 hours,

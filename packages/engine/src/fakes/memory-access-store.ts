@@ -4,9 +4,10 @@ import type { LaunchClaim, LaunchClaimOutcome } from "../access/launch-claim.js"
 import { type LaunchTicketRecord, maxLaunchTickets } from "../access/launch-ticket.js";
 import type { PairCodeRecord, PairCodeUse } from "../access/pair-code-record.js";
 import type { TokenRecord } from "../access/token-record.js";
-import type {
-  WebPushDrop,
-  WebPushSubscriptionRecord,
+import {
+  maxWebPushSubscriptionsPerDevice,
+  type WebPushDrop,
+  type WebPushSubscriptionRecord,
 } from "../access/web-push-subscription-record.js";
 import type { AccessStore } from "../ports.js";
 import { byCreation, memoryCall } from "./memory-call.js";
@@ -88,6 +89,12 @@ function createSubscriptions() {
   return {
     save(subscription: WebPushSubscriptionRecord): WebPushSubscriptionRecord {
       rows.set(subscription.endpoint, structuredClone(subscription));
+      const own = [...rows.values()]
+        .filter((row) => row.deviceId === subscription.deviceId)
+        .toSorted(bySaving);
+      own.slice(0, Math.max(0, own.length - maxWebPushSubscriptionsPerDevice)).forEach((row) => {
+        rows.delete(row.endpoint);
+      });
       return structuredClone(subscription);
     },
     list: (): readonly WebPushSubscriptionRecord[] =>

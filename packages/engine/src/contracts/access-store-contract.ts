@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
 import type { DeviceRecord } from "../access/device-record.js";
 import type { TokenRecord } from "../access/token-record.js";
-import type { WebPushSubscriptionRecord } from "../access/web-push-subscription-record.js";
+import {
+  maxWebPushSubscriptionsPerDevice,
+  type WebPushSubscriptionRecord,
+} from "../access/web-push-subscription-record.js";
 import type { AccessStore } from "../ports.js";
 import { launchChecks } from "./access-launch-checks.js";
 import { assertRefusesAborted, checkOn, fixtureHash, fixtureId, live } from "./store-fixtures.js";
@@ -123,6 +126,24 @@ async function keepsSubscriptions(store: AccessStore): Promise<void> {
   });
 }
 
+async function capsSubscriptionsPerDevice(store: AccessStore): Promise<void> {
+  await store.addDevice(device(1), live());
+  await store.addDevice(device(2), live());
+  await store.saveWebPushSubscription(subscription("other", 2, 1), live());
+  const own = Array.from({ length: maxWebPushSubscriptionsPerDevice + 2 }, (_, i) =>
+    subscription(`s${String(i)}`, 1, 10 + i),
+  );
+  await own.reduce(async (previous, next) => {
+    await previous;
+    await store.saveWebPushSubscription(next, live());
+  }, Promise.resolve());
+  const kept = own.slice(-maxWebPushSubscriptionsPerDevice);
+  assert.deepEqual(await store.listWebPushSubscriptions(live()), [
+    subscription("other", 2, 1),
+    ...kept,
+  ]);
+}
+
 async function dropsSubscriptions(store: AccessStore): Promise<void> {
   await store.addDevice(device(1), live());
   await store.addDevice(device(2), live());
@@ -204,6 +225,11 @@ export function accessStoreContract(harness: AccessStoreHarness): readonly Contr
       "drops a subscription at its endpoint, for its own device only, and those of a revoked device",
       create,
       dropsSubscriptions,
+    ),
+    checkOn(
+      "keeps the newest browser push subscriptions of each device, at most four",
+      create,
+      capsSubscriptionsPerDevice,
     ),
     checkOn("uses a pairing code once, before it expires", create, usesCodesOnce),
     ...launchChecks(create),

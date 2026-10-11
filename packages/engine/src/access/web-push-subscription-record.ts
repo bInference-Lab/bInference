@@ -44,11 +44,15 @@ export const webPushDropSchema: z.ZodType<WebPushDrop> = z.strictObject({
   deviceId: idSchema("dev").exactOptional(),
 });
 
+/** The most browser push subscriptions one console device keeps; a new one drops the oldest. */
+export const maxWebPushSubscriptionsPerDevice: number = 4;
+
 /** The access store's part that keeps the browser push subscriptions, which `AccessStore` takes on. */
 export interface WebPushSubscriptions {
   /**
-   * Saves a device's browser push subscription, in place of one at the same endpoint; a device
-   * that is unknown or revoked is `no_device`.
+   * Saves a device's browser push subscription, in place of one at the same endpoint, then drops
+   * the device's oldest past {@link maxWebPushSubscriptionsPerDevice}; a device that is unknown or
+   * revoked is `no_device`.
    */
   saveWebPushSubscription(
     subscription: WebPushSubscriptionRecord,

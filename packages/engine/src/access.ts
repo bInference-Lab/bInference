@@ -47,6 +47,7 @@ export {
   type WebPushHandlersOptions,
 } from "./access/web-push-handlers.js";
 export {
+  maxWebPushSubscriptionsPerDevice,
   webPushDropSchema,
   webPushSubscriptionRecordSchema,
   type WebPushDrop,
