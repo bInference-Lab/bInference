@@ -10,6 +10,7 @@ import {
   driveUntil,
   eventsOf,
   type ExecutorBench,
+  hashOf,
   startExecutorBench,
   tapped,
   transactionsOf,
@@ -170,6 +171,24 @@ describe("reconciliation", () => {
     prices.set(testCoin, { numerator: 0n, denominator: 1n });
     await expect(driveUntil(bench, intent, { ...done, blocks: 12 })).resolves.toBe("finalized");
     expect(await executionsOf(bench)).toStrictEqual([]);
+  });
+
+  it("reconciles two trades a reorg put in one block, and alarms the owner", async () => {
+    const bench = await startExecutorBench({ network: { finalityDepth: 6n } });
+    const first = await tapped(bench);
+    await driveUntil(bench, first, { states: ["included"] });
+    bench.network.holdBelow(10n ** 18n);
+    const second = await tapped(bench);
+    await driveUntil(bench, second, { states: [], blocks: 1 });
+    const [included] = await transactionsOf(bench);
+    bench.network.reorg(hashOf(included));
+    bench.network.holdBelow(0n);
+    await expect(driveUntil(bench, first, done)).resolves.toBe("reconciled");
+    await expect(driveUntil(bench, second, done)).resolves.toBe("reconciled");
+    const [one, two] = await transactionsOf(bench);
+    expect(one?.receipt?.block.number).toBe(two?.receipt?.block.number);
+    expect(eventsOf(bench)).toContain("executor.block_shared:");
+    expect(noticesOf(bench.pushes).join()).toContain("notice.blockShared");
   });
 
   it("fails a finalized intent with no quote as a fault, and records nothing", async () => {

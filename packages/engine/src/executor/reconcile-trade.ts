@@ -1,4 +1,4 @@
-import { type TxHash, withQuotePrice } from "@binference/chain";
+import { accountRefParts, type TxHash, withQuotePrice } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import type { QuoteView } from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
@@ -6,6 +6,7 @@ import type { SettledTrade } from "../intents/event-cause.schema.js";
 import { quoteDocument, simulationDocument } from "../intents/intent-documents.schema.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import { differsFromSimulation, type SettledStep, settledTradeOf } from "./settled-trade-of.js";
@@ -14,6 +15,8 @@ import { differsFromSimulation, type SettledStep, settledTradeOf } from "./settl
 const fillDiffersNoticeKey = "notice.fillDiffers";
 // The owner's alarm when no node can say what a trade received any more (decision 0108).
 const fillUnknownNoticeKey = "notice.fillUnknown";
+// The owner's alarm when a block holds trades of two intents of one wallet.
+const sharedBlockNoticeKey = "notice.blockShared";
 
 /** How one try ended: settled, wait for the next block, or stopped until a restart. */
 type SettleOutcome = "settled" | "waiting" | "stopped";
@@ -139,6 +142,44 @@ async function recordOnce(run: ExecutionRun, trade: ExecutedTrade): Promise<bool
   return recorded.ok;
 }
 
+// How far around its own nonces the wallet's transactions are read for another intent's in the
+// same block: more than a block of one wallet holds.
+const sharedBlockReach = 100;
+
+// The native coin read for a block counts for each intent the block holds, so a block that holds
+// another intent's transaction of the wallet may count it twice (positions and P&L only): the
+// owner is told, and the trade still reconciles.
+async function warnSharedBlock(
+  run: ExecutionRun,
+  snapshot: IntentSnapshot,
+  steps: readonly SettledStep[],
+): Promise<void> {
+  const { parts, plan, signal } = run;
+  const { id, agentId } = snapshot.record;
+  const blocks = new Set(
+    steps.flatMap(({ transaction }) => transaction.receipt?.block.number ?? []),
+  );
+  const fromNonce = Math.max(
+    0,
+    Math.min(...steps.map(({ transaction }) => transaction.nonce)) - sharedBlockReach,
+  );
+  const query = { account: plan.steps[0].from, fromNonce, limit: 2 * sharedBlockReach };
+  const stored = await parts.stores.transactions.list(query, { signal });
+  const isShared = stored.some(
+    ({ intentId, state, receipt }) =>
+      intentId !== id &&
+      inBlockStates.includes(state) &&
+      receipt !== undefined &&
+      blocks.has(receipt.block.number),
+  );
+  if (!isShared) {
+    return;
+  }
+  parts.log.warn("executor.block_shared", { intentId: id });
+  const values = { wallet: accountRefParts(query.account).address };
+  parts.publish(noticePush({ key: sharedBlockNoticeKey, agent: agentId, intent: id, values }));
+}
+
 function warnDifference(run: ExecutionRun, snapshot: IntentSnapshot, trade: SettledTrade): void {
   const { simulation, id, agentId } = snapshot.record;
   if (
@@ -193,6 +234,7 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
   if (reconciled !== undefined) {
     parts.log.info("executor.reconciled", { intentId: snapshot.record.id });
     warnDifference(run, snapshot, trade);
+    await warnSharedBlock(run, snapshot, steps);
   }
   return "settled";
 }
@@ -201,7 +243,9 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
  * Reconciles a finalized live intent (ARCHITECTURE.md section 7, step 9): reads what each final
  * step moved, turns it into the trade, values it and records it in the positions once, then
  * moves the intent to `reconciled` with the trade, whose ledger entry and pushes every surface
- * hears. A trade more than 1% away from its simulation still reconciles, with an alarm notice.
+ * hears. A trade more than 1% away from its simulation still reconciles, with an alarm notice, and
+ * so does one whose block holds another intent's transaction of the wallet, with
+ * `notice.blockShared`: the native coin read for that block may count for both.
  * While a read or a price fails it tries again each block, up to `settleAfterBlocks`; then it
  * leaves the intent `finalized`, and recovery reconciles it after a restart. When no node, nor the
  * owner's tracing RPC, can say the native coin the trade received any more (decision 0108), the

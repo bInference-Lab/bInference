@@ -9,6 +9,7 @@
   "privyUnreachable": "🔴 binference could not reach Privy for five minutes after it started, so it stays locked. Check this machine's network, then run `binference unlock`.",
   "unknownTx": "⚠️ {wallet}'s nonce {nonce} was used by a transaction binference did not sign",
   "fillDiffers": "⚠️ A trade settled more than 1% away from its simulation. Check the trade.",
+  "blockShared": "⚠️ Two trades of {wallet} landed in one block, so its positions and P&L may count the coin that block paid it twice. Check the wallet.",
   "fillUnknown": "⚠️ A trade settled, but no RPC can say what it received any more. Add a tracing RPC to the config and restart binference to finish it.",
   "notSigned": "⚠️ A trade was cancelled before its first transaction was signed. Nothing was sent.",
   "confirmationLapsed": "⚠️ A trade was not sent: its confirmation ran out before it could go out. Nothing was signed.",

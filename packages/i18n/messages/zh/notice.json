@@ -9,6 +9,7 @@
   "privyUnreachable": "🔴 binference 启动后五分钟内都无法连接 Privy，因此仍处于锁定状态。请检查本机网络，然后运行 `binference unlock`。",
   "unknownTx": "⚠️ {wallet} 的随机数 {nonce} 被一笔非 binference 签名的交易占用",
   "fillDiffers": "⚠️ 一笔交易的成交结果与模拟结果相差超过 1%，请核对该笔交易。",
+  "blockShared": "⚠️ {wallet} 的两笔交易在同一个区块上链，持仓和盈亏可能把该区块转入的币重复计算。请检查钱包。",
   "fillUnknown": "⚠️ 一笔交易已上链，但已没有 RPC 能说明它收到了多少。请在配置中添加追踪 RPC 并重启 binference，以完成这笔交易的记录。",
   "notSigned": "⚠️ 一笔交易在第一笔链上交易签名前已取消，未发送任何内容。",
   "confirmationLapsed": "⚠️ 一笔交易未发送：它的确认在发出之前已过期。未签名任何内容。",
