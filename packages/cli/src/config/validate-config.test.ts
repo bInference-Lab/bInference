@@ -175,9 +175,16 @@ describe("validate config", () => {
   });
 
   it("refuses dollars with more than six decimals and reads others as micro-dollars", () => {
-    expect(lines({ ...base, defaults: { limits: { perTradeUsd: 0.000_000_1 } } })).toHaveLength(1);
-    const config = configOf(check({ ...base, defaults: { limits: { perTradeUsd: 12.345_678 } } }));
+    expect(lines({ ...base, defaults: { limits: { perTradeUsd: "0.0000001" } } })).toHaveLength(1);
+    const config = configOf(check({ ...base, defaults: { limits: { perTradeUsd: "12.345678" } } }));
     expect(config.defaults.limits.perTradeUsd).toBe(12_345_678n);
+  });
+
+  it("reads dollars past a number's precision exactly, and refuses them as a number", () => {
+    const large = "999999999999.999999";
+    const config = configOf(check({ ...base, defaults: { limits: { perTradeUsd: large } } }));
+    expect(config.defaults.limits.perTradeUsd).toBe(999_999_999_999_999_999n);
+    expect(lines({ ...base, defaults: { limits: { perTradeUsd: 100 } } })).toHaveLength(1);
   });
 
   it("defaults every dangerously switch to false", () => {

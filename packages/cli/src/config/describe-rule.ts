@@ -7,6 +7,7 @@ const formatText: Readonly<Record<ValueFormat, string>> = {
   time_zone: "an IANA time zone such as Asia/Shanghai",
   chain: "a chain id such as eip155:56",
   decimal: 'a decimal number in quotes, such as "0.002"',
+  usd: 'US dollars in quotes, such as "100" or "0.25", with at most six decimals',
   path: "an absolute path, or one that starts with ~/",
   keychain_name: "a keychain entry name of letters, digits, dots, dashes and underscores",
   env_name: "an environment variable name",

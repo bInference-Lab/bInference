@@ -96,8 +96,8 @@ describe("binference init with a person at the terminal", () => {
     expect(run.transcript.lines).toContain(en("limits.invalid"));
     expect(run.transcript.lines).toContain(en("ownerKey.checked"));
     const config = await configText(machine);
-    expect(config).toContain("perTradeUsd: 50,");
-    expect(config).toContain("rollingDayUsd: 500,");
+    expect(config).toContain('perTradeUsd: "50",');
+    expect(config).toContain('rollingDayUsd: "500",');
     expect(config).toContain(
       `appSecret: { fromFile: ${JSON.stringify(join(machine.folder, "keys", "privy-app-secret"))} },`,
     );

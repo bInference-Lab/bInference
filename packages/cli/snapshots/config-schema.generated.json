@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -305,21 +305,21 @@
               "properties": {
                 "inputPerMTokUsd": {
                   "description": "US dollars per million input tokens.",
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1000000000000
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                  "valueFormat": "usd"
                 },
                 "outputPerMTokUsd": {
                   "description": "US dollars per million output tokens.",
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1000000000000
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                  "valueFormat": "usd"
                 },
                 "cachedPerMTokUsd": {
                   "description": "US dollars per million cached input tokens.",
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1000000000000
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                  "valueFormat": "usd"
                 }
               },
               "required": [
@@ -345,17 +345,17 @@
             "properties": {
               "perTradeUsd": {
                 "description": "The most one trade may move, in US dollars.",
-                "default": 100,
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1000000000000
+                "default": "100",
+                "type": "string",
+                "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                "valueFormat": "usd"
               },
               "rollingDayUsd": {
                 "description": "The most trades and sends may move in 24 hours, in US dollars.",
-                "default": 500,
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1000000000000
+                "default": "500",
+                "type": "string",
+                "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                "valueFormat": "usd"
               },
               "slippageBps": {
                 "description": "Slippage limits.",
@@ -395,10 +395,10 @@
               },
               "liquidityFloorUsd": {
                 "description": "The least pool liquidity a trade needs, in US dollars.",
-                "default": 10000,
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1000000000000
+                "default": "10000",
+                "type": "string",
+                "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                "valueFormat": "usd"
               },
               "minHealthFactor": {
                 "description": "The lowest lending health factor a move may leave.",
@@ -542,17 +542,17 @@
             "properties": {
               "perBuyUsd": {
                 "description": "The most one copied buy may spend, in US dollars.",
-                "default": 20,
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1000000000000
+                "default": "20",
+                "type": "string",
+                "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                "valueFormat": "usd"
               },
               "perLeaderDayUsd": {
                 "description": "The most copies of one leader may spend a day, in US dollars.",
-                "default": 200,
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1000000000000
+                "default": "200",
+                "type": "string",
+                "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+                "valueFormat": "usd"
               }
             },
             "additionalProperties": false
@@ -585,10 +585,10 @@
           },
           "modelBudgetUsdPerDay": {
             "description": "The most model calls may cost a day, in US dollars.",
-            "default": 3,
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1000000000000
+            "default": "3",
+            "type": "string",
+            "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
+            "valueFormat": "usd"
           }
         },
         "additionalProperties": false

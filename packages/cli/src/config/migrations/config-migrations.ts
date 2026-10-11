@@ -1,4 +1,5 @@
 import type { ConfigMigration } from "./migrate-config.js";
+import { usdAsText } from "./usd-as-text.js";
 
 /**
  * Every config migration, oldest first: the one at index `n` reads version `n + 1`. A change to
@@ -15,6 +16,7 @@ export const configMigrations: readonly ConfigMigration[] = [
     summary: "Adds chains.rpc.<chain>.tracer, the owner's tracing RPC, which no file sets yet.",
     edits: () => [],
   },
+  usdAsText,
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

@@ -260,7 +260,7 @@ describe("binference init with flags for its config", () => {
       "defaults.limits.perTradeUsd=50",
     ]);
     expect(run.code).toBe(0);
-    await expect(configText(machine)).resolves.toContain("perTradeUsd: 50,");
+    await expect(configText(machine)).resolves.toContain('perTradeUsd: "50",');
   });
 
   it(

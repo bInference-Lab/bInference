@@ -19,7 +19,7 @@ async function askLimit(context: InitContext, limit: (typeof asked)[number]): Pr
       dollarPattern.test(answer.trim()) ? undefined : context.words("limits.invalid"),
   });
   const origin = { layer: "flag", name: limit.path.join(".") } as const;
-  return { path: limit.path, value: Number(typed.trim()), origin };
+  return { path: limit.path, value: typed.trim(), origin };
 }
 
 function isSetByFlag(context: InitContext, path: readonly string[]): boolean {

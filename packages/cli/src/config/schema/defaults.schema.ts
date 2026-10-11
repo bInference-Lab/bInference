@@ -53,7 +53,7 @@ export interface AgentDefaultsConfig {
 const bps = (fallback: number, description: string) =>
   z.int().min(0).max(10_000).refine(isBps).prefault(fallback).describe(description);
 
-const usd = (fallback: number, description: string) =>
+const usd = (fallback: string, description: string) =>
   usdSchema.prefault(fallback).describe(description);
 
 const positiveInt = (fallback: number, description: string) =>
@@ -61,8 +61,8 @@ const positiveInt = (fallback: number, description: string) =>
 
 const limitsSchema = z
   .strictObject({
-    perTradeUsd: usd(100, "The most one trade may move, in US dollars."),
-    rollingDayUsd: usd(500, "The most trades and sends may move in 24 hours, in US dollars."),
+    perTradeUsd: usd("100", "The most one trade may move, in US dollars."),
+    rollingDayUsd: usd("500", "The most trades and sends may move in 24 hours, in US dollars."),
     slippageBps: z
       .strictObject({
         registry: bps(100, "Slippage allowed on registry tokens, in basis points."),
@@ -72,7 +72,7 @@ const limitsSchema = z
       .describe("Slippage limits."),
     priceImpactBps: bps(300, "The largest price impact allowed, in basis points."),
     taxBps: bps(1000, "The largest token tax allowed, in basis points."),
-    liquidityFloorUsd: usd(10_000, "The least pool liquidity a trade needs, in US dollars."),
+    liquidityFloorUsd: usd("10000", "The least pool liquidity a trade needs, in US dollars."),
     minHealthFactor: z
       .number()
       .min(1)
@@ -129,8 +129,11 @@ export const agentDefaultsSchema: z.ZodType<AgentDefaultsConfig> = z
       .describe("Auto orders."),
     copy: z
       .strictObject({
-        perBuyUsd: usd(20, "The most one copied buy may spend, in US dollars."),
-        perLeaderDayUsd: usd(200, "The most copies of one leader may spend a day, in US dollars."),
+        perBuyUsd: usd("20", "The most one copied buy may spend, in US dollars."),
+        perLeaderDayUsd: usd(
+          "200",
+          "The most copies of one leader may spend a day, in US dollars.",
+        ),
       })
       .prefault({})
       .describe("Copy trading."),
@@ -143,7 +146,7 @@ export const agentDefaultsSchema: z.ZodType<AgentDefaultsConfig> = z
       })
       .prefault({})
       .describe("Paper mode."),
-    modelBudgetUsdPerDay: usd(3, "The most model calls may cost a day, in US dollars."),
+    modelBudgetUsdPerDay: usd("3", "The most model calls may cost a day, in US dollars."),
   })
   .prefault({})
   .describe("What each new agent starts with; copied into its rows once, at creation.");

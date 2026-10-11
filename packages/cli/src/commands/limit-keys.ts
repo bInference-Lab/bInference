@@ -62,8 +62,8 @@ const whole = /^(?:0|[1-9]\d{0,9})$/;
 const bpPerOne = 10_000;
 
 function usdWire(text: string): JsonValue | undefined {
-  const micros = decimal.test(text) ? usdSchema.safeParse(Number(text)) : undefined;
-  return micros?.success === true ? micros.data.toString() : undefined;
+  const micros = usdSchema.safeParse(text);
+  return micros.success ? micros.data.toString() : undefined;
 }
 
 function wholeWire(text: string): JsonValue | undefined {

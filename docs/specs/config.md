@@ -157,13 +157,13 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 
 | Key                                    | Default ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28))                                                    |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `defaults.limits.perTradeUsd`          | `100`                                                                                                                    |
-| `defaults.limits.rollingDayUsd`        | `500`                                                                                                                    |
+| `defaults.limits.perTradeUsd`          | `"100"`                                                                                                                  |
+| `defaults.limits.rollingDayUsd`        | `"500"`                                                                                                                  |
 | `defaults.limits.slippageBps.registry` | `100`                                                                                                                    |
 | `defaults.limits.slippageBps.other`    | `500`                                                                                                                    |
 | `defaults.limits.priceImpactBps`       | `300`                                                                                                                    |
 | `defaults.limits.taxBps`               | `1000`                                                                                                                   |
-| `defaults.limits.liquidityFloorUsd`    | `10000`                                                                                                                  |
+| `defaults.limits.liquidityFloorUsd`    | `"10000"`                                                                                                                |
 | `defaults.limits.minHealthFactor`      | `1.5`                                                                                                                    |
 | `defaults.limits.gasReserve`           | `{ "eip155:56": "0.002" }` (in the native coin)                                                                          |
 | `defaults.limits.venues`               | every installed core venue                                                                                               |
@@ -177,14 +177,14 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 | `defaults.cards.requoteAfterSec`       | `10`                                                                                                                     |
 | `defaults.cards.requoteToleranceBps`   | `50`                                                                                                                     |
 | `defaults.orders.expiryDays`           | `30`                                                                                                                     |
-| `defaults.copy.perBuyUsd`              | `20`                                                                                                                     |
-| `defaults.copy.perLeaderDayUsd`        | `200`                                                                                                                    |
+| `defaults.copy.perBuyUsd`              | `"20"`                                                                                                                   |
+| `defaults.copy.perLeaderDayUsd`        | `"200"`                                                                                                                  |
 | `defaults.paper.balances`              | `{ "BNB": "1", "USDT": "500" }`                                                                                          |
-| `defaults.modelBudgetUsdPerDay`        | `3`                                                                                                                      |
+| `defaults.modelBudgetUsdPerDay`        | `"3"`                                                                                                                    |
 | `defaults.notifications`               | the [decision 0057](../DECISIONS.md#d0057) set, daily summary at `09:00`                                                 |
 
-Dollar values in the file are plain decimals for readability; the engine converts them to
-micro-dollars and base units on load.
+Dollar values in the file are decimal text, such as `"100"` or `"0.25"`, with at most six
+decimals; the engine reads them as micro-dollars on load, never through a floating-point number.
 
 <a id="section-6-5"></a>
 
@@ -238,7 +238,7 @@ micro-dollars and base units on load.
 ```json5
 // ~/.binference/config.json5
 {
-  version: 3,
+  version: 4,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {
@@ -255,7 +255,7 @@ micro-dollars and base units on load.
     main: "binference/main-default",
     fast: "binference/fast-default",
   },
-  defaults: { limits: { perTradeUsd: 50, rollingDayUsd: 250 } },
+  defaults: { limits: { perTradeUsd: "50", rollingDayUsd: "250" } },
   network: { proxy: { fromEnv: "HTTPS_PROXY" } },
 }
 ```

@@ -45,6 +45,7 @@ const formats: readonly ValueFormat[] = [
   "time_zone",
   "chain",
   "decimal",
+  "usd",
   "path",
   "keychain_name",
   "env_name",
