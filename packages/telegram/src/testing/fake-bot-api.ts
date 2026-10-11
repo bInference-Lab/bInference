@@ -16,7 +16,7 @@ import { httpOverFetch } from "./fetch-http.js";
 export const fakeBotToken = "7012345678:AAE_fakeTokenForTestsOnly_0123456789ab";
 
 /** The Bot API base for {@link fakeBotToken}: Telegram reads the token from the path. */
-export const fakeBotApiBase = "https://api.telegram.org/bot" + fakeBotToken;
+export const fakeBotApiBase: string = "https://api.telegram.org/bot" + fakeBotToken;
 
 /** The username of the bot {@link fakeBotToken} opens, as `getMe` answers it. */
 export const fakeBotUsername = "binference_test_bot";
