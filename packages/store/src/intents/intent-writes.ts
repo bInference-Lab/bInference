@@ -12,6 +12,7 @@ import type {
   LedgerDraft,
   LedgerEntry,
 } from "@binference/engine";
+import { settleIntent } from "../agent-inbox/agent-inbox-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
@@ -53,12 +54,20 @@ function appendFor(
   return draft === undefined ? undefined : appendLedgerEntry(database, draft);
 }
 
+// The commit of a write, with the settle message it stores when it ends a runtime's intent.
 function commitOf(
-  intent: IntentRecord,
-  event: IntentEventRecord,
+  database: DatabaseSync,
+  written: { readonly intent: IntentRecord; readonly event: IntentEventRecord },
   ledgerEntry: LedgerEntry | undefined,
 ): IntentCommit {
-  return { intent, event, ...(ledgerEntry === undefined ? {} : { ledgerEntry }) };
+  const { intent, event } = written;
+  const settled = settleIntent(database, intent);
+  return {
+    intent,
+    event,
+    ...(ledgerEntry === undefined ? {} : { ledgerEntry }),
+    ...(settled === undefined ? {} : { settled }),
+  };
 }
 
 // The columns a move rewrites, from the intent as it is after the move.
@@ -122,7 +131,7 @@ export function createIntent(
     cause,
     atMs,
   });
-  return ok(commitOf(intent, event, ledgerEntry));
+  return ok(commitOf(database, { intent, event }, ledgerEntry));
 }
 
 /**
@@ -177,5 +186,5 @@ export function moveIntent(
     cause: change.cause,
     atMs: change.atMs,
   });
-  return ok(commitOf(moved, event, ledgerEntry));
+  return ok(commitOf(database, { intent: moved, event }, ledgerEntry));
 }

@@ -11,6 +11,7 @@ import type { IntentDraft, IntentRecord } from "../intents/intent-record.js";
 import type { LateLanding } from "../intents/late-landing.js";
 import type { LedgerDraft, LedgerEntry } from "../ledger/ledger-entry.js";
 import type { IntentStore } from "../ports.js";
+import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
@@ -18,13 +19,14 @@ import { createMemoryIntentTables, type MemoryIntentTables } from "./memory-inte
 import type { MemoryLedgerStore } from "./memory-ledger-store.js";
 
 /**
- * What an in-memory intent store writes its ledger entries to, and the agents and the install a
- * freeze marks.
+ * What an in-memory intent store writes its ledger entries to, the agents and the install a
+ * freeze marks, and the agent inbox it writes settle messages to, when there is one.
  */
 export interface MemoryIntentStoreOptions {
   readonly ledger: MemoryLedgerStore;
   readonly agents: MemoryAgentStore;
   readonly install: MemoryInstallStore;
+  readonly agentInbox?: MemoryAgentInboxStore;
 }
 
 function appendTo(
@@ -34,19 +36,35 @@ function appendTo(
   return draft === undefined ? undefined : ledger.appendNow(draft);
 }
 
+/** What one write of an intent stored: the intent after it, its event and its ledger entry. */
+interface Written {
+  readonly intent: IntentRecord;
+  readonly event: IntentEventRecord;
+  readonly ledgerEntry: LedgerEntry | undefined;
+}
+
+// The commit of a write, with the settle message the write left in the agent inbox, if any.
 function commitOf(
-  intent: IntentRecord,
-  event: IntentEventRecord,
-  ledgerEntry: LedgerEntry | undefined,
+  tables: MemoryIntentTables,
+  options: Pick<MemoryIntentStoreOptions, "agentInbox">,
+  written: Written,
 ): IntentCommit {
-  return structuredClone({ intent, event, ...(ledgerEntry === undefined ? {} : { ledgerEntry }) });
+  const { intent, event, ledgerEntry } = written;
+  const settled = options.agentInbox?.settleNow(intent, tables.events(intent.id)[0]);
+  return structuredClone({
+    intent,
+    event,
+    ...(ledgerEntry === undefined ? {} : { ledgerEntry }),
+    ...(settled === undefined ? {} : { settled }),
+  });
 }
 
 function create(
   tables: MemoryIntentTables,
-  ledger: MemoryLedgerStore,
+  options: MemoryIntentStoreOptions,
   draft: IntentDraft,
 ): Result<IntentCommit, "exists"> {
+  const { ledger } = options;
   if (tables.intent(draft.id) !== undefined) {
     return err("exists");
   }
@@ -55,7 +73,7 @@ function create(
   const intent: IntentRecord = { ...fields, createdAtMs: atMs, changedAtMs: atMs, version: 0 };
   tables.saveIntent(intent);
   const event = tables.addEvent({ intentId: intent.id, toState: intent.state, cause, atMs });
-  return ok(commitOf(intent, event, ledgerEntry));
+  return ok(commitOf(tables, options, { intent, event, ledgerEntry }));
 }
 
 // A move whose intent is unknown or at another version; its card writes throw when they would fail.
@@ -82,10 +100,10 @@ interface CheckedMove {
 
 function writeMove(
   tables: MemoryIntentTables,
-  ledger: MemoryLedgerStore,
+  options: MemoryIntentStoreOptions,
   { change, current }: CheckedMove,
 ): IntentCommit {
-  const ledgerEntry = appendTo(ledger, change.ledger);
+  const ledgerEntry = appendTo(options.ledger, change.ledger);
   const intent: IntentRecord = {
     ...current,
     ...change.fields,
@@ -102,16 +120,16 @@ function writeMove(
     cause: change.cause,
     atMs: change.atMs,
   });
-  return commitOf(intent, event, ledgerEntry);
+  return commitOf(tables, options, { intent, event, ledgerEntry });
 }
 
 function transition(
   tables: MemoryIntentTables,
-  ledger: MemoryLedgerStore,
+  options: MemoryIntentStoreOptions,
   change: IntentChange,
 ): Result<IntentCommit, "not_found" | "stale"> {
   const checked = checkMove(tables, change);
-  return checked.ok ? ok(writeMove(tables, ledger, { change, current: checked.value })) : checked;
+  return checked.ok ? ok(writeMove(tables, options, { change, current: checked.value })) : checked;
 }
 
 // Every move is checked before the agents are marked, and nothing is written before both pass.
@@ -136,7 +154,7 @@ function freeze(
   if (write.isWholeInstall) {
     options.install.freezeNow(change);
   }
-  const moves = checked.map((move) => writeMove(tables, options.ledger, move));
+  const moves = checked.map((move) => writeMove(tables, options, move));
   const ledgerEntries = write.ledger.map((draft) => options.ledger.appendNow(draft));
   return ok(structuredClone({ agents: agents.value, moves, ledgerEntries }));
 }
@@ -221,10 +239,9 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Inte
   const tables = createMemoryIntentTables();
   const landings = new Map<Id<"int">, LateLanding>();
   return {
-    create: async (draft, call) => memoryCall(call, () => create(tables, options.ledger, draft)),
+    create: async (draft, call) => memoryCall(call, () => create(tables, options, draft)),
     get: async (id, call) => memoryCall(call, () => tables.intent(id)),
-    transition: async (change, call) =>
-      memoryCall(call, () => transition(tables, options.ledger, change)),
+    transition: async (change, call) => memoryCall(call, () => transition(tables, options, change)),
     freeze: async (write, call) => memoryCall(call, () => freeze(tables, options, write)),
     list: async (query, call) =>
       memoryCall(call, () =>

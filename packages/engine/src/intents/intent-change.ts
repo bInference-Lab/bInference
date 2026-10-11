@@ -1,6 +1,7 @@
 import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { intentStateSchema } from "@binference/protocol";
 import { z } from "zod";
+import { type AgentInboxMessage, agentInboxMessageSchema } from "../chat/agent-inbox-record.js";
 import {
   type LedgerDraft,
   ledgerDraftSchema,
@@ -85,11 +86,16 @@ export const intentChangeSchema: z.ZodType<IntentChange> = z.strictObject({
   confirmation: confirmationDraftSchema.exactOptional(),
 });
 
-/** What a create or a move wrote: the intent as it is now, its event and its ledger entry. */
+/**
+ * What a create or a move wrote: the intent as it is now, its event and its ledger entry, and the
+ * settle message for the agent runtime when the write ended an intent the runtime proposed
+ * (runtime spec, section 3.3). An agent that already holds 200 untaken messages gets none.
+ */
 export interface IntentCommit {
   readonly intent: IntentRecord;
   readonly event: IntentEventRecord;
   readonly ledgerEntry?: LedgerEntry;
+  readonly settled?: AgentInboxMessage;
 }
 
 /** Parses what a create or a move wrote. */
@@ -97,6 +103,7 @@ export const intentCommitSchema: z.ZodType<IntentCommit> = z.strictObject({
   intent: intentRecordSchema,
   event: intentEventRecordSchema,
   ledgerEntry: ledgerEntrySchema.exactOptional(),
+  settled: agentInboxMessageSchema.exactOptional(),
 });
 
 /**

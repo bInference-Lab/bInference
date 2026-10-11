@@ -1,5 +1,6 @@
 import type { EngineStores } from "../records/engine-stores.js";
 import { createMemoryAccessStore } from "./memory-access-store.js";
+import { createMemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import { createMemoryAgentStore, type MemoryAgentStore } from "./memory-agent-store.js";
 import { createMemoryCardCopyStore } from "./memory-card-copy-store.js";
 import { createMemoryConfigJournal } from "./memory-config-journal.js";
@@ -31,8 +32,10 @@ export function createMemoryEngineStores(): MemoryEngineStores {
   const ledger = createMemoryLedgerStore();
   const install = createMemoryInstallStore();
   const agents = createMemoryAgentStore({ install });
+  const agentInbox = createMemoryAgentInboxStore({ agents });
   return {
-    intents: createMemoryIntentStore({ ledger, agents, install }),
+    intents: createMemoryIntentStore({ ledger, agents, install, agentInbox }),
+    agentInbox,
     ledger,
     idempotency: createMemoryIdempotencyStore(),
     inbox: createMemoryInboxStore(),

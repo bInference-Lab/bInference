@@ -1,3 +1,4 @@
+import type { AgentInboxStore } from "../chat/ports.js";
 import type {
   AccessStore,
   AgentStore,
@@ -33,4 +34,6 @@ export interface EngineStores {
   readonly owners: OwnerStore;
   /** Where each card version was posted in Telegram. */
   readonly cardCopies: CardCopyStore;
+  /** The agent inbox and each agent's open chat session. */
+  readonly agentInbox: AgentInboxStore;
 }

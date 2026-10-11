@@ -1,5 +1,6 @@
 import type { Generated } from "kysely";
 import type { AccessTables } from "./access-tables.js";
+import type { AgentInboxTables } from "./agent-inbox-tables.js";
 import type { BackupTables } from "./backup-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
 import type { PositionTables } from "./position-tables.js";
@@ -21,6 +22,8 @@ export interface AgentsTable {
   created_at: number;
   changed_at: number;
   version: number;
+  /** The open chat session; NULL until the agent's first message (migration 0028). */
+  chat_session_id: string | null;
 }
 
 /** `limits`: amounts as decimal text, lists and the gas reserve as JSON text. */
@@ -313,7 +316,13 @@ interface RiskCacheTable {
 
 /** The engine tables the store adapters query, by name. */
 export interface EngineTables
-  extends PositionTables, NoticeTables, TelegramTables, BackupTables, AccessTables {
+  extends
+    PositionTables,
+    NoticeTables,
+    TelegramTables,
+    BackupTables,
+    AccessTables,
+    AgentInboxTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;

@@ -65,6 +65,11 @@ export type { FakeQuoteSource } from "./fakes/fake-quote-source.js";
 export { createFakeSimulator } from "./fakes/fake-simulator.js";
 export { accessStoreContract } from "./contracts/access-store-contract.js";
 export type { AccessStoreHarness } from "./contracts/access-store-contract.js";
+export { agentInboxStoreContract } from "./contracts/agent-inbox-store-contract.js";
+export type {
+  AgentInboxStoreHarness,
+  AgentInboxSubject,
+} from "./contracts/agent-inbox-store-contract.js";
 export { agentStoreContract } from "./contracts/agent-store-contract.js";
 export { installStoreContract } from "./contracts/install-store-contract.js";
 export type { InstallStoreHarness, InstallStoreSubject } from "./contracts/install-store-setups.js";
@@ -92,6 +97,7 @@ export type {
   PositionStoreSubject,
 } from "./contracts/position-store-contract.js";
 export { createMemoryAccessStore } from "./fakes/memory-access-store.js";
+export { createMemoryAgentInboxStore } from "./fakes/memory-agent-inbox-store.js";
 export { createMemoryAgentStore } from "./fakes/memory-agent-store.js";
 export { createMemoryCardCopyStore } from "./fakes/memory-card-copy-store.js";
 export { createMemoryConfigJournal } from "./fakes/memory-config-journal.js";
