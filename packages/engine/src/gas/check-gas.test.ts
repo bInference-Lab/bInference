@@ -59,6 +59,35 @@ function failingFor(failed: AccountRef): WalletFactsSource {
   };
 }
 
+// Balances that answer no amount at all for any account.
+function answeringNothing(): WalletFactsSource {
+  return {
+    ...createFakeWalletFacts(new Map(), testFacts),
+    balances: async () => Promise.resolve([]),
+  };
+}
+
+// Balances whose read fails with a fault that is no engine error, as a library's would.
+function crashing(): WalletFactsSource {
+  return {
+    ...createFakeWalletFacts(new Map(), testFacts),
+    balances: async () => Promise.reject(new TypeError("fetch failed")),
+  };
+}
+
+// A gas check over the wallets source, and the readings it handed the low-gas alert.
+function checkWith(test: TestEngine, wallets: WalletFactsSource) {
+  const checked: GasReading[] = [];
+  const check = createGasCheck({
+    agents: test.stores.agents,
+    install: test.stores.install,
+    wallets,
+    chains: testChains(),
+    lowGas: { check: (reading) => checked.push(reading) },
+  });
+  return { check, checked: (): readonly GasReading[] => checked };
+}
+
 describe("the gas check", () => {
   it("tells the owner once a live wallet holds less than twice its reserve", async () => {
     const table = heldTable();
@@ -114,16 +143,30 @@ describe("the gas check", () => {
   it("checks every wallet when one read fails, then throws that failure", async () => {
     const test = await startTestEngine({ agent: { mode: "live" } });
     storeWallets(test);
-    const wallets = failingFor(testAccount);
-    const checked: GasReading[] = [];
-    const check = createGasCheck({
-      agents: test.stores.agents,
-      install: test.stores.install,
-      wallets,
-      chains: testChains(),
-      lowGas: { check: (reading) => checked.push(reading) },
-    });
+    const { check, checked } = checkWith(test, failingFor(testAccount));
     await expect(check(live)).rejects.toMatchObject({ code: "rpc.timeout" });
-    expect(checked.map((reading) => reading.account)).toStrictEqual([otherAccount]);
+    expect(checked().map((reading) => reading.account)).toStrictEqual([otherAccount]);
+  });
+
+  it("counts a balance the read answers no amount for as empty", async () => {
+    const test = await startTestEngine({ agent: { mode: "live" } });
+    storeWallets(test);
+    const { check, checked } = checkWith(test, answeringNothing());
+    await check(live);
+    expect(checked().map(({ account, balanceBase }) => [account, balanceBase])).toStrictEqual([
+      [testAccount, 0n],
+      [otherAccount, 0n],
+    ]);
+  });
+
+  it("throws a fault that is no engine error as a failed gas read, with its cause", async () => {
+    const test = await startTestEngine({ agent: { mode: "live" } });
+    storeWallets(test);
+    const { check, checked } = checkWith(test, crashing());
+    await expect(check(live)).rejects.toMatchObject({
+      code: "gas.read_failed",
+      cause: new TypeError("fetch failed"),
+    });
+    expect(checked()).toStrictEqual([]);
   });
 });
