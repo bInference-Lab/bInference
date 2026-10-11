@@ -194,6 +194,9 @@ describe("the send level operations", () => {
     expect(await test.engine.handlers["sendLevel/get"](call)).toStrictEqual(err("agent.not_found"));
     const set = testCall({ agent: unknownAgent, level: 3 as const });
     expect(await test.engine.handlers["sendLevel/set"](set)).toStrictEqual(err("agent.not_found"));
+    expect(await test.engine.handlers["sendLevel/cancelPending"](call)).toStrictEqual(
+      err("agent.not_found"),
+    );
   });
 
   it("read the level again after a write lost its race, and give up after three", async () => {
