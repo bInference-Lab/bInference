@@ -5,7 +5,7 @@ import {
   type TxSimulator,
 } from "@binference/chain";
 import { createFakeFamily, createFakeTxSimulator } from "@binference/chain/testing";
-import { BinferenceError, type JsonValue, ok } from "@binference/core";
+import { BinferenceError, createSecret, type JsonValue, ok } from "@binference/core";
 import {
   createMemoryCardCopyStore,
   createMemoryOwnerStore,
@@ -128,7 +128,12 @@ async function bot(ownerChat: SkeletonOptions["ownerChat"] = {}): Promise<Bot> {
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
-  const telegram = { api, owners, copies: createMemoryCardCopyStore() };
+  const telegram = {
+    api,
+    owners,
+    copies: createMemoryCardCopyStore(),
+    botToken: createSecret(fakeBotToken),
+  };
   const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), {
     telegram,
     held: new Map([[walletAccount, [{ asset: testCoin, base: 10n ** 18n }]]]),

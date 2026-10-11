@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
-import type { webcrypto } from "node:crypto";
+import { createHmac, type webcrypto } from "node:crypto";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
+import { createSecret } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import {
   createMemoryCardCopyStore,
@@ -52,6 +53,8 @@ function selfHosted(): SkeletonComposition {
 interface Served {
   readonly machine: TestMachine;
   readonly skeleton: ServedSkeleton;
+  /** The HTTP listener's own origin. */
+  readonly origin: string;
 }
 
 // The engine of a machine, with its HTTP listener on a free port and a one-page console.
@@ -62,8 +65,8 @@ async function serveConsole(telegram?: TelegramParts): Promise<Served> {
   const bot = telegram === undefined ? {} : { telegram };
   const skeleton = await serveSkeleton(machine, selfHosted(), { browser, ...bot });
   served.push(skeleton);
-  await skeleton.composed.server.start(AbortSignal.timeout(5_000));
-  return { machine, skeleton };
+  const address = await skeleton.composed.server.start(AbortSignal.timeout(5_000));
+  return { machine, skeleton, origin: `http://127.0.0.1:${String(address?.port)}` };
 }
 
 async function consoleLink(machine: TestMachine): Promise<URL> {
@@ -194,7 +197,12 @@ describe("binference console", () => {
       const owners = createMemoryOwnerStore();
       await owners.bind({ userId: ownerId, pairedAtMs: 1 }, { signal: AbortSignal.timeout(5_000) });
       const api = new Api(fakeBotToken, { fetch: botApi.fetch });
-      const at = await serveConsole({ api, owners, copies: createMemoryCardCopyStore() });
+      const at = await serveConsole({
+        api,
+        owners,
+        copies: createMemoryCardCopyStore(),
+        botToken: createSecret(fakeBotToken),
+      });
       const signal = AbortSignal.timeout(10_000);
       const cli = at.skeleton.client;
       await cli.call("portfolio/resetPaper", { agent: testAgent }, { signal });
@@ -228,4 +236,54 @@ describe("binference console", () => {
       ]);
     },
   );
+
+  it(
+    "signs the owner's Mini App in with the bot's token and takes its unfreeze",
+    slow,
+    async () => {
+      const botApi = createFakeBotApi();
+      const owners = createMemoryOwnerStore();
+      await owners.bind({ userId: ownerId, pairedAtMs: 1 }, { signal: AbortSignal.timeout(5_000) });
+      const api = new Api(fakeBotToken, { fetch: botApi.fetch });
+      const copies = createMemoryCardCopyStore();
+      const at = await serveConsole({ api, owners, copies, botToken: createSecret(fakeBotToken) });
+      const signal = AbortSignal.timeout(10_000);
+      await at.skeleton.client.call("safety/freeze", {}, { signal });
+      const mini = miniAppClient(at, signedLaunch(ownerId, at.skeleton.clock.now()));
+      const ready = await mini.connect(signal);
+      expect(ready.scopes).toStrictEqual(["read", "chat", "confirm", "loosen"]);
+      await expect(mini.call("safety/unfreeze", {}, { signal })).resolves.toMatchObject({
+        intent: /^int_/,
+      });
+    },
+  );
 });
+
+// A launch's `initData` as Telegram signs it with the owner's bot token, by Telegram's rule; the
+// fields are listed in key order, as the data-check string takes them.
+function signedLaunch(userId: number, atMs: number): string {
+  const fields = new URLSearchParams([
+    ["auth_date", String(Math.floor(atMs / 1_000))],
+    ["query_id", "AAHdF6IQAAAAAN0XohDhrOrc"],
+    ["user", JSON.stringify({ id: userId, first_name: "Owner" })],
+  ]);
+  const checked = [...fields].map(([key, value]) => `${key}=${value}`).join("\n");
+  const key = createHmac("sha256", "WebAppData").update(fakeBotToken).digest();
+  fields.set("hash", createHmac("sha256", key).update(checked).digest("hex"));
+  return fields.toString();
+}
+
+function miniAppClient(at: Served, initData: string): ProtocolClient {
+  const { origin } = at;
+  const client = createProtocolClient({
+    operations,
+    openSocket: () => new WebSocket(`${origin.replace("http", "ws")}/ws`, { origin }),
+    client: { kind: "mini", version: "test" },
+    credential: { telegram: { initData } },
+    clock: at.skeleton.clock,
+    random: createSeededRandom(29),
+    logger: createMemoryLogger({ subsystem: "mini" }),
+  });
+  browsers.push(client);
+  return client;
+}

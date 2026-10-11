@@ -8,7 +8,7 @@ import type { TelegramParts } from "./compose-telegram.js";
 
 /** The owner's bot as `binference start` opens it. */
 export interface OpenedBot {
-  /** The bot token, which reaches only grammY and the poll worker. */
+  /** The bot token, which reaches only grammY, the poll worker and the Mini App's sign-in. */
   readonly token: Secret;
   /**
    * Its grammY `Api` with the token's throttler installed. Its owner and card copies live in
@@ -51,12 +51,12 @@ export async function openBot(options: OpenBotOptions): Promise<OpenedBot | unde
 }
 
 /**
- * The bot as the engine serves it: its `Api`, and the owner and card copies `engine.sqlite` keeps,
- * so a pairing and the cards' copies outlast a restart (decision 0139).
+ * The bot as the engine serves it: its `Api` and token, and the owner and card copies
+ * `engine.sqlite` keeps, so a pairing and the cards' copies outlast a restart (decision 0139).
  */
 export function botParts(
   bot: OpenedBot,
   stores: Pick<EngineStores, "owners" | "cardCopies">,
 ): TelegramParts {
-  return { api: bot.api, owners: stores.owners, copies: stores.cardCopies };
+  return { api: bot.api, owners: stores.owners, copies: stores.cardCopies, botToken: bot.token };
 }

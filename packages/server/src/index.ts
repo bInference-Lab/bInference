@@ -18,4 +18,4 @@ export type {
 export type { PushEvent } from "./push-hub.js";
 export { defaultServerLimits } from "./server-limits.js";
 export type { ServerLimits } from "./server-limits.js";
-export type { ServerAuth } from "./sign-in.js";
+export type { MiniAppAuth, ServerAuth } from "./sign-in.js";

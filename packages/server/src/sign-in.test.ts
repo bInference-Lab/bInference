@@ -1,9 +1,11 @@
-import { idSchema } from "@binference/core";
+import { createSecret, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { type AccessStore, sha256Hex } from "@binference/engine";
 import { createMemoryAccessStore } from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
-import { createSignIn } from "./sign-in.js";
+import { createSeenLaunches } from "./seen-launches.js";
+import { createSignIn, launchRetentionMs, type MiniAppAuth } from "./sign-in.js";
+import { telegramLaunchHash } from "./telegram-launch.js";
 
 const token = `bnt_${"t".repeat(43)}`;
 const tokenId = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000001");
@@ -29,13 +31,18 @@ async function accessWithToken(
   return access;
 }
 
+function launchesOf() {
+  return createSeenLaunches({ retentionMs: launchRetentionMs, maxEntries: 16 });
+}
+
 describe("createSignIn", () => {
   const clock = createManualClock(500);
   const random = createSeededRandom(3);
+  const launches = launchesOf();
 
   it("signs a token in over IPC with its scopes and marks its use", async () => {
     const access = await accessWithToken();
-    const signIn = createSignIn({ auth: { access }, clock, random });
+    const signIn = createSignIn({ auth: { access }, launches, clock, random });
     const step = await signIn.start({ credential: { token }, transport: "ipc" }, live.signal);
     expect(step).toStrictEqual({
       ok: true,
@@ -63,7 +70,12 @@ describe("createSignIn", () => {
       "auth.invalid",
     ],
   ] as const)("refuses %s", async (_name, request, code) => {
-    const signIn = createSignIn({ auth: { access: await accessWithToken() }, clock, random });
+    const signIn = createSignIn({
+      auth: { access: await accessWithToken() },
+      launches,
+      clock,
+      random,
+    });
     await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
       ok: false,
       error: code,
@@ -73,6 +85,7 @@ describe("createSignIn", () => {
   it("signs a token in before its expiry, carrying it, and refuses it from then on", async () => {
     const before = createSignIn({
       auth: { access: await accessWithToken({ expiresAtMs: 501 }) },
+      launches,
       clock,
       random,
     });
@@ -82,7 +95,7 @@ describe("createSignIn", () => {
       value: { identity: { credential: tokenId, expiresAtMs: 501 } },
     });
     const access = await accessWithToken({ expiresAtMs: 500 });
-    const at = createSignIn({ auth: { access }, clock, random });
+    const at = createSignIn({ auth: { access }, launches, clock, random });
     await expect(at.start(request, live.signal)).resolves.toStrictEqual({
       ok: false,
       error: "auth.expired",
@@ -92,7 +105,7 @@ describe("createSignIn", () => {
   });
 
   it("refuses every sign-in when the server holds no credentials", async () => {
-    const signIn = createSignIn({ clock, random });
+    const signIn = createSignIn({ launches, clock, random });
     const step = await signIn.start({ credential: { token }, transport: "ipc" }, live.signal);
     expect(step).toStrictEqual({ ok: false, error: "auth.required" });
   });
@@ -104,7 +117,7 @@ describe("createSignIn", () => {
       live,
     );
     await access.revokeDevice({ id: deviceId, atMs: 1 }, live);
-    const signIn = createSignIn({ auth: { access }, clock, random });
+    const signIn = createSignIn({ auth: { access }, launches, clock, random });
     const request = {
       credential: { device: deviceId },
       transport: "ws",
@@ -114,5 +127,127 @@ describe("createSignIn", () => {
       ok: false,
       error: "auth.revoked",
     });
+  });
+});
+
+const botToken = createSecret("7012345678:AAE_fakeTokenForTestsOnly_0123456789ab");
+const ownerId = 279_058_397;
+const launchAtMs = 1_760_000_000_000;
+
+// A launch's `initData` as Telegram signs it with the test bot token.
+function launchOf(launch: {
+  readonly userId: number;
+  readonly atMs: number;
+  readonly query?: string;
+}) {
+  const fields = new Map([
+    ["query_id", launch.query ?? "AAHdF6IQAAAAAN0XohDhrOrc"],
+    ["user", JSON.stringify({ id: launch.userId, first_name: "Ada" })],
+    ["auth_date", String(launch.atMs / 1_000)],
+  ]);
+  const hash = telegramLaunchHash(fields, botToken);
+  return new URLSearchParams([...fields, ["hash", hash]]).toString();
+}
+
+function miniRequest(initData: string, transport: "ws" | "ipc" = "ws") {
+  return { credential: { telegram: { initData } }, transport, origin: "https://x.ts.net" } as const;
+}
+
+describe("createSignIn for the Telegram Mini App", () => {
+  const random = createSeededRandom(3);
+
+  function setUp(owner: number | undefined) {
+    const clock = createManualClock(launchAtMs + 30_000);
+    const miniApp: MiniAppAuth = { botToken, ownerId: async () => owner };
+    const auth = { access: createMemoryAccessStore(), miniApp };
+    return { clock, signIn: createSignIn({ auth, launches: launchesOf(), clock, random }) };
+  }
+
+  it("signs the owner's launch in with the Mini App's scopes", async () => {
+    const { signIn } = setUp(ownerId);
+    const step = await signIn.start(
+      miniRequest(launchOf({ userId: ownerId, atMs: launchAtMs })),
+      live.signal,
+    );
+    expect(step).toStrictEqual({
+      ok: true,
+      value: {
+        kind: "signed_in",
+        identity: { credential: "tg:279058397", scopes: ["read", "chat", "confirm", "loosen"] },
+      },
+    });
+  });
+
+  it("refuses a launch of another Telegram user", async () => {
+    const { signIn } = setUp(ownerId);
+    const request = miniRequest(launchOf({ userId: ownerId + 1, atMs: launchAtMs }));
+    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+      ok: false,
+      error: "auth.invalid",
+    });
+  });
+
+  it("refuses every launch before the owner paired the bot", async () => {
+    const { signIn } = setUp(undefined);
+    const request = miniRequest(launchOf({ userId: ownerId, atMs: launchAtMs }));
+    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+      ok: false,
+      error: "auth.invalid",
+    });
+  });
+
+  it("refuses a launch older than 5 minutes as expired", async () => {
+    const { signIn } = setUp(ownerId);
+    const request = miniRequest(launchOf({ userId: ownerId, atMs: launchAtMs - 5 * 60_000 }));
+    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+      ok: false,
+      error: "auth.expired",
+    });
+  });
+
+  it("refuses a launch that signed in before, and still takes a new one", async () => {
+    const { signIn, clock } = setUp(ownerId);
+    const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
+    const first = await signIn.start(miniRequest(initData), live.signal);
+    await clock.advance(1_000);
+    const again = await signIn.start(miniRequest(initData), live.signal);
+    const next = launchOf({
+      userId: ownerId,
+      atMs: launchAtMs + 1_000,
+      query: "AAHdF6IQAAAAAN0XohDhrOrd",
+    });
+    const fresh = await signIn.start(miniRequest(next), live.signal);
+    expect([first.ok, again, fresh.ok]).toStrictEqual([
+      true,
+      { ok: false, error: "auth.invalid" },
+      true,
+    ]);
+  });
+
+  it("refuses a launch someone changed after Telegram signed it", async () => {
+    const { signIn } = setUp(ownerId);
+    const initData = launchOf({ userId: ownerId + 1, atMs: launchAtMs }).replace(
+      String(ownerId + 1),
+      String(ownerId),
+    );
+    await expect(signIn.start(miniRequest(initData), live.signal)).resolves.toStrictEqual({
+      ok: false,
+      error: "auth.invalid",
+    });
+  });
+
+  it("refuses a launch over IPC, and every launch without the owner's bot", async () => {
+    const { signIn } = setUp(ownerId);
+    const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
+    const clock = createManualClock(launchAtMs);
+    const auth = { access: createMemoryAccessStore() };
+    const botless = createSignIn({ auth, launches: launchesOf(), clock, random });
+    expect([
+      await signIn.start(miniRequest(initData, "ipc"), live.signal),
+      await botless.start(miniRequest(initData), live.signal),
+    ]).toStrictEqual([
+      { ok: false, error: "auth.invalid" },
+      { ok: false, error: "auth.invalid" },
+    ]);
   });
 });

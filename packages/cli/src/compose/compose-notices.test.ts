@@ -1,4 +1,4 @@
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, createSecret } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import type { EngineCaller } from "@binference/engine";
 import {
@@ -54,7 +54,12 @@ async function bot(options: BotOptions = {}): Promise<Bot> {
     await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
   }
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
-  const telegram = { api, owners, copies: createMemoryCardCopyStore() };
+  const telegram = {
+    api,
+    owners,
+    copies: createMemoryCardCopyStore(),
+    botToken: createSecret(fakeBotToken),
+  };
   const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), { telegram });
   return { ...skeleton, telegram: skeleton.composed.telegram ?? never(), botApi };
 }

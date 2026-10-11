@@ -33,6 +33,7 @@ import type { ConsoleFiles } from "../console-route.js";
 import { createProtocolServer, type ProtocolServer } from "../create-protocol-server.js";
 import type { OperationHandlers } from "../operation-handlers.js";
 import type { ServerLimits } from "../server-limits.js";
+import type { MiniAppAuth } from "../sign-in.js";
 
 /** A client token the test server knows, with its secret. */
 interface TestToken {
@@ -77,6 +78,10 @@ export interface TestServerOptions {
   readonly state?: () => EngineState;
   readonly limits?: Partial<ServerLimits>;
   readonly consoleFiles?: ConsoleFiles;
+  /** The owner's bot, for Mini App launches; without it every launch is refused. */
+  readonly miniApp?: MiniAppAuth;
+  /** Browser origins allowed besides the loopback ones, such as a Tailscale `serve` origin. */
+  readonly extraOrigins?: readonly string[];
 }
 
 const cliScopes: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
@@ -141,8 +146,8 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
   const random = createSeededRandom(7);
   const { pairing, pairingPushes } = pairingOn({ access, clock, random });
   const server = createProtocolServer({
-    http: { host: "127.0.0.1", port: 0 },
-    auth: { access },
+    http: { host: "127.0.0.1", port: 0, extraOrigins: options.extraOrigins ?? [] },
+    auth: { access, ...(options.miniApp === undefined ? {} : { miniApp: options.miniApp }) },
     pairing,
     ...(options.consoleFiles === undefined ? {} : { consoleFiles: options.consoleFiles }),
     idempotency,

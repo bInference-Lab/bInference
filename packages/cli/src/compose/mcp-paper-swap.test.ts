@@ -1,5 +1,5 @@
 import type { ProtocolClient } from "@binference/client";
-import { BinferenceError, type Id } from "@binference/core";
+import { BinferenceError, createSecret, type Id } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
 import { walkLedgerChain } from "@binference/engine";
 import {
@@ -110,7 +110,12 @@ async function startFull(composition: SkeletonComposition): Promise<FullSkeleton
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: nowMs - 60_000 }, live());
-  const parts = { api, owners, copies: createMemoryCardCopyStore() };
+  const parts = {
+    api,
+    owners,
+    copies: createMemoryCardCopyStore(),
+    botToken: createSecret(fakeBotToken),
+  };
   const skeleton = await startSkeleton(composition.parts(), { telegram: parts });
   const { telegram } = skeleton.composed;
   if (telegram === undefined) {

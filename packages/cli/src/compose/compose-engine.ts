@@ -33,6 +33,7 @@ import {
   type ConsoleFiles,
   createProtocolServer,
   type HttpListenOptions,
+  type MiniAppAuth,
   type ProtocolServer,
 } from "@binference/server";
 import type { WebPushKey } from "../web-push/web-push-key.js";
@@ -210,8 +211,19 @@ interface ServerParts {
   readonly ids: IdSource;
 }
 
-// The protocol server over the handlers: it signs callers in through the access store, keeps
-// each write's result under its idempotency key, pairs console devices and serves the console.
+// The owner's bot as the Mini App's sign-in reads it: its token checks each launch's signature,
+// and the paired owner's numeric Telegram id is the one id that signs in.
+function miniAppOf(telegram: TelegramParts | undefined): { readonly miniApp?: MiniAppAuth } {
+  if (telegram === undefined) {
+    return {};
+  }
+  const { botToken, owners } = telegram;
+  return { miniApp: { botToken, ownerId: async (call) => (await owners.get(call))?.userId } };
+}
+
+// The protocol server over the handlers: it signs callers in through the access store and the
+// owner's bot, keeps each write's result under its idempotency key, pairs console devices and
+// serves the console.
 function serverOf(
   parts: EngineParts,
   options: ComposeEngineOptions,
@@ -222,7 +234,7 @@ function serverOf(
   const pairing = createDevicePairing({ access, clock, ids: given.ids, publish: given.publish });
   return createProtocolServer({
     ...(options.http === undefined ? {} : { http: options.http }),
-    auth: { access },
+    auth: { access, ...miniAppOf(options.telegram) },
     pairing,
     ...(consoleFiles === undefined ? {} : { consoleFiles }),
     idempotency: parts.stores.idempotency,

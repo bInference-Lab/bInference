@@ -23,10 +23,11 @@ import { createIdempotentWrites } from "./idempotent-writes.js";
 import type { OperationHandlers, Transport } from "./operation-handlers.js";
 import { createOriginCheck } from "./origin-check.js";
 import { createPushHub, type PushEvent } from "./push-hub.js";
+import { createSeenLaunches } from "./seen-launches.js";
 import { type Connection, serveConnection } from "./serve-connection.js";
 import { defaultServerLimits, type ServerLimits } from "./server-limits.js";
 import { describeOnce } from "./server-operations.js";
-import { createSignIn, type ServerAuth } from "./sign-in.js";
+import { createSignIn, launchRetentionMs, type ServerAuth } from "./sign-in.js";
 
 /** Where the HTTP listener binds: the console, the Mini App and their WebSocket at `/ws`. */
 export interface HttpListenOptions {
@@ -196,7 +197,11 @@ function createState(options: ProtocolServerOptions): ServerState {
     signal: lifetime.signal,
   });
   const auth = options.auth === undefined ? {} : { auth: options.auth };
-  const signIn = createSignIn({ ...auth, clock, random });
+  const launches = createSeenLaunches({
+    retentionMs: launchRetentionMs,
+    maxEntries: limits.maxSeenLaunches,
+  });
+  const signIn = createSignIn({ ...auth, launches, clock, random });
   // The hard cap leaves room to answer a call up to twice the frame limit with a `fail`.
   const webSocketServer = new WebSocketServer({
     noServer: true,

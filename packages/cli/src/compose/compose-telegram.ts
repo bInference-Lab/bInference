@@ -1,5 +1,5 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { Clock, Logger } from "@binference/core";
+import type { Clock, Logger, Secret } from "@binference/core";
 import type { AnswerCard, EngineStores } from "@binference/engine";
 import {
   type CardCopyStore,
@@ -36,6 +36,8 @@ export interface TelegramParts {
   readonly owners: OwnerStore;
   /** Where each card version was posted, so every copy can become its receipt. */
   readonly copies: CardCopyStore;
+  /** The bot's token, which also checks the signature of each Mini App launch. */
+  readonly botToken: Secret;
 }
 
 /**

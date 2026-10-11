@@ -1,4 +1,4 @@
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, createSecret } from "@binference/core";
 import type { EngineCaller } from "@binference/engine";
 import { createMemoryCardCopyStore, createMemoryOwnerStore } from "@binference/engine/testing";
 import { createFakeBotApi, fakeBotToken } from "@binference/telegram/testing";
@@ -27,7 +27,12 @@ async function chineseBot() {
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
   const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), {
-    telegram: { api, owners, copies: createMemoryCardCopyStore() },
+    telegram: {
+      api,
+      owners,
+      copies: createMemoryCardCopyStore(),
+      botToken: createSecret(fakeBotToken),
+    },
     owner: () => ({ locale: "zh", timezone: "Asia/Shanghai" }),
   });
   const { engine, telegram } = skeleton.composed;
