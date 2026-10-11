@@ -1,6 +1,8 @@
 # 0161. A Mini App launch needs a one-time ticket from /console and lasts 12 hours
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 Amends [decision 0160](0160-a-mini-app-launch-signs-in-once-and-a-new-owner-ends-the-old-one-s-mini-app.md).
 
