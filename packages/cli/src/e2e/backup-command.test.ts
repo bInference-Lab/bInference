@@ -1,3 +1,4 @@
+import type { ManualClock } from "@binference/core/testing";
 import { createFormatter } from "@binference/i18n";
 import { backupViewSchema, operations } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
@@ -26,6 +27,9 @@ describe("binference backup create and list", () => {
     expect(backup).toMatchObject({ kind: "manual" });
     expect(backup.verifiedAt).toBeDefined();
 
+    // The machine's clock stands still, and backups made in the same millisecond are listed by id,
+    // which is random: the second backup is made a second later, as it would be by hand.
+    await (machine.clock as ManualClock).advance(1_000);
     const people = await runOn(machine, ["backup", "create"]);
     expect(people.code).toBe(0);
     expect(people.stdout).toMatch(/^Backup bkp_\S+ is made and checked \(\d+ KiB\)\./);
