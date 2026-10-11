@@ -99,6 +99,40 @@ function stoppedOnce(store: IntentStore): IntentStore {
   };
 }
 
+// An intent store whose unfreeze write another write beats `times` times, each after `between`.
+function beaten(
+  times: number,
+  between: () => Promise<void> = async () => Promise.resolve(),
+): (store: IntentStore) => IntentStore {
+  const left = { times };
+  return (store) => ({
+    ...store,
+    async freeze(write, call) {
+      if (write.isFrozen || left.times === 0) {
+        return store.freeze(write, call);
+      }
+      left.times -= 1;
+      await between();
+      return err("stale");
+    },
+  });
+}
+
+// The owner's whole-install freeze on the bound engine, as it lands between two writes.
+function freezeBetween() {
+  const bound: { test?: TestEngine } = {};
+  return {
+    bind: (test: TestEngine) => {
+      bound.test = test;
+    },
+    between: async () => {
+      if (bound.test !== undefined) {
+        await freeze(bound.test);
+      }
+    },
+  };
+}
+
 describe("safety/unfreeze", () => {
   it("opens a card for a frozen agent, and unfreezes it only on the owner's tap", async () => {
     const test = await startWithTwoAgents();
@@ -203,5 +237,38 @@ describe("safety/unfreeze", () => {
       err("auth.scope"),
     );
     await expect(unfreeze(test, third)).resolves.toStrictEqual(err("agent.not_found"));
+  });
+
+  it("writes an unfreeze again when another write beat it", async () => {
+    const test = await startWithTwoAgents({ intents: beaten(4) });
+    await freeze(test, testAgent);
+    const intent = await opened(test, testAgent);
+    expectOk(await tap(test, intent, "confirm"));
+    await expect(stateOf(test, intent)).resolves.toBe("reconciled");
+    await expect(frozenTimes(test)).resolves.toStrictEqual([undefined, undefined]);
+  });
+
+  it("gives up an unfreeze other writes beat five times in a row, and keeps it confirmed", async () => {
+    const test = await startWithTwoAgents({ intents: beaten(5) });
+    await freeze(test, testAgent);
+    const intent = await opened(test, testAgent);
+    await expect(tap(test, intent, "confirm")).rejects.toMatchObject({
+      code: "engine.unfreeze_contended",
+    });
+    await expect(stateOf(test, intent)).resolves.toBe("confirmed");
+    await expect(frozenTimes(test)).resolves.toStrictEqual([testNowMs, undefined]);
+    expect(unfrozenNotices(test)).toStrictEqual([]);
+  });
+
+  it("leaves the agents frozen when a freeze lands between the tap and the write", async () => {
+    const braking = freezeBetween();
+    const test = await startWithTwoAgents({ intents: beaten(1, braking.between) });
+    braking.bind(test);
+    await freeze(test, testAgent);
+    const intent = await opened(test, testAgent);
+    expectOk(await tap(test, intent, "confirm"));
+    await expect(stateOf(test, intent)).resolves.toBe("cancelled");
+    await expect(frozenTimes(test)).resolves.toStrictEqual([testNowMs, testNowMs]);
+    expect(unfrozenNotices(test)).toStrictEqual([]);
   });
 });

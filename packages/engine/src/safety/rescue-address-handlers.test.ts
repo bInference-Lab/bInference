@@ -245,4 +245,33 @@ describe("a change of the rescue address", () => {
     expect(await cancelChange(test)).toStrictEqual({ ok: true, value: {} });
     expect(test.pushes).toStrictEqual([]);
   });
+
+  it("tells the owner when a cancelled address stays in a ceiling that changed meanwhile", async () => {
+    const test = await withRescue();
+    expectOk(await setRescue(test, thief));
+    test.ceilings.put(wallet.policyId, [owner, thief, testSaved.account]);
+
+    expect(await cancelChange(test)).toStrictEqual({ ok: true, value: {} });
+
+    expect(test.ceilings.recipients(wallet.policyId)).toContain(thief);
+    expect(noticeData(test).at(-1)).toStrictEqual({
+      key: "notice.ceilingOutdated",
+      values: { address: "0x000000b2" },
+    });
+  });
+
+  it("signs no change ahead for a cancel when no address was in effect before", async () => {
+    const test = await startTestEngine();
+    test.stores.install.addWallet(wallet);
+    test.ceilings.put(wallet.policyId, [owner]);
+
+    expectOk(await setRescue(test, thief));
+
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([thief]);
+    const facts = await test.stores.install.read(live);
+    expect(facts.rescueCeiling?.onEffect).toBeDefined();
+    expect(facts.rescueCeiling?.onCancel).toBeUndefined();
+    expect(await cancelChange(test)).toStrictEqual({ ok: true, value: {} });
+    expect(await rescueNow(test)).toStrictEqual({});
+  });
 });
