@@ -30,13 +30,17 @@ import { restoreAndAttach } from "./restore-attach.js";
 import { setupDoneLines } from "./setup-done-lines.js";
 
 /** What the init command reports with: the command's output and the owner's formatter. */
-interface Report {
+export interface Report {
   readonly output: CliOutput;
   readonly formatter: Formatter;
   readonly isJson: boolean;
 }
 
-function refuse(context: InitContext, report: Report, refusal: InitRefusal): ExitCode {
+/**
+ * Prints why an init step refused: its `init` message and the config issues under it on standard
+ * error, or `{ error: { code, details? } }` with `--json`. Answers the exit code 1.
+ */
+export function refuse(context: InitContext, report: Report, refusal: InitRefusal): ExitCode {
   const { output } = report;
   if (report.isJson) {
     const issues = refusal.issues?.map((issue) => ({
@@ -192,7 +196,12 @@ async function initOnStores(
   }
 }
 
-function contextOf(
+/**
+ * What the steps of `binference init`, and the restore steps it shares, run with: a person at the
+ * terminal unless `--yes`, `--json` or no terminal, the `init` messages in the owner's language,
+ * and the secrets the config's sources name.
+ */
+export function initContextOf(
   host: CliHost,
   output: CliOutput,
   options: { readonly flags: InitFlags; readonly formatter: Formatter },
@@ -247,7 +256,7 @@ export async function runInitCommand(
   options: { readonly flags: InitFlags; readonly formatter: Formatter },
 ): Promise<ExitCode> {
   const { flags, formatter } = options;
-  const context = contextOf(host, output, options);
+  const context = initContextOf(host, output, options);
   const report: Report = { output, formatter, isJson: flags.json };
   const folder = context.platform.stateFolder;
   const conflict = flagConflictOf(flags);

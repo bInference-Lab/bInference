@@ -10,7 +10,7 @@ import { ownerKeyRecipient } from "../backups/owner-key-recipient.js";
 import { type StateSwap, swapInRestored } from "../backups/state-swap.js";
 import { unpackBackup } from "../backups/unpack-backup.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
-import { type InitContext, type InitStep, refused } from "../init/init-context.js";
+import { type InitContext, type InitStep, type Refused, refused } from "../init/init-context.js";
 
 /** A backup restored in place, before attach goes on. */
 export interface Restored {
@@ -62,24 +62,28 @@ function isNewer(manifest: BackupManifest): boolean {
   return engine > known.engine || (agent ?? 0) > known.agent || config > currentConfigVersion;
 }
 
+/** A backup opened with the owner key and checked into a folder of the state folder. */
+export type Unpacked = Omit<Restored, "swap">;
+
 /**
- * The restore step of `binference init --attach --restore <file>` (keys spec, section 7.4), run
- * under the engine lock: it asks a person for the owner key, hidden, up to 3 times, and opens the
- * backup's data key with it before any chunk is read; decrypts the backup into a fresh folder in
- * the state folder, checking every chunk and every file; refuses a backup of a newer schema than
- * this binference knows; then moves the state it replaces aside, kept 7 days, and puts the
- * restored files in place. Nothing in the state folder changes before every check passed.
+ * Opens and checks a backup to restore (keys spec, section 7.4, steps 1 to 3): it asks a person
+ * for the owner key, hidden, up to 3 times, and opens the backup's data key with it before any
+ * chunk is read; decrypts the backup into a fresh folder in the state folder, checking every
+ * chunk and every file; and refuses a backup of a newer schema than this binference knows. With
+ * nobody at the terminal to type the key, it refuses with `needsTerminal`. A refusal leaves no
+ * folder behind; the caller removes the folder once it is done with it.
  */
-export async function restoreBackup(
+export async function unpackRestore(
   context: InitContext,
   file: string,
-): Promise<InitStep<Restored>> {
-  const { platform, signal, host } = context;
+  needsTerminal: Refused,
+): Promise<InitStep<Unpacked>> {
+  const { platform, signal } = context;
   if (!(await fileSize(file, signal)).ok) {
     return refused("init.restore_not_found", "refused.restoreNotFound", { file });
   }
   if (!context.isInteractive) {
-    return refused("init.owner_key_needs_terminal", "refused.attachOwnerKeyTerminal");
+    return needsTerminal;
   }
   const asked = await askOwnerKey(context, file, 1);
   if (!asked.ok) {
@@ -94,9 +98,29 @@ export async function restoreBackup(
       ? refused("init.restore_newer_schema", "refused.restoreNewerSchema")
       : refused("init.restore_damaged", "refused.restoreDamaged", { file });
   }
-  const swap = await swapInRestored(platform.stateFolder, unpacked, {
-    ...writing,
+  return ok({ ownerKey: asked.value.code, manifest: manifest.value, unpacked });
+}
+
+/**
+ * The restore step of `binference init --attach --restore <file>` (keys spec, section 7.4), run
+ * under the engine lock: it opens and checks the backup as {@link unpackRestore} does, then moves
+ * the state it replaces aside, kept 7 days, and puts the restored files in place. Nothing in the
+ * state folder changes before every check passed.
+ */
+export async function restoreBackup(
+  context: InitContext,
+  file: string,
+): Promise<InitStep<Restored>> {
+  const { platform, signal, host } = context;
+  const needsTerminal = refused("init.owner_key_needs_terminal", "refused.attachOwnerKeyTerminal");
+  const unpacked = await unpackRestore(context, file, needsTerminal);
+  if (!unpacked.ok) {
+    return unpacked;
+  }
+  const swap = await swapInRestored(platform.stateFolder, unpacked.value.unpacked, {
+    permissions: platform.permissions,
+    signal,
     atMs: host.clock.now(),
   });
-  return ok({ ownerKey: asked.value.code, manifest: manifest.value, swap, unpacked });
+  return ok({ ...unpacked.value, swap });
 }

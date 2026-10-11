@@ -144,5 +144,11 @@ Rules for this package:
   moves the replaced state to `replaced/<time>/` (kept 7 days) and puts the restored files in
   place. Attach then signs with that owner key and checks the backup's wallets against Privy
   before it makes a key; a refusal before a wallet moves undoes the restore.
+- `binference backup restore <file>` (`src/commands/backup-restore-command.ts`, decision 0152)
+  restores on this machine's install in the CLI: the same owner key prompt, unpack and checks
+  (`unpackRestore`), then, while the engine still runs, the Privy app, the wallets and the signer
+  they list now (`src/attach/prepare-restore.ts`), so a refusal changes nothing. It stops the
+  engine as `binference stop` does, swaps the files under the engine lock, and starts the engine
+  as it ran: the service again, or in the foreground in its own terminal.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

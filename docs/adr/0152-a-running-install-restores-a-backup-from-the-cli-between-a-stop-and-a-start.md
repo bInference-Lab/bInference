@@ -1,6 +1,8 @@
 # 0152. A running install restores a backup from the CLI, between a stop and a start
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 ## Context
 
@@ -29,12 +31,16 @@ The first is built: it runs with no engine, under the engine lock. The second me
   before any chunk is read; the backup is unpacked and checked into a folder of the state folder;
   a newer schema is refused; the manifest's wallets are checked against Privy with the app secret
   `config.json5` names, before anything changes. A refusal changes nothing, and the engine runs on.
-- The backup must hold this machine's agent key as its signer. A backup whose custody names
-  another agent key is refused with a pointer to `binference init --attach --restore`.
-- Then the CLI stops the engine over IPC with `engine/stop`, the shutdown `binference stop` runs,
-  waits for the engine lock, moves the state aside to `replaced/<time>/` (kept 7 days), puts the
-  restored files in place, and starts the engine as it ran: the service through
-  `ServiceManager`, or, after a foreground start, it tells the person to start it.
+- The backup must hold this machine's agent key as its signer: Privy must list the key quorum
+  its custody names as each wallet's signer now, so the restore moves no signer. A backup whose
+  custody names another agent key is refused with a pointer to `binference init --attach
+--restore`.
+- Then the CLI stops the engine as `binference stop` does: `engine/stop` over IPC, then the
+  service manager for an install that runs as the background service. It waits for the engine
+  lock, moves the state aside to `replaced/<time>/` (kept 7 days), puts the restored files in
+  place under the lock, and starts the engine as it ran: the service through `ServiceManager`,
+  or, for an engine that ran in a terminal, in the foreground in the terminal of the restore, with
+  the `--set` flags the restore was given. An engine that was not running stays stopped.
 - `backup/restore` stays unserved in v1, as `wallet/exportKey` does. A later protocol version may
   add an owner-key route for a listed backup.
 

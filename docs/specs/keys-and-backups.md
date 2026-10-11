@@ -359,7 +359,10 @@ The agent key and the app secret are never in a backup.
 
 ### 7.4 Restore
 
-`binference backup restore <file>` (IPC only) or `binference init --attach --restore <file>`:
+A backup is restored by `binference backup restore <file>` on this machine's install, or by
+`binference init --attach --restore <file>` on a new machine. Both run in the CLI, never in the
+engine ([decision 0152](../DECISIONS.md#d0152)): the owner key comes only from the terminal's hidden
+prompt and never travels to the engine, and protocol v1 serves no `backup/restore`.
 
 1. Ask for the owner key; open `wrappedKey`.
 2. Decrypt to a temporary folder and verify every tag and hash.
@@ -369,3 +372,14 @@ The agent key and the app secret are never in a backup.
    ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)).
 5. Check that the wallets in the manifest are the ones Privy reports for this owner; a mismatch
    stops the restore.
+
+`binference backup restore <file>` checks before step 4, while the engine still runs, so a refusal
+changes nothing: the Privy app must be the one `config.json5` names, the wallets must match (step
+5), and Privy must list the backup's agent key quorum as each wallet's signer now, so no signer
+moves. A backup that names another signer is refused with a pointer to
+`binference init --attach --restore`. It then stops the engine as `binference stop` does
+(`engine/stop`, then the service manager for the background service), swaps the files under the
+engine lock, and starts the engine as it ran: the background service again, or, for an engine that
+ran in a terminal, in the foreground in the restore's terminal. An engine that was not running
+stays stopped. `init --attach --restore` makes this machine's new agent key the wallets' signer
+after the swap; when it stops before a wallet moves, the restore is undone.

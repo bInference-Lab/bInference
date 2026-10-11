@@ -5,6 +5,7 @@ import { CommanderError } from "commander";
 import { runAddressAdd, runAddressList, runAddressRemove } from "../commands/address-command.js";
 import { runApproval } from "../commands/approval-command.js";
 import { runBackupCreate, runBackupList } from "../commands/backup-command.js";
+import { runBackupRestore } from "../commands/backup-restore-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runCeiling, runCeilingSet } from "../commands/ceiling-command.js";
 import { runCheck } from "../commands/check-command.js";
@@ -120,6 +121,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   telegramPair: async (context) => runTelegramPair(context),
   backupCreate: async (context) => runBackupCreate(context),
   backupList: async (context) => runBackupList(context),
+  backupRestore: runBackupRestore,
   signerRevoke: runSignerRevoke,
   ownerKeyCreate: runOwnerKeyCreate,
   addressList: runAddressList,
