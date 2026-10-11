@@ -1,5 +1,6 @@
 import { setTimeout as wait } from "node:timers/promises";
 import {
+  type AccountRef,
   type AssetRef,
   type ChainRegistry,
   type PriceSource,
@@ -90,24 +91,39 @@ export function forkLimits(fork: Fork): LimitsValues {
   };
 }
 
+/** What a noting sender records each send against: the store, the wallet and the list kept. */
+export interface SendNotes {
+  readonly stores: Pick<EngineStores, "transactions">;
+  readonly account: AccountRef;
+  readonly sends: Rig["sends"];
+}
+
+/**
+ * A relay sender that notes, as each send begins, what the store held for the wallet, then sends
+ * through `sender`: a fork test reads from the notes whether a transaction was stored first.
+ */
+export function notingSender(sender: RelaySender, notes: SendNotes): RelaySender {
+  return {
+    relays: sender.relays,
+    async send(signed, call) {
+      const query = { account: notes.account, fromNonce: 0, limit: 10 };
+      const stored = await notes.stores.transactions.list(query, call);
+      notes.sends.push({ raw: signed.raw, stored: stored.map(({ raw }) => raw) });
+      return sender.send(signed, call);
+    },
+  };
+}
+
 // Sends through anvil as two relays, noting what the store held as each send began.
-function notingSender(fork: Fork, rig: Pick<Rig, "stores" | "sends">, http: Http): RelaySender {
-  const clock = createSystemClock();
+function forkSender(fork: Fork, rig: Pick<Rig, "stores" | "sends">, http: Http): RelaySender {
   const relays = [
     { name: "anvil-a", url: fork.rpcUrl },
     { name: "anvil-b", url: fork.rpcUrl },
   ];
+  const clock = createSystemClock();
   const sender = createEvmRelaySender({ chain: fork.chain, relays, http, clock, timeoutMs: 5_000 });
   const account = evmAccountRef(fork.chain, forkWallet(walletKey).address);
-  return {
-    relays: sender.relays,
-    async send(signed, call) {
-      const query = { account, fromNonce: 0, limit: 10 };
-      const stored = await rig.stores.transactions.list(query, call);
-      rig.sends.push({ raw: signed.raw, stored: stored.map(({ raw }) => raw) });
-      return sender.send(signed, call);
-    },
-  };
+  return notingSender(sender, { stores: rig.stores, account, sends: rig.sends });
 }
 
 /** What the rig's engine and executor share. */
@@ -179,7 +195,7 @@ function executorOf(parts: RigParts): RunningExecutor {
         chain.ref,
         {
           preparer: createEvmTxPreparer({ rpc, chain, networkFeeCapWeiPerGas: 10n ** 10n }),
-          sender: notingSender(fork, parts, parts.relayHttp),
+          sender: forkSender(fork, parts, parts.relayHttp),
           receipts: createEvmReceiptReader({ rpc, chain, finality }),
         },
       ],
