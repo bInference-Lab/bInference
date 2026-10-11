@@ -248,8 +248,9 @@ Stuck steps ([ARCHITECTURE.md section 7](../ARCHITECTURE.md#section-7)):
 3. No longer valid: a cancel, a 0-value transfer to the wallet itself at the same nonce with a gas
    price at least 10% higher. The intent ends `failed_onchain` with reason `stuck_cancelled`.
 4. Every relay turned the step's bytes away for 60 blocks, each with an answer that says it holds
-   none of them, no transaction the step replaced may still sit with a relay, and its nonce is
-   still free: the step is recorded `dropped`, which frees its nonce, and the intent ends
+   none of them, no transaction the step replaced may still sit with a relay, its nonce is still
+   free, also by the count a node takes with its pool (`pending`), and no node knows any of the
+   step's transactions: the step is recorded `dropped`, which frees its nonce, and the intent ends
    `failed_onchain` with reason `stuck_dropped` ([decision 0115](../DECISIONS.md#d0115)). A step
    no rule can move waits 60 blocks for this, getting the same bytes every 20, before it is handed
    over still `executing`.

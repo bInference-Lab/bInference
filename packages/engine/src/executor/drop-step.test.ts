@@ -85,6 +85,18 @@ describe("a stuck step every relay refuses", () => {
     expect(states).toStrictEqual(["0:included", "1:superseded", "1:dropped"]);
   });
 
+  it("is not dropped while a node still holds its bytes in its pool", async () => {
+    const bench = await startExecutorBench({ limits });
+    bench.network.holdBelow(10n ** 18n);
+    const intent = await tapped(bench);
+    await flush();
+    refuseAll(bench);
+    await driveUntil(bench, intent, { states: [], blocks: 25 });
+    expect(await reasonOf(bench, intent)).toBeUndefined();
+    const states = (await ofIntent(bench, intent)).map(({ state }) => state);
+    expect(states).not.toContain("dropped");
+  });
+
   it("is handed over, not dropped, while a relay still takes its bytes", async () => {
     const bench = await startExecutorBench({ limits, network: { feeCapBase: 52_000_000n } });
     bench.network.holdBelow(52_000_000n);

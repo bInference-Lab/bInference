@@ -229,8 +229,8 @@ Rules for this package:
   on its wallet's slot: the same bytes again while it still runs, a speed-up after
   `replaceAfterBlocks`, a cancel once it would fail, each at its nonce for at least
   `leastReplacementFee` and never above the network fee cap. A step every relay turns away for
-  `droppedAfterBlocks` blocks, its nonce still free, is dropped: its nonce goes to the next step and
-  the intent ends with `stuck_dropped` (decision 0115). A step no rule can move waits as long for
+  `droppedAfterBlocks` blocks, its nonce still free by the latest and the pending count and none of
+  its transactions known to a node, is dropped: its nonce goes to the next step and the intent ends with `stuck_dropped` (decision 0115). A step no rule can move waits as long for
   that, then hands over at the seam `executor.step_stopped` logs. Reconciliation reads what each
   final step moved only through the `ReceiptReader`, records the trade in the positions before the
   move to `reconciled`, and finds it stored after a restart, so a trade is recorded once. `recover`
