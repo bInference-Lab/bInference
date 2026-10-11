@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
-import type { RecordedStep } from "../testing/turn-recorder.js";
+import type { RecordedStep, TurnRecorder } from "../testing/turn-recorder.js";
 import type { ModelEvent } from "./model-event.js";
 import { createTestTurn, ownerMessage, type TestTool } from "./test-turns.js";
 
@@ -273,5 +273,41 @@ describe("a response cut off at its output limit", () => {
     ]);
     expect(recorder.steps).toContainEqual({ kind: "status", line: { line: "toolCallLimit" } });
     expect(transport.requests).toHaveLength(2);
+  });
+});
+
+// A model that answers with text and, each time, finds the owner has written again.
+function whileOwnerWrites(
+  holder: { recorder?: TurnRecorder },
+  replies: readonly (readonly ModelEvent[])[],
+) {
+  return replies.map((events, index) => (): AsyncGenerator<ModelEvent> => {
+    holder.recorder?.queue(ownerMessage(index + 2, "and another thing"));
+    return replay(events);
+  });
+}
+
+async function* replay(events: readonly ModelEvent[]): AsyncGenerator<ModelEvent> {
+  yield* events;
+}
+
+describe("the model call limit", () => {
+  it("ends the turn loop at its 40th model call, the waiting message left for the next turn", async () => {
+    const holder: { recorder?: TurnRecorder } = {};
+    const { turn, recorder, transport } = createTestTurn({
+      replies: whileOwnerWrites(holder, [
+        ...Array.from({ length: 39 }, (_unused, index) =>
+          textReply(`Answer ${String(index + 1)}.`),
+        ),
+        callsReply([{ name: "portfolio" }]),
+        textReply("never"),
+      ]),
+      tools: [portfolio],
+    });
+    holder.recorder = recorder;
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "loop", modelCalls: 40 });
+    expect(transport.requests).toHaveLength(40);
+    expect(recorder.steps).toContainEqual({ kind: "status", line: { line: "modelCallLimit" } });
+    await expect(recorder.merge.take(new AbortController().signal)).resolves.toHaveLength(1);
   });
 });
