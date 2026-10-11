@@ -56,6 +56,11 @@ export interface TelegramIngressOptions {
    * replaced, if any; nothing when absent.
    */
   readonly onOwnerPaired?: (replaced: OwnerBinding | undefined) => void;
+  /**
+   * Hears that a start code bound a new owner in an earlier owner's place, at once after the
+   * binding is stored and before any message goes out; nothing when absent.
+   */
+  readonly onOwnerReplaced?: (replaced: OwnerBinding) => void;
 }
 
 interface Call {
@@ -148,6 +153,7 @@ export function createTelegramIngress(options: TelegramIngressOptions): Telegram
     words: wordsFor(options.display),
     onOwnerUpdate: options.onOwnerUpdate,
     onOwnerPaired: options.onOwnerPaired ?? (() => undefined),
+    onOwnerReplaced: options.onOwnerReplaced ?? (() => undefined),
   };
   const isOurs = (entry: InboxEntry): boolean =>
     entry.source === "telegram" && entry.sourceKey.startsWith(keyPrefix);

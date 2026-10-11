@@ -37,6 +37,7 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
   const logger = createMemoryLogger({ subsystem: "telegram" });
   const delivered: OwnerUpdate[] = [];
   const pairings: (readonly [number, number | undefined])[] = [];
+  const replacements: (readonly [number, number])[] = [];
   const ingress = createTelegramIngress({
     api: new Api(fakeBotToken, { fetch: botApi.fetch }),
     stores,
@@ -53,6 +54,9 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
     onOwnerPaired: (replaced) => {
       pairings.push([clock.now(), replaced?.userId]);
     },
+    onOwnerReplaced: (replaced) => {
+      replacements.push([replaced.userId, botApi.sent().length]);
+    },
   });
   if (options.owner !== undefined) {
     await stores.owners.bind({ userId: options.owner, pairedAtMs: 1 }, live);
@@ -62,7 +66,7 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
       await previous;
       await ingress.receive(update, live);
     }, Promise.resolve());
-  return { botApi, stores, clock, logger, delivered, pairings, ingress, receive };
+  return { botApi, stores, clock, logger, delivered, pairings, replacements, ingress, receive };
 }
 
 async function startCode(context: Awaited<ReturnType<typeof setUp>>): Promise<string> {
@@ -212,6 +216,7 @@ describe("the Telegram ingress", () => {
     ]);
     expect(context.delivered.map((update) => update.updateId)).toStrictEqual([20]);
     expect(context.pairings).toStrictEqual([[context.clock.now(), undefined]]);
+    expect(context.replacements).toStrictEqual([]);
   });
 
   it("pairs someone else in the owner's place with a new code, and tells the owner it replaced", async () => {
@@ -233,6 +238,7 @@ describe("the Telegram ingress", () => {
     expect(messages.zh["telegram.pairingEnded"]).toContain("binference freeze");
     expect(context.delivered.map((update) => update.updateId)).toStrictEqual([42]);
     expect(context.pairings).toStrictEqual([[context.clock.now(), ownerId]]);
+    expect(context.replacements).toStrictEqual([[ownerId, 0]]);
     expect(context.logger.records().map((record) => record.event)).toContain(
       "telegram.owner_replaced",
     );

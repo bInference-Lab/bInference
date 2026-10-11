@@ -150,12 +150,9 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
         await cards.press(update, call);
       }
     },
-    onOwnerPaired: (replaced) => {
-      if (replaced !== undefined) {
-        wiring.ownerReplaced(replaced.userId);
-      }
-      relay.paired();
-    },
+    onOwnerPaired: () => relay.paired(),
+    // The replaced owner's sessions end before the bot says a word to anyone.
+    onOwnerReplaced: (replaced) => wiring.ownerReplaced(replaced.userId),
   });
   return { cards, answers, calls, commands, ingress, ...relay };
 }

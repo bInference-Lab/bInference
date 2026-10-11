@@ -33,6 +33,11 @@ export interface ActionContext {
    * owner it replaced.
    */
   readonly onOwnerPaired: (replaced: OwnerBinding | undefined) => void;
+  /**
+   * Hears that a start code bound a new owner in an earlier owner's place, at once after the
+   * binding is stored and before any message goes out, so the earlier owner's sessions end first.
+   */
+  readonly onOwnerReplaced: (replaced: OwnerBinding) => void;
 }
 
 interface Call {
@@ -77,6 +82,9 @@ async function pair(action: PairAction, context: ActionContext, call: Call): Pro
   }
   const binding = { userId: action.userId, pairedAtMs: context.clock.now() };
   const replaced = await context.owners.bind(binding, call);
+  if (replaced !== undefined) {
+    context.onOwnerReplaced(replaced);
+  }
   context.logger.info("telegram.owner_paired");
   try {
     await say(context, { key: "telegram.paired", target: action.target }, call);
