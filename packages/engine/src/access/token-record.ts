@@ -1,4 +1,4 @@
-import { type Id, idSchema } from "@binference/core";
+import { type Id, idSchema, type Result } from "@binference/core";
 import { type Scope, scopeSchema } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
@@ -23,6 +23,12 @@ export interface TokenRecord {
   /** When the token stops signing in; absent for a token that works until it is revoked. */
   readonly expiresAtMs?: number;
 }
+
+/**
+ * What saving the runtime's token for a new start answers: the ids of the runtime tokens it
+ * revoked, or why it saved nothing.
+ */
+export type RuntimeTokenReplaced = Result<readonly Id<"tok">[], "exists" | "not_runtime">;
 
 /** Parses a token record. */
 export const tokenRecordSchema: z.ZodType<TokenRecord> = z.strictObject({

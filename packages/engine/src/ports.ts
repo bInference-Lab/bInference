@@ -3,7 +3,7 @@ import type { Id, Result } from "@binference/core";
 import type { DeviceRecord } from "./access/device-record.js";
 import type { MiniAppLaunches } from "./access/launch-claim.js";
 import type { PairCodeRecord, PairCodeUse } from "./access/pair-code-record.js";
-import type { TokenRecord } from "./access/token-record.js";
+import type { RuntimeTokenReplaced, TokenRecord } from "./access/token-record.js";
 import type { WebPushSubscriptions } from "./access/web-push-subscription-record.js";
 import type { AddressEntryRecord, AddressEntryRemoval } from "./agents/address-entry-record.js";
 import type {
@@ -464,6 +464,13 @@ export interface AccessStore extends WebPushSubscriptions, MiniAppLaunches {
     revoke: StampedId<"tok">,
     options: StoreCall,
   ): Promise<Result<TokenRecord, "not_found">>;
+  /**
+   * Saves the agent runtime's token for one start and, in the same write, revokes every runtime
+   * token not revoked yet at the new token's creation time (runtime spec, section 2.1). Answers the
+   * ids it revoked. An id or secret hash in use is `exists`, a token of another kind
+   * `not_runtime`; either way nothing changes.
+   */
+  replaceRuntimeToken(token: TokenRecord, options: StoreCall): Promise<RuntimeTokenReplaced>;
   /** Saves a newly paired device; an id in use is `exists`. */
   addDevice(device: DeviceRecord, options: StoreCall): Promise<Result<DeviceRecord, "exists">>;
   /** One device, revoked or not. */

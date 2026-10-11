@@ -15,6 +15,7 @@ import {
   findTokenTask,
   listTokensTask,
   markTokenUsedTask,
+  replaceRuntimeTokenTask,
   revokeTokenTask,
 } from "./token-tasks.js";
 import {
@@ -30,6 +31,7 @@ export const accessTasks: readonly TaskRunner[] = [
   listTokensTask,
   markTokenUsedTask,
   revokeTokenTask,
+  replaceRuntimeTokenTask,
   addDeviceTask,
   findDeviceTask,
   listDevicesTask,
@@ -55,6 +57,7 @@ export function createSqliteAccessStore(host: StoreHost): AccessStore {
     listTokens: async (options) => listTokens(null, options),
     markTokenUsed: bindTask(host, markTokenUsedTask),
     revokeToken: bindTask(host, revokeTokenTask),
+    replaceRuntimeToken: bindTask(host, replaceRuntimeTokenTask),
     addDevice: bindTask(host, addDeviceTask),
     findDevice: bindTask(host, findDeviceTask),
     listDevices: async (options) => listDevices(null, options),

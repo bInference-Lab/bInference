@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@binference/core";
+import { err, type Id, ok, type Result } from "@binference/core";
 import type { DeviceRecord } from "../access/device-record.js";
 import type { LaunchClaim, LaunchClaimOutcome } from "../access/launch-claim.js";
 import { type LaunchTicketRecord, maxLaunchTickets } from "../access/launch-ticket.js";
@@ -51,14 +51,39 @@ function createRows<T extends Row>(): Rows<T> {
 
 const later = (stored: number | undefined, atMs: number): number => Math.max(stored ?? atMs, atMs);
 
+// Adds the runtime's new token, then revokes every other runtime token still in force.
+function replaceRuntimeToken(
+  tokens: Rows<TokenRecord>,
+  token: TokenRecord,
+): Result<readonly Id<"tok">[], "exists" | "not_runtime"> {
+  if (token.kind !== "runtime") {
+    return err("not_runtime");
+  }
+  const added = tokens.add(token, (stored) => stored.secretHash === token.secretHash);
+  if (!added.ok) {
+    return added;
+  }
+  const earlier = tokens
+    .list()
+    .filter(
+      (row) => row.kind === "runtime" && row.revokedAtMs === undefined && row.id !== token.id,
+    );
+  earlier.forEach((row) => {
+    tokens.change(row.id, (stored) => ({ ...stored, revokedAtMs: token.createdAtMs }));
+  });
+  return ok(earlier.map((row) => row.id));
+}
+
 function tokenMethods(): Pick<
   AccessStore,
-  "addToken" | "findToken" | "listTokens" | "markTokenUsed" | "revokeToken"
+  "addToken" | "findToken" | "listTokens" | "markTokenUsed" | "revokeToken" | "replaceRuntimeToken"
 > {
   const tokens = createRows<TokenRecord>();
   return {
     addToken: async (token, call) =>
       memoryCall(call, () => tokens.add(token, (stored) => stored.secretHash === token.secretHash)),
+    replaceRuntimeToken: async (token, call) =>
+      memoryCall(call, () => replaceRuntimeToken(tokens, token)),
     findToken: async (secretHash, call) =>
       memoryCall(call, () => tokens.find((token) => token.secretHash === secretHash)),
     listTokens: async (call) => memoryCall(call, () => tokens.list()),

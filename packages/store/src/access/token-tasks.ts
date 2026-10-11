@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { err, type Id, ok, type Result } from "@binference/core";
+import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type Sha256Hex,
   sha256HexSchema,
@@ -56,39 +56,81 @@ function stampToken(
 
 const tokenResult = resultSchema(tokenRecordSchema, ["not_found"]);
 
+// Inserts a new token, unless its id or secret hash is in use.
+function insertToken(database: DatabaseSync, token: TokenRecord): Result<TokenRecord, "exists"> {
+  const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
+  const taken = takeFirst(
+    kysely
+      .selectFrom("tokens")
+      .select("id")
+      .where((row) =>
+        row.or([row("id", "=", token.id), row("secret_hash", "=", token.secretHash)]),
+      ),
+  );
+  if (taken !== undefined) {
+    return err("exists");
+  }
+  execute(
+    kysely.insertInto("tokens").values({
+      id: token.id,
+      label: token.label,
+      kind: token.kind,
+      scopes: jsonText(token.scopes),
+      secret_hash: token.secretHash,
+      created_at: token.createdAtMs,
+      last_used_at: token.lastUsedAtMs ?? null,
+      revoked_at: token.revokedAtMs ?? null,
+      expires_at: token.expiresAtMs ?? null,
+    }),
+  );
+  return ok(token);
+}
+
 /** Saves a new token; an id or secret hash in use is `exists`. */
 export const addTokenTask: StoreTask<TokenRecord, Result<TokenRecord, "exists">> = defineTask({
   name: "access.add_token",
   access: "write",
   input: tokenRecordSchema,
   output: resultSchema(tokenRecordSchema, ["exists"]),
+  run: insertToken,
+});
+
+/** Saves the runtime's token for a new start and revokes the runtime tokens before it. */
+export const replaceRuntimeTokenTask: StoreTask<
+  TokenRecord,
+  Result<readonly Id<"tok">[], "exists" | "not_runtime">
+> = defineTask({
+  name: "access.replace_runtime_token",
+  access: "write",
+  input: tokenRecordSchema,
+  output: resultSchema(z.array(idSchema("tok")), ["exists", "not_runtime"]),
   run(database, token) {
-    const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
-    const taken = takeFirst(
+    if (token.kind !== "runtime") {
+      return err("not_runtime");
+    }
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const earlier = execute(
       kysely
         .selectFrom("tokens")
         .select("id")
-        .where((row) =>
-          row.or([row("id", "=", token.id), row("secret_hash", "=", token.secretHash)]),
-        ),
-    );
-    if (taken !== undefined) {
-      return err("exists");
+        .where("kind", "=", "runtime")
+        .where("revoked_at", "is", null)
+        .orderBy("created_at")
+        .orderBy("id"),
+    ).rows.map((row) => idSchema("tok").parse(row.id));
+    const added = insertToken(database, token);
+    if (!added.ok) {
+      return added;
     }
-    execute(
-      kysely.insertInto("tokens").values({
-        id: token.id,
-        label: token.label,
-        kind: token.kind,
-        scopes: jsonText(token.scopes),
-        secret_hash: token.secretHash,
-        created_at: token.createdAtMs,
-        last_used_at: token.lastUsedAtMs ?? null,
-        revoked_at: token.revokedAtMs ?? null,
-        expires_at: token.expiresAtMs ?? null,
-      }),
-    );
-    return ok(token);
+    if (earlier.length > 0) {
+      execute(
+        kysely
+          .updateTable("tokens")
+          .set({ revoked_at: token.createdAtMs })
+          .where("id", "in", earlier),
+      );
+    }
+    return ok(earlier);
   },
 });
 

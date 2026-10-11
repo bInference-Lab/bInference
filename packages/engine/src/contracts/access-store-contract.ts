@@ -72,6 +72,38 @@ async function stampsTokens(store: AccessStore): Promise<void> {
   assert.deepEqual(await store.revokeToken(unknown, live()), { ok: false, error: "not_found" });
 }
 
+function runtimeToken(n: number, atMs: number): TokenRecord {
+  return { ...token(n), kind: "runtime", scopes: ["read", "propose", "agent"], createdAtMs: atMs };
+}
+
+async function replacesRuntimeTokens(store: AccessStore): Promise<void> {
+  await store.addToken(token(1), live());
+  const first = runtimeToken(2, 2_000);
+  assert.deepEqual(await store.replaceRuntimeToken(first, live()), { ok: true, value: [] });
+  await store.addToken(runtimeToken(3, 2_500), live());
+  await store.revokeToken({ id: runtimeToken(3, 2_500).id, atMs: 2_600 }, live());
+  const second = runtimeToken(4, 4_000);
+  assert.deepEqual(await store.replaceRuntimeToken(second, live()), {
+    ok: true,
+    value: [first.id],
+  });
+  assert.deepEqual(await store.listTokens(live()), [
+    token(1),
+    { ...first, revokedAtMs: 4_000 },
+    { ...runtimeToken(3, 2_500), revokedAtMs: 2_600 },
+    second,
+  ]);
+  const taken = { ...runtimeToken(5, 5_000), secretHash: second.secretHash };
+  assert.deepEqual(await store.replaceRuntimeToken(taken, live()), { ok: false, error: "exists" });
+  const other = { ...token(6), createdAtMs: 6_000 };
+  assert.deepEqual(await store.replaceRuntimeToken(other, live()), {
+    ok: false,
+    error: "not_runtime",
+  });
+  assert.equal((await store.findToken(second.secretHash, live()))?.revokedAtMs, undefined);
+  assert.equal(await store.findToken(other.secretHash, live()), undefined);
+}
+
 async function keepsDevices(store: AccessStore): Promise<void> {
   await store.addDevice(device(2), live());
   assert.deepEqual(await store.addDevice(device(1), live()), { ok: true, value: device(1) });
@@ -190,6 +222,8 @@ async function refusesAborted(store: AccessStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.listTokens(options));
   await assertRefusesAborted(async (options) => store.markTokenUsed(stamp, options));
   await assertRefusesAborted(async (options) => store.revokeToken(stamp, options));
+  const runtime = runtimeToken(2, 1);
+  await assertRefusesAborted(async (options) => store.replaceRuntimeToken(runtime, options));
   await assertRefusesAborted(async (options) => store.addDevice(device(1), options));
   await assertRefusesAborted(async (options) => store.listDevices(options));
   const saved = subscription("a", 1, 1);
@@ -215,6 +249,11 @@ export function accessStoreContract(harness: AccessStoreHarness): readonly Contr
       keepsTokens,
     ),
     checkOn("moves a token's last use forward and keeps its first revoke", create, stampsTokens),
+    checkOn(
+      "saves a runtime token and revokes the runtime tokens before it in the same write",
+      create,
+      replacesRuntimeTokens,
+    ),
     checkOn("keeps devices with their last proof and first revoke", create, keepsDevices),
     checkOn(
       "keeps one browser push subscription per endpoint, only for a device that is not revoked",
