@@ -26,6 +26,7 @@ import { createOutputPrompter } from "../term/output-prompter.js";
 import { attachSummary } from "./attach-summary.js";
 import { configIssueMessages } from "./config-issue-messages.js";
 import { rebuildSummary } from "./rebuild-summary.js";
+import { setupDoneLines } from "./setup-done-lines.js";
 
 /** What the init command reports with: the command's output and the owner's formatter. */
 interface Report {
@@ -58,15 +59,7 @@ function summary(context: InitContext, report: Report, outcome: InitOutcome): Ex
   const lines = [
     words("done.wallet", { address: outcome.walletAddress }),
     words("done.paper"),
-    words(outcome.isAgentKeyNew ? "done.unlockMade" : "done.unlockKept", {
-      mode: outcome.unlockMode,
-    }),
-    words("done.pairing", {
-      bot: outcome.botUsername,
-      link: outcome.pairingLink.reveal(),
-      expires: report.formatter.dateTime(outcome.pairingExpiresAtMs),
-    }),
-    words("done.config", { file: outcome.configFile }),
+    ...setupDoneLines(words, report.formatter, outcome),
   ];
   context.prompter.note(lines.join("\n\n"), words("done.title"));
   context.prompter.outro(words("done.next"));

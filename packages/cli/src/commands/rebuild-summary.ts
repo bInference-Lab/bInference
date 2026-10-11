@@ -2,6 +2,7 @@ import type { Formatter } from "@binference/i18n";
 import type { RebuildOutcome } from "../attach/run-rebuild.js";
 import type { InitContext } from "../init/init-context.js";
 import type { CliOutput, ExitCode } from "../program/cli-output.js";
+import { setupDoneLines } from "./setup-done-lines.js";
 
 /**
  * The end of a rebuild (decision 0142): the wallets this machine now signs for, its signer ID and
@@ -27,15 +28,7 @@ export function rebuildSummary(
     ...(moved.removed.length === 0
       ? []
       : [words("attach.done.removed", { signers: moved.removed.join(", ") })]),
-    words(outcome.isAgentKeyNew ? "done.unlockMade" : "done.unlockKept", {
-      mode: outcome.unlockMode,
-    }),
-    words("done.pairing", {
-      bot: outcome.botUsername,
-      link: outcome.pairingLink.reveal(),
-      expires: report.formatter.dateTime(outcome.pairingExpiresAtMs),
-    }),
-    words("done.config", { file: outcome.configFile }),
+    ...setupDoneLines(words, report.formatter, outcome),
   ];
   context.prompter.note(lines.join("\n\n"), words("rebuild.done.title"));
   context.prompter.outro(words("done.next"));
