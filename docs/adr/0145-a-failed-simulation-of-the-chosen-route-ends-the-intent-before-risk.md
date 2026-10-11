@@ -1,6 +1,6 @@
 # 0145. A failed simulation of the chosen route ends the intent before risk
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -19,7 +19,7 @@ before they sign block such a trade and show why. The owner chose this on 2026-1
 - Spec 6 gains the row `quoted → failed_check` on `simulation_failed`; the row from `assessed`
   stays for a simulation that fails at its own step.
 
-This amends decision 0107; 0107 becomes "Amended by 0145" once this is accepted.
+This amends decision 0107. Accepted by the owner on 2026-10-11.
 
 ## Consequences
 

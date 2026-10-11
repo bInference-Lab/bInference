@@ -1,6 +1,6 @@
 # 0120. A confirmation that ran out while stopped expires the intent
 
-Status: Accepted
+Status: Amended by 0146
 
 ## Context
 

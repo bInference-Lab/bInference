@@ -6,7 +6,9 @@ Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended
 [0115](../DECISIONS.md#d0115), [0116](../DECISIONS.md#d0116), [0120](../DECISIONS.md#d0120) and 0121
 to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](../DECISIONS.md#d0123),
 [0124](../DECISIONS.md#d0124), [0125](../DECISIONS.md#d0125), [0126](../DECISIONS.md#d0126)),
-[0127](../DECISIONS.md#d0127) and [0128](../DECISIONS.md#d0128).
+[0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128) and 0143 to 0146
+([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
+[0146](../DECISIONS.md#d0146)).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an unfreeze, an
 order fill. It
@@ -312,7 +314,7 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    or locked moves to `expired`, with `notice.confirmationLapsed`; nothing is signed. One that
    still holds waits for the queue until the engine holds its keys
    ([decision 0120](../DECISIONS.md#d0120)). A running engine does the same for an intent its
-   queue refused or left `confirmed`: one whose authorization ran out while it waited behind the
+   queue refused or left `confirmed` ([decision 0146](../DECISIONS.md#d0146)): one whose authorization ran out while it waited behind the
    wallet's other intents, one whose first step no node could prepare, which the queue tries
    again each block until then, and an auto intent whose fee per gas stayed above the cap. A
    tapped intent that waited for the fee gets a new card version instead

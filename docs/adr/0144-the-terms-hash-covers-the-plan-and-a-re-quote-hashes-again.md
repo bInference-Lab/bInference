@@ -1,6 +1,6 @@
 # 0144. The terms hash covers the plan, and a re-quote hashes again
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -20,6 +20,8 @@ hash had the same gap. The owner chose on 2026-10-11 to hash the plan and hash a
   the owner tapped, and the confirmation stores that hash, not the card's.
 - The engine sends the confirmation's hash with every signature, so rule 5 checks the hash of
   exactly what runs.
+
+Accepted by the owner on 2026-10-11.
 
 ## Consequences
 

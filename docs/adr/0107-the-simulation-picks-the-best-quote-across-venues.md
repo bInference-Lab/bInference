@@ -1,6 +1,6 @@
 # 0107. The simulation picks the best quote across venues
 
-Status: Accepted
+Status: Amended by 0145
 
 ## Context
 
