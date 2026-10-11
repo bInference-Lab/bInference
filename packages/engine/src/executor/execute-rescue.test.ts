@@ -231,6 +231,16 @@ describe("a confirmed rescue on its wallets' queues", () => {
     expect(restarted.signed).toStrictEqual([]);
   });
 
+  it("takes a rescue once while its first work still waits for the queue", async () => {
+    const bench = await benchWithRescue({ hold: true });
+    const intent = await rescueConfirmed(bench);
+    await Promise.all([bench.executor.take(intent, live), bench.executor.take(intent, live)]);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(bench.signed).toHaveLength(3);
+    const codes = bench.logger.records().map(({ fields }) => fields.errorCode);
+    expect(codes).toContain("running");
+  });
+
   it("goes on after a restart without signing a step sent before the stop again", async () => {
     const bench = await benchWithRescue();
     const intent = await rescueConfirmed(bench);

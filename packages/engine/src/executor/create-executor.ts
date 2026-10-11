@@ -230,6 +230,48 @@ function closed(details: Readonly<Record<string, string>>): BinferenceError {
   });
 }
 
+/** The executor's works: each one tracked until it ends, one per intent. */
+interface Works {
+  /** Starts a work and tracks it until it ends. */
+  readonly track: (work: Work) => void;
+  /** Reads a confirmed intent's work, or why it has none: `running` while one already runs. */
+  readonly reserve: (intent: Id<"int">, signal: AbortSignal) => Promise<Work | string>;
+  readonly running: ReadonlySet<Promise<void>>;
+}
+
+// One work per intent: a rescue still waiting for its queue passes the take again, as on a
+// re-unlock. The intent is reserved before its work is read, so two takes at once make one work.
+function worksOf(parts: ExecutorParts, stops: Stops): Works {
+  const running = new Set<Promise<void>>();
+  const working = new Set<Id<"int">>();
+  const track = (work: Work): void => {
+    working.add(work.intent);
+    const finished = execute(parts, work, stops);
+    running.add(finished);
+    void finished.finally(() => {
+      running.delete(finished);
+      working.delete(work.intent);
+    });
+  };
+  const reserve = async (intent: Id<"int">, signal: AbortSignal): Promise<Work | string> => {
+    if (working.has(intent)) {
+      return "running";
+    }
+    working.add(intent);
+    try {
+      const work = await workOf(parts, intent, signal);
+      if (typeof work === "string") {
+        working.delete(intent);
+      }
+      return work;
+    } catch (error) {
+      working.delete(intent);
+      throw error;
+    }
+  };
+  return { track, reserve, running };
+}
+
 /**
  * Creates the executor (ARCHITECTURE.md section 7, steps 8 and 9). `take` reads a confirmed live
  * intent, its plan and its wallet's account, queues its work on the wallet's queue, and resolves;
@@ -242,23 +284,18 @@ function closed(details: Readonly<Record<string, string>>): BinferenceError {
 export function createExecutor(options: ExecutorOptions): RunningExecutor {
   const parts = partsOf(options);
   const stops: Stops = { stopping: new AbortController(), lifetime: new AbortController() };
-  const running = new Set<Promise<void>>();
-  const track = (work: Work): void => {
-    const finished = execute(parts, work, stops);
-    running.add(finished);
-    void finished.finally(() => running.delete(finished));
-  };
+  const works = worksOf(parts, stops);
   const take: RunningExecutor["take"] = async (intent, { signal }) => {
     signal.throwIfAborted();
     if (stops.stopping.signal.aborted) {
       throw closed({ intent });
     }
-    const work = await workOf(parts, intent, signal);
+    const work = await works.reserve(intent, signal);
     if (typeof work === "string") {
       parts.log.warn("executor.not_taken", { intentId: intent, errorCode: work });
       return;
     }
-    track(work);
+    works.track(work);
   };
   return {
     take,
@@ -272,10 +309,10 @@ export function createExecutor(options: ExecutorOptions): RunningExecutor {
       const unsettled = await unsettledIntents(parts, signal);
       unsettled.forEach((found) => {
         parts.log.info("executor.recovering", { intentId: found.snapshot.record.id });
-        track(recoveryWork(found));
+        works.track(recoveryWork(found));
       });
       return unsettled.length;
     },
-    close: async ({ signal }) => stopAll(stops, running, signal),
+    close: async ({ signal }) => stopAll(stops, works.running, signal),
   };
 }
