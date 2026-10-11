@@ -1,4 +1,3 @@
-// Adapted from MIT-licensed code (the task state probe); NOTICES.md holds its notice.
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
@@ -43,45 +42,77 @@ interface Wait {
 
 const runningState = 4;
 const settleTimeoutMs = 10_000;
-// Task Scheduler reads `/XML` files as UTF-16 little endian with a byte order mark, on any locale.
-const utf16Mark = Buffer.from([0xff, 0xfe]);
-
-// Reads the task through Task Scheduler's own interface, which answers in numbers rather than in
-// the words of the system's language, as `schtasks /Query` does. 0x80070002 means no such task.
-function probeScript(task: string): string {
-  return [
-    "$ErrorActionPreference = 'Stop'",
-    "$service = New-Object -ComObject 'Schedule.Service'",
-    "$service.Connect()",
-    `try { $task = $service.GetFolder('\\').GetTask('${task}') } catch { $inner = $_.Exception; ` +
-      "while ($null -ne $inner.InnerException) { $inner = $inner.InnerException }; " +
-      `if ($inner.HResult -eq -2147024894) { '{"found":false}'; exit 0 }; throw }`,
-    "$logon = @($task.Definition.Triggers | Where-Object { $_.Type -eq 9 -and $_.Enabled }).Count -gt 0",
-    "@{ found = $true; state = [int]$task.State; enabled = [bool]$task.Enabled; logon = $logon } | " +
-      "ConvertTo-Json -Compress",
-  ].join("\n");
+/** `schtasks /Create /XML` reads a task file as UTF-16 little endian that starts with a byte order mark. */
+function taskFileBytes(xml: string): Buffer {
+  return Buffer.from(`\uFEFF${xml}`, "utf16le");
 }
 
+/** Windows PowerShell's `-EncodedCommand` takes the Base64 of a script's UTF-16 little endian text. */
+function encodedCommand(script: string): string {
+  return Buffer.from(script, "utf16le").toString("base64");
+}
+
+/** The HRESULT of ERROR_FILE_NOT_FOUND (0x80070002), which `GetTask` raises for a missing task. */
+const taskMissing = -2_147_024_894;
+/** TASK_TRIGGER_LOGON in the Task Scheduler scripting objects. */
+const logonTrigger = 9;
+
+/**
+ * A Windows PowerShell script that asks the Task Scheduler scripting objects about one task in the
+ * root folder and prints one JSON line: `{"found":false}`, or its state number, whether it is
+ * enabled, and whether an enabled trigger starts it at logon. Any other fault ends the script with
+ * an error.
+ */
+function taskStateScript(task: string): string {
+  const name = `'${task.replaceAll("'", "''")}'`;
+  return [
+    "$ErrorActionPreference = 'Stop'",
+    "$scheduler = New-Object -ComObject 'Schedule.Service'",
+    "$scheduler.Connect()",
+    "try {",
+    `  $task = $scheduler.GetFolder('\\').GetTask(${name})`,
+    "} catch {",
+    `  if ($_.Exception.GetBaseException().HResult -ne ${String(taskMissing)}) { throw }`,
+    `  '{"found":false}'`,
+    "  exit 0",
+    "}",
+    "$logon = $false",
+    "foreach ($trigger in $task.Definition.Triggers) {",
+    `  if ($trigger.Type -eq ${String(logonTrigger)} -and $trigger.Enabled) { $logon = $true }`,
+    "}",
+    "[pscustomobject]@{ found = $true; state = [int]$task.State; enabled = [bool]$task.Enabled; logon = $logon } |",
+    "  ConvertTo-Json -Compress",
+  ].join("\r\n");
+}
+
+/** Runs `command` (the program, then its arguments); any exit code but 0 is a service fault. */
 async function program(
   schtasks: Schtasks,
-  command: readonly [string, ...string[]],
+  command: readonly string[],
   signal: AbortSignal,
 ): Promise<ProgramExit> {
-  const [file, ...args] = command;
+  const [file = "", ...args] = command;
   const exit = await schtasks.run(file, args, signal);
   if (exit.exitCode !== 0) {
-    throw serviceFailed(`${file} ${args[0] ?? ""} failed.`, exit);
+    throw serviceFailed(
+      `${file} ${args[0] ?? ""} failed with exit code ${String(exit.exitCode)}.`,
+      exit,
+    );
   }
   return exit;
 }
 
+/** What Task Scheduler reports about the service's task right now. */
 async function probe(schtasks: Schtasks, name: string, signal: AbortSignal): Promise<TaskState> {
-  const script = Buffer.from(probeScript(scheduledTaskName(name)), "utf16le").toString("base64");
-  const args = ["-NoProfile", "-NonInteractive", "-EncodedCommand", script];
-  const exit = await schtasks.run("powershell.exe", args, signal);
-  const state = exit.exitCode === 0 ? parseTaskState(exit.stdout) : undefined;
+  const task = scheduledTaskName(name);
+  const shell = ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand"];
+  const exit = await program(schtasks, [...shell, encodedCommand(taskStateScript(task))], signal);
+  const state = parseTaskState(exit.stdout);
   if (state === undefined) {
-    throw serviceFailed("Task Scheduler gave no answer that binference can read.", exit);
+    throw serviceFailed(
+      `Task Scheduler gave no state for the task ${task} that could be read.`,
+      exit,
+    );
   }
   return state;
 }
@@ -137,7 +168,7 @@ async function register(
   const folder = await mkdtemp(join(schtasks.temporaryFolder, "bnf-task-"));
   try {
     const file = join(folder, "task.xml");
-    await writeFile(file, Buffer.concat([utf16Mark, Buffer.from(xml, "utf16le")]));
+    await writeFile(file, taskFileBytes(xml));
     const task = scheduledTaskName(definition.name);
     await program(schtasks, ["schtasks", "/Create", "/F", "/TN", task, "/XML", file], signal);
   } finally {
