@@ -191,6 +191,10 @@ A Telegram tap is handled inside the engine and never travels over this protocol
   `engine.sqlite` across restarts. How it counts the 5 minutes, which code each refusal gets, how
   it keeps the hashes, and how a new owner ends the old one's Mini App are in
   [decision 0160](../DECISIONS.md#d0160).
+- A revoke of a token or device, or a new Telegram owner, ends every connection signed in with
+  the credential, and every one still signing in with it: the sign-in reads the credential back
+  from its last write to `engine.sqlite` and refuses a revoked one with `auth.revoked`, and a
+  revoke stored after that write finds the connection by the credential its `open` claimed.
 - A failed `open` ends with `bye` and one of `auth.required`, `auth.invalid`, `auth.expired`,
   `auth.origin` or `auth.revoked`. A call above the connection's scopes fails with `auth.scope`; a
   local-only call over WS fails with `auth.local_only`.

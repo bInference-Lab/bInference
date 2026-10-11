@@ -62,9 +62,19 @@ interface SignInRequest {
   readonly origin?: string;
 }
 
+/** How one sign-in runs: its signal, and where it names the credential it checks. */
+interface SignInCall {
+  readonly signal: AbortSignal;
+  /**
+   * Hears the id of the credential the `open` claims as soon as the check knows it, before any
+   * store read or write, so a revoke of that credential during the sign-in can end the connection.
+   */
+  readonly claim: (credential: string) => void;
+}
+
 /** Checks the credential of each `open`. */
 export interface SignIn {
-  start(request: SignInRequest, signal: AbortSignal): Promise<Result<SignInStep, SignInRefusal>>;
+  start(request: SignInRequest, call: SignInCall): Promise<Result<SignInStep, SignInRefusal>>;
 }
 
 /** What a {@link SignIn} reads. Without `auth`, every sign-in fails with `auth.required`. */
@@ -112,14 +122,16 @@ export function telegramCredentialOf(userId: number): string {
 // A launch signs in when Telegram signed it with the owner's bot token, its `auth_date` is fresh,
 // the owner opened it, and it never signed in before. The hash is claimed last, after the owner
 // check, in one write to `engine.sqlite` that also forgets the claims older than the retention,
-// so two connections with the same launch never both pass, even across a restart.
+// so two connections with the same launch never both pass, even across a restart. The owner is
+// read again after that write: a new owner bound meanwhile refuses the old one's launch.
 async function signInWithLaunch(
   auth: { readonly access: AccessStore; readonly miniApp: MiniAppAuth },
   initData: string,
-  context: { readonly clock: Clock; readonly signal: AbortSignal },
+  context: { readonly clock: Clock; readonly call: SignInCall },
 ): Promise<Result<SignInStep, SignInRefusal>> {
   const { access, miniApp } = auth;
-  const { clock, signal } = context;
+  const { clock, call } = context;
+  const { signal } = call;
   const launch = checkTelegramLaunch({
     initData,
     botToken: miniApp.botToken,
@@ -129,6 +141,8 @@ async function signInWithLaunch(
   if (!launch.ok) {
     return err(launchRefusals[launch.error]);
   }
+  const credential = telegramCredentialOf(launch.value.userId);
+  call.claim(credential);
   const ownerId = await miniApp.ownerId({ signal });
   if (ownerId === undefined || ownerId !== launch.value.userId) {
     return err("auth.invalid");
@@ -139,27 +153,48 @@ async function signInWithLaunch(
   if ((await access.claimLaunch(claim, { signal })) === "seen") {
     return err("auth.invalid");
   }
-  const identity = { credential: telegramCredentialOf(ownerId), scopes: miniAppScopes };
-  return ok({ kind: "signed_in", identity });
+  if ((await miniApp.ownerId({ signal })) !== ownerId) {
+    return err("auth.revoked");
+  }
+  return ok({ kind: "signed_in", identity: { credential, scopes: miniAppScopes } });
+}
+
+// The record the store answers a sign-in's write with is the one that counts: a revoke stored
+// before that write refuses the sign-in, and one stored after it finds the connection by the
+// credential it claimed.
+function stillLive<T extends { readonly revokedAtMs?: number }>(
+  written: Result<T, "not_found">,
+): Result<T, SignInRefusal> {
+  if (!written.ok) {
+    return err("auth.invalid");
+  }
+  return written.value.revokedAtMs === undefined ? written : err("auth.revoked");
 }
 
 async function signInWithToken(
   access: AccessStore,
   token: string,
-  options: { readonly clock: Clock; readonly signal: AbortSignal },
+  context: { readonly clock: Clock; readonly call: SignInCall },
 ): Promise<Result<SignInStep, SignInRefusal>> {
-  const record = await access.findToken(sha256Hex(token), { signal: options.signal });
+  const { clock, call } = context;
+  const record = await access.findToken(sha256Hex(token), { signal: call.signal });
   if (record === undefined) {
     return err("auth.invalid");
   }
+  call.claim(record.id);
   if (record.revokedAtMs !== undefined) {
     return err("auth.revoked");
   }
-  const nowMs = options.clock.now();
+  const nowMs = clock.now();
   if (record.expiresAtMs !== undefined && nowMs >= record.expiresAtMs) {
     return err("auth.expired");
   }
-  await access.markTokenUsed({ id: record.id, atMs: nowMs }, options);
+  const used = stillLive(
+    await access.markTokenUsed({ id: record.id, atMs: nowMs }, { signal: call.signal }),
+  );
+  if (!used.ok) {
+    return used;
+  }
   const expiry = record.expiresAtMs === undefined ? {} : { expiresAtMs: record.expiresAtMs };
   const identity = { credential: record.id, scopes: record.scopes, ...expiry };
   return ok({ kind: "signed_in", identity });
@@ -181,8 +216,8 @@ function challengeDevice(start: DeviceStart, options: SignInOptions): Challenge 
         return err("auth.invalid");
       }
       const seen = { id: start.device.id, atMs: options.clock.now() };
-      await start.access.markDeviceSeen(seen, { signal });
-      return ok({ credential: start.device.id, scopes: consoleDeviceScopes });
+      const marked = stillLive(await start.access.markDeviceSeen(seen, { signal }));
+      return marked.ok ? ok({ credential: start.device.id, scopes: consoleDeviceScopes }) : marked;
     },
   };
 }
@@ -193,10 +228,11 @@ async function signInWithDevice(
   context: {
     readonly origin: string;
     readonly options: SignInOptions;
-    readonly signal: AbortSignal;
+    readonly call: SignInCall;
   },
 ): Promise<Result<SignInStep, SignInRefusal>> {
-  const device = await access.findDevice(id, { signal: context.signal });
+  context.call.claim(id);
+  const device = await access.findDevice(id, { signal: context.call.signal });
   if (device === undefined) {
     return err("auth.invalid");
   }
@@ -217,11 +253,13 @@ async function signInWithDevice(
  * keeps them across restarts; a stale one is
  * `auth.expired`, any other `auth.invalid`, as is every launch without the owner's bot. An
  * unknown credential is `auth.invalid`, a revoked one `auth.revoked`, a token at or past its
- * expiry `auth.expired`.
+ * expiry `auth.expired`. A revoke, or a new owner, stored before the sign-in's last write refuses
+ * it with `auth.revoked`; `call.claim` hears the credential first, so one stored later can end
+ * the connection.
  */
 export function createSignIn(options: SignInOptions): SignIn {
   return {
-    async start(request, signal) {
+    async start(request, call) {
       const access = options.auth?.access;
       if (access === undefined) {
         return err("auth.required");
@@ -229,7 +267,7 @@ export function createSignIn(options: SignInOptions): SignIn {
       const { credential, transport, origin } = request;
       if ("token" in credential) {
         return transport === "ipc"
-          ? signInWithToken(access, credential.token, { clock: options.clock, signal })
+          ? signInWithToken(access, credential.token, { clock: options.clock, call })
           : err("auth.local_only");
       }
       if (transport !== "ws") {
@@ -238,14 +276,14 @@ export function createSignIn(options: SignInOptions): SignIn {
       if ("device" in credential) {
         return origin === undefined
           ? err("auth.invalid")
-          : signInWithDevice(access, credential.device, { origin, options, signal });
+          : signInWithDevice(access, credential.device, { origin, options, call });
       }
       const miniApp = options.auth?.miniApp;
       return miniApp === undefined
         ? err("auth.invalid")
         : signInWithLaunch({ access, miniApp }, credential.telegram.initData, {
             clock: options.clock,
-            signal,
+            call,
           });
     },
   };

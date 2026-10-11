@@ -10,6 +10,7 @@ const token = `bnt_${"t".repeat(43)}`;
 const tokenId = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const deviceId = idSchema("dev").parse("dev_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const live = { signal: new AbortController().signal };
+const call = { signal: live.signal, claim: () => undefined };
 
 async function accessWithToken(
   expiry: { readonly expiresAtMs?: number } = {},
@@ -37,7 +38,7 @@ describe("createSignIn", () => {
   it("signs a token in over IPC with its scopes and marks its use", async () => {
     const access = await accessWithToken();
     const signIn = createSignIn({ auth: { access }, clock, random });
-    const step = await signIn.start({ credential: { token }, transport: "ipc" }, live.signal);
+    const step = await signIn.start({ credential: { token }, transport: "ipc" }, call);
     expect(step).toStrictEqual({
       ok: true,
       value: { kind: "signed_in", identity: { credential: tokenId, scopes: ["read", "propose"] } },
@@ -69,7 +70,7 @@ describe("createSignIn", () => {
       clock,
       random,
     });
-    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+    await expect(signIn.start(request, call)).resolves.toStrictEqual({
       ok: false,
       error: code,
     });
@@ -82,13 +83,13 @@ describe("createSignIn", () => {
       random,
     });
     const request = { credential: { token }, transport: "ipc" } as const;
-    await expect(before.start(request, live.signal)).resolves.toMatchObject({
+    await expect(before.start(request, call)).resolves.toMatchObject({
       ok: true,
       value: { identity: { credential: tokenId, expiresAtMs: 501 } },
     });
     const access = await accessWithToken({ expiresAtMs: 500 });
     const at = createSignIn({ auth: { access }, clock, random });
-    await expect(at.start(request, live.signal)).resolves.toStrictEqual({
+    await expect(at.start(request, call)).resolves.toStrictEqual({
       ok: false,
       error: "auth.expired",
     });
@@ -98,7 +99,7 @@ describe("createSignIn", () => {
 
   it("refuses every sign-in when the server holds no credentials", async () => {
     const signIn = createSignIn({ clock, random });
-    const step = await signIn.start({ credential: { token }, transport: "ipc" }, live.signal);
+    const step = await signIn.start({ credential: { token }, transport: "ipc" }, call);
     expect(step).toStrictEqual({ ok: false, error: "auth.required" });
   });
 
@@ -115,7 +116,7 @@ describe("createSignIn", () => {
       transport: "ws",
       origin: "http://x",
     } as const;
-    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+    await expect(signIn.start(request, call)).resolves.toStrictEqual({
       ok: false,
       error: "auth.revoked",
     });
@@ -159,7 +160,7 @@ describe("createSignIn for the Telegram Mini App", () => {
     const { signIn } = setUp(ownerId);
     const step = await signIn.start(
       miniRequest(launchOf({ userId: ownerId, atMs: launchAtMs })),
-      live.signal,
+      call,
     );
     expect(step).toStrictEqual({
       ok: true,
@@ -173,7 +174,7 @@ describe("createSignIn for the Telegram Mini App", () => {
   it("refuses a launch of another Telegram user", async () => {
     const { signIn } = setUp(ownerId);
     const request = miniRequest(launchOf({ userId: ownerId + 1, atMs: launchAtMs }));
-    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+    await expect(signIn.start(request, call)).resolves.toStrictEqual({
       ok: false,
       error: "auth.invalid",
     });
@@ -182,7 +183,7 @@ describe("createSignIn for the Telegram Mini App", () => {
   it("refuses every launch before the owner paired the bot", async () => {
     const { signIn } = setUp(undefined);
     const request = miniRequest(launchOf({ userId: ownerId, atMs: launchAtMs }));
-    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+    await expect(signIn.start(request, call)).resolves.toStrictEqual({
       ok: false,
       error: "auth.invalid",
     });
@@ -191,7 +192,7 @@ describe("createSignIn for the Telegram Mini App", () => {
   it("refuses a launch older than 5 minutes as expired", async () => {
     const { signIn } = setUp(ownerId);
     const request = miniRequest(launchOf({ userId: ownerId, atMs: launchAtMs - 5 * 60_000 }));
-    await expect(signIn.start(request, live.signal)).resolves.toStrictEqual({
+    await expect(signIn.start(request, call)).resolves.toStrictEqual({
       ok: false,
       error: "auth.expired",
     });
@@ -200,15 +201,15 @@ describe("createSignIn for the Telegram Mini App", () => {
   it("refuses a launch that signed in before, and still takes a new one", async () => {
     const { signIn, clock } = setUp(ownerId);
     const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
-    const first = await signIn.start(miniRequest(initData), live.signal);
+    const first = await signIn.start(miniRequest(initData), call);
     await clock.advance(1_000);
-    const again = await signIn.start(miniRequest(initData), live.signal);
+    const again = await signIn.start(miniRequest(initData), call);
     const next = launchOf({
       userId: ownerId,
       atMs: launchAtMs + 1_000,
       query: "AAHdF6IQAAAAAN0XohDhrOrd",
     });
-    const fresh = await signIn.start(miniRequest(next), live.signal);
+    const fresh = await signIn.start(miniRequest(next), call);
     expect([first.ok, again, fresh.ok]).toStrictEqual([
       true,
       { ok: false, error: "auth.invalid" },
@@ -219,9 +220,9 @@ describe("createSignIn for the Telegram Mini App", () => {
   it("refuses a launch that signed in before the engine restarted on the same store", async () => {
     const { signIn, auth, clock } = setUp(ownerId);
     const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
-    const first = await signIn.start(miniRequest(initData), live.signal);
+    const first = await signIn.start(miniRequest(initData), call);
     const restarted = createSignIn({ auth, clock, random });
-    const again = await restarted.start(miniRequest(initData), live.signal);
+    const again = await restarted.start(miniRequest(initData), call);
     expect([first.ok, again]).toStrictEqual([true, { ok: false, error: "auth.invalid" }]);
   });
 
@@ -237,12 +238,34 @@ describe("createSignIn for the Telegram Mini App", () => {
     };
     const signIn = createSignIn({ auth: { ...auth, access }, clock, random });
     const initData = launchOf({ userId: ownerId, atMs: launchAtMs });
-    await signIn.start(miniRequest(initData), live.signal);
+    await signIn.start(miniRequest(initData), call);
     const hash = String(new URLSearchParams(initData).get("hash"));
     const atMs = launchAtMs + 30_000;
     expect(claims).toStrictEqual([
       { launchHash: sha256Hex(hash), atMs, sinceMs: atMs - 24 * 60 * 60_000 + 1 },
     ]);
+  });
+
+  it("names the owner, then refuses the launch when a new owner is bound during it", async () => {
+    const clock = createManualClock(launchAtMs + 30_000);
+    let owner = ownerId;
+    const miniApp: MiniAppAuth = { botToken, ownerId: async () => owner };
+    const inner = createMemoryAccessStore();
+    const access: AccessStore = {
+      ...inner,
+      claimLaunch: async (...args: Parameters<AccessStore["claimLaunch"]>) => {
+        owner = ownerId + 1;
+        return inner.claimLaunch(...args);
+      },
+    };
+    const claimed: string[] = [];
+    const signIn = createSignIn({ auth: { access, miniApp }, clock, random });
+    const request = miniRequest(launchOf({ userId: ownerId, atMs: launchAtMs }));
+    const step = await signIn.start(request, {
+      signal: live.signal,
+      claim: (id) => claimed.push(id),
+    });
+    expect([step, claimed]).toStrictEqual([{ ok: false, error: "auth.revoked" }, ["tg:279058397"]]);
   });
 
   it("refuses a launch someone changed after Telegram signed it", async () => {
@@ -251,7 +274,7 @@ describe("createSignIn for the Telegram Mini App", () => {
       String(ownerId + 1),
       String(ownerId),
     );
-    await expect(signIn.start(miniRequest(initData), live.signal)).resolves.toStrictEqual({
+    await expect(signIn.start(miniRequest(initData), call)).resolves.toStrictEqual({
       ok: false,
       error: "auth.invalid",
     });
@@ -264,8 +287,8 @@ describe("createSignIn for the Telegram Mini App", () => {
     const auth = { access: createMemoryAccessStore() };
     const botless = createSignIn({ auth, clock, random });
     expect([
-      await signIn.start(miniRequest(initData, "ipc"), live.signal),
-      await botless.start(miniRequest(initData), live.signal),
+      await signIn.start(miniRequest(initData, "ipc"), call),
+      await botless.start(miniRequest(initData), call),
     ]).toStrictEqual([
       { ok: false, error: "auth.invalid" },
       { ok: false, error: "auth.invalid" },

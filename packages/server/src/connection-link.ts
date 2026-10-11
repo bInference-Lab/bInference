@@ -32,11 +32,12 @@ export interface Peer {
 
 /**
  * Where a connection stands: waiting for `open`, checking its credential, waiting for a device's
- * `prove`, signed in, or closed.
+ * `prove`, signed in, or closed. While signing in, `credential` names the credential it claims once
+ * the sign-in knows it, so a revoke that lands meanwhile ends the connection too.
  */
 export type Phase =
   | { readonly name: "opening" }
-  | { readonly name: "signing_in" }
+  | { readonly name: "signing_in"; readonly credential?: string }
   | { readonly name: "proving"; readonly open: OpenFrame; readonly challenge: Challenge }
   | { readonly name: "ready"; readonly session: Session }
   | { readonly name: "closed" };

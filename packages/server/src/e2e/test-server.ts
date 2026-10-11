@@ -33,7 +33,7 @@ import type { ConsoleFiles } from "../console-route.js";
 import { createProtocolServer, type ProtocolServer } from "../create-protocol-server.js";
 import type { OperationHandlers } from "../operation-handlers.js";
 import type { ServerLimits } from "../server-limits.js";
-import type { MiniAppAuth } from "../sign-in.js";
+import type { MiniAppAuth, ServerAuth } from "../sign-in.js";
 
 /** A client token the test server knows, with its secret. */
 interface TestToken {
@@ -82,6 +82,8 @@ export interface TestServerOptions {
   readonly miniApp?: MiniAppAuth;
   /** Browser origins allowed besides the loopback ones, such as a Tailscale `serve` origin. */
   readonly extraOrigins?: readonly string[];
+  /** Wraps the access store the server signs in with, such as to hold a write open. */
+  readonly wrapAccess?: (access: AccessStore) => AccessStore;
 }
 
 const cliScopes: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
@@ -137,6 +139,14 @@ function pairingOn(parts: {
   return { pairing, pairingPushes };
 }
 
+// The credentials the server checks: the test's access store, wrapped if asked, and its bot.
+function authOf(access: AccessStore, options: TestServerOptions): ServerAuth {
+  return {
+    access: options.wrapAccess?.(access) ?? access,
+    ...(options.miniApp === undefined ? {} : { miniApp: options.miniApp }),
+  };
+}
+
 /** Starts a protocol server on 127.0.0.1 with fresh memory stores, two tokens and a device. */
 export async function startTestServer(options: TestServerOptions = {}): Promise<TestServer> {
   const clock = createManualClock(1_000_000);
@@ -147,7 +157,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
   const { pairing, pairingPushes } = pairingOn({ access, clock, random });
   const server = createProtocolServer({
     http: { host: "127.0.0.1", port: 0, extraOrigins: options.extraOrigins ?? [] },
-    auth: { access, ...(options.miniApp === undefined ? {} : { miniApp: options.miniApp }) },
+    auth: authOf(access, options),
     pairing,
     ...(options.consoleFiles === undefined ? {} : { consoleFiles: options.consoleFiles }),
     idempotency,

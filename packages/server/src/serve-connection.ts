@@ -32,8 +32,9 @@ export interface Connection {
   /** Cuts the socket at once, with no `bye`. */
   terminate(): void;
   /**
-   * The id of the credential the connection signed in with, or is proving: a device's while it
-   * answers its challenge. `undefined` before `open` and after the close.
+   * The id of the credential the connection signed in with, or claims while it signs in: a
+   * device's from its `open`, a token's or a Mini App owner's once the sign-in read it.
+   * `undefined` before `open` and after the close.
    */
   credential(): string | undefined;
   /** Resolves once the socket closed. */
@@ -83,7 +84,13 @@ async function signIn(link: Link, open: OpenFrame): Promise<void> {
   link.phase.set({ name: "signing_in" });
   const request = { credential: open.auth, transport: link.peer.transport };
   const origin = link.peer.origin === undefined ? {} : { origin: link.peer.origin };
-  const step = await link.context.signIn.start({ ...request, ...origin }, link.closed.signal);
+  const claim = (credential: string): void => {
+    if (link.phase.get().name === "signing_in") {
+      link.phase.set({ name: "signing_in", credential });
+    }
+  };
+  const signInCall = { signal: link.closed.signal, claim };
+  const step = await link.context.signIn.start({ ...request, ...origin }, signInCall);
   if (link.phase.get().name === "closed") {
     return;
   }
@@ -105,7 +112,7 @@ async function prove(
   phase: Extract<Phase, { name: "proving" }>,
   frame: ProveFrame,
 ): Promise<void> {
-  link.phase.set({ name: "signing_in" });
+  link.phase.set({ name: "signing_in", ...claimOf(phase.open) });
   const proved = await phase.challenge.prove(frame.signature, link.closed.signal);
   if (link.phase.get().name === "closed") {
     return;
@@ -257,13 +264,18 @@ function createLink(socket: WebSocket, peer: Peer, context: ConnectionContext): 
   };
 }
 
+function claimOf(open: OpenFrame): { readonly credential?: string } {
+  return "device" in open.auth ? { credential: open.auth.device } : {};
+}
+
 function credentialOf(phase: Phase): string | undefined {
   if (phase.name === "ready") {
     return phase.session.caller.credential;
   }
-  return phase.name === "proving" && "device" in phase.open.auth
-    ? phase.open.auth.device
-    : undefined;
+  if (phase.name === "proving") {
+    return claimOf(phase.open).credential;
+  }
+  return phase.name === "signing_in" ? phase.credential : undefined;
 }
 
 function errorCodeOf(error: Error): string {

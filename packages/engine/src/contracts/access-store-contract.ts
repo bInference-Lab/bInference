@@ -60,6 +60,9 @@ async function stampsTokens(store: AccessStore): Promise<void> {
   const revoked = { ...token(1), lastUsedAtMs: 5_000, revokedAtMs: 6_000 };
   assert.deepEqual(again, { ok: true, value: revoked });
   assert.deepEqual(await store.findToken(token(1).secretHash, live()), revoked);
+  // A sign-in reads the revoke from the record its use answers.
+  const late = await store.markTokenUsed({ id, atMs: 8_000 }, live());
+  assert.deepEqual(late, { ok: true, value: { ...revoked, lastUsedAtMs: 8_000 } });
   const unknown = { id: token(9).id, atMs: 1 };
   assert.deepEqual(await store.markTokenUsed(unknown, live()), { ok: false, error: "not_found" });
   assert.deepEqual(await store.revokeToken(unknown, live()), { ok: false, error: "not_found" });
@@ -77,6 +80,9 @@ async function keepsDevices(store: AccessStore): Promise<void> {
   await store.revokeDevice({ id, atMs: 7_000 }, live());
   const revoked = { ...device(1), lastSeenAtMs: 5_000, revokedAtMs: 6_000 };
   assert.deepEqual(await store.findDevice(id, live()), revoked);
+  // A sign-in reads the revoke from the record its proof answers.
+  const late = await store.markDeviceSeen({ id, atMs: 8_000 }, live());
+  assert.deepEqual(late, { ok: true, value: { ...revoked, lastSeenAtMs: 8_000 } });
   assert.equal(await store.findDevice(device(9).id, live()), undefined);
   const unknown = { id: device(9).id, atMs: 1 };
   assert.deepEqual(await store.markDeviceSeen(unknown, live()), { ok: false, error: "not_found" });
