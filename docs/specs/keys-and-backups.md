@@ -210,7 +210,8 @@ says without checking it:
 3. Value and amounts equal the plan's amounts for that step; an approval is never above the step's
    amount, and never unlimited.
 4. The method is `eth_signTransaction`; no EIP-7702 authorization, no `personal_sign`, and typed
-   data only for a named domain.
+   data only for a named domain. The request carries `privy-request-expiry`, at most 5 minutes
+   from now, so no signature lasts longer.
 5. The fee per gas is at most the chain's network fee cap from the signer's settings, whatever
    authorized the transaction, and a chain with no cap there signs nothing ([decision
    0143](../DECISIONS.md#d0143)). `termsHash`, the hash of the request, quote and plan that run

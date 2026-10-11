@@ -142,11 +142,17 @@ function begin(run: Run): void {
   run.child.stdin.write(`${fixtureSettingsLine}\n${formatAgentKey(agentKey).reveal()}\n`);
 }
 
-// The signer reads the real clock, so this request's confirmation lasts until 2100.
+// The signer reads the real clock, so this request's confirmation lasts until 2100, and Privy
+// keeps it for a minute from now.
 function lastingFixture() {
   const fixture = authorizeFixture();
+  const expiry = String(Math.trunc(performance.timeOrigin + performance.now()) + 60_000);
   return {
     ...fixture,
+    request: {
+      ...fixture.request,
+      headers: { ...fixture.request.headers, "privy-request-expiry": expiry },
+    },
     authorization: { ...fixture.authorization, expiresAtMs: 4_102_444_800_000 },
   };
 }

@@ -81,6 +81,8 @@ export interface Model {
   readonly stepChain: string;
   readonly walletChain: string;
   readonly httpMethod: string;
+  /** The `privy-request-expiry` header, in epoch milliseconds; none when undefined. */
+  readonly expiry: number | undefined;
   readonly urlWallet: string;
   readonly urlOrigin: string;
   readonly bodyMethod: string;
@@ -226,7 +228,10 @@ export function render(m: Model): AuthorizeInput {
     request: {
       method: m.httpMethod,
       url: `${m.urlOrigin}/v1/wallets/${m.urlWallet}/rpc`,
-      headers: { "privy-app-id": "cm4xb2l3c00000000000000000" },
+      headers: {
+        "privy-app-id": "cm4xb2l3c00000000000000000",
+        ...(m.expiry === undefined ? {} : { "privy-request-expiry": String(m.expiry) }),
+      },
       body: bodyOf(m),
     },
     intent: idSchema("int").parse(intents[0]),

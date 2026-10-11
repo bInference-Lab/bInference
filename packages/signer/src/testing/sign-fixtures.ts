@@ -83,7 +83,10 @@ export function authorizeFixture(
     request: {
       method: "POST",
       url: fixtureRpcUrl,
-      headers: { "privy-app-id": "cm4xb2l3c00000000000000000" },
+      headers: {
+        "privy-app-id": "cm4xb2l3c00000000000000000",
+        "privy-request-expiry": String(fixtureNowMs + 60_000),
+      },
       body: { method: "eth_signTransaction", params: { transaction } },
     },
     intent,

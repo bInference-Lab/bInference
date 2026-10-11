@@ -34,6 +34,17 @@ const withStep = (input: AuthorizeInput, step: Partial<SignStep>): AuthorizeInpu
   ...input,
   step: { ...input.step, ...step },
 });
+// The request with only Privy's app id, and the headers given.
+const withHeaders = (
+  input: AuthorizeInput,
+  headers: { readonly "privy-request-expiry"?: string },
+): AuthorizeInput => ({
+  ...input,
+  request: {
+    ...input.request,
+    headers: { "privy-app-id": "cm4xb2l3c00000000000000000", ...headers },
+  },
+});
 const withAuthorization = (
   input: AuthorizeInput,
   authorization: SignAuthorization,
@@ -276,6 +287,12 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
   ],
   [4, "an EIP-7702 authorization list", withTransaction(call, { authorization_list: [] })],
   [4, "an EIP-7702 transaction type", withTransaction(call, { type: 4 })],
+  [4, "a request Privy keeps for ever", withHeaders(call, {})],
+  [
+    4,
+    "a request Privy keeps for more than 5 minutes",
+    withHeaders(call, { "privy-request-expiry": String(fixtureNowMs + 300_001) }),
+  ],
   [5, "a terms hash other than the authorization's", { ...call, termsHash: "cd".repeat(32) }],
   [
     5,

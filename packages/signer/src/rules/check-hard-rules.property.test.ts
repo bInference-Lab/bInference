@@ -167,6 +167,8 @@ const chainOk = (m: Model): boolean =>
 const methodOk = (m: Model): boolean =>
   m.bodyMethod === "eth_signTransaction" &&
   m.httpMethod === "POST" &&
+  m.expiry !== undefined &&
+  m.expiry <= m.nowMs + 300_000 &&
   m.urlOrigin === api &&
   m.urlWallet === custodyId &&
   !m.delegates &&
@@ -183,6 +185,7 @@ const routerCall: Model = {
   stepChain: c56,
   walletChain: c56,
   httpMethod: "POST",
+  expiry: nowMs + 60_000,
   urlWallet: custodyId,
   urlOrigin: api,
   bodyMethod: "eth_signTransaction",
@@ -359,6 +362,11 @@ const change: fc.Arbitrary<Change> = fc.oneof(
   chain.map((stepChain): Change => (m) => ({ ...m, stepChain })),
   chain.map((walletChain): Change => (m) => ({ ...m, walletChain })),
   fc.constantFrom("POST", "PUT").map((httpMethod): Change => (m) => ({ ...m, httpMethod })),
+  fc
+    .option(fc.constantFrom(nowMs, nowMs + 300_000, nowMs + 300_001, nowMs + 86_400_000), {
+      nil: undefined,
+    })
+    .map((expiry): Change => (m) => ({ ...m, expiry })),
   fc.constantFrom(custodyId, "otherwallet").map((urlWallet): Change => (m) => ({
     ...m,
     urlWallet,
