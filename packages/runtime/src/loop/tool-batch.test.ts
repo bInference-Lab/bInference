@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { TurnRecorder } from "../testing/turn-recorder.js";
-import { createTestTurn, ownerMessage, type TestTool } from "./test-turns.js";
+import { createTestTurn, ownerMessage, type TestTool, testToolBox } from "./test-turns.js";
+import type { ToolBox } from "./turn-ports.js";
 
 // A tool that notes when its body starts and ends, a few turns of the event loop apart.
 function traced(
@@ -43,6 +44,19 @@ function callsAndTools(recorder: TurnRecorder): readonly string[] {
     }
     return step.kind === "tool" ? ["tool"] : [];
   });
+}
+
+// A tool box whose check throws on one tool's calls, as a stack overflow would.
+function throwingOn(name: string, tools: ToolBox): ToolBox {
+  return {
+    declarations: tools.declarations,
+    prepare: (call) => {
+      if (call.name === name) {
+        throw new RangeError("Maximum call stack size exceeded");
+      }
+      return tools.prepare(call);
+    },
+  };
 }
 
 function traceTurn(names: readonly [string, Partial<TestTool>][]) {
@@ -138,6 +152,19 @@ describe("runToolBatch", () => {
     expect(
       transport.requests[1]?.messages.filter((message) => message.role === "tool"),
     ).toHaveLength(3);
+  });
+
+  it("refuses a call whose check throws, and runs the rest of the batch", async () => {
+    const box = throwingOn("broken", testToolBox([{ name: "portfolio", kind: "read" }]));
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "broken" }, { name: "portfolio" }]), textReply("Ok.")],
+      box,
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", modelCalls: 2 });
+    expect(results(recorder)).toStrictEqual([
+      ["broken", "not run: the arguments could not be read", false],
+      ["portfolio", "ran portfolio", true],
+    ]);
   });
 
   it("keeps a refused call apart from a parallel batch, which still runs side by side", async () => {

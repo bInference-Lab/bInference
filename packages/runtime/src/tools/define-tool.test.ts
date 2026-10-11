@@ -79,6 +79,34 @@ describe("defineTool", () => {
     );
   });
 
+  it.each([
+    [
+      `{"amountBase":"1","reason":${"[".repeat(2_000)}${"]".repeat(2_000)}}`,
+      "nested deeper than 64 levels",
+    ],
+    ['{"amountBase":"1","amountBase":"2","reason":"r"}', "name a field twice"],
+    ['{"amountBase":1e21,"reason":"r"}', "write amounts as decimal strings"],
+    [`{"reason":"${"x".repeat(70_000)}"}`, "longer than 65536 characters"],
+  ])("refuses arguments it cannot read safely, saying why", async (text, why) => {
+    const prepared = defineTool(swapSpec).prepare(text);
+    await expect(runPrepared(prepared)).resolves.toContain(why);
+  });
+
+  it("refuses a call whose schema check throws, never throwing itself", async () => {
+    const throwing = defineTool({
+      ...swapSpec,
+      args: z.strictObject({
+        amountBase: decimalStringSchema,
+        reason: z.string().refine(() => {
+          throw new Error("a check that throws");
+        }),
+      }),
+    });
+    await expect(runPrepared(throwing.prepare('{"amountBase":"1","reason":"r"}'))).resolves.toBe(
+      "refused: not run: the arguments of swap could not be read",
+    );
+  });
+
   it("lets only a read run beside others, and carries the outside-content flag", () => {
     const empty = z.strictObject({});
     const read = defineTool({

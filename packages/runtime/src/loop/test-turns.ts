@@ -37,7 +37,7 @@ function parseArguments(text: string): JsonValue | undefined {
 }
 
 /** A tool box over test tools: an unknown name or arguments that are not JSON are refused. */
-function testToolBox(tools: readonly TestTool[]): ToolBox {
+export function testToolBox(tools: readonly TestTool[]): ToolBox {
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
   return {
     declarations: tools.map((tool) => ({

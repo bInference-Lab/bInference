@@ -4,7 +4,19 @@ import { recordNotRun } from "./record-call.js";
 import { runOrderedBatch } from "./run-ordered-batch.js";
 import { runParallelBatch } from "./run-parallel-batch.js";
 import { haltOf } from "./turn-halt.js";
+import type { PreparedCall } from "./turn-ports.js";
 import type { TurnRun } from "./turn-run.js";
+
+const unreadable = "not run: the arguments could not be read";
+
+// A tool box that throws, on arguments it did not expect, refuses that call and breaks nothing.
+function prepared(run: TurnRun, call: ToolCall): PreparedCall {
+  try {
+    return run.parts.tools.prepare(call);
+  } catch {
+    return { ready: false, text: unreadable };
+  }
+}
 
 // Reads that allow it run together; a refused call has its result already and takes no part.
 function isParallel(calls: readonly BatchCall[]): boolean {
@@ -38,7 +50,7 @@ export async function runToolBatch(
   const calls = toolCalls.slice(0, room).map((call, index) => ({
     call,
     ordinal: first + index + 1,
-    prepared: run.parts.tools.prepare(call),
+    prepared: prepared(run, call),
   }));
   const end = isParallel(calls)
     ? await runParallelBatch(run, calls)

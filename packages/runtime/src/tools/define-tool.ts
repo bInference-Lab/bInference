@@ -2,7 +2,12 @@ import { BinferenceError, type JsonValue, jsonValueSchema } from "@binference/co
 import { z } from "zod";
 import type { ToolDeclaration } from "../loop/model-message.js";
 import type { PreparedCall, ToolKind, ToolOutcome, ToolRunContext } from "../loop/turn-ports.js";
-import { parseArgumentsJson } from "./arguments-json.schema.js";
+import {
+  type ArgumentsProblem,
+  maxArgumentsChars,
+  maxArgumentsDepth,
+  parseArgumentsJson,
+} from "./arguments-json.schema.js";
 
 /** How a tool is declared: its name, kind and description, its arguments' schema, and its body. */
 export interface ToolSpec<Args> {
@@ -68,6 +73,31 @@ function argumentsRefusal(name: string, error: z.ZodError): string {
   return `not run: the arguments do not match ${name}'s schema:\n${z.prettifyError(error)}`;
 }
 
+const problemTexts: Readonly<Record<ArgumentsProblem, string>> = {
+  not_json: "are not valid JSON",
+  too_large: `are longer than ${String(maxArgumentsChars)} characters`,
+  too_deep: `are nested deeper than ${String(maxArgumentsDepth)} levels`,
+  duplicate_key: "name a field twice",
+  unsafe_number:
+    "hold an integer past 2^53 not written as plain digits; write amounts as decimal strings",
+};
+
+function unreadable(name: string, why: string): PreparedCall {
+  return { ready: false, text: `not run: the arguments of ${name} ${why}` };
+}
+
+// A schema check that throws, a refinement written wrong for one, refuses the call instead.
+function checked<Args>(
+  args: z.ZodType<Args>,
+  value: JsonValue,
+): z.ZodSafeParseResult<Args> | undefined {
+  try {
+    return args.safeParse(value);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Declares a tool (runtime spec, section 5.2). The model sees `z.toJSONSchema` of its arguments; a
  * call's arguments are parsed keeping integers past 2^53 exact, then checked with `safeParse`. A
@@ -91,14 +121,18 @@ export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
     prepare(argumentsText) {
       const json = parseArgumentsJson(argumentsText);
       if (!json.ok) {
-        return { ready: false, text: `not run: the arguments of ${spec.name} are not valid JSON` };
+        return unreadable(spec.name, problemTexts[json.error]);
       }
-      const checked = spec.args.safeParse(json.value);
-      if (!checked.success) {
-        return { ready: false, text: argumentsRefusal(spec.name, checked.error) };
+      const result = checked(spec.args, json.value);
+      if (result === undefined) {
+        return unreadable(spec.name, "could not be read");
       }
+      if (!result.success) {
+        return { ready: false, text: argumentsRefusal(spec.name, result.error) };
+      }
+      const args = result.data;
       const run = async (context: ToolRunContext): Promise<ToolOutcome> => {
-        const outcome = await spec.run(checked.data, context);
+        const outcome = await spec.run(args, context);
         return { ...outcome, text: cutResult(outcome.text) };
       };
       return { ...ready, parallel, run };

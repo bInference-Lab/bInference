@@ -59,7 +59,9 @@ recorder that stands in for the journal, the engine and the queue.
 `control`), a description and a zod schema of the arguments; the model sees the schema's JSON
 Schema. A call's arguments are parsed keeping integers past 2^53 exact, then checked with
 `safeParse` and no coercion, so money arrives as a decimal string of base units and becomes a
-`bigint`. A call that fails the check never runs, and the model reads the schema's issues.
+`bigint`. Arguments over 65,536 characters or nested deeper than 64 levels, a key written twice, and
+an integer past 2^53 not written as plain digits are refused before they are read. A call that
+fails a check never runs, and the model reads why.
 `createToolBox` holds an agent's tools for its turns.
 
 ## Example
