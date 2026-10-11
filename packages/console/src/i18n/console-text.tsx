@@ -39,6 +39,11 @@ export function TextProvider(props: {
   return <TextContext value={props.formatter}>{props.children}</TextContext>;
 }
 
+/** The formatter of the owner's language, for amounts and times. */
+export function useFormatter(): Formatter {
+  return useContext(TextContext);
+}
+
 /** The words of the owner's language. */
 export function useText(): Words {
   return wordsOf(useContext(TextContext));

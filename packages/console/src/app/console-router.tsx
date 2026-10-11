@@ -1,12 +1,19 @@
 import { createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { useState } from "react";
+import { ConfirmationsScreen } from "../screens/confirmations-screen";
 import { ConsoleShell } from "../screens/console-shell";
-import { HomeScreen } from "../screens/home-screen";
+import { LedgerScreen } from "../screens/ledger-screen";
+import { LimitsScreen } from "../screens/limits-screen";
 
 function buildRouter(basepath: string) {
   const root = createRootRoute({ component: ConsoleShell });
-  const home = createRoute({ getParentRoute: () => root, path: "/", component: HomeScreen });
-  return createRouter({ routeTree: root.addChildren([home]), basepath });
+  const parent = { getParentRoute: () => root };
+  const routeTree = root.addChildren([
+    createRoute({ ...parent, path: "/", component: ConfirmationsScreen }),
+    createRoute({ ...parent, path: "/ledger", component: LedgerScreen }),
+    createRoute({ ...parent, path: "/limits", component: LimitsScreen }),
+  ]);
+  return createRouter({ routeTree, basepath });
 }
 
 // The router type every typed `Link` checks its paths against.

@@ -1,11 +1,22 @@
 import { Buffer } from "node:buffer";
 import type { webcrypto } from "node:crypto";
-import { createProtocolClient } from "@binference/client";
+import { createProtocolClient, type ProtocolClient } from "@binference/client";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
-import { testNowMs } from "@binference/engine/testing";
+import {
+  createMemoryCardCopyStore,
+  createMemoryOwnerStore,
+  testAgent,
+  testCoin,
+  testNowMs,
+  testToken,
+  testWallet,
+} from "@binference/engine/testing";
 import { deviceProofText, operations, protocolIdSchema } from "@binference/protocol";
+import { createFakeBotApi, fakeBotToken } from "@binference/telegram/testing";
+import { Api } from "grammy";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
+import type { TelegramParts } from "../compose/compose-telegram.js";
 import { type SkeletonComposition, skeletonCompositions } from "../compose/test-skeleton.js";
 import { createSystemHttp } from "../runtime/system-http.js";
 import { type ServedSkeleton, serveSkeleton } from "./skeleton-machine.js";
@@ -14,14 +25,18 @@ import { createTestMachines, runOn, type TestMachine } from "./test-host.js";
 const slow = { timeout: 60_000 };
 const machines = createTestMachines();
 const served: ServedSkeleton[] = [];
+const browsers: ProtocolClient[] = [];
 const page = "<!doctype html><title>console</title>";
 const tenMinutes = 10 * 60 * 1000;
+const ownerId = 7_012_345_678;
+const paperIcon = String.fromCodePoint(0x1f9ea);
 // The browser's requests go out as the engine's own outbound requests do, over a real socket.
 const http = createSystemHttp({ version: "test" });
 
 afterAll(async () => http.close());
 
 afterEach(async () => {
+  browsers.splice(0).forEach((client) => client.close());
   await Promise.all(served.splice(0).map(async (skeleton) => skeleton.close()));
   await machines.removeAll();
 });
@@ -40,11 +55,12 @@ interface Served {
 }
 
 // The engine of a machine, with its HTTP listener on a free port and a one-page console.
-async function serveConsole(): Promise<Served> {
+async function serveConsole(telegram?: TelegramParts): Promise<Served> {
   const machine = await machines.create(testNowMs);
   const consoleFiles = new Map([["index.html", new TextEncoder().encode(page)]]);
   const browser = { http: { host: "127.0.0.1", port: 0 }, consoleFiles };
-  const skeleton = await serveSkeleton(machine, selfHosted(), { browser });
+  const bot = telegram === undefined ? {} : { telegram };
+  const skeleton = await serveSkeleton(machine, selfHosted(), { browser, ...bot });
   served.push(skeleton);
   await skeleton.composed.server.start(AbortSignal.timeout(5_000));
   return { machine, skeleton };
@@ -102,7 +118,7 @@ interface Pairing {
   readonly key: BrowserKey;
 }
 
-async function signIn(at: Served, pairing: Pairing) {
+function browserClient(at: Served, pairing: Pairing): ProtocolClient {
   const { link, deviceId, key } = pairing;
   const { origin } = link;
   const client = createProtocolClient({
@@ -119,9 +135,20 @@ async function signIn(at: Served, pairing: Pairing) {
     random: createSeededRandom(23),
     logger: createMemoryLogger({ subsystem: "browser" }),
   });
-  const ready = await client.connect(AbortSignal.timeout(5_000));
-  client.close();
-  return ready;
+  browsers.push(client);
+  return client;
+}
+
+async function signIn(at: Served, pairing: Pairing) {
+  return browserClient(at, pairing).connect(AbortSignal.timeout(5_000));
+}
+
+// Pairs a browser with a fresh link from `binference console`.
+async function pairBrowser(at: Served): Promise<Pairing> {
+  const link = await consoleLink(at.machine);
+  const key = await browserKey();
+  const { deviceId } = JSON.parse((await pair(link, key)).body) as { readonly deviceId: string };
+  return { link, deviceId, key };
 }
 
 describe("binference console", () => {
@@ -158,4 +185,47 @@ describe("binference console", () => {
     expect(outcome.stdout).toContain("Open this link in your browser before");
     expect(outcome.stdout).toMatch(/http:\/\/127\.0\.0\.1:\d+\/#pair=[\w-]{22}/);
   });
+
+  it(
+    "confirms a card from the console, and its Telegram copy becomes the receipt",
+    slow,
+    async () => {
+      const botApi = createFakeBotApi();
+      const owners = createMemoryOwnerStore();
+      await owners.bind({ userId: ownerId, pairedAtMs: 1 }, { signal: AbortSignal.timeout(5_000) });
+      const api = new Api(fakeBotToken, { fetch: botApi.fetch });
+      const at = await serveConsole({ api, owners, copies: createMemoryCardCopyStore() });
+      const signal = AbortSignal.timeout(10_000);
+      const cli = at.skeleton.client;
+      await cli.call("portfolio/resetPaper", { agent: testAgent }, { signal });
+      const swap = {
+        kind: "swap",
+        agent: testAgent,
+        wallet: testWallet,
+        reason: "Rotate into the token",
+        from: testCoin,
+        to: testToken,
+        amount: { base: 10n ** 16n },
+      } as const;
+      const { intent } = await cli.call("intent/propose", swap, { signal });
+      const telegram = at.skeleton.composed.telegram;
+      await telegram?.idle();
+      expect(botApi.messages()).toMatchObject([{ chatId: ownerId, buttons: [[{}, {}]] }]);
+      const browser = browserClient(at, await pairBrowser(at));
+      await browser.connect(signal);
+      const shown = await browser.call("intent/card", { intent }, { signal });
+      const args = { intent, card: shown.card, cardVersion: shown.version };
+      await expect(browser.call("intent/confirm", args, { signal })).resolves.toMatchObject({
+        state: "paper_filled",
+      });
+      await telegram?.idle();
+      expect(botApi.messages()).toMatchObject([
+        {
+          chatId: ownerId,
+          text: `${paperIcon} Paper fill: 0.01 FAKE → 20,000,000,000 TKN`,
+          buttons: [],
+        },
+      ]);
+    },
+  );
 });
