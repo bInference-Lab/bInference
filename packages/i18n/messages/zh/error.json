@@ -68,5 +68,6 @@
   "backup.copy_failed": "备份已生成并通过检查，但无法写入第二份副本。请检查副本文件夹，然后再试一次。",
   "telegram.not_running": "binference 正在运行，但没有启动 Telegram 机器人，因此没有生成链接。运行 `binference logs` 查看原因；修正机器人 Token 后，再运行 `binference restart`。",
   "telegram.unreachable": "无法连接 Telegram，因此没有生成链接。请一分钟后再试。",
+  "token.not_found": "没有此 ID 的访问令牌，因此未撤销任何内容。如需移除某个客户端，请运行 `binference mcp setup --remove`。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

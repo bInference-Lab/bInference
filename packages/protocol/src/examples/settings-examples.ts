@@ -126,6 +126,21 @@ export const accessExamples: { readonly [N in keyof AccessOperationShapes]: Wire
     result: { token: `bnt_${"Q9-_z".repeat(8)}abc` },
   },
   "token/revoke": { args: { token: ids.token }, result: empty },
+  "token/register": {
+    args: {
+      label: "mcp-codex",
+      kind: "mcp",
+      scopes: ["read", "propose"],
+      secretHash: "ab".repeat(32),
+    },
+    result: {
+      token: ids.token,
+      label: "mcp-codex",
+      kind: "mcp",
+      scopes: ["read", "propose"],
+      createdAt: at,
+    },
+  },
   "remote/status": {
     args: empty,
     result: { tailscale: "running", miniUrl: "https://owner.example.invalid/mini" },

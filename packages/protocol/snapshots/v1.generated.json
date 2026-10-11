@@ -478,6 +478,7 @@
         "backup.copy_failed",
         "telegram.not_running",
         "telegram.unreachable",
+        "token.not_found",
         "internal.error"
       ]
     },
@@ -27131,6 +27132,164 @@
         "result": {
           "type": "object",
           "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/token/register": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "token/register"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "mcp",
+                "custom"
+              ]
+            },
+            "scopes": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "propose",
+                  "chat",
+                  "agent",
+                  "confirm",
+                  "loosen",
+                  "admin"
+                ]
+              }
+            },
+            "secretHash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "label",
+            "kind",
+            "scopes",
+            "secretHash"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "admin",
+      "kind": "write",
+      "transport": "ipc",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/token/register": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string",
+              "pattern": "^tok_"
+            },
+            "label": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "cli",
+                "runtime",
+                "mcp",
+                "custom"
+              ]
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "propose",
+                  "chat",
+                  "agent",
+                  "confirm",
+                  "loosen",
+                  "admin"
+                ]
+              }
+            },
+            "createdAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "lastUsedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "revokedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "token",
+            "label",
+            "kind",
+            "scopes",
+            "createdAt"
+          ]
         }
       },
       "required": [

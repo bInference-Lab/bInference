@@ -72,6 +72,7 @@ export const protocolErrorCodes = [
   "backup.copy_failed",
   "telegram.not_running",
   "telegram.unreachable",
+  "token.not_found",
   "internal.error",
 ] as const;
 

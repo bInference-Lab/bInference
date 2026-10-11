@@ -29,6 +29,9 @@ new name here first, in the change that uses it.
   and no content, set aside by size and read back by `binference logs`.
 - **CLI token**: the `bnt_` token in `auth/cli.token` that the CLI signs in with over IPC; the
   engine stores only its SHA-256.
+- **client token**: a `bnt_` token a client signs in with over IPC, with its label, kind and
+  scopes; the engine stores only its SHA-256. The CLI makes an MCP client's and registers its hash
+  with `token/register`.
 
 ### Money and safety
 
@@ -387,6 +390,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | log (the engine's log file)           | 日志       |                              |
 | background service                    | 后台服务   | `binference start`           |
 | log in (to the computer)              | 登录       |                              |
+| client token                          | 访问令牌   | A `bnt_` sign-in token       |
 
 ### Trading
 

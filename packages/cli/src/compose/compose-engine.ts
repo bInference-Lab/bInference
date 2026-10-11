@@ -18,6 +18,7 @@ import {
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
+import { createTokenHandlers } from "@binference/engine/access";
 import { createNoticeHandlers } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
@@ -257,6 +258,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   const handlers: EngineHandlerTable = {
     ...engine.handlers,
     ...createNoticeHandlers(parts.stores.notices),
+    ...createTokenHandlers({ access: parts.stores.access, clock, ids }),
     ...options.handlers,
   };
   const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers, notices });

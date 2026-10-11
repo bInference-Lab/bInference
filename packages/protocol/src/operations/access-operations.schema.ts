@@ -36,6 +36,18 @@ interface CreateTokenArgs {
   readonly scopes: readonly Scope[];
 }
 
+/**
+ * The args of `token/register`: a token the CLI made, of which the engine gets only the SHA-256
+ * (decision 0154).
+ */
+interface RegisterTokenArgs {
+  readonly label: string;
+  readonly kind: "mcp" | "custom";
+  readonly scopes: readonly Scope[];
+  /** The SHA-256 of the `bnt_` secret, in lowercase hex. */
+  readonly secretHash: string;
+}
+
 /** The answer of `remote/status`: Tailscale's state and the published URLs. */
 interface RemoteView {
   readonly tailscale: "absent" | "stopped" | "running";
@@ -67,6 +79,7 @@ export interface AccessOperationShapes {
     readonly args: { readonly token: ProtocolId<"clientToken"> };
     readonly result: Empty;
   };
+  readonly "token/register": { readonly args: RegisterTokenArgs; readonly result: TokenView };
   readonly "remote/status": { readonly args: Empty; readonly result: RemoteView };
   readonly "remote/enable": {
     readonly args: { readonly mini?: boolean; readonly webhooks?: boolean };
@@ -85,6 +98,15 @@ export interface AccessOperationShapes {
 const device = protocolIdSchema("consoleDevice");
 const token = protocolIdSchema("clientToken");
 const url = z.string().min(1);
+const tokenView = z.object({
+  token,
+  label: z.string(),
+  kind: z.enum(["cli", "runtime", "mcp", "custom"]),
+  scopes: z.array(scopeSchema),
+  createdAt: epochMsSchema,
+  lastUsedAt: epochMsSchema.exactOptional(),
+  revokedAt: epochMsSchema.exactOptional(),
+});
 
 /** The device, token, remote access and exchange operations, by name. */
 export const accessOperations: OperationTable<AccessOperationShapes> = {
@@ -116,17 +138,7 @@ export const accessOperations: OperationTable<AccessOperationShapes> = {
     name: "token/list",
     scope: "admin",
     args: emptyArgsSchema,
-    result: pageSchema(
-      z.object({
-        token,
-        label: z.string(),
-        kind: z.enum(["cli", "runtime", "mcp", "custom"]),
-        scopes: z.array(scopeSchema),
-        createdAt: epochMsSchema,
-        lastUsedAt: epochMsSchema.exactOptional(),
-        revokedAt: epochMsSchema.exactOptional(),
-      }),
-    ),
+    result: pageSchema(tokenView),
   },
   "token/create": {
     ...localWriteFlags,
@@ -141,6 +153,18 @@ export const accessOperations: OperationTable<AccessOperationShapes> = {
     scope: "confirm",
     args: z.strictObject({ token }),
     result: emptyResultSchema,
+  },
+  "token/register": {
+    ...localWriteFlags,
+    name: "token/register",
+    scope: "admin",
+    args: z.strictObject({
+      label: labelSchema,
+      kind: z.enum(["mcp", "custom"]),
+      scopes: z.array(scopeSchema).min(1),
+      secretHash: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
+    result: tokenView,
   },
   "remote/status": {
     ...readFlags,

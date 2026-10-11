@@ -68,5 +68,6 @@
   "backup.copy_failed": "The backup was made and checked, but its second copy could not be written. Check the copy folder, then try again.",
   "telegram.not_running": "binference is running without its Telegram bot, so no link was made. `binference logs` shows why; fix the bot token, then run `binference restart`.",
   "telegram.unreachable": "Telegram could not be reached, so no link was made. Try again in a minute.",
+  "token.not_found": "No client token has this ID, so nothing was revoked. To remove a client, run `binference mcp setup --remove`.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }
