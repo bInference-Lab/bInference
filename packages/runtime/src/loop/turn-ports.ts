@@ -25,7 +25,11 @@ export interface ModelTransport {
 /** What a tool does, which decides how the loop runs it (runtime spec, section 5.1). */
 export type ToolKind = "read" | "propose" | "control";
 
-/** A tool's result, which the model reads. A tool's error is a result, never a turn failure. */
+/**
+ * A tool's result, which the model reads. A tool's error is a result, never a turn failure. A
+ * propose tool returns `isError` only when the engine refused the proposal for certain; on
+ * anything uncertain (no answer, a broken connection) it throws, and the outcome is unknown.
+ */
 export interface ToolOutcome {
   readonly text: string;
   readonly isError: boolean;
@@ -135,6 +139,7 @@ type TurnFailure = ModelFailure | "time_limit" | "proposal_unknown" | "engine";
 export type TurnStatusLine =
   | { readonly line: "proposalWaits" }
   | { readonly line: "moreProposals"; readonly count: number }
+  | { readonly line: "proposalRefused" }
   | { readonly line: "stopped" }
   | { readonly line: "failed"; readonly failure: TurnFailure }
   | { readonly line: "toolCallLimit" }

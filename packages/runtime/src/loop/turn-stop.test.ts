@@ -249,3 +249,107 @@ describe("a committed turn", () => {
     expect(transport.requests).toHaveLength(1);
   });
 });
+
+// The owner stops the turn while the loop writes a step of this kind.
+function stopDuring(kind: RecordedStep["kind"], stopper: { turn?: ChatTurn }) {
+  return (step: RecordedStep): void => {
+    if (step.kind === kind) {
+      stopper.turn?.stop("owner");
+    }
+  };
+}
+
+describe("a stop while a call is written", () => {
+  it("sends no proposal when the stop lands as the proposal is written", async () => {
+    const stopper: { turn?: ChatTurn } = {};
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "swap" }])],
+      tools: (notes) => [
+        {
+          name: "swap",
+          kind: "propose",
+          run: async ({ idempotencyKey }) => {
+            notes.note({ kind: "tool", name: "swap sent", key: idempotencyKey });
+            return { text: "int_1 waits", isError: false };
+          },
+        },
+      ],
+      recorder: { beforeStep: stopDuring("proposal", stopper) },
+    });
+    stopper.turn = turn;
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "stopped", committed: true });
+    expect(recorder.steps.some((step) => step.kind === "tool")).toBe(false);
+    expect(recorder.steps).toContainEqual({
+      kind: "result",
+      id: "swap",
+      text: "not run: the owner stopped the agent",
+      ran: false,
+      outside: false,
+    });
+  });
+
+  it("starts no tool when the stop lands as its call is written", async () => {
+    const stopper: { turn?: ChatTurn } = {};
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "alert_create" }])],
+      tools: (notes) => [
+        {
+          name: "alert_create",
+          kind: "control",
+          run: async () => {
+            notes.note({ kind: "tool", name: "alert made", key: "" });
+            return { text: "made", isError: false };
+          },
+        },
+      ],
+      recorder: { beforeStep: stopDuring("call", stopper) },
+    });
+    stopper.turn = turn;
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "stopped" });
+    expect(recorder.steps.some((step) => step.kind === "tool")).toBe(false);
+    expect(resultsOf(recorder.steps)).toStrictEqual([
+      ["alert_create", "not run: the owner stopped the agent"],
+    ]);
+  });
+
+  it("ends stopped when the stop lands as the engine takes the mark", async () => {
+    const stopper: { turn?: ChatTurn } = {};
+    const { turn, recorder, transport } = createTestTurn({
+      replies: [callsReply([{ name: "search_web" }, { name: "swap" }]), textReply("never")],
+      tools: [
+        { name: "search_web", kind: "read", outside: true },
+        { name: "swap", kind: "propose" },
+      ],
+      recorder: { beforeStep: stopDuring("engineMark", stopper) },
+    });
+    stopper.turn = turn;
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "stopped", committed: false });
+    expect(resultsOf(recorder.steps).at(-1)).toStrictEqual([
+      "swap",
+      "not run: the owner stopped the agent",
+    ]);
+    expect(transport.requests).toHaveLength(1);
+  });
+});
+
+describe("the status line of a committed turn", () => {
+  it("says the proposal waits only when the engine took it", async () => {
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "swap" }, { name: "swap", id: "again" }])],
+      tools: [
+        {
+          name: "swap",
+          kind: "propose",
+          run: async () => ({ text: "refused: the agent is frozen", isError: true }),
+        },
+      ],
+    });
+    await expect(turn.run()).resolves.toMatchObject({
+      outcome: "ok",
+      committed: true,
+      heldBack: 1,
+    });
+    expect(recorder.steps).toContainEqual({ kind: "status", line: { line: "proposalRefused" } });
+    expect(recorder.steps.filter((step) => step.kind === "status")).toHaveLength(1);
+  });
+});

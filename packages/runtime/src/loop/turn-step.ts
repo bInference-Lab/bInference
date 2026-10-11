@@ -62,17 +62,24 @@ function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
   return { outcome: "failed", status: { line: "failed", failure: fault.failure } };
 }
 
+// A card waits only for a proposal the engine took; more may follow it after the owner answers.
+function committedStatus(run: TurnRun): TurnStatusLine {
+  const { proposal, heldBack } = run.tally.now();
+  if (proposal !== "waits") {
+    return { line: "proposalRefused" };
+  }
+  return heldBack > 0 ? { line: "moreProposals", count: heldBack } : { line: "proposalWaits" };
+}
+
 // Merge point 2, after a batch: waiting messages join before the next model call.
 async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
   await join(run, batch.joined);
   if (run.halted.aborted) {
     return endOfHalt(haltOf(run.halted));
   }
-  const { committed, heldBack } = run.tally.now();
+  const { committed } = run.tally.now();
   if (committed) {
-    const status: TurnStatusLine =
-      heldBack > 0 ? { line: "moreProposals", count: heldBack } : { line: "proposalWaits" };
-    return { outcome: "ok", status };
+    return { outcome: "ok", status: committedStatus(run) };
   }
   if (batch.askedOwner) {
     return ok;

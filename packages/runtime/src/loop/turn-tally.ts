@@ -22,7 +22,12 @@ interface TurnMarks {
   readonly modelCalls: number;
   /** The text of the last model response: the turn's final text. */
   readonly lastText: string;
+  /** How the engine answered the turn's proposal: it waits for the owner, or was refused. */
+  readonly proposal?: ProposalAnswer;
 }
+
+/** How the engine answered a proposal it heard: a card waits for the owner, or it was refused. */
+export type ProposalAnswer = "waits" | "refused";
 
 /** A turn's marks as they change. Its marks only go from unset to set, and its counts only grow. */
 export interface TurnTally {
@@ -34,6 +39,7 @@ export interface TurnTally {
   holdBack(): void;
   countToolCalls(count: number): void;
   keepText(text: string): void;
+  answerProposal(answer: ProposalAnswer): void;
 }
 
 function entered(marks: TurnMarks, state: TurnState): TurnMarks {
@@ -75,6 +81,9 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     },
     keepText(lastText) {
       marks = { ...marks, lastText };
+    },
+    answerProposal(proposal) {
+      marks = { ...marks, proposal };
     },
   };
 }

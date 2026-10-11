@@ -1,8 +1,10 @@
 import { createDeadline, type Deadline } from "@binference/core";
 import type { ToolCall } from "./model-message.js";
+import { notRunText } from "./not-run.js";
 import { type CallResult, recordResult } from "./record-call.js";
 import { settleBy } from "./settle-by.js";
 import { createStopGrace } from "./stop-grace.js";
+import { haltOf } from "./turn-halt.js";
 import type { ReadyCall, ToolOutcome } from "./turn-ports.js";
 import type { TurnRun } from "./turn-run.js";
 
@@ -75,6 +77,15 @@ export async function executeCall(
   return { result: resultOf(ready, settled.value), endsTurn: settled.value.endsTurn === true };
 }
 
+// A stop that lands while the call is written keeps the tool from starting: nothing was sent.
+async function stoppedBeforeStart(run: TurnRun, call: ToolCall): Promise<boolean> {
+  if (!run.halted.aborted) {
+    return false;
+  }
+  await recordResult(run, call, { ...failedResult(notRunText(haltOf(run.halted))), ran: false });
+  return true;
+}
+
 /**
  * Runs a read or control call in order: written before it runs, its result written when it
  * returns. Answers whether its tool asked to end the turn.
@@ -85,16 +96,46 @@ export async function runToolCall(
   ready: ReadyCall,
 ): Promise<boolean> {
   await run.parts.journal.toolCall(numbered.call, run.writes);
+  if (await stoppedBeforeStart(run, numbered.call)) {
+    return false;
+  }
   const end = await executeCall(run, numbered, ready);
   await recordResult(run, numbered.call, end.result);
   return end.endsTurn;
 }
 
+// Sends the proposal: a stop gives a call already sent a short grace, and an answer after its
+// deadline is no answer, since the engine may hold the proposal or not.
+async function sendProposal(
+  run: TurnRun,
+  ready: ReadyCall,
+  idempotencyKey: string,
+): Promise<CallResult> {
+  const { clock } = run.parts;
+  const grace = createStopGrace(run.halted, clock, run.limits.stopGraceMs);
+  const timeoutMs = run.limits.proposeTimeoutMs;
+  const deadline = createDeadline({ clock, signal: grace.signal, timeoutMs });
+  const context = { signal: deadline.signal, idempotencyKey };
+  const settled = await settleBy(async () => ready.run(context), {
+    signal: deadline.signal,
+    clock,
+  });
+  const known = settled.kind === "value" && !deadline.signal.aborted;
+  deadline.clear();
+  grace.clear();
+  if (!known) {
+    run.halt("proposal_unknown");
+    return failedResult(unknownProposal);
+  }
+  run.tally.answerProposal(settled.value.isError ? "refused" : "waits");
+  return resultOf(ready, settled.value);
+}
+
 /**
  * Runs the turn's proposal (runtime spec, section 6.1): the turn commits, the call and the
- * committed mark are written in one write, and only then does the tool reach the engine. A stop
- * gives a call already sent a short grace. A call with no answer has an unknown outcome: the turn
- * halts, and the call is never sent again.
+ * committed mark are written in one write, and only then does the tool reach the engine, unless
+ * the turn was stopped meanwhile. A call with no answer has an unknown outcome: the turn halts,
+ * and the call is never sent again.
  */
 export async function runProposal(
   run: TurnRun,
@@ -105,25 +146,8 @@ export async function runProposal(
   const idempotencyKey = proposalKeyOf(run.turnId, ordinal);
   run.tally.commit();
   await run.parts.journal.proposal({ call, idempotencyKey }, run.writes);
-  const { clock } = run.parts;
-  const grace = createStopGrace(run.halted, clock, run.limits.stopGraceMs);
-  const timeoutMs = run.limits.proposeTimeoutMs;
-  const deadline = createDeadline({ clock, signal: grace.signal, timeoutMs });
-  const context = { signal: deadline.signal, idempotencyKey };
-  const settled = await settleBy(async () => ready.run(context), {
-    signal: deadline.signal,
-    clock: run.parts.clock,
-  });
-  // An answer after the deadline is no answer: the engine may hold the proposal or not.
-  const known = settled.kind === "value" && !deadline.signal.aborted;
-  deadline.clear();
-  grace.clear();
-  if (!known) {
-    run.halt("proposal_unknown");
+  if (await stoppedBeforeStart(run, call)) {
+    return;
   }
-  await recordResult(
-    run,
-    call,
-    known ? resultOf(ready, settled.value) : failedResult(unknownProposal),
-  );
+  await recordResult(run, call, await sendProposal(run, ready, idempotencyKey));
 }
