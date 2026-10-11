@@ -43,7 +43,10 @@ export interface ToolOutcome {
 export interface ToolRunContext {
   /** Aborts at the call's time limit, or when the turn stops and the call can stop. */
   readonly signal: AbortSignal;
-  /** The key a propose call sends with its proposal, the same for the call across restarts. */
+  /**
+   * The call's key: its turn and its number in the turn. A propose call sends it as its write's
+   * idempotency key; it is written with the committed mark before the engine hears of the call.
+   */
   readonly idempotencyKey: string;
 }
 
@@ -163,6 +166,9 @@ export interface TurnEngine {
 
 /** The chat queue's side of a running turn: the messages that join it at a merge point. */
 export interface MergeSource {
-  /** Takes the messages that wait to join; none in `after` mode. */
+  /**
+   * Takes the messages that wait to join, oldest first and at most 20; none in `after` mode. The
+   * loop asks only where a model call can follow to answer them.
+   */
   take(signal: AbortSignal): Promise<readonly OwnerMessage[]>;
 }

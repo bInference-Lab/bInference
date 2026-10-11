@@ -18,8 +18,10 @@ export interface NumberedCall {
 export const unknownProposal =
   "outcome unknown: the engine did not answer, and this proposal is never sent again";
 
-/** The key a turn's proposal is sent with: the turn and the call's number, the same on every try. */
-function proposalKeyOf(turnId: string, ordinal: number): string {
+// Names a call within the runtime: its turn and its number in the turn, unique across turns. The
+// engine keeps a write's key per credential, and the runtime's token changes at each start, so
+// the key never stops a proposal from going twice after a restart: the never-resend rule does.
+function callKeyOf(turnId: string, ordinal: number): string {
   return `${turnId}.${String(ordinal)}`;
 }
 
@@ -65,7 +67,7 @@ export async function executeCall(
     signal: run.halted,
     timeoutMs: run.limits.toolTimeoutMs,
   });
-  const idempotencyKey = proposalKeyOf(run.turnId, numbered.ordinal);
+  const idempotencyKey = callKeyOf(run.turnId, numbered.ordinal);
   const context = { signal: deadline.signal, idempotencyKey };
   const settled = await settleBy(async () => ready.run(context), {
     signal: deadline.signal,
@@ -144,7 +146,7 @@ export async function runProposal(
   ready: ReadyCall,
 ): Promise<void> {
   const { call, ordinal } = numbered;
-  const idempotencyKey = proposalKeyOf(run.turnId, ordinal);
+  const idempotencyKey = callKeyOf(run.turnId, ordinal);
   run.tally.commit();
   await run.parts.journal.proposal({ call, idempotencyKey }, run.writes);
   if (await stoppedBeforeStart(run, call)) {

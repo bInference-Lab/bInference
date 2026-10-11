@@ -18,6 +18,7 @@ async function settle(run: TurnRun, item: BatchCall): Promise<CallResult> {
   if (run.halted.aborted) {
     return refusedResult(notRunText(haltOf(run.halted)));
   }
+  // Only a control tool (`ask_owner`) ends a turn, and a parallel batch holds reads alone.
   return (await executeCall(run, item, prepared)).result;
 }
 
