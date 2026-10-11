@@ -156,6 +156,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   web_push_subscriptions: names("endpoint device_id p256dh auth server_key created_at"),
   pair_codes: names("code_hash expires_at used_at"),
   mini_app_launches: names("launch_hash seen_at"),
+  mini_app_tickets: names("ticket_hash user_id issued_at expires_at"),
   config_journal: names("id at by surface path before after reason"),
   plugins: names("id name version tier source hash permissions enabled installed_at"),
   skills: names("id agent_id name source hash installed_at"),
@@ -184,6 +185,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   idempotency: ["credential", "op", "key"],
   pair_codes: ["code_hash"],
   mini_app_launches: ["launch_hash"],
+  mini_app_tickets: ["ticket_hash"],
   web_push_subscriptions: ["endpoint"],
   cex_connections: ["provider"],
 };
@@ -216,6 +218,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   tokens: ["unique|secret_hash"],
   web_push_subscriptions: ["index|device_id"],
   mini_app_launches: ["index|seen_at"],
+  mini_app_tickets: ["index|issued_at"],
   config_journal: ["index|at"],
   plugins: ["unique|name"],
   skills: ["unique|agent_id,name"],

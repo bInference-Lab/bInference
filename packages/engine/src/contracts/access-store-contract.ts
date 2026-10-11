@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
 import type { DeviceRecord } from "../access/device-record.js";
+import { type LaunchTicketRecord, maxLaunchTickets } from "../access/launch-ticket.js";
 import type { TokenRecord } from "../access/token-record.js";
 import type { WebPushSubscriptionRecord } from "../access/web-push-subscription-record.js";
 import type { AccessStore } from "../ports.js";
@@ -181,6 +182,35 @@ async function claimsLaunchesOnce(store: AccessStore): Promise<void> {
   );
 }
 
+function ticket(n: number, issuedAtMs: number): LaunchTicketRecord {
+  const ticketHash = fixtureHash(`ticket-${String(n)}`);
+  return { ticketHash, userId: 279_058_397, issuedAtMs, expiresAtMs: issuedAtMs + 300_000 };
+}
+
+async function keepsLaunchTickets(store: AccessStore): Promise<void> {
+  assert.deepEqual(await store.addLaunchTicket(ticket(1, 1_000), live()), {
+    ok: true,
+    value: ticket(1, 1_000),
+  });
+  const again = { ...ticket(1, 1_000), issuedAtMs: 2_000 };
+  assert.deepEqual(await store.addLaunchTicket(again, live()), { ok: false, error: "exists" });
+  // Once ticket 1 expired, its hash is free again.
+  assert.deepEqual(await store.addLaunchTicket(ticket(1, 301_000), live()), {
+    ok: true,
+    value: ticket(1, 301_000),
+  });
+  const fill = Array.from({ length: maxLaunchTickets }, (_, i) => ticket(i + 2, 301_002 + i));
+  await fill.reduce(async (previous, next) => {
+    await previous;
+    await store.addLaunchTicket(next, live());
+  }, Promise.resolve());
+  // The oldest, ticket 1, made room for the newest: its hash is free, the others' are kept.
+  const oldest = { ...ticket(1, 302_000), expiresAtMs: 602_000 };
+  assert.deepEqual(await store.addLaunchTicket(oldest, live()), { ok: true, value: oldest });
+  const kept = ticket(maxLaunchTickets + 1, 302_001);
+  assert.deepEqual(await store.addLaunchTicket(kept, live()), { ok: false, error: "exists" });
+}
+
 async function refusesAborted(store: AccessStore): Promise<void> {
   const stamp = { id: token(1).id, atMs: 1 };
   await assertRefusesAborted(async (options) => store.addToken(token(1), options));
@@ -201,6 +231,11 @@ async function refusesAborted(store: AccessStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.usePairCode(use, options));
   const launch = { launchHash: fixtureHash("launch"), atMs: 1, sinceMs: 0 };
   await assertRefusesAborted(async (options) => store.claimLaunch(launch, options));
+  await assertRefusesAborted(async (options) => store.addLaunchTicket(ticket(1, 1), options));
+  assert.deepEqual(await store.addLaunchTicket(ticket(1, 1), live()), {
+    ok: true,
+    value: ticket(1, 1),
+  });
   assert.equal(await store.claimLaunch(launch, live()), "claimed");
   assert.deepEqual(await store.listTokens(live()), []);
   assert.deepEqual(await store.listDevices(live()), []);
@@ -232,6 +267,11 @@ export function accessStoreContract(harness: AccessStoreHarness): readonly Contr
       "claims a Mini App launch once, and forgets the claims from before the given time",
       create,
       claimsLaunchesOnce,
+    ),
+    checkOn(
+      "keeps launch tickets until they expire, at most the newest 16, each hash once",
+      create,
+      keepsLaunchTickets,
     ),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];

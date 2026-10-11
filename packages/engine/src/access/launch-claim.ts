@@ -1,6 +1,8 @@
+import type { Result } from "@binference/core";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 import { type Sha256Hex, sha256HexSchema } from "../records/sha256-hex.js";
+import type { LaunchTicketRecord } from "./launch-ticket.js";
 
 /**
  * A Telegram Mini App launch that passed every other check, claimed so it signs in once (decision
@@ -25,8 +27,19 @@ export type LaunchClaimOutcome = "claimed" | "seen";
 /** Parses a launch claim's outcome. */
 export const launchClaimOutcomeSchema: z.ZodType<LaunchClaimOutcome> = z.enum(["claimed", "seen"]);
 
-/** The access store's part that keeps the Mini App launches that signed in (decision 0160). */
+/**
+ * The access store's part that keeps the Mini App launches that signed in (decision 0160) and the
+ * launch tickets `/console` made.
+ */
 export interface MiniAppLaunches {
+  /**
+   * Keeps a new launch ticket in one write: deletes the tickets expired by its `issuedAtMs`, keeps
+   * it, then drops the oldest past `maxLaunchTickets`. A hash in use is `exists`.
+   */
+  addLaunchTicket(
+    ticket: LaunchTicketRecord,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<LaunchTicketRecord, "exists">>;
   /**
    * Claims a launch in one write: deletes the claims from before `sinceMs`, then answers `seen`
    * when the launch's hash is still kept, or keeps it and answers `claimed`.

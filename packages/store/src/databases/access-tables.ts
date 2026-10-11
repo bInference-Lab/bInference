@@ -1,5 +1,6 @@
 // The access tables of `engine.sqlite`, as SQLite returns them: migration 0009 defines them,
-// migration 0021 adds `web_push_subscriptions` and migration 0023 `mini_app_launches`.
+// migration 0021 adds `web_push_subscriptions`, migration 0023 `mini_app_launches` and migration
+// 0024 `mini_app_tickets`.
 
 /** `tokens`. */
 export interface TokensTable {
@@ -48,6 +49,14 @@ interface MiniAppLaunchesTable {
   seen_at: number;
 }
 
+/** `mini_app_tickets`: the SHA-256 of each launch ticket `/console` made (decision 0161). */
+interface MiniAppTicketsTable {
+  ticket_hash: string;
+  user_id: number;
+  issued_at: number;
+  expires_at: number;
+}
+
 /** The access tables, by name. */
 export interface AccessTables {
   tokens: TokensTable;
@@ -55,4 +64,5 @@ export interface AccessTables {
   pair_codes: PairCodesTable;
   web_push_subscriptions: WebPushSubscriptionsTable;
   mini_app_launches: MiniAppLaunchesTable;
+  mini_app_tickets: MiniAppTicketsTable;
 }

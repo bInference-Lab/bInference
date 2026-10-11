@@ -1,11 +1,16 @@
+import { err, ok, type Result } from "@binference/core";
 import {
   type LaunchClaim,
   launchClaimOutcomeSchema,
   launchClaimSchema,
   type LaunchClaimOutcome,
+  type LaunchTicketRecord,
+  launchTicketRecordSchema,
+  maxLaunchTickets,
 } from "@binference/engine/access";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
 /**
@@ -35,5 +40,48 @@ export const claimLaunchTask: StoreTask<LaunchClaim, LaunchClaimOutcome> = defin
         .values({ launch_hash: claim.launchHash, seen_at: claim.atMs }),
     );
     return "claimed";
+  },
+});
+
+/**
+ * Keeps a new launch ticket in one transaction: deletes the tickets expired by its `issuedAtMs`,
+ * keeps it, then deletes the oldest past `maxLaunchTickets`. A hash in use is `exists`.
+ */
+export const addLaunchTicketTask: StoreTask<
+  LaunchTicketRecord,
+  Result<LaunchTicketRecord, "exists">
+> = defineTask({
+  name: "access.add_launch_ticket",
+  access: "write",
+  input: launchTicketRecordSchema,
+  output: resultSchema(launchTicketRecordSchema, ["exists"]),
+  run(database, ticket) {
+    const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
+    execute(kysely.deleteFrom("mini_app_tickets").where("expires_at", "<=", ticket.issuedAtMs));
+    const taken = takeFirst(
+      kysely
+        .selectFrom("mini_app_tickets")
+        .select("ticket_hash")
+        .where("ticket_hash", "=", ticket.ticketHash),
+    );
+    if (taken !== undefined) {
+      return err("exists");
+    }
+    execute(
+      kysely.insertInto("mini_app_tickets").values({
+        ticket_hash: ticket.ticketHash,
+        user_id: ticket.userId,
+        issued_at: ticket.issuedAtMs,
+        expires_at: ticket.expiresAtMs,
+      }),
+    );
+    const newest = kysely
+      .selectFrom("mini_app_tickets")
+      .select("ticket_hash")
+      .orderBy("issued_at", "desc")
+      .orderBy("ticket_hash", "desc")
+      .limit(maxLaunchTickets);
+    execute(kysely.deleteFrom("mini_app_tickets").where("ticket_hash", "not in", newest));
+    return ok(ticket);
   },
 });

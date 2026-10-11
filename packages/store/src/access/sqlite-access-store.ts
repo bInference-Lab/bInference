@@ -8,7 +8,7 @@ import {
   markDeviceSeenTask,
   revokeDeviceTask,
 } from "./device-tasks.js";
-import { claimLaunchTask } from "./launch-tasks.js";
+import { addLaunchTicketTask, claimLaunchTask } from "./launch-tasks.js";
 import { addPairCodeTask, usePairCodeTask } from "./pair-code-tasks.js";
 import {
   addTokenTask,
@@ -41,6 +41,7 @@ export const accessTasks: readonly TaskRunner[] = [
   addPairCodeTask,
   usePairCodeTask,
   claimLaunchTask,
+  addLaunchTicketTask,
 ];
 
 /** The {@link AccessStore} on `engine.sqlite`: each call runs one store task. */
@@ -65,5 +66,6 @@ export function createSqliteAccessStore(host: StoreHost): AccessStore {
     addPairCode: bindTask(host, addPairCodeTask),
     usePairCode: bindTask(host, usePairCodeTask),
     claimLaunch: bindTask(host, claimLaunchTask),
+    addLaunchTicket: bindTask(host, addLaunchTicketTask),
   };
 }

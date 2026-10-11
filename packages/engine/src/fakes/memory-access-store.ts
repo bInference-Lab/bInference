@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "@binference/core";
 import type { DeviceRecord } from "../access/device-record.js";
 import type { LaunchClaim, LaunchClaimOutcome } from "../access/launch-claim.js";
+import { type LaunchTicketRecord, maxLaunchTickets } from "../access/launch-ticket.js";
 import type { PairCodeRecord, PairCodeUse } from "../access/pair-code-record.js";
 import type { TokenRecord } from "../access/token-record.js";
 import type {
@@ -183,8 +184,30 @@ function pairCodeMethods(): Pick<AccessStore, "addPairCode" | "usePairCode"> {
   };
 }
 
+// The launch tickets by hash, oldest first; each new one first forgets those expired by then.
+function ticketMethods(
+  tickets: Map<string, LaunchTicketRecord>,
+): Pick<AccessStore, "addLaunchTicket"> {
+  const add = (ticket: LaunchTicketRecord): Result<LaunchTicketRecord, "exists"> => {
+    for (const [hash, kept] of tickets) {
+      if (kept.expiresAtMs <= ticket.issuedAtMs) {
+        tickets.delete(hash);
+      }
+    }
+    if (tickets.has(ticket.ticketHash)) {
+      return err("exists");
+    }
+    tickets.set(ticket.ticketHash, structuredClone(ticket));
+    const over = [...tickets.keys()].slice(0, Math.max(0, tickets.size - maxLaunchTickets));
+    over.forEach((hash) => tickets.delete(hash));
+    return ok(structuredClone(ticket));
+  };
+  return { addLaunchTicket: async (ticket, call) => memoryCall(call, () => add(ticket)) };
+}
+
 // The claimed launches by hash; each claim first forgets those from before its `sinceMs`.
-function launchMethods(): Pick<AccessStore, "claimLaunch"> {
+function launchMethods(): Pick<AccessStore, "claimLaunch" | "addLaunchTicket"> {
+  const tickets = new Map<string, LaunchTicketRecord>();
   const claims = new Map<string, number>();
   const claim = (launch: LaunchClaim): LaunchClaimOutcome => {
     for (const [hash, atMs] of claims) {
@@ -198,7 +221,10 @@ function launchMethods(): Pick<AccessStore, "claimLaunch"> {
     claims.set(launch.launchHash, launch.atMs);
     return "claimed";
   };
-  return { claimLaunch: async (launch, call) => memoryCall(call, () => claim(launch)) };
+  return {
+    ...ticketMethods(tickets),
+    claimLaunch: async (launch, call) => memoryCall(call, () => claim(launch)),
+  };
 }
 
 /** Creates an empty in-memory {@link AccessStore} for tests. */

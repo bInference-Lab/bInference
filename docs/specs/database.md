@@ -173,19 +173,20 @@ outlast a restart ([decision 0139](../DECISIONS.md#d0139)).
 
 ### 2.8 Access, plugins and operations
 
-| Table                    | Columns                                                                                                                                           | Keys                          |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `tokens`                 | `id`, `label`, `kind` (`cli`, `runtime`, `mcp`, `custom`), `scopes JSON`, `secret_hash`, `created_at`, `last_used_at`, `revoked_at`, `expires_at` | unique `secret_hash`          |
-| `devices`                | `id`, `label`, `alg` (`ed25519`, `p256`), `public_key`, `created_at`, `last_seen_at`, `revoked_at`                                                |                               |
-| `pair_codes`             | `code_hash`, `expires_at`, `used_at`                                                                                                              | PK `code_hash`                |
-| `web_push_subscriptions` | `endpoint`, `device_id`, `p256dh`, `auth`, `server_key` (the VAPID public key it was made for), `created_at`                                      | PK `endpoint`, `(device_id)`  |
-| `mini_app_launches`      | `launch_hash` (the SHA-256 of a Mini App launch's `hash` field), `seen_at`                                                                        | PK `launch_hash`, `(seen_at)` |
-| `config_journal`         | `id`, `at`, `by`, `surface`, `path`, `before JSON`, `after JSON`, `reason`                                                                        | `(at)`                        |
-| `plugins`                | `id`, `name`, `version`, `tier` (`core`, `community`), `source`, `hash`, `permissions JSON`, `enabled`, `installed_at`                            | unique `name`                 |
-| `skills`                 | `id`, `agent_id`, `name`, `source`, `hash`, `installed_at`                                                                                        | unique `(agent_id, name)`     |
-| `jobs`                   | `id`, `kind`, `state` (`running`, `done`, `failed`), `progress JSON`, `result JSON`, `error JSON`, `started_at`, `ended_at`                       | `(state)`                     |
-| `backups`                | `id`, `path`, `bytes`, `kind` (`daily`, `weekly`, `manual`, `before_update`, `before_migration`), `created_at`, `verified_at`                     | `(created_at)`                |
-| `cex_connections`        | `provider` (`binance`), `state`, `secret_ref` (a keychain name), `scopes JSON`, `connected_at`                                                    | PK `provider`                 |
+| Table                    | Columns                                                                                                                                           | Keys                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `tokens`                 | `id`, `label`, `kind` (`cli`, `runtime`, `mcp`, `custom`), `scopes JSON`, `secret_hash`, `created_at`, `last_used_at`, `revoked_at`, `expires_at` | unique `secret_hash`            |
+| `devices`                | `id`, `label`, `alg` (`ed25519`, `p256`), `public_key`, `created_at`, `last_seen_at`, `revoked_at`                                                |                                 |
+| `pair_codes`             | `code_hash`, `expires_at`, `used_at`                                                                                                              | PK `code_hash`                  |
+| `web_push_subscriptions` | `endpoint`, `device_id`, `p256dh`, `auth`, `server_key` (the VAPID public key it was made for), `created_at`                                      | PK `endpoint`, `(device_id)`    |
+| `mini_app_launches`      | `launch_hash` (the SHA-256 of a Mini App launch's `hash` field), `seen_at`                                                                        | PK `launch_hash`, `(seen_at)`   |
+| `mini_app_tickets`       | `ticket_hash` (the SHA-256 of a launch ticket `/console` made), `user_id` (the owner's Telegram id), `issued_at`, `expires_at`                    | PK `ticket_hash`, `(issued_at)` |
+| `config_journal`         | `id`, `at`, `by`, `surface`, `path`, `before JSON`, `after JSON`, `reason`                                                                        | `(at)`                          |
+| `plugins`                | `id`, `name`, `version`, `tier` (`core`, `community`), `source`, `hash`, `permissions JSON`, `enabled`, `installed_at`                            | unique `name`                   |
+| `skills`                 | `id`, `agent_id`, `name`, `source`, `hash`, `installed_at`                                                                                        | unique `(agent_id, name)`       |
+| `jobs`                   | `id`, `kind`, `state` (`running`, `done`, `failed`), `progress JSON`, `result JSON`, `error JSON`, `started_at`, `ended_at`                       | `(state)`                       |
+| `backups`                | `id`, `path`, `bytes`, `kind` (`daily`, `weekly`, `manual`, `before_update`, `before_migration`), `created_at`, `verified_at`                     | `(created_at)`                  |
+| `cex_connections`        | `provider` (`binance`), `state`, `secret_ref` (a keychain name), `scopes JSON`, `connected_at`                                                    | PK `provider`                   |
 
 A token without `expires_at` works until it is revoked ([decision 0159](../DECISIONS.md#d0159)).
 
@@ -200,6 +201,12 @@ drops its rows, and the VAPID private key that signs the messages lives in `keys
 as the SHA-256 of each launch's `hash` field and never the launch data. A sign-in checks and writes
 it in one transaction and deletes the rows older than 24 hours there, so a launch signs in once,
 even after a restart ([decision 0160](../DECISIONS.md#d0160)).
+
+`mini_app_tickets` holds the single-use tickets `/console` put in the Mini App's address, as the
+SHA-256 of each ticket and never the ticket, with the Telegram id it was made for and an expiry 5
+minutes later. A new ticket deletes the expired rows and the oldest past 16; a Mini App sign-in
+deletes its ticket in the transaction that claims its launch
+([decision 0161](../DECISIONS.md#d0161)).
 
 <a id="section-3"></a>
 
@@ -230,6 +237,7 @@ A daily job (inside the engine's schedule queue) prunes:
 | `transcript_events`, `turns`                                                                                               | 90 days ([decision 0056](../DECISIONS.md#d0056); `chats.keepDays`) |
 | `idempotency`                                                                                                              | 24 hours                                                           |
 | `mini_app_launches`                                                                                                        | 24 hours, deleted at each Mini App sign-in                         |
+| `mini_app_tickets`                                                                                                         | 5 minutes, deleted at each new ticket; a sign-in deletes its own   |
 | `inbox` handled, `outbox` sent                                                                                             | 30 days                                                            |
 | `webhook_events`                                                                                                           | 90 days                                                            |
 | `notices`                                                                                                                  | 90 days                                                            |

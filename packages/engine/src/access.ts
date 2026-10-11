@@ -19,6 +19,15 @@ export {
   type MiniAppLaunches,
 } from "./access/launch-claim.js";
 export {
+  issueLaunchTicket,
+  launchTicketHash,
+  launchTicketLifetimeMs,
+  launchTicketRecordSchema,
+  maxLaunchTickets,
+  type LaunchTicketOptions,
+  type LaunchTicketRecord,
+} from "./access/launch-ticket.js";
+export {
   createDevicePairing,
   newDeviceNotice,
   newDeviceNoticeKey,
