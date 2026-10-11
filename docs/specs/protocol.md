@@ -5,7 +5,13 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134) and [0155](../DECISIONS.md#d0155);
-the agent runtime's operations follow [spec 8](runtime.md) (proposed).
+the agent runtime's operations follow [spec 8](runtime.md) (proposed). Proposed on 2026-10-12
+and waiting for the owner's approval: the market reads `market/scan`, `market/chart`,
+`wallet/activity` and `launch/list`; the agent's questions (`turn/ask`, `chat/answer`); alert
+conditions and wake-ups (section 8.4); the pushes `launch/new`, `inbox/alertFired`,
+`chat/question` and `chat/questionClosed`; `QuoteView.place`, the P&L fields of `PnlView`,
+`OrderView.endReason`, `update/check`'s `releaseNotes`; the id prefix `qst_`; and the error areas
+`question`, `alert` and `market`.
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -48,7 +54,7 @@ below.
 | `tok_` | client token  | `con_` | connection       |
 | `job_` | long job      | `bkp_` | backup           |
 | `ntc_` | notice        | `plg_` | installed plugin |
-| `msg_` | inbox message |        |                  |
+| `msg_` | inbox message | `qst_` | agent question   |
 
 <a id="section-2"></a>
 
@@ -250,10 +256,11 @@ A Telegram tap is handled inside the engine and never travels over this protocol
 | `order`         | `read`  | `order/created`, `order/changed`, `order/filled`, `order/skipped`                                                                                                                                                                                                                                                                                           |
 | `portfolio`     | `read`  | `portfolio/changed` (at most once per second per agent)                                                                                                                                                                                                                                                                                                     |
 | `ledger`        | `read`  | `ledger/appended`                                                                                                                                                                                                                                                                                                                                           |
-| `alert`         | `read`  | `alert/fired`                                                                                                                                                                                                                                                                                                                                               |
+| `alert`         | `read`  | `alert/fired` (an `AlertFired`, section 8.4)                                                                                                                                                                                                                                                                                                                |
 | `notice`        | `read`  | `notice/new`: the owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#section-27), as an i18n key and its values, with the times (epoch milliseconds) and amounts (base units) among them for each surface to format, and the notice's `id` and `at`; `notice/list` reads on from the last `id` ([decision 0133](../DECISIONS.md#d0133)) |
-| `chat:<agt_id>` | `read`  | `chat/message`, `chat/status`, `chat/turnStarted`, `chat/turnEnded`                                                                                                                                                                                                                                                                                         |
-| `inbox`         | `agent` | `inbox/message`, `inbox/intentSettled`, `inbox/orderSettled`, `inbox/scheduleDue`, `inbox/resumeReport`, `inbox/stop`, `inbox/clear`; each is a stored message, with the data of [spec 8, section 3.3](runtime.md#section-3-3)                                                                                                                              |
+| `launch`        | `read`  | `launch/new`: a `LaunchView` (section 8.3) for each token a launchpad created, once, in block order; `launch/list` reads on from a time                                                                                                                                                                                                                     |
+| `chat:<agt_id>` | `read`  | `chat/message`, `chat/status`, `chat/turnStarted`, `chat/turnEnded`, `chat/question` (a `QuestionView`, section 7.7), `chat/questionClosed` (`{ question, state, answer? }`)                                                                                                                                                                                |
+| `inbox`         | `agent` | `inbox/message`, `inbox/intentSettled`, `inbox/orderSettled`, `inbox/scheduleDue`, `inbox/alertFired`, `inbox/resumeReport`, `inbox/stop`, `inbox/clear`; each is a stored message, with the data of [spec 8, section 3.3](runtime.md#section-3-3)                                                                                                          |
 | `config`        | `read`  | `config/changed` (a config journal entry)                                                                                                                                                                                                                                                                                                                   |
 | `job`           | `read`  | `job/progress`, `job/done`, `job/failed`                                                                                                                                                                                                                                                                                                                    |
 | `log`           | `admin` | `log/line` (after `log/follow`)                                                                                                                                                                                                                                                                                                                             |
@@ -334,6 +341,10 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                                      |
 | `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                      |
 | `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                           |
+| `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                |
+| `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, source }` (below)             |
+| `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }`, newest first (below)            |
+| `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                 |
 
 - `asset/search` reads the chain registry and the positions store, never the web. A query the
   chain's family reads as an address names that token: `items` holds it with the registry's
@@ -347,6 +358,27 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   asset it sold. The unrealized P&L is today's, of what the positions hold now, whatever the range.
   Live and paper stay apart (`PnlView`, section 8.3), and every wallet the agent had counts,
   archived ones too ([decision 0137](../DECISIONS.md#d0137)).
+- `market/scan` with `source: launches` reads the engine's own launch records (`launch/list`),
+  newest first, from the last 24 hours; with `trending`, the market data source's trending tokens
+  on the chain (DEX Screener in v1), in its order. `limit` is 20 by default and at most 50. A
+  `ScanItem` is
+  `{ asset, launchpad?, launchedAt?, priceUsdMicros?, liquidityUsdMicros?, volume24hUsdMicros?, change24hBps?, curveProgressBps?, graduated?, risk?: RiskView }`;
+  fields the source does not give are absent. `risk` is present only when the risk cache holds a
+  fresh answer: a scan never calls a risk source.
+- `market/chart` answers OHLCV candles in USD, oldest first: each
+  `{ at, openUsdMicros, highUsdMicros, lowUsdMicros, closeUsdMicros, volumeUsdMicros }`, `at` the
+  candle's start. `limit` is 100 by default and at most 500; `to` defaults to now. `source` names
+  where they came from (`dexscreener` in v1). A source that answers nothing for the asset fails
+  `market.no_data`; one that is down fails `market.source_down` (retryable).
+- `wallet/activity` reads the trades of one account: one of `agent`'s wallets, from its executions,
+  or a wallet the agent tracks (a leader of one of its copy orders, or the account of one of its
+  wallet alerts), from what the leader watcher recorded since tracking began. Any other account
+  fails `wallet.not_found`: the engine reads no history it did not watch. An `ActivityItem` is
+  `{ at, block, tx, side: buy | sell, asset, amount, counterAsset, counterAmount, valueUsdMicros?, shareSoldBps?, venue? }`;
+  `shareSoldBps` is the share of the account's holding a sale took, as the watcher saw it.
+- Names and symbols in `assets` of these results are set by whoever deployed each token
+  ([rule 3](../ARCHITECTURE.md#rule-3)); an agent tool that returns them marks its turn
+  ([spec 8, section 5.4](runtime.md#section-5-4)).
 
 <a id="section-7-4"></a>
 
@@ -383,8 +415,8 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `order/get`             | `read`    |       |       | `{ order }` → `OrderView` with fills                                                                                         |
 | `order/list`            | `read`    |       |       | paging, `{ agent?, state? }` → orders with `assets` (section 8.3)                                                            |
 | `order/cancel`          | `propose` | ✓     |       | `{ order }` → `OrderView` (braking: no card)                                                                                 |
-| `alert/create`          | `propose` | ✓     |       | `{ agent, condition }` → `AlertView` (no transaction, no card)                                                               |
-| `alert/list`            | `read`    |       |       | paging → alerts                                                                                                              |
+| `alert/create`          | `propose` | ✓     |       | `{ agent, condition, wake?, expiresAt? }` → `AlertView` (no transaction, no card; section 8.4)                               |
+| `alert/list`            | `read`    |       |       | paging, `{ agent?, state? }` → alerts                                                                                        |
 | `alert/delete`          | `propose` | ✓     |       | `{ alert }` → `{}`                                                                                                           |
 | `webhookRule/create`    | `admin`   | ✓     |       | `WebhookRuleRequest` → `{ rule, url }` awaiting its one card ([decision 0053](../DECISIONS.md#d0053)); the URL is shown once |
 | `webhookRule/list`      | `read`    |       |       | → rules without secrets                                                                                                      |
@@ -393,6 +425,14 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `schedule/create`       | `propose` | ✓     |       | `{ agent, when: { cron, timezone? } \| { at }, prompt }` → `ScheduleView` ([decision 0049](../DECISIONS.md#d0049))           |
 | `schedule/list`         | `read`    |       |       | `{ agent? }` → schedules                                                                                                     |
 | `schedule/cancel`       | `propose` | ✓     |       | `{ schedule }` → `{}`                                                                                                        |
+
+Alerts are code: the watchers judge them, as they judge auto orders, and the model budget never
+pauses them. An agent has at most 50 active alerts; one more fails `alert.too_many`. Their
+conditions, how often each fires, and the wake-ups are in section 8.4. `alert/delete` of an alert
+that is not active fails `alert.not_found`.
+
+An order that ends because another exit order emptied its position (spec 6, section 5) moves to
+`ended` with `endReason: "position_closed"`, and pushes `order/changed`.
 
 <a id="section-7-6"></a>
 
@@ -433,6 +473,8 @@ key adds it to the ceiling ([decision 0111](../DECISIONS.md#d0111)).
 | `turn/say`      | `agent`                | ✓     | `{ agent, session, turn, text, final }` → `{}`; drafts are edited in place until `final`                                                                                                                                                      |
 | `turn/status`   | `agent`                |       | `{ agent, turn, statusKey, values? }` → `{}`                                                                                                                                                                                                  |
 | `turn/end`      | `agent`                | ✓     | `{ agent, turn, outcome }` → `{}`                                                                                                                                                                                                             |
+| `turn/ask`      | `agent`                | ✓     | `{ agent, session, turn, text, choices }` → `QuestionView`: the agent's question to the owner with 2 to 4 answer buttons (below)                                                                                                              |
+| `chat/answer`   | `chat`                 | ✓     | `{ agent, question, choice }` → `{ session, turn }`: the owner picks a choice of an open question; fails `question.not_found` or `question.closed`                                                                                            |
 | `usage/record`  | `agent`                | ✓     | `{ agent, turn, model, inputTokens, outputTokens, cachedTokens, usdMicros }` → `{ budgetLeftMicros }`                                                                                                                                         |
 | `inbox/list`    | `agent`                |       | paging, `{ agent? }` → the untaken inbox messages, oldest first                                                                                                                                                                               |
 | `inbox/take`    | `agent`                | ✓     | `{ messages }` → `{}`: the runtime holds them in its chat queue                                                                                                                                                                               |
@@ -446,6 +488,30 @@ key adds it to the ceiling ([decision 0111](../DECISIONS.md#d0111)).
 message, which a message that joins a running turn leaves unused
 ([spec 8, section 3.2](runtime.md#section-3-2)). A proposal of the agent runtime takes the
 outside-content mark of its agent's running turn ([spec 8, section 4.3](runtime.md#section-4-3)).
+
+**The agent's questions.** `turn/ask` is how the `ask_owner` tool asks
+([spec 8, section 6.4](runtime.md#section-6-4)):
+
+- `turn` is the agent's running turn, else `protocol.bad_args`. `text` is the agent's words, at
+  most 500 characters; `choices` are 2 to 4 distinct labels, each 1 to 64 characters on one line.
+  A choice that starts with a status icon of [spec 4, section 1](cards-and-messages.md#section-1)
+  is `protocol.bad_args`, so a question never looks like a card. The engine stores the question
+  (`qst_…`) and answers its `QuestionView`:
+  `{ question, agent, session, turn, text, choices, state: open | answered | closed, answer?: { choice?, typed?, surface, at }, closeReason?, createdAt, closesAt }`.
+- An agent has one open question. A new one closes the one before with `closeReason: "replaced"`;
+  `chat/clear` closes it with `cleared`, and 24 hours after it was asked it closes with `expired`.
+- The engine draws it on every chat surface: in Telegram as a message with one button per choice
+  (callback kind `q`, [spec 4, section 2](cards-and-messages.md#section-2)), and as `chat/question`
+  on the agent's chat topic for the console and terminal chat; its words are in
+  [spec 4, section 8.2](cards-and-messages.md#section-8-2).
+- The first answer wins, from any surface: a press in Telegram, `chat/answer`, or the owner's next
+  `chat/post` to the agent while the question is open, which answers it as typed text. One write
+  closes the question as `answered` and stores the `inbox/message`, whose `text` is the choice's
+  label, or the typed text, and whose `answer` is `{ question, choice }` for a button. Every copy
+  then shows the answer and loses its buttons, and `chat/questionClosed` is pushed. A later press
+  changes nothing.
+- An answer is only a message to the agent. It confirms nothing: a proposal that follows it opens
+  its own card.
 
 `images` are upload ids from `upload/start` (section 7.9): at most 4 per message, each a PNG, JPEG
 or WebP of at most 5 MiB. A message with images marks the turn as outside content
@@ -493,7 +559,7 @@ no upload.
 | `backup/list`        | `read`                     |       |       | → backups, newest first, each `{ backup, kind, bytes, createdAt, verifiedAt? }`                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `backup/create`      | `admin`                    | ✓     |       | `{ copyTo? }` → `{ job }`: a `manual` backup, kept until the owner removes it, its second copy in `copyTo` (an absolute folder) or else `backups.copyTo`; the job ends with the backup as `backup/list` shows it, or fails with a `backup` code; while one runs, the answer is its job                                                                                                                                                                                                                                  |
 | `backup/restore`     | `admin`                    | ✓     | ✓     | `{ backup }` → `{ job }`; unserved in v1 ([decision 0152](../DECISIONS.md#d0152)): the restore needs the owner key for its whole length and replaces the database the engine holds open, then the engine must start again, which it cannot do itself; `binference backup restore <file>` restores in the CLI, between a stop and a start                                                                                                                                                                                |
-| `update/check`       | `read`                     |       |       | → `{ current, latest?, channel, notes? }`                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `update/check`       | `read`                     |       |       | → `{ current, latest?, channel, notes?, releaseNotes? }`; `releaseNotes` is `{ en: string[], zh: string[] }`, at most 5 lines of at most 200 characters in each language, from the release (spec 4, section 4.2)                                                                                                                                                                                                                                                                                                        |
 | `update/apply`       | `admin`                    | ✓     | ✓     | `{ version? }` → `{ job }`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `check/run`          | `read`; `admin` with `fix` | ✓     |       | `{ fix?, only? }` → `{ job }`; findings carry stable check ids                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `report/create`      | `admin`                    | ✓     |       | `{}` → `{ job }`, then a file (the redacted support bundle)                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -566,6 +632,13 @@ Every request carries `agent`, an optional `wallet` (default: the agent's first 
 | `registerIdentity` | (none beyond `agent`)                                                                                                                                                                                                                                                                       |
 | `launchToken`      | `venue: flap \| fourmeme \| geniusfun \| brew`, `name`, `symbol`, `image` (an upload id), `description?`, `links?`, `pairWith: AssetRef`, `firstBuy?: Amount`, `venueOptions?` (each venue's own settings, such as a tax, validated by its plugin) ([decision 0082](../DECISIONS.md#d0082)) |
 
+`buy` and `sell` name no venue: the engine picks the place, the token's launchpad curve or the
+pools, by [spec 6, section 5](intent-states.md#section-5), and the quote names it (`place`). A
+`sell` by `percentBps` sells that share of what the wallet holds of the token when the quote is
+built, rounded down, never more than the wallet holds; `10000` sells all of it. `receive` defaults
+to the curve's quote token on a curve, and to the chain's coin in the pools. A `launchToken` in
+paper mode ends `rejected_policy` with `paper_only` (spec 6, section 4).
+
 `rescue` intents are created only by `safety/rescue`, `unfreeze` intents only by `safety/unfreeze`
 (`{ kind: "unfreeze", agent? }`), and fill intents only by the engine for an auto order or webhook
 rule.
@@ -589,6 +662,11 @@ rule.
 ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28)): 30-day expiry, one fill for limit,
 take-profit and stop-loss.
 
+**Exit orders.** A `takeProfit`, a `stopLoss`, a `trailing` order, or a `limit` order with
+`side: sell`, is an exit order of its position: its wallet, its token, and its mode, live or paper.
+A sale by an exit order never sells more than the position holds. When one exit order's fill
+empties the position, the position's other active exit orders end (spec 6, section 5).
+
 <a id="section-8-3"></a>
 
 ### 8.3 Views
@@ -599,7 +677,8 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
 - `AssetInfo`: `{ symbol, name, decimals, verified, onCurve?, logo? }`. `symbol` and `name` are set
   by whoever deployed the token; clients escape them ([rule 3](../ARCHITECTURE.md#rule-3)).
 - `QuoteView`:
-  `{ route: [{ venue, shareBps }], amountIn, expectedOut, minOut, priceImpactBps, gas: Amount, quotedAt, expiresAt }`.
+  `{ route: [{ venue, shareBps }], amountIn, expectedOut, minOut, priceImpactBps, gas: Amount, quotedAt, expiresAt, place? }`.
+  `place`, on a `buy` or `sell` quote, is `{ kind: curve, launchpad }` or `{ kind: pools }`.
 - `RiskView`:
   `{ verdict: pass \| warn \| block, flags: [{ code, source }], buyTaxBps?, sellTaxBps?, liquidityUsdMicros?, onCurve, checkedAt }`.
 - `CardView`: `{ card, version, opensAt, expiresAt, paper, outsideContent }`; its text is spec 4.
@@ -611,12 +690,59 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   price, never a paper one; `paperTotalUsdMicros` sums the paper balances beside it, absent when
   the view holds none. The two are never added together.
 - `PnlView`:
-  `{ positions: [{ asset, realizedUsdMicros, unrealizedUsdMicros? }], realizedUsdMicros, unrealizedUsdMicros?, paperPositions?, paperRealizedUsdMicros?, paperUnrealizedUsdMicros?, assets }`.
+  `{ positions: [{ asset, realizedUsdMicros, unrealizedUsdMicros?, quantity?, costUsdMicros?, boughtUsdMicros?, soldUsdMicros?, feesUsdMicros?, gasUsdMicros?, openedAt?, closedAt? }], realizedUsdMicros, unrealizedUsdMicros?, paperPositions?, paperRealizedUsdMicros?, paperUnrealizedUsdMicros?, assets }`.
   The first three are live, the `paper` ones paper, never added together; an unrealized figure is
-  absent where no price is known.
+  absent where no price is known. The optional fields of a position feed the P&L card
+  ([spec 4, section 3.7](cards-and-messages.md#section-3-7)): what it holds now and its cost at
+  average cost; what the range's executions paid and received in USD; the venue fees and network
+  fees they paid; its first buy; and, when it holds nothing now, the execution that emptied it.
+- `LaunchView`:
+  `{ chain, token: AssetRef, launchpad, creator: AccountRef, quoteToken: AssetRef, taxBps?, snipeTaxBps?, curveProgressBps?, graduated, insiders: [AccountRef], creatorLaunches30d, block, tx, launchedAt, assets }`:
+  one token a launchpad created, from its create event; `curveProgressBps` and `graduated` as last
+  read; `insiders` the wallets the launchpad or the risk step names as exempt or first holders;
+  `creatorLaunches30d` the launches the engine recorded for the same creator in the 30 days before.
+- `OrderView.endReason?` says why an `ended` order ended: `position_closed` for an exit order whose
+  position another exit emptied. `AlertView` carries `wake`, `fires` and `expiresAt?` (section 8.4).
 - `OrderView`, `AlertView`, `ScheduleView`, `WalletView`, `AgentView`, `LimitsView`: the stored
   fields of spec 3 with ids and times as section 1 sets. `agent/list` adds each agent's
   `defaultWallet` to its `AgentView`.
+
+<a id="section-8-4"></a>
+
+### 8.4 Alert conditions and wake-ups
+
+An alert sends no transaction and opens no card. When it fires, the engine records it, pushes
+`alert/fired`, and sends the owner its notice ([spec 4, section 4.3](cards-and-messages.md#section-4-3)).
+With `wake: true`, it also starts a turn of the agent (below).
+
+| `condition.kind` | Fields                                                                           | Fires                                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `price`          | `asset`, `direction: above \| below`, `price: usdMicros`                         | Once, on the first watcher price at or past `price`; the alert is then `fired`                         |
+| `wallet`         | `account: AccountRef`, `side?: buy \| sell`, `asset?: AssetRef`, `minUsdMicros?` | On each trade of the account the leader watcher reads that matches, until the alert is deleted or ends |
+| `launch`         | `filters: LaunchFilter`                                                          | On each new launch that passes the filters, until the alert is deleted or ends                         |
+
+`LaunchFilter` is
+`{ launchpads?: [flap | fourmeme | geniusfun | brew], quoteTokens?: [AssetRef], maxTaxBps?, maxSnipeTaxBps?, minCurveProgressBps?, minLiquidityUsdMicros?, maxInsiders?, maxCreatorLaunches30d? }`;
+every field given must hold, and an empty filter passes every launch. `launch/list` and
+`market/scan` take the same filter.
+
+- **Ends.** An alert with `expiresAt` ends then, in the state `ended`; `wallet` and `launch` alerts default to 30 days,
+  as auto orders do. A `price` alert has no default expiry.
+- **`AlertFired`**, the data of `alert/fired`:
+  `{ alert, agent, at, fired: { kind: price, asset, priceUsdMicros } | { kind: wallet, activity: ActivityItem } | { kind: launch, launch: LaunchView }, woke, wakeSkipped?, assets }`.
+  `woke` says whether it started a turn; `wakeSkipped` counts the wake-ups of the agent held back
+  by the hourly limit since its last wake-up.
+- **Wake-ups.** A fired alert with `wake` stores an `inbox/alertFired` message
+  `{ alert: AlertView, fired, outsideContent }` in the write that records the fire
+  ([spec 8, section 3.3](runtime.md#section-3-3)). `outsideContent` is set when the alert was
+  created in a marked turn, when `fired` is a launch, and when it names a token the registry does
+  not list, so the turn it starts is marked.
+- **Limits on wake-ups.** At most 10 wake-ups an hour per agent, counted over the last 60 minutes.
+  Past that, the alert still fires and notifies, but stores no inbox message; the count goes into
+  `wakeSkipped` of the next fire that wakes the agent. While a wake-up from one alert waits in the
+  agent inbox, untaken, a newer fire of the same alert replaces its data instead of adding a
+  message. The runtime skips a wake-up while the budget is spent or the agent is frozen
+  ([spec 8, section 3.3](runtime.md#section-3-3)); the notice has gone out already.
 
 <a id="section-9"></a>
 
@@ -638,6 +764,8 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
     is in the optional `paperPositions`, `paperRealizedUsdMicros` and `paperUnrealizedUsdMicros`
     ([decision 0137](../DECISIONS.md#d0137)); an engine that sends none of them has no paper P&L
     to show.
+  - `alert/list` may hold `wallet` and `launch` conditions beside `price` (section 8.4). A client
+    that does not know a condition's kind shows the alert by its id and state.
 
 <a id="section-10"></a>
 
@@ -654,6 +782,9 @@ later unchanged.
 | `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                     |
 | `runtime`  | `unavailable`                                                                                   |
 | `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`                         |
+| `question` | `not_found`, `closed`                                                                           |
+| `alert`    | `not_found`, `too_many`                                                                         |
+| `market`   | `no_data`, `source_down`                                                                        |
 | `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`                                        |
 | `address`  | `not_found`                                                                                     |
 | `rescue`   | `no_address`, `nothing_to_move`                                                                 |
