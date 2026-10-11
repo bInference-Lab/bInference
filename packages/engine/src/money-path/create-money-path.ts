@@ -1,7 +1,6 @@
 import type { ChainRegistry, PriceSource, QuotedTrade, Signer } from "@binference/chain";
 import { BinferenceError, type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
-import type { AgentSettings } from "../agents/agent-record.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -17,7 +16,6 @@ import type { IntentProposerRef } from "../intents/intent-record.js";
 import type { IntentProposer } from "../intents/intent-status.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
 import {
-  type AgentStatus,
   createIntentStateMachine,
   type IntentStateMachine,
   type ProposalProblem,
@@ -28,6 +26,7 @@ import type { AgentStore, RiskCheck, Simulator, WalletFactsSource } from "../por
 import { type SimulatedSteps, simulationViewOf } from "../simulation/simulated-steps.js";
 import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { advanceIntent } from "./advance-intent.js";
+import { agentStatusOf } from "./agent-status-of.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
 import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose-route.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
@@ -110,13 +109,6 @@ const problemCodes: Readonly<Record<ProposalProblem, ProtocolErrorCode>> = {
   agent_archived: "agent.archived",
   wrong_proposer: "auth.scope",
 };
-
-function agentStatusOf(settings: AgentSettings | undefined): AgentStatus {
-  if (settings === undefined) {
-    return "missing";
-  }
-  return settings.agent.archivedAtMs === undefined ? "active" : "archived";
-}
 
 async function advance(
   run: Run,
