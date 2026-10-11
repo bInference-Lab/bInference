@@ -14,11 +14,11 @@ const newKey =
 // The end of the migration list, where a planted migration goes last.
 const migrationListEnd = "\n];\n\n/** The version of";
 
-// The version the config is at: one past the last migration's, so the cases follow new ones.
+// The version the config is at: one past the number of migrations in the list, written inline
+// (`{`) or imported from their own file (`name,`), so the cases follow new ones.
 function currentVersion(repo: string): number {
   const text = readFileSync(join(repo, migrationsFile), "utf8");
-  const versions = [...text.matchAll(/^\s+from: (\d+),$/gm)].map((match) => Number(match[1]));
-  return Math.max(0, ...versions) + 1;
+  return [...text.matchAll(/^ {2}(?:\{|\w+,)$/gm)].length + 1;
 }
 
 function newMigration(version: number): string {
