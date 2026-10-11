@@ -1,5 +1,5 @@
-import { Chacha20Poly1305 } from "@hpke/chacha20poly1305";
-import { CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from "@hpke/core";
+import { BinferenceError } from "@binference/core";
+import { hpkeOpen, hpkeSeal, type HpkeUse } from "../hpke/hpke-seal.js";
 
 /** A wallet's private key as custody sealed it, both parts in base64. */
 export interface SealedKey {
@@ -19,12 +19,8 @@ export interface KeyRecipient {
 }
 
 // Privy's export suite (its export docs): DHKEM P-256 with HKDF-SHA256, HKDF-SHA256,
-// ChaCha20-Poly1305, base mode.
-const suite = new CipherSuite({
-  kem: new DhkemP256HkdfSha256(),
-  kdf: new HkdfSha256(),
-  aead: new Chacha20Poly1305(),
-});
+// ChaCha20-Poly1305, base mode, with no info.
+const exportSuite: HpkeUse = { aead: "chacha20-poly1305", info: "" };
 
 /**
  * Makes a fresh HPKE recipient key for one export (decision 0131), on Privy's export suite with
@@ -40,11 +36,18 @@ export async function createKeyRecipient(): Promise<KeyRecipient> {
   return {
     publicKey: Buffer.from(spki).toString("base64"),
     open: async ({ ciphertext, encapsulatedKey }) => {
-      const recipient = await suite.createRecipientContext({
-        recipientKey: pair,
-        enc: Buffer.from(encapsulatedKey, "base64"),
-      });
-      return new Uint8Array(await recipient.open(Buffer.from(ciphertext, "base64")));
+      const sealed = {
+        encapsulatedKey: Buffer.from(encapsulatedKey, "base64"),
+        ciphertext: Buffer.from(ciphertext, "base64"),
+      };
+      const opened = await hpkeOpen(pair, sealed, exportSuite);
+      if (opened === undefined) {
+        throw new BinferenceError({
+          code: "cli.export_unopened",
+          message: "The sealed key does not open with this export's recipient key.",
+        });
+      }
+      return opened;
     },
   };
 }
@@ -57,21 +60,11 @@ export async function sealTo(
   recipientPublicKey: string,
   text: string,
 ): Promise<SealedKey | undefined> {
-  try {
-    const recipient = await globalThis.crypto.subtle.importKey(
-      "spki",
-      Buffer.from(recipientPublicKey, "base64"),
-      { name: "ECDH", namedCurve: "P-256" },
-      true,
-      [],
-    );
-    const sender = await suite.createSenderContext({ recipientPublicKey: recipient });
-    const sealed = await sender.seal(new TextEncoder().encode(text));
-    return {
-      ciphertext: Buffer.from(sealed).toString("base64"),
-      encapsulatedKey: Buffer.from(sender.enc).toString("base64"),
-    };
-  } catch {
-    return undefined;
-  }
+  const sealed = await hpkeSeal(recipientPublicKey, new TextEncoder().encode(text), exportSuite);
+  return sealed === undefined
+    ? undefined
+    : {
+        ciphertext: Buffer.from(sealed.ciphertext).toString("base64"),
+        encapsulatedKey: Buffer.from(sealed.encapsulatedKey).toString("base64"),
+      };
 }
