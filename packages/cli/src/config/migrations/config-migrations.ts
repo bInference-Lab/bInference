@@ -17,6 +17,11 @@ export const configMigrations: readonly ConfigMigration[] = [
     edits: () => [],
   },
   usdAsText,
+  {
+    from: 4,
+    summary: "Adds remote.publicUrl, the HTTPS address of the Mini App, which no file sets yet.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

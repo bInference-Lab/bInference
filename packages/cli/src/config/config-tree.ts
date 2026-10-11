@@ -41,6 +41,7 @@ export type ConfigNode =
 
 const formats: readonly ValueFormat[] = [
   "url",
+  "https_origin",
   "model",
   "time_zone",
   "chain",

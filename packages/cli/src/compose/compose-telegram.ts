@@ -38,6 +38,8 @@ export interface TelegramParts {
   readonly copies: CardCopyStore;
   /** The bot's token, which also checks the signature of each Mini App launch. */
   readonly botToken: Secret;
+  /** The Mini App's HTTPS address, which `/console` opens; none without `remote.publicUrl`. */
+  readonly miniAppUrl?: string;
 }
 
 /**
@@ -127,6 +129,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     waiting: async (call) => showings.waiting(call),
     chains,
     display,
+    ...(parts.miniAppUrl === undefined ? {} : { miniAppUrl: parts.miniAppUrl }),
     logger,
   });
   const relay = relayOf(parts, wiring, { showings, cards, display });

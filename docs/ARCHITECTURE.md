@@ -1052,7 +1052,8 @@ Decided in decisions [0050](DECISIONS.md#d0050) to [0053](DECISIONS.md#d0053).
 - **Publishing ([decision 0051](DECISIONS.md#d0051)).** `binference expose` configures Tailscale.
   The Mini App uses `serve`, so only the owner's devices running Tailscale reach it. Inbound
   webhooks use `funnel`, and only the webhook path is public, on a listener separate from the
-  engine's own port, which stays on loopback. `binference check` verifies both.
+  engine's own port, which stays on loopback. `binference check` verifies both. `remote.publicUrl`
+  names the HTTPS address the engine's port is published at; `/console` opens the Mini App there.
 - **Mini App (decisions [0052](DECISIONS.md#d0052), [0089](DECISIONS.md#d0089),
   [0160](DECISIONS.md#d0160)).** `/console` sends a button that opens the console inside Telegram.
   The engine verifies Telegram's signed `initData` against the bot token, rejects missing, expired

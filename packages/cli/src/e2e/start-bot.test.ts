@@ -207,6 +207,35 @@ describe("the owner's bot in binference start", () => {
     },
   );
 
+  it(
+    "opens the Mini App from /console at the public address, and lets its origin in",
+    slow,
+    async () => {
+      const { machine, clock, code } = await setUp();
+      const world = watchedWorld(machine);
+      const origin = "https://owner.example.ts.net";
+      const env = { ...secretEnv(machine), BINFERENCE_REMOTE__PUBLIC_URL: origin };
+      const port = await freePort();
+      await engines.start(machine, { env, port, parts: { http: world.http } });
+      machine.bot.push(ownerText(1, `/start ${code}`));
+      await world.until(sent("You are now the owner of this bot."));
+      // The bot's throttler spaces the messages to one chat a second apart on the engine's clock.
+      await clock.advance(1_000);
+      machine.bot.push(ownerText(2, "/console"));
+      await world.until(sent("open the console inside Telegram"));
+      expect(machine.bot.messages().at(-1)?.buttons).toStrictEqual([
+        [{ text: "Open the console", webApp: `${origin}/mini` }],
+      ]);
+      const address = `http://127.0.0.1:${String(port)}`;
+      const initData = signedLaunch(ownerId, clock.now());
+      const mini = miniAppClient({ origin, address, initData, clock });
+      minis.push(mini);
+      await expect(mini.connect(AbortSignal.timeout(10_000))).resolves.toMatchObject({
+        t: "ready",
+      });
+    },
+  );
+
   it("pairs another account with binference telegram pair and tells the owner", slow, async () => {
     const { machine, clock, code } = await setUp();
     const world = watchedWorld(machine);

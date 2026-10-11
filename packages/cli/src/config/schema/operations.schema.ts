@@ -1,12 +1,14 @@
 import { z } from "zod";
 import { type JsonObject, jsonValueSchema } from "../json-value.schema.js";
 import { type SecretSource, secretSourceSchema } from "./secret-source.schema.js";
-import { pathSchema } from "./value-formats.schema.js";
+import { formatted, pathSchema } from "./value-formats.schema.js";
 
-/** What Tailscale publishes. */
+/** What Tailscale publishes, and where the owner's own HTTPS publishes the engine's port. */
 export interface RemoteConfig {
   readonly mini: boolean;
   readonly webhooks: boolean;
+  /** The HTTPS origin of the engine's port, such as a Tailscale `serve` address. */
+  readonly publicUrl?: string;
 }
 
 /** Daily encrypted backups. */
@@ -68,6 +70,11 @@ export const remoteSchema: z.ZodType<RemoteConfig> = z
   .strictObject({
     mini: off("Publishes the Mini App over Tailscale serve."),
     webhooks: off("Publishes the webhook path over Tailscale funnel."),
+    publicUrl: formatted("https_origin")
+      .exactOptional()
+      .describe(
+        "The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may reach the engine.",
+      ),
   })
   .prefault({})
   .describe("Remote access.");

@@ -28,6 +28,7 @@ import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
 import { paperBalancesOf } from "./paper-balances.js";
+import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { createTelegramPair } from "./telegram-pair.js";
 
@@ -53,8 +54,6 @@ export interface ComposedSelfHosted {
   /** The owner's bot joined to the engine, when its token was read. */
   readonly telegram?: ComposedTelegram;
 }
-
-const loopback = "127.0.0.1";
 
 /** What the self-hosted engine trades on, each part over the chains' one set of reads. */
 interface TradingParts {
@@ -249,6 +248,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { host } = opening;
   const { config, log, stores } = opened;
   const { parts, custody, sending, locked } = wiring;
+  const bot = opened.bot === undefined ? undefined : botParts(opened.bot, stores);
   return composeEngine(
     {
       ...custodyPartsOf(custody),
@@ -268,12 +268,11 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       wallets: parts.wallets,
       version: host.version,
       owner: () => opened.settings.current().owner,
-      http: { host: loopback, port: config.engine.port, extraOrigins: config.engine.extraOrigins },
+      ...publishedParts(config, bot),
       ...(opened.consoleFiles === undefined ? {} : { consoleFiles: opened.consoleFiles }),
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
-      ...(opened.bot === undefined ? {} : { telegram: botParts(opened.bot, stores) }),
       ...(opened.webPushKey === undefined
         ? {}
         : { webPush: { key: opened.webPushKey, http: host.http } }),

@@ -160,6 +160,16 @@ describe("validate config", () => {
     ]);
   });
 
+  it.each(["http://owner.example.ts.net", "https://owner.example.ts.net/mini", "owner.ts.net"])(
+    "refuses %s as the public address: only an HTTPS origin opens the Mini App",
+    (publicUrl) => {
+      expect(lines({ ...base, remote: { publicUrl } })).toStrictEqual([
+        "remote.publicUrl: must be an HTTPS address with no path, such as " +
+          `\`https://owner.example.ts.net\` (got "${publicUrl}"). Set it in config.json5 or remove it.`,
+      ]);
+    },
+  );
+
   it("names the variable or the flag that set a bad value", () => {
     expect(
       lines({ ...base, engine: { port: 1 } }, { layer: "env", name: "BINFERENCE_ENGINE__PORT" }),

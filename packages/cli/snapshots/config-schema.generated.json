@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -801,6 +801,12 @@
             "description": "Publishes the webhook path over Tailscale funnel.",
             "default": false,
             "type": "boolean"
+          },
+          "publicUrl": {
+            "description": "The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may reach the engine.",
+            "type": "string",
+            "pattern": "^https:\\/\\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\\d{1,5})?\\/?$",
+            "valueFormat": "https_origin"
           }
         },
         "additionalProperties": false

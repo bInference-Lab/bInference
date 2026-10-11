@@ -123,7 +123,10 @@ function textFrom(updateId: number, text: string): JsonValue {
 }
 
 // The skeleton with one coin in its wallet and a rescue address in effect, and the owner's bot.
-async function bot(ownerChat: SkeletonOptions["ownerChat"] = {}): Promise<Bot> {
+async function bot(
+  ownerChat: SkeletonOptions["ownerChat"] = {},
+  published: { readonly miniAppUrl?: string } = {},
+): Promise<Bot> {
   const botApi = createFakeBotApi();
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
@@ -133,6 +136,7 @@ async function bot(ownerChat: SkeletonOptions["ownerChat"] = {}): Promise<Bot> {
     owners,
     copies: createMemoryCardCopyStore(),
     botToken: createSecret(fakeBotToken),
+    ...published,
   };
   const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), {
     telegram,
@@ -165,6 +169,14 @@ describe("the owner's fast commands on the engine", () => {
     }),
   )("runs the owner's calls as the owner calls contract says: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("opens the Mini App from /console at the published address", async () => {
+    const test = await bot({}, { miniAppUrl: "https://owner.example.ts.net/mini" });
+    await test.send("/console");
+    expect(test.botApi.messages().map(({ buttons }) => buttons)).toStrictEqual([
+      [[{ text: "Open the console", webApp: "https://owner.example.ts.net/mini" }]],
+    ]);
   });
 
   it("freezes every agent from Telegram, and the engine says Telegram did", async () => {

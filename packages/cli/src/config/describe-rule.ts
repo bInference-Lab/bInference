@@ -3,6 +3,7 @@ import type { ValueFormat } from "./schema/value-formats.schema.js";
 
 const formatText: Readonly<Record<ValueFormat, string>> = {
   url: "a URL",
+  https_origin: "an HTTPS address with no path, such as `https://owner.example.ts.net`",
   model: "a model written as provider/model",
   time_zone: "an IANA time zone such as Asia/Shanghai",
   chain: "a chain id such as eip155:56",

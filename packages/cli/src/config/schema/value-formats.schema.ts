@@ -5,6 +5,7 @@ import { z } from "zod";
 /** A text format a config value must follow, named so an issue can say which one. */
 export type ValueFormat =
   | "url"
+  | "https_origin"
   | "model"
   | "time_zone"
   | "chain"
@@ -24,6 +25,7 @@ const patterns: Readonly<Record<PatternFormat, RegExp>> = {
   path: /^(?:~[/\\]|[/\\]|[A-Za-z]:[/\\])/,
   keychain_name: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
   env_name: /^[A-Za-z_][A-Za-z0-9_]*$/,
+  https_origin: /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?\/?$/,
 };
 
 /**

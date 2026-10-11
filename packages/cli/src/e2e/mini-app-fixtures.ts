@@ -26,16 +26,21 @@ export function signedLaunch(
   return fields.toString();
 }
 
-/** A Mini App's protocol client, which signs in with a launch over the engine's WS at `origin`. */
+/**
+ * A Mini App's protocol client, which signs in with a launch over the engine's WS at `origin`, or
+ * at `address` when a proxy publishes the engine at `origin`.
+ */
 export function miniAppClient(at: {
   readonly origin: string;
+  readonly address?: string;
   readonly initData: string;
   readonly clock: Clock;
 }): ProtocolClient {
   const { origin, initData, clock } = at;
+  const address = at.address ?? origin;
   return createProtocolClient({
     operations,
-    openSocket: () => new WebSocket(`${origin.replace("http", "ws")}/ws`, { origin }),
+    openSocket: () => new WebSocket(`${address.replace("http", "ws")}/ws`, { origin }),
     client: { kind: "mini", version: "test" },
     credential: { telegram: { initData } },
     clock,

@@ -211,26 +211,27 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 
 ### 6.6 Operations
 
-| Key                    | Type                                           | Default                      | Applies | Meaning                                                                                                 |
-| ---------------------- | ---------------------------------------------- | ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| `remote.mini`          | boolean                                        | `false`                      | live    | Publish the Mini App over Tailscale `serve` ([decision 0051](../DECISIONS.md#d0051))                    |
-| `remote.webhooks`      | boolean                                        | `false`                      | live    | Publish the webhook path over Tailscale `funnel`                                                        |
-| `backups.daily`        | boolean                                        | `true`                       | live    | [decision 0055](../DECISIONS.md#d0055)                                                                  |
-| `backups.keepDaily`    | integer                                        | `7`                          | live    |                                                                                                         |
-| `backups.keepWeekly`   | integer                                        | `4`                          | live    |                                                                                                         |
-| `backups.copyTo`       | path                                           | none                         | live    | A second copy                                                                                           |
-| `updates.check`        | boolean                                        | `true`                       | live    | The daily update check ([decision 0047](../DECISIONS.md#d0047))                                         |
-| `updates.channel`      | `"stable"` \| `"beta"`                         | `"stable"`                   | live    |                                                                                                         |
-| `telemetry.enabled`    | boolean                                        | `false`                      | live    | Opt-in counts ([decision 0048](../DECISIONS.md#d0048)); onboarding asks once                            |
-| `network.proxy`        | Secret                                         | none                         | restart | An HTTP(S) proxy URL, credentials included                                                              |
-| `network.noProxy`      | string[]                                       | `["127.0.0.1", "localhost"]` | restart |                                                                                                         |
-| `chats.keepDays`       | integer \| `"forever"`                         | `90`                         | live    | [decision 0056](../DECISIONS.md#d0056)                                                                  |
-| `chats.newMessageMode` | `"merge"` \| `"after"`                         | `"merge"`                    | live    | A message during a turn merges in, or waits ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)) |
-| `logging.level`        | `"error"` \| `"warn"` \| `"info"` \| `"debug"` | `"info"`                     | live    |                                                                                                         |
-| `logging.keepDays`     | integer                                        | `14`                         | live    |                                                                                                         |
-| `logging.maxFileMb`    | integer                                        | `20`                         | live    | Rotation size                                                                                           |
-| `cex.binance.enabled`  | boolean                                        | `false`                      | restart | The Binance Agent OS plugin ([decision 0006](../DECISIONS.md#d0006))                                    |
-| `plugins.<id>`         | object                                         | the plugin's schema          | live    | Each plugin's settings, validated by its own schema                                                     |
+| Key                    | Type                                           | Default                      | Applies | Meaning                                                                                                                                                                       |
+| ---------------------- | ---------------------------------------------- | ---------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `remote.mini`          | boolean                                        | `false`                      | live    | Publish the Mini App over Tailscale `serve` ([decision 0051](../DECISIONS.md#d0051))                                                                                          |
+| `remote.webhooks`      | boolean                                        | `false`                      | live    | Publish the webhook path over Tailscale `funnel`                                                                                                                              |
+| `remote.publicUrl`     | HTTPS address, no path                         | none                         | restart | Where the owner's own HTTPS (Tailscale `serve` or `funnel`) publishes the engine's port: `/console` opens `<publicUrl>/mini` in Telegram, and its origin may reach the engine |
+| `backups.daily`        | boolean                                        | `true`                       | live    | [decision 0055](../DECISIONS.md#d0055)                                                                                                                                        |
+| `backups.keepDaily`    | integer                                        | `7`                          | live    |                                                                                                                                                                               |
+| `backups.keepWeekly`   | integer                                        | `4`                          | live    |                                                                                                                                                                               |
+| `backups.copyTo`       | path                                           | none                         | live    | A second copy                                                                                                                                                                 |
+| `updates.check`        | boolean                                        | `true`                       | live    | The daily update check ([decision 0047](../DECISIONS.md#d0047))                                                                                                               |
+| `updates.channel`      | `"stable"` \| `"beta"`                         | `"stable"`                   | live    |                                                                                                                                                                               |
+| `telemetry.enabled`    | boolean                                        | `false`                      | live    | Opt-in counts ([decision 0048](../DECISIONS.md#d0048)); onboarding asks once                                                                                                  |
+| `network.proxy`        | Secret                                         | none                         | restart | An HTTP(S) proxy URL, credentials included                                                                                                                                    |
+| `network.noProxy`      | string[]                                       | `["127.0.0.1", "localhost"]` | restart |                                                                                                                                                                               |
+| `chats.keepDays`       | integer \| `"forever"`                         | `90`                         | live    | [decision 0056](../DECISIONS.md#d0056)                                                                                                                                        |
+| `chats.newMessageMode` | `"merge"` \| `"after"`                         | `"merge"`                    | live    | A message during a turn merges in, or waits ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4))                                                                       |
+| `logging.level`        | `"error"` \| `"warn"` \| `"info"` \| `"debug"` | `"info"`                     | live    |                                                                                                                                                                               |
+| `logging.keepDays`     | integer                                        | `14`                         | live    |                                                                                                                                                                               |
+| `logging.maxFileMb`    | integer                                        | `20`                         | live    | Rotation size                                                                                                                                                                 |
+| `cex.binance.enabled`  | boolean                                        | `false`                      | restart | The Binance Agent OS plugin ([decision 0006](../DECISIONS.md#d0006))                                                                                                          |
+| `plugins.<id>`         | object                                         | the plugin's schema          | live    | Each plugin's settings, validated by its own schema                                                                                                                           |
 
 <a id="section-7"></a>
 
@@ -239,7 +240,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 4,
+  version: 5,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {
