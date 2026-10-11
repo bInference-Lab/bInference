@@ -194,7 +194,8 @@ A Telegram tap is handled inside the engine and never travels over this protocol
   in the button's fragment (`/mini#ticket=<ticket>`): 32 random bytes in base64url, kept only as a
   hash, valid 5 minutes, for the owner who sent `/console`. The engine spends it in the write that
   claims the launch; a launch without a live ticket ends with `bye auth.invalid`, or
-  `bye auth.expired` for an expired one ([decision 0161](../DECISIONS.md#d0161)).
+  `bye auth.expired` for an expired one. A Mini App connection ends with `bye auth.expired` 12
+  hours after it signed in ([decision 0161](../DECISIONS.md#d0161)).
 - A revoke of a token or device, or a new Telegram owner, ends every connection signed in with
   the credential, and every one still signing in with it: the sign-in reads the credential back
   from its last write to `engine.sqlite` and refuses a revoked one with `auth.revoked`, and a

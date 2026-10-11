@@ -101,6 +101,9 @@ const miniAppScopes: readonly Scope[] = ["read", "chat", "confirm", "loosen"];
 /** How far a launch's `auth_date` may lie from now (protocol spec, section 4.2). */
 const launchMaxAgeMs: number = 5 * 60_000;
 
+/** How long a Mini App connection lasts after it signed in (decision 0161). */
+const miniAppSessionMs: number = 12 * 60 * 60_000;
+
 /** How long a launch that signed in is refused if it comes again (protocol spec, section 4.2). */
 const launchRetentionMs: number = 24 * 60 * 60_000;
 
@@ -176,7 +179,8 @@ async function signInWithLaunch(
   if ((await miniApp.ownerId({ signal })) !== ownerId) {
     return err("auth.revoked");
   }
-  return ok({ kind: "signed_in", identity: { credential, scopes: miniAppScopes } });
+  const identity = { credential, scopes: miniAppScopes, expiresAtMs: atMs + miniAppSessionMs };
+  return ok({ kind: "signed_in", identity });
 }
 
 // The record the store answers a sign-in's write with is the one that counts: a revoke stored
@@ -271,8 +275,8 @@ async function signInWithDevice(
  * `initData` with the owner's bot token, its `auth_date` lies within 5 minutes of now, the owner's
  * numeric Telegram id opened it, its hash has not signed in within 24 hours, as `engine.sqlite`
  * keeps them across restarts, and it brings a live launch ticket `/console` made for the owner,
- * which it spends; a stale launch or an expired ticket is `auth.expired`, any other refusal
- * `auth.invalid`, as is every launch without the owner's bot. An
+ * which it spends; its connection ends 12 hours later. A stale launch or an expired ticket is
+ * `auth.expired`, any other refusal `auth.invalid`, as is every launch without the owner's bot. An
  * unknown credential is `auth.invalid`, a revoked one `auth.revoked`, a token at or past its
  * expiry `auth.expired`. A revoke, or a new owner, stored before the sign-in's last write refuses
  * it with `auth.revoked`; `call.claim` hears the credential first, so one stored later can end

@@ -4,6 +4,7 @@
   "status.ready": "已连接",
   "status.connecting": "正在重新连接",
   "status.closed": "已断开",
+  "session.expired": "Mini App 已在打开 12 小时后退出登录。请再次通过机器人的 /console 按钮打开控制台。",
   "signIn.title": "登录控制台",
   "signIn.starting": "正在打开控制台",
   "signIn.pairing": "正在将此浏览器与 binference 配对",

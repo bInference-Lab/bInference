@@ -4,6 +4,7 @@
   "status.ready": "Connected",
   "status.connecting": "Reconnecting",
   "status.closed": "Disconnected",
+  "session.expired": "The Mini App signed out 12 hours after it opened. Open the console again from the bot's /console button.",
   "signIn.title": "Sign in to the console",
   "signIn.starting": "Opening the console",
   "signIn.pairing": "Pairing this browser with binference",

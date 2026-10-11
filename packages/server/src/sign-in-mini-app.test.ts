@@ -66,7 +66,11 @@ describe("createSignIn for the Telegram Mini App", () => {
       ok: true,
       value: {
         kind: "signed_in",
-        identity: { credential: "tg:279058397", scopes: ["read", "chat", "confirm", "loosen"] },
+        identity: {
+          credential: "tg:279058397",
+          scopes: ["read", "chat", "confirm", "loosen"],
+          expiresAtMs: launchAtMs + 30_000 + 12 * 60 * 60_000,
+        },
       },
     });
   });

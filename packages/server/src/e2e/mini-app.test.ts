@@ -4,6 +4,7 @@ import { issueLaunchTicket } from "@binference/engine/access";
 import type { OpenFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Caller } from "../operation-handlers.js";
+import type { ServerLimits } from "../server-limits.js";
 import { telegramLaunchHash } from "../telegram-launch.js";
 import { openRawSocket, type RawSocket } from "./raw-socket.js";
 import { startTestServer, type TestServer } from "./test-server.js";
@@ -61,8 +62,9 @@ describe("a Telegram Mini App signing in", () => {
   let test: TestServer | undefined;
   const callers: Caller[] = [];
 
-  async function start(): Promise<TestServer> {
+  async function start(limits: Partial<ServerLimits> = {}): Promise<TestServer> {
     test = await startTestServer({
+      limits,
       miniApp: { botToken, ownerId: async () => ownerId },
       extraOrigins: [tailnetOrigin],
       handlers: {
@@ -136,6 +138,17 @@ describe("a Telegram Mini App signing in", () => {
     signed.set("user", JSON.stringify({ id: ownerId, first_name: "Ada", language_code: "en" }));
     const raw = await openAs(server, signed.toString());
     await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.invalid" });
+  });
+
+  it("ends the Mini App's connection 12 hours after it signed in", async () => {
+    // Pings a day apart, so the 12 hours pass in one step.
+    const day = 24 * 60 * 60_000;
+    const server = await start({ pingIntervalMs: day, pongTimeoutMs: day });
+    const initData = initDataOf(fieldsOf({ userId: ownerId, atMs: server.clock.now() }));
+    const raw = await openAs(server, initData);
+    await expect(raw.next()).resolves.toMatchObject({ t: "ready" });
+    await server.clock.advance(12 * 60 * 60_000);
+    await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.expired" });
   });
 
   it("refuses the owner's launch without a ticket from /console", async () => {
