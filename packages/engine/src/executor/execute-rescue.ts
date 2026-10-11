@@ -10,6 +10,7 @@ import type { IntentPlan } from "./intent-plan.js";
 import type { SigningTerms } from "./queue-check.js";
 import { reconcileRescue } from "./reconcile-rescue.js";
 import { currentSteps } from "./recover-steps.js";
+import { droppedLanded } from "./rescue-dropped.js";
 import { checkRescueForQueue, isRescueAddressInEffect } from "./rescue-queue-check.js";
 import { prepareStep, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
@@ -108,6 +109,10 @@ async function sendFresh(
   const draft = run.plan.steps[step.index];
   if (draft === undefined || run.stopping.aborted) {
     return undefined;
+  }
+  const landed = await droppedLanded(run, { intent: step.record.id, index: step.index });
+  if (landed !== undefined) {
+    return landed === "unread" ? undefined : landed;
   }
   const ready = await prepareStep(run, slot, { index: step.index, draft });
   if (!ready.ok || ready.value.prepared.isAboveFeeCap) {

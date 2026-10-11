@@ -231,6 +231,21 @@ describe("a confirmed rescue on its wallets' queues", () => {
     expect(restarted.signed).toStrictEqual([]);
   });
 
+  it("records a dropped step that landed after all, and signs it no more", async () => {
+    const bench = await benchWithRescue();
+    bench.network.holdBelow(10n ** 18n);
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    const [first] = await bench.test.stores.transactions.ofIntent(intent, live);
+    const dropped = { id: first?.id, atMs: 1 } as { readonly id: Id<"tx">; readonly atMs: number };
+    await bench.test.stores.transactions.recordDropped(dropped, live);
+    bench.network.holdBelow(0n);
+    bench.network.mine();
+    const restarted = await restartBench(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(restarted.signed.map(({ step }) => step.index)).toStrictEqual([1, 2]);
+  });
+
   it("takes a rescue once while its first work still waits for the queue", async () => {
     const bench = await benchWithRescue({ hold: true });
     const intent = await rescueConfirmed(bench);
