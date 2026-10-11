@@ -1,4 +1,4 @@
-import type { NonceSource } from "@binference/chain";
+import type { AccountRef, NonceSource } from "@binference/chain";
 import type { EvmChain } from "../evm-chain.js";
 import { nonceCountSchema } from "../rpc/evm-wire.schema.js";
 import { requestResult } from "../rpc/request-result.js";
@@ -12,21 +12,22 @@ export interface EvmNonceSourceOptions {
 }
 
 /**
- * Creates the `NonceSource` of one EVM chain: `eth_getTransactionCount` at `pending` through the
- * RPC failover. A node does not see what private relays hold, so the wallet queue takes this count
+ * Creates the `NonceSource` of one EVM chain: `eth_getTransactionCount` at `pending`, and at
+ * `latest` for the mined count, through the RPC failover. A node does not see what private relays hold, so the wallet queue takes this count
  * as a lower bound only. An account of another chain is a fault.
  */
 export function createEvmNonceSource(options: EvmNonceSourceOptions): NonceSource {
+  const countAt = async (account: AccountRef, tag: "pending" | "latest", signal: AbortSignal) => {
+    signal.throwIfAborted();
+    return requestResult(options.rpc, {
+      method: "eth_getTransactionCount",
+      params: [accountAddressOn(options.chain, account), tag],
+      result: nonceCountSchema,
+      signal,
+    });
+  };
   return {
-    async next(account, { signal }) {
-      signal.throwIfAborted();
-      const address = accountAddressOn(options.chain, account);
-      return requestResult(options.rpc, {
-        method: "eth_getTransactionCount",
-        params: [address, "pending"],
-        result: nonceCountSchema,
-        signal,
-      });
-    },
+    next: async (account, { signal }) => countAt(account, "pending", signal),
+    mined: async (account, { signal }) => countAt(account, "latest", signal),
   };
 }

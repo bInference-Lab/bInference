@@ -36,6 +36,11 @@ export function createFakeNonceSource(counts: ReadonlyMap<AccountRef, number>): 
       options.signal.throwIfAborted();
       return await Promise.resolve(nexts.get(account) ?? 0);
     },
+    // A node with an empty pool: every transaction it counts is mined.
+    async mined(account, options) {
+      options.signal.throwIfAborted();
+      return await Promise.resolve(nexts.get(account) ?? 0);
+    },
     set(account, next) {
       nexts.set(account, checked(next));
     },

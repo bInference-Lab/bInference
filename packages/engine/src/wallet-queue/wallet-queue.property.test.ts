@@ -74,6 +74,7 @@ function scheduled(
         await wait("chain count");
         return chain.next(account, options);
       },
+      mined: async (account, options) => chain.mined(account, options),
     },
   };
 }

@@ -82,7 +82,7 @@ describe("a wallet slot", () => {
     const down = new BinferenceError({ code: "chain.rpc_down", message: "no node answered" });
     const failing = openWalletSlot(account, {
       transactions,
-      nonces: { next: async () => Promise.reject(down) },
+      nonces: { next: async () => Promise.reject(down), mined: async () => Promise.reject(down) },
       clock: createManualClock(),
     });
     await expect(failing.slot.nextNonce(live)).rejects.toBe(down);

@@ -248,6 +248,10 @@ function readersOf(state: NetworkState): ReceiptReader & NonceSource {
       signal.throwIfAborted();
       return await Promise.resolve(state.ledger.nextNonce(account));
     },
+    async mined(account, { signal }) {
+      signal.throwIfAborted();
+      return await Promise.resolve(state.ledger.nextNonce(account));
+    },
   };
 }
 

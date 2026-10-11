@@ -105,6 +105,11 @@ export interface NonceSource {
    * when no node answers, and with the signal's reason once the signal aborts.
    */
   next(account: AccountRef, options: { readonly signal: AbortSignal }): Promise<number>;
+  /**
+   * How many of the account's transactions the latest block holds, those waiting left out
+   * (`latest` on an EVM chain): at most `next`. Rejects as `next` does.
+   */
+  mined(account: AccountRef, options: { readonly signal: AbortSignal }): Promise<number>;
 }
 
 /**

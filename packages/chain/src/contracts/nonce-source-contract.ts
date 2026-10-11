@@ -34,6 +34,15 @@ export function nonceSourceContract(harness: NonceSourceHarness): readonly Contr
       run: async () => {
         const { source, unseen } = await harness.create();
         assert.equal(await source.next(unseen, live()), 0);
+        assert.equal(await source.mined(unseen, live()), 0);
+      },
+    },
+    {
+      name: "counts an account's mined transactions at most its next nonce",
+      run: async () => {
+        const { source, known } = await harness.create();
+        const mined = await source.mined(known.account, live());
+        assert.ok(mined >= 0 && mined <= known.next);
       },
     },
     {
@@ -43,6 +52,10 @@ export function nonceSourceContract(harness: NonceSourceHarness): readonly Contr
         const reason = new Error("stopped");
         await assert.rejects(
           source.next(known.account, { signal: AbortSignal.abort(reason) }),
+          reason,
+        );
+        await assert.rejects(
+          source.mined(known.account, { signal: AbortSignal.abort(reason) }),
           reason,
         );
       },

@@ -1,4 +1,5 @@
 import {
+  type AccountRef,
   accountRefParts,
   type ChainRef,
   type ChainRegistry,
@@ -160,15 +161,17 @@ function chainPartsOf(
 
 /** A nonce source that reads each account's count from its own chain's source. */
 export function nonceRouterOf(sources: ReadonlyMap<ChainRef, NonceSource>): NonceSource {
+  const sourceOf = (account: AccountRef): NonceSource => {
+    const chain = accountRefParts(account).chain;
+    const source = sources.get(chain);
+    if (source === undefined) {
+      throw refuse("cli.no_chain_parts", `No chain parts are set up for ${chain}.`, chain);
+    }
+    return source;
+  };
   return {
-    async next(account, options) {
-      const chain = accountRefParts(account).chain;
-      const source = sources.get(chain);
-      if (source === undefined) {
-        throw refuse("cli.no_chain_parts", `No chain parts are set up for ${chain}.`, chain);
-      }
-      return source.next(account, options);
-    },
+    next: async (account, options) => sourceOf(account).next(account, options),
+    mined: async (account, options) => sourceOf(account).mined(account, options),
   };
 }
 
