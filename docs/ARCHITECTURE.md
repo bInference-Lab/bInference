@@ -686,9 +686,9 @@ and gain and loss colors that stay readable for color-blind owners.
   scopes.
 - **More screens (decisions [0049](DECISIONS.md#d0049), [0053](DECISIONS.md#d0053),
   [0055](DECISIONS.md#d0055)):** model usage and budget, schedules, webhook rules, backups.
-- **Telegram Mini App (decisions [0050](DECISIONS.md#d0050), [0052](DECISIONS.md#d0052)).** The same
-  console opens inside Telegram through `/console`, with the power of a Telegram tap
-  ([section 25](#section-25)).
+- **Telegram Mini App (decisions [0050](DECISIONS.md#d0050), [0089](DECISIONS.md#d0089)).** The
+  same console opens inside Telegram through `/console`, with a Telegram tap's power and the right
+  to loosen ([section 25](#section-25)).
 - **Remote access** goes through Tailscale (`binference expose`, [section 25](#section-25)) or an
   SSH tunnel. The engine refuses to bind beyond loopback without auth.
 - **Same protocol as everyone else.** The console uses `@binference/client` like every other client,
@@ -1053,11 +1053,15 @@ Decided in decisions [0050](DECISIONS.md#d0050) to [0053](DECISIONS.md#d0053).
   The Mini App uses `serve`, so only the owner's devices running Tailscale reach it. Inbound
   webhooks use `funnel`, and only the webhook path is public, on a listener separate from the
   engine's own port, which stays on loopback. `binference check` verifies both.
-- **Mini App ([decision 0052](DECISIONS.md#d0052)).** `/console` sends a button that opens the
-  console inside Telegram. The engine verifies Telegram's signed `initData` against the bot token,
-  rejects missing, expired or replayed data, and accepts only the owner's numeric id. The Mini App
-  has the power of a Telegram tap: view, confirm, cancel, freeze, rescue. Settings, looser limits,
-  unfreeze and wallet export are not shown there.
+- **Mini App (decisions [0052](DECISIONS.md#d0052), [0089](DECISIONS.md#d0089),
+  [0160](DECISIONS.md#d0160)).** `/console` sends a button that opens the console inside Telegram.
+  The engine verifies Telegram's signed `initData` against the bot token, rejects missing, expired
+  or replayed data, and accepts only the owner's numeric id; the launches that signed in stay in
+  `engine.sqlite` for 24 hours, so a replay fails after a restart too. Besides what a Telegram tap
+  does (view, confirm, cancel, freeze, rescue), the Mini App may loosen: raise limits and send
+  levels (the 24-hour wait stays), ask for an unfreeze that waits for the owner's tap on its card
+  ([decision 0128](DECISIONS.md#d0128)), and switch to auto mode. Exports, installs and the
+  settings that need the `admin` scope stay local.
 - **Webhook rules ([decision 0053](DECISIONS.md#d0053)).** The owner creates a rule in the console
   or the CLI: the alert's name, the action and its bounds (token, side, size, worst price, maximum
   slippage, expiry, maximum fills). The rule is confirmed once with a card, like an auto order
