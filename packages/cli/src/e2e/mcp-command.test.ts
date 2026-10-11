@@ -50,11 +50,15 @@ async function mcpTokenOf(skeleton: ServedSkeleton): Promise<Id<"tok">> {
 }
 
 // `binference mcp` on the machine over pipes, with an MCP client in the place of Claude Code.
-function startMcp(machine: TestMachine, argv: readonly string[]) {
+function startMcp(
+  machine: TestMachine,
+  argv: readonly string[],
+  env: Readonly<Record<string, string>> = {},
+) {
   const toServer = new PassThrough();
   const fromServer = new PassThrough();
   const host = hostWith(machine, argv, {
-    env: {},
+    env,
     parts: { mcpStdio: { input: toServer, output: fromServer } },
   });
   return { host, toServer, fromServer, exit: runCli(host) };
@@ -83,6 +87,21 @@ describe("binference mcp", () => {
       expect(mcp.host.stderr()).not.toContain(skeletonSecrets.mcp);
     },
   );
+
+  it("signs in with the session's variable before the token file", slow, async () => {
+    const machine = await machines.create(testNowMs);
+    served.push(await serveSkeleton(machine, selfHosted()));
+    const env = { BINFERENCE_MCP_TOKEN: skeletonSecrets.mcp };
+    const mcp = startMcp(machine, ["mcp", "--client", "claude-code"], env);
+    const client = new Client({ name: "claude-code", version: "1.0.0" });
+    await client.connect(new StdioServerTransport(mcp.fromServer, mcp.toServer));
+    const agents = await client.callTool({ name: "binference_agents", arguments: {} });
+    expect(agents.isError).toBeUndefined();
+    mcp.toServer.end();
+    await expect(mcp.exit).resolves.toBe(0);
+    await client.close();
+    expect(mcp.host.stderr()).not.toContain(skeletonSecrets.mcp);
+  });
 
   it("loses its engine connection once its token is revoked", slow, async () => {
     const machine = await machines.create(testNowMs);

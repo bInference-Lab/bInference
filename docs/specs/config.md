@@ -49,7 +49,8 @@ From lowest to highest; a higher layer replaces a lower one key by key:
 2. The file.
 3. Environment variables: `BINFERENCE_` plus the key path in capitals, with `__` between segments.
    `BINFERENCE_ENGINE__PORT=7460` sets `engine.port`. Arrays and objects take JSON:
-   `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`.
+   `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`. `BINFERENCE_HOME` and `BINFERENCE_MCP_TOKEN` (an
+   MCP session's secret, [decision 0159](../DECISIONS.md#d0159)) are not config keys.
 4. CLI flags: `--set engine.port=7460`, repeatable.
 
 `binference config show` prints the merged result and the layer each value came from, with secrets

@@ -5,7 +5,7 @@ import { serveMcpOverStdio } from "@binference/mcp";
 import { operations } from "@binference/protocol";
 import { readCliToken } from "../compose/cli-token.js";
 import { engineEndpoint, platformOf } from "../compose/engine-locations.js";
-import { mcpTokenFile } from "../compose/mcp-token.js";
+import { mcpTokenFile, mcpTokenVariable } from "../compose/mcp-token.js";
 import { createFileLogger } from "../logging/file-logger.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
@@ -20,10 +20,11 @@ export interface McpStdio {
 
 /**
  * `binference mcp`: the MCP server an MCP client starts. It signs in to the engine over IPC with
- * the client's token from the state folder, which holds `read` and `propose` only, and serves the
- * tools over the host's stdio until the client closes it or a stop signal arrives. Tools list
- * while the engine is down. Stdout carries MCP messages only: logs go to stderr as JSON lines, and
- * a missing token file is one message on stderr and exit 1.
+ * the secret in `BINFERENCE_MCP_TOKEN` when an MCP session set it, else with the client's token
+ * from the state folder; either holds `read` and `propose` only. It serves the tools over the
+ * host's stdio until the client closes it or a stop signal arrives. Tools list while the engine is
+ * down. Stdout carries MCP messages only: logs go to stderr as JSON lines, and a missing token
+ * file is one message on stderr and exit 1.
  */
 export async function runMcp(run: CommandRun, flags: McpFlags): Promise<ExitCode> {
   const { host, output } = run;
@@ -33,7 +34,11 @@ export async function runMcp(run: CommandRun, flags: McpFlags): Promise<ExitCode
   }
   const platform = platformOf(host);
   const file = mcpTokenFile(platform.stateFolder, flags.client);
-  const token = await readCliToken(file, AbortSignal.timeout(5_000));
+  const given = host.env[mcpTokenVariable];
+  const token =
+    given === undefined || given === ""
+      ? await readCliToken(file, AbortSignal.timeout(5_000))
+      : given;
   if (token === undefined) {
     output.fail({ code: "cli.no_mcp_token", key: "mcp.noToken", values: { file } });
     return 1;

@@ -14,6 +14,12 @@ export const mcpClientNames: { readonly [C in McpClient]: string } = {
 };
 
 /**
+ * The variable an MCP session passes its secret in, which `binference mcp` signs in with before
+ * any token file (decision 0159). It is not a config key.
+ */
+export const mcpTokenVariable = "BINFERENCE_MCP_TOKEN";
+
+/**
  * The token file `binference mcp` signs in with, owner-only in the state folder: the client's own,
  * `auth/mcp-<client>.token`, or `auth/mcp.token` when no client is named.
  */

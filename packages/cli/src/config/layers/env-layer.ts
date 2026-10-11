@@ -5,8 +5,9 @@ import { type LayerEntry, readLayerText } from "./layer-entry.js";
 /** The prefix of every variable that sets a config key. */
 const prefix = "BINFERENCE_";
 
-// Variables with the prefix that are not config keys: BINFERENCE_HOME moves the state folder.
-const reserved: ReadonlySet<string> = new Set(["BINFERENCE_HOME"]);
+// Variables with the prefix that are not config keys: BINFERENCE_HOME moves the state folder, and
+// BINFERENCE_MCP_TOKEN carries an MCP session's secret.
+const reserved: ReadonlySet<string> = new Set(["BINFERENCE_HOME", "BINFERENCE_MCP_TOKEN"]);
 
 /** The variable segment of a key: `webhookPort` is `WEBHOOK_PORT`. */
 export function envSegment(key: string): string {

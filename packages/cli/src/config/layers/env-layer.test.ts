@@ -16,6 +16,8 @@ describe("env layer", () => {
       BINFERENCE_CHATS__KEEP_DAYS: "forever",
       BINFERENCE_MODELS__PROVIDERS__ROUTER__BASE_URL: "https://router.example/v1",
       BINFERENCE_NETWORK__NO_PROXY: '["localhost"]',
+      BINFERENCE_HOME: "binference-state",
+      BINFERENCE_MCP_TOKEN: `bnt_${"s".repeat(43)}`,
       PATH: "/usr/bin",
     });
     expect(layer.issues).toStrictEqual([]);
