@@ -1,6 +1,8 @@
 # 0150. A paper fill keeps its price, and the start records its missing positions
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 ## Context
 

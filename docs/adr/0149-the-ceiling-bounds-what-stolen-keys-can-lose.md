@@ -1,6 +1,6 @@
 # 0149. The ceiling bounds what stolen keys can lose
 
-Status: Accepted
+Status: Amended by 0151
 
 ## Context
 
