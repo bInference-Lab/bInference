@@ -114,6 +114,16 @@ describe("the live switch", () => {
     expect(proposed.paper).toBe(true);
   });
 
+  it("shows when an agent was frozen in the view a switch answers", async () => {
+    const test = await startTestEngine();
+    expectOk(await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));
+    const view = expectOk(
+      await test.engine.handlers["agent/goPaper"](testCall({ agent: testAgent })),
+    );
+    expect(view).toMatchObject({ agent: testAgent, mode: "paper", frozenAt: testNowMs });
+    expect(view.archivedAt).toBeUndefined();
+  });
+
   it("refuses an agent it does not hold", async () => {
     const { engine } = await startTestEngine();
     const unknown = testCall({ agent: unknownAgent });
