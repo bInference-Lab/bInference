@@ -1,6 +1,7 @@
 import {
   BinferenceError,
   type Clock,
+  fetchInputUrl,
   type Http,
   type HttpMethod,
   type HttpRequest,
@@ -61,13 +62,6 @@ function refuseRequest(): BinferenceError {
   });
 }
 
-function urlOf(input: string | URL | Request): string {
-  if (typeof input === "string") {
-    return input;
-  }
-  return input instanceof URL ? input.href : input.url;
-}
-
 function methodOf(init: RequestInit | undefined): HttpMethod {
   const method = (init?.method ?? "GET").toUpperCase();
   if (!isMethod(method)) {
@@ -92,7 +86,7 @@ function httpRequestOf(
 ): HttpRequest {
   return {
     method: methodOf(init),
-    url: urlOf(input),
+    url: fetchInputUrl(input),
     headers: Object.fromEntries(new Headers(init?.headers).entries()),
     ...bodyOf(init),
     signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal,

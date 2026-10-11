@@ -23,6 +23,7 @@ live in other packages.
 | `retry`                                    | Retries transient faults with capped exponential backoff and jitter  |
 | `createDeadline`                           | A signal that aborts on its parent or after a timeout on the clock   |
 | `Clock`, `Random`, `Logger`, `Http`        | The ports that adapters implement                                    |
+| `fetchInputUrl`                            | The URL a `fetch` call names, for adapters that serve an SDK's fetch |
 | `SecretStore`, `checkSecretName`           | The port for named secrets at rest, and the entry names it takes     |
 | `@binference/core/testing`                 | Contract suites for each port, and fakes that pass them              |
 

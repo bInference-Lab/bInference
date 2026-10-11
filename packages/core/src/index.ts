@@ -13,6 +13,7 @@ export type {
 } from "./errors/binference-error.js";
 export { redactedMark, redactSecrets, secretKindsIn } from "./errors/redact-secrets.js";
 export type { SecretKind } from "./errors/redact-secrets.js";
+export { fetchInputUrl } from "./fetch-input-url.js";
 export type { HttpMethod, HttpRequest, HttpResponse } from "./http-exchange.js";
 export { createIdSource } from "./ids/id-source.js";
 export type { IdSource, IdSourceOptions } from "./ids/id-source.js";

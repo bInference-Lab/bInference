@@ -1,4 +1,4 @@
-import { BinferenceError, type Http, type HttpResponse } from "@binference/core";
+import { BinferenceError, fetchInputUrl, type Http, type HttpResponse } from "@binference/core";
 
 /** The `fetch` grammY calls: its own types name an untyped package, so it is spelled out here. */
 export type BotApiFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -30,13 +30,6 @@ function unsupported(what: string): BinferenceError {
   });
 }
 
-function urlOf(input: string | URL | Request): string {
-  if (typeof input === "string") {
-    return input;
-  }
-  return input instanceof URL ? input.href : input.url;
-}
-
 function methodOf(init: RequestInit | undefined): BotApiRequest["method"] {
   const method = (init?.method ?? "GET").toUpperCase();
   if (method !== "GET" && method !== "POST") {
@@ -62,7 +55,7 @@ export function botApiRequestOf(
   const headers = contentType === null ? {} : { "content-type": contentType };
   return {
     method: methodOf(init),
-    url: urlOf(input),
+    url: fetchInputUrl(input),
     headers,
     ...(body === undefined ? {} : { body }),
   };
