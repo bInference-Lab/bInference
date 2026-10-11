@@ -7,6 +7,8 @@ export interface FakeButton {
   readonly text: string;
   /** The callback data a press of the button carries. */
   readonly data?: string;
+  /** The HTTPS URL of the Mini App the button opens. */
+  readonly webApp?: string;
 }
 
 /** A message the bot sent, as it stands after every edit. */
@@ -89,6 +91,7 @@ const staleQuery =
 const buttonSchema = z.looseObject({
   text: z.string().min(1),
   callback_data: z.string().optional(),
+  web_app: z.looseObject({ url: z.string() }).optional(),
 });
 const markupSchema = z.looseObject({ inline_keyboard: z.array(z.array(buttonSchema)) }).optional();
 const targetShape = { chat_id: z.int(), message_id: z.int() };
@@ -134,26 +137,42 @@ function formatted(text: string, parseMode: string | undefined): Result<Formatte
   return shown.value.text.length > maxTextLength ? err("Bad Request: message is too long") : shown;
 }
 
-function keyboardOf(markup: Markup): Result<Keyboard, string> {
+// A button carries callback data or opens a Mini App, never both; Telegram opens a Mini App only
+// from an HTTPS URL, and only in a private chat, whose id is the user's own positive id.
+function buttonProblem(button: FakeButton, chatId: number): string | undefined {
+  if (button.webApp === undefined) {
+    const bytes = encoder.encode(button.data ?? "x").length;
+    return bytes >= 1 && bytes <= maxDataBytes ? undefined : "Bad Request: BUTTON_DATA_INVALID";
+  }
+  if (button.data !== undefined || chatId <= 0) {
+    return "Bad Request: BUTTON_TYPE_INVALID";
+  }
+  return URL.parse(button.webApp)?.protocol === "https:"
+    ? undefined
+    : `Bad Request: inline keyboard button Web App URL '${button.webApp}' is invalid: Only HTTPS links are allowed`;
+}
+
+function keyboardOf(markup: Markup, chatId: number): Result<Keyboard, string> {
   const rows = (markup?.inline_keyboard ?? []).map((row) =>
     row.map((button) => ({
       text: button.text,
       ...(button.callback_data === undefined ? {} : { data: button.callback_data }),
+      ...(button.web_app === undefined ? {} : { webApp: button.web_app.url }),
     })),
   );
-  const fits = rows.flat().every((button) => {
-    const bytes = encoder.encode(button.data ?? "x").length;
-    return bytes >= 1 && bytes <= maxDataBytes;
-  });
-  return fits ? ok(rows) : err("Bad Request: BUTTON_DATA_INVALID");
+  const problem = rows
+    .flat()
+    .map((button) => buttonProblem(button, chatId))
+    .find(Boolean);
+  return problem === undefined ? ok(rows) : err(problem);
 }
 
-function contentOf(call: Pick<ContentCall, "text" | "parse_mode" | "reply_markup">) {
+function contentOf(call: Pick<ContentCall, "chat_id" | "text" | "parse_mode" | "reply_markup">) {
   const shown = formatted(call.text, call.parse_mode);
   if (!shown.ok) {
     return shown;
   }
-  const buttons = keyboardOf(call.reply_markup);
+  const buttons = keyboardOf(call.reply_markup, call.chat_id);
   return buttons.ok ? ok<Content>({ ...shown.value, buttons: buttons.value }) : buttons;
 }
 
@@ -230,7 +249,7 @@ function editMessageReplyMarkup(state: ChatsState, body: string): Result<JsonVal
   if (!call.ok) {
     return call;
   }
-  const buttons = keyboardOf(call.value.reply_markup);
+  const buttons = keyboardOf(call.value.reply_markup, call.value.chat_id);
   if (!buttons.ok) {
     return buttons;
   }

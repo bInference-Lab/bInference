@@ -111,12 +111,33 @@ describe("the fake Bot API", () => {
       },
       description: "BUTTON_DATA_INVALID",
     },
+    {
+      name: "a Mini App button with an http URL",
+      text: "x",
+      other: {
+        reply_markup: {
+          inline_keyboard: [[{ text: "Open", web_app: { url: "http://a.test/mini" } }]],
+        },
+      },
+      description: "Only HTTPS links are allowed",
+    },
   ])("refuses $name with a 400 and keeps nothing", async ({ text, other, description }) => {
     const { botApi, api } = setUp();
     const fault = await refusalOf(api.sendMessage(ownerId, text, { parse_mode: "HTML", ...other }));
     expect(fault.error_code).toBe(400);
     expect(fault.description).toContain(description);
     expect([botApi.messages(), botApi.sent()]).toStrictEqual([[], []]);
+  });
+
+  it("opens a Mini App from an HTTPS button in a private chat only", async () => {
+    const { botApi, api } = setUp();
+    const open = { inline_keyboard: [[{ text: "Open", web_app: { url: "https://a.test/mini" } }]] };
+    await api.sendMessage(ownerId, "Console", { reply_markup: open });
+    const group = await refusalOf(api.sendMessage(-100, "Console", { reply_markup: open }));
+    expect(group.description).toBe("Bad Request: BUTTON_TYPE_INVALID");
+    expect(botApi.messages().map((message) => message.buttons)).toStrictEqual([
+      [[{ text: "Open", webApp: "https://a.test/mini" }]],
+    ]);
   });
 
   it("refuses parameters in a shape the Bot API does not take", async () => {
