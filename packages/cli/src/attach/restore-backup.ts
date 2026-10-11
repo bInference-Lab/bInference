@@ -11,6 +11,7 @@ import { type StateSwap, swapInRestored } from "../backups/state-swap.js";
 import { unpackBackup } from "../backups/unpack-backup.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { type InitContext, type InitStep, type Refused, refused } from "../init/init-context.js";
+import { authenticate, type OpenedFile } from "./restore-authenticity.js";
 import {
   carryReplaced,
   confirmRestore,
@@ -69,16 +70,23 @@ function isNewer(manifest: BackupManifest): boolean {
   return engine > known.engine || (agent ?? 0) > known.agent || config > currentConfigVersion;
 }
 
-/** A backup opened with the owner key and checked into a folder of the state folder. */
-export type Unpacked = Omit<Restored, "swap">;
+/**
+ * A backup opened with the owner key, proven genuine or taken as such by the owner, and checked
+ * into a folder of the state folder, with the state it would replace as it read then.
+ */
+export interface Unpacked extends Omit<Restored, "swap"> {
+  readonly replaced: ReplacedState;
+}
 
 /**
  * Opens and checks a backup to restore (keys spec, section 7.4, steps 1 to 3): it asks a person
  * for the owner key, hidden, up to 3 times, and opens the backup's data key with it before any
  * chunk is read; decrypts the backup into a fresh folder in the state folder, checking every
- * chunk and every file; and refuses a backup of a newer schema than this binference knows. With
- * nobody at the terminal to type the key, it refuses with `needsTerminal`. A refusal leaves no
- * folder behind; the caller removes the folder once it is done with it.
+ * chunk and every file; refuses a backup of a newer schema than this binference knows; reads the
+ * state it would replace; and proves the backup genuine, or has the owner take it as such, before
+ * anything opens the databases it holds. With nobody at the terminal to type the key, it refuses
+ * with `needsTerminal`. A refusal leaves no folder behind; the caller removes the folder once it
+ * is done with it.
  */
 export async function unpackRestore(
   context: InitContext,
@@ -105,7 +113,31 @@ export async function unpackRestore(
       ? refused("init.restore_newer_schema", "refused.restoreNewerSchema")
       : refused("init.restore_damaged", "refused.restoreDamaged", { file });
   }
-  return ok({ ownerKey: asked.value.code, manifest: manifest.value, unpacked });
+  const headerSha256 = Buffer.from(asked.value.opened.frame.headerDigest).toString("hex");
+  const genuine = await genuineOver(context, { file, headerSha256, manifest: manifest.value });
+  if (!genuine.ok) {
+    await removePath(unpacked, signal);
+    return genuine;
+  }
+  return ok({
+    ownerKey: asked.value.code,
+    manifest: manifest.value,
+    unpacked,
+    replaced: genuine.value,
+  });
+}
+
+// Reads the state the backup would replace, then proves the backup genuine against its records.
+async function genuineOver(
+  context: InitContext,
+  opened: OpenedFile,
+): Promise<InitStep<ReplacedState>> {
+  const replaced = await readReplaced(context);
+  if (!replaced.ok) {
+    return replaced;
+  }
+  const genuine = await authenticate(context, opened, replaced.value);
+  return genuine.ok ? replaced : genuine;
 }
 
 /**
@@ -197,17 +229,16 @@ async function previewOver(
   context: InitContext,
   unpacked: Unpacked,
 ): Promise<InitStep<ReplacedState["kind"]>> {
-  const replaced = await readReplaced(context);
-  if (!replaced.ok) {
-    return replaced;
+  const { replaced } = unpacked;
+  if (replaced.kind === "none") {
+    return ok(replaced.kind);
   }
   const restored =
-    replaced.value.kind === "guards" ? await readRestored(context, unpacked.unpacked) : undefined;
+    replaced.kind === "guards" ? await readRestored(context, unpacked.unpacked) : undefined;
   const asked = await confirmRestore(context, {
     createdAtMs: unpacked.manifest.createdAt,
-    replaced: replaced.value,
+    replaced,
     ...(restored === undefined ? {} : { restored }),
-    warnings: [],
   });
-  return asked.ok ? ok(replaced.value.kind) : asked;
+  return asked.ok ? ok(replaced.kind) : asked;
 }

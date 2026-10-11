@@ -127,7 +127,8 @@ async function writeAndCheck(taking: Taking): Promise<BackupRecord> {
       throw failed("no_owner_key");
     }
     try {
-      const record = { ...taking.record, bytes: written.value.bytes };
+      const { bytes, fileSha256, headerSha256 } = written.value;
+      const record = { ...taking.record, bytes, fileSha256, headerSha256 };
       await step("write", async () => parts.backups.record(record, { signal }));
       const checked = await step("check", async () =>
         verifyBackup(record.path, written.value, signal),

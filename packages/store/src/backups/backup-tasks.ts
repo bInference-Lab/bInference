@@ -27,6 +27,8 @@ export function insertBackup(database: DatabaseSync, backup: BackupRecord): void
       kind: backup.kind,
       created_at: backup.createdAtMs,
       verified_at: backup.verifiedAtMs ?? null,
+      file_sha256: backup.fileSha256 ?? null,
+      header_sha256: backup.headerSha256 ?? null,
     }),
   );
 }
@@ -66,14 +68,16 @@ export const markVerifiedTask: StoreTask<BackupVerified, Result<void, "not_found
 });
 
 function recordOf(row: Selectable<BackupTables["backups"]>): BackupRecord {
-  const record = {
+  return {
     id: backupIdSchema.parse(row.id),
     path: row.path,
     bytes: row.bytes,
     kind: backupKindSchema.parse(row.kind),
     createdAtMs: row.created_at,
+    ...(row.verified_at === null ? {} : { verifiedAtMs: row.verified_at }),
+    ...(row.file_sha256 === null ? {} : { fileSha256: row.file_sha256 }),
+    ...(row.header_sha256 === null ? {} : { headerSha256: row.header_sha256 }),
   };
-  return row.verified_at === null ? record : { ...record, verifiedAtMs: row.verified_at };
 }
 
 /** Every backup, oldest first, then by id, in the caller's transaction. */

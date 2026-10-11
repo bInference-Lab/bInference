@@ -6,7 +6,6 @@ import {
   carryReplaced,
   confirmRestore,
   type ReplacedState,
-  readReplaced,
   readRestored,
 } from "../attach/restore-guards-step.js";
 import { type StateSwap, swapInRestored } from "../backups/state-swap.js";
@@ -274,18 +273,14 @@ async function preview(
   context: InitContext,
   unpacked: Unpacked,
 ): Promise<InitStep<ReplacedState["kind"]>> {
-  const replaced = await readReplaced(context);
-  if (!replaced.ok) {
-    return replaced;
-  }
+  const { replaced } = unpacked;
   const restored = await readRestored(context, unpacked.unpacked);
   const confirmed = await confirmRestore(context, {
     createdAtMs: unpacked.manifest.createdAt,
-    replaced: replaced.value,
+    replaced,
     restored,
-    warnings: [],
   });
-  return confirmed.ok ? ok(replaced.value.kind) : confirmed;
+  return confirmed.ok ? ok(replaced.kind) : confirmed;
 }
 
 /**

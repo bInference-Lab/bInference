@@ -93,9 +93,18 @@ async function newMachineLike(machine: InitMachine): Promise<InitMachine> {
   return machineOf({ ...machine, folder: folder.path, signals: new EventEmitter() });
 }
 
-async function restore(machine: InitMachine, file: string, ownerKeys: readonly string[]) {
+async function restore(
+  machine: InitMachine,
+  file: string,
+  answers: { readonly ownerKeys: readonly string[]; readonly typed?: readonly string[] },
+) {
+  const { ownerKeys, typed } = answers;
   const day = (await fileSize(file, signal())).ok ? [await dayOfBackup(file)] : [];
-  const prompter = createScriptedPrompter({ ownerKey: ownerKeys, restoreConfirm: day });
+  const prompter = createScriptedPrompter({
+    ownerKey: ownerKeys,
+    restoreGenuine: typed ?? day,
+    restoreConfirm: day,
+  });
   const argv = ["init", "--attach", "--restore", file];
   const host = hostWith(machine, argv, {
     env: secretEnv(machine),
@@ -121,10 +130,14 @@ describe("binference init --attach --restore", () => {
       const file = await backupOf(machine);
       const fresh = await newMachineLike(machine);
 
-      const restored = await restore(fresh, file, [ownerKey]);
+      const restored = await restore(fresh, file, { ownerKeys: [ownerKey] });
 
       expect([restored.code, restored.stderr]).toStrictEqual([0, ""]);
-      expect(restored.prompter.transcript.asked).toStrictEqual(["ownerKey", "restoreConfirm"]);
+      expect(restored.prompter.transcript.asked).toStrictEqual(["ownerKey", "restoreGenuine"]);
+      const [shown] = restored.prompter.transcript.notes;
+      expect(shown?.text).toContain(init("restore.unrecorded"));
+      const wallets = before.facts.wallets.map((wallet) => wallet.custodyWalletId);
+      expect(wallets.every((wallet) => shown?.text.includes(wallet))).toBe(true);
       const after = await storedInstall(fresh);
       expect(after.facts.wallets.map((wallet) => wallet.custodyWalletId)).toStrictEqual(
         before.facts.wallets.map((wallet) => wallet.custodyWalletId),
@@ -148,7 +161,7 @@ describe("binference init --attach --restore", () => {
       const sent = fresh.privy.sent.length;
       const other = newOwnerKey().code;
 
-      const refused = await restore(fresh, file, [other, other, other]);
+      const refused = await restore(fresh, file, { ownerKeys: [other, other, other] });
 
       expect([refused.code, refused.stderr]).toStrictEqual([
         1,
@@ -159,6 +172,23 @@ describe("binference init --attach --restore", () => {
     },
   );
 
+  it("refuses a backup on a new machine when the owner does not type its day", slow, async () => {
+    const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+    const file = await backupOf(machine);
+    const fresh = await newMachineLike(machine);
+    const sent = fresh.privy.sent.length;
+
+    const refused = await restore(fresh, file, { ownerKeys: [ownerKey], typed: ["2000-01-01"] });
+
+    const day = await dayOfBackup(file);
+    expect([refused.code, refused.stderr]).toStrictEqual([
+      1,
+      `${init("refused.restoreNotConfirmed", { day })}\n`,
+    ]);
+    expect(fresh.privy.sent.slice(sent)).toStrictEqual([]);
+    expect(await entriesOf(fresh)).toStrictEqual([]);
+  });
+
   it("refuses a damaged backup and leaves the folder as it was", slow, async () => {
     const { machine, ownerKey } = await setUpWithOwnerKey(folders);
     const file = await backupOf(machine);
@@ -168,7 +198,7 @@ describe("binference init --attach --restore", () => {
     await writePrivateFile(damaged, bytes, { permissions: noPermissions, signal: signal() });
     const fresh = await newMachineLike(machine);
 
-    const refused = await restore(fresh, damaged, [ownerKey]);
+    const refused = await restore(fresh, damaged, { ownerKeys: [ownerKey] });
 
     expect([refused.code, refused.stderr]).toStrictEqual([
       1,
@@ -189,7 +219,7 @@ describe("binference init --attach --restore", () => {
       const fresh = await newMachineLike(machine);
       const sent = fresh.privy.sent.length;
 
-      const refused = await restore(fresh, file, [ownerKey]);
+      const refused = await restore(fresh, file, { ownerKeys: [ownerKey] });
 
       expect([refused.code, refused.stderr]).toStrictEqual([
         1,
@@ -207,7 +237,7 @@ describe("binference init --attach --restore", () => {
     const file = await backupOf(machine, { engineSchemaVersion: 999 });
     const fresh = await newMachineLike(machine);
 
-    const refused = await restore(fresh, file, [ownerKey]);
+    const refused = await restore(fresh, file, { ownerKeys: [ownerKey] });
 
     expect([refused.code, refused.stderr]).toStrictEqual([
       1,
@@ -220,7 +250,7 @@ describe("binference init --attach --restore", () => {
     const { machine } = await setUpWithOwnerKey(folders);
     const missing = join(machine.folder, "missing.bnfbak");
 
-    const absent = await restore(machine, missing, []);
+    const absent = await restore(machine, missing, { ownerKeys: [] });
     const alone = await runOn(machine, ["init", "--restore", missing]);
 
     expect([absent.code, absent.stderr]).toStrictEqual([

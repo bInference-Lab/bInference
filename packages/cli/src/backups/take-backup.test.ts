@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import {
   type FilePermissions,
@@ -97,6 +98,18 @@ describe("taking a backup", () => {
     ]);
     expect(manifest.privy).toStrictEqual({ appId: "privy-app", wallets: ["privy-wallet-1"] });
     expect(manifest.schemaVersions).toStrictEqual({ engine: 20, config: 4 });
+  });
+
+  it("records the SHA-256 of the file and of its header line", async () => {
+    const owner = await testOwnerKey();
+    const machine = await machineOf({ ownerKeyPublic: owner.publicKey });
+
+    const taken = valueOf(await takeBackup(machine.parts, runOf()));
+
+    const bytes = await joined(readFilePieces(taken.path, { signal: signal() }));
+    const line = bytes.subarray(0, bytes.indexOf(0x0a));
+    expect(taken.fileSha256).toBe(createHash("sha256").update(bytes).digest("hex"));
+    expect(taken.headerSha256).toBe(createHash("sha256").update(line).digest("hex"));
   });
 
   it("never writes over a backup taken the same minute", async () => {

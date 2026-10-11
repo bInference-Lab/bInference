@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, type Hash, randomBytes } from "node:crypto";
 import { err, ok, type Result } from "@binference/core";
 import type { BackupKind } from "@binference/engine/backups";
 import {
@@ -45,6 +45,9 @@ export interface BackupPlan {
  */
 export interface WrittenBackup {
   readonly bytes: number;
+  /** The SHA-256 of the whole file, and of its header line, in hex, for the install's record. */
+  readonly fileSha256: string;
+  readonly headerSha256: string;
   readonly line: Uint8Array;
   readonly dataKey: Buffer;
   readonly frame: ChunkFrame;
@@ -145,21 +148,34 @@ export async function writeBackup(
   const frame = { noncePrefix, headerDigest: headerDigest(line) };
   const listed: ManifestFile[] = [];
   const archive = writeTar(archived(plan, listed, writing.signal), { mtimeMs: plan.createdAt });
+  const file = createHash("sha256");
   try {
-    await writePrivateStream(plan.target, fileOf(line, sealBody(archive, dataKey, frame)), writing);
+    const pieces = fileOf(line, sealBody(archive, dataKey, frame), file);
+    await writePrivateStream(plan.target, pieces, writing);
   } catch (error) {
     dataKey.fill(0);
     throw error;
   }
   const size = await fileSize(plan.target, writing.signal);
   const bytes = size.ok ? size.value : 0;
-  return ok({ bytes, line, dataKey, frame, manifest: manifestOf(plan, listed) });
+  const digests = {
+    fileSha256: file.digest("hex"),
+    headerSha256: frame.headerDigest.toString("hex"),
+  };
+  return ok({ bytes, ...digests, line, dataKey, frame, manifest: manifestOf(plan, listed) });
 }
 
+// The file's pieces, each hashed as it goes out: the header line and its line break, then the body.
 async function* fileOf(
   line: Uint8Array,
   body: AsyncIterable<Uint8Array>,
+  hash: Hash,
 ): AsyncGenerator<Uint8Array> {
-  yield Buffer.concat([line, Buffer.of(0x0a)]);
-  yield* body;
+  const head = Buffer.concat([line, Buffer.of(0x0a)]);
+  hash.update(head);
+  yield head;
+  for await (const piece of body) {
+    hash.update(piece);
+    yield piece;
+  }
 }

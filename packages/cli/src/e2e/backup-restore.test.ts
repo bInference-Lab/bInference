@@ -10,13 +10,14 @@ import {
   writePrivateFile,
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import { createSqliteBackupStore, engineWorker, openDatabase } from "@binference/store";
 import { afterEach, describe, expect, it } from "vitest";
 import { dayOfBackup } from "../backups/backup-fixtures.js";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import { setUpWithOwnerKey } from "./attach-fixtures.js";
 import { type InitMachine, machineOf, newOwnerKey, runOn, secretEnv } from "./init-fixtures.js";
-import { freePort, hostWith, noPermissions } from "./test-host.js";
+import { freePort, hostOn, hostWith, noPermissions } from "./test-host.js";
 import { createTestSigner } from "./test-signer.js";
 import { createRunningEngines, stateOf } from "./unlock-fixtures.js";
 
@@ -70,16 +71,23 @@ async function startHere(machine: InitMachine): Promise<{ readonly exit: Promise
   return { exit };
 }
 
-// Runs `binference backup restore` with the owner key codes a person types, and the backup's day.
+// Runs `binference backup restore` with the owner key codes a person types, and the backup's day
+// for each question that asks for it, or the days given.
 async function restoreOn(
   machine: InitMachine,
-  restore: { readonly file: string; readonly ownerKeys: readonly string[] },
+  restore: {
+    readonly file: string;
+    readonly ownerKeys: readonly string[];
+    readonly genuine?: readonly string[];
+  },
   port: number,
 ) {
   const { file, ownerKeys } = restore;
+  const day = await dayOfBackup(file);
   const prompter = createScriptedPrompter({
     ownerKey: ownerKeys,
-    restoreConfirm: [await dayOfBackup(file)],
+    restoreGenuine: restore.genuine ?? [day],
+    restoreConfirm: [day],
   });
   const argv = ["backup", "restore", file, "--set", `engine.port=${String(port)}`];
   const host = hostWith(machine, argv, {
@@ -103,6 +111,23 @@ async function holdPort(): Promise<{ readonly port: number; readonly close: () =
       });
     });
   return { port, close };
+}
+
+// Forgets every backup the stopped machine's install recorded, as if another install wrote them.
+async function forgetBackups(machine: InitMachine): Promise<void> {
+  const database = await openDatabase({
+    file: join(machine.folder, "engine.sqlite"),
+    worker: engineWorker,
+    execArgv: hostOn(machine, []).workerExecArgv ?? [],
+    signal: signal(),
+  });
+  try {
+    const backups = createSqliteBackupStore(database);
+    const ids = (await backups.list({ signal: signal() })).map((backup) => backup.id);
+    await backups.forget(ids, { signal: signal() });
+  } finally {
+    await database.close();
+  }
 }
 
 describe("binference backup restore", () => {
@@ -186,6 +211,41 @@ describe("binference backup restore", () => {
     },
   );
 
+  it(
+    "asks before it restores a file this install has no record of, and refuses a wrong day",
+    slow,
+    async () => {
+      const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+      const engine = await startHere(machine);
+      const file = await backupOf(machine);
+      machine.signals.emit("SIGINT", "SIGINT");
+      await expect(engine.exit).resolves.toBe(0);
+      await forgetBackups(machine);
+      await writeMarker(machine);
+
+      const wrong = await restoreOn(
+        machine,
+        { file, ownerKeys: [ownerKey], genuine: ["2000-01-01"] },
+        await freePort(),
+      );
+      await expect(wrong.exit).resolves.toBe(1);
+      const day = await dayOfBackup(file);
+      expect(wrong.host.stderr()).toBe(`${init("refused.restoreNotConfirmed", { day })}\n`);
+      expect((await fileSize(join(machine.folder, marker), signal())).ok).toBe(true);
+      const [shown] = wrong.prompter.transcript.notes;
+      expect(shown?.text).toContain(init("restore.unknown"));
+
+      const right = await restoreOn(machine, { file, ownerKeys: [ownerKey] }, await freePort());
+      await expect(right.exit).resolves.toBe(0);
+      expect(right.prompter.transcript.asked).toStrictEqual([
+        "ownerKey",
+        "restoreGenuine",
+        "restoreConfirm",
+      ]);
+      expect((await fileSize(join(machine.folder, marker), signal())).ok).toBe(false);
+    },
+  );
+
   it("restores on an engine that is not running, and leaves it stopped", slow, async () => {
     const { machine, ownerKey } = await setUpWithOwnerKey(folders);
     const engine = await startHere(machine);
@@ -234,7 +294,7 @@ describe("binference backup restore", () => {
       const fresh = machineOf({ ...machine, folder: folder.path, signals: new EventEmitter() });
       const prompter = createScriptedPrompter({
         ownerKey: [ownerKey],
-        restoreConfirm: [await dayOfBackup(file)],
+        restoreGenuine: [await dayOfBackup(file)],
       });
       const moved = await runCli(
         hostWith(fresh, ["init", "--attach", "--restore", file], {

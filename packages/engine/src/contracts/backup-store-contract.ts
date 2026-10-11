@@ -69,6 +69,17 @@ async function refusesAborted(store: BackupStore): Promise<void> {
   assert.deepEqual(await store.list(live()), []);
 }
 
+async function keepsDigests(store: BackupStore): Promise<void> {
+  const backup: BackupRecord = {
+    ...backupOf(1, 1_000),
+    fileSha256: "a".repeat(64),
+    headerSha256: "b".repeat(64),
+  };
+  await store.record(backup, live());
+  await store.record(backupOf(2, 2_000), live());
+  assert.deepEqual(await store.list(live()), [backup, backupOf(2, 2_000)]);
+}
+
 /** The contract every `BackupStore` adapter passes. */
 export function backupStoreContract(harness: BackupStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<BackupStore> => harness.create();
@@ -85,6 +96,11 @@ export function backupStoreContract(harness: BackupStoreHarness): readonly Contr
       refusesAnIdInUse,
     ),
     checkOn("forgets only the backups whose ids it is given", create, forgetsOnlyTheIdsGiven),
+    checkOn(
+      "keeps a backup's file and header digests, and none it was not given",
+      create,
+      keepsDigests,
+    ),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

@@ -15,6 +15,13 @@ export interface BackupRecord {
   readonly createdAtMs: number;
   /** When the file was read back and every chunk and file checked; absent until then. */
   readonly verifiedAtMs?: number;
+  /**
+   * The SHA-256 of the whole file, and of its header line, in hex: a restore on this install
+   * knows the file as one it wrote by them (keys spec, section 7.4). Absent on a backup written
+   * before the install kept them.
+   */
+  readonly fileSha256?: string;
+  readonly headerSha256?: string;
 }
 
 /** Parses a backup kind. */
@@ -29,6 +36,8 @@ export const backupKindSchema: z.ZodType<BackupKind> = z.enum([
 /** Parses a backup's id. */
 export const backupIdSchema: z.ZodType<Id<"bkp">, string> = idSchema("bkp");
 
+const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/u);
+
 /** Parses a backup record as it crosses the store worker's boundary. */
 export const backupRecordSchema: z.ZodType<BackupRecord> = z.strictObject({
   id: backupIdSchema,
@@ -37,6 +46,8 @@ export const backupRecordSchema: z.ZodType<BackupRecord> = z.strictObject({
   kind: backupKindSchema,
   createdAtMs: epochMsSchema,
   verifiedAtMs: epochMsSchema.exactOptional(),
+  fileSha256: sha256Hex.exactOptional(),
+  headerSha256: sha256Hex.exactOptional(),
 });
 
 /** A backup marked verified, and when. */

@@ -142,8 +142,6 @@ export interface RestorePreview {
   readonly replaced: ReplacedState;
   /** The restored copy's guards; absent when there is no state to compare it with. */
   readonly restored?: InstallGuards;
-  /** Lines said first, such as why the backup is not one this install wrote. */
-  readonly warnings: readonly string[];
 }
 
 /**
@@ -157,7 +155,7 @@ export async function confirmRestore(
   preview: RestorePreview,
 ): Promise<InitStep<void>> {
   const { replaced, restored, createdAtMs } = preview;
-  const lines = [...preview.warnings];
+  const lines: string[] = [];
   if (replaced.kind === "unreadable") {
     lines.push(context.words("restore.changes.unreadable"));
   }

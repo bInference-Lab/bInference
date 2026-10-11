@@ -162,7 +162,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   plugins: names("id name version tier source hash permissions enabled installed_at"),
   skills: names("id agent_id name source hash installed_at"),
   jobs: names("id kind state progress result error started_at ended_at"),
-  backups: names("id path bytes kind created_at verified_at"),
+  backups: names("id path bytes kind created_at verified_at file_sha256 header_sha256"),
   cex_connections: names("provider state secret_ref scopes connected_at"),
 };
 
