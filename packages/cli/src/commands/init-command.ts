@@ -11,7 +11,7 @@ import {
   isDatabaseLeftOpen,
   openDatabase,
 } from "@binference/store";
-import { runAttach } from "../attach/run-attach.js";
+import { type AttachAfterRestore, runAttach } from "../attach/run-attach.js";
 import { runRebuild } from "../attach/run-rebuild.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
@@ -26,6 +26,7 @@ import { createOutputPrompter } from "../term/output-prompter.js";
 import { attachSummary } from "./attach-summary.js";
 import { configIssueMessages } from "./config-issue-messages.js";
 import { rebuildSummary } from "./rebuild-summary.js";
+import { restoreAndAttach } from "./restore-attach.js";
 import { setupDoneLines } from "./setup-done-lines.js";
 
 /** What the init command reports with: the command's output and the owner's formatter. */
@@ -112,14 +113,16 @@ async function isSetUp(context: InitContext, stores: InitStores): Promise<boolea
 async function attachOnStores(
   context: InitContext,
   report: Report,
-  stores: InitStores,
+  on: { readonly stores: InitStores; readonly restore: AttachAfterRestore | undefined },
 ): Promise<ExitCode> {
+  const { stores, restore } = on;
   const { host, signal, platform } = context;
   const proposal = { id: createIdSource(host).next("ins"), atMs: host.clock.now() };
   const installId = await stores.install.installId(proposal, { signal });
   const { custody } = await stores.install.read({ signal });
   if (custody !== undefined) {
-    const attached = await runAttach(context, stores.install, { custody, installId });
+    const found = { custody, installId, ...(restore === undefined ? {} : { restore }) };
+    const attached = await runAttach(context, stores.install, found);
     return attached.ok
       ? attachSummary(context, report.output, attached.value)
       : refuse(context, report, attached.refusal);
@@ -138,7 +141,11 @@ async function attachOnStores(
     : refuse(context, report, rebuilt.refusal);
 }
 
-async function initOnStores(context: InitContext, report: Report): Promise<ExitCode> {
+async function initOnStores(
+  context: InitContext,
+  report: Report,
+  restore?: AttachAfterRestore,
+): Promise<ExitCode> {
   const { engineDatabase } = context.platform.stateFolder;
   // A database copied while its engine ran, or one an engine did not close, is never attached:
   // opening it would write over what the copy left half done (decision 0142).
@@ -161,7 +168,7 @@ async function initOnStores(context: InitContext, report: Report): Promise<ExitC
   try {
     const { stores } = opened;
     if (context.flags.isAttach) {
-      return await attachOnStores(context, report, stores);
+      return await attachOnStores(context, report, { stores, restore });
     }
     if (!context.flags.isStartOver && (await isSetUp(context, stores))) {
       return refuse(context, report, {
@@ -212,11 +219,25 @@ function contextOf(
   };
 }
 
+// Flags that cannot go together, or one that needs another.
+function flagConflictOf(flags: InitFlags): InitRefusal | undefined {
+  if (flags.isAttach && flags.isStartOver) {
+    return { code: "init.attach_start_over", key: "refused.attachStartOver" };
+  }
+  if (!flags.isAttach && flags.restore !== undefined) {
+    return { code: "init.restore_needs_attach", key: "refused.restoreNeedsAttach" };
+  }
+  return flags.isAttach && flags.ownerKeyPublic !== undefined
+    ? { code: "init.attach_owner_key_public", key: "refused.attachOwnerKeyPublic" }
+    : undefined;
+}
+
 /**
  * `binference init`: sets up a new install (keys spec, section 2) under the engine lock, so no
  * engine runs on the folder meanwhile. It refuses a folder set up before unless the owner asks
  * to start over, and never replaces a stored agent key. With `--attach` it makes this machine the
- * signer of the folder's install instead (keys spec, section 6; decision 0140). A person at a
+ * signer of the folder's install instead (keys spec, section 6; decision 0140), after restoring a
+ * backup into the folder with `--restore` (keys spec, section 7.4). A person at a
  * terminal answers its questions; with `--yes`, `--json` or no terminal, every answer comes from a
  * flag. Exits 0 once the install is set up or attached, 1 when it refused or failed.
  */
@@ -229,17 +250,9 @@ export async function runInitCommand(
   const context = contextOf(host, output, options);
   const report: Report = { output, formatter, isJson: flags.json };
   const folder = context.platform.stateFolder;
-  if (flags.isAttach && flags.isStartOver) {
-    return refuse(context, report, {
-      code: "init.attach_start_over",
-      key: "refused.attachStartOver",
-    });
-  }
-  if (flags.isAttach && flags.ownerKeyPublic !== undefined) {
-    return refuse(context, report, {
-      code: "init.attach_owner_key_public",
-      key: "refused.attachOwnerKeyPublic",
-    });
+  const conflict = flagConflictOf(flags);
+  if (conflict !== undefined) {
+    return refuse(context, report, conflict);
   }
   context.prompter.intro(context.words("title"));
   await ensurePrivateFolder(folder.root, {
@@ -255,7 +268,12 @@ export async function runInitCommand(
     });
   }
   try {
-    return await initOnStores(context, report);
+    return flags.restore === undefined
+      ? await initOnStores(context, report)
+      : await restoreAndAttach(context, flags.restore, {
+          attach: async (restore) => initOnStores(context, report, restore),
+          refuse: (refusal) => refuse(context, report, refusal),
+        });
   } catch (error) {
     if (!(error instanceof BinferenceError)) {
       throw error;

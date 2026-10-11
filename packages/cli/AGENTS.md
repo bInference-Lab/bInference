@@ -133,5 +133,11 @@ Rules for this package:
   applies retention. `startNightlyBackups` runs it at 03:30 owner time and raises
   `notice.backupFailed`; `openEngineStores` takes one before a migration, and a failed one stops
   the start before the migration runs. Crypto comes from `node:crypto` and `@hpke/core` only.
+- `binference init --attach --restore <file>` (`src/commands/restore-attach.ts`) takes the owner
+  key from the hidden prompt only, opens the backup's data key with it before any chunk is read,
+  unpacks and checks every file into a folder of the state folder, refuses a newer schema, then
+  moves the replaced state to `replaced/<time>/` (kept 7 days) and puts the restored files in
+  place. Attach then signs with that owner key and checks the backup's wallets against Privy
+  before it makes a key; a refusal before a wallet moves undoes the restore.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

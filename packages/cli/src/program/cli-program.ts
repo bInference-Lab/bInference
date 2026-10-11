@@ -120,6 +120,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     .option("--set <key=value>", message("option.setInit"), addSet, [])
     .option("--start-over", message("option.startOver"))
     .option("--attach", message("option.attach"))
+    .option("--restore <file>", message("option.restore"))
     .action((flags: OptionValues) =>
       choose({ name: "init", options: initFlagsSchema.parse(flags) }),
     );

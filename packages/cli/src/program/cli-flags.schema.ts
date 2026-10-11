@@ -82,6 +82,8 @@ export interface InitFlags extends CommonOptions {
    * (keys spec, section 6), in place of the key that signed for them.
    */
   readonly isAttach: boolean;
+  /** With `isAttach`: the backup file restored first, opened with the owner key (keys spec, 7.4). */
+  readonly restore?: string;
 }
 
 /** The most lines `logs --lines` takes. */
@@ -165,6 +167,7 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     set: z.array(z.string()).default([]),
     startOver: z.boolean().default(false),
     attach: z.boolean().default(false),
+    restore: z.string().min(1).exactOptional(),
   })
   .transform(({ set, startOver, attach, ...rest }) => ({
     ...rest,

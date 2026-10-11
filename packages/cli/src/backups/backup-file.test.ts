@@ -1,13 +1,21 @@
 import { join } from "node:path";
 import { idSchema } from "@binference/core";
-import { ensurePrivateFolder, readFilePieces, writePrivateFile } from "@binference/platform";
+import {
+  ensurePrivateFolder,
+  listFolderFiles,
+  readFilePieces,
+  writePrivateFile,
+} from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import { createP256KeyPair } from "@binference/signer";
 import { afterEach, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
 import { joined, testOwnerKey, valueOf } from "./backup-fixtures.js";
 import { checkArchive } from "./check-archive.js";
 import { openBody } from "./chunk-stream.js";
 import { openBackup } from "./open-backup.js";
+import { ownerKeyRecipient } from "./owner-key-recipient.js";
+import { unpackBackup } from "./unpack-backup.js";
 import { verifyBackup } from "./verify-backup.js";
 import { type BackupPlan, writeBackup, type WrittenBackup } from "./write-backup.js";
 
@@ -157,5 +165,50 @@ describe("a backup file", () => {
     const plan = planOf(folder, "AAAA");
 
     expect(await writeBackup(plan, writing)).toStrictEqual({ ok: false, error: "bad_owner_key" });
+  });
+
+  it("unpacks every file into a folder with the owner key binference holds", async () => {
+    const folder = await stateFolder();
+    const owner = createP256KeyPair();
+    const plan = planOf(folder, owner.publicKey);
+    await written(plan);
+    const into = join(folder, "restored");
+    const opened = valueOf(
+      await openBackup(
+        readFilePieces(plan.target, { signal: signal() }),
+        ownerKeyRecipient(owner.privateKey),
+      ),
+    );
+
+    const manifest = valueOf(await unpackBackup(opened, into, writing));
+
+    expect(manifest.files.map((file) => file.path).toSorted()).toStrictEqual(
+      await listFolderFiles(into, signal()),
+    );
+    expect(await read(join(into, "workspace", "agent", "notes.md"))).toStrictEqual(
+      Buffer.from("notes"),
+    );
+    expect(opened.dataKey.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it("calls a backup that does not check damaged when it unpacks", async () => {
+    const folder = await stateFolder();
+    const owner = createP256KeyPair();
+    const plan = planOf(folder, owner.publicKey);
+    await written(plan);
+    const bytes = await read(plan.target);
+    bytes.writeUInt8(bytes.readUInt8(bytes.length - 20) ^ 1, bytes.length - 20);
+    await writePrivateFile(plan.target, bytes, writing);
+    const opened = valueOf(
+      await openBackup(
+        readFilePieces(plan.target, { signal: signal() }),
+        ownerKeyRecipient(owner.privateKey),
+      ),
+    );
+
+    expect(await unpackBackup(opened, join(folder, "restored"), writing)).toStrictEqual({
+      ok: false,
+      error: "damaged",
+    });
   });
 });

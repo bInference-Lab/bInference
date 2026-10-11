@@ -15,6 +15,7 @@ import type { BackupParts } from "./backup-parts.js";
 import type { BackupsKept } from "./backup-retention.js";
 import { gatherSources, type GatheredSources } from "./gather-sources.js";
 import { pruneBackups } from "./prune-backups.js";
+import { pruneReplaced } from "./state-swap.js";
 import { verifyBackup } from "./verify-backup.js";
 import { type BackupPlan, writeBackup } from "./write-backup.js";
 
@@ -163,6 +164,16 @@ async function copyTo(taking: Taking, record: BackupRecord): Promise<boolean> {
   }
 }
 
+// The states restores moved aside go once they are 7 days old; a failure is only logged.
+async function pruneAside(parts: BackupParts, nowMs: number, signal: AbortSignal): Promise<void> {
+  try {
+    await pruneReplaced(parts.stateFolder, nowMs, signal);
+  } catch (error) {
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    parts.logger.warn("backup.prune_failed", { errorCode });
+  }
+}
+
 async function begin(parts: BackupParts, run: BackupRun): Promise<Taking | undefined> {
   const { signal } = run;
   const facts = await parts.install.read({ signal });
@@ -211,6 +222,7 @@ export async function takeBackup(
       parts.backups.markVerified({ id: record.id, atMs: verifiedAtMs }, { signal: run.signal }),
     );
     await pruneBackups(parts, run);
+    await pruneAside(parts, verifiedAtMs, run.signal);
     parts.logger.info("backup.taken", { durationMs: parts.clock.now() - startedMs });
     return isCopied ? ok({ ...record, verifiedAtMs }) : err("copy");
   } catch (error) {

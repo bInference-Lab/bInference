@@ -1,6 +1,7 @@
-import { type Id, ok } from "@binference/core";
+import { type Id, ok, type Secret } from "@binference/core";
 import { isPrivyId, type OwnerAuthorize } from "@binference/custody-privy";
 import type { CustodyRecord, InstallStore } from "@binference/engine/install";
+import { ownerAuthorize } from "../compose/owner-authorize.js";
 import { loadConfig } from "../config/load-config.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { UnlockConfig, UnlockMode } from "../config/schema/engine.schema.js";
@@ -12,6 +13,13 @@ import { takeAttachBot } from "./attach-bot.js";
 import { takeOwnerKey } from "./attach-owner-key.js";
 import { type MovedSigners, moveSigners } from "./attach-signers.js";
 import { movedSources, moveSources } from "./moved-sources.js";
+
+/** The install attach runs on, and the restore that put it in place, if one did. */
+export interface AttachFound {
+  readonly custody: CustodyRecord;
+  readonly installId: Id<"ins">;
+  readonly restore?: AttachAfterRestore;
+}
 
 /** What an attach did, for its summary. */
 export interface AttachOutcome {
@@ -54,6 +62,33 @@ async function loadedConfig(context: InitContext): Promise<InitStep<BinferenceCo
     : refused("init.attach_config", "refused.attachConfig", { folder: platform.stateFolder.root });
 }
 
+/** What a restore hands attach: the owner key it opened the backup with, and its last check. */
+export interface AttachAfterRestore {
+  /** The owner key code; attach signs with it and asks for none. */
+  readonly ownerKey: Secret;
+  /**
+   * Runs once the install's app is checked, before attach makes a key or asks for anything more;
+   * a refusal stops attach.
+   */
+  readonly checkWallets: (app: AttachApp) => Promise<InitStep<void>>;
+  /** Called once every check passed, right before the first wallet moves. */
+  readonly onMove: () => void;
+}
+
+// The owner key: the code a restore opened its backup with, else asked of a person.
+async function ownerKeyOf(
+  context: InitContext,
+  ownerKeyPublic: string,
+  restore: AttachAfterRestore | undefined,
+): Promise<InitStep<OwnerAuthorize>> {
+  if (restore === undefined) {
+    return takeOwnerKey(context, ownerKeyPublic);
+  }
+  const holder = { ownerKeyPublic: async () => Promise.resolve(ownerKeyPublic) };
+  const authorize = await ownerAuthorize(holder, restore.ownerKey, context.signal);
+  return authorize.ok ? authorize : refused("wallet.bad_owner_key", "refused.attachOwnerKey");
+}
+
 /** What attach checked and made before it changes anything on Privy. */
 interface Checked {
   readonly app: AttachApp;
@@ -73,10 +108,7 @@ function heldCurrentKey(context: InitContext, unlock: UnlockConfig): Refused {
     : refused("init.attached_already", "refused.attachedAlready");
 }
 
-async function check(
-  context: InitContext,
-  found: { readonly custody: CustodyRecord; readonly installId: Id<"ins"> },
-): Promise<InitStep<Checked>> {
+async function check(context: InitContext, found: AttachFound): Promise<InitStep<Checked>> {
   const config = await configOf(context);
   if (!config.ok) {
     return config;
@@ -85,8 +117,12 @@ async function check(
   if (!app.ok) {
     return app;
   }
+  const wallets = (await found.restore?.checkWallets(app.value)) ?? ok(undefined);
+  if (!wallets.ok) {
+    return wallets;
+  }
   const hasBot = await takeAttachBot(context, config.value);
-  const authorize = await takeOwnerKey(context, found.custody.ownerKeyPublic);
+  const authorize = await ownerKeyOf(context, found.custody.ownerKeyPublic, found.restore);
   if (!authorize.ok) {
     return authorize;
   }
@@ -106,12 +142,14 @@ async function check(
  * owner key unseen, makes this machine's agent key where the unlock mode keeps it, makes that key
  * each live wallet's one signer on Privy in a change the owner key signs, which removes the signer
  * it had, and records the key in `engine.sqlite`. Nothing changes on Privy before the owner key is
- * checked, and a machine that holds the wallets' key already changes nothing.
+ * checked, and a machine that holds the wallets' key already changes nothing. After a restore, it
+ * signs with the owner key that opened the backup and runs the restore's last check before any
+ * wallet moves.
  */
 export async function runAttach(
   context: InitContext,
   install: InstallStore,
-  found: { readonly custody: CustodyRecord; readonly installId: Id<"ins"> },
+  found: AttachFound,
 ): Promise<InitStep<AttachOutcome>> {
   const checked = await check(context, found);
   if (!checked.ok) {
@@ -126,6 +164,7 @@ export async function runAttach(
   if (signed.length < live.length) {
     return refused("init.attach_wallet_gone", "refused.attachWalletGone");
   }
+  found.restore?.onMove();
   const moved = await moveSigners(context, {
     ...app,
     authorize,

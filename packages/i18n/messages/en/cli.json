@@ -211,6 +211,7 @@
   "option.setInit": "Set a config key in the file init writes, written as `key=value`",
   "option.startOver": "Set up a folder set up before again, with a new owner key and a new wallet",
   "option.attach": "Make this machine the signer of the install's wallets with a new agent key and the owner key; the key it replaces signs nothing more",
+  "option.restore": "With --attach: restore this backup file first, opened with the owner key",
   "command.init": "Set up binference: your Privy app, your owner key, your first wallet and your bot",
   "status.locked": "Locked: binference signs nothing until you run `binference unlock` on this machine.",
   "health.locked": "binference is running but locked: it signs nothing until you run `binference unlock` on this machine.",

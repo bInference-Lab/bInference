@@ -211,6 +211,7 @@
   "option.setInit": "在 init 写入的文件中设置一个配置项，写作 `key=value`",
   "option.startOver": "用新的所有者密钥和新钱包重新设置一个已设置过的文件夹",
   "option.attach": "用新的 Agent 密钥和所有者密钥让此机器成为该安装各钱包的签名方；被替换的密钥不再能签名",
+  "option.restore": "与 --attach 一起使用：接入前先恢复这个备份文件，用所有者密钥打开",
   "command.init": "设置 binference：你的 Privy 应用、所有者密钥、第一个钱包和机器人",
   "status.locked": "已锁定：在你于本机运行 `binference unlock` 之前，binference 不会签名。",
   "health.locked": "binference 正在运行但已锁定：在你于本机运行 `binference unlock` 之前，它不会签名。",

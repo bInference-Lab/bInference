@@ -59,7 +59,10 @@ describe("moving and removing paths", () => {
     await mkdir(join(folder, "from"));
     await writeFile(join(folder, "from", "file"), "x");
 
-    await movePath(join(folder, "from"), join(folder, "to"), signal());
+    expect(await movePath(join(folder, "from"), join(folder, "to"), signal())).toStrictEqual({
+      ok: true,
+      value: undefined,
+    });
 
     expect(await fileSize(join(folder, "to", "file"), signal())).toStrictEqual({
       ok: true,
@@ -70,11 +73,16 @@ describe("moving and removing paths", () => {
     expect(await listFolderFiles(folder, signal())).toStrictEqual([]);
   });
 
-  it("names the fault when the path to move is not there", async () => {
+  it("moves nothing when the path is not there, and names the fault when the target's folder is not", async () => {
     const folder = await scratchFolder();
+    await mkdir(join(folder, "from"));
 
+    expect(await movePath(join(folder, "missing"), join(folder, "to"), signal())).toStrictEqual({
+      ok: false,
+      error: "not_found",
+    });
     await expect(
-      movePath(join(folder, "missing"), join(folder, "to"), signal()),
+      movePath(join(folder, "from"), join(folder, "no", "to"), signal()),
     ).rejects.toMatchObject({ code: "platform.move_failed" });
   });
 });
