@@ -1,6 +1,8 @@
 # 0160. A Mini App launch signs in once, and a new owner ends the old one's Mini App
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-11.
 
 ## Context
 
@@ -21,9 +23,10 @@ what happens to an open Mini App when a start code pairs another owner
   owner to open it again from `/console`. Any other refusal ends with `bye auth.invalid`: a
   signature the bot token did not make, a field missing or sent twice, another Telegram user, a
   launch that signed in before, an engine with no bot or no paired owner, and a launch over IPC.
-- **Seen launches stay in the engine's memory**, at most 1,024 for 24 hours, the oldest dropped
-  first. Only a launch that passed every other check is kept, so filling the store takes that many
-  fresh launches by the owner.
+- **Seen launches are kept in `engine.sqlite` for 24 hours**, in `mini_app_launches`: only the
+  SHA-256 of the launch's `hash` field and when it signed in, never the launch data. Only a launch
+  that passed every other check is claimed, and the check and the write happen in one transaction,
+  which also deletes the rows older than 24 hours.
 - **A Mini App connection's credential is `tg:<owner id>`**, as the owner's chat names the owner,
   with the scopes `read`, `chat`, `confirm` and `loosen`. It acts as the owner on Telegram, so the
   Mini App opens a rescue or an unfreeze card ([decision 0128](../DECISIONS.md#d0128)).
@@ -35,16 +38,19 @@ what happens to an open Mini App when a start code pairs another owner
 
 - A launch signs in one connection. A Mini App whose connection drops cannot reconnect with the
   same launch; the console asks the owner to open it again from `/console`.
-- An engine that restarts forgets the launches it saw. A launch someone copied could sign in again
-  only within its 5 minutes, and only when the engine restarted after the owner used it.
-- The 1,024 bound keeps the store's memory fixed whatever the owner does.
+- A launch someone copied cannot sign in again after a restart either: the engine reads the
+  claims from the same file, and the 24 hours outlast the 5 minutes a launch is fresh.
+- The table holds only the owner's launches of the last 24 hours, so it stays small without a cap.
+  A sign-in writes to `engine.sqlite`, the database of money and access, which serializes writes:
+  a Mini App launch waits behind the write in progress.
 
 ## Alternatives
 
 - **Refuse any `auth_date` after the engine's time.** An engine whose clock lags Telegram's by a
   second would refuse a fresh launch. Rejected.
-- **Keep seen launches in `engine.sqlite`.** It closes the restart gap, at the cost of a table and a
-  migration for a window of 5 minutes. Left for the owner to choose.
+- **Keep seen launches in the engine's memory**, at most 1,024 for 24 hours. It needs no table, but
+  a restart forgets them, and a copied launch could sign in again within its 5 minutes. Rejected
+  by the owner.
 - **Let a dropped Mini App reconnect with its launch.** The replay check exists to refuse exactly
   that. A launch could instead buy a short-lived ticket for reconnects; that is a new credential
   the spec does not have. Rejected for now.

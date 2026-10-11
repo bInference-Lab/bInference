@@ -187,9 +187,10 @@ A Telegram tap is handled inside the engine and never travels over this protocol
      sends `prove`.
 - **Telegram Mini App (WS only).** `open.auth` is `{ telegram: { initData } }`. The engine checks
   Telegram's signature with the owner's bot token, requires `auth_date` within 5 minutes and the
-  owner's numeric user id, and refuses an `initData` hash it has seen in the last 24 hours. How it
-  counts the 5 minutes, which code each refusal gets, where it keeps the hashes, and how a new
-  owner ends the old one's Mini App are proposed in [decision 0160](../DECISIONS.md#d0160).
+  owner's numeric user id, and refuses an `initData` hash it has seen in the last 24 hours, kept in
+  `engine.sqlite` across restarts. How it counts the 5 minutes, which code each refusal gets, how
+  it keeps the hashes, and how a new owner ends the old one's Mini App are in
+  [decision 0160](../DECISIONS.md#d0160).
 - A failed `open` ends with `bye` and one of `auth.required`, `auth.invalid`, `auth.expired`,
   `auth.origin` or `auth.revoked`. A call above the connection's scopes fails with `auth.scope`; a
   local-only call over WS fails with `auth.local_only`.
