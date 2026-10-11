@@ -64,16 +64,29 @@ function headersFor(request: HttpRequest, userAgent: string): Record<string, str
   return { ...Object.fromEntries(kept), "user-agent": userAgent };
 }
 
+// A request carries text or bytes, never both: two bodies are a fault of the caller.
+function bodyOf(request: HttpRequest): string | Uint8Array | undefined {
+  if (request.body !== undefined && request.bodyBytes !== undefined) {
+    throw new BinferenceError({
+      code: "http.two_bodies",
+      message: "A request sets body or bodyBytes, never both.",
+      details: { method: request.method, origin: new URL(request.url).origin },
+    });
+  }
+  return request.bodyBytes ?? request.body;
+}
+
 async function exchange(
   agent: Agent,
   request: HttpRequest,
   userAgent: string,
 ): Promise<HttpResponse> {
+  const body = bodyOf(request);
   const answer = await send(request.url, {
     dispatcher: agent,
     method: request.method,
     headers: headersFor(request, userAgent),
-    ...(request.body === undefined ? {} : { body: request.body }),
+    ...(body === undefined ? {} : { body }),
     signal: request.signal,
   });
   return {
@@ -84,8 +97,9 @@ async function exchange(
 }
 
 /**
- * The CLI's outbound HTTP, over undici with a connection pool of its own: it follows no
- * redirect, answers every status as it came, and reads at most 8 MiB of an answer
+ * The CLI's outbound HTTP, over undici with a connection pool of its own: it sends a text body
+ * or a body of bytes (`http.two_bodies` for both), follows no redirect, answers every status as
+ * it came, and reads at most 8 MiB of an answer
  * (`http.answer_too_large`). Every request names binference as `user-agent:
  * binference/<version>`, in place of any user agent the caller set, so each service sees one
  * name: some refuse a request with none, as KyberSwap's edge does. A request that gets no answer

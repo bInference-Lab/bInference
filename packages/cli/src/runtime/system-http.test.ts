@@ -22,6 +22,13 @@ const pages: Readonly<
       response.end(`${String(request.headers["x-test"])}:${Buffer.concat(parts).toString("utf8")}`);
     });
   },
+  "/bytes": (request, response) => {
+    const parts: Buffer[] = [];
+    request.on("data", (part: Buffer) => parts.push(part));
+    request.on("end", () => {
+      response.end(Buffer.concat(parts).toString("hex"));
+    });
+  },
   "/agent": (request, response) => {
     response.end(request.headers["user-agent"] ?? "none");
   },
@@ -107,6 +114,29 @@ describe("the system Http adapter", () => {
     expect(answer.body).toBe("yes:payload");
     expect(answer.headers["x-echo-method"]).toBe("POST");
     expect(answer.headers["set-cookie"]).toBe("a=1, b=2");
+  });
+
+  it("sends a body of bytes as they are", async () => {
+    const bytes = Uint8Array.of(0, 255, 128, 10, 13);
+    const answer = await adapter().request({
+      method: "POST",
+      url: `${held.origin}/bytes`,
+      bodyBytes: bytes,
+      signal: live(),
+    });
+    expect(answer.body).toBe("00ff800a0d");
+  });
+
+  it("refuses a request that sets a text body and a body of bytes", async () => {
+    await expect(
+      adapter().request({
+        method: "POST",
+        url: `${held.origin}/bytes`,
+        body: "text",
+        bodyBytes: Uint8Array.of(1),
+        signal: live(),
+      }),
+    ).rejects.toMatchObject({ code: "http.two_bodies", retryable: false });
   });
 
   it("names binference and its version as the user agent of every request", async () => {
