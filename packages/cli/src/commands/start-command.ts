@@ -62,6 +62,44 @@ function announce(output: CliOutput, engine: RunningEngine): void {
 }
 
 /**
+ * How a start in this process went: refused, with its exit code once the refusal is said, or
+ * started, ready or locked, with `serve`, which serves until the shutdown sequence ends.
+ */
+export type ForegroundStart =
+  | { readonly isStarted: false; readonly code: ExitCode }
+  | { readonly isStarted: true; readonly serve: () => Promise<ExitCode> };
+
+/**
+ * Starts the engine in this process (`binference start --foreground`) and answers once it is
+ * started or refused, before it serves: a restore undoes its swap when the start is refused.
+ */
+export async function startForeground(
+  host: CliHost,
+  output: CliOutput,
+  sets: readonly string[],
+): Promise<ForegroundStart> {
+  const started = await startSelfHosted({ host, sets });
+  if (!started.ok) {
+    return { isStarted: false, code: refuse(output, started) };
+  }
+  announce(output, started.engine);
+  const serve = async (): Promise<ExitCode> => {
+    const report = await started.engine.finished;
+    const unfinished = report.steps
+      .filter((step) => step.outcome !== "done")
+      .map((step) => step.name);
+    output.json({ state: "stopped", unfinished });
+    if (unfinished.length > 0) {
+      output.say("start.stoppedLate", { steps: unfinished.join(", ") });
+      return 1;
+    }
+    output.say("start.stopped");
+    return 0;
+  };
+  return { isStarted: true, serve };
+}
+
+/**
  * `binference start --foreground`: starts the engine in this process and serves the protocol
  * until a stop signal or `engine/stop` runs the shutdown sequence. Exits 0 when every shutdown
  * step finished, 1 when one did not or the engine refused to start.
@@ -71,22 +109,8 @@ async function runForeground(
   output: CliOutput,
   sets: readonly string[],
 ): Promise<ExitCode> {
-  const started = await startSelfHosted({ host, sets });
-  if (!started.ok) {
-    return refuse(output, started);
-  }
-  announce(output, started.engine);
-  const report = await started.engine.finished;
-  const unfinished = report.steps
-    .filter((step) => step.outcome !== "done")
-    .map((step) => step.name);
-  output.json({ state: "stopped", unfinished });
-  if (unfinished.length > 0) {
-    output.say("start.stoppedLate", { steps: unfinished.join(", ") });
-    return 1;
-  }
-  output.say("start.stopped");
-  return 0;
+  const started = await startForeground(host, output, sets);
+  return started.isStarted ? started.serve() : started.code;
 }
 
 /**

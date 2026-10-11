@@ -1,3 +1,4 @@
+import { BinferenceError } from "@binference/core";
 import { acquireFileLock, removePath } from "@binference/platform";
 import { prepareRestore } from "../attach/prepare-restore.js";
 import type { Unpacked } from "../attach/restore-backup.js";
@@ -10,10 +11,11 @@ import { initContextOf, type Report, refuse } from "./init-command.js";
 import {
   isEngineRunning,
   isHomeMoved,
+  runServiceStart,
   type ServiceRun,
   serviceStatusOf,
 } from "./service-start-command.js";
-import { runStart } from "./start-command.js";
+import { type ForegroundStart, startForeground } from "./start-command.js";
 import { stopEngine, withStopRun } from "./stop-command.js";
 
 /** What `binference backup restore` was asked: the backup file, and the `--set` of the start after. */
@@ -45,51 +47,151 @@ async function stopFor(run: CommandRun): Promise<EngineRun | undefined> {
   return how.ran;
 }
 
-// Puts the restored files in place under the engine lock; undefined when an engine holds it.
-async function swapUnderLock(
-  context: InitContext,
-  unpacked: Unpacked,
-): Promise<StateSwap | undefined> {
+/** A swap that happened, or why none did. */
+type Swapped =
+  | { readonly kind: "swapped"; readonly swap: StateSwap }
+  | { readonly kind: "locked" }
+  | { readonly kind: "put_back" }
+  | { readonly kind: "mixed"; readonly aside: string; readonly staged: string };
+
+// What a swap that failed left behind: everything put back, or a folder that mixes two states.
+function failedSwap(error: Error): Swapped {
+  if (error instanceof BinferenceError && error.code === "backup.restore_rollback_failed") {
+    const { aside, staged } = error.details;
+    return { kind: "mixed", aside: String(aside), staged: String(staged) };
+  }
+  return { kind: "put_back" };
+}
+
+// Puts the restored files in place under the engine lock; `locked` when an engine holds it. A
+// swap that fails puts every file back before it answers (keys spec, section 7.4).
+async function swapUnderLock(context: InitContext, unpacked: Unpacked): Promise<Swapped> {
   const { platform, host, signal } = context;
   const lock = acquireFileLock(platform.stateFolder.engineLock);
   if (!lock.ok) {
-    return undefined;
+    return { kind: "locked" };
   }
   try {
-    return await swapInRestored(platform.stateFolder, unpacked.unpacked, {
+    const swap = await swapInRestored(platform.stateFolder, unpacked.unpacked, {
       permissions: platform.permissions,
       atMs: host.clock.now(),
       signal,
     });
+    return { kind: "swapped", swap };
+  } catch (error) {
+    if (signal.aborted || !(error instanceof Error)) {
+      throw error;
+    }
+    return failedSwap(error);
   } finally {
     lock.value.release();
   }
 }
 
-// Starts the engine as it ran: the background service again, here in the foreground, or not at all.
-async function startAsBefore(
-  run: CommandRun,
-  context: InitContext,
-  start: { readonly ran: EngineRun; readonly options: StartFlags },
+// Undoes a swap under the engine lock; answers what was left where when it could not.
+async function undoUnderLock(context: InitContext, swap: StateSwap): Promise<Swapped> {
+  const lock = acquireFileLock(context.platform.stateFolder.engineLock);
+  const folder = context.platform.stateFolder.root;
+  if (!lock.ok) {
+    return { kind: "mixed", aside: swap.aside ?? folder, staged: folder };
+  }
+  try {
+    await swap.undo();
+    return { kind: "put_back" };
+  } catch (error) {
+    if (!(error instanceof Error)) {
+      throw error;
+    }
+    return failedSwap(error);
+  } finally {
+    lock.value.release();
+  }
+}
+
+// Says that the state folder mixes two states and where each waits; nothing starts on it, and the
+// folder the restored files were staged in stays.
+function refuseMixed(
+  restore: RestoreRun,
+  mixed: { readonly aside: string; readonly staged: string },
+): ExitCode {
+  const { context, report } = restore;
+  restore.staged.keep();
+  const folder = context.platform.stateFolder.root;
+  return refuse(context, report, {
+    code: "backup.restore_rollback_failed",
+    key: "refused.restoreMixed",
+    values: { folder, aside: mixed.aside, staged: mixed.staged },
+  });
+}
+
+/** How one run of `binference backup restore` goes on: its command run, words and report. */
+interface RestoreRun {
+  readonly run: CommandRun;
+  readonly context: InitContext;
+  readonly report: Report;
+  readonly options: StartFlags;
+  /** Keeps the staged files once the state folder mixes both states. */
+  readonly staged: { readonly keep: () => void; readonly isKept: () => boolean };
+}
+
+// Starts the engine as it ran: the background service again, or here in the foreground. A start
+// on the restored state that does not reach `ready` or `locked` is undone, and the engine starts
+// again as it ran on the state it had; the restore then exits 1.
+async function startOrUndo(
+  restore: RestoreRun,
+  started: { readonly ran: EngineRun; readonly swap: StateSwap },
 ): Promise<ExitCode> {
-  const { ran, options } = start;
+  const { context } = restore;
+  const { ran, swap } = started;
   if (ran === "stopped") {
     context.prompter.say(context.words("restore.startYourself"));
     return 0;
   }
   const isForeground = ran === "foreground";
   context.prompter.say(context.words(isForeground ? "restore.startHere" : "restore.startService"));
-  return runStart(run.host, run.output, { ...options, isForeground });
+  const first = await startAs(restore, ran);
+  if (first.isStarted) {
+    return first.serve();
+  }
+  if (!isForeground) {
+    // A service that never answered is stopped already; this waits until it lets go of the lock.
+    await stopFor(restore.run);
+  }
+  const undone = await undoUnderLock(context, swap);
+  if (undone.kind === "mixed") {
+    return refuseMixed(restore, undone);
+  }
+  context.prompter.say(context.words("restore.startFailedUndone"));
+  const again = await startAs(restore, ran);
+  if (again.isStarted) {
+    await again.serve();
+  }
+  return 1;
 }
 
-// Stops the engine and puts the checked backup in place; answers how the engine ran, or the exit
-// code of a refusal.
+// One start as the engine ran, with this run's `--set` flags.
+async function startAs(
+  restore: RestoreRun,
+  ran: Exclude<EngineRun, "stopped">,
+): Promise<ForegroundStart> {
+  const { host, output } = restore.run;
+  const { sets } = restore.options;
+  if (ran === "foreground") {
+    return startForeground(host, output, sets);
+  }
+  const code = await runServiceStart(host, output, sets);
+  return code === 0
+    ? { isStarted: true, serve: async () => Promise.resolve(0) }
+    : { isStarted: false, code };
+}
+
+// Stops the engine and puts the checked backup in place; answers how the engine ran with the
+// swap, or the exit code of a refusal, after which the engine runs as it did.
 async function stopAndSwap(
-  run: CommandRun,
-  context: InitContext,
+  restore: RestoreRun,
   unpacked: Unpacked,
-): Promise<EngineRun | ExitCode> {
-  const report: Report = { output: run.output, formatter: run.formatter, isJson: false };
+): Promise<{ readonly ran: EngineRun; readonly swap: StateSwap } | ExitCode> {
+  const { run, context, report } = restore;
   const folder = context.platform.stateFolder.root;
   const ran = await stopFor(run);
   if (ran === undefined) {
@@ -99,34 +201,39 @@ async function stopAndSwap(
       values: { folder },
     });
   }
-  const swap = await swapUnderLock(context, unpacked);
-  if (swap === undefined) {
-    return refuse(context, report, {
-      code: "engine.already_running",
-      key: "refused.restoreEngineStarted",
-      values: { folder },
-    });
+  const swapped = await swapUnderLock(context, unpacked);
+  switch (swapped.kind) {
+    case "locked":
+      return refuse(context, report, {
+        code: "engine.already_running",
+        key: "refused.restoreEngineStarted",
+        values: { folder },
+      });
+    case "mixed":
+      return refuseMixed(restore, swapped);
+    case "put_back": {
+      const code = refuse(context, report, {
+        code: "backup.restore_move_failed",
+        key: "refused.restoreMoveFailed",
+        values: { folder },
+      });
+      const again = ran === "stopped" ? undefined : await startAs(restore, ran);
+      if (again?.isStarted === true) {
+        await again.serve();
+      }
+      return code;
+    }
+    case "swapped":
+      break;
   }
+  const { swap } = swapped;
   const when = context.dateTime(unpacked.manifest.createdAt);
   context.prompter.say(
     swap.aside === undefined
       ? context.words("restore.placed", { when })
       : context.words("restore.placedAside", { when, folder: swap.aside }),
   );
-  return ran;
-}
-
-// Stops the engine and swaps, then removes the folder the backup was unpacked into, whatever came.
-async function swapThenClear(
-  run: CommandRun,
-  context: InitContext,
-  unpacked: Unpacked,
-): Promise<EngineRun | ExitCode> {
-  try {
-    return await stopAndSwap(run, context, unpacked);
-  } finally {
-    await removePath(unpacked.unpacked, context.signal);
-  }
+  return { ran, swap };
 }
 
 /**
@@ -138,7 +245,10 @@ async function swapThenClear(
  * to `replaced/<time>/` for 7 days, puts the backup's files in place under the engine lock, and
  * starts the engine as it ran: the background service again, or here in the foreground for an
  * engine that ran in a terminal, with this run's `--set` flags; an engine that was not running
- * stays stopped. Exits as the start does, or 1 when it refused.
+ * stays stopped. The swap is all or nothing, and a start on the restored state that fails puts
+ * the replaced state back and starts the engine on it. The folder the backup was unpacked into
+ * goes once the swap is done or undone, and stays when the state folder mixes both. Exits as the
+ * start does, or 1 when it refused or undid the restore.
  */
 export async function runBackupRestore(
   run: CommandRun,
@@ -152,8 +262,20 @@ export async function runBackupRestore(
   if (!prepared.ok) {
     return refuse(context, report, prepared.refusal);
   }
-  const swapped = await swapThenClear(run, context, prepared.value);
-  return typeof swapped === "number"
-    ? swapped
-    : startAsBefore(run, context, { ran: swapped, options });
+  const kept = { isKept: false };
+  const staged = {
+    keep: () => {
+      kept.isKept = true;
+    },
+    isKept: () => kept.isKept,
+  };
+  const restore: RestoreRun = { run, context, report, options, staged };
+  try {
+    const swapped = await stopAndSwap(restore, prepared.value);
+    return typeof swapped === "number" ? swapped : await startOrUndo(restore, swapped);
+  } finally {
+    if (!staged.isKept()) {
+      await removePath(prepared.value.unpacked, context.signal);
+    }
+  }
 }

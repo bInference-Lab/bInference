@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { createServer, type Server } from "node:net";
 import { join } from "node:path";
 import type { ManualClock } from "@binference/core/testing";
 import { createFormatter } from "@binference/i18n";
@@ -84,6 +85,22 @@ function restoreOn(
   return { host, prompter, exit: runCli(host) };
 }
 
+// Holds a loopback port, so an engine told to listen there refuses to start.
+async function holdPort(): Promise<{ readonly port: number; readonly close: () => Promise<void> }> {
+  const port = await freePort();
+  const server: Server = createServer();
+  await new Promise<void>((resolve) => {
+    server.listen(port, "127.0.0.1", resolve);
+  });
+  const close = async (): Promise<void> =>
+    new Promise((resolve) => {
+      server.close(() => {
+        resolve();
+      });
+    });
+  return { port, close };
+}
+
 describe("binference backup restore", () => {
   it(
     "stops the engine, puts the backup in place and starts the engine here again",
@@ -113,6 +130,32 @@ describe("binference backup restore", () => {
       expect(aside.some((path) => path.endsWith("workspace/after-backup.md"))).toBe(true);
       machine.signals.emit("SIGINT", "SIGINT");
       await expect(restore.exit).resolves.toBe(0);
+    },
+  );
+
+  it(
+    "puts the replaced state back when the engine does not start on the restored one",
+    slow,
+    async () => {
+      const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+      const engine = await startHere(machine);
+      const file = await backupOf(machine);
+      await writeMarker(machine);
+      const taken = await holdPort();
+
+      const restore = restoreOn(machine, { file, ownerKeys: [ownerKey] }, taken.port);
+      await expect(engine.exit).resolves.toBe(0);
+      await (machine.clock as ManualClock).advance(250);
+
+      try {
+        await expect(restore.exit).resolves.toBe(1);
+      } finally {
+        await taken.close();
+      }
+      const said = restore.prompter.transcript.lines.join("\n");
+      expect(said).toContain(init("restore.startFailedUndone"));
+      expect((await fileSize(join(machine.folder, marker), signal())).ok).toBe(true);
+      expect(await listFolderFiles(join(machine.folder, "replaced"), signal())).toStrictEqual([]);
     },
   );
 

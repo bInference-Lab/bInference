@@ -1,16 +1,18 @@
 import { join } from "node:path";
+import { BinferenceError } from "@binference/core";
 import {
   ensurePrivateFolder,
   listFolderFiles,
   readTextFile,
   resolveStateFolder,
   type StateFolder,
+  movePath,
   writePrivateFile,
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
-import { pruneReplaced, swapInRestored } from "./state-swap.js";
+import { type MovePath, pruneReplaced, swapInRestored } from "./state-swap.js";
 
 const folders: TempFolder[] = [];
 const signal = (): AbortSignal => new AbortController().signal;
@@ -121,5 +123,92 @@ describe("putting a restored state in place", () => {
     expect(await listFolderFiles(join(state.root, "replaced"), signal())).toStrictEqual([
       "not-a-time/file",
     ]);
+  });
+});
+
+// A rename that fails as a held file does on Windows: at the moves whose numbers `failing` names,
+// counted from 1 across the swap and its reversal.
+function faultyMove(failing: readonly number[]): {
+  readonly move: MovePath;
+  readonly count: () => number;
+} {
+  let count = 0;
+  const move: MovePath = async (from, to, moveSignal) => {
+    count += 1;
+    if (failing.includes(count)) {
+      throw new BinferenceError({ code: "platform.move_failed", message: "Held open." });
+    }
+    return movePath(from, to, moveSignal);
+  };
+  return { move, count: () => count };
+}
+
+const before = [
+  "engine.sqlite",
+  "engine.sqlite-wal",
+  "agent.sqlite",
+  "config.json5",
+  "workspace/agent/notes.md",
+  "keys/agent-key",
+];
+const staged = ["engine.sqlite", "agent.sqlite", "config.json5", "workspace/agent/new.md"];
+
+describe("a swap that fails part way", () => {
+  // 8 renames aside, then 8 in, one per name, tried whether or not the file is there: a fault at
+  // each.
+  it.each(Array.from({ length: 16 }, (_, index) => index + 1))(
+    "puts every file back when move %i fails",
+    async (failing) => {
+      const state = await stateWith(before);
+      const from = await restoredWith(state, staged);
+      const listed = await listFolderFiles(state.root, signal());
+      const faulty = faultyMove([failing]);
+
+      const swapping = swapInRestored(state, from, { ...files, atMs, move: faulty.move });
+
+      await expect(swapping).rejects.toMatchObject({ code: "platform.move_failed" });
+      expect(await listFolderFiles(state.root, signal())).toStrictEqual(listed);
+      expect(await textAt(state.engineDatabase)).toBe("old engine.sqlite");
+      expect(await textAt(join(from, "engine.sqlite"))).toBe("new engine.sqlite");
+    },
+  );
+
+  it("keeps both folders and names them when a move back fails too", async () => {
+    const state = await stateWith(before);
+    const from = await restoredWith(state, staged);
+    // The 12th rename, the restored agent.sqlite, fails; then the first move back fails.
+    const faulty = faultyMove([12, 13]);
+
+    const swapping = swapInRestored(state, from, { ...files, atMs, move: faulty.move });
+
+    const aside = join(state.root, "replaced", "20261012-033015");
+    await expect(swapping).rejects.toMatchObject({
+      code: "backup.restore_rollback_failed",
+      details: { aside, staged: from },
+    });
+    // The restored engine.sqlite could not go back, so the old one waits aside.
+    expect(await textAt(state.engineDatabase)).toBe("new engine.sqlite");
+    expect(await textAt(join(aside, "engine.sqlite"))).toBe("old engine.sqlite");
+    expect(await textAt(join(state.root, "config.json5"))).toBe("old config.json5");
+  });
+
+  it("names both folders when an undo cannot move a file back", async () => {
+    const state = await stateWith(before);
+    const from = await restoredWith(state, staged);
+    // 16 renames swap, 9 of them move a file; the undo's first move back, the workspace, fails.
+    const faulty = faultyMove([17]);
+    const swap = await swapInRestored(state, from, { ...files, atMs, move: faulty.move });
+
+    await expect(swap.undo()).rejects.toMatchObject({ code: "backup.restore_rollback_failed" });
+    // The old workspace never moves onto the path the restored one still holds.
+    expect(faulty.count()).toBe(24);
+    const aside = join(state.root, "replaced", "20261012-033015");
+    expect(await textAt(join(aside, "workspace", "agent", "notes.md"))).toBe(
+      "old workspace/agent/notes.md",
+    );
+    expect(await textAt(state.engineDatabase)).toBe("old engine.sqlite");
+    expect(await textAt(join(state.root, "workspace", "agent", "new.md"))).toBe(
+      "new workspace/agent/new.md",
+    );
   });
 });

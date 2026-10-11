@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
-import { createSecret, ok, type Secret } from "@binference/core";
+import { BinferenceError, createSecret, ok, type Secret } from "@binference/core";
 import { fileSize, readFilePieces, removePath } from "@binference/platform";
 import { parseOwnerKeyCode } from "@binference/signer";
 import { knownSchemaVersions } from "@binference/store";
@@ -102,10 +102,32 @@ export async function unpackRestore(
 }
 
 /**
+ * The refusal of a swap that failed: every file put back, so nothing changed, or, when a file could
+ * not go back either, the places where each state waits. Any other fault is thrown on.
+ */
+export function swapRefusal(error: Error, folder: string): Refused {
+  const code = error instanceof BinferenceError ? error.code : "";
+  if (error instanceof BinferenceError && code === "backup.restore_rollback_failed") {
+    const { aside, staged } = error.details;
+    return refused(code, "refused.restoreMixed", {
+      folder,
+      aside: String(aside),
+      staged: String(staged),
+    });
+  }
+  if (!code.startsWith("platform.")) {
+    throw error;
+  }
+  return refused("backup.restore_move_failed", "refused.restoreMoveFailed", { folder });
+}
+
+/**
  * The restore step of `binference init --attach --restore <file>` (keys spec, section 7.4), run
  * under the engine lock: it opens and checks the backup as {@link unpackRestore} does, then moves
- * the state it replaces aside, kept 7 days, and puts the restored files in place. Nothing in the
- * state folder changes before every check passed.
+ * the state it replaces aside, kept 7 days, and puts the restored files in place, all or nothing.
+ * Nothing in the state folder changes before every check passed. A swap that fails is refused
+ * with every file put back; the unpacked folder is removed then, and kept when a file could not
+ * go back.
  */
 export async function restoreBackup(
   context: InitContext,
@@ -117,10 +139,21 @@ export async function restoreBackup(
   if (!unpacked.ok) {
     return unpacked;
   }
-  const swap = await swapInRestored(platform.stateFolder, unpacked.value.unpacked, {
-    permissions: platform.permissions,
-    signal,
-    atMs: host.clock.now(),
-  });
-  return ok({ ...unpacked.value, swap });
+  try {
+    const swap = await swapInRestored(platform.stateFolder, unpacked.value.unpacked, {
+      permissions: platform.permissions,
+      signal,
+      atMs: host.clock.now(),
+    });
+    return ok({ ...unpacked.value, swap });
+  } catch (error) {
+    if (!(error instanceof Error)) {
+      throw error;
+    }
+    const refusal = swapRefusal(error, platform.stateFolder.root);
+    if (refusal.refusal.code !== "backup.restore_rollback_failed") {
+      await removePath(unpacked.value.unpacked, signal);
+    }
+    return refusal;
+  }
 }
