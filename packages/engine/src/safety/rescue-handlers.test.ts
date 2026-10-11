@@ -6,12 +6,13 @@ import { planDocument } from "../intents/intent-documents.schema.js";
 import { rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { expectOk, testAgent, testCoin, testNowMs, testToken } from "../intents/test-intents.js";
 import {
+  listedArchived,
   startTestEngine,
-  type TestEngine,
-  type TestEngineOptions,
   testCall,
   testCallers,
   testChains,
+  type TestEngine,
+  type TestEngineOptions,
 } from "../operations/test-engine.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import {
@@ -185,6 +186,12 @@ describe("safety/rescue", () => {
     const test = await startRescuing();
     await expect(rescue(test, testCallers.mcp)).resolves.toStrictEqual(err("auth.scope"));
     await expect(rescue(test, testCallers.runtime)).resolves.toStrictEqual(err("auth.scope"));
+    expect(notices(test)).toStrictEqual([]);
+  });
+
+  it("refuses when every agent whose wallets hold funds is archived", async () => {
+    const test = await startRescuing({ agents: listedArchived });
+    await expect(rescue(test)).resolves.toStrictEqual(err("agent.not_found"));
     expect(notices(test)).toStrictEqual([]);
   });
 

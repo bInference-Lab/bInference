@@ -3,12 +3,13 @@ import { describe, expect, it } from "vitest";
 import type { IntentState } from "../intents/intent-state.js";
 import { expectOk, testAgent, testAgentDraft, testNowMs } from "../intents/test-intents.js";
 import {
+  listedArchived,
   startTestEngine,
-  type TestEngine,
-  type TestEngineOptions,
   testCall,
   testCallers,
   testChains,
+  type TestEngine,
+  type TestEngineOptions,
 } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
@@ -252,6 +253,15 @@ describe("safety/unfreeze", () => {
       err("auth.scope"),
     );
     await expect(unfreeze(test, third)).resolves.toStrictEqual(err("agent.not_found"));
+  });
+
+  it("refuses an archived agent, and an unfreeze no agent has a wallet to store it under", async () => {
+    const archived = await startWithTwoAgents({ agents: listedArchived });
+    await expect(unfreeze(archived, testAgent)).resolves.toStrictEqual(err("agent.archived"));
+    const walletless = await startTestEngine();
+    await freeze(walletless, testAgent);
+    await expect(unfreeze(walletless, testAgent)).resolves.toStrictEqual(err("agent.not_found"));
+    await expect(frozenTimes(walletless)).resolves.toStrictEqual([testNowMs]);
   });
 
   it("writes an unfreeze again when another write beat it", async () => {

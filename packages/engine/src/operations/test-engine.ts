@@ -21,7 +21,7 @@ import {
 } from "@binference/chain/testing";
 import { createIdSource, type Id } from "@binference/core";
 import { createManualClock, createSeededRandom, type ManualClock } from "@binference/core/testing";
-import type { AgentDraft } from "../agents/agent-record.js";
+import type { AgentDraft, AgentRecord } from "../agents/agent-record.js";
 import { createFakeCeilingEditor, type FakeCeilingEditor } from "../fakes/fake-ceiling-editor.js";
 import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
@@ -277,4 +277,13 @@ export function testCall<Args>(
   caller: EngineCaller = testCallers.cli,
 ): Pick<EngineCall<never>, "caller" | "signal"> & { readonly args: Args } {
   return { args, caller, signal: new AbortController().signal };
+}
+
+function archived(agent: AgentRecord): AgentRecord {
+  return { ...agent, archivedAtMs: 1 };
+}
+
+/** Wraps an agent store, as `TestEngineOptions.agents` takes one, to list every agent archived. */
+export function listedArchived(store: AgentStore): AgentStore {
+  return { ...store, list: async (call) => (await store.list(call)).map(archived) };
 }
