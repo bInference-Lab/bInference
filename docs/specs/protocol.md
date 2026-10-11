@@ -5,7 +5,7 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134) and [0155](../DECISIONS.md#d0155);
-the agent runtime's operations follow [spec 8](runtime.md) (proposed). Accepted by the owner on
+the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and

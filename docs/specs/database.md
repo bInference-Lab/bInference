@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0095](../DECISIONS.md#d0095)), amended by decisions
 [0127](../DECISIONS.md#d0127) and [0133](../DECISIONS.md#d0133); the agent runtime's additions
-follow [spec 8](runtime.md) (proposed). Accepted by the owner on 2026-10-12: `launches`,
+follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on 2026-10-12: `launches`,
 `tracked_wallets` and its cap, `wallet_activity` and `watch_cursors` (section 2.6); `questions`
 and `question_messages` (section 2.7); `orders.end_reason` and `alerts.wake`, `fires` and
 `expires_at` (section 2.4); the versions of `safety.disclaimer_version` (section 2.1); and their
