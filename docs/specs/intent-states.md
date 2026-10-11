@@ -6,9 +6,10 @@ Status: accepted on 2026-10-06 ([decision 0093](../DECISIONS.md#d0093)), amended
 [0115](../DECISIONS.md#d0115), [0116](../DECISIONS.md#d0116), [0120](../DECISIONS.md#d0120) and 0121
 to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](../DECISIONS.md#d0123),
 [0124](../DECISIONS.md#d0124), [0125](../DECISIONS.md#d0125), [0126](../DECISIONS.md#d0126)),
-[0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128) and 0143 to 0147
+[0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
-[0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)).
+[0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), and
+[0157](../DECISIONS.md#d0157).
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an unfreeze, an
 order fill. It
@@ -344,7 +345,8 @@ A move to `cancelled` on a step never signed has no card to close; the owner get
 ([decision 0115](../DECISIONS.md#d0115)).
 
 Every other transition pushes `intent/changed` without a ledger entry. The ledger entry records the
-state, who or what caused it (surface, device or token), and the hashes involved.
+state, who or what caused it (surface, device or token), and the hashes involved; a paper intent's
+entries also carry `paper: true` ([decision 0157](../DECISIONS.md#d0157)).
 
 <a id="section-9"></a>
 

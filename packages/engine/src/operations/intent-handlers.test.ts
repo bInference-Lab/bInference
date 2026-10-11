@@ -54,6 +54,11 @@ function failingAfterFirstQuote(): Venue {
   };
 }
 
+// The data of every ledger entry the engine pushed, oldest first.
+function ledgerData(test: Proposed["test"]) {
+  return test.pushes.filter((push) => push.kind === "ledger/appended").map((push) => push.data);
+}
+
 describe("the intent handlers", () => {
   it("confirms the current card, closes it and fills the paper intent at the quote", async () => {
     const intent = await proposed();
@@ -105,6 +110,21 @@ describe("the intent handlers", () => {
       "card/closed",
       "ledger/appended",
     ]);
+  });
+
+  it("marks every ledger entry of a paper intent as paper, and a live one's not", async () => {
+    const paper = await proposed();
+    await confirm(paper);
+    const real = await proposed({ agent: { mode: "live" } });
+    expect(ledgerData(paper.test)).toMatchObject([
+      { kind: "proposed", data: { paper: true } },
+      { kind: "awaiting_confirmation", data: { paper: true } },
+      { kind: "confirmed", data: { paper: true } },
+      { kind: "paper_filled", data: { paper: true } },
+    ]);
+    expect(ledgerData(real.test).map((entry) => JSON.stringify(entry))).not.toContainEqual(
+      expect.stringContaining('"paper"'),
+    );
   });
 
   it("refuses a card that is not the intent's, or a version the card does not have", async () => {

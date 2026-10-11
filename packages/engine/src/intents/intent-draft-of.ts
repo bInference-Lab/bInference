@@ -38,7 +38,7 @@ export function draftOf(intent: NewIntent, ids: IdSource): IntentDraft {
     agentId,
     kind: event.to,
     subject: id,
-    data: { ...cause, to: event.to },
+    data: { ...cause, to: event.to, ...(status.isPaper ? { paper: true } : {}) },
   };
   return {
     id,

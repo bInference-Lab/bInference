@@ -195,7 +195,8 @@ function ledgerOf(move: IntentMove, context: MoveContext, cause: JsonObject): Le
     agentId: record.agentId,
     kind: event.to,
     subject: record.id,
-    data: { ...cause, from: event.from, to: event.to },
+    // A paper intent's entries say so, so every surface labels them Paper (decision 0157).
+    data: { ...cause, from: event.from, to: event.to, ...(record.isPaper ? { paper: true } : {}) },
   };
 }
 
