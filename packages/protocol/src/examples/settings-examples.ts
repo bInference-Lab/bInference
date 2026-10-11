@@ -105,6 +105,10 @@ export const settingsExamples: { readonly [N in keyof SettingsOperationShapes]: 
 
 /** An example call of every device, token, remote access and exchange operation. */
 export const accessExamples: { readonly [N in keyof AccessOperationShapes]: WireExample } = {
+  "device/pair": {
+    args: empty,
+    result: { link: "http://127.0.0.1:7456/#pair=q3Zr_x9-AbCdEfGhIjKlMn", expiresAt: at },
+  },
   "device/list": {
     args: empty,
     result: pageOf({ device: ids.device, label: "Laptop", alg: "ed25519", createdAt: at }),

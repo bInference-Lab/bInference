@@ -62,8 +62,16 @@ interface CexView {
   readonly connectedAt?: number;
 }
 
+/** The answer of `device/pair`: the console's single-use pairing link and when it stops working. */
+interface DevicePairing {
+  /** `http://127.0.0.1:<port>/#pair=<code>`; shown once, never logged. */
+  readonly link: string;
+  readonly expiresAt: number;
+}
+
 /** The device, token, remote access and exchange operations of protocol spec section 7.9. */
 export interface AccessOperationShapes {
+  readonly "device/pair": { readonly args: Empty; readonly result: DevicePairing };
   readonly "device/list": { readonly args: Empty; readonly result: Page<DeviceView> };
   readonly "device/revoke": {
     readonly args: { readonly device: ProtocolId<"consoleDevice"> };
@@ -110,6 +118,15 @@ const tokenView = z.object({
 
 /** The device, token, remote access and exchange operations, by name. */
 export const accessOperations: OperationTable<AccessOperationShapes> = {
+  "device/pair": {
+    // A read: the engine keeps no answer, so no idempotency entry ever holds a pairing code.
+    ...readFlags,
+    transport: "ipc",
+    name: "device/pair",
+    scope: "admin",
+    args: emptyArgsSchema,
+    result: z.object({ link: z.url(), expiresAt: epochMsSchema }),
+  },
   "device/list": {
     ...readFlags,
     name: "device/list",

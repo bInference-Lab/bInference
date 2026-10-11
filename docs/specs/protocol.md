@@ -4,7 +4,7 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 [decision 0088](../DECISIONS.md#d0088) and [decision 0089](../DECISIONS.md#d0089); custody
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
-[0133](../DECISIONS.md#d0133) and [0134](../DECISIONS.md#d0134).
+[0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134) and [0155](../DECISIONS.md#d0155).
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -172,11 +172,14 @@ A Telegram tap is handled inside the engine and never travels over this protocol
   `binference mcp setup` makes a client's token in the CLI and registers only its SHA-256 with
   `token/register` ([decision 0154](../DECISIONS.md#d0154)). `open.auth` is `{ token }`.
 - **Console devices (WS only).**
-  1. `binference console` prints a link `http://127.0.0.1:7456/#pair=<code>`; the code is single-use
-     and valid 10 minutes.
+  1. `binference console` prints a link `http://127.0.0.1:7456/#pair=<code>` from `device/pair`; the
+     code is single-use and valid 10 minutes ([decision 0155](../DECISIONS.md#d0155)).
   2. The browser makes an Ed25519 key pair with WebCrypto, marked non-extractable (ECDSA P-256 where
      Ed25519 is missing), and sends `POST /pair` with `{ code, publicKey, alg, label }`. The engine
-     answers `{ deviceId }`.
+     answers `201 { deviceId }`, and raises `notice.newDevice`. It refuses a bad origin with 403
+     `auth.origin`, a malformed body or key with 400 `protocol.bad_args` before it uses the code, an
+     unknown or used code with 401 `auth.invalid`, and an expired one with 401 `auth.expired`; the
+     body of a refusal is `{ error: { code, message } }`.
   3. Each connection sends `open` with `auth: { device: deviceId }`. The engine answers `challenge`
      with 32 random bytes; the browser signs `"binference-device-v1\n" + nonce + "\n" + origin` and
      sends `prove`.
@@ -439,8 +442,9 @@ no upload.
 | `config/history`    | `read`                     |       |       | paging → journal entries                                                                                                                                                                                                                                                                                                                 |
 | `ledger/list`       | `read`                     |       |       | paging, `{ agent?, from?, to? }` → entries with their hashes                                                                                                                                                                                                                                                                             |
 | `ledger/export`     | `read`                     | ✓     |       | `{ agent?, from?, to?, mode? }` → file (CSV) of `live` (default) or `paper` fills                                                                                                                                                                                                                                                        |
+| `device/pair`       | `admin`                    |       | ✓     | → `{ link, expiresAt }`: a new single-use console pairing link, valid 10 minutes, shown once ([decision 0155](../DECISIONS.md#d0155))                                                                                                                                                                                                    |
 | `device/list`       | `admin`                    |       |       | → devices                                                                                                                                                                                                                                                                                                                                |
-| `device/revoke`     | `confirm`                  | ✓     |       | `{ device }` → `{}`                                                                                                                                                                                                                                                                                                                      |
+| `device/revoke`     | `confirm`                  | ✓     |       | `{ device }` → `{}`; the device's open connections end with `bye auth.revoked` ([decision 0155](../DECISIONS.md#d0155))                                                                                                                                                                                                                  |
 | `token/list`        | `admin`                    |       |       | → tokens without secrets                                                                                                                                                                                                                                                                                                                 |
 | `token/create`      | `admin`                    | ✓     | ✓     | `{ label, scopes }` → `{ token }`, shown once; unserved since [decision 0154](../DECISIONS.md#d0154), as its result would keep the secret in the idempotency store                                                                                                                                                                       |
 | `token/revoke`      | `confirm`                  | ✓     |       | `{ token }` → `{}`; fails `token.not_found`                                                                                                                                                                                                                                                                                              |
