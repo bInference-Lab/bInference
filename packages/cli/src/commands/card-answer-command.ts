@@ -1,7 +1,6 @@
 import type { Amount } from "@binference/chain";
 import { jsonValueSchema } from "@binference/core";
-import { cardLineText } from "@binference/engine/surfaces";
-import { displayOutsideText, type Formatter } from "@binference/i18n";
+import { cardLineText, displayOutsideText, type Formatter } from "@binference/i18n";
 import {
   type CardLinesView,
   type CardView,

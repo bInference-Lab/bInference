@@ -1,8 +1,7 @@
 import type { Amount, ChainRegistry } from "@binference/chain";
-import type { Formatter } from "@binference/i18n";
+import { addressPartOf, type Formatter, shortAddress } from "@binference/i18n";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { Notice } from "../pushes/notice-push.js";
-import { addressPartOf, shortAddress } from "./short-address.js";
 
 /** What a notice is written with: the owner's formatter, and the chains its amounts name. */
 export interface NoticeDisplay {

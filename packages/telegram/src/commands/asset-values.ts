@@ -1,5 +1,5 @@
 import type { Amount, AssetRef } from "@binference/chain";
-import { addressPartOf, shortAddress } from "@binference/engine/surfaces";
+import { addressPartOf, shortAddress } from "@binference/i18n";
 import type { AssetInfos, CardValueView } from "@binference/protocol";
 
 function tokenOf(asset: AssetRef): CardValueView {

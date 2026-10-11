@@ -1,4 +1,4 @@
-import { type CardDisplay, cardLineText } from "@binference/engine/surfaces";
+import { type CardDisplay, cardLineText } from "@binference/i18n";
 import type {
   BalanceView,
   CardValueView,

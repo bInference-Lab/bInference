@@ -700,9 +700,15 @@ importers:
 
   packages/i18n:
     dependencies:
+      '@binference/chain':
+        specifier: workspace:*
+        version: link:../chain
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       intl-messageformat:
         specifier: 'catalog:'
         version: 12.1.2

@@ -1,11 +1,9 @@
 import { BinferenceError } from "@binference/core";
-import {
-  decimalText,
-  displayOutsideText,
-  type Formatter,
-  type MessageValues,
-} from "@binference/i18n";
 import type { AssetInfo, AssetInfos, CardLineView, CardValueView } from "@binference/protocol";
+import type { Formatter } from "../format/create-formatter.js";
+import { decimalText } from "../format/decimal-text.js";
+import type { MessageValues } from "../format/format-message.js";
+import { displayOutsideText } from "../format/outside-text.js";
 import { addressPartOf, shortAddress } from "./short-address.js";
 
 /** What a card is shown with: the owner's formatter, and every asset the card names. */

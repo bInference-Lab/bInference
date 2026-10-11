@@ -40,7 +40,7 @@
       "publish": true
     },
     "i18n": {
-      "imports": ["core", "chain", "intl-messageformat"],
+      "imports": ["core", "chain", "protocol", "intl-messageformat"],
       "pure": true,
       "formatsDisplay": true
     },

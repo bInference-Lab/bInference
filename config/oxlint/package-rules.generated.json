@@ -2762,7 +2762,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
                 "message": "See the i18n row of config/package-graph.json for what it may import."
               },
               {
@@ -2936,7 +2936,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference)(?:/|$)",
                 "message": "See the i18n row of config/package-graph.json for what it may import."
               },
               {

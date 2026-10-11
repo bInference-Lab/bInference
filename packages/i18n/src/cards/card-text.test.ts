@@ -1,8 +1,8 @@
 import { accountRefSchema, assetRefSchema, chainRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
-import { createFormatter } from "@binference/i18n";
 import type { AssetInfos, CardLineView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createFormatter } from "../format/create-formatter.js";
 import { type CardDisplay, cardLineText } from "./card-text.js";
 
 const usdt = assetRefSchema.parse("eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955");

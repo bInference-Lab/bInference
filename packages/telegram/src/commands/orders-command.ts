@@ -1,4 +1,4 @@
-import { cardLineText } from "@binference/engine/surfaces";
+import { cardLineText } from "@binference/i18n";
 import type { AssetInfos, CardLineView, CardValueView, OrderView } from "@binference/protocol";
 import { assetValue } from "./asset-values.js";
 import { callOrSay, type CommandContext } from "./command-context.js";

@@ -24,7 +24,9 @@
     "build": "tsdown src/index.ts src/check.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
+    "@binference/chain": "workspace:*",
     "@binference/core": "workspace:*",
+    "@binference/protocol": "workspace:*",
     "intl-messageformat": "catalog:"
   }
 }

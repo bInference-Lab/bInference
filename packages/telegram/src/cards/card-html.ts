@@ -1,8 +1,8 @@
 import { type Card, type CardClosing, type ReceiptFill, receiptLine } from "@binference/engine";
-import { type CardDisplay, cardLineText } from "@binference/engine/surfaces";
+import { type CardDisplay, cardLineText } from "@binference/i18n";
 import { escapeHtml } from "../format/escape-html.js";
 
-export type { CardDisplay } from "@binference/engine/surfaces";
+export type { CardDisplay } from "@binference/i18n";
 
 /**
  * A card version as Telegram HTML, one line per card line (spec 4, section 3). Each line is

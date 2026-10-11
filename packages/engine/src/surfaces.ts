@@ -11,8 +11,6 @@ export type {
   CardVersionRef,
   DrawnCard,
 } from "./surfaces/create-card-showings.js";
-export { cardLineText } from "./surfaces/card-text.js";
-export type { CardDisplay } from "./surfaces/card-text.js";
 export { limitLines, limitUnits } from "./surfaces/limit-lines.js";
 export type {
   GasReserveLine,
@@ -36,7 +34,6 @@ export type {
   OwnerChatOperation,
 } from "./surfaces/create-owner-calls.js";
 export { maxWaitingCards } from "./surfaces/create-card-showings.js";
-export { addressPartOf, shortAddress } from "./surfaces/short-address.js";
 export { assetInfosOf } from "./money-path/asset-infos.js";
 export type { EngineHandlerTable } from "./operations/engine-call.js";
 export { noticeText } from "./surfaces/notice-text.js";

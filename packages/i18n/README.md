@@ -12,6 +12,8 @@ and times. Messages are ICU texts in `messages/<locale>/<area>.json`, formatted 
 | Export                                        | What it does                                                                |
 | --------------------------------------------- | --------------------------------------------------------------------------- |
 | `createFormatter`, `Formatter`                | Messages, amounts, money, rates and times for one language and timezone     |
+| `cardLineText`, `CardDisplay`                 | One card line as plain text in the owner's language, its values formatted   |
+| `shortAddress`, `addressPartOf`               | An address as a card shows it, `0x1234…abcd`, and the address in a CAIP id  |
 | `decimalText`, `DecimalText`                  | Base units as an exact decimal with no trailing zeros, for files and tools  |
 | `displayOutsideText`                          | Text set outside binference, cut to a length, with hidden characters shown  |
 | `messages`, `Catalog`                         | Every message by language, under full keys such as `reason.daily_cap`       |
