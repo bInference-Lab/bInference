@@ -27,7 +27,8 @@ async function readClaudeConfig(file: string, signal: AbortSignal): Promise<Clau
   return { ...config, keys: keys.data, servers: servers.data };
 }
 
-function claudeEntryOf(entry: McpServerEntry): JsonValue {
+/** The server entry as Claude Code's MCP config writes a stdio server. */
+export function claudeEntryOf(entry: McpServerEntry): JsonValue {
   return { type: "stdio", command: entry.command, args: [...entry.args], env: { ...entry.env } };
 }
 

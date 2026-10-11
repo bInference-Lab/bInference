@@ -59,6 +59,24 @@ folder, so the client's config holds no secret.
 | Claude Code | User scope, through `claude mcp add-json` or `.claude.json` | `~/.claude/skills/binference-tools/` |
 | Codex       | `[mcp_servers.binference]` in `~/.codex/config.toml`        | `~/.agents/skills/binference-tools/` |
 
+## Use the tools for one session
+
+`binference mcp session` starts a client with the tools for this session alone, with a client token
+of its own that expires after 1 hour (`--ttl 30m` to `--ttl 24h`) and is revoked when the client
+exits. The arguments after `--` go to the client.
+
+```sh
+binference mcp session --client claude-code
+binference mcp session --client codex --ttl 4h -- --model gpt-5
+```
+
+The token reaches the client in its environment as `BINFERENCE_MCP_TOKEN`, never in its arguments
+or a file. Claude Code starts with `--strict-mcp-config` and a config file that lists only
+binference's server, written owner-only in the state folder and removed at the end. Codex starts
+with `-c` overrides of its `binference` server and keeps its other servers. `--print-config` prints
+the config and the token for a client you start yourself; that token works until it expires. The
+skill comes from `binference mcp setup` or a copy by hand.
+
 `CLAUDE_CONFIG_DIR` and `CODEX_HOME` move Claude Code's and Codex's folders as they do for the
 clients. Check the result with `claude mcp list` or `codex mcp list`. Each proposal waits for your
 tap in binference's Telegram bot or the console.

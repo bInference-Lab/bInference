@@ -120,6 +120,15 @@ makes none; `--remove` takes the entry and the skill away and revokes the client
 that names the server another way, or that is not the client's format, is left as it is. The npm
 package ships the skill in `skills/`, which `prepack` copies from the repo's `skills/`.
 
+`binference mcp session --client <client>` starts the client once with a token of its own
+(`src/commands/mcp-session-command.ts`, decision 0159): the CLI makes the secret and registers its
+SHA-256 with a 1-hour expiry (`--ttl`, at most 24 hours), then starts the client through the
+platform's `startTerminalProgram` with the secret in `BINFERENCE_MCP_TOKEN`, which `binference mcp`
+reads before any token file. Claude Code gets `--strict-mcp-config --mcp-config` and a file in the
+state folder's `tmp/`; Codex gets `-c` overrides. The token is revoked when the client exits, after
+a stop signal passed on to it, or on a fault; `--print-config` prints the config and the secret
+and starts nothing.
+
 `binference status` and `binference health` sign in over IPC with the CLI token and call
 `engine/status`; `status` prints the state, the agents and the health signals, and `health`
 exits 0 only when the engine is ready. `binference logs` reads the engine log itself, so it works

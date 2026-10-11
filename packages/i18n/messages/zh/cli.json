@@ -299,5 +299,17 @@
   "mcpSetup.noSkill": "此 binference 未附带 binference-tools 技能，因此未做任何设置。请重新安装 binference。",
   "mcpSetup.skillLint": "附带的技能在第 {line} 行要求 Agent 索取密钥，因此未做任何设置。请重新安装 binference。",
   "mcpSetup.unreadable": "无法按客户端的格式读取 {file}，因此未改动它。请修正该文件后再次运行设置。",
-  "mcpSetup.claudeFailed": "`claude mcp` 运行失败，因此 MCP 服务器条目未改动。请运行 `claude mcp list` 检查 Claude Code，然后再次运行设置。"
+  "mcpSetup.claudeFailed": "`claude mcp` 运行失败，因此 MCP 服务器条目未改动。请运行 `claude mcp list` 检查 Claude Code，然后再次运行设置。",
+  "command.mcpSession": "以 binference 工具和一个随会话结束的访问令牌启动一次 Claude Code 或 Codex",
+  "option.mcpSessionClient": "要启动的 MCP 客户端：claude-code 或 codex",
+  "option.mcpSessionTtl": "本次会话的访问令牌有效多久：如 30m、2h 或 1d，最长 24h；不加此项则为 1h",
+  "option.printConfig": "为你自己启动的客户端打印配置和访问令牌，不启动任何程序",
+  "argument.clientArgs": "传给客户端的参数，写在 -- 之后",
+  "mcpSession.started": "{client} 将带着 binference 工具启动。它的访问令牌在 {at} 之前有效，{client} 退出时即被撤销。",
+  "mcpSession.codexServers": "Codex 也会加载其 config.toml 中的其他 MCP 服务器。",
+  "mcpSession.noClient": "PATH 中没有 `{program}`，因此 {client} 未启动。请安装 {client}，或用 `--print-config` 自行启动。",
+  "mcpSession.revoked": "本次会话的访问令牌已撤销。",
+  "mcpSession.revokeFailed": "本次会话的访问令牌未能撤销，因此在 {at} 之前仍然有效。如需提前撤销，请启动引擎并再次运行 `binference mcp setup`。",
+  "mcpSession.printClaude": "将此配置保存到一个文件，在 Claude Code 的环境中把 {variable} 设为最后一行的值，然后用 `claude --strict-mcp-config --mcp-config` 加上该文件的路径启动它。该访问令牌在 {at} 之前有效，在此之前不会被撤销。",
+  "mcpSession.printCodex": "在 Codex 的环境中把 {variable} 设为最后一行的值，然后用这条命令启动 Codex。该访问令牌在 {at} 之前有效，在此之前不会被撤销。"
 }

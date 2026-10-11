@@ -79,6 +79,7 @@ describe("the binference command tree", () => {
       "set",
       "cancel",
       "setup",
+      "session",
       "check",
     ]);
     for (const command of commands) {
@@ -137,6 +138,45 @@ describe("the binference command tree", () => {
       },
     ]);
     await expect(parse(["mcp", "setup"])).rejects.toThrow("--client");
+  });
+
+  it("gives mcp session its --client, --ttl, --print-config and the client's arguments", async () => {
+    const chosen: ChosenCommand[] = [];
+    const parse = async (argv: readonly string[]) =>
+      buildProgram({
+        version: "1",
+        message: (key) => key,
+        host: { out: () => undefined, err: () => undefined },
+        choose: (command) => chosen.push(command),
+      }).parseAsync([...argv], { from: "user" });
+    await parse(["mcp", "session", "--client", "claude-code", "--", "--model", "opus"]);
+    await parse(["mcp", "session", "--client", "codex", "--ttl", "24h", "--print-config"]);
+    const common = { json: false, yes: false };
+    expect(chosen).toStrictEqual([
+      {
+        name: "mcpSession",
+        options: {
+          ...common,
+          client: "claude-code",
+          clientArgs: ["--model", "opus"],
+          ttlMs: 3_600_000,
+          isPrintConfig: false,
+        },
+      },
+      {
+        name: "mcpSession",
+        options: {
+          ...common,
+          client: "codex",
+          clientArgs: [],
+          ttlMs: 86_400_000,
+          isPrintConfig: true,
+        },
+      },
+    ]);
+    await expect(parse(["mcp", "session", "--client", "codex", "--ttl", "25h"])).rejects.toThrow(
+      "--ttl",
+    );
   });
 
   it("reads init's owner key public half and chooses owner-key create", async () => {

@@ -11,7 +11,7 @@ import type {
   WalletAddressFlags,
 } from "./cli-flags.schema.js";
 import type { CliHost } from "./cli-host.js";
-import type { McpFlags, McpSetupFlags } from "./mcp-flags.schema.js";
+import type { McpFlags, McpSessionFlags, McpSetupFlags } from "./mcp-flags.schema.js";
 
 /** The approval mode `binference approval` sets. */
 export type ApprovalModeChoice = "manual" | "auto";
@@ -61,7 +61,8 @@ export type ChosenCommand =
     }
   | { readonly name: "check"; readonly options: CheckFlags }
   | { readonly name: "mcp"; readonly options: McpFlags }
-  | { readonly name: "mcpSetup"; readonly options: McpSetupFlags };
+  | { readonly name: "mcpSetup"; readonly options: McpSetupFlags }
+  | { readonly name: "mcpSession"; readonly options: McpSessionFlags };
 
 /** What the program is built from. */
 export interface ProgramOptions {

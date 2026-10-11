@@ -3,11 +3,17 @@ import { type Command, Option, type OptionValues } from "commander";
 import { mcpClients } from "../compose/mcp-token.js";
 import type { ProgramOptions } from "./chosen-command.js";
 import { ttlOption, withCommon } from "./command-options.js";
-import { mcpFlagsSchema, mcpSetupFlagsSchema } from "./mcp-flags.schema.js";
+import {
+  mcpFlagsSchema,
+  mcpSessionFlagsSchema,
+  mcpSetupFlagsSchema,
+  sessionTtlMaxMs,
+} from "./mcp-flags.schema.js";
 
 /**
  * Adds `binference mcp`, the MCP server an MCP client starts, signed in with that client's token,
- * and `binference mcp setup`, which sets a client up (protocol spec, section 11; decision 0154).
+ * `binference mcp setup`, which sets a client up, and `binference mcp session`, which starts a
+ * client once with a token of its own (protocol spec, section 11; decisions 0154 and 0159).
  */
 export function addMcpCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
@@ -27,5 +33,20 @@ export function addMcpCommands(program: Command, options: ProgramOptions): void 
     .addOption(ttlOption(message("option.mcpSetupTtl"), tokenLifetimeMaxMs).conflicts("remove"))
     .action((flags: OptionValues) =>
       choose({ name: "mcpSetup", options: mcpSetupFlagsSchema.parse(flags) }),
+    );
+  withCommon(mcp.command("session").description(message("command.mcpSession")), message)
+    .addOption(
+      new Option("--client <name>", message("option.mcpSessionClient"))
+        .choices(mcpClients)
+        .makeOptionMandatory(),
+    )
+    .addOption(ttlOption(message("option.mcpSessionTtl"), sessionTtlMaxMs))
+    .option("--print-config", message("option.printConfig"))
+    .argument("[clientArgs...]", message("argument.clientArgs"))
+    .action((clientArgs: readonly string[], flags: OptionValues) =>
+      choose({
+        name: "mcpSession",
+        options: mcpSessionFlagsSchema.parse({ ...flags, clientArgs }),
+      }),
     );
 }

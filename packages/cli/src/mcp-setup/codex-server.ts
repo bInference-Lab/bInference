@@ -50,6 +50,23 @@ export function codexTable(entry: McpServerEntry): string {
   ].join("\n");
 }
 
+/**
+ * Codex's `-c` overrides that set the `binference` server for one run, as OpenAI's Codex docs give
+ * `-c key=value` with a TOML value: its command, arguments and environment, and the variables of
+ * Codex's own environment it passes on.
+ */
+export function codexOverrides(entry: McpServerEntry, variables: readonly string[]): string[] {
+  const env = Object.entries(entry.env).map(([name, value]) => `${name} = ${tomlString(value)}`);
+  const key = `mcp_servers.${serverName}`;
+  return [
+    `${key}.command=${tomlString(entry.command)}`,
+    `${key}.args=[${entry.args.map(tomlString).join(", ")}]`,
+    `${key}.env=${env.length === 0 ? "{}" : `{ ${env.join(", ")} }`}`,
+    `${key}.env_vars=[${variables.map(tomlString).join(", ")}]`,
+    `${key}.enabled=true`,
+  ].flatMap((override) => ["-c", override]);
+}
+
 function joined(lines: readonly string[]): string {
   return lines.join("\n").trimEnd();
 }

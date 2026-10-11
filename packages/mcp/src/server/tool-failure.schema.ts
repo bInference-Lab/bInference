@@ -28,7 +28,7 @@ type KnownCode = ProtocolErrorCode | ClientErrorCode | "core.timeout";
 const tokenStep =
   "The engine refused the MCP token. Create a new one with `binference token create --for mcp`, then restart the MCP client.";
 const expiredStep =
-  "The MCP token expired. Run `binference mcp setup` for this client again, then restart the MCP client.";
+  "The MCP token expired. Start a new `binference mcp session`, or run `binference mcp setup` for this client again, then restart the MCP client.";
 const engineStep =
   "The engine is not reachable. Check it with `binference status`, start it with `binference start`, then try again.";
 

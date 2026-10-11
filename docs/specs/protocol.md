@@ -693,6 +693,31 @@ Each step changes only what differs, so a second run changes nothing, and each p
 made, updated or kept its part. `--dry-run` prints the changes and makes none. `--remove` removes
 the entry and the skill, revokes the client's tokens and deletes the token file.
 
+<a id="section-11-2"></a>
+
+### 11.2 One session of a client
+
+`binference mcp session --client <claude-code|codex> [--ttl <duration>] [-- <client args>]` starts
+the client once with a token of its own ([decision 0159](../DECISIONS.md#d0159)):
+
+1. **A token for the session.** The CLI makes a `bnt_` secret and registers its SHA-256 with
+   `token/register` (label `mcp-<client>-session`, `kind: "mcp"`, `read` and `propose`) and an
+   expiry: 1 hour, or `--ttl` (`30m`, `2h`, at most `24h`). Setup and session tokens never revoke
+   each other.
+2. **The client, with the secret in its environment.** The secret goes in `BINFERENCE_MCP_TOKEN`,
+   never in an argument or a file; `binference mcp` signs in with that variable before any token
+   file. Claude Code starts with `--strict-mcp-config --mcp-config <file>`, the file owner-only in
+   the state folder's `tmp/` with only the `binference` server. Codex starts with `-c` overrides of
+   `mcp_servers.binference`, `env_vars = ["BINFERENCE_MCP_TOKEN"]` among them; its other servers
+   stay. The arguments after `--` follow.
+3. **The end.** When the client exits, the CLI revokes the token and removes the config file. A
+   `SIGTERM`, `SIGHUP` or `SIGBREAK` to the CLI is passed to the client first; a `SIGINT` is left
+   to the client, which gets its own from the terminal. A fault in the CLI revokes the token too;
+   when the CLI is killed, the expiry ends it.
+
+`--print-config` registers the token and prints the config, the variable's value and the expiry,
+starts nothing and revokes nothing.
+
 <a id="section-12"></a>
 
 ## 12. Security checklist for this spec

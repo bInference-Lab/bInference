@@ -299,5 +299,17 @@
   "mcpSetup.noSkill": "This binference has no bundled binference-tools skill, so nothing was set up. Install binference again.",
   "mcpSetup.skillLint": "The bundled skill tells the agent to ask for a secret at line {line}, so nothing was set up. Install binference again.",
   "mcpSetup.unreadable": "{file} could not be read as the client writes it, so it was left as it is. Fix the file, then run the setup again.",
-  "mcpSetup.claudeFailed": "`claude mcp` failed, so the MCP server entry was not changed. Run `claude mcp list` to check Claude Code, then run the setup again."
+  "mcpSetup.claudeFailed": "`claude mcp` failed, so the MCP server entry was not changed. Run `claude mcp list` to check Claude Code, then run the setup again.",
+  "command.mcpSession": "Start Claude Code or Codex once with the binference tools and a client token that ends with the session",
+  "option.mcpSessionClient": "The MCP client to start: claude-code or codex",
+  "option.mcpSessionTtl": "How long the session's client token works: 30m, 2h or 1d, at most 24h; 1h when left out",
+  "option.printConfig": "Print the config and the client token for a client you start yourself, and start nothing",
+  "argument.clientArgs": "Arguments for the client, after --",
+  "mcpSession.started": "{client} starts with the binference tools. Its client token works until {at} and is revoked when {client} exits.",
+  "mcpSession.codexServers": "Codex also loads the other MCP servers in its config.toml.",
+  "mcpSession.noClient": "`{program}` is not on PATH, so {client} did not start. Install {client}, or start it yourself with `--print-config`.",
+  "mcpSession.revoked": "The session's client token is revoked.",
+  "mcpSession.revokeFailed": "The session's client token could not be revoked, so it works until {at}. Revoke it sooner by starting the engine and running `binference mcp setup` again.",
+  "mcpSession.printClaude": "Save this config to a file, set {variable} to the value on the last line in Claude Code's environment, and start it with `claude --strict-mcp-config --mcp-config` and the file's path. The client token works until {at}; nothing revokes it before then.",
+  "mcpSession.printCodex": "Set {variable} to the value on the last line in Codex's environment, and start Codex with this command. The client token works until {at}; nothing revokes it before then."
 }
