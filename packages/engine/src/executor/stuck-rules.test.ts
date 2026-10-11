@@ -116,6 +116,7 @@ function nonceDownOnce(network: FakeNetwork): ReceiptReader {
     transfers: async (chain, hash, options) => network.transfers(chain, hash, options),
     nativeReceived: async (account, block, options) =>
       network.nativeReceived(account, block, options),
+    isKnown: async (chain, hash, options) => network.isKnown(chain, hash, options),
     async nonceAt(account, block, options) {
       const wasDown = isDown;
       isDown = false;
@@ -133,6 +134,7 @@ function receiptsAfterNonce(network: FakeNetwork): ReceiptReader {
     transfers: async (chain, hash, options) => network.transfers(chain, hash, options),
     nativeReceived: async (account, block, options) =>
       network.nativeReceived(account, block, options),
+    isKnown: async (chain, hash, options) => network.isKnown(chain, hash, options),
     async nonceAt(account, block, options) {
       isCaughtUp = true;
       return network.nonceAt(account, block, options);
@@ -288,6 +290,7 @@ function receiptsOnceFinal(network: FakeNetwork): ReceiptReader {
     transfers: async (chain, hash, options) => network.transfers(chain, hash, options),
     nativeReceived: async (account, block, options) =>
       network.nativeReceived(account, block, options),
+    isKnown: async (chain, hash, options) => network.isKnown(chain, hash, options),
     nonceAt: async (account, block, options) => network.nonceAt(account, block, options),
     async receipt(chain, hash, options) {
       const receipt = await network.receipt(chain, hash, options);

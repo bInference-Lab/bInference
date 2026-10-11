@@ -47,6 +47,10 @@ export interface FakeLedger {
   nextNonce(account: AccountRef): number;
   /** How many of an account's transactions the blocks up to and including `block` hold. */
   nonceAt(account: AccountRef, block: bigint): number;
+  /** The next nonce of an account counting its pooled transactions at the nonces after it. */
+  pendingNonce(account: AccountRef): number;
+  /** Whether a transaction waits in the pool or a block holds it. */
+  isKnown(hash: TxHash): boolean;
   /**
    * The native coin an account's transactions that ran in a block received without a log, or
    * `undefined` once the state before the block is forgotten.
@@ -151,6 +155,14 @@ function reorgOne(state: LedgerState, hash: TxHash): void {
 }
 
 // Blocks hold an account's transactions in nonce order, so the count is one past the highest nonce.
+function pendingNonce(state: LedgerState, account: AccountRef): number {
+  const pooled = new Set(
+    [...state.pooled.values()].filter((sent) => sent.account === account).map(({ nonce }) => nonce),
+  );
+  const next = (nonce: number): number => (pooled.has(nonce) ? next(nonce + 1) : nonce);
+  return next(nextOf(state, account));
+}
+
 function nonceAt(state: LedgerState, account: AccountRef, block: bigint): number {
   const held = [...state.mined.values()].filter(
     ({ sent, receipt }) => sent.account === account && receipt.block.number <= block,
@@ -237,6 +249,8 @@ export function createFakeLedger(options: FakeLedgerOptions): FakeLedger {
     }),
     nextNonce: (account) => nextOf(state, account),
     nonceAt: (account, block) => nonceAt(state, account, block),
+    pendingNonce: (account) => pendingNonce(state, account),
+    isKnown: (hash) => state.pooled.has(hash) || state.mined.has(hash),
     nativeReceived: (account, block) => nativeReceived(state, { account, block, forgotten }),
     forgetStateBelow(block) {
       forgotten = block;

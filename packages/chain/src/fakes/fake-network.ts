@@ -227,7 +227,16 @@ function readersOf(state: NetworkState): ReceiptReader & NonceSource {
     async nonceAt(account, block, { signal }) {
       signal.throwIfAborted();
       state.dials.read();
-      return await Promise.resolve(state.ledger.nonceAt(account, block));
+      const { ledger } = state;
+      return await Promise.resolve(
+        block === "pending" ? ledger.pendingNonce(account) : ledger.nonceAt(account, block),
+      );
+    },
+    async isKnown(asked, hash, { signal }) {
+      signal.throwIfAborted();
+      served(state, asked);
+      state.dials.read();
+      return await Promise.resolve(state.ledger.isKnown(hash));
     },
     async nativeReceived(account, block, { signal }) {
       signal.throwIfAborted();

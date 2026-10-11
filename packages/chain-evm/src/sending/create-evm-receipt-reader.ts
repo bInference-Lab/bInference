@@ -3,6 +3,7 @@ import {
   type ChainRef,
   type FinalityRule,
   type ReceiptReader,
+  type TxHash,
   type TxReceipt,
   txReceiptSchema,
 } from "@binference/chain";
@@ -43,6 +44,8 @@ const rpcReceiptSchema = z.looseObject({
 });
 
 const receiptResultSchema = rpcReceiptSchema.nullable();
+// A node answers a transaction it holds, pooled or in a block, and null for one it does not.
+const knownTransactionSchema = z.looseObject({ hash: hash32Schema }).nullable();
 const blockNumberSchema = z.looseObject({ number: quantitySchema, hash: hexSchema });
 
 function served(chain: EvmChain, asked: ChainRef): void {
@@ -63,6 +66,16 @@ function receiptOf(rpc: z.infer<typeof rpcReceiptSchema>): TxReceipt {
     gasUsed: rpc.gasUsed.toString(),
     feePerGasBase: rpc.effectiveGasPrice.toString(),
   });
+}
+
+async function isKnownTo(rpc: RpcFailover, hash: TxHash, signal: AbortSignal): Promise<boolean> {
+  const found = await requestResult(rpc, {
+    method: "eth_getTransactionByHash",
+    params: [hash],
+    result: knownTransactionSchema,
+    signal,
+  });
+  return found !== null;
 }
 
 async function finalBlock(
@@ -89,7 +102,8 @@ async function finalBlock(
  * `eth_blockNumber`, and the final block by the chain's rule: the `finalized` tag, or the latest
  * block less its confirmations. A hash no block holds reads as no receipt. Transfers are the
  * transaction's own value and its receipt's ERC-20 `Transfer` logs; the nonce at a block is
- * `eth_getTransactionCount` at that block; the native coin a wallet received in a block is its
+ * `eth_getTransactionCount` at that block, or at `pending`; a transaction is known when
+ * `eth_getTransactionByHash` finds it; the native coin a wallet received in a block is its
  * balance change with its own transactions' fees and values counted back, or the tracer's call
  * frames once the state is pruned. A chain it does not read is a fault.
  */
@@ -127,10 +141,15 @@ export function createEvmReceiptReader(options: EvmReceiptReaderOptions): Receip
       signal.throwIfAborted();
       return requestResult(rpc, {
         method: "eth_getTransactionCount",
-        params: [accountAddressOn(chain, account), toHex(block)],
+        params: [accountAddressOn(chain, account), block === "pending" ? block : toHex(block)],
         result: nonceCountSchema,
         signal,
       });
+    },
+    async isKnown(asked, hash, { signal }) {
+      signal.throwIfAborted();
+      served(chain, asked);
+      return isKnownTo(rpc, hash, signal);
     },
     async nativeReceived(account, block, { signal }) {
       signal.throwIfAborted();

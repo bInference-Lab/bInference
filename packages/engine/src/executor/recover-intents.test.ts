@@ -51,6 +51,7 @@ function withReceipts(network: FakeNetwork, receipt: ReceiptReader["receipt"]): 
     nonceAt: async (account, block, options) => network.nonceAt(account, block, options),
     nativeReceived: async (account, block, options) =>
       network.nativeReceived(account, block, options),
+    isKnown: async (chain, hash, options) => network.isKnown(chain, hash, options),
     receipt,
   };
 }

@@ -71,6 +71,13 @@ const counts = new Map<JsonValue | undefined, string>([
   ["0x60", "0x1"],
 ]);
 
+function transactionAnswer(hash: JsonValue | undefined): FakeRpcAnswer {
+  const value = hash === succeeded ? "0x5" : "0x0";
+  return {
+    result: hash === unknown ? null : { hash: hash ?? null, from: wallet, to: router, value },
+  };
+}
+
 function receiptAnswer(hash: JsonValue | undefined): FakeRpcAnswer {
   if (hash === succeeded) {
     return { result: receiptOf(succeeded, "0x1") };
@@ -120,7 +127,7 @@ function answer(method: string, params: readonly JsonValue[]): FakeRpcAnswer {
     case "eth_getTransactionReceipt":
       return receiptAnswer(first);
     case "eth_getTransactionByHash":
-      return { result: { from: wallet, to: router, value: first === succeeded ? "0x5" : "0x0" } };
+      return transactionAnswer(first);
     case "eth_getTransactionCount":
       return { result: counts.get(second) ?? "0x2" };
     case "eth_blockNumber":

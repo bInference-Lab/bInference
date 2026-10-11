@@ -80,6 +80,7 @@ function heldFirstReceipt(held: Gate): (network: FakeNetwork) => ReceiptReader {
     nonceAt: async (account, block, call) => network.nonceAt(account, block, call),
     transfers: async (chain, hash, call) => network.transfers(chain, hash, call),
     nativeReceived: async (account, block, call) => network.nativeReceived(account, block, call),
+    isKnown: async (chain, hash, call) => network.isKnown(chain, hash, call),
     async receipt(chain, hash, call) {
       reads.count += 1;
       if (reads.count === 1) {

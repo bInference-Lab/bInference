@@ -77,6 +77,13 @@ async function readsNonces(harness: ReceiptReaderHarness): Promise<void> {
   assert.equal(await reader.nonceAt(sender, first.block.number - 1n, live()), 0);
   assert.equal(await reader.nonceAt(sender, first.block.number, live()), 1);
   assert.equal(await reader.nonceAt(sender, second.block.number, live()), 2);
+  assert.ok((await reader.nonceAt(sender, "pending", live())) >= 2);
+}
+
+async function readsKnown(harness: ReceiptReaderHarness): Promise<void> {
+  const { reader, chain, succeeded, unknown } = await harness.create();
+  assert.equal(await reader.isKnown(chain, succeeded, live()), true);
+  assert.equal(await reader.isKnown(chain, unknown, live()), false);
 }
 
 async function readsNativeReceived(harness: ReceiptReaderHarness): Promise<void> {
@@ -98,6 +105,7 @@ async function refusesAborted(harness: ReceiptReaderHarness): Promise<void> {
   await assert.rejects(reader.transfers(chain, succeeded, aborted), reason);
   await assert.rejects(reader.nonceAt(sender, 0n, aborted), reason);
   await assert.rejects(reader.nativeReceived(sender, 1n, aborted), reason);
+  await assert.rejects(reader.isKnown(chain, succeeded, aborted), reason);
 }
 
 /** The contract every `ReceiptReader` adapter passes. */
@@ -121,8 +129,12 @@ export function receiptReaderContract(harness: ReceiptReaderHarness): readonly C
       run: async () => readsTransfers(harness),
     },
     {
-      name: "counts an account's transactions in the blocks up to a block",
+      name: "counts an account's transactions in the blocks up to a block, and with its pool",
       run: async () => readsNonces(harness),
+    },
+    {
+      name: "knows a transaction a block holds, and not a hash it never saw",
+      run: async () => readsKnown(harness),
     },
     {
       name: "reads the native coin an account received in a block, or that its state is gone",

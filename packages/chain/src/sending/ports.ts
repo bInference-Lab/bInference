@@ -95,13 +95,24 @@ export interface ReceiptReader {
   /**
    * How many transactions of the account the blocks up to and including `block` hold: the nonce
    * the chain expects from it next as of that block, 0 for an account it has never seen. A nonce
-   * below it is used. Rejects as `receipt` does.
+   * below it is used. At `pending`, the node counts the account's transactions waiting in its pool
+   * too. Rejects as `receipt` does.
    */
   nonceAt(
     account: AccountRef,
-    block: bigint,
+    block: bigint | "pending",
     options: { readonly signal: AbortSignal },
   ): Promise<number>;
+  /**
+   * Whether the node it reads knows the transaction: waiting in its pool or in a block. `false`
+   * means only that this node holds none of it; a private relay may still. Rejects as `receipt`
+   * does.
+   */
+  isKnown(
+    chain: ChainRef,
+    hash: TxHash,
+    options: { readonly signal: AbortSignal },
+  ): Promise<boolean>;
   /**
    * The native coin that reached the account in a block without a log (decision 0108): its
    * balance after the block less its balance before, with what its own transactions in the block
