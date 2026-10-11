@@ -1,18 +1,15 @@
 import type { PrivyRequest } from "@binference/chain";
-import { BinferenceError, err, ok, type Result } from "@binference/core";
+import { err, ok, type Result } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import type { Ceiling } from "../ceiling/ceiling.js";
 import type { PrivyTransaction } from "../signing/privy-transaction.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
 import { callPrivy, type PrivyCall, privyFault, statusFault } from "./privy-call.js";
 import { type PrivyApiOptions, type PrivySettings, privySettings } from "./privy-client.js";
-import { readPayload } from "./privy-payload.schema.js";
 import type { KeyQuorum, PrivyId, PrivyPolicy, WalletRecord } from "./privy-records.js";
 import {
   readKeyQuorum,
   readPolicy,
-  refusalOf,
-  readSignedTransaction,
   readWallet,
   readWalletList,
   type WalletListPage,
@@ -25,6 +22,7 @@ import {
   type RuleRefusal,
 } from "./rule-update.js";
 import { sdkRule } from "./sdk-rule.js";
+import { signWith } from "./sign-transaction.js";
 import {
   exportWallet,
   type SealedWalletKey,
@@ -141,7 +139,6 @@ export interface PrivyApi {
 }
 
 const policyName = "binference ceiling";
-const expiryMs = 5 * 60_000;
 
 /** How one answer is read: by its reader, within the call's signal. */
 interface Reading<A, T> {
@@ -178,90 +175,6 @@ async function made<A, T>(
     throw statusFault(call, { status: 404 });
   }
   return answer.value;
-}
-
-// Never leaves this file: a refusal of the signer stops the SDK before it sends anything.
-const signerRefused = "custody.signer_refused";
-
-async function authorized(
-  payload: Uint8Array,
-  request: SignTransactionRequest,
-  signal: AbortSignal,
-): Promise<string> {
-  const privyRequest = readPayload(payload);
-  if (privyRequest === undefined) {
-    throw new BinferenceError({
-      code: "custody.payload_unreadable",
-      message: "The SDK asked to sign a payload that is no canonical Privy request.",
-    });
-  }
-  const answer = await request.authorize(privyRequest, signal);
-  if (!answer.ok) {
-    throw new BinferenceError({ code: signerRefused, message: "The signer refused." });
-  }
-  return answer.value;
-}
-
-function signCall(settings: PrivySettings, request: SignTransactionRequest) {
-  return {
-    kind: "sign" as const,
-    path: `/v1/wallets/${request.wallet}/rpc`,
-    run: async (client: PrivyClient, signal: AbortSignal) =>
-      client
-        .wallets()
-        .ethereum()
-        .signTransaction(request.wallet, {
-          params: { transaction: request.transaction },
-          authorization_context: {
-            sign_fns: [async (payload) => authorized(payload, request, signal)],
-          },
-          request_expiry: settings.clock.now() + expiryMs,
-        }),
-  };
-}
-
-async function signedOutcome(
-  settings: PrivySettings,
-  request: SignTransactionRequest,
-  signal: AbortSignal,
-): Promise<Awaited<ReturnType<typeof callPrivy>> | "refused"> {
-  try {
-    return await callPrivy(settings, signCall(settings, request), signal);
-  } catch (error) {
-    if (error instanceof BinferenceError && error.code === signerRefused) {
-      return "refused";
-    }
-    throw error;
-  }
-}
-
-async function signWith(
-  settings: PrivySettings,
-  request: SignTransactionRequest,
-  signal: AbortSignal,
-): Promise<Result<string, "refused" | "unknown_wallet">> {
-  const call = signCall(settings, request);
-  const outcome = await signedOutcome(settings, request, signal);
-  if (outcome === "refused") {
-    return err("refused");
-  }
-  if (outcome.ok) {
-    const raw = readSignedTransaction(outcome.value);
-    if (raw === undefined) {
-      throw privyFault("custody.privy_malformed", call);
-    }
-    return ok(raw);
-  }
-  const refusal = refusalOf(outcome.code);
-  if (refusal === "policy" || refusal === "authorization") {
-    return err("refused");
-  }
-  if (refusal === "expired") {
-    throw privyFault("custody.request_expired", call, outcome);
-  }
-  return outcome.status === 404
-    ? err("unknown_wallet")
-    : Promise.reject(statusFault(call, outcome));
 }
 
 function readCall<A>(path: string, run: (client: PrivyClient) => Promise<A>): PrivyCall<A> {
