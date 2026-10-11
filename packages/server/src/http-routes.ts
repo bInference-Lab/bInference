@@ -5,6 +5,7 @@ import type { EngineState } from "@binference/protocol";
 import { answerConsole, type ConsoleFiles } from "./console-route.js";
 import type { OriginRules, RequestNames } from "./origin-check.js";
 import { answerPair } from "./pair-route.js";
+import { resourceHeaders } from "./security-headers.js";
 
 /** The path of a request, `/` when it has none. */
 export function pathOf(request: IncomingMessage): string {
@@ -14,7 +15,7 @@ export function pathOf(request: IncomingMessage): string {
     : "/";
 }
 
-const plain = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
+const plain = { ...resourceHeaders, "cache-control": "no-store" };
 
 function headerOf(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;

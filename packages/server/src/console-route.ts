@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname } from "node:path";
 import { codingSuffix, type ContentCoding, contentCodings, pickCoding } from "./content-coding.js";
+import { pageHeaders, resourceHeaders } from "./security-headers.js";
 
 /**
  * The console's built files by their path under the build folder, such as `index.html` and
@@ -21,68 +22,6 @@ const contentTypes: Readonly<Record<string, string>> = {
   ".json": "application/json",
   ".txt": "text/plain; charset=utf-8",
 };
-
-function isMiniPath(path: string): boolean {
-  return path === "/mini" || path.startsWith("/mini/");
-}
-
-// Every browser feature a policy can gate that the console never uses, each turned off for the
-// page and every frame it could hold; only names Chromium knows, as it logs an error for any
-// other. Notifications are no such feature: the owner allows them.
-const unusedFeatures = [
-  "accelerometer",
-  "autoplay",
-  "bluetooth",
-  "browsing-topics",
-  "camera",
-  "clipboard-read",
-  "display-capture",
-  "encrypted-media",
-  "fullscreen",
-  "geolocation",
-  "gyroscope",
-  "hid",
-  "idle-detection",
-  "magnetometer",
-  "microphone",
-  "midi",
-  "payment",
-  "picture-in-picture",
-  "publickey-credentials-create",
-  "publickey-credentials-get",
-  "screen-wake-lock",
-  "serial",
-  "usb",
-  "xr-spatial-tracking",
-];
-
-const permissionsPolicy = unusedFeatures.map((feature) => `${feature}=()`).join(", ");
-
-// The page loads only its own files and talks only to its own origin. Telegram shows the Mini
-// App in a frame, so only `/mini` may be framed, and only by Telegram's web client.
-function securityHeaders(path: string): Record<string, string> {
-  const isMini = isMiniPath(path);
-  const frames = isMini ? "https://web.telegram.org" : "'none'";
-  return {
-    "content-security-policy": [
-      "default-src 'self'",
-      "script-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
-      "font-src 'self'",
-      "connect-src 'self'",
-      "object-src 'none'",
-      "base-uri 'none'",
-      "form-action 'none'",
-      `frame-ancestors ${frames}`,
-    ].join("; "),
-    "referrer-policy": "no-referrer",
-    "permissions-policy": permissionsPolicy,
-    "x-content-type-options": "nosniff",
-    "cross-origin-opener-policy": "same-origin",
-    ...(isMini ? {} : { "x-frame-options": "DENY" }),
-  };
-}
 
 // A path whose last part has no extension is a page of the console: its routes all load the
 // same page, which picks the screen from the address.
@@ -144,8 +83,9 @@ function send(response: ServerResponse, request: IncomingMessage, body: Uint8Arr
 
 /**
  * Answers a `GET` or `HEAD` for the console: `/`, `/mini` and every other page path get
- * `index.html` with the console's security headers and no caching; a built file gets its own type,
- * cached for good under `assets/`, whose names carry their hash. A file with compressed copies is
+ * `index.html` with the page's security headers and no caching; a built file gets its own type and
+ * the locked-down headers of a file no page runs in, cached for good under `assets/`, whose names
+ * carry their hash. A file with compressed copies is
  * sent in the coding `Accept-Encoding` takes best, with `Vary: accept-encoding`. Returns `false` when the request
  * is not the console's, such as an unknown file or another method, so the caller answers 404.
  */
@@ -171,7 +111,7 @@ export function answerConsole(
     "content-length": String(shown.body.byteLength),
     ...codingHeaders(shown),
     "cache-control": page ? "no-store" : cacheOf(file),
-    ...(page ? securityHeaders(path) : { "x-content-type-options": "nosniff" }),
+    ...(page ? pageHeaders(path) : resourceHeaders),
   });
   send(response, request, shown.body);
   return true;

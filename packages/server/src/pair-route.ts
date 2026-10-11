@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { DevicePairing } from "@binference/engine/access";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import { decodePairBody } from "./pair-body.schema.js";
+import { resourceHeaders } from "./security-headers.js";
 
 /** The largest body `POST /pair` reads: the key and label fit in far less. */
 export const maxPairBodyBytes = 4096;
@@ -16,9 +17,9 @@ export interface PairRouteContext {
 }
 
 const jsonHeaders = {
+  ...resourceHeaders,
   "cache-control": "no-store",
   "content-type": "application/json",
-  "x-content-type-options": "nosniff",
 };
 
 const refusals = {

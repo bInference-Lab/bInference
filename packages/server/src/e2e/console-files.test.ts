@@ -65,6 +65,37 @@ describe("the console's files", () => {
     );
   });
 
+  it("runs no inline style on the page and shares no answer with another site", async () => {
+    const server = await start();
+    const answer = await requestLocal(server.httpPort, { path: "/" });
+    expect(answer.headers["content-security-policy"]).toContain("style-src 'self';");
+    expect(answer.headers["content-security-policy"]).not.toContain("unsafe-inline");
+    expect(answer.headers["cross-origin-resource-policy"]).toBe("same-origin");
+  });
+
+  it.each([
+    ["a script", "/assets/index-1a2b.js", 200],
+    ["an image opened on its own", "/mark.svg", 200],
+    ["a file it does not hold", "/assets/missing.js", 404],
+    ["health", "/health", 200],
+  ])(
+    "sends %s with a policy that loads nothing and the same guards",
+    async (_name, path, status) => {
+      const server = await start();
+      const answer = await requestLocal(server.httpPort, { path });
+      expect(answer.status).toBe(status);
+      expect(answer.headers).toMatchObject({
+        "content-security-policy":
+          "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "cross-origin-resource-policy": "same-origin",
+      });
+      expect(String(answer.headers["permissions-policy"])).toContain("camera=()");
+    },
+  );
+
   it("serves the page at each of its screens' paths", async () => {
     const server = await start();
     await expect(requestLocal(server.httpPort, { path: "/ledger" })).resolves.toMatchObject({
