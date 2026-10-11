@@ -12,6 +12,7 @@ import {
 import { plainIdSchema } from "../values/plain-id.schema.js";
 import { releaseVersionSchema } from "../values/release-version.schema.js";
 import { type AgentMode, agentModeSchema } from "../views/agent-view.schema.js";
+import { type BackupView, backupViewSchema } from "../views/backup-view.schema.js";
 import { type FileTicket, fileTicketSchema } from "../views/file-ticket.schema.js";
 import { type JobRef, jobRefSchema } from "../views/job-ref.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
@@ -64,15 +65,6 @@ interface LedgerEntryView {
   readonly data: JsonObject;
   readonly prevHash: string;
   readonly hash: string;
-}
-
-/** A backup file. */
-interface BackupView {
-  readonly backup: ProtocolId<"backup">;
-  readonly kind: "daily" | "weekly" | "manual" | "before_update" | "before_migration";
-  readonly bytes: number;
-  readonly createdAt: number;
-  readonly verifiedAt?: number;
 }
 
 /** The answer of `update/check`. */
@@ -197,15 +189,7 @@ export const settingsOperations: OperationTable<SettingsOperationShapes> = {
     name: "backup/list",
     scope: "read",
     args: emptyArgsSchema,
-    result: pageSchema(
-      z.object({
-        backup: protocolIdSchema("backup"),
-        kind: z.enum(["daily", "weekly", "manual", "before_update", "before_migration"]),
-        bytes: z.int().nonnegative(),
-        createdAt: epochMsSchema,
-        verifiedAt: epochMsSchema.exactOptional(),
-      }),
-    ),
+    result: pageSchema(backupViewSchema),
   },
   "backup/create": {
     ...writeFlags,

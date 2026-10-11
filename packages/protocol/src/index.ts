@@ -134,6 +134,8 @@ export { alertConditionSchema, alertViewSchema } from "./views/alert-view.schema
 export type { AlertCondition, AlertView, PriceCondition } from "./views/alert-view.schema.js";
 export { assetInfosSchema, assetViewSchema } from "./views/asset-info.schema.js";
 export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema.js";
+export { backupViewSchema } from "./views/backup-view.schema.js";
+export type { BackupView } from "./views/backup-view.schema.js";
 export {
   cardLinesViewSchema,
   cardLineViewSchema,
@@ -159,6 +161,8 @@ export type {
   UnfreezeRequest,
 } from "./views/intent-view.schema.js";
 export type { JobRef } from "./views/job-ref.schema.js";
+export { jobDonePushSchema, jobFailedPushSchema } from "./views/job-push.schema.js";
+export type { JobDonePush, JobFailedPush } from "./views/job-push.schema.js";
 export { noticePushViewSchema, noticeViewSchema } from "./views/notice-view.schema.js";
 export type {
   NoticeDeliveryState,

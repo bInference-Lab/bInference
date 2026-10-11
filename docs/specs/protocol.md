@@ -232,7 +232,11 @@ Operation names are `domain/action`: a singular domain, then a camelCase action.
 **write** (needs `key`); **local** (IPC only). Routed operations (marked R) are answered by the
 agent runtime through the engine; when the runtime is down they fail with `runtime.unavailable`.
 
-Long operations return `{ job }` at once and report through the `job` topic. File results are
+Long operations return `{ job }` at once and report through the `job` topic. A job ends with one
+push: `job/done` `{ job, op, result }`, whose `result` has the shape the operation's row names, or
+`job/failed` `{ job, op, error }`, whose `error` is an error of section 10. A client subscribes to
+`job` before it calls, so it never misses the end. The topic has no list operation: a client that
+must refetch reads the operation's own list, such as `backup/list`. File results are
 `{ url, expiresAt }` for `GET /file/:ticket`.
 
 <a id="section-7-1"></a>
@@ -419,38 +423,38 @@ no upload.
 
 ### 7.9 Settings, ledger and operations
 
-| Operation           | Scope                      | Write | Local | Args → result                                                                      |
-| ------------------- | -------------------------- | ----- | ----- | ---------------------------------------------------------------------------------- |
-| `config/read`       | `admin`                    |       |       | → the config with every secret source shown as its kind only                       |
-| `config/change`     | `admin`                    | ✓     |       | `{ patch, reason? }` → `{ config, restartNeeded }`; journaled and announced        |
-| `config/history`    | `read`                     |       |       | paging → journal entries                                                           |
-| `ledger/list`       | `read`                     |       |       | paging, `{ agent?, from?, to? }` → entries with their hashes                       |
-| `ledger/export`     | `read`                     | ✓     |       | `{ agent?, from?, to?, mode? }` → file (CSV) of `live` (default) or `paper` fills  |
-| `device/list`       | `admin`                    |       |       | → devices                                                                          |
-| `device/revoke`     | `confirm`                  | ✓     |       | `{ device }` → `{}`                                                                |
-| `token/list`        | `admin`                    |       |       | → tokens without secrets                                                           |
-| `token/create`      | `admin`                    | ✓     | ✓     | `{ label, scopes }` → `{ token }`, shown once                                      |
-| `token/revoke`      | `confirm`                  | ✓     |       | `{ token }` → `{}`                                                                 |
-| `backup/list`       | `read`                     |       |       | → backups                                                                          |
-| `backup/create`     | `admin`                    | ✓     |       | `{ copyTo? }` → `{ job }`                                                          |
-| `backup/restore`    | `admin`                    | ✓     | ✓     | `{ backup }` → `{ job }`; the engine restarts                                      |
-| `update/check`      | `read`                     |       |       | → `{ current, latest?, channel, notes? }`                                          |
-| `update/apply`      | `admin`                    | ✓     | ✓     | `{ version? }` → `{ job }`                                                         |
-| `check/run`         | `read`; `admin` with `fix` | ✓     |       | `{ fix?, only? }` → `{ job }`; findings carry stable check ids                     |
-| `report/create`     | `admin`                    | ✓     |       | `{}` → `{ job }`, then a file (the redacted support bundle)                        |
-| `log/follow`        | `admin`                    |       |       | `{ level? }` → `{}`; lines arrive on topic `log`                                   |
-| `log/unfollow`      | `admin`                    |       |       | `{}` → `{}`                                                                        |
-| `remote/status`     | `read`                     |       |       | → Tailscale state, the Mini App and webhook URLs                                   |
-| `remote/enable`     | `admin`                    | ✓     | ✓     | `{ mini?, webhooks? }` → `{ job }`                                                 |
-| `remote/disable`    | `confirm`                  | ✓     |       | `{}` → `{}` (braking)                                                              |
-| `identity/get`      | `read`                     |       |       | `{ agent }` → the ERC-8004 registration, if any                                    |
-| `identity/register` | `propose`                  | ✓     |       | `{ agent }` → `IntentView` awaiting a tap ([decision 0071](../DECISIONS.md#d0071)) |
-| `cex/status`        | `read`                     |       |       | → the Binance connection state                                                     |
-| `cex/connect`       | `admin`                    | ✓     | ✓     | `{}` → `{ authorizeUrl }`; the OAuth flow returns to `127.0.0.1`                   |
-| `cex/disconnect`    | `confirm`                  | ✓     |       | `{}` → `{}`                                                                        |
-| `upload/start`      | `chat`                     |       |       | `{ contentType, bytes }` → `{ url, expiresAt }` for `POST /upload/:ticket`         |
-| `push/subscribe`    | any                        |       |       | `{ topics }` → `{ seqs, resync? }`                                                 |
-| `push/unsubscribe`  | any                        |       |       | `{ topics }` → `{}`                                                                |
+| Operation           | Scope                      | Write | Local | Args → result                                                                                                                                                                                                                                                                          |
+| ------------------- | -------------------------- | ----- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config/read`       | `admin`                    |       |       | → the config with every secret source shown as its kind only                                                                                                                                                                                                                           |
+| `config/change`     | `admin`                    | ✓     |       | `{ patch, reason? }` → `{ config, restartNeeded }`; journaled and announced                                                                                                                                                                                                            |
+| `config/history`    | `read`                     |       |       | paging → journal entries                                                                                                                                                                                                                                                               |
+| `ledger/list`       | `read`                     |       |       | paging, `{ agent?, from?, to? }` → entries with their hashes                                                                                                                                                                                                                           |
+| `ledger/export`     | `read`                     | ✓     |       | `{ agent?, from?, to?, mode? }` → file (CSV) of `live` (default) or `paper` fills                                                                                                                                                                                                      |
+| `device/list`       | `admin`                    |       |       | → devices                                                                                                                                                                                                                                                                              |
+| `device/revoke`     | `confirm`                  | ✓     |       | `{ device }` → `{}`                                                                                                                                                                                                                                                                    |
+| `token/list`        | `admin`                    |       |       | → tokens without secrets                                                                                                                                                                                                                                                               |
+| `token/create`      | `admin`                    | ✓     | ✓     | `{ label, scopes }` → `{ token }`, shown once                                                                                                                                                                                                                                          |
+| `token/revoke`      | `confirm`                  | ✓     |       | `{ token }` → `{}`                                                                                                                                                                                                                                                                     |
+| `backup/list`       | `read`                     |       |       | → backups, newest first, each `{ backup, kind, bytes, createdAt, verifiedAt? }`                                                                                                                                                                                                        |
+| `backup/create`     | `admin`                    | ✓     |       | `{ copyTo? }` → `{ job }`: a `manual` backup, kept until the owner removes it, its second copy in `copyTo` (an absolute folder) or else `backups.copyTo`; the job ends with the backup as `backup/list` shows it, or fails with a `backup` code; while one runs, the answer is its job |
+| `backup/restore`    | `admin`                    | ✓     | ✓     | `{ backup }` → `{ job }`; the engine restarts                                                                                                                                                                                                                                          |
+| `update/check`      | `read`                     |       |       | → `{ current, latest?, channel, notes? }`                                                                                                                                                                                                                                              |
+| `update/apply`      | `admin`                    | ✓     | ✓     | `{ version? }` → `{ job }`                                                                                                                                                                                                                                                             |
+| `check/run`         | `read`; `admin` with `fix` | ✓     |       | `{ fix?, only? }` → `{ job }`; findings carry stable check ids                                                                                                                                                                                                                         |
+| `report/create`     | `admin`                    | ✓     |       | `{}` → `{ job }`, then a file (the redacted support bundle)                                                                                                                                                                                                                            |
+| `log/follow`        | `admin`                    |       |       | `{ level? }` → `{}`; lines arrive on topic `log`                                                                                                                                                                                                                                       |
+| `log/unfollow`      | `admin`                    |       |       | `{}` → `{}`                                                                                                                                                                                                                                                                            |
+| `remote/status`     | `read`                     |       |       | → Tailscale state, the Mini App and webhook URLs                                                                                                                                                                                                                                       |
+| `remote/enable`     | `admin`                    | ✓     | ✓     | `{ mini?, webhooks? }` → `{ job }`                                                                                                                                                                                                                                                     |
+| `remote/disable`    | `confirm`                  | ✓     |       | `{}` → `{}` (braking)                                                                                                                                                                                                                                                                  |
+| `identity/get`      | `read`                     |       |       | `{ agent }` → the ERC-8004 registration, if any                                                                                                                                                                                                                                        |
+| `identity/register` | `propose`                  | ✓     |       | `{ agent }` → `IntentView` awaiting a tap ([decision 0071](../DECISIONS.md#d0071))                                                                                                                                                                                                     |
+| `cex/status`        | `read`                     |       |       | → the Binance connection state                                                                                                                                                                                                                                                         |
+| `cex/connect`       | `admin`                    | ✓     | ✓     | `{}` → `{ authorizeUrl }`; the OAuth flow returns to `127.0.0.1`                                                                                                                                                                                                                       |
+| `cex/disconnect`    | `confirm`                  | ✓     |       | `{}` → `{}`                                                                                                                                                                                                                                                                            |
+| `upload/start`      | `chat`                     |       |       | `{ contentType, bytes }` → `{ url, expiresAt }` for `POST /upload/:ticket`                                                                                                                                                                                                             |
+| `push/subscribe`    | any                        |       |       | `{ topics }` → `{ seqs, resync? }`                                                                                                                                                                                                                                                     |
+| `push/unsubscribe`  | any                        |       |       | `{ topics }` → `{}`                                                                                                                                                                                                                                                                    |
 
 The owner's Telegram chat may run `config/change` past its `admin` scope for one patch alone,
 `{ owner: { locale } }`, which a `/lang` button sends ([decision 0134](../DECISIONS.md#d0134)).
@@ -599,6 +603,7 @@ later unchanged.
 | `config`   | `invalid`, `secret_inline`                                                                      |
 | `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                   |
 | `job`      | `not_found`                                                                                     |
+| `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                |
 | `telegram` | `not_running`, `unreachable`                                                                    |
 | `internal` | `error` (with a `details.ref` to find the log line)                                             |
 

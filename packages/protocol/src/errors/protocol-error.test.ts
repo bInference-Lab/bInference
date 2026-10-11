@@ -31,6 +31,7 @@ describe("protocolErrorCodes", () => {
       "config",
       "plugin",
       "job",
+      "backup",
       "telegram",
       "internal",
     ]);

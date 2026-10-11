@@ -61,6 +61,11 @@
   "plugin.hash_mismatch": "This plugin's files do not match their pinned hash, so it was not loaded. Install it again from its source.",
   "plugin.review_needed": "This plugin asks for new permissions. Review them in the console before it runs.",
   "job.not_found": "This task does not exist or ended long ago. Start it again if you still need it.",
+  "backup.no_owner_key": "binference holds no owner key to seal a backup to, so none was made. Finish `binference init`, then try again.",
+  "backup.snapshot_failed": "A database could not be copied, so no backup was made. `binference logs` shows why; fix that, then try again.",
+  "backup.write_failed": "The backup file could not be written. Check the disk's free space, then try again.",
+  "backup.check_failed": "Reading the new backup back found a part that does not match, so it was removed. Check the disk, then try again.",
+  "backup.copy_failed": "The backup was made and checked, but its second copy could not be written. Check the copy folder, then try again.",
   "telegram.not_running": "binference is running without its Telegram bot, so no link was made. `binference logs` shows why; fix the bot token, then run `binference restart`.",
   "telegram.unreachable": "Telegram could not be reached, so no link was made. Try again in a minute.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
