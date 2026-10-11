@@ -16,6 +16,7 @@
   "signIn.unreachable": "控制台无法连接 binference。请用 `binference status` 确认它正在运行，然后重试。",
   "signIn.noCrypto": "此浏览器无法保存设备密钥。请在新版浏览器中打开控制台。",
   "signIn.miniFailed": "Mini App 无法登录。请再次通过机器人的 /console 按钮打开控制台。",
+  "signIn.miniExpired": "此 Mini App 已打开超过 5 分钟。请再次通过机器人的 /console 按钮打开控制台。",
   "signIn.retry": "重试",
   "device.label": "{platform} 上的浏览器",
   "engine.state": "{state, select, ready {就绪} locked {已锁定：请在本机运行 `binference unlock`} starting {正在启动} other {未知}}",

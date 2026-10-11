@@ -10,6 +10,7 @@ export type SignedOutReason =
   | "revoked"
   | "no_crypto"
   | "mini_failed"
+  | "mini_expired"
   | "unreachable";
 
 /** Where the console's sign-in stands. */

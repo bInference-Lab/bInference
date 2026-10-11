@@ -12,6 +12,7 @@ const reasonKeys: Readonly<Record<SignedOutReason, string>> = {
   revoked: "console.signIn.revoked",
   no_crypto: "console.signIn.noCrypto",
   mini_failed: "console.signIn.miniFailed",
+  mini_expired: "console.signIn.miniExpired",
   unreachable: "console.signIn.unreachable",
 };
 

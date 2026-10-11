@@ -97,6 +97,9 @@ async function refusalOf(
   code: string | undefined,
 ): Promise<SignedOutReason> {
   if (credential.kind === "telegram") {
+    if (code === "auth.expired") {
+      return "mini_expired";
+    }
     return code?.startsWith("auth.") === true ? "mini_failed" : "unreachable";
   }
   if (code === "auth.revoked" || code === "auth.invalid") {

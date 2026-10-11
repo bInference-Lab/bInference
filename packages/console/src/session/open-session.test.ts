@@ -148,6 +148,18 @@ describe("opening the console's session", () => {
     });
   });
 
+  it("says a Mini App launch the engine found too old must be opened again", async () => {
+    const test = setUp({
+      pathname: "/mini",
+      hash: "#tgWebAppData=a",
+      connectError: "auth.expired",
+    });
+    await expect(openSession(test.context)).resolves.toStrictEqual({
+      kind: "signed_out",
+      reason: "mini_expired",
+    });
+  });
+
   it("needs WebCrypto to keep a device key", async () => {
     const test = setUp({ hash: "#pair=abc", hasCrypto: false });
     await expect(openSession(test.context)).resolves.toStrictEqual({

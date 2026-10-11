@@ -35,6 +35,7 @@ describe("the sign-in page", () => {
     ["used", "This link was used already."],
     ["expired", "This link expired after 10 minutes."],
     ["revoked", "This browser's console device was revoked."],
+    ["mini_expired", "This Mini App was opened more than 5 minutes ago."],
   ] as const)("refuses a link that was %s and says why", (reason, words) => {
     show({ kind: "signed_out", reason });
     expect(screen.getByRole("alert").textContent).toContain(words);

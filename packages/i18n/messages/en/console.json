@@ -16,6 +16,7 @@
   "signIn.unreachable": "The console cannot reach binference. Check that it runs with `binference status`, then try again.",
   "signIn.noCrypto": "This browser cannot keep a device key. Open the console in a current browser.",
   "signIn.miniFailed": "The Mini App could not sign in. Open the console again from the bot's /console button.",
+  "signIn.miniExpired": "This Mini App was opened more than 5 minutes ago. Open the console again from the bot's /console button.",
   "signIn.retry": "Try again",
   "device.label": "Browser on {platform}",
   "engine.state": "{state, select, ready {Ready} locked {Locked: run `binference unlock` on the machine} starting {Starting} other {Unknown}}",
