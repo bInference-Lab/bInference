@@ -87,6 +87,16 @@ describe("readModelResponse", () => {
       ],
     ],
     [
+      "two calls with one id",
+      [
+        { type: "toolCallStart", index: 0, id: "a", name: "quote" },
+        { type: "toolCallEnd", index: 0 },
+        { type: "toolCallStart", index: 1, id: "a", name: "chart" },
+        { type: "toolCallEnd", index: 1 },
+        { type: "done", stop: "tool_calls", usage },
+      ],
+    ],
+    [
       "a finished response with a call still open",
       [
         { type: "toolCallStart", index: 0, id: "a", name: "quote" },

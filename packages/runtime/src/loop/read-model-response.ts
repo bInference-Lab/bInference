@@ -43,6 +43,10 @@ function startCall(draft: ResponseDraft, event: Extract<ModelEvent, { type: "too
   if (draft.calls.has(event.index)) {
     return `call ${String(event.index)} started twice`;
   }
+  // Each result names its call by id: two calls of one id would leave one without its result.
+  if ([...draft.calls.values()].some((call) => call.id === event.id)) {
+    return "two calls share an id";
+  }
   draft.calls.set(event.index, { id: event.id, name: event.name, argumentParts: [], ended: false });
   return undefined;
 }
