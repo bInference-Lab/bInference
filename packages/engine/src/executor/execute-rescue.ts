@@ -79,7 +79,8 @@ async function watchStored(
 }
 
 // One try: prepared on the latest state, which simulates it again, signed, stored, then sent and
-// watched. `undefined` when it was never signed.
+// watched. `undefined` when it was never signed, as when its fee per gas is above the network fee
+// cap (decision 0102).
 async function sendFresh(
   run: ExecutionRun,
   slot: WalletSlot,
@@ -90,7 +91,7 @@ async function sendFresh(
     return undefined;
   }
   const ready = await prepareStep(run, slot, { index: step.index, draft });
-  if (!ready.ok) {
+  if (!ready.ok || ready.value.prepared.isAboveFeeCap) {
     return undefined;
   }
   const { record, terms } = step;

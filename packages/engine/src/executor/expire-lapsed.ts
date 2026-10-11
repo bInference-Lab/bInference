@@ -1,3 +1,4 @@
+import type { Id } from "@binference/core";
 import { isFillAuthorization } from "../intents/authorization.js";
 import { cardExpiresAt } from "../intents/card-rules.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
@@ -23,15 +24,23 @@ function expiryOf(snapshot: IntentSnapshot): number | undefined {
     : cardExpiresAt(record.kind, confirmed.atMs, stored.cards);
 }
 
-// Expires one intent whose authorization ran out, and answers whether it still waits.
-async function stillWaits(
+/**
+ * Moves one confirmed live intent whose confirmation or auto grant ran out to `expired`, and tells
+ * the owner with `notice.confirmationLapsed` (decision 0120); nothing is signed. Answers whether
+ * it still waits for a queue: `false` once it expired, or when it is no longer `confirmed`.
+ */
+export async function expireIfLapsed(
   parts: ExecutorParts,
-  record: IntentRecord,
+  intent: Id<"int">,
   signal: AbortSignal,
 ): Promise<boolean> {
-  const snapshot = await parts.stored.snapshot(record.id, { signal });
-  const expiresAtMs = snapshot === undefined ? undefined : expiryOf(snapshot);
-  if (snapshot === undefined || expiresAtMs === undefined || parts.clock.now() < expiresAtMs) {
+  const snapshot = await parts.stored.snapshot(intent, { signal });
+  if (snapshot?.record.state !== "confirmed") {
+    return false;
+  }
+  const { record } = snapshot;
+  const expiresAtMs = expiryOf(snapshot);
+  if (expiresAtMs === undefined || parts.clock.now() < expiresAtMs) {
     return true;
   }
   const expired = await moveIntent({ parts, signal }, snapshot, {
@@ -60,7 +69,7 @@ export async function expireLapsed(
   const waits = await confirmed.reduce<Promise<readonly IntentRecord[]>>(
     async (earlier, record) => {
       const kept = await earlier;
-      return (await stillWaits(parts, record, signal)) ? [...kept, record] : kept;
+      return (await expireIfLapsed(parts, record.id, signal)) ? [...kept, record] : kept;
     },
     Promise.resolve([]),
   );

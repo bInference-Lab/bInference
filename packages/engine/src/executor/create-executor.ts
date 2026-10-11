@@ -10,8 +10,8 @@ import { createPositions } from "../positions/create-positions.js";
 import { executeInSlot } from "./execute-in-slot.js";
 import { executeRescue, recoverRescue, rescueGroupsOf } from "./execute-rescue.js";
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
-import type { ExecutionRun, ExecutorParts } from "./executor-run.js";
-import { expireLapsed } from "./expire-lapsed.js";
+import { type ExecutionRun, type ExecutorParts, nextBlock } from "./executor-run.js";
+import { expireIfLapsed, expireLapsed } from "./expire-lapsed.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
 import {
   liveIntentsIn,
@@ -128,22 +128,31 @@ async function workOf(
   return isOwn ? takenWork({ intent, plan, account: account.value }) : "other_sender";
 }
 
-// A confirmed intent on its wallet's queue, then off it until it reconciles.
+// A confirmed intent on its wallet's queue, then off it until it reconciles. One whose fee per gas
+// is above the network fee cap leaves the queue and tries again a block later, until the fee falls
+// or its authorization runs out and it expires (decision 0120).
+async function runTaken(run: ExecutionRun, taken: Taken): Promise<void> {
+  // A work still waiting for its wallet when the engine stops leaves the queue unrun.
+  const outcome = await run.parts.queue.run(
+    taken.account,
+    async (slot) => executeInSlot(run, slot, taken.intent),
+    { signal: run.stopping },
+  );
+  if (outcome === undefined) {
+    return;
+  }
+  if (outcome !== "over_fee_cap") {
+    await settleIncluded(run, outcome);
+    return;
+  }
+  if (await expireIfLapsed(run.parts, taken.intent, run.signal)) {
+    await nextBlock(run);
+    await runTaken(run, taken);
+  }
+}
+
 function takenWork(taken: Taken): Work {
-  return {
-    ...taken,
-    async go(run) {
-      // A work still waiting for its wallet when the engine stops leaves the queue unrun.
-      const included = await run.parts.queue.run(
-        taken.account,
-        async (slot) => executeInSlot(run, slot, taken.intent),
-        { signal: run.stopping },
-      );
-      if (included !== undefined) {
-        await settleIncluded(run, included);
-      }
-    },
-  };
+  return { ...taken, go: async (run) => runTaken(run, taken) };
 }
 
 // A rescue runs on from where it stands; any other intent is recovered without a signature.

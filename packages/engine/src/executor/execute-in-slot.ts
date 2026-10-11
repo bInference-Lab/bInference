@@ -21,9 +21,15 @@ export interface IncludedSteps {
 interface Taken {
   readonly snapshot: IntentSnapshot;
   readonly terms: SigningTerms;
-  readonly isAuto: boolean;
   readonly first: PreparedStep;
 }
+
+/**
+ * What became of a confirmed intent on its wallet's slot: its steps all in blocks, a fee per gas
+ * above the network fee cap that may fall before its authorization runs out, or nothing more to do
+ * here (`undefined`).
+ */
+export type SlotOutcome = IncludedSteps | "over_fee_cap" | undefined;
 
 function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefined {
   run.parts.log.warn("executor.not_taken", { intentId: intent, errorCode: problem });
@@ -31,12 +37,13 @@ function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefi
 }
 
 // Everything that can refuse runs before the move to `executing`: an intent that stays
-// `confirmed` signed nothing, and its owner can still cancel it.
+// `confirmed` signed nothing, and its owner can still cancel it. No card shows a fee per gas, so
+// no step pays one above the network fee cap, tapped or not (decision 0102).
 async function takeIn(
   run: ExecutionRun,
   slot: WalletSlot,
   intent: Id<"int">,
-): Promise<Taken | undefined> {
+): Promise<Taken | "over_fee_cap" | undefined> {
   const { parts, plan, signal } = run;
   const snapshot = await parts.stored.snapshot(intent, { signal });
   if (snapshot?.record.state !== "confirmed") {
@@ -47,11 +54,12 @@ async function takeIn(
   if (!first.ok) {
     return notTaken(run, intent, first.error);
   }
-  if (check.isAuto && first.value.prepared.isAboveFeeCap) {
-    return notTaken(run, intent, "over_fee_cap");
-  }
   if (check.terms === undefined) {
     return notTaken(run, intent, "no_authorization");
+  }
+  if (first.value.prepared.isAboveFeeCap) {
+    notTaken(run, intent, "over_fee_cap");
+    return "over_fee_cap";
   }
   // An intent the engine's stop meets here stays `confirmed`, with nothing signed.
   if (run.stopping.aborted) {
@@ -62,7 +70,7 @@ async function takeIn(
     return undefined;
   }
   parts.log.info("executor.took", { intentId: intent });
-  return { snapshot: executing, terms: check.terms, isAuto: check.isAuto, first: first.value };
+  return { snapshot: executing, terms: check.terms, first: first.value };
 }
 
 // A step no stuck rule can move leaves the intent `executing`, handed over at this seam.
@@ -133,7 +141,7 @@ async function runFrom(
     return included === undefined ? undefined : { included, steps: done };
   }
   const ready = await readyStep(run, slot, { taken, index, draft });
-  if (!ready.ok || (taken.isAuto && ready.value.prepared.isAboveFeeCap)) {
+  if (!ready.ok || ready.value.prepared.isAboveFeeCap) {
     return endStep(run, taken, { index, problem: ready.ok ? "over_fee_cap" : ready.error });
   }
   const stored = await signAndStore(run, slot, {
@@ -160,8 +168,10 @@ async function runFrom(
  * The work of one confirmed intent on its wallet's queue (ARCHITECTURE.md section 7, step 8): the
  * `queue_took` check, then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
- * so the slot frees the wallet before finality, and `undefined` when the run stopped. A step that
- * cannot be signed or stored ends the intent (decision 0109). A stuck step is sent again, sped up
+ * so the slot frees the wallet before finality, `over_fee_cap` when the first step's fee per gas is
+ * above the network fee cap, which leaves the intent `confirmed`, and `undefined` when the run
+ * stopped. A step that cannot be signed or stored, or whose fee per gas is above the cap, ends the
+ * intent (decision 0109). A stuck step is sent again, sped up
  * or cancelled at its nonce (spec 6, section 6); a landed cancel ends the intent `failed_onchain`
  * with `stuck_cancelled`, and a step no rule can move leaves it `executing`. Once the engine
  * begins to stop, a step being signed or sent goes on to its first send, and no other step is
@@ -171,7 +181,9 @@ export async function executeInSlot(
   run: ExecutionRun,
   slot: WalletSlot,
   intent: Id<"int">,
-): Promise<IncludedSteps | undefined> {
+): Promise<SlotOutcome> {
   const taken = await takeIn(run, slot, intent);
-  return taken === undefined ? undefined : runFrom(run, slot, { taken, index: 0, done: [] });
+  return taken === undefined || taken === "over_fee_cap"
+    ? taken
+    : runFrom(run, slot, { taken, index: 0, done: [] });
 }

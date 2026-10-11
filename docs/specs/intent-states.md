@@ -166,7 +166,12 @@ and `step_unsent` (a step never signed after an earlier one landed,
 - **The network fee cap** ([decision 0102](../DECISIONS.md#d0102)) is the most fee per gas a
   transaction pays without a tap: `chains.maxFeePerGasGwei` (spec 2), 1 gwei on BSC by default. The
   fee per gas is read when the steps are built. Above the cap, the intent is not refused: it opens a
-  card that shows the fee, in either mode.
+  card, in either mode. No card shows a fee per gas yet, so no transaction is signed above the cap,
+  tapped or not ([decision 0143](../DECISIONS.md#d0143)): the fee is read again when the queue takes
+  the intent, at each later step and at each speed-up or cancel. Above the cap at the take, the
+  intent stays `confirmed` and the queue tries again a block later, until the fee falls or its
+  authorization runs out and it expires (section 7, item 5); a later step above it ends the intent
+  as a step never signed (section 3).
 - **Rescue** ([decision 0044](../DECISIONS.md#d0044)): one intent, one card, one step per token per
   agent wallet, sent to the rescue address. It works while frozen and at every send level: a freeze
   does not cancel a pending rescue, since it pays only the owner's own rescue address
@@ -248,7 +253,7 @@ Stuck steps ([ARCHITECTURE.md section 7](../ARCHITECTURE.md#section-7)):
 
 "Simulate again" means preparing the step's draft again on the latest state, whose gas estimate
 runs the call there. No speed-up or cancel is signed with a fee per gas above the network fee cap
-([decision 0102](../DECISIONS.md#d0102)); the step is handed over instead
+([decision 0143](../DECISIONS.md#d0143)); the step is handed over instead
 ([decision 0115](../DECISIONS.md#d0115)). Whichever transaction at a step's nonce lands is the
 step's; the store supersedes the others in the same write.
 
@@ -281,7 +286,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 5. A `confirmed` live intent whose confirmation or auto grant ran out while the engine was stopped
    or locked moves to `expired`, with `notice.confirmationLapsed`; nothing is signed. One that
    still holds waits for the queue until the engine holds its keys
-   ([decision 0120](../DECISIONS.md#d0120)).
+   ([decision 0120](../DECISIONS.md#d0120)). A running engine does the same for an intent its
+   queue left `confirmed` while the fee per gas stayed above the cap
+   ([decision 0143](../DECISIONS.md#d0143)).
 
 <a id="section-8"></a>
 

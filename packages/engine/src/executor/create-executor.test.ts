@@ -244,6 +244,28 @@ describe("the executor's refusals", () => {
     expect(bench.signed).toStrictEqual([]);
   });
 
+  it("signs a tapped intent only once the fee per gas falls to the cap", async () => {
+    const { bench, intent } = await heldTap();
+    bench.network.setFeePerGas(2_000_000_000n);
+    await bench.release();
+    await driveUntil(bench, intent, { states: [], blocks: 3 });
+    expect(await stateOf(bench, intent)).toBe("confirmed");
+    expect(bench.signed).toStrictEqual([]);
+    bench.network.setFeePerGas(50_000_000n);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+  });
+
+  it("expires a tapped intent whose fee per gas stays above the cap", async () => {
+    const { bench, intent } = await heldTap();
+    bench.network.setFeePerGas(2_000_000_000n);
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: ["expired"], blocks: 80 })).resolves.toBe(
+      "expired",
+    );
+    expect(eventsOf(bench)).toContain("executor.lapsed:");
+    expect(bench.signed).toStrictEqual([]);
+  });
+
   it("cancels an intent whose first step custody refuses, with nothing stored or sent", async () => {
     const { bench, intent } = await heldTap();
     bench.test.custody.removeFrom(testWallet);

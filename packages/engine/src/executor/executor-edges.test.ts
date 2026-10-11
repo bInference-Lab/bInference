@@ -162,6 +162,17 @@ describe("the executor on a later step", () => {
     expect((await transactionsOf(bench)).map(({ step }) => step)).toStrictEqual([0]);
   });
 
+  it("stops a tapped intent's later step once the fee per gas passes the cap", async () => {
+    const bench = await startExecutorBench();
+    const intent = await tapped(bench, tokenSale);
+    await flush();
+    bench.network.setFeePerGas(2_000_000_000n);
+    await driveUntil(bench, intent, { states: [], blocks: 3 });
+    expect(eventsOf(bench)).toContain("executor.step_stopped:over_fee_cap");
+    expect(await reasonOf(bench, intent)).toBe("step_unsent");
+    expect(bench.signed).toHaveLength(1);
+  });
+
   it("stops an auto intent's later step once the fee per gas passes the cap", async () => {
     const bench = await startExecutorBench({ agent: { approvalMode: "auto" } });
     const handlers = bench.test.engine.handlers;

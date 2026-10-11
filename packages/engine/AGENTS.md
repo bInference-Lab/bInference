@@ -221,9 +221,10 @@ Rules for this package:
   change to the rule changes its property test and the `TransactionStore` contract suite.
 - The executor (`src/executor/`, exported as `@binference/engine/executor`) runs a confirmed live
   intent on its wallet's queue and moves it only through the stored intents. Everything that can
-  refuse before a signature (the `queue_took` check, a draft that would fail, an auto intent's fee
-  above the cap) runs before the move to `executing`, so such an intent stays `confirmed` with
-  nothing signed. Each step's raw bytes are stored before any send; a send no relay accepts goes
+  refuse before a signature (the `queue_took` check, a draft that would fail, a fee per gas above
+  the network fee cap) runs before the move to `executing`, so such an intent stays `confirmed` with
+  nothing signed; one above the cap tries again each block until its authorization runs out and it
+  expires (decision 0143). No step or replacement is signed above the cap. Each step's raw bytes are stored before any send; a send no relay accepts goes
   again with the same stored bytes. A stuck step follows spec 6, section 6 in `stuck-rules.ts`, only
   on its wallet's slot: the same bytes again while it still runs, a speed-up after
   `replaceAfterBlocks`, a cancel once it would fail, each at its nonce for at least
