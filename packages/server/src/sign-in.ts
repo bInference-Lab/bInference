@@ -72,6 +72,8 @@ interface SignInRequest {
   readonly transport: Transport;
   /** The `Origin` the connection arrived with; a device signs it. */
   readonly origin?: string;
+  /** The connection's id, which a device signs with its challenge. */
+  readonly connection: string;
 }
 
 /** How one sign-in runs: its signal, and where it names the credential it checks. */
@@ -247,6 +249,7 @@ interface DeviceStart {
   readonly access: AccessStore;
   readonly device: DeviceRecord;
   readonly origin: string;
+  readonly connection: string;
 }
 
 function challengeDevice(start: DeviceStart, options: SignInOptions): Challenge {
@@ -254,7 +257,8 @@ function challengeDevice(start: DeviceStart, options: SignInOptions): Challenge 
   return {
     nonce,
     async prove(signature, signal) {
-      const proof = { device: start.device, nonce, origin: start.origin, signature };
+      const { device, origin, connection } = start;
+      const proof = { device, connection, nonce, origin, signature };
       if (!isDeviceProofValid(proof)) {
         return err("auth.invalid");
       }
@@ -270,6 +274,7 @@ async function signInWithDevice(
   id: ProtocolId<"consoleDevice">,
   context: {
     readonly origin: string;
+    readonly connection: string;
     readonly options: SignInOptions;
     readonly call: SignInCall;
   },
@@ -282,14 +287,16 @@ async function signInWithDevice(
   if (device.revokedAtMs !== undefined) {
     return err("auth.revoked");
   }
-  const challenge = challengeDevice({ access, device, origin: context.origin }, context.options);
+  const { origin, connection } = context;
+  const challenge = challengeDevice({ access, device, origin, connection }, context.options);
   return ok({ kind: "challenge", challenge });
 }
 
 /**
  * Creates the sign-in check. A client token signs in over IPC only, by the SHA-256 of its secret,
  * with the scopes stored beside it; over WS it fails with `auth.local_only`. A console device signs
- * in over WS only, by signing a fresh nonce and the page's origin with its paired key. A Telegram
+ * in over WS only, by signing a fresh nonce, its connection, its id and the page's origin with its
+ * paired key. A Telegram
  * Mini App launch signs in over WS only, with the Mini App's scopes, when Telegram signed its
  * `initData` with the owner's bot token, its `auth_date` lies within 5 minutes of now, the owner's
  * numeric Telegram id opened it, its hash has not signed in within 24 hours, as `engine.sqlite`
@@ -308,7 +315,7 @@ export function createSignIn(options: SignInOptions): SignIn {
       if (access === undefined) {
         return err("auth.required");
       }
-      const { credential, transport, origin } = request;
+      const { credential, transport, origin, connection } = request;
       if ("token" in credential) {
         return transport === "ipc"
           ? signInWithToken(access, credential.token, { clock: options.clock, call })
@@ -320,7 +327,7 @@ export function createSignIn(options: SignInOptions): SignIn {
       if ("device" in credential) {
         return origin === undefined
           ? err("auth.invalid")
-          : signInWithDevice(access, credential.device, { origin, options, call });
+          : signInWithDevice(access, credential.device, { origin, connection, options, call });
       }
       const miniApp = options.auth?.miniApp;
       return miniApp === undefined

@@ -1,7 +1,11 @@
 import { Buffer } from "node:buffer";
 import { generateKeyPairSync, type KeyObject, sign } from "node:crypto";
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
-import { createProtocolClient, type ProtocolClient } from "@binference/client";
+import {
+  createProtocolClient,
+  type DeviceChallenge,
+  type ProtocolClient,
+} from "@binference/client";
 import { type Clock, createIdSource, type Id, idSchema, type Random } from "@binference/core";
 import {
   createManualClock,
@@ -215,9 +219,13 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
   };
 }
 
-/** A device's signature over a challenge's nonce and an origin, as a browser makes it. */
-export function proofSignature(device: TestDevice, input: DeviceProofInput): string {
-  return sign(null, Buffer.from(deviceProofText(input)), device.privateKey).toString("base64url");
+/** A device's signature over a challenge and an origin, as a browser makes it. */
+export function proofSignature(
+  device: TestDevice,
+  input: Omit<DeviceProofInput, "device">,
+): string {
+  const text = deviceProofText({ ...input, device: device.id });
+  return sign(null, Buffer.from(text), device.privateKey).toString("base64url");
 }
 
 /** How a test client reaches the server. */
@@ -242,7 +250,10 @@ export function connectClient(test: TestServer, route: ClientRoute): ProtocolCli
     credential: route.credential,
     ...(device === undefined || origin === undefined
       ? {}
-      : { proveDevice: async (nonce: string) => proofSignature(device, { nonce, origin }) }),
+      : {
+          proveDevice: async (challenge: DeviceChallenge) =>
+            proofSignature(device, { ...challenge, origin }),
+        }),
     clock: test.clock,
     random: createSeededRandom(11),
     logger: createMemoryLogger({ subsystem: "client" }),

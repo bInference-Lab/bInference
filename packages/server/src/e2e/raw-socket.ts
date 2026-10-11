@@ -87,13 +87,16 @@ export function openFrame(auth: Credential): OpenFrame {
   return { t: "open", v: 1, client: { kind: "cli", version: "test" }, auth };
 }
 
-/** The nonce of a `challenge` frame; throws for any other frame. */
-export function challengeNonce(frame: EngineFrame): string {
-  if (frame.t !== "challenge") {
+/** The nonce and connection of a `challenge` frame; throws for any other frame. */
+export function challengeOf(frame: EngineFrame): {
+  readonly nonce: string;
+  readonly connection: string;
+} {
+  if (frame.t !== "challenge" || frame.connection === undefined) {
     throw new BinferenceError({
       code: "test.no_challenge",
-      message: `Got ${frame.t}, not a challenge.`,
+      message: `Got ${frame.t}, not a challenge that names its connection.`,
     });
   }
-  return frame.nonce;
+  return { nonce: frame.nonce, connection: frame.connection };
 }

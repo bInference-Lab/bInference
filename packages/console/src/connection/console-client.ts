@@ -1,4 +1,8 @@
-import { createProtocolClient, type ProtocolClient } from "@binference/client";
+import {
+  createProtocolClient,
+  type DeviceChallenge,
+  type ProtocolClient,
+} from "@binference/client";
 import { deviceProofText, operations, protocolIdSchema } from "@binference/protocol";
 import type { ConsoleBrowser } from "../app/console-browser";
 import { signWith } from "../device/device-key";
@@ -26,7 +30,8 @@ function credentialOf(credential: ConsoleCredential) {
 
 /**
  * The console's protocol client over the page's own WebSocket at `/ws`. A device answers each
- * challenge by signing the nonce and the page's origin with its key, which never leaves WebCrypto.
+ * challenge by signing the connection, its id, the nonce and the page's origin with its key, which
+ * never leaves WebCrypto.
  */
 export function createConsoleClient(
   browser: Pick<ConsoleBrowser, "origin" | "host" | "isSecure" | "openSocket" | "subtle">,
@@ -37,8 +42,17 @@ export function createConsoleClient(
   const prover =
     credential.kind === "device" && subtle !== undefined
       ? {
-          proveDevice: async (nonce: string) =>
-            signWith(subtle, credential.device, deviceProofText({ nonce, origin: browser.origin })),
+          proveDevice: async ({ nonce, connection }: DeviceChallenge) =>
+            signWith(
+              subtle,
+              credential.device,
+              deviceProofText({
+                connection,
+                device: credential.device.deviceId,
+                nonce,
+                origin: browser.origin,
+              }),
+            ),
         }
       : {};
   return createProtocolClient({

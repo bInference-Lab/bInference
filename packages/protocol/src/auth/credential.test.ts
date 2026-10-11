@@ -41,8 +41,11 @@ describe("credentialSchema", () => {
 });
 
 describe("deviceProofText", () => {
-  it("joins the label, the nonce and the origin, one per line", () => {
-    const text = deviceProofText({ nonce: "c2VjcmV0", origin: "http://127.0.0.1:7456" });
-    expect(text).toBe("binference-device-v1\nc2VjcmV0\nhttp://127.0.0.1:7456");
+  it("joins the label, the connection, the device, the nonce and the origin, one per line", () => {
+    const connection = "con_0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
+    const input = { connection, device, nonce: "c2VjcmV0", origin: "http://127.0.0.1:7456" };
+    expect(deviceProofText(input)).toBe(
+      `binference-device-v2\n${connection}\n${device}\nc2VjcmV0\nhttp://127.0.0.1:7456`,
+    );
   });
 });

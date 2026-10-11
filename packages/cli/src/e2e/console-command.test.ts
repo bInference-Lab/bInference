@@ -132,8 +132,9 @@ function browserClient(at: Served, pairing: Pairing): ProtocolClient {
     openSocket: () => new WebSocket(`ws://${link.host}/ws`, { origin }),
     client: { kind: "console", version: "test" },
     credential: { device: protocolIdSchema("consoleDevice").parse(deviceId) },
-    proveDevice: async (nonce) => {
-      const text = new TextEncoder().encode(deviceProofText({ nonce, origin }));
+    proveDevice: async (challenge) => {
+      const proof = deviceProofText({ ...challenge, device: deviceId, origin });
+      const text = new TextEncoder().encode(proof);
       const signature = await crypto.subtle.sign({ name: "Ed25519" }, key.privateKey, text);
       return Buffer.from(signature).toString("base64url");
     },

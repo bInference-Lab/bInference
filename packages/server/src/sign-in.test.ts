@@ -9,6 +9,7 @@ const token = `bnt_${"t".repeat(43)}`;
 const tokenId = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const deviceId = idSchema("dev").parse("dev_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const live = { signal: new AbortController().signal };
+const connection = "con_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const call = { signal: live.signal, claim: () => undefined };
 
 async function accessWithToken(
@@ -37,7 +38,7 @@ describe("createSignIn", () => {
   it("signs a token in over IPC with its scopes and marks its use", async () => {
     const access = await accessWithToken();
     const signIn = createSignIn({ auth: { access }, clock, random });
-    const step = await signIn.start({ credential: { token }, transport: "ipc" }, call);
+    const step = await signIn.start({ credential: { token }, transport: "ipc", connection }, call);
     expect(step).toStrictEqual({
       ok: true,
       value: { kind: "signed_in", identity: { credential: tokenId, scopes: ["read", "propose"] } },
@@ -49,18 +50,22 @@ describe("createSignIn", () => {
   it.each([
     [
       "a token over WS",
-      { credential: { token }, transport: "ws", origin: "http://x" },
+      { credential: { token }, transport: "ws", connection, origin: "http://x" },
       "auth.local_only",
     ],
-    ["a device over IPC", { credential: { device: deviceId }, transport: "ipc" }, "auth.invalid"],
+    [
+      "a device over IPC",
+      { credential: { device: deviceId }, transport: "ipc", connection },
+      "auth.invalid",
+    ],
     [
       "a device without an origin",
-      { credential: { device: deviceId }, transport: "ws" },
+      { credential: { device: deviceId }, transport: "ws", connection },
       "auth.invalid",
     ],
     [
       "an unknown device",
-      { credential: { device: deviceId }, transport: "ws", origin: "http://x" },
+      { credential: { device: deviceId }, transport: "ws", connection, origin: "http://x" },
       "auth.invalid",
     ],
   ] as const)("refuses %s", async (_name, request, code) => {
@@ -81,7 +86,7 @@ describe("createSignIn", () => {
       clock,
       random,
     });
-    const request = { credential: { token }, transport: "ipc" } as const;
+    const request = { credential: { token }, transport: "ipc", connection } as const;
     await expect(before.start(request, call)).resolves.toMatchObject({
       ok: true,
       value: { identity: { credential: tokenId, expiresAtMs: 501 } },
@@ -109,13 +114,13 @@ describe("createSignIn", () => {
       live,
     );
     const signIn = createSignIn({ auth: { access }, clock, random });
-    const step = await signIn.start({ credential: { token }, transport: "ipc" }, call);
+    const step = await signIn.start({ credential: { token }, transport: "ipc", connection }, call);
     expect(step).toMatchObject({ ok: true, value: { identity: { scopes: ["read", "propose"] } } });
   });
 
   it("refuses every sign-in when the server holds no credentials", async () => {
     const signIn = createSignIn({ clock, random });
-    const step = await signIn.start({ credential: { token }, transport: "ipc" }, call);
+    const step = await signIn.start({ credential: { token }, transport: "ipc", connection }, call);
     expect(step).toStrictEqual({ ok: false, error: "auth.required" });
   });
 
@@ -130,6 +135,7 @@ describe("createSignIn", () => {
     const request = {
       credential: { device: deviceId },
       transport: "ws",
+      connection,
       origin: "http://x",
     } as const;
     await expect(signIn.start(request, call)).resolves.toStrictEqual({

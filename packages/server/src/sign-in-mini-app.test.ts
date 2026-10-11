@@ -8,6 +8,7 @@ import { createSignIn, type MiniAppAuth } from "./sign-in.js";
 import { telegramLaunchHash } from "./telegram-launch.js";
 
 const live = { signal: new AbortController().signal };
+const connection = "con_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const call = { signal: live.signal, claim: () => undefined };
 const botToken = createSecret("7012345678:AAE_fakeTokenForTestsOnly_0123456789ab");
 const ownerId = 279_058_397;
@@ -31,7 +32,7 @@ function launchOf(launch: {
 
 function miniRequest(initData: string, ticket?: string, transport: "ws" | "ipc" = "ws") {
   const telegram = ticket === undefined ? { initData } : { initData, ticket };
-  return { credential: { telegram }, transport, origin: "https://x.ts.net" } as const;
+  return { credential: { telegram }, transport, origin: "https://x.ts.net", connection } as const;
 }
 
 interface MiniSetUp {

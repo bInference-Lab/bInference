@@ -1,6 +1,6 @@
 import type { AccessStore } from "@binference/engine";
 import { afterEach, describe, expect, it } from "vitest";
-import { challengeNonce, openFrame, openRawSocket, type RawSocket } from "./raw-socket.js";
+import { challengeOf, openFrame, openRawSocket, type RawSocket } from "./raw-socket.js";
 import { proofSignature, startTestServer, type TestServer } from "./test-server.js";
 
 const live = { signal: AbortSignal.timeout(5_000) };
@@ -55,10 +55,10 @@ function createGate(holds: readonly Hold[]): Gate {
 async function proveDevice(server: TestServer): Promise<RawSocket> {
   const raw = await openRawSocket(server.wsUrl, { origin: server.origin });
   raw.send(openFrame({ device: server.device.id }));
-  const nonce = challengeNonce(await raw.next());
+  const challenge = challengeOf(await raw.next());
   raw.send({
     t: "prove",
-    signature: proofSignature(server.device, { nonce, origin: server.origin }),
+    signature: proofSignature(server.device, { ...challenge, origin: server.origin }),
   });
   return raw;
 }
@@ -85,7 +85,7 @@ describe("a revoke that lands while connections sign in", () => {
     const heldAnswer = await gate.next();
     const proving = await openRawSocket(server.wsUrl, { origin: server.origin });
     proving.send(openFrame({ device: server.device.id }));
-    const nonce = challengeNonce(await proving.next());
+    const challenge = challengeOf(await proving.next());
     const opening = await openRawSocket(server.wsUrl, { origin: server.origin });
     await server.access.revokeDevice({ id: server.device.id, atMs: server.clock.now() }, live);
     server.server.endSessions(server.device.id, "auth.revoked");
@@ -93,7 +93,7 @@ describe("a revoke that lands while connections sign in", () => {
     heldAnswer.release();
     proving.send({
       t: "prove",
-      signature: proofSignature(server.device, { nonce, origin: server.origin }),
+      signature: proofSignature(server.device, { ...challenge, origin: server.origin }),
     });
     opening.send(openFrame({ device: server.device.id }));
     const frames = await Promise.all(

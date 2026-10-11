@@ -114,7 +114,7 @@ Every frame is a JSON object whose `t` field names its type.
 | `t`         | Direction       | Shape                                                                                             |
 | ----------- | --------------- | ------------------------------------------------------------------------------------------------- |
 | `open`      | client → engine | `{ t, v, client: { kind, version, locale? }, auth, resume? }`                                     |
-| `challenge` | engine → client | `{ t, nonce }` (device auth only)                                                                 |
+| `challenge` | engine → client | `{ t, nonce, connection }` (device auth only)                                                     |
 | `prove`     | client → engine | `{ t, signature }` (device auth only)                                                             |
 | `ready`     | engine → client | `{ t, v, connection, scopes, engine: { version, protocol, state }, owner: { locale, timezone } }` |
 | `call`      | client → engine | `{ t, id, op, args, key? }`                                                                       |
@@ -186,8 +186,9 @@ A Telegram tap is handled inside the engine and never travels over this protocol
      unknown or used code with 401 `auth.invalid`, and an expired one with 401 `auth.expired`; the
      body of a refusal is `{ error: { code, message } }`.
   3. Each connection sends `open` with `auth: { device: deviceId }`. The engine answers `challenge`
-     with 32 random bytes; the browser signs `"binference-device-v1\n" + nonce + "\n" + origin` and
-     sends `prove`.
+     with 32 random bytes and the connection's id; the browser signs
+     `"binference-device-v2\n" + connection + "\n" + deviceId + "\n" + nonce + "\n" + origin` and
+     sends `prove`, so a proof holds for one connection of one device on one origin.
 - **Telegram Mini App (WS only).** `open.auth` is `{ telegram: { initData, ticket } }`. The engine
   checks Telegram's signature with the owner's bot token, requires `auth_date` within 5 minutes and
   the owner's numeric user id, and refuses an `initData` hash it has seen in the last 24 hours,

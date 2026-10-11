@@ -6,7 +6,7 @@ import { deviceProofText, protocolIdSchema } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { maxPairBodyBytes } from "../pair-route.js";
 import { type LocalAnswer, requestLocal } from "./local-http.js";
-import { challengeNonce, openFrame, openRawSocket, type RawSocket } from "./raw-socket.js";
+import { challengeOf, openFrame, openRawSocket, type RawSocket } from "./raw-socket.js";
 import { startTestServer, type TestServer } from "./test-server.js";
 
 const live = { signal: AbortSignal.timeout(5_000) };
@@ -51,8 +51,8 @@ async function signIn(server: TestServer, device: string, browser: Browser): Pro
   const { origin } = server;
   const raw = await openRawSocket(server.wsUrl, { origin });
   raw.send(openFrame({ device: protocolIdSchema("consoleDevice").parse(device) }));
-  const nonce = challengeNonce(await raw.next());
-  const text = Buffer.from(deviceProofText({ nonce, origin }));
+  const challenge = challengeOf(await raw.next());
+  const text = Buffer.from(deviceProofText({ ...challenge, device, origin }));
   raw.send({ t: "prove", signature: sign(null, text, browser.privateKey).toString("base64url") });
   return raw;
 }

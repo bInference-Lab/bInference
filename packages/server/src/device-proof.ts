@@ -6,7 +6,9 @@ import { deviceProofText } from "@binference/protocol";
 
 /** A console device's answer to a challenge, with what the server saw. */
 export interface DeviceProof {
-  readonly device: Pick<DeviceRecord, "alg" | "publicKey">;
+  readonly device: Pick<DeviceRecord, "id" | "alg" | "publicKey">;
+  /** The connection the `challenge` named. */
+  readonly connection: string;
   /** The nonce of the server's `challenge`. */
   readonly nonce: string;
   /** The `Origin` the connection arrived with. */
@@ -20,7 +22,9 @@ function verifies(proof: DeviceProof): boolean {
   if (key === undefined) {
     return false;
   }
-  const text = Buffer.from(deviceProofText({ nonce: proof.nonce, origin: proof.origin }), "utf8");
+  const { connection, nonce, origin } = proof;
+  const signed = deviceProofText({ connection, device: proof.device.id, nonce, origin });
+  const text = Buffer.from(signed, "utf8");
   const signature = Buffer.from(proof.signature, "base64url");
   return proof.device.alg === "ed25519"
     ? verify(null, text, key, signature)
@@ -28,7 +32,8 @@ function verifies(proof: DeviceProof): boolean {
 }
 
 /**
- * Whether a device signed the challenge text with the key it paired. The stored public key is its
+ * Whether a device signed the challenge text, for this connection, this device and the origin the
+ * connection came from, with the key it paired. The stored public key is its
  * SPKI DER in base64url, as WebCrypto exports it. An Ed25519 key verifies raw; a P-256 key verifies
  * SHA-256 with the 64-byte signature WebCrypto writes. A key of another kind, or one that does not
  * parse, never verifies.

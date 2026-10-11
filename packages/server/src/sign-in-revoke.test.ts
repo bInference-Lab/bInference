@@ -13,6 +13,7 @@ const tokenId = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000001"
 const deviceId = idSchema("dev").parse("dev_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const origin = "http://127.0.0.1:7456";
 const live = { signal: new AbortController().signal };
+const connection = "con_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 
 function challengeOf(step: Awaited<ReturnType<SignIn["start"]>>): Challenge {
   if (!step.ok || step.value.kind !== "challenge") {
@@ -51,7 +52,7 @@ describe("createSignIn when a revoke lands during the sign-in", () => {
     const { claimed, claim } = heard();
     const signIn = createSignIn({ auth: { access }, clock, random });
     const step = await signIn.start(
-      { credential: { token }, transport: "ipc" },
+      { credential: { token }, transport: "ipc", connection },
       { signal: live.signal, claim },
     );
     expect([step, claimed]).toStrictEqual([{ ok: false, error: "auth.revoked" }, [tokenId]]);
@@ -72,9 +73,15 @@ describe("createSignIn when a revoke lands during the sign-in", () => {
     };
     const { claimed, claim } = heard();
     const signIn = createSignIn({ auth: { access }, clock, random });
-    const request = { credential: { device: deviceId }, transport: "ws", origin } as const;
+    const request = {
+      credential: { device: deviceId },
+      transport: "ws",
+      connection,
+      origin,
+    } as const;
     const challenge = challengeOf(await signIn.start(request, { signal: live.signal, claim }));
-    const text = Buffer.from(deviceProofText({ nonce: challenge.nonce, origin }));
+    const proof = { connection, device: deviceId, nonce: challenge.nonce, origin };
+    const text = Buffer.from(deviceProofText(proof));
     const signature = sign(null, text, privateKey).toString("base64url");
     const proved = await challenge.prove(signature, live.signal);
     expect([proved, claimed]).toStrictEqual([{ ok: false, error: "auth.revoked" }, [deviceId]]);

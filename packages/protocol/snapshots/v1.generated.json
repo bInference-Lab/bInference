@@ -119,6 +119,10 @@
         "nonce": {
           "type": "string",
           "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "connection": {
+          "type": "string",
+          "pattern": "^con_"
         }
       },
       "required": [

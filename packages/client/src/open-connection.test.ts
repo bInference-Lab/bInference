@@ -1,5 +1,6 @@
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import {
+  challengeFrameSchema,
   credentialSchema,
   type EngineFrame,
   type OpenFrame,
@@ -25,7 +26,11 @@ const ready = readyFrameSchema.parse({
   engine: { version: "2026.10.0", protocol: protocolVersion, state: "ready" },
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
 });
-const challenge = { t: "challenge", nonce: "n".repeat(43) } as const;
+const challenge = challengeFrameSchema.parse({
+  t: "challenge",
+  nonce: "n".repeat(43),
+  connection: ready.connection,
+});
 const signal = new AbortController().signal;
 // Never called: it proves at compile time that the standard WebSocket fits the socket shape.
 const openGlobalSocket: SocketFactory = () => new WebSocket("ws://127.0.0.1:7456/ws");
@@ -68,7 +73,10 @@ describe("openConnection", () => {
     await clock.advance(0);
     socket.deliver(ready);
     await expect(connection).resolves.toMatchObject({ ready });
-    expect(proveDevice).toHaveBeenCalledWith(challenge.nonce, expect.any(AbortSignal));
+    expect(proveDevice).toHaveBeenCalledWith(
+      { nonce: challenge.nonce, connection: challenge.connection },
+      expect.any(AbortSignal),
+    );
     expect(socket.sent()).toStrictEqual([open, { t: "prove", signature }]);
   });
 
@@ -82,6 +90,16 @@ describe("openConnection", () => {
     socket.deliver(frame);
     await expect(connection).rejects.toMatchObject({ code, retryable: false });
     expect(socket.readyState).toBe(3);
+  });
+
+  it("signs no challenge that names no connection", async () => {
+    const proveDevice = vi.fn<DeviceProver>(async () => "s".repeat(86));
+    const { engine, connection } = setup(proveDevice);
+    const socket = engine.latest();
+    socket.accept();
+    socket.deliver({ t: "challenge", nonce: challenge.nonce });
+    await expect(connection).rejects.toMatchObject({ code: "client.cannot_prove" });
+    expect(proveDevice).not.toHaveBeenCalled();
   });
 
   it("fails for good with the code of a bye before ready", async () => {

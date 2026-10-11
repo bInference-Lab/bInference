@@ -3,7 +3,7 @@ import type { ManualClock } from "@binference/core/testing";
 import { sha256Hex } from "@binference/engine";
 import { protocolIdSchema } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
-import { challengeNonce, openFrame, openRawSocket } from "./raw-socket.js";
+import { challengeOf, openFrame, openRawSocket } from "./raw-socket.js";
 import { proofSignature, startTestServer, type TestServer } from "./test-server.js";
 
 const device = protocolIdSchema("consoleDevice").parse("dev_0190f1c2-3a4b-7c5d-8e6f-000000000001");
@@ -70,8 +70,8 @@ describe("the sign-in handshake", () => {
     const server = await start();
     const raw = await openRawSocket(server.wsUrl, { origin: server.origin });
     raw.send(openFrame({ device: server.device.id }));
-    const nonce = challengeNonce(await raw.next());
-    const signature = proofSignature(server.device, { nonce, origin: "http://localhost:1" });
+    const challenge = challengeOf(await raw.next());
+    const signature = proofSignature(server.device, { ...challenge, origin: "http://localhost:1" });
     raw.send({ t: "prove", signature });
     await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.invalid" });
   });
@@ -81,8 +81,8 @@ describe("the sign-in handshake", () => {
     const origin = `http://localhost:${String(server.httpPort)}`;
     const raw = await openRawSocket(server.wsUrl, { origin });
     raw.send(openFrame({ device: server.device.id }));
-    const nonce = challengeNonce(await raw.next());
-    raw.send({ t: "prove", signature: proofSignature(server.device, { nonce, origin }) });
+    const challenge = challengeOf(await raw.next());
+    raw.send({ t: "prove", signature: proofSignature(server.device, { ...challenge, origin }) });
     await expect(raw.next()).resolves.toMatchObject({ t: "ready", connection: /^con_/ });
     raw.close();
   });

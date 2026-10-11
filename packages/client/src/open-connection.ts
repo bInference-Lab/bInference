@@ -1,6 +1,7 @@
 import { BinferenceError, type Clock, createDeadline, type Logger } from "@binference/core";
 import {
   type ByeFrame,
+  type ChallengeFrame,
   checkProtocolVersion,
   type ClientFrame,
   decodeEngineFrame,
@@ -16,11 +17,17 @@ import type {
   SocketMessage,
 } from "./protocol-socket.js";
 
+/** What a console device signs for: the challenge's nonce and the connection it names. */
+export interface DeviceChallenge {
+  readonly nonce: string;
+  readonly connection: string;
+}
+
 /**
- * Signs a console device's challenge: the signature over `deviceProofText` of the nonce and the
- * page's origin, in base64url.
+ * Signs a console device's challenge: the signature over `deviceProofText` of the connection, the
+ * device, the nonce and the page's origin, in base64url.
  */
-export type DeviceProver = (nonce: string, signal: AbortSignal) => Promise<string>;
+export type DeviceProver = (challenge: DeviceChallenge, signal: AbortSignal) => Promise<string>;
 
 /** What one connection attempt needs. */
 export interface ConnectionOptions {
@@ -86,15 +93,19 @@ function closeReason(bye: ByeFrame | undefined, close: SocketClose): BinferenceE
     : errorFromBye(bye);
 }
 
-async function answerChallenge(attempt: Attempt, nonce: string): Promise<void> {
+async function answerChallenge(attempt: Attempt, frame: ChallengeFrame): Promise<void> {
   const prove = attempt.options.proveDevice;
-  if (prove === undefined) {
+  if (prove === undefined || frame.connection === undefined) {
     throw clientError({
       code: "client.cannot_prove",
-      message: "The engine asked for a device proof, and this client holds no device key.",
+      message:
+        prove === undefined
+          ? "The engine asked for a device proof, and this client holds no device key."
+          : "The engine's challenge names no connection to sign for.",
     });
   }
-  const signature = await prove(nonce, attempt.signal);
+  const challenge = { nonce: frame.nonce, connection: frame.connection };
+  const signature = await prove(challenge, attempt.signal);
   sendFrame(attempt.socket, { t: "prove", signature });
 }
 
@@ -146,9 +157,9 @@ function handshake(attempt: Attempt): Promise<Connection> {
   return new Promise((resolve, reject) => {
     // The first settlement wins: a later reject, such as the close that follows a failure, is a
     // no-op.
-    const prove = async (nonce: string): Promise<void> => {
+    const prove = async (challenge: ChallengeFrame): Promise<void> => {
       try {
-        await answerChallenge(attempt, nonce);
+        await answerChallenge(attempt, challenge);
       } catch (error) {
         reject(error);
       }
@@ -157,7 +168,7 @@ function handshake(attempt: Attempt): Promise<Connection> {
     attempt.signal.addEventListener("abort", () => reject(attempt.signal.reason));
     wire.route((frame) => {
       if (frame.t === "challenge") {
-        void prove(frame.nonce);
+        void prove(frame);
       } else if (frame.t === "ready") {
         const versionError = checkVersion(frame);
         if (versionError !== undefined) {

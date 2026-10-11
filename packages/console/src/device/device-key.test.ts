@@ -37,6 +37,12 @@ const withoutEd25519: SubtleCrypto = Object.assign(Object.create(subtle) as Subt
   sign: subtle.sign.bind(subtle),
 });
 
+const signedFor = {
+  connection: "con_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  device: "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  nonce: "bm9uY2U",
+};
+
 describe("device keys", () => {
   it("makes a non-extractable Ed25519 key whose signature the public half verifies", async () => {
     const key = await createDeviceKey(subtle);
@@ -45,7 +51,7 @@ describe("device keys", () => {
     await expect(subtle.exportKey("pkcs8", key.privateKey)).rejects.toMatchObject({
       name: "InvalidAccessError",
     });
-    const text = deviceProofText({ nonce: "bm9uY2U", origin: "http://127.0.0.1:7456" });
+    const text = deviceProofText({ ...signedFor, origin: "http://127.0.0.1:7456" });
     const signed = await signWith(subtle, key, text);
     await expect(verifies(key, signed, text)).resolves.toBe(true);
     await expect(verifies(key, signed, `${text}x`)).resolves.toBe(false);
@@ -55,7 +61,7 @@ describe("device keys", () => {
     const key = await createDeviceKey(withoutEd25519);
     expect(key.alg).toBe("p256");
     expect(key.privateKey.extractable).toBe(false);
-    const text = deviceProofText({ nonce: "bm9uY2U", origin: "http://localhost:7456" });
+    const text = deviceProofText({ ...signedFor, origin: "http://localhost:7456" });
     const signed = await signWith(subtle, key, text);
     expect(bytesOf(signed)).toHaveLength(64);
     await expect(verifies(key, signed, text)).resolves.toBe(true);

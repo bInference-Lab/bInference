@@ -4,7 +4,7 @@ export type { ClientErrorCode } from "./client-error.js";
 export type { ClientStatus } from "./connection-status.js";
 export { defaultClientLimits } from "./default-client-limits.js";
 export type { ClientLimits } from "./default-client-limits.js";
-export type { DeviceProver } from "./open-connection.js";
+export type { DeviceChallenge, DeviceProver } from "./open-connection.js";
 export { createProtocolClient } from "./protocol-client.js";
 export type { CallableName, ProtocolClient, ProtocolClientOptions } from "./protocol-client.js";
 export type {

@@ -86,7 +86,7 @@ function becomeReady(link: Link, open: OpenFrame, identity: Identity): void {
 
 async function signIn(link: Link, open: OpenFrame): Promise<void> {
   link.phase.set({ name: "signing_in" });
-  const request = { credential: open.auth, transport: link.peer.transport };
+  const request = { credential: open.auth, transport: link.peer.transport, connection: link.id };
   const origin = link.peer.origin === undefined ? {} : { origin: link.peer.origin };
   const claim = (credential: string): void => {
     if (link.phase.get().name === "signing_in") {
@@ -108,7 +108,7 @@ async function signIn(link: Link, open: OpenFrame): Promise<void> {
   }
   const { challenge } = step.value;
   link.phase.set({ name: "proving", open, challenge });
-  sendFrame(link, { t: "challenge", nonce: challenge.nonce });
+  sendFrame(link, { t: "challenge", nonce: challenge.nonce, connection: link.id });
 }
 
 async function prove(
