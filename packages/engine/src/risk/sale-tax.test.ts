@@ -34,6 +34,16 @@ describe("sale tax", () => {
     expect(sellTaxBps(transfers, trader, { sold: 1_000n, token })).toBe(4_000);
   });
 
+  it("reads what the seller sent to an account its family cannot read as tax", () => {
+    const unreadable = account("nowhere");
+    const transfers = [
+      move([trader, pool], tokenAsset, 600n),
+      move([trader, unreadable], tokenAsset, 400n),
+      move([pool, trader], coin, 50n),
+    ];
+    expect(sellTaxBps(transfers, trader, { sold: 1_000n, token })).toBe(4_000);
+  });
+
   it("leaves out what the token's own contract swaps into the pool during a sale", () => {
     const transfers = [
       move([trader, contract], tokenAsset, 300n),

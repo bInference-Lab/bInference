@@ -139,6 +139,15 @@ describe("risk check", () => {
     );
   });
 
+  it("blocks an unknown token its required source does not cover, and flags it as not covered", async () => {
+    const blind = sourceOf("first", undefined);
+    const { check } = benchOf({ sources: [{ source: blind, isRequired: true }] });
+    await expect(check.assess(unknownSubject(), live)).resolves.toMatchObject({
+      refusal: "sources_down",
+      view: { verdict: "block", flags: [{ code: "not_covered", source: "first" }] },
+    });
+  });
+
   it("lets an optional source's outage pass, and still counts its findings when it answers", async () => {
     const optionalDown = { source: sourceOf("second", undefined, true), isRequired: false };
     const required = { source: sourceOf("first", deep), isRequired: true };
