@@ -1,4 +1,4 @@
-import { accountRefParts, type TxSimulator, type Venue } from "@binference/chain";
+import { accountRefParts, accountRefSchema, type TxSimulator, type Venue } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
 import { err } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
@@ -33,6 +33,30 @@ function oneWayVenue(): Venue {
       request.amountIn.asset === unknownToken
         ? await Promise.resolve(err("no_route"))
         : await venue.quote(request, options),
+  };
+}
+
+// A venue that quotes and builds the buy, but whose quote to sell the token back fails.
+function downOnSale(): Venue {
+  const venue = createFakeVenue();
+  return {
+    ...venue,
+    quote: async (request, options) =>
+      request.amountIn.asset === unknownToken
+        ? await Promise.reject(new Error("venue down"))
+        : await venue.quote(request, options),
+  };
+}
+
+// A venue that quotes both ways and builds the buy, but cannot build the sale.
+function unbuiltSale(): Venue {
+  const venue = createFakeVenue();
+  return {
+    ...venue,
+    build: async (request, options) =>
+      request.amountIn.asset === unknownToken
+        ? await Promise.reject(new Error("venue down"))
+        : await venue.build(request, options),
   };
 }
 
@@ -96,6 +120,26 @@ describe("round trip", () => {
       kind: "refused",
       leg: "sell",
     });
+  });
+
+  it.each<[string, Venue]>([
+    ["no venue quotes the sale", downOnSale()],
+    ["no venue builds the sale", unbuiltSale()],
+  ])("cannot run when %s", async (_case, venue) => {
+    const options = optionsOf({}, [venue]);
+    await expect(probeRoundTrip(unknownTokenQuote(nowMs), options, live)).resolves.toStrictEqual({
+      kind: "unavailable",
+    });
+  });
+
+  it("cannot run for a wallet on a chain the registry does not hold", async () => {
+    const options = optionsOf({});
+    const quoted = unknownTokenQuote(nowMs);
+    const elsewhere = { ...quoted.trade, wallet: accountRefSchema.parse("fake:9:0x0000000c") };
+    await expect(
+      probeRoundTrip({ ...quoted, trade: elsewhere }, options, live),
+    ).resolves.toStrictEqual({ kind: "unavailable" });
+    expect(options.simulator.runs()).toBe(0);
   });
 
   it("cannot run when the trade's venue is not hosted", async () => {
