@@ -1,6 +1,6 @@
 # 0154. The CLI makes a client token, and the engine keeps only its hash
 
-Status: Accepted
+Status: Amended by 0159
 
 Accepted by the owner on 2026-10-11.
 
