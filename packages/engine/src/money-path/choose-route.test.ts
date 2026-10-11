@@ -143,6 +143,24 @@ describe("the best quote", () => {
     expect(venueOf(chosenOf(await choose(1_999_900n, { simulator, change })))).toBe("fake-swap");
   });
 
+  it("ranks by what arrives alone when the asset bought is priced at nothing", async () => {
+    const simulator = createQuoteSimulator(
+      noRefusal,
+      new Map([
+        ["fake-swap", { keptBps: 10_000n, gasUsed: 300_000n }],
+        [otherVenueId, { keptBps: 10_000n, gasUsed: 100_000n }],
+      ]),
+    );
+    const prices = createFakePriceSource(
+      new Map([
+        [testCoin, { numerator: 600n, denominator: 10n ** 12n }],
+        [testToken, { numerator: 0n, denominator: 1n }],
+      ]),
+    );
+    const route = chosenOf(await choose(1_999_900n, { simulator, change: { prices } }));
+    expect(venueOf(route)).toBe("fake-swap");
+  });
+
   it("keeps the first venue in the agent's order on a tie", async () => {
     const route = chosenOf(
       await choose(2_000_000n, { simulator: createQuoteSimulator(noRefusal) }),
@@ -168,6 +186,14 @@ describe("the best quote", () => {
     const route = chosenOf(
       await choose(2_100_000n, { simulator: createQuoteSimulator(() => "effects_differ") }),
     );
+    expect(venueOf(route)).toBe("fake-swap");
+    expect(route.simulation).toStrictEqual(err("effects_differ"));
+  });
+
+  it("keeps the first venue's failed simulation when the policy priced none of the routes", async () => {
+    const simulator = createQuoteSimulator(() => "effects_differ");
+    const change = { policy: { pricedVenue: "gone-swap", recheck: refuseAgain } };
+    const route = chosenOf(await choose(2_100_000n, { simulator, change }));
     expect(venueOf(route)).toBe("fake-swap");
     expect(route.simulation).toStrictEqual(err("effects_differ"));
   });
