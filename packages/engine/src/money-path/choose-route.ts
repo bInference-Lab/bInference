@@ -81,14 +81,11 @@ type PriceAnswer = Awaited<ReturnType<PriceSource["usdPrice"]>>;
 // The USD prices of the native coin and of the asset bought, a token the source cannot price
 // taking its price from the first quote. A price source that throws gives no prices.
 async function usdPricesOf(
-  first: TradeQuote | undefined,
+  first: TradeQuote,
   options: RouteChoiceOptions,
 ): Promise<readonly PriceAnswer[]> {
-  const trade =
-    first === undefined
-      ? undefined
-      : { amountIn: first.trade.amountIn, expectedOut: first.quote.expectedOut };
-  const prices = trade === undefined ? options.prices : withQuotePrice(options.prices, trade);
+  const trade = { amountIn: first.trade.amountIn, expectedOut: first.quote.expectedOut };
+  const prices = withQuotePrice(options.prices, trade);
   const { signal } = options;
   const answers = Promise.all([
     prices.usdPrice(options.nativeAsset, { signal }),
@@ -100,7 +97,7 @@ async function usdPricesOf(
 // The native coin's worth in the asset bought: one for one when the trade buys the coin, else
 // through their USD prices.
 async function nativeToAssetOut(
-  first: TradeQuote | undefined,
+  first: TradeQuote,
   options: RouteChoiceOptions,
 ): Promise<Ratio | undefined> {
   if (options.swap.trade.assetOut === options.nativeAsset) {
@@ -209,9 +206,10 @@ export async function chooseRoute(
   options: RouteChoiceOptions,
 ): Promise<Result<ChosenRoute, QuoteFailure>> {
   const quoted = quotes.flatMap((quote) => (quote.ok ? [quote.value] : []));
-  if (quoted.length === 0) {
-    const [first] = quotes;
-    return err(first !== undefined && !first.ok ? first.error : "venue_down");
+  const [first] = quoted;
+  if (first === undefined) {
+    const [refused] = quotes;
+    return err(refused !== undefined && !refused.ok ? refused.error : "venue_down");
   }
   const bounded = quoted.filter(({ quote }) => quote.priceImpactBps <= options.maxPriceImpactBps);
   if (bounded.length === 0) {
@@ -221,7 +219,7 @@ export async function chooseRoute(
   const passed = candidates.flatMap((candidate): Passed[] =>
     candidate.simulation?.ok === true ? [{ candidate, steps: candidate.simulation.value }] : [],
   );
-  const rate = await nativeToAssetOut(quoted[0], options);
+  const rate = await nativeToAssetOut(first, options);
   const values = passed.map(({ steps }) => ({
     receivedBase: steps.received[0]?.base ?? 0n,
     gasBase: gasInAssetOut(steps.gasUsed, options.feePerGasBase, rate),
