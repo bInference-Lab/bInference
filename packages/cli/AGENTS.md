@@ -134,6 +134,10 @@ Rules for this package:
   engine starts or the machine wakes (a jump of the wall clock between the timer's ticks) with
   the newest nightly backup more than 24 hours old, and raises `notice.backupFailed`; `openEngineStores` takes one before a migration, and a failed one stops
   the start before the migration runs. Crypto comes from `node:crypto` and `@hpke/core` only.
+  `binference backup create` and `backup list` go over IPC: `backup/create`
+  (`src/compose/backup-operations.ts`) answers a job at once and takes a `manual` backup in the
+  engine, one at a time, and its end goes to the `job` topic, which the command watches from
+  before its call (`src/commands/job-ends.ts`).
 - `binference init --attach --restore <file>` (`src/commands/restore-attach.ts`) takes the owner
   key from the hidden prompt only, opens the backup's data key with it before any chunk is read,
   unpacks and checks every file into a folder of the state folder, refuses a newer schema, then

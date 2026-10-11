@@ -156,6 +156,43 @@ function reportCallFailure(output: CliOutput, error: ErrorOptions["cause"]): Exi
   return policyCodes.has(code) ? 2 : 1;
 }
 
+/** One session of a command with the engine: its calls, within a budget by the host's clock. */
+export interface EngineSession {
+  readonly budgetMs: number;
+  readonly use: (client: ProtocolClient, signal: AbortSignal) => Promise<ExitCode>;
+}
+
+/**
+ * Runs a command's calls against the engine within the session's budget, by the host's clock:
+ * connects, calls, closes. Prints why when the engine cannot be reached or a call fails.
+ */
+export async function withEngineWithin(
+  host: CliHost,
+  output: CliOutput,
+  session: EngineSession,
+): Promise<ExitCode> {
+  const deadline = createDeadline({
+    clock: host.clock,
+    signal: new AbortController().signal,
+    timeoutMs: session.budgetMs,
+  });
+  try {
+    const connection = await connectEngine(host, deadline.signal);
+    if (!connection.ok) {
+      return reportUnreachable(output, connection);
+    }
+    try {
+      return await session.use(connection.client, deadline.signal);
+    } catch (error) {
+      return reportCallFailure(output, error);
+    } finally {
+      connection.client.close();
+    }
+  } finally {
+    deadline.clear();
+  }
+}
+
 /**
  * Runs one call of a command against the engine: connects, calls, closes. Within 15 seconds, by
  * the host's clock. Prints why when the engine cannot be reached or the call fails.
@@ -165,24 +202,5 @@ export async function withEngine(
   output: CliOutput,
   use: (client: ProtocolClient, signal: AbortSignal) => Promise<ExitCode>,
 ): Promise<ExitCode> {
-  const deadline = createDeadline({
-    clock: host.clock,
-    signal: new AbortController().signal,
-    timeoutMs: commandBudgetMs,
-  });
-  try {
-    const connection = await connectEngine(host, deadline.signal);
-    if (!connection.ok) {
-      return reportUnreachable(output, connection);
-    }
-    try {
-      return await use(connection.client, deadline.signal);
-    } catch (error) {
-      return reportCallFailure(output, error);
-    } finally {
-      connection.client.close();
-    }
-  } finally {
-    deadline.clear();
-  }
+  return withEngineWithin(host, output, { budgetMs: commandBudgetMs, use });
 }

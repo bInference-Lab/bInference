@@ -12,6 +12,7 @@ import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
+import { composeBackupOperations } from "./backup-operations.js";
 import { composePrices } from "./chain-prices.js";
 import { type ChainReads, composeChainReads, rpcHealthOf } from "./chain-reads.js";
 import { type ComposedSimulators, composeSimulators } from "./chain-simulators.js";
@@ -125,6 +126,8 @@ function composeSending(
 
 /** What the engine's own operations answer from besides the stores. */
 interface EngineWiring extends Pick<ComposedSelfHosted, "stopper" | "locked"> {
+  /** Where a long job's end goes, once the engine's publish exists. */
+  readonly jobs: { publish: (push: EnginePush) => void };
   /** The `rpc` health signal: how the chains' RPC endpoints answered. */
   readonly rpc: () => HealthSignal["state"];
   /** The executor's health signal. */
@@ -133,8 +136,8 @@ interface EngineWiring extends Pick<ComposedSelfHosted, "stopper" | "locked"> {
   readonly custody: () => HealthSignal["state"];
 }
 
-// The engine's own operations: its status with the health signals, its stop, its unlock, and a new
-// pairing link for the owner's bot.
+// The engine's own operations: its status with the health signals, its stop, its unlock, a new
+// pairing link for the owner's bot, and the backups.
 function engineHandlers(
   opening: Opening,
   opened: Opened,
@@ -160,6 +163,7 @@ function engineHandlers(
       stop: () => wiring.stopper.stop(),
     }),
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
+    ...composeBackupOperations(opening, opened, (push) => wiring.jobs.publish(push)),
   };
 }
 
@@ -190,6 +194,8 @@ interface Wiring {
   readonly signerStopped: { run: () => void };
   /** What a step the signer refused sets off, once the server can say so. */
   readonly signerRefused: { run: (notice: SignerRefusalNotice) => void };
+  /** Where a long job's end goes, once the server can say so. */
+  readonly jobs: { publish: (push: EnginePush) => void };
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -216,7 +222,9 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     resume,
   });
   const stopper = { stop: (): void => undefined };
+  const jobs = { publish: (_push: EnginePush): void => undefined };
   return {
+    jobs,
     state,
     parts,
     chains,
@@ -283,6 +291,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
         custody: () => (custody.cell.isOpen() ? "ok" : "fail"),
         stopper: wiring.stopper,
         locked,
+        jobs: wiring.jobs,
       }),
       clock: host.clock,
       random: host.random,
@@ -315,6 +324,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   }
   sending.pushes.publish = publish;
   locked.announce.publish = publish;
+  wiring.jobs.publish = publish;
   wiring.signerRefused.run = ({ intent, refused }) => {
     publish(signerRefusedNotice({ intent, refused }));
   };

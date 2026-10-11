@@ -4,6 +4,7 @@ import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
 import { runAddressAdd, runAddressList, runAddressRemove } from "../commands/address-command.js";
 import { runApproval } from "../commands/approval-command.js";
+import { runBackupCreate, runBackupList } from "../commands/backup-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runCeiling, runCeilingSet } from "../commands/ceiling-command.js";
 import { runCheck } from "../commands/check-command.js";
@@ -117,6 +118,8 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   rescueCancel: async (context) => runRescueCancel(context),
   safetyStatus: async (context) => runSafetyStatus(context),
   telegramPair: async (context) => runTelegramPair(context),
+  backupCreate: async (context) => runBackupCreate(context),
+  backupList: async (context) => runBackupList(context),
   signerRevoke: runSignerRevoke,
   ownerKeyCreate: runOwnerKeyCreate,
   addressList: runAddressList,

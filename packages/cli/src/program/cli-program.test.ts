@@ -66,6 +66,8 @@ describe("the binference command tree", () => {
       "cancel",
       "status",
       "pair",
+      "create",
+      "list",
       "revoke",
       "create",
       "remove",

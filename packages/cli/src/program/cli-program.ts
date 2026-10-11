@@ -1,6 +1,7 @@
 import type { ProtocolId } from "@binference/protocol";
 import { Argument, Command, InvalidArgumentError, Option, type OptionValues } from "commander";
 import { addAddressCommands } from "./address-commands.js";
+import { addBackupCommands } from "./backup-commands.js";
 import { addCeilingCommands } from "./ceiling-commands.js";
 import type { ApprovalModeChoice, ProgramOptions } from "./chosen-command.js";
 import {
@@ -160,6 +161,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addCeilingCommands(program, options);
   addSafetyCommands(program, options);
   addTelegramCommands(program, options);
+  addBackupCommands(program, options);
   addSignerCommands(program, options);
   addOwnerKeyCommands(program, options);
   addServiceCommands(program, options);

@@ -42,7 +42,7 @@ export function backupPartsOf(
 }
 
 /** One backup of a kind, with the `backups` settings the config holds now. */
-function backupRunOf(
+export function backupRunOf(
   config: BinferenceConfig,
   backup: { readonly kind: BackupKind; readonly engineSchemaVersion: number },
   signal: AbortSignal,
