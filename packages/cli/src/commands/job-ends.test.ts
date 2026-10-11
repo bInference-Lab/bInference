@@ -1,12 +1,12 @@
 import type { ClientStatus, ProtocolClient, TopicHandlers } from "@binference/client";
 import { BinferenceError } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
-import type { PushFrame } from "@binference/protocol";
+import { type PushFrame, protocolIdSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { watchJobEnds } from "./job-ends.js";
 
-const job = "job_0190f1c2-3a4b-7c5d-8e6f-000000000001";
-const other = "job_0190f1c2-3a4b-7c5d-8e6f-000000000002";
+const job = protocolIdSchema("longJob").parse("job_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+const other = protocolIdSchema("longJob").parse("job_0190f1c2-3a4b-7c5d-8e6f-000000000002");
 const live = (): AbortSignal => new AbortController().signal;
 
 // A client that hands the test the `job` topic's handlers and lets it close the client.
