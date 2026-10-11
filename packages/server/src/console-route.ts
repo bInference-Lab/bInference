@@ -27,7 +27,8 @@ function isMiniPath(path: string): boolean {
 }
 
 // Every browser feature a policy can gate that the console never uses, each turned off for the
-// page and every frame it could hold. Notifications are no such feature: the owner allows them.
+// page and every frame it could hold; only names Chromium knows, as it logs an error for any
+// other. Notifications are no such feature: the owner allows them.
 const unusedFeatures = [
   "accelerometer",
   "autoplay",
@@ -52,7 +53,6 @@ const unusedFeatures = [
   "screen-wake-lock",
   "serial",
   "usb",
-  "web-share",
   "xr-spatial-tracking",
 ];
 
