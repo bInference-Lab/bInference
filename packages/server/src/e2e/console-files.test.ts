@@ -1,14 +1,19 @@
+import { brotliCompressSync, brotliDecompressSync, gunzipSync, gzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { requestLocal } from "./local-http.js";
 import { startTestServer, type TestServer } from "./test-server.js";
 
 const page = "<!doctype html><title>console</title>";
 const script = "console.log(1)";
-const consoleFiles = new Map([
+const consoleFiles = new Map<string, Uint8Array>([
   ["index.html", new TextEncoder().encode(page)],
   ["assets/index-1a2b.js", new TextEncoder().encode(script)],
+  ["assets/index-1a2b.js.br", brotliCompressSync(script)],
+  ["assets/index-1a2b.js.gz", gzipSync(script)],
   ["mark.svg", new TextEncoder().encode("<svg/>")],
 ]);
+const scriptPath = "/assets/index-1a2b.js";
+const asking = (coding: string) => ({ path: scriptPath, headers: { "accept-encoding": coding } });
 
 describe("the console's files", () => {
   let test: TestServer | undefined;
@@ -70,7 +75,32 @@ describe("the console's files", () => {
     });
   });
 
+  it("sends a file in the coding the browser takes best, and says it varies by it", async () => {
+    const server = await start();
+    const brotli = await requestLocal(server.httpPort, asking("gzip, deflate, br, zstd"));
+    expect(brotli.headers).toMatchObject({ "content-encoding": "br", vary: "accept-encoding" });
+    expect(brotliDecompressSync(brotli.bytes).toString()).toBe(script);
+    expect(brotli.headers["content-length"]).toBe(String(brotli.bytes.byteLength));
+    const gzip = await requestLocal(server.httpPort, asking("gzip"));
+    expect(gzip.headers["content-encoding"]).toBe("gzip");
+    expect(gunzipSync(gzip.bytes).toString()).toBe(script);
+    const plain = await requestLocal(server.httpPort, asking("identity"));
+    expect(plain).toMatchObject({ body: script, headers: { vary: "accept-encoding" } });
+    expect(plain.headers["content-encoding"]).toBeUndefined();
+  });
+
+  it("names no coding for a file the build kept as it is", async () => {
+    const server = await start();
+    const mark = await requestLocal(server.httpPort, {
+      path: "/mark.svg",
+      headers: { "accept-encoding": "br, gzip" },
+    });
+    expect(mark.headers["content-encoding"]).toBeUndefined();
+    expect(mark.headers["vary"]).toBeUndefined();
+  });
+
   it.each([
+    ["a compressed copy by its own name", `${scriptPath}.br`, "GET"],
     ["a file it does not hold", "/assets/missing.js", "GET"],
     ["a path that does not decode", "/assets/%E0.js", "GET"],
     ["a write to the page", "/", "POST"],

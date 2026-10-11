@@ -11,5 +11,5 @@
     },
     "isolatedDeclarations": false
   },
-  "include": ["src", "vite.config.ts", "vite.push-worker.config.ts"]
+  "include": ["src", "vite.config.ts", "vite.push-worker.config.ts", "precompress-plugin.ts"]
 }

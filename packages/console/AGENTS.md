@@ -24,6 +24,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   pushes and opens the console at the card; it holds no key and answers nothing. A device turns
   notifications on from the confirmations screen, which asks the browser's permission only on a
   click; the Mini App never offers them.
+- The build writes a Brotli and a gzip copy beside each text file of 1 KiB or more
+  (`precompress-plugin.ts`); the engine sends the copy `Accept-Encoding` takes best, with
+  `Vary: accept-encoding`, and never compresses on a request.
 - Parsing uses `zod/mini` (SCH-5), in `*.schema.ts` files, the one place `unknown` appears.
 - The device key is a WebCrypto key made non-extractable and kept in IndexedDB as the
   `CryptoKey` itself; nothing reads, logs or sends its private half. A pairing link's hash leaves

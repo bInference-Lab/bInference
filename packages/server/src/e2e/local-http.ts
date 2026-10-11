@@ -9,11 +9,12 @@ export interface LocalRequest {
   readonly body?: string;
 }
 
-/** The test server's answer: its status, headers and body as text. */
+/** The test server's answer: its status, headers and body as text and as bytes. */
 export interface LocalAnswer {
   readonly status: number;
   readonly headers: Readonly<Record<string, string | string[] | undefined>>;
   readonly body: string;
+  readonly bytes: Buffer;
 }
 
 /** Sends one request to `127.0.0.1:<port>` on a fresh socket and reads the whole answer. */
@@ -24,13 +25,15 @@ export async function requestLocal(port: number, sent: LocalRequest): Promise<Lo
     const outgoing = request(options, (answer) => {
       const chunks: Buffer[] = [];
       answer.on("data", (chunk: Buffer) => chunks.push(chunk));
-      answer.on("end", () =>
+      answer.on("end", () => {
+        const bytes = Buffer.concat(chunks);
         resolve({
           status: answer.statusCode ?? 0,
           headers: answer.headers,
-          body: Buffer.concat(chunks).toString("utf8"),
-        }),
-      );
+          body: bytes.toString("utf8"),
+          bytes,
+        });
+      });
     });
     outgoing.on("error", reject);
     outgoing.end(sent.body);
