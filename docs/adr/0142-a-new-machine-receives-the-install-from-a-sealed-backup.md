@@ -1,6 +1,6 @@
 # 0142. A new machine receives the install from a sealed backup
 
-Status: Accepted
+Status: Amended by 0163
 
 ## Context
 

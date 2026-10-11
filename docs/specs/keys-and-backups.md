@@ -309,7 +309,9 @@ A refusal is logged with the rule number, never with key material, and raises
 
 ## 7. Backups
 
-Decided in [decision 0055](../DECISIONS.md#d0055).
+Decided in [decision 0055](../DECISIONS.md#d0055), amended by
+[decision 0164](../DECISIONS.md#d0164); restores by [decision 0162](../DECISIONS.md#d0162) and
+[decision 0163](../DECISIONS.md#d0163).
 
 <a id="section-7-1"></a>
 
@@ -333,15 +335,38 @@ The agent key and the app secret are never in a backup.
 `~/.binference/backups/binference-<install id>-<yyyymmdd-hhmm>-<kind>.bnfbak`
 
 1. **Header**: one line of JSON, then a newline:
-   `{ format: "binference-backup", version: 2, installId, createdAt, kind, binferenceVersion, cipher: "aes-256-gcm-stream", chunkBytes: 65536, noncePrefix, wrappedKey }`.
-2. **Data key**: 32 random bytes per backup. `wrappedKey` is the data key sealed to the owner key's
-   public half with HPKE (RFC 9180: DHKEM P-256, HKDF-SHA256, AES-256-GCM). The machine can make
-   backups without the owner key; only the owner key can open them.
+   `{ format: "binference-backup", version: 3, installId, createdAt, kind, binferenceVersion, cipher: "aes-256-gcm-stream", chunkBytes: 65536, noncePrefix, wrappedKey }`.
+2. **Data key**: 32 random bytes per backup. `wrappedKey` is the data key sealed with HPKE (RFC
+   9180: DHKEM P-256, HKDF-SHA256, AES-256-GCM, `info` `binference-backup v3`) to the public half
+   of the **sealing key** ([decision 0164](../DECISIONS.md#d0164)). The machine can make backups
+   without the owner key; only the owner key can open them.
 3. **Body**: the tar archive in 64 KiB chunks. Chunk `i` is AES-256-GCM under the data key, with
    nonce `noncePrefix (8 random bytes) || i (4 bytes, big-endian)` and associated data
    `SHA-256(header) || i || final flag (1 byte)`, so chunks cannot be reordered, dropped or cut off
    at the end.
 4. A wrong owner key fails at the HPKE step, before any chunk is read.
+
+**The sealing key.** The owner key signs Privy requests with ECDSA and does nothing else; backups
+are sealed to a P-256 key pair derived from it. HKDF-SHA256 (RFC 5869) over the owner key's 32-byte
+private scalar, with no salt and the `info` `binference sealing key v1`, gives 32 bytes of keying
+material; RFC 9180's DeriveKeyPair for DHKEM(P-256, HKDF-SHA256) maps them to a valid scalar. The
+same owner key always derives the same sealing key, and the owner key code stays the one secret
+the owner keeps. The install keeps the sealing key's public half in `custody.seal_key_public`:
+`binference init` when it makes the owner key at the terminal, `init --attach`, a rebuild and a
+restore from the owner key they are given. An install made before, or one whose owner key init
+took by its public half alone, keeps none until the owner key is entered once in any request that
+proves it (a ceiling change, an export, a signer revoke, an attach, a restore); binference then
+derives the key and keeps its public half, and `binference status` shows the `backup_key` signal
+as needing a look until it has.
+
+**Version 2.** A backup made before the install kept the sealing key says `version: 2`; its data
+key is sealed to the owner key's own public half with the `info` `binference-backup v2`. It still
+opens with the owner key; a version 3 file opens with the sealing key alone.
+
+**Who wrote it.** Sealing says who may open a file, not who wrote it: anyone who knows the public
+half can seal a file to it. The install therefore records the SHA-256 of each backup file it writes
+and of its header line in `engine.sqlite` (`backups.file_sha256`, `backups.header_sha256`;
+[decision 0163](../DECISIONS.md#d0163)), and a restore checks a file against them (section 7.4).
 
 <a id="section-7-3"></a>
 
@@ -371,22 +396,58 @@ A backup is restored by `binference backup restore <file>` on this machine's ins
 engine ([decision 0152](../DECISIONS.md#d0152)): the owner key comes only from the terminal's hidden
 prompt and never travels to the engine, and protocol v1 serves no `backup/restore`.
 
-1. Ask for the owner key; open `wrappedKey`.
-2. Decrypt to a temporary folder and verify every tag and hash.
+1. Ask for the owner key; open `wrappedKey` (with the sealing key it derives for a version 3
+   file, with the owner key itself for a version 2 one).
+2. Decrypt to a temporary folder in the state folder and verify every tag and hash.
 3. Refuse a backup whose schema versions are newer than this binference.
-4. Stop the engine, move the current state folder aside (kept 7 days), put the restored files in
-   place, start the engine; startup runs migrations and reconciliation as usual
-   ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)).
+4. Prove the backup genuine ([decision 0163](../DECISIONS.md#d0163)), before anything opens the
+   databases it holds: a file whose header digest and file digest match a record of the state it
+   would replace goes on. Any other file, and every file on a machine whose state holds no records,
+   is shown with its install id, its time and its wallets, with a warning, and goes on only once
+   the owner types the day it was taken, `yyyy-mm-dd`.
 5. Check that the wallets in the manifest are the ones Privy reports for this owner; a mismatch
    stops the restore.
+6. Show what the restore changes and ask to go on ([decision 0162](../DECISIONS.md#d0162)): what
+   it keeps as it is now, where the history ends, the agents and wallets that come or go, and the
+   backup's stricter guards that stay. The owner types the backup's day to go on.
+7. Stop the engine; under the engine lock, carry the guards of the state it replaces into the
+   restored `engine.sqlite` (below) and keep the sealing key's public half there when its custody
+   has none; move the current state aside (kept 7 days) and put the restored files in place, all or
+   nothing; start the engine. Startup runs migrations and reconciliation as usual
+   ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)).
 
-`binference backup restore <file>` checks before step 4, while the engine still runs, so a refusal
-changes nothing: the Privy app must be the one `config.json5` names, the wallets must match (step
-5), and Privy must list the backup's agent key quorum as each wallet's signer now, so no signer
-moves. A backup that names another signer is refused with a pointer to
-`binference init --attach --restore`. It then stops the engine as `binference stop` does
-(`engine/stop`, then the service manager for the background service), swaps the files under the
-engine lock, and starts the engine as it ran: the background service again, or, for an engine that
-ran in a terminal, in the foreground in the restore's terminal. An engine that was not running
-stays stopped. `init --attach --restore` makes this machine's new agent key the wallets' signer
-after the swap; when it stops before a wallet moves, the restore is undone.
+**A restore never loosens the install** ([decision 0162](../DECISIONS.md#d0162)). Read from the
+`engine.sqlite` it replaces, once the engine stopped, and written into the restored one in one
+transaction:
+
+| What                                                                                                       | After the restore                                                                       |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| client tokens, console devices, push subscriptions, pairing and start codes, Mini App launches and tickets | as they are now: a revoke stays revoked, nothing the backup alone holds comes back      |
+| the Telegram owner, the rescue address, its pending change and the rescue rules                            | the newer ones                                                                          |
+| a freeze of the install or of an agent; an archived agent                                                  | stays                                                                                   |
+| an agent's paper mode, manual approval mode, send level, each limit                                        | the stricter of the two in effect now; a looser one asked since still comes at its time |
+| an address book entry removed since                                                                        | stays removed                                                                           |
+| the outflows the rolling 24-hour cap counts now                                                            | `carried_outflows`, counted in the place of the restored copy's own                     |
+| the backup records                                                                                         | both                                                                                    |
+
+A replaced `engine.sqlite` that does not open is said so before the owner confirms, and nothing of
+it can be carried; one of an older schema is refused until binference started once on it.
+
+**All or nothing.** The restored files are staged in a folder of the state folder, so each move is
+a rename on one disk. When a rename fails, every rename made is reversed, newest first, and nothing
+changed; a reversal never moves onto a path a failed move still holds, and one that fails too
+leaves both states where the refusal names them, with nothing started. When the engine does not
+reach `ready` or `locked` after the start, the restore stops it, puts the replaced state back,
+starts the engine again on it and exits 1. The staged folder goes once the swap is done or undone.
+
+`binference backup restore <file>` checks before it stops the engine, so a refusal changes nothing:
+the Privy app must be the one `config.json5` names, the wallets must match (step 5), and Privy must
+list the backup's agent key quorum as each wallet's signer now, so no signer moves. A backup that
+names another signer is refused with a pointer to `binference init --attach --restore`. It then
+stops the engine as `binference stop` does (`engine/stop`, then the service manager for the
+background service), carries the guards and swaps the files under the engine lock, and starts the
+engine as it ran: the background service again, or, for an engine that ran in a terminal, in the
+foreground in the restore's terminal. An engine that was not running stays stopped. A refusal after
+the stop starts the engine again as it ran. `init --attach --restore` makes this machine's new
+agent key the wallets' signer after the swap; when it stops before a wallet moves, the restore is
+undone.

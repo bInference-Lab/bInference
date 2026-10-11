@@ -1,6 +1,6 @@
 # 0152. A running install restores a backup from the CLI, between a stop and a start
 
-Status: Accepted
+Status: Amended by 0162
 
 Accepted by the owner on 2026-10-11.
 
