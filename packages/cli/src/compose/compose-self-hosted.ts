@@ -18,7 +18,7 @@ import { type ChainReads, composeChainReads, rpcHealthOf } from "./chain-reads.j
 import { type ComposedSimulators, composeSimulators } from "./chain-simulators.js";
 import { createChainWalletFacts } from "./chain-wallet-facts.js";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
-import { type ComposeEngineOptions, composeEngine } from "./compose-engine.js";
+import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
@@ -26,7 +26,7 @@ import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
-import { createOwnerLocaleChange } from "./owner-locale-change.js";
+import { ownerChatHandlers } from "./owner-locale-change.js";
 import { paperBalancesOf } from "./paper-balances.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { createTelegramPair } from "./telegram-pair.js";
@@ -238,18 +238,10 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   };
 }
 
-// The owner's language change, the one setting the owner's bot changes (decision 0134).
-function ownerChatOf(
-  opening: Opening,
-  opened: Opened,
-): NonNullable<ComposeEngineOptions["ownerChat"]> {
-  const { stateFolder, permissions } = opening.platform;
-  const change = createOwnerLocaleChange({
-    file: stateFolder.configFile,
-    permissions,
-    settings: opened.settings,
-  });
-  return { "config/change": change };
+// The custody parts the engine takes, from the custody cell that the lock opens.
+function custodyPartsOf(custody: ComposedCustody) {
+  const { signer, ceilings, walletMaker, exporter, revoker } = custody.cell;
+  return { custody: signer, ceilings, walletMaker, exporter, revoker };
 }
 
 // The engine and its protocol server over the wired parts.
@@ -259,11 +251,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { parts, custody, sending, locked } = wiring;
   return composeEngine(
     {
-      custody: custody.cell.signer,
-      ceilings: custody.cell.ceilings,
-      walletMaker: custody.cell.walletMaker,
-      exporter: custody.cell.exporter,
-      revoker: custody.cell.revoker,
+      ...custodyPartsOf(custody),
       stores,
       prices: parts.prices,
       riskSources: selfHostedRiskSources(host.http),
@@ -284,7 +272,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ...(opened.consoleFiles === undefined ? {} : { consoleFiles: opened.consoleFiles }),
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
-      ownerChat: ownerChatOf(opening, opened),
+      ownerChat: ownerChatHandlers(opening.platform, opened.settings),
       ...(opened.bot === undefined ? {} : { telegram: botParts(opened.bot, stores) }),
       handlers: engineHandlers(opening, opened, {
         rpc: () => rpcHealthOf(parts.reads, host.clock),

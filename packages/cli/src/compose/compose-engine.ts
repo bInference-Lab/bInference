@@ -35,6 +35,7 @@ import {
   type ProtocolServer,
 } from "@binference/server";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
+import { type ConsoleOrigin, consoleOriginCell } from "./console-origin.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
 
@@ -226,28 +227,6 @@ function serverOf(
   });
 }
 
-/** The console's origin once the HTTP listener bound, which the pairing links name. */
-interface ConsoleOrigin {
-  readonly get: () => string | undefined;
-  /** The server, whose `start` records the origin of the port it bound. */
-  readonly watch: (server: ProtocolServer) => ProtocolServer;
-}
-
-function consoleOriginCell(): ConsoleOrigin {
-  let origin: string | undefined;
-  return {
-    get: () => origin,
-    watch: (server) => ({
-      ...server,
-      async start(signal) {
-        const address = await server.start(signal);
-        origin = address === undefined ? undefined : `http://127.0.0.1:${String(address.port)}`;
-        return address;
-      },
-    }),
-  };
-}
-
 // The notice, token and device handlers; a device revoke also ends the device's open connections
 // (decision 0155).
 function accessHandlersOf(
@@ -280,6 +259,34 @@ function accessHandlersOf(
   };
 }
 
+// The engine on the profile parts, its venue host and risk check, publishing through `publish`.
+function engineOf(
+  parts: EngineParts,
+  options: ComposeEngineOptions,
+  given: { readonly ids: IdSource; readonly publish: (push: EnginePush) => void },
+): Engine {
+  const { host, risk } = tradingOf(parts, options);
+  return createEngine({
+    stores: parts.stores,
+    positions: options.positions,
+    ...custodyPartsOf(parts),
+    prices: parts.prices,
+    wallets: options.wallets,
+    host,
+    risk,
+    simulator: options.simulator,
+    chainSimulator: options.risk.simulator,
+    executor: options.executor,
+    paperBalances: options.paperBalances,
+    isLocked: options.isLocked ?? (() => false),
+    chains: options.chains,
+    clock: options.clock,
+    ids: given.ids,
+    random: options.random,
+    publish: given.publish,
+  });
+}
+
 /**
  * Wires the engine and its protocol server on the profile parts both profiles fill: the server
  * signs callers in through the access store, keeps each write's result under its idempotency key
@@ -289,8 +296,7 @@ function accessHandlersOf(
  * card pushes also reach Telegram, and notices go there from the outbox once the bot starts.
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
-  const { clock, random, logger, chains } = options;
-  const { host, risk } = tradingOf(parts, options);
+  const { clock, random, logger } = options;
   const ids = createIdSource({ clock, random });
   const notices = createNoticeLog({
     store: parts.stores.notices,
@@ -309,25 +315,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     }
     telegram?.relay(stamped);
   };
-  const engine = createEngine({
-    stores: parts.stores,
-    positions: options.positions,
-    ...custodyPartsOf(parts),
-    prices: parts.prices,
-    wallets: options.wallets,
-    host,
-    risk,
-    simulator: options.simulator,
-    chainSimulator: options.risk.simulator,
-    executor: options.executor,
-    paperBalances: options.paperBalances,
-    isLocked: options.isLocked ?? (() => false),
-    chains,
-    clock,
-    ids,
-    random,
-    publish,
-  });
+  const engine = engineOf(parts, options, { ids, publish });
   const origin = consoleOriginCell();
   const handlers: EngineHandlerTable = {
     ...engine.handlers,

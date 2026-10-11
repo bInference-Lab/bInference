@@ -1,6 +1,11 @@
 import { err, ok } from "@binference/core";
 import type { EngineHandler } from "@binference/engine";
-import { type FilePermissions, readTextFile, writePrivateFile } from "@binference/platform";
+import {
+  type FilePermissions,
+  type Platform,
+  readTextFile,
+  writePrivateFile,
+} from "@binference/platform";
 import { localeSchema } from "@binference/protocol";
 import { z } from "zod";
 import type { ReadTextFile } from "../config/load-config.js";
@@ -54,5 +59,23 @@ export function createOwnerLocaleChange(
     const current = options.settings.current();
     const config = shownConfig({ ...current, owner: { ...current.owner, locale } });
     return ok({ config, restartNeeded: false });
+  };
+}
+
+/**
+ * The handlers only the owner's bot runs: the `config/change` that sets `owner.locale` in the
+ * state folder's `config.json5`, the one setting the owner's chat changes (decision 0134).
+ */
+export function ownerChatHandlers(
+  platform: Platform,
+  settings: ConfigCell,
+): { readonly "config/change": EngineHandler<"config/change"> } {
+  const { stateFolder, permissions } = platform;
+  return {
+    "config/change": createOwnerLocaleChange({
+      file: stateFolder.configFile,
+      permissions,
+      settings,
+    }),
   };
 }
