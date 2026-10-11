@@ -226,23 +226,25 @@ Rules for this package:
   refuse before a signature (the `queue_took` check, a draft that would fail, a fee per gas above
   the network fee cap) runs before the move to `executing`, so such an intent stays `confirmed` with
   nothing signed; one above the cap tries again each block until its authorization runs out and it
-  expires (decision 0143). No step or replacement is signed above the cap. Each step's raw bytes are stored before any send; a send no relay accepts goes
-  again with the same stored bytes. A stuck step follows spec 6, section 6 in `stuck-rules.ts`, only
-  on its wallet's slot: the same bytes again while it still runs, a speed-up after
-  `replaceAfterBlocks`, a cancel once it would fail, each at its nonce for at least
-  `leastReplacementFee` and never above the network fee cap. A step every relay turns away for
-  `droppedAfterBlocks` blocks, its nonce still free by the latest and the pending count and none of
-  its transactions known to a node, is dropped: its nonce goes to the next step and the intent ends with `stuck_dropped` (decision 0115). A step no rule can move waits as long for
-  that, then hands over at the seam `executor.step_stopped` logs. Reconciliation reads what each
-  final step moved only through the `ReceiptReader`, records the trade in the positions before the
-  move to `reconciled`, and finds it stored after a restart, so a trade is recorded once. `recover`
-  signs nothing: each stored step is looked up by hash and nonce (spec 6, section 7). The watch and
-  recovery read every transaction of a step's nonce, so whichever lands is the step's, and a landed
-  cancel ends the intent with `stuck_cancelled`; recovery never replaces a stuck step. A step that
-  is never signed, at a run or found at recovery, ends the intent through `step_unsent`: `cancelled`
-  when no step was signed, `failed_onchain` once one landed (decision 0109). A confirmed intent whose
-  confirmation or auto grant ran out while the engine was stopped or locked expires at recovery,
-  through `authorization_lapsed` (decision 0120). `close` follows the
+  expires (decision 0143). No step or replacement is signed above the cap. Each step's raw bytes are
+  stored before any send; a send no relay accepts goes again with the same stored bytes. A stuck
+  step follows spec 6, section 6 in `stuck-rules.ts`, only on its wallet's slot: the same bytes
+  again while it still runs, a speed-up after `replaceAfterBlocks`, a cancel once it would fail,
+  each at its nonce for at least `leastReplacementFee` and never above the network fee cap. A step
+  every relay turns away for `droppedAfterBlocks` blocks, its nonce still free by the latest and the
+  pending count and none of its transactions known to a node, is dropped: its nonce goes to the next
+  step and the intent ends with `stuck_dropped` (decision 0115). A step no rule can move waits as
+  long for that, then hands over at the seam `executor.step_stopped` logs and holds its wallet's
+  queue, with `notice.walletHeld`, until a block holds it or the drop rule drops it. Reconciliation
+  reads what each final step moved only through the `ReceiptReader`, records the trade in the
+  positions before the move to `reconciled`, and finds it stored after a restart, so a trade is
+  recorded once. `recover` signs nothing: each stored step is looked up by hash and nonce (spec 6,
+  section 7). The watch and recovery read every transaction of a step's nonce, so whichever lands is
+  the step's, and a landed cancel ends the intent with `stuck_cancelled`; recovery never replaces a
+  stuck step. A step that is never signed, at a run or found at recovery, ends the intent through
+  `step_unsent`: `cancelled` when no step was signed, `failed_onchain` once one landed (decision
+  0109). A confirmed intent whose confirmation or auto grant ran out while the engine was stopped or
+  locked expires at recovery, through `authorization_lapsed` (decision 0120). `close` follows the
   engine's shutdown order (ARCHITECTURE.md section 24): it takes nothing more, every wait ends and
   no step or replacement starts, while a signature or a send under way runs to its end within the
   shutdown's budget.

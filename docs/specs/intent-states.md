@@ -253,7 +253,10 @@ Stuck steps ([ARCHITECTURE.md section 7](../ARCHITECTURE.md#section-7)):
    step's transactions: the step is recorded `dropped`, which frees its nonce, and the intent ends
    `failed_onchain` with reason `stuck_dropped` ([decision 0115](../DECISIONS.md#d0115)). A step
    no rule can move waits 60 blocks for this, getting the same bytes every 20, before it is handed
-   over still `executing`. The executor watches a dropped step's transactions for 600 more blocks,
+   over still `executing`. A step handed over keeps its nonce, so it holds its wallet's queue: it
+   gets the same bytes every 20 blocks until a block holds one of its transactions or the drop
+   rule drops it, no later step of the wallet signs behind it, and the owner gets
+   `notice.walletHeld`. The executor watches a dropped step's transactions for 600 more blocks,
    off the wallet's queue; one that lands after all raises `notice.droppedLanded`, and the intent
    stays `failed_onchain`.
 

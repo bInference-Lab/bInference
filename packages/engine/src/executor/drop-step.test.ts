@@ -123,7 +123,7 @@ describe("a stuck step every relay refuses", () => {
     bench.network.holdBelow(52_000_000n);
     const intent = await tapped(bench);
     await driveUntil(bench, intent, { states: [], blocks: 18 });
-    expect(eventsOf(bench).at(-1)).toBe("executor.step_stopped:over_fee_cap");
+    expect(eventsOf(bench)).toContain("executor.step_stopped:over_fee_cap");
     expect((await transactionsOf(bench)).map(({ state }) => state)).toStrictEqual(["sent"]);
   });
 });

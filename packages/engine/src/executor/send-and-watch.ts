@@ -1,5 +1,6 @@
-import type { TxReceipt } from "@binference/chain";
+import { accountRefParts, type TxReceipt } from "@binference/chain";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { noticePush } from "../pushes/notice-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { dropStep } from "./drop-step.js";
 import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
@@ -22,6 +23,9 @@ export type Watched =
       readonly transaction: TransactionRecord;
       readonly problem: string;
     };
+
+// The owner's notice that a wallet's later trades wait behind a step no rule can move.
+const heldNoticeKey = "notice.walletHeld";
 
 /** A stuck step at a rule of spec 6, section 6: its transactions, and the rule now due. */
 export interface StuckAt extends NonceTransactions {
@@ -63,6 +67,8 @@ interface WatchState extends NonceTransactions {
   readonly handedOver?: { readonly problem: string; readonly atBlock: bigint };
   /** The head at the last send of the same bytes while the step waits handed over. */
   readonly lastSendBlock?: bigint;
+  /** The handed-over wait ran out and the owner heard that the wallet waits behind the step. */
+  readonly isHeld?: boolean;
 }
 
 // A send's answers: every relay refusing starts the refusal clock, any relay taking or not
@@ -152,8 +158,20 @@ async function dropDue(run: ExecutionRun, state: WatchState): Promise<WatchState
     : state;
 }
 
+// The step keeps its nonce, so every later step of the wallet would wait behind it: the wallet's
+// queue stays with the step, and the owner hears why once.
+function holdWallet(run: ExecutionRun, state: WatchState, problem: string): WatchState {
+  const { id, agentId } = state.intent;
+  run.parts.log.warn("executor.step_stopped", { intentId: id, errorCode: problem });
+  const wallet = accountRefParts(state.transaction.account).address;
+  const notice = { key: heldNoticeKey, agent: agentId, intent: id, values: { wallet } };
+  run.parts.publish(noticePush(notice));
+  return { ...state, isHeld: true };
+}
+
 // A step handed over gets the same bytes again each `stuckAfterBlocks` blocks, so the relays'
-// answers keep the drop rule's clock, until `droppedAfterBlocks` blocks end its wait.
+// answers keep the drop rule's clock. Once `droppedAfterBlocks` blocks end its wait, it holds the
+// wallet until a block holds it or the drop rule drops it.
 async function waitHandedOver(
   run: ExecutionRun,
   state: WatchState & {
@@ -163,8 +181,8 @@ async function waitHandedOver(
 ): Promise<WatchState | Watched> {
   const { stuckAfterBlocks, droppedAfterBlocks } = run.parts.limits;
   const { problem, atBlock } = state.handedOver;
-  if (head - atBlock >= BigInt(droppedAfterBlocks)) {
-    return { outcome: "stuck", transaction: state.transaction, problem };
+  if (state.isHeld !== true && head - atBlock >= BigInt(droppedAfterBlocks)) {
+    return holdWallet(run, state, problem);
   }
   if (head - (state.lastSendBlock ?? atBlock) < BigInt(stuckAfterBlocks)) {
     return state;
@@ -256,9 +274,11 @@ async function watchFrom(
  * is stuck, `rules` move it on (spec 6, section 6). A step no rule can move, or any stuck step
  * without rules, as in recovery, which never signs, waits handed over and gets the same bytes
  * again each `stuckAfterBlocks` blocks. Once every relay has refused the step's bytes for
- * `droppedAfterBlocks` blocks and its nonce is still free, the step is `dropped` (decision 0115);
- * a step that waited handed over that long without it is `stuck`. A watch that cannot read the
- * head for three times `stuckAfterBlocks` blocks in a row hands the step over as `stuck`.
+ * `droppedAfterBlocks` blocks and its nonce is still free, the step is `dropped` (decision 0115).
+ * A step that waited handed over that long without it holds its wallet: the watch goes on, the
+ * owner gets `notice.walletHeld`, and no later step of the wallet signs behind it. A watch that
+ * cannot read the head for three times `stuckAfterBlocks` blocks in a row, or whose step's nonce
+ * another transaction used, hands the step over as `stuck`.
  */
 export async function sendAndWatch(
   run: ExecutionRun,

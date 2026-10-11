@@ -212,8 +212,24 @@ describe("a stuck step", () => {
     const { bench, intent } = await stuckSwap(options);
     await driveUntil(bench, intent, { states: [], blocks: 18 });
     expect(await stateOf(bench, intent)).toBe("executing");
-    expect(eventsOf(bench).at(-1)).toBe(`executor.step_stopped:${problem}`);
+    expect(eventsOf(bench)).toContain(`executor.step_stopped:${problem}`);
     expect((await transactionsOf(bench)).map(({ state }) => state)).toStrictEqual(["sent"]);
+  });
+
+  it("holds its wallet while handed over, and tells the owner why later trades wait", async () => {
+    const { bench, intent } = await stuckSwap({ custody: refusingReplacements });
+    await driveUntil(bench, intent, { states: [], blocks: 18 });
+    const asked = bench.signed.length;
+    const later = await tapped(bench);
+    await driveUntil(bench, later, { states: [], blocks: 5 });
+    expect(await stateOf(bench, later)).toBe("confirmed");
+    expect(bench.signed).toHaveLength(asked);
+    const notices = bench.pushes.filter(({ kind }) => kind === "notice/new");
+    expect(JSON.stringify(notices)).toContain("notice.walletHeld");
+    bench.network.holdBelow(0n);
+    await expect(driveUntil(bench, later, settled)).resolves.toBe("reconciled");
+    await expect(stateOf(bench, intent)).resolves.toBe("reconciled");
+    expect((await transactionsOf(bench)).map(({ nonce }) => nonce)).toStrictEqual([0, 1]);
   });
 
   it("is handed over when a transaction it never signed used its nonce", async () => {
@@ -270,7 +286,7 @@ describe("a stuck step's rules on a node or a preparer that fails", () => {
     const { bench, intent } = await stuckSwap({ preparer });
     bench.network.failing(await stepPayload(bench, intent));
     await driveUntil(bench, intent, { states: [], blocks: 15 });
-    expect(eventsOf(bench).at(-1)).toBe("executor.step_stopped:would_fail");
+    expect(eventsOf(bench)).toContain("executor.step_stopped:would_fail");
     expect(bench.signed).toHaveLength(1);
   });
 
@@ -316,7 +332,7 @@ describe("recovery of a replaced step", () => {
     const { bench, intent } = await stuckSwap();
     const restarted = await restartBench(bench, { limits });
     await driveUntil(bench, intent, { states: [], blocks: 15 });
-    expect(restartEvents(restarted).at(-1)).toBe("executor.step_stopped:stuck");
+    expect(restartEvents(restarted)).toContain("executor.step_stopped:stuck");
     expect(restarted.signed).toStrictEqual([]);
   });
 
