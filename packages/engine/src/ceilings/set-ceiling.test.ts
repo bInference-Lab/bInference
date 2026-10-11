@@ -1,9 +1,11 @@
 import { accountRefSchema, chainRefSchema } from "@binference/chain";
 import { err, type Id, idSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import type { CeilingChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { fakeOwnerKeyCode } from "../fakes/fake-ceiling-editor.js";
+import { createFakeCeilingEditor, fakeOwnerKeyCode } from "../fakes/fake-ceiling-editor.js";
 import type { WalletRecord } from "../install/install-record.js";
+import type { CeilingEditor } from "../install/ports.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import {
@@ -41,6 +43,23 @@ async function started(): Promise<TestEngine> {
   for (const item of [first, second, archived, others]) {
     test.stores.install.addWallet(item);
     test.ceilings.put(item.policyId, [owner], { contracts: [swapRouter], perTxNativeBase: 5n });
+  }
+  return test;
+}
+
+// The agent's two live wallets under ceilings custody holds, and custody that then refuses every
+// change of calls as a ceiling it no longer holds.
+async function startedOverRefusingCustody(): Promise<TestEngine> {
+  const chains = testChains(["other-swap"]);
+  const held = createFakeCeilingEditor({ clock: createManualClock(testNowMs), chains });
+  const refusing: CeilingEditor = {
+    ...held,
+    setCalls: async () => Promise.resolve(err("not_found")),
+  };
+  const test = await startTestEngine({ chains, ceilings: refusing });
+  for (const item of [first, second]) {
+    test.stores.install.addWallet(item);
+    held.put(item.policyId, [owner], { contracts: [swapRouter], perTxNativeBase: 5n });
   }
   return test;
 }
@@ -163,5 +182,35 @@ describe("changing a ceiling with the owner key", () => {
     expect(await named(archived.id)).toStrictEqual(err("wallet.not_found"));
     expect(await named(wallet(9).id)).toStrictEqual(err("wallet.not_found"));
     expect(await capOf(test, first.policyId)).toBe(5n);
+  });
+
+  it("refuses a wallet of an agent the engine does not hold", async () => {
+    const test = await started();
+    const call = { wallet: others.id, changes: both, ownerKey: fakeOwnerKeyCode };
+
+    expect(await test.engine.handlers["ceiling/set"](testCall(call))).toStrictEqual(
+      err("agent.not_found"),
+    );
+    expect(await capOf(test, others.policyId)).toBe(5n);
+  });
+
+  it("changes no ceiling while custody holds none for one of the agent's live wallets", async () => {
+    const test = await started();
+    const unheld = wallet(5);
+    test.stores.install.addWallet(unheld);
+
+    expect(await setCeiling(test, both)).toStrictEqual(err("wallet.not_found"));
+    expect([await capOf(test, first.policyId), await capOf(test, second.policyId)]).toStrictEqual([
+      5n,
+      5n,
+    ]);
+  });
+
+  it("answers custody's refusal of the change, and announces nothing that did not move", async () => {
+    const test = await startedOverRefusingCustody();
+
+    expect(await setCeiling(test, both)).toStrictEqual(err("wallet.not_found"));
+    expect(notices(test)).toStrictEqual([]);
+    expect(await storedCaps(test)).toStrictEqual([5n, 5n]);
   });
 });
