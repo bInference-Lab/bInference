@@ -22,6 +22,7 @@ import {
   sendFrame,
 } from "./connection-link.js";
 import { keepAlive } from "./keep-alive.js";
+import { endIfLockedOut, refuseSignIn } from "./sign-in-refusal.js";
 import type { Identity } from "./sign-in.js";
 
 /** One served connection. */
@@ -85,6 +86,9 @@ function becomeReady(link: Link, open: OpenFrame, identity: Identity): void {
 }
 
 async function signIn(link: Link, open: OpenFrame): Promise<void> {
+  if (endIfLockedOut(link, open)) {
+    return;
+  }
   link.phase.set({ name: "signing_in" });
   const request = { credential: open.auth, transport: link.peer.transport, connection: link.id };
   const origin = link.peer.origin === undefined ? {} : { origin: link.peer.origin };
@@ -99,7 +103,7 @@ async function signIn(link: Link, open: OpenFrame): Promise<void> {
     return;
   }
   if (!step.ok) {
-    sayBye(link, step.error, "Signing in failed.");
+    refuseSignIn(link, open, { code: step.error, message: "Signing in failed." });
     return;
   }
   if (step.value.kind === "signed_in") {
@@ -125,7 +129,7 @@ async function prove(
     becomeReady(link, phase.open, proved.value);
     return;
   }
-  sayBye(link, proved.error, "The device proof failed.");
+  refuseSignIn(link, phase.open, { code: proved.error, message: "The device proof failed." });
 }
 
 function call(link: Link, phase: Extract<Phase, { name: "ready" }>, frame: CallFrame): void {

@@ -1,7 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
+import type { Logger } from "@binference/core";
 import type { DevicePairing } from "@binference/engine/access";
 import type { EngineState } from "@binference/protocol";
+import type { AuthFailures } from "./auth-failures.js";
 import { answerConsole, type ConsoleFiles } from "./console-route.js";
 import type { OriginRules, RequestNames } from "./origin-check.js";
 import { answerPair } from "./pair-route.js";
@@ -32,11 +34,29 @@ function namesOf(request: IncomingMessage): RequestNames {
   };
 }
 
+const loopbackAddresses = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+
+/**
+ * Where a request came from, to count its failed sign-ins and pairings: its peer address, or, for
+ * a request a proxy on this machine passed on, the first address of its `X-Forwarded-For`. The
+ * source only counts failures; it is never trusted to let anything in.
+ */
+export function sourceOf(request: IncomingMessage): string {
+  const peer = request.socket.remoteAddress ?? "unknown";
+  const forwarded = headerOf(request.headers["x-forwarded-for"])?.split(",")[0]?.trim();
+  return loopbackAddresses.has(peer) && forwarded !== undefined && forwarded !== ""
+    ? `forwarded:${forwarded}`
+    : peer;
+}
+
 /** What the plain HTTP routes answer from. */
 export interface HttpRoutesContext {
   readonly state: () => EngineState;
   /** Which origins may pair, and whether a request came through the public address. */
   readonly origins: () => OriginRules;
+  /** The failed pairings, per source. */
+  readonly failures: AuthFailures;
+  readonly logger: Logger;
   /** Pairs console devices at `POST /pair`; without it the path is 404. */
   readonly pairing?: DevicePairing;
   /** The console's built files; without them `/` and `/mini` are 404. */
@@ -86,7 +106,14 @@ export function answerRequest(
   }
   const { pairing, consoleFiles, signal } = context;
   if (path === "/pair" && pairing !== undefined) {
-    answerPair(request, response, { pairing, isAllowedOrigin: origins.isPairingOrigin, signal });
+    const { failures, logger } = context;
+    const guard = { failures, logger, source: sourceOf(request) };
+    answerPair(request, response, {
+      pairing,
+      isAllowedOrigin: origins.isPairingOrigin,
+      signal,
+      guard,
+    });
     return;
   }
   const isConsole =

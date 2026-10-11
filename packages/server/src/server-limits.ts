@@ -1,8 +1,11 @@
+import type { AuthFailureLimits } from "./auth-failures.js";
+
 /**
  * The bounds and timeouts of a protocol server. Each one holds per connection unless it says
  * otherwise; over a call limit, the call fails with `protocol.busy` or `protocol.too_large`.
+ * Failed sign-ins and pairings count per source address and per credential (`AuthFailureLimits`).
  */
-export interface ServerLimits {
+export interface ServerLimits extends AuthFailureLimits {
   /** The largest frame after sign-in, in bytes. */
   readonly maxFrameBytes: number;
   /** The largest frame before `ready`, in bytes: `open` and `prove` are small. */
@@ -42,7 +45,9 @@ export interface ServerLimits {
 /**
  * The limits a server uses unless its options change them: the spec's 1 MiB frames, 64 calls in
  * flight and 20 calls a second with a burst of 60, a 10-second sign-in, a ping every 20 seconds and
- * a drop after 60 seconds without a pong, and pushes kept for 10 minutes or 1,000 per topic.
+ * a drop after 60 seconds without a pong, pushes kept for 10 minutes or 1,000 per topic, and a
+ * source or credential that fails to sign in or pair 10 times within a minute refused for 5
+ * minutes.
  */
 export const defaultServerLimits: ServerLimits = {
   maxFrameBytes: 1024 * 1024,
@@ -62,4 +67,8 @@ export const defaultServerLimits: ServerLimits = {
   maxTopics: 1_024,
   maxTopicsPerConnection: 64,
   closeGraceMs: 1_000,
+  authMaxFailures: 10,
+  authFailureWindowMs: 60_000,
+  authLockoutMs: 5 * 60_000,
+  maxAuthKeys: 4_096,
 };

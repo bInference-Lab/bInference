@@ -1,7 +1,9 @@
 import { Buffer } from "node:buffer";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { Logger } from "@binference/core";
 import type { DevicePairing } from "@binference/engine/access";
 import type { ProtocolErrorCode } from "@binference/protocol";
+import type { AuthFailures } from "./auth-failures.js";
 import { decodePairBody } from "./pair-body.schema.js";
 import { resourceHeaders } from "./security-headers.js";
 
@@ -14,6 +16,12 @@ export interface PairRouteContext {
   readonly isAllowedOrigin: (origin: string | undefined) => boolean;
   /** Aborts when the server stops. */
   readonly signal: AbortSignal;
+  /** Counts each refused code per source, and refuses a source that failed too often lately. */
+  readonly guard: {
+    readonly failures: AuthFailures;
+    readonly logger: Logger;
+    readonly source: string;
+  };
 }
 
 const jsonHeaders = {
@@ -28,6 +36,7 @@ const refusals = {
   "auth.origin": { status: 403, message: "This origin may not pair a device." },
   "auth.invalid": { status: 401, message: "The pairing code is unknown or used." },
   "auth.expired": { status: 401, message: "The pairing code expired." },
+  "protocol.busy": { status: 429, message: "Too many failed pairings; try again later." },
 } as const satisfies Partial<Record<ProtocolErrorCode, { status: number; message: string }>>;
 
 type PairError = keyof typeof refusals;
@@ -62,6 +71,12 @@ async function pair(
   response: ServerResponse,
   context: PairRouteContext,
 ): Promise<void> {
+  const { failures, logger, source } = context.guard;
+  if (failures.isLocked([`source:${source}`])) {
+    logger.warn("server.pair_locked_out");
+    refuse(response, "protocol.busy");
+    return;
+  }
   if (!context.isAllowedOrigin(request.headers.origin)) {
     refuse(response, "auth.origin");
     return;
@@ -79,6 +94,9 @@ async function pair(
   }
   const paired = await context.pairing.pair(body, { signal: context.signal });
   if (!paired.ok) {
+    // A wrong or spent code counts against its source; the code itself is never logged.
+    logger.warn("server.pair_failed", { errorCode: paired.error });
+    failures.fail([`source:${source}`]);
     refuse(response, paired.error);
     return;
   }
@@ -89,8 +107,9 @@ async function pair(
  * Answers `POST /pair` (protocol spec, section 4.2; decision 0155): an allowed `Origin`, a JSON
  * body of at most {@link maxPairBodyBytes}, then the pairing. It answers 201 `{ deviceId }`, or
  * a refusal `{ error: { code, message } }`: 403 `auth.origin`, 413 `protocol.too_large`, 400
- * `protocol.bad_args`, 401 `auth.invalid` or `auth.expired`. Another method is 405. A fault,
- * such as a store that fails, is 500 with no detail.
+ * `protocol.bad_args`, 401 `auth.invalid` or `auth.expired`, and 429 `protocol.busy` for a source
+ * whose codes failed too often lately. Another method is 405. A fault, such as a store that fails,
+ * is 500 with no detail.
  */
 export function answerPair(
   request: IncomingMessage,

@@ -13,15 +13,16 @@ import type { IdempotencyStore } from "@binference/engine";
 import type { DevicePairing } from "@binference/engine/access";
 import type { PushFrame } from "@binference/protocol";
 import { WebSocketServer } from "ws";
+import { createAuthFailures } from "./auth-failures.js";
 import { createCallDispatch } from "./call-dispatch.js";
 import { checkBind } from "./check-bind.js";
 import type { ConnectionContext } from "./connection-link.js";
 import type { ConsoleFiles } from "./console-route.js";
 import type { EngineFacts } from "./engine-facts.js";
-import { answerRequest, pathOf, refuseUpgrade } from "./http-routes.js";
+import { answerRequest, pathOf, refuseUpgrade, sourceOf } from "./http-routes.js";
 import { createIdempotentWrites } from "./idempotent-writes.js";
 import type { OperationHandlers, Transport } from "./operation-handlers.js";
-import { createOriginRules, type OriginRules } from "./origin-check.js";
+import { closedOriginRules, createOriginRules, type OriginRules } from "./origin-check.js";
 import { createPushHub, type PushEvent } from "./push-hub.js";
 import { type Connection, serveConnection } from "./serve-connection.js";
 import { defaultServerLimits, type ServerLimits } from "./server-limits.js";
@@ -176,12 +177,15 @@ interface ServerState {
   readonly closing: Cell<Promise<void> | undefined>;
 }
 
-// Before the listener binds, no origin may connect or pair.
-const closedOrigins: OriginRules = {
-  isSocketOrigin: () => false,
-  isPairingOrigin: () => false,
-  isPublished: () => false,
-};
+// The hard cap leaves room to answer a call up to twice the frame limit with a `fail`.
+function webSocketServerOf(limits: ServerLimits): WebSocketServer {
+  return new WebSocketServer({
+    noServer: true,
+    maxPayload: limits.maxFrameBytes * 2,
+    perMessageDeflate: false,
+    clientTracking: false,
+  });
+}
 
 function createState(options: ProtocolServerOptions): ServerState {
   const limits = { ...defaultServerLimits, ...options.limits };
@@ -209,20 +213,14 @@ function createState(options: ProtocolServerOptions): ServerState {
   });
   const auth = options.auth === undefined ? {} : { auth: options.auth };
   const signIn = createSignIn({ ...auth, clock, random });
-  // The hard cap leaves room to answer a call up to twice the frame limit with a `fail`.
-  const webSocketServer = new WebSocketServer({
-    noServer: true,
-    maxPayload: limits.maxFrameBytes * 2,
-    perMessageDeflate: false,
-    clientTracking: false,
-  });
+  const failures = createAuthFailures({ ...limits, clock });
   return {
     limits,
     lifetime,
-    context: { dispatch, signIn, pushes, engine, ids, clock, logger, limits },
-    webSocketServer,
+    context: { dispatch, signIn, pushes, engine, ids, clock, logger, limits, failures },
+    webSocketServer: webSocketServerOf(limits),
     connections: new Set(),
-    origins: cell<OriginRules>(closedOrigins),
+    origins: cell<OriginRules>(closedOriginRules),
     closing: cell<Promise<void> | undefined>(undefined),
   };
 }
@@ -248,6 +246,7 @@ function upgrade(state: ServerState, upgrading: Upgrade): void {
     const { origin } = request.headers;
     const peer = {
       transport,
+      source: transport === "ipc" ? "ipc" : sourceOf(request),
       isOriginAllowed: transport === "ipc" || state.origins.get().isSocketOrigin(origin),
       ...(origin === undefined ? {} : { origin }),
     };
@@ -270,6 +269,8 @@ function createListener(state: ServerState, options: ListenerOptions): Server {
       ...options.browser,
       state: state.context.engine.state,
       origins: () => state.origins.get(),
+      failures: state.context.failures,
+      logger: state.context.logger,
       signal: state.lifetime.signal,
     }),
   );

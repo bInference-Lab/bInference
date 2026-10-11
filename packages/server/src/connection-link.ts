@@ -1,6 +1,7 @@
 import type { Clock, ErrorCode, IdSource, Logger } from "@binference/core";
 import type { EngineFrame, OpenFrame, ProtocolId } from "@binference/protocol";
 import { WebSocket } from "ws";
+import type { AuthFailures } from "./auth-failures.js";
 import type { CallBudget } from "./call-budget.js";
 import type { CallDispatch, Session } from "./call-dispatch.js";
 import type { EngineFacts } from "./engine-facts.js";
@@ -19,6 +20,8 @@ export interface ConnectionContext {
   readonly clock: Clock;
   readonly logger: Logger;
   readonly limits: ServerLimits;
+  /** The failed sign-ins, per source and per credential. */
+  readonly failures: AuthFailures;
 }
 
 /** Where a connection came from. */
@@ -28,6 +31,8 @@ export interface Peer {
   readonly origin?: string;
   /** Whether the server lets that origin connect over this transport. */
   readonly isOriginAllowed: boolean;
+  /** Where the connection came from, to count its failed sign-ins: an address, or `ipc`. */
+  readonly source: string;
 }
 
 /**

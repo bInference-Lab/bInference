@@ -24,6 +24,13 @@ export interface OriginRules {
   readonly isPublished: (headers: RequestNames) => boolean;
 }
 
+/** The rules before the listener binds: no origin may connect or pair, and nothing is published. */
+export const closedOriginRules: OriginRules = {
+  isSocketOrigin: () => false,
+  isPairingOrigin: () => false,
+  isPublished: () => false,
+};
+
 /** The headers of a request that name where the browser or a proxy sent it. */
 export interface RequestNames {
   readonly host?: string;

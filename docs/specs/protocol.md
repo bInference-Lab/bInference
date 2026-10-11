@@ -70,6 +70,11 @@ The engine listens on two transports. Both carry the same frames (section 3) ove
   without a pong.
 - Limits: 1 MiB per frame; 64 calls in flight per connection; 20 calls per second with a burst
   of 60. Over a limit, the call fails with `protocol.busy` or `protocol.too_large`.
+- Failed sign-ins and pairings count per source address (the first `X-Forwarded-For` address for a
+  proxy on this machine) and per credential: one that fails 10 times within a minute is refused
+  for 5 minutes, a sign-in with `bye protocol.busy` and `POST /pair` with 429 `protocol.busy`. Each
+  failure is logged with its error code and the connection's id, never the credential or a
+  pairing code.
 
 <a id="section-2-1"></a>
 
