@@ -258,7 +258,9 @@ Stuck steps ([ARCHITECTURE.md section 7](../ARCHITECTURE.md#section-7)):
 runs the call there. No speed-up or cancel is signed with a fee per gas above the network fee cap
 ([decision 0143](../DECISIONS.md#d0143)); the step is handed over instead
 ([decision 0115](../DECISIONS.md#d0115)). Whichever transaction at a step's nonce lands is the
-step's; the store supersedes the others in the same write.
+step's; the store supersedes the others in the same write. A nonce that seems used by another
+transaction counts as another's only once a final block holds it and the step's receipts, read
+again then, show none of its own, as at recovery (section 7).
 
 A signature for a speed-up or a cancel is a new signature for the same confirmed intent; the signer
 checks it against the same confirmation record, and signs a cancel for one minute after that

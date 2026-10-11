@@ -4,7 +4,7 @@ import { type ExecutionRun, readSafely } from "./executor-run.js";
 import type { SigningTerms } from "./queue-check.js";
 import { sendOnce, signAndStore } from "./run-step.js";
 import type { StuckAt, StuckMove, StuckRules } from "./send-and-watch.js";
-import { readFate } from "./step-fate.js";
+import { finalFate, readFate } from "./step-fate.js";
 import { termsNow } from "./terms-now.js";
 
 /** What signs a stuck step's replacement: the slot that holds its wallet, and the intent's terms. */
@@ -111,7 +111,9 @@ async function moveStuck(
   signing: StuckSigning,
   at: StuckAt,
 ): Promise<StuckMove> {
-  const fate = await readFate(run, at);
+  const read = await readFate(run, at);
+  // A used nonce waits for its block to be final before it is another's.
+  const fate = read?.kind === "taken" ? await finalFate(run, at) : read;
   if (fate === undefined) {
     return waiting;
   }
@@ -138,7 +140,8 @@ async function moveStuck(
 
 /**
  * The stuck rules of spec 6, section 6, for a step the wallet's slot holds. A step's nonce
- * another transaction used stops them. Otherwise the step is simulated again: still valid, it
+ * another transaction used stops them once a final block holds it and the step's receipts, read
+ * again, show none of its own. Otherwise the step is simulated again: still valid, it
  * gets the same bytes again at the first rule and a speed-up at the second, the same call at its
  * nonce for at least 10% more; no longer valid, it gets a cancel, a 0-value transfer to the
  * wallet itself at its nonce for at least 10% more. Each replacement is a new signature for the

@@ -281,6 +281,33 @@ describe("a stuck step's rules on a node or a preparer that fails", () => {
   });
 });
 
+// A node that shows a receipt only once the block holding it is final.
+function receiptsOnceFinal(network: FakeNetwork): ReceiptReader {
+  return {
+    head: async (chain, options) => network.head(chain, options),
+    transfers: async (chain, hash, options) => network.transfers(chain, hash, options),
+    nativeReceived: async (account, block, options) =>
+      network.nativeReceived(account, block, options),
+    nonceAt: async (account, block, options) => network.nonceAt(account, block, options),
+    async receipt(chain, hash, options) {
+      const receipt = await network.receipt(chain, hash, options);
+      const { final } = await network.head(chain, options);
+      return receipt !== undefined && receipt.block.number <= final ? receipt : undefined;
+    },
+  };
+}
+
+describe("a step whose own receipt a node shows late", () => {
+  it("is not handed over as another's until its nonce's block is final", async () => {
+    const network = { finalityDepth: 8n };
+    const bench = await startExecutorBench({ limits, network, receipts: receiptsOnceFinal });
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("reconciled");
+    expect(eventsOf(bench)).not.toContain("executor.step_stopped:nonce_used");
+    expect(bench.signed).toHaveLength(1);
+  });
+});
+
 describe("recovery of a replaced step", () => {
   it("hands a step over as stuck, since recovery never replaces one", async () => {
     const { bench, intent } = await stuckSwap();

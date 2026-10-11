@@ -2,7 +2,7 @@ import type { TxReceipt } from "@binference/chain";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { ExecutionRun } from "./executor-run.js";
 import { isTurnedAway } from "./run-step.js";
-import { type NonceTransactions, readFate } from "./step-fate.js";
+import { finalFate, type NonceTransactions, readFate } from "./step-fate.js";
 
 /**
  * What the drop rule found (decision 0115): a block holds one of the step's transactions after
@@ -38,7 +38,8 @@ export async function dropStep(run: ExecutionRun, at: NonceTransactions): Promis
   if (!gone.every(Boolean)) {
     return { kind: "held" };
   }
-  const fate = await readFate(run, at);
+  const read = await readFate(run, at);
+  const fate = read?.kind === "taken" ? await finalFate(run, at) : read;
   if (fate === undefined || fate.kind === "taken") {
     return { kind: fate === undefined ? "unread" : "taken" };
   }

@@ -105,6 +105,20 @@ export async function fateOf(
   return fateOf(run, at, waits + 1);
 }
 
+/**
+ * What a step whose nonce another transaction seems to have used shows once a final block holds
+ * that nonce: its receipts read again, so a node a block behind never hands the step's own landed
+ * transaction over as another's (spec 6, section 7). `undefined` while no final block holds it.
+ */
+export async function finalFate(
+  run: ExecutionRun,
+  at: NonceTransactions,
+): Promise<StepFate | undefined> {
+  const fate = (await isTakenForGood(run, at.transaction)) ? await readFate(run, at) : undefined;
+  // A node that calls a nonce a final block holds free is behind: ask again.
+  return fate?.kind === "free" ? undefined : fate;
+}
+
 // Whether a final block holds the step's nonce: then the step can never be included.
 async function isTakenForGood(run: ExecutionRun, transaction: TransactionRecord) {
   const { plan, signal } = run;
