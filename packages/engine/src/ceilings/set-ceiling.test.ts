@@ -96,6 +96,7 @@ describe("changing a ceiling with the owner key", () => {
       venues: ["fake-swap", "other-swap"],
       perTxNative: 9n,
       recipients: [owner],
+      dayCaps: [],
       readAt: testNowMs,
     });
     const caps = await Promise.all(

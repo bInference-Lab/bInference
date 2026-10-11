@@ -53,6 +53,7 @@ describe("a venue inside a ceiling", () => {
       contracts: [accountRefSchema.parse(`${ref}:0x0000000b`)],
       perTxNativeBase: 0n,
       recipients: [],
+      dayCaps: [],
       policy: [],
     };
     expect(venuesIn(chains, read)).toStrictEqual(["fake-swap"]);

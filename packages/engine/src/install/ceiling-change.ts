@@ -1,5 +1,6 @@
 import type { AccountRef, ChainRef } from "@binference/chain";
 import { type JsonValue, jsonValueSchema, type Secret } from "@binference/core";
+import type { DayCapView } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 
@@ -71,6 +72,11 @@ export interface CeilingRead {
   readonly perTxNativeBase: bigint;
   /** Each account a send may pay, on each chain it enables. */
   readonly recipients: readonly AccountRef[];
+  /**
+   * Each 24-hour cap it names, as `ceiling/get` shows it: the native coin's first on each chain,
+   * then each capped token's. Every ceiling of the install names the same sums (decision 0149).
+   */
+  readonly dayCaps: readonly DayCapView[];
   /** The ceiling as custody reports it, which a wallet's stored copy of its ceiling mirrors. */
   readonly policy: JsonValue;
 }

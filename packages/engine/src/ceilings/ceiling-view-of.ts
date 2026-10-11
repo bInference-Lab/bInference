@@ -46,6 +46,7 @@ export function ceilingViewOf(
     venues: venuesIn(chains, read),
     perTxNative: read.perTxNativeBase,
     recipients: read.recipients,
+    dayCaps: read.dayCaps,
     readAt,
   };
 }

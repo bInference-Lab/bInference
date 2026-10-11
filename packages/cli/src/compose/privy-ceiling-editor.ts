@@ -48,6 +48,8 @@ import type {
   SignRecipientsRequest,
 } from "@binference/engine/install";
 import { z } from "zod";
+import type { CapAssets } from "../init/ceiling-request.js";
+import { dayCapViewsOf } from "./day-cap-views.js";
 import { ownerAuthorize, type OwnerKeyHolder } from "./owner-authorize.js";
 
 /** What the Privy ceiling editor reaches Privy with, and the owner key it takes. */
@@ -61,6 +63,8 @@ export interface PrivyCeilingEditorOptions extends OwnerKeyHolder {
   readonly callsOn: (chain: ChainRef, calls: Omit<CeilingCalls, "ceiling">) => CeilingChainPlan;
   /** The plan of a chain's 24-hour caps, for a ceiling that names none on it yet. */
   readonly capPlanOn: (chain: ChainRef) => ChainCapPlan;
+  /** What a chain's 24-hour caps count and their floors; undefined for a chain unknown here. */
+  readonly capAssetsOn: (chain: ChainRef) => CapAssets | undefined;
   /** The 24-hour caps the install's live ceilings name now. */
   readonly heldCaps: (signal: AbortSignal) => Promise<readonly HeldCaps[]>;
 }
@@ -141,6 +145,7 @@ async function read(
     contracts: accountsOn(chains, rules.contracts),
     perTxNativeBase: rules.perTxNativeCapBase,
     recipients: accountsOn(chains, rules.recipients),
+    dayCaps: dayCapViewsOf(rules.caps, options.capAssetsOn),
     policy: jsonValueSchema.parse(policy),
   });
 }

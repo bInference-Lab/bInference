@@ -1,10 +1,11 @@
 import type {
+  AssetRef,
   CeilingCapsDefinition,
   ChainDefinition,
   ChainRegistry,
   VenueDeclaration,
 } from "@binference/chain";
-import { evmChainOf } from "@binference/chain-evm";
+import { erc20AssetRef, evmChainOf, parseEvmAddress } from "@binference/chain-evm";
 import { bsc, bscCeilingCaps } from "@binference/chains";
 import { BinferenceError, type Http, ok } from "@binference/core";
 import {
@@ -81,6 +82,51 @@ function unbuilt(chain: string, problem: string): BinferenceError {
   });
 }
 
+/** One asset a chain's 24-hour caps count, and the floor price its cap is sized at. */
+export interface CapAsset {
+  readonly asset: AssetRef;
+  readonly decimals: number;
+  /** The least one whole unit counts at when a cap is sized from dollars, in micro-dollars. */
+  readonly floorUsd: bigint;
+}
+
+/**
+ * What one chain's 24-hour caps count (decision 0149): the native coin its transactions send, and
+ * each capped token's approvals in the order the chain's data lists them, which is the order of
+ * the aggregations init makes and of the caps a ceiling's approval rule names.
+ */
+export interface CapAssets {
+  readonly native: CapAsset;
+  readonly tokens: readonly (CapAsset & { readonly token: string })[];
+}
+
+/**
+ * The {@link CapAssets} of one chain. A chain whose data names no caps, or a capped token its
+ * registry lacks, is a fault of this build.
+ */
+export function capAssetsOf(definition: ChainDefinition): CapAssets {
+  const caps = ceilingCapsByChain.get(definition.id);
+  if (caps === undefined) {
+    throw unbuilt(definition.id, "no_caps");
+  }
+  const chain = evmChainOf(definition);
+  const tokens = caps.tokens.map((item) => {
+    const token = definition.tokens.find((each) => each.symbol === item.symbol);
+    const address = token === undefined ? undefined : parseEvmAddress(token.address);
+    if (token === undefined || address?.ok !== true) {
+      throw unbuilt(definition.id, "unknown_token");
+    }
+    const asset = erc20AssetRef(chain, address.value);
+    return { asset, token: token.address, decimals: token.decimals, floorUsd: item.floorUsd };
+  });
+  const native = {
+    asset: chain.nativeAsset,
+    decimals: chain.nativeDecimals,
+    floorUsd: caps.nativeFloorUsd,
+  };
+  return { native, tokens };
+}
+
 /**
  * One chain's 24-hour caps (decision 0149), sized from `defaults.limits.rollingDayUsd`: twice it,
  * in each unit at the floor price the chain's data names, rounded up. A chain whose data names no
@@ -90,23 +136,12 @@ export function capPlanOf(
   definition: ChainDefinition,
   config: Pick<BinferenceConfig, "defaults">,
 ): ChainCapPlan {
-  const caps = ceilingCapsByChain.get(definition.id);
-  if (caps === undefined) {
-    throw unbuilt(definition.id, "no_caps");
-  }
   const dayUsd = capHeadroom * config.defaults.limits.rollingDayUsd;
-  const unitsOf = (decimals: number, floorUsd: bigint) =>
-    (dayUsd * 10n ** BigInt(decimals) + floorUsd - 1n) / floorUsd;
-  const chain = evmChainOf(definition);
-  const approvals = caps.tokens.map((item) => {
-    const token = definition.tokens.find((each) => each.symbol === item.symbol);
-    if (token === undefined) {
-      throw unbuilt(definition.id, "unknown_token");
-    }
-    return { token: token.address, limitBase: unitsOf(token.decimals, item.floorUsd) };
-  });
-  const nativeLimitBase = unitsOf(chain.nativeDecimals, caps.nativeFloorUsd);
-  return { chain, nativeLimitBase, approvals };
+  const unitsOf = (item: CapAsset) =>
+    (dayUsd * 10n ** BigInt(item.decimals) + item.floorUsd - 1n) / item.floorUsd;
+  const { native, tokens } = capAssetsOf(definition);
+  const approvals = tokens.map((item) => ({ token: item.token, limitBase: unitsOf(item) }));
+  return { chain: evmChainOf(definition), nativeLimitBase: unitsOf(native), approvals };
 }
 
 function ceilingChainOf(

@@ -158,6 +158,20 @@ export const walletExamples: { readonly [N in keyof WalletOperationShapes]: Wire
       venues: ["fake-swap"],
       perTxNative: "1000000000000000000",
       recipients: [refs.account],
+      dayCaps: [
+        {
+          asset: refs.native,
+          limit: "10000000000000000000",
+          windowSeconds: 86_400,
+          floorUsdMicros: "1000000000",
+        },
+        {
+          asset: refs.token,
+          limit: "1000000000000000000000",
+          windowSeconds: 86_400,
+          floorUsdMicros: "1000000000",
+        },
+      ],
       readAt: at,
     },
   },

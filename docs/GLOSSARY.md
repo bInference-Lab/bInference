@@ -71,6 +71,9 @@ new name here first, in the change that uses it.
 - **limits**: the per-agent caps and lists the engine checks under the ceiling.
 - **ceiling**: each wallet's Privy policy, the hard limit behind the limits. Only the owner key
   raises it.
+- **24-hour caps** (`dayCaps`): the ceiling's rolling sums of the native coin every transaction
+  sends and of each capped token's approvals, which every wallet of the install shares
+  (decision 0149). Each is sized in dollars at its asset's **floor price**, such as $100 a BNB.
 - **gas reserve**: the BNB a wallet keeps for network fees. Trades never spend it.
 - **wallet facts**: what the money path reads about an agent's wallets outside the store ports:
   which wallets the agent owns, the native balance (the paper balance in paper mode), the ceiling's
@@ -473,6 +476,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | approval mode, manual, auto              | 批准模式, 手动, 自动   |                                  |
 | ceiling (the wallet policy's hard limit) | 上限                   |                                  |
 | per-trade cap, 24-hour cap               | 单笔上限, 24 小时上限  |                                  |
+| floor price (of a 24-hour cap)           | 底价                   |                                  |
 | per-trade limit, daily limit             | 单笔上限, 每日上限     |                                  |
 | trade limits                             | 交易限额               |                                  |
 | spending limit                           | 消费上限               |                                  |

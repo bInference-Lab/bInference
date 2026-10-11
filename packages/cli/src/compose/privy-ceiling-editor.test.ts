@@ -1,4 +1,4 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefSchema, assetRefSchema } from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { buildCeiling, type CeilingChainPlan, createPrivyApi } from "@binference/custody-privy";
 import {
@@ -33,8 +33,16 @@ function callsOn(
   };
 }
 
+const nativeAsset = assetRefSchema.parse("eip155:56/slip44:714");
+const tokenAsset = assetRefSchema.parse(`eip155:56/erc20:${testAddresses.token}`);
+
+// BNB at a $100 floor; the test token, of no decimals, at $1.
 const capsOptions = {
   capPlanOn: () => testCapPlan,
+  capAssetsOn: () => ({
+    native: { asset: nativeAsset, decimals: 18, floorUsd: 100_000_000n },
+    tokens: [{ asset: tokenAsset, token: testAddresses.token, decimals: 0, floorUsd: 1_000_000n }],
+  }),
   heldCaps: async () => Promise.resolve([]),
 };
 
@@ -101,6 +109,31 @@ describe("the Privy ceiling editor", () => {
       await expect(run()).resolves.toBeUndefined();
     },
   );
+
+  it("reads each 24-hour cap with its token, window and size at the floor price", async () => {
+    const made = await subject();
+    const read = await made.editor.read(made.ceiling, live);
+
+    expect(read).toMatchObject({
+      ok: true,
+      value: {
+        dayCaps: [
+          {
+            asset: nativeAsset,
+            limit: 3n * 10n ** 18n,
+            windowSeconds: 86_400,
+            floorUsdMicros: 300_000_000n,
+          },
+          {
+            asset: tokenAsset,
+            limit: 1_000n,
+            windowSeconds: 86_400,
+            floorUsdMicros: 1_000_000_000n,
+          },
+        ],
+      },
+    });
+  });
 
   it("refuses every owner key before the install holds one", async () => {
     const made = await subject();

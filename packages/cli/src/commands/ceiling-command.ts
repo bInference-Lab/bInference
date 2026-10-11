@@ -14,6 +14,7 @@ import type { CeilingSetFlags, WalletAddressFlags } from "../program/cli-flags.s
 import type { ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { chainName } from "./chain-name.js";
+import { printDayCaps } from "./day-cap-lines.js";
 import { cannotAskOwnerKey, withOwnerKey } from "./owner-key-prompt.js";
 import { withWallet } from "./wallet-choice.js";
 
@@ -72,13 +73,14 @@ function printCeiling(
   });
   printCap(run, ceiling);
   printRecipients(run, ceiling);
+  printDayCaps(run, ceiling);
 }
 
 /**
  * `binference ceiling [--agent <id>] [--wallet <id>]`: the ceiling of the agent's default wallet,
  * or of the wallet `--wallet` names, as custody holds it now, through `ceiling/get`: the chains it
- * enables, the venues a call may reach, the most native coin one contract call may carry, and
- * every address a send may pay. Only the owner key changes a ceiling. With `--json` it prints the
+ * enables, the venues a call may reach, the most native coin one contract call may carry, every
+ * address a send may pay, and the 24-hour caps every wallet shares. Only the owner key changes a ceiling. With `--json` it prints the
  * ceiling as the operation answers it.
  */
 export async function runCeiling(

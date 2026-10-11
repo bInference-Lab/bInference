@@ -143,7 +143,7 @@ export type { CardLinesView, CardLineView, CardValueView } from "./views/card-li
 export { cardViewSchema } from "./views/card-view.schema.js";
 export type { CardView } from "./views/card-view.schema.js";
 export { ceilingChangesSchema, ceilingViewSchema } from "./views/ceiling-view.schema.js";
-export type { CeilingChanges, CeilingView } from "./views/ceiling-view.schema.js";
+export type { CeilingChanges, CeilingView, DayCapView } from "./views/ceiling-view.schema.js";
 export type { FileTicket } from "./views/file-ticket.schema.js";
 export { intentKindSchema } from "./views/intent-kind.schema.js";
 export type { IntentKind } from "./views/intent-kind.schema.js";

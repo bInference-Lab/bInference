@@ -1,4 +1,4 @@
-import { accountRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema } from "@binference/chain";
 import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testWalletRecord } from "../install/test-wallet-record.js";
@@ -22,7 +22,14 @@ describe("reading a wallet's ceiling", () => {
   it("answers what custody holds now, with each venue whose contracts it lists", async () => {
     const test = await startTestEngine();
     test.stores.install.addWallet(wallet);
-    test.ceilings.put(wallet.policyId, [owner], { contracts: [router], perTxNativeBase: 5n });
+    const dayCap = {
+      asset: assetRefSchema.parse("fake:1/slip44:1"),
+      limit: 10n,
+      windowSeconds: 86_400,
+      floorUsdMicros: 1_000n,
+    };
+    const calls = { contracts: [router], perTxNativeBase: 5n, dayCaps: [dayCap] };
+    test.ceilings.put(wallet.policyId, [owner], calls);
 
     expect(await read(test)).toStrictEqual({
       ok: true,
@@ -32,6 +39,7 @@ describe("reading a wallet's ceiling", () => {
         venues: ["fake-swap"],
         perTxNative: 5n,
         recipients: [owner],
+        dayCaps: [dayCap],
         readAt: testNowMs,
       },
     });

@@ -4767,6 +4767,36 @@
                 "type": "string"
               }
             },
+            "dayCaps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset": {
+                    "type": "string"
+                  },
+                  "limit": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "windowSeconds": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "floorUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  }
+                },
+                "required": [
+                  "asset",
+                  "limit",
+                  "windowSeconds",
+                  "floorUsdMicros"
+                ]
+              }
+            },
             "readAt": {
               "type": "integer",
               "minimum": 0,
@@ -4909,6 +4939,36 @@
               "type": "array",
               "items": {
                 "type": "string"
+              }
+            },
+            "dayCaps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset": {
+                    "type": "string"
+                  },
+                  "limit": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "windowSeconds": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "floorUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  }
+                },
+                "required": [
+                  "asset",
+                  "limit",
+                  "windowSeconds",
+                  "floorUsdMicros"
+                ]
               }
             },
             "readAt": {

@@ -6,6 +6,7 @@ import {
   type ChainRegistry,
 } from "@binference/chain";
 import { type Clock, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
+import type { DayCapView } from "@binference/protocol";
 import { z } from "zod";
 import type {
   CallsRefusal,
@@ -22,10 +23,14 @@ import { memoryCall } from "./memory-call.js";
 /** The owner key code the fake ceiling editor takes; any other code is another key. */
 export const fakeOwnerKeyCode = "bnok1fakeo wnerk eyfor tests only";
 
-/** What a ceiling lets a contract call do: the contracts it may reach and its native cap. */
+/**
+ * What a ceiling lets a contract call do: the contracts it may reach, its native cap, and the
+ * 24-hour caps it names, none unless given.
+ */
 export interface FakeCalls {
   readonly contracts: readonly AccountRef[];
   readonly perTxNativeBase: bigint;
+  readonly dayCaps?: readonly DayCapView[];
 }
 
 /** A ceiling editor in memory, whose ceilings a test sets up and reads. */
@@ -129,7 +134,8 @@ function readOf(recipients: readonly AccountRef[], calls: FakeCalls): CeilingRea
     perTxNativeBase: String(perTxNativeBase),
     recipients: [...recipients],
   });
-  return { chains: chainsOf(recipients), contracts, perTxNativeBase, recipients, policy };
+  const dayCaps = calls.dayCaps ?? [];
+  return { chains: chainsOf(recipients), contracts, perTxNativeBase, recipients, dayCaps, policy };
 }
 
 /** The ceilings and calls the fake holds, and the registry its venues' contracts come from. */
@@ -168,7 +174,9 @@ function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal>
     if (each.some((contracts) => contracts.length === 0)) {
       return err("no_calls");
     }
-    changes.set(ceiling, { contracts: each.flat(), perTxNativeBase });
+    const dayCaps = held.calls.get(ceiling)?.dayCaps;
+    const kept = dayCaps === undefined ? {} : { dayCaps };
+    changes.set(ceiling, { contracts: each.flat(), perTxNativeBase, ...kept });
   }
   for (const [ceiling, calls] of changes) {
     held.calls.set(ceiling, calls);

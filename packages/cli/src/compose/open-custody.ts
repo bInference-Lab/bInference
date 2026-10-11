@@ -36,7 +36,12 @@ import type {
 import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
 import { z } from "zod";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
-import { type CeilingDraft, capPlanOf, ceilingRequestOf } from "../init/ceiling-request.js";
+import {
+  type CeilingDraft,
+  capAssetsOf,
+  capPlanOf,
+  ceilingRequestOf,
+} from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
 import { checkAttached } from "./check-attached.js";
@@ -278,6 +283,10 @@ function ceilingEditorOf(
     clock: options.clock,
     callsOn: (chain, calls) => callsOn(options, chain, calls),
     capPlanOn: (chain) => capPlanOn(options, chain),
+    capAssetsOn: (chain) => {
+      const registered = options.chains.list().find((item) => item.ref === chain);
+      return registered === undefined ? undefined : capAssetsOf(registered.definition);
+    },
     heldCaps: async (read) => heldCapsOf(options.install, read),
   });
 }

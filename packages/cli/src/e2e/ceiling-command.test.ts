@@ -1,4 +1,4 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefSchema, assetRefSchema } from "@binference/chain";
 import { bsc } from "@binference/chains";
 import {
   type FakeCeilingEditor,
@@ -7,6 +7,7 @@ import {
   testWallet,
 } from "@binference/engine/testing";
 import { createFormatter, messages } from "@binference/i18n";
+import type { DayCapView } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { skeletonCompositions } from "../compose/test-skeleton.js";
 import { runCli } from "../program/run-cli.js";
@@ -25,6 +26,7 @@ const en = (key: string, values: Readonly<Record<string, string | number>> = {})
 const owner = accountRefSchema.parse("fake:1:0x000000a1");
 const router = accountRefSchema.parse("fake:1:0x0000000b");
 const ownerAddress = "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
+const usdtAddress = bsc.tokens.find((token) => token.symbol === "USDT")?.address ?? "";
 
 afterEach(async () => {
   await Promise.all(served.splice(0).map(async (skeleton) => skeleton.close()));
@@ -33,7 +35,10 @@ afterEach(async () => {
 
 // The skeleton whose test wallet's ceiling lists the owner's address and lets a call reach the
 // fake venue's router with at most one coin.
-async function servedMachine(recipient: AccountRef = owner): Promise<TestMachine> {
+async function servedMachine(
+  recipient: AccountRef = owner,
+  dayCaps: readonly DayCapView[] = [],
+): Promise<TestMachine> {
   if (selfHosted === undefined) {
     throw new Error("Expected the self-hosted composition.");
   }
@@ -41,7 +46,7 @@ async function servedMachine(recipient: AccountRef = owner): Promise<TestMachine
   const skeleton = await serveSkeleton(machine, selfHosted);
   served.push(skeleton);
   const [wallet] = (await skeleton.parts.stores.install.read(live)).wallets;
-  const calls = { contracts: [router], perTxNativeBase: 10n ** 18n };
+  const calls = { contracts: [router], perTxNativeBase: 10n ** 18n, dayCaps };
   (skeleton.parts.ceilings as FakeCeilingEditor).put(wallet?.policyId ?? "", [recipient], calls);
   return machine;
 }
@@ -63,6 +68,7 @@ describe("binference ceiling", () => {
       en("ceiling.capBase", { amount: "1000000000000000000" }),
       en("ceiling.recipients", { count: 1 }),
       `  ${en("ceiling.recipient", { address: "0x000000a1", chain: "fake:1" })}`,
+      en("ceiling.dayCaps", { count: 0 }),
     ];
     expect([shown.code, shown.stderr]).toStrictEqual([0, ""]);
     expect(shown.stdout).toBe(`${lines.join("\n")}\n`);
@@ -77,6 +83,42 @@ describe("binference ceiling", () => {
     expect(shown.stdout).toContain(en("ceiling.chains", { chains: "BNB Smart Chain" }));
   });
 
+  it("shows each 24-hour cap in its token and in dollars at the floor price", slow, async () => {
+    const dayCaps = [
+      {
+        asset: assetRefSchema.parse(`${bsc.id}/slip44:714`),
+        limit: 10n * 10n ** 18n,
+        windowSeconds: 86_400,
+        floorUsdMicros: 1_000_000_000n,
+      },
+      {
+        asset: assetRefSchema.parse(`${bsc.id}/erc20:${usdtAddress}`),
+        limit: 1_000n * 10n ** 18n,
+        windowSeconds: 86_400,
+        floorUsdMicros: 1_000_000_000n,
+      },
+      {
+        asset: assetRefSchema.parse("fake:1/token:0x0000000a"),
+        limit: 5n,
+        windowSeconds: 3_600,
+        floorUsdMicros: 0n,
+      },
+    ];
+    const machine = await servedMachine(owner, dayCaps);
+
+    const shown = await runOn(machine, ["ceiling"]);
+
+    const day = { hours: 24, usd: "$1,000.00" };
+    expect(shown.stdout).toContain(
+      [
+        en("ceiling.dayCaps", { count: 3 }),
+        `  ${en("ceiling.dayCapSent", { ...day, amount: "10", symbol: "BNB" })}`,
+        `  ${en("ceiling.dayCapApproved", { ...day, amount: "1,000", symbol: "USDT" })}`,
+        `  ${en("ceiling.dayCapBase", { amount: "5", asset: "fake:1/token:0x0000000a", hours: 1, usd: "$0.00" })}`,
+      ].join("\n"),
+    );
+  });
+
   it("prints the ceiling as JSON, and refuses a wallet it does not hold", slow, async () => {
     const machine = await servedMachine();
 
@@ -87,6 +129,7 @@ describe("binference ceiling", () => {
       venues: ["fake-swap"],
       perTxNative: "1000000000000000000",
       recipients: [owner],
+      dayCaps: [],
       readAt: testNowMs,
     });
     const other = "wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c9";

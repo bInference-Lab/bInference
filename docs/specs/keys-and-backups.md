@@ -157,7 +157,8 @@ names the same ones, so they bound all its wallets together. Each is twice
 10 WBNB, 1,000 USDT and 1,000 USDC by default. The native sum counts every transaction on the
 chain, sends to saved addresses among them; a send itself is never capped. They are disaster
 limits: parallel requests can pass together and a request counts once signed, landed or not, so
-the engine's rolling caps stay the main money limit.
+the engine's rolling caps stay the main money limit. `binference ceiling` and `ceiling/get` show each cap: what it
+counts, its size in the asset's units and in dollars at the floor price, and its window.
 
 Nor can it pin a transaction's calldata: Privy's transaction conditions read only `to`, `value`
 and `chain_id`, so the self-cancel rule allows any calldata to the wallet itself. The ceiling
