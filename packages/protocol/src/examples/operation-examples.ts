@@ -8,6 +8,7 @@ import {
   pluginExamples,
   settingsExamples,
   streamExamples,
+  webPushExamples,
 } from "./settings-examples.js";
 import type { WireExample } from "./wire-values.js";
 
@@ -25,6 +26,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...pluginExamples,
   ...settingsExamples,
   ...accessExamples,
+  ...webPushExamples,
   ...streamExamples,
   ...binanceAgentExamples,
 };

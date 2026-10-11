@@ -3,6 +3,7 @@ import type { BinanceAgentOperationShapes } from "../operations/binance-agent-op
 import type { PluginOperationShapes } from "../operations/plugin-operations.schema.js";
 import type { SettingsOperationShapes } from "../operations/settings-operations.schema.js";
 import type { StreamOperationShapes } from "../operations/stream-operations.schema.js";
+import type { WebPushOperationShapes } from "../operations/web-push-operations.schema.js";
 import { at, ids, pageOf, refs, type WireExample } from "./wire-values.js";
 
 const empty = {};
@@ -160,6 +161,30 @@ export const accessExamples: { readonly [N in keyof AccessOperationShapes]: Wire
     result: { authorizeUrl: "https://accounts.example.invalid/oauth/authorize?client=1" },
   },
   "cex/disconnect": { args: empty, result: empty },
+};
+
+// The browser's key and secret of RFC 8291, appendix A.
+const subscription = {
+  endpoint: "https://push.example.invalid/send/Jz3raZJfFBR0aqvOMsLrt54w4rJUsV",
+  keys: {
+    p256dh:
+      "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4",
+    auth: "BTBZMqHH6r4Tts7J_aSIgg",
+  },
+};
+
+/** An example call of every browser push operation. */
+export const webPushExamples: { readonly [N in keyof WebPushOperationShapes]: WireExample } = {
+  "webPush/status": {
+    args: empty,
+    result: {
+      publicKey:
+        "BA1Hxzyi1RUM1b5wjxsn7nGxAszw2u61m164i3MrAIxHF6YK5h4SDYic-dRuU_RCPCfA5aq9ojSwk5Y2EmClBPs",
+      registered: true,
+    },
+  },
+  "webPush/register": { args: { subscription }, result: empty },
+  "webPush/unregister": { args: { endpoint: subscription.endpoint }, result: empty },
 };
 
 /** An example call of every upload, push and log stream operation. */

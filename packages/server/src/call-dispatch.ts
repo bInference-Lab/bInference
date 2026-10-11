@@ -3,12 +3,14 @@ import {
   type CallProblem,
   type EngineFrame,
   type FailFrame,
+  isDeviceOnly,
   isOperationName,
   type Operation,
   type OperationName,
   operations,
   parseCall,
   type ProtocolError,
+  protocolIdSchema,
   takesOwnerKey,
   type ReplyFrame,
   type Scope,
@@ -88,6 +90,11 @@ export function isLocalOnly(operation: Pick<Operation, "transport" | "args">): b
   return operation.transport === "ipc" || takesOwnerKey(operation);
 }
 
+// A paired console device signs in with its `dev_` id; every other credential is not one.
+function isDevice(caller: Caller): boolean {
+  return protocolIdSchema("consoleDevice").safeParse(caller.credential).success;
+}
+
 function refusalOf(
   op: OperationName,
   caller: Caller,
@@ -100,6 +107,9 @@ function refusalOf(
   // Any transport but IPC is refused, so a transport added later is refused too.
   if (isLocalOnly(operation) && caller.transport !== "ipc") {
     return refused("auth.local_only", `${op} works over local IPC only.`);
+  }
+  if (isDeviceOnly(op) && !isDevice(caller)) {
+    return refused("auth.device_only", `${op} works for a paired console device only.`);
   }
   if (options.engine.state() === "starting" && !servedWhileStarting.has(op)) {
     return retryLater("engine.starting", "The engine is starting.");
@@ -114,7 +124,8 @@ function refusalOf(
  * Creates the call dispatch. In order, a call fails for an unknown operation
  * (`protocol.unknown_op`), a scope the connection lacks, counting the operation's scope case
  * (`auth.scope`), a local operation or one that carries the owner key over any transport but IPC
- * (`auth.local_only`), an engine still starting (`engine.starting`), a missing handler, a write
+ * (`auth.local_only`), a device-only operation from a caller other than a paired console device
+ * (`auth.device_only`), an engine still starting (`engine.starting`), a missing handler, a write
  * without a key or args the schema refuses. The server's own operations are answered at once;
  * every other call runs its handler.
  */

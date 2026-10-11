@@ -70,10 +70,17 @@ function setup(options: Setup = {}): {
   return { dispatch, logger, clock, stop };
 }
 
-function session(scopes: readonly Scope[], transport: Transport = "ipc"): Session {
+const tokenId = "tok_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+const deviceId = "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+
+function session(
+  scopes: readonly Scope[],
+  transport: Transport = "ipc",
+  credential: string = tokenId,
+): Session {
   const caller = {
     connection: protocolIdSchema("connection").parse("con_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
-    credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+    credential,
     client: { kind: "cli", version: "test" },
     scopes,
     transport,
@@ -175,6 +182,17 @@ describe("createCallDispatch", () => {
     await expect(framesOver("ipc")).resolves.toMatchObject(
       failingOwnerKeyCalls("protocol.unknown_op"),
     );
+  });
+
+  it("lets only a paired console device register or remove a browser push subscription", async () => {
+    const { dispatch } = setup({ handlers: { "webPush/unregister": async () => ok({}) } });
+    const frame = call("webPush/unregister", { endpoint: "https://push.example.invalid/a" }, "k");
+    await expect(framesOf(dispatch(frame, session(cli, "ipc")))).resolves.toMatchObject([
+      { t: "fail", error: { code: "auth.device_only", retryable: false } },
+    ]);
+    await expect(framesOf(dispatch(frame, session(cli, "ws", deviceId)))).resolves.toMatchObject([
+      { t: "reply", result: {} },
+    ]);
   });
 
   it("keeps an owner-key operation local even when its row allows any transport", () => {

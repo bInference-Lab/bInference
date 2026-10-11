@@ -16,6 +16,7 @@ import { type PluginOperationShapes, pluginOperations } from "./plugin-operation
 import { type SettingsOperationShapes, settingsOperations } from "./settings-operations.schema.js";
 import { type StreamOperationShapes, streamOperations } from "./stream-operations.schema.js";
 import { type WalletOperationShapes, walletOperations } from "./wallet-operations.schema.js";
+import { type WebPushOperationShapes, webPushOperations } from "./web-push-operations.schema.js";
 
 /**
  * The args and result types of every operation, by name. A typed client calls
@@ -35,6 +36,7 @@ export interface OperationShapes
     PluginOperationShapes,
     SettingsOperationShapes,
     AccessOperationShapes,
+    WebPushOperationShapes,
     StreamOperationShapes,
     BinanceAgentOperationShapes {}
 
@@ -61,6 +63,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...pluginOperations,
   ...settingsOperations,
   ...accessOperations,
+  ...webPushOperations,
   ...streamOperations,
   ...binanceAgentOperations,
 };

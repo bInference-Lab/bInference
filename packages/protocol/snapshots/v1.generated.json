@@ -425,6 +425,7 @@
         "auth.origin",
         "auth.scope",
         "auth.local_only",
+        "auth.device_only",
         "engine.starting",
         "engine.stopping",
         "engine.locked",
@@ -27806,6 +27807,258 @@
       "since": "2026.10.0"
     },
     "reply/cex/disconnect": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/webPush/status": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "webPush/status"
+        },
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/webPush/status": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "publicKey": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{87}=?$"
+            },
+            "registered": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "publicKey",
+            "registered"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/webPush/register": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "webPush/register"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "subscription": {
+              "type": "object",
+              "properties": {
+                "endpoint": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri"
+                },
+                "keys": {
+                  "type": "object",
+                  "properties": {
+                    "p256dh": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{87}=?$"
+                    },
+                    "auth": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{22}(?:==)?$"
+                    }
+                  },
+                  "required": [
+                    "p256dh",
+                    "auth"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "endpoint",
+                "keys"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "subscription"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "confirm",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/webPush/register": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/webPush/unregister": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "webPush/unregister"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "maxLength": 2048,
+              "format": "uri"
+            }
+          },
+          "required": [
+            "endpoint"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "confirm",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/webPush/unregister": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {

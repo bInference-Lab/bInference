@@ -15,6 +15,7 @@
   "auth.origin": "此页面的地址不允许连接。请用 `binference console` 输出的链接打开控制台。",
   "auth.scope": "此客户端无权执行该操作。请在本机使用控制台或命令行。",
   "auth.local_only": "此操作只能在运行 binference 的机器上执行。请在那台机器上使用命令行。",
+  "auth.device_only": "只有已配对为控制台设备的浏览器才能执行此操作。请在该浏览器中打开控制台。",
   "engine.starting": "binference 仍在启动。请几秒后再试。",
   "engine.stopping": "binference 正在关闭。请运行 `binference start` 重新启动。",
   "engine.locked": "binference 已锁定。请在本机运行 `binference unlock`。",

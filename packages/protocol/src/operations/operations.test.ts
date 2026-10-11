@@ -125,6 +125,9 @@ const specTable = [
   ["cex/status", "read", ""],
   ["cex/connect", "admin", "write local"],
   ["cex/disconnect", "confirm", "write"],
+  ["webPush/status", "read", ""],
+  ["webPush/register", "confirm", "write"],
+  ["webPush/unregister", "confirm", "write"],
   ["upload/start", "chat", ""],
   ["push/subscribe", "read", "subscribe"],
   ["push/unsubscribe", "read", "subscribe"],
@@ -172,7 +175,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(133);
+    expect(table).toHaveLength(136);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 
@@ -201,7 +204,7 @@ describe("operations", () => {
     const keyed = operationNames.filter((name) => operations[name].idempotency === "key");
     const writes = kinds.filter(([, kind]) => kind === "write").map(([name]) => name);
     expect(keyed).toStrictEqual(writes);
-    expect(writes).toHaveLength(77);
+    expect(writes).toHaveLength(79);
   });
 
   it("dates every operation to the first protocol version", () => {

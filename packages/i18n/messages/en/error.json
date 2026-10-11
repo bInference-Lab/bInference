@@ -15,6 +15,7 @@
   "auth.origin": "This page's address may not connect. Open the console from the link `binference console` prints.",
   "auth.scope": "This client may not do that. Use the console or the CLI on the machine.",
   "auth.local_only": "This works only on the machine binference runs on. Use the CLI there.",
+  "auth.device_only": "Only a browser paired as a console device can do this. Open the console in that browser.",
   "engine.starting": "binference is still starting. Try again in a few seconds.",
   "engine.stopping": "binference is shutting down. Start it again with `binference start`.",
   "engine.locked": "binference is locked. Run `binference unlock` on the machine.",

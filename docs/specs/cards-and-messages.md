@@ -246,6 +246,23 @@ The owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#secti
 **Daily summary** (`notice.daily`), at 09:00 owner time: total value and its 24-hour change,
 realized P&L, fills, skipped fills, open orders, model spend, and anything waiting for the owner.
 
+<a id="section-4-1"></a>
+
+### 4.1 Browser push
+
+A console device that turned browser notifications on gets one when a card version opens and when
+it closes, so the owner can answer with Telegram closed
+([decision 0158](../DECISIONS.md#d0158)). The engine writes the words in the owner's language; the
+message names the intent and the card only, never an amount, an address, a token or an agent. A
+click opens the console at the card. The second message takes the first one's place.
+
+| Moment      | Key                    | English                                              | 中文                             |
+| ----------- | ---------------------- | ---------------------------------------------------- | -------------------------------- |
+| Card opens  | `webPush.opened.title` | A card waits for your answer                         | 有一张卡片在等你回复             |
+|             | `webPush.opened.body`  | Open the console to read it, then confirm or cancel. | 打开控制台查看，然后确认或取消。 |
+| Card closes | `webPush.closed.title` | This card no longer waits                            | 这张卡片已不再等待               |
+|             | `webPush.closed.body`  | It was answered or it expired.                       | 它已被回复或已过期。             |
+
 <a id="section-5"></a>
 
 ## 5. Fast commands

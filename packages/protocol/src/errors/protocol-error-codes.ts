@@ -19,6 +19,7 @@ export const protocolErrorCodes = [
   "auth.origin",
   "auth.scope",
   "auth.local_only",
+  "auth.device_only",
   "engine.starting",
   "engine.stopping",
   "engine.locked",
