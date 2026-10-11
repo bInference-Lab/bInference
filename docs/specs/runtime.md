@@ -189,6 +189,7 @@ runs:
 
   A batch that runs in parallel is never cut; its merge point comes after it. A message that
   arrives in a committed turn waits, and starts a new turn after it.
+
 - **`after`**: the message waits for the running turn to end and starts the next one.
 
 When a turn ends, the next one takes every waiting message, oldest first, up to 20; the rest wait
@@ -532,7 +533,7 @@ The engine holds each agent's daily model budget ([ARCHITECTURE.md section 26](.
   pushes the paused status line. Owner messages, settle messages and the resume report wait, and
   the runtime starts their turn at `resumesAt`; scheduled and alert turns are skipped.
 - **After each call.** `usage/record` `{ agent, turn, model, inputTokens, outputTokens,
-  cachedTokens, usdMicros }` is sent after each model call of every role, before the runtime acts
+cachedTokens, usdMicros }` is sent after each model call of every role, before the runtime acts
   on the response, and answers `budgetLeftMicros`. The cost is the provider's own when it reports
   one (the gateway's `usage.cost`), else `models.prices`, else the built-in table, else 0, and
   `binference check` names a configured model with no price.
