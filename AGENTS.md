@@ -152,6 +152,10 @@ Skills live in `.agents/skills/`. Run the first two on every change, in this ord
 - `review-money-path`: the checklist for a change that can move funds.
 - `add-migration`: adds a migration to the store.
 - `write-adr`: records a load-bearing decision.
+- `run-tests`: picks the tests that prove a change and runs them.
+- `review-tests`: judges whether a test earns its place.
+- `speed-up-tests`: measures a slow test and fixes the cause.
+- `debug-failure`: finds a failure's cause from the evidence at its boundary.
 
 ## Before you finish
 
