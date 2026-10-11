@@ -360,6 +360,32 @@ describe("the executor's refusals", () => {
     expect(eventsOf(bench)).toContain("executor.prepare_failed:unexpected");
   });
 
+  it("takes no intent a freeze cancelled while it waited behind another on its wallet", async () => {
+    const bench = await startExecutorBench();
+    bench.network.holdBelow(10n ** 18n);
+    const first = await tapped(bench);
+    const second = await tapped(bench);
+    await flush();
+    expectOk(await bench.test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));
+    expect(await stateOf(bench, second)).toBe("cancelled");
+    bench.network.holdBelow(0n);
+    await expect(driveUntil(bench, first, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(eventsOf(bench)).toContain("executor.not_taken:not_confirmed");
+    expect(bench.signed).toHaveLength(1);
+  });
+
+  it("takes no auto intent whose grant the switch to manual ended before the queue", async () => {
+    const bench = await startExecutorBench({ agent: { approvalMode: "auto" }, hold: true });
+    const intent = await automatic(bench);
+    const manual = { agent: testAgent, mode: "manual" as const };
+    expectOk(await bench.test.engine.handlers["approval/set"](testCall(manual)));
+    await bench.release();
+    await flush();
+    expect(await stateOf(bench, intent)).toBe("confirmed");
+    expect(eventsOf(bench)).toContain("executor.not_taken:no_authorization");
+    expect(bench.signed).toStrictEqual([]);
+  });
+
   it("cancels an intent whose first step custody refuses, with nothing stored or sent", async () => {
     const { bench, intent } = await heldTap();
     bench.test.custody.removeFrom(testWallet);

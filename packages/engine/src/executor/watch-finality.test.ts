@@ -72,6 +72,22 @@ function refusingReceipts(): Fault<TransactionStore> {
   };
 }
 
+// A store that refuses to record a reorg once armed, as one whose step another transaction at its
+// nonce superseded would.
+function refusingReorgs(): Fault<TransactionStore> {
+  const state = { isArmed: false };
+  return {
+    arm: () => {
+      state.isArmed = true;
+    },
+    wrap: (store) => ({
+      ...store,
+      recordReorg: async (mark, options) =>
+        state.isArmed ? err("wrong_state") : store.recordReorg(mark, options),
+    }),
+  };
+}
+
 // An intent store that loses every move back to `executing` to another writer once armed.
 function racedBack(): Fault<IntentStore> {
   const state = { isArmed: false };
@@ -118,6 +134,19 @@ describe("the finality watch after a reorg", () => {
     expect(eventsOf(bench)).toEqual(
       expect.arrayContaining(["executor.reorg_seen:", "executor.step_dropped:"]),
     );
+  });
+
+  it("keeps the intent included and hands it over when the store will not record the reorg", async () => {
+    const refusing = refusingReorgs();
+    const limits = { finalAfterBlocks: 6 };
+    const bench = await startExecutorBench({ transactions: refusing.wrap, limits });
+    const intent = await tapped(bench);
+    await reorgedUnmined(bench, intent);
+    refusing.arm();
+    await driveUntil(bench, intent, { states: [], blocks: 10 });
+    await expect(stateOf(bench, intent)).resolves.toBe("included");
+    expect(eventsOf(bench)).not.toContain("executor.reorg_seen:");
+    expect(eventsOf(bench).at(-1)).toBe("executor.final_late:");
   });
 
   it("stops when another writer moved the intent before the reorg's move back", async () => {
