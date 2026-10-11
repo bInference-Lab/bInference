@@ -1,7 +1,14 @@
 import { authorizationPayload, type PrivyRequest } from "@binference/chain";
-import { BinferenceError, type Result } from "@binference/core";
-import { callPrivy, type PrivyCall, type PrivyOutcome } from "./privy-call.js";
+import { BinferenceError, err, ok, type Result } from "@binference/core";
+import {
+  callPrivy,
+  type PrivyCall,
+  type PrivyOutcome,
+  privyFault,
+  statusFault,
+} from "./privy-call.js";
 import type { PrivySettings } from "./privy-client.js";
+import { refusalOf } from "./privy-wire.schema.js";
 
 /** Signs a request as the owner key, or refuses; a refusal stops the call before Privy hears it. */
 type OwnerSign = (request: PrivyRequest, signal: AbortSignal) => Promise<Result<string, "refused">>;
@@ -55,4 +62,43 @@ export async function callAsOwner<T>(
     }
     throw error;
   }
+}
+
+/** Why Privy did not make a change its owner signs. */
+export type OwnerRefusal =
+  /** The owner did not sign, or Privy did not take the signature as the owner's. */
+  | "refused"
+  /** The request's expiry had passed when Privy read it. */
+  | "expired"
+  /** Privy holds no such resource. */
+  | "not_found";
+
+/**
+ * What a call {@link callAsOwner} ran gives: the answer `read` reads, or Privy's documented
+ * refusals as outcomes, a missing or wrong owner signature `refused`, a passed expiry `expired`,
+ * an unknown resource `not_found`. An answer `read` cannot read is malformed; any other status is
+ * a fault.
+ */
+export async function ownerOutcome<A, T>(
+  call: PrivyCall<A>,
+  outcome: PrivyOutcome<A> | "refused",
+  read: (answer: A) => T | undefined,
+): Promise<Result<T, OwnerRefusal>> {
+  if (outcome === "refused") {
+    return err("refused");
+  }
+  if (outcome.ok) {
+    const value = read(outcome.value);
+    return value === undefined
+      ? Promise.reject(privyFault("custody.privy_malformed", call))
+      : ok(value);
+  }
+  const refusal = refusalOf(outcome.code);
+  if (refusal === "authorization") {
+    return err("refused");
+  }
+  if (refusal === "expired") {
+    return err("expired");
+  }
+  return outcome.status === 404 ? err("not_found") : Promise.reject(statusFault(call, outcome));
 }

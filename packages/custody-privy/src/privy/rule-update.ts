@@ -1,13 +1,13 @@
 import type { PrivyRequest } from "@binference/chain";
-import { err, ok, type Result } from "@binference/core";
+import { ok, type Result } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import type { PolicyRuleResponse } from "@privy-io/node/resources";
 import { type PolicyRule, policyRuleJson } from "../ceiling/policy-rule.js";
-import { callAsOwner, ownerSignFn } from "./owner-signing.js";
-import { type PrivyCall, privyFault, statusFault } from "./privy-call.js";
+import { callAsOwner, ownerOutcome, ownerSignFn } from "./owner-signing.js";
+import type { PrivyCall } from "./privy-call.js";
 import type { PrivySettings } from "./privy-client.js";
 import type { PrivyId } from "./privy-records.js";
-import { readRuleAnswer, refusalOf } from "./privy-wire.schema.js";
+import { readRuleAnswer } from "./privy-wire.schema.js";
 import { sdkRule } from "./sdk-rule.js";
 
 /** One rule of a policy to write over, and the time by which Privy must handle the change. */
@@ -89,6 +89,17 @@ function changeCall(
   };
 }
 
+// What a rule call Privy answered gives, as `ownerOutcome` reads it: nothing once `isAnswer` reads
+// Privy's answer.
+async function ruleOutcome<T>(
+  call: PrivyCall<T>,
+  outcome: Awaited<ReturnType<typeof callAsOwner<T>>>,
+  isAnswer: (answer: T) => boolean,
+): Promise<Result<void, RuleRefusal>> {
+  const read = await ownerOutcome(call, outcome, (answer) => (isAnswer(answer) ? true : undefined));
+  return read.ok ? ok(undefined) : read;
+}
+
 /**
  * Writes one rule of a policy over, once, as its owner authorizes. Privy's documented refusals
  * become outcomes: a missing or wrong owner signature `refused`, a passed expiry `expired`, an
@@ -102,21 +113,5 @@ export async function changeRule(
   input: { readonly authorization: RuleAuthorization; readonly signal: AbortSignal },
 ): Promise<Result<void, RuleRefusal>> {
   const call = changeCall(settings, change, input.authorization);
-  const outcome = await callAsOwner(settings, call, input.signal);
-  if (outcome === "refused") {
-    return err("refused");
-  }
-  if (outcome.ok) {
-    return readRuleAnswer(outcome.value)
-      ? ok(undefined)
-      : Promise.reject(privyFault("custody.privy_malformed", call));
-  }
-  const refusal = refusalOf(outcome.code);
-  if (refusal === "authorization") {
-    return err("refused");
-  }
-  if (refusal === "expired") {
-    return err("expired");
-  }
-  return outcome.status === 404 ? err("not_found") : Promise.reject(statusFault(call, outcome));
+  return ruleOutcome(call, await callAsOwner(settings, call, input.signal), readRuleAnswer);
 }

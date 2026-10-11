@@ -1,13 +1,13 @@
 import type { PrivyRequest } from "@binference/chain";
-import { err, ok, type Result } from "@binference/core";
+import type { Result } from "@binference/core";
 import type { PrivyClient } from "@privy-io/node";
 import type { Wallet } from "@privy-io/node/resources";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
-import { callAsOwner, ownerSignFn } from "./owner-signing.js";
-import { type PrivyCall, privyFault, statusFault } from "./privy-call.js";
+import { callAsOwner, ownerOutcome, ownerSignFn } from "./owner-signing.js";
+import type { PrivyCall } from "./privy-call.js";
 import type { PrivySettings } from "./privy-client.js";
 import type { PrivyId, WalletRecord } from "./privy-records.js";
-import { readWallet, refusalOf } from "./privy-wire.schema.js";
+import { readWallet } from "./privy-wire.schema.js";
 
 /** An added signer of a wallet: a key quorum, bound to these policies instead of the wallet's. */
 export interface SignerEntry {
@@ -94,22 +94,5 @@ export async function setWalletSigners(
   input: { readonly authorize: OwnerAuthorize; readonly signal: AbortSignal },
 ): Promise<Result<WalletRecord, SignersRefusal>> {
   const call = updateCall(settings, change, input.authorize);
-  const outcome = await callAsOwner(settings, call, input.signal);
-  if (outcome === "refused") {
-    return err("refused");
-  }
-  if (outcome.ok) {
-    const wallet = readWallet(outcome.value);
-    return wallet === undefined
-      ? Promise.reject(privyFault("custody.privy_malformed", call))
-      : ok(wallet);
-  }
-  const refusal = refusalOf(outcome.code);
-  if (refusal === "authorization") {
-    return err("refused");
-  }
-  if (refusal === "expired") {
-    return err("expired");
-  }
-  return outcome.status === 404 ? err("not_found") : Promise.reject(statusFault(call, outcome));
+  return ownerOutcome(call, await callAsOwner(settings, call, input.signal), readWallet);
 }
