@@ -6,6 +6,7 @@ import { authorOf, journalConfigChange } from "../audit/journal-config-change.js
 import type { AgentStore, ConfigJournal, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { activeAgent } from "./active-agent.js";
+import { agentViewOf } from "./agent-view-of.js";
 import type { EngineCall, EngineHandler } from "./engine-call.js";
 
 /** The handlers of the agent's mode switch (protocol spec, section 7.2). */
@@ -36,20 +37,6 @@ interface Switching {
 
 // Another write to the agent's row, such as a rename, makes a switch read the agent again.
 const switchAttempts = 3;
-
-/** An agent as the protocol shows it. */
-function agentViewOf(agent: AgentRecord): AgentView {
-  return {
-    agent: agent.id,
-    name: agent.name,
-    mode: agent.mode,
-    locale: agent.locale,
-    ...(agent.frozenAtMs === undefined ? {} : { frozenAt: agent.frozenAtMs }),
-    ...(agent.archivedAtMs === undefined ? {} : { archivedAt: agent.archivedAtMs }),
-    createdAt: agent.createdAtMs,
-    changedAt: agent.changedAtMs,
-  };
-}
 
 // Funded: the agent's default wallet holds some of the native coin on a chain the registry holds.
 async function isFunded(
