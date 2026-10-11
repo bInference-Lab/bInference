@@ -98,17 +98,28 @@ async function install(
   }
 }
 
+// Runs `change` on a unit the user manager holds; one it does not hold is `not_installed`.
+async function onInstalled(
+  systemd: Systemd,
+  unit: { readonly name: string; readonly signal: AbortSignal },
+  change: () => Promise<void>,
+): Promise<Result<void, "not_installed">> {
+  if ((await status(systemd, unit.name, unit.signal)).state === "not_installed") {
+    return err("not_installed");
+  }
+  await change();
+  return ok(undefined);
+}
+
 // The unit stays enabled, so the user manager starts it again at the next login.
 async function stop(
   systemd: Systemd,
   name: string,
   signal: AbortSignal,
 ): Promise<Result<void, "not_installed">> {
-  if ((await status(systemd, name, signal)).state === "not_installed") {
-    return err("not_installed");
-  }
-  await systemctl(systemd, ["stop", systemdUnitName(name)], signal);
-  return ok(undefined);
+  return onInstalled(systemd, { name, signal }, async () => {
+    await systemctl(systemd, ["stop", systemdUnitName(name)], signal);
+  });
 }
 
 async function uninstall(
@@ -116,17 +127,15 @@ async function uninstall(
   name: string,
   signal: AbortSignal,
 ): Promise<Result<void, "not_installed">> {
-  if ((await status(systemd, name, signal)).state === "not_installed") {
-    return err("not_installed");
-  }
-  const unit = systemdUnitName(name);
-  await systemctl(systemd, ["disable", "--now", unit], signal);
-  await rm(unitFileOf(systemd, name), { force: true });
-  await systemctl(systemd, ["daemon-reload"], signal);
-  // A unit that failed stays listed until its failure is cleared; one that did not fail answers
-  // with an error here, which changes nothing.
-  await systemd.run("systemctl", ["--user", "reset-failed", unit], signal);
-  return ok(undefined);
+  return onInstalled(systemd, { name, signal }, async () => {
+    const unit = systemdUnitName(name);
+    await systemctl(systemd, ["disable", "--now", unit], signal);
+    await rm(unitFileOf(systemd, name), { force: true });
+    await systemctl(systemd, ["daemon-reload"], signal);
+    // A unit that failed stays listed until its failure is cleared; one that did not fail answers
+    // with an error here, which changes nothing.
+    await systemd.run("systemctl", ["--user", "reset-failed", unit], signal);
+  });
 }
 
 /**

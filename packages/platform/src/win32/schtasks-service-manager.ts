@@ -161,19 +161,30 @@ async function install(
   await waitFor(schtasks, { name, wanted: "running", until }, signal);
 }
 
-// The task and its logon trigger stay, so it starts again at the next logon.
-async function stop(
+// Stops a task Task Scheduler holds, then runs `then`; one it does not hold is `not_installed`.
+async function stopInstalled(
   schtasks: Schtasks,
-  name: string,
-  signal: AbortSignal,
+  task: { readonly name: string; readonly signal: AbortSignal },
+  then: () => Promise<void>,
 ): Promise<Result<void, "not_installed">> {
+  const { name, signal } = task;
   checkServiceName(name);
   signal.throwIfAborted();
   if (!(await probe(schtasks, name, signal)).found) {
     return err("not_installed");
   }
   await stopIfRunning(schtasks, name, signal);
+  await then();
   return ok(undefined);
+}
+
+// The task and its logon trigger stay, so it starts again at the next logon.
+async function stop(
+  schtasks: Schtasks,
+  name: string,
+  signal: AbortSignal,
+): Promise<Result<void, "not_installed">> {
+  return stopInstalled(schtasks, { name, signal }, async () => Promise.resolve());
 }
 
 async function uninstall(
@@ -181,14 +192,9 @@ async function uninstall(
   name: string,
   signal: AbortSignal,
 ): Promise<Result<void, "not_installed">> {
-  checkServiceName(name);
-  signal.throwIfAborted();
-  if (!(await probe(schtasks, name, signal)).found) {
-    return err("not_installed");
-  }
-  await stopIfRunning(schtasks, name, signal);
-  await program(schtasks, ["schtasks", "/Delete", "/F", "/TN", scheduledTaskName(name)], signal);
-  return ok(undefined);
+  return stopInstalled(schtasks, { name, signal }, async () => {
+    await program(schtasks, ["schtasks", "/Delete", "/F", "/TN", scheduledTaskName(name)], signal);
+  });
 }
 
 async function status(
