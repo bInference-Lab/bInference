@@ -1,6 +1,6 @@
 # 0160. A Mini App launch signs in once, and a new owner ends the old one's Mini App
 
-Status: Accepted
+Status: Amended by 0161
 
 Accepted by the owner on 2026-10-11.
 
