@@ -1,7 +1,7 @@
 # Spec 8: the agent runtime
 
-Status: proposed on 2026-10-11, for the owner's approval. Its proposal rule is
-[decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10.
+Status: accepted by the owner on 2026-10-11, with the recommendations of its open questions. Its
+proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10.
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
