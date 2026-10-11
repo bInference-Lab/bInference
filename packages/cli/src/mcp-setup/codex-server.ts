@@ -67,6 +67,15 @@ export function codexOverrides(entry: McpServerEntry, variables: readonly string
   ].flatMap((override) => ["-c", override]);
 }
 
+/**
+ * Codex's `-c` override that keeps `variable` out of the commands its shell tool runs, through
+ * `shell_environment_policy.filters`, which OpenAI's Codex config reference gives as the canonical
+ * case-insensitive filters by name; an `exclude` there cannot be put back by an include.
+ */
+export function codexShellExclusion(variable: string): string[] {
+  return ["-c", `shell_environment_policy.filters.${variable}="exclude"`];
+}
+
 function joined(lines: readonly string[]): string {
   return lines.join("\n").trimEnd();
 }

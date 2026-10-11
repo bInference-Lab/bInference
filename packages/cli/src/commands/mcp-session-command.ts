@@ -60,13 +60,26 @@ async function writeConfig(run: CommandRun, launch: SessionLaunch): Promise<void
   );
 }
 
-// Runs the client to its end, with the secret in its environment and never in its arguments.
+// The client's environment: the CLI's own without `BINFERENCE_MCP_TOKEN` in any case, as Windows
+// matches names, plus what the launch adds.
+function clientEnvOf(
+  run: CommandRun,
+  launch: SessionLaunch,
+): Readonly<Record<string, string | undefined>> {
+  const kept = Object.entries(run.host.env).filter(
+    ([name]) => name.toUpperCase() !== mcpTokenVariable,
+  );
+  return { ...Object.fromEntries(kept), ...launch.clientEnv };
+}
+
+// Runs the client to its end, the secret never in its arguments: in Claude Code's config file for
+// binference's server alone, or in Codex's environment.
 async function runClient(
   run: CommandRun,
   session: Session,
   stop: AbortSignal,
 ): Promise<TerminalExit> {
-  const { host, output, formatter } = run;
+  const { output, formatter } = run;
   const { launch, flags } = session;
   await writeConfig(run, launch);
   const client = mcpClientNames[flags.client];
@@ -77,7 +90,7 @@ async function runClient(
   const program = await startTerminalProgram({
     file: launch.program,
     args: [...launch.args, ...flags.clientArgs],
-    env: { ...host.env, [mcpTokenVariable]: session.made.secret },
+    env: clientEnvOf(run, launch),
     signal: stop,
   });
   return program.exited;
@@ -160,8 +173,9 @@ function quoted(arg: string): string {
 /**
  * `binference mcp session --client <claude-code|codex>` (decision 0159): makes a token for one
  * session, which expires after `--ttl` (1 hour unless given, at most 24), registers its SHA-256,
- * and starts the client with the secret in `BINFERENCE_MCP_TOKEN` and binference's server loaded
- * for this run alone, passing it the arguments after `--`. When the client exits, on a stop signal
+ * and starts the client with binference's server loaded for this run alone, passing it the
+ * arguments after `--`. The secret reaches that server through Claude Code's config file, never
+ * Claude Code's environment, or through `BINFERENCE_MCP_TOKEN` in Codex's (decision 0165). When the client exits, on a stop signal
  * passed to it, or on a fault here, the token is revoked and Claude Code's config file removed.
  * `--print-config` starts nothing and leaves the token to its expiry.
  */
@@ -178,6 +192,8 @@ export async function runMcpSession(run: CommandRun, flags: McpSessionFlags): Pr
   if (token === undefined) {
     return code;
   }
-  const session = { flags, made, token, expiresAt, launch: sessionLaunch(host, flags.client) };
+  const secret = flags.isPrintConfig ? undefined : made.secret;
+  const launch = sessionLaunch(host, flags.client, secret);
+  const session = { flags, made, token, expiresAt, launch };
   return flags.isPrintConfig ? printConfig(run, session) : runSession(run, session);
 }

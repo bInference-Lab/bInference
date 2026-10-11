@@ -46,6 +46,8 @@ interface Session {
 interface ClientRecord {
   readonly argv: readonly string[];
   readonly token: string;
+  /** The names of the client's variables whose value holds a `bnt_` secret. */
+  readonly secretVariables: readonly string[];
   /** Claude Code's config file and its mode; empty and 0 for Codex. */
   readonly config: string;
   readonly configMode: number;
@@ -69,7 +71,8 @@ function standInScript(log: string, kind: StandIn): string {
     `const file = argv[argv.indexOf("--mcp-config") + 1] ?? "";`,
     `const read = argv.includes("--mcp-config") ? { config: readFileSync(file, "utf8"), configMode: statSync(file).mode & 0o777 } : { config: "", configMode: 0 };`,
     `const token = process.env.BINFERENCE_MCP_TOKEN ?? "";`,
-    `const record = (extra) => appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, token, ...read, signal: "", ...extra }) + "\\n");`,
+    `const secretVariables = Object.entries(process.env).filter(([, value]) => value?.includes("bnt_")).map(([name]) => name);`,
+    `const record = (extra) => appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv, token, secretVariables, ...read, signal: "", ...extra }) + "\\n");`,
     end,
   ].join("\n");
 }
@@ -78,6 +81,7 @@ function standInScript(log: string, kind: StandIn): string {
 async function servedSession(
   client: "claude" | "codex",
   kind: StandIn = "exits",
+  outer: Readonly<Record<string, string>> = {},
 ): Promise<Session> {
   const machine = await machines.create(testNowMs);
   const skeleton = await serveSkeleton(machine, selfHosted());
@@ -93,6 +97,7 @@ async function servedSession(
     HOME: home,
     CLAUDE_CONFIG_DIR: join(home, "claude-config"),
     CODEX_HOME: join(home, "codex-home"),
+    ...outer,
   };
   return { machine, skeleton, home, log, env };
 }
@@ -145,10 +150,12 @@ async function untilLogged(at: Session): Promise<void> {
 
 describe.runIf(standInProgramsRun)("binference mcp session", () => {
   it(
-    "starts Claude Code with only its config, the secret in the environment, then revokes",
+    "starts Claude Code with the secret in its server's config entry alone, then revokes",
     slow,
     async () => {
-      const at = await servedSession("claude");
+      // A variable the owner's shell happened to export never reaches Claude Code either.
+      const outer = { BINFERENCE_MCP_TOKEN: `bnt_${"o".repeat(43)}` };
+      const at = await servedSession("claude", "exits", outer);
       const session = start(at, ["--client", "claude-code", "--", "--model", "sonnet"]);
       await expect(session.exit).resolves.toBe(0);
 
@@ -156,13 +163,28 @@ describe.runIf(standInProgramsRun)("binference mcp session", () => {
       const token = await sessionToken(at);
       expect(record.argv.slice(0, 2)).toStrictEqual(["--strict-mcp-config", "--mcp-config"]);
       expect(record.argv.slice(3)).toStrictEqual(["--model", "sonnet"]);
-      expect(record.token).toMatch(/^bnt_[\w-]{43}$/);
-      expect(sha256Hex(record.token)).toBe(token.secretHash);
       expect(record.argv.join(" ")).not.toContain("bnt_");
-      expect(record.config).not.toContain("bnt_");
-      expect(JSON.parse(record.config)).toMatchObject({
-        mcpServers: { binference: { type: "stdio", env: { BINFERENCE_HOME: at.machine.folder } } },
+      expect(record.token).toBe("");
+      expect(record.secretVariables).toStrictEqual([]);
+      const config = JSON.parse(record.config) as {
+        readonly mcpServers: {
+          readonly binference: {
+            readonly env: {
+              readonly BINFERENCE_HOME: string;
+              readonly BINFERENCE_MCP_TOKEN: string;
+            };
+          };
+        };
+      };
+      expect(Object.keys(config.mcpServers)).toStrictEqual(["binference"]);
+      expect(config.mcpServers.binference).toMatchObject({
+        type: "stdio",
+        env: { BINFERENCE_HOME: at.machine.folder },
       });
+      const secret = config.mcpServers.binference.env.BINFERENCE_MCP_TOKEN;
+      expect(secret).toMatch(/^bnt_[\w-]{43}$/);
+      expect(sha256Hex(secret)).toBe(token.secretHash);
+      expect(record.config.split("bnt_")).toHaveLength(2);
       expect(record.configMode).toBe(0o600);
       expect(token).toMatchObject({
         label: "mcp-claude-code-session",
@@ -172,7 +194,7 @@ describe.runIf(standInProgramsRun)("binference mcp session", () => {
       });
       expect(await listFolderFiles(join(at.machine.folder, "tmp"), live.signal)).toStrictEqual([]);
       expect(session.host.stdout()).toContain("The session's client token is revoked.");
-      expect(session.host.stdout() + session.host.stderr()).not.toContain(record.token);
+      expect(session.host.stdout() + session.host.stderr()).not.toContain(secret);
     },
   );
 
@@ -189,21 +211,30 @@ describe.runIf(standInProgramsRun)("binference mcp session", () => {
     expect(token).toMatchObject({ expiresAtMs: testNowMs + 1_800_000, revokedAtMs: testNowMs });
   });
 
-  it("starts Codex with overrides that pass the token variable, and no secret", slow, async () => {
-    const at = await servedSession("codex");
-    await expect(start(at, ["--client", "codex"]).exit).resolves.toBe(0);
+  it(
+    "starts Codex with the secret in its environment, passed to the server, kept from its shell",
+    slow,
+    async () => {
+      const at = await servedSession("codex");
+      await expect(start(at, ["--client", "codex"]).exit).resolves.toBe(0);
 
-    const record = await firstRecord(at);
-    const overrides = record.argv.filter((_arg, index) => index % 2 === 1);
-    expect(overrides).toContain('mcp_servers.binference.env_vars=["BINFERENCE_MCP_TOKEN"]');
-    expect(overrides).toContain(
-      `mcp_servers.binference.env={ BINFERENCE_HOME = ${JSON.stringify(at.machine.folder)} }`,
-    );
-    expect(record.argv.join(" ")).not.toContain("bnt_");
-    expect(record.token).toMatch(/^bnt_/);
-    const token = await sessionToken(at);
-    expect(token).toMatchObject({ label: "mcp-codex-session", revokedAtMs: testNowMs });
-  });
+      const record = await firstRecord(at);
+      const overrides = record.argv.filter((_arg, index) => index % 2 === 1);
+      expect(overrides).toContain('mcp_servers.binference.env_vars=["BINFERENCE_MCP_TOKEN"]');
+      expect(overrides).toContain(
+        `mcp_servers.binference.env={ BINFERENCE_HOME = ${JSON.stringify(at.machine.folder)} }`,
+      );
+      expect(overrides).toContain(
+        'shell_environment_policy.filters.BINFERENCE_MCP_TOKEN="exclude"',
+      );
+      expect(record.argv.join(" ")).not.toContain("bnt_");
+      expect(record.token).toMatch(/^bnt_/);
+      expect(record.secretVariables).toStrictEqual(["BINFERENCE_MCP_TOKEN"]);
+      const token = await sessionToken(at);
+      expect(sha256Hex(record.token)).toBe(token.secretHash);
+      expect(token).toMatchObject({ label: "mcp-codex-session", revokedAtMs: testNowMs });
+    },
+  );
 
   it("revokes the token when the client is not on PATH", slow, async () => {
     const at = await servedSession("codex");
@@ -223,10 +254,12 @@ describe.runIf(standInProgramsRun)("binference mcp session", () => {
       const printed = JSON.parse(session.host.stdout()) as {
         readonly env: { readonly BINFERENCE_MCP_TOKEN: string };
         readonly expiresAt: number;
+        readonly config: unknown;
       };
       const token = await sessionToken(at);
       expect(sha256Hex(printed.env.BINFERENCE_MCP_TOKEN)).toBe(token.secretHash);
       expect(printed.expiresAt).toBe(testNowMs + 3_600_000);
+      expect(JSON.stringify(printed.config)).not.toContain("bnt_");
       expect(token.revokedAtMs).toBeUndefined();
       expect(await records(at)).toStrictEqual([]);
     },

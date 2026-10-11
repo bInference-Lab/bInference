@@ -70,10 +70,12 @@ binference mcp session --client claude-code
 binference mcp session --client codex --ttl 4h -- --model gpt-5
 ```
 
-The token reaches the client in its environment as `BINFERENCE_MCP_TOKEN`, never in its arguments
-or a file. Claude Code starts with `--strict-mcp-config` and a config file that lists only
-binference's server, written owner-only in the state folder and removed at the end. Codex starts
-with `-c` overrides of its `binference` server and keeps its other servers. `--print-config` prints
+The token never appears in the client's arguments. Claude Code starts with `--strict-mcp-config`
+and a config file that lists only binference's server, written owner-only in the state folder and
+removed at the end; the token is in that server's `env` as `BINFERENCE_MCP_TOKEN`, so it reaches
+binference's server and not Claude Code's own environment, its shell or its hooks. Codex gets the
+token in its environment, passes it to its `binference` server through `-c` overrides, is told to
+keep it out of its shell commands, and keeps its other servers. `--print-config` prints
 the config and the token for a client you start yourself; that token works until it expires. The
 skill comes from `binference mcp setup` or a copy by hand.
 

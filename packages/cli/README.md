@@ -123,9 +123,11 @@ package ships the skill in `skills/`, which `prepack` copies from the repo's `sk
 `binference mcp session --client <client>` starts the client once with a token of its own
 (`src/commands/mcp-session-command.ts`, decision 0159): the CLI makes the secret and registers its
 SHA-256 with a 1-hour expiry (`--ttl`, at most 24 hours), then starts the client through the
-platform's `startTerminalProgram` with the secret in `BINFERENCE_MCP_TOKEN`, which `binference mcp`
-reads before any token file. Claude Code gets `--strict-mcp-config --mcp-config` and a file in the
-state folder's `tmp/`; Codex gets `-c` overrides. The token is revoked when the client exits, after
+platform's `startTerminalProgram`. `binference mcp` reads the secret from `BINFERENCE_MCP_TOKEN`
+before any token file (decision 0165): Claude Code gets `--strict-mcp-config --mcp-config` and a
+file in the state folder's `tmp/` whose `binference` server alone has the variable in its `env`,
+and never the variable itself; Codex gets the variable in its environment, `-c` overrides that
+pass it to the server, and one that keeps it out of its shell commands. The token is revoked when the client exits, after
 a stop signal passed on to it, or on a fault; `--print-config` prints the config and the secret
 and starts nothing.
 
