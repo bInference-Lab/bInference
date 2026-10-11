@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { BinferenceError, createDeadline } from "@binference/core";
 import { acquireFileLock, ensurePrivateFolder } from "@binference/platform";
+import { runtimeSettingsOf } from "../agent-runtime/runtime-settings-of.js";
 import { loadConfig } from "../config/load-config.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
@@ -74,7 +75,7 @@ async function readSecretParts(
   opening: Opening,
   config: BinferenceConfig,
   log: OpenedLog,
-): Promise<Pick<Opened, "tracers" | "chains" | "venues" | "bot">> {
+): Promise<Pick<Opened, "tracers" | "chains" | "venues" | "bot" | "runtime">> {
   const { host, platform, signal } = opening;
   const secrets = createSecretReader({
     env: host.env,
@@ -104,7 +105,12 @@ async function readSecretParts(
     logger,
     signal,
   });
-  return { tracers, chains, venues, bot };
+  const runtime = await runtimeSettingsOf(config, {
+    secrets,
+    logger: log.logger.child("runtime"),
+    signal,
+  });
+  return { tracers, chains, venues, bot, runtime };
 }
 
 async function openStoresAndServe(

@@ -13,6 +13,7 @@ import {
   writePrivateFile,
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import { startInProcessRuntime } from "@binference/runtime/testing";
 import { connectEngine } from "../commands/connect-engine.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import type { CliHost } from "../program/cli-host.js";
@@ -101,7 +102,10 @@ const noServices: ServiceManager = {
 
 /** What a test gives a host in place of the outside world and the person at the terminal. */
 export type HostParts = Partial<
-  Pick<CliHost, "http" | "prompter" | "startSigner" | "serviceManager" | "homeDir" | "mcpStdio">
+  Pick<
+    CliHost,
+    "http" | "prompter" | "startSigner" | "startRuntime" | "serviceManager" | "homeDir" | "mcpStdio"
+  >
 >;
 
 /** A host for one `binference` command line on a test machine. */
@@ -131,6 +135,8 @@ export function hostWith(
       script: join(machine.folder, "bin", "binference.mjs"),
     },
     serviceManager: noServices,
+    // The runtime runs in the test's process, signed in at once, unless a test starts its own.
+    startRuntime: async () => startInProcessRuntime(),
     out: (text) => {
       written.out += text;
       out.write(text);

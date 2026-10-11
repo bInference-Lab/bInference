@@ -41,6 +41,7 @@
     "@binference/platform": "workspace:*",
     "@binference/plugin-sdk": "workspace:*",
     "@binference/protocol": "workspace:*",
+    "@binference/runtime": "workspace:*",
     "@binference/server": "workspace:*",
     "@binference/signer": "workspace:*",
     "@binference/store": "workspace:*",

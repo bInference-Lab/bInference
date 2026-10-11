@@ -14,8 +14,9 @@ import type { RunningEngine, StartOutcome } from "./start-outcome.js";
 import { startUnlockRetry } from "./unlock-retry.js";
 
 // Hands every part's closer to the one shutdown sequence, which stop signals and `engine/stop`
-// start, last opened first: the settle timer, the server, so nothing new comes in, the executor,
-// which finishes what it signs and sends, the signer, the stores, the log and the lock.
+// start, last opened first: the agent runtime, the settle timer, the server, so nothing new comes
+// in, the executor, which finishes what it signs and sends, the signer, the stores, the log and
+// the lock.
 function startShutdown(
   opening: Opening,
   opened: Opened,
@@ -111,8 +112,8 @@ function botChannelOf(
  * the executor; the timer for work that waits for its time starts, the watch on `config.json5`
  * that reloads the settings (decision 0118), and after a start that found Privy out of reach, the
  * signer step's retries (decision 0119); the owner's bot's channel, unless another machine took
- * over the wallets (decision 0140); then the engine is `ready`, or `locked`, and says so on topic
- * `engine`, and the bot starts polling.
+ * over the wallets (decision 0140); the agent runtime, whose closer the shutdown runs first; then
+ * the engine is `ready`, or `locked`, and says so on topic `engine`, and the bot starts polling.
  */
 export async function serveEngine(opening: Opening, opened: Opened): Promise<StartOutcome> {
   const { platform, signal } = opening;
@@ -133,6 +134,8 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   }
   startTimers(opening, opened, { composed, isPrivyUnreachable: isUnreachable(unlocked) });
   const channel = botChannelOf(opening, opened, { composed, unlocked });
+  // Started last, so its closer runs first: the runtime stops before every other part.
+  composed.runtime.begin(server);
   const { stop, finished } = startShutdown(opening, opened);
   composed.stopper.stop = stop;
   state.current = "ready";

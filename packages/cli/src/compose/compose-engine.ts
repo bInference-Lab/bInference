@@ -20,6 +20,7 @@ import {
   type WalletFactsSource,
 } from "@binference/engine";
 import { createDevicePairing, createLockoutNotices } from "@binference/engine/access";
+import { createRunningTurns, markRuntimeTurns, type RunningTurns } from "@binference/engine/chat";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
@@ -95,6 +96,11 @@ export interface ComposeEngineOptions {
   readonly isLocked?: () => boolean;
   /** Handlers of operations the composition root answers, such as `engine/status`. */
   readonly handlers?: EngineHandlerTable;
+  /**
+   * The agent runtime's running turns, whose outside-content marks its proposals take; with none,
+   * every proposal of a client with `agent` counts as outside content.
+   */
+  readonly turns?: RunningTurns;
   /** The owner's bot; without it the engine shows no card in Telegram. */
   readonly telegram?: TelegramParts;
   /**
@@ -312,12 +318,13 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   };
   const engine = engineOf(parts, options, { ids, publish });
   const origin = consoleOriginCell();
-  const handlers: EngineHandlerTable = {
+  const table: EngineHandlerTable = {
     ...engine.handlers,
     ...accessHandlersOf({ ...options, stores: parts.stores, ids, origin, server: () => server }),
     ...webPush.handlers,
     ...options.handlers,
   };
+  const handlers = markRuntimeTurns(table, options.turns ?? createRunningTurns());
   const telegram = joinTelegram(parts, options, {
     answer: engine.answer,
     handlers,

@@ -509,6 +509,9 @@ importers:
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@binference/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@binference/server':
         specifier: workspace:*
         version: link:../server

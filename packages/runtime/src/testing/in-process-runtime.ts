@@ -1,5 +1,5 @@
 import type { StartLine } from "../control/control-line.schema.js";
-import { runRuntime } from "../process/run-runtime.js";
+import { type EngineLink, runRuntime } from "../process/run-runtime.js";
 import { createByteChannel } from "./byte-channel.js";
 
 /**
@@ -25,6 +25,19 @@ export interface InProcessRuntimeOptions {
   readonly refusesSignIn?: boolean;
   /** Its sign-in never ends, so it never writes `ready`. */
   readonly hangsAtSignIn?: boolean;
+  /** It reads no line after its first, as a runtime stuck in its work: it never stops by itself. */
+  readonly isStuck?: boolean;
+}
+
+// A sign-in as the options shape it: at once, refused, or never ending until it is abandoned.
+async function signIn(options: InProcessRuntimeOptions, signal: AbortSignal): Promise<EngineLink> {
+  if (options.hangsAtSignIn === true) {
+    await new Promise((_, reject) => signal.addEventListener("abort", reject, { once: true }));
+  }
+  if (options.refusesSignIn === true) {
+    throw new Error("The engine refused the token.");
+  }
+  return { close: () => undefined };
 }
 
 /** Starts the runtime's main loop in this process, on channels in place of pipes. */
@@ -33,6 +46,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
   const output = createByteChannel();
   const timer = { onTick: async (): Promise<void> => Promise.resolve() };
   const starts: StartLine[] = [];
+  const state = { hasStarted: false };
   const killed = { exited: (_code: number | undefined): void => undefined };
   const exited = new Promise<number | undefined>((resolve) => {
     killed.exited = resolve;
@@ -42,13 +56,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
     write: async (line) => output.push(`${line}\n`),
     connect: async (start, signal) => {
       starts.push(start);
-      if (options.hangsAtSignIn === true) {
-        await new Promise((_, reject) => signal.addEventListener("abort", reject, { once: true }));
-      }
-      if (options.refusesSignIn === true) {
-        throw new Error("The engine refused the token.");
-      }
-      return { close: () => undefined };
+      return signIn(options, signal);
     },
     everyTenSeconds: (onTick, signal) => {
       timer.onTick = onTick;
@@ -64,7 +72,12 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
   );
   void exited.then(() => output.end());
   return {
-    write: async (text) => input.push(text),
+    write: async (text) => {
+      if (options.isStuck !== true || !state.hasStarted) {
+        input.push(text);
+        state.hasStarted = true;
+      }
+    },
     end: async () => input.end(),
     output,
     exited,

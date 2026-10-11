@@ -1,5 +1,6 @@
 import type { EnginePush } from "@binference/engine";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
+import type { RuntimeHealth } from "../agent-runtime/runtime-supervisor.js";
 import { composeBackupOperations } from "./backup-operations.js";
 import type { ComposedLock } from "./compose-lock.js";
 import { createEngineOperations } from "./engine-operations.js";
@@ -23,6 +24,8 @@ interface EngineWiring {
   readonly custody: () => HealthSignal["state"];
   /** The backup key signal: a warning while backups are still sealed to the owner key itself. */
   readonly backupKey: () => HealthSignal["state"];
+  /** The agent runtime's signal: failing, since it went down, while it is down or starting. */
+  readonly runtime: () => RuntimeHealth;
 }
 
 /**
@@ -40,6 +43,11 @@ export function engineHandlers(
       { signal: "custody", state: wiring.custody },
       { signal: "rpc", state: wiring.rpc },
       { signal: "backup_key", state: wiring.backupKey },
+      {
+        signal: "runtime",
+        state: () => wiring.runtime().state,
+        since: () => wiring.runtime().since,
+      },
     ],
     logFailed: opened.log.hasFailed,
   });

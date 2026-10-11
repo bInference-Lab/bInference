@@ -8,6 +8,7 @@ import {
   type WalletFactsSource,
 } from "@binference/engine";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
+import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
@@ -20,6 +21,7 @@ import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
+import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
 import { engineHandlers } from "./engine-handlers.js";
 import { botParts } from "./open-bot.js";
@@ -51,6 +53,8 @@ export interface ComposedSelfHosted {
   readonly locked: ComposedLock;
   /** The owner's bot joined to the engine, when its token was read. */
   readonly telegram?: ComposedTelegram;
+  /** The agent runtime, which starts once the engine serves. */
+  readonly runtime: ComposedRuntime;
 }
 
 /** What the self-hosted engine trades on, each part over the chains' one set of reads. */
@@ -152,6 +156,8 @@ interface Wiring {
   readonly jobs: { publish: (push: EnginePush) => void };
   /** Whether backups are sealed to the sealing key yet, and the owner key hook that moves them. */
   readonly sealKey: SealKeyKeeper;
+  /** The agent runtime, its routed operations and its health signal. */
+  readonly runtime: ComposedRuntime;
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -194,6 +200,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     signerStopped,
     signerRefused,
     sealKey,
+    runtime: composeRuntime(opening, opened),
   };
 }
 
@@ -201,6 +208,24 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
 function custodyPartsOf(custody: ComposedCustody) {
   const { signer, ceilings, walletMaker, exporter, revoker } = custody.cell;
   return { custody: signer, ceilings, walletMaker, exporter, revoker };
+}
+
+// The operations the composition root answers: the engine's own, and those routed to the runtime.
+function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): EngineHandlerTable {
+  const { parts, custody, sending, locked, runtime } = wiring;
+  return {
+    ...runtime.handlers,
+    ...engineHandlers(opening, opened, {
+      rpc: () => rpcHealthOf(parts.reads, opening.host.clock),
+      executor: sending.health,
+      custody: () => (custody.cell.isOpen() ? "ok" : "fail"),
+      backupKey: () => (wiring.sealKey.isSealed() ? "ok" : "warn"),
+      stopper: wiring.stopper,
+      locked,
+      jobs: wiring.jobs,
+      runtime: runtime.health,
+    }),
+  };
 }
 
 // The engine and its protocol server over the wired parts.
@@ -236,15 +261,8 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ...(opened.webPushKey === undefined
         ? {}
         : { webPush: { key: opened.webPushKey, http: host.http, isPublicEndpoint } }),
-      handlers: engineHandlers(opening, opened, {
-        rpc: () => rpcHealthOf(parts.reads, host.clock),
-        executor: sending.health,
-        custody: () => (custody.cell.isOpen() ? "ok" : "fail"),
-        backupKey: () => (wiring.sealKey.isSealed() ? "ok" : "warn"),
-        stopper: wiring.stopper,
-        locked,
-        jobs: wiring.jobs,
-      }),
+      turns: wiring.runtime.turns,
+      handlers: ownHandlersOf(opening, opened, wiring),
       clock: host.clock,
       random: host.random,
       logger: log.logger,
@@ -303,6 +321,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     stopper,
     state,
     locked,
+    runtime: wiring.runtime,
     ...bot,
   };
 }

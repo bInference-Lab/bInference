@@ -19,7 +19,10 @@
       "types": "./dist/testing.d.mts",
       "default": "./dist/testing.mjs"
     },
-    "./process": "./dist/runtime-process.mjs",
+    "./process": {
+      "@binference/source": "./src/process/runtime-process.ts",
+      "default": "./dist/runtime-process.mjs"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

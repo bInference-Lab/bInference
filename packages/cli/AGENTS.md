@@ -114,6 +114,12 @@ Rules for this package:
   never a failed start (decision 0117). The engine signs through the custody cell, which refuses
   while locked. A passphrase comes only from the terminal's hidden prompt of `binference unlock`,
   never from a flag, and is never logged.
+- The agent runtime (spec 8, section 2) starts last in `serveEngine` and stops first:
+  `src/compose/compose-runtime.ts` starts it through the host's `startRuntime` (the built
+  runtime's process unless a test passes its own; tests default to the runtime run in-process),
+  and `src/agent-runtime/` holds its supervisor, its per-start token, its settings and the routed
+  operations. It gets no variable of the engine's environment and no key; its settings, with the
+  model keys read from their secret sources, cross only its standard input.
 - The owner key code comes only from the terminal's hidden prompt of an owner-key command, such as
   `binference rescue set`, travels only over IPC and is never logged or stored. The Privy ceiling
   editor (`src/compose/privy-ceiling-editor.ts`) uses it for one request and checks it is the key

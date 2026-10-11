@@ -1,5 +1,6 @@
 import type { Clock, Http, Random } from "@binference/core";
 import type { ServiceManager, SignalEvents } from "@binference/platform";
+import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
 import type { StartSigner } from "../compose/start-signer.js";
 import type { Prompter } from "../term/prompter.js";
@@ -43,6 +44,8 @@ export interface CliHost {
   readonly workerExecArgv?: readonly string[];
   /** Starts the signer once the agent key opens; the built signer's process when left out. */
   readonly startSigner?: StartSigner;
+  /** Starts the agent runtime's process; the built runtime when left out. */
+  readonly startRuntime?: StartRuntime;
   /** How this binference was started, which the background service runs again. */
   readonly entry: BinferenceEntry;
   /**

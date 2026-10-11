@@ -12,6 +12,7 @@ import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
 import type { BackupFailure } from "@binference/engine/backups";
 import { ensurePrivateFolder, openLogFile, type Platform } from "@binference/platform";
+import type { RuntimeSettings } from "@binference/runtime";
 import type { ConsoleFiles, ProtocolServer, ServerAddress } from "@binference/server";
 import {
   createSqliteBackupStore,
@@ -62,6 +63,8 @@ export interface Opened {
   readonly venues: readonly Venue[];
   /** The owner's bot, or `undefined` when its token could not be read. */
   readonly bot: OpenedBot | undefined;
+  /** What the agent runtime starts with, its keys read from their secret sources. */
+  readonly runtime: RuntimeSettings;
   /** The console's built files, or `undefined` when the engine serves no console. */
   readonly consoleFiles: ConsoleFiles | undefined;
   /** The VAPID key of browser push, or `undefined` when `keys/` holds one it cannot read. */
