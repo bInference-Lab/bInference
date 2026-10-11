@@ -1,13 +1,14 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { err, ok } from "@binference/core";
+import { type AgentListHandlers, createAgentListHandlers } from "./agent-list-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
 import { makeWallet, type MakeWalletOptions } from "./make-wallet.js";
 import { revokeSigner, type RevokeSignerOptions } from "./revoke-signer.js";
 import { walletViewOf } from "./wallet-view-of.js";
 
-/** The handlers of the agent wallets (protocol spec, section 7.2). */
-export interface WalletHandlers {
+/** The handlers of the agent wallets, and the agent list with each default wallet (spec, 7.2). */
+export interface WalletHandlers extends AgentListHandlers {
   readonly "wallet/list": EngineHandler<"wallet/list">;
   readonly "wallet/create": EngineHandler<"wallet/create">;
   readonly "wallet/exportSealed": EngineHandler<"wallet/exportSealed">;
@@ -32,10 +33,12 @@ export interface WalletHandlersOptions
  * chain fails the call with `wallet.custody_down`. `wallet/create` makes a wallet with the
  * owner key (see {@link makeWallet}), and `wallet/exportSealed` exports one's key sealed to the
  * caller's recipient key (see {@link exportWallet}); `signer/revoke` removes a machine's agent key
- * from every live wallet with the owner key (see {@link revokeSigner}).
+ * from every live wallet with the owner key (see {@link revokeSigner}). `agent/list` lists the
+ * agents with their default wallets (see {@link createAgentListHandlers}).
  */
 export function createWalletHandlers(options: WalletHandlersOptions): WalletHandlers {
   return {
+    ...createAgentListHandlers(options),
     "wallet/create": async (call) => makeWallet(options, call),
     "wallet/exportSealed": async (call) => exportWallet(options, call),
     "signer/revoke": async (call) => revokeSigner(options, call),

@@ -264,7 +264,7 @@ must refetch reads the operation's own list, such as `backup/list`. File results
 
 | Operation             | Scope                                       | Write | Local | Args → result                                                                                                                                                                                                                                                                                                                                |
 | --------------------- | ------------------------------------------- | ----- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agent/list`          | `read`                                      |       |       | paging → agents                                                                                                                                                                                                                                                                                                                              |
+| `agent/list`          | `read`                                      |       |       | paging → agents, archived ones too, oldest first, each `AgentView` with its `defaultWallet`: the oldest wallet not archived, a `WalletView`, which a proposal uses when it names none                                                                                                                                                        |
 | `agent/get`           | `read`                                      |       |       | `{ agent }` → `AgentView`                                                                                                                                                                                                                                                                                                                    |
 | `agent/create`        | `admin`                                     | ✓     |       | `{ name, locale? }` → `AgentView` (starts in paper mode with the defaults table)                                                                                                                                                                                                                                                             |
 | `agent/rename`        | `admin`                                     | ✓     |       | `{ agent, name }` → `AgentView`                                                                                                                                                                                                                                                                                                              |
@@ -551,7 +551,8 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   The first three are live, the `paper` ones paper, never added together; an unrealized figure is
   absent where no price is known.
 - `OrderView`, `AlertView`, `ScheduleView`, `WalletView`, `AgentView`, `LimitsView`: the stored
-  fields of spec 3 with ids and times as section 1 sets.
+  fields of spec 3 with ids and times as section 1 sets. `agent/list` adds each agent's
+  `defaultWallet` to its `AgentView`.
 
 <a id="section-9"></a>
 

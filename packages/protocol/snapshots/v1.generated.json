@@ -1858,6 +1858,42 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "defaultWallet": {
+                    "type": "object",
+                    "properties": {
+                      "wallet": {
+                        "type": "string",
+                        "pattern": "^wal_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "address": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "archivedAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "wallet",
+                      "agent",
+                      "address",
+                      "label",
+                      "createdAt"
+                    ]
                   }
                 },
                 "required": [
@@ -1990,6 +2026,42 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "defaultWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
             }
           },
           "required": [
@@ -2121,6 +2193,42 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "defaultWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
             }
           },
           "required": [
@@ -2250,6 +2358,42 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "defaultWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
             }
           },
           "required": [
@@ -2446,6 +2590,42 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "defaultWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
             }
           },
           "required": [
@@ -2569,6 +2749,42 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "defaultWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
             }
           },
           "required": [
