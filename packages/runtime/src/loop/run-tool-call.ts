@@ -1,6 +1,7 @@
 import { createDeadline, type Deadline } from "@binference/core";
 import type { ToolCall } from "./model-message.js";
 import { type CallResult, recordResult } from "./record-call.js";
+import { settleBy } from "./settle-by.js";
 import { createStopGrace } from "./stop-grace.js";
 import type { ReadyCall, ToolOutcome } from "./turn-ports.js";
 import type { TurnRun } from "./turn-run.js";
@@ -61,15 +62,17 @@ export async function executeCall(
     signal: run.halted,
     timeoutMs: run.limits.toolTimeoutMs,
   });
-  try {
-    const idempotencyKey = proposalKeyOf(run.turnId, numbered.ordinal);
-    const outcome = await ready.run({ signal: deadline.signal, idempotencyKey });
-    return { result: resultOf(ready, outcome), endsTurn: outcome.endsTurn === true };
-  } catch {
+  const idempotencyKey = proposalKeyOf(run.turnId, numbered.ordinal);
+  const context = { signal: deadline.signal, idempotencyKey };
+  const settled = await settleBy(async () => ready.run(context), {
+    signal: deadline.signal,
+    clock: run.parts.clock,
+  });
+  deadline.clear();
+  if (settled.kind !== "value") {
     return { result: failedResult(failedText(run, deadline)), endsTurn: false };
-  } finally {
-    deadline.clear();
   }
+  return { result: resultOf(ready, settled.value), endsTurn: settled.value.endsTurn === true };
 }
 
 /**
@@ -106,15 +109,21 @@ export async function runProposal(
   const grace = createStopGrace(run.halted, clock, run.limits.stopGraceMs);
   const timeoutMs = run.limits.proposeTimeoutMs;
   const deadline = createDeadline({ clock, signal: grace.signal, timeoutMs });
-  let result: CallResult;
-  try {
-    result = resultOf(ready, await ready.run({ signal: deadline.signal, idempotencyKey }));
-  } catch {
-    result = failedResult(unknownProposal);
+  const context = { signal: deadline.signal, idempotencyKey };
+  const settled = await settleBy(async () => ready.run(context), {
+    signal: deadline.signal,
+    clock: run.parts.clock,
+  });
+  // An answer after the deadline is no answer: the engine may hold the proposal or not.
+  const known = settled.kind === "value" && !deadline.signal.aborted;
+  deadline.clear();
+  grace.clear();
+  if (!known) {
     run.halt("proposal_unknown");
-  } finally {
-    deadline.clear();
-    grace.clear();
   }
-  await recordResult(run, call, result);
+  await recordResult(
+    run,
+    call,
+    known ? resultOf(ready, settled.value) : failedResult(unknownProposal),
+  );
 }

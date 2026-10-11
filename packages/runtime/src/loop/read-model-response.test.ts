@@ -1,3 +1,4 @@
+import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { ModelEvent } from "./model-event.js";
 import { readModelResponse } from "./read-model-response.js";
@@ -13,8 +14,10 @@ async function* broken(): AsyncGenerator<ModelEvent> {
   throw new Error("socket closed");
 }
 
+const clock = createManualClock();
+
 async function read(list: readonly ModelEvent[], signal = new AbortController().signal) {
-  return readModelResponse(events(list), signal);
+  return readModelResponse(events(list), { signal, clock });
 }
 
 describe("readModelResponse", () => {
@@ -111,7 +114,10 @@ describe("readModelResponse", () => {
   });
 
   it("calls a stream that throws a transient failure", async () => {
-    const response = await readModelResponse(broken(), new AbortController().signal);
+    const response = await readModelResponse(broken(), {
+      signal: new AbortController().signal,
+      clock,
+    });
     expect(response).toMatchObject({ ok: false, failure: "transient", text: "Hi" });
   });
 

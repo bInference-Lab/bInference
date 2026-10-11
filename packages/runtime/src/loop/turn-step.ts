@@ -131,10 +131,10 @@ export async function takeStep(run: TurnRun): Promise<StepEnd> {
     messages: [...run.messages],
     tools: run.parts.tools.declarations,
   };
-  const response = await readModelResponse(
-    run.parts.transport.stream(request, run.halted),
-    run.halted,
-  );
+  const response = await readModelResponse(run.parts.transport.stream(request, run.halted), {
+    signal: run.halted,
+    clock: run.parts.clock,
+  });
   await keepResponse(run, response);
   return response.ok ? onAnswer(run, response) : endOfFault(run, response);
 }

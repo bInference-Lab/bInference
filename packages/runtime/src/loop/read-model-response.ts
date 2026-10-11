@@ -1,5 +1,6 @@
 import type { ModelEvent, ModelFailure, ModelStop, ModelUsage } from "./model-event.js";
 import type { ToolCall } from "./model-message.js";
+import { type SettleOptions, settleBy } from "./settle-by.js";
 
 /** A model response that ended with `done`. */
 export interface ModelAnswer {
@@ -125,36 +126,49 @@ function apply(draft: ResponseDraft, event: ModelEvent): Step {
   return event.type === "done" ? finish(draft, event) : fault(draft, event.failure, event.message);
 }
 
+// A stream that will not stop is closed without waiting: its next event goes nowhere.
+function close(iterator: AsyncIterator<ModelEvent>): void {
+  iterator.return?.().catch(() => undefined);
+}
+
+// Each event is awaited only until the signal aborts, so a transport that ignores its signal
+// never holds the turn past a stop or its time limit.
 async function readEvents(
   events: AsyncIterable<ModelEvent>,
   draft: ResponseDraft,
+  options: SettleOptions,
 ): Promise<ModelResponse | string> {
-  for await (const event of events) {
-    const step = apply(draft, event);
+  const iterator = events[Symbol.asyncIterator]();
+  for (;;) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each event follows the one before
+    const next = await settleBy(async () => iterator.next(), options);
+    if (next.kind !== "value" || next.value.done === true) {
+      close(iterator);
+      return next.kind === "error"
+        ? "the stream failed"
+        : "the stream ended without its last event";
+    }
+    const step = apply(draft, next.value.value);
     if (step !== undefined) {
+      close(iterator);
       return step;
     }
   }
-  return "the stream ended without its last event";
 }
 
 /**
  * Reads a streamed model response into its text, reasoning and tool calls. A stream that breaks
  * its own order (a call that never started, a missing last event) is a `transient` failure, and a
- * stream that stops for the signal is `aborted`, so the loop never sees half a response as whole.
+ * stream that stops for the signal, or is cut by it, is `aborted`, so the loop never sees half a
+ * response as whole.
  */
 export async function readModelResponse(
   events: AsyncIterable<ModelEvent>,
-  signal: AbortSignal,
+  options: SettleOptions,
 ): Promise<ModelResponse> {
   const draft: ResponseDraft = { textParts: [], reasoningParts: [], calls: new Map() };
-  let step: ModelResponse | string;
-  try {
-    step = await readEvents(events, draft);
-  } catch {
-    step = "the stream failed";
-  }
-  if (signal.aborted) {
+  const step = await readEvents(events, draft, options);
+  if (options.signal.aborted) {
     return fault(draft, "aborted", "The model call was stopped.");
   }
   return typeof step === "string"
