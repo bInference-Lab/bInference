@@ -10,6 +10,7 @@
         "public/**",
         "index.html",
         "vite.config.ts",
+        "vite.push-worker.config.ts",
         "package.json",
         "tsconfig.json",
         "$TURBO_ROOT$/tsconfig.base.json"

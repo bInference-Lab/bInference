@@ -4,9 +4,11 @@ import { type ReadyFrame, readyFrameSchema, type Scope } from "@binference/proto
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EngineProvider } from "../connection/engine-context";
 import { formatterFor, TextProvider } from "../i18n/console-text";
+import type { BrowserPush } from "../push/browser-push";
+import { ConsolePushProvider } from "../push/console-push";
 import { ConfirmationsScreen } from "./confirmations-screen";
 import { LedgerScreen } from "./ledger-screen";
 import { LimitsScreen } from "./limits-screen";
@@ -172,6 +174,81 @@ describe("the confirmations screen", () => {
     renderSignedIn(<ConfirmationsScreen />, { client });
     await settle();
     expect(screen.getByText("Nothing waits for your confirmation.")).toBeDefined();
+  });
+});
+
+// The VAPID public key of RFC 8292's worked example, and a browser that has not subscribed yet.
+const engineKey =
+  "BA1Hxzyi1RUM1b5wjxsn7nGxAszw2u61m164i3MrAIxHF6YK5h4SDYic-dRuU_RCPCfA5aq9ojSwk5Y2EmClBPs";
+const unsubscribed: BrowserPush = {
+  permission: () => "default",
+  requestPermission: async () => "granted",
+  manager: async () =>
+    ({
+      getSubscription: async () => null,
+      subscribe: async () => ({
+        endpoint: "https://push.example.invalid/send/a",
+        getKey: () => new Uint8Array(16).buffer,
+      }),
+    }) as unknown as PushManager,
+};
+
+const pushAnswers = {
+  ...answers,
+  "webPush/status": () => ({ publicKey: engineKey, registered: false }),
+  "webPush/register": () => ({}),
+};
+
+const scrolled: Element[] = [];
+
+function recordScroll(this: Element): void {
+  scrolled.push(this);
+}
+
+describe("browser notifications on the confirmations screen", () => {
+  beforeEach(() => {
+    // jsdom lays nothing out, so it has no scrollIntoView of its own.
+    Element.prototype.scrollIntoView = recordScroll;
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    scrolled.splice(0);
+  });
+
+  it("turns them on: the browser subscribes and the engine registers it", async () => {
+    const { client, calls } = fakeClient(pushAnswers);
+    const page = (
+      <ConsolePushProvider value={{ push: unsubscribed }}>
+        <ConfirmationsScreen />
+      </ConsolePushProvider>
+    );
+    renderSignedIn(page, { client });
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Allow notifications" }));
+    await settle();
+    expect(calls.map((call) => call.op)).toContain("webPush/register");
+    expect(screen.getByText("This browser gets a notification when a card waits.")).toBeDefined();
+  });
+
+  it("shows no notification setting where the browser has no push", async () => {
+    const { client } = fakeClient(pushAnswers);
+    renderSignedIn(<ConfirmationsScreen />, { client });
+    await settle();
+    expect(screen.queryByRole("button", { name: "Allow notifications" })).toBeNull();
+  });
+
+  it("brings the card a notification opened into view", async () => {
+    const { client } = fakeClient(pushAnswers);
+    const page = (
+      <ConsolePushProvider value={{ focus: intent }}>
+        <ConfirmationsScreen />
+      </ConsolePushProvider>
+    );
+    renderSignedIn(page, { client });
+    await settle();
+    expect(scrolled).toHaveLength(1);
+    expect(scrolled[0]?.getAttribute("data-slot")).toBe("card");
   });
 });
 

@@ -12,7 +12,7 @@
     "./dist/*": "./dist/*"
   },
   "scripts": {
-    "build": "vite build"
+    "build": "vite build && vite build --config vite.push-worker.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",

@@ -46,5 +46,13 @@
   "limits.limit": "限额",
   "limits.value": "当前生效",
   "limits.pending": "以下更宽松的限额将在 {when} 生效，除非你在命令行中取消：",
-  "limits.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。"
+  "limits.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。",
+  "push.title": "浏览器通知",
+  "push.off": "有卡片等待时在此浏览器中收到通知，即使没有打开 Telegram。",
+  "push.on": "有卡片等待时，此浏览器会收到通知。",
+  "push.blocked": "此浏览器的网站设置已关闭此页面的通知。请在那里允许通知，然后重新加载。",
+  "push.failed": "通知设置未更改：{reason}",
+  "push.unavailable": "此浏览器无法连接其推送服务。请稍后再试。",
+  "push.enable": "允许通知",
+  "push.disable": "停止通知"
 }

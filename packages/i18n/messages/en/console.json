@@ -46,5 +46,13 @@
   "limits.limit": "Limit",
   "limits.value": "In effect",
   "limits.pending": "Looser limits that apply at {when} unless you cancel them in the CLI:",
-  "limits.noAgents": "There is no agent yet. Run `binference init` to make one."
+  "limits.noAgents": "There is no agent yet. Run `binference init` to make one.",
+  "push.title": "Browser notifications",
+  "push.off": "Get a notification in this browser when a card waits, even when Telegram is not open.",
+  "push.on": "This browser gets a notification when a card waits.",
+  "push.blocked": "Notifications from this page are off in this browser's site settings. Allow them there, then reload.",
+  "push.failed": "Notifications did not change: {reason}",
+  "push.unavailable": "This browser could not reach its push service. Try again later.",
+  "push.enable": "Allow notifications",
+  "push.disable": "Stop notifications"
 }

@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../compone
 import { useEngine } from "../connection/engine-context";
 import { errorWords } from "../connection/error-words";
 import { useFormatter, useText } from "../i18n/console-text";
+import { useFocusedCard } from "../push/use-focused-card";
 import { PaperBadge } from "./screen-state";
 
 /** What the owner answers, and the card version they read. */
@@ -67,6 +68,7 @@ function AnswerButtons(props: {
  */
 export function PendingCard(props: { readonly intent: IntentView }): React.JSX.Element {
   const { intent } = props;
+  const { isFocused, showIn } = useFocusedCard(intent.intent);
   const { client } = useEngine();
   const text = useText();
   const formatter = useFormatter();
@@ -82,7 +84,11 @@ export function PendingCard(props: { readonly intent: IntentView }): React.JSX.E
   const [header, ...rest] = lines;
   const shown = card.data;
   return (
-    <Card aria-busy={card.isPending}>
+    <Card
+      ref={showIn}
+      aria-busy={card.isPending}
+      className={isFocused ? "ring-2 ring-gold" : undefined}
+    >
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2">
           {header}

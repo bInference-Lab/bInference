@@ -2,6 +2,7 @@ import type { IntentView } from "@binference/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { useEngine } from "../connection/engine-context";
 import { useText } from "../i18n/console-text";
+import { PushToggle } from "../push/push-toggle";
 import { PendingCard } from "./pending-card";
 import { ScreenState } from "./screen-state";
 
@@ -32,6 +33,7 @@ export function ConfirmationsScreen(): React.JSX.Element {
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">{text("console.confirmations.title")}</h1>
+      <PushToggle />
       {intents === undefined ? (
         <ScreenState error={pending.error} />
       ) : (
