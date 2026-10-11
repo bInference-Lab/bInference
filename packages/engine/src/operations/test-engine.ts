@@ -283,7 +283,12 @@ function archived(agent: AgentRecord): AgentRecord {
   return { ...agent, archivedAtMs: 1 };
 }
 
-/** Wraps an agent store, as `TestEngineOptions.agents` takes one, to list every agent archived. */
-export function listedArchived(store: AgentStore): AgentStore {
-  return { ...store, list: async (call) => (await store.list(call)).map(archived) };
-}
+/**
+ * A `TestEngineOptions.agents` wrapper that lists every agent archived while `get` still finds it
+ * live, to stage an agent archived during a call. It breaks the store's contract on purpose, so it
+ * is a wrapper for one option and not a store of its own.
+ */
+export const listedArchived: NonNullable<TestEngineOptions["agents"]> = (store) => ({
+  ...store,
+  list: async (call) => (await store.list(call)).map(archived),
+});
