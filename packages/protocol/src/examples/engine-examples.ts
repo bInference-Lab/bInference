@@ -38,6 +38,7 @@ export const engineExamples: { readonly [N in keyof EngineOperationShapes]: Wire
       health: [
         { signal: "eventLoopLag", state: "ok" },
         { signal: "rpc", state: "warn" },
+        { signal: "runtime", state: "fail", since: at },
       ],
     },
   },

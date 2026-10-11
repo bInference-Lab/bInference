@@ -100,7 +100,8 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   restart: async ({ host, output }, chosen) => runRestart(host, output, chosen.options),
   status: async ({ host, output, formatter }) => {
     const message = (key: string): string => formatter.message(`cli.${key}`);
-    return runStatus(host, output, (signal) => signalName(signal, message));
+    const name = (signal: string): string => signalName(signal, message);
+    return runStatus(host, output, { name, dateTime: (epochMs) => formatter.dateTime(epochMs) });
   },
   health: async ({ host, output }) => runHealth(host, output),
   unlock: async (context, chosen) => runUnlock(context, chosen.options),

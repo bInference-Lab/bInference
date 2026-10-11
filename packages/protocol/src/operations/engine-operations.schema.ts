@@ -19,6 +19,8 @@ import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./o
 interface HealthSignal {
   readonly signal: string;
   readonly state: "ok" | "warn" | "fail";
+  /** For a signal that is not `ok`, when it stopped being ok, such as when a process went down. */
+  readonly since?: number;
 }
 
 /** The answer of `engine/status`. */
@@ -141,7 +143,13 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
       agents: z.array(
         z.object({ id: protocolIdSchema("agent"), mode: agentModeSchema, frozen: z.boolean() }),
       ),
-      health: z.array(z.object({ signal: z.string(), state: z.enum(["ok", "warn", "fail"]) })),
+      health: z.array(
+        z.object({
+          signal: z.string(),
+          state: z.enum(["ok", "warn", "fail"]),
+          since: epochMsSchema.exactOptional(),
+        }),
+      ),
     }),
   },
   "engine/describe": {

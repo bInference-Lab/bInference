@@ -16,6 +16,7 @@ const namedSignals: ReadonlySet<string> = new Set([
   "rpc",
   "executor",
   "backup_key",
+  "runtime",
 ]);
 
 /** The name of a health signal in the owner's language, or the signal itself when it has none. */
@@ -23,7 +24,13 @@ export function signalName(signal: string, message: (key: string) => string): st
   return namedSignals.has(signal) ? message(`signal.${signal}`) : signal;
 }
 
-function printStatus(output: CliOutput, status: EngineStatus, name: (signal: string) => string) {
+/** How the status command names a signal and writes a time, in the owner's language. */
+export interface StatusWords {
+  readonly name: (signal: string) => string;
+  readonly dateTime: (epochMs: number) => string;
+}
+
+function printStatus(output: CliOutput, status: EngineStatus, words: StatusWords) {
   output.say("status.summary", {
     version: status.version,
     state: status.state,
@@ -45,7 +52,12 @@ function printStatus(output: CliOutput, status: EngineStatus, name: (signal: str
   }
   output.say("status.signals");
   for (const signal of status.health) {
-    output.item("status.signal", { name: name(signal.signal), state: signal.state });
+    const values = { name: words.name(signal.signal), state: signal.state };
+    if (signal.since === undefined) {
+      output.item("status.signal", values);
+    } else {
+      output.item("status.signalSince", { ...values, when: words.dateTime(signal.since) });
+    }
   }
   // The backup key warns until the owner key is entered once since the sealing key came.
   if (status.health.some((signal) => signal.signal === "backup_key" && signal.state === "warn")) {
@@ -55,18 +67,18 @@ function printStatus(output: CliOutput, status: EngineStatus, name: (signal: str
 
 /**
  * `binference status`: asks the running engine for `engine/status` over IPC and prints its state,
- * release, protocol version, agents and health signals, or the answer as JSON. Exits 1 when the
- * engine cannot be reached.
+ * release, protocol version, agents and health signals, each one that is not ok with since when,
+ * or the answer as JSON. Exits 1 when the engine cannot be reached.
  */
 export async function runStatus(
   host: CliHost,
   output: CliOutput,
-  name: (signal: string) => string,
+  words: StatusWords,
 ): Promise<ExitCode> {
   return withEngine(host, output, async (client, signal) => {
     const status = await client.call("engine/status", {}, { signal });
     output.json(jsonValueSchema.parse(z.encode(operations["engine/status"].result, status)));
-    printStatus(output, status, name);
+    printStatus(output, status, words);
     return 0;
   });
 }

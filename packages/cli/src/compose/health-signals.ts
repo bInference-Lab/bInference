@@ -14,13 +14,30 @@ export interface HealthProbe {
 
 /** What the probe reports besides what it measures itself. */
 export interface HealthProbeOptions {
-  /** Parts that report their own state, such as the executor, read at each read. */
-  readonly parts: readonly { readonly signal: string; readonly state: () => SignalState }[];
+  /**
+   * Parts that report their own state, such as the executor, read at each read. A part that is not
+   * ok may say since when, such as the agent runtime that went down.
+   */
+  readonly parts: readonly HealthPart[];
   /** Whether the log file lost lines since the engine started. */
   readonly logFailed: () => boolean;
 }
 
 type SignalState = HealthSignal["state"];
+
+/** A part that reports its own health signal. */
+interface HealthPart {
+  readonly signal: string;
+  readonly state: () => SignalState;
+  /** When it stopped being ok; read only while its state is not `ok`. */
+  readonly since?: () => number | undefined;
+}
+
+function signalOf(part: HealthPart): HealthSignal {
+  const state = part.state();
+  const since = state === "ok" ? undefined : part.since?.();
+  return { signal: part.signal, state, ...(since === undefined ? {} : { since }) };
+}
 
 const lagWarnMs = 100;
 const lagFailMs = 1_000;
@@ -61,10 +78,7 @@ export function startHealthProbe(options: HealthProbeOptions): HealthProbe {
         { signal: "event_loop", state: lagState(lagMs) },
         { signal: "memory", state: memoryState(process.memoryUsage().rss) },
         { signal: "logs", state: options.logFailed() ? "warn" : "ok" },
-        ...options.parts.map((part): HealthSignal => ({
-          signal: part.signal,
-          state: part.state(),
-        })),
+        ...options.parts.map(signalOf),
       ];
     },
     stop: () => delay.disable(),

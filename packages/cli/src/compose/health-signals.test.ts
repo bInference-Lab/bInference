@@ -55,4 +55,18 @@ describe("the health signals", () => {
       { signal: "rpc", state: "fail" },
     ]);
   });
+
+  it("says since when a part that is not ok stopped being ok", () => {
+    const runtime = { state: "fail" as "ok" | "warn" | "fail" };
+    const probe = startHealthProbe({
+      parts: [{ signal: "runtime", state: () => runtime.state, since: () => 5_000 }],
+      logFailed: () => false,
+    });
+    const down = probe.read().at(-1);
+    runtime.state = "ok";
+    const back = probe.read().at(-1);
+    probe.stop();
+    expect(down).toStrictEqual({ signal: "runtime", state: "fail", since: 5_000 });
+    expect(back).toStrictEqual({ signal: "runtime", state: "ok" });
+  });
 });
