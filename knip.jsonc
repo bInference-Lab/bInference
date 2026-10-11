@@ -14,9 +14,10 @@
       "entry": ["src/**/*.worker.ts"],
       "project": ["src/**/*.ts"],
     },
-    // The recorded run's MCP server starts by its path, from scripts/skill-run.mts.
+    // The recorded run's MCP server starts by its path, from scripts/skill-run.mts, and the
+    // console's smoke engine from the console's Playwright config.
     "packages/cli": {
-      "entry": ["src/skill-run/skill-run-server.ts"],
+      "entry": ["src/skill-run/skill-run-server.ts", "src/console-smoke/smoke-engine.ts"],
       "project": ["src/**/*.ts"],
     },
     // The console is a Vite app: index.html loads its entry and its stylesheet. Its shadcn

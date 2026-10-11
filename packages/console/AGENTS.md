@@ -33,3 +33,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   the address bar once it is used.
 - Tests sit beside the code: `*.test.ts` in Node, and `*.test.tsx` that render, with
   `@vitest-environment jsdom` at the top. Chinese text goes in `*.zh.test.tsx`.
+- The smoke test (`pnpm test:console`) lives in `src/smoke/`: Playwright on headless Chromium
+  only, one worker, never a window, against the skeleton's engine on loopback
+  (`packages/cli/src/console-smoke/smoke-engine.ts`), which serves the built console and a
+  control listener the test drives. It pairs a browser, confirms a paper card, and fails on any
+  error or warning the page logs. It is not part of `pnpm test`; its screenshots go to
+  `smoke-results/`, which git leaves out.

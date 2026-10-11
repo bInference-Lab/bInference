@@ -41,6 +41,7 @@
     "setup": "node --import tsx scripts/setup.mts",
     "skill:run": "node --import tsx scripts/skill-run.mts",
     "test": "vitest run --coverage",
+    "test:console": "pnpm --filter @binference/console build && pnpm --filter @binference/console test:smoke",
     "test:crash": "vitest run --config vitest.crash.config.ts",
     "test:fork": "vitest run --config vitest.fork.config.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p packages/console/tsconfig.json"

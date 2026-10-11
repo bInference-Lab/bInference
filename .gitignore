@@ -16,6 +16,8 @@ node_modules/
 dist/
 coverage/
 reports/
+# The console smoke test's screenshots.
+packages/console/smoke-results/
 .turbo/
 .stryker-tmp/
 *.tsbuildinfo

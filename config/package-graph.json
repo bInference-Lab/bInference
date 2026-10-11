@@ -134,8 +134,12 @@
         "jsdom",
         "@testing-library/react",
         "@testing-library/dom",
-        "fake-indexeddb"
+        "fake-indexeddb",
+        "@playwright/test"
       ],
+      "only": {
+        "@playwright/test": "src/smoke"
+      },
       "userText": true,
       "browser": true
     },

@@ -32,6 +32,8 @@ function packageFolders(): readonly string[] {
 const forkFolders = "**/src/fork/**";
 // Crash tests need anvil and kill processes: they run in the crash suite (vitest.crash.config.ts).
 const crashFolders = "**/src/crash/**";
+// The console's smoke test and its engine run in Playwright (`pnpm test:console`), never here.
+const smokeFolders = ["**/src/smoke/**", "**/src/console-smoke/**"];
 
 // Platform tests mock native modules and its native suites need the real ones, so each of its
 // files gets a fresh module graph.
@@ -134,8 +136,10 @@ const config: ViteUserConfig = defineConfig({
         "**/*.test.{ts,tsx}",
         forkFolders,
         crashFolders,
+        ...smokeFolders,
         `${consoleFolder}/src/components/ui/**`,
         `${consoleFolder}/src/main.tsx`,
+        `${consoleFolder}/src/push/push-worker.ts`,
       ],
       reporter: ["text", "json-summary"],
       thresholds: { lines: defaultBar, branches: defaultBar, ...tierThresholds() },
