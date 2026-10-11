@@ -2,6 +2,8 @@ export { createFormatter } from "./format/create-formatter.js";
 export type { Formatter, FormatterOptions } from "./format/create-formatter.js";
 export { decimalText } from "./format/decimal-text.js";
 export { displayOutsideText } from "./format/outside-text.js";
+export { wallClockOf } from "./format/wall-clock.js";
+export type { WallClock } from "./format/wall-clock.js";
 export type { DecimalText } from "./format/decimal-text.js";
 export type { MessageValues } from "./format/format-message.js";
 export { messageLocales } from "./locales.js";
