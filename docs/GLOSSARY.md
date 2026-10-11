@@ -175,6 +175,8 @@ new name here first, in the change that uses it.
   and `FIRST-CHAT.md`.
 - **notes**: the agent's long-term memory, each item labelled by its origin.
 - **skills**: `SKILL.md` playbooks in the Agent Skills format, read when a task matches.
+- **skill lint**: `lintSkill`, which names each sentence of a skill that tells the agent to ask for
+  a seed phrase, a private key, an API key or a passphrase; the install refuses such a skill.
 - **read, propose and control tools**: tools that read data, tools that create an intent and a card,
   and tools that cancel or schedule.
 - **vision model**: `models.vision`, which reads images when the main model cannot.

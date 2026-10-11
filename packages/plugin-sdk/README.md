@@ -15,6 +15,12 @@ A risk plugin returns a `TokenRiskSource`: given a token, it reports its finding
 `RiskFlagCode`s and the liquidity it knows of, `not_covered` for a token it has no answer for, and
 rejects when its service is down. It decides nothing; the engine's risk step does.
 
+A skills plugin ships `SKILL.md` files. `lintSkill` reads one and names each sentence that tells
+the agent to ask for or collect a secret: a seed or recovery phrase, a private key, an API
+key or a passphrase, in English or Chinese. It is the install lint of
+[ARCHITECTURE.md section 5](../../docs/ARCHITECTURE.md#section-5), which refuses a skill with a
+finding, so a skill's author runs it before publishing.
+
 ## API
 
 | Export                                                         | What it does                                                        |
@@ -29,6 +35,7 @@ rejects when its service is down. It decides nothing; the engine's risk step doe
 | `@binference/plugin-sdk/evm`                                   | `encodeEvmDraft`, `decodeEvmDraft`, `decodeCall`, `callAbiJson`     |
 | `TokenRiskSource`, `TokenRiskReport`, `RiskFlagCode`           | A risk data source and what it reports about a token                |
 | `orderedFlags`                                                 | A report's findings in their fixed order, each once                 |
+| `lintSkill`, `SkillFinding`                                    | The sentences of a skill that ask for a secret, each with its line  |
 | `@binference/plugin-sdk/testing`                               | The venue and risk source contract suites, and `createScriptedHttp` |
 
 ## Example

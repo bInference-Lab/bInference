@@ -47,3 +47,5 @@ export type {
   Secret,
 } from "@binference/core";
 export { defineVenue } from "./define-venue.js";
+export { lintSkill } from "./skills/lint-skill.js";
+export type { SkillFinding } from "./skills/lint-skill.js";
