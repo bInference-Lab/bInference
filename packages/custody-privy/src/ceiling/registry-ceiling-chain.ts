@@ -1,6 +1,6 @@
-import type { ChainDefinition, VenueDeclaration } from "@binference/chain";
+import { type ChainDefinition, declaredContracts, type VenueDeclaration } from "@binference/chain";
 import { evmChainOf } from "@binference/chain-evm";
-import { err, ok, type Result } from "@binference/core";
+import { ok, type Result } from "@binference/core";
 import type { CeilingChain } from "./ceiling.js";
 
 /** What the ceiling takes from the registry for one chain. */
@@ -11,14 +11,6 @@ export interface RegistryCeilingRequest {
   readonly venues: readonly VenueDeclaration[];
   /** The most native coin, in base units, one contract call may send. */
   readonly perTxNativeCapBase: bigint;
-}
-
-function contractAddress(
-  definition: ChainDefinition,
-  venue: string,
-  name: string,
-): string | undefined {
-  return definition.contracts.find((item) => item.venue === venue && item.name === name)?.address;
 }
 
 /**
@@ -33,14 +25,11 @@ export function registryCeilingChain(
   const chain = evmChainOf(request.definition);
   const addresses: string[] = [];
   for (const venue of request.venues) {
-    const names = venue.contracts.find((item) => item.chain === chain.ref)?.names ?? [];
-    for (const name of names) {
-      const address = contractAddress(request.definition, venue.id, name);
-      if (address === undefined) {
-        return err("unknown_contract");
-      }
-      addresses.push(address);
+    const declared = declaredContracts(venue, { ref: chain.ref, definition: request.definition });
+    if (!declared.ok) {
+      return declared;
     }
+    addresses.push(...declared.value);
   }
   const contracts = [...new Set(addresses)];
   return ok({

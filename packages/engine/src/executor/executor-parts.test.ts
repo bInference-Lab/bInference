@@ -1,5 +1,5 @@
 import type { Signer, TxDraft } from "@binference/chain";
-import { fakeDraft } from "@binference/chain/testing";
+import { createFakeVenue, fakeDraft } from "@binference/chain/testing";
 import { type Bps, bpsSchema, createIdSource, err, type Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, QuoteView } from "@binference/protocol";
@@ -71,6 +71,7 @@ function checkPartsOf(
       clock: bench.test.clock,
     }),
     clock: bench.test.clock,
+    venues: [createFakeVenue()],
   };
 }
 
@@ -175,6 +176,31 @@ describe("the queue check", () => {
       false,
       false,
     ]);
+  });
+
+  it("lets the signer reach only the contracts the route's venues declare", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const snapshot = await tappedSnapshot(bench);
+    // The registry lists a factory of the venue beside its router; the venue declares the router.
+    const listed = fakeChain.definition.contracts;
+    const factories = listed.map((item) => ({ ...item, name: "factory", address: "0x0000000e" }));
+    const contracts = [...listed, ...factories];
+    const chain = { ...fakeChain, definition: { ...fakeChain.definition, contracts } };
+    const parts = checkPartsOf(bench);
+
+    const check = await checkForQueue(snapshot, { parts, chain }, live().signal);
+    const undeclared = await checkForQueue(
+      snapshot,
+      { parts: { ...parts, venues: [] }, chain },
+      live().signal,
+    );
+
+    expect(check.terms?.allowed).toStrictEqual({
+      contracts: ["fake:1:0x0000000b"],
+      spenders: ["fake:1:0x0000000b"],
+      recipients: [],
+    });
+    expect(undeclared.terms?.allowed.contracts).toStrictEqual([]);
   });
 
   it("fails the policy and the auto grant when the wallet no longer resolves", async () => {

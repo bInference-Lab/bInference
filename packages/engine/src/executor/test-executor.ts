@@ -12,6 +12,7 @@ import {
 } from "@binference/chain";
 import {
   createFakeNetwork,
+  createFakeVenue,
   type FakeNetwork,
   type FakeNetworkOptions,
   type FakeSent,
@@ -199,6 +200,7 @@ export function executorOf(
     wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts),
     prices: createFakePriceSource(options.prices ?? new Map([[testCoin, coinPrice]])),
     chains: testChains(),
+    venues: [createFakeVenue()],
     sending: sendingOf({ network, transactions }, notes, options),
     clock: test.clock,
     ids: createIdSource({ clock: test.clock, random: createSeededRandom(options.idSeed ?? 9) }),

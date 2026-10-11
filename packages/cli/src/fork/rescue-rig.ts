@@ -190,6 +190,7 @@ function executorOn(
     wallets: forkWalletFacts(fork),
     prices: createFakePriceSource(new Map()),
     chains: selfHostedChains(),
+    venues: [],
     sending: new Map([[chain.ref, sending]]),
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(61) }),

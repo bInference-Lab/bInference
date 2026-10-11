@@ -183,6 +183,7 @@ function executorOf(parts: RigParts): RunningExecutor {
   const finality = { kind: "finalized_tag" } as const;
   return createExecutor({
     ...parts,
+    venues: [pancakeV2Venue(fork, fork.chain.nativeAsset)],
     queue: createWalletQueue({
       transactions: stores.transactions,
       nonces: createEvmNonceSource({ rpc, chain }),

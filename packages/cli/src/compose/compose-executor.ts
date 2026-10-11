@@ -7,6 +7,7 @@ import {
   type PriceSource,
   type RegisteredChain,
   type Signer,
+  type VenueDeclaration,
 } from "@binference/chain";
 import {
   createEvmNonceSource,
@@ -57,6 +58,8 @@ export interface ComposeExecutorOptions {
   readonly wallets: WalletFactsSource;
   readonly prices: PriceSource;
   readonly chains: ChainRegistry;
+  /** The venues' declarations, whose contracts the signer lets a trade's steps reach. */
+  readonly venues: readonly VenueDeclaration[];
   /** Each enabled chain's RPC failover and network fee cap. */
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   /** The relays config names for each chain; every relay the chain lists when it names none. */
@@ -205,6 +208,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     wallets: options.wallets,
     prices: options.prices,
     chains: options.chains,
+    venues: options.venues,
     sending: new Map([...parts].map(([chain, part]) => [chain, part.sending])),
     clock,
     ids: createIdSource({ clock, random }),

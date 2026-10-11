@@ -105,6 +105,7 @@ function composeSending(
     wallets: parts.wallets,
     prices: parts.prices,
     chains,
+    venues: opened.venues,
     reads: parts.reads,
     relays: config.chains.relays,
     http: host.http,

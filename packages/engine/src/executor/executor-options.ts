@@ -6,6 +6,7 @@ import type {
   RelaySender,
   Signer,
   TxPreparer,
+  VenueDeclaration,
 } from "@binference/chain";
 import type { Clock, IdSource, Logger } from "@binference/core";
 import type { PositionStore, WalletFactsSource } from "../ports.js";
@@ -59,6 +60,8 @@ export interface ExecutorOptions {
   readonly wallets: WalletFactsSource;
   readonly prices: PriceSource;
   readonly chains: ChainRegistry;
+  /** The venues' declarations: the contracts the signer lets a trade's steps reach. */
+  readonly venues: readonly VenueDeclaration[];
   readonly sending: ReadonlyMap<ChainRef, ChainSending>;
   readonly clock: Clock;
   readonly ids: IdSource;

@@ -112,6 +112,7 @@ export type { BuildRequest } from "./venues/build-request.js";
 export { decodedEffectSchema } from "./venues/decoded-effect.js";
 export type { DecodedEffect, DecodedEffectWire } from "./venues/decoded-effect.js";
 export type { Quoter, TxBuilder, TxDecoder } from "./venues/ports.js";
+export { declaredContracts } from "./venues/declared-contracts.js";
 export { venueDeclarationSchema } from "./venues/venue.js";
 export type {
   Venue,

@@ -1,9 +1,12 @@
 import {
+  type AccountRef,
   type AllowedTargets,
   accountRefSchema,
   checkAutoModeGrant,
+  declaredContracts,
   type RegisteredChain,
   type SignAuthorization,
+  type VenueDeclaration,
 } from "@binference/chain";
 import type { Clock } from "@binference/core";
 import type { QuoteView } from "@binference/protocol";
@@ -41,6 +44,8 @@ export interface QueueCheckParts extends ResolveOptions {
   readonly intents: IntentStore;
   readonly policy: PolicyCheck;
   readonly clock: Clock;
+  /** The venues' declarations, which name the contracts a trade's steps may reach. */
+  readonly venues: readonly VenueDeclaration[];
 }
 
 interface Rechecked {
@@ -96,16 +101,28 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
 }
 
 /**
- * The registry's set for the intent's steps: the contracts the registry lists for the venues of
- * its quote's route, which are also the spenders an approval may name. A swap sends to no one.
+ * The registry's set for the intent's steps: the contracts the venues of its quote's route
+ * declare on the chain, read from the registry by name as the ceiling reads them, which are also
+ * the spenders an approval may name. A venue no declaration names, or one that names a contract
+ * the registry lacks, adds none. A swap sends to no one.
  */
-function allowedTargetsOf(snapshot: IntentSnapshot, chain: RegisteredChain): AllowedTargets {
+function allowedTargetsOf(
+  snapshot: IntentSnapshot,
+  context: { readonly chain: RegisteredChain; readonly venues: readonly VenueDeclaration[] },
+): AllowedTargets {
+  const { chain } = context;
   const quote =
     snapshot.record.quote === undefined ? undefined : quoteDocument.decode(snapshot.record.quote);
-  const venues = new Set(quote?.route.map((leg) => leg.venue) ?? []);
-  const contracts = chain.definition.contracts
-    .filter((contract) => venues.has(contract.venue))
-    .map((contract) => accountRefSchema.parse(`${chain.ref}:${contract.address}`));
+  const used = new Set(quote?.route.map((leg) => leg.venue) ?? []);
+  const addresses = context.venues
+    .filter((venue) => used.has(venue.id))
+    .flatMap((venue) => {
+      const declared = declaredContracts(venue, chain);
+      return declared.ok ? declared.value : [];
+    });
+  const contracts: readonly AccountRef[] = [...new Set(addresses)].map((address) =>
+    accountRefSchema.parse(`${chain.ref}:${address}`),
+  );
   return { contracts, spenders: contracts, recipients: [] };
 }
 
@@ -189,6 +206,6 @@ export async function checkForQueue(
     ...(authorizedBy === undefined ? {} : { isAuthorizationValid: terms !== undefined }),
   };
   const isAuto = authorizedBy !== undefined && !isFillAuthorization(authorizedBy);
-  const allowed = allowedTargetsOf(snapshot, chain);
+  const allowed = allowedTargetsOf(snapshot, { chain, venues: parts.venues });
   return { facts, isAuto, ...(terms === undefined ? {} : { terms: { ...terms, allowed } }) };
 }

@@ -54,6 +54,7 @@ function composeWith(chainsConfig: ChainsConfig) {
     }),
     prices: createFakePriceSource(new Map()),
     chains,
+    venues: [],
     reads: composeChainReads({ chains, config: chainsConfig, http, clock }),
     relays: chainsConfig.relays,
     http,
