@@ -194,10 +194,23 @@ function warnDifference(run: ExecutionRun, snapshot: IntentSnapshot, trade: Sett
   );
 }
 
-// One try: what the steps moved, priced, recorded in the positions, then the move. A read, a
-// price or the position write that fails waits for the next block; a trade no node can say the
-// native coin of any more stops until a restart.
-async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<SettleOutcome> {
+/** A trade recorded in the positions, with the final steps it came from. */
+export interface BookedTrade {
+  readonly trade: SettledTrade;
+  readonly steps: readonly SettledStep[];
+}
+
+/**
+ * Reads what each final step of an intent moved, turns it into the trade at `atMs`, values it and
+ * records it in the positions once; it moves nothing. `waiting` while a read, a price or the
+ * position write fails; `stopped` once no node can say what native coin the trade received, with
+ * the owner's alarm (decision 0108).
+ */
+export async function bookTrade(
+  run: ExecutionRun,
+  snapshot: IntentSnapshot,
+  atMs: number,
+): Promise<BookedTrade | "waiting" | "stopped"> {
   const { parts, signal } = run;
   const quote = confirmedQuote(snapshot);
   const stored = await parts.stores.transactions.ofIntent(snapshot.record.id, { signal });
@@ -221,7 +234,6 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
     });
   }
   const holder = { wallet: run.plan.steps[0].from, family: run.plan.chain.family };
-  const atMs = snapshot.record.changedAtMs;
   const trade = settledTradeOf(steps, { quote, holder, nativeReceivedBase: received, atMs });
   const txHash = last.transaction.hash;
   const priced = await pricedTrade(run, snapshot, { trade, quote, txHash });
@@ -229,12 +241,23 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
     parts.log.warn("executor.settle_waits", { intentId: snapshot.record.id });
     return "waiting";
   }
-  const settling = { trigger: { type: "fills_reconciled" }, settled: trade } as const;
+  return { trade, steps };
+}
+
+// One try: the trade booked in the positions, then the move. A read, a price or the position
+// write that fails waits for the next block; a trade no node can say the native coin of any more
+// stops until a restart.
+async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<SettleOutcome> {
+  const booked = await bookTrade(run, snapshot, snapshot.record.changedAtMs);
+  if (typeof booked === "string") {
+    return booked;
+  }
+  const settling = { trigger: { type: "fills_reconciled" }, settled: booked.trade } as const;
   const reconciled = await moveIntent(run, snapshot, settling);
   if (reconciled !== undefined) {
-    parts.log.info("executor.reconciled", { intentId: snapshot.record.id });
-    warnDifference(run, snapshot, trade);
-    await warnSharedBlock(run, snapshot, steps);
+    run.parts.log.info("executor.reconciled", { intentId: snapshot.record.id });
+    warnDifference(run, snapshot, booked.trade);
+    await warnSharedBlock(run, snapshot, booked.steps);
   }
   return "settled";
 }
