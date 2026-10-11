@@ -39,6 +39,7 @@
     "security:opengrep": "node --import tsx scripts/scan-opengrep.mts",
     "service:smoke": "node --conditions=@binference/source --import tsx scripts/service-smoke.mts",
     "setup": "node --import tsx scripts/setup.mts",
+    "skill:run": "node --import tsx scripts/skill-run.mts",
     "test": "vitest run --coverage",
     "test:crash": "vitest run --config vitest.crash.config.ts",
     "test:fork": "vitest run --config vitest.fork.config.ts",

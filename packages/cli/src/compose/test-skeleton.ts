@@ -218,6 +218,10 @@ export interface SkeletonOptions {
   readonly venues?: readonly Venue[];
   /** Chains the engine knows besides the fake chain, such as BNB Smart Chain. */
   readonly chains?: readonly ChainDefinition[];
+  /** The fake chain under other names and tokens; `createFakeChainDefinition` when left out. */
+  readonly fakeChain?: ChainDefinition;
+  /** What a reset paper portfolio starts with; one coin when left out. */
+  readonly paperBalances?: readonly Amount[];
   /** What each account holds; nothing when left out. */
   readonly held?: ReadonlyMap<AccountRef, readonly Amount[]>;
   /** Runs a rescue's sends and the token round trips; nothing runs when left out. */
@@ -249,7 +253,7 @@ export async function composeSkeleton(
   await seed(parts);
   const clock = createManualClock(testNowMs);
   const chains = createChainRegistry({
-    chains: [createFakeChainDefinition(), ...(options.chains ?? [])],
+    chains: [options.fakeChain ?? createFakeChainDefinition(), ...(options.chains ?? [])],
     families: [createFakeFamily(), createEvmFamily()],
     signingSchemes: [createFakeSigningScheme(), createEvmSigningScheme()],
   });
@@ -274,7 +278,7 @@ export async function composeSkeleton(
     wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts, options.held),
     executor,
     positions,
-    paperBalances: [{ asset: testCoin, base: 10n ** 18n }],
+    paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),
     handlers: createEngineOperations({

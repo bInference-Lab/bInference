@@ -99,6 +99,15 @@ folder into the client's skills folder:
 No MCP tool lists agents, so tell the client your agent's id once, for example in the project's
 `CLAUDE.md` or `AGENTS.md`; `binference status` prints it.
 
+`pnpm skill:run` checks the skill with Claude Code. It runs `claude -p "swap 0.01 BNB to USDT"`
+headless, in a home and config folder of its own with the skill installed there, against an engine
+on paper with the fake chain and venue under BNB Smart Chain's names
+(`packages/cli/src/skill-run/`). It records each tool call the MCP server gets, checks that the
+one proposal is that swap with the right ids and base units, and prints the verdict. It needs
+`claude` on the PATH and `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token`)
+in the environment, makes model calls, and leaves every file of the run in its output folder
+(`--out <folder>`; `--model <model>` picks the model).
+
 ## API
 
 | Export                          | What it does                                                                     |

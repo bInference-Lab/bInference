@@ -137,6 +137,7 @@ Node 26.1 or later. pnpm switches itself to the version in `package.json`.
 | `pnpm check:style --files <file>`  | The style guard on one file                                          |
 | `pnpm check:gates`                 | Plants a violation for each gate and checks that the gate fails      |
 | `pnpm mutation`                    | Stryker on the money core                                            |
+| `pnpm skill:run`                   | Claude Code proposes a paper swap with the `binference-tools` skill  |
 
 What each package may import is in `config/package-graph.json`; edit the graph, never the
 generated rules in `config/oxlint/`.

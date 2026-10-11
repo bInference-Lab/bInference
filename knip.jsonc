@@ -14,6 +14,11 @@
       "entry": ["src/**/*.worker.ts"],
       "project": ["src/**/*.ts"],
     },
+    // The recorded run's MCP server starts by its path, from scripts/skill-run.mts.
+    "packages/cli": {
+      "entry": ["src/skill-run/skill-run-server.ts"],
+      "project": ["src/**/*.ts"],
+    },
     "packages/telegram": {
       "entry": ["src/**/*.worker.ts"],
       "project": ["src/**/*.ts"],
