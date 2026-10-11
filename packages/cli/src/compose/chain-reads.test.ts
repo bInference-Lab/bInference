@@ -71,11 +71,11 @@ describe("the chains' reads", () => {
     const http = createScriptedHttp([]);
     const reads = composeChainReads({ chains: selfHostedChains(), config, http, clock });
     const bscReads = chainReadsOf(reads, bscRef);
-    expect([bscReads.networkFeeCap, bscReads.multicall, bscReads.evm.chainId]).toStrictEqual([
-      1_000_000_000n,
-      "0xcA11bde05977b3631167028862bE2a173976CA11",
-      56,
-    ]);
+    expect([
+      bscReads.networkFeeCapWeiPerGas,
+      bscReads.multicall,
+      bscReads.evm.chainId,
+    ]).toStrictEqual([1_000_000_000n, "0xcA11bde05977b3631167028862bE2a173976CA11", 56]);
     const disabled = { ...config, enabled: [] };
     const none = composeChainReads({ chains: selfHostedChains(), config: disabled, http, clock });
     expect(none.size).toBe(0);

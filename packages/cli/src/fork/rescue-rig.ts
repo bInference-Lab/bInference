@@ -177,7 +177,7 @@ function executorOn(
   const clock = createSystemClock();
   const relays = [{ name: "anvil", url: fork.rpcUrl }];
   const sending = {
-    preparer: createEvmTxPreparer({ rpc, chain, networkFeeCap: 10n ** 10n }),
+    preparer: createEvmTxPreparer({ rpc, chain, networkFeeCapWeiPerGas: 10n ** 10n }),
     sender: createEvmRelaySender({ chain, relays, http: fork.http, clock, timeoutMs: 5_000 }),
     receipts: createEvmReceiptReader({ rpc, chain, finality: { kind: "finalized_tag" } }),
   };

@@ -50,7 +50,7 @@ function nodeAnswer(method: string, params: readonly unknown[]): FakeRpcAnswer {
   }
 }
 
-function preparerOf(networkFeeCap: bigint, gasHeadroomBps?: number) {
+function preparerOf(networkFeeCapWeiPerGas: bigint, gasHeadroomBps?: number) {
   const http = createFakeRpcHttp({
     [url]: fakeRpcNode((request) => nodeAnswer(request.method, request.params)),
   });
@@ -62,7 +62,10 @@ function preparerOf(networkFeeCap: bigint, gasHeadroomBps?: number) {
     restMs: 1_000,
   });
   const headroom = gasHeadroomBps === undefined ? {} : { gasHeadroomBps };
-  return { http, preparer: createEvmTxPreparer({ rpc, chain, networkFeeCap, ...headroom }) };
+  return {
+    http,
+    preparer: createEvmTxPreparer({ rpc, chain, networkFeeCapWeiPerGas, ...headroom }),
+  };
 }
 
 function decodeEvmDraftCall(draft: typeof swap) {

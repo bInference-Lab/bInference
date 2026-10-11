@@ -21,7 +21,7 @@ export interface ChainReads {
   readonly evm: EvmChain;
   readonly rpc: RpcFailover;
   /** The chain's network fee cap, in wei per gas (decision 0102). */
-  readonly networkFeeCap: bigint;
+  readonly networkFeeCapWeiPerGas: bigint;
   /** Multicall3 on the chain, from the registry, which reads balances in one call. */
   readonly multicall: `0x${string}`;
 }
@@ -94,7 +94,7 @@ function readsOf(chain: RegisteredChain, options: ChainReadsOptions): ChainReads
     chain,
     evm: evmChainOf(chain.definition),
     rpc,
-    networkFeeCap: gweiToWei(capText, chain.ref),
+    networkFeeCapWeiPerGas: gweiToWei(capText, chain.ref),
     multicall: multicallOf(chain),
   };
 }

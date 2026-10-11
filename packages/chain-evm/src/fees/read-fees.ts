@@ -25,7 +25,7 @@ export interface FeeOptions {
    * The chain's network fee cap, in wei per gas. The fees come from an RPC node, which nothing
    * else checks, so the reading says whether they pass this cap.
    */
-  readonly maxFeePerGasCap: bigint;
+  readonly networkFeeCapWeiPerGas: bigint;
   readonly signal: AbortSignal;
 }
 
@@ -57,6 +57,6 @@ export async function readFees(rpc: RpcFailover, options: FeeOptions): Promise<F
   const maxFeePerGas = latest.baseFeePerGas * 2n + maxPriorityFeePerGas;
   return {
     fees: { maxFeePerGas, maxPriorityFeePerGas },
-    isAboveCap: maxFeePerGas > options.maxFeePerGasCap,
+    isAboveCap: maxFeePerGas > options.networkFeeCapWeiPerGas,
   };
 }

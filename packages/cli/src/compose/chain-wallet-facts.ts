@@ -72,14 +72,17 @@ async function factsOf(
       : { agentId, isPaper, nowMs, exclude: intent };
   const [nativeBalanceBase, fees, recentOutflows] = await Promise.all([
     isPaper ? Promise.resolve(0n) : coinBalance(reads, holder, call),
-    readFees(reads.rpc, { maxFeePerGasCap: reads.networkFeeCap, signal: call.signal }),
+    readFees(reads.rpc, {
+      networkFeeCapWeiPerGas: reads.networkFeeCapWeiPerGas,
+      signal: call.signal,
+    }),
     recentOutflowsOf(options.intents, outflows, call),
   ]);
   return {
     nativeBalanceBase,
     ceilingPerTxNativeBase: wallet.ceiling.perTxNativeBase,
     feePerGasNativeBase: fees.fees.maxFeePerGas,
-    networkFeeCapNativeBase: reads.networkFeeCap,
+    networkFeeCapNativeBase: reads.networkFeeCapWeiPerGas,
     recentOutflows,
   };
 }

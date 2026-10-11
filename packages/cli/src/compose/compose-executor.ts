@@ -146,7 +146,11 @@ function chainPartsOf(
   });
   return {
     sending: {
-      preparer: createEvmTxPreparer({ rpc, chain: evm, networkFeeCap: reads.networkFeeCap }),
+      preparer: createEvmTxPreparer({
+        rpc,
+        chain: evm,
+        networkFeeCapWeiPerGas: reads.networkFeeCapWeiPerGas,
+      }),
       sender: health.watch(chain.ref, sender),
       receipts: createEvmReceiptReader({
         rpc,

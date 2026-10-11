@@ -35,12 +35,12 @@ describe("read fees", () => {
       eth_maxPriorityFeePerGas: { result: "0x2faf080" },
       eth_getBlockByNumber: block("0x0"),
     });
-    await expect(readFees(rpc, { maxFeePerGasCap: 1_000_000_000n, signal })).resolves.toStrictEqual(
-      {
-        fees: { maxFeePerGas: floor, maxPriorityFeePerGas: floor },
-        isAboveCap: false,
-      },
-    );
+    await expect(
+      readFees(rpc, { networkFeeCapWeiPerGas: 1_000_000_000n, signal }),
+    ).resolves.toStrictEqual({
+      fees: { maxFeePerGas: floor, maxPriorityFeePerGas: floor },
+      isAboveCap: false,
+    });
   });
 
   it("leaves room for twice the latest base fee", async () => {
@@ -48,7 +48,7 @@ describe("read fees", () => {
       eth_maxPriorityFeePerGas: { result: "0x2faf080" },
       eth_getBlockByNumber: block("0x3b9aca00"),
     });
-    const fees = await readFees(rpc, { maxFeePerGasCap: 10_000_000_000n, signal });
+    const fees = await readFees(rpc, { networkFeeCapWeiPerGas: 10_000_000_000n, signal });
     expect(fees).toStrictEqual({
       fees: { maxFeePerGas: 2_000_000_000n + floor, maxPriorityFeePerGas: floor },
       isAboveCap: false,
@@ -60,7 +60,7 @@ describe("read fees", () => {
       eth_maxPriorityFeePerGas: { result: "0x174876e800" },
       eth_getBlockByNumber: block("0x0"),
     });
-    await expect(readFees(rpc, { maxFeePerGasCap: floor, signal })).resolves.toStrictEqual({
+    await expect(readFees(rpc, { networkFeeCapWeiPerGas: floor, signal })).resolves.toStrictEqual({
       fees: { maxFeePerGas: 100_000_000_000n, maxPriorityFeePerGas: 100_000_000_000n },
       isAboveCap: true,
     });
@@ -71,14 +71,14 @@ describe("read fees", () => {
       eth_maxPriorityFeePerGas: { result: "0x2faf080" },
       eth_getBlockByNumber: block("0x1"),
     });
-    const atCap = await readFees(rpc, { maxFeePerGasCap: floor + 2n, signal });
-    const belowCap = await readFees(rpc, { maxFeePerGasCap: floor + 1n, signal });
+    const atCap = await readFees(rpc, { networkFeeCapWeiPerGas: floor + 2n, signal });
+    const belowCap = await readFees(rpc, { networkFeeCapWeiPerGas: floor + 1n, signal });
     expect([atCap.isAboveCap, belowCap.isAboveCap]).toStrictEqual([false, true]);
   });
 
   it("names the node's error when it refuses a fee read", async () => {
     const rpc = node({ eth_getBlockByNumber: block("0x0") });
-    await expect(readFees(rpc, { maxFeePerGasCap: floor, signal })).rejects.toMatchObject({
+    await expect(readFees(rpc, { networkFeeCapWeiPerGas: floor, signal })).rejects.toMatchObject({
       code: "chain.rpc_error",
       details: { method: "eth_maxPriorityFeePerGas", endpoint: "node", rpcCode: 3 },
     });
@@ -89,7 +89,7 @@ describe("read fees", () => {
       eth_maxPriorityFeePerGas: { result: "0x2faf080" },
       eth_getBlockByNumber: { result: { number: "0x1" } },
     });
-    await expect(readFees(rpc, { maxFeePerGasCap: floor, signal })).rejects.toMatchObject({
+    await expect(readFees(rpc, { networkFeeCapWeiPerGas: floor, signal })).rejects.toMatchObject({
       code: "chain.rpc_down",
       details: { lastFault: "malformed" },
     });

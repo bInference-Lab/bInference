@@ -192,7 +192,7 @@ function executorOf(parts: RigParts): RunningExecutor {
       [
         chain.ref,
         {
-          preparer: createEvmTxPreparer({ rpc, chain, networkFeeCap: 10n ** 10n }),
+          preparer: createEvmTxPreparer({ rpc, chain, networkFeeCapWeiPerGas: 10n ** 10n }),
           sender: notingSender(fork, parts, parts.relayHttp),
           receipts: createEvmReceiptReader({ rpc, chain, finality }),
         },

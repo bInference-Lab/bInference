@@ -23,7 +23,7 @@ export interface EvmTxPreparerOptions {
   readonly rpc: RpcFailover;
   readonly chain: EvmChain;
   /** The chain's network fee cap, in wei per gas (decision 0102). */
-  readonly networkFeeCap: bigint;
+  readonly networkFeeCapWeiPerGas: bigint;
   /**
    * Gas added on top of the node's estimate, in basis points: the state can move between the
    * estimate and the block. 2,000 (20%) when absent.
@@ -101,7 +101,7 @@ async function prepareCall(
   call: EvmDraftCall,
   at: { readonly nonce: number; readonly floor?: EvmFees; readonly signal: AbortSignal },
 ): Promise<Result<PreparedTx, "would_fail">> {
-  const { rpc, chain, networkFeeCap } = options;
+  const { rpc, chain, networkFeeCapWeiPerGas } = options;
   const { signal } = at;
   const headroomBps = BigInt(options.gasHeadroomBps ?? defaultHeadroomBps);
   const [estimate, reading] = await Promise.all([
@@ -114,7 +114,7 @@ async function prepareCall(
       result: quantitySchema,
       signal,
     }),
-    readFees(rpc, { maxFeePerGasCap: networkFeeCap, signal }),
+    readFees(rpc, { networkFeeCapWeiPerGas, signal }),
   ]);
   if (estimate.kind === "error") {
     return err("would_fail");
@@ -123,7 +123,7 @@ async function prepareCall(
   const fees = at.floor === undefined ? reading.fees : raisedFees(reading.fees, at.floor);
   const unsigned = encodeEvmTransaction(chain, { ...call, nonce: at.nonce, gas, fees });
   const feePerGasBase = fees.maxFeePerGas;
-  return ok({ unsigned, feePerGasBase, isAboveFeeCap: feePerGasBase > networkFeeCap });
+  return ok({ unsigned, feePerGasBase, isAboveFeeCap: feePerGasBase > networkFeeCapWeiPerGas });
 }
 
 // A speed-up repeats the signed call; a cancel sends nothing to the sender itself.
