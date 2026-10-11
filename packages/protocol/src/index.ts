@@ -7,7 +7,7 @@ export type {
 } from "./auth/credential.js";
 export { deviceProofText } from "./auth/device-proof.js";
 export type { DeviceProofInput } from "./auth/device-proof.js";
-export { scopes, scopeSchema } from "./auth/scopes.js";
+export { mcpTokenScopes, scopes, scopeSchema } from "./auth/scopes.js";
 export { tokenLifetimeMaxMs } from "./auth/token-lifetime.js";
 export type { Scope } from "./auth/scopes.js";
 export { describeOperations } from "./describe/describe-operations.js";

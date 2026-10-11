@@ -49,6 +49,26 @@ describe("the token handlers", () => {
     );
   });
 
+  it("refuses an MCP token with any scope beyond read and propose, and stores none", async () => {
+    const { access, handlers } = tokens();
+    const refusals = await Promise.all(
+      (["chat", "agent", "confirm", "loosen", "admin"] as const).map(async (scope) =>
+        handlers["token/register"](testCall({ ...register, scopes: ["read", scope] })),
+      ),
+    );
+    expect(refusals).toStrictEqual(Array.from({ length: 5 }, () => err("protocol.bad_args")));
+    expect(await access.listTokens(testCall({}))).toStrictEqual([]);
+    const custom = {
+      ...register,
+      kind: "custom" as const,
+      scopes: ["read" as const, "confirm" as const],
+    };
+    expect(expectOk(await handlers["token/register"](testCall(custom))).scopes).toStrictEqual([
+      "read",
+      "confirm",
+    ]);
+  });
+
   it("keeps an expiry and lists it, refusing one not ahead or past the longest", async () => {
     const { access, handlers } = tokens();
     const expiresAt = testNowMs + tokenLifetimeMaxMs;

@@ -96,6 +96,23 @@ describe("createSignIn", () => {
     expect(stored?.lastUsedAtMs).toBeUndefined();
   });
 
+  it("signs an MCP token in with read and propose only, whatever its row holds", async () => {
+    const access = createMemoryAccessStore();
+    const record = {
+      id: tokenId,
+      label: "mcp",
+      kind: "mcp",
+      secretHash: sha256Hex(token),
+    } as const;
+    await access.addToken(
+      { ...record, scopes: ["read", "propose", "confirm"], createdAtMs: 0 },
+      live,
+    );
+    const signIn = createSignIn({ auth: { access }, clock, random });
+    const step = await signIn.start({ credential: { token }, transport: "ipc" }, call);
+    expect(step).toMatchObject({ ok: true, value: { identity: { scopes: ["read", "propose"] } } });
+  });
+
   it("refuses every sign-in when the server holds no credentials", async () => {
     const signIn = createSignIn({ clock, random });
     const step = await signIn.start({ credential: { token }, transport: "ipc" }, call);

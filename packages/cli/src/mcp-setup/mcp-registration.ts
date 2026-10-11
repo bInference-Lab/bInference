@@ -1,10 +1,7 @@
 import { Buffer } from "node:buffer";
 import { sha256Hex } from "@binference/engine";
-import type { ArgsOf } from "@binference/protocol";
+import { type ArgsOf, mcpTokenScopes } from "@binference/protocol";
 import type { CliHost } from "../program/cli-host.js";
-
-// An MCP client reads and proposes, and nothing more (protocol spec, section 4.1).
-const mcpScopes = ["read", "propose"] as const;
 
 /** A new MCP token: the secret the client signs in with, and what `token/register` gets of it. */
 export interface McpRegistration {
@@ -26,7 +23,7 @@ export function mcpRegistration(
   const args = {
     label,
     kind: "mcp" as const,
-    scopes: [...mcpScopes],
+    scopes: [...mcpTokenScopes],
     secretHash: sha256Hex(secret),
     ...(expiresAt === undefined ? {} : { expiresAt }),
   };

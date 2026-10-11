@@ -1,9 +1,14 @@
 import { type Clock, err, type IdSource, ok } from "@binference/core";
-import { type ResultOf, tokenLifetimeMaxMs } from "@binference/protocol";
+import {
+  mcpTokenScopes,
+  type ResultOf,
+  type Scope,
+  tokenLifetimeMaxMs,
+} from "@binference/protocol";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AccessStore } from "../ports.js";
 import { sha256HexSchema } from "../records/sha256-hex.js";
-import type { TokenRecord } from "./token-record.js";
+import type { TokenKind, TokenRecord } from "./token-record.js";
 
 /** The handlers of the client tokens (protocol spec, section 7.9; decision 0154). */
 export interface TokenHandlers {
@@ -42,11 +47,17 @@ function isExpiryAllowed(expiresAtMs: number | undefined, nowMs: number): boolea
   );
 }
 
+// An MCP client token reads and proposes only, whatever the caller asked for.
+function areScopesAllowed(kind: TokenKind, scopes: readonly Scope[]): boolean {
+  return kind !== "mcp" || scopes.every((scope) => mcpTokenScopes.includes(scope));
+}
+
 /**
  * Creates the token handlers. `token/list` answers every client token, oldest first, revoked and
  * expired ones too, without their hashes. `token/register` stores a token the CLI made from the
  * SHA-256 of its secret alone, so no secret reaches the engine or its idempotency store; a hash the
- * store holds, or an expiry not ahead or more than 90 days ahead, is `protocol.bad_args`. `token/revoke` revokes a token, keeping the time of an earlier revoke;
+ * store holds, an expiry not ahead or more than 90 days ahead, or an MCP token with a scope beyond
+ * `read` and `propose`, is `protocol.bad_args`. `token/revoke` revokes a token, keeping the time of an earlier revoke;
  * an unknown one is `token.not_found`.
  */
 export function createTokenHandlers(options: TokenHandlersOptions): TokenHandlers {
@@ -60,6 +71,7 @@ export function createTokenHandlers(options: TokenHandlersOptions): TokenHandler
       const nowMs = options.clock.now();
       if (
         !isExpiryAllowed(args.expiresAt, nowMs) ||
+        !areScopesAllowed(args.kind, args.scopes) ||
         (await options.access.findToken(secretHash, { signal })) !== undefined
       ) {
         return err("protocol.bad_args");

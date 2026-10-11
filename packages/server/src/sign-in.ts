@@ -1,8 +1,19 @@
 import { Buffer } from "node:buffer";
 import { type Clock, err, ok, type Random, type Result, type Secret } from "@binference/core";
-import { type AccessStore, type DeviceRecord, sha256Hex } from "@binference/engine";
+import {
+  type AccessStore,
+  type DeviceRecord,
+  sha256Hex,
+  type TokenRecord,
+} from "@binference/engine";
 import { launchTicketHash, type LaunchClaimOutcome } from "@binference/engine/access";
-import type { Credential, ProtocolId, Scope, TelegramCredential } from "@binference/protocol";
+import {
+  type Credential,
+  mcpTokenScopes,
+  type ProtocolId,
+  type Scope,
+  type TelegramCredential,
+} from "@binference/protocol";
 import { isDeviceProofValid } from "./device-proof.js";
 import type { Transport } from "./operation-handlers.js";
 import { checkTelegramLaunch, type TelegramLaunchRefusal } from "./telegram-launch.js";
@@ -195,6 +206,14 @@ function stillLive<T extends { readonly revokedAtMs?: number }>(
   return written.value.revokedAtMs === undefined ? written : err("auth.revoked");
 }
 
+// An MCP client token reads and proposes only, even a row stored with more before the engine
+// refused that at `token/register`.
+function scopesOf(record: TokenRecord): readonly Scope[] {
+  return record.kind === "mcp"
+    ? record.scopes.filter((scope) => mcpTokenScopes.includes(scope))
+    : record.scopes;
+}
+
 async function signInWithToken(
   access: AccessStore,
   token: string,
@@ -220,7 +239,7 @@ async function signInWithToken(
     return used;
   }
   const expiry = record.expiresAtMs === undefined ? {} : { expiresAtMs: record.expiresAtMs };
-  const identity = { credential: record.id, scopes: record.scopes, ...expiry };
+  const identity = { credential: record.id, scopes: scopesOf(record), ...expiry };
   return ok({ kind: "signed_in", identity });
 }
 
