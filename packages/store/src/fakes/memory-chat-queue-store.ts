@@ -27,7 +27,10 @@ function arrivals(database: MemoryAgentDatabase): Pick<ChatQueueStore, "add" | "
     waiting: async ({ sessionId, limit }, options) =>
       inMemory(options, () =>
         [...queue.values()]
-          .filter((message) => message.sessionId === sessionId && isWaiting(message))
+          .filter(
+            (message) =>
+              (sessionId === undefined || message.sessionId === sessionId) && isWaiting(message),
+          )
           .toSorted(byArrival)
           .slice(0, limit)
           .map((message) => structuredClone(message)),

@@ -48,9 +48,12 @@ export interface QueueDrop {
   readonly reason: string;
 }
 
-/** Which messages of a session wait: no turn took them and none was dropped, oldest first. */
+/**
+ * Which messages wait: no turn took them and none was dropped, oldest first. With no session,
+ * those of every session, as a runtime reads them again at its start.
+ */
 export interface WaitingQuery {
-  readonly sessionId: Id<"ses">;
+  readonly sessionId?: Id<"ses">;
   readonly limit: number;
 }
 
@@ -109,8 +112,12 @@ export const queueDropSchema: z.ZodType<Fenced<QueueDrop>> = z.strictObject({
   fence: fenceSchema,
 });
 
-/** Parses a waiting query. */
-export const waitingQuerySchema: z.ZodType<WaitingQuery> = z.strictObject({
-  sessionId: idSchema("ses"),
-  limit: z.int().min(1).max(200),
-});
+/** Parses a waiting query: at most 200 of one session, or 1,000 of every session. */
+export const waitingQuerySchema: z.ZodType<WaitingQuery> = z
+  .strictObject({
+    sessionId: idSchema("ses").exactOptional(),
+    limit: z.int().min(1).max(1_000),
+  })
+  .refine((query) => query.sessionId === undefined || query.limit <= 200, {
+    message: "One session's waiting messages are read 200 at most.",
+  });

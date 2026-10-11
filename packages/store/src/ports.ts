@@ -102,7 +102,7 @@ export interface ChatQueueStore {
     draft: Fenced<QueueDraft>,
     options: StoreCall,
   ): Promise<Result<QueuedMessage, FenceRefusal | "exists">>;
-  /** A session's waiting messages, oldest first, at most `limit`. */
+  /** The waiting messages of a session, or of every session, oldest first, at most `limit`. */
   waiting(query: WaitingQuery, options: StoreCall): Promise<readonly QueuedMessage[]>;
   /** Gives the messages to a turn, all or none; one that does not wait is `not_waiting`. */
   take(

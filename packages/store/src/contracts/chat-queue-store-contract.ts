@@ -42,6 +42,18 @@ async function addsOnce({ store }: ChatQueueStoreSubject, fence: number): Promis
   assert.deepEqual(await store.waiting({ ...sessionOne, limit: 1 }, go()), [nthMessage(2)]);
 }
 
+async function listsEverySession({ store }: ChatQueueStoreSubject, fence: number): Promise<void> {
+  await store.add({ ...nthMessage(1, 30), fence }, go());
+  await store.add({ ...nthMessage(2, 20, 2), fence }, go());
+  await store.add({ ...nthMessage(3, 10, 3), fence }, go());
+  await store.take({ messages: [nthId("msg", 3)], turn: nthId("trn", 1), fence }, go());
+  assert.deepEqual(await store.waiting({ limit: 1_000 }, go()), [
+    nthMessage(2, 20, 2),
+    nthMessage(1, 30),
+  ]);
+  assert.deepEqual(await store.waiting({ limit: 1 }, go()), [nthMessage(2, 20, 2)]);
+}
+
 async function takesAllOrNone({ store }: ChatQueueStoreSubject, fence: number): Promise<void> {
   await store.add({ ...nthMessage(1), fence }, go());
   await store.add({ ...nthMessage(2), fence }, go());
@@ -104,6 +116,11 @@ export function chatQueueStoreContract(harness: ChatQueueStoreHarness): readonly
   const create = async (): Promise<ChatQueueStoreSubject> => harness.create();
   return [
     fencedCheck("adds each message once and lists those that wait, oldest first", create, addsOnce),
+    fencedCheck(
+      "lists the waiting messages of every session, oldest first",
+      create,
+      listsEverySession,
+    ),
     fencedCheck("gives waiting messages to a turn, all or none", create, takesAllOrNone),
     fencedCheck("drops a waiting message with its reason, once", create, dropsWithReason),
     fencedCheck("refuses every write made with a fence raised since", create, refusesStaleFence),

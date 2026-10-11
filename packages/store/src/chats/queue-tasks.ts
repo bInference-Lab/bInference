@@ -81,7 +81,7 @@ export const addQueuedTask: StoreTask<
   },
 });
 
-/** Lists a session's waiting messages, oldest first. */
+/** Lists the waiting messages of a session, or of every session, oldest first. */
 export const waitingTask: StoreTask<WaitingQuery, readonly QueuedMessage[]> = defineTask({
   name: "chats.waiting",
   access: "read",
@@ -89,10 +89,10 @@ export const waitingTask: StoreTask<WaitingQuery, readonly QueuedMessage[]> = de
   output: z.array(queuedMessageSchema),
   run(database, query) {
     const { kysely, execute } = createSyncKysely<AgentTables>(database);
-    const waiting = kysely
-      .selectFrom("chat_queue")
-      .selectAll()
-      .where("session_id", "=", query.sessionId)
+    const all = kysely.selectFrom("chat_queue").selectAll();
+    const scoped =
+      query.sessionId === undefined ? all : all.where("session_id", "=", query.sessionId);
+    const waiting = scoped
       .where("turn_id", "is", null)
       .where("dropped_at", "is", null)
       .orderBy("received_at")
