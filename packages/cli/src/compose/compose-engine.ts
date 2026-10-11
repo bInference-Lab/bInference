@@ -238,8 +238,8 @@ function serverOf(
   });
 }
 
-// The notice, token and device handlers; a device revoke also ends the device's open connections
-// (decision 0155).
+// The notice, token and device handlers; a device or token revoke also ends the open connections
+// signed in with it (decisions 0155 and 0159).
 function accessHandlersOf(
   parts: EngineParts,
   options: ComposeEngineOptions,
@@ -256,9 +256,17 @@ function accessHandlersOf(
     random,
     consoleOrigin: context.origin.get,
   });
+  const tokens = createTokenHandlers({ access: parts.stores.access, clock, ids: context.ids });
   return {
     ...createNoticeHandlers(parts.stores.notices),
-    ...createTokenHandlers({ access: parts.stores.access, clock, ids: context.ids }),
+    ...tokens,
+    "token/revoke": async (call) => {
+      const revoked = await tokens["token/revoke"](call);
+      if (revoked.ok) {
+        context.server().endSessions(call.args.token, "auth.revoked");
+      }
+      return revoked;
+    },
     ...devices,
     "device/revoke": async (call) => {
       const revoked = await devices["device/revoke"](call);

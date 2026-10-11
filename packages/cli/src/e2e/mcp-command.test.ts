@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
+import type { Id } from "@binference/core";
 import { testAgent, testNowMs } from "@binference/engine/testing";
 import { ensurePrivateFolder, writePrivateFile } from "@binference/platform";
 import { Client } from "@modelcontextprotocol/client";
@@ -37,6 +38,17 @@ async function writeToken(machine: TestMachine, name: string, token: string): Pr
   await writePrivateFile(join(machine.folder, "auth", name), `${token}\n`, files);
 }
 
+async function mcpTokenOf(skeleton: ServedSkeleton): Promise<Id<"tok">> {
+  const tokens = await skeleton.parts.stores.access.listTokens({
+    signal: AbortSignal.timeout(5_000),
+  });
+  const found = tokens.find((token) => token.kind === "mcp");
+  if (found === undefined) {
+    throw new Error("Expected the skeleton's MCP token.");
+  }
+  return found.id;
+}
+
 // `binference mcp` on the machine over pipes, with an MCP client in the place of Claude Code.
 function startMcp(machine: TestMachine, argv: readonly string[]) {
   const toServer = new PassThrough();
@@ -71,6 +83,26 @@ describe("binference mcp", () => {
       expect(mcp.host.stderr()).not.toContain(skeletonSecrets.mcp);
     },
   );
+
+  it("loses its engine connection once its token is revoked", slow, async () => {
+    const machine = await machines.create(testNowMs);
+    const skeleton = await serveSkeleton(machine, selfHosted());
+    served.push(skeleton);
+    await writeToken(machine, "mcp-codex.token", skeletonSecrets.mcp);
+    const mcp = startMcp(machine, ["mcp", "--client", "codex"]);
+    const client = new Client({ name: "codex", version: "1.0.0" });
+    await client.connect(new StdioServerTransport(mcp.fromServer, mcp.toServer));
+    const before = await client.callTool({ name: "binference_agents", arguments: {} });
+    expect(before.isError).toBeUndefined();
+    const live = { signal: AbortSignal.timeout(5_000) };
+    await skeleton.client.call("token/revoke", { token: await mcpTokenOf(skeleton) }, live);
+    const after = await client.callTool({ name: "binference_agents", arguments: {} });
+    expect(after.isError).toBe(true);
+    expect(JSON.stringify(after.content)).toContain("auth.revoked");
+    mcp.toServer.end();
+    await expect(mcp.exit).resolves.toBe(0);
+    await client.close();
+  });
 
   it("exits 1 and names the token file when the client has none", async () => {
     const machine = await machines.create(testNowMs);
