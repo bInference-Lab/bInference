@@ -151,6 +151,10 @@ Skills live in `.agents/skills/`. Run the first two on every change, in this ord
 - `shape-commit`: checks that the change is one commit's worth and writes its subject.
 - `review-money-path`: the checklist for a change that can move funds.
 - `add-migration`: adds a migration to the store.
+- `add-chain`: adds a chain, or tokens and contracts, to the registry.
+- `add-venue`: adds a trading venue as a plugin.
+- `add-protocol-operation`: adds an operation to the engine protocol.
+- `add-mcp-tool`: exposes a read or propose operation to MCP clients.
 - `write-adr`: records a load-bearing decision.
 - `run-tests`: picks the tests that prove a change and runs them.
 - `review-tests`: judges whether a test earns its place.
