@@ -54,6 +54,8 @@ export interface TelegramWiring {
   readonly owner: () => OwnerInfo;
   /** Resolves once every notice published so far is stored, so the outbox holds it. */
   readonly stored: () => Promise<void>;
+  /** Hears the numeric Telegram id of an owner a new pairing replaced. */
+  readonly ownerReplaced: (userId: number) => void;
   readonly clock: Clock;
   readonly logger: Logger;
 }
@@ -145,7 +147,12 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
         await cards.press(update, call);
       }
     },
-    onOwnerPaired: () => relay.paired(),
+    onOwnerPaired: (replaced) => {
+      if (replaced !== undefined) {
+        wiring.ownerReplaced(replaced.userId);
+      }
+      relay.paired();
+    },
   });
   return { cards, answers, calls, commands, ingress, ...relay };
 }

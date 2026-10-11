@@ -35,6 +35,7 @@ import {
   type HttpListenOptions,
   type MiniAppAuth,
   type ProtocolServer,
+  telegramCredentialOf,
 } from "@binference/server";
 import type { WebPushKey } from "../web-push/web-push-key.js";
 import type { WebPushRelay } from "../web-push/web-push-relay.js";
@@ -149,6 +150,7 @@ function joinTelegram(
     readonly answer: Engine["answer"];
     readonly handlers: EngineHandlerTable;
     readonly notices: NoticeLog;
+    readonly server: () => ProtocolServer;
   },
 ): ComposedTelegram | undefined {
   const { telegram, owner, chains, clock, logger } = options;
@@ -161,6 +163,9 @@ function joinTelegram(
         chains,
         owner,
         stored: async () => engine.notices.idle(),
+        // The replaced owner's Mini App connections end at once, as a revoked device's do.
+        ownerReplaced: (userId) =>
+          engine.server().endSessions(telegramCredentialOf(userId), "auth.revoked"),
         clock,
         logger: logger.child("telegram"),
       });
@@ -357,7 +362,12 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     ...webPush.handlers,
     ...options.handlers,
   };
-  const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers, notices });
+  const telegram = joinTelegram(parts, options, {
+    answer: engine.answer,
+    handlers,
+    notices,
+    server: () => server,
+  });
   const server = origin.watch(serverOf(parts, options, { handlers, publish, ids }));
   return {
     engine,

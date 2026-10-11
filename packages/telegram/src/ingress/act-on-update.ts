@@ -28,8 +28,11 @@ export interface ActionContext {
   /** The text of a message key in the target's language. */
   readonly words: (key: IngressWords, target: ReplyTarget) => string;
   readonly onOwnerUpdate: OwnerUpdateSink;
-  /** Hears that a start code bound the owner, the first or one in an earlier owner's place. */
-  readonly onOwnerPaired: () => void;
+  /**
+   * Hears that a start code bound the owner, the first or one in an earlier owner's place, with the
+   * owner it replaced.
+   */
+  readonly onOwnerPaired: (replaced: OwnerBinding | undefined) => void;
 }
 
 interface Call {
@@ -83,7 +86,7 @@ async function pair(action: PairAction, context: ActionContext, call: Call): Pro
     try {
       await tellReplaced(replaced, context, call);
     } finally {
-      context.onOwnerPaired();
+      context.onOwnerPaired(replaced);
     }
   }
 }

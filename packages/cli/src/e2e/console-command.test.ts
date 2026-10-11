@@ -13,6 +13,7 @@ import {
   testWallet,
 } from "@binference/engine/testing";
 import { deviceProofText, operations, protocolIdSchema } from "@binference/protocol";
+import { issueStartCode } from "@binference/telegram";
 import { createFakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { Api } from "grammy";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
@@ -238,7 +239,7 @@ describe("binference console", () => {
   );
 
   it(
-    "signs the owner's Mini App in with the bot's token and takes its unfreeze",
+    "signs the owner's Mini App in, takes its unfreeze, and ends it once another owner pairs",
     slow,
     async () => {
       const botApi = createFakeBotApi();
@@ -254,6 +255,14 @@ describe("binference console", () => {
       expect(ready.scopes).toStrictEqual(["read", "chat", "confirm", "loosen"]);
       await expect(mini.call("safety/unfreeze", {}, { signal })).resolves.toMatchObject({
         intent: /^int_/,
+      });
+      const code = await startCodeOf(at);
+      const newOwner = ownerId + 1;
+      await at.skeleton.composed.telegram?.ingress.receive(startMessage(newOwner, code), {
+        signal,
+      });
+      await expect(mini.call("safety/status", {}, { signal })).rejects.toMatchObject({
+        code: "auth.revoked",
       });
     },
   );
@@ -286,4 +295,31 @@ function miniAppClient(at: Served, initData: string): ProtocolClient {
   });
   browsers.push(client);
   return client;
+}
+
+async function startCodeOf(at: Served): Promise<string> {
+  const issued = await issueStartCode(
+    {
+      access: at.skeleton.parts.stores.access,
+      clock: at.skeleton.clock,
+      random: createSeededRandom(31),
+      botUsername: "binference_test_bot",
+    },
+    { signal: AbortSignal.timeout(5_000) },
+  );
+  return new URL(issued.link.reveal()).searchParams.get("start") ?? "";
+}
+
+// The `/start` message that pairs a Telegram user with a start code, in the Bot API's shape.
+function startMessage(userId: number, code: string) {
+  return {
+    update_id: 1,
+    message: {
+      message_id: 7,
+      date: 1_760_000_000,
+      chat: { id: userId, type: "private" },
+      from: { id: userId, is_bot: false, first_name: "Owner" },
+      text: `/start ${code}`,
+    },
+  };
 }

@@ -36,7 +36,7 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
   const clock = createManualClock(1_760_000_000_000);
   const logger = createMemoryLogger({ subsystem: "telegram" });
   const delivered: OwnerUpdate[] = [];
-  const pairings: number[] = [];
+  const pairings: (readonly [number, number | undefined])[] = [];
   const ingress = createTelegramIngress({
     api: new Api(fakeBotToken, { fetch: botApi.fetch }),
     stores,
@@ -50,8 +50,8 @@ async function setUp(options: { readonly owner?: number; readonly locale?: Messa
       delivered.push(update);
       await Promise.resolve();
     },
-    onOwnerPaired: () => {
-      pairings.push(clock.now());
+    onOwnerPaired: (replaced) => {
+      pairings.push([clock.now(), replaced?.userId]);
     },
   });
   if (options.owner !== undefined) {
@@ -211,7 +211,7 @@ describe("the Telegram ingress", () => {
       { chatId: strangerId, text: messages.en["telegram.pairRefused"] },
     ]);
     expect(context.delivered.map((update) => update.updateId)).toStrictEqual([20]);
-    expect(context.pairings).toStrictEqual([context.clock.now()]);
+    expect(context.pairings).toStrictEqual([[context.clock.now(), undefined]]);
   });
 
   it("pairs someone else in the owner's place with a new code, and tells the owner it replaced", async () => {
@@ -232,7 +232,7 @@ describe("the Telegram ingress", () => {
     ]);
     expect(messages.zh["telegram.pairingEnded"]).toContain("binference freeze");
     expect(context.delivered.map((update) => update.updateId)).toStrictEqual([42]);
-    expect(context.pairings).toStrictEqual([context.clock.now()]);
+    expect(context.pairings).toStrictEqual([[context.clock.now(), ownerId]]);
     expect(context.logger.records().map((record) => record.event)).toContain(
       "telegram.owner_replaced",
     );

@@ -108,7 +108,7 @@ const launchRefusals: Readonly<Record<TelegramLaunchRefusal, SignInRefusal>> = {
  * The credential id of a Mini App connection: the owner's Telegram id, as the owner's chat names
  * the owner in journals and ledger entries.
  */
-function telegramCredentialOf(userId: number): string {
+export function telegramCredentialOf(userId: number): string {
   return `tg:${String(userId)}`;
 }
 

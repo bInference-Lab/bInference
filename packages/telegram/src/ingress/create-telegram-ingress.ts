@@ -1,6 +1,6 @@
 import { BinferenceError, type Clock, type JsonValue, type Logger } from "@binference/core";
 import type { AccessStore, InboxEntry, InboxStore } from "@binference/engine";
-import type { OwnerStore } from "@binference/engine/surfaces";
+import type { OwnerBinding, OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
@@ -51,8 +51,11 @@ export interface TelegramIngressOptions {
   readonly display: () => { readonly locale?: MessageLocale; readonly timeZone: string };
   /** Takes the owner's messages and button presses. */
   readonly onOwnerUpdate: OwnerUpdateSink;
-  /** Hears that a start code bound the owner, once the binding is stored; nothing when absent. */
-  readonly onOwnerPaired?: () => void;
+  /**
+   * Hears that a start code bound the owner, once the binding is stored, with the owner it
+   * replaced, if any; nothing when absent.
+   */
+  readonly onOwnerPaired?: (replaced: OwnerBinding | undefined) => void;
 }
 
 interface Call {
