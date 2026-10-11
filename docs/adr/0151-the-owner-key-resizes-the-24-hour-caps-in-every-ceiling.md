@@ -1,6 +1,6 @@
 # 0151. The owner key resizes the 24-hour caps in every ceiling
 
-Status: Accepted
+Status: Amended by 0153
 
 Accepted by the owner on 2026-10-11.
 
