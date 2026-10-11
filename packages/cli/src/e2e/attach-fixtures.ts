@@ -19,7 +19,7 @@ import {
 
 const live = { signal: new AbortController().signal };
 
-/** An install `binference init` set up, and the code of the owner key it took the public half of. */
+/** An install `binference init` set up, and the code of the owner key whose public half it took. */
 export interface SetUp {
   readonly machine: InitMachine;
   readonly ownerKey: string;

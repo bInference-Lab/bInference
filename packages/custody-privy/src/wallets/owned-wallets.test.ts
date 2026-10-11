@@ -74,7 +74,7 @@ describe("the wallets an owner key owns", () => {
     expect(found.map((item) => item.wallet.id)).toStrictEqual(owned);
   });
 
-  it("leave out a wallet whose ceiling pays a token send to an address its native sends do not", async () => {
+  it("leave out a wallet whose token sends pay an address its native sends do not", async () => {
     const { api, ownerKey, owned } = await made();
     const [, tokenSends] = recipientRules("56", [testAddresses.rescue, testAddresses.unsaved]);
     await walletOwnedBy(api, ownerKey, withRule(testCeiling(), tokenSends));

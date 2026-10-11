@@ -30,8 +30,8 @@ const refusalCodes: Readonly<Record<RevokeRefusal, ProtocolErrorCode>> = {
  * removes it as it attaches. A signer no live wallet lists is `signer.not_found`, one a wallet
  * lists alone `signer.last_signer`, and either changes nothing; a wrong key is
  * `wallet.bad_owner_key`; a change custody read after its expiry is `signer.change_expired`,
- * and the wallets before it keep their change. A removal is announced as the `notice.signerRevoked` notice. Without
- * custody's removal it is `wallet.custody_down`.
+ * and the wallets before it keep their change. A removal is announced as the
+ * `notice.signerRevoked` notice. Without custody's removal it is `wallet.custody_down`.
  */
 export async function revokeSigner(
   options: RevokeSignerOptions,
