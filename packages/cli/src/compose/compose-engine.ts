@@ -261,7 +261,11 @@ function serverOf(
 function engineOf(
   parts: EngineParts,
   options: ComposeEngineOptions,
-  given: { readonly ids: IdSource; readonly publish: (push: EnginePush) => void },
+  given: {
+    readonly ids: IdSource;
+    readonly publish: (push: EnginePush) => void;
+    readonly turns: RunningTurns;
+  },
 ): Engine {
   const { host, risk } = tradingOf(parts, options);
   return createEngine({
@@ -282,6 +286,7 @@ function engineOf(
     ids: given.ids,
     random: options.random,
     publish: given.publish,
+    turns: given.turns,
   });
 }
 
@@ -316,7 +321,9 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     telegram?.relay(stamped);
     webPush.relay?.relay(stamped);
   };
-  const engine = engineOf(parts, options, { ids, publish });
+  // One record of running turns: the relay starts and ends them, and proposals take their marks.
+  const turns = options.turns ?? createRunningTurns();
+  const engine = engineOf(parts, options, { ids, publish, turns });
   const origin = consoleOriginCell();
   const table: EngineHandlerTable = {
     ...engine.handlers,
@@ -324,7 +331,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     ...webPush.handlers,
     ...options.handlers,
   };
-  const handlers = markRuntimeTurns(table, options.turns ?? createRunningTurns());
+  const handlers = markRuntimeTurns(table, turns);
   const telegram = joinTelegram(parts, options, {
     answer: engine.answer,
     handlers,

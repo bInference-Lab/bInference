@@ -234,16 +234,22 @@ export interface SkeletonOptions {
   readonly browser?: Pick<ComposeEngineOptions, "http" | "consoleFiles">;
   /** Browser push; the engine sends no browser a card when left out. */
   readonly webPush?: ComposeEngineOptions["webPush"];
+  /** The agent runtime's running turns; none started when left out. */
+  readonly turns?: ComposeEngineOptions["turns"];
 }
 
-// The owner's bot and the handlers it alone runs, the HTTP listener with the console's files, and
-// browser push, when the options name them.
+// The owner's bot and the handlers it alone runs, the HTTP listener with the console's files,
+// browser push and the runtime's running turns, when the options name them.
 function surfacesOf(
   options: SkeletonOptions,
-): Pick<ComposeEngineOptions, "telegram" | "ownerChat" | "http" | "consoleFiles" | "webPush"> {
-  const { telegram, ownerChat, webPush } = options;
+): Pick<
+  ComposeEngineOptions,
+  "telegram" | "ownerChat" | "http" | "consoleFiles" | "webPush" | "turns"
+> {
+  const { telegram, ownerChat, webPush, turns } = options;
   return {
     ...(telegram === undefined ? {} : { telegram }),
+    ...(turns === undefined ? {} : { turns }),
     ...(ownerChat === undefined ? {} : { ownerChat }),
     ...(webPush === undefined ? {} : { webPush }),
     ...options.browser,
