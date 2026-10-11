@@ -101,6 +101,19 @@ async function positionsOf(bench: ExecutorBench, walletId: Id<"wal">): Promise<r
   ]);
 }
 
+// A new rescue address that took effect a moment ago.
+async function moveRescueAddress(bench: ExecutorBench): Promise<void> {
+  const other = accountRefSchema.parse("fake:1:0x000000b2");
+  const atMs = bench.test.clock.now() - looseningWaitMs - 1;
+  await bench.test.stores.install.changeRescue({ address: other, atMs }, live);
+}
+
+function noticeKeysOf(bench: ExecutorBench): readonly string[] {
+  return bench.pushes
+    .filter(({ kind }) => kind === "notice/new")
+    .map(({ data }) => /"key":"([^"]+)"/.exec(JSON.stringify(data))?.[1] ?? "");
+}
+
 function sendOf(index: number): StepAction {
   const move = testMoves[index];
   if (move === undefined) {
@@ -194,6 +207,28 @@ describe("a confirmed rescue on its wallets' queues", () => {
     await flush();
     await expect(stateOf(bench, intent)).resolves.toBe("confirmed");
     expect(bench.signed).toStrictEqual([]);
+  });
+
+  it("signs no more steps once the rescue address changed while it ran, and alarms", async () => {
+    const bench = await benchWithRescue();
+    bench.network.holdBelow(10n ** 18n);
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    await moveRescueAddress(bench);
+    bench.network.holdBelow(0n);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0]);
+    expect(noticeKeysOf(bench)).toContain("notice.rescueStopped");
+  });
+
+  it("signs nothing more for a rescue a restart resumes after its address changed", async () => {
+    const bench = await benchWithRescue();
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    await moveRescueAddress(bench);
+    const restarted = await restartBench(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(restarted.signed).toStrictEqual([]);
   });
 
   it("goes on after a restart without signing a step sent before the stop again", async () => {

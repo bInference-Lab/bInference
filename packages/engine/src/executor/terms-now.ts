@@ -2,6 +2,7 @@ import { checkAutoModeGrant } from "@binference/chain";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { ExecutionRun } from "./executor-run.js";
 import type { SigningTerms } from "./queue-check.js";
+import { isRescueAddressInEffect } from "./rescue-queue-check.js";
 
 /** What one more signature of a taken intent is for: a step, a speed-up or a cancel. */
 export type SignatureKind = "step" | "speedUp" | "cancel";
@@ -30,12 +31,23 @@ async function autoTermsNow(
   return held.ok ? { ...terms, authorization: { ...authorization, current } } : undefined;
 }
 
+async function rescueHolds(run: ExecutionRun, record: IntentRecord): Promise<boolean> {
+  const { parts, signal } = run;
+  return isRescueAddressInEffect(
+    record,
+    { install: parts.stores.install, clock: parts.clock },
+    signal,
+  );
+}
+
 /**
  * The terms one more signature of a taken intent carries, read again right before it: a later
  * step, a speed-up or a cancel. An auto grant carries the agent's approval mode as it stands now
  * and holds only while that mode keeps the version that authorized the intent. Nothing but a
  * cancel signs once the owner's confirmation expired; the signer decides whether a cancel is still
- * in its grace (decision 0116). `undefined` when nothing authorizes the signature now.
+ * in its grace (decision 0116). A rescue's send signs only while the address its card confirmed
+ * is still the rescue address in effect (decision 0110); a cancel moves nothing, so it still may.
+ * `undefined` when nothing authorizes the signature now.
  */
 export async function termsNow(
   run: ExecutionRun,
@@ -43,9 +55,14 @@ export async function termsNow(
   signing: { readonly record: IntentRecord; readonly kind: SignatureKind },
 ): Promise<SigningTerms | undefined> {
   const { authorization } = terms;
+  if (signing.kind === "cancel") {
+    return authorization.kind === "confirmation" ? terms : autoTermsNow(run, terms, signing.record);
+  }
+  if (signing.record.kind === "rescue" && !(await rescueHolds(run, signing.record))) {
+    return undefined;
+  }
   if (authorization.kind === "confirmation") {
-    const isLive = signing.kind === "cancel" || run.parts.clock.now() < authorization.expiresAtMs;
-    return isLive ? terms : undefined;
+    return run.parts.clock.now() < authorization.expiresAtMs ? terms : undefined;
   }
   return autoTermsNow(run, terms, signing.record);
 }

@@ -190,7 +190,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
     and whose agent is active. Its quote lists every move with the wallet that signs it, and the
     card's terms hash covers them. The first wallet's queue takes the intent; each wallet then sends
     its own steps from its own queue, the wallets one after another. A step stuck at its nonce ends
-    its wallet's part only ([decision 0123](../DECISIONS.md#d0123)).
+    its wallet's part only ([decision 0123](../DECISIONS.md#d0123)). Each step, at its first run
+    or after a restart, signs only while the address the card confirmed is still the rescue address
+    in effect ([decision 0110](../DECISIONS.md#d0110)); once it changed, the rescue sends nothing
+    more, reconciles with what landed, and the owner gets `notice.rescueStopped`.
   - **Checks:** each wallet's sends are simulated in order before the card opens. A send that
     fails, moves anything but its own amount out of its wallet, sets an allowance, or lands nothing
     at the rescue address is left out, and the rest go. With nothing left, no rescue is stored

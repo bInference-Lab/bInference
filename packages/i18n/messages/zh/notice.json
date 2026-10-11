@@ -16,6 +16,7 @@
   "stepDropped": "⚠️ 一笔交易长时间未上链，没有完成。没有任何资产变动，钱包已可再次使用。",
   "stepDroppedPartWay": "⚠️ 一笔交易中途停止：前面的步骤已上链，但后面的步骤长时间未上链，没有完成。钱包已可再次使用。请检查钱包。",
   "sendLevel": "转账级别 {from} → {to}，{pending, select, yes {将于 {when} 生效} other {立即生效}}",
+  "rescueStopped": "🔴 紧急转出中途停止：执行期间紧急转出地址已更改。未转出的资产仍在钱包中。请检查钱包，然后重新发起紧急转出。",
   "rescueAddress": "⚠️ 紧急转出地址将于 {when} 改为 {address}。不是你操作？请立即取消。",
   "lowGas": "⚠️ {wallet} 仅剩 {balance} 可付网络费。请充值 BNB。",
   "sendLevelCancelled": "已取消将转账级别改为 {to}，仍为 {level}",

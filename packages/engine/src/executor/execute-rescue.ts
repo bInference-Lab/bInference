@@ -2,6 +2,7 @@ import type { AccountRef } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { noticePush } from "../pushes/notice-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
@@ -9,7 +10,7 @@ import type { IntentPlan } from "./intent-plan.js";
 import type { SigningTerms } from "./queue-check.js";
 import { reconcileRescue } from "./reconcile-rescue.js";
 import { currentSteps } from "./recover-steps.js";
-import { checkRescueForQueue } from "./rescue-queue-check.js";
+import { checkRescueForQueue, isRescueAddressInEffect } from "./rescue-queue-check.js";
 import { prepareStep, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
 import { rivalsOf } from "./step-fate.js";
@@ -23,16 +24,33 @@ export interface RescueGroup {
   readonly indexes: readonly number[];
 }
 
-/** How one step of a rescue ended: in a block, failed after its retries, or stuck at its nonce. */
+/**
+ * How one step of a rescue ended: in a block, failed after its retries, stuck at its nonce, or
+ * never signed because the rescue address changed (`moved`).
+ */
 type StepEnd =
   | { readonly kind: "landed"; readonly transaction: TransactionRecord }
-  | { readonly kind: "failed" | "stuck" };
+  | { readonly kind: "failed" | "stuck" | "moved" };
+
+/** What one wallet's steps, or the rest of the wallets, landed, and whether the address moved. */
+interface GroupEnd {
+  readonly landed: readonly TransactionRecord[];
+  readonly isMoved: boolean;
+}
+
+// The owner's alarm when the rescue address changed while a rescue ran (decision 0110).
+const movedNoticeKey = "notice.rescueStopped";
 
 /** One step to send, with the intent and the terms every signature carries. */
 interface RescueStep {
   readonly record: IntentRecord;
   readonly terms: SigningTerms;
   readonly index: number;
+}
+
+// What the rescue address check reads.
+function rescuePartsOf(run: ExecutionRun) {
+  return { install: run.parts.stores.install, clock: run.parts.clock };
 }
 
 // Spec 6, section 5: a rescue's step that fails is tried again up to three times.
@@ -154,6 +172,17 @@ async function settleStep(
   return settleStep(run, slot, { ...step, tries: step.tries + 1, watched: again });
 }
 
+// A step never signed is sent now, while the address its card confirmed is still the rescue
+// address in effect.
+async function startStep(run: ExecutionRun, slot: WalletSlot, step: RescueStep): Promise<StepEnd> {
+  if (!(await isRescueAddressInEffect(step.record, rescuePartsOf(run), run.signal))) {
+    run.parts.log.error("executor.rescue_moved", { intentId: step.record.id });
+    return { kind: "moved" };
+  }
+  const watched = await sendFresh(run, slot, step);
+  return settleStep(run, slot, { ...step, tries: 0, watched });
+}
+
 // A step a stop left in a block is done, one it left signed or sent goes on with its own bytes,
 // and any other is sent now.
 async function sendStep(run: ExecutionRun, slot: WalletSlot, step: RescueStep): Promise<StepEnd> {
@@ -164,29 +193,30 @@ async function sendStep(run: ExecutionRun, slot: WalletSlot, step: RescueStep): 
   if (transaction?.state === "included" || transaction?.state === "final") {
     return { kind: "landed", transaction };
   }
-  const isPending = transaction?.state === "signed" || transaction?.state === "sent";
-  const watched = isPending
-    ? await watchStored(run, slot, { ...step, transaction })
-    : await sendFresh(run, slot, step);
+  if (transaction?.state !== "signed" && transaction?.state !== "sent") {
+    return startStep(run, slot, step);
+  }
+  const watched = await watchStored(run, slot, { ...step, transaction });
   return settleStep(run, slot, { ...step, tries: 0, watched });
 }
 
-// One wallet's steps in order, on its slot; a step stuck at its nonce ends the wallet's part.
+// One wallet's steps in order, on its slot; a step stuck at its nonce ends the wallet's part, and
+// a rescue address that changed ends the rescue's.
 async function sendGroup(
   run: ExecutionRun,
   slot: WalletSlot,
   part: { readonly step: Omit<RescueStep, "index">; readonly indexes: readonly number[] },
-): Promise<readonly TransactionRecord[]> {
+): Promise<GroupEnd> {
   const [index, ...rest] = part.indexes;
   if (index === undefined || run.stopping.aborted) {
-    return [];
+    return { landed: [], isMoved: false };
   }
   const end = await sendStep(run, slot, { ...part.step, index });
-  if (end.kind === "stuck") {
-    return [];
+  if (end.kind === "stuck" || end.kind === "moved") {
+    return { landed: [], isMoved: end.kind === "moved" };
   }
   const later = await sendGroup(run, slot, { ...part, indexes: rest });
-  return end.kind === "landed" ? [end.transaction, ...later] : later;
+  return end.kind === "landed" ? { ...later, landed: [end.transaction, ...later.landed] } : later;
 }
 
 /** A rescue the queue took, with the terms its signatures carry. */
@@ -204,8 +234,11 @@ async function takeRescue(run: ExecutionRun, intent: Id<"int">): Promise<TakenRe
   if (snapshot === undefined || (state !== "confirmed" && state !== "executing")) {
     return undefined;
   }
-  const rescueParts = { intents: parts.intents, install: parts.stores.install, clock: parts.clock };
-  const check = await checkRescueForQueue(snapshot, rescueParts, signal);
+  const check = await checkRescueForQueue(
+    snapshot,
+    { ...rescuePartsOf(run), intents: parts.intents },
+    signal,
+  );
   if (check.terms === undefined) {
     parts.log.warn("executor.not_taken", { intentId: intent, errorCode: "no_authorization" });
     return undefined;
@@ -217,24 +250,31 @@ async function takeRescue(run: ExecutionRun, intent: Id<"int">): Promise<TakenRe
   return taken === undefined ? undefined : { snapshot: taken, terms: check.terms };
 }
 
-// The rest of the wallets, each on its own queue in turn, after the first.
+// The rest of the wallets, each on its own queue in turn, after the first, until the rescue
+// address moves.
 async function sendRest(
   run: ExecutionRun,
   taken: TakenRescue,
   groups: readonly RescueGroup[],
-): Promise<readonly TransactionRecord[] | undefined> {
+): Promise<GroupEnd> {
   const [group, ...rest] = groups;
   if (group === undefined) {
-    return [];
+    return { landed: [], isMoved: false };
   }
   const step = { record: taken.snapshot.record, terms: taken.terms };
-  const landed = await run.parts.queue.run(
+  const ended = await run.parts.queue.run(
     group.account,
     async (slot) => sendGroup(run, slot, { step, indexes: group.indexes }),
     { signal: run.stopping },
   );
-  const later = landed === undefined ? undefined : await sendRest(run, taken, rest);
-  return landed === undefined || later === undefined ? undefined : [...landed, ...later];
+  const later = ended.isMoved ? ended : await sendRest(run, taken, rest);
+  return { landed: [...ended.landed, ...later.landed], isMoved: later.isMoved };
+}
+
+// The owner hears that the rescue stopped: what was not sent stays in the wallets.
+function alarmMoved(run: ExecutionRun, record: IntentRecord): void {
+  const notice = { key: movedNoticeKey, agent: record.agentId, intent: record.id, values: {} };
+  run.parts.publish(noticePush(notice));
 }
 
 /**
@@ -242,7 +282,9 @@ async function sendRest(
  * after the queue check, then each wallet's steps run in order on that wallet's own queue, the
  * wallets one after another, each step signed by its move's wallet. A step that fails is tried
  * again up to three times, each only once the transaction that failed is final and the step
- * prepares again on the latest state; a step stuck at its nonce ends its wallet's part. Once every
+ * prepares again on the latest state; a step stuck at its nonce ends its wallet's part. No step is
+ * signed once the address the card confirmed is no longer the rescue address in effect: the
+ * rescue sends nothing more and the owner gets `notice.rescueStopped` (decision 0110). Once every
  * step has its last outcome the rescue is `included`, waits for its landed steps' blocks to be
  * final, and reconciles: what its sends took out of each wallet leaves the positions at average
  * cost (decision 0127). It resumes a rescue a stop left `executing`: a step in a block is done
@@ -265,16 +307,24 @@ export async function executeRescue(
         taken === undefined ? undefined : { record: taken.snapshot.record, terms: taken.terms };
       return taken === undefined || step === undefined
         ? undefined
-        : { taken, landed: await sendGroup(run, slot, { step, indexes: first.indexes }) };
+        : { taken, ended: await sendGroup(run, slot, { step, indexes: first.indexes }) };
     },
     { signal: run.stopping },
   );
-  const later = head === undefined ? undefined : await sendRest(run, head.taken, rest);
-  if (head === undefined || later === undefined || run.stopping.aborted) {
+  if (head === undefined) {
+    return;
+  }
+  const later = head.ended.isMoved
+    ? { landed: [], isMoved: true }
+    : await sendRest(run, head.taken, rest);
+  if (later.isMoved) {
+    alarmMoved(run, head.taken.snapshot.record);
+  }
+  if (run.stopping.aborted) {
     return;
   }
   const included = await moveIntent(run, head.taken.snapshot, { type: "steps_included" });
-  const landed = [...head.landed, ...later].filter(({ state }) => state !== "final");
+  const landed = [...head.ended.landed, ...later.landed].filter(({ state }) => state !== "final");
   const finalized = included === undefined ? undefined : await watchFinality(run, included, landed);
   if (finalized !== undefined) {
     await reconcileRescue(run, finalized);
