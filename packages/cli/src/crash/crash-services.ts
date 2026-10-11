@@ -24,7 +24,12 @@ import { crashExecutor, crashRouter, usdtPerWei } from "./crash-market.js";
 export interface CrashServices {
   /** Where they listen: Privy at `/privy`, KyberSwap's API at `/kyberswap`. */
   readonly origin: string;
-  /** How many transactions the fake Privy has signed. */
+  /**
+   * Makes the fake Privy app the services answer for from now on. Each run's install has an app of
+   * its own, as each owner does: an app holds the aggregations of one install's ceiling.
+   */
+  readonly serve: (privy: FakePrivy) => void;
+  /** How many transactions the fake Privy apps have signed. */
   readonly signatures: () => number;
   /**
    * Arms a hold: the next transaction Privy signs is counted, and its answer never sent, as custody
@@ -196,13 +201,18 @@ function createSignatureBook(): SignatureBook {
 }
 
 // Answers one request; a signature the book holds is counted and left unanswered.
-function responderOf(privy: FakePrivy, book: SignatureBook) {
+function responderOf(served: () => FakePrivy | undefined, book: SignatureBook) {
   return async (incoming: IncomingMessage, outgoing: ServerResponse): Promise<void> => {
     const body = await readBody(incoming);
     const path = incoming.url ?? "/";
     if (path.startsWith("/kyberswap/")) {
       const answer = kyberswapOf(path.slice("/kyberswap".length), body);
       outgoing.writeHead(answer.status, answer.headers).end(answer.body);
+      return;
+    }
+    const privy = served();
+    if (privy === undefined) {
+      outgoing.writeHead(503).end();
       return;
     }
     const privyPath = path.slice("/privy".length);
@@ -223,14 +233,16 @@ async function listen(server: Server): Promise<string> {
 }
 
 /**
- * Serves the fake Privy and a KyberSwap API on loopback for the crash engines, which reach them
- * through their Http as they would reach the real services. The KyberSwap API routes every trade
- * through one pool at {@link usdtPerWei} and encodes the router's plain `swap` for the recipient
- * and deadline asked; the crash chain's router pays it out.
+ * Serves a fake Privy app and a KyberSwap API on loopback for the crash engines, which reach them
+ * through their Http as they would reach the real services. Privy answers 503 until an app is
+ * served. The KyberSwap API routes every trade through one pool at {@link usdtPerWei} and encodes
+ * the router's plain `swap` for the recipient and deadline asked; the crash chain's router pays it
+ * out.
  */
-export async function serveCrashServices(privy: FakePrivy): Promise<CrashServices> {
+export async function serveCrashServices(): Promise<CrashServices> {
   const book = createSignatureBook();
-  const respond = responderOf(privy, book);
+  const app: { privy?: FakePrivy } = {};
+  const respond = responderOf(() => app.privy, book);
   const server = createServer((incoming, outgoing) => {
     respond(incoming, outgoing).catch(() => {
       outgoing.writeHead(500).end();
@@ -239,6 +251,9 @@ export async function serveCrashServices(privy: FakePrivy): Promise<CrashService
   const origin = await listen(server);
   return {
     origin,
+    serve: (privy) => {
+      app.privy = privy;
+    },
     signatures: book.count,
     holdNextSignature: book.arm,
     async close() {

@@ -29,7 +29,8 @@ import type { CrashServices } from "./crash-services.js";
 export interface CrashWorld {
   readonly chain: CrashChain;
   readonly services: CrashServices;
-  readonly privy: FakePrivy;
+  /** Makes a new fake Privy app, as each owner creates one for an install. */
+  readonly newPrivyApp: () => FakePrivy;
 }
 
 /** One run's install: its state folder set up by `binference init`, and its funded wallet. */
@@ -60,9 +61,9 @@ async function pointAtChain(machine: InitMachine, chain: CrashChain): Promise<vo
 }
 
 /**
- * Sets up one run's state folder as an owner does: `binference init` against the suite's Privy,
- * with BSC's RPC and relays pointed at the test's chain, and the wallet it made funded with 1 BNB.
- * The feeds get a fresh round, as a run outlasts the BNB feed's heartbeat.
+ * Sets up one run's state folder as an owner does: `binference init` against a new Privy app the
+ * services now serve, with BSC's RPC and relays pointed at the test's chain, and the wallet it made
+ * funded with 1 BNB. The feeds get a fresh round, as a run outlasts the BNB feed's heartbeat.
  */
 export async function setUpCrashInstall(
   world: CrashWorld,
@@ -70,11 +71,13 @@ export async function setUpCrashInstall(
 ): Promise<CrashInstall> {
   const folder = await createTempFolder("bnf-crash-");
   folders.push(folder);
+  const privy = world.newPrivyApp();
+  world.services.serve(privy);
   const machine = machineOf({
     folder: folder.path,
     clock: createSystemClock(),
     signals: new EventEmitter(),
-    privy: { ...world.privy, sent: [] },
+    privy: { ...privy, sent: [] },
   });
   const init = await runOn(machine, ["init", "--yes", ...initFlags(machine)]);
   if (init.code !== 0) {

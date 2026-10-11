@@ -45,10 +45,12 @@ const held: { world?: CrashWorld } = {};
 
 beforeAll(async () => {
   const chain = await serveCrashChain(crash.rpcUrl);
-  const privy = createFakePrivy({ clock: createSystemClock(), random: createSeededRandom(29) });
-  const services = await serveCrashServices(privy);
+  // One random for every app, so no two runs' apps make the same wallet key.
+  const random = createSeededRandom(29);
+  const newPrivyApp = () => createFakePrivy({ clock: createSystemClock(), random });
+  const services = await serveCrashServices();
   await installCrashMarket(async (method, params) => chain.call(method, params));
-  held.world = { chain, services, privy };
+  held.world = { chain, services, newPrivyApp };
 });
 
 afterEach(async () => {
