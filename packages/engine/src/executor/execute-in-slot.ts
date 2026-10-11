@@ -28,10 +28,11 @@ interface Taken {
 
 /**
  * What became of a confirmed intent on its wallet's slot: its steps all in blocks, a step dropped
- * whose transactions are watched off the queue, a fee per gas above the network fee cap that may
- * fall before its authorization runs out, or nothing more to do here (`undefined`).
+ * whose transactions are watched off the queue, `retry` when it stays `confirmed` for a reason
+ * that may pass before its authorization runs out (a fee per gas above the network fee cap, or no
+ * node that answered while its first step was prepared), or nothing more to do here (`undefined`).
  */
-export type SlotOutcome = IncludedSteps | DroppedStep | "over_fee_cap" | undefined;
+export type SlotOutcome = IncludedSteps | DroppedStep | "retry" | undefined;
 
 function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefined {
   run.parts.log.warn("executor.not_taken", { intentId: intent, errorCode: problem });
@@ -45,7 +46,7 @@ async function takeIn(
   run: ExecutionRun,
   slot: WalletSlot,
   intent: Id<"int">,
-): Promise<Taken | "over_fee_cap" | undefined> {
+): Promise<Taken | "retry" | undefined> {
   const { parts, plan, signal } = run;
   const snapshot = await parts.stored.snapshot(intent, { signal });
   if (snapshot?.record.state !== "confirmed") {
@@ -53,15 +54,13 @@ async function takeIn(
   }
   const check = await checkForQueue(snapshot, { parts, chain: plan.chain }, signal);
   const first = await prepareStep(run, slot, { index: 0, draft: plan.steps[0] });
-  if (!first.ok) {
-    return notTaken(run, intent, first.error);
-  }
   if (check.terms === undefined) {
     return notTaken(run, intent, "no_authorization");
   }
-  if (first.value.prepared.isAboveFeeCap) {
-    notTaken(run, intent, "over_fee_cap");
-    return "over_fee_cap";
+  if (!first.ok || first.value.prepared.isAboveFeeCap) {
+    const problem = first.ok ? "over_fee_cap" : first.error;
+    notTaken(run, intent, problem);
+    return problem === "would_fail" ? undefined : "retry";
   }
   // An intent the engine's stop meets here stays `confirmed`, with nothing signed.
   if (run.stopping.aborted) {
@@ -117,7 +116,7 @@ async function readyStep(
   run: ExecutionRun,
   slot: WalletSlot,
   step: { readonly taken: Taken; readonly index: number; readonly draft: TxDraft },
-): Promise<Result<PreparedStep, "would_fail" | "stopping">> {
+): Promise<Result<PreparedStep, "would_fail" | "unprepared" | "stopping">> {
   if (run.stopping.aborted) {
     return err("stopping");
   }
@@ -174,9 +173,9 @@ async function runFrom(
  * The work of one confirmed intent on its wallet's queue (ARCHITECTURE.md section 7, step 8): the
  * `queue_took` check, then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
- * so the slot frees the wallet before finality, `over_fee_cap` when the first step's fee per gas is
- * above the network fee cap, which leaves the intent `confirmed`, and `undefined` when the run
- * stopped. A step that cannot be signed or stored, or whose fee per gas is above the cap, ends the
+ * so the slot frees the wallet before finality, `retry` when the first step's fee per gas is
+ * above the network fee cap or no node answered as it was prepared, which leaves the intent
+ * `confirmed`, and `undefined` when the run stopped. A step that cannot be signed or stored, or whose fee per gas is above the cap, ends the
  * intent (decision 0109). A stuck step is sent again, sped up
  * or cancelled at its nonce (spec 6, section 6); a landed cancel ends the intent `failed_onchain`
  * with `stuck_cancelled`, and a step no rule can move leaves it `executing`. Once the engine
@@ -189,7 +188,7 @@ export async function executeInSlot(
   intent: Id<"int">,
 ): Promise<SlotOutcome> {
   const taken = await takeIn(run, slot, intent);
-  return taken === undefined || taken === "over_fee_cap"
+  return taken === undefined || taken === "retry"
     ? taken
     : runFrom(run, slot, { taken, index: 0, done: [] });
 }

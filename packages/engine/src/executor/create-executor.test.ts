@@ -1,5 +1,6 @@
-import { fakeApprovalData, fakeDraft } from "@binference/chain/testing";
-import type { Id } from "@binference/core";
+import type { Signer, TxPreparer } from "@binference/chain";
+import { type FakeNetwork, fakeApprovalData, fakeDraft } from "@binference/chain/testing";
+import { BinferenceError, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { executorContract } from "../contracts/executor-contract.js";
 import { planDocument } from "../intents/intent-documents.schema.js";
@@ -62,6 +63,30 @@ async function goPaper(bench: ExecutorBench): Promise<void> {
   const expectedVersion = settings?.agent.version ?? 0;
   const change = { agentId: testAgent, mode: "paper", atMs: 1, expectedVersion } as const;
   expectOk(await bench.test.stores.agents.setMode(change, live()));
+}
+
+// Custody whose every signature fails without an answer.
+function faulting(custody: Signer): Signer {
+  return {
+    account: async (wallet, chain, options) => custody.account(wallet, chain, options),
+    signTransaction: async () =>
+      Promise.reject(new BinferenceError({ code: "custody.sign_unknown", message: "No answer." })),
+  };
+}
+
+// A preparer whose first answer is a node that is down.
+function downOnce(network: FakeNetwork): TxPreparer {
+  let isDown = true;
+  return {
+    replace: async (request, options) => network.replace(request, options),
+    async prepare(request, options) {
+      if (isDown) {
+        isDown = false;
+        throw new BinferenceError({ code: "chain.rpc_down", message: "No node answered." });
+      }
+      return network.prepare(request, options);
+    },
+  };
 }
 
 async function heldTap(options: BenchOptions = {}) {
@@ -205,14 +230,21 @@ describe("the executor", () => {
 });
 
 describe("the executor's refusals", () => {
-  it("leaves an intent confirmed and signs nothing when its card expired first", async () => {
+  it("expires an intent whose confirmation ran out before the queue took it", async () => {
     const { bench, intent } = await heldTap();
     await bench.test.clock.advance(61_000);
     await bench.release();
     await flush();
-    expect(await stateOf(bench, intent)).toBe("confirmed");
-    expect(eventsOf(bench)).toStrictEqual(["executor.move_refused:expired"]);
+    expect(await stateOf(bench, intent)).toBe("expired");
+    expect(eventsOf(bench)).toStrictEqual(["executor.move_refused:expired", "executor.lapsed:"]);
     expect(bench.signed).toStrictEqual([]);
+  });
+
+  it("takes an intent again a block after no node could prepare its first step", async () => {
+    const { bench, intent } = await heldTap({ preparer: downOnce });
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(eventsOf(bench)).toContain("executor.not_taken:unprepared");
   });
 
   it("leaves an intent confirmed when its agent went back to paper", async () => {
@@ -264,6 +296,20 @@ describe("the executor's refusals", () => {
     );
     expect(eventsOf(bench)).toContain("executor.lapsed:");
     expect(bench.signed).toStrictEqual([]);
+  });
+
+  it("cancels an intent whose custody faults as it signs the first step", async () => {
+    const { bench, intent } = await heldTap({ custody: faulting });
+    await bench.release();
+    await flush();
+    expect(await stateOf(bench, intent)).toBe("cancelled");
+    expect(eventsOf(bench)).toStrictEqual([
+      "executor.took:",
+      "executor.sign_failed:custody.sign_unknown",
+      "executor.step_stopped:sign_fault",
+      "executor.step_unsent:cancelled",
+    ]);
+    expect(await transactionsOf(bench)).toStrictEqual([]);
   });
 
   it("cancels an intent whose first step custody refuses, with nothing stored or sent", async () => {

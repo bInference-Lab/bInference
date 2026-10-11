@@ -79,7 +79,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                                        | the card version tapped is the current one; the card has not expired; the rolling cap still holds ([decision 0136](../DECISIONS.md#d0136))                                                             |
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                                            |                                                                                                                                                                                                        |
 | `awaiting_confirmation`      | `expired`               | card timer                                                                           | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, unfreezes, identity, token launches and approval revokes                                                                      |
-| `confirmed`                  | `expired`               | recovery finds its authorization ran out                                             | the confirmation or the auto grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                          |
+| `confirmed`                  | `expired`               | the executor finds its authorization ran out                                         | the confirmation or the auto grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                          |
 | any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                                             | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099))                                                                                                                |
 | `confirmed`                  | `paper_filled`          | paper mode                                                                           | a paper intent, which a rescue never is ([decision 0100](../DECISIONS.md#d0100))                                                                                                                       |
 | `confirmed`                  | `executing`             | wallet queue takes it                                                                | the agent is live, or the intent is a rescue; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                     |
@@ -288,7 +288,8 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 4. Recovery never signs, except a rescue's unsent steps. A step with no stored transaction ends the
    intent: `cancelled` when no step was signed, `failed_onchain` with `step_unsent` once an earlier
    step landed, each with an owner notice ([decision 0109](../DECISIONS.md#d0109)). The executor
-   ends an intent the same way when a step cannot be signed or stored. A rescue left `executing`
+   ends an intent the same way when a step cannot be signed or stored, custody or the signer fails
+   as it signs (`eth_signTransaction` sends nothing), or no node answers as the step is prepared. A rescue left `executing`
    goes on instead: a step a block holds is done, a signed or sent step goes on with its stored
    bytes, and a step with no stored transaction is signed as at its first run while the owner's
    confirmation lasts. Once it has run out, that step fails and the rescue reconciles with what
@@ -299,8 +300,10 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    or locked moves to `expired`, with `notice.confirmationLapsed`; nothing is signed. One that
    still holds waits for the queue until the engine holds its keys
    ([decision 0120](../DECISIONS.md#d0120)). A running engine does the same for an intent its
-   queue left `confirmed` while the fee per gas stayed above the cap
-   ([decision 0143](../DECISIONS.md#d0143)).
+   queue refused or left `confirmed`: one whose authorization ran out while it waited behind the
+   wallet's other intents, and one whose fee per gas stayed above the cap
+   ([decision 0143](../DECISIONS.md#d0143)) or whose first step no node could prepare, which the
+   queue tries again each block until then.
 
 <a id="section-8"></a>
 

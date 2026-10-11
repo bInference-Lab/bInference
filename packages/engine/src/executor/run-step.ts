@@ -2,6 +2,8 @@ import type {
   PreparedTx,
   RelayAnswer,
   RelayRefusal,
+  SignedTx,
+  SignRequest,
   StepReplacement,
   TxDraft,
   TxReceipt,
@@ -25,7 +27,8 @@ export interface PreparedStep {
 
 /**
  * Why a step was not signed, or not stored once signed: nothing was sent for it. `wrong_state`:
- * the transaction a replacement was for is no longer signed or sent.
+ * the transaction a replacement was for is no longer signed or sent. `sign_fault`: custody or the
+ * signer failed, and `eth_signTransaction` broadcasts nothing, so nothing left this machine.
  */
 export type SignStop =
   | "would_fail"
@@ -33,7 +36,14 @@ export type SignStop =
   | "unknown_wallet"
   | "bad_signature"
   | "nonce_taken"
-  | "wrong_state";
+  | "wrong_state"
+  | "sign_fault";
+
+// A fault of a call the run did not stop is logged with its code; the run's own stop is thrown on.
+function logFault(run: ExecutionRun, event: string, errorCode: string): void {
+  run.signal.throwIfAborted();
+  run.parts.log.warn(event, { chain: run.plan.chain.ref, errorCode });
+}
 
 /** What a stuck step's replacement takes the nonce of, and what the signer checks it against. */
 export interface StepReplacing {
@@ -41,17 +51,46 @@ export interface StepReplacing {
   readonly replaces: StepReplacement;
 }
 
-/** Takes the next nonce from the slot and prepares the step's draft at it, read from the chain. */
+/**
+ * Takes the next nonce from the slot and prepares the step's draft at it, read from the chain.
+ * `unprepared` when no node gave the nonce or the fees, logged as `executor.prepare_failed`.
+ */
 export async function prepareStep(
   run: ExecutionRun,
   slot: WalletSlot,
   step: { readonly index: number; readonly draft: TxDraft },
-): Promise<Result<PreparedStep, "would_fail">> {
+): Promise<Result<PreparedStep, "would_fail" | "unprepared">> {
   const { signal, plan } = run;
   const { index, draft } = step;
-  const { nonce } = await slot.nextNonce({ signal });
-  const prepared = await plan.sending.preparer.prepare({ draft, nonce }, { signal });
-  return prepared.ok ? ok({ index, draft, nonce, prepared: prepared.value }) : prepared;
+  try {
+    const { nonce } = await slot.nextNonce({ signal });
+    const prepared = await plan.sending.preparer.prepare({ draft, nonce }, { signal });
+    return prepared.ok ? ok({ index, draft, nonce, prepared: prepared.value }) : prepared;
+  } catch (error) {
+    logFault(
+      run,
+      "executor.prepare_failed",
+      error instanceof BinferenceError ? error.code : "unexpected",
+    );
+    return err("unprepared");
+  }
+}
+
+// Custody signs; a fault there signed nothing that left this machine.
+async function signed(
+  run: ExecutionRun,
+  request: SignRequest,
+): Promise<Result<SignedTx, "unknown_wallet" | "refused" | "sign_fault">> {
+  try {
+    return await run.parts.custody.signTransaction(request, { signal: run.signal });
+  } catch (error) {
+    logFault(
+      run,
+      "executor.sign_failed",
+      error instanceof BinferenceError ? error.code : "unexpected",
+    );
+    return err("sign_fault");
+  }
 }
 
 // Stores the signed bytes in the slot: a replacement at the nonce it takes, any other at the
@@ -99,11 +138,11 @@ export async function signAndStore(
     unsigned,
     ...(replacing === undefined ? {} : { replaces: replacing.replaces }),
   });
-  const signed = await parts.custody.signTransaction(request, { signal });
-  if (!signed.ok) {
-    return signed;
+  const signature = await signed(run, request);
+  if (!signature.ok) {
+    return signature;
   }
-  const hash = plan.chain.signingScheme.verify(unsigned, signed.value);
+  const hash = plan.chain.signingScheme.verify(unsigned, signature.value);
   if (!hash.ok) {
     return err("bad_signature");
   }
@@ -113,7 +152,7 @@ export async function signAndStore(
     step: index,
     account: slot.account,
     nonce,
-    raw: signed.value.raw,
+    raw: signature.value.raw,
     hash: hash.value,
     signedAtMs: parts.clock.now(),
   };

@@ -129,9 +129,10 @@ async function workOf(
   return isOwn ? takenWork({ intent, plan, account: account.value }) : "other_sender";
 }
 
-// A confirmed intent on its wallet's queue, then off it until it reconciles. One whose fee per gas
-// is above the network fee cap leaves the queue and tries again a block later, until the fee falls
-// or its authorization runs out and it expires (decision 0120).
+// A confirmed intent on its wallet's queue, then off it until it reconciles. One the queue left
+// `confirmed` expires once its authorization ran out (decision 0120); one whose fee per gas is
+// above the network fee cap, or whose first step no node could prepare, leaves the queue and
+// tries again a block later until then.
 async function runTaken(run: ExecutionRun, taken: Taken): Promise<void> {
   // A work still waiting for its wallet when the engine stops leaves the queue unrun.
   const outcome = await run.parts.queue.run(
@@ -139,14 +140,12 @@ async function runTaken(run: ExecutionRun, taken: Taken): Promise<void> {
     async (slot) => executeInSlot(run, slot, taken.intent),
     { signal: run.stopping },
   );
-  if (outcome === undefined) {
-    return;
-  }
-  if (outcome !== "over_fee_cap") {
+  if (outcome !== undefined && outcome !== "retry") {
     await ("dropped" in outcome ? watchDropped(run, outcome) : settleIncluded(run, outcome));
     return;
   }
-  if (await expireIfLapsed(run.parts, taken.intent, run.signal)) {
+  const waits = await expireIfLapsed(run.parts, taken.intent, run.signal);
+  if (waits && outcome === "retry") {
     await nextBlock(run);
     await runTaken(run, taken);
   }
