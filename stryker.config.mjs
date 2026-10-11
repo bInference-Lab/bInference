@@ -27,16 +27,23 @@ function hashOf(text) {
   return hash;
 }
 
+// MUTATE_FILES (comma-separated paths) narrows the run to those files: a pull request mutates only
+// the source files it changes.
+const changed = new Set(
+  (process.env.MUTATE_FILES ?? "").split(",").filter((path) => path.length > 0),
+);
+
 const files = folders
   .flatMap((folder) =>
     readdirSync(`${folder}/src`, { recursive: true, encoding: "utf8" })
       .map((path) => `${folder}/src/${path.replaceAll("\\", "/")}`)
       .filter((path) => path.endsWith(".ts") && !path.endsWith(".test.ts")),
   )
+  .filter((path) => changed.size === 0 || changed.has(path))
   .filter((path) => count === 1 || hashOf(path) % count === index - 1)
   .toSorted();
 if (files.length === 0) {
-  throw new Error(`Shard ${index} of ${count} holds no source file; use fewer shards.`);
+  throw new Error(`Shard ${index} of ${count} holds no source file to mutate; use fewer shards.`);
 }
 const tested = folders.filter((folder) => files.some((path) => path.startsWith(`${folder}/`)));
 
