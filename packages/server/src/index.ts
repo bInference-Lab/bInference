@@ -1,4 +1,5 @@
 export { isLoopbackHost } from "./check-bind.js";
+export type { ConsoleFiles } from "./console-route.js";
 export { createProtocolServer } from "./create-protocol-server.js";
 export type {
   HttpListenOptions,

@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
-import { createPublicKey, type KeyObject, verify } from "node:crypto";
+import { verify } from "node:crypto";
 import type { DeviceRecord } from "@binference/engine";
+import { deviceKeyObject } from "@binference/engine/access";
 import { deviceProofText } from "@binference/protocol";
 
 /** A console device's answer to a challenge, with what the server saw. */
@@ -14,25 +15,16 @@ export interface DeviceProof {
   readonly signature: string;
 }
 
-function publicKeyOf(device: DeviceProof["device"]): KeyObject {
-  return createPublicKey({
-    key: Buffer.from(device.publicKey, "base64url"),
-    format: "der",
-    type: "spki",
-  });
-}
-
 function verifies(proof: DeviceProof): boolean {
-  const key = publicKeyOf(proof.device);
+  const key = deviceKeyObject(proof.device);
+  if (key === undefined) {
+    return false;
+  }
   const text = Buffer.from(deviceProofText({ nonce: proof.nonce, origin: proof.origin }), "utf8");
   const signature = Buffer.from(proof.signature, "base64url");
-  if (proof.device.alg === "ed25519") {
-    return key.asymmetricKeyType === "ed25519" && verify(null, text, key, signature);
-  }
-  return (
-    key.asymmetricKeyDetails?.namedCurve === "prime256v1" &&
-    verify("sha256", text, { key, dsaEncoding: "ieee-p1363" }, signature)
-  );
+  return proof.device.alg === "ed25519"
+    ? verify(null, text, key, signature)
+    : verify("sha256", text, { key, dsaEncoding: "ieee-p1363" }, signature);
 }
 
 /**

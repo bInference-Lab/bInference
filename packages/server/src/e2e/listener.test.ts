@@ -1,27 +1,12 @@
-import { Buffer } from "node:buffer";
-import { request } from "node:http";
 import type { EngineState } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
+import { requestLocal } from "./local-http.js";
 import { openFrame, openRawSocket } from "./raw-socket.js";
 import { startTestServer, type TestServer } from "./test-server.js";
 
-interface HttpAnswer {
-  readonly status: number;
-  readonly body: string;
-}
-
-async function fetchLocal(port: number, path: string, method = "GET"): Promise<HttpAnswer> {
-  return new Promise((resolve, reject) => {
-    const outgoing = request({ host: "127.0.0.1", port, path, method, agent: false }, (answer) => {
-      const chunks: Buffer[] = [];
-      answer.on("data", (chunk: Buffer) => chunks.push(chunk));
-      answer.on("end", () =>
-        resolve({ status: answer.statusCode ?? 0, body: Buffer.concat(chunks).toString("utf8") }),
-      );
-    });
-    outgoing.on("error", reject);
-    outgoing.end();
-  });
+async function fetchLocal(port: number, path: string, method = "GET") {
+  const { status, body } = await requestLocal(port, { path, method });
+  return { status, body };
 }
 
 describe("the HTTP listener", () => {

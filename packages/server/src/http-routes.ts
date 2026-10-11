@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
+import type { DevicePairing } from "@binference/engine/access";
 import type { EngineState } from "@binference/protocol";
+import { answerConsole, type ConsoleFiles } from "./console-route.js";
+import { answerPair } from "./pair-route.js";
 
 /** The path of a request, `/` when it has none. */
 export function pathOf(request: IncomingMessage): string {
@@ -12,20 +15,23 @@ export function pathOf(request: IncomingMessage): string {
 
 const plain = { "cache-control": "no-store", "x-content-type-options": "nosniff" };
 
-/**
- * Answers a plain HTTP request. `GET /health` answers `200 {"state":"ready"}`, `200
- * {"state":"locked"}` for an engine that serves calls but signs nothing yet, or
- * `503 {"state":"starting"}`; another method there is 405, and any other path 404.
- */
-export function answerRequest(
+/** What the plain HTTP routes answer from. */
+export interface HttpRoutesContext {
+  readonly state: () => EngineState;
+  readonly isAllowedOrigin: (origin: string | undefined) => boolean;
+  /** Pairs console devices at `POST /pair`; without it the path is 404. */
+  readonly pairing?: DevicePairing;
+  /** The console's built files; without them `/` and `/mini` are 404. */
+  readonly consoleFiles?: ConsoleFiles;
+  /** Aborts when the server stops. */
+  readonly signal: AbortSignal;
+}
+
+function answerHealth(
   request: IncomingMessage,
   response: ServerResponse,
   state: () => EngineState,
 ): void {
-  if (pathOf(request) !== "/health") {
-    response.writeHead(404, plain).end();
-    return;
-  }
   if (request.method !== "GET") {
     response.writeHead(405, { ...plain, allow: "GET" }).end();
     return;
@@ -34,6 +40,37 @@ export function answerRequest(
   response
     .writeHead(current === "starting" ? 503 : 200, { ...plain, "content-type": "application/json" })
     .end(JSON.stringify({ state: current }));
+}
+
+/**
+ * Answers a plain HTTP request. `GET /health` answers `200 {"state":"ready"}`, `200
+ * {"state":"locked"}` for an engine that serves calls but signs nothing yet, or
+ * `503 {"state":"starting"}`. `POST /pair` pairs a console device, and every other `GET` the
+ * console's files serve (`answerConsole`). A wrong method on `/health` or `/pair` is 405, and
+ * anything else 404.
+ */
+export function answerRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  context: HttpRoutesContext,
+): void {
+  const path = pathOf(request);
+  if (path === "/health") {
+    answerHealth(request, response, context.state);
+    return;
+  }
+  const { pairing, consoleFiles } = context;
+  if (path === "/pair" && pairing !== undefined) {
+    answerPair(request, response, { ...context, pairing });
+    return;
+  }
+  const isConsole =
+    consoleFiles !== undefined &&
+    path !== "/ws" &&
+    answerConsole(request, response, { files: consoleFiles, path });
+  if (!isConsole) {
+    response.writeHead(404, plain).end();
+  }
 }
 
 const statusLines = { 404: "404 Not Found", 503: "503 Service Unavailable" } as const;

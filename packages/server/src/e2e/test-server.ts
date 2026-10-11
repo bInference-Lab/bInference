@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { generateKeyPairSync, type KeyObject, sign } from "node:crypto";
 import { createServer as createNetServer, type Server as NetServer } from "node:net";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
-import { type Id, idSchema } from "@binference/core";
+import { createIdSource, type Id, idSchema, type Random } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
@@ -12,10 +12,12 @@ import {
 } from "@binference/core/testing";
 import {
   type AccessStore,
+  type EnginePush,
   type IdempotencyStore,
   sha256Hex,
   type TokenKind,
 } from "@binference/engine";
+import { createDevicePairing } from "@binference/engine/access";
 import { createMemoryAccessStore, createMemoryIdempotencyStore } from "@binference/engine/testing";
 import {
   type ClientKind,
@@ -27,6 +29,7 @@ import {
   type Scope,
 } from "@binference/protocol";
 import { WebSocket } from "ws";
+import type { ConsoleFiles } from "../console-route.js";
 import { createProtocolServer, type ProtocolServer } from "../create-protocol-server.js";
 import type { OperationHandlers } from "../operation-handlers.js";
 import type { ServerLimits } from "../server-limits.js";
@@ -62,6 +65,8 @@ export interface TestServer {
   /** An MCP token: `read` and `propose`. */
   readonly mcpToken: TestToken;
   readonly device: TestDevice;
+  /** The pushes the device pairing published, oldest first. */
+  readonly pairingPushes: readonly EnginePush[];
   /** Closes the server and the IPC stand-in. */
   close(): Promise<void>;
 }
@@ -71,6 +76,7 @@ export interface TestServerOptions {
   readonly handlers?: OperationHandlers;
   readonly state?: () => EngineState;
   readonly limits?: Partial<ServerLimits>;
+  readonly consoleFiles?: ConsoleFiles;
 }
 
 const cliScopes: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
@@ -114,15 +120,31 @@ async function listen(server: NetServer): Promise<number> {
   return typeof address === "object" && address !== null ? address.port : 0;
 }
 
+// The device pairing over the test's stores, with the pushes it publishes.
+function pairingOn(parts: {
+  readonly access: AccessStore;
+  readonly clock: ManualClock;
+  readonly random: Random;
+}) {
+  const pairingPushes: EnginePush[] = [];
+  const ids = createIdSource({ clock: parts.clock, random: parts.random });
+  const pairing = createDevicePairing({ ...parts, ids, publish: (p) => pairingPushes.push(p) });
+  return { pairing, pairingPushes };
+}
+
 /** Starts a protocol server on 127.0.0.1 with fresh memory stores, two tokens and a device. */
 export async function startTestServer(options: TestServerOptions = {}): Promise<TestServer> {
   const clock = createManualClock(1_000_000);
   const logger = createMemoryLogger({ subsystem: "server" });
   const access = createMemoryAccessStore();
   const idempotency = createMemoryIdempotencyStore();
+  const random = createSeededRandom(7);
+  const { pairing, pairingPushes } = pairingOn({ access, clock, random });
   const server = createProtocolServer({
     http: { host: "127.0.0.1", port: 0 },
     auth: { access },
+    pairing,
+    ...(options.consoleFiles === undefined ? {} : { consoleFiles: options.consoleFiles }),
     idempotency,
     handlers: options.handlers ?? {},
     engine: {
@@ -131,7 +153,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
       owner: () => ({ locale: "en", timezone: "UTC" }),
     },
     clock,
-    random: createSeededRandom(7),
+    random,
     logger,
     ...(options.limits === undefined ? {} : { limits: options.limits }),
   });
@@ -152,6 +174,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
     cliToken: await addToken(access, { n: 1, kind: "cli", scopes: cliScopes }),
     mcpToken: await addToken(access, { n: 2, kind: "mcp", scopes: ["read", "propose"] }),
     device: await addDevice(access),
+    pairingPushes,
     async close() {
       ipc.close();
       await server.close();

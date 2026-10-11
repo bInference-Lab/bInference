@@ -31,6 +31,11 @@ export interface Connection {
   end(code: ErrorCode, message: string): void;
   /** Cuts the socket at once, with no `bye`. */
   terminate(): void;
+  /**
+   * The id of the credential the connection signed in with, or is proving: a device's while it
+   * answers its challenge. `undefined` before `open` and after the close.
+   */
+  credential(): string | undefined;
   /** Resolves once the socket closed. */
   readonly closed: Promise<void>;
 }
@@ -240,6 +245,15 @@ function createLink(socket: WebSocket, peer: Peer, context: ConnectionContext): 
   };
 }
 
+function credentialOf(phase: Phase): string | undefined {
+  if (phase.name === "ready") {
+    return phase.session.caller.credential;
+  }
+  return phase.name === "proving" && "device" in phase.open.auth
+    ? phase.open.auth.device
+    : undefined;
+}
+
 function errorCodeOf(error: Error): string {
   return "code" in error && typeof error.code === "string" ? error.code : "unexpected";
 }
@@ -276,6 +290,7 @@ export function serveConnection(
   return {
     end: (code, message) => sayBye(link, code, message),
     terminate: () => socket.terminate(),
+    credential: () => credentialOf(link.phase.get()),
     closed,
   };
 }

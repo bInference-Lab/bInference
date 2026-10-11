@@ -5,15 +5,18 @@ import {
   BinferenceError,
   type Clock,
   createIdSource,
+  type ErrorCode,
   type Logger,
   type Random,
 } from "@binference/core";
 import type { IdempotencyStore } from "@binference/engine";
+import type { DevicePairing } from "@binference/engine/access";
 import type { PushFrame } from "@binference/protocol";
 import { WebSocketServer } from "ws";
 import { createCallDispatch } from "./call-dispatch.js";
 import { checkBind } from "./check-bind.js";
 import type { ConnectionContext } from "./connection-link.js";
+import type { ConsoleFiles } from "./console-route.js";
 import type { EngineFacts } from "./engine-facts.js";
 import { answerRequest, pathOf, refuseUpgrade } from "./http-routes.js";
 import { createIdempotentWrites } from "./idempotent-writes.js";
@@ -41,6 +44,10 @@ export interface ProtocolServerOptions {
   readonly http?: HttpListenOptions;
   /** What sign-ins are checked against; without it every sign-in fails with `auth.required`. */
   readonly auth?: ServerAuth;
+  /** Pairs console devices at `POST /pair` on the HTTP listener; without it the path is 404. */
+  readonly pairing?: DevicePairing;
+  /** The console's built files, served on the HTTP listener at `/` and `/mini`. */
+  readonly consoleFiles?: ConsoleFiles;
   /** Where each write's result is kept under its idempotency key. */
   readonly idempotency: IdempotencyStore;
   readonly handlers: OperationHandlers;
@@ -72,6 +79,11 @@ export interface ProtocolServer {
   acceptIpc(socket: Socket): void;
   /** Pushes an event to every connection subscribed to its topic; see `PushHub.publish`. */
   publish(event: PushEvent): PushFrame;
+  /**
+   * Ends every connection signed in with the credential, or proving it, with `bye` and the code,
+   * such as `auth.revoked` once a device is revoked.
+   */
+  endSessions(credential: string, code: ErrorCode): void;
   /**
    * Says `bye` with `engine.stopping` to every connection, waits `closeGraceMs` for them to close,
    * cuts the rest, aborts every running call and closes the listener. A second call waits for the
@@ -233,9 +245,21 @@ function upgrade(state: ServerState, upgrading: Upgrade): void {
   });
 }
 
-function createListener(state: ServerState, transport: Transport): Server {
+interface ListenerOptions {
+  readonly transport: Transport;
+  /** The browser routes of the HTTP listener: pairing and the console's files. */
+  readonly browser?: Pick<ProtocolServerOptions, "pairing" | "consoleFiles">;
+}
+
+function createListener(state: ServerState, options: ListenerOptions): Server {
+  const { transport } = options;
   const server = createServer((request, response) =>
-    answerRequest(request, response, state.context.engine.state),
+    answerRequest(request, response, {
+      ...options.browser,
+      state: state.context.engine.state,
+      isAllowedOrigin: (origin) => state.isAllowedOrigin.get()(origin),
+      signal: state.lifetime.signal,
+    }),
   );
   server.on("upgrade", (request: IncomingMessage, socket: Duplex, head: Buffer) =>
     upgrade(state, { request, socket, head, transport }),
@@ -269,9 +293,14 @@ async function shutdown(state: ServerState, listeners: Listeners): Promise<void>
  */
 export function createProtocolServer(options: ProtocolServerOptions): ProtocolServer {
   const state = createState(options);
+  const { pairing, consoleFiles } = options;
+  const browser = {
+    ...(pairing === undefined ? {} : { pairing }),
+    ...(consoleFiles === undefined ? {} : { consoleFiles }),
+  };
   const listeners: Listeners = {
-    http: createListener(state, "ws"),
-    ipc: createListener(state, "ipc"),
+    http: createListener(state, { transport: "ws", browser }),
+    ipc: createListener(state, { transport: "ipc" }),
   };
   // Plain HTTP requests, such as health checks, get room beside the WebSocket connections.
   listeners.http.maxConnections = state.limits.maxConnections * 2;
@@ -296,6 +325,13 @@ export function createProtocolServer(options: ProtocolServerOptions): ProtocolSe
       }
     },
     publish: (event) => state.context.pushes.publish(event),
+    endSessions(credential, code) {
+      for (const connection of state.connections) {
+        if (connection.credential() === credential) {
+          connection.end(code, "The credential was revoked.");
+        }
+      }
+    },
     async close() {
       const running = state.closing.get() ?? shutdown(state, listeners);
       state.closing.set(running);
