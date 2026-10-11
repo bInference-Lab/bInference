@@ -232,7 +232,11 @@ deletes its ticket in the transaction that claims its launch
 | `notes_fts`         | FTS5 over `notes.text`, kept in step by triggers                                                                                                                                                                            |                                           |
 
 `meta` holds the writer fence (`writer_fence`), raised at each runtime start and checked by every
-transcript write ([spec 8, section 2.3](runtime.md#section-2-3)). `agent_inbox` in the engine
+transcript write ([spec 8, section 2.3](runtime.md#section-2-3)). Triggers refuse every change of
+a `transcript_events` row, and every removal but the retention job's, which sets
+`meta.prune_before` to its cutoff inside its own transaction
+([decision 0169](../DECISIONS.md#d0169)). `notes_fts` uses FTS5's trigram tokenizer, so a query of
+three characters or more finds a word inside Chinese text. `agent_inbox` in the engine
 database holds each message for the runtime until the runtime takes it into `chat_queue`
 ([spec 8, section 3.2](runtime.md#section-3-2)).
 

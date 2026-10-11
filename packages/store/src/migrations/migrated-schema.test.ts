@@ -279,11 +279,19 @@ describe("the agent database", () => {
       },
       turns: {
         strict: true,
-        columns: names("id session_id started_at ended_at outcome committed outside_content model"),
+        columns: names(
+          "id session_id started_at ended_at outcome committed outside_content model held_back",
+        ),
       },
       transcript_events: {
         strict: true,
-        columns: names("id session_id turn_id seq role kind content at"),
+        columns: names("id session_id turn_id seq role kind content at outside"),
+      },
+      chat_queue: {
+        strict: true,
+        columns: names(
+          "message agent_id session_id kind payload received_at turn_id dropped_at drop_reason",
+        ),
       },
       notes: {
         strict: true,
@@ -299,5 +307,7 @@ describe("the agent database", () => {
     expect(describeIndexes(database, "turns")).toStrictEqual(["index|session_id,started_at"]);
     expect(describeIndexes(database, "transcript_events")).toStrictEqual(["unique|session_id,seq"]);
     expect(describeIndexes(database, "notes")).toStrictEqual(["index|agent_id"]);
+    expect(describeIndexes(database, "chat_queue")).toStrictEqual(["index|session_id,received_at"]);
+    expect(primaryKeys(database, "chat_queue")).toStrictEqual(["message"]);
   });
 });

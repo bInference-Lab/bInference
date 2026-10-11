@@ -244,4 +244,47 @@ describe("the agent database's constraints", () => {
     event();
     expect(event).toThrow(/UNIQUE/);
   });
+
+  it("refuses a change of a transcript event, and its removal unless retention prunes it", () => {
+    const { database } = databases.open(agentDatabase);
+    run(
+      database,
+      "INSERT INTO sessions VALUES ('ses_1', 'agt_1', 'telegram', 'telegram:1:0', 1, NULL, NULL, 0)",
+    );
+    run(
+      database,
+      "INSERT INTO transcript_events (session_id, seq, role, kind, content, at) VALUES ('ses_1', 1, 'owner', 'text', '\"hi\"', 100)",
+    );
+    expect(() => run(database, "UPDATE transcript_events SET content = '\"bye\"'")).toThrow(
+      /append-only/,
+    );
+    expect(() => run(database, "UPDATE transcript_events SET outside = 1")).toThrow(/append-only/);
+    expect(() => run(database, "DELETE FROM transcript_events")).toThrow(/append-only/);
+    run(database, "INSERT INTO meta (key, value) VALUES ('prune_before', '100')");
+    expect(() => run(database, "DELETE FROM transcript_events")).toThrow(/append-only/);
+    run(database, "UPDATE meta SET value = '101' WHERE key = 'prune_before'");
+    run(database, "DELETE FROM transcript_events");
+    expect(database.prepare("SELECT count(*) AS n FROM transcript_events").get()?.["n"]).toBe(0);
+  });
+
+  it("refuses a queued message dropped without a reason, or both taken and dropped", () => {
+    const { database } = databases.open(agentDatabase);
+    const queue = (message: string, rest: string): void =>
+      run(
+        database,
+        `INSERT INTO chat_queue (message, agent_id, session_id, kind, payload, received_at, turn_id, dropped_at, drop_reason) VALUES ('${message}', 'agt_1', 'ses_1', 'inbox/message', '{}', 1, ${rest})`,
+      );
+    queue("msg_1", "NULL, NULL, NULL");
+    queue("msg_2", "'trn_1', NULL, NULL");
+    queue("msg_3", "NULL, 2, 'budget'");
+    expect(() => queue("msg_4", "NULL, 2, NULL")).toThrow(/CHECK/);
+    expect(() => queue("msg_5", "'trn_1', 2, 'budget'")).toThrow(/CHECK/);
+    expect(() => queue("msg_1", "NULL, NULL, NULL")).toThrow(/UNIQUE|PRIMARY/);
+    expect(() =>
+      run(
+        database,
+        "INSERT INTO chat_queue (message, agent_id, session_id, kind, payload, received_at) VALUES ('msg_6', 'agt_1', 'ses_1', 'inbox/nothing', '{}', 1)",
+      ),
+    ).toThrow(/CHECK/);
+  });
 });
