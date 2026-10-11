@@ -22,7 +22,11 @@ other code writes an intent's state ([ENGINEERING.md principle 2](../ENGINEERING
   an approval has two steps: an exact approval, then the swap. A rescue has one step per token per
   wallet.
 - **The card**: what the owner sees and confirms, in versions. A new quote with worse terms makes a
-  new version ([rule 4](../ARCHITECTURE.md#rule-4)).
+  new version ([rule 4](../ARCHITECTURE.md#rule-4)). Its terms hash is the SHA-256 of the intent,
+  the card version, the request, the quote and the plan: what the card shows and what runs. A
+  re-quote within the tolerance at the tap replaces the quote and the plan, and the confirmation
+  stores the hash of the new ones, which every signature then carries
+  ([decision 0144](../DECISIONS.md#d0144)). An auto grant's hash covers the same documents.
 - **Transactions**: each step's signed transaction and its fate, in their own records (section 6).
 - **Events**: every transition, appended to `intent_events` and the ledger (section 8).
 

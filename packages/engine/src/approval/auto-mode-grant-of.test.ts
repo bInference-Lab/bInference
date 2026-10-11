@@ -79,15 +79,17 @@ describe("the auto grant of a stored intent", () => {
       id: "int_0190f1c2-3a4b-7c5d-8e6f-000000000001",
       request: { kind: "swap", amount: { base: "5" } },
       quote: { minOut: { base: "9" } },
+      plan: [{ chain: "fake:1", from: "fake:1:0x0000000a", payload: "p" }],
     } as unknown as IntentRecord;
     // The SHA-256 of {"approvalMode":"auto","intent":"int_0190f1c2-3a4b-7c5d-8e6f-000000000001",
-    // "modeVersion":3,"quote":{"minOut":{"base":"9"}},"request":{"amount":{"base":"5"},"kind":"swap"}}
+    // "modeVersion":3,"plan":[{"chain":"fake:1","from":"fake:1:0x0000000a","payload":"p"}],
+    // "quote":{"minOut":{"base":"9"}},"request":{"amount":{"base":"5"},"kind":"swap"}}
     expect(autoModeTermsHash(record, 3)).toBe(
-      "c0765930400e7b06b24af8da613783887162484400f974501e59238c5f37e95a",
+      "694d8621bcb2eb8ffe2fdb43c94e4e451935c481c9a6b0f82c80069fba22a0cd",
     );
   });
 
-  it("binds the terms hash to the intent, its mode version, request and quote", async () => {
+  it("binds the terms hash to the intent, its mode version, request, quote and plan", async () => {
     const test = await startTestEngine({ agent: { approvalMode: "auto", mode: "live" } });
     const { record } = await proposed(test);
     const hashes = new Set([
@@ -102,8 +104,9 @@ describe("the auto grant of a stored intent", () => {
         0,
       ),
       autoModeTermsHash({ ...record, quote: null }, 0),
+      autoModeTermsHash({ ...record, plan: null }, 0),
     ]);
-    expect(hashes.size).toBe(5);
+    expect(hashes.size).toBe(6);
     expect(autoModeTermsHash(record, 0)).toBe(autoModeTermsHash({ ...record }, 0));
   });
 });

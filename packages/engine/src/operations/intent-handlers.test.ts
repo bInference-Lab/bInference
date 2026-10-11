@@ -1,9 +1,11 @@
 import type { Venue } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
-import { err, type Id } from "@binference/core";
+import { err, type Id, stableJson } from "@binference/core";
 import type { IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import type { IntentRecord } from "../intents/intent-record.js";
 import { expectOk, testCoin, testNowMs, testSwap, testToken } from "../intents/test-intents.js";
+import { sha256Hex } from "../records/sha256-hex.js";
 import {
   startTestEngine,
   type TestEngine,
@@ -146,6 +148,21 @@ describe("the intent handlers", () => {
     const answer = expectOk(await confirm(intent));
     expect(answer.state).toBe("paper_filled");
     expect(answer.quote?.quotedAt).toBe(testNowMs + 11_000);
+  });
+
+  it("confirms the re-quoted terms under their own hash, plan included", async () => {
+    const intent = await proposed();
+    await intent.test.clock.advance(11_000);
+    expectOk(await confirm(intent));
+    const { intents } = intent.test.stores;
+    const [card] = await intents.cards(intent.view.intent, live);
+    const stored = await intents.confirmation(intent.view.intent, live);
+    const record = await intents.get(intent.view.intent, live);
+    expect(record).toBeDefined();
+    const { request, quote, plan } = record as Required<IntentRecord>;
+    const terms = { intent: intent.view.intent, version: 1, request, quote, plan };
+    expect(stored?.termsHash).not.toBe(card?.termsHash);
+    expect(stored?.termsHash).toBe(sha256Hex(stableJson(terms)));
   });
 
   it("keeps the card open when the re-quote fails", async () => {

@@ -15,9 +15,9 @@ function isAutoModeKind(kind: IntentKind): kind is AutoModeKind {
 
 /**
  * The terms hash of an intent the auto mode authorized under one mode version: the SHA-256 of the
- * intent's id, the mode and its version, the request and the quote, as a card's terms hash covers
- * what the card shows. The engine sends it with each signing request of the intent, and the grant
- * holds only while the two match.
+ * intent's id, the mode and its version, the request, the quote and the plan, as a card's terms
+ * hash covers what the card shows and what runs. The engine sends it with each signing request of
+ * the intent, and the grant holds only while the two match.
  */
 export function autoModeTermsHash(record: IntentRecord, modeVersion: number): Sha256Hex {
   const terms = {
@@ -26,6 +26,7 @@ export function autoModeTermsHash(record: IntentRecord, modeVersion: number): Sh
     modeVersion,
     request: record.request,
     quote: record.quote ?? null,
+    plan: record.plan ?? null,
   };
   return sha256Hex(stableJson(terms));
 }

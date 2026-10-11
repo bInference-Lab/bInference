@@ -7,7 +7,7 @@ import {
 } from "@binference/core";
 import type { IntentWrite } from "../confirmations/stored-intent.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
-import { sha256Hex } from "../records/sha256-hex.js";
+import { type Sha256Hex, sha256Hex } from "../records/sha256-hex.js";
 import type { CardOpening, CardRecord, CardVersionClosing } from "./card-record.js";
 import type { ConfirmationDraft } from "./confirmation-record.js";
 import {
@@ -98,15 +98,33 @@ interface CardWrites {
 // Spec 4, section 2: 12 random bytes, which base64url writes in 16 characters.
 const callbackRefBytes = 12;
 
-// The terms hash covers what the card shows: the request and the quote of this version.
-function opening(card: CardTerms, context: MoveContext, quote: JsonValue | undefined): CardOpening {
+/** The documents a terms hash covers besides the request: the quote and the plan that run. */
+interface Terms {
+  readonly quote: JsonValue | undefined;
+  readonly plan: JsonValue | undefined;
+}
+
+// The terms hash covers what the card shows and what runs: the request, the quote and the plan of
+// this version.
+function termsHashOf(record: IntentRecord, version: number, terms: Terms): Sha256Hex {
+  const { quote, plan } = terms;
+  const covered = {
+    intent: record.id,
+    version,
+    request: record.request,
+    quote: quote ?? null,
+    plan: plan ?? null,
+  };
+  return sha256Hex(stableJson(covered));
+}
+
+function opening(card: CardTerms, context: MoveContext, terms: Terms): CardOpening {
   const { record, ids, random } = context;
   const { version } = card;
-  const terms = { intent: record.id, version, request: record.request, quote: quote ?? null };
   return {
     id: ids.next("crd"),
     version,
-    termsHash: sha256Hex(stableJson(terms)),
+    termsHash: termsHashOf(record, version, terms),
     ...(random === undefined
       ? {}
       : { callbackRef: Buffer.from(random.bytes(callbackRefBytes)).toString("base64url") }),
@@ -122,12 +140,12 @@ function closingReason(move: IntentMove): CardVersionClosing["reason"] | undefin
   return move.step.status.state === "cancelled" ? "cancelled" : undefined;
 }
 
-function cardWrites(move: IntentMove, context: MoveContext, quote?: JsonValue): CardWrites {
+function cardWrites(move: IntentMove, context: MoveContext, terms: Terms): CardWrites {
   const { cards } = context.history;
   const open = cards.find((card) => card.closedAtMs === undefined);
   const { card } = move.step.status;
   if (card !== undefined && card.version > (cards.at(-1)?.version ?? 0)) {
-    const openCard = opening(card, context, quote);
+    const openCard = opening(card, context, terms);
     return open === undefined
       ? { openCard }
       : { openCard, closeCard: { id: open.id, reason: "replaced" } };
@@ -136,10 +154,12 @@ function cardWrites(move: IntentMove, context: MoveContext, quote?: JsonValue): 
   return open === undefined || reason === undefined ? {} : { closeCard: { id: open.id, reason } };
 }
 
+// A re-quote within the tolerance at the tap confirms the new quote and plan, so the confirmation
+// carries their terms hash, not the card's.
 function confirmationOf(
   move: IntentMove,
   cards: readonly CardRecord[],
-  ids: IdSource,
+  context: Pick<MoveContext, "ids" | "record"> & { readonly terms: Terms },
 ): ConfirmationDraft | undefined {
   const { confirmation, closing } = move;
   if (confirmation === undefined) {
@@ -153,11 +173,13 @@ function confirmationOf(
       details: { intent: move.intent },
     });
   }
+  const { ids, record, terms } = context;
   return {
     id: ids.next("cnf"),
     cardId: card.id,
     cardVersion: card.version,
-    termsHash: card.termsHash,
+    termsHash:
+      move.requote === undefined ? card.termsHash : termsHashOf(record, card.version, terms),
     bySurface: closing.answeredBy.surface,
     byRef: closing.answeredBy.by,
     expiresAtMs: confirmation.expiresAtMs,
@@ -186,12 +208,14 @@ export function changeOf(move: IntentMove, context: MoveContext): IntentChange {
   const { step } = move;
   const fields = fieldsOf(move);
   const cause = causeOf(move);
-  const cards = cardWrites(move, context, fields.quote ?? context.record.quote);
+  const { record } = context;
+  const terms = { quote: fields.quote ?? record.quote, plan: fields.plan ?? record.plan };
+  const cards = cardWrites(move, context, terms);
   const known =
     cards.openCard === undefined
       ? context.history.cards
-      : [...context.history.cards, { ...cards.openCard, intentId: context.record.id }];
-  const confirmation = confirmationOf(move, known, context.ids);
+      : [...context.history.cards, { ...cards.openCard, intentId: record.id }];
+  const confirmation = confirmationOf(move, known, { ids: context.ids, record, terms });
   return {
     id: move.intent,
     expectedVersion: move.version,

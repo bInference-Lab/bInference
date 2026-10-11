@@ -23,7 +23,10 @@ export interface CardOpening {
   readonly id: Id<"crd">;
   /** 1 for the first card of an intent, one more for each version after it. */
   readonly version: number;
-  /** SHA-256 over the stable JSON of what the card shows; the signer checks it. */
+  /**
+   * SHA-256 over the stable JSON of what the card shows and what runs: the request, the quote and
+   * the plan of this version. The signer checks it.
+   */
   readonly termsHash: Sha256Hex;
   /**
    * The random reference a Telegram button carries (spec 4, section 2): 12 bytes in base64url.

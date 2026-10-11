@@ -8,7 +8,10 @@ export interface ConfirmationDraft {
   readonly id: Id<"cnf">;
   readonly cardId: Id<"crd">;
   readonly cardVersion: number;
-  /** The terms hash of the card version the owner saw. */
+  /**
+   * The terms hash of the card version the owner saw, or of the quote and plan a re-quote within
+   * the tolerance put in its place at the tap: what runs.
+   */
   readonly termsHash: Sha256Hex;
   /** The surface the owner answered on, such as `telegram` or `console`. */
   readonly bySurface: string;

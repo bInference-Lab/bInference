@@ -23,7 +23,10 @@ export interface AutoModeGrant {
   readonly kind: AutoModeKind;
   /** The approval mode's version when the intent passed the auto test. */
   readonly modeVersion: number;
-  /** The SHA-256 of the terms the auto test passed, in hex: the intent, its request and its quote. */
+  /**
+   * The SHA-256 of the terms the auto test passed, in hex: the intent, its request, its quote and
+   * its plan.
+   */
   readonly termsHash: string;
   /** When the intent passed the auto test and moved to `confirmed`, in epoch milliseconds. */
   readonly grantedAtMs: number;
