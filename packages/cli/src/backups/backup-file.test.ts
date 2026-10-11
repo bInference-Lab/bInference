@@ -10,6 +10,7 @@ import { createTempFolder, type TempFolder } from "@binference/platform/testing"
 import { createP256KeyPair } from "@binference/signer";
 import { afterEach, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
+import { deriveSealingKey } from "../hpke/sealing-key.js";
 import { joined, testOwnerKey, valueOf } from "./backup-fixtures.js";
 import { checkArchive } from "./check-archive.js";
 import { openBody } from "./chunk-stream.js";
@@ -47,7 +48,7 @@ function planOf(folder: string, ownerKeyPublic: string, name = "backup.bnfbak"):
     createdAt: 1_800_000_000_000,
     kind: "daily",
     binferenceVersion: "0.0.0",
-    ownerKeyPublic,
+    sealTo: { publicKey: ownerKeyPublic, version: 2 },
     files: [
       { path: "engine.sqlite", from: join(folder, "engine.sqlite") },
       { path: "agent.sqlite", from: join(folder, "agent.sqlite") },
@@ -79,7 +80,9 @@ async function read(path: string): Promise<Buffer> {
 }
 
 async function manifestIn(path: string, pair: Awaited<ReturnType<typeof ownerKey>>["pair"]) {
-  const opened = valueOf(await openBackup(readFilePieces(path, { signal: signal() }), pair));
+  const opened = valueOf(
+    await openBackup(readFilePieces(path, { signal: signal() }), { ownerKey: pair }),
+  );
   return checkArchive(openBody(opened.body, opened.dataKey, opened.frame));
 }
 
@@ -109,7 +112,9 @@ describe("a backup file", () => {
     await written(plan);
     const pulls: number[] = [];
 
-    const opened = await openBackup(recorded(plan.target, pulls), (await ownerKey()).pair);
+    const opened = await openBackup(recorded(plan.target, pulls), {
+      ownerKey: (await ownerKey()).pair,
+    });
 
     expect(opened).toStrictEqual({ ok: false, error: "wrong_owner_key" });
     expect(pulls).toStrictEqual([4_096]);
@@ -154,7 +159,7 @@ describe("a backup file", () => {
 
     const opened = await openBackup(
       readFilePieces(join(folder, "config.json5"), { signal: signal() }),
-      owner.pair,
+      { ownerKey: owner.pair },
     );
 
     expect(opened).toStrictEqual({ ok: false, error: "not_a_backup" });
@@ -174,10 +179,9 @@ describe("a backup file", () => {
     await written(plan);
     const into = join(folder, "restored");
     const opened = valueOf(
-      await openBackup(
-        readFilePieces(plan.target, { signal: signal() }),
-        ownerKeyRecipient(owner.privateKey),
-      ),
+      await openBackup(readFilePieces(plan.target, { signal: signal() }), {
+        ownerKey: ownerKeyRecipient(owner.privateKey),
+      }),
     );
 
     const manifest = valueOf(await unpackBackup(opened, into, writing));
@@ -191,6 +195,28 @@ describe("a backup file", () => {
     expect(opened.dataKey.every((byte) => byte === 0)).toBe(true);
   });
 
+  it("seals version 3 to the sealing key, which alone opens it, and the owner key no more", async () => {
+    const folder = await stateFolder();
+    const owner = createP256KeyPair();
+    const sealing = deriveSealingKey(owner.privateKey);
+    const plan = {
+      ...planOf(folder, owner.publicKey),
+      sealTo: { publicKey: sealing.publicKey, version: 3 as const },
+    };
+    await written(plan);
+    const pieces = () => readFilePieces(plan.target, { signal: signal() });
+
+    const byOwner = await openBackup(pieces(), { ownerKey: ownerKeyRecipient(owner.privateKey) });
+    const bySealing = valueOf(await openBackup(pieces(), { sealingKey: sealing.recipient }));
+
+    expect(byOwner).toStrictEqual({ ok: false, error: "wrong_owner_key" });
+    expect(bySealing.header.version).toBe(3);
+    const manifest = await checkArchive(
+      openBody(bySealing.body, bySealing.dataKey, bySealing.frame),
+    );
+    expect(manifest.privy).toStrictEqual({ appId: "app", wallets: ["wallet-1"] });
+  });
+
   it("calls a backup that does not check damaged when it unpacks", async () => {
     const folder = await stateFolder();
     const owner = createP256KeyPair();
@@ -200,10 +226,9 @@ describe("a backup file", () => {
     bytes.writeUInt8(bytes.readUInt8(bytes.length - 20) ^ 1, bytes.length - 20);
     await writePrivateFile(plan.target, bytes, writing);
     const opened = valueOf(
-      await openBackup(
-        readFilePieces(plan.target, { signal: signal() }),
-        ownerKeyRecipient(owner.privateKey),
-      ),
+      await openBackup(readFilePieces(plan.target, { signal: signal() }), {
+        ownerKey: ownerKeyRecipient(owner.privateKey),
+      }),
     );
 
     expect(await unpackBackup(opened, join(folder, "restored"), writing)).toStrictEqual({

@@ -59,7 +59,7 @@ function jsonOf(line: Uint8Array): JsonValue | undefined {
 
 /**
  * Parses a header line: `newer_version` for a backup of a later format version, `not_a_backup`
- * for anything else that is not a version 2 header.
+ * for anything else that is not a version 2 or 3 header.
  */
 export function parseHeader(line: Uint8Array): Result<BackupHeader, HeaderProblem> {
   const json = jsonOf(line);
@@ -71,7 +71,7 @@ export function parseHeader(line: Uint8Array): Result<BackupHeader, HeaderProble
     return ok(parsed.data);
   }
   const format = backupFormatSchema.safeParse(json);
-  return format.success && format.data.version > 2 ? err("newer_version") : err("not_a_backup");
+  return format.success && format.data.version > 3 ? err("newer_version") : err("not_a_backup");
 }
 
 async function* restOf(

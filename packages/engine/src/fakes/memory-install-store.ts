@@ -4,6 +4,7 @@ import type {
   CeilingUpdate,
   InstallFacts,
   InstallSetup,
+  SealKeyRecord,
   WalletDraft,
   WalletRecord,
 } from "../install/install-record.js";
@@ -184,6 +185,14 @@ function withAttached(
   return ok({ ...state, custody: attached, wallets });
 }
 
+// The state with the sealing key's public half kept in its custody.
+function withSealKey(state: InstallState, key: SealKeyRecord): Result<InstallState, "not_set_up"> {
+  const { custody } = state;
+  return custody === undefined
+    ? err("not_set_up")
+    : ok({ ...state, custody: { ...custody, sealKeyPublic: key.sealKeyPublic } });
+}
+
 // The state with a wallet added as if a setup had stored it, and with its freeze set or cleared.
 function withAdded(state: InstallState, wallet: WalletRecord): InstallState {
   return { ...state, wallets: inOrder([...state.wallets, wallet]) };
@@ -264,5 +273,7 @@ export function createMemoryInstallStore(): MemoryInstallStore {
       memoryCall(call, () =>
         written(withAttached(held.state, structuredClone(attachment)), update),
       ),
+    setSealKey: async (key, call) =>
+      memoryCall(call, () => written(withSealKey(held.state, structuredClone(key)), update)),
   };
 }

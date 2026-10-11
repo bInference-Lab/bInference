@@ -31,6 +31,7 @@ import { ownerChatHandlers } from "./owner-locale-change.js";
 import { paperBalancesOf } from "./paper-balances.js";
 import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
+import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
 import { createTelegramPair } from "./telegram-pair.js";
 
 /** The self-hosted engine, built and not yet listening. */
@@ -134,6 +135,8 @@ interface EngineWiring extends Pick<ComposedSelfHosted, "stopper" | "locked"> {
   readonly executor: () => HealthSignal["state"];
   /** The custody signal: ok while custody is open, failing while the engine is locked. */
   readonly custody: () => HealthSignal["state"];
+  /** The backup key signal: a warning while backups are still sealed to the owner key itself. */
+  readonly backupKey: () => HealthSignal["state"];
 }
 
 // The engine's own operations: its status with the health signals, its stop, its unlock, a new
@@ -148,6 +151,7 @@ function engineHandlers(
       { signal: "executor", state: wiring.executor },
       { signal: "custody", state: wiring.custody },
       { signal: "rpc", state: wiring.rpc },
+      { signal: "backup_key", state: wiring.backupKey },
     ],
     logFailed: opened.log.hasFailed,
   });
@@ -196,6 +200,8 @@ interface Wiring {
   readonly signerRefused: { run: (notice: SignerRefusalNotice) => void };
   /** Where a long job's end goes, once the server can say so. */
   readonly jobs: { publish: (push: EnginePush) => void };
+  /** Whether backups are sealed to the sealing key yet, and the owner key hook that moves them. */
+  readonly sealKey: SealKeyKeeper;
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -205,10 +211,12 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   const { chains } = opened;
   const signerStopped = { run: (): void => undefined };
   const signerRefused = { run: (_notice: SignerRefusalNotice): void => undefined };
+  const sealKey = sealKeyOf(opened);
   const custody = composeCustody(opening, opened, {
     chains,
     onStopped: () => signerStopped.run(),
     onRefusal: (notice) => signerRefused.run(notice),
+    sealKey,
   });
   const sending = composeSending(opening, opened, { parts, custody: custody.cell.signer, chains });
   const resume = resumeOf(opened, sending.executor);
@@ -235,6 +243,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     stopper,
     signerStopped,
     signerRefused,
+    sealKey,
   };
 }
 
@@ -281,6 +290,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
         rpc: () => rpcHealthOf(parts.reads, host.clock),
         executor: sending.health,
         custody: () => (custody.cell.isOpen() ? "ok" : "fail"),
+        backupKey: () => (wiring.sealKey.isSealed() ? "ok" : "warn"),
         stopper: wiring.stopper,
         locked,
         jobs: wiring.jobs,

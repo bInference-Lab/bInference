@@ -1,5 +1,5 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
-import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
+import { type Id, idSchema, type JsonValue, jsonValueSchema, type Result } from "@binference/core";
 import { z } from "zod";
 import type { RescueState } from "../policy/rescue-change.js";
 import { epochMsSchema, shortTextSchema } from "../records/record-fields.js";
@@ -19,6 +19,12 @@ export interface CustodyRecord {
   readonly agentKeyPublic: string;
   /** When this machine's agent key became the wallets' signer. */
   readonly attachedAtMs: number;
+  /**
+   * The public half of the sealing key derived from the owner key, which backups are sealed to
+   * (keys spec, section 7.2); absent until the owner key was entered once since the install kept
+   * it, and backups are sealed to the owner key itself until then.
+   */
+  readonly sealKeyPublic?: string;
 }
 
 const publicKeySchema = z.base64().min(1).max(512);
@@ -32,6 +38,18 @@ export const custodyRecordSchema: z.ZodType<CustodyRecord> = z.strictObject({
   agentQuorumId: shortTextSchema,
   agentKeyPublic: publicKeySchema,
   attachedAtMs: epochMsSchema,
+  sealKeyPublic: publicKeySchema.exactOptional(),
+});
+
+/** The public half of the sealing key, once the owner key derived it. */
+export interface SealKeyRecord {
+  /** DER SubjectPublicKeyInfo in base64. */
+  readonly sealKeyPublic: string;
+}
+
+/** Parses a sealing key record. */
+export const sealKeyRecordSchema: z.ZodType<SealKeyRecord> = z.strictObject({
+  sealKeyPublic: publicKeySchema,
 });
 
 /**
@@ -43,6 +61,29 @@ export interface AgentKeyAttachment {
   /** DER SubjectPublicKeyInfo in base64. */
   readonly agentKeyPublic: string;
   readonly atMs: number;
+}
+
+/** The keys an install keeps in its custody: this machine's agent key, and the sealing key's. */
+export interface CustodyKeyStore {
+  /**
+   * Records this machine's agent key as the signer of every live wallet once custody moved them
+   * (keys spec, section 6), in one transaction: the custody's agent key quorum, its public half
+   * and when it attached, and each live wallet's signer. Archived wallets keep the signer they
+   * had. An install that was never set up is `not_set_up` and changes nothing.
+   */
+  attach(
+    attachment: AgentKeyAttachment,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<void, "not_set_up">>;
+  /**
+   * Keeps the public half of the sealing key the owner key derived (keys spec, section 7.2), which
+   * the next backups are sealed to. An install that was never set up is `not_set_up` and changes
+   * nothing.
+   */
+  setSealKey(
+    key: SealKeyRecord,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<void, "not_set_up">>;
 }
 
 /** Parses an agent key attachment. */

@@ -8,7 +8,11 @@ export type {
 } from "./client/signer-client.js";
 export { formatOwnerKeyCode, parseOwnerKeyCode } from "./keys/owner-key-code.js";
 export type { OwnerKeyCodeProblem } from "./keys/owner-key-code.js";
-export { createP256KeyPair, parseP256PublicKey } from "./keys/p256-key-pair.js";
+export {
+  createP256KeyPair,
+  p256KeyPairFromScalar,
+  parseP256PublicKey,
+} from "./keys/p256-key-pair.js";
 export type { P256KeyPair } from "./keys/p256-key-pair.js";
 export { signAuthorization } from "./privy/authorization-signature.js";
 export { signerNodeArguments } from "./process/signer-node-arguments.js";

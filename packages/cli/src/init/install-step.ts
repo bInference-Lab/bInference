@@ -19,6 +19,8 @@ export interface InstallRecord {
   readonly agent: Id<"agt">;
   readonly appId: string;
   readonly ownerKey: string;
+  /** The sealing key's public half, when the owner key was made here. */
+  readonly sealKey?: string;
   readonly agentKey: string;
   readonly rescue: RescueAddress;
   readonly first: FirstWallet;
@@ -96,6 +98,7 @@ function setupOf(context: InitContext, record: InstallRecord): InstallSetup {
       agentQuorumId: first.agentQuorum,
       agentKeyPublic: record.agentKey,
       attachedAtMs: atMs,
+      ...(record.sealKey === undefined ? {} : { sealKeyPublic: record.sealKey }),
     },
     rescueAddress: record.rescue.account,
     wallet: walletDraftOf(context, { ...record, label: walletLabel }),

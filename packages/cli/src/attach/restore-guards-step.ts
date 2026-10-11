@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, type Secret } from "@binference/core";
 import {
   type InstallGuards,
   type RestoreChanges,
@@ -7,7 +7,14 @@ import {
   type StricterAgent,
 } from "@binference/engine/backups";
 import { fileSize } from "@binference/platform";
-import { createRestoreGuards, engineWorker, openDatabase } from "@binference/store";
+import { parseOwnerKeyCode } from "@binference/signer";
+import {
+  createRestoreGuards,
+  createSqliteInstallStore,
+  engineWorker,
+  openDatabase,
+} from "@binference/store";
+import { deriveSealingKey } from "../hpke/sealing-key.js";
 import { type InitContext, type InitStep, refused } from "../init/init-context.js";
 
 /**
@@ -73,31 +80,50 @@ export async function readRestored(context: InitContext, unpacked: string): Prom
   });
 }
 
+// Keeps the sealing key the owner key derives in the restored copy, when its custody has none.
+async function keepSealKey(
+  install: ReturnType<typeof createSqliteInstallStore>,
+  ownerKey: Secret,
+  signal: AbortSignal,
+): Promise<void> {
+  const { custody } = await install.read({ signal });
+  const pair = parseOwnerKeyCode(ownerKey);
+  if (custody === undefined || custody.sealKeyPublic !== undefined || !pair.ok) {
+    return;
+  }
+  const sealing = deriveSealingKey(pair.value.privateKey);
+  await install.setSealKey({ sealKeyPublic: sealing.publicKey }, { signal });
+}
+
 /**
- * Carries the guards of the state a restore replaces into the restored `engine.sqlite` in
- * `unpacked` (keys spec, section 7.4), with no engine running on the state folder: it reads the
- * replaced state again, as the engine left it, and writes the carry in one transaction. A state
- * the preview found unreadable carries nothing; one that read then and does not now throws, and
- * nothing moved.
+ * Readies the restored `engine.sqlite` in `unpacked` (keys spec, section 7.4), with no engine
+ * running on the state folder: it carries in the guards of the state the restore replaces, read
+ * again as the engine left it, in one transaction, and keeps the sealing key the owner key derives
+ * when the restored custody has none, so the next backups are sealed to it. A state the preview
+ * found unreadable carries nothing; one that read then and does not now throws, and nothing moved.
  */
 export async function carryReplaced(
   context: InitContext,
-  carry: { readonly unpacked: string; readonly replaced: ReplacedState["kind"] },
+  carry: {
+    readonly unpacked: string;
+    readonly replaced: ReplacedState["kind"];
+    readonly ownerKey: Secret;
+  },
 ): Promise<void> {
-  if (carry.replaced !== "guards") {
-    return;
-  }
-  const read = await readReplaced(context);
-  if (!read.ok || read.value.kind !== "guards") {
+  const read = carry.replaced === "guards" ? await readReplaced(context) : undefined;
+  if (read !== undefined && (!read.ok || read.value.kind !== "guards")) {
     throw new BinferenceError({
       code: "backup.restore_replaced_changed",
       message: "The state the restore replaces no longer reads as it did before the stop.",
     });
   }
-  const { guards } = read.value;
+  const guards = read?.ok === true && read.value.kind === "guards" ? read.value.guards : undefined;
   await withDatabase(context, join(carry.unpacked, "engine.sqlite"), async (database) => {
     await database.migrate(context);
-    await createRestoreGuards(database).carry(guards, context.host.clock.now(), context);
+    if (guards !== undefined) {
+      await createRestoreGuards(database).carry(guards, context.host.clock.now(), context);
+    }
+    await keepSealKey(createSqliteInstallStore(database), carry.ownerKey, context.signal);
   });
 }
 

@@ -10,9 +10,10 @@ import {
   writePrivateFile,
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import { operations } from "@binference/protocol";
 import { createSqliteBackupStore, engineWorker, openDatabase } from "@binference/store";
 import { afterEach, describe, expect, it } from "vitest";
-import { dayOfBackup } from "../backups/backup-fixtures.js";
+import { dayOfBackup, headerOfBackup } from "../backups/backup-fixtures.js";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import { setUpWithOwnerKey } from "./attach-fixtures.js";
@@ -111,6 +112,27 @@ async function holdPort(): Promise<{ readonly port: number; readonly close: () =
       });
     });
   return { port, close };
+}
+
+// The running engine's health signals, as `binference status --json` prints them.
+async function healthOf(machine: InitMachine) {
+  const status = await runOn(machine, ["status", "--json"]);
+  return operations["engine/status"].result.parse(JSON.parse(status.stdout)).health;
+}
+
+// A backup the running engine takes by hand, other than the one named.
+async function newestBackupOf(machine: InitMachine, other: string): Promise<string> {
+  const made = await runOn(machine, ["backup", "create", "--json"]);
+  expect(made.code).toBe(0);
+  const files = await listFolderFiles(join(machine.folder, "backups"), signal());
+  const file = files
+    .filter((name) => name.endsWith(".bnfbak"))
+    .map((name) => join(machine.folder, "backups", name))
+    .find((path) => path !== other);
+  if (file === undefined) {
+    throw new Error("Expected a second backup file.");
+  }
+  return file;
 }
 
 // Forgets every backup the stopped machine's install recorded, as if another install wrote them.
@@ -243,6 +265,41 @@ describe("binference backup restore", () => {
         "restoreConfirm",
       ]);
       expect((await fileSize(join(machine.folder, marker), signal())).ok).toBe(false);
+    },
+  );
+
+  it(
+    "moves backups to the sealing key once the owner key is entered, and restores those too",
+    slow,
+    async () => {
+      const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+      await engines.start(machine);
+      expect(await healthOf(machine)).toContainEqual({ signal: "backup_key", state: "warn" });
+      expect((await runOn(machine, ["status"])).stdout).toContain(
+        english.message("cli.status.backupKeyOld"),
+      );
+      const old = await backupOf(machine);
+      expect((await headerOfBackup(old)).version).toBe(2);
+      await engines.stopAll();
+
+      const first = await restoreOn(
+        machine,
+        { file: old, ownerKeys: [ownerKey] },
+        await freePort(),
+      );
+      await expect(first.exit).resolves.toBe(0);
+      await engines.start(machine);
+      expect(await healthOf(machine)).toContainEqual({ signal: "backup_key", state: "ok" });
+      const sealed = await newestBackupOf(machine, old);
+      expect((await headerOfBackup(sealed)).version).toBe(3);
+      await engines.stopAll();
+
+      const second = await restoreOn(
+        machine,
+        { file: sealed, ownerKeys: [ownerKey] },
+        await freePort(),
+      );
+      await expect(second.exit).resolves.toBe(0);
     },
   );
 

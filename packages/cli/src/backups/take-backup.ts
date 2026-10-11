@@ -90,7 +90,10 @@ function planOf(taking: Taking, sources: GatheredSources): BackupPlan {
     createdAt: record.createdAtMs,
     kind: run.kind,
     binferenceVersion: parts.binferenceVersion,
-    ownerKeyPublic: facts.custody.ownerKeyPublic,
+    sealTo:
+      facts.custody.sealKeyPublic === undefined
+        ? { publicKey: facts.custody.ownerKeyPublic, version: 2 }
+        : { publicKey: facts.custody.sealKeyPublic, version: 3 },
     files: sources.files,
     schemaVersions: {
       engine: run.engineSchemaVersion,

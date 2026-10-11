@@ -1,10 +1,11 @@
 import { type Id, ok, type Secret } from "@binference/core";
 import { isPrivyId, type OwnerAuthorize } from "@binference/custody-privy";
 import type { CustodyRecord, InstallStore } from "@binference/engine/install";
-import { ownerAuthorize } from "../compose/owner-authorize.js";
+import { ownerAuthorize, type OwnerKeyHolder } from "../compose/owner-authorize.js";
 import { loadConfig } from "../config/load-config.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { UnlockConfig, UnlockMode } from "../config/schema/engine.schema.js";
+import { deriveSealingKey } from "../hpke/sealing-key.js";
 import { type AgentKey, takeAgentKey } from "../init/agent-key-step.js";
 import { type InitContext, type InitStep, type Refused, refused } from "../init/init-context.js";
 import { systemDefaults } from "../program/system-defaults.js";
@@ -78,13 +79,12 @@ export interface AttachAfterRestore {
 // The owner key: the code a restore opened its backup with, else asked of a person.
 async function ownerKeyOf(
   context: InitContext,
-  ownerKeyPublic: string,
+  holder: OwnerKeyHolder,
   restore: AttachAfterRestore | undefined,
 ): Promise<InitStep<OwnerAuthorize>> {
   if (restore === undefined) {
-    return takeOwnerKey(context, ownerKeyPublic);
+    return takeOwnerKey(context, holder);
   }
-  const holder = { ownerKeyPublic: async () => Promise.resolve(ownerKeyPublic) };
   const authorize = await ownerAuthorize(holder, restore.ownerKey, context.signal);
   return authorize.ok ? authorize : refused("wallet.bad_owner_key", "refused.attachOwnerKey");
 }
@@ -93,6 +93,8 @@ async function ownerKeyOf(
 interface Checked {
   readonly app: AttachApp;
   readonly authorize: OwnerAuthorize;
+  /** The public half of the sealing key the owner key derives. */
+  readonly sealKeyPublic?: string;
   readonly agentKey: AgentKey;
   readonly unlock: UnlockConfig;
   /** Whether the bot token is where config.json5 names it, or was typed and kept there. */
@@ -122,7 +124,15 @@ async function check(context: InitContext, found: AttachFound): Promise<InitStep
     return wallets;
   }
   const hasBot = await takeAttachBot(context, config.value);
-  const authorize = await ownerKeyOf(context, found.custody.ownerKeyPublic, found.restore);
+  const sealing: { publicKey?: string } = {};
+  const holder: OwnerKeyHolder = {
+    ownerKeyPublic: async () => Promise.resolve(found.custody.ownerKeyPublic),
+    onOwnerKey: async (ownerKey) => {
+      sealing.publicKey = deriveSealingKey(ownerKey).publicKey;
+      await Promise.resolve();
+    },
+  };
+  const authorize = await ownerKeyOf(context, holder, found.restore);
   if (!authorize.ok) {
     return authorize;
   }
@@ -133,7 +143,14 @@ async function check(context: InitContext, found: AttachFound): Promise<InitStep
   }
   return agentKey.value.publicKey === found.custody.agentKeyPublic
     ? heldCurrentKey(context, unlock)
-    : ok({ app: app.value, authorize: authorize.value, agentKey: agentKey.value, unlock, hasBot });
+    : ok({
+        app: app.value,
+        authorize: authorize.value,
+        agentKey: agentKey.value,
+        unlock,
+        hasBot,
+        ...(sealing.publicKey === undefined ? {} : { sealKeyPublic: sealing.publicKey }),
+      });
 }
 
 /**
@@ -155,7 +172,7 @@ export async function runAttach(
   if (!checked.ok) {
     return checked;
   }
-  const { app, authorize, agentKey, unlock, hasBot } = checked.value;
+  const { app, authorize, agentKey, unlock, hasBot, sealKeyPublic } = checked.value;
   const { wallets } = await install.read({ signal: context.signal });
   const live = wallets.filter((wallet) => wallet.archivedAtMs === undefined);
   const signed = live.flatMap(({ custodyWalletId: wallet, policyId: policy }) =>
@@ -175,6 +192,9 @@ export async function runAttach(
     return moved;
   }
   await record(context, install, { moved: moved.value, agentKey });
+  if (sealKeyPublic !== undefined) {
+    await install.setSealKey({ sealKeyPublic }, { signal: context.signal });
+  }
   return ok({
     wallets: live.length,
     ...moved.value,

@@ -43,7 +43,7 @@ describe("a backup's header line", () => {
   });
 
   it("tells a later format version from no backup at all", () => {
-    const later = bytes(JSON.stringify({ ...header, version: 3, extra: true }));
+    const later = bytes(JSON.stringify({ ...header, version: 4, extra: true }));
 
     expect(parseHeader(later)).toStrictEqual({ ok: false, error: "newer_version" });
     expect(parseHeader(bytes("{ version: 4 }"))).toStrictEqual({

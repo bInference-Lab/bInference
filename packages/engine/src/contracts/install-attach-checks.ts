@@ -43,6 +43,23 @@ async function refusesBeforeSetUp({ store }: InstallStoreSubject): Promise<void>
   await assertRefusesAborted(async (call) => store.attach(attachment, call));
 }
 
+async function keepsTheSealKey(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  const key = { sealKeyPublic: "c2VhbGluZyBrZXk=" };
+  assert.deepEqual(await store.setSealKey(key, live()), { ok: false, error: "not_set_up" });
+  const first = setup(subject, 1);
+  await store.setUp(first, live());
+  const before = await store.read(live());
+
+  assert.deepEqual(await store.setSealKey(key, live()), ok(undefined));
+
+  const after = await store.read(live());
+  assert.deepEqual(after, { ...before, custody: { ...first.custody, ...key } });
+  await store.attach(attachment, live());
+  assert.equal((await store.read(live())).custody?.sealKeyPublic, key.sealKeyPublic);
+  await assertRefusesAborted(async (call) => store.setSealKey(key, call));
+}
+
 /** The install store's checks of an agent key attached to every live wallet. */
 export function attachChecks(create: () => Promise<InstallStoreSubject>): readonly ContractCheck[] {
   return [
@@ -55,6 +72,11 @@ export function attachChecks(create: () => Promise<InstallStoreSubject>): readon
       "refuses to attach an agent key before the install is set up",
       create,
       refusesBeforeSetUp,
+    ),
+    checkOn(
+      "keeps the sealing key's public half once set up, and through an attach",
+      create,
+      keepsTheSealKey,
     ),
   ];
 }

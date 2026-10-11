@@ -47,6 +47,7 @@ function writeCustody(database: DatabaseSync, setup: InstallSetup): void {
     agent_quorum_id: custody.agentQuorumId,
     agent_key_public: custody.agentKeyPublic,
     attached_at: custody.attachedAtMs,
+    seal_key_public: custody.sealKeyPublic ?? null,
   };
   if (hasCustody(database)) {
     execute(

@@ -46,6 +46,7 @@ import {
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
 import { checkAttached } from "./check-attached.js";
+import { installOwnerKey } from "./owner-authorize.js";
 import {
   createPrivyCeilingEditor,
   type PrivyCeilingEditorOptions,
@@ -87,6 +88,7 @@ export interface OpenCustodyOptions {
   readonly install: Pick<InstallStore, "read">;
   readonly chains: ChainRegistry;
   readonly logger: Logger;
+  readonly onOwnerKey: NonNullable<PrivyCeilingEditorOptions["onOwnerKey"]>;
 }
 
 // Privy takes the app id and secret, or refuses them; one that does not answer is unreachable.
@@ -282,7 +284,7 @@ async function readInstall(
 // The ceiling editor on the owner's app: calls and caps as init plans them for this install.
 function ceilingEditorOf(
   options: OpenCustodyOptions,
-  parts: Pick<PrivyCeilingEditorOptions, "api" | "ownerKeyPublic">,
+  parts: Pick<PrivyCeilingEditorOptions, "api" | "ownerKeyPublic" | "onOwnerKey">,
 ) {
   return createPrivyCeilingEditor({
     ...parts,
@@ -326,8 +328,7 @@ export async function openCustody(
   const facts = await readInstall(install, signer, signal);
   // A wallet made after the unlock joins the wallets the adapter signs for.
   const wallets = walletsOf(facts.wallets, options);
-  const ownerKeyPublic = async (read: AbortSignal) =>
-    (await install.read({ signal: read })).custody?.ownerKeyPublic;
+  const holder = installOwnerKey(install, options.onOwnerKey);
   return ok({
     walletMaker: createPrivyWalletMaker({
       api,
@@ -342,9 +343,9 @@ export async function openCustody(
       signerProcess: signer.client,
       walletOf: (wallet) => wallets.get(wallet),
     }),
-    ceilings: ceilingEditorOf(options, { api, ownerKeyPublic }),
-    exporter: createPrivyWalletExporter({ api, clock, ownerKeyPublic }),
-    revoker: createPrivySignerRevoker({ api, clock, ownerKeyPublic }),
+    ceilings: ceilingEditorOf(options, { api, ...holder }),
+    exporter: createPrivyWalletExporter({ api, clock, ...holder }),
+    revoker: createPrivySignerRevoker({ api, clock, ...holder }),
     stopped: signer.stopped,
     stop: async (stop) => signer.stop(stop),
   });

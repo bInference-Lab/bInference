@@ -127,6 +127,8 @@
   "signal.custody": "Custody (Privy and the signer)",
   "signal.rpc": "Chain RPC nodes",
   "signal.executor": "Live sending",
+  "signal.backup_key": "Backup key",
+  "status.backupKeyOld": "Backups are still sealed to the owner key itself. Enter the owner key code once, in any command that asks for it, and the next backups are sealed to a key of their own.",
   "health.ready": "binference is running and ready.",
   "health.starting": "binference is still starting. Try again in a few seconds.",
   "logs.none": "There is no log yet at {file}. Start binference with `binference start`.",

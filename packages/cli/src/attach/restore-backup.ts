@@ -10,6 +10,7 @@ import { ownerKeyRecipient } from "../backups/owner-key-recipient.js";
 import { type StateSwap, swapInRestored } from "../backups/state-swap.js";
 import { unpackBackup } from "../backups/unpack-backup.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
+import { deriveSealingKey } from "../hpke/sealing-key.js";
 import { type InitContext, type InitStep, type Refused, refused } from "../init/init-context.js";
 import { authenticate, type OpenedFile } from "./restore-authenticity.js";
 import {
@@ -46,9 +47,13 @@ async function askOwnerKey(
   const code = createSecret(typed.trim());
   const pair = parseOwnerKeyCode(code);
   const pieces = readFilePieces(file, { signal: context.signal });
-  const opened = pair.ok
-    ? await openBackup(pieces, ownerKeyRecipient(pair.value.privateKey))
+  const keys = pair.ok
+    ? {
+        ownerKey: ownerKeyRecipient(pair.value.privateKey),
+        sealingKey: deriveSealingKey(pair.value.privateKey).recipient,
+      }
     : undefined;
+  const opened = keys === undefined ? undefined : await openBackup(pieces, keys);
   if (opened?.ok === true) {
     return ok({ code, opened: opened.value });
   }
@@ -180,7 +185,9 @@ export async function restoreBackup(
   }
   const staged = unpacked.value.unpacked;
   const confirmed = await previewOver(context, unpacked.value);
-  const carried = confirmed.ok ? await carryOver(context, staged, confirmed.value) : confirmed;
+  const carried = confirmed.ok
+    ? await carryOver(context, { ...unpacked.value, replaced: confirmed.value })
+    : confirmed;
   if (!carried.ok) {
     await removePath(staged, signal);
     return carried;
@@ -208,11 +215,10 @@ export async function restoreBackup(
 // refused, and nothing moved.
 async function carryOver(
   context: InitContext,
-  staged: string,
-  replaced: ReplacedState["kind"],
+  carry: Pick<Unpacked, "unpacked" | "ownerKey"> & { readonly replaced: ReplacedState["kind"] },
 ): Promise<InitStep<void>> {
   try {
-    await carryReplaced(context, { unpacked: staged, replaced });
+    await carryReplaced(context, carry);
     return ok(undefined);
   } catch (error) {
     if (context.signal.aborted || !(error instanceof BinferenceError)) {

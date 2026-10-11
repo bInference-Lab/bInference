@@ -26,8 +26,8 @@ import type {
 } from "./ingress/idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
 import type {
-  AgentKeyAttachment,
   CeilingUpdate,
+  CustodyKeyStore,
   InstallFacts,
   InstallIdProposal,
   InstallSetup,
@@ -557,7 +557,7 @@ export interface AgentStore {
  * Keeps the install's own facts (database spec, section 2.1): its id, its custody on Privy, the
  * rescue address, and the wallets `binference init` sets up for the first agent.
  */
-export interface InstallStore {
+export interface InstallStore extends CustodyKeyStore {
   /**
    * The install's id. The first call stores the proposed id with the time the install began;
    * every later call answers that stored id and ignores the proposal.
@@ -601,13 +601,6 @@ export interface InstallStore {
    * `not_found` and changes nothing.
    */
   updateCeiling(update: CeilingUpdate, options: StoreCall): Promise<Result<void, "not_found">>;
-  /**
-   * Records this machine's agent key as the signer of every live wallet once custody moved them
-   * (keys spec, section 6), in one transaction: the custody's agent key quorum, its public half
-   * and when it attached, and each live wallet's signer. Archived wallets keep the signer they
-   * had. An install that was never set up is `not_set_up` and changes nothing.
-   */
-  attach(attachment: AgentKeyAttachment, options: StoreCall): Promise<Result<void, "not_set_up">>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */

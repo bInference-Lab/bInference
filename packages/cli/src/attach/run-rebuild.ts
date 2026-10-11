@@ -154,6 +154,9 @@ async function record(
     agent,
     appId: answers.app.appId,
     ownerKey: answers.ownerKey.publicKey,
+    ...(answers.ownerKey.sealKeyPublic === undefined
+      ? {}
+      : { sealKey: answers.ownerKey.sealKeyPublic }),
     agentKey: agentKey.publicKey,
     rescue: answers.rescue,
     ...first,

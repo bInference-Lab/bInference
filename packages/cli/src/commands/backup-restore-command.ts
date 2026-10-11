@@ -85,7 +85,8 @@ async function swapUnderLock(
   }
   try {
     try {
-      await carryReplaced(context, { unpacked: unpacked.unpacked, replaced });
+      const { ownerKey } = unpacked;
+      await carryReplaced(context, { unpacked: unpacked.unpacked, replaced, ownerKey });
     } catch (error) {
       if (signal.aborted || !(error instanceof BinferenceError)) {
         throw error;

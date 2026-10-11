@@ -74,7 +74,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   custody: names(
     "id provider app_id owner_quorum_id owner_key_public agent_quorum_id agent_key_public " +
-      "attached_at version",
+      "attached_at version seal_key_public",
   ),
   agents: names(
     "id name mode frozen_at archived_at locale models notifications created_at changed_at " +

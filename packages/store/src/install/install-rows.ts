@@ -29,6 +29,7 @@ function toCustody(row: CustodyTable): CustodyRecord {
     agentQuorumId: row.agent_quorum_id,
     agentKeyPublic: row.agent_key_public,
     attachedAtMs: row.attached_at,
+    ...field("sealKeyPublic", row.seal_key_public),
   });
 }
 

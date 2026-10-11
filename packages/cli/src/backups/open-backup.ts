@@ -16,6 +16,15 @@ export interface OpenedBackup {
   readonly close: () => Promise<void>;
 }
 
+/**
+ * The keys that open a backup: the owner key for a version 2 file, the sealing key it derives for
+ * a version 3 one. A file whose key is not given opens as `wrong_owner_key`.
+ */
+export interface BackupKeys {
+  readonly ownerKey?: HpkeRecipientKey;
+  readonly sealingKey?: HpkeRecipientKey;
+}
+
 /** Why a backup did not open: no backup, a later format, or another owner key's backup. */
 export type OpenProblem = HeaderProblem | "wrong_owner_key";
 
@@ -23,12 +32,13 @@ const encapsulatedKeyBytes = 65;
 
 /**
  * Opens a backup file's data key with the owner key (keys spec, section 7.4, step 1): it reads
- * the header line, then opens the wrapped key with HPKE. A wrong owner key fails here, as
- * `wrong_owner_key`, before any chunk of the body is read or opened.
+ * the header line, then opens the wrapped key with HPKE, with the owner key for a version 2 file
+ * and the sealing key for a version 3 one. A wrong owner key fails here, as `wrong_owner_key`,
+ * before any chunk of the body is read or opened.
  */
 export async function openBackup(
   pieces: AsyncIterable<Uint8Array>,
-  ownerKey: HpkeRecipientKey,
+  keys: BackupKeys,
 ): Promise<Result<OpenedBackup, OpenProblem>> {
   const split = await splitHeader(pieces);
   if (!split.ok) {
@@ -41,14 +51,14 @@ export async function openBackup(
     return header;
   }
   const wrapped = Buffer.from(header.value.wrappedKey, "base64");
-  const dataKey = await hpkeOpen(
-    ownerKey,
-    {
-      encapsulatedKey: wrapped.subarray(0, encapsulatedKeyBytes),
-      ciphertext: wrapped.subarray(encapsulatedKeyBytes),
-    },
-    backupKeySuite,
-  );
+  const { version } = header.value;
+  const key = version === 2 ? keys.ownerKey : keys.sealingKey;
+  const sealed = {
+    encapsulatedKey: wrapped.subarray(0, encapsulatedKeyBytes),
+    ciphertext: wrapped.subarray(encapsulatedKeyBytes),
+  };
+  const dataKey =
+    key === undefined ? undefined : await hpkeOpen(key, sealed, backupKeySuite(version));
   if (dataKey?.length !== dataKeyBytes) {
     dataKey?.fill(0);
     await close();

@@ -5,6 +5,7 @@ import type { UnlockedKeys, LockReason } from "../unlock/unlock-keys.js";
 import { createCustodyCell, type CustodyCell } from "./custody-cell.js";
 import { openCustody } from "./open-custody.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
+import type { SealKeyKeeper } from "./seal-key-keeper.js";
 import { startBuiltSigner } from "./start-signer.js";
 
 /** Custody as the lock opens it. */
@@ -28,6 +29,7 @@ export function composeCustody(
     readonly chains: ChainRegistry;
     readonly onStopped: () => void;
     readonly onRefusal: (notice: SignerRefusalNotice) => void;
+    readonly sealKey: SealKeyKeeper;
   },
 ): ComposedCustody {
   const { host, closers } = opening;
@@ -45,6 +47,7 @@ export function composeCustody(
     install: opened.stores.install,
     chains,
     logger: opened.log.logger,
+    onOwnerKey: parts.sealKey.onOwnerKey,
   };
   return {
     cell,

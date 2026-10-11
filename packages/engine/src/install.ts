@@ -5,6 +5,7 @@ export {
   installFactsSchema,
   installIdProposalSchema,
   installSetupSchema,
+  sealKeyRecordSchema,
   walletDraftSchema,
   walletRecordSchema,
 } from "./install/install-record.js";
@@ -12,10 +13,12 @@ export type {
   AgentKeyAttachment,
   CeilingMirror,
   CeilingUpdate,
+  CustodyKeyStore,
   CustodyRecord,
   InstallFacts,
   InstallIdProposal,
   InstallSetup,
+  SealKeyRecord,
   WalletDraft,
   WalletRecord,
 } from "./install/install-record.js";

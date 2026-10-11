@@ -1,12 +1,18 @@
 import { timingSafeEqual } from "node:crypto";
 import { ok } from "@binference/core";
 import { createP256KeyPair, formatOwnerKeyCode, parseP256PublicKey } from "@binference/signer";
+import { deriveSealingKey } from "../hpke/sealing-key.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 
-/** The owner key as init keeps it: its public half only. */
+/** The owner key as init keeps it: its public half only, and its sealing key's when made here. */
 export interface OwnerKey {
   /** DER SubjectPublicKeyInfo in base64: what owns the wallets on Privy. */
   readonly publicKey: string;
+  /**
+   * The public half of the sealing key it derives, which backups are sealed to (keys spec,
+   * section 7.2); absent for a public half given by flag, until the owner key is entered.
+   */
+  readonly sealKeyPublic?: string;
 }
 
 /** What making an owner key needs: the person at the terminal, and the `init` messages. */
@@ -48,7 +54,8 @@ async function checkBack(
  * private half it shows once as its `bnok1` code, to a person at a terminal only. The person
  * types back the code's last 6 characters, its base32 characters without the group spaces; three
  * wrong check-backs stop before anything is made, and the key is gone. Only the public half is
- * kept. Without a person it makes no key (decision 0148).
+ * kept, with the public half of the sealing key it derives. Without a person it makes no key
+ * (decision 0148).
  */
 export async function makeOwnerKey(context: OwnerKeyContext): Promise<InitStep<OwnerKey>> {
   if (!context.isInteractive) {
@@ -65,7 +72,8 @@ export async function makeOwnerKey(context: OwnerKeyContext): Promise<InitStep<O
     return refused("init.owner_key_unconfirmed", "refused.ownerKeyUnconfirmed");
   }
   context.prompter.say(context.words("ownerKey.checked"));
-  return ok({ publicKey: pair.publicKey });
+  const sealing = deriveSealingKey(pair.privateKey);
+  return ok({ publicKey: pair.publicKey, sealKeyPublic: sealing.publicKey });
 }
 
 /**

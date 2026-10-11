@@ -88,7 +88,7 @@ describe("taking a backup", () => {
       ),
     ).toStrictEqual(await joined(readFilePieces(taken.path, { signal: signal() })));
     const opened = valueOf(
-      await openBackup(readFilePieces(taken.path, { signal: signal() }), owner.pair),
+      await openBackup(readFilePieces(taken.path, { signal: signal() }), { ownerKey: owner.pair }),
     );
     const manifest = await checkArchive(openBody(opened.body, opened.dataKey, opened.frame));
     expect(manifest.files.map((file) => file.path)).toStrictEqual([

@@ -7,6 +7,7 @@ import {
 } from "@binference/custody-privy";
 import { parseOwnerKeyCode } from "@binference/signer";
 import { ownerAuthorize } from "../compose/owner-authorize.js";
+import { deriveSealingKey } from "../hpke/sealing-key.js";
 import { type InitContext, type InitStep, refused } from "../init/init-context.js";
 import type { OwnerKey } from "../init/owner-key-step.js";
 import type { PrivyApp } from "../init/privy-app-step.js";
@@ -42,9 +43,12 @@ async function ownedBy(
   const owned = await findOwnedWallets(api, { ownerKey: publicKey }, { signal });
   const holder = { ownerKeyPublic: async () => Promise.resolve(publicKey) };
   const authorize = await ownerAuthorize(holder, code, signal);
-  return owned.length === 0 || !authorize.ok
-    ? undefined
-    : { ownerKey: { publicKey }, authorize: authorize.value, owned };
+  if (owned.length === 0 || !authorize.ok) {
+    return undefined;
+  }
+  const sealing = deriveSealingKey(pair.value.privateKey);
+  const ownerKey = { publicKey, sealKeyPublic: sealing.publicKey };
+  return { ownerKey, authorize: authorize.value, owned };
 }
 
 async function askOwner(

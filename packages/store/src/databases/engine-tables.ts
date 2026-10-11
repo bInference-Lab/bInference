@@ -115,6 +115,8 @@ export interface CustodyTable {
   agent_quorum_id: string;
   agent_key_public: string;
   attached_at: number;
+  /** The sealing key's public half (migration 0027); NULL until the owner key derived it. */
+  seal_key_public: string | null;
   version: number;
 }
 

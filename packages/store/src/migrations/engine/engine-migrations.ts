@@ -25,6 +25,7 @@ import { migration as miniAppLaunches } from "./0023_mini_app_launches.js";
 import { migration as miniAppTickets } from "./0024_mini_app_tickets.js";
 import { migration as carriedOutflows } from "./0025_carried_outflows.js";
 import { migration as backupDigests } from "./0026_backup_digests.js";
+import { migration as sealKey } from "./0027_seal_key.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -54,4 +55,5 @@ export const engineMigrations: readonly Migration[] = [
   miniAppTickets,
   carriedOutflows,
   backupDigests,
+  sealKey,
 ];

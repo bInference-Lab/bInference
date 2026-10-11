@@ -9,7 +9,7 @@ import {
 } from "@binference/platform";
 import { hpkeSeal } from "../hpke/hpke-seal.js";
 import { manifestPath } from "./archive-path.js";
-import type { BackupHeader } from "./backup-header.schema.js";
+import type { BackupHeader, BackupVersion } from "./backup-header.schema.js";
 import type { BackupManifest, ManifestFile } from "./backup-manifest.schema.js";
 import { backupKeySuite } from "./backup-suite.js";
 import { type ChunkFrame, dataKeyBytes, noncePrefixBytes } from "./chunk-cipher.js";
@@ -31,8 +31,11 @@ export interface BackupPlan {
   readonly createdAt: number;
   readonly kind: BackupKind;
   readonly binferenceVersion: string;
-  /** The owner key's public half, DER SubjectPublicKeyInfo in base64: the one key that opens it. */
-  readonly ownerKeyPublic: string;
+  /**
+   * The public half the data key is sealed to, DER SubjectPublicKeyInfo in base64, and the format
+   * version that names it: the sealing key for version 3, the owner key itself for version 2.
+   */
+  readonly sealTo: { readonly publicKey: string; readonly version: BackupVersion };
   /** The files, in archive order; one gone by the time it is read is left out. */
   readonly files: readonly ArchivedFile[];
   readonly schemaVersions: BackupManifest["schemaVersions"];
@@ -115,7 +118,7 @@ function manifestOf(plan: BackupPlan, files: readonly ManifestFile[]): BackupMan
 
 /**
  * Writes a backup file (keys spec, section 7.2): a fresh 32-byte data key and 8-byte nonce
- * prefix from the OS CSPRNG, the data key sealed to the owner key's public half with HPKE, the
+ * prefix from the OS CSPRNG, the data key sealed to the plan's public half with HPKE, the
  * header line, then the tar archive of the files and their manifest, encrypted in 64 KiB chunks.
  * The file is owner-only and appears whole or not at all. An owner key that is no P-256 public key
  * is `bad_owner_key`, and nothing is written. The data key comes back for the check that follows;
@@ -127,14 +130,15 @@ export async function writeBackup(
 ): Promise<Result<WrittenBackup, "bad_owner_key">> {
   const dataKey = randomBytes(dataKeyBytes);
   const noncePrefix = randomBytes(noncePrefixBytes);
-  const wrapped = await hpkeSeal(plan.ownerKeyPublic, dataKey, backupKeySuite);
+  const { version } = plan.sealTo;
+  const wrapped = await hpkeSeal(plan.sealTo.publicKey, dataKey, backupKeySuite(version));
   if (wrapped === undefined) {
     dataKey.fill(0);
     return err("bad_owner_key");
   }
   const header: BackupHeader = {
     format: "binference-backup",
-    version: 2,
+    version,
     installId: plan.installId,
     createdAt: plan.createdAt,
     kind: plan.kind,

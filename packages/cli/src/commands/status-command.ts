@@ -15,6 +15,7 @@ const namedSignals: ReadonlySet<string> = new Set([
   "custody",
   "rpc",
   "executor",
+  "backup_key",
 ]);
 
 /** The name of a health signal in the owner's language, or the signal itself when it has none. */
@@ -45,6 +46,10 @@ function printStatus(output: CliOutput, status: EngineStatus, name: (signal: str
   output.say("status.signals");
   for (const signal of status.health) {
     output.item("status.signal", { name: name(signal.signal), state: signal.state });
+  }
+  // The backup key warns until the owner key is entered once since the sealing key came.
+  if (status.health.some((signal) => signal.signal === "backup_key" && signal.state === "warn")) {
+    output.say("status.backupKeyOld");
   }
 }
 
