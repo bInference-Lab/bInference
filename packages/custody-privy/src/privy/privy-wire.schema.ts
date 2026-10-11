@@ -39,6 +39,7 @@ const walletWire = z.object({
   additional_signers: z.array(
     z.object({ signer_id: privyId, override_policy_ids: listOfIds.nullish() }),
   ),
+  created_at: z.number().int().nonnegative(),
 });
 
 const walletPageWire = z.object({
@@ -135,6 +136,7 @@ export function readWallet(answer: unknown): WalletRecord | undefined {
           signerId: signer.signer_id,
           overridePolicyIds: signer.override_policy_ids ?? null,
         })),
+        createdAtMs: wire.created_at,
       };
 }
 

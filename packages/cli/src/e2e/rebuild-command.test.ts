@@ -87,6 +87,12 @@ describe("binference init --attach on a folder with no install", () => {
       expect(notes).toContain(init("rebuild.warning"));
       expect(rebuilt.prompter.transcript.asked).toContain("rebuildConfirm");
       const after = await storedInstall(fresh);
+      // Each wallet shows the time Privy made it, as a date the owner's language writes.
+      const made = english.dateTime(old.clock.now());
+      const lines = rebuilt.prompter.transcript.lines.join("\n");
+      for (const { address } of after.facts.wallets) {
+        expect(lines).toContain(english.message("init.rebuild.foundWallet", { address, made }));
+      }
       // Wallets made in the same millisecond list by their store ids, which each machine makes.
       const ids = (facts: typeof after.facts) =>
         facts.wallets.map((item) => item.custodyWalletId).toSorted();

@@ -243,13 +243,15 @@ A refusal is logged with the rule number, never with key material, and raises
 --attach` on an empty folder rebuilds what Privy holds. It warns first that history, orders,
   settings, wallet labels, saved addresses and the bot's pairing start fresh. It takes the Privy
   app and the owner key, finds the wallets the app holds whose owner is the owner key alone (Privy's
-  `authorization_key` filter), each under one ceiling the same key owns, and reads the rescue
-  address when every ceiling lets sends pay exactly one address in common; otherwise the owner
-  names one of the shared addresses. Nothing changes on Privy until the owner types the number of
-  wallets found. Then, as `init` does, it takes the bot and the limits, makes one agent with the
-  default settings and this machine's agent key, moves every wallet's signer to that key, records
-  each wallet with its ceiling, and issues the bot's pairing link. A folder that holds a config
-  file but no install is refused.
+  `authorization_key` filter), each under one ceiling the same key owns whose rules are exactly
+  the ones binference builds, its token sends paying the addresses its native sends pay. It
+  lists each wallet with the time Privy made it, and reads the rescue address when every ceiling
+  lets sends pay exactly one address in common; otherwise the owner names one of the shared
+  addresses. Nothing changes on Privy until the owner types the number of wallets found. Then, as
+  `init` does, it takes the bot and the limits, makes one agent with the default settings and this
+  machine's agent key, moves every wallet's signer to that key, records each wallet with its
+  ceiling, and issues the bot's pairing link. A folder that holds a config file but no install is
+  refused.
 - **Machine compromised:** `binference signer revoke` from any other machine with the owner key, or
   the Privy dashboard, removes the agent key at once. Funds stay; the attacker could only have
   signed inside the ceiling until then. A revoke never removes the engine's own key or a wallet's

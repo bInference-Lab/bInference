@@ -79,25 +79,30 @@ export function recipientRules(
   ];
 }
 
-/** Lists for one chain, checked and checksummed. */
-interface ChainLists {
-  readonly chain: CeilingChain;
+/**
+ * What one chain's rules of a ceiling list: its EIP-155 id, the contracts a call may reach, the
+ * spenders an approval may name and the native cap of one call. Addresses are checksummed.
+ */
+export interface CeilingChainLists {
+  /** The EIP-155 chain id as decimal text, as the rules write it. */
+  readonly chainId: string;
   readonly contracts: readonly string[];
   readonly spenders: readonly string[];
+  readonly perTxNativeCapBase: bigint;
 }
 
 // The contract-call and approval rules of one chain; none for a list that is empty.
-function callRulesOf(lists: ChainLists): readonly PolicyRule[] {
-  const { chainId } = lists.chain.chain;
-  const onChain = onTransaction("chain_id", "eq", String(chainId));
+function callRulesOf(lists: CeilingChainLists): readonly PolicyRule[] {
+  const { chainId } = lists;
+  const onChain = onTransaction("chain_id", "eq", chainId);
   const noCoin = onTransaction("value", "lte", noValue);
-  const cap = `0x${lists.chain.perTxNativeCapBase.toString(16)}`;
-  const calls = allow(`Contract calls, chain ${String(chainId)}`, [
+  const cap = `0x${lists.perTxNativeCapBase.toString(16)}`;
+  const calls = allow(`Contract calls, chain ${chainId}`, [
     onChain,
     onTransaction("to", "in", lists.contracts),
     onTransaction("value", "lte", cap),
   ]);
-  const approvals = allow(`Approvals, chain ${String(chainId)}`, [
+  const approvals = allow(`Approvals, chain ${chainId}`, [
     onChain,
     noCoin,
     onCalldata(approveAbi, "approve.spender", lists.spenders),
@@ -108,14 +113,17 @@ function callRulesOf(lists: ChainLists): readonly PolicyRule[] {
   ];
 }
 
-function chainRules(lists: ChainLists, recipients: readonly string[]): readonly PolicyRule[] {
-  const { chainId } = lists.chain.chain;
-  const onChain = onTransaction("chain_id", "eq", String(chainId));
+function chainRules(
+  lists: CeilingChainLists,
+  recipients: readonly string[],
+): readonly PolicyRule[] {
+  const { chainId } = lists;
+  const onChain = onTransaction("chain_id", "eq", chainId);
   const noCoin = onTransaction("value", "lte", noValue);
   return [
     ...callRulesOf(lists),
-    ...recipientRules(String(chainId), recipients),
-    allow(`Self cancel, chain ${String(chainId)}`, [
+    ...recipientRules(chainId, recipients),
+    allow(`Self cancel, chain ${chainId}`, [
       onChain,
       onTransaction("to", "eq", walletAddress),
       noCoin,
@@ -141,7 +149,7 @@ const noDelegation: PolicyRule = {
   conditions: [],
 };
 
-function chainLists(chain: CeilingChain): Result<ChainLists, CeilingProblem> {
+function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProblem> {
   if (chain.perTxNativeCapBase < 0n) {
     return err("negative_cap");
   }
@@ -150,19 +158,23 @@ function chainLists(chain: CeilingChain): Result<ChainLists, CeilingProblem> {
     return contracts;
   }
   const spenders = addressList(chain.spenders);
+  const chainId = String(chain.chain.chainId);
+  const { perTxNativeCapBase } = chain;
   return spenders.ok
-    ? ok({ chain, contracts: contracts.value, spenders: spenders.value })
+    ? ok({ chainId, contracts: contracts.value, spenders: spenders.value, perTxNativeCapBase })
     : spenders;
 }
 
-function eachChain(chains: readonly CeilingChain[]): Result<readonly ChainLists[], CeilingProblem> {
+function eachChain(
+  chains: readonly CeilingChain[],
+): Result<readonly CeilingChainLists[], CeilingProblem> {
   if (chains.length === 0) {
     return err("no_chain");
   }
   if (new Set(chains.map((item) => item.chain.ref)).size !== chains.length) {
     return err("repeated_chain");
   }
-  const lists: ChainLists[] = [];
+  const lists: CeilingChainLists[] = [];
   for (const chain of chains) {
     const checked = chainLists(chain);
     if (!checked.ok) {
@@ -204,9 +216,19 @@ export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingPr
   if (!recipients.ok) {
     return recipients;
   }
-  const rules = lists.value.flatMap((item) => chainRules(item, recipients.value));
   return ok({
     chains: request.chains.map((item) => item.chain.ref),
-    rules: [...rules, ownerExport, noDelegation],
+    rules: ceilingRules(lists.value, recipients.value),
   });
+}
+
+/**
+ * The rules {@link buildCeiling} writes for chains whose lists are checked and checksummed, and
+ * recipients that are: each chain's rules in the order given, then the rules of no chain.
+ */
+export function ceilingRules(
+  chains: readonly CeilingChainLists[],
+  recipients: readonly string[],
+): readonly PolicyRule[] {
+  return [...chains.flatMap((item) => chainRules(item, recipients)), ownerExport, noDelegation];
 }

@@ -47,6 +47,7 @@ const wallet: WalletRecord = {
   ownerId,
   policyIds: [policyId],
   signers: [{ signerId: agentId, overridePolicyIds: [policyId] }],
+  createdAtMs: 1_790_000_000_000,
 };
 
 function view(

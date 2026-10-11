@@ -210,6 +210,7 @@ function contextOf(
       isInteractive && host.prompter !== undefined ? host.prompter : createOutputPrompter(output),
     isInteractive,
     words: (key: string, values?: MessageValues) => formatter.message(`init.${key}`, values),
+    dateTime: (epochMs: number) => formatter.dateTime(epochMs),
     secrets: createSecretReader({
       env: host.env,
       keychain: platform.keychain,

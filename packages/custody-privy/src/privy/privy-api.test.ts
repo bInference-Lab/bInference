@@ -150,6 +150,7 @@ describe("the Privy API client", () => {
         ownerId: walletAnswer.owner_id,
         policyIds: [],
         signers: [],
+        createdAtMs: walletAnswer.created_at,
       },
     });
     await expect(api.wallet(wallet, live())).resolves.toStrictEqual({

@@ -75,7 +75,15 @@ describe("a page of wallets", () => {
     owner_id: "rkiz0ivz254drv1xw982v3jq",
     policy_ids: [],
     additional_signers: [],
+    created_at: 1741834854578,
   };
+
+  it("reads each wallet with the time Privy made it", () => {
+    expect(readWalletList({ data: [wallet] })?.wallets).toMatchObject([
+      { id: wallet.id, createdAtMs: 1741834854578 },
+    ]);
+    expect(readWalletList({ data: [{ ...wallet, created_at: undefined }] })).toBeUndefined();
+  });
 
   it("reads the next cursor, and none on the last page, written null or empty", () => {
     expect(

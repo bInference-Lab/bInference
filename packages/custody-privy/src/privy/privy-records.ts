@@ -50,4 +50,6 @@ export interface WalletRecord {
   readonly ownerId: PrivyId | null;
   readonly policyIds: readonly PrivyId[];
   readonly signers: readonly WalletSigner[];
+  /** When Privy made the wallet, in Unix milliseconds. */
+  readonly createdAtMs: number;
 }

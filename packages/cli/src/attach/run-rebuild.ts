@@ -69,9 +69,17 @@ async function questions(context: InitContext): Promise<InitStep<Omit<Prepared, 
   if (!owner.ok) {
     return owner;
   }
-  const addresses = owner.value.owned.map((item) => item.wallet.address).join(", ");
+  // Each wallet with the time Privy made it, so one the owner did not make stands out.
+  const wallets = owner.value.owned
+    .map(({ wallet }) =>
+      context.words("rebuild.foundWallet", {
+        address: wallet.address,
+        made: context.dateTime(wallet.createdAtMs),
+      }),
+    )
+    .join("\n");
   context.prompter.say(
-    context.words("rebuild.found", { count: owner.value.owned.length, addresses }),
+    context.words("rebuild.found", { count: owner.value.owned.length, wallets }),
   );
   const rescue = await takeRebuildRescue(context, owner.value.owned);
   if (!rescue.ok) {

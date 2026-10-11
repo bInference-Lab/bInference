@@ -1,5 +1,8 @@
 import type { JsonValue } from "@binference/core";
 import { z } from "zod";
+import { ruleTexts } from "../wallets/policy-rules.schema.js";
+import { addressList, type CeilingChainLists, ceilingRules } from "./build-ceiling.js";
+import { policyRuleJson } from "./policy-rule.js";
 
 /** A ceiling as Privy holds it now, read from its rules. Addresses are as the rules list them. */
 export interface CeilingHeld {
@@ -75,4 +78,55 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
     perTxNativeCapBase,
     recipients: [...new Set(sends.flatMap((rule) => valuesOf(rule, "to", "in")))],
   };
+}
+
+function namedRule(read: readonly Rule[], kind: string, chainId: string): Rule | undefined {
+  return read.find((rule) => rule.name === `${kind}, chain ${chainId}`);
+}
+
+function listOf(rule: Rule | undefined, field: string): readonly string[] {
+  return rule === undefined ? [] : valuesOf(rule, field, "in");
+}
+
+// The lists of one chain as its rules name them, checksummed; a malformed address is undefined.
+function listsOf(read: readonly Rule[], chainId: string): CeilingChainLists | undefined {
+  const calls = namedRule(read, "Contract calls", chainId);
+  const contracts = addressList(listOf(calls, "to"));
+  const spenders = addressList(listOf(namedRule(read, "Approvals", chainId), "approve.spender"));
+  const cap = calls === undefined ? 0n : capOf([calls]);
+  return contracts.ok && spenders.ok && cap !== undefined
+    ? {
+        chainId,
+        contracts: contracts.value,
+        spenders: spenders.value,
+        perTxNativeCapBase: cap,
+      }
+    : undefined;
+}
+
+/**
+ * Whether rules Privy holds are exactly a ceiling `buildCeiling` builds: the ceiling rebuilt
+ * from the chains, contracts, spenders, cap and native-send recipients they name has the same
+ * rules, compared as the read-back compares them. A token send to a recipient the native sends
+ * do not list, a rule of no ceiling or a lowercase address fails it.
+ */
+export function isBuiltCeiling(rules: readonly JsonValue[]): boolean {
+  const read = rules.flatMap((rule) => {
+    const parsed = ruleSchema.safeParse(rule);
+    return parsed.success ? [parsed.data] : [];
+  });
+  const chainIds = [...new Set(read.flatMap((rule) => onChain.exec(rule.name)?.slice(1, 2) ?? []))];
+  const [first] = chainIds;
+  const lists = chainIds.map((chainId) => listsOf(read, chainId));
+  const recipients = addressList(
+    first === undefined ? [] : listOf(namedRule(read, "Native sends", first), "to"),
+  );
+  const chains = lists.flatMap((item) => (item === undefined ? [] : [item]));
+  const isRead = read.length === rules.length && chains.length === lists.length;
+  if (!isRead || chains.length === 0 || !recipients.ok || recipients.value.length === 0) {
+    return false;
+  }
+  const built = ruleTexts(ceilingRules(chains, recipients.value).map(policyRuleJson));
+  const held = ruleTexts(rules);
+  return held !== undefined && JSON.stringify(held) === JSON.stringify(built);
 }

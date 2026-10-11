@@ -1,5 +1,5 @@
 import { BinferenceError } from "@binference/core";
-import { type CeilingHeld, readCeiling } from "../ceiling/read-ceiling.js";
+import { type CeilingHeld, isBuiltCeiling, readCeiling } from "../ceiling/read-ceiling.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import type { KeyQuorum, PrivyId, PrivyPolicy, WalletRecord } from "../privy/privy-records.js";
 import { isSoleKey } from "./read-back.js";
@@ -44,7 +44,17 @@ async function listAll(
   });
 }
 
-// The wallet, owned by the owner key alone, under one ceiling the same quorum owns, which reads.
+// The wallet's ceiling, read, when the wallet's owner owns it and it is an Ethereum policy of
+// version 1.0 whose rules are exactly one `buildCeiling` builds.
+function ceilingOf(policy: PrivyPolicy, wallet: WalletRecord): CeilingHeld | undefined {
+  const isOurs = policy.chainType === "ethereum" && policy.version === "1.0";
+  return policy.ownerId === wallet.ownerId && isOurs && isBuiltCeiling(policy.rules)
+    ? readCeiling(policy.rules)
+    : undefined;
+}
+
+// The wallet, owned by the owner key alone, under one ceiling the same quorum owns, which is
+// exactly one `buildCeiling` builds.
 async function ownedOf(
   api: PrivyApi,
   found: { readonly wallet: WalletRecord; readonly ownerKey: string },
@@ -60,11 +70,10 @@ async function ownedOf(
     options.quorums.set(wallet.ownerId, quorum.ok ? quorum.value : undefined);
   }
   const policy = await api.policy(policyId, options);
-  const isOwner = isSoleKey(options.quorums.get(wallet.ownerId), ownerKey);
-  if (!isOwner || !policy.ok || policy.value.ownerId !== wallet.ownerId) {
+  if (!policy.ok || !isSoleKey(options.quorums.get(wallet.ownerId), ownerKey)) {
     return undefined;
   }
-  const ceiling = readCeiling(policy.value.rules);
+  const ceiling = ceilingOf(policy.value, wallet);
   return ceiling === undefined
     ? undefined
     : { wallet, ownerQuorum: wallet.ownerId, policy: policy.value, ceiling };
@@ -73,8 +82,9 @@ async function ownedOf(
 /**
  * The app's Ethereum wallets the owner key owns, for an install rebuilt on a new machine
  * (decision 0142): Privy lists those whose owner holds the key, a page at a time, and a wallet
- * counts only when the owner key alone owns it and its one ceiling, which must read as one
- * `buildCeiling` builds. Oldest first, as Privy lists them. More than 2,000 wallets is a fault.
+ * counts only when the owner key alone owns it and its one ceiling, whose rules must be exactly
+ * one `buildCeiling` builds, with its token sends paying the addresses its native sends pay.
+ * Oldest first, as Privy lists them. More than 2,000 wallets is a fault.
  */
 export async function findOwnedWallets(
   api: PrivyApi,
