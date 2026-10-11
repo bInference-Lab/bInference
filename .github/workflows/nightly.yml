@@ -1,9 +1,19 @@
 name: Nightly
 
+# Stryker on the money core, in shards that each keep their results between runs (Stryker's
+# incremental mode): a night tests only the mutants whose code changed since the last results. The
+# command runner tells Stryker nothing of the tests, so a changed test reuses old results until
+# the Sunday run, which tests every mutant again.
 on:
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2 * * 1-6"
+    - cron: "17 2 * * 0"
   workflow_dispatch:
+    inputs:
+      fresh:
+        description: Test every mutant again, ignoring the saved results
+        type: boolean
+        default: false
 
 permissions: read-all
 
@@ -17,9 +27,18 @@ env:
 
 jobs:
   mutation:
-    name: Stryker
+    name: Stryker ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    env:
+      MUTATE_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+      RESULTS: reports/stryker-incremental-${{ matrix.shard }}-of-${{ strategy.job-total }}.json
+      RESULTS_KEY: stryker-${{ matrix.shard }}-of-${{ strategy.job-total }}
+      FRESH: ${{ github.event.schedule == '17 2 * * 0' || inputs.fresh == true }}
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,8 +57,34 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Restore the shard's last results
+        if: env.FRESH != 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RESULTS }}
+          key: ${{ env.RESULTS_KEY }}-${{ github.run_id }}
+          restore-keys: ${{ env.RESULTS_KEY }}-
+
+      # Stryker saves what it tested when it is interrupted, so a shard stopped at 70 minutes keeps
+      # its work, and the next night goes on from there.
       - name: Stryker
-        run: pnpm mutation
+        run: |
+          args=(run --incremental)
+          if [ "$FRESH" = "true" ]; then args+=(--force); fi
+          status=0
+          timeout --signal=INT --kill-after=5m 70m node_modules/.bin/stryker "${args[@]}" || status=$?
+          if [ "$status" -eq 124 ]; then
+            echo "::notice::Shard $MUTATE_SHARD stopped at 70 minutes; the next run goes on from its saved results."
+            exit 0
+          fi
+          exit "$status"
+
+      - name: Save the shard's results
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.RESULTS }}
+          key: ${{ env.RESULTS_KEY }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Summary
         if: always()
@@ -49,7 +94,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: mutation-report
+          name: mutation-report-${{ matrix.shard }}
           path: reports/mutation/
           if-no-files-found: warn
           retention-days: 30
