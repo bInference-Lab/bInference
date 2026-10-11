@@ -29,6 +29,13 @@ new name here first, in the change that uses it.
   chains' RPC nodes.
 - **engine log**: `logs/engine.log` in the state folder, one JSON line per log record with ids
   and no content, set aside by size and read back by `binference logs`.
+- **browser push**: a notification a console device's browser shows when a card opens or closes,
+  sent through the browser's push service (Web Push) and encrypted to the browser; the owner turns
+  it on in the console. The message names the card only.
+- **push worker**: the console's service worker, `/push-worker.js`, which shows browser push
+  messages and opens the console at the card.
+- **VAPID key**: the engine's P-256 key pair that signs each browser push message, in
+  `keys/web-push-vapid`; browsers subscribe with its public half.
 - **CLI token**: the `bnt_` token in `auth/cli.token` that the CLI signs in with over IPC; the
   engine stores only its SHA-256.
 - **client token**: a `bnt_` token a client signs in with over IPC, with its label, kind and
@@ -357,6 +364,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | MCP server                              | MCP 服务器              |                             |
 | picture (one the owner sends)           | 图片                    |                             |
 | notification                            | 通知                    |                             |
+| browser notification, browser push      | 浏览器通知              |                             |
 | console device                          | 控制台设备              |                             |
 | pairing code, confirmation code         | 验证码, 确认码          |                             |
 | bot token (Telegram)                    | 机器人 Token            | BotFather gives it          |
