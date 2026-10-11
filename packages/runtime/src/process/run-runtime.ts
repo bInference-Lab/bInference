@@ -69,44 +69,94 @@ async function writeHealth(host: RuntimeHost): Promise<void> {
   await host.write(encode({ t: "health", runningTurns: 0, waitingMessages: 0 }));
 }
 
-// Answers each line after the start until `stop` or the end of the input. The settings a line
-// brings apply from the next model call on.
+type NextLine = IteratorResult<string, undefined>;
+
+// Answers one line after the start; answers how the runtime ends when the line ends it.
+async function answer(
+  host: RuntimeHost,
+  text: string,
+  apply: (settings: RuntimeSettings) => void,
+): Promise<RuntimeExit | undefined> {
+  const line = parseLine(text);
+  if (line === undefined || line.t === "start") {
+    return "bad_line";
+  }
+  if (line.t === "stop") {
+    return "stopped";
+  }
+  if (line.t === "settings") {
+    apply(line.settings);
+  } else {
+    await host.write(encode(refusedRoute(line)));
+  }
+  return undefined;
+}
+
+// Answers each line after the start until `stop` or the end of the input, from the line that was
+// read while the runtime signed in.
 async function serve(
   host: RuntimeHost,
   lines: AsyncIterator<string>,
-  start: StartLine,
+  context: { readonly start: StartLine; readonly read: NextLine },
 ): Promise<RuntimeExit> {
-  const running: { settings: RuntimeSettings } = { settings: start.settings };
+  const running = { settings: context.start.settings };
+  // New settings apply from the next model call on.
+  const apply = (settings: RuntimeSettings): void => {
+    running.settings = settings;
+  };
+  const ended =
+    context.read.done === true ? "stopped" : await answer(host, context.read.value, apply);
+  if (ended !== undefined) {
+    return ended;
+  }
   for await (const text of { [Symbol.asyncIterator]: () => lines }) {
-    const line = parseLine(text);
-    if (line === undefined || line.t === "start") {
-      return "bad_line";
-    }
-    if (line.t === "stop") {
-      return "stopped";
-    }
-    if (line.t === "settings") {
-      running.settings = line.settings;
-    } else {
-      await host.write(encode(refusedRoute(line)));
+    const exit = await answer(host, text, apply);
+    if (exit !== undefined) {
+      return exit;
     }
   }
   return "stopped";
 }
 
-async function connect(host: RuntimeHost, start: StartLine): Promise<EngineLink | undefined> {
+async function connect(
+  host: RuntimeHost,
+  start: StartLine,
+  signal: AbortSignal,
+): Promise<EngineLink | undefined> {
   try {
-    return await host.connect(start, AbortSignal.timeout(connectTimeoutMs));
+    return await host.connect(
+      start,
+      AbortSignal.any([signal, AbortSignal.timeout(connectTimeoutMs)]),
+    );
   } catch {
     return undefined;
   }
 }
 
+function endsRuntime(read: NextLine): boolean {
+  return read.done === true || parseLine(read.value)?.t === "stop";
+}
+
+// Signs in while it reads on: the engine's stop, or the end of the input when the engine went
+// away, ends the sign-in at once.
+async function signIn(host: RuntimeHost, start: StartLine, reading: Promise<NextLine>) {
+  const abandon = new AbortController();
+  const connecting = connect(host, start, abandon.signal);
+  const isQuit = await Promise.race([connecting.then(() => false), reading.then(endsRuntime)]);
+  if (isQuit) {
+    abandon.abort();
+    (await connecting)?.close();
+    return "quit";
+  }
+  return connecting;
+}
+
 /**
  * Runs the agent runtime on its pipes (runtime spec, section 2): reads the `start` line, signs in
  * to the engine with the token it holds, writes `ready`, then its health every 10 seconds, and
- * answers each line until `stop` or the end of its input. A first line that is not `start`, a line
- * it cannot read, or a sign-in that fails ends it with a fault; the engine starts it again.
+ * answers each line until `stop` or the end of its input, which also end a sign-in under way. A
+ * first line that is not `start`, a line it cannot read, or a sign-in that fails ends it with a
+ * fault; the engine starts it again.
  */
 export async function runRuntime(host: RuntimeHost): Promise<RuntimeExit> {
   const lines = readControlLines(host.input)[Symbol.asyncIterator]();
@@ -116,7 +166,11 @@ export async function runRuntime(host: RuntimeHost): Promise<RuntimeExit> {
     if (start?.t !== "start") {
       return "bad_start";
     }
-    const link = await connect(host, start);
+    const reading = lines.next();
+    const link = await signIn(host, start, reading);
+    if (link === "quit") {
+      return "stopped";
+    }
     if (link === undefined) {
       return "not_connected";
     }
@@ -126,7 +180,7 @@ export async function runRuntime(host: RuntimeHost): Promise<RuntimeExit> {
         encode({ t: "ready", version: host.version, schemaVersion: noSchemaVersion }),
       );
       host.everyTenSeconds(async () => writeHealth(host), lifetime.signal);
-      return await serve(host, lines, start);
+      return await serve(host, lines, { start, read: await reading });
     } finally {
       lifetime.abort();
       link.close();
@@ -137,6 +191,7 @@ export async function runRuntime(host: RuntimeHost): Promise<RuntimeExit> {
     }
     throw error;
   } finally {
-    await lines.return?.(undefined);
+    // A read may still wait for the engine's next line: the reader ends when the input does.
+    void lines.return?.(undefined);
   }
 }

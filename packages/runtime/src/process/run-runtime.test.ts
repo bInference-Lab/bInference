@@ -107,4 +107,25 @@ describe("runRuntime", () => {
     await expect(runtime.exited).resolves.toBe(1);
     await expect(runtime.next()).resolves.toBe("ended");
   });
+
+  it("ends without a fault when its input ends or stop comes while it signs in", async () => {
+    const ended = started({ hangsAtSignIn: true });
+    await send(ended, fixtureStartLine());
+    await ended.end();
+    await expect(ended.exited).resolves.toBe(0);
+    const stopped = started({ hangsAtSignIn: true });
+    await send(stopped, fixtureStartLine());
+    await send(stopped, { t: "stop" });
+    await expect(stopped.exited).resolves.toBe(0);
+    await expect(stopped.next()).resolves.toBe("ended");
+  });
+
+  it("answers the settings that came while it signed in once it is ready", async () => {
+    const runtime = started();
+    await send(runtime, fixtureStartLine());
+    await send(runtime, { t: "settings", settings: fixtureStartLine().settings });
+    await expect(runtime.next()).resolves.toMatchObject({ t: "ready" });
+    await send(runtime, { t: "stop" });
+    await expect(runtime.exited).resolves.toBe(0);
+  });
 });

@@ -33,3 +33,5 @@ const exit = await runRuntime({
   version: manifest.version,
 });
 process.exitCode = exit === "stopped" ? 0 : 1;
+// The input may still hold a read open, which would keep the process alive.
+process.stdin.destroy();
