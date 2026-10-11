@@ -47,6 +47,15 @@ transport, the tool box, the turn's journal in `agent.sqlite`, the engine's side
 the chat queue's merge source. `@binference/runtime/testing` has a scripted transport and a
 recorder that stands in for the journal, the engine and the queue.
 
+## Tools
+
+`src/tools/` declares the agent's tools. `defineTool` takes a name, a kind (`read`, `propose` or
+`control`), a description and a zod schema of the arguments; the model sees the schema's JSON
+Schema. A call's arguments are parsed keeping integers past 2^53 exact, then checked with
+`safeParse` and no coercion, so money arrives as a decimal string of base units and becomes a
+`bigint`. A call that fails the check never runs, and the model reads the schema's issues.
+`createToolBox` holds an agent's tools for its turns.
+
 ## Example
 
 ```ts

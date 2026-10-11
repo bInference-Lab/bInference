@@ -73,6 +73,8 @@ export interface TestTurnOptions {
   readonly replies: readonly ScriptedReply[];
   /** The turn's tools, or a function that makes them with the turn's recorder. */
   readonly tools?: readonly TestTool[] | ((recorder: TurnRecorder) => readonly TestTool[]);
+  /** A tool box in place of the test tools. */
+  readonly box?: ToolBox;
   readonly recorder?: TurnRecorderOptions;
   readonly taken?: readonly OwnerMessage[];
   readonly history?: readonly ModelMessage[];
@@ -98,7 +100,7 @@ export function createTestTurn(options: TestTurnOptions): TestTurn {
     turnId: testTurnId,
     parts: {
       transport,
-      tools: testToolBox(tools ?? []),
+      tools: options.box ?? testToolBox(tools ?? []),
       journal: recorder.journal,
       engine: recorder.engine,
       merge: recorder.merge,
