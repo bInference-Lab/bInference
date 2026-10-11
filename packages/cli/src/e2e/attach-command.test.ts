@@ -2,13 +2,14 @@ import { EventEmitter } from "node:events";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the old machine's folder is a copy of the install made while no engine runs
 import { cp } from "node:fs/promises";
 import { join } from "node:path";
-import { jsonValueSchema, type Secret } from "@binference/core";
+import { type Http, jsonValueSchema, type Secret } from "@binference/core";
 import { createFormatter } from "@binference/i18n";
 import { createFileSecretStore, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { parseAgentKey } from "@binference/signer";
 import { fakeBotToken } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import { setUpWithOwnerKey, signsWith } from "./attach-fixtures.js";
@@ -17,6 +18,7 @@ import {
   type InitMachine,
   machineOf,
   newInitMachine,
+  newOwnerKey,
   runOn,
   secretEnv,
   storedInstall,
@@ -78,6 +80,7 @@ async function attach(
     readonly appSecrets?: readonly string[];
     readonly botTokens?: readonly string[];
     readonly env?: Readonly<Record<string, string>>;
+    readonly http?: Http;
   } = {},
 ) {
   const prompter = createScriptedPrompter({
@@ -87,10 +90,34 @@ async function attach(
   });
   const host = hostWith(machine, ["init", "--attach", ...(options.argv ?? [])], {
     env: options.env ?? secretEnv(machine),
-    parts: { http: machine.world, prompter },
+    parts: { http: options.http ?? machine.world, prompter },
   });
   const code = await runCli(host);
   return { code, stderr: host.stderr(), prompter };
+}
+
+// The machine's world, except that each key quorum made through it reads back with a second key.
+function quorumsWithAnotherKey(machine: InitMachine): Http {
+  const made = new Set<string>();
+  const extra = { public_key: newOwnerKey().publicKey };
+  return {
+    request: async (request) => {
+      const answer = await machine.world.request(request);
+      const path = new URL(request.url).pathname;
+      if (request.method === "POST" && path === "/v1/key_quorums") {
+        made.add(z.object({ id: z.string() }).parse(JSON.parse(answer.body)).id);
+        return answer;
+      }
+      const id = path.split("/").at(-1) ?? "";
+      if (request.method !== "GET" || !made.has(id)) {
+        return answer;
+      }
+      const quorum = z.looseObject({ authorization_keys: z.array(z.unknown()) });
+      const read = quorum.parse(JSON.parse(answer.body));
+      const keys = [...read.authorization_keys, extra];
+      return { ...answer, body: JSON.stringify({ ...read, authorization_keys: keys }) };
+    },
+  };
 }
 
 function publicOf(key: Secret): string {
@@ -191,6 +218,17 @@ describe("binference init --attach", () => {
       await expect(heldKey(machine)).rejects.toThrow(/agent key/);
     },
   );
+
+  it("moves no wallet when Privy holds the new key quorum with another key", slow, async () => {
+    const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+    await removeAgentKey(machine);
+    const sent = machine.privy.sent.length;
+
+    const refused = await attach(machine, [ownerKey], { http: quorumsWithAnotherKey(machine) });
+
+    expect([refused.code, refused.stderr]).toStrictEqual([1, `${init("refused.attachQuorum")}\n`]);
+    expect(machine.privy.sent.slice(sent).map((request) => request.method)).not.toContain("PATCH");
+  });
 
   it("never takes the owner key without a person, nor with a start over", slow, async () => {
     const { machine } = await setUpWithOwnerKey(folders);

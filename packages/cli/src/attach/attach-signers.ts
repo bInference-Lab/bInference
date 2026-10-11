@@ -1,6 +1,7 @@
 import { ok, type Secret } from "@binference/core";
 import {
   createPrivyApi,
+  isSoleKey,
   type OwnerAuthorize,
   type PrivyId,
   type SignedWallet,
@@ -44,8 +45,9 @@ function refusalOf(error: SignerSwapRefusal): Refused {
 
 /**
  * Moves the wallets to the new agent key on Privy (keys spec, section 6): a key quorum for
- * the key, then for each wallet one change the owner key signs that makes it the wallet's one
- * signer, bound to the wallet's ceiling, and removes the signer it had. Each wallet is read back.
+ * the key, read back to hold that key alone, then for each wallet one change the owner key signs
+ * that makes it the wallet's one signer, bound to the wallet's ceiling, and removes the signer it
+ * had. Each wallet is read back.
  * Privy refusing the owner key's signature, a change Privy read after its expiry, or a wallet
  * Privy holds no more stops the move there; the same attach again goes on from where it stopped.
  */
@@ -61,6 +63,11 @@ export async function moveSigners(
     { publicKey: inputs.agentKey, displayName: agentQuorumName },
     { signal },
   );
+  // No wallet moves to a quorum Privy holds with any key but this machine's alone.
+  const held = await api.keyQuorum(quorum.id, { signal });
+  if (!held.ok || !isSoleKey(held.value, inputs.agentKey)) {
+    return refused("init.attach_quorum", "refused.attachQuorum");
+  }
   const expiry = () => host.clock.now() + expiryMs;
   const swapped = await swapSigner(
     api,

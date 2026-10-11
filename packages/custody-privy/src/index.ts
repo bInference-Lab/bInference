@@ -69,5 +69,5 @@ export type {
   SignerRemovalRefusal,
   SignerSwapRefusal,
 } from "./wallets/signer-moves.js";
-export { checkWallet, readBackWallet } from "./wallets/read-back.js";
+export { checkWallet, isSoleKey, readBackWallet } from "./wallets/read-back.js";
 export type { ReadBackProblem, WalletExpectation, WalletView } from "./wallets/read-back.js";

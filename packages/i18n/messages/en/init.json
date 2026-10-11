@@ -110,6 +110,7 @@
   "refused.rebuildNotConfirmed": "You did not type the number of wallets, so nothing was rebuilt and nothing changed on Privy.",
   "refused.attachRefused": "Privy did not take the owner key's signature, so the wallets it did not reach keep their signer. Run `binference init --attach` again.",
   "refused.attachExpired": "A change reached Privy after its expiry, so the wallets after it still list the old signer. Run `binference init --attach` again; it goes on from where it stopped.",
+  "refused.attachQuorum": "Privy holds this machine's new key quorum with other keys than its agent key, so no wallet moved. Run `binference init --attach` again.",
   "refused.attachWalletGone": "Privy no longer holds one of this install's wallets, so the wallets after it keep their signer. Check the wallets in the Privy dashboard.",
   "fault.signersReadBack": "Privy read a wallet back with another signer than this machine set. Run `binference init --attach` again; if Privy reads it back so again, check the wallet in the Privy dashboard.",
   "fault.cancelled": "binference init stopped. It made nothing on Privy.",

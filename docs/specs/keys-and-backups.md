@@ -236,7 +236,8 @@ A refusal is logged with the rule number, never with key material, and raises
   backup (section 7) brings back orders, history and settings. Each wallet changes in one request
   the owner key signs, which sets the new key as its one signer, so no wallet takes two machines'
   signatures; attach runs on a folder that holds the install and prints this machine's signer ID
-  ([decision 0140](../DECISIONS.md#d0140)). Each change of attach and of `signer revoke`
+  ([decision 0140](../DECISIONS.md#d0140)). No wallet moves until Privy reads the new key quorum
+  back holding this machine's agent key alone. Each change of attach and of `signer revoke`
   expires 5 minutes after it is signed; one Privy reads later stops the move there as expired,
   and the same command again goes on from where it stopped.
 - **Planned move** ([decision 0142](../DECISIONS.md#d0142)): the owner runs
