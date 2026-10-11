@@ -5,10 +5,20 @@ import type { OwnerInfo } from "@binference/protocol";
 import type { WebPushKey } from "../web-push/web-push-key.js";
 import { createWebPushRelay, type WebPushRelay } from "../web-push/web-push-relay.js";
 
+/**
+ * Browser push's own parts: the VAPID key, the outbound HTTP the messages go through, and the
+ * check that an endpoint's host is on the internet.
+ */
+export interface WebPushParts {
+  readonly key: WebPushKey;
+  readonly http: Http;
+  readonly isPublicEndpoint: (endpoint: string, signal: AbortSignal) => Promise<boolean>;
+}
+
 /** What browser push is composed from. */
 interface WebPushOptions {
-  /** The VAPID key and the outbound HTTP; without them, no browser push. */
-  readonly webPush?: { readonly key: WebPushKey; readonly http: Http };
+  /** Browser push's own parts; without them, no browser push. */
+  readonly webPush?: WebPushParts;
   readonly owner: () => OwnerInfo;
   readonly clock: Clock;
   readonly random: Random;
@@ -36,6 +46,11 @@ export function composeWebPush(
     random,
     logger: logger.child("web_push"),
   });
-  const handlers = createWebPushHandlers({ access, clock, publicKey: webPush.key.publicKey });
+  const handlers = createWebPushHandlers({
+    access,
+    clock,
+    publicKey: webPush.key.publicKey,
+    isPublicEndpoint: webPush.isPublicEndpoint,
+  });
   return { handlers, relay };
 }

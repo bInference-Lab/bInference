@@ -1,3 +1,4 @@
+import { err } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -35,12 +36,18 @@ function deviceCaller(n: number): EngineCaller {
   };
 }
 
-async function webPush(key = publicKey) {
+async function webPush(key = publicKey, isPublic = true) {
   const access = createMemoryAccessStore();
   await access.addDevice(device(1), testCall({}));
   await access.addDevice(device(2), testCall({}));
   const clock = createManualClock(testNowMs);
-  return { access, handlers: createWebPushHandlers({ access, clock, publicKey: key }) };
+  const checked: string[] = [];
+  const isPublicEndpoint = async (at: string) => {
+    checked.push(at);
+    return Promise.resolve(isPublic);
+  };
+  const options = { access, clock, publicKey: key, isPublicEndpoint };
+  return { access, checked, handlers: createWebPushHandlers(options) };
 }
 
 describe("the browser push handlers", () => {
@@ -55,6 +62,16 @@ describe("the browser push handlers", () => {
     expect(expectOk(status)).toStrictEqual({ publicKey, registered: true });
     const other = await handlers["webPush/status"](testCall({}, deviceCaller(2)));
     expect(expectOk(other)).toStrictEqual({ publicKey, registered: false });
+  });
+
+  it("refuses an endpoint whose host resolves to an address that is not public", async () => {
+    const { access, checked, handlers } = await webPush(publicKey, false);
+    const call = testCall({ subscription: { endpoint, keys } }, deviceCaller(1));
+    await expect(handlers["webPush/register"](call)).resolves.toStrictEqual(
+      err("protocol.bad_args"),
+    );
+    expect(checked).toStrictEqual([endpoint]);
+    expect(await access.listWebPushSubscriptions(testCall({}))).toStrictEqual([]);
   });
 
   it("counts a subscription made for another key as none", async () => {

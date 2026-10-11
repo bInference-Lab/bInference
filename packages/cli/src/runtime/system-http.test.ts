@@ -166,6 +166,22 @@ describe("the system Http adapter", () => {
     ).rejects.toMatchObject({ code: "http.answer_too_large", retryable: false });
   });
 
+  it("keeps a public-only request off this machine, by address and by a name for it", async () => {
+    const port = new URL(held.origin).port;
+    const refusals = await Promise.all(
+      [held.origin, `http://localhost:${port}`, `http://[::1]:${port}`].map(async (origin) =>
+        adapter()
+          .request({ method: "GET", url: `${origin}/ok`, publicOnly: true, signal: live() })
+          .catch((error: unknown) => error),
+      ),
+    );
+    expect(refusals).toMatchObject([
+      { code: "http.private_address" },
+      { code: "http.private_address" },
+      { code: "http.private_address" },
+    ]);
+  });
+
   it("names only the method and origin of a request that got no answer", async () => {
     const failed = await adapter()
       .request({ method: "GET", url: `${held.closed}/private/path?token=x`, signal: live() })

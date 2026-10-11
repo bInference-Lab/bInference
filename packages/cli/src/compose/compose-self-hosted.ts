@@ -12,6 +12,7 @@ import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
+import { isPublicEndpoint } from "../runtime/public-address.js";
 import { composeBackupOperations } from "./backup-operations.js";
 import { composePrices } from "./chain-prices.js";
 import { type ChainReads, composeChainReads, rpcHealthOf } from "./chain-reads.js";
@@ -275,7 +276,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
       ...(opened.webPushKey === undefined
         ? {}
-        : { webPush: { key: opened.webPushKey, http: host.http } }),
+        : { webPush: { key: opened.webPushKey, http: host.http, isPublicEndpoint } }),
       handlers: engineHandlers(opening, opened, {
         rpc: () => rpcHealthOf(parts.reads, host.clock),
         executor: sending.health,

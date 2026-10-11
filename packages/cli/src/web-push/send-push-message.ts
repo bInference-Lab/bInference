@@ -72,6 +72,8 @@ export async function sendPushMessage(
       topic: message.topic,
     },
     bodyBytes: body,
+    // The endpoint came from a browser: it may reach a push service on the internet only.
+    publicOnly: true,
     signal: AbortSignal.any([context.signal, AbortSignal.timeout(requestTimeoutMs)]),
   });
   return outcomeOf(answer.status);

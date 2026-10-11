@@ -31,7 +31,7 @@ describe.each(skeletonCompositions)(
         { method: "POST", url: endpoint, response: { status: 201, headers: {}, body: "" } },
       ]);
       skeleton = await startSkeleton(partsOf(), {
-        webPush: { key, http },
+        webPush: { key, http, isPublicEndpoint: async () => Promise.resolve(true) },
       });
       const { client, composed, parts } = skeleton;
       const { access } = parts.stores;

@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the test serves a push service of its own on loopback
 import { createServer, type IncomingMessage, type Server } from "node:http";
+import type { Http } from "@binference/core";
 import {
   createManualClock,
   createMemorySecretStore,
@@ -22,7 +23,11 @@ interface Taken {
 }
 
 const held: { server?: Server; origin: string; taken: Taken[] } = { origin: "", taken: [] };
-const http: SystemHttp = createSystemHttp({ version: "2026.10.0" });
+const system: SystemHttp = createSystemHttp({ version: "2026.10.0" });
+// The stand-in serves on loopback, which a real push request may never reach: this line lets it.
+const http: Http = {
+  request: async (request) => system.request({ ...request, publicOnly: false }),
+};
 
 // A push service on loopback: it opens each message as the browser would, then answers 201, or
 // 410 for a subscription that is gone.
@@ -48,13 +53,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await http.close();
+  await system.close();
   await new Promise<void>((resolve) => {
     held.server?.close(() => resolve());
   });
 });
 
-async function send(path: string) {
+async function send(path: string, through: Http = http) {
   const key = await openWebPushKey(createMemorySecretStore({}), new AbortController().signal);
   const outcome = await sendPushMessage(
     {
@@ -66,7 +71,7 @@ async function send(path: string) {
       topic: "a".repeat(32),
     },
     {
-      http,
+      http: through,
       key,
       clock: createManualClock(nowMs),
       random: createSeededRandom(2),
@@ -94,6 +99,12 @@ describe("a push message through a stand-in push service", () => {
       claims: { aud: held.origin },
       key: key.publicKey,
     });
+  });
+
+  it("never reaches a push service on this machine through the real HTTP", async () => {
+    held.taken = [];
+    await expect(send("/send/a", system)).rejects.toMatchObject({ code: "http.private_address" });
+    expect(held.taken).toStrictEqual([]);
   });
 
   it("answers gone for a subscription the push service no longer has", async () => {

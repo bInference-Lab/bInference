@@ -3,7 +3,6 @@ import {
   BinferenceError,
   type Clock,
   createIdSource,
-  type Http,
   type IdSource,
   type Logger,
   type Random,
@@ -37,10 +36,9 @@ import {
   type ProtocolServer,
   telegramCredentialOf,
 } from "@binference/server";
-import type { WebPushKey } from "../web-push/web-push-key.js";
 import type { WebPushRelay } from "../web-push/web-push-relay.js";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
-import { composeWebPush } from "./compose-web-push.js";
+import { composeWebPush, type WebPushParts } from "./compose-web-push.js";
 import { type ConsoleOrigin, consoleOriginCell } from "./console-origin.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
@@ -104,10 +102,11 @@ export interface ComposeEngineOptions {
   /** The owner's bot; without it the engine shows no card in Telegram. */
   readonly telegram?: TelegramParts;
   /**
-   * Browser push (decision 0158): the VAPID key and the outbound HTTP the messages go through;
-   * without it the engine serves no browser push operation and sends no browser a card.
+   * Browser push (decision 0158): the VAPID key, the outbound HTTP the messages go through and
+   * the endpoint check; without it the engine serves no browser push operation and sends no
+   * browser a card.
    */
-  readonly webPush?: { readonly key: WebPushKey; readonly http: Http };
+  readonly webPush?: WebPushParts;
   /**
    * The handlers only the owner's bot runs: the `config/change` that sets `owner.locale`, the one
    * setting the owner's chat changes (decision 0134). The protocol server never serves them.

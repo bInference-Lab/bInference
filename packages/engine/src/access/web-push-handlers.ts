@@ -15,6 +15,11 @@ export interface WebPushHandlersOptions {
   readonly clock: Clock;
   /** The engine's VAPID public key in base64url, which every browser subscribes with. */
   readonly publicKey: string;
+  /**
+   * Whether an endpoint's host resolves to public internet addresses only, so the engine never
+   * posts to its own machine or network for a browser.
+   */
+  readonly isPublicEndpoint: (endpoint: string, signal: AbortSignal) => Promise<boolean>;
 }
 
 // The server lets only a paired console device call the writes; anything else is no device.
@@ -25,7 +30,8 @@ function deviceOf(caller: EngineCaller): Id<"dev"> | undefined {
 /**
  * Creates the browser push handlers. `webPush/status` answers the VAPID public key and whether
  * the calling device holds a subscription made for it. `webPush/register` saves the calling
- * device's subscription, with the key it was made for, in place of one at the same endpoint; a
+ * device's subscription, with the key it was made for, in place of one at the same endpoint; an
+ * endpoint whose host resolves to any address that is not public is `protocol.bad_args`, and a
  * device revoked meanwhile is `auth.revoked`. `webPush/unregister` drops the calling device's
  * subscription at the endpoint, and one it does not hold changes nothing. A caller that is no
  * console device is `auth.device_only`.
@@ -48,6 +54,9 @@ export function createWebPushHandlers(options: WebPushHandlersOptions): WebPushH
         return err("auth.device_only");
       }
       const { endpoint, keys } = args.subscription;
+      if (!(await options.isPublicEndpoint(endpoint, signal))) {
+        return err("protocol.bad_args");
+      }
       const saved = await access.saveWebPushSubscription(
         { endpoint, deviceId, ...keys, serverKey: publicKey, createdAtMs: clock.now() },
         { signal },

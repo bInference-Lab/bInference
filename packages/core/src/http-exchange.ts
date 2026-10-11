@@ -15,6 +15,12 @@ export interface HttpRequest {
   readonly bodyBytes?: Readonly<Uint8Array>;
   /** Aborts the request; callers combine their timeout into it. */
   readonly signal: AbortSignal;
+  /**
+   * Connects only to public internet addresses, such as for an address a client gave: a host
+   * that is, or resolves to, a private, loopback, link-local or multicast address rejects with
+   * `http.private_address`.
+   */
+  readonly publicOnly?: boolean;
 }
 
 /** The answer to an {@link HttpRequest}. Header names are lowercase. */

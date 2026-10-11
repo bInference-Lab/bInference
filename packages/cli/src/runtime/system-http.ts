@@ -1,6 +1,7 @@
 import { BinferenceError, type Http, type HttpRequest, type HttpResponse } from "@binference/core";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the one outbound Http adapter: every other package reaches the network through the Http port
 import { Agent, request as send } from "undici";
+import { isPublicAddress, publicOnlyLookup } from "./public-address.js";
 
 /** The outbound Http adapter of a CLI process, with the connection pool it holds. */
 export interface SystemHttp extends Http {
@@ -76,14 +77,36 @@ function bodyOf(request: HttpRequest): string | Uint8Array | undefined {
   return request.bodyBytes ?? request.body;
 }
 
+/** The connection pools: one for any address, one that reaches public addresses only. */
+interface Agents {
+  readonly any: Agent;
+  readonly publicOnly: Agent;
+}
+
+// A public-only request to an IP literal never looks a name up, so its address is checked here.
+function agentFor(agents: Agents, request: HttpRequest): Agent {
+  if (request.publicOnly !== true) {
+    return agents.any;
+  }
+  const host = new URL(request.url).hostname.replace(/^\[(.*)\]$/, "$1");
+  if (/^[\d.]+$|:/.test(host) && !isPublicAddress(host)) {
+    throw new BinferenceError({
+      code: "http.private_address",
+      message: "The host is an address that is not on the internet.",
+      details: { method: request.method, origin: new URL(request.url).origin },
+    });
+  }
+  return agents.publicOnly;
+}
+
 async function exchange(
-  agent: Agent,
+  agents: Agents,
   request: HttpRequest,
   userAgent: string,
 ): Promise<HttpResponse> {
   const body = bodyOf(request);
   const answer = await send(request.url, {
-    dispatcher: agent,
+    dispatcher: agentFor(agents, request),
     method: request.method,
     headers: headersFor(request, userAgent),
     ...(body === undefined ? {} : { body }),
@@ -104,16 +127,22 @@ async function exchange(
  * binference/<version>`, in place of any user agent the caller set, so each service sees one
  * name: some refuse a request with none, as KyberSwap's edge does. A request that gets no answer
  * rejects with a retryable `http.unreachable` naming only the method and the origin, never the
- * path, a header or a body; one whose signal aborts rejects with the signal's reason.
+ * path, a header or a body; one whose signal aborts rejects with the signal's reason. A
+ * `publicOnly` request connects only to the public addresses its host resolves to, checked at
+ * connect time so a name cannot rebind to a private one, and rejects with `http.private_address`
+ * otherwise.
  */
 export function createSystemHttp(options: SystemHttpOptions): SystemHttp {
-  const agent = new Agent();
+  const agents = {
+    any: new Agent(),
+    publicOnly: new Agent({ connect: { lookup: publicOnlyLookup() } }),
+  };
   const userAgent = `binference/${options.version}`;
   return {
     async request(request) {
       request.signal.throwIfAborted();
       try {
-        return await exchange(agent, request, userAgent);
+        return await exchange(agents, request, userAgent);
       } catch (error) {
         if (request.signal.aborted) {
           throw request.signal.reason;
@@ -121,6 +150,8 @@ export function createSystemHttp(options: SystemHttpOptions): SystemHttp {
         throw error instanceof BinferenceError ? error : unreachable(request, error);
       }
     },
-    close: async () => agent.close(),
+    close: async () => {
+      await Promise.all([agents.any.close(), agents.publicOnly.close()]);
+    },
   };
 }
