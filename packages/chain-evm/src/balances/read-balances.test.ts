@@ -103,13 +103,13 @@ describe("read evm balances", () => {
       { asset: coin, base: huge },
       { asset: usdc, base: 0n },
     ]);
-    const [call] = asked;
-    expect(asked).toHaveLength(1);
-    expect(call?.method).toBe("eth_call");
-    expect(call === undefined ? [] : callsOf(call)).toStrictEqual([
-      [tokenA, "0x70a08231"],
-      [multicall, "0x4d2301cc"],
-      [tokenB, "0x70a08231"],
+    expect(asked.map((call) => call.method)).toStrictEqual(["eth_call"]);
+    expect(asked.map(callsOf)).toStrictEqual([
+      [
+        [tokenA, "0x70a08231"],
+        [multicall, "0x4d2301cc"],
+        [tokenB, "0x70a08231"],
+      ],
     ]);
   });
 
