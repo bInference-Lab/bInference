@@ -165,7 +165,7 @@ describe("createMcpServer", () => {
       const answer = await mcp.callTool({ name: "binference_intent_status", arguments: args });
       expect(answer.isError).toBe(true);
       expect(textsOf(answer)[0]).toBe(
-        "binference_intent_status failed with auth.revoked: The token was revoked. The engine refused the MCP token. Create a new one with `binference token create --for mcp`, then restart the MCP client.",
+        "binference_intent_status failed with auth.revoked: The token was revoked. The engine refused the MCP token. Make a new one with `binference mcp setup --client <client>`, then restart the MCP client.",
       );
       expect(logger.records).toStrictEqual([
         { level: "warn", event: "mcp.tool_failed", errorCode: "auth.revoked" },

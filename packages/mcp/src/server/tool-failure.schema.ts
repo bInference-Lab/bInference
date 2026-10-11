@@ -26,7 +26,7 @@ const codedErrorSchema: z.ZodType<CodedError> = z.object({
 type KnownCode = ProtocolErrorCode | ClientErrorCode | "core.timeout";
 
 const tokenStep =
-  "The engine refused the MCP token. Create a new one with `binference token create --for mcp`, then restart the MCP client.";
+  "The engine refused the MCP token. Make a new one with `binference mcp setup --client <client>`, then restart the MCP client.";
 const expiredStep =
   "The MCP token expired. Start a new `binference mcp session`, or run `binference mcp setup` for this client again, then restart the MCP client.";
 const engineStep =
