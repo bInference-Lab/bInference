@@ -13,4 +13,6 @@ export interface BatchEnd {
   readonly askedOwner: boolean;
   /** Messages that joined at a merge point inside the batch; they follow its results. */
   readonly joined: readonly OwnerMessage[];
+  /** A call went past the turn's tool call limit: the turn ends after the batch. */
+  readonly reachedLimit: boolean;
 }

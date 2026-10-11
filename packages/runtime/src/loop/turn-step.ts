@@ -67,11 +67,17 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
   if (run.halted.aborted) {
     return endOfHalt(haltOf(run.halted));
   }
-  if (run.tally.now().committed) {
-    return { outcome: "ok", status: { line: "proposalWaits" } };
+  const { committed, heldBack } = run.tally.now();
+  if (committed) {
+    const status: TurnStatusLine =
+      heldBack > 0 ? { line: "moreProposals", count: heldBack } : { line: "proposalWaits" };
+    return { outcome: "ok", status };
   }
   if (batch.askedOwner) {
     return ok;
+  }
+  if (batch.reachedLimit) {
+    return { outcome: "loop", status: { line: "toolCallLimit" } };
   }
   if (batch.joined.length === 0) {
     await join(run, await run.parts.merge.take(run.writes));
@@ -93,7 +99,7 @@ async function cutOff(run: TurnRun, answer: ModelAnswer): Promise<BatchEnd> {
     // oxlint-disable-next-line eslint/no-await-in-loop -- results keep the calls' order
     await recordNotRun(run, call, "cut_off");
   }
-  return { askedOwner: false, joined: [] };
+  return { askedOwner: false, joined: [], reachedLimit: false };
 }
 
 async function onAnswer(run: TurnRun, answer: ModelAnswer): Promise<StepEnd> {

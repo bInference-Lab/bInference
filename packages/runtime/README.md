@@ -42,6 +42,12 @@ answers with no call, a proposal commits the turn, a tool asks the owner a quest
 reached, or the turn is stopped. Every call the loop does not run gets a "not run" result with its
 reason, so each call in the transcript has exactly one result.
 
+A turn sends at most one proposal ([decision 0167](../../docs/DECISIONS.md#d0167)): the first
+propose call of a response commits the turn, and every later one gets "not run" and is counted with
+the turn. A turn runs at most 25 tool calls; a call past the 25th does not run, and the turn ends
+after its batch. When a tool result or a joining message holds outside content, the turn tells the
+engine before any later call or model call, so its proposal carries the mark.
+
 The loop reaches the outside only through the ports in `src/loop/turn-ports.ts`: the model
 transport, the tool box, the turn's journal in `agent.sqlite`, the engine's side of the turn, and
 the chat queue's merge source. `@binference/runtime/testing` has a scripted transport and a

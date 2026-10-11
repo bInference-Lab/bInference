@@ -40,5 +40,5 @@ export async function runParallelBatch(
     // oxlint-disable-next-line eslint/no-await-in-loop -- results keep the calls' order
     await recordResult(run, item.call, result);
   }
-  return { askedOwner: false, joined: [] };
+  return { askedOwner: false, joined: [], reachedLimit: false };
 }

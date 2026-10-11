@@ -4,6 +4,7 @@ import type { NotRunReason } from "./not-run.js";
 import { recordNotRun, recordRefused } from "./record-call.js";
 import { runProposal, runToolCall } from "./run-tool-call.js";
 import { haltOf } from "./turn-halt.js";
+import type { ReadyCall } from "./turn-ports.js";
 import type { TurnRun } from "./turn-run.js";
 
 // Merge point 1 (runtime spec, section 3.4): before each call but the first, while the turn is
@@ -26,6 +27,17 @@ function skipReason(run: TurnRun, joined: readonly OwnerMessage[]): NotRunReason
   return joined.length > 0 ? "merge" : undefined;
 }
 
+// One proposal per turn (decision 0167): the first propose call that passed its check runs, and
+// every later one in the batch is held back and counted.
+async function proposeOrHoldBack(run: TurnRun, item: BatchCall, ready: ReadyCall): Promise<void> {
+  if (run.tally.now().committed) {
+    run.tally.holdBack();
+    await recordNotRun(run, item.call, "held_back");
+    return;
+  }
+  await runProposal(run, item, ready);
+}
+
 // Runs one call that is not skipped; answers whether its tool asked to end the turn.
 async function runOne(run: TurnRun, item: BatchCall): Promise<boolean> {
   const { prepared } = item;
@@ -34,7 +46,7 @@ async function runOne(run: TurnRun, item: BatchCall): Promise<boolean> {
     return false;
   }
   if (prepared.kind === "propose") {
-    await runProposal(run, item, prepared);
+    await proposeOrHoldBack(run, item, prepared);
     return false;
   }
   return runToolCall(run, item, prepared);
@@ -63,5 +75,5 @@ export async function runOrderedBatch(
       await recordNotRun(run, item.call, reason);
     }
   }
-  return { askedOwner, joined };
+  return { askedOwner, joined, reachedLimit: false };
 }
