@@ -23,8 +23,12 @@ const tagLength = 16;
 const pointLength = 65;
 const saltLength = 16;
 const secretLength = 16;
-// The plaintext, its delimiter octet and the tag must fit one record.
-const maxPlaintextBytes = recordSize - tagLength - 1;
+// A push service need take no body over 4,096 bytes (RFC 8030 section 7.2, RFC 8291 section 4):
+// the header (salt, record size, key id length and the sender's key), then one record of the
+// plaintext, its delimiter octet and the tag.
+const maxBodyBytes = 4096;
+const headerLength = saltLength + 4 + 1 + pointLength;
+const maxPlaintextBytes = maxBodyBytes - headerLength - tagLength - 1;
 const lastRecordDelimiter = 0x02;
 
 function invalidKeys(): BinferenceError {
@@ -71,7 +75,7 @@ export function newPushSenderParts(salt: Readonly<Uint8Array>): PushSenderParts 
  * RFC 8188: the header (salt, record size 4096, the sender's public key), then the plaintext with
  * its delimiter octet, sealed with AES-128-GCM under keys derived from the ECDH secret and the
  * browser's authentication secret. Throws `web_push.bad_keys` for keys that are not a P-256 point
- * and a 16-byte secret, and `web_push.too_large` past 4,079 bytes of plaintext.
+ * and a 16-byte secret, and `web_push.too_large` past 3,993 bytes of plaintext, a 4,096-byte body.
  */
 export function encryptPushMessage(
   plaintext: Readonly<Uint8Array>,

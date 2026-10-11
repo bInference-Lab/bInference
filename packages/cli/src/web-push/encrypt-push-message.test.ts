@@ -49,10 +49,10 @@ describe("encrypting a push message", () => {
     );
   });
 
-  it("refuses a message that does not fit one record", () => {
-    expect(() => encryptPushMessage(Buffer.alloc(4_080), keys, exampleSender())).toThrow(
+  it("refuses a message whose body would pass the 4,096 bytes a push service must take", () => {
+    expect(() => encryptPushMessage(Buffer.alloc(3_994), keys, exampleSender())).toThrow(
       expect.objectContaining({ code: "web_push.too_large" }),
     );
-    expect(encryptPushMessage(Buffer.alloc(4_079), keys, exampleSender())).toHaveLength(4_096 + 86);
+    expect(encryptPushMessage(Buffer.alloc(3_993), keys, exampleSender())).toHaveLength(4_096);
   });
 });
