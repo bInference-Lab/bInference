@@ -8801,6 +8801,7 @@
         "packages/server/src/index.ts",
         "packages/signer/src/index.ts",
         "packages/store/src/index.ts",
+        "packages/store/src/testing.ts",
         "packages/telegram/src/index.ts",
         "packages/telegram/src/testing.ts",
         "plugins/goplus/src/index.ts",

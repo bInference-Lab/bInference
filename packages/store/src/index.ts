@@ -1,3 +1,18 @@
+export { createSqliteSessionStore } from "./chats/sqlite-session-store.js";
+export { createSqliteTranscriptStore } from "./chats/sqlite-transcript-store.js";
+export { createSqliteWriterFence } from "./chats/sqlite-writer-fence.js";
+export type { Fenced, FenceRefusal } from "./chats/fenced.js";
+export type { SessionClose, SessionDraft, SessionRecord } from "./chats/session-record.js";
+export type {
+  EventAppend,
+  EventDraft,
+  EventKind,
+  EventQuery,
+  EventRole,
+  TranscriptEvent,
+} from "./chats/transcript-event.js";
+export type { TurnDraft, TurnEnd, TurnOutcome, TurnRecord, TurnRef } from "./chats/turn-record.js";
+export type { SessionStore, TranscriptStore, WriterFence } from "./ports.js";
 export { createSqliteAccessStore } from "./access/sqlite-access-store.js";
 export { createSqliteAgentStore } from "./agents/sqlite-agent-store.js";
 export { createSqliteConfigJournal } from "./audit/sqlite-config-journal.js";

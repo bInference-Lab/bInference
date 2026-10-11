@@ -37,6 +37,11 @@ Rules for this package:
   `databases/engine-database.ts`, and a `createSqlite…` factory that binds them to a `StoreHost`.
   Its test runs the port's contract suite on a fresh migrated database from
   `testing/test-databases.worker.ts`, which runs tasks in the test's thread.
+- The ports of `agent.sqlite` live here, in `src/ports.ts`, with their contract suites in
+  `src/contracts/` and in-memory fakes in `src/fakes/`, exported from `src/testing.ts`
+  (decision 0170): the agent runtime that uses them builds on this package. Their adapters are in
+  `src/chats/`, listed in `databases/agent-database.ts`. Every write takes a writer fence and
+  reads `meta.writer_fence` in its own transaction before it changes anything.
 - A task reads every row it decides on inside its own transaction and returns an expected outcome
   before it writes anything; a broken rule throws, which rolls the whole task back.
 - `pnpm check:store` enforces these rules.
