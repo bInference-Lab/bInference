@@ -11,16 +11,6 @@ export type {
   CardVersionRef,
   DrawnCard,
 } from "./surfaces/create-card-showings.js";
-export { limitLines, limitUnits } from "./surfaces/limit-lines.js";
-export type {
-  GasReserveLine,
-  LimitDisplay,
-  LimitField,
-  LimitLine,
-  LimitUnit,
-  LimitUnitOf,
-  SettingLine,
-} from "./surfaces/limit-lines.js";
 export {
   createOwnerCalls,
   ownerChatOperations,

@@ -1,7 +1,20 @@
-import { createFormatter } from "@binference/i18n";
+import { type ChainRegistry, createChainRegistry } from "@binference/chain";
+import {
+  createFakeChainDefinition,
+  createFakeFamily,
+  createFakeSigningScheme,
+} from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
-import { testChains } from "../operations/test-engine.js";
+import { createFormatter } from "../format/create-formatter.js";
 import { limitLines } from "./limit-lines.js";
+
+function testChains(): ChainRegistry {
+  return createChainRegistry({
+    chains: [createFakeChainDefinition()],
+    families: [createFakeFamily()],
+    signingSchemes: [createFakeSigningScheme()],
+  });
+}
 
 const chinese = {
   formatter: createFormatter({ locale: "zh", timeZone: "UTC" }),

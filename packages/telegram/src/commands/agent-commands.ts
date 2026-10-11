@@ -1,5 +1,5 @@
 import { bpsSchema } from "@binference/core";
-import { limitLines } from "@binference/engine/surfaces";
+import { limitLines } from "@binference/i18n";
 import type { LimitChanges, LimitsView, ResultOf } from "@binference/protocol";
 import type { ButtonRows } from "../ingress/bot-calls.js";
 import {

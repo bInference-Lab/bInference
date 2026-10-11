@@ -1,5 +1,5 @@
 import { jsonValueSchema } from "@binference/core";
-import { type LimitLine, limitLines } from "@binference/engine/surfaces";
+import { type LimitLine, limitLines } from "@binference/i18n";
 import { type LimitChanges, type LimitsView, operations } from "@binference/protocol";
 import { z } from "zod";
 import { selfHostedChains } from "../compose/open-engine-parts.js";

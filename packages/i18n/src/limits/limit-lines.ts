@@ -1,7 +1,7 @@
 import { type ChainRegistry, isChainRef } from "@binference/chain";
 import { isBps } from "@binference/core";
-import type { Formatter } from "@binference/i18n";
 import type { LimitChanges, LimitSettings } from "@binference/protocol";
+import type { Formatter } from "../format/create-formatter.js";
 
 /** The unit a limit is set in, which decides how it reads and how a person types it. */
 export type LimitUnit = "usd" | "bps" | "seconds" | "days" | "healthFactor" | "list";
@@ -38,10 +38,13 @@ export const limitUnits: readonly LimitUnitOf[] = [
   { field: "copyPerLeaderDayUsdMicros", unit: "usd" },
 ];
 
-/** What limits are read with: the owner's formatter, and the chains a gas reserve names. */
+/**
+ * What limits are read with: the owner's formatter, and the chains a gas reserve names. Without
+ * the chains, as in the console, a gas reserve reads in base units.
+ */
 export interface LimitDisplay {
   readonly formatter: Formatter;
-  readonly chains: ChainRegistry;
+  readonly chains?: Pick<ChainRegistry, "get">;
 }
 
 /** A limit's name and value as a person reads them, in the owner's language. */
@@ -90,7 +93,7 @@ function valueText(entry: LimitUnitOf, value: NonNullable<LimitValue>, display: 
 
 function gasText(chain: string, base: bigint, display: LimitDisplay): string {
   const { formatter } = display;
-  const served = isChainRef(chain) ? display.chains.get(chain) : undefined;
+  const served = isChainRef(chain) ? display.chains?.get(chain) : undefined;
   if (served?.ok !== true) {
     return formatter.message("limit.gasBase", { amount: String(base), chain });
   }

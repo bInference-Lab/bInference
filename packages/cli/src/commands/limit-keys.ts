@@ -1,6 +1,6 @@
 import { type ChainRef, type ChainRegistry, isChainRef } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
-import { type LimitField, type LimitUnit, limitUnits } from "@binference/engine/surfaces";
+import { type LimitField, type LimitUnit, limitUnits } from "@binference/i18n";
 import { type LimitChanges, limitChangesSchema } from "@binference/protocol";
 import { usdSchema } from "../config/schema/value-formats.schema.js";
 import { baseUnitsOf } from "../init/base-units.js";

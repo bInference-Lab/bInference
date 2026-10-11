@@ -1,10 +1,27 @@
-import { assetRefSchema, chainRefSchema } from "@binference/chain";
+import {
+  assetRefSchema,
+  type ChainRegistry,
+  chainRefSchema,
+  createChainRegistry,
+} from "@binference/chain";
+import {
+  createFakeChainDefinition,
+  createFakeFamily,
+  createFakeSigningScheme,
+} from "@binference/chain/testing";
 import { bpsSchema } from "@binference/core";
-import { createFormatter } from "@binference/i18n";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { testChains } from "../operations/test-engine.js";
+import { createFormatter } from "../format/create-formatter.js";
 import { type LimitDisplay, limitLines } from "./limit-lines.js";
+
+function testChains(): ChainRegistry {
+  return createChainRegistry({
+    chains: [createFakeChainDefinition()],
+    families: [createFakeFamily()],
+    signingSchemes: [createFakeSigningScheme()],
+  });
+}
 
 const english: LimitDisplay = {
   formatter: createFormatter({ locale: "en", timeZone: "UTC" }),
