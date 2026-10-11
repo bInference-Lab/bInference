@@ -48,6 +48,12 @@ the turn. A turn runs at most 25 tool calls; a call past the 25th does not run, 
 after its batch. When a tool result or a joining message holds outside content, the turn tells the
 engine before any later call or model call, so its proposal carries the mark.
 
+The loop bounds every wait itself: a tool call or a model stream that ignores its signal is
+settled at its deadline or stop, and a proposal with no answer by then is never sent again. A
+waiting message joins only where a model call can answer it; otherwise it starts the next turn. A
+port that throws ends the turn `failed`, and the turn still writes its end
+([decision 0172](../../docs/DECISIONS.md#d0172)).
+
 The loop reaches the outside only through the ports in `src/loop/turn-ports.ts`: the model
 transport, the tool box, the turn's journal in `agent.sqlite`, the engine's side of the turn, and
 the chat queue's merge source. `@binference/runtime/testing` has a scripted transport and a
