@@ -1,8 +1,12 @@
-import type { Id } from "@binference/core";
+import type { ReceiptReader } from "@binference/chain";
+import type { FakeNetwork } from "@binference/chain/testing";
+import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
+import type { IntentStore } from "../ports.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
+  type BenchOptions,
   benchChain,
   driveUntil,
   eventsOf,
@@ -203,5 +207,113 @@ describe("recovery of a dropped step", () => {
     await expect(driveUntil(bench, intent, settled)).resolves.toBe("reconciled");
     expect((await firstOf(bench, intent)).state).toBe("final");
     expect(restarted.signed).toStrictEqual([]);
+  });
+});
+
+// A swap dropped after every relay refused it; the relays take bytes again once it ended.
+async function droppedSwap(options: BenchOptions = {}) {
+  const bench = await startExecutorBench({ ...options, limits: { ...limits, ...options.limits } });
+  refuseAll(bench);
+  const intent = await tapped(bench);
+  await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+  acceptAll(bench);
+  return { bench, intent };
+}
+
+// The speed-up the drop rule ended with, sent again as a relay the rule could not see would.
+async function landLate(bench: ExecutorBench, intent: Id<"int">): Promise<TransactionRecord> {
+  const [, speedUp] = await ofIntent(bench, intent);
+  await bench.network.send({ chain: benchChain, raw: rawOf(speedUp) }, live());
+  if (speedUp === undefined) {
+    throw new Error("Expected a speed-up.");
+  }
+  return speedUp;
+}
+
+// A node that stops telling what a transaction moved once armed.
+function silentTransfers() {
+  const state = { isArmed: false };
+  return {
+    arm: () => {
+      state.isArmed = true;
+    },
+    wrap: (network: FakeNetwork): ReceiptReader => ({
+      ...network,
+      transfers: async (chain, hash, options) =>
+        state.isArmed
+          ? Promise.reject(new Error("The node did not answer."))
+          : network.transfers(chain, hash, options),
+    }),
+  };
+}
+
+// An intent store that holds a late landing for every intent already.
+function linkedAlready(store: IntentStore): IntentStore {
+  return { ...store, recordLandedLate: async () => Promise.resolve(err("exists")) };
+}
+
+async function executionsOf(bench: ExecutorBench) {
+  const query = { isPaper: false, after: 0, limit: 10 };
+  return bench.test.positions.executions(query, live());
+}
+
+describe("a dropped step that lands late", () => {
+  it("books a trade dropped part way once its dropped step lands after the step before it", async () => {
+    const bench = await startExecutorBench({ limits });
+    const intent = await tapped(bench, tokenSale);
+    await flush();
+    refuseAll(bench);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    acceptAll(bench);
+    const [, , speedUp] = await ofIntent(bench, intent);
+    await bench.network.send({ chain: benchChain, raw: rawOf(speedUp) }, live());
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    expect(eventsOf(bench)).toContain("executor.landed_late_booked:");
+    expect((await executionsOf(bench)).map(({ intentId }) => intentId)).toStrictEqual([intent]);
+  });
+
+  it("leaves the trade out of the positions when a reorg moves the late block before it is final", async () => {
+    const { bench, intent } = await droppedSwap({ network: { finalityDepth: 4n } });
+    const landed = await landLate(bench, intent);
+    await driveUntil(bench, intent, { states: [], blocks: 2 });
+    expect(eventsOf(bench)).toContain("executor.dropped_landed:");
+    bench.network.reorg(landed.hash);
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    expect(eventsOf(bench)).toContain("executor.landed_late_unbooked:");
+    await expect(executionsOf(bench)).resolves.toStrictEqual([]);
+    expect(await stateOf(bench, intent)).toBe("failed_onchain");
+  });
+
+  it("leaves the trade out of the positions when the late block is not final within the wait", async () => {
+    const options = { network: { finalityDepth: 100n }, limits: { finalAfterBlocks: 3 } };
+    const { bench, intent } = await droppedSwap(options);
+    await landLate(bench, intent);
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    expect(eventsOf(bench)).toContain("executor.landed_late_unbooked:");
+    await expect(executionsOf(bench)).resolves.toStrictEqual([]);
+  });
+
+  it("books nothing while no node tells what the trade moved, trying each block up to the settle wait", async () => {
+    const silent = silentTransfers();
+    const options = { receipts: silent.wrap, limits: { settleAfterBlocks: 3 } };
+    const { bench, intent } = await droppedSwap(options);
+    silent.arm();
+    await landLate(bench, intent);
+    await driveUntil(bench, intent, { states: [], blocks: 10 });
+    expect(eventsOf(bench)).toContain("executor.dropped_landed:");
+    expect(eventsOf(bench)).not.toContain("executor.landed_late_booked:");
+    await expect(executionsOf(bench)).resolves.toStrictEqual([]);
+  });
+
+  it("still books the trade when its intent has a late landing linked already, and logs it", async () => {
+    const { bench, intent } = await droppedSwap({ intents: linkedAlready });
+    await landLate(bench, intent);
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    expect(eventsOf(bench)).toEqual(
+      expect.arrayContaining([
+        "executor.landed_late_linked:exists",
+        "executor.landed_late_booked:",
+      ]),
+    );
   });
 });

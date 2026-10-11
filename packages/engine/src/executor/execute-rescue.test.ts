@@ -1,12 +1,13 @@
-import type { AccountRef, AssetRef, StepAction } from "@binference/chain";
+import type { AccountRef, AssetRef, Signer, StepAction } from "@binference/chain";
 import { accountRefSchema } from "@binference/chain";
 import { createFakeTxSimulator } from "@binference/chain/testing";
-import { type Id } from "@binference/core";
+import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { expectOk, testCoin, testToken, testWallet } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
+import type { IntentStore } from "../ports.js";
 import {
   payloadOf,
   rescueCustody,
@@ -23,6 +24,7 @@ import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
   type BenchOptions,
   driveUntil,
+  eventsOf,
   type ExecutorBench,
   flush,
   startExecutorBench,
@@ -114,11 +116,73 @@ function noticeKeysOf(bench: ExecutorBench): readonly string[] {
     .map(({ data }) => /"key":"([^"]+)"/.exec(JSON.stringify(data))?.[1] ?? "");
 }
 
-function sendOf(index: number): StepAction {
+const dayMs = 24 * 60 * 60 * 1_000;
+
+// Custody that refuses to sign the rescue's step at `index`.
+function refusingStep(index: number): (custody: Signer) => Signer {
+  return (custody) => ({
+    account: async (wallet, chain, options) => custody.account(wallet, chain, options),
+    signTransaction: async (request, options) =>
+      request.step.index === index
+        ? Promise.resolve(err("refused"))
+        : custody.signTransaction(request, options),
+  });
+}
+
+// Custody that moves the bound bench's rescue address as it is asked to sign the step at
+// `index`, then signs it.
+function movingAtStep(index: number) {
+  const bound: { bench?: ExecutorBench } = {};
+  return {
+    bind: (bench: ExecutorBench) => {
+      bound.bench = bench;
+    },
+    wrap: (custody: Signer): Signer => ({
+      account: async (wallet, chain, options) => custody.account(wallet, chain, options),
+      async signTransaction(request, options) {
+        if (request.step.index === index && bound.bench !== undefined) {
+          await moveRescueAddress(bound.bench);
+        }
+        return custody.signTransaction(request, options);
+      },
+    }),
+  };
+}
+
+// Custody whose answer for the step at `index` never comes until the call is cut.
+function hangingAtStep(index: number): (custody: Signer) => Signer {
+  return (custody) => ({
+    account: async (wallet, chain, options) => custody.account(wallet, chain, options),
+    signTransaction: async (request, options) =>
+      request.step.index === index
+        ? new Promise((_, reject) => {
+            options.signal.addEventListener("abort", () => reject(options.signal.reason), {
+              once: true,
+            });
+          })
+        : custody.signTransaction(request, options),
+  });
+}
+
+// An intent store whose move to `reconciled` never lands, as a stop right after finality leaves it.
+function unreconciled(store: IntentStore): IntentStore {
+  return {
+    ...store,
+    transition: async (change, options) =>
+      change.state === "reconciled" ? err("stale") : store.transition(change, options),
+  };
+}
+
+function moveAt(index: number) {
   const move = testMoves[index];
   if (move === undefined) {
     throw new Error(`Expected move ${String(index)}.`);
   }
+  return move;
+}
+
+function sendOf(index: number): StepAction {
+  const move = moveAt(index);
   const isToken = index === 0;
   return isToken
     ? {
@@ -271,5 +335,115 @@ describe("a confirmed rescue on its wallets' queues", () => {
       [1, "final"],
       [2, "final"],
     ]);
+  });
+
+  it("leaves a step that would fail unsigned, tries it on three more blocks, and sends the rest", async () => {
+    const bench = await benchWithRescue();
+    bench.network.failing(payloadOf(moveAt(0)));
+    const intent = await rescueConfirmed(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([1, 2]);
+    expect(eventsOf(bench)).toContain("executor.rescue_step_failed:");
+  });
+
+  it("signs a step custody refused again on the next block, up to three times", async () => {
+    const bench = await benchWithRescue({ custody: refusingStep(1) });
+    const intent = await rescueConfirmed(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0, 1, 1, 1, 1, 2]);
+    const stored = await bench.test.stores.transactions.ofIntent(intent, live);
+    expect(stored.map(({ step }) => step)).toStrictEqual([0, 2]);
+  });
+
+  it("gives up a reverted step whose block is not final within the finality wait", async () => {
+    const reverting = testMoves.slice(0, 1).map(payloadOf);
+    const network = { reverting, finalityDepth: 100n };
+    const bench = await benchWithRescue({ network, limits: { finalAfterBlocks: 2 } });
+    const intent = await rescueConfirmed(bench);
+    await driveUntil(bench, intent, { states: [], blocks: 12 });
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0, 1, 2]);
+    expect(eventsOf(bench)).toContain("executor.rescue_step_failed:");
+    await expect(stateOf(bench, intent)).resolves.toBe("included");
+  });
+
+  it("signs no later step once the owner's confirmation ran out while the first waited", async () => {
+    const bench = await benchWithRescue();
+    bench.network.holdBelow(10n ** 18n);
+    const intent = await rescueConfirmed(bench);
+    await flush();
+    await bench.test.clock.advance(dayMs);
+    bench.network.holdBelow(0n);
+    const goal = { states: ["reconciled" as const], blocks: 100 };
+    await expect(driveUntil(bench, intent, goal)).resolves.toBe("reconciled");
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0]);
+    expect(
+      eventsOf(bench).filter((event) => event === "executor.rescue_step_failed:"),
+    ).toHaveLength(2);
+  });
+
+  it("is not taken once the owner's confirmation ran out before the queue", async () => {
+    const bench = await benchWithRescue({ hold: true });
+    const intent = await rescueConfirmed(bench);
+    await bench.test.clock.advance(dayMs);
+    await bench.release();
+    await flush();
+    await expect(stateOf(bench, intent)).resolves.toBe("confirmed");
+    expect(eventsOf(bench)).toStrictEqual(["executor.move_refused:expired"]);
+    expect(bench.signed).toStrictEqual([]);
+  });
+
+  it("stops before the next wallet once the rescue address changed after the last step of the first", async () => {
+    const moving = movingAtStep(1);
+    const bench = await benchWithRescue({ custody: moving.wrap });
+    moving.bind(bench);
+    const intent = await rescueConfirmed(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0, 1]);
+    expect(noticeKeysOf(bench)).toContain("notice.rescueStopped");
+  });
+
+  it("ends a wallet's part at a step stuck at its nonce, and runs the next wallet", async () => {
+    const bench = await benchWithRescue({ limits: { stuckAfterBlocks: 2 } });
+    bench.network.script("relay-a", { kind: "hang" });
+    bench.network.script("relay-b", { kind: "hang" });
+    bench.network.failReads(1_000);
+    const intent = await rescueConfirmed(bench);
+    await driveUntil(bench, intent, { states: [], blocks: 20 });
+    expect(bench.signed.map(({ step }) => step.index)).toStrictEqual([0, 2]);
+    expect(eventsOf(bench)).toContain("executor.step_stopped:stuck");
+  });
+});
+
+describe("a rescue a restart finds unsettled", () => {
+  it("goes on after a step a stop left in a block, signing only the steps after it", async () => {
+    const bench = await benchWithRescue({ custody: hangingAtStep(1) });
+    const intent = await rescueConfirmed(bench);
+    await driveUntil(bench, intent, { states: [], blocks: 2 });
+    const [first] = await bench.test.stores.transactions.ofIntent(intent, live);
+    expect(first?.state).toBe("included");
+    const restarted = await restartBench(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(restarted.signed.map(({ step }) => step.index)).toStrictEqual([1, 2]);
+  });
+
+  it("waits for the blocks of a rescue left included to be final, then reconciles", async () => {
+    const bench = await benchWithRescue({ network: { finalityDepth: 6n } });
+    const intent = await rescueConfirmed(bench);
+    await expect(driveUntil(bench, intent, { states: ["included"] })).resolves.toBe("included");
+    const restarted = await restartBench(bench);
+    expect(restarted.recovered).toBe(1);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(restarted.signed).toStrictEqual([]);
+  });
+
+  it("reconciles a rescue a stop left finalized", async () => {
+    const bench = await benchWithRescue({ intents: unreconciled });
+    const intent = await rescueConfirmed(bench);
+    await expect(driveUntil(bench, intent, { states: ["finalized"] })).resolves.toBe("finalized");
+    await driveUntil(bench, intent, { states: [], blocks: 3 });
+    await expect(stateOf(bench, intent)).resolves.toBe("finalized");
+    const restarted = await restartBench(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    expect(restarted.signed).toStrictEqual([]);
   });
 });
