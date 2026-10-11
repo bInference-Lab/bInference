@@ -1,11 +1,13 @@
 import type { AuthFailureLimits } from "./auth-failures.js";
+import type { LockoutAlertLimits } from "./lockout-alerts.js";
 
 /**
  * The bounds and timeouts of a protocol server. Each one holds per connection unless it says
  * otherwise; over a call limit, the call fails with `protocol.busy` or `protocol.too_large`.
- * Failed sign-ins and pairings count per source address and per credential (`AuthFailureLimits`).
+ * Failed sign-ins and pairings count per source address and per credential (`AuthFailureLimits`),
+ * and a lockout is reported at most once per key within `authAlertEveryMs`.
  */
-export interface ServerLimits extends AuthFailureLimits {
+export interface ServerLimits extends AuthFailureLimits, LockoutAlertLimits {
   /** The largest frame after sign-in, in bytes. */
   readonly maxFrameBytes: number;
   /** The largest frame before `ready`, in bytes: `open` and `prove` are small. */
@@ -47,7 +49,7 @@ export interface ServerLimits extends AuthFailureLimits {
  * flight and 20 calls a second with a burst of 60, a 10-second sign-in, a ping every 20 seconds and
  * a drop after 60 seconds without a pong, pushes kept for 10 minutes or 1,000 per topic, and a
  * source or credential that fails to sign in or pair 10 times within a minute refused for 5
- * minutes.
+ * minutes, and the owner told of such a lockout at most once in 15 minutes per source or credential.
  */
 export const defaultServerLimits: ServerLimits = {
   maxFrameBytes: 1024 * 1024,
@@ -71,4 +73,5 @@ export const defaultServerLimits: ServerLimits = {
   authFailureWindowMs: 60_000,
   authLockoutMs: 5 * 60_000,
   maxAuthKeys: 4_096,
+  authAlertEveryMs: 15 * 60_000,
 };

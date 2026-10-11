@@ -52,6 +52,23 @@ describe("failed sign-ins and pairings", () => {
     expect(records.map((record) => record.event)).toContain("server.auth_locked_out");
   });
 
+  it("reports one lockout per locked source and credential, not one per failure", async () => {
+    const server = await start();
+    await failOnce(server);
+    await failOnce(server);
+    await failOnce(server);
+    await server.clock.advance(5 * 60_000);
+    await failOnce(server);
+    await failOnce(server);
+    await failOnce(server);
+    const untilMs = 1_000_000 + 5 * 60_000;
+    expect(server.lockouts).toMatchObject([
+      { kind: "address", untilMs },
+      { kind: "device", device: unknownDevice, untilMs },
+    ]);
+    expect(JSON.stringify(server.logger.records())).not.toContain(unknownDevice);
+  });
+
   it("lets the source in again once the lockout passed", async () => {
     const server = await start();
     await failOnce(server);
@@ -82,6 +99,7 @@ describe("failed sign-ins and pairings", () => {
       Promise.resolve([]),
     );
     expect(statuses).toStrictEqual([401, 401, 401, 429]);
+    expect(server.lockouts).toMatchObject([{ kind: "address", untilMs: 1_000_000 + 5 * 60_000 }]);
     expect(JSON.stringify(server.logger.records())).not.toContain("AAAAAAAAAAAAAAAAAAAAAA");
   });
 });

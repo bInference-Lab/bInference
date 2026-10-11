@@ -5,6 +5,7 @@ import type { DevicePairing } from "@binference/engine/access";
 import type { EngineState } from "@binference/protocol";
 import type { AuthFailures } from "./auth-failures.js";
 import { answerConsole, type ConsoleFiles } from "./console-route.js";
+import type { LockoutAlerts } from "./lockout-alerts.js";
 import type { OriginRules, RequestNames } from "./origin-check.js";
 import { answerPair } from "./pair-route.js";
 import { resourceHeaders } from "./security-headers.js";
@@ -56,6 +57,8 @@ export interface HttpRoutesContext {
   readonly origins: () => OriginRules;
   /** The failed pairings, per source. */
   readonly failures: AuthFailures;
+  /** Tells the owner of the lockouts those failures set. */
+  readonly alerts: LockoutAlerts;
   readonly logger: Logger;
   /** Pairs console devices at `POST /pair`; without it the path is 404. */
   readonly pairing?: DevicePairing;
@@ -106,8 +109,8 @@ export function answerRequest(
   }
   const { pairing, consoleFiles, signal } = context;
   if (path === "/pair" && pairing !== undefined) {
-    const { failures, logger } = context;
-    const guard = { failures, logger, source: sourceOf(request) };
+    const { failures, alerts, logger } = context;
+    const guard = { failures, alerts, logger, source: sourceOf(request) };
     answerPair(request, response, {
       pairing,
       isAllowedOrigin: origins.isPairingOrigin,

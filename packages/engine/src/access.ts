@@ -37,6 +37,14 @@ export {
   type PairRequest,
 } from "./access/device-pairing.js";
 export {
+  createLockoutNotices,
+  lockoutNotice,
+  lockoutNoticeKey,
+  type AuthLockout,
+  type AuthLockoutReport,
+  type LockoutNoticesOptions,
+} from "./access/lockout-notice.js";
+export {
   createTokenHandlers,
   type TokenHandlers,
   type TokenHandlersOptions,

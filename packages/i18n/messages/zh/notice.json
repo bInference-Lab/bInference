@@ -33,5 +33,6 @@
   "limitChangeCancelled": "已取消对{limit, select, perTradeUsdMicros {单笔上限} rollingDayUsdMicros {24 小时上限} slippageRegistryBps {已验证代币的滑点上限} slippageOtherBps {其他代币的滑点上限} priceImpactBps {价格影响上限} taxBps {最高交易税} liquidityFloorUsdMicros {最低流动性} minHealthFactorBps {最低健康因子} gasReserve {网络费预留} venues {可用平台} allowTokens {可交易代币列表} denyTokens {禁止交易代币列表} modelBudgetUsdMicros {模型预算} cardTradeExpirySeconds {交易卡片的等待时间} cardOtherExpirySeconds {其他卡片的等待时间} requoteAfterSeconds {卡片重新报价的时间} requoteToleranceBps {新报价的允许变动} orderExpiryDays {自动订单的有效期} copyPerBuyUsdMicros {每笔跟单买入上限} copyPerLeaderDayUsdMicros {每个跟单钱包的每日上限} other {一项限额}}的修改，当前限额保持不变",
   "configInvalid": "⚠️ binference 保留了当前运行的设置：config.json5 {problem, select, unreadable {第 {line} 行无法读取} missing_file {已不存在} newer_version {属于更新版本的 binference} older_version {属于旧版本的 binference，请运行 `binference check --fix`} unknown_key {包含 binference 不认识的配置项 {key}} required {缺少 {key}} bad_value {中 {key} 的值不可用} bad_key {中 {key} 的键名不可用} secret_inline {在 {key} 处以明文写有密钥} other {在 {key} 处有问题}}。请运行 `binference check` 查看修复方法。",
   "configChanged": "config.json5 中的设置已更改：{changed}。{afterRestart, select, none {它们已立即生效。} other {以下设置在 binference 重启后生效：{afterRestart}。其余已立即生效。}}",
-  "newDevice": "已配对新的控制台设备：{label}"
+  "newDevice": "已配对新的控制台设备：{label}",
+  "signInsLocked": "⚠️ {what, select, address {来自 {name} 的} local {通过本机本地连接的} device {控制台设备 {name} 的} token {访问令牌 {name} 的} miniApp {Mini App 的} other {binference 不认识的凭据的}}登录失败次数过多，binference 在 {until} 前拒绝这些登录。这些尝试都没有登录成功。"
 }

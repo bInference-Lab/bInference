@@ -22,6 +22,7 @@ import {
 import {
   createDeviceHandlers,
   createDevicePairing,
+  createLockoutNotices,
   createTokenHandlers,
 } from "@binference/engine/access";
 import { createNoticeHandlers } from "@binference/engine/notices";
@@ -226,9 +227,8 @@ function miniAppOf(telegram: TelegramParts | undefined): { readonly miniApp?: Mi
   return { miniApp: { botToken, ownerId: async (call) => (await owners.get(call))?.userId } };
 }
 
-// The protocol server over the handlers: it signs callers in through the access store and the
-// owner's bot, keeps each write's result under its idempotency key, pairs console devices and
-// serves the console.
+// The protocol server over the handlers: sign-ins through the access store and the owner's bot,
+// idempotent writes, device pairing, the console, and the owner's notice of each lockout.
 function serverOf(
   parts: EngineParts,
   options: ComposeEngineOptions,
@@ -252,6 +252,7 @@ function serverOf(
     clock,
     random,
     logger: logger.child("server"),
+    onLockout: createLockoutNotices({ access, publish: given.publish }),
   });
 }
 

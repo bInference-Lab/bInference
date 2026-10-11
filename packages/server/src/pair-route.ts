@@ -4,6 +4,7 @@ import type { Logger } from "@binference/core";
 import type { DevicePairing } from "@binference/engine/access";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { AuthFailures } from "./auth-failures.js";
+import { type LockoutAlerts, sourceKey } from "./lockout-alerts.js";
 import { decodePairBody } from "./pair-body.schema.js";
 import { resourceHeaders } from "./security-headers.js";
 
@@ -19,6 +20,7 @@ export interface PairRouteContext {
   /** Counts each refused code per source, and refuses a source that failed too often lately. */
   readonly guard: {
     readonly failures: AuthFailures;
+    readonly alerts: LockoutAlerts;
     readonly logger: Logger;
     readonly source: string;
   };
@@ -71,8 +73,9 @@ async function pair(
   response: ServerResponse,
   context: PairRouteContext,
 ): Promise<void> {
-  const { failures, logger, source } = context.guard;
-  if (failures.isLocked([`source:${source}`])) {
+  const { failures, alerts, logger } = context.guard;
+  const source = sourceKey(context.guard.source);
+  if (failures.isLocked([source.key])) {
     logger.warn("server.pair_locked_out");
     refuse(response, "protocol.busy");
     return;
@@ -96,7 +99,7 @@ async function pair(
   if (!paired.ok) {
     // A wrong or spent code counts against its source; the code itself is never logged.
     logger.warn("server.pair_failed", { errorCode: paired.error });
-    failures.fail([`source:${source}`]);
+    alerts.locked([source], failures.fail([source.key]));
     refuse(response, paired.error);
     return;
   }

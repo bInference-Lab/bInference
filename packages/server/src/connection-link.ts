@@ -5,6 +5,7 @@ import type { AuthFailures } from "./auth-failures.js";
 import type { CallBudget } from "./call-budget.js";
 import type { CallDispatch, Session } from "./call-dispatch.js";
 import type { EngineFacts } from "./engine-facts.js";
+import type { LockoutAlerts } from "./lockout-alerts.js";
 import type { Transport } from "./operation-handlers.js";
 import type { PushHub } from "./push-hub.js";
 import type { ServerLimits } from "./server-limits.js";
@@ -22,6 +23,8 @@ export interface ConnectionContext {
   readonly limits: ServerLimits;
   /** The failed sign-ins, per source and per credential. */
   readonly failures: AuthFailures;
+  /** Tells the owner of the lockouts those failures set. */
+  readonly alerts: LockoutAlerts;
 }
 
 /** Where a connection came from. */

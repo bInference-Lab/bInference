@@ -21,7 +21,7 @@ import {
   sha256Hex,
   type TokenKind,
 } from "@binference/engine";
-import { createDevicePairing } from "@binference/engine/access";
+import { type AuthLockoutReport, createDevicePairing } from "@binference/engine/access";
 import { createMemoryAccessStore, createMemoryIdempotencyStore } from "@binference/engine/testing";
 import {
   type ClientKind,
@@ -72,6 +72,8 @@ export interface TestServer {
   readonly device: TestDevice;
   /** The pushes the device pairing published, oldest first. */
   readonly pairingPushes: readonly EnginePush[];
+  /** The lockouts the server reported for the owner, oldest first. */
+  readonly lockouts: readonly AuthLockoutReport[];
   /** Closes the server and the IPC stand-in. */
   close(): Promise<void>;
 }
@@ -179,6 +181,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
   const idempotency = createMemoryIdempotencyStore();
   const random = createSeededRandom(7);
   const { pairing, pairingPushes } = pairingOn({ access, clock, random });
+  const lockouts: AuthLockoutReport[] = [];
   const server = createProtocolServer({
     http: httpOf(options),
     auth: authOf(access, options),
@@ -192,6 +195,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
     },
     random,
     logger,
+    onLockout: (lockout) => lockouts.push(lockout),
     ...optionalPartsOf(options, clock),
   });
   const address = await server.start(AbortSignal.timeout(5_000));
@@ -212,6 +216,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
     mcpToken: await addToken(access, { n: 2, kind: "mcp", scopes: ["read", "propose"] }),
     device: await addDevice(access),
     pairingPushes,
+    lockouts,
     async close() {
       ipc.close();
       await server.close();

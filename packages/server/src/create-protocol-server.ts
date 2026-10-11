@@ -10,7 +10,7 @@ import {
   type Random,
 } from "@binference/core";
 import type { IdempotencyStore } from "@binference/engine";
-import type { DevicePairing } from "@binference/engine/access";
+import type { AuthLockoutReport, DevicePairing } from "@binference/engine/access";
 import type { PushFrame } from "@binference/protocol";
 import { WebSocketServer } from "ws";
 import { createAuthFailures } from "./auth-failures.js";
@@ -21,6 +21,7 @@ import type { ConsoleFiles } from "./console-route.js";
 import type { EngineFacts } from "./engine-facts.js";
 import { answerRequest, pathOf, refuseUpgrade, sourceOf } from "./http-routes.js";
 import { createIdempotentWrites } from "./idempotent-writes.js";
+import { createLockoutAlerts } from "./lockout-alerts.js";
 import type { OperationHandlers, Transport } from "./operation-handlers.js";
 import { closedOriginRules, createOriginRules, type OriginRules } from "./origin-check.js";
 import { createPushHub, type PushEvent } from "./push-hub.js";
@@ -62,6 +63,11 @@ export interface ProtocolServerOptions {
   readonly random: Random;
   readonly logger: Logger;
   readonly limits?: Partial<ServerLimits>;
+  /**
+   * Hears each lockout that failed sign-ins or pairings set, at most once per source or
+   * credential within `authAlertEveryMs`, to tell the owner; it must not throw.
+   */
+  readonly onLockout?: (lockout: AuthLockoutReport) => void;
 }
 
 /** The address the HTTP listener bound. */
@@ -214,10 +220,12 @@ function createState(options: ProtocolServerOptions): ServerState {
   const auth = options.auth === undefined ? {} : { auth: options.auth };
   const signIn = createSignIn({ ...auth, clock, random });
   const failures = createAuthFailures({ ...limits, clock });
+  const report = options.onLockout === undefined ? {} : { report: options.onLockout };
+  const alerts = createLockoutAlerts({ ...limits, clock, ...report });
   return {
     limits,
     lifetime,
-    context: { dispatch, signIn, pushes, engine, ids, clock, logger, limits, failures },
+    context: { dispatch, signIn, pushes, engine, ids, clock, logger, limits, failures, alerts },
     webSocketServer: webSocketServerOf(limits),
     connections: new Set(),
     origins: cell<OriginRules>(closedOriginRules),
@@ -270,6 +278,7 @@ function createListener(state: ServerState, options: ListenerOptions): Server {
       state: state.context.engine.state,
       origins: () => state.origins.get(),
       failures: state.context.failures,
+      alerts: state.context.alerts,
       logger: state.context.logger,
       signal: state.lifetime.signal,
     }),
