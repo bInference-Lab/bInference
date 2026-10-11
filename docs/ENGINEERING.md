@@ -1001,10 +1001,12 @@ Decided in decisions [0037](DECISIONS.md#d0037) and [0079](DECISIONS.md#d0079).
 - **`CLAUDE.local.md`** is git-ignored: notes for one person's sessions stay on their machine.
   Enforcer: `check:layout` (the file is git-ignored).
 - **Skills** live in `.agents/skills/` (the Agent Skills location); `pnpm setup` links
-  `.claude/skills` to that folder, as a junction on Windows. First set: `clean-diff`, `review-diff`,
+  `.claude/skills` to that folder, as a junction on Windows. The set: `clean-diff`, `review-diff`,
   `shape-commit` (checks the staged diff against section 19.2, proposes a split and writes the
-  subject), `add-chain`, `add-venue`, `add-provider`, `add-migration`, `add-message`,
-  `review-money-path`, `write-adr`, `release`. Enforcer: a `pnpm setup` test on the three OSes;
+  subject), `review-money-path`, `write-adr`, `add-migration`, `add-chain`, `add-venue`,
+  `add-protocol-operation`, `add-mcp-tool`, `run-tests`, `review-tests`, `speed-up-tests`,
+  `debug-failure`, `test-telegram`, `tune-ci`, `vet-release` and `handle-security-report`.
+  Enforcer: a `pnpm setup` test on the three OSes;
   `check:layout` (each listed skill has its `SKILL.md`).
 - **Hook:** `.claude/settings.json` runs Oxlint, oxfmt and the style guard on each file an agent
   edits, and shows the result to the agent. Enforcer: `check:layout` (the hook entries are present).
