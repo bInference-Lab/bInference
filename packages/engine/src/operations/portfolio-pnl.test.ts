@@ -1,7 +1,7 @@
 import type { AssetRef, UsdPrice } from "@binference/chain";
 import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { inOrder } from "../contracts/store-fixtures.js";
+import { fixtureId, inOrder } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import {
@@ -137,6 +137,22 @@ describe("the P&L read", () => {
     ]);
     const both = expectOk(await pnl(subject, testNowMs, testNowMs + 2 * dayMs));
     expect(both.realizedUsdMicros).toBe(-30_000_000n);
+  });
+
+  it("counts every execution in the range when they fill more than one page of the store", async () => {
+    const subject = await traded(pricesNow);
+    // Each sells a millionth of a coin, which cost 600 micro-dollars, for 500: 100 less.
+    const small: readonly ExecutedTrade[] = Array.from({ length: 1_000 }, (_, index) => ({
+      ...trade(0, { sold: { asset: testCoin, base: whole / 1_000_000n } }),
+      intentId: fixtureId("int", 100 + index),
+      bought: { asset: testToken, base: 1n },
+    }));
+    const recorded = await inOrder(small, async (executed) =>
+      subject.positions.record(executed, live),
+    );
+    expect(recorded.every(({ ok }) => ok)).toBe(true);
+    const view = expectOk(await pnl(subject, testNowMs, testNowMs));
+    expect(view.realizedUsdMicros).toBe(-50_000_000n - 1_000n * 100n);
   });
 
   it("counts the trades of a wallet the agent archived since", async () => {
