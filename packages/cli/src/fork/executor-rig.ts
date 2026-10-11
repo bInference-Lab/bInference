@@ -48,6 +48,7 @@ import {
   createFakeWalletFacts,
   createMemoryEngineStores,
   createMemoryPositionStore,
+  testLimits,
 } from "@binference/engine/testing";
 import { createWalletQueue } from "@binference/engine/wallet-queue";
 import { keccak256, toHex } from "viem";
@@ -82,26 +83,10 @@ export interface Rig {
 /** The limits of a fork test's agents: a swap of the rig fits, and 0.002 BNB stays for gas. */
 export function forkLimits(fork: Fork): LimitsValues {
   return {
-    perTradeUsdMicros: 1_000_000_000n,
-    rollingDayUsdMicros: 5_000_000_000n,
+    ...testLimits,
     slippageRegistryBps: bpsSchema.parse(100),
-    slippageOtherBps: bpsSchema.parse(300),
-    priceImpactBps: bpsSchema.parse(500),
-    taxBps: bpsSchema.parse(1_000),
-    liquidityFloorUsdMicros: 0n,
-    minHealthFactorBp: 15_000,
     gasReserve: [{ chain: fork.chain.ref, reserveBase: 2n * 10n ** 15n }],
     venues: ["pancakeswap"],
-    allowTokens: [],
-    denyTokens: [],
-    modelBudgetUsdMicros: 5_000_000n,
-    cardTradeExpiryS: 60,
-    cardOtherExpiryS: 600,
-    requoteAfterS: 10,
-    requoteToleranceBps: bpsSchema.parse(50),
-    orderExpiryDays: 30,
-    copyPerBuyUsdMicros: 20_000_000n,
-    copyPerLeaderDayUsdMicros: 100_000_000n,
   };
 }
 

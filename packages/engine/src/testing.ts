@@ -133,6 +133,7 @@ export {
   testAgent,
   testAgentDraft,
   testCoin,
+  testLimits,
   testNowMs,
   testToken,
   testWallet,
