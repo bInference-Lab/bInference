@@ -2,6 +2,7 @@ import { err, type Id, idSchema } from "@binference/core";
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import type { AgentRecord } from "../agents/agent-record.js";
+import { inOrder } from "../contracts/store-fixtures.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentKind } from "../intents/intent-kind.js";
 import type { IntentState } from "../intents/intent-state.js";
@@ -21,6 +22,7 @@ import {
 } from "../operations/test-engine.js";
 import type { AgentStore, IntentStore } from "../ports.js";
 import { frozenNoticeKey } from "./freeze-agents.js";
+import { setUpRescue } from "./test-rescue.js";
 
 const live = { signal: new AbortController().signal };
 const second = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000002");
@@ -216,6 +218,32 @@ describe("safety/freeze", () => {
     await expect(freeze(test)).rejects.toMatchObject({ code: "engine.freeze_contended" });
     await expect(frozenTimes(test)).resolves.toStrictEqual([undefined]);
     await expect(stateOf(test, waiting)).resolves.toBe("awaiting_confirmation");
+  });
+});
+
+describe("a freeze past one page of intents", () => {
+  // One more intent than a page of the intent store holds.
+  const many = Array.from({ length: 1_001 }, (_, index) => 100 + index);
+
+  it("cancels every unsigned intent of the agent, on every page", async () => {
+    const test = await startTestEngine();
+    const stored = await inOrder(many, async (n) =>
+      storeIntent(test, n, { kind: "swap", state: "confirmed" }),
+    );
+    expectOk(await freeze(test));
+    const states = await Promise.all(stored.map(async (id) => stateOf(test, id)));
+    expect(new Set(states)).toStrictEqual(new Set(["cancelled"]));
+  });
+
+  it("finds the unfreeze that waits behind a page of other open intents", async () => {
+    const test = await startTestEngine();
+    await setUpRescue(test);
+    await inOrder(many, async (n) => storeIntent(test, n, { kind: "swap", state: "executing" }));
+    expectOk(await freeze(test));
+    const unfreeze = async () => test.engine.handlers["safety/unfreeze"](testCall({}));
+    const { intent } = expectOk(await unfreeze());
+    expect(intent).toBeDefined();
+    expect(expectOk(await unfreeze()).intent).toBe(intent);
   });
 });
 

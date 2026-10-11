@@ -208,6 +208,21 @@ describe("safety/unfreeze", () => {
     expect(unfrozenNotices(test)).toStrictEqual([]);
   });
 
+  it("shows its request and no assets to intent/get, and no trade quote", async () => {
+    const test = await startWithTwoAgents();
+    await freeze(test, testAgent);
+    const intent = await opened(test, testAgent);
+    const view = expectOk(await test.engine.handlers["intent/get"](testCall({ intent })));
+    expect(view).toMatchObject({
+      intent,
+      kind: "unfreeze",
+      state: "awaiting_confirmation",
+      request: { kind: "unfreeze", agent: testAgent },
+      assets: {},
+    });
+    expect(view.quote).toBeUndefined();
+  });
+
   it("takes the tap while the engine is locked, since an unfreeze signs nothing", async () => {
     const test = await startWithTwoAgents({ isLocked: () => true });
     await freeze(test, testAgent);
