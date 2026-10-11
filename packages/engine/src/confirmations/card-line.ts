@@ -6,6 +6,8 @@ import type { CardValueView } from "@binference/protocol";
  */
 export const cardKeys = [
   "card.header",
+  // The console's header line: the same, without the mode, which the console marks with a label.
+  "card.header.console",
   "card.swap.action",
   "card.buy.action",
   "card.sell.action",
