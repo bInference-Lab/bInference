@@ -54,5 +54,13 @@
   "push.failed": "Notifications did not change: {reason}",
   "push.unavailable": "This browser could not reach its push service. Try again later.",
   "push.enable": "Allow notifications",
-  "push.disable": "Stop notifications"
+  "push.disable": "Stop notifications",
+  "icon.waiting": "Waiting",
+  "icon.passed": "Passed",
+  "icon.refused": "Refused",
+  "icon.warning": "Warning",
+  "icon.paper": "Paper",
+  "icon.live": "Live",
+  "icon.on": "On",
+  "icon.auto": "Auto"
 }

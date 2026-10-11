@@ -2,6 +2,7 @@ import { cardLineText } from "@binference/i18n";
 import type { CardLinesView, IntentView } from "@binference/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, XIcon } from "lucide-react";
+import { CardLine } from "../cards/card-line";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
@@ -62,8 +63,8 @@ function AnswerButtons(props: {
 }
 
 /**
- * One card that waits for the owner, drawn line by line as Telegram draws it (spec 4), with
- * Confirm and Cancel for a connection that holds the `confirm` scope. A Confirm names the card
+ * One card that waits for the owner, drawn line by line as Telegram draws it (spec 4), its status
+ * icons as line icons, with Confirm and Cancel for a connection that holds the `confirm` scope. A Confirm names the card
  * version it shows, so a new quote is never confirmed unseen.
  */
 export function PendingCard(props: { readonly intent: IntentView }): React.JSX.Element {
@@ -91,13 +92,15 @@ export function PendingCard(props: { readonly intent: IntentView }): React.JSX.E
     >
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2">
-          {header}
+          {header === undefined ? null : <CardLine text={header} />}
           {intent.paper ? <PaperBadge /> : null}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1 text-sm">
         {rest.map((line) => (
-          <p key={line}>{line}</p>
+          <p key={line}>
+            <CardLine text={line} />
+          </p>
         ))}
         {answer.error === null ? null : (
           <Alert variant="destructive">

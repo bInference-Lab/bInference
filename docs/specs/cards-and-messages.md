@@ -31,7 +31,8 @@ names the keys and fixes the wording.
   line break (`telegram/src/split/`). Buttons are inline keyboards.
 - **Status icons** are allowed only where this spec names them
   ([ENGINEERING.md section 16](../ENGINEERING.md#section-16)): 🟡 waiting, ✅ done or passed, ❌
-  refused or failed, ⚠️ warning, 🧪 paper, 🔴 live.
+  refused or failed, ⚠️ warning, 🧪 paper, 🔴 live. Telegram shows them as emoji; the console
+  draws each as a thin line icon in the same place, with its name for screen readers.
 - **Times** are shown in the owner's timezone, `HH:mm:ss` for expiries.
 
 <a id="section-2"></a>

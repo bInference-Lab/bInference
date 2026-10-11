@@ -54,5 +54,13 @@
   "push.failed": "通知设置未更改：{reason}",
   "push.unavailable": "此浏览器无法连接其推送服务。请稍后再试。",
   "push.enable": "允许通知",
-  "push.disable": "停止通知"
+  "push.disable": "停止通知",
+  "icon.waiting": "等待中",
+  "icon.passed": "已通过",
+  "icon.refused": "已拒绝",
+  "icon.warning": "警告",
+  "icon.paper": "模拟",
+  "icon.live": "实盘",
+  "icon.on": "已开启",
+  "icon.auto": "自动"
 }

@@ -123,14 +123,19 @@ const answers = {
 };
 
 describe("the confirmations screen", () => {
-  it("draws each waiting card as Telegram does, with the Paper label", async () => {
+  it("draws each waiting card as Telegram does, its status icons as line icons", async () => {
     const { client } = fakeClient(answers);
-    renderSignedIn(<ConfirmationsScreen />, { client });
+    const { container } = renderSignedIn(<ConfirmationsScreen />, { client });
     await settle();
-    expect(screen.getByText(`${waiting} Confirm swap · main · ${paperIcon} Paper`)).toBeDefined();
+    const title = container.querySelector("[data-slot=card-title]");
+    // Each icon's name is read to screen readers: the waiting icon, then the paper icon.
+    expect(title?.textContent).toBe("Waiting Confirm swap · main · Paper PaperPaper");
+    expect(title?.textContent).not.toMatch(new RegExp(`${waiting}|${paperIcon}`, "u"));
+    expect(title?.querySelectorAll("svg[aria-hidden=true]")).toHaveLength(2);
     expect(screen.getByText("Sell 0.5 BNB → at least 312.4 USDT")).toBeDefined();
     expect(screen.getByText("Expires at 08:01:00")).toBeDefined();
-    expect(screen.getByText("Paper")).toBeDefined();
+    // The paper icon's name, the header's word and the Paper label.
+    expect(screen.getAllByText("Paper")).toHaveLength(3);
   });
 
   it("confirms the card version it shows", async () => {
