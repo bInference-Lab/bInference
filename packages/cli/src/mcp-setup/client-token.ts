@@ -1,17 +1,13 @@
-import { Buffer } from "node:buffer";
 import { dirname } from "node:path";
 import type { ProtocolClient } from "@binference/client";
-import { sha256Hex } from "@binference/engine";
 import { ensurePrivateFolder, removePath, writePrivateFile } from "@binference/platform";
 import type { ResultOf } from "@binference/protocol";
 import { signIn } from "../commands/connect-engine.js";
 import { readCliToken } from "../compose/cli-token.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { mcpTokenFile } from "../compose/mcp-token.js";
+import { mcpRegistration } from "./mcp-registration.js";
 import type { SetupChange, SetupRun } from "./setup-change.js";
-
-// An MCP client reads and proposes, and nothing more (protocol spec, section 4.1).
-const mcpScopes = ["read", "propose"] as const;
 
 function tokenFileOf(run: SetupRun): string {
   return mcpTokenFile(platformOf(run.host).stateFolder, run.client);
@@ -72,21 +68,14 @@ export async function ensureClientToken(
   if (run.isDryRun) {
     return { part: "token", action, path: file };
   }
-  const expiry = run.ttlMs === undefined ? {} : { expiresAt: run.host.clock.now() + run.ttlMs };
+  const expiresAt = run.ttlMs === undefined ? undefined : run.host.clock.now() + run.ttlMs;
   await revokeAll(run, engine);
-  const token = `bnt_${Buffer.from(run.host.random.bytes(32)).toString("base64url")}`;
-  const registration = {
-    label: `mcp-${run.client}`,
-    kind: "mcp" as const,
-    scopes: [...mcpScopes],
-    secretHash: sha256Hex(token),
-    ...expiry,
-  };
-  await engine.call("token/register", registration, { signal: run.signal });
+  const { secret, args } = mcpRegistration(run.host, `mcp-${run.client}`, expiresAt);
+  await engine.call("token/register", args, { signal: run.signal });
   const files = { permissions: platformOf(run.host).permissions, signal: run.signal };
   await ensurePrivateFolder(dirname(file), files);
-  await writePrivateFile(file, `${token}\n`, files);
-  return { part: "token", action, path: file, ...expiry };
+  await writePrivateFile(file, `${secret}\n`, files);
+  return { part: "token", action, path: file, ...(expiresAt === undefined ? {} : { expiresAt }) };
 }
 
 /** Revokes every token of the client and removes its token file. */

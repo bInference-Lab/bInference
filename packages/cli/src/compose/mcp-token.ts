@@ -7,6 +7,12 @@ export const mcpClients = ["claude-code", "codex"] as const;
 /** One MCP client `binference mcp setup` knows. */
 export type McpClient = (typeof mcpClients)[number];
 
+/** Each MCP client's name as people know it. */
+export const mcpClientNames: { readonly [C in McpClient]: string } = {
+  "claude-code": "Claude Code",
+  codex: "Codex",
+};
+
 /**
  * The token file `binference mcp` signs in with, owner-only in the state folder: the client's own,
  * `auth/mcp-<client>.token`, or `auth/mcp.token` when no client is named.

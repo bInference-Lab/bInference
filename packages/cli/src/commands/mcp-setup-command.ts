@@ -1,7 +1,7 @@
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError } from "@binference/core";
 import { lintSkill } from "@binference/plugin-sdk";
-import type { McpClient } from "../compose/mcp-token.js";
+import { mcpClientNames } from "../compose/mcp-token.js";
 import { type BundledSkill, readBundledSkill } from "../mcp-setup/bundled-skill.js";
 import { removeClaudeServer, setClaudeServer } from "../mcp-setup/claude-code-server.js";
 import { type ClientPlaces, clientPlaces } from "../mcp-setup/client-places.js";
@@ -17,11 +17,6 @@ import { withEngineWithin } from "./connect-engine.js";
 
 // A `claude mcp` call may take up to 15 seconds; the setup makes at most two.
 const setupBudgetMs = 60_000;
-
-const clientNames: { readonly [C in McpClient]: string } = {
-  "claude-code": "Claude Code",
-  codex: "Codex",
-};
 
 async function setUp(run: SetupRun, skill: BundledSkill, engine: ProtocolClient) {
   const places = clientPlaces(run.host, run.client);
@@ -52,7 +47,7 @@ function endKey(flags: McpSetupFlags): string {
 
 function report(run: CommandRun, flags: McpSetupFlags, changes: readonly SetupChange[]): void {
   const { output, formatter } = run;
-  const client = clientNames[flags.client];
+  const client = mcpClientNames[flags.client];
   const listed = changes.map(({ part, action, path, expiresAt }) => ({
     part,
     action,
