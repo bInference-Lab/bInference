@@ -30,6 +30,7 @@ import {
 } from "../money-path/venue-quote-source.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
+import { repairPaperFills } from "../paper/repair-paper-fills.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -95,6 +96,12 @@ export interface Engine {
    * calls it while the engine is unlocked. A read that fails is thrown once every wallet is read.
    */
   readonly checkGas: (options: { readonly signal: AbortSignal }) => Promise<void>;
+  /**
+   * Records the positions of each paper fill of the last 30 days that has none, which a crash
+   * between a fill and its positions leaves, valued at the price the fill kept. The startup calls
+   * it before the engine takes any work; it answers how many fills it repaired.
+   */
+  readonly repairPaperFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -289,6 +296,21 @@ function safetyHandlers(options: EngineOptions, stored: StoredIntents): SafetyHa
   });
 }
 
+// The startup's repair of paper fills a crash left without positions.
+function paperRepairOf(
+  options: EngineOptions,
+  parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
+): Engine["repairPaperFills"] {
+  const repair = {
+    intents: options.stores.intents,
+    stored: parts.stored,
+    store: options.positions,
+    positions: parts.paper.positions,
+    clock: options.clock,
+  };
+  return async (call) => repairPaperFills(repair, call);
+}
+
 /**
  * Creates the {@link Engine}. Every write of an intent goes through one writer, which pushes
  * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
@@ -342,5 +364,6 @@ export function createEngine(given: EngineOptions): Engine {
     answer: intents.answer,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
+    repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
   };
 }

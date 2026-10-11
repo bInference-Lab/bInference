@@ -99,7 +99,8 @@ function botChannelOf(
  * once, answering every call but `engine/status` with `engine.starting`; the keys open through the
  * unlock mode and start the signer and custody, or leave the engine locked with the reason
  * (decisions 0103 and 0117); every unfinished live intent is recovered by hash and nonce and holds
- * its place in its wallet's queue; once unlocked, the confirmed intents an earlier run left go to
+ * its place in its wallet's queue, and each recent paper fill a crash left without positions gets
+ * them; once unlocked, the confirmed intents an earlier run left go to
  * the executor; the timer for work that waits for its time starts, the watch on `config.json5`
  * that reloads the settings (decision 0118), and after a start that found Privy out of reach, the
  * signer step's retries (decision 0119); the owner's bot's channel, unless another machine took
@@ -119,6 +120,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   }
   const unlocked = await locked.lock.unlock({ signal });
   await executor.recover({ signal });
+  await composed.repairPaperFills({ signal });
   if (unlocked.ok) {
     await composed.resume(signal);
   }

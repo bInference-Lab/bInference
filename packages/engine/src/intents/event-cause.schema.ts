@@ -1,16 +1,21 @@
-import { type Amount, amountSchema, isTxHash, type TxHash } from "@binference/chain";
-import type { JsonValue } from "@binference/core";
+import { type Amount, amountSchema, isTxHash, type TxHash, type UsdPrice } from "@binference/chain";
+import { decimalStringSchema, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import type { CardClosing } from "../confirmations/card-closing.js";
 import { epochMsSchema } from "../records/record-fields.js";
 import { type DocumentCodec, documentCodec } from "./intent-documents.schema.js";
 import type { IntentProposer } from "./intent-status.js";
 
-/** A paper fill: what a paper intent sold and bought at its confirmed quote, and when. */
+/**
+ * A paper fill: what a paper intent sold and bought at its confirmed quote, when, and the sold
+ * asset's price the fill was valued at. A fill recorded before the price was kept has none.
+ */
 export interface PaperFill {
   readonly amountIn: Amount;
   readonly amountOut: Amount;
   readonly atMs: number;
+  /** The sold asset's USD price per base unit at the fill, which its positions record. */
+  readonly soldPrice?: UsdPrice;
 }
 
 /**
@@ -56,6 +61,9 @@ const paperFillSchema: z.ZodType<PaperFill> = z.strictObject({
   amountIn: amountSchema,
   amountOut: amountSchema,
   atMs: epochMsSchema,
+  soldPrice: z
+    .strictObject({ numerator: decimalStringSchema, denominator: decimalStringSchema })
+    .exactOptional(),
 });
 
 const settledTradeSchema: z.ZodType<SettledTrade> = z.strictObject({

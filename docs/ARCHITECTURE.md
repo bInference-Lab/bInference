@@ -1011,8 +1011,9 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
 - **One engine per state folder.** An OS file lock in `~/.binference`; a second engine refuses to
   start, because two engines would race on nonces.
 - **Startup order.** Lock, config, migrations (after a backup), integrity check, signer, reconcile
-  unfinished transactions by hash and nonce, resume orders and watchers, then channels and the
-  server. Until then every method answers "starting".
+  unfinished transactions by hash and nonce, record the positions of recent paper fills a crash
+  left without them, resume orders and watchers, then channels and the server. Until then every
+  method answers "starting".
 - **Shutdown order, within 30 seconds.** Stop accepting intents, finish signing and broadcasts in
   flight, save state, stop channels, close the databases.
 - **`binference check`** adds SQLite integrity checks and maintenance, `--fix` repairs, and a health

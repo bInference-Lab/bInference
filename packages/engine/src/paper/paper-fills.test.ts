@@ -10,6 +10,8 @@ import {
   type StoredIntents,
 } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
+import { paperFillOf } from "../intents/intent-history.js";
+import { createIntentStateMachine } from "../intents/state-machine.js";
 import {
   testAgentDraft,
   testCoin,
@@ -18,9 +20,10 @@ import {
   testToken,
   testWallet,
 } from "../intents/test-intents.js";
-import type { PositionStore } from "../ports.js";
+import type { IntentStore, PositionStore } from "../ports.js";
 import { createPositions } from "../positions/create-positions.js";
 import { createPaperFills, type PaperFills } from "./paper-fills.js";
+import { paperRepairWindowMs, repairPaperFills } from "./repair-paper-fills.js";
 
 const live = { signal: new AbortController().signal };
 const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
@@ -40,6 +43,7 @@ const quote = quoteDocument.encode({
 });
 
 interface Held {
+  readonly intents: IntentStore;
   readonly stored: StoredIntents;
   readonly snapshot: IntentSnapshot;
   readonly positions: PositionStore;
@@ -85,7 +89,7 @@ async function holding({ state, isQuoted = true }: Holding): Promise<Held> {
     { walletId: testWallet, atMs: testNowMs, balances },
     live,
   );
-  return { stored, snapshot, positions };
+  return { intents: stores.intents, stored, snapshot, positions };
 }
 
 function fillsOn(
@@ -201,6 +205,112 @@ describe("paper fills", () => {
     await expect(fills.fillAtQuote(held.snapshot, live)).rejects.toMatchObject({
       code: "engine.positions_stale",
       retryable: true,
+    });
+  });
+});
+
+// A position store that dies on its first execution write, as a crash right after the fill does.
+function crashing(store: PositionStore): PositionStore {
+  return {
+    ...store,
+    record: async () => Promise.reject(new Error("The engine stopped.")),
+  };
+}
+
+function repairOn(held: Held, nowMs = testNowMs) {
+  // Prices moved since the fill: the repair values it at the fill's own price.
+  const prices = createFakePriceSource(new Map([[testCoin, { ...coinPrice, numerator: 1n }]]));
+  const repairClock = { ...clock, now: () => nowMs };
+  return repairPaperFills(
+    {
+      intents: held.intents,
+      stored: held.stored,
+      store: held.positions,
+      positions: createPositions({ store: held.positions, prices }),
+      clock: repairClock,
+    },
+    live,
+  );
+}
+
+async function crashedFill(): Promise<Held> {
+  const held = await holding({ state: "confirmed" });
+  const fills = fillsOn({ ...held, positions: crashing(held.positions) });
+  await expect(fills.fillAtQuote(held.snapshot, live)).rejects.toThrow("The engine stopped.");
+  expect((await held.stored.snapshot(intent, live))?.record.state).toBe("paper_filled");
+  return held;
+}
+
+function fillStep(snapshot: IntentSnapshot) {
+  const step = createIntentStateMachine({ clock }).apply(snapshot.stored.status, {
+    type: "paper_fill_recorded",
+  });
+  if (!step.ok) {
+    throw new Error("Expected a confirmed intent to fill.");
+  }
+  return step.value;
+}
+
+async function storedFill(held: Held) {
+  const snapshot = await held.stored.snapshot(intent, live);
+  return snapshot === undefined ? undefined : paperFillOf(snapshot.history);
+}
+
+describe("the repair of paper fills at start", () => {
+  it("records the positions a crash after the fill left out, at the fill's price", async () => {
+    const held = await crashedFill();
+    expect(
+      await held.positions.executions({ after: 0, limit: 5, isPaper: true }, live),
+    ).toHaveLength(0);
+    await expect(repairOn(held)).resolves.toBe(1);
+    const executions = await held.positions.executions({ after: 0, limit: 5, isPaper: true }, live);
+    expect(executions).toMatchObject([
+      { intentId: intent, valueUsdMicros: 60_000_000n, atMs: testNowMs, gasUsdMicros: 0n },
+    ]);
+    const positions = await held.positions.positions(paperQuery, live);
+    expect(positions.map((row) => [row.asset, row.quantityBase])).toStrictEqual([
+      [testCoin, 9n * 10n ** 17n],
+      [testToken, 2_000_000n],
+    ]);
+  });
+
+  it("changes nothing for a fill whose positions are recorded, nor on a second run", async () => {
+    const held = await holding({ state: "confirmed" });
+    await fillsOn(held).fillAtQuote(held.snapshot, live);
+    await expect(repairOn(held)).resolves.toBe(0);
+    const crashed = await crashedFill();
+    await expect(repairOn(crashed)).resolves.toBe(1);
+    await expect(repairOn(crashed)).resolves.toBe(0);
+    expect(
+      await crashed.positions.executions({ after: 0, limit: 5, isPaper: true }, live),
+    ).toHaveLength(1);
+  });
+
+  it("leaves a fill recorded before fills kept their price", async () => {
+    const held = await holding({ state: "confirmed" });
+    const fill = {
+      amountIn: { asset: testCoin, base: 10n ** 17n },
+      amountOut: { asset: testToken, base: 2_000_000n },
+      atMs: testNowMs,
+    };
+    const move = { intent, version: held.snapshot.stored.version, by: "engine", fill } as const;
+    await held.stored.move({ ...move, step: fillStep(held.snapshot) }, live);
+    expect((await held.stored.snapshot(intent, live))?.record.state).toBe("paper_filled");
+    await expect(repairOn(held)).resolves.toBe(0);
+  });
+
+  it("leaves a fill older than its window", async () => {
+    const held = await crashedFill();
+    await expect(repairOn(held, testNowMs + paperRepairWindowMs + 2)).resolves.toBe(0);
+  });
+
+  it("keeps the price a fill was valued at with the fill", async () => {
+    const held = await crashedFill();
+    expect(await storedFill(held)).toStrictEqual({
+      amountIn: { asset: testCoin, base: 10n ** 17n },
+      amountOut: { asset: testToken, base: 2_000_000n },
+      atMs: testNowMs,
+      soldPrice: coinPrice,
     });
   });
 });

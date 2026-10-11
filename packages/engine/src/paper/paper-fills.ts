@@ -1,9 +1,10 @@
-import { type PriceSource, type UsdPrice, withQuotePrice } from "@binference/chain";
+import { type AssetRef, type PriceSource, type UsdPrice, withQuotePrice } from "@binference/chain";
 import { BinferenceError, type Clock } from "@binference/core";
 import type { QuoteView } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
+import type { IntentRecord } from "../intents/intent-record.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Positions } from "../positions/create-positions.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
@@ -11,8 +12,9 @@ import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.
 /**
  * Paper mode's fill step: a confirmed paper intent fills at its confirmed quote, and nothing is
  * signed (ARCHITECTURE.md section 10). The fill is recorded with the move to `paper_filled`, in
- * its event and its ledger entry, and the intent's view shows it as its execution. The fill then
- * moves the wallet's paper positions, which hold its paper portfolio and their own P&L.
+ * its event and its ledger entry, with the price it is valued at, and the intent's view shows it
+ * as its execution. The fill then moves the wallet's paper positions, which hold its paper
+ * portfolio and their own P&L.
  */
 export interface PaperFills {
   /**
@@ -53,38 +55,45 @@ function confirmedQuote(snapshot: IntentSnapshot): QuoteView {
   return quoteDocument.decode(quote);
 }
 
-// The paper execution of a fill: the quote's input for its expected output, with no fee or gas.
-function tradeOf(
-  snapshot: IntentSnapshot,
-  quote: QuoteView,
-  priced: { readonly atMs: number; readonly soldPrice: UsdPrice },
+/**
+ * The paper execution of a fill: its input for its output at the price it was valued at, with no
+ * fee or gas, in the gas asset given.
+ */
+export function paperTrade(
+  record: Pick<IntentRecord, "id" | "walletId">,
+  fill: PaperFill & { readonly soldPrice: UsdPrice },
+  gasAsset: AssetRef,
 ): ExecutedTrade {
-  const { record } = snapshot;
   return {
     intentId: record.id,
     walletId: record.walletId,
     isPaper: true,
-    atMs: priced.atMs,
-    sold: quote.amountIn,
+    atMs: fill.atMs,
+    sold: fill.amountIn,
     feeBase: 0n,
-    bought: quote.expectedOut,
-    gas: { asset: quote.gas.asset, base: 0n },
-    soldPrice: priced.soldPrice,
+    bought: fill.amountOut,
+    gas: { asset: gasAsset, base: 0n },
+    soldPrice: fill.soldPrice,
     gasPrice: noGasPrice,
   };
 }
 
-// A write that loses its race to another fill on the wallet reads the positions again.
-async function recordFill(
+/**
+ * Records a paper execution in the positions; a write that loses its race to another fill on the
+ * wallet reads the positions again, up to three times in all, then throws
+ * `engine.positions_stale`.
+ */
+export async function recordFill(
   positions: Positions,
   trade: ExecutedTrade,
-  call: { readonly signal: AbortSignal; readonly attemptsLeft: number },
+  call: { readonly signal: AbortSignal; readonly attemptsLeft?: number },
 ): Promise<void> {
+  const attemptsLeft = call.attemptsLeft ?? recordAttempts;
   const recorded = await positions.record(trade, { signal: call.signal });
   if (recorded.ok) {
     return;
   }
-  if (call.attemptsLeft <= 1) {
+  if (attemptsLeft <= 1) {
     throw new BinferenceError({
       code: "engine.positions_stale",
       message: `The paper fill of ${trade.intentId} kept losing its position write.`,
@@ -92,7 +101,7 @@ async function recordFill(
       details: { intent: trade.intentId },
     });
   }
-  await recordFill(positions, trade, { ...call, attemptsLeft: call.attemptsLeft - 1 });
+  await recordFill(positions, trade, { ...call, attemptsLeft: attemptsLeft - 1 });
 }
 
 /** Creates the {@link PaperFills} on the state machine, which decides whether an intent fills. */
@@ -112,7 +121,12 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
         return snapshot;
       }
       const atMs = step.value.event.atMs;
-      const fill: PaperFill = { amountIn: quote.amountIn, amountOut: quote.expectedOut, atMs };
+      const fill = {
+        amountIn: quote.amountIn,
+        amountOut: quote.expectedOut,
+        atMs,
+        soldPrice: price.value,
+      };
       const intent = snapshot.record.id;
       const move = {
         intent,
@@ -125,8 +139,10 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
       if (!moved.ok) {
         return (await stored.snapshot(intent, { signal })) ?? snapshot;
       }
-      const trade = tradeOf(snapshot, quote, { atMs, soldPrice: price.value });
-      await recordFill(options.positions, trade, { signal, attemptsLeft: recordAttempts });
+      // A crash here leaves the fill without its positions; `repairPaperFills` records them at
+      // the next start from the fill, which keeps its price.
+      const trade = paperTrade(snapshot.record, fill, quote.gas.asset);
+      await recordFill(options.positions, trade, { signal });
       return moved.value;
     },
   };
