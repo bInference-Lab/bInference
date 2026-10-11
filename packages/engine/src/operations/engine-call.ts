@@ -19,7 +19,7 @@ interface SurfaceClient {
 }
 
 /** What the agent runtime knows of the turn it proposes in. */
-interface TurnMark {
+export interface TurnMark {
   /** The turn read the web, X, a Telegram group or token data (`turns.outside_content`). */
   readonly hasOutsideContent: boolean;
 }
@@ -41,9 +41,10 @@ export interface EngineCaller {
    */
   readonly transport?: "ipc" | "ws";
   /**
-   * The turn of the agent runtime the engine runs in its own process. Only the composition root
-   * sets it, for that runtime; the protocol server never does, so no client can clear the mark.
-   * Without it, a proposal of the agent runtime counts as outside content.
+   * The running turn of the agent the runtime proposes for, set only for a call made with the
+   * token the engine made at the runtime's current start (`markRuntimeTurns`); the protocol server
+   * never sets it, so no client can clear the mark. Without it, a proposal of a client with
+   * `agent` counts as outside content.
    */
   readonly turn?: TurnMark;
 }

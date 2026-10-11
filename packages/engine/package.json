@@ -88,10 +88,15 @@
       "@binference/source": "./src/notices.ts",
       "types": "./dist/notices.d.mts",
       "default": "./dist/notices.mjs"
+    },
+    "./chat": {
+      "@binference/source": "./src/chat.ts",
+      "types": "./dist/chat.d.mts",
+      "default": "./dist/chat.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts src/notices.ts src/backups.ts src/access.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts src/notices.ts src/backups.ts src/access.ts src/chat.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
