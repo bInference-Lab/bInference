@@ -61,10 +61,19 @@ new name here first, in the change that uses it.
   its callback reference and the assets it names.
 - **auto order**: a limit, take-profit, stop-loss, trailing, DCA or copy-trade order, confirmed
   once. Each fill runs inside its bounds without a card.
+- **exit order**: a take-profit, stop-loss, trailing stop or limit sell on a position. When one
+  exit order sells the whole position, the position's other exit orders end.
+- **place**: where a buy or sell runs: the token's launchpad curve while it is on one, else the DEX
+  pools. The engine picks it; the card names it.
 - **fill**: one execution of an auto order or a webhook rule.
 - **watcher**: code that reads blocks, prices, leader wallets or launches and triggers fills. No
   model runs in it.
-- **alert**: a price or wallet condition that notifies and sends no transaction.
+- **alert**: a price, wallet or launch condition that notifies and sends no transaction. An alert
+  with **wake** also starts a turn of the agent when it fires.
+- **launch feed**: the tokens the launchpads created, read from their create events by the launch
+  watcher.
+- **tracked wallet**: a wallet an active copy order or wallet alert names; the leader watcher reads
+  its trades from each block.
 - **webhook rule**: a rule confirmed once that lets an inbound webhook fill inside its bounds.
 - **schedule**: a model turn that runs at set times. It moves no money.
 - **paper mode**: real quotes, checks and cards, with fills recorded at the confirmed quote and
@@ -208,6 +217,10 @@ new name here first, in the change that uses it.
   teaches Claude Code, Codex and other MCP clients the engine's MCP tools.
 - **skill lint**: `lintSkill`, which names each sentence of a skill that tells the agent to ask for
   a seed phrase, a private key, an API key or a passphrase; the install refuses such a skill.
+- **question**: the agent's question to the owner with two to four answer buttons (`ask_owner`).
+  The answer comes back as the owner's next message.
+- **status line**: the one line a turn ends with when the owner should know why: a proposal waits,
+  chat is paused, the turn was stopped, or it failed.
 - **read, propose and control tools**: tools that read data, tools that create an intent or an auto
   order and its card, and tools that change something without moving money or opening a card
   (cancel an order, set an alert or a schedule, write a note, ask the owner).
@@ -394,6 +407,10 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | checked on chain (a trade)              | 已核验                  |                             |
 | brakes (pause, resume, stop)            | 刹车 (暂停, 恢复, 停止) |                             |
 | approve (an agent, an order, a rule)    | 批准                    | Token approvals are 授权    |
+| question (the agent asks the owner)     | 问题                    | "asks" = 想问你             |
+| status line                             | 状态行                  |                             |
+| first chat                              | 初次对话                |                             |
+| disclaimer, privacy statement           | 免责声明, 隐私声明      |                             |
 
 ### Running binference
 
@@ -420,6 +437,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | background service                    | 后台服务     | `binference start`           |
 | log in (to the computer)              | 登录         |                              |
 | client token                          | 访问令牌     | A `bnt_` sign-in token       |
+| release notes                         | 更新说明     |                              |
+| roll back (an update)                 | 回退         | Not 回滚, which is a revert  |
 
 ### Trading
 
@@ -483,6 +502,21 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | network (chain)                                    | 网络                         |                                         |
 | contract address                                   | 合约地址                     |                                         |
 | alerts, alert rule                                 | 提醒, 提醒规则               |                                         |
+| price alert, wallet alert, launch alert            | 价格提醒, 钱包提醒, 发射提醒 |                                         |
+| exit order                                         | 平仓订单                     |                                         |
+| P&L card                                           | 盈亏卡片                     |                                         |
+| share (of a holding)                               | 持仓比例                     | "50% of your X" = 你持有的 X 的 50%     |
+| DEX pools                                          | DEX 交易池                   |                                         |
+| venue fee                                          | 平台手续费                   |                                         |
+| launch feed                                        | 发射动态                     |                                         |
+| curve progress                                     | 曲线进度                     |                                         |
+| snipe tax                                          | 狙击税                       | A launch-window tax on early buys       |
+| insider wallets                                    | 内部钱包                     |                                         |
+| creator (of a token)                               | 创建者                       |                                         |
+| trending (tokens)                                  | 热门                         |                                         |
+| chart, candle                                      | K 线图, K 线                 |                                         |
+| leader wallet (of a copy trade)                    | 带单钱包                     |                                         |
+| tracked wallet                                     | 关注的钱包                   |                                         |
 | venue (where the agent trades, lends or stakes)    | 平台                         | PancakeSwap, Venus                      |
 
 ### Wallets and safety

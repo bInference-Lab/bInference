@@ -5,6 +5,11 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115),
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
 [0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128) and [0134](../DECISIONS.md#d0134).
+Proposed on 2026-10-12 and waiting for the owner's approval: callback kind `q` (section 2); sales
+by share, the paper launch refusal, the P&L card and the auto order summaries (sections 3.6 to
+3.8); update notes (section 4.2); the alert, launch feed, fill and exit messages (section 4.3); the
+glossary rows they need (section 7); the chat's status lines, the agent's questions and the first
+chat (section 8); and the disclaimer and privacy statement (section 9).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -53,6 +58,11 @@ names the keys and fixes the wording.
   (`perTradeUsdMicros`, `rollingDayUsdMicros`, `slippageRegistryBps` or `slippageOtherBps`) for the
   only agent. It names no id: a press can only make the owner's own limit stricter. A `/lang`
   button carries `bnf1:l:s:<en|zh>`: it sets the owner's language.
+- A button of the agent's question ([section 8.2](#section-8-2)) carries `bnf1:q:<choice>:<ref>`:
+  `choice` is `0` to `3`, the choice's place in the question; `ref` is the question's random
+  12-byte base64url reference (spec 3, `questions.ref`). A press answers the question; it confirms
+  nothing. A press on a question that is no longer open answers `answerCallbackQuery` with
+  `question.closedToast` and changes nothing.
 - The engine checks that the presser is the owner's numeric Telegram id, writes the decision
   durably, then answers `answerCallbackQuery`.
 - First answer wins: the other surfaces' buttons are removed, and every copy becomes the receipt.
@@ -191,6 +201,129 @@ The card's message is edited into its receipt; the buttons go away.
 
 `{reason}` comes from `reason.<code>` (section 6).
 
+<a id="section-3-6"></a>
+
+### 3.6 Places, sales by share and paper launches
+
+The engine picks where a `buy` or `sell` runs ([spec 6, section 5](intent-states.md#section-5)), and
+`{place}` names it: `card.place.curve`, "the {launchpad} curve" / 「{launchpad} 联合曲线」, while
+the token is on its launchpad's curve; otherwise the aggregator's name, and the route line names
+the pools.
+
+| Line          | Key                      | English                                                                                                                                         | 中文                                                                                              |
+| ------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Sell a share  | `card.sell.share`        | Sell {share} of your {token} ({amount}) → at least {minOut} · on {place}                                                                        | 卖出你持有的 {token} 的 {share}（{amount}）→ 至少收到 {minOut} · 在 {place}                       |
+| Sell all      | `card.sell.all`          | Sell all your {token} ({amount}) → at least {minOut} · on {place}                                                                               | 卖出你持有的全部 {token}（{amount}）→ 至少收到 {minOut} · 在 {place}                              |
+| Place changed | `card.warn.placeChanged` | ⚠️ {token} graduated since the last quote: this trade now runs in the pools                                                                     | ⚠️ 自上次报价以来 {token} 已毕业：此交易现在在交易池中进行                                        |
+| Paper launch  | `card.launch.paperOnly`  | A launch publishes the token's name and picture for good, and a paper token would have no address. Go live with `binference live` to launch it. | 发射会永久公开代币的名称和图片，而模拟代币没有地址。请运行 `binference live` 切换到实盘后再发射。 |
+
+- A `sell` by `percentBps` shows `card.sell.share`, or `card.sell.all` at 100%; `{amount}` is
+  what that share was when the quote was built.
+- A new card version whose place differs from the version before carries `card.warn.placeChanged`.
+- A `launchToken` refused with `paper_only` (spec 6, section 4) shows its card's lines, every
+  setting included, with 🧪 Paper in the header and no buttons, followed by `receipt.refused` and
+  `card.launch.paperOnly`, so the owner can check the settings before going live.
+
+<a id="section-3-7"></a>
+
+### 3.7 The P&L card
+
+A text card drawn from `portfolio/pnl` and the ledger, never from model text, in Telegram
+(`/positions`) and the console, in both languages. One card per position: an open one while the
+wallet holds the token, a closed one after a sale emptied it. A paper position's card says
+🧪 Paper, as cards do. A shareable picture comes later.
+
+Open position, English:
+
+```text
+PEPE (0x6982…1933) · main · 🔴 Live
+Holding 1.25M PEPE · value $14.20
+Average cost $0.00000944 · cost $11.80
+P&L  unrealized +$2.40 (+20.34%) · realized +$0.85
+Fees  venue $0.04 · network $0.02
+Since 2026-10-02 14:05
+```
+
+中文:
+
+```text
+PEPE (0x6982…1933) · main · 🔴 实盘
+持有 1.25M PEPE · 市值 $14.20
+平均成本 $0.00000944 · 成本 $11.80
+盈亏  未实现盈亏 +$2.40（+20.34%）· 已实现盈亏 +$0.85
+费用  平台手续费 $0.04 · 网络费 $0.02
+开始于 2026-10-02 14:05
+```
+
+Closed trade, English:
+
+```text
+PEPE (0x6982…1933) · main · 🔴 Live · closed
+Bought for $11.80 · sold for $14.65
+P&L  realized +$2.85 (+24.15%)
+Fees  venue $0.06 · network $0.03
+Held 2026-10-02 14:05 → 2026-10-09 09:12 (7 days)
+```
+
+中文:
+
+```text
+PEPE (0x6982…1933) · main · 🔴 实盘 · 已清仓
+买入花费 $11.80 · 卖出收到 $14.65
+盈亏  已实现盈亏 +$2.85（+24.15%）
+费用  平台手续费 $0.06 · 网络费 $0.03
+持有 2026-10-02 14:05 → 2026-10-09 09:12（7 天）
+```
+
+| Line            | Key                | English                                                       | 中文                                                             |
+| --------------- | ------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Header          | `pnl.header`       | {token} · {agent} · {mode}                                    | {token} · {agent} · {mode}                                       |
+| Header, closed  | `pnl.headerClosed` | {token} · {agent} · {mode} · closed                           | {token} · {agent} · {mode} · 已清仓                              |
+| Holding         | `pnl.holding`      | Holding {amount} · value {value}                              | 持有 {amount} · 市值 {value}                                     |
+| Cost            | `pnl.cost`         | Average cost {average} · cost {cost}                          | 平均成本 {average} · 成本 {cost}                                 |
+| P&L, open       | `pnl.open`         | P&L unrealized {unrealized} ({percent}) · realized {realized} | 盈亏 未实现盈亏 {unrealized}（{percent}）· 已实现盈亏 {realized} |
+| P&L, closed     | `pnl.closed`       | P&L realized {realized} ({percent})                           | 盈亏 已实现盈亏 {realized}（{percent}）                          |
+| Bought and sold | `pnl.trades`       | Bought for {bought} · sold for {sold}                         | 买入花费 {bought} · 卖出收到 {sold}                              |
+| Fees            | `pnl.fees`         | Fees venue {venue} · network {network}                        | 费用 平台手续费 {venue} · 网络费 {network}                       |
+| Since           | `pnl.since`        | Since {openedAt}                                              | 开始于 {openedAt}                                                |
+| Held            | `pnl.held`         | Held {openedAt} → {closedAt} ({duration})                     | 持有 {openedAt} → {closedAt}（{duration}）                       |
+| No price        | `pnl.noPrice`      | P&L unrealized: no price now · realized {realized}            | 盈亏 未实现盈亏：暂无价格 · 已实现盈亏 {realized}                |
+
+- `{mode}` is 🧪 Paper / 🧪 模拟 or 🔴 Live / 🔴 实盘; the console draws the mode as its card header
+  does.
+- An open position's `{percent}` is the unrealized P&L over its cost; a closed one's is the
+  realized P&L over what its buys cost (`boughtUsdMicros`). Amounts carry their sign, `+` or `-`.
+- `{average}` is the cost per whole token at average cost
+  ([decision 0058](../DECISIONS.md#d0058)); the venue fees and network fees are those of the
+  position's executions, which the cost already holds.
+
+<a id="section-3-8"></a>
+
+### 3.8 Auto order cards
+
+An auto order's card (`card.order.action`, "Approve {orderKind}: {summary} · up to {maxFills} fills
+until {expiry}") takes `{orderKind}` from the kind's name, as `/orders` words it, and `{summary}`
+from this table. `{sell}` is `card.order.sell` for the order's size, and `{condition}` is "at or
+above {price}" or "at or below {price}" / 「价格达到或高于 {price}」 or 「价格达到或低于 {price}」.
+
+| Kind           | Key                             | English                                                                                                             | 中文                                                                                                                                         |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Size of a sale | `card.order.sell`               | sell {size, select, share {{share} of your {token}} usd {{usd} of {token}} all {all your {token}} other {{amount}}} | {size, select, share {卖出你持有的 {token} 的 {share}} usd {卖出价值 {usd} 的 {token}} all {卖出你持有的全部 {token}} other {卖出 {amount}}} |
+| Limit buy      | `card.order.summary.limitBuy`   | buy {token} with {spend} when the price is {condition}                                                              | 当{condition} 时，用 {spend} 买入 {token}                                                                                                    |
+| Limit sell     | `card.order.summary.limitSell`  | {sell} when the price is {condition}                                                                                | 当{condition} 时，{sell}                                                                                                                     |
+| Take-profit    | `card.order.summary.takeProfit` | {sell} when the price reaches {price}                                                                               | 当价格达到 {price} 时，{sell}                                                                                                                |
+| Stop-loss      | `card.order.summary.stopLoss`   | {sell} when the price falls to {price}                                                                              | 当价格跌至 {price} 时，{sell}                                                                                                                |
+| Trailing stop  | `card.order.summary.trailing`   | {sell} when the price falls {distance} below its highest since the order started                                    | 当价格从下单以来的最高点回落 {distance} 时，{sell}                                                                                           |
+| DCA            | `card.order.summary.dca`        | buy {token} with {spend} {schedule}, {count, plural, =0 {until the order ends} one {once} other {# times}}          | {schedule} 用 {spend} 买入 {token}，{count, plural, =0 {直到订单结束} other {共 # 次}}                                                       |
+| Copy trade     | `card.order.summary.copy`       | copy {leader}'s buys at {perBuy} each, at most {daily} a day, and sell the share {leader} sells                     | 跟单 {leader} 的买入，每笔 {perBuy}，每天最多 {daily}；{leader} 卖出多少比例，你就卖出相同比例                                               |
+| Linked exits   | `card.order.exitsLinked`        | When an exit order sells all your {token}, your other exit orders on it end                                         | 当一个平仓订单卖出你持有的全部 {token} 时，该持仓的其他平仓订单随之结束                                                                      |
+
+- `{leader}` is the leader wallet's address book label, else its short address
+  (`0x12ab…cd34`).
+- An exit order's card carries `card.order.exitsLinked` when its position already has another
+  active exit order, so the owner knows a full sale by one ends the others
+  ([spec 6, section 5](intent-states.md#section-5)).
+
 <a id="section-4"></a>
 
 ## 4. Notices
@@ -266,6 +399,61 @@ click opens the console at the card. The second message takes the first one's pl
 | Card closes | `webPush.closed.title` | This card no longer waits                            | 这张卡片已不再等待               |
 |             | `webPush.closed.body`  | It was answered or it expired.                       | 它已被回复或已过期。             |
 
+<a id="section-4-2"></a>
+
+### 4.2 Update notes
+
+The daily update check reads each release's notes in both languages (`update/check`'s
+`releaseNotes`, spec 1 section 7.9): at most 5 lines of at most 200 characters in each, written for
+owners, saying what changed for them; never commit subjects. `{summary}` is the lines in the
+owner's language, each on its own line in Telegram and the console; `notice.update` (section 4)
+takes it too. A release without notes in the owner's language gets the notice without them, never
+the other language's lines.
+
+| Notice            | Key                       | English                                                                                                                                              | 中文                                                                                                   |
+| ----------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Without notes     | `notice.updateBare`       | binference {version} is out. Run `binference update`.                                                                                                | binference {version} 已发布。请运行 `binference update`。                                              |
+| Updated           | `notice.updated`          | binference is now {version}. What changed: {summary}                                                                                                 | binference 已更新到 {version}。更新内容：{summary}                                                     |
+| Updated, no notes | `notice.updatedBare`      | binference is now {version}.                                                                                                                         | binference 已更新到 {version}。                                                                        |
+| Rolled back       | `notice.updateRolledBack` | ⚠️ binference {version} failed its check after the update, so binference went back to {previous}. Your settings and records are as they were before. | ⚠️ binference {version} 更新后未通过检查，binference 已回退到 {previous}。你的设置和记录与更新前一致。 |
+
+- `notice.update` goes out once per version and channel, the day the check first sees it.
+- `notice.updated` goes out once, when the new version first starts after `binference update`;
+  `notice.updateRolledBack` goes out instead when `update` put the previous version back.
+
+<a id="section-4-3"></a>
+
+### 4.3 Alerts, the launch feed, fills and exits
+
+Token names and symbols in these lines are escaped as section 1 says; a token from the launch feed
+is never verified, so its short address always follows its symbol.
+
+| Message                   | Key                      | English                                                                                                                                                                                                         | 中文                                                                                                                                                            |
+| ------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Price alert               | `notice.alertPrice`      | {token} is {direction, select, above {at or above} other {at or below}} {price}: now {now}                                                                                                                      | {token} 价格{direction, select, above {达到或高于} other {达到或低于}} {price}：现价 {now}                                                                      |
+| Wallet alert              | `notice.alertWallet`     | {wallet} {side, select, buy {bought {amount} for {value}} other {sold {amount}, {share} of its holding, for {value}}}                                                                                           | {wallet} {side, select, buy {用 {value} 买入 {amount}} other {卖出 {amount}（占其持仓的 {share}），收到 {value}}}                                               |
+| Launch alert              | `notice.alertLaunch`     | New launch passed your filters: {launch}                                                                                                                                                                        | 有新发射的代币通过了你的筛选条件：{launch}                                                                                                                      |
+| Woke the agent            | `alert.woke`             | {agent} is looking into it.                                                                                                                                                                                     | {agent} 正在查看。                                                                                                                                              |
+| Wake-ups held back        | `alert.wakeSkipped`      | {count, plural, one {# more match} other {# more matches}} did not wake {agent}: at most 10 wake-ups an hour.                                                                                                   | 另有 {count} 个匹配未唤醒 {agent}：每小时最多唤醒 10 次。                                                                                                       |
+| Launch feed line          | `launch.line`            | {token} · {launchpad} · {age} ago · {curve} · tax {tax} · {insiders, plural, =0 {no insider wallets} one {# insider wallet} other {# insider wallets}} · creator's other launches in 30 days: {creatorLaunches} | {token} · {launchpad} · {age}前 · {curve} · 交易税 {tax} · {insiders, plural, =0 {无内部钱包} other {# 个内部钱包}} · 创建者 30 天内其他发射：{creatorLaunches} |
+| Curve state               | `launch.curve`           | {graduated, select, yes {graduated} other {curve {progress}}}                                                                                                                                                   | {graduated, select, yes {已毕业} other {曲线进度 {progress}}}                                                                                                   |
+| Buy fill                  | `fill.buy`               | bought {amount} for {spent} at {price}                                                                                                                                                                          | 以 {price} 用 {spent} 买入 {amount}                                                                                                                             |
+| Sell fill                 | `fill.sell`              | sold {amount} for {received} at {price}                                                                                                                                                                         | 以 {price} 卖出 {amount}，收到 {received}                                                                                                                       |
+| Copied buy                | `fill.copyBuy`           | copied {leader}: bought {amount} for {spent}                                                                                                                                                                    | 跟单 {leader}：用 {spent} 买入 {amount}                                                                                                                         |
+| Copied sale               | `fill.copySell`          | copied {leader} selling {share}: sold {amount} for {received}                                                                                                                                                   | 跟单 {leader} 卖出 {share}：卖出 {amount}，收到 {received}                                                                                                      |
+| Other exits ended         | `notice.ordersEnded`     | {orderKind} sold all your {token}, so {count, plural, one {your other exit order on it ended} other {your # other exit orders on it ended}}                                                                     | {orderKind}已卖出你持有的全部 {token}，该持仓的其他 {count} 个平仓订单已结束                                                                                    |
+| Exit on an empty position | `notice.exitEnded`       | {orderKind} on {token} ended: the wallet holds none of it any more                                                                                                                                              | {token} 的{orderKind}已结束：钱包中已没有这种代币                                                                                                               |
+| Copy cap reached          | `reason.copy_daily_cap`  | it would pass this leader's daily cap ({used} of {cap} used)                                                                                                                                                    | 将超过该带单钱包的每日上限（已用 {used}，上限 {cap}）                                                                                                           |
+| Nothing to sell           | `reason.nothing_to_sell` | the wallet holds none of this token                                                                                                                                                                             | 钱包中没有这种代币                                                                                                                                              |
+
+- `notice.fill` and `notice.skipped` (section 4) take `{result}` from `fill.*` and `{reason}` from
+  `reason.*`. A paper fill's notice starts with 🧪, as its receipt does.
+- An alert's notice is followed by `alert.woke` when it started a turn, and by `alert.wakeSkipped`
+  when wake-ups were held back since the last one (spec 1, section 8.4).
+- `{wallet}` and `{leader}` are the address book label, else the short address. `{age}` is the
+  time since the launch block, in minutes, hours or days. `{creatorLaunches}` is a number.
+- The console's launch list shows each launch with the launch feed line.
+
 <a id="section-5"></a>
 
 ## 5. Fast commands
@@ -291,6 +479,9 @@ click opens the console at the card. The second message takes the first one's pl
 | `/help`      | `cmd.help`      | The commands, one line each                                     |
 
 Command descriptions are registered with `setMyCommands` in both languages (`language_code`).
+
+`/positions` shows each position as its P&L card ([section 3.7](#section-3-7)), open ones first,
+then the positions closed in the last 7 days.
 
 A `/limits` button halves the per-trade cap, the 24-hour cap, or the slippage limit on verified or
 other tokens, rounding down: "Halve the per-trade cap" / 「单笔上限减半」. Half is always stricter,
@@ -372,3 +563,155 @@ after it is there ([ENGINEERING.md section 14](../ENGINEERING.md#section-14)):
 | front-running bot                                  | 抢跑机器人                   |
 | portfolio                                          | 投资组合                     |
 | skill (Agent Skills)                               | 技能                         |
+| question (the agent asks the owner)                | 问题                         |
+| status line                                        | 状态行                       |
+| first chat                                         | 初次对话                     |
+| disclaimer, privacy statement                      | 免责声明, 隐私声明           |
+| release notes, roll back (an update)               | 更新说明, 回退               |
+| price alert, wallet alert, launch alert            | 价格提醒, 钱包提醒, 发射提醒 |
+| exit order                                         | 平仓订单                     |
+| P&L card                                           | 盈亏卡片                     |
+| share (of a holding)                               | 持仓比例                     |
+| DEX pools                                          | DEX 交易池                   |
+| venue fee                                          | 平台手续费                   |
+| launch feed, curve progress, snipe tax             | 发射动态, 曲线进度, 狙击税   |
+| insider wallets, creator (of a token)              | 内部钱包, 创建者             |
+| trending (tokens), chart, candle                   | 热门, K 线图, K 线           |
+| leader wallet, tracked wallet                      | 带单钱包, 关注的钱包         |
+
+<a id="section-8"></a>
+
+## 8. The agent's chat
+
+<a id="section-8-1"></a>
+
+### 8.1 Status lines
+
+The one line a turn ends with when the owner should know why
+([spec 8, section 4.4](runtime.md#section-4-4)). The runtime sends the key with `turn/status`
+(spec 1, section 7.7); each surface shows it under the agent's last message, in a quieter style
+than the agent's words (italics in Telegram).
+
+| When                                 | Key                           | English                                                                                                    | 中文                                                                         |
+| ------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| A proposal waits for the owner       | `turn.proposalWaits`          | 🟡 Waiting for your answer on its card                                                                     | 🟡 等待你在卡片上回复                                                        |
+| Proposals held back                  | `turn.moreProposals`          | {count, plural, one {One more proposal follows} other {# more proposals follow}} once you answer this card | 你回复此卡片后，还会有 {count} 个提议                                        |
+| The budget is spent                  | `turn.budget`                 | Chat paused until {when}: today's model budget is spent. Orders keep running.                              | 对话暂停至 {when}：今日模型预算已用完。自动订单继续运行。                    |
+| Stopped                              | `turn.stopped`                | Stopped. Anything you already confirmed still goes through.                                                | 已停止。你已确认的操作仍会执行。                                             |
+| 25 tool calls                        | `turn.toolCallLimit`          | Stopped: this answer reached its limit of 25 tool calls. Ask again to go on.                               | 已停止：本次回答已达到 25 次工具调用上限。请再次提问以继续。                 |
+| 40 model calls                       | `turn.modelCallLimit`         | Stopped: this answer reached its limit of 40 model calls. Ask again to go on.                              | 已停止：本次回答已达到 40 次模型调用上限。请再次提问以继续。                 |
+| The loop guard                       | `turn.loop`                   | Stopped: the agent repeated the same step three times.                                                     | 已停止：Agent 连续三次重复同一步骤。                                         |
+| Failed, `transient`                  | `turn.failed.transient`       | The model provider did not answer, even after retries. Try again in a minute.                              | 多次重试后模型服务商仍未回答。请稍后再试。                                   |
+| Failed, `context`                    | `turn.failed.context`         | This chat is too long to go on. Send /clear to start a new one; your notes and strategy stay.              | 此对话过长，无法继续。请发送 /clear 开始新对话；你的笔记和策略会保留。       |
+| Failed, `auth`                       | `turn.failed.auth`            | The model provider refused the key. Run `binference check` on the machine.                                 | 模型服务商拒绝了密钥。请在本机运行 `binference check`。                      |
+| Failed, `billing`                    | `turn.failed.billing`         | The model key reached its spending limit. Raise it with the provider, or pick another model with /ai.      | 模型密钥已达到消费上限。请在服务商处提高上限，或用 /ai 选择其他模型。        |
+| Failed, `request`                    | `turn.failed.request`         | The model provider refused the request. Pick another model with /ai, or run `binference check`.            | 模型服务商拒绝了该请求。请用 /ai 选择其他模型，或运行 `binference check`。   |
+| Failed, `refused`                    | `turn.failed.refused`         | The model stopped under its provider's own safety rules.                                                   | 模型按其服务商自身的安全规则停止了回答。                                     |
+| Failed, `aborted`                    | `turn.failed.aborted`         | Stopped before the answer was complete.                                                                    | 回答完成前已停止。                                                           |
+| Failed, the 10 minutes               | `turn.failed.timeLimit`       | Stopped: this answer ran for 10 minutes. Ask again to go on.                                               | 已停止：本次回答已运行 10 分钟。请再次提问以继续。                           |
+| Failed, a proposal's outcome unknown | `turn.failed.proposalUnknown` | ⚠️ binference did not hear back about a proposal, so it was not sent again. Check your open cards.         | ⚠️ binference 未收到某个提议的结果，因此没有再次发送。请查看你未处理的卡片。 |
+| Failed, the engine                   | `turn.failed.engine`          | Stopped: the agent lost its link to the engine. It starts again by itself.                                 | 已停止：Agent 与引擎的连接中断。它会自动重新启动。                           |
+| The first chat is done               | `turn.firstChatDone`          | Saved your answers to STRATEGY.md and PERSONA.md. Ask the agent to change them any time.                   | 你的回答已保存到 STRATEGY.md 和 PERSONA.md。你可以随时让 Agent 修改。        |
+
+- `{count}` is the number of propose calls held back (`turns.held_back`); `turn.moreProposals`
+  goes out with `turn.proposalWaits`, after it.
+- `{when}` is `resumesAt` in the owner's timezone, as a time today or tomorrow.
+- A proposal whose outcome is unknown after a restart ([spec 8, section 2.4](runtime.md#section-2-4))
+  gets `turn.failed.proposalUnknown` too.
+- The loop guard also sends `notice.loop` (section 4); the status line says it in the chat.
+
+<a id="section-8-2"></a>
+
+### 8.2 The agent's questions
+
+A question from `ask_owner` (spec 1, section 7.7) is the agent's words, escaped like the "Agent
+says" line and cut to 500 characters, under a fixed header, with one button per choice:
+
+```text
+main asks
+Which exit should I set for PEPE first?
+[ Take-profit at +50% ]  [ Stop-loss at -20% ]
+[ Both, one after the other ]
+Or write your own answer.
+```
+
+```text
+main 想问你
+PEPE 先设置哪种平仓方式？
+[ +50% 止盈 ]  [ -20% 止损 ]
+[ 两个都要，依次设置 ]
+也可以直接输入你的回答。
+```
+
+| Line               | Key                      | English                                                                                                                       | 中文                                                                                                  |
+| ------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Header             | `question.header`        | {agent} asks                                                                                                                  | {agent} 想问你                                                                                        |
+| Typed answers      | `question.typeHint`      | Or write your own answer.                                                                                                     | 也可以直接输入你的回答。                                                                              |
+| Answered           | `question.answered`      | Answered: {choice}                                                                                                            | 已回答：{choice}                                                                                      |
+| Answered by text   | `question.answeredTyped` | Answered in the chat                                                                                                          | 已在对话中回答                                                                                        |
+| Closed             | `question.closed`        | Closed: {reason, select, replaced {{agent} asked a newer question} cleared {the chat was cleared} other {it waited 24 hours}} | 已关闭：{reason, select, replaced {{agent} 提出了新问题} cleared {对话已清空} other {已等待 24 小时}} |
+| Closed, on a press | `question.closedToast`   | This question is closed.                                                                                                      | 此问题已关闭。                                                                                        |
+
+- The choices are the agent's labels, escaped, at most 64 characters each, never with a status
+  icon (spec 1 refuses one). Telegram puts two buttons on a row when both labels are 20
+  characters or less, else one; the console draws them as plain buttons, never in a card's
+  Confirm or Cancel style.
+- When the question closes, every copy is edited: the buttons go away and the last line becomes
+  `question.answered`, `question.answeredTyped` or `question.closed`.
+
+<a id="section-8-3"></a>
+
+### 8.3 The first chat
+
+New agents start in paper mode, and the first chat learns how the owner trades
+([decision 0061](../DECISIONS.md#d0061)).
+
+- **The welcome.** When Telegram pairing finishes, and for each agent created after it, binference
+  itself, not the model, sends `firstChat.welcome` once in that agent's chat.
+- **The questions.** `FIRST-CHAT.md` is made at the agent's creation in the owner's language with
+  the eight questions below, and the agent follows it on the owner's first message. The owner's
+  own request always comes first: when the first message asks for something, the agent does that,
+  and asks the questions after. It asks one question at a time, with `ask_owner` buttons where the
+  answer is a choice. "Skip" or 「跳过」 ends the questions, and the agent writes what it has.
+- **The end.** The agent writes `STRATEGY.md` and `PERSONA.md` from the answers and removes
+  `FIRST-CHAT.md`; the turn that removes it ends with `turn.firstChatDone`.
+- **Limits stay out of chat.** No answer sets a limit: the budget answer guides the strategy only,
+  and limits change in the CLI or the console.
+
+| Key                 | English                                                                                                                                                                                                                                                 | 中文                                                                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `firstChat.welcome` | Hi, I'm {agent}, your trading agent. I'm in paper mode: nothing I do uses real money until you go live. To trade the way you like, I'll ask you about 8 short questions when you write to me. If you want something first, ask; the questions can wait. | 你好，我是 {agent}，你的交易 Agent。我现在处于模拟模式：在你切换到实盘之前，我的任何操作都不会动用真实资金。为了按你的方式交易，你给我发消息后，我会问你大约 8 个简短的问题。如果你想先让我做别的事，直接告诉我，问题可以稍后再答。 |
+
+The questions of `FIRST-CHAT.md`, in this order:
+
+| #   | Topic        | English                                                                                                                          | 中文                                                                                                             |
+| --- | ------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 1   | Budget       | How much of your money is for me to trade, and how much at most in one trade?                                                    | 你打算交给我交易多少资金？单笔交易最多用多少？                                                                   |
+| 2   | Holding time | How long do you like to hold a token: minutes, hours, days or weeks?                                                             | 你通常持有一个代币多久：几分钟、几小时、几天还是几周？                                                           |
+| 3   | Sectors      | Which tokens interest you: new launches on Flap, four.meme, Genius.fun or Brew, memes, AI tokens, large caps, or something else? | 你对哪些代币感兴趣：Flap、four.meme、Genius.fun 或 Brew 上的新发射代币、Meme 币、AI 代币、大市值代币，还是其他？ |
+| 4   | Entries      | What makes a token worth buying for you?                                                                                         | 什么样的代币值得你买入？                                                                                         |
+| 5   | Exits        | When should I sell: at what gain should I take profit, and at what loss should I cut it?                                         | 什么时候卖出：涨多少止盈，跌多少止损？                                                                           |
+| 6   | Never        | Which tokens or kinds of tokens should I never touch?                                                                            | 哪些代币或哪类代币我绝对不要碰？                                                                                 |
+| 7   | When to ask  | When should I ask you first, and when may I act within your limits without asking?                                               | 什么情况下我要先问你，什么情况下可以在你的限额内直接操作？                                                       |
+| 8   | Reports      | How often should I report to you, and how short should my messages be?                                                           | 我应该多久向你汇报一次？消息要多简短？                                                                           |
+
+<a id="section-9"></a>
+
+## 9. The disclaimer and the privacy statement
+
+Shown before an agent can go live ([decision 0060](../DECISIONS.md#d0060)): in `binference init`
+after the language step, and by `binference live` when the owner has not accepted the current
+text. The owner types the phrase in either language, in any letter case; `binference init --yes`
+prints the text and needs its explicit flag. `safety.disclaimer_version` records the version
+accepted, and a change of meaning in either text raises the version, so going live asks again.
+The CLI's `cli.live.disclaimer` holds the same words today; onboarding moves them to these keys,
+which `init`, `live` and the console read.
+
+| Key                       | English                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 中文                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `disclaimer.title`        | Read this first                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 请先阅读                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `disclaimer.text`         | binference gives facts, not advice. You are responsible for every trade you confirm, and for what auto mode does within your caps. binference is open-source software under the MIT license, provided as is and without warranty: it can have bugs, and a transaction on chain cannot be undone.                                                                                                                                                                                                                                                                                                                                                                                                                 | binference 只陈述事实，不构成建议。你对自己确认的每一笔交易负责，也对自动模式在你的上限之内执行的操作负责。binference 是采用 MIT 许可证的开源软件，按原样提供，不附带任何担保：它可能存在缺陷，链上交易一经发出便无法撤回。                                                                                                                                                                                                                                                                             |
+| `disclaimer.privacyTitle` | What leaves this machine                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 离开本机的信息                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `disclaimer.privacy`      | Your model provider sees your chats, your balances and what your agent reads for you. Telegram carries your chats with your bot. Privy, which holds your wallets, sees every transaction they sign, and the private relays see the transactions they send. The RPC nodes see your IP address. The risk and market data services see the addresses of the tokens you trade or look at. A search provider sees your agent's searches, and a launchpad sees the name, picture and description of a token you launch. The update check reports the binference version, your operating system, Node version and CPU type, and, if you agree, the usage counts. Your owner key and agent key never leave this machine. | 你的模型服务商可以看到你的对话、余额，以及 Agent 为你读取的内容。Telegram 传递你与机器人的对话。托管你钱包的 Privy 可以看到钱包签名的每一笔交易，私密中继可以看到它们发送的交易。RPC 节点可以看到你的 IP 地址。风险和市场数据服务可以看到你交易或查看的代币地址。搜索服务商可以看到 Agent 的搜索内容，发射台可以看到你发射代币的名称、图片和描述。更新检查会报告 binference 的版本、你的操作系统、Node 版本和 CPU 类型；如果你同意，还会发送使用次数统计。你的所有者密钥和 Agent 密钥永远不会离开本机。 |
+| `disclaimer.ask`          | Type {phrase} to accept                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 输入 {phrase} 表示接受                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `disclaimer.phrase`       | I understand                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 我明白                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
