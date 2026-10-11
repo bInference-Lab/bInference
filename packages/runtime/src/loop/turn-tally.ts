@@ -27,7 +27,7 @@ interface TurnMarks {
 }
 
 /** How the engine answered a proposal it heard: a card waits for the owner, or it was refused. */
-export type ProposalAnswer = "waits" | "refused";
+type ProposalAnswer = "waits" | "refused";
 
 /** A turn's marks as they change. Its marks only go from unset to set, and its counts only grow. */
 export interface TurnTally {

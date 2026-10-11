@@ -37,6 +37,10 @@ export interface TurnRecorderOptions {
   readonly refuse?: TurnRefusal;
   /** `turn/mark` fails. */
   readonly failMark?: boolean;
+  /** The merge source fails. */
+  readonly failTake?: boolean;
+  /** `turn/start` throws, as when the engine cannot be reached. */
+  readonly failStart?: boolean;
   /** Runs before each step is recorded, and the write waits for it: a test stops a turn here. */
   readonly beforeStep?: (step: RecordedStep) => void | Promise<void>;
 }
@@ -73,6 +77,9 @@ function createJournal(note: Write): TurnJournal {
 function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
   return {
     start: async ({ messages, outsideContent }) => {
+      if (options.failStart === true) {
+        throw new Error("The engine cannot be reached.");
+      }
       await note({ kind: "start", messages, outside: outsideContent });
       return options.refuse === undefined
         ? ok({ budgetLeftMicros: 1_000_000n })
@@ -104,7 +111,14 @@ export function createTurnRecorder(options: TurnRecorderOptions = {}): TurnRecor
   return {
     journal: createJournal(write),
     engine: createEngine(write, options),
-    merge: { take: async () => waiting.splice(0) },
+    merge: {
+      take: async () => {
+        if (options.failTake === true) {
+          throw new Error("The chat queue cannot be read.");
+        }
+        return waiting.splice(0);
+      },
+    },
     steps,
     queue: (...messages) => {
       waiting.push(...messages);

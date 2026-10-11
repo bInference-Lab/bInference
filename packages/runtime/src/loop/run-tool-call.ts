@@ -14,7 +14,8 @@ export interface NumberedCall {
   readonly ordinal: number;
 }
 
-const unknownProposal =
+/** The result of a proposal whose outcome is unknown. */
+export const unknownProposal =
   "outcome unknown: the engine did not answer, and this proposal is never sent again";
 
 /** The key a turn's proposal is sent with: the turn and the call's number, the same on every try. */

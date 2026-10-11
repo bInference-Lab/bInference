@@ -1,5 +1,6 @@
 import type { Clock } from "@binference/core";
 import type { ModelMessage } from "./model-message.js";
+import type { OpenCall } from "./open-calls.js";
 import type { TurnHalt } from "./turn-halt.js";
 import type {
   MergeSource,
@@ -32,6 +33,8 @@ export interface TurnLimits {
   readonly stopGraceMs: number;
   /** The turn's time from `turn/start`. */
   readonly turnTimeMs: number;
+  /** How long each write of a turn's end may take before the turn ends without it. */
+  readonly endWriteTimeoutMs: number;
 }
 
 /** The runtime spec's limits: 25 tool calls and 40 model calls a turn, 10 minutes. */
@@ -42,6 +45,7 @@ export const turnLimits: TurnLimits = {
   proposeTimeoutMs: 30_000,
   stopGraceMs: 5_000,
   turnTimeMs: 600_000,
+  endWriteTimeoutMs: 10_000,
 };
 
 /** One running turn, as each step of the loop sees it. */
@@ -61,4 +65,6 @@ export interface TurnRun {
    * halted turn still writes the results of the calls it did not run, and its end.
    */
   readonly writes: AbortSignal;
+  /** The calls the journal holds without a result. */
+  readonly open: () => readonly OpenCall[];
 }

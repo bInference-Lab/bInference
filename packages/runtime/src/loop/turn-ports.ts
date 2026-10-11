@@ -120,8 +120,11 @@ export interface TurnJournal {
   end(end: TurnEndRecord, signal: AbortSignal): Promise<void>;
 }
 
-/** Why the engine refused to start a turn (runtime spec, section 4.2). */
-export type TurnRefusal = "budget" | "frozen" | "archived" | "not_found";
+/**
+ * Why a turn did not start: the engine refused it (runtime spec, section 4.2), or `unavailable`
+ * when `turn/start` itself failed, so the engine holds no running turn and its messages wait.
+ */
+export type TurnRefusal = "budget" | "frozen" | "archived" | "not_found" | "unavailable";
 
 /** What `turn/start` names: the messages the turn takes, and whether its context is marked. */
 interface TurnStartRequest {

@@ -1,5 +1,8 @@
+import { err } from "@binference/core";
 import type { TurnOutcome } from "@binference/store";
+import { answerOpenCalls, endTurn, portFailure } from "./end-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
+import { trackOpenCalls } from "./open-calls.js";
 import { type TurnHalt, type TurnStop } from "./turn-halt.js";
 import type { TurnRefusal } from "./turn-ports.js";
 import { type TurnLimits, turnLimits, type TurnParts, type TurnRun } from "./turn-run.js";
@@ -74,37 +77,38 @@ async function loopSteps(run: TurnRun): Promise<LoopEnd> {
   }
 }
 
-// The final text, the status line and the turn's end, in the order the runtime spec gives.
-async function endTurn(run: TurnRun, end: LoopEnd): Promise<EndedTurn> {
-  const { engine, journal } = run.parts;
-  run.tally.enter("ending");
-  const { lastText, heldBack } = run.tally.now();
-  if (lastText !== "") {
-    await engine.say(lastText, run.writes);
-  }
-  if (end.status !== undefined) {
-    await engine.status(end.status, run.writes);
-  }
-  await journal.end({ outcome: end.outcome, heldBack }, run.writes);
-  await engine.end(end.outcome, run.writes);
-  run.tally.enter("ended");
-  const { committed, toolCalls, modelCalls } = run.tally.now();
-  return { state: "ended", outcome: end.outcome, committed, heldBack, toolCalls, modelCalls };
-}
-
-async function runTurn(run: TurnRun, taken: readonly OwnerMessage[]): Promise<TurnReport> {
+async function startTurn(run: TurnRun, taken: readonly OwnerMessage[]) {
   const request = {
     messages: taken.map((message) => message.id),
     outsideContent: run.tally.now().outside,
   };
-  const started = await run.parts.engine.start(request, run.writes);
+  try {
+    return await run.parts.engine.start(request, run.writes);
+  } catch {
+    return err("unavailable" as const);
+  }
+}
+
+// A port that throws in the loop ends the turn failed: the calls it wrote keep a result each.
+async function loopOrFail(run: TurnRun): Promise<LoopEnd> {
+  try {
+    return await loopSteps(run);
+  } catch {
+    run.halt("engine");
+    await answerOpenCalls(run);
+    return portFailure;
+  }
+}
+
+async function runTurn(run: TurnRun, taken: readonly OwnerMessage[]): Promise<TurnReport> {
+  const started = await startTurn(run, taken);
   if (!started.ok) {
     run.tally.enter("refused");
     return { state: "refused", refusal: started.error };
   }
   const clearTimeLimit = startTimeLimit(run);
   try {
-    return await endTurn(run, await loopSteps(run));
+    return await endTurn(run, await loopOrFail(run));
   } finally {
     clearTimeLimit();
   }
@@ -119,9 +123,10 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
   const halt = new AbortController();
   const outside = options.outsideContent || options.taken.some((message) => message.outside);
   const tally = createTurnTally({ outside });
+  const journal = trackOpenCalls(options.parts.journal);
   const run: TurnRun = {
     turnId: options.turnId,
-    parts: options.parts,
+    parts: { ...options.parts, journal },
     limits: options.limits ?? turnLimits,
     instructions: options.instructions,
     messages: [
@@ -132,6 +137,7 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
     halted: halt.signal,
     halt: (reason: TurnHalt) => halt.abort(reason),
     writes: options.lifetime,
+    open: () => journal.open(),
   };
   let running: Promise<TurnReport> | undefined;
   return {
