@@ -1,8 +1,10 @@
 import { BinferenceError } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
+import { inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { endDropped } from "./end-dropped.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
+import { currentSteps } from "./recover-steps.js";
 import { sendAndWatch } from "./send-and-watch.js";
 import { rivalsOf } from "./step-fate.js";
 import { watchDropped } from "./watch-dropped.js";
@@ -82,18 +84,48 @@ async function checkFinal(
   return outcome === "final" ? after : { ...after, pending: [outcome, ...after.pending] };
 }
 
+/** A step back in a block after a reorg, with the intent as it then stands. */
+interface Recovered {
+  readonly snapshot: IntentSnapshot;
+  readonly step: TransactionRecord;
+}
+
+// The step's transaction at its nonce as the store holds it now: another one of them landed and
+// superseded the one the watch held, so that one waits for finality instead.
+async function landedAtNonce(
+  run: ExecutionRun,
+  snapshot: IntentSnapshot,
+  step: TransactionRecord,
+): Promise<Recovered | undefined> {
+  const stored = await run.parts.stores.transactions.ofIntent(snapshot.record.id, {
+    signal: run.signal,
+  });
+  const current = currentSteps(stored).get(step.step);
+  if (current === undefined || !inBlockStates.includes(current.state)) {
+    run.parts.log.warn("executor.step_stopped", {
+      intentId: snapshot.record.id,
+      errorCode: "replaced_step",
+    });
+    return undefined;
+  }
+  return { snapshot, step: current };
+}
+
 // A reorg moves the intent back to `executing`; the same bytes wait for a block again.
 async function recoverReorg(
   run: ExecutionRun,
   snapshot: IntentSnapshot,
   step: TransactionRecord,
-): Promise<{ readonly snapshot: IntentSnapshot; readonly step: TransactionRecord } | undefined> {
+): Promise<Recovered | undefined> {
   const { parts, signal } = run;
   const intentId = snapshot.record.id;
   const mark = { id: step.id, atMs: parts.clock.now() };
   const back = await parts.stores.transactions.recordReorg(mark, { signal });
-  const executing = back.ok ? await moveIntent(run, snapshot, { type: "reorg_seen" }) : undefined;
-  if (!back.ok || executing === undefined) {
+  if (!back.ok) {
+    return landedAtNonce(run, snapshot, step);
+  }
+  const executing = await moveIntent(run, snapshot, { type: "reorg_seen" });
+  if (executing === undefined) {
     return undefined;
   }
   parts.log.warn("executor.reorg_seen", { intentId });
@@ -148,8 +180,9 @@ async function checkOnce(
   if (recovered === undefined) {
     return undefined;
   }
+  // Whichever transaction at the step's nonce landed after the reorg takes the step's place.
   const pending = checked.pending.map((step) =>
-    step.id === recovered.step.id ? recovered.step : step,
+    step.step === recovered.step.step ? recovered.step : step,
   );
   return { ...state, snapshot: recovered.snapshot, pending };
 }
@@ -181,7 +214,7 @@ async function watchFrom(
  * Watches the steps of an intent every block holds until each block is final by the chain's
  * finality rule, then moves the intent to `finalized` and answers it. A reorg that takes a step's
  * block before it is final moves the intent back to `executing` until a block holds the step
- * again. Past `finalAfterBlocks` blocks the watch hands the intent over, still `included`, and
+ * again, whichever of its transactions at its nonce lands then. Past `finalAfterBlocks` blocks the watch hands the intent over, still `included`, and
  * answers `undefined`. Pass only the steps not yet `final`.
  */
 export async function watchFinality(

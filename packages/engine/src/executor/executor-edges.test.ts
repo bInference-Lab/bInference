@@ -6,7 +6,9 @@ import { planDocument } from "../intents/intent-documents.schema.js";
 import { expectOk, testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { IntentStore, TransactionStore } from "../ports.js";
+import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
+  benchChain,
   type BenchOptions,
   blockOf,
   driveUntil,
@@ -21,6 +23,13 @@ import {
 } from "./test-executor.js";
 
 const live = () => ({ signal: new AbortController().signal });
+
+function rawOf(transaction: TransactionRecord | undefined): string {
+  if (transaction === undefined) {
+    throw new Error("Expected a stored transaction.");
+  }
+  return transaction.raw;
+}
 
 async function reasonOf(bench: ExecutorBench, intent: Id<"int">) {
   return (await bench.test.stores.intents.get(intent, live()))?.reason;
@@ -218,6 +227,26 @@ describe("the executor's watch on a failing node", () => {
     const [final] = await transactionsOf(bench);
     expect(blockOf(final)).toBeGreaterThan(blockOf(included));
     expect(eventsOf(bench)).not.toContain("executor.reorg_seen:");
+  });
+
+  it("follows the speed-up that lands at the step's nonce after a reorg", async () => {
+    const limits = { stuckAfterBlocks: 3, replaceAfterBlocks: 6, droppedAfterBlocks: 90 };
+    const bench = await startExecutorBench({ limits, network: { finalityDepth: 4n } });
+    bench.network.holdBelow(52_000_000n);
+    const intent = await tapped(bench);
+    await flush();
+    bench.network.script("relay-a", { kind: "hang" });
+    bench.network.script("relay-b", { kind: "hang" });
+    await driveUntil(bench, intent, { states: [], blocks: 7 });
+    const [first, speedUp] = await transactionsOf(bench);
+    bench.network.holdBelow(0n);
+    await driveUntil(bench, intent, { states: ["included"] });
+    bench.network.reorg(hashOf(first));
+    bench.network.script("relay-a", { kind: "accept" });
+    await bench.network.send({ chain: benchChain, raw: rawOf(speedUp) }, live());
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    const states = (await transactionsOf(bench)).map(({ state }) => state);
+    expect(states).toStrictEqual(["superseded", "final"]);
   });
 
   it("hands an intent over, still included, when finality takes too long", async () => {
