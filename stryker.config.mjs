@@ -33,6 +33,14 @@ const changed = new Set(
   (process.env.MUTATE_FILES ?? "").split(",").filter((path) => path.length > 0),
 );
 
+// Paths in code-unit order, as a sort with no compare puts them.
+function byCodeUnits(left, right) {
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
+}
+
 const files = folders
   .flatMap((folder) =>
     readdirSync(`${folder}/src`, { recursive: true, encoding: "utf8" })
@@ -41,7 +49,7 @@ const files = folders
   )
   .filter((path) => changed.size === 0 || changed.has(path))
   .filter((path) => count === 1 || hashOf(path) % count === index - 1)
-  .toSorted();
+  .toSorted(byCodeUnits);
 if (files.length === 0) {
   throw new Error(`Shard ${index} of ${count} holds no source file to mutate; use fewer shards.`);
 }
