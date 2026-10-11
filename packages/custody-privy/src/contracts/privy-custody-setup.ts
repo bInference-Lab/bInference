@@ -123,15 +123,28 @@ const setups = new WeakMap<PrivyCustodySubject, Promise<CustodySetup>>();
 // The aggregations each subject's setup made, which the cleanup deletes: an app keeps 10.
 const madeCaps = new WeakMap<PrivyCustodySubject, readonly string[]>();
 
+// How long a cleanup's delete stays valid on Privy once the owner signs it.
+const removalLifetimeMs = 5 * 60_000;
+
 /**
  * Deletes the aggregations the suite made for a subject, once its checks are done, so runs on a
- * live app never use up its 10. An aggregation already gone is no fault.
+ * live app never use up its 10. The owner key the suite made owns each one, so it signs each
+ * delete. An aggregation already gone is no fault; a delete Privy refuses is.
  */
 export async function tearDown(subject: PrivyCustodySubject): Promise<void> {
   for (const aggregation of madeCaps.get(subject) ?? []) {
     assert.ok(isPrivyId(aggregation));
+    const removal = {
+      aggregation,
+      authorize: subject.ownerAuthorize,
+      expiresAtMs: subject.clock.now() + removalLifetimeMs,
+    };
     // oxlint-disable-next-line eslint/no-await-in-loop -- one delete at a time, as every write
-    await subject.api.deleteAggregation(aggregation, live());
+    const deleted = await subject.api.deleteAggregation(removal, live());
+    assert.ok(
+      deleted.ok || deleted.error === "not_found",
+      `Privy refused to delete ${aggregation}.`,
+    );
   }
   madeCaps.delete(subject);
 }

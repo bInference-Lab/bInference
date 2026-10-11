@@ -6,10 +6,11 @@ import type { Ceiling, DayCap } from "../ceiling/ceiling.js";
 import { policyRuleJson } from "../ceiling/policy-rule.js";
 import { readCeiling } from "../ceiling/read-ceiling.js";
 import { askPrivy, type CustodySetup, setUp, tearDown } from "../contracts/privy-custody-setup.js";
+import type { AggregationRemoval } from "../privy/aggregations.js";
 import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
 import { oneBnbWei, swapData, testAddresses, testCapPlan } from "./custody-fixtures.js";
 import { createAggregation, windowSum } from "./fake-aggregations.js";
-import { createFakeCustodySubject } from "./fake-custody-subject.js";
+import { createFakeCustodySubject, type FakeCustodySubject } from "./fake-custody-subject.js";
 import type { FakePrivyState } from "./fake-privy-state.js";
 
 const dayMs = 86_400_000;
@@ -57,6 +58,15 @@ const nativeBody = {
   metric: { field: "value", field_source: "ethereum_transaction", function: "sum" },
   window: { type: "rolling", seconds: 86_400 },
 };
+
+// A delete of an aggregation the subject's owner key owns, signed by it, valid for a minute.
+function removalOf(subject: FakeCustodySubject, aggregation: PrivyId): AggregationRemoval {
+  return {
+    aggregation,
+    authorize: subject.ownerAuthorize,
+    expiresAtMs: subject.clock.now() + 60_000,
+  };
+}
 
 describe("the fake's aggregations", () => {
   it("sums exactly the additions of the rolling window that ends now", () => {
@@ -128,14 +138,35 @@ describe("the ceiling's 24-hour native cap on the fake", () => {
 
     const id = nativeAggregationOf(setup.expected.ceiling);
     expect(isPrivyId(id)).toBe(true);
-    const removal = { signal: AbortSignal.timeout(5_000) };
-    await expect(subject.api.deleteAggregation(id as PrivyId, removal)).resolves.toStrictEqual(
+    const removal = removalOf(subject, id as PrivyId);
+    const live = { signal: AbortSignal.timeout(5_000) };
+    await expect(subject.api.deleteAggregation(removal, live)).resolves.toStrictEqual(
       ok(undefined),
     );
-    await expect(subject.api.deleteAggregation(id as PrivyId, removal)).resolves.toStrictEqual(
+    await expect(subject.api.deleteAggregation(removal, live)).resolves.toStrictEqual(
       err("not_found"),
     );
     expect(await askPrivy(setup, { call })).toStrictEqual(err("refused"));
+  });
+
+  it("deletes an aggregation only with its owner's signature, before the request expires", async () => {
+    const subject = createFakeCustodySubject(8);
+    const setup = await setUp(subject);
+    const id = nativeAggregationOf(setup.expected.ceiling) as PrivyId;
+    const live = { signal: AbortSignal.timeout(5_000) };
+    const stranger = createFakeCustodySubject(9).ownerAuthorize;
+
+    await expect(
+      subject.api.deleteAggregation({ ...removalOf(subject, id), authorize: stranger }, live),
+    ).resolves.toStrictEqual(err("refused"));
+    await expect(
+      subject.api.deleteAggregation(
+        { ...removalOf(subject, id), expiresAtMs: subject.clock.now() - 1 },
+        live,
+      ),
+    ).rejects.toMatchObject({ code: "custody.request_expired" });
+    const call = { to: router, valueWei: 0n, data: swapData(5n) };
+    expect((await askPrivy(setup, { call })).ok).toBe(true);
   });
 });
 
@@ -151,10 +182,10 @@ describe("the custody suite's cleanup", () => {
     const ids = capsOf(await setUp(subject));
     expect(ids).toHaveLength(1 + testCapPlan.approvals.length);
     await tearDown(subject);
-    const removal = { signal: AbortSignal.timeout(5_000) };
+    const live = { signal: AbortSignal.timeout(5_000) };
     const again = await Promise.all(
       ids.map(async ({ aggregation }) =>
-        subject.api.deleteAggregation(aggregation as PrivyId, removal),
+        subject.api.deleteAggregation(removalOf(subject, aggregation as PrivyId), live),
       ),
     );
     expect(again).toStrictEqual(ids.map(() => err("not_found")));

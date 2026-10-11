@@ -22,6 +22,7 @@ import {
   answerRuleRemoval,
   ruleAdditionOf,
   ruleChangeOf,
+  unsignedByOwner,
 } from "./fake-privy-rules.js";
 import { answerSignersChange, signersChangeOf } from "./fake-privy-signers.js";
 import type { FakePrivyState } from "./fake-privy-state.js";
@@ -139,7 +140,8 @@ function answerPatch(
   return wallet === undefined ? undefined : answerSignersChange(state, request, { wallet, body });
 }
 
-// A `DELETE` of an aggregation or of a policy's rule; undefined for any other request.
+// A `DELETE` of an aggregation or of a policy's rule; undefined for any other request. As on
+// Privy, the key quorum that owns an aggregation signs its delete, with an empty body.
 function answerDelete(
   state: FakePrivyState,
   request: HttpRequest,
@@ -147,7 +149,10 @@ function answerDelete(
 ): HttpResponse | undefined {
   const aggregation = aggregationPath.exec(path)?.[1];
   if (aggregation !== undefined && request.method === "DELETE") {
-    return answerAggregation(state, "DELETE", aggregation);
+    const held = state.aggregations.get(aggregation);
+    const refused =
+      held === undefined ? undefined : unsignedByOwner(state, held.ownerId, { request, body: {} });
+    return refused ?? answerAggregation(state, "DELETE", aggregation);
   }
   const rule = ruleChangeOf(request, path, "DELETE");
   return rule === undefined ? undefined : answerRuleRemoval(state, request, rule);

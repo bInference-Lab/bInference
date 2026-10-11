@@ -4,19 +4,19 @@ import { quorumSigned } from "./fake-authorization.js";
 import { answer, failure, ruleJson } from "./fake-privy-answers.js";
 import { fakeRuleSchema } from "./fake-privy-request.schema.js";
 import { expired, signaturesOf, signedHeaders } from "./fake-privy-rpc.js";
-import { type FakePolicy, type FakePrivyState, newFakeId } from "./fake-privy-state.js";
+import { type FakePrivyState, newFakeId } from "./fake-privy-state.js";
 
-// The policy's owner must sign a change of it; a policy with no owner takes the app secret alone.
+// The owner must sign a change of what it owns; a thing with no owner takes the app secret alone.
 function ownerSigned(
   state: FakePrivyState,
-  policy: FakePolicy,
+  ownerId: string | null,
   signed: { readonly request: HttpRequest; readonly body: JsonValue },
 ): boolean {
   const { request, body } = signed;
-  if (policy.ownerId === null) {
+  if (ownerId === null) {
     return true;
   }
-  const owner = state.quorums.get(policy.ownerId);
+  const owner = state.quorums.get(ownerId);
   const payload = authorizationPayload({
     method: request.method,
     url: request.url,
@@ -26,16 +26,20 @@ function ownerSigned(
   return owner !== undefined && quorumSigned(owner, payload, signaturesOf(request));
 }
 
-// The refusal of a request whose expiry passed or that the policy's owner did not sign.
-function unsigned(
+/**
+ * The refusal Privy gives a change whose expiry passed, or that the key quorum owning the changed
+ * thing did not sign over the request with this body; undefined when the change may go on. One
+ * with no owner takes the app secret alone.
+ */
+export function unsignedByOwner(
   state: FakePrivyState,
-  policy: FakePolicy,
+  ownerId: string | null,
   signed: { readonly request: HttpRequest; readonly body: JsonValue },
 ): HttpResponse | undefined {
   if (expired(state, signedHeaders(signed.request))) {
     return failure(400, "request_expired", "The request has expired.");
   }
-  if (ownerSigned(state, policy, signed)) {
+  if (ownerSigned(state, ownerId, signed)) {
     return undefined;
   }
   return signaturesOf(signed.request).length === 0
@@ -61,7 +65,7 @@ export function answerRuleAddition(
   if (!parsed.success) {
     return failure(400, "invalid_data", "The request body does not match the schema.");
   }
-  const refused = unsigned(state, policy, { request, body: target.body });
+  const refused = unsignedByOwner(state, policy.ownerId, { request, body: target.body });
   if (refused !== undefined) {
     return refused;
   }
@@ -84,7 +88,7 @@ export function answerRuleRemoval(
   if (policy === undefined || !policy.rules.some((rule) => rule.id === ids.rule)) {
     return failure(404, "not_found", "Policy or rule not found.");
   }
-  const refused = unsigned(state, policy, { request, body: {} });
+  const refused = unsignedByOwner(state, policy.ownerId, { request, body: {} });
   if (refused !== undefined) {
     return refused;
   }
@@ -112,7 +116,7 @@ export function answerRuleChange(
   if (!parsed.success) {
     return failure(400, "invalid_data", "The request body does not match the schema.");
   }
-  const refused = unsigned(state, policy, { request, body: ids.body });
+  const refused = unsignedByOwner(state, policy.ownerId, { request, body: ids.body });
   if (refused !== undefined) {
     return refused;
   }

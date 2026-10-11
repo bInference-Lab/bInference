@@ -1,9 +1,10 @@
-import { createSecret, type HttpResponse } from "@binference/core";
+import type { PrivyRequest } from "@binference/chain";
+import { createSecret, err, type HttpResponse, ok, type Result } from "@binference/core";
 import { createManualClock, createScriptedHttp } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { aggregationsOf } from "../ceiling/day-caps.js";
 import { testCapPlan } from "../testing/custody-fixtures.js";
-import { createAggregation, deleteAggregation } from "./aggregations.js";
+import { type AggregationRemoval, createAggregation, deleteAggregation } from "./aggregations.js";
 import { privySettings } from "./privy-client.js";
 import type { PrivyId } from "./privy-records.js";
 
@@ -110,36 +111,73 @@ function deleteOver(response: HttpResponse) {
   return { http, settings };
 }
 
+const expiresAtMs = 1_790_000_300_000;
+
+// A removal the owner signs with a fixed signature, keeping each request it was asked to sign.
+function removalSigned(signature: Result<string, "refused"> = ok("owner-signature")) {
+  const asked: PrivyRequest[] = [];
+  const removal: AggregationRemoval = {
+    aggregation: made.id as PrivyId,
+    authorize: async (request) => {
+      asked.push(request);
+      return Promise.resolve(signature);
+    },
+    expiresAtMs,
+  };
+  return { removal, asked };
+}
+
 describe("deleteAggregation", () => {
-  it("deletes the aggregation with the app's Basic auth and no body", async () => {
+  it("has the owner sign the delete as the SDK forms it, then sends the signature", async () => {
     const { http, settings } = deleteOver(answer(200, { success: true }));
-    const deleted = await deleteAggregation(
-      settings,
-      made.id as PrivyId,
-      AbortSignal.timeout(5_000),
-    );
+    const { removal, asked } = removalSigned();
+    const deleted = await deleteAggregation(settings, removal, AbortSignal.timeout(5_000));
     const [sent] = http.requests();
 
     expect(deleted).toStrictEqual({ ok: true, value: undefined });
+    expect(asked).toStrictEqual([
+      {
+        method: "DELETE",
+        url: `${url}/${made.id}`,
+        headers: { "privy-app-id": "app-id", "privy-request-expiry": String(expiresAtMs) },
+        body: {},
+      },
+    ]);
     expect(sent?.headers?.["authorization"]).toMatch(/^Basic /);
+    expect(sent?.headers?.["privy-authorization-signature"]).toBe("owner-signature");
+    expect(sent?.headers?.["privy-request-expiry"]).toBe(String(expiresAtMs));
     expect(sent?.body).toBeUndefined();
   });
 
-  it("answers not_found for one Privy does not hold", async () => {
-    const { settings } = deleteOver(answer(404, { error: "Not found." }));
+  it("sends nothing when the owner refuses to sign", async () => {
+    const { http, settings } = deleteOver(answer(200, { success: true }));
+    const { removal } = removalSigned(err("refused"));
     await expect(
-      deleteAggregation(settings, made.id as PrivyId, AbortSignal.timeout(5_000)),
-    ).resolves.toStrictEqual({ ok: false, error: "not_found" });
+      deleteAggregation(settings, removal, AbortSignal.timeout(5_000)),
+    ).resolves.toStrictEqual({ ok: false, error: "refused" });
+    expect(http.requests()).toHaveLength(0);
   });
 
   it.each([
+    ["not_found", answer(404, { error: "Not found." })],
+    ["refused", answer(401, { error: "Missing `privy-authorization-signature` header" })],
+    ["refused", answer(401, { error: "zero_correct_authorization_signatures" })],
+  ])("answers %s for Privy's refusal", async (error, response) => {
+    const { settings } = deleteOver(response);
+    await expect(
+      deleteAggregation(settings, removalSigned().removal, AbortSignal.timeout(5_000)),
+    ).resolves.toStrictEqual({ ok: false, error });
+  });
+
+  it.each([
+    ["custody.request_expired", answer(400, { error: "The request has expired." })],
     ["custody.privy_busy", answer(429, { error: "Too many requests" })],
     ["custody.privy_credentials", answer(401, { error: "Invalid app ID or app secret." })],
     ["custody.privy_failed", answer(500, { error: "Internal error." })],
   ])("throws %s for an answer it cannot take", async (code, response) => {
     const { settings } = deleteOver(response);
     await expect(
-      deleteAggregation(settings, made.id as PrivyId, AbortSignal.timeout(5_000)),
+      deleteAggregation(settings, removalSigned().removal, AbortSignal.timeout(5_000)),
     ).rejects.toMatchObject({ code });
   });
 });

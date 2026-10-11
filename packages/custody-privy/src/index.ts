@@ -32,7 +32,7 @@ export type {
 } from "./ceiling/registry-ceiling-chain.js";
 export { checkPrivyApp } from "./privy/check-privy-app.js";
 export { createPrivyApi } from "./privy/privy-api.js";
-export type { AggregationRequest } from "./privy/aggregations.js";
+export type { AggregationRemoval, AggregationRequest } from "./privy/aggregations.js";
 export type { RuleAddition, RuleRemoval } from "./privy/rule-edits.js";
 export type {
   WalletListQuery,
