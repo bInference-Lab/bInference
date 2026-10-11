@@ -185,12 +185,16 @@ A Telegram tap is handled inside the engine and never travels over this protocol
   3. Each connection sends `open` with `auth: { device: deviceId }`. The engine answers `challenge`
      with 32 random bytes; the browser signs `"binference-device-v1\n" + nonce + "\n" + origin` and
      sends `prove`.
-- **Telegram Mini App (WS only).** `open.auth` is `{ telegram: { initData } }`. The engine checks
-  Telegram's signature with the owner's bot token, requires `auth_date` within 5 minutes and the
-  owner's numeric user id, and refuses an `initData` hash it has seen in the last 24 hours, kept in
-  `engine.sqlite` across restarts. How it counts the 5 minutes, which code each refusal gets, how
-  it keeps the hashes, and how a new owner ends the old one's Mini App are in
-  [decision 0160](../DECISIONS.md#d0160).
+- **Telegram Mini App (WS only).** `open.auth` is `{ telegram: { initData, ticket } }`. The engine
+  checks Telegram's signature with the owner's bot token, requires `auth_date` within 5 minutes and
+  the owner's numeric user id, and refuses an `initData` hash it has seen in the last 24 hours,
+  kept in `engine.sqlite` across restarts. How it counts the 5 minutes, which code each refusal
+  gets, how it keeps the hashes, and how a new owner ends the old one's Mini App are in
+  [decision 0160](../DECISIONS.md#d0160). `ticket` is the single-use launch ticket `/console` put
+  in the button's fragment (`/mini#ticket=<ticket>`): 32 random bytes in base64url, kept only as a
+  hash, valid 5 minutes, for the owner who sent `/console`. The engine spends it in the write that
+  claims the launch; a launch without a live ticket ends with `bye auth.invalid`, or
+  `bye auth.expired` for an expired one ([decision 0161](../DECISIONS.md#d0161)).
 - A revoke of a token or device, or a new Telegram owner, ends every connection signed in with
   the credential, and every one still signing in with it: the sign-in reads the credential back
   from its last write to `engine.sqlite` and refuses a revoked one with `auth.revoked`, and a

@@ -13,7 +13,7 @@ import {
   secretEnv,
   secretVariables,
 } from "./init-fixtures.js";
-import { miniAppClient, signedLaunch } from "./mini-app-fixtures.js";
+import { miniAppClient, signedLaunch, ticketOf } from "./mini-app-fixtures.js";
 import { engineLogLines, freePort } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
 
@@ -114,11 +114,36 @@ function ownerText(updateId: number, text: string) {
   return textFrom(ownerId, updateId, text);
 }
 
-// A Mini App that signs in with a launch over the engine's WS at `origin`.
-function openMini(origin: string, initData: string, clock: Clock): ProtocolClient {
-  const client = miniAppClient({ origin, initData, clock });
+/** Where a Mini App connects: the public origin it says, the engine's own address, the clock. */
+interface MiniRoute {
+  readonly origin: string;
+  readonly address: string;
+  readonly clock: Clock;
+}
+
+// A Mini App that signs in with a launch and a ticket from `/console`, through the public origin.
+function openMini(
+  route: MiniRoute,
+  launch: { readonly initData: string; readonly ticket: string },
+) {
+  const client = miniAppClient({ ...route, ...launch });
   minis.push(client);
   return client;
+}
+
+// Sends `/console` as the owner, and answers the launch ticket in the button the bot sent.
+async function consoleTicket(
+  machine: InitMachine,
+  world: ReturnType<typeof watchedWorld>,
+  updateId: number,
+): Promise<string> {
+  machine.bot.push(ownerText(updateId, "/console"));
+  await world.until(sent("open the console inside Telegram"));
+  const [button] = machine.bot
+    .messages()
+    .slice(-1)
+    .flatMap((message) => message.buttons.flat());
+  return ticketOf(button?.webApp);
 }
 
 interface SetUp {
@@ -183,25 +208,32 @@ describe("the owner's bot in binference start", () => {
     async () => {
       const { machine, clock, code } = await setUp();
       const port = await freePort();
-      const origin = `http://127.0.0.1:${String(port)}`;
+      const origin = "https://owner.example.ts.net";
+      const route = { origin, address: `http://127.0.0.1:${String(port)}`, clock };
+      const env = { ...secretEnv(machine), BINFERENCE_REMOTE__PUBLIC_URL: origin };
       const before = watchedWorld(machine);
-      await engines.start(machine, { port, parts: { http: before.http } });
+      await engines.start(machine, { env, port, parts: { http: before.http } });
       machine.bot.push(ownerText(1, `/start ${code}`));
       await before.until(sent("You are now the owner of this bot."));
+      await clock.advance(1_000);
       const initData = signedLaunch(ownerId, clock.now());
       const signal = AbortSignal.timeout(10_000);
-      await expect(openMini(origin, initData, clock).connect(signal)).resolves.toMatchObject({
-        t: "ready",
-      });
+      const first = { initData, ticket: await consoleTicket(machine, before, 2) };
+      await expect(openMini(route, first).connect(signal)).resolves.toMatchObject({ t: "ready" });
       minis.splice(0).forEach((client) => client.close());
       await clock.advance(1_000);
-      await before.until(poll(2));
+      await before.until(poll(3));
       await engines.stopAll();
-      await engines.start(machine, { port, parts: { http: watchedWorld(machine).http } });
-      const replay = openMini(origin, initData, clock);
+      const after = watchedWorld(machine);
+      await engines.start(machine, { env, port, parts: { http: after.http } });
+      // A refused replay leaves the ticket it came with for the next launch.
+      const ticket = await consoleTicket(machine, after, 3);
+      const replay = openMini(route, { initData, ticket });
       await expect(replay.connect(signal)).rejects.toMatchObject({ code: "auth.invalid" });
       const fresh = signedLaunch(ownerId, clock.now(), "AAHdF6IQAAAAAN0XohDhrOrd");
-      await expect(openMini(origin, fresh, clock).connect(signal)).resolves.toMatchObject({
+      await expect(
+        openMini(route, { initData: fresh, ticket }).connect(signal),
+      ).resolves.toMatchObject({
         t: "ready",
       });
     },
@@ -221,20 +253,16 @@ describe("the owner's bot in binference start", () => {
       await world.until(sent("You are now the owner of this bot."));
       // The bot's throttler spaces the messages to one chat a second apart on the engine's clock.
       await clock.advance(1_000);
-      machine.bot.push(ownerText(2, "/console"));
-      await world.until(sent("open the console inside Telegram"));
+      const ticket = await consoleTicket(machine, world, 2);
       const buttons = machine.bot
         .messages()
         .slice(-1)
         .flatMap((message) => message.buttons.flat());
       expect(buttons.map((button) => button.text)).toStrictEqual(["Open the console"]);
-      expect(buttons[0]?.webApp).toMatch(
-        /^https:\/\/owner\.example\.ts\.net\/mini#ticket=[\w-]{43}$/,
-      );
+      expect(buttons[0]?.webApp).toBe(`${origin}/mini#ticket=${ticket}`);
       const address = `http://127.0.0.1:${String(port)}`;
       const initData = signedLaunch(ownerId, clock.now());
-      const mini = miniAppClient({ origin, address, initData, clock });
-      minis.push(mini);
+      const mini = openMini({ origin, address, clock }, { initData, ticket });
       await expect(mini.connect(AbortSignal.timeout(10_000))).resolves.toMatchObject({
         t: "ready",
       });

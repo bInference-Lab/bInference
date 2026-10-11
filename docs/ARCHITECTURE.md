@@ -1055,10 +1055,12 @@ Decided in decisions [0050](DECISIONS.md#d0050) to [0053](DECISIONS.md#d0053).
   engine's own port, which stays on loopback. `binference check` verifies both. `remote.publicUrl`
   names the HTTPS address the engine's port is published at; `/console` opens the Mini App there.
 - **Mini App (decisions [0052](DECISIONS.md#d0052), [0089](DECISIONS.md#d0089),
-  [0160](DECISIONS.md#d0160)).** `/console` sends a button that opens the console inside Telegram.
-  The engine verifies Telegram's signed `initData` against the bot token, rejects missing, expired
-  or replayed data, and accepts only the owner's numeric id; the launches that signed in stay in
-  `engine.sqlite` for 24 hours, so a replay fails after a restart too. Besides what a Telegram tap
+  [0160](DECISIONS.md#d0160), [0161](DECISIONS.md#d0161)).** `/console` sends a button that opens
+  the console inside Telegram, with a single-use launch ticket in its fragment. The engine verifies
+  Telegram's signed `initData` against the bot token, rejects missing, expired or replayed data,
+  accepts only the owner's numeric id, and spends the ticket, so a launch from any other Mini App
+  of the bot cannot sign in; the launches that signed in stay in `engine.sqlite` for 24 hours, so a
+  replay fails after a restart too. Besides what a Telegram tap
   does (view, confirm, cancel, freeze, rescue), the Mini App may loosen: raise limits and send
   levels (the 24-hour wait stays), ask for an unfreeze that waits for the owner's tap on its card
   ([decision 0128](DECISIONS.md#d0128)), and switch to auto mode. Exports, installs and the

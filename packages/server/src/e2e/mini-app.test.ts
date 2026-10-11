@@ -1,4 +1,6 @@
 import { createSecret, ok } from "@binference/core";
+import { createSeededRandom } from "@binference/core/testing";
+import { issueLaunchTicket } from "@binference/engine/access";
 import type { OpenFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Caller } from "../operation-handlers.js";
@@ -33,19 +35,25 @@ function initDataOf(fields: ReadonlyMap<string, string>): string {
   ]).toString();
 }
 
-function miniOpen(initData: string): OpenFrame {
-  return {
-    t: "open",
-    v: 1,
-    client: { kind: "mini", version: "console" },
-    auth: { telegram: { initData } },
-  };
+function miniOpen(initData: string, ticket?: string): OpenFrame {
+  const telegram = ticket === undefined ? { initData } : { initData, ticket };
+  return { t: "open", v: 1, client: { kind: "mini", version: "console" }, auth: { telegram } };
 }
 
-// Opens a socket from the Mini App's origin and sends its `open`.
+let ticketSeed = 0;
+
+// A launch ticket `/console` made for the owner now.
+async function ticketFor(server: TestServer): Promise<string> {
+  ticketSeed += 1;
+  const options = { ...server, random: createSeededRandom(ticketSeed) };
+  return issueLaunchTicket(options, { userId: ownerId, signal: AbortSignal.timeout(1_000) });
+}
+
+// Opens a socket from the Mini App's origin and sends its `open`, with a new launch ticket.
 async function openAs(server: TestServer, initData: string): Promise<RawSocket> {
+  const ticket = await ticketFor(server);
   const raw = await openRawSocket(server.wsUrl, { origin: tailnetOrigin });
-  raw.send(miniOpen(initData));
+  raw.send(miniOpen(initData, ticket));
   return raw;
 }
 
@@ -130,11 +138,19 @@ describe("a Telegram Mini App signing in", () => {
     await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.invalid" });
   });
 
+  it("refuses the owner's launch without a ticket from /console", async () => {
+    const server = await start();
+    const initData = initDataOf(fieldsOf({ userId: ownerId, atMs: server.clock.now() }));
+    const raw = await openRawSocket(server.wsUrl, { origin: tailnetOrigin });
+    raw.send(miniOpen(initData));
+    await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.invalid" });
+  });
+
   it("refuses a launch from an origin the engine does not allow", async () => {
     const server = await start();
     const initData = initDataOf(fieldsOf({ userId: ownerId, atMs: server.clock.now() }));
     const raw = await openRawSocket(server.wsUrl, { origin: "https://elsewhere.example" });
-    raw.send(miniOpen(initData));
+    raw.send(miniOpen(initData, await ticketFor(server)));
     await expect(raw.next()).resolves.toMatchObject({ t: "bye", code: "auth.origin" });
     const owner = await openAs(server, initData);
     await expect(owner.next()).resolves.toMatchObject({ t: "ready" });

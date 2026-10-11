@@ -1,7 +1,8 @@
 import { Buffer } from "node:buffer";
 import { type Clock, err, ok, type Random, type Result, type Secret } from "@binference/core";
 import { type AccessStore, type DeviceRecord, sha256Hex } from "@binference/engine";
-import type { Credential, ProtocolId, Scope } from "@binference/protocol";
+import { launchTicketHash, type LaunchClaimOutcome } from "@binference/engine/access";
+import type { Credential, ProtocolId, Scope, TelegramCredential } from "@binference/protocol";
 import { isDeviceProofValid } from "./device-proof.js";
 import type { Transport } from "./operation-handlers.js";
 import { checkTelegramLaunch, type TelegramLaunchRefusal } from "./telegram-launch.js";
@@ -111,6 +112,12 @@ const launchRefusals: Readonly<Record<TelegramLaunchRefusal, SignInRefusal>> = {
   stale: "auth.expired",
 };
 
+const claimRefusals: Readonly<Record<Exclude<LaunchClaimOutcome, "claimed">, SignInRefusal>> = {
+  seen: "auth.invalid",
+  no_ticket: "auth.invalid",
+  ticket_expired: "auth.expired",
+};
+
 /**
  * The credential id of a Mini App connection: the owner's Telegram id, as the owner's chat names
  * the owner in journals and ledger entries.
@@ -120,18 +127,20 @@ export function telegramCredentialOf(userId: number): string {
 }
 
 // A launch signs in when Telegram signed it with the owner's bot token, its `auth_date` is fresh,
-// the owner opened it, and it never signed in before. The hash is claimed last, after the owner
-// check, in one write to `engine.sqlite` that also forgets the claims older than the retention,
-// so two connections with the same launch never both pass, even across a restart. The owner is
-// read again after that write: a new owner bound meanwhile refuses the old one's launch.
+// the owner opened it, it never signed in before, and it brings a live launch ticket `/console`
+// made for the owner. The hash is claimed last, after the owner check, in one write to
+// `engine.sqlite` that also spends the ticket and forgets the claims older than the retention, so
+// two connections with the same launch or ticket never both pass, even across a restart. The
+// owner is read again after that write: a new owner bound meanwhile refuses the old one's launch.
 async function signInWithLaunch(
   auth: { readonly access: AccessStore; readonly miniApp: MiniAppAuth },
-  initData: string,
+  telegram: TelegramCredential["telegram"],
   context: { readonly clock: Clock; readonly call: SignInCall },
 ): Promise<Result<SignInStep, SignInRefusal>> {
   const { access, miniApp } = auth;
   const { clock, call } = context;
   const { signal } = call;
+  const { initData, ticket } = telegram;
   const launch = checkTelegramLaunch({
     initData,
     botToken: miniApp.botToken,
@@ -143,15 +152,26 @@ async function signInWithLaunch(
   }
   const credential = telegramCredentialOf(launch.value.userId);
   call.claim(credential);
+  if (ticket === undefined) {
+    return err("auth.invalid");
+  }
   const ownerId = await miniApp.ownerId({ signal });
   if (ownerId === undefined || ownerId !== launch.value.userId) {
     return err("auth.invalid");
   }
   const atMs = clock.now();
   const sinceMs = Math.max(0, atMs - launchRetentionMs + 1);
-  const claim = { launchHash: sha256Hex(launch.value.hash), atMs, sinceMs };
-  if ((await access.claimLaunch(claim, { signal })) === "seen") {
-    return err("auth.invalid");
+  const launchHash = sha256Hex(launch.value.hash);
+  const claim = {
+    launchHash,
+    ticketHash: launchTicketHash(ticket),
+    userId: ownerId,
+    atMs,
+    sinceMs,
+  };
+  const claimed = await access.claimLaunch(claim, { signal });
+  if (claimed !== "claimed") {
+    return err(claimRefusals[claimed]);
   }
   if ((await miniApp.ownerId({ signal })) !== ownerId) {
     return err("auth.revoked");
@@ -249,9 +269,10 @@ async function signInWithDevice(
  * in over WS only, by signing a fresh nonce and the page's origin with its paired key. A Telegram
  * Mini App launch signs in over WS only, with the Mini App's scopes, when Telegram signed its
  * `initData` with the owner's bot token, its `auth_date` lies within 5 minutes of now, the owner's
- * numeric Telegram id opened it, and its hash has not signed in within 24 hours, as `engine.sqlite`
- * keeps them across restarts; a stale one is
- * `auth.expired`, any other `auth.invalid`, as is every launch without the owner's bot. An
+ * numeric Telegram id opened it, its hash has not signed in within 24 hours, as `engine.sqlite`
+ * keeps them across restarts, and it brings a live launch ticket `/console` made for the owner,
+ * which it spends; a stale launch or an expired ticket is `auth.expired`, any other refusal
+ * `auth.invalid`, as is every launch without the owner's bot. An
  * unknown credential is `auth.invalid`, a revoked one `auth.revoked`, a token at or past its
  * expiry `auth.expired`. A revoke, or a new owner, stored before the sign-in's last write refuses
  * it with `auth.revoked`; `call.claim` hears the credential first, so one stored later can end
@@ -281,7 +302,7 @@ export function createSignIn(options: SignInOptions): SignIn {
       const miniApp = options.auth?.miniApp;
       return miniApp === undefined
         ? err("auth.invalid")
-        : signInWithLaunch({ access, miniApp }, credential.telegram.initData, {
+        : signInWithLaunch({ access, miniApp }, credential.telegram, {
             clock: options.clock,
             call,
           });

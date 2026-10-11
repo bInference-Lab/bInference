@@ -26,23 +26,30 @@ export function signedLaunch(
   return fields.toString();
 }
 
+/** The launch ticket in the fragment of a Mini App button's address; empty without one. */
+export function ticketOf(webApp: string | undefined): string {
+  const address = URL.parse(webApp ?? "");
+  return new URLSearchParams(address?.hash.slice(1)).get("ticket") ?? "";
+}
+
 /**
- * A Mini App's protocol client, which signs in with a launch over the engine's WS at `origin`, or
- * at `address` when a proxy publishes the engine at `origin`.
+ * A Mini App's protocol client, which signs in with a launch and the launch ticket `/console` made
+ * over the engine's WS at `origin`, or at `address` when a proxy publishes the engine at `origin`.
  */
 export function miniAppClient(at: {
   readonly origin: string;
   readonly address?: string;
   readonly initData: string;
+  readonly ticket: string;
   readonly clock: Clock;
 }): ProtocolClient {
-  const { origin, initData, clock } = at;
+  const { origin, initData, ticket, clock } = at;
   const address = at.address ?? origin;
   return createProtocolClient({
     operations,
     openSocket: () => new WebSocket(`${address.replace("http", "ws")}/ws`, { origin }),
     client: { kind: "mini", version: "test" },
-    credential: { telegram: { initData } },
+    credential: { telegram: { initData, ticket } },
     clock,
     random: createSeededRandom(29),
     logger: createMemoryLogger({ subsystem: "mini" }),

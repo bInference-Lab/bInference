@@ -15,7 +15,9 @@ import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
 /**
  * Claims a Mini App launch in one transaction: deletes the claims from before `sinceMs`, then
- * answers `seen` for a hash still kept, or keeps the hash and answers `claimed`.
+ * answers `seen` for a hash still kept, `no_ticket` for a ticket unknown for the user and
+ * `ticket_expired`, deleting it, for an expired one; otherwise it deletes the ticket, keeps the
+ * hash and answers `claimed`.
  */
 export const claimLaunchTask: StoreTask<LaunchClaim, LaunchClaimOutcome> = defineTask({
   name: "access.claim_launch",
@@ -33,6 +35,20 @@ export const claimLaunchTask: StoreTask<LaunchClaim, LaunchClaimOutcome> = defin
     );
     if (kept !== undefined) {
       return "seen";
+    }
+    const ticket = takeFirst(
+      kysely
+        .selectFrom("mini_app_tickets")
+        .select("expires_at")
+        .where("ticket_hash", "=", claim.ticketHash)
+        .where("user_id", "=", claim.userId),
+    );
+    if (ticket === undefined) {
+      return "no_ticket";
+    }
+    execute(kysely.deleteFrom("mini_app_tickets").where("ticket_hash", "=", claim.ticketHash));
+    if (ticket.expires_at <= claim.atMs) {
+      return "ticket_expired";
     }
     execute(
       kysely

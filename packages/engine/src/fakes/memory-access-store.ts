@@ -218,6 +218,14 @@ function launchMethods(): Pick<AccessStore, "claimLaunch" | "addLaunchTicket"> {
     if (claims.has(launch.launchHash)) {
       return "seen";
     }
+    const ticket = tickets.get(launch.ticketHash);
+    if (ticket?.userId !== launch.userId) {
+      return "no_ticket";
+    }
+    tickets.delete(launch.ticketHash);
+    if (ticket.expiresAtMs <= launch.atMs) {
+      return "ticket_expired";
+    }
     claims.set(launch.launchHash, launch.atMs);
     return "claimed";
   };

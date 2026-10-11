@@ -3,6 +3,7 @@ import type { webcrypto } from "node:crypto";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
 import { createSecret } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
+import { issueLaunchTicket } from "@binference/engine/access";
 import {
   createMemoryCardCopyStore,
   createMemoryOwnerStore,
@@ -251,7 +252,7 @@ describe("binference console", () => {
       const at = await serveConsole({ api, owners, copies, botToken: createSecret(fakeBotToken) });
       const signal = AbortSignal.timeout(10_000);
       await at.skeleton.client.call("safety/freeze", {}, { signal });
-      const mini = miniApp(at, signedLaunch(ownerId, at.skeleton.clock.now()));
+      const mini = await miniApp(at, signedLaunch(ownerId, at.skeleton.clock.now()));
       const ready = await mini.connect(signal);
       expect(ready.scopes).toStrictEqual(["read", "chat", "confirm", "loosen"]);
       await expect(mini.call("safety/unfreeze", {}, { signal })).resolves.toMatchObject({
@@ -269,8 +270,14 @@ describe("binference console", () => {
   );
 });
 
-function miniApp(at: Served, initData: string): ProtocolClient {
-  const client = miniAppClient({ origin: at.origin, initData, clock: at.skeleton.clock });
+// A Mini App with a launch, and a ticket made as `/console` makes one for the owner.
+async function miniApp(at: Served, initData: string): Promise<ProtocolClient> {
+  const { clock, parts } = at.skeleton;
+  const ticket = await issueLaunchTicket(
+    { access: parts.stores.access, clock, random: createSeededRandom(37) },
+    { userId: ownerId, signal: AbortSignal.timeout(5_000) },
+  );
+  const client = miniAppClient({ origin: at.origin, initData, ticket, clock });
   browsers.push(client);
   return client;
 }
