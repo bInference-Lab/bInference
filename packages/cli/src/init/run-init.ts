@@ -6,6 +6,7 @@ import { selfHostedChains } from "../compose/open-engine-parts.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { UnlockMode } from "../config/schema/engine.schema.js";
 import { systemDefaults } from "../program/system-defaults.js";
+import { openStateWebPushKey } from "../web-push/web-push-key.js";
 import { type AgentKey, takeAgentKey } from "./agent-key-step.js";
 import {
   type CeilingDraft,
@@ -152,6 +153,7 @@ async function makeWallet(
     return agentKey;
   }
   await storeTyped(context, prepared.answers);
+  await openStateWebPushKey(context.platform, context.signal);
   const first = await makeFirstWallet(context, {
     appId: app.appId,
     appSecret: app.secret.value,
@@ -196,8 +198,8 @@ async function record(
 
 /**
  * Runs `binference init` once its database is open (keys spec, section 2): every question and
- * check first, then the config built and loaded, then this machine's agent key and the typed
- * secrets stored, the first wallet made on Privy and read back, the setup recorded, the bot's
+ * check first, then the config built and loaded, then this machine's agent key, the typed
+ * secrets and the VAPID key of browser push stored, the first wallet made on Privy and read back, the setup recorded, the bot's
  * pairing link issued, and the config file written last, once, owner-only. A refusal before the
  * wallet leaves nothing on Privy.
  */

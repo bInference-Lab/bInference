@@ -5,7 +5,8 @@ import {
   generateKeyPairSync,
   type KeyObject,
 } from "node:crypto";
-import { BinferenceError, createSecret, type SecretStore } from "@binference/core";
+import { BinferenceError, createSecret, type Logger, type SecretStore } from "@binference/core";
+import { createFileSecretStore, type Platform } from "@binference/platform";
 
 /**
  * The engine's VAPID key pair (RFC 8292, decision 0158): the private half signs each push
@@ -75,4 +76,38 @@ export async function openWebPushKey(store: SecretStore, signal: AbortSignal): P
   const text = makeKeyText();
   await store.write(webPushKeyEntry, createSecret(text), signal);
   return keyOf(text);
+}
+
+/**
+ * Opens the VAPID key in the state folder's `keys/`, owner-only, making it when missing; never in
+ * the config or a database (decision 0158).
+ */
+export async function openStateWebPushKey(
+  platform: Platform,
+  signal: AbortSignal,
+): Promise<WebPushKey> {
+  const folder = platform.stateFolder.keys;
+  return openWebPushKey(
+    createFileSecretStore({ folder, permissions: platform.permissions }),
+    signal,
+  );
+}
+
+/**
+ * Opens the engine's VAPID key at start, as {@link openStateWebPushKey} does. A key it cannot read
+ * is logged and leaves the engine without browser push, which is never worth a failed start.
+ */
+export async function openEngineWebPushKey(
+  platform: Platform,
+  context: { readonly logger: Logger; readonly signal: AbortSignal },
+): Promise<WebPushKey | undefined> {
+  try {
+    return await openStateWebPushKey(platform, context.signal);
+  } catch (error) {
+    if (!(error instanceof BinferenceError) || error.code !== "web_push.key_unreadable") {
+      throw error;
+    }
+    context.logger.warn("web_push.key_unreadable");
+    return undefined;
+  }
 }

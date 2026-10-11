@@ -71,6 +71,12 @@ Rules for this package:
   Telegram, is logged and never stops the money path. The skeleton tests run on every composition
   with `describe.each` through `src/compose/test-skeleton.ts`; a new profile part joins both
   compositions there.
+- Browser push lives in `src/web-push/` (decision 0158): the VAPID key in `keys/web-push-vapid`,
+  made by init and at start when missing; the message encryption of RFC 8291 and the token of
+  RFC 8292 on `node:crypto`, checked against the RFCs' worked examples; the sender through the
+  `Http` port; and the relay, which `composeEngine` hands every push, as the bot's relay, so each
+  card version that opens or closes reaches the owner's browsers. A log line names an answer's
+  status, never an endpoint, which works as a capability.
 - `binference init` lives in `src/init/`, one step per file, each answering an `InitStep`: its
   value or a refusal with a code and an `init` message. Every question and check runs before
   anything is stored or made on Privy; the config file is written last. Questions go through the

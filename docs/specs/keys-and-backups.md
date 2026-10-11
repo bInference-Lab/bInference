@@ -92,6 +92,13 @@ The `manual` file, `~/.binference/keys/agent-key.json`, owner-only:
 
 It is written to a temporary file in the same folder, synced, then renamed over the old one.
 
+**The browser push key** ([decision 0158](../DECISIONS.md#d0158)): `keys/web-push-vapid` holds the
+VAPID private key (P-256, PKCS #8 in base64url), owner-only, in every unlock mode; never in
+`config.json5` or a database. `binference init` makes it, and the engine makes it at start when it
+is missing, as on a new machine, whose copy leaves `keys/` behind; browsers subscribed to the old
+key then subscribe again. An entry the engine cannot read leaves it without browser push, logged as
+`web_push.key_unreadable`, and never stops a start.
+
 Once both secrets open, Privy checks the app with one read and the signer starts with the agent
 key, which must answer the public half the wallets name as their signer; only then does the engine
 unlock. A failure there runs the engine locked too, never stops it: `app_secret_rejected` when

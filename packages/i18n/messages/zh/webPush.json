@@ -1,0 +1,6 @@
+{
+  "opened.title": "有一张卡片在等你回复",
+  "opened.body": "打开控制台查看，然后确认或取消。",
+  "closed.title": "这张卡片已不再等待",
+  "closed.body": "它已被回复或已过期。"
+}

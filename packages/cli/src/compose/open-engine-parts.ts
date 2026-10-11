@@ -25,6 +25,7 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { ConfigOutcome } from "../config/validate-config.js";
 import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
 import type { CliHost } from "../program/cli-host.js";
+import type { WebPushKey } from "../web-push/web-push-key.js";
 import type { Closers } from "./closers.js";
 import { type BackupSources, backUpBeforeMigration, backupPartsOf } from "./compose-backups.js";
 import type { SetUpInstall } from "./compose-lock.js";
@@ -63,6 +64,8 @@ export interface Opened {
   readonly bot: OpenedBot | undefined;
   /** The console's built files, or `undefined` when the engine serves no console. */
   readonly consoleFiles: ConsoleFiles | undefined;
+  /** The VAPID key of browser push, or `undefined` when `keys/` holds one it cannot read. */
+  readonly webPushKey: WebPushKey | undefined;
 }
 
 /** The engine's logger, its file, and whether the file lost lines. */

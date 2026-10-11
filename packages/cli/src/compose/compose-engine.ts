@@ -3,6 +3,7 @@ import {
   BinferenceError,
   type Clock,
   createIdSource,
+  type Http,
   type IdSource,
   type Logger,
   type Random,
@@ -34,7 +35,10 @@ import {
   type HttpListenOptions,
   type ProtocolServer,
 } from "@binference/server";
+import type { WebPushKey } from "../web-push/web-push-key.js";
+import type { WebPushRelay } from "../web-push/web-push-relay.js";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
+import { composeWebPush } from "./compose-web-push.js";
 import { type ConsoleOrigin, consoleOriginCell } from "./console-origin.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
@@ -98,6 +102,11 @@ export interface ComposeEngineOptions {
   /** The owner's bot; without it the engine shows no card in Telegram. */
   readonly telegram?: TelegramParts;
   /**
+   * Browser push (decision 0158): the VAPID key and the outbound HTTP the messages go through;
+   * without it the engine serves no browser push operation and sends no browser a card.
+   */
+  readonly webPush?: { readonly key: WebPushKey; readonly http: Http };
+  /**
    * The handlers only the owner's bot runs: the `config/change` that sets `owner.locale`, the one
    * setting the owner's chat changes (decision 0134). The protocol server never serves them.
    */
@@ -120,6 +129,8 @@ export interface ComposedEngine {
   readonly notices: NoticeLog;
   /** The owner's bot joined to the engine, when the options name one. */
   readonly telegram?: ComposedTelegram;
+  /** The line of card pushes to the owner's browsers, when the options name browser push. */
+  readonly webPush?: WebPushRelay;
 }
 
 // One quote or build that takes longer counts as a venue that is down (spec 6, section 3).
@@ -293,11 +304,13 @@ function engineOf(
  * and routes calls to the engine's handlers; the engine's pushes reach the server, which numbers
  * them per topic. Every notice is stored first, with a delivery queued for the owner's bot when
  * there is one. A push that fails is logged and never stops the money path. With the owner's bot,
- * card pushes also reach Telegram, and notices go there from the outbox once the bot starts.
+ * card pushes also reach Telegram, and notices go there from the outbox once the bot starts; with
+ * browser push, they also reach the owner's browsers.
  */
 export function composeEngine(parts: EngineParts, options: ComposeEngineOptions): ComposedEngine {
   const { clock, random, logger } = options;
   const ids = createIdSource({ clock, random });
+  const webPush = composeWebPush(parts.stores.access, options);
   const notices = createNoticeLog({
     store: parts.stores.notices,
     surfaces: options.telegram === undefined ? [] : ["telegram"],
@@ -314,15 +327,24 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
       logger.warn("engine.push_failed", { errorCode: code });
     }
     telegram?.relay(stamped);
+    webPush.relay?.relay(stamped);
   };
   const engine = engineOf(parts, options, { ids, publish });
   const origin = consoleOriginCell();
   const handlers: EngineHandlerTable = {
     ...engine.handlers,
     ...accessHandlersOf(parts, options, { ids, origin, server: () => server }),
+    ...webPush.handlers,
     ...options.handlers,
   };
   const telegram = joinTelegram(parts, options, { answer: engine.answer, handlers, notices });
   const server = origin.watch(serverOf(parts, options, { handlers, publish, ids }));
-  return { engine, server, publish, notices, ...(telegram === undefined ? {} : { telegram }) };
+  return {
+    engine,
+    server,
+    publish,
+    notices,
+    ...(telegram === undefined ? {} : { telegram }),
+    ...(webPush.relay === undefined ? {} : { webPush: webPush.relay }),
+  };
 }

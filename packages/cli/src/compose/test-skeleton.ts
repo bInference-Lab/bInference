@@ -198,7 +198,7 @@ export interface Skeleton extends ComposedSkeleton {
   readonly client: ProtocolClient;
   /** Opens another client over the IPC stand-in, signed in with a token's secret. */
   connect(secret: string, kind?: ClientKind): Promise<ProtocolClient>;
-  /** Closes every client, the relay to Telegram, the IPC stand-in and the server. */
+  /** Closes every client, the relays to Telegram and the browsers, the IPC stand-in and the server. */
   close(): Promise<void>;
 }
 
@@ -232,17 +232,20 @@ export interface SkeletonOptions {
   readonly ownerChat?: ComposeEngineOptions["ownerChat"];
   /** The HTTP listener with the console's files; the server serves IPC only when left out. */
   readonly browser?: Pick<ComposeEngineOptions, "http" | "consoleFiles">;
+  /** Browser push; the engine sends no browser a card when left out. */
+  readonly webPush?: ComposeEngineOptions["webPush"];
 }
 
-// The owner's bot and the handlers it alone runs, and the HTTP listener with the console's
-// files, when the options name them.
+// The owner's bot and the handlers it alone runs, the HTTP listener with the console's files, and
+// browser push, when the options name them.
 function surfacesOf(
   options: SkeletonOptions,
-): Pick<ComposeEngineOptions, "telegram" | "ownerChat" | "http" | "consoleFiles"> {
-  const { telegram, ownerChat } = options;
+): Pick<ComposeEngineOptions, "telegram" | "ownerChat" | "http" | "consoleFiles" | "webPush"> {
+  const { telegram, ownerChat, webPush } = options;
   return {
     ...(telegram === undefined ? {} : { telegram }),
     ...(ownerChat === undefined ? {} : { ownerChat }),
+    ...(webPush === undefined ? {} : { webPush }),
     ...options.browser,
   };
 }
@@ -340,6 +343,7 @@ export async function startSkeleton(
     async close() {
       clients.forEach((opened) => opened.close());
       await composed.telegram?.close();
+      await composed.webPush?.close();
       ipc.close();
       await composed.server.close();
     },

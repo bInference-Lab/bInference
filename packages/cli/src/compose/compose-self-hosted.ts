@@ -274,6 +274,9 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       isLocked: () => locked.lock.isLocked(),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
       ...(opened.bot === undefined ? {} : { telegram: botParts(opened.bot, stores) }),
+      ...(opened.webPushKey === undefined
+        ? {}
+        : { webPush: { key: opened.webPushKey, http: host.http } }),
       handlers: engineHandlers(opening, opened, {
         rpc: () => rpcHealthOf(parts.reads, host.clock),
         executor: sending.health,
@@ -305,11 +308,15 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
 export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSelfHosted {
   const wiring = composeParts(opening, opened);
   const { sending, locked, state, stopper, resume } = wiring;
-  const { engine, server, publish, telegram } = composeServing(opening, opened, wiring);
+  const { engine, server, publish, telegram, webPush } = composeServing(opening, opened, wiring);
   if (telegram !== undefined) {
     // The bot's line to the chat closes after the server, so nothing new reaches it, and before
     // the store; notices published later wait in the outbox for the next start.
     opening.closers.add("telegram", async () => telegram.close());
+  }
+  if (webPush !== undefined) {
+    // As the bot's line: after the server, before the store it drops gone subscriptions from.
+    opening.closers.add("web_push", async () => webPush.close());
   }
   sending.pushes.publish = publish;
   locked.announce.publish = publish;

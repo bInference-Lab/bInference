@@ -7,6 +7,7 @@ import { createSecretReader } from "../config/secrets/secret-reader.js";
 import type { ConfigOutcome } from "../config/validate-config.js";
 import type { CliHost } from "../program/cli-host.js";
 import { systemDefaults } from "../program/system-defaults.js";
+import { openEngineWebPushKey } from "../web-push/web-push-key.js";
 import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
@@ -56,7 +57,9 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   try {
     const parts = await readSecretParts(opening, loaded.config, log);
     const consoleFiles = await openConsoleFiles(host.consoleFolder, { logger: log.logger, signal });
-    const opened = { config: loaded.config, settings, readConfig, log, consoleFiles, ...parts };
+    const webPushKey = await openEngineWebPushKey(platform, { logger: log.logger, signal });
+    const config = loaded.config;
+    const opened = { config, settings, readConfig, log, consoleFiles, webPushKey, ...parts };
     return await openStoresAndServe(opening, opened);
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.

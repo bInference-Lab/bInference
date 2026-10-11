@@ -1,0 +1,6 @@
+{
+  "opened.title": "A card waits for your answer",
+  "opened.body": "Open the console to read it, then confirm or cancel.",
+  "closed.title": "This card no longer waits",
+  "closed.body": "It was answered or it expired."
+}
