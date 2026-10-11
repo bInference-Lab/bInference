@@ -17,6 +17,7 @@ describe("platform", () => {
     expect(Object.keys(platform.serviceManager(createManualClock())).toSorted()).toStrictEqual([
       "install",
       "status",
+      "stop",
       "uninstall",
     ]);
   });
