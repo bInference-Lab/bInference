@@ -83,6 +83,22 @@ args = ["mcp"]
 Check it with `claude mcp list` or `codex mcp list`. Each proposal waits for your tap in
 binference's Telegram bot or the console.
 
+## Teach the client the tools
+
+The `binference-tools` skill tells the client's model how to use these tools: the ids and amounts
+a proposal takes, that every proposal waits for your tap, how to read the answer and its states,
+and what only you can do (limits, paper or live, freeze and rescue). It never asks for a key or a
+seed phrase. Copy the repo's [`skills/binference-tools`](../../skills/binference-tools/SKILL.md)
+folder into the client's skills folder:
+
+| Client      | Folder                                                                 |
+| ----------- | ---------------------------------------------------------------------- |
+| Claude Code | `~/.claude/skills/binference-tools/`, or a project's `.claude/skills/` |
+| Codex       | `~/.agents/skills/binference-tools/`, or a repo's `.agents/skills/`    |
+
+No MCP tool lists agents, so tell the client your agent's id once, for example in the project's
+`CLAUDE.md` or `AGENTS.md`; `binference status` prints it.
+
 ## API
 
 | Export                          | What it does                                                                     |

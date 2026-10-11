@@ -45,11 +45,14 @@ function skillProblem(repo: RepoView, folder: string): LayoutProblem | undefined
     : problem("skill", `${file} is named ${parsed.data.name}; its folder is ${String(name)}.`);
 }
 
-/** Each skill under .agents/skills has a SKILL.md whose name matches its folder. */
+/**
+ * Each skill under .agents/skills, and each bundled skill under skills, has a SKILL.md whose name
+ * matches its folder.
+ */
 export function skillProblems(repo: RepoView): LayoutProblem[] {
   const folders = new Set(
     repo.files
-      .map((file) => /^(\.agents\/skills\/[^/]+)\//.exec(file)?.[1])
+      .map((file) => /^((?:\.agents\/)?skills\/[^/]+)\//.exec(file)?.[1])
       .filter((folder) => folder !== undefined),
   );
   return [...folders]

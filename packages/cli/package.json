@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@binference/mcp": "workspace:*",
+    "@binference/plugin-sdk": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@types/ws": "catalog:",

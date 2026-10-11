@@ -486,6 +486,9 @@ importers:
       '@binference/mcp':
         specifier: workspace:*
         version: link:../mcp
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
       '@modelcontextprotocol/client':
         specifier: 'catalog:'
         version: 2.2.0
