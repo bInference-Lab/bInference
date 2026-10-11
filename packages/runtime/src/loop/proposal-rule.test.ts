@@ -169,3 +169,58 @@ describe("the tool call limit", () => {
     expect(recorder.steps).toContainEqual({ kind: "status", line: { line: "proposalWaits" } });
   });
 });
+
+const cardAsksText = "not run: the card already asks the owner";
+
+// The control tool that asks the owner; it notes each question it sends.
+function asker(recorder: TurnRecorder): TestTool {
+  return {
+    name: "ask_owner",
+    kind: "control",
+    asksOwner: true,
+    run: async () => {
+      recorder.note({ kind: "tool", name: "ask_owner", key: "" });
+      return {
+        text: "asked; the answer comes as the owner's next message",
+        isError: false,
+        endsTurn: true,
+      };
+    },
+  };
+}
+
+describe("a proposal and a question in one batch", () => {
+  it.each([
+    ["before", [{ name: "ask_owner" }, { name: "swap" }]],
+    ["after", [{ name: "swap" }, { name: "ask_owner" }]],
+  ])("runs the proposal and not a question %s it", async (_place, calls) => {
+    const { turn, recorder, transport } = createTestTurn({
+      replies: [callsReply(calls), textReply("never")],
+      tools: (journal) => [proposer("swap")(journal), asker(journal)],
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", committed: true });
+    expect(sent(recorder.steps)).toStrictEqual(["swap"]);
+    expect(resultsOf(recorder.steps)).toContainEqual(["ask_owner", cardAsksText]);
+    expect(recorder.steps).toContainEqual({ kind: "status", line: { line: "proposalWaits" } });
+    expect(transport.requests).toHaveLength(1);
+  });
+
+  it("asks the owner when no proposal is in the batch", async () => {
+    const { turn, recorder, transport } = createTestTurn({
+      replies: [callsReply([{ name: "ask_owner" }]), textReply("never")],
+      tools: (journal) => [asker(journal)],
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", committed: false });
+    expect(sent(recorder.steps)).toStrictEqual(["ask_owner"]);
+    expect(transport.requests).toHaveLength(1);
+  });
+
+  it("still asks beside a proposal the tool box refused", async () => {
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "swap", args: "not json" }, { name: "ask_owner" }])],
+      tools: (journal) => [proposer("swap")(journal), asker(journal)],
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", committed: false });
+    expect(sent(recorder.steps)).toStrictEqual(["ask_owner"]);
+  });
+});

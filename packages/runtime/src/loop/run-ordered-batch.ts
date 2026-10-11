@@ -46,11 +46,25 @@ async function proposeOrHoldBack(run: TurnRun, item: BatchCall, ready: ReadyCall
   await runProposal(run, item, ready);
 }
 
+// A batch with a proposal that passed its check: its card asks the owner, so no question runs
+// beside it (decision 0173).
+function hasProposal(calls: readonly BatchCall[]): boolean {
+  return calls.some(({ prepared }) => prepared.ready && prepared.kind === "propose");
+}
+
 // Runs one call that is not skipped; answers whether its tool asked to end the turn.
-async function runOne(run: TurnRun, item: BatchCall): Promise<boolean> {
+async function runOne(
+  run: TurnRun,
+  item: BatchCall,
+  batch: { readonly proposes: boolean },
+): Promise<boolean> {
   const { prepared } = item;
   if (!prepared.ready) {
     await recordRefused(run, item.call, prepared.text);
+    return false;
+  }
+  if (prepared.asksOwner && (batch.proposes || run.tally.now().committed)) {
+    await recordNotRun(run, item.call, "card_asks");
     return false;
   }
   if (prepared.kind === "propose") {
@@ -72,6 +86,7 @@ export async function runOrderedBatch(
 ): Promise<BatchEnd> {
   let joined: readonly OwnerMessage[] = [];
   let askedOwner = false;
+  const batch = { proposes: hasProposal(calls) };
   for (const [index, item] of calls.entries()) {
     const state = { joined, ends: askedOwner || options.overLimit };
     // oxlint-disable-next-line eslint/no-await-in-loop -- each call starts after the one before
@@ -79,7 +94,7 @@ export async function runOrderedBatch(
     const reason = skipReason(run, joined);
     if (reason === undefined) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- each call starts after the one before
-      askedOwner = (await runOne(run, item)) || askedOwner;
+      askedOwner = (await runOne(run, item, batch)) || askedOwner;
     } else {
       // oxlint-disable-next-line eslint/no-await-in-loop -- results keep the calls' order
       await recordNotRun(run, item.call, reason);

@@ -24,6 +24,7 @@ export interface TestTool {
   readonly kind: ToolKind;
   readonly parallel?: boolean;
   readonly outside?: boolean;
+  readonly asksOwner?: boolean;
   readonly run?: (context: ToolRunContext, args: JsonValue) => Promise<ToolOutcome>;
 }
 
@@ -57,6 +58,7 @@ export function testToolBox(tools: readonly TestTool[]): ToolBox {
         kind: tool.kind,
         parallel: tool.parallel === true,
         outside: tool.outside === true,
+        asksOwner: tool.asksOwner === true,
         run: async (context) => body(context, args),
       };
     },

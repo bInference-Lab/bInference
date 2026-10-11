@@ -58,6 +58,8 @@ export interface ReadyCall {
   readonly parallel: boolean;
   /** Every result of this tool is outside content. */
   readonly outside: boolean;
+  /** The tool asks the owner a question (`ask_owner`), which a proposal in its batch wins over. */
+  readonly asksOwner: boolean;
   run(context: ToolRunContext): Promise<ToolOutcome>;
 }
 

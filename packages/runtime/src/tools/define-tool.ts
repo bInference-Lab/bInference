@@ -25,6 +25,11 @@ export interface ToolSpec<Args> {
   readonly parallel?: boolean;
   /** Every result of this tool is outside content (runtime spec, section 5.4). */
   readonly outside?: boolean;
+  /**
+   * A control tool that asks the owner a question (`ask_owner`): a proposal in its batch wins
+   * over it (decision 0173).
+   */
+  readonly asksOwner?: boolean;
   run(args: Args, context: ToolRunContext): Promise<ToolOutcome>;
 }
 
@@ -120,7 +125,15 @@ export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
     description: spec.description,
     parameters: parametersOf(spec.name, spec.args),
   };
-  const ready = { ready: true as const, kind: spec.kind, outside: spec.outside === true };
+  if (spec.asksOwner === true && spec.kind !== "control") {
+    throw invalidTool(spec.name, "a tool that asks the owner is not a control tool");
+  }
+  const ready = {
+    ready: true as const,
+    kind: spec.kind,
+    outside: spec.outside === true,
+    asksOwner: spec.asksOwner === true,
+  };
   const parallel = spec.kind === "read" && spec.parallel === true;
   return {
     name: spec.name,

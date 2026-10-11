@@ -149,7 +149,20 @@ describe("defineTool", () => {
       kind: "control",
       parallel: false,
       outside: false,
+      asksOwner: false,
     });
+  });
+
+  it("carries that a control tool asks the owner", () => {
+    const ask = defineTool({
+      name: "ask_owner",
+      kind: "control",
+      description: "Ask the owner.",
+      args: z.strictObject({}),
+      asksOwner: true,
+      run: noText,
+    });
+    expect(ask.prepare("{}")).toMatchObject({ ready: true, kind: "control", asksOwner: true });
   });
 
   it("cuts a long result and says how much was cut", async () => {
@@ -173,6 +186,7 @@ describe("defineTool", () => {
   it.each([
     ["a name that is not lowercase words", { ...swapSpec, name: "Swap Now" }],
     ["arguments that are not an object", { ...swapSpec, args: z.string() }],
+    ["a question for the owner on a tool that is not control", { ...swapSpec, asksOwner: true }],
     [
       "an object that allows fields it does not name",
       { ...swapSpec, args: z.object({ reason: z.string() }) },
