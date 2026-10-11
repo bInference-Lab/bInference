@@ -130,8 +130,9 @@ Rules for this package:
   HPKE seals to the owner key's public half through `src/hpke/`, the one HPKE module, which the
   wallet export shares. `takeBackup` snapshots the databases with `VACUUM INTO`, writes, reads the
   file back with the data key and zeroes it, copies to `backups.copyTo`, marks it verified, then
-  applies retention. `startNightlyBackups` runs it at 03:30 owner time and raises
-  `notice.backupFailed`; `openEngineStores` takes one before a migration, and a failed one stops
+  applies retention. `startNightlyBackups` runs it at 03:30 owner time, and at once when the
+  engine starts or the machine wakes (a jump of the wall clock between the timer's ticks) with
+  the newest nightly backup more than 24 hours old, and raises `notice.backupFailed`; `openEngineStores` takes one before a migration, and a failed one stops
   the start before the migration runs. Crypto comes from `node:crypto` and `@hpke/core` only.
 - `binference init --attach --restore <file>` (`src/commands/restore-attach.ts`) takes the owner
   key from the hidden prompt only, opens the backup's data key with it before any chunk is read,

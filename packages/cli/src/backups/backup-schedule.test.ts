@@ -1,7 +1,7 @@
 import { wallClockOf } from "@binference/i18n";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { nextBackupAt } from "./backup-schedule.js";
+import { backupKindAt, isNightMissed, nextBackupAt } from "./backup-schedule.js";
 
 const at = (iso: string): number => Date.parse(iso);
 const zones = ["UTC", "Asia/Shanghai", "America/New_York", "Europe/Berlin", "Australia/Lord_Howe"];
@@ -62,5 +62,27 @@ describe("the daily backup's schedule", () => {
       ),
       { numRuns: 300 },
     );
+  });
+});
+
+describe("a missed night", () => {
+  const dayMs = 86_400_000;
+  const nowMs = at("2026-10-13T09:00:00Z");
+
+  it("is missed once the newest scheduled backup is more than 24 hours old", () => {
+    const attachedAtMs = nowMs - 30 * dayMs;
+    expect(isNightMissed(nowMs, { newestMs: nowMs - dayMs, attachedAtMs })).toBe(false);
+    expect(isNightMissed(nowMs, { newestMs: nowMs - dayMs - 1, attachedAtMs })).toBe(true);
+  });
+
+  it("counts from the attach when no scheduled backup was taken yet", () => {
+    expect(isNightMissed(nowMs, { attachedAtMs: nowMs - 2 * 3_600_000 })).toBe(false);
+    expect(isNightMissed(nowMs, { attachedAtMs: nowMs - 2 * dayMs })).toBe(true);
+  });
+
+  it("names a catch-up taken on the owner's Sunday the weekly one", () => {
+    expect(backupKindAt(at("2026-10-11T09:00:00Z"), "UTC")).toBe("weekly");
+    expect(backupKindAt(at("2026-10-11T18:00:00Z"), "Asia/Shanghai")).toBe("daily");
+    expect(backupKindAt(at("2026-10-12T09:00:00Z"), "UTC")).toBe("daily");
   });
 });

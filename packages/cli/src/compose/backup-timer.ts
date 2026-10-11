@@ -5,7 +5,7 @@ import {
   type BackupFailure,
   type BackupRecord,
 } from "@binference/engine/backups";
-import { nextBackupAt, type ScheduledBackup } from "../backups/backup-schedule.js";
+import { backupKindAt, nextBackupAt, type ScheduledBackup } from "../backups/backup-schedule.js";
 import type { Closers } from "./closers.js";
 
 /** What the nightly backup reads each night, from the config as it stands then. */
@@ -23,6 +23,8 @@ export interface BackupTimerOptions {
     kind: ScheduledBackup["kind"],
     signal: AbortSignal,
   ) => Promise<Result<BackupRecord, BackupFailure>>;
+  /** Whether a night was missed: the newest scheduled backup is more than 24 hours old. */
+  readonly isNightMissed: (signal: AbortSignal) => Promise<boolean>;
   readonly schedule: () => BackupSchedule;
   /** Where a failed backup's notice goes: the engine's one publish. */
   readonly publish: PublishPush;
@@ -32,30 +34,60 @@ export interface BackupTimerOptions {
   readonly logger: Logger;
 }
 
-// The timer looks at the owner's timezone again at least once an hour, so a change of it moves
-// the next backup within the hour.
-const lookAgainMs = 3_600_000;
+// The timer ticks each minute: it looks at the owner's timezone again, and a tick that finds the
+// wall clock moved more than 5 minutes past its sleep is a wake from sleep. A sleeping machine
+// stops the timer's sleep, never the wall clock.
+const tickMs = 60_000;
+const wakeJumpMs = 5 * 60_000;
 
-async function waitFor(
-  options: BackupTimerOptions,
-  stop: AbortSignal,
-): Promise<ScheduledBackup | undefined> {
+// Reads whether a night was missed; a read that fails is logged and taken as none missed, and one
+// a stop cut off is neither.
+async function nightMissed(options: BackupTimerOptions, stop: AbortSignal): Promise<boolean> {
+  if (!options.schedule().isOn) {
+    return false;
+  }
+  try {
+    return await options.isNightMissed(stop);
+  } catch (error) {
+    if (stop.aborted) {
+      return false;
+    }
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    options.logger.warn("backup.history_unread", { errorCode });
+    return false;
+  }
+}
+
+// Sleeps one tick, at most until the next backup is due; answers whether the machine woke.
+async function tick(clock: Clock, dueAtMs: number, stop: AbortSignal): Promise<boolean> {
+  const before = clock.now();
+  const delayMs = Math.min(Math.max(dueAtMs - before, 0), tickMs);
+  await clock.sleep(delayMs, stop).catch(() => undefined);
+  return clock.now() - before > delayMs + wakeJumpMs;
+}
+
+// Waits until a backup is due: 03:30 came, or a wake found a night missed. False once stopped.
+async function waitFor(options: BackupTimerOptions, stop: AbortSignal): Promise<boolean> {
   const { clock } = options;
   let zone = options.schedule().timeZone;
   let next = nextBackupAt(clock.now(), zone);
-  while (clock.now() < next.atMs) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one wait at a time, until the time comes
-    await clock.sleep(Math.min(next.atMs - clock.now(), lookAgainMs), stop).catch(() => undefined);
+  for (;;) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one tick at a time, until a backup is due
+    const woke = await tick(clock, next.atMs, stop);
     if (stop.aborted) {
-      return undefined;
+      return false;
     }
     const now = options.schedule().timeZone;
     if (now !== zone) {
       zone = now;
       next = nextBackupAt(clock.now(), zone);
+      continue;
+    }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the history is read only after a wake
+    if (clock.now() >= next.atMs || (woke && (await nightMissed(options, stop)))) {
+      return true;
     }
   }
-  return next;
 }
 
 async function take(
@@ -72,43 +104,62 @@ async function take(
   }
 }
 
-// One night: the wait until 03:30, then the backup when the switch is on, then the next night.
-async function oneNight(
+// Takes the backup that is due, named by the owner's day now, and raises a failure's notice.
+async function takeDue(options: BackupTimerOptions, stop: AbortSignal): Promise<void> {
+  const kind = backupKindAt(options.clock.now(), options.schedule().timeZone);
+  const taken = await take(options, kind, stop);
+  if (!stop.aborted && !taken.ok) {
+    options.publish(backupFailedNotice(taken.error));
+  }
+}
+
+// One round: the wait until 03:30 or a wake that finds a night missed, then the backup when the
+// switch is on, then the next round.
+async function oneRound(
   options: BackupTimerOptions,
   run: { readonly stop: AbortSignal; readonly next: () => void },
 ): Promise<void> {
   const { stop } = run;
-  const due = await waitFor(options, stop);
-  if (due === undefined) {
+  if (!(await waitFor(options, stop))) {
     return;
   }
   if (options.schedule().isOn) {
-    const taken = await take(options, due.kind, stop);
-    if (!stop.aborted && !taken.ok) {
-      options.publish(backupFailedNotice(taken.error));
-    }
+    await takeDue(options, stop);
   }
   if (!stop.aborted) {
     run.next();
   }
 }
 
+// At the start, a missed night's backup at once, then the rounds.
+async function firstRound(
+  options: BackupTimerOptions,
+  run: { readonly stop: AbortSignal; readonly next: () => void },
+): Promise<void> {
+  if (await nightMissed(options, run.stop)) {
+    await takeDue(options, run.stop);
+  }
+  await oneRound(options, run);
+}
+
 /**
  * Takes the nightly backup at 03:30 owner time while the engine serves (keys spec, section 7.3),
- * Sunday's as the weekly one, when `backups.daily` is on. It reads the switch and the timezone
- * from the config each time, so a reload applies within the hour. A backup that fails, or whose
- * check fails, raises `notice.backupFailed` with the reason. A locked engine backs up too: a
- * backup needs no key the lock holds. Its closer stops it and waits for a backup under way.
+ * one taken on a Sunday as the weekly one, when `backups.daily` is on. When the engine starts, or
+ * the machine wakes from sleep, and the newest scheduled backup is more than 24 hours old, it
+ * takes one at once. It reads the switch and the timezone from the config each time, so a reload
+ * applies within a minute. A backup that fails, or whose check fails, raises
+ * `notice.backupFailed` with the reason. A locked engine backs up too: a backup needs no key the
+ * lock holds. Its closer stops it and waits for a backup under way.
  */
 export function startBackupTimer(options: BackupTimerOptions): void {
   const stop = new AbortController();
   const timer = { running: Promise.resolve() };
-  // Each night starts the next once it ends, and nothing waits on it, so the nights never chain
+  // Each round starts the next once it ends, and nothing waits on it, so the rounds never chain
   // up however long the engine serves.
   const next = (): void => {
-    timer.running = oneNight(options, { stop: stop.signal, next });
+    timer.running = oneRound(options, { stop: stop.signal, next });
   };
-  next();
+  timer.running = firstRound(options, { stop: stop.signal, next });
   options.closers.add("backups", async () => {
     stop.abort();
     await timer.running;

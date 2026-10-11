@@ -15,12 +15,28 @@ function recordOf(atMs: number): BackupRecord {
   return { id, path: "/b", bytes: 1, kind: "daily", createdAtMs: atMs, verifiedAtMs: atMs };
 }
 
+// A manual clock whose wall time can jump ahead while its sleepers stay put, as when the machine
+// sleeps: a timer's sleep stops with the machine, the wall clock does not.
+function sleepyClock(startMs: number) {
+  const manual = createManualClock(startMs);
+  const asleep = { ms: 0 };
+  return {
+    now: () => manual.now() + asleep.ms,
+    sleep: async (delayMs: number, signal: AbortSignal) => manual.sleep(delayMs, signal),
+    advance: async (delayMs: number) => manual.advance(delayMs),
+    sleepFor: (delayMs: number): void => {
+      asleep.ms += delayMs;
+    },
+  };
+}
+
 function timerWith(options: {
   readonly startIso: string;
   readonly schedule: { value: BackupSchedule };
   readonly answer?: () => Promise<BackupFailure | undefined>;
+  readonly missed?: () => Promise<boolean>;
 }) {
-  const clock = createManualClock(at(options.startIso));
+  const clock = sleepyClock(at(options.startIso));
   const closers = createClosers();
   const logger = createMemoryLogger({ subsystem: "engine" });
   const taken: (readonly [string, string])[] = [];
@@ -31,6 +47,7 @@ function timerWith(options: {
       const failure = await (options.answer?.() ?? Promise.resolve(undefined));
       return failure === undefined ? ok(recordOf(clock.now())) : err(failure);
     },
+    isNightMissed: async () => (options.missed ?? (async () => Promise.resolve(false)))(),
     schedule: () => options.schedule.value,
     publish: (push) => pushes.push(push),
     clock,
@@ -60,7 +77,7 @@ describe("the nightly backup timer", () => {
     expect(timer.taken).toHaveLength(3);
   });
 
-  it("follows a new timezone within the hour", async () => {
+  it("follows a new timezone within a minute", async () => {
     const schedule = { value: utc };
     const timer = timerWith({ startIso: "2026-10-12T12:00:00Z", schedule });
 
@@ -117,5 +134,109 @@ describe("the nightly backup timer", () => {
       "store.busy",
     ]);
     await timer.closers.closeAll(stop);
+  });
+
+  it("takes a missed night's backup at once when the engine starts, Sunday's weekly", async () => {
+    const timer = timerWith({
+      startIso: "2026-10-11T09:00:00Z",
+      schedule: { value: utc },
+      missed: async () => Promise.resolve(true),
+    });
+
+    await timer.clock.advance(0);
+    expect(timer.taken).toStrictEqual([["2026-10-11T09:00:00.000Z", "weekly"]]);
+    await timer.clock.advance(dayMs);
+    expect(timer.taken).toStrictEqual([
+      ["2026-10-11T09:00:00.000Z", "weekly"],
+      ["2026-10-12T03:30:00.000Z", "daily"],
+    ]);
+    await timer.closers.closeAll(stop);
+  });
+
+  it("takes a missed night's backup at the first tick after the machine wakes", async () => {
+    const missed = { value: false };
+    const timer = timerWith({
+      startIso: "2026-10-12T12:00:00Z",
+      schedule: { value: utc },
+      missed: async () => Promise.resolve(missed.value),
+    });
+    await timer.clock.advance(hourMs);
+
+    missed.value = true;
+    timer.clock.sleepFor(10 * hourMs);
+    await timer.clock.advance(60_000);
+
+    expect(timer.taken).toStrictEqual([["2026-10-12T23:01:00.000Z", "daily"]]);
+    await timer.clock.advance(hourMs);
+    expect(timer.taken).toHaveLength(1);
+    await timer.closers.closeAll(stop);
+  });
+
+  it("takes nothing more after a wake that finds the last night's backup", async () => {
+    const timer = timerWith({ startIso: "2026-10-12T12:00:00Z", schedule: { value: utc } });
+
+    timer.clock.sleepFor(6 * hourMs);
+    await timer.clock.advance(hourMs);
+
+    expect(timer.taken).toStrictEqual([]);
+    await timer.closers.closeAll(stop);
+  });
+
+  it("takes the night's backup once when the machine wakes after 03:30", async () => {
+    const timer = timerWith({
+      startIso: "2026-10-12T22:00:00Z",
+      schedule: { value: utc },
+      missed: async () => Promise.resolve(true),
+    });
+    await timer.clock.advance(0);
+    const atStart = timer.taken.length;
+
+    timer.clock.sleepFor(10 * hourMs);
+    await timer.clock.advance(hourMs);
+
+    expect(timer.taken.slice(atStart)).toStrictEqual([["2026-10-13T08:01:00.000Z", "daily"]]);
+    await timer.closers.closeAll(stop);
+  });
+
+  it("takes no missed night's backup while the daily switch is off", async () => {
+    const timer = timerWith({
+      startIso: "2026-10-12T12:00:00Z",
+      schedule: { value: { ...utc, isOn: false } },
+      missed: async () => Promise.resolve(true),
+    });
+
+    timer.clock.sleepFor(10 * hourMs);
+    await timer.clock.advance(hourMs);
+
+    expect(timer.taken).toStrictEqual([]);
+    await timer.closers.closeAll(stop);
+  });
+
+  it("logs a history it cannot read, and waits for 03:30", async () => {
+    const timer = timerWith({
+      startIso: "2026-10-12T12:00:00Z",
+      schedule: { value: utc },
+      missed: async () => Promise.reject(new BinferenceError({ code: "store.busy", message: "x" })),
+    });
+
+    await timer.clock.advance(dayMs);
+
+    expect(timer.taken).toStrictEqual([["2026-10-13T03:30:00.000Z", "daily"]]);
+    expect(timer.logger.records().map((record) => record.event)).toContain("backup.history_unread");
+    await timer.closers.closeAll(stop);
+  });
+
+  it("logs nothing of a history read the engine's stop cuts off", async () => {
+    const timer = timerWith({
+      startIso: "2026-10-12T12:00:00Z",
+      schedule: { value: utc },
+      missed: async () =>
+        Promise.reject(new BinferenceError({ code: "store.aborted", message: "x" })),
+    });
+
+    await timer.closers.closeAll(stop);
+
+    expect(timer.logger.records()).toStrictEqual([]);
+    expect(timer.taken).toStrictEqual([]);
   });
 });

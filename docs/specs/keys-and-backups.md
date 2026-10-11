@@ -341,7 +341,14 @@ The agent key and the app secret are never in a backup.
 ### 7.3 Schedule and checks
 
 - Daily at 03:30 owner time, and before every update and migration. Kept: 7 daily, 4 weekly (the
-  Sunday ones), the last 3 before updates and migrations.
+  Sunday ones), the last 3 before updates and migrations. A Sunday backup counts among the daily
+  ones too. Backups the owner takes by hand stay until the owner removes them.
+- A missed night is caught up: when the engine starts, or the machine wakes from sleep, and the
+  newest daily or weekly backup is more than 24 hours old, one is taken at once, weekly on a
+  Sunday. With none yet, the 24 hours count from when this machine's agent key became the
+  wallets' signer. The engine sees a wake as a jump of its wall clock between two of the backup
+  timer's one-minute ticks, since a sleeping machine stops the timer, never the wall clock.
+- A failed backup before a migration stops the start: the migration never runs without it.
 - Each new backup is verified right after it is written, while the engine still holds its data key:
   the file is read back, every chunk's tag and every file's SHA-256 checked, then the data key is
   zeroed. Verification never needs the owner key. Only then is the backup copied to `backups.copyTo`

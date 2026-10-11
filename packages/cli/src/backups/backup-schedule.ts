@@ -33,6 +33,15 @@ function backupMomentOn(date: LocalDate, timeZone: string): number {
 }
 
 /**
+ * The kind of a scheduled backup taken at `atMs` (keys spec, section 7.3): `weekly` on a Sunday on
+ * the owner's wall clock in `timeZone`, `daily` on every other day. Retention counts a weekly one
+ * among the daily ones too.
+ */
+export function backupKindAt(atMs: number, timeZone: string): ScheduledBackup["kind"] {
+  return wallClockOf(atMs, timeZone).weekday === 0 ? "weekly" : "daily";
+}
+
+/**
  * The next scheduled backup strictly after `nowMs` (keys spec, section 7.3): 03:30 on the owner's
  * wall clock in `timeZone`, an IANA zone such as `Asia/Shanghai`. The one that falls on a Sunday
  * there is `weekly`, every other `daily`.
@@ -41,5 +50,22 @@ export function nextBackupAt(nowMs: number, timeZone: string): ScheduledBackup {
   const todays = backupMomentOn(wallClockOf(nowMs, timeZone), timeZone);
   const atMs =
     todays > nowMs ? todays : backupMomentOn(wallClockOf(todays + dayMs, timeZone), timeZone);
-  return { atMs, kind: wallClockOf(atMs, timeZone).weekday === 0 ? "weekly" : "daily" };
+  return { atMs, kind: backupKindAt(atMs, timeZone) };
+}
+
+/** What decides whether a night's backup was missed. */
+export interface NightlyHistory {
+  /** When the newest scheduled backup, daily or weekly, was taken and verified, if any was. */
+  readonly newestMs?: number;
+  /** When this machine's agent key became the wallets' signer: the start of its backups. */
+  readonly attachedAtMs: number;
+}
+
+/**
+ * Whether a night's backup was missed (keys spec, section 7.3): the newest scheduled backup is
+ * more than 24 hours older than `nowMs`, or, with none yet, the install was attached to this
+ * machine more than 24 hours before. The machine was off or asleep at 03:30, or the engine down.
+ */
+export function isNightMissed(nowMs: number, history: NightlyHistory): boolean {
+  return nowMs - (history.newestMs ?? history.attachedAtMs) > dayMs;
 }

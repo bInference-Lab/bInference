@@ -3,6 +3,7 @@ import type { PublishPush } from "@binference/engine";
 import type { BackupFailure, BackupKind, BackupStore } from "@binference/engine/backups";
 import type { InstallStore } from "@binference/engine/install";
 import type { BackupParts } from "../backups/backup-parts.js";
+import { isNightMissed } from "../backups/backup-schedule.js";
 import { type BackupRun, takeBackup } from "../backups/take-backup.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { startBackupTimer } from "./backup-timer.js";
@@ -84,6 +85,27 @@ export async function backUpBeforeMigration(
 }
 
 /**
+ * Whether a night's backup was missed (keys spec, section 7.3), from the backups `engine.sqlite`
+ * records and when the install was attached to this machine. An install with no owner key yet
+ * has nothing a backup could seal, so it misses none.
+ */
+export async function missedNight(parts: BackupParts, signal: AbortSignal): Promise<boolean> {
+  const { custody } = await parts.install.read({ signal });
+  if (custody === undefined) {
+    return false;
+  }
+  const nightly = (await parts.backups.list({ signal }))
+    .filter((backup) => backup.kind === "daily" || backup.kind === "weekly")
+    .filter((backup) => backup.verifiedAtMs !== undefined)
+    .map((backup) => backup.createdAtMs);
+  const { attachedAtMs } = custody;
+  return isNightMissed(
+    parts.clock.now(),
+    nightly.length === 0 ? { attachedAtMs } : { attachedAtMs, newestMs: Math.max(...nightly) },
+  );
+}
+
+/**
  * Starts the nightly backup of a serving engine, reading `backups` and `owner.timezone` from the
  * config cell each time, so a reload of `config.json5` applies to the next one.
  */
@@ -106,6 +128,7 @@ export function startNightlyBackups(
           signal,
         ),
       ),
+    isNightMissed: async (signal) => missedNight(parts, signal),
     schedule: () => ({
       isOn: settings.current().backups.daily,
       timeZone: settings.current().owner.timezone,
