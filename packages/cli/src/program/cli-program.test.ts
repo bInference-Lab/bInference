@@ -77,6 +77,7 @@ describe("the binference command tree", () => {
       "remove",
       "set",
       "cancel",
+      "mcp",
       "check",
     ]);
     for (const command of commands) {

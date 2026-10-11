@@ -33,6 +33,7 @@
     "@binference/honeypot-is": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/kyberswap": "workspace:*",
+    "@binference/mcp": "workspace:*",
     "@binference/okx": "workspace:*",
     "@binference/platform": "workspace:*",
     "@binference/protocol": "workspace:*",
@@ -52,7 +53,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@binference/mcp": "workspace:*",
     "@binference/plugin-sdk": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/server": "catalog:",

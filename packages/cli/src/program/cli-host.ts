@@ -1,5 +1,6 @@
 import type { Clock, Http, Random } from "@binference/core";
 import type { ServiceManager, SignalEvents } from "@binference/platform";
+import type { McpStdio } from "../commands/mcp-command.js";
 import type { StartSigner } from "../compose/start-signer.js";
 import type { Prompter } from "../term/prompter.js";
 
@@ -49,4 +50,6 @@ export interface CliHost {
    * fake, so no test touches the machine's login items.
    */
   readonly serviceManager?: ServiceManager;
+  /** The streams `binference mcp` serves over: the process's stdin and stdout. */
+  readonly mcpStdio?: McpStdio;
 }

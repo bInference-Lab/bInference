@@ -431,6 +431,9 @@ importers:
       '@binference/kyberswap':
         specifier: workspace:*
         version: link:../../plugins/kyberswap
+      '@binference/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@binference/okx':
         specifier: workspace:*
         version: link:../../plugins/okx
@@ -483,9 +486,6 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
-      '@binference/mcp':
-        specifier: workspace:*
-        version: link:../mcp
       '@binference/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk

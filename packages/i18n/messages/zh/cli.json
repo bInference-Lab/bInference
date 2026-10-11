@@ -279,5 +279,8 @@
   "limit.cancelled": "已放弃等待生效的较宽松限额。当前生效的限额保持不变。",
   "limit.nothingWaits": "没有等待生效的较宽松限额，因此没有任何更改。",
   "limit.badSet": "binference 无法读取 {set}。请把每项限额写作 `key=value`，名称与 `binference limit` 显示的相同。",
-  "limit.badValue": "{key} 不接受 {value}。运行 `binference limit` 查看它当前的值。"
+  "limit.badValue": "{key} 不接受 {value}。运行 `binference limit` 查看它当前的值。",
+  "command.mcp": "通过 stdio 向 MCP 客户端提供 MCP 工具；由客户端启动",
+  "option.mcpClient": "用哪个 MCP 客户端的访问令牌登录：claude-code 或 codex",
+  "mcp.noToken": "MCP 服务器无法登录：{file} 不存在。请运行 `binference mcp setup --client claude-code` 或 `--client codex` 生成它。"
 }

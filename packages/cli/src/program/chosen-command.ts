@@ -11,6 +11,7 @@ import type {
   WalletAddressFlags,
 } from "./cli-flags.schema.js";
 import type { CliHost } from "./cli-host.js";
+import type { McpFlags } from "./mcp-flags.schema.js";
 
 /** The approval mode `binference approval` sets. */
 export type ApprovalModeChoice = "manual" | "auto";
@@ -58,7 +59,8 @@ export type ChosenCommand =
       readonly options: CommonOptions;
       readonly entry: ProtocolId<"addressBook">;
     }
-  | { readonly name: "check"; readonly options: CheckFlags };
+  | { readonly name: "check"; readonly options: CheckFlags }
+  | { readonly name: "mcp"; readonly options: McpFlags };
 
 /** What the program is built from. */
 export interface ProgramOptions {

@@ -41,5 +41,6 @@ process.exitCode = await runCli({
   // Store workers run with this process's Node options, such as a TypeScript loader.
   workerExecArgv: process.execArgv,
   entry,
+  mcpStdio: { input: process.stdin, output: process.stdout },
 });
 await http.close();

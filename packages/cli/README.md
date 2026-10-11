@@ -95,6 +95,12 @@ never makes an owner key: it takes the public half `--owner-key-public` gives, w
 owner key code reaches a log (decision 0148). A folder set up before is refused unless the owner
 passes `--start-over`, and a stored agent key is never replaced.
 
+`binference mcp` is the MCP server an MCP client starts (protocol spec, section 11). It signs in
+over IPC with the client's token, `auth/mcp-<client>.token` for `--client <client>` or else
+`auth/mcp.token`, which holds `read` and `propose` only, and serves the tools over stdin and stdout
+until the client closes them or a stop signal arrives. Stdout carries MCP messages only; its log
+lines go to stderr. A missing token file is one message and exit 1.
+
 `binference status` and `binference health` sign in over IPC with the CLI token and call
 `engine/status`; `status` prints the state, the agents and the health signals, and `health`
 exits 0 only when the engine is ready. `binference logs` reads the engine log itself, so it works

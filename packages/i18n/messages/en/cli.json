@@ -279,5 +279,8 @@
   "limit.cancelled": "The looser limits that waited are dropped. The limits in effect stay.",
   "limit.nothingWaits": "No looser limit waits, so nothing changed.",
   "limit.badSet": "binference cannot read {set}. Write each limit as `key=value`, named as `binference limit` shows it.",
-  "limit.badValue": "{key} does not take {value}. Run `binference limit` to see what it holds now."
+  "limit.badValue": "{key} does not take {value}. Run `binference limit` to see what it holds now.",
+  "command.mcp": "Serve the MCP tools to an MCP client over stdio; the client starts it",
+  "option.mcpClient": "The MCP client whose client token to sign in with: claude-code or codex",
+  "mcp.noToken": "The MCP server cannot sign in: {file} is missing. Run `binference mcp setup --client claude-code` or `--client codex` to make it."
 }

@@ -25,7 +25,7 @@ const oneShotReconnect = { attempts: 1, baseDelayMs: 200, maxDelayMs: 200, budge
  * `ws` socket throws an `error` event nobody hears, such as a write to an engine that stopped a
  * moment ago. The client reads only `close`, which always follows, so both hear errors here.
  */
-function ipcWebSocket(address: string): WebSocket {
+export function ipcWebSocket(address: string): WebSocket {
   const socket = new WebSocket("ws://localhost/ws", {
     createConnection: () => createConnection({ path: address }).on("error", () => undefined),
     perMessageDeflate: false,

@@ -167,8 +167,10 @@ A Telegram tap is handled inside the engine and never travels over this protocol
 - **Tokens (IPC only).** 32 random bytes in base64url with the prefix `bnt_`; only the SHA-256 is
   stored, with its scopes, label and last use. The CLI's token is created by `binference init` in
   `~/.binference/auth/cli.token`, owner-only. The runtime receives its token on stdin when the
-  engine starts it. `binference mcp` reads `~/.binference/auth/mcp.token`, created by
-  `binference token create --for mcp` with `read` and `propose` only. `open.auth` is `{ token }`.
+  engine starts it. `binference mcp --client <client>` reads `auth/mcp-<client>.token`, and
+  `binference mcp` alone `auth/mcp.token`, each with `read` and `propose` only.
+  `binference mcp setup` makes a client's token in the CLI and registers only its SHA-256 with
+  `token/register` ([decision 0154](../DECISIONS.md#d0154)). `open.auth` is `{ token }`.
 - **Console devices (WS only).**
   1. `binference console` prints a link `http://127.0.0.1:7456/#pair=<code>`; the code is single-use
      and valid 10 minutes.
