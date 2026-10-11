@@ -1,5 +1,16 @@
-import { accountRefSchema, chainRefSchema } from "@binference/chain";
-import { idSchema, ok } from "@binference/core";
+import { accountRefSchema, chainRefSchema, createChainRegistry } from "@binference/chain";
+import {
+  createFakeChainDefinition,
+  createFakeFamily,
+  createFakeSigningScheme,
+} from "@binference/chain/testing";
+import { createSecret, idSchema, ok } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
+import {
+  ceilingEditorContract,
+  createFakeCeilingEditor,
+  fakeOwnerKeyCode,
+} from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
 import { createCustodyCell } from "./custody-cell.js";
 import type { OpenedCustody } from "./open-custody.js";
@@ -31,7 +42,45 @@ function opened(): OpenedCustody {
   } as never;
 }
 
+const fakeAccounts = [
+  accountRefSchema.parse("fake:1:0x000000a1"),
+  accountRefSchema.parse("fake:1:0x000000a2"),
+  accountRefSchema.parse("fake:1:0x000000a3"),
+] as const;
+
+// A cell holding custody whose ceilings are the engine's fake editor, on the fake chain.
+async function editorSubject() {
+  const clock = createManualClock(1_800_000_000_000);
+  const chains = createChainRegistry({
+    chains: [createFakeChainDefinition()],
+    families: [createFakeFamily()],
+    signingSchemes: [createFakeSigningScheme()],
+  });
+  const editor = createFakeCeilingEditor({ clock, chains });
+  editor.put("ceiling-1", [fakeAccounts[0], fakeAccounts[1]]);
+  const cell = createCustodyCell();
+  cell.hold({ ...opened(), ceilings: editor });
+  return Promise.resolve({
+    editor: cell.ceilings,
+    ownerKey: createSecret(fakeOwnerKeyCode),
+    otherKey: createSecret("bnok1aaaaa bbbbb ccccc ddddd eeeee"),
+    ceiling: "ceiling-1",
+    unknownCeiling: "ceiling-9",
+    accounts: fakeAccounts,
+    venues: { known: "fake-swap", unknown: "no-such-venue" },
+    recipients: async () => Promise.resolve(editor.recipients("ceiling-1") ?? []),
+    now: () => clock.now(),
+  });
+}
+
 describe("the custody cell", () => {
+  it.each(ceilingEditorContract({ create: editorSubject }))(
+    "follows the ceiling editor contract through the custody it holds: $name",
+    async ({ run }) => {
+      await expect(run()).resolves.toBeUndefined();
+    },
+  );
+
   it("signs nothing and knows no wallet while the engine is locked", async () => {
     const cell = createCustodyCell();
     expect(cell.isOpen()).toBe(false);
