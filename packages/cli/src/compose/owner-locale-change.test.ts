@@ -29,6 +29,7 @@ const telegram: EngineCaller = {
 };
 const permissions: FilePermissions = {
   restrictFile: async () => Promise.resolve(),
+  syncFolder: async () => Promise.resolve(),
   restrictFolder: async () => Promise.resolve(),
 };
 

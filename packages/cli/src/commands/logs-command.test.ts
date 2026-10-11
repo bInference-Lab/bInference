@@ -14,6 +14,7 @@ const signal = new AbortController().signal;
 const permissions = {
   restrictFolder: async () => Promise.resolve(),
   restrictFile: async () => Promise.resolve(),
+  syncFolder: async () => Promise.resolve(),
 };
 
 afterEach(async () => {

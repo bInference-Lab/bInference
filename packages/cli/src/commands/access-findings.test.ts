@@ -29,6 +29,7 @@ function platformWith(states: ReadonlyMap<string, FileAccessState>) {
   const permissions: FilePermissions = {
     restrictFolder: async (path) => restrict(path, `${path}/`),
     restrictFile: async (path) => restrict(path, path),
+    syncFolder: async () => Promise.resolve(),
   };
   return { platform: { stateFolder, access, permissions }, restricted };
 }

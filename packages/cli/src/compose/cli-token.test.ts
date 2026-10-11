@@ -12,6 +12,7 @@ const folders: TempFolder[] = [];
 const permissions = {
   restrictFolder: async () => Promise.resolve(),
   restrictFile: async () => Promise.resolve(),
+  syncFolder: async () => Promise.resolve(),
 };
 const signal = new AbortController().signal;
 

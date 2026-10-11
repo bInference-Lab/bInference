@@ -70,5 +70,10 @@ export function createWin32FilePermissions(
   return {
     restrictFolder: async (path, signal) => restrict(path, "(OI)(CI)(F)", signal),
     restrictFile: async (path, signal) => restrict(path, "(F)", signal),
+    // Windows offers no fsync of a folder.
+    syncFolder: async (_path, signal) => {
+      signal.throwIfAborted();
+      return Promise.resolve();
+    },
   };
 }

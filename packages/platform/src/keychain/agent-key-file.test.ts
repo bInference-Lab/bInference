@@ -56,6 +56,7 @@ afterEach(async () => {
 const ownerOnly: FilePermissions = {
   restrictFolder: async () => undefined,
   restrictFile: async () => undefined,
+  syncFolder: async () => undefined,
 };
 
 const store = (folder: string, installId: string, scryptCost?: number): SecretStore =>

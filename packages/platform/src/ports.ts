@@ -15,6 +15,12 @@ export interface FilePermissions {
   restrictFolder(path: string, signal: AbortSignal): Promise<void>;
   /** Restricts an existing file to its owner. */
   restrictFile(path: string, signal: AbortSignal): Promise<void>;
+  /**
+   * Makes the entries of an existing folder durable, such as a file renamed into it, so a crash
+   * cannot undo the rename: an fsync of the folder on macOS and Linux. Windows offers no fsync of
+   * a folder, so there it only checks the signal.
+   */
+  syncFolder(path: string, signal: AbortSignal): Promise<void>;
 }
 
 /**

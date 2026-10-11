@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, open, rename, rm } from "node:fs/promises";
+import { dirname } from "node:path";
 import { BinferenceError } from "@binference/core";
 import type { FilePermissions } from "./ports.js";
 
@@ -51,7 +52,8 @@ async function fillPrivately(
 /**
  * Writes a file only its owner can read, replacing any file at `path`. The data goes into a new
  * owner-only file beside it, which then takes its place, so no reader sees part of the data or a
- * looser access list. The folder must exist; make it with {@link ensurePrivateFolder}.
+ * looser access list; the folder is then synced, so the new file outlives a crash. The folder
+ * must exist; make it with {@link ensurePrivateFolder}.
  */
 export async function writePrivateFile(
   path: string,
@@ -63,6 +65,8 @@ export async function writePrivateFile(
   try {
     await fillPrivately(temporary, data, options);
     await rename(temporary, path);
+    // A crash right after the rename must not bring the old file back.
+    await options.permissions.syncFolder(dirname(path), options.signal);
   } catch (error) {
     await rm(temporary, { force: true });
     throw error instanceof BinferenceError || options.signal.aborted

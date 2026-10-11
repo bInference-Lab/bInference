@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ContractCheck } from "@binference/core/testing";
 import type { FilePermissions } from "../ports.js";
@@ -18,6 +18,22 @@ export interface FilePermissionsHarness {
 }
 
 const signal = (): AbortSignal => new AbortController().signal;
+
+// A file renamed into a folder is there once the folder synced; an aborted signal syncs nothing.
+function syncCheck(harness: FilePermissionsHarness): ContractCheck {
+  return {
+    name: "syncs a folder that holds a file renamed into it",
+    run: async () => {
+      const { permissions, folder } = await harness.create();
+      await writeFile(join(folder, "agent-key.tmp"), "key");
+      await rename(join(folder, "agent-key.tmp"), join(folder, "agent-key"));
+      await permissions.syncFolder(folder, signal());
+      assert.equal(await readFile(join(folder, "agent-key"), "utf8"), "key");
+      const reason = new Error("stopped");
+      await assert.rejects(permissions.syncFolder(folder, AbortSignal.abort(reason)), reason);
+    },
+  };
+}
 
 /** The contract every `FilePermissions` adapter passes. */
 export function filePermissionsContract(harness: FilePermissionsHarness): readonly ContractCheck[] {
@@ -53,6 +69,7 @@ export function filePermissionsContract(harness: FilePermissionsHarness): readon
         });
       },
     },
+    syncCheck(harness),
     {
       name: "does nothing on an aborted signal",
       run: async () => {

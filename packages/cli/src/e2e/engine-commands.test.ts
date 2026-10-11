@@ -220,7 +220,10 @@ describe("binference start, status, health and logs end to end", () => {
     const machine = await newMachine();
     await writeTestConfig(machine.folder);
     const engine = await start(machine);
-    const files = { permissions: { restrictFolder: noop, restrictFile: noop }, signal: live() };
+    const files = {
+      permissions: { restrictFolder: noop, restrictFile: noop, syncFolder: noop },
+      signal: live(),
+    };
     const tokenFile = join(machine.folder, "auth", "cli.token");
 
     await writePrivateFile(tokenFile, `bnt_${"A".repeat(43)}\n`, files);
@@ -241,7 +244,7 @@ describe("binference start, status, health and logs end to end", () => {
     await writeTestConfig(machine.folder);
     // A folder where engine.sqlite belongs makes the store fail to open.
     await ensurePrivateFolder(join(machine.folder, "engine.sqlite"), {
-      permissions: { restrictFolder: noop, restrictFile: noop },
+      permissions: { restrictFolder: noop, restrictFile: noop, syncFolder: noop },
       signal: live(),
     });
     const failed = await run(machine, ["start", "--foreground", "--json"]);

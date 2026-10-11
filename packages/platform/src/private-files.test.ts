@@ -18,9 +18,11 @@ afterEach(async () => {
   await Promise.all(folders.splice(0).map(async (folder) => rm(folder, { recursive: true })));
 });
 
-// Records each restricted path with the size the file had at that moment.
+// Records each restricted path with the size the file had at that moment, and each synced folder
+// with the files it held then.
 function recordingPermissions(failOn?: string) {
   const restricted: { readonly path: string; readonly bytes: number }[] = [];
+  const synced: { readonly path: string; readonly files: readonly string[] }[] = [];
   const permissions: FilePermissions = {
     restrictFolder: async (path) => {
       restricted.push({ path, bytes: -1 });
@@ -32,8 +34,11 @@ function recordingPermissions(failOn?: string) {
         throw new BinferenceError({ code: "platform.restrict_failed", message: failOn });
       }
     },
+    syncFolder: async (path) => {
+      synced.push({ path, files: await readdir(path) });
+    },
   };
-  return { permissions, restricted };
+  return { permissions, restricted, synced };
 }
 
 const signal = (): AbortSignal => new AbortController().signal;
@@ -51,6 +56,16 @@ describe("private files", () => {
     expect(restricted[0]?.path.startsWith(`${target}.`)).toBe(true);
     await expect(readFile(target)).resolves.toStrictEqual(Buffer.from([1, 2, 3]));
     await expect(readdir(folder)).resolves.toStrictEqual(["agent-key.json"]);
+  });
+
+  it("syncs the folder once the new file took the old one's place", async () => {
+    const folder = await scratchFolder();
+    const target = join(folder, "agent-key.json");
+    const { permissions, synced } = recordingPermissions();
+
+    await writePrivateFile(target, "key", { permissions, signal: signal() });
+
+    expect(synced).toStrictEqual([{ path: folder, files: ["agent-key.json"] }]);
   });
 
   it("leaves the old file and no temporary file when restricting fails", async () => {

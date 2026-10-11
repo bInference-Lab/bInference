@@ -41,6 +41,7 @@ const seeds = { next: 17 };
 export const noPermissions: FilePermissions = {
   restrictFolder: async () => Promise.resolve(),
   restrictFile: async () => Promise.resolve(),
+  syncFolder: async () => Promise.resolve(),
 };
 
 interface Waiter {

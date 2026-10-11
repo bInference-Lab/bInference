@@ -25,7 +25,11 @@ files.rename = async () => {
 };
 syncBuiltinESMExports();
 const { createPassphraseSecretStore } = await import(input.module);
-const permissions = { restrictFolder: async () => {}, restrictFile: async () => {} };
+const permissions = {
+  restrictFolder: async () => {},
+  restrictFile: async () => {},
+  syncFolder: async () => {},
+};
 const passphrase = { reveal: () => input.passphrase };
 const store = createPassphraseSecretStore({ ...input.store, passphrase, permissions });
 await store.write("agent-key", { reveal: () => input.value }, new AbortController().signal);
@@ -59,6 +63,7 @@ afterEach(async () => {
 const ownerOnly: FilePermissions = {
   restrictFolder: async () => undefined,
   restrictFile: async () => undefined,
+  syncFolder: async () => undefined,
 };
 
 const storeIn = (folder: string): SecretStore =>
