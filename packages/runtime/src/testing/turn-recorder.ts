@@ -37,6 +37,8 @@ export interface TurnRecorderOptions {
   readonly refuse?: TurnRefusal;
   /** `turn/mark` fails. */
   readonly failMark?: boolean;
+  /** Runs before each step is recorded, and the write waits for it: a test stops a turn here. */
+  readonly beforeStep?: (step: RecordedStep) => void | Promise<void>;
 }
 
 /** A journal, an engine and a merge source for one turn, recording every step in one list. */
@@ -51,7 +53,9 @@ export interface TurnRecorder {
   note(step: RecordedStep): void;
 }
 
-function createJournal(note: (step: RecordedStep) => void): TurnJournal {
+type Write = (step: RecordedStep) => Promise<void>;
+
+function createJournal(note: Write): TurnJournal {
   return {
     response: async ({ text }) => note({ kind: "response", text }),
     toolCall: async ({ id, name }) => note({ kind: "call", id, name }),
@@ -66,13 +70,10 @@ function createJournal(note: (step: RecordedStep) => void): TurnJournal {
   };
 }
 
-function createEngine(
-  note: (step: RecordedStep) => void,
-  options: TurnRecorderOptions,
-): TurnEngine {
+function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
   return {
     start: async ({ messages, outsideContent }) => {
-      note({ kind: "start", messages, outside: outsideContent });
+      await note({ kind: "start", messages, outside: outsideContent });
       return options.refuse === undefined
         ? ok({ budgetLeftMicros: 1_000_000n })
         : err(options.refuse);
@@ -81,7 +82,7 @@ function createEngine(
       if (options.failMark === true) {
         throw new Error("The engine did not take the mark.");
       }
-      note({ kind: "engineMark" });
+      await note({ kind: "engineMark" });
     },
     say: async (text) => note({ kind: "say", text }),
     status: async (line) => note({ kind: "status", line }),
@@ -96,9 +97,13 @@ export function createTurnRecorder(options: TurnRecorderOptions = {}): TurnRecor
   const note = (step: RecordedStep): void => {
     steps.push(step);
   };
+  const write = async (step: RecordedStep): Promise<void> => {
+    await options.beforeStep?.(step);
+    note(step);
+  };
   return {
-    journal: createJournal(note),
-    engine: createEngine(note, options),
+    journal: createJournal(write),
+    engine: createEngine(write, options),
     merge: { take: async () => waiting.splice(0) },
     steps,
     queue: (...messages) => {

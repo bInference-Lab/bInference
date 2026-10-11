@@ -47,6 +47,7 @@ export async function runToolBatch(
   const room = Math.max(0, run.limits.maxToolCalls - first);
   run.tally.countToolCalls(toolCalls.length);
   run.tally.enter("tools");
+  const over = toolCalls.slice(room);
   const calls = toolCalls.slice(0, room).map((call, index) => ({
     call,
     ordinal: first + index + 1,
@@ -54,8 +55,7 @@ export async function runToolBatch(
   }));
   const end = isParallel(calls)
     ? await runParallelBatch(run, calls)
-    : await runOrderedBatch(run, calls);
-  const over = toolCalls.slice(room);
+    : await runOrderedBatch(run, calls, { overLimit: over.length > 0 });
   await refuseOverLimit(run, over);
   return { ...end, reachedLimit: over.length > 0 };
 }

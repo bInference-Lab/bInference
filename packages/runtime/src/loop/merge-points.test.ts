@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { RecordedStep, TurnRecorder } from "../testing/turn-recorder.js";
+import type { ChatTurn } from "./chat-turn.js";
+import type { OwnerMessage } from "./model-message.js";
 import { createTestTurn, ownerMessage, type TestTool } from "./test-turns.js";
 
 // A tool during whose run the owner writes again.
@@ -147,5 +149,102 @@ describe("merge points", () => {
     await expect(recorder.merge.take(new AbortController().signal)).resolves.toStrictEqual([
       ownerMessage(2, "wait, sell instead"),
     ]);
+  });
+});
+
+const signal = new AbortController().signal;
+
+interface StopHolder {
+  turn?: ChatTurn;
+  queue?: (message: OwnerMessage) => void;
+}
+
+// The owner stops the turn while its response is written, then writes again.
+function stopAtResponse(holder: StopHolder): (step: RecordedStep) => void {
+  return (step) => {
+    if (step.kind === "response") {
+      holder.turn?.stop("owner");
+      holder.queue?.(ownerMessage(2, "after the stop"));
+    }
+  };
+}
+
+describe("a merge point where no model call can follow", () => {
+  it("leaves a message typed while the agent asks the owner in the queue, to start the next turn", async () => {
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "ask_owner" }, { name: "portfolio" }], "Which one?")],
+      tools: (notes) => [
+        {
+          name: "ask_owner",
+          kind: "control",
+          run: async () => {
+            notes.queue(ownerMessage(2, "the second one"));
+            return { text: "asked", isError: false, endsTurn: true };
+          },
+        },
+        { name: "portfolio", kind: "read" },
+      ],
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", modelCalls: 1 });
+    expect(recorder.steps.some((step) => step.kind === "joined")).toBe(false);
+    expect(recorder.steps).toContainEqual({
+      kind: "result",
+      id: "portfolio",
+      text: "ran portfolio",
+      ran: true,
+      outside: false,
+    });
+    await expect(recorder.merge.take(signal)).resolves.toStrictEqual([
+      ownerMessage(2, "the second one"),
+    ]);
+  });
+
+  it("leaves a message in the queue in a batch that goes past the tool call limit", async () => {
+    const calls = [
+      { id: "r0", name: "first" },
+      ...Array.from({ length: 25 }, (_unused, index) => ({
+        id: `r${String(index + 1)}`,
+        name: "portfolio",
+      })),
+    ];
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply(calls)],
+      tools: (notes) => [writesDuring("first")(notes), { name: "portfolio", kind: "read" }],
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "loop" });
+    expect(recorder.steps.some((step) => step.kind === "joined")).toBe(false);
+    await expect(recorder.merge.take(signal)).resolves.toHaveLength(1);
+  });
+
+  it("leaves a message in the queue after the batch of the last model call", async () => {
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "portfolio" }])],
+      tools: (notes) => [writesDuring("portfolio")(notes)],
+      limits: { maxModelCalls: 1 },
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "loop", modelCalls: 1 });
+    await expect(recorder.merge.take(signal)).resolves.toHaveLength(1);
+  });
+
+  it("leaves a message in the queue when the last model call answers", async () => {
+    const { turn, recorder } = createTestTurn({
+      replies: [textReply("Done.")],
+      limits: { maxModelCalls: 1 },
+    });
+    recorder.queue(ownerMessage(2, "and then?"));
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", modelCalls: 1 });
+    await expect(recorder.merge.take(signal)).resolves.toHaveLength(1);
+  });
+
+  it("leaves a message that came after a stop in the queue", async () => {
+    const holder: StopHolder = {};
+    const { turn, recorder } = createTestTurn({
+      replies: [textReply("Done.")],
+      recorder: { beforeStep: stopAtResponse(holder) },
+    });
+    holder.turn = turn;
+    holder.queue = (message) => recorder.queue(message);
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "stopped" });
+    await expect(recorder.merge.take(signal)).resolves.toHaveLength(1);
   });
 });

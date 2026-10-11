@@ -1,4 +1,5 @@
 import type { BatchCall, BatchEnd } from "./batch-call.js";
+import { canMerge } from "./can-merge.js";
 import type { OwnerMessage } from "./model-message.js";
 import type { NotRunReason } from "./not-run.js";
 import { recordNotRun, recordRefused } from "./record-call.js";
@@ -7,15 +8,22 @@ import { haltOf } from "./turn-halt.js";
 import type { ReadyCall } from "./turn-ports.js";
 import type { TurnRun } from "./turn-run.js";
 
-// Merge point 1 (runtime spec, section 3.4): before each call but the first, while the turn is
-// neither committed nor halted, waiting messages join and the calls not started yet do not run.
+/** Where an ordered batch is: what joined, and whether a model call can follow it at all. */
+interface OrderedState {
+  readonly joined: readonly OwnerMessage[];
+  /** A call asked the owner, or a call of the batch is past the limit: the turn ends after it. */
+  readonly ends: boolean;
+}
+
+// Merge point 1 (runtime spec, section 3.4): before each call but the first, waiting messages
+// join and the calls not started yet do not run, when a model call can follow to answer them.
 async function joinedBefore(
   run: TurnRun,
   index: number,
-  joined: readonly OwnerMessage[],
+  state: OrderedState,
 ): Promise<readonly OwnerMessage[]> {
-  if (joined.length > 0 || index === 0 || run.tally.now().committed || run.halted.aborted) {
-    return joined;
+  if (state.joined.length > 0 || index === 0 || state.ends || !canMerge(run)) {
+    return state.joined;
   }
   return run.parts.merge.take(run.writes);
 }
@@ -60,12 +68,14 @@ async function runOne(run: TurnRun, item: BatchCall): Promise<boolean> {
 export async function runOrderedBatch(
   run: TurnRun,
   calls: readonly BatchCall[],
+  options: { readonly overLimit: boolean },
 ): Promise<BatchEnd> {
   let joined: readonly OwnerMessage[] = [];
   let askedOwner = false;
   for (const [index, item] of calls.entries()) {
+    const state = { joined, ends: askedOwner || options.overLimit };
     // oxlint-disable-next-line eslint/no-await-in-loop -- each call starts after the one before
-    joined = await joinedBefore(run, index, joined);
+    joined = await joinedBefore(run, index, state);
     const reason = skipReason(run, joined);
     if (reason === undefined) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- each call starts after the one before

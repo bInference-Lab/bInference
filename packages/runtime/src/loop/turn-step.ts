@@ -1,5 +1,6 @@
 import type { TurnOutcome } from "@binference/store";
 import type { BatchEnd } from "./batch-call.js";
+import { canMerge } from "./can-merge.js";
 import type { OwnerMessage } from "./model-message.js";
 import { type ModelAnswer, type ModelFault, readModelResponse } from "./read-model-response.js";
 import { markTurn, recordNotRun } from "./record-call.js";
@@ -79,7 +80,7 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
   if (batch.reachedLimit) {
     return { outcome: "loop", status: { line: "toolCallLimit" } };
   }
-  if (batch.joined.length === 0) {
+  if (batch.joined.length === 0 && canMerge(run)) {
     await join(run, await run.parts.merge.take(run.writes));
   }
   return "next";
@@ -87,6 +88,12 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
 
 // Merge point 3: a response with no tool call would end the turn, unless messages wait to join.
 async function afterAnswer(run: TurnRun): Promise<StepEnd> {
+  if (run.halted.aborted) {
+    return endOfHalt(haltOf(run.halted));
+  }
+  if (!canMerge(run)) {
+    return ok;
+  }
   const waiting = await run.parts.merge.take(run.writes);
   await join(run, waiting);
   return waiting.length > 0 ? "next" : ok;
