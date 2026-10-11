@@ -174,12 +174,6 @@ const expectedRules = [
     ],
   },
   { name: "Owner export", method: "exportPrivateKey", action: "ALLOW", conditions: [] },
-  {
-    name: "No EIP-7702 delegation",
-    method: "eth_sign7702Authorization",
-    action: "DENY",
-    conditions: [],
-  },
 ];
 
 function built(request: CeilingRequest): ReturnType<typeof buildCeiling> {
@@ -228,17 +222,13 @@ describe("buildCeiling", () => {
     expect(fakePolicyBodySchema.safeParse(body).success).toBe(true);
   });
 
-  it("denies an EIP-7702 authorization even beside a rule that allows every method", () => {
-    const body = {
+  it("allows no EIP-7702 authorization", () => {
+    const rules = fakePolicyBodySchema.parse({
       version: "1.0",
       name: "binference ceiling",
       chain_type: "ethereum",
-      rules: [
-        ...rulesOf(testCeilingRequest()),
-        { name: "Every call", method: "*", action: "ALLOW", conditions: [onChain] },
-      ],
-    };
-    const rules = fakePolicyBodySchema.parse(body).rules;
+      rules: rulesOf(testCeilingRequest()),
+    }).rules;
     const request = {
       to: router,
       valueWei: 0n,
@@ -248,7 +238,6 @@ describe("buildCeiling", () => {
     };
 
     expect(evaluatePolicy(rules, { ...request, method: "eth_sign7702Authorization" })).toBe("DENY");
-    expect(evaluatePolicy(rules, { ...request, method: "eth_signTransaction" })).toBe("ALLOW");
   });
 
   it("checksums every address and lists each once", () => {

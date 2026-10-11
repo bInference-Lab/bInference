@@ -176,16 +176,6 @@ const ownerExport: PolicyRule = {
   conditions: [],
 };
 
-// A wallet with delegated code would run it on a self call, which the self-cancel rule allows with
-// any calldata: no EIP-7702 authorization is ever signed. Privy denies a method no rule allows;
-// this rule keeps it denied if an allow rule for it is ever added.
-const noDelegation: PolicyRule = {
-  name: "No EIP-7702 delegation",
-  method: "eth_sign7702Authorization",
-  action: "DENY",
-  conditions: [],
-};
-
 function capsChecked(caps: ChainCaps): Result<ChainCaps, CeilingProblem> {
   const all = [caps.native, ...caps.approvals];
   if (all.some((cap) => cap.limitBase < 0n)) {
@@ -262,8 +252,9 @@ export function callRules(chain: CeilingChain): Result<readonly PolicyRule[], Ce
  * 24-hour native cap holds; an `approve` with no native coin to a declared spender, while each
  * capped token's 24-hour cap holds; a native send or a token `transfer` to the rescue address or a
  * saved address; a zero-value transfer to the wallet itself, which cancels a stuck transaction. It
- * lets the owner, never a signer, export the key, and denies every EIP-7702 authorization. Privy
- * denies everything else, typed data and `personal_sign` among it. It holds no `DENY` rule on
+ * lets the owner, never a signer, export the key. Privy denies everything else, typed data,
+ * `personal_sign` and every EIP-7702 authorization among it: no rule names that method, and Privy
+ * refuses a rule without conditions for it (seen on a Privy app, 2026-10-11). It holds no `DENY` rule on
  * calldata: Privy denies every transaction whose calldata such a rule cannot decode, plain sends
  * among them (seen on a Privy app, 2026-10-07).
  */
@@ -290,5 +281,5 @@ export function ceilingRules(
   chains: readonly CeilingChainLists[],
   recipients: readonly string[],
 ): readonly PolicyRule[] {
-  return [...chains.flatMap((item) => chainRules(item, recipients)), ownerExport, noDelegation];
+  return [...chains.flatMap((item) => chainRules(item, recipients)), ownerExport];
 }
