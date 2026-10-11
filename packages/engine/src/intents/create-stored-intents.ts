@@ -18,7 +18,7 @@ import { intentPushes } from "../pushes/intent-pushes.js";
 import type { StoredConfirmation } from "./confirmation-record.js";
 import type { FreezeCommit, FreezeWrite } from "./freeze-write.js";
 import { changeOf, type IntentMove } from "./intent-change-of.js";
-import type { IntentChange } from "./intent-change.js";
+import type { IntentChange, IntentQuery } from "./intent-change.js";
 import { draftOf, type NewIntent } from "./intent-draft-of.js";
 import { closingOf, type IntentHistory, statusOf } from "./intent-history.js";
 import type { IntentRecord } from "./intent-record.js";
@@ -45,6 +45,11 @@ export interface StoredIntents extends ConfirmationStore {
     intent: NewIntent,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<IntentSnapshot, "exists">>;
+  /** The intents in the query's states, the least recently changed first, as the store keeps them. */
+  list(
+    query: IntentQuery,
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly IntentRecord[]>;
   /** The intent as it stands now, or `undefined` for an unknown id. */
   snapshot(
     intent: Id<"int">,
@@ -256,6 +261,7 @@ export function createStoredIntents(options: StoredIntentsOptions): StoredIntent
       intentPushes(commit.value).forEach(options.publish);
       return ok(await written(options, intent.id, signal));
     },
+    list: async (query, { signal }) => options.intents.list(query, { signal }),
     snapshot: async (intent, { signal }) => snapshotOf(options, intent, signal),
     move: async (move, { signal }) => moveIntent(options, move, signal),
     freeze: async (freeze, { signal }) => freezeIntents(options, freeze, signal),

@@ -1,4 +1,3 @@
-import type { ChainRegistry } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { CardLinesView, IntentView, ProtocolErrorCode } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -6,6 +5,7 @@ import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { CardShowings } from "../surfaces/create-card-showings.js";
 import { type AnswerCard, answerError } from "./answer-card.js";
 import { answererOf, type EngineCall, type EngineHandler, proposerOf } from "./engine-call.js";
+import { type IntentListOptions, listIntents } from "./intent-list.js";
 import { intentViewOf } from "./intent-view-of.js";
 
 /** The handlers of the intent operations the engine serves (protocol spec, section 7.4). */
@@ -13,16 +13,16 @@ export interface IntentHandlers {
   readonly "intent/propose": EngineHandler<"intent/propose">;
   readonly "intent/get": EngineHandler<"intent/get">;
   readonly "intent/card": EngineHandler<"intent/card">;
+  readonly "intent/list": EngineHandler<"intent/list">;
   readonly "intent/confirm": EngineHandler<"intent/confirm">;
   readonly "intent/deny": EngineHandler<"intent/deny">;
 }
 
 /** What the intent handlers read, propose and answer through. */
-export interface IntentHandlersOptions {
+export interface IntentHandlersOptions extends IntentListOptions {
   readonly stored: StoredIntents;
   readonly moneyPath: MoneyPath;
   readonly answer: AnswerCard;
-  readonly chains: ChainRegistry;
   /** Draws an intent's open card version, as a surface without buttons shows it. */
   readonly showings: Pick<CardShowings, "newest">;
 }
@@ -98,7 +98,7 @@ async function drawnCard(
 
 /**
  * Creates the intent handlers. `intent/propose` answers with the intent once it waits for the
- * owner or ends; `intent/card` answers its open card version as the engine draws it, line by
+ * owner or ends; `intent/list` pages through the intents (`listIntents`); `intent/card` answers its open card version as the engine draws it, line by
  * line; `intent/confirm` and `intent/deny` answer a card version the caller names and answer with
  * the intent after it, filled on paper when confirmed.
  */
@@ -115,6 +115,7 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
     "intent/get": async ({ args, signal }) =>
       viewOf(options, await options.stored.snapshot(args.intent, { signal })),
     "intent/card": async (call) => drawnCard(options, call),
+    "intent/list": async (call) => listIntents(options, call),
     "intent/confirm": async (call) => answered(options, call, "confirm"),
     "intent/deny": async (call) => answered(options, call, "deny"),
   };
