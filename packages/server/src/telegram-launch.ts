@@ -15,7 +15,7 @@ export interface TelegramLaunch {
 /**
  * Why a launch fails its check: `malformed` for data Telegram never sends (a missing or repeated
  * field, a bad `auth_date` or `user`), `forged` for a signature the bot token did not make, `stale`
- * for an `auth_date` too far from now.
+ * for an `auth_date` too long before now or too far after it.
  */
 export type TelegramLaunchRefusal = "malformed" | "forged" | "stale";
 
@@ -25,8 +25,10 @@ export interface TelegramLaunchCheck {
   readonly initData: string;
   readonly botToken: Secret;
   readonly nowMs: number;
-  /** How far `auth_date` may lie from now, either way. */
+  /** How long before now `auth_date` may lie. */
   readonly maxAgeMs: number;
+  /** How far after now `auth_date` may lie, for a clock a little behind Telegram's. */
+  readonly maxAheadMs: number;
 }
 
 const hashPattern = /^[0-9a-f]{64}$/;
@@ -76,9 +78,9 @@ function signedHash(fields: ReadonlyMap<string, string>, botToken: Secret): stri
 
 /**
  * Checks a Telegram Mini App launch by Telegram's documented rule: the `hash` field must equal the
- * HMAC of the other fields (compared in constant time), `auth_date` must lie within `maxAgeMs` of
- * now, either way, so a clock a little behind Telegram's still signs in, and `user` must carry a
- * numeric id. Whose id it is, and whether the launch was used before, the caller decides.
+ * HMAC of the other fields (compared in constant time), `auth_date` must lie at most `maxAgeMs`
+ * before now and at most `maxAheadMs` after it, so a clock a little behind Telegram's still signs
+ * in, and `user` must carry a numeric id. Whose id it is, and whether the launch was used before, the caller decides.
  */
 export function checkTelegramLaunch(
   check: TelegramLaunchCheck,
@@ -98,7 +100,8 @@ export function checkTelegramLaunch(
     return err("malformed");
   }
   const authDateMs = Number(authDate) * 1_000;
-  if (Math.abs(check.nowMs - authDateMs) > check.maxAgeMs) {
+  const ageMs = check.nowMs - authDateMs;
+  if (ageMs > check.maxAgeMs || -ageMs > check.maxAheadMs) {
     return err("stale");
   }
   return ok({ hash, userId, authDateMs });

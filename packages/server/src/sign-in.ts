@@ -111,8 +111,11 @@ const consoleDeviceScopes: readonly Scope[] = [
 /** The scopes of the Telegram Mini App (protocol spec, section 4.1; decision 0089). */
 const miniAppScopes: readonly Scope[] = ["read", "chat", "confirm", "loosen"];
 
-/** How far a launch's `auth_date` may lie from now (protocol spec, section 4.2). */
+/** How long before now a launch's `auth_date` may lie (protocol spec, section 4.2). */
 const launchMaxAgeMs: number = 5 * 60_000;
+
+/** How far after now a launch's `auth_date` may lie, for clock skew (decision 0166). */
+const launchMaxAheadMs: number = 60_000;
 
 /** How long a Mini App connection lasts after it signed in (decision 0161). */
 const miniAppSessionMs: number = 12 * 60 * 60_000;
@@ -162,6 +165,7 @@ async function signInWithLaunch(
     botToken: miniApp.botToken,
     nowMs: clock.now(),
     maxAgeMs: launchMaxAgeMs,
+    maxAheadMs: launchMaxAheadMs,
   });
   if (!launch.ok) {
     return err(launchRefusals[launch.error]);
@@ -296,10 +300,9 @@ async function signInWithDevice(
  * Creates the sign-in check. A client token signs in over IPC only, by the SHA-256 of its secret,
  * with the scopes stored beside it; over WS it fails with `auth.local_only`. A console device signs
  * in over WS only, by signing a fresh nonce, its connection, its id and the page's origin with its
- * paired key. A Telegram
- * Mini App launch signs in over WS only, with the Mini App's scopes, when Telegram signed its
- * `initData` with the owner's bot token, its `auth_date` lies within 5 minutes of now, the owner's
- * numeric Telegram id opened it, its hash has not signed in within 24 hours, as `engine.sqlite`
+ * paired key. A Telegram Mini App launch signs in over WS only, with the Mini App's scopes, when
+ * Telegram signed its `initData` with the owner's bot token, its `auth_date` lies at most 5 minutes
+ * before now and at most 1 minute after, the owner's numeric Telegram id opened it, its hash has not signed in within 24 hours, as `engine.sqlite`
  * keeps them across restarts, and it brings a live launch ticket `/console` made for the owner,
  * which it spends; its connection ends 12 hours later. A stale launch or an expired ticket is
  * `auth.expired`, any other refusal `auth.invalid`, as is every launch without the owner's bot. An

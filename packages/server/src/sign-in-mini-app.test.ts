@@ -109,6 +109,20 @@ describe("createSignIn for the Telegram Mini App", () => {
     });
   });
 
+  it("takes a launch 1 minute ahead of the clock and refuses one further ahead as expired", async () => {
+    const { signIn, clock, ticket } = setUp(ownerId);
+    const now = clock.now();
+    const atEdge = launchOf({ userId: ownerId, atMs: now + 60_000 });
+    const beyond = launchOf({
+      userId: ownerId,
+      atMs: now + 61_000,
+      query: "AAHdF6IQAAAAAN0XohDhrOre",
+    });
+    const edge = await signIn.start(miniRequest(atEdge, await ticket()), call);
+    const ahead = await signIn.start(miniRequest(beyond, await ticket()), call);
+    expect([edge.ok, ahead]).toStrictEqual([true, { ok: false, error: "auth.expired" }]);
+  });
+
   it("refuses a launch that signed in before, and still takes a new one", async () => {
     const { signIn, clock, ticket } = setUp(ownerId);
     const first = await signIn.start(miniRequest(ownerLaunch, await ticket()), call);

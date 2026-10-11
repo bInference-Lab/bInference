@@ -6,6 +6,7 @@ const botToken = createSecret("7012345678:AAE_fakeTokenForTestsOnly_0123456789ab
 const user = '{"id":279058397,"first_name":"Ada","username":"ada_l","language_code":"en"}';
 const authDateMs = 1_760_000_000_000;
 const maxAgeMs = 5 * 60_000;
+const maxAheadMs = 60_000;
 
 // Known answers: each hash computed apart from this code, from Telegram's documented rule, for
 // the fields below and the test bot token.
@@ -40,7 +41,7 @@ function initDataOf(fields: readonly (readonly [string, string])[], hash: string
 }
 
 function check(initData: string, nowMs = authDateMs + 60_000) {
-  return checkTelegramLaunch({ initData, botToken, nowMs, maxAgeMs });
+  return checkTelegramLaunch({ initData, botToken, nowMs, maxAgeMs, maxAheadMs });
 }
 
 describe("checkTelegramLaunch", () => {
@@ -108,13 +109,21 @@ describe("checkTelegramLaunch", () => {
     expect(check(initDataOf(fields, hash))).toStrictEqual({ ok: false, error: "malformed" });
   });
 
-  it("accepts a launch up to 5 minutes old or ahead of the clock, and refuses it past that", () => {
+  it("accepts a launch up to 5 minutes old, and refuses it past that", () => {
     const initData = initDataOf(plain.fields, plain.hash);
     expect([
+      check(initData, authDateMs).ok,
       check(initData, authDateMs + maxAgeMs).ok,
-      check(initData, authDateMs - maxAgeMs).ok,
       check(initData, authDateMs + maxAgeMs + 1),
-      check(initData, authDateMs - maxAgeMs - 1),
-    ]).toStrictEqual([true, true, { ok: false, error: "stale" }, { ok: false, error: "stale" }]);
+    ]).toStrictEqual([true, true, { ok: false, error: "stale" }]);
+  });
+
+  it("accepts a launch up to 1 minute ahead of the clock, and refuses it past that", () => {
+    const initData = initDataOf(plain.fields, plain.hash);
+    expect([
+      check(initData, authDateMs - maxAheadMs).ok,
+      check(initData, authDateMs - maxAheadMs - 1),
+      check(initData, authDateMs - maxAgeMs),
+    ]).toStrictEqual([true, { ok: false, error: "stale" }, { ok: false, error: "stale" }]);
   });
 });
