@@ -26,3 +26,8 @@ export function withCommon(command: Command, message: (key: string) => string): 
 export function agentOption(message: (key: string) => string): Option {
   return new Option("--agent <id>", message("option.agent")).argParser(idOf("agent"));
 }
+
+/** Collects each `--set key=value` in the order given. */
+export function addSet(value: string, earlier: readonly string[]): readonly string[] {
+  return [...earlier, value];
+}

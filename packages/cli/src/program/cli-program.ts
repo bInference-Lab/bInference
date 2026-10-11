@@ -15,7 +15,7 @@ import {
   startFlagsSchema,
   walletAddressFlagsSchema,
 } from "./cli-flags.schema.js";
-import { agentOption, idOf, withCommon } from "./command-options.js";
+import { addSet, agentOption, idOf, withCommon } from "./command-options.js";
 import { addLimitCommands } from "./limit-commands.js";
 import { addOwnerKeyCommands } from "./owner-key-commands.js";
 import { addSafetyCommands } from "./safety-commands.js";
@@ -31,10 +31,6 @@ function linesOf(value: string): number {
     );
   }
   return lines;
-}
-
-function addSet(value: string, earlier: readonly string[]): readonly string[] {
-  return [...earlier, value];
 }
 
 // Commands that act on one agent: its approval mode, and the switch between paper and live.
