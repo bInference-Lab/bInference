@@ -9,7 +9,9 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), and
-[0157](../DECISIONS.md#d0157).
+[0157](../DECISIONS.md#d0157). Proposed on 2026-10-12 and waiting for the owner's approval: a token
+launch refused in paper mode (section 4), the place of a `buy` or `sell`, exit orders on one
+position and a copy order's own skip (section 5), and invariants 11 to 13.
 
 An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an unfreeze, an
 order fill. It
@@ -117,7 +119,7 @@ The reason stored with `rejected_policy` is one of:
 | Reason                 | When                                                                                                                                                                                                            |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `frozen`               | The agent or the install is frozen                                                                                                                                                                              |
-| `paper_only`           | A live-only action (a send, a bridge, a CEX order, identity) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))                                       |
+| `paper_only`           | A live-only action (a send, a bridge, a CEX order, identity, a token launch) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))                       |
 | `per_trade_cap`        | USD value above the per-trade cap                                                                                                                                                                               |
 | `ceiling`              | Above the wallet's Privy policy, which only the owner can raise ([decision 0085](../DECISIONS.md#d0085), spec 5)                                                                                                |
 | `daily_cap`            | The rolling 24 hours would pass the cap ([decision 0046](../DECISIONS.md#d0046)), each confirmation counted at its judged value ([decision 0136](../DECISIONS.md#d0136))                                        |
@@ -137,7 +139,12 @@ Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `hig
 `low_liquidity`, `sources_down`, `blacklisted`.
 
 Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
-`simulation_reverted`, `effects_differ`, `price_impact`.
+`simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
+token the wallet holds none of, or whose share rounds to zero).
+
+An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
+order's buy that would pass its daily cap for the leader. The skip is an `order_fills` row with its
+reason, reported as `notice.skipped`, like a fill that policy or risk refused.
 
 Failure reasons for `failed_onchain`: `reverted` (a step's receipt has status 0), `stuck_cancelled`
 and `stuck_dropped` (section 6, [decision 0115](../DECISIONS.md#d0115)), `nonce_taken` (section 7)
@@ -233,6 +240,45 @@ and `step_unsent` (a step never signed after an earlier one landed,
   pinned through the launchpad's own API first; the intent waits in `quoted` until the launchpad
   reports the pin (a gateway read before that can break the image for good). Then the create
   transaction, and the first buy when asked, run as steps of one intent.
+  - **In paper mode it is refused** (decided by the owner on 2026-10-10): the policy ends it
+    `rejected_policy` with `paper_only` before any upload, pin, quote or signature. A launch
+    publishes the token's name and picture for good, and a paper token would have no address to
+    trade. Its venue options are checked by the launchpad's plugin when it is proposed, so the
+    refusal shows every setting as checked (spec 4, section 3.6).
+  - A launch never passes the auto test (`kind`), in either mode.
+- **Buy and sell: the place.** `buy` and `sell` name a token, never a venue. At
+  `checked → quoted`, the engine asks each launchpad plugin among the agent's venues whether the
+  token is on its curve now, from the launchpad's own contract at the latest block.
+  - A launchpad that holds the token on its curve takes the trade: the quote and steps come from
+    its curve, and no aggregator is asked, since none can trade a curve token.
+  - When none holds it, because it never launched there or it graduated, the trade goes to the
+    pools through the aggregators, and the best quote wins, as for a `swap`. A Brew token counts as
+    Brew's only when Brew's registry records its launch, and trades in the pools either way.
+  - A token on the curve of a launchpad the agent's venues leave out ends `rejected_policy` with
+    `venue_off`. Two launchpads that both claim one token end it `failed_check` with `no_route`,
+    and the log names both.
+  - A curve trade spends and receives what the launchpad's contract takes, its quote token or the
+    chain's coin as its plugin declares; any other `spend` or `receive` ends `failed_check` with
+    `no_route`.
+  - The place is part of the quote, so the terms hash covers it. A re-quote at the tap that finds
+    another place, because the token graduated meanwhile, opens the next card version, which warns
+    of it. An auto order's fill picks its place the same way at each fill.
+  - A sale by `percentBps` reads what the wallet holds of the token when the quote is built, on
+    chain for a live wallet and from the paper position for a paper one, and sells that share,
+    rounded down.
+- **Exit orders on one position** (decided by the owner on 2026-10-10). An exit order (spec 1,
+  section 8.2) belongs to its position: its wallet, its token and its mode.
+  - The fills of one position's exit orders run one at a time: a trigger whose position has another
+    exit fill that has not settled waits for it, then is judged again on what the position holds.
+  - When an exit order's fill settles (`reconciled` or `paper_filled`) and the position holds none
+    of the token, every other active exit order on it moves to `ended` with the end reason
+    `position_closed`, in the transaction that records the fill. The owner gets one
+    `notice.ordersEnded` for them.
+  - A fill that leaves part of the position ends nothing. The other exit orders stay active, and a
+    share-sized one sells its share of what is left.
+  - An exit order whose trigger fires on a position that holds none of the token, because a sale
+    outside the exit orders emptied it, ends the same way, with `position_closed`, instead of
+    being skipped at each new price; the owner gets `notice.exitEnded`.
 - **CEX orders** run through the Binance plugin: no transaction steps; `executing` means the order
   was sent, `included` that it was accepted, `finalized` that it filled or ended, and `reconciled`
   that the plugin's account reads agree.
@@ -391,3 +437,7 @@ Property tests (fast-check) hold these for every generated history:
    ([decision 0091](../DECISIONS.md#d0091)).
 10. No 24-hour window holds confirmations of one agent in one mode whose values together pass its
     rolling cap ([decision 0136](../DECISIONS.md#d0136)).
+11. No exit order fills after another exit order's fill emptied its position, and two exit fills of
+    one position never run at once.
+12. A sale by `percentBps` never sells more than the wallet held when its quote was built.
+13. A paper launch never uploads, pins or signs anything.
