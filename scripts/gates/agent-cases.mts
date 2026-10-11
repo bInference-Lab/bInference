@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { GateCase, GateStep } from "./gate-case.mjs";
 
@@ -16,12 +16,17 @@ function hook(file: string, expect: "pass" | "fail", output: readonly RegExp[]):
 export function agentCases(repo: string): readonly GateCase[] {
   const banned = readFileSync(join(repo, "config/style/banned-words.txt"), "utf8").split("\n")[0];
   const rules = readFileSync(join(repo, "AGENTS.md"), "utf8");
+  // Every skill folder the repo ships, so the setup case follows new skills.
+  const skills = readdirSync(join(repo, ".agents/skills"), { withFileTypes: true }).filter(
+    (entry) => entry.isDirectory(),
+  ).length;
+  const linked = new RegExp(`links ${String(skills)} skills`);
   return [
     {
       name: "pnpm setup links the skills for Claude Code, twice in a row",
       steps: [
-        { command: ["pnpm", "setup"], expect: "pass", output: [/links 6 skills/] },
-        { command: ["pnpm", "setup"], expect: "pass", output: [/links 6 skills/] },
+        { command: ["pnpm", "setup"], expect: "pass", output: [linked] },
+        { command: ["pnpm", "setup"], expect: "pass", output: [linked] },
       ],
     },
     {
@@ -39,10 +44,12 @@ export function agentCases(repo: string): readonly GateCase[] {
       files: {
         "AGENTS.md": rules.replace(
           "- `write-adr`:",
-          "- `add-chain`: adds a chain.\n- `write-adr`:",
+          "- `add-gate-sample`: a skill that has no folder.\n- `write-adr`:",
         ),
       },
-      steps: [{ command: ["pnpm", "check:layout"], expect: "fail", output: [/skill add-chain/] }],
+      steps: [
+        { command: ["pnpm", "check:layout"], expect: "fail", output: [/skill add-gate-sample/] },
+      ],
     },
     {
       name: "settings without the edit hook fail check:layout",
