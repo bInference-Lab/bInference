@@ -106,7 +106,7 @@ async function checkApp(
 }
 
 /** The signer's settings line: the enabled chains, Privy's origin and each chain's fee cap. */
-export function signerSettingsOf(config: Pick<BinferenceConfig, "chains">): SignerSettings {
+function signerSettingsOf(config: Pick<BinferenceConfig, "chains">): SignerSettings {
   const { enabled, maxFeePerGasGwei } = config.chains;
   const networkFeeCaps = enabled.flatMap((chain) => {
     const cap = maxFeePerGasGwei[chain];

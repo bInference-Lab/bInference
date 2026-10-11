@@ -1,4 +1,4 @@
-import { type AccountRef, accountRefParts, assetRefParts, type Signer } from "@binference/chain";
+import { accountRefParts, assetRefParts, type Signer } from "@binference/chain";
 import {
   createEvmNonceSource,
   createEvmReceiptReader,
@@ -48,7 +48,7 @@ import { forkLimits } from "./executor-rig.js";
 import { forkCustody } from "./fork-trading.js";
 
 /** One agent wallet of the rescue rig: its ids, its key made from fixed words, its address. */
-export interface RescueRigWallet {
+interface RescueRigWallet {
   readonly wallet: Id<"wal">;
   readonly agent: Id<"agt">;
   readonly key: Hex;
@@ -311,9 +311,4 @@ export async function heldOn(
     }),
   ]);
   return { coin, token: held };
-}
-
-/** The account of an address on the fork's chain. */
-export function accountOn(fork: Fork, address: Address): AccountRef {
-  return evmAccountRef(fork.chain, address);
 }

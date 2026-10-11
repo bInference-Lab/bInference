@@ -30,7 +30,7 @@ import { createTestSigner } from "./test-signer.js";
 export const testPassphrase = "correct horse battery staple";
 
 /** What a test's engine starts with besides the machine's fakes. */
-export interface StartParts {
+interface StartParts {
   readonly parts?: HostParts;
   /** The engine's environment; the machine's secrets when left out. */
   readonly env?: Readonly<Record<string, string>>;

@@ -4,7 +4,7 @@ import type { StartSigner } from "../compose/start-signer.js";
 import type { Prompter } from "../term/prompter.js";
 
 /** How this binference was started, so the background service starts it the same way. */
-export interface BinferenceEntry {
+interface BinferenceEntry {
   /** Node's absolute path, `process.execPath`. */
   readonly node: string;
   /** Node's own options, such as a TypeScript loader when it runs from source. */

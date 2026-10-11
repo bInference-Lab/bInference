@@ -68,7 +68,7 @@ export async function findsCardsByRef(subject: IntentStoreSubject): Promise<void
 }
 
 /** The move to `confirmed` records the owner's one confirmation. */
-export async function confirmsOnce(subject: IntentStoreSubject): Promise<void> {
+async function confirmsOnce(subject: IntentStoreSubject): Promise<void> {
   const { store } = subject;
   await awaitingCard(subject);
   const confirm = {

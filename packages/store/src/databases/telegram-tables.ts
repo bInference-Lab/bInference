@@ -2,14 +2,14 @@
 // and migration 0019 adds `telegram_owner`.
 
 /** `telegram_owner`: one row, `id = 1`, the owner's numeric Telegram id once paired. */
-export interface TelegramOwnerTable {
+interface TelegramOwnerTable {
   id: number;
   user_id: number;
   paired_at: number;
 }
 
 /** `card_messages`: one posted copy of a card version, on one surface. */
-export interface CardMessagesTable {
+interface CardMessagesTable {
   card_id: string;
   surface: string;
   chat_id: string | null;

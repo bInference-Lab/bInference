@@ -27,7 +27,7 @@ export interface InstallRecord {
 }
 
 /** The first wallet's label in the engine's records. */
-export const walletLabel = "main";
+const walletLabel = "main";
 
 /**
  * The install's first active agent, or the drafted one made when the install has none, so a run

@@ -5,7 +5,7 @@ import { epochMsSchema, shortTextSchema } from "../records/record-fields.js";
 import { type DocumentCodec, documentCodec } from "./intent-documents.schema.js";
 
 /** An agent an unfreeze lifts the freeze of, by its id and the name its card shows. */
-export interface UnfrozenAgent {
+interface UnfrozenAgent {
   readonly agent: Id<"agt">;
   readonly name: string;
 }

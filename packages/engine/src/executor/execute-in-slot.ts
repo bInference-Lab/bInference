@@ -36,7 +36,7 @@ interface Taken {
 export type SlotOutcome = IncludedSteps | DroppedStep | Retry | undefined;
 
 /** Why the queue left a confirmed intent to try again a block later. */
-export type Retry = "over_fee_cap" | "unprepared";
+type Retry = "over_fee_cap" | "unprepared";
 
 function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefined {
   run.parts.log.warn("executor.not_taken", { intentId: intent, errorCode: problem });
