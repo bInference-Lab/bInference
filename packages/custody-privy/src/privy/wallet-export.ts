@@ -125,6 +125,10 @@ export async function exportWallet(
   if (refusal === "expired") {
     throw privyFault("custody.request_expired", call, outcome);
   }
+  // The ceiling always lets the owner export; a policy that does not is none binference wrote.
+  if (refusal === "policy") {
+    throw privyFault("custody.export_denied", call, outcome);
+  }
   if (outcome.status === 404) {
     return err("not_found");
   }

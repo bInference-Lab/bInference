@@ -4,6 +4,7 @@ import { Chacha20Poly1305 } from "@hpke/chacha20poly1305";
 import { CipherSuite, DhkemP256HkdfSha256, HkdfSha256 } from "@hpke/core";
 import { z } from "zod";
 import { quorumSigned } from "./fake-authorization.js";
+import { evaluatePolicy } from "./fake-policy-engine.js";
 import { answer, failure } from "./fake-privy-answers.js";
 import { expired, signaturesOf, signedHeaders } from "./fake-privy-rpc.js";
 import type { FakePrivyState, FakeWallet } from "./fake-privy-state.js";
@@ -60,10 +61,27 @@ function ownerSigned(
   return owner !== undefined && quorumSigned(owner, payload, signaturesOf(signed.request));
 }
 
+// Privy exports a wallet under a policy only when each of its policies allows `exportPrivateKey`.
+function policiesAllowExport(state: FakePrivyState, wallet: FakeWallet): boolean {
+  const input = {
+    method: "exportPrivateKey",
+    to: wallet.address,
+    valueWei: 0n,
+    chainId: 0n,
+    data: "0x" as const,
+    walletAddress: wallet.address,
+  };
+  return wallet.policyIds.every((id) => {
+    const policy = state.policies.get(id);
+    return policy !== undefined && evaluatePolicy(policy.rules, input) === "ALLOW";
+  });
+}
+
 /**
  * Answers `POST /v1/wallets/<wallet>/export` as Privy's export API does: the wallet must exist,
  * the body must ask for HPKE with a recipient key, the expiry must not have passed, and the
- * wallet's owner must have signed the RFC 8785 payload. It answers the wallet's private key, as
+ * wallet's owner must have signed the RFC 8785 payload, and each policy of the wallet must allow
+ * `exportPrivateKey` (`policy_violation` otherwise). It answers the wallet's private key, as
  * hex text, sealed with HPKE (DHKEM P-256, HKDF-SHA256, ChaCha20-Poly1305) to the recipient key;
  * a recipient key that is no P-256 key is `invalid_data`.
  */
@@ -88,6 +106,9 @@ export async function answerExport(
     return none
       ? failure(401, "missing_or_empty_authorization_header", "No authorization signature.")
       : failure(401, "zero_correct_authorization_signatures", "No valid authorization signature.");
+  }
+  if (!policiesAllowExport(state, wallet)) {
+    return failure(400, "policy_violation", "Policy violation: the request is denied.");
   }
   const body = await sealed(parsed.data.recipient_public_key, wallet.privateKey);
   return body === undefined

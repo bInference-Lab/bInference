@@ -1,7 +1,7 @@
 import { generateKeyPairSync } from "node:crypto";
 import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { setUp } from "../contracts/privy-custody-setup.js";
+import { setUp, testCeiling } from "../contracts/privy-custody-setup.js";
 import {
   createFakeCustodySubject,
   type FakeCustodySubject,
@@ -25,6 +25,22 @@ async function exported() {
     expiresAtMs: subject.clock.now() + 60_000,
   };
   return { subject, setup, recipient, request };
+}
+
+// A wallet of the subject's owner key under the test ceiling without its owner export rule.
+async function walletWithoutExport(subject: FakeCustodySubject): Promise<PrivyId> {
+  const { api, ownerKey } = subject;
+  const owner = await api.createKeyQuorum({ publicKey: ownerKey, displayName: "owner" }, live);
+  const publicKey = await subject.signerProcess.publicKey(live);
+  const signer = await api.createKeyQuorum({ publicKey, displayName: "agent" }, live);
+  const ceiling = testCeiling();
+  const rules = ceiling.rules.filter((rule) => rule.method !== "exportPrivateKey");
+  const policy = await api.createPolicy({ ceiling: { ...ceiling, rules }, owner: owner.id }, live);
+  const wallet = await api.createWallet(
+    { owner: owner.id, signer: signer.id, policy: policy.id },
+    live,
+  );
+  return wallet.id;
 }
 
 async function sealedKey(
@@ -62,6 +78,15 @@ describe("a wallet's export", () => {
     expect(await exportWith({ recipientPublicKey: "AAAA" })).toStrictEqual(
       err("bad_recipient_key"),
     );
+  });
+
+  it("throws for a wallet whose policy does not let its owner export", async () => {
+    const { subject, request } = await exported();
+    const wallet = await walletWithoutExport(subject);
+
+    await expect(subject.api.exportWallet({ ...request, wallet }, live)).rejects.toMatchObject({
+      code: "custody.export_denied",
+    });
   });
 
   it("throws once its expiry has passed", async () => {
