@@ -10,9 +10,11 @@ import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
 import { bsc, bscPriceFeeds } from "@binference/chains";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
+import type { BackupFailure } from "@binference/engine/backups";
 import { ensurePrivateFolder, openLogFile, type Platform } from "@binference/platform";
 import type { ProtocolServer, ServerAddress } from "@binference/server";
 import {
+  createSqliteBackupStore,
   createSqliteEngineStores,
   createSqlitePositionStore,
   createSqliteRiskCacheStore,
@@ -24,6 +26,7 @@ import type { ConfigOutcome } from "../config/validate-config.js";
 import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { Closers } from "./closers.js";
+import { type BackupSources, backUpBeforeMigration, backupPartsOf } from "./compose-backups.js";
 import type { SetUpInstall } from "./compose-lock.js";
 import type { ConfigCell } from "./config-cell.js";
 import { engineEndpoint, engineLogFile } from "./engine-locations.js";
@@ -110,20 +113,33 @@ export async function openEngineLog(opening: Opening, settings: ConfigCell): Pro
 }
 
 /** The store ports on `engine.sqlite`: the engine's, the risk step's cache and the positions. */
-export interface OpenedStores extends EngineStores {
+interface OpenedStores extends EngineStores {
   readonly riskCache: RiskCacheStore;
   /** Executions, arrivals, departures and the positions they move, paper and live. */
   readonly positions: PositionStore;
+  /** The record of each backup, and the database a backup snapshots. */
+  readonly backups: BackupSources;
 }
 
 /**
- * Opens `engine.sqlite` on its store workers, applies its migrations and checks its integrity.
- * Answers the store ports, or `undefined` when the integrity check fails.
+ * The stores, or why `engine.sqlite` did not open: its integrity check, or the backup a migration
+ * waits for.
+ */
+export type OpenedStoresOutcome =
+  | { readonly ok: true; readonly stores: OpenedStores }
+  | { readonly ok: false; readonly refusal: "store_damaged" }
+  | { readonly ok: false; readonly refusal: "backup_failed"; readonly reason: BackupFailure };
+
+/**
+ * Opens `engine.sqlite` on its store workers, backs it up when a migration is ahead, applies its
+ * migrations and checks its integrity. Answers the store ports, or why it stopped: a backup before
+ * a migration that failed, so the migration never ran, or a failed integrity check.
  */
 export async function openEngineStores(
   opening: Opening,
-  logger: EngineLogger,
-): Promise<OpenedStores | undefined> {
+  parts: { readonly logger: EngineLogger; readonly config: BinferenceConfig },
+): Promise<OpenedStoresOutcome> {
+  const { logger } = parts;
   const database = await openDatabase({
     file: opening.platform.stateFolder.engineDatabase,
     worker: engineWorker,
@@ -131,18 +147,27 @@ export async function openEngineStores(
     signal: opening.signal,
   });
   opening.closers.add("store", async () => database.close());
+  const stores = createSqliteEngineStores(database);
+  const backups = { database, install: stores.install, backups: createSqliteBackupStore(database) };
+  const backing = backupPartsOf(opening, backups, logger);
+  const backedUp = await backUpBeforeMigration(backing, parts.config, opening.signal);
+  if (!backedUp.ok) {
+    return { ok: false, refusal: "backup_failed", reason: backedUp.error };
+  }
   await database.migrate({ signal: opening.signal });
   logger.info("store.migrated");
   const integrity = await database.checkIntegrity({ signal: opening.signal });
   if (!integrity.ok) {
     logger.error("store.integrity_failed");
-    return undefined;
+    return { ok: false, refusal: "store_damaged" };
   }
-  return {
-    ...createSqliteEngineStores(database),
+  const opened = {
+    ...stores,
     riskCache: createSqliteRiskCacheStore(database),
     positions: createSqlitePositionStore(database),
+    backups,
   };
+  return { ok: true, stores: opened };
 }
 
 /** The chains this binference serves: BSC on the EVM family. */

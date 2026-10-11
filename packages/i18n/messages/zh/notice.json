@@ -7,6 +7,7 @@
   "signerStopped": "🔴 签名进程已停止，binference 不会签名。请先处理 `binference logs` 显示的问题，再运行 `binference unlock`。",
   "signerRefused": "⚠️ 签名进程拒绝为一笔交易的一个步骤签名：{rule, select, unknown_request {签名进程不认识这个请求} malformed {无法读取这个请求} rule_1 {它的链未启用，或不是这笔链上交易的链} rule_2 {它调用了这笔交易不能使用的合约} rule_3 {金额与这笔交易不符} rule_4 {它要求签名进程从不提供的签名方式} rule_5 {背后的确认或授权已过期或不匹配} rule_6 {它不是对该步骤的普通加速或取消} other {它违反了签名进程的规则}}。该步骤未发送任何内容。",
   "privyUnreachable": "🔴 binference 启动后五分钟内都无法连接 Privy，因此仍处于锁定状态。请检查本机网络，然后运行 `binference unlock`。",
+  "backupFailed": "⚠️ 昨晚的备份失败：{reason, select, no_owner_key {binference 没有可用来加密备份的所有者密钥} snapshot {无法复制数据库} write {无法写入备份文件，请检查磁盘剩余空间} check {回读时发现内容不一致} copy {无法在 backups.copyTo 中写入第二份副本} other {意外故障中断了备份，可在 `binference logs` 中查看}}",
   "unknownTx": "⚠️ {wallet} 的随机数 {nonce} 被一笔非 binference 签名的交易占用",
   "fillDiffers": "⚠️ 一笔交易的成交结果与模拟结果相差超过 1%，请核对该笔交易。",
   "blockShared": "⚠️ {wallet} 的两笔交易在同一个区块上链，持仓和盈亏可能把该区块转入的币重复计算。请检查钱包。",

@@ -125,5 +125,13 @@ Rules for this package:
   does a copied `keys/agent-key` holding the key the wallets name now. On an empty folder,
   `runRebuild` rebuilds the install from what Privy holds, reusing init's steps, and changes
   nothing on Privy before the owner types the number of wallets found.
+- Backups live in `src/backups/` (keys spec, section 7; decision 0055). A backup file is a header
+  line, then a tar archive encrypted in 64 KiB AES-256-GCM chunks under a fresh data key, which
+  HPKE seals to the owner key's public half through `src/hpke/`, the one HPKE module, which the
+  wallet export shares. `takeBackup` snapshots the databases with `VACUUM INTO`, writes, reads the
+  file back with the data key and zeroes it, copies to `backups.copyTo`, marks it verified, then
+  applies retention. `startNightlyBackups` runs it at 03:30 owner time and raises
+  `notice.backupFailed`; `openEngineStores` takes one before a migration, and a failed one stops
+  the start before the migration runs. Crypto comes from `node:crypto` and `@hpke/core` only.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

@@ -22,6 +22,13 @@ function refuse(output: CliOutput, refusal: StartRefusal): ExitCode {
         values: { file: refusal.file },
       });
       break;
+    case "backup_failed":
+      output.fail({
+        code: `backup.${refusal.reason}_failed`,
+        key: "start.backupFailed",
+        values: { file: refusal.file, reason: refusal.reason },
+      });
+      break;
     case "port_taken":
       output.fail({
         code: "server.listen_failed",

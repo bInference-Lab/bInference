@@ -18,7 +18,7 @@ import { headerDigest, headerLine } from "./header-line.js";
 import { type TarFile, writeTar } from "./tar-writer.js";
 
 /** One file a backup holds: its path in the archive and where it is on disk. */
-interface ArchivedFile {
+export interface ArchivedFile {
   readonly path: string;
   readonly from: string;
 }

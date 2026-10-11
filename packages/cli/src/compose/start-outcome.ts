@@ -1,3 +1,4 @@
+import type { BackupFailure } from "@binference/engine/backups";
 import type { ShutdownReport } from "@binference/platform";
 import type { EngineState } from "@binference/protocol";
 import type { ServerAddress } from "@binference/server";
@@ -13,6 +14,12 @@ export type StartRefusal =
       readonly issues: readonly ConfigIssue[];
     }
   | { readonly ok: false; readonly refusal: "store_damaged"; readonly file: string }
+  | {
+      readonly ok: false;
+      readonly refusal: "backup_failed";
+      readonly file: string;
+      readonly reason: BackupFailure;
+    }
   | { readonly ok: false; readonly refusal: "port_taken"; readonly port: number };
 
 /** A self-hosted engine that serves the protocol until its shutdown sequence ends. */

@@ -69,6 +69,7 @@
   "start.alreadyRunning": "binference 已在状态文件夹 {folder} 上运行。请先停止它，或把 BINFERENCE_HOME 设为另一个文件夹。",
   "start.configInvalid": "{file} 有 {count, plural, other {# 个问题}}。请逐一修复，然后再启动。",
   "start.storeDamaged": "数据库 {file} 未通过完整性检查。请恢复一份备份，然后再启动。",
+  "start.backupFailed": "binference 没有更新数据库 {file}：更新前的备份失败，原因是{reason, select, snapshot {无法复制数据库} write {无法写入备份文件，请检查磁盘剩余空间} check {回读时发现内容不一致} other {出现了故障，可在 `binference logs` 中查看}}。处理后请重新启动。",
   "start.portTaken": "端口 {port} 已被其他程序占用。请停止那个程序，或在 config.json5 中把 `engine.port` 设为空闲端口。",
   "command.stop": "停止引擎；你登录时，后台服务会再次启动它",
   "command.restart": "停止引擎，然后以后台服务再次启动它",

@@ -4,6 +4,7 @@ import { privyUnreachableNotice } from "@binference/engine/install";
 import { createShutdown, type ShutdownReport, watchFile } from "@binference/platform";
 import type { LockReason } from "../unlock/unlock-keys.js";
 import { type BotChannel, startBotChannel } from "./bot-channel.js";
+import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { startConfigReload } from "./config-reload.js";
 import { startGasCheckTimer } from "./gas-check-timer.js";
@@ -39,7 +40,7 @@ function isUnreachable(unlocked: Result<void, LockReason>): boolean {
   return !unlocked.ok && unlocked.error === "custody_unreachable";
 }
 
-// What runs while the engine serves: the settle timer, the gas check, the reload of
+// What runs while the engine serves: the settle timer, the gas check, the nightly backup, the reload of
 // `config.json5` when it changes (decision 0118), and the retries of the signer step after a start
 // that found Privy out of reach (decision 0119).
 function startTimers(
@@ -54,6 +55,12 @@ function startTimers(
   const timers = { isLocked: () => lock.isLocked(), clock: host.clock, closers, logger };
   startSettleTimer({ settle: composed.settle, ...timers });
   startGasCheckTimer({ checkGas: composed.checkGas, ...timers });
+  const backups = backupPartsOf(opening, opened.stores.backups, logger);
+  startNightlyBackups(opening, {
+    parts: backups,
+    settings: opened.settings,
+    publish: composed.publish,
+  });
   startConfigReload({
     file: opening.platform.stateFolder.configFile,
     readConfig: opened.readConfig,

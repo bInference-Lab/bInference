@@ -22,6 +22,10 @@ const keysReadOnEachUse: ReadonlySet<string> = new Set([
   "owner.locale",
   "owner.timezone",
   "logging.level",
+  "backups.daily",
+  "backups.keepDaily",
+  "backups.keepWeekly",
+  "backups.copyTo",
 ]);
 
 /** One value of the config: its JSON to compare, and what the journal shows. */

@@ -69,6 +69,7 @@
   "start.alreadyRunning": "binference already runs on the state folder {folder}. Stop it first, or set BINFERENCE_HOME to another folder.",
   "start.configInvalid": "{file} has {count, plural, one {# problem} other {# problems}}. Fix each one, then start again.",
   "start.storeDamaged": "The database {file} failed its integrity check. Restore a backup, then start again.",
+  "start.backupFailed": "binference did not update the database {file}: the backup it takes first failed, because {reason, select, snapshot {the database could not be copied} write {the backup file could not be written; check the disk's free space} check {reading it back found a part that does not match} other {of a fault `binference logs` shows}}. Fix that, then start again.",
   "start.portTaken": "Port {port} is in use by another program. Stop that program, or set `engine.port` in config.json5 to a free port.",
   "command.stop": "Stop the engine; the background service starts it again when you log in",
   "command.restart": "Stop the engine, then start it again as the background service",

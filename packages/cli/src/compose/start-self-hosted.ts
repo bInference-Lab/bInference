@@ -107,10 +107,17 @@ async function openStoresAndServe(
   opened: Omit<Opened, "stores" | "install">,
 ): Promise<StartOutcome> {
   const { host, platform, signal } = opening;
-  const stores = await openEngineStores(opening, opened.log.logger);
-  if (stores === undefined) {
-    return { ok: false, refusal: "store_damaged", file: platform.stateFolder.engineDatabase };
+  const openedStores = await openEngineStores(opening, {
+    logger: opened.log.logger,
+    config: opened.config,
+  });
+  const file = platform.stateFolder.engineDatabase;
+  if (!openedStores.ok) {
+    return openedStores.refusal === "store_damaged"
+      ? { ok: false, refusal: "store_damaged", file }
+      : { ok: false, refusal: "backup_failed", file, reason: openedStores.reason };
   }
+  const { stores } = openedStores;
   await ensureCliToken({
     access: stores.access,
     file: cliTokenFile(platform.stateFolder),
