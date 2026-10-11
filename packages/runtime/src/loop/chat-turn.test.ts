@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
+import type { RecordedStep } from "../testing/turn-recorder.js";
 import type { ModelEvent } from "./model-event.js";
 import { createTestTurn, ownerMessage, type TestTool } from "./test-turns.js";
 
@@ -225,5 +226,52 @@ describe("createChatTurn", () => {
       ran: true,
       outside: false,
     });
+  });
+});
+
+function resultTexts(steps: readonly RecordedStep[]): readonly string[] {
+  return steps.flatMap((step) => (step.kind === "result" ? [step.text] : []));
+}
+
+function cutOffCalls(count: number): ModelEvent[] {
+  const calls = Array.from({ length: count }, (_unused, index): ModelEvent[] => [
+    { type: "toolCallStart", index, id: `cut${String(index)}`, name: "portfolio" },
+    { type: "toolCallDelta", index, delta: '{"wal' },
+  ]);
+  return [...calls.flat(), { type: "done", stop: "length", usage }];
+}
+
+describe("a response cut off at its output limit", () => {
+  it("sends its calls back with empty arguments, never their half-written text", async () => {
+    const { turn, transport } = createTestTurn({
+      replies: [cutOffCalls(1), textReply("Shorter now.")],
+      tools: [portfolio],
+    });
+    await turn.run();
+    expect(transport.requests[1]?.messages[1]).toStrictEqual({
+      role: "agent",
+      text: "",
+      reasoning: "",
+      toolCalls: [{ id: "cut0", name: "portfolio", argumentsText: "{}" }],
+    });
+  });
+
+  it("ends the turn loop when its calls go past the 25th, which get the limit's result", async () => {
+    const reads = Array.from({ length: 24 }, (_unused, index) => ({
+      id: `r${String(index)}`,
+      name: "portfolio",
+    }));
+    const { turn, recorder, transport } = createTestTurn({
+      replies: [callsReply(reads), cutOffCalls(3), textReply("never")],
+      tools: [portfolio],
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "loop", toolCalls: 27 });
+    expect(resultTexts(recorder.steps).slice(24)).toStrictEqual([
+      "not run: the response reached its output limit before this call was complete",
+      "not run: the turn reached its tool call limit",
+      "not run: the turn reached its tool call limit",
+    ]);
+    expect(recorder.steps).toContainEqual({ kind: "status", line: { line: "toolCallLimit" } });
+    expect(transport.requests).toHaveLength(2);
   });
 });

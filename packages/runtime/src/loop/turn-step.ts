@@ -1,10 +1,10 @@
 import type { TurnOutcome } from "@binference/store";
 import type { BatchEnd } from "./batch-call.js";
 import { canMerge } from "./can-merge.js";
-import type { OwnerMessage } from "./model-message.js";
+import type { OwnerMessage, ToolCall } from "./model-message.js";
 import { type ModelAnswer, type ModelFault, readModelResponse } from "./read-model-response.js";
-import { markTurn, recordNotRun } from "./record-call.js";
-import { runToolBatch } from "./tool-batch.js";
+import { markTurn } from "./record-call.js";
+import { runCutOffBatch, runToolBatch } from "./tool-batch.js";
 import { endOfHalt, haltOf } from "./turn-halt.js";
 import type { TurnStatusLine } from "./turn-ports.js";
 import type { TurnRun } from "./turn-run.js";
@@ -32,6 +32,14 @@ async function join(run: TurnRun, messages: readonly OwnerMessage[]): Promise<vo
   }
 }
 
+// A call cut off at the output limit may hold half its arguments, which no provider reads back:
+// the conversation carries it with empty arguments, beside its "not run" result.
+function sentBack(answer: ModelAnswer): readonly ToolCall[] {
+  return answer.stop === "length"
+    ? answer.toolCalls.map((call) => ({ ...call, argumentsText: "{}" }))
+    : answer.toolCalls;
+}
+
 // What the model wrote stays in the transcript and the conversation, cut off or failed alike.
 async function keepResponse(run: TurnRun, response: ModelAnswer | ModelFault): Promise<void> {
   if (!response.ok && response.text === "" && response.reasoning === "") {
@@ -41,7 +49,7 @@ async function keepResponse(run: TurnRun, response: ModelAnswer | ModelFault): P
     { text: response.text, reasoning: response.reasoning },
     run.writes,
   );
-  const toolCalls = response.ok ? response.toolCalls : [];
+  const toolCalls = response.ok ? sentBack(response) : [];
   run.messages.push({
     role: "agent",
     text: response.text,
@@ -106,23 +114,13 @@ async function afterAnswer(run: TurnRun): Promise<StepEnd> {
   return waiting.length > 0 ? "next" : ok;
 }
 
-// A response cut off at its output limit may hold a call whose arguments never ended: none runs.
-async function cutOff(run: TurnRun, answer: ModelAnswer): Promise<BatchEnd> {
-  run.tally.countToolCalls(answer.toolCalls.length);
-  for (const call of answer.toolCalls) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- results keep the calls' order
-    await recordNotRun(run, call, "cut_off");
-  }
-  return { askedOwner: false, joined: [], reachedLimit: false };
-}
-
 async function onAnswer(run: TurnRun, answer: ModelAnswer): Promise<StepEnd> {
   if (answer.toolCalls.length === 0) {
     return afterAnswer(run);
   }
   const batch =
     answer.stop === "length"
-      ? await cutOff(run, answer)
+      ? await runCutOffBatch(run, answer.toolCalls)
       : await runToolBatch(run, answer.toolCalls);
   return afterBatch(run, batch);
 }
