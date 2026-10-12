@@ -39,5 +39,5 @@ export async function connectEngine(
     logger: context.logger,
   });
   await client.connect(context.signal);
-  return { chat: createProtocolEngineChat(client), close: () => client.close() };
+  return { chat: createProtocolEngineChat(client), client, close: () => client.close() };
 }

@@ -131,7 +131,7 @@ cancels only its own agent's intents and orders, and shows a token the registry 
 "unlisted token", except in `token_info`, whose result is then outside content. A proposal sends
 the call's key as its idempotency key and answers the intent's or order's id and that it waits for
 the owner; a refusal the engine answered is an error result, and any other failure leaves the
-outcome unknown, so it is never sent again.
+outcome unknown, so it is never sent again. The built runtime gives every turn these tools.
 
 ## Example
 

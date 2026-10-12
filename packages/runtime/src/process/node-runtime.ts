@@ -2,7 +2,7 @@ import process from "node:process";
 import manifest from "@binference/runtime/package.json" with { type: "json" };
 import { turnLimits } from "../loop/turn-run.js";
 import { modelTransportFor, type ProviderParts } from "../providers/model-transport-for.js";
-import { createToolBox } from "../tools/create-tool-box.js";
+import { agentToolBox } from "../tools/agent-tools.js";
 import { connectEngine } from "./engine-link.js";
 import { createNodeStreamingHttp } from "./node-streaming-http.js";
 import { processPorts } from "./process-ports.js";
@@ -25,11 +25,12 @@ async function writeLine(line: string): Promise<void> {
   });
 }
 
-// The turns of the built runtime: the main model of the settings in force, and no tool yet.
+// The turns of the built runtime: the main model of the settings in force, and the agent's tools
+// over the runtime's connection to the engine.
 function builtTurnSetup(parts: ProviderParts): RuntimeHost["turnSetup"] {
-  return (_agent, settings) => ({
+  return (agent, settings, client) => ({
     transport: modelTransportFor(settings.models, "main", parts),
-    tools: createToolBox([]),
+    tools: agentToolBox({ agent, client }),
     instructions: "",
     limits: { ...turnLimits, maxToolCalls: settings.models.maxToolCallsPerTurn },
   });
@@ -38,8 +39,8 @@ function builtTurnSetup(parts: ProviderParts): RuntimeHost["turnSetup"] {
 /**
  * Runs the agent runtime as its own Node process, on its standard input and output (runtime spec,
  * section 2): the engine's IPC link, `agent.sqlite` on the store's workers, the process's clock,
- * and the turns' model and tools: the settings' main model over the process's own outbound HTTP,
- * unless a test gives turns of its own. Sets the exit code when it ends.
+ * and the turns' model and tools: the settings' main model over the process's own outbound HTTP
+ * and the agent's tools over the engine link, unless a test gives turns of its own. Sets the exit code when it ends.
  */
 export async function runNodeRuntime(
   parts: { readonly turnSetup?: RuntimeHost["turnSetup"] } = {},

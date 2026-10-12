@@ -10,6 +10,7 @@ import {
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { EngineChat } from "../relay/ports.js";
+import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
 import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
 
@@ -17,6 +18,8 @@ import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./r
 export interface EngineLink {
   /** The engine's side of chat over this connection. */
   readonly chat: EngineChat;
+  /** The operations the agents' tools call over this connection. */
+  readonly client: ToolClient;
   /** Closes the connection; the runtime holds no other. */
   close(): void;
 }
@@ -31,8 +34,15 @@ export interface RuntimeHost {
   readonly connect: (start: StartLine, signal: AbortSignal) => Promise<EngineLink>;
   /** Opens `agent.sqlite` at the start line's path and migrates it. */
   readonly openAgentDatabase: (path: string, signal: AbortSignal) => Promise<AgentDatabase>;
-  /** What an agent's next turn runs with under the settings in force. */
-  readonly turnSetup: (agent: Id<"agt">, settings: RuntimeSettings) => TurnSetup;
+  /**
+   * What an agent's next turn runs with under the settings in force, its tools calling the engine
+   * through the given client.
+   */
+  readonly turnSetup: (
+    agent: Id<"agt">,
+    settings: RuntimeSettings,
+    client: ToolClient,
+  ) => TurnSetup;
   readonly clock: Clock;
   /** Calls `onTick` every 10 seconds until the signal aborts: when the runtime writes its health. */
   readonly everyTenSeconds: (onTick: () => Promise<void>, signal: AbortSignal) => void;
@@ -195,7 +205,7 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     prepared: connected.prepared,
     engine: connected.link.chat,
     settings: () => settings.current,
-    setup: host.turnSetup,
+    setup: (agent, current) => host.turnSetup(agent, current, connected.link.client),
     clock: host.clock,
     lifetime,
   });

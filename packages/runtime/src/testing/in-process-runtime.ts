@@ -1,4 +1,4 @@
-import type { Clock } from "@binference/core";
+import { BinferenceError, type Clock } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import {
   createMemoryAgentDatabase,
@@ -13,6 +13,7 @@ import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
 import { type EngineLink, type RuntimeHost, runRuntime } from "../process/run-runtime.js";
+import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
 import { nthTestId } from "./memory-agent-stores.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
@@ -68,6 +69,17 @@ function memoryDatabase(database: MemoryAgentDatabase): AgentDatabase {
   };
 }
 
+// The test tools reach no engine operation: a call through the link is refused.
+const unservedClient: ToolClient = {
+  call: async () =>
+    Promise.reject(
+      new BinferenceError({
+        code: "protocol.unknown_op",
+        message: "The runtime in the test's process serves no tool call.",
+      }),
+    ),
+};
+
 // A sign-in as the options shape it: at once, refused, or never ending until it is abandoned.
 async function signIn(
   options: InProcessRuntimeOptions & { readonly engine: MemoryEngineChat },
@@ -79,7 +91,7 @@ async function signIn(
   if (options.refusesSignIn === true) {
     throw new Error("The engine refused the token.");
   }
-  return { chat: options.engine, close: () => undefined };
+  return { chat: options.engine, client: unservedClient, close: () => undefined };
 }
 
 // The runtime's exit code, settled once by whichever comes first: its end or a kill.

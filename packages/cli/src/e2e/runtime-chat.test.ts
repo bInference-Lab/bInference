@@ -5,6 +5,7 @@ import { realFilePath, startNodeProgram, writePrivateFile } from "@binference/pl
 import type { AgentView, PushFrame } from "@binference/protocol";
 import { type StandInModelServer, startStandInModelServer } from "@binference/runtime/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import { configText, type InitMachine, secretEnv } from "./init-fixtures.js";
 import { connectClient, noPermissions } from "./test-host.js";
@@ -102,6 +103,11 @@ async function standInProvider(): Promise<StandInModelServer> {
   servers.push(server);
   return server;
 }
+
+// The tools a request to the model declares, by name.
+const toolsSchema = z.object({
+  tools: z.array(z.object({ function: z.object({ name: z.string() }) })),
+});
 
 // Points the machine's main model at the stand-in, its key read from the engine's environment.
 async function useProvider(machine: InitMachine, server: StandInModelServer): Promise<void> {
@@ -201,6 +207,20 @@ describe("the chat relay to the agent runtime process", () => {
           max_completion_tokens: 4096,
           stream: true,
         },
+      ]);
+      const [sent] = server.requests.map(({ body }) => toolsSchema.parse(JSON.parse(body)));
+      expect(sent?.tools.map((tool) => tool.function.name)).toStrictEqual([
+        "portfolio",
+        "token_info",
+        "token_risk",
+        "quote",
+        "orders",
+        "tx_status",
+        "swap",
+        "buy",
+        "sell",
+        "order_create",
+        "order_cancel",
       ]);
     },
   );
