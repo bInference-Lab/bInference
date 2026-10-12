@@ -40,7 +40,7 @@ export const agentToolTexts: Readonly<Record<AgentToolName, string>> = {
   swap: `Proposes a swap of one token for another from this agent's wallet: amount in base units of from, or percentBps of the wallet's balance of it. ${reason} ${waits} ${once} ${ids} ${units}`,
   buy: `Proposes buying a token with spend, an amount of the chain's coin or a stablecoin: the engine buys on the token's launchpad curve while it trades there, and in the pools after. ${reason} ${waits} ${once} ${ids} ${units}`,
   sell: `Proposes selling a token from this agent's wallet: amount in base units, or percentBps of the position, for receive or the engine's default asset. ${reason} ${waits} ${once} ${ids} ${units}`,
-  order_create: `Proposes an auto order (limit, takeProfit, stopLoss, trailing, dca or copy) with its trigger and the bounds each fill stays inside. Prices are micro-dollars per whole token. ${waits} Once confirmed, each fill runs inside those bounds without another card. ${once} ${ids} ${units}`,
+  order_create: `Proposes an auto order (limit, takeProfit, stopLoss, trailing, dca or copy) with its trigger and the bounds each fill stays inside. Prices are micro-dollars per whole token. ${reason} ${waits} Once confirmed, each fill runs inside those bounds without another card. ${once} ${ids} ${units}`,
   order_cancel:
     "Cancels one of this agent's auto orders by its id, at once and without a card: it only stops fills that have not happened. Use it when the owner asks, or when the order's reason is gone.",
 };

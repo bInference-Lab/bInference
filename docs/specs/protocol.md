@@ -4,7 +4,8 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 [decision 0088](../DECISIONS.md#d0088) and [decision 0089](../DECISIONS.md#d0089); custody
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
-[0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134) and [0155](../DECISIONS.md#d0155);
+[0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155) and
+[0177](../DECISIONS.md#d0177);
 the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
@@ -648,6 +649,10 @@ rule.
 ### 8.2 Auto order requests
 
 `{ agent, wallet?, kind, token, side, size, trigger, worstPrice?, maxSlippageBps?, expiresAt?, maxFills? }`
+
+`reason?` is the agent's words on why, as an intent request's `reason`: the order's card shows it
+as what the agent says, escaped ([decision 0177](../DECISIONS.md#d0177)). The agent runtime always
+sends one; another client may leave it out.
 
 | `kind`       | `trigger`                                                                                                                                                |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |

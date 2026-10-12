@@ -91,6 +91,7 @@ export type {
   DcaOrderRequest,
   FillBounds,
   LimitOrderRequest,
+  OrderBase,
   OrderRequest,
   OrderTerms,
   StopLossOrderRequest,

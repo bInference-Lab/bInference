@@ -21,6 +21,13 @@ function engineError(code: `${string}.${string}`): BinferenceError {
 }
 
 describe("a propose tool", () => {
+  it("refuses an auto order without the agent's reason before the engine", () => {
+    const { reason: _reason, ...withoutReason } = stopLoss;
+    const run = callTool({}, { name: "order_create", args: { order: withoutReason } });
+    expect(run.refused).toMatch(/^not run: the arguments do not match/);
+    expect(run.client.calls()).toStrictEqual([]);
+  });
+
   it("answers the intent's id and that it waits for the owner", async () => {
     const run = callTool({ "intent/propose": intentWire("awaiting_confirmation") }, swap);
     await expect(run.outcome).resolves.toStrictEqual({

@@ -30,32 +30,41 @@ export interface FillBounds {
   readonly maxFills?: number;
 }
 
+/** What every auto order request carries besides its bounds. */
+export interface OrderBase extends FillBounds {
+  /**
+   * The agent's words on why, shown on the order's card as what the agent says, escaped and cut
+   * to 200 characters. A client other than the agent may leave it out.
+   */
+  readonly reason?: string;
+}
+
 /** Fills when the price crosses `price` in `direction`. */
-export interface LimitOrderRequest extends FillBounds {
+export interface LimitOrderRequest extends OrderBase {
   readonly kind: "limit";
   readonly trigger: { readonly price: bigint; readonly direction: "above" | "below" };
 }
 
 /** Fills when the price rises to `price`. */
-export interface TakeProfitOrderRequest extends FillBounds {
+export interface TakeProfitOrderRequest extends OrderBase {
   readonly kind: "takeProfit";
   readonly trigger: { readonly price: bigint };
 }
 
 /** Fills when the price falls to `price`. */
-export interface StopLossOrderRequest extends FillBounds {
+export interface StopLossOrderRequest extends OrderBase {
   readonly kind: "stopLoss";
   readonly trigger: { readonly price: bigint };
 }
 
 /** Fills when the price moves `distanceBps` back from its best since the order started. */
-export interface TrailingOrderRequest extends FillBounds {
+export interface TrailingOrderRequest extends OrderBase {
   readonly kind: "trailing";
   readonly trigger: { readonly distanceBps: Bps };
 }
 
 /** Fills on a cron schedule, `count` times when set. */
-export interface DcaOrderRequest extends FillBounds {
+export interface DcaOrderRequest extends OrderBase {
   readonly kind: "dca";
   readonly trigger: {
     readonly cron: string;
@@ -66,7 +75,7 @@ export interface DcaOrderRequest extends FillBounds {
 }
 
 /** Copies a leader wallet's buys; sells mirror the share the leader sold. */
-export interface CopyOrderRequest extends FillBounds {
+export interface CopyOrderRequest extends OrderBase {
   readonly kind: "copy";
   readonly trigger: {
     readonly leader: AccountRef;
@@ -87,8 +96,11 @@ export type OrderRequest =
 /** One kind of order's terms, without the agent and wallet that act. */
 type TermsOf<Request> = Request extends unknown ? Omit<Request, "agent" | "wallet"> : never;
 
-/** An auto order's terms: what the agent names, without who acts, which its runtime fills. */
-export type OrderTerms = TermsOf<OrderRequest>;
+/**
+ * An auto order's terms: what the agent names, without who acts, which its runtime fills. The
+ * agent always gives its reason.
+ */
+export type OrderTerms = TermsOf<OrderRequest & { readonly reason: string }>;
 
 /** What `webhookRule/create` asks for: a named rule whose alerts fill inside its bounds. */
 export interface WebhookRuleRequest extends FillBounds {
@@ -110,6 +122,9 @@ const fillBounds = {
   wallet: protocolIdSchema("wallet").exactOptional(),
   ...boundsFields,
 };
+const reason = z.string().min(1);
+const orderBase = { ...fillBounds, reason: reason.exactOptional() };
+const termsBase = { ...boundsFields, reason };
 
 const price = decimalStringSchema;
 
@@ -139,12 +154,12 @@ const copyFields = {
     dailyUsdMicros: decimalStringSchema,
   }),
 };
-const limitShape = { ...fillBounds, ...limitFields };
-const takeProfitShape = { ...fillBounds, ...takeProfitFields };
-const stopLossShape = { ...fillBounds, ...stopLossFields };
-const trailingShape = { ...fillBounds, ...trailingFields };
-const dcaShape = { ...fillBounds, ...dcaFields };
-const copyShape = { ...fillBounds, ...copyFields };
+const limitShape = { ...orderBase, ...limitFields };
+const takeProfitShape = { ...orderBase, ...takeProfitFields };
+const stopLossShape = { ...orderBase, ...stopLossFields };
+const trailingShape = { ...orderBase, ...trailingFields };
+const dcaShape = { ...orderBase, ...dcaFields };
+const copyShape = { ...orderBase, ...copyFields };
 const webhookRuleShape = { ...fillBounds, name: z.string().min(1).max(64) };
 
 /** Parses the args of `order/create`. Unknown fields are refused. */
@@ -162,12 +177,12 @@ export const orderRequestSchema: z.ZodType<OrderRequest> = z.discriminatedUnion(
  * runtime fills for its agent. Unknown fields, a wallet among them, are refused.
  */
 export const orderTermsSchema: z.ZodType<OrderTerms> = z.discriminatedUnion("kind", [
-  z.strictObject({ ...boundsFields, ...limitFields }),
-  z.strictObject({ ...boundsFields, ...takeProfitFields }),
-  z.strictObject({ ...boundsFields, ...stopLossFields }),
-  z.strictObject({ ...boundsFields, ...trailingFields }),
-  z.strictObject({ ...boundsFields, ...dcaFields }),
-  z.strictObject({ ...boundsFields, ...copyFields }),
+  z.strictObject({ ...termsBase, ...limitFields }),
+  z.strictObject({ ...termsBase, ...takeProfitFields }),
+  z.strictObject({ ...termsBase, ...stopLossFields }),
+  z.strictObject({ ...termsBase, ...trailingFields }),
+  z.strictObject({ ...termsBase, ...dcaFields }),
+  z.strictObject({ ...termsBase, ...copyFields }),
 ]);
 
 /** Parses an order request as an order view carries it, dropping fields a newer engine adds. */

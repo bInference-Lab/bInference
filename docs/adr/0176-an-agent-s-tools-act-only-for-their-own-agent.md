@@ -1,6 +1,6 @@
 # 0176. An agent's tools act only for their own agent
 
-Status: Accepted
+Status: Amended by 0177
 
 Accepted by the owner on 2026-10-12.
 

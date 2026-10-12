@@ -15965,6 +15965,10 @@
                   "minimum": 1,
                   "maximum": 9007199254740991
                 },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "kind": {
                   "type": "string",
                   "const": "limit"
@@ -16081,6 +16085,10 @@
                   "minimum": 1,
                   "maximum": 9007199254740991
                 },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "kind": {
                   "type": "string",
                   "const": "takeProfit"
@@ -16188,6 +16196,10 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
                 },
                 "kind": {
                   "type": "string",
@@ -16297,6 +16309,10 @@
                   "minimum": 1,
                   "maximum": 9007199254740991
                 },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
                 "kind": {
                   "type": "string",
                   "const": "trailing"
@@ -16403,6 +16419,10 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
                 },
                 "kind": {
                   "type": "string",
@@ -16522,6 +16542,10 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
                 },
                 "kind": {
                   "type": "string",
@@ -16713,6 +16737,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "limit"
@@ -16828,6 +16856,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "takeProfit"
@@ -16934,6 +16966,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -17042,6 +17078,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "trailing"
@@ -17147,6 +17187,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -17265,6 +17309,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -17571,6 +17619,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "limit"
@@ -17686,6 +17738,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "takeProfit"
@@ -17792,6 +17848,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -17900,6 +17960,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "trailing"
@@ -18005,6 +18069,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -18123,6 +18191,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -18452,6 +18524,10 @@
                             "minimum": 1,
                             "maximum": 9007199254740991
                           },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          },
                           "kind": {
                             "type": "string",
                             "const": "limit"
@@ -18567,6 +18643,10 @@
                             "minimum": 1,
                             "maximum": 9007199254740991
                           },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          },
                           "kind": {
                             "type": "string",
                             "const": "takeProfit"
@@ -18673,6 +18753,10 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
                           },
                           "kind": {
                             "type": "string",
@@ -18781,6 +18865,10 @@
                             "minimum": 1,
                             "maximum": 9007199254740991
                           },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          },
                           "kind": {
                             "type": "string",
                             "const": "trailing"
@@ -18886,6 +18974,10 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
                           },
                           "kind": {
                             "type": "string",
@@ -19004,6 +19096,10 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
                           },
                           "kind": {
                             "type": "string",
@@ -19358,6 +19454,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "limit"
@@ -19473,6 +19573,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "takeProfit"
@@ -19579,6 +19683,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -19687,6 +19795,10 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "kind": {
                       "type": "string",
                       "const": "trailing"
@@ -19792,6 +19904,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",
@@ -19910,6 +20026,10 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "kind": {
                       "type": "string",

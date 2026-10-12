@@ -4,7 +4,8 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0101](../DECISIONS.md#d0101), [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103),
 [0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115),
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
-[0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128) and [0134](../DECISIONS.md#d0134).
+[0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134) and
+[0177](../DECISIONS.md#d0177).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
@@ -321,6 +322,8 @@ above {price}" or "at or below {price}" / 「价格达到或高于 {price}」 or
 
 - `{leader}` is the leader wallet's address book label, else its short address
   (`0x12ab…cd34`).
+- An auto order's card carries the "Agent says" line (`card.reason`) when its request has a
+  `reason` (spec 1, section 8.2), in the same place as an intent's card.
 - An exit order's card carries `card.order.exitsLinked` when its position already has another
   active exit order, so the owner knows a full sale by one ends the others
   ([spec 6, section 5](intent-states.md#section-5)).

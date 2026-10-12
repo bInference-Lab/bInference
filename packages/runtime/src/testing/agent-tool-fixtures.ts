@@ -61,6 +61,7 @@ export const stopLoss: WireObject = {
   side: "sell",
   size: { percentBps: 10_000 },
   trigger: { price: "500000" },
+  reason: "Cut the loss if the price falls through the last low.",
 };
 
 /** A call's context, its key as the loop names a turn's first call. */

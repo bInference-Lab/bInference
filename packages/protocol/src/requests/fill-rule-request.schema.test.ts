@@ -53,6 +53,13 @@ describe("orderRequestSchema", () => {
     expect(orderRequestSchema.safeParse(order).success).toBe(false);
   });
 
+  it("takes the agent's reason, and an order without one", () => {
+    const reasoned = { ...orders[2][1], reason: "Cut the loss below the last low." };
+    expect(orderRequestSchema.parse(reasoned)).toMatchObject({ reason: reasoned.reason });
+    expect(orderRequestSchema.parse(orders[2][1])).not.toHaveProperty("reason");
+    expect(orderRequestSchema.safeParse({ ...orders[2][1], reason: "" }).success).toBe(false);
+  });
+
   it("reads a stored order with a field a newer engine adds, and drops the field", () => {
     const stored = { ...orders[3][1], note: "x" };
     expect(readOrderRequestSchema.parse(stored)).not.toHaveProperty("note");
@@ -70,11 +77,19 @@ describe("webhookRuleRequestSchema", () => {
   it("refuses a rule without a name", () => {
     expect(webhookRuleRequestSchema.safeParse(bounds).success).toBe(false);
   });
+
+  it("refuses a reason: the owner makes a rule, not the agent", () => {
+    const rule = { ...bounds, name: "breakout", reason: "x" };
+    expect(webhookRuleRequestSchema.safeParse(rule).success).toBe(false);
+  });
 });
 
 describe("orderTermsSchema", () => {
+  const reason = "The owner asked for it.";
+
   it.each(orders)("takes a %s order without who acts, and makes it back", (_name, order) => {
-    const { agent: _agent, ...terms } = order;
+    const { agent: _agent, ...rest } = order;
+    const terms = { ...rest, reason };
     expect(z.encode(orderTermsSchema, z.decode(orderTermsSchema, terms))).toStrictEqual(terms);
     const filled = { agent: ids.agent, ...terms };
     expect(orderRequestSchema.safeParse(filled).success).toBe(true);
@@ -85,6 +100,11 @@ describe("orderTermsSchema", () => {
     ["an agent", { agent: ids.agent }],
   ] as const)("refuses an order naming %s", (_name, extra) => {
     const { agent: _agent, ...terms } = orders[0][1];
-    expect(orderTermsSchema.safeParse({ ...terms, ...extra }).success).toBe(false);
+    expect(orderTermsSchema.safeParse({ ...terms, reason, ...extra }).success).toBe(false);
+  });
+
+  it("refuses an order without the agent's reason", () => {
+    const { agent: _agent, ...terms } = orders[0][1];
+    expect(orderTermsSchema.safeParse(terms).success).toBe(false);
   });
 });
