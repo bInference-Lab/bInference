@@ -4,7 +4,7 @@
 
 The base every other package builds on: results and the one error class, branded ids, `bigint`
 amount math in basis points, retry with jitter, deadlines on `AbortSignal`, secrets that never
-print, and the `Clock`, `Random`, `Logger`, `Http` and `SecretStore` ports. It does no I/O; adapters
+print, and the `Clock`, `Random`, `Logger`, `Http`, `SecretStore` and `WorkspaceFiles` ports. It does no I/O; adapters
 live in other packages.
 
 ## API
@@ -25,6 +25,7 @@ live in other packages.
 | `Clock`, `Random`, `Logger`, `Http`        | The ports that adapters implement                                    |
 | `fetchInputUrl`                            | The URL a `fetch` call names, for adapters that serve an SDK's fetch |
 | `SecretStore`, `checkSecretName`           | The port for named secrets at rest, and the entry names it takes     |
+| `WorkspaceFiles`, `checkWorkspacePlace`    | The port for each agent's workspace files, and the names it takes    |
 | `@binference/core/testing`                 | Contract suites for each port, and fakes that pass them              |
 
 ## Example

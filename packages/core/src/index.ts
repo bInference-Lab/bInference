@@ -25,12 +25,17 @@ export { jsonValueSchema } from "./json/json-value.schema.js";
 export type { JsonValue } from "./json/json-value.schema.js";
 export { stableJson } from "./json/stable-json.js";
 export type { LogFields, LogLevel, LogRecord } from "./log-record.js";
-export type { Clock, Http, Logger, Random, SecretStore } from "./ports.js";
+export type { Clock, Http, Logger, Random, SecretStore, WorkspaceFiles } from "./ports.js";
 export { err, ok } from "./result.js";
 export type { Err, Ok, Result } from "./result.js";
 export { retry } from "./retry/retry.js";
 export type { RetryAttempt, RetryOptions, RetryPolicy } from "./retry/retry.js";
 export { checkSecretName } from "./secret/secret-name.js";
+export {
+  checkWorkspacePlace,
+  type WorkspacePlace,
+  type WorkspaceText,
+} from "./workspace/workspace-place.js";
 export { createSecret, secretMark } from "./secret/secret.js";
 export type { Secret } from "./secret/secret.js";
 export { createDeadline } from "./time/create-deadline.js";

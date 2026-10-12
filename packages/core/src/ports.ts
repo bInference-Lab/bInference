@@ -2,6 +2,7 @@ import type { HttpRequest, HttpResponse } from "./http-exchange.js";
 import type { LogFields } from "./log-record.js";
 import type { Result } from "./result.js";
 import type { Secret } from "./secret/secret.js";
+import type { WorkspacePlace, WorkspaceText } from "./workspace/workspace-place.js";
 
 /** Reads the time and waits. Pure packages read time only through this port. */
 export interface Clock {
@@ -55,4 +56,29 @@ export interface SecretStore {
   write(name: string, value: Secret, signal: AbortSignal): Promise<void>;
   /** Removes one entry. Returns `not_found` when the store holds no entry of that name. */
   delete(name: string, signal: AbortSignal): Promise<Result<void, "not_found">>;
+}
+
+/**
+ * Each agent's workspace files, such as `RULES.md`, one folder per agent: the files the agent's
+ * context starts with. The composition root picks the adapter: a folder in the state folder, from
+ * `@binference/platform`, or a hosted store.
+ *
+ * A place names an agent by its id and a file by its name (`checkWorkspacePlace`); any other throws
+ * `platform.workspace_name_invalid` before the store is touched. A store that cannot answer throws
+ * a `BinferenceError`. A write is all or nothing: a reader sees the old text or the new one.
+ */
+export interface WorkspaceFiles {
+  /** Reads one file. Returns `not_found` when the agent has no such file. */
+  read(place: WorkspacePlace, signal: AbortSignal): Promise<Result<WorkspaceText, "not_found">>;
+  /** Writes one file, replacing its text, and answers when it changed. */
+  write(place: WorkspacePlace, text: string, signal: AbortSignal): Promise<number>;
+  /**
+   * Writes one file only when the agent has none of that name, and answers when it was made.
+   * Returns `exists` and changes nothing when the file is there.
+   */
+  create(
+    place: WorkspacePlace,
+    text: string,
+    signal: AbortSignal,
+  ): Promise<Result<number, "exists">>;
 }
