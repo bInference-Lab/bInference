@@ -82,11 +82,11 @@ function samplesOf(
   decimals: DecimalsBook,
 ): readonly PriceSample[] {
   return [...watches.values()].flatMap((watch) =>
-    watch.latest().flatMap(({ token, usdPrice }) => {
+    watch.latest().flatMap(({ token, usdPrice, plan }) => {
       const tokenDecimals = decimals.known.get(token);
       return usdPrice === undefined || tokenDecimals === undefined
         ? []
-        : [{ token, usdPrice, decimals: tokenDecimals }];
+        : [{ token, usdPrice, decimals: tokenDecimals, plan }];
     }),
   );
 }
@@ -103,6 +103,10 @@ function crossCheckOf(
       { source: geckoterminal, everyMs: 300_000, maxTokens: 30 },
     ],
     samples: () => samplesOf(options.watches, decimals),
+    watched: () =>
+      [...options.watches.values()].flatMap((watch) =>
+        watch.watcher.tokens().map(({ token }) => token),
+      ),
     gapLimitBps,
     clock: options.clock,
     onGap: ({ token, source, gapBps }) =>

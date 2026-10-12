@@ -14,6 +14,10 @@ export interface PriceSample {
   readonly usdPrice: Ratio;
   /** The token's decimals: one whole token is 10 to this power base units. */
   readonly decimals: number;
+  /** What priced it, such as the watcher's plan, which its check carries. */
+  readonly plan?: string;
+  /** Checked first in each source's next round, such as a price from a pool not yet proven. */
+  readonly isUrgent?: boolean;
 }
 
 /** How a data source's price for a token compared with the watcher's at its last check. */
@@ -26,6 +30,8 @@ export interface PriceCheck {
   /** Whether the gap reached the cross-check's limit. */
   readonly isGap: boolean;
   readonly atMs: number;
+  /** What priced the watcher's price it compared: its sample's plan. */
+  readonly plan?: string;
 }
 
 /** A data source the cross-check asks, how often, and for how many tokens a round at most. */
@@ -40,21 +46,27 @@ export interface PriceCrossCheckOptions {
   readonly sources: readonly CrossCheckSource[];
   /** The watcher's latest prices now. */
   readonly samples: () => readonly PriceSample[];
+  /** The tokens watched now; the checks of any other are forgotten. */
+  readonly watched: () => readonly AssetRef[];
   /** The gap, in basis points, at which a price is flagged. */
   readonly gapLimitBps: number;
   readonly clock: Clock;
   /** Hears each token whose price newly reached the limit against a source. */
   readonly onGap: (check: PriceCheck) => void;
-  /** Hears a source that could not be read in a round, with its error code. */
+  /**
+   * Hears a source that could not be read in a round, with its error code: a fault, or
+   * `market.not_covered` for a chain it does not serve.
+   */
   readonly onSourceFailed: (source: string, errorCode: string) => void;
 }
 
 /** Compares the watcher's prices with the data sources' on a schedule, never once a block. */
 export interface PriceCrossCheck {
   /**
-   * Runs each source whose time has come: its tokens checked longest ago first, at most its
-   * `maxTokens`, in one price read per chain. A source that fails is heard and asked again at its
-   * next time. Rejects with the signal's reason once it aborts.
+   * Runs each source whose time has come: its urgent tokens first, then those checked longest ago,
+   * at most its `maxTokens`, in one price read per chain, after forgetting the checks of tokens no
+   * longer watched. A source that fails, or does not serve a chain, is heard and asked again at
+   * its next time. Rejects with the signal's reason once it aborts.
    */
   tick(options: { readonly signal: AbortSignal }): Promise<void>;
   /** The last check of each token against each source, flagged or not. */
@@ -116,7 +128,14 @@ function record(
   const gapBps = bpsNumber.parse(gapBpsOf(sample, found.sourceUsd));
   const isGap = gapBps >= options.gapLimitBps;
   const wasGap = book.checks.get(keyOf(source, sample.token))?.isGap === true;
-  const check = { token: sample.token, source, gapBps, isGap, atMs: options.clock.now() };
+  const check: PriceCheck = {
+    token: sample.token,
+    source,
+    gapBps,
+    isGap,
+    atMs: options.clock.now(),
+    ...(sample.plan === undefined ? {} : { plan: sample.plan }),
+  };
   book.checks.set(keyOf(source, sample.token), check);
   if (isGap && !wasGap) {
     options.onGap(check);
@@ -130,7 +149,11 @@ async function readChain(
 ): Promise<void> {
   const tokens = round.samples.map(({ token }) => token);
   const prices = await round.source.prices?.(round.chain, tokens, { signal: round.signal });
-  if (prices?.ok !== true) {
+  if (prices === undefined) {
+    return;
+  }
+  if (!prices.ok) {
+    options.onSourceFailed(round.source.id, `market.${prices.error}`);
     return;
   }
   for (const sample of round.samples) {
@@ -151,9 +174,12 @@ async function runSource(
   book.nextAtMs.set(source.id, options.clock.now() + item.everyMs);
   const checkedAt = (token: AssetRef): number =>
     book.checks.get(keyOf(source.id, token))?.atMs ?? -1;
+  // Urgent samples first, then the ones checked longest ago.
+  const orderOf = (sample: PriceSample): number =>
+    sample.isUrgent === true ? -2 : checkedAt(sample.token);
   const samples = options
     .samples()
-    .toSorted((left, right) => checkedAt(left.token) - checkedAt(right.token))
+    .toSorted((left, right) => orderOf(left) - orderOf(right))
     .slice(0, item.maxTokens);
   try {
     await Promise.all(
@@ -168,12 +194,23 @@ async function runSource(
   }
 }
 
+// A token no longer watched leaves the book, so a stale gap never outlives its watch.
+function forgetUnwatched(book: CheckBook, watched: readonly AssetRef[]): void {
+  const kept = new Set(watched);
+  for (const [key, check] of book.checks) {
+    if (!kept.has(check.token)) {
+      book.checks.delete(key);
+    }
+  }
+}
+
 /** Creates the {@link PriceCrossCheck}, which keeps what it found in memory only. */
 export function createPriceCrossCheck(options: PriceCrossCheckOptions): PriceCrossCheck {
   const book: CheckBook = { checks: new Map(), nextAtMs: new Map() };
   return {
     async tick({ signal }) {
       signal.throwIfAborted();
+      forgetUnwatched(book, options.watched());
       const nowMs = options.clock.now();
       const due = options.sources.filter(
         (item) =>

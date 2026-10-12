@@ -46,6 +46,7 @@ function fakeWatch() {
         skippedBlocks: 0n,
         source: { mode: "polling" },
       }),
+      tokens: () => state.watches.map((asset) => ({ token: asset, state: "priced" })),
     },
     watch(asset: AssetRef) {
       state.watches.push(asset);
