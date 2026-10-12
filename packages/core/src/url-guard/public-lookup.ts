@@ -1,5 +1,6 @@
 import { BinferenceError } from "../errors/binference-error.js";
-import { isPublicAddress } from "./public-address.js";
+import type { HttpRequest } from "../http-exchange.js";
+import { isAddressHost, isPublicAddress } from "./public-address.js";
 
 /** One address a name resolves to, as `node:dns` answers it. */
 export interface ResolvedAddress {
@@ -85,4 +86,24 @@ export async function resolvesToPublic(
     signal.addEventListener("abort", () => reject(signal.reason), { once: true });
   });
   return Promise.race([resolved, aborted]);
+}
+
+/**
+ * Refuses a `publicOnly` request whose host is an IP address that is not public, with
+ * `http.private_address`: a socket connects to an address as it is, with no lookup to check it.
+ * A request that is not public-only, or that names its host, passes.
+ */
+export function refusePrivateAddressHost(request: HttpRequest): void {
+  const url = new URL(request.url);
+  if (
+    request.publicOnly === true &&
+    isAddressHost(url.hostname) &&
+    !isPublicAddress(url.hostname)
+  ) {
+    throw new BinferenceError({
+      code: "http.private_address",
+      message: "The host is an address that is not on the internet.",
+      details: { method: request.method, origin: url.origin },
+    });
+  }
 }

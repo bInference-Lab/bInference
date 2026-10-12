@@ -6,8 +6,8 @@ import {
   type HttpRequest,
   type HttpResponse,
   outboundInit,
-  isPublicAddress,
   publicOnlyLookup,
+  refusePrivateAddressHost,
   throwOutboundFailure,
 } from "@binference/core";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the one outbound Http adapter: every other package reaches the network through the Http port
@@ -55,20 +55,9 @@ interface Agents {
   readonly publicOnly: Agent;
 }
 
-// A public-only request to an IP literal never looks a name up, so its address is checked here.
 function agentFor(agents: Agents, request: HttpRequest): Agent {
-  if (request.publicOnly !== true) {
-    return agents.any;
-  }
-  const host = new URL(request.url).hostname.replace(/^\[(.*)\]$/, "$1");
-  if (/^[\d.]+$|:/.test(host) && !isPublicAddress(host)) {
-    throw new BinferenceError({
-      code: "http.private_address",
-      message: "The host is an address that is not on the internet.",
-      details: { method: request.method, origin: new URL(request.url).origin },
-    });
-  }
-  return agents.publicOnly;
+  refusePrivateAddressHost(request);
+  return request.publicOnly === true ? agents.publicOnly : agents.any;
 }
 
 async function exchange(

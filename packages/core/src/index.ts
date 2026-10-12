@@ -43,5 +43,9 @@ export type { Deadline, DeadlineOptions } from "./time/create-deadline.js";
 export { checkPublicUrl, maxUrlChars } from "./url-guard/check-url.js";
 export type { UrlRefusal } from "./url-guard/check-url.js";
 export { isAddressHost, isPublicAddress } from "./url-guard/public-address.js";
-export { publicOnlyLookup, resolvesToPublic } from "./url-guard/public-lookup.js";
+export {
+  publicOnlyLookup,
+  refusePrivateAddressHost,
+  resolvesToPublic,
+} from "./url-guard/public-lookup.js";
 export type { HostLookup, ResolvedAddress, SocketLookup } from "./url-guard/public-lookup.js";

@@ -1,9 +1,15 @@
+import type { HostLookup } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { streamingHttpContract } from "../contracts/streaming-http-contract.js";
 import { startStandInModelServer } from "../testing/stand-in-model-server.js";
 import { createNodeStreamingHttp } from "./node-streaming-http.js";
 
 const live = (): AbortSignal => new AbortController().signal;
+
+// A name whose every lookup answers loopback, as a name rebound after a check would.
+const rebindsToLoopback: HostLookup = (_hostname, _options, callback) => {
+  callback(null, [{ address: "127.0.0.1", family: 4 }]);
+};
 
 describe("createNodeStreamingHttp", () => {
   it.each(
@@ -59,12 +65,28 @@ describe("createNodeStreamingHttp", () => {
     }
   });
 
-  it("refuses a public-only request and a request no server answers", async () => {
+  it("refuses a public-only request to a private address, by name or as it is", async () => {
+    const server = await startStandInModelServer([{ status: 204, headers: {}, chunks: [] }]);
+    const http = createNodeStreamingHttp({ version: "1.2.3", lookup: rebindsToLoopback });
+    const port = new URL(server.origin).port;
+    const request = { method: "GET", signal: live(), publicOnly: true } as const;
+    try {
+      await expect(
+        http.open({ ...request, url: `http://rebind.example.com:${port}/` }),
+      ).rejects.toThrow(expect.objectContaining({ code: "http.private_address" }));
+      await expect(http.open({ ...request, url: `${server.origin}/` })).rejects.toThrow(
+        expect.objectContaining({ code: "http.private_address" }),
+      );
+      expect(server.requests).toHaveLength(0);
+    } finally {
+      await http.close();
+      await server.close();
+    }
+  });
+
+  it("refuses a request no server answers", async () => {
     const http = createNodeStreamingHttp({ version: "1.2.3" });
     const request = { method: "POST", body: "{}", signal: live() } as const;
-    await expect(
-      http.open({ ...request, url: "https://a.test/", publicOnly: true }),
-    ).rejects.toThrow(expect.objectContaining({ code: "http.public_only_unsupported" }));
     const server = await startStandInModelServer([]);
     await server.close();
     await expect(http.open({ ...request, url: `${server.origin}/v1` })).rejects.toThrow(

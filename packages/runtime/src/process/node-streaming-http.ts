@@ -1,8 +1,11 @@
+import { lookup as systemLookup } from "node:dns";
 import {
   answerHeaders,
-  BinferenceError,
+  type HostLookup,
   type HttpRequest,
   outboundInit,
+  publicOnlyLookup,
+  refusePrivateAddressHost,
   throwOutboundFailure,
 } from "@binference/core";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the runtime's one outbound HTTP adapter: model clients reach the network through the StreamingHttp port
@@ -20,27 +23,30 @@ export interface NodeStreamingHttp extends StreamingHttp {
 export interface NodeStreamingHttpOptions {
   /** The running binference's version, which every request names in its `user-agent`. */
   readonly version: string;
+  /** How a public-only request's host is looked up; the system's resolver when none is given. */
+  readonly lookup?: HostLookup;
 }
 
-// The model providers a runtime calls include local ones on the owner's own machine, so it serves
-// no request that must reach public addresses only.
-function refusePublicOnly(request: HttpRequest): void {
-  if (request.publicOnly === true) {
-    throw new BinferenceError({
-      code: "http.public_only_unsupported",
-      message: "The runtime's outbound HTTP does not serve public-only requests.",
-      details: { method: request.method, origin: new URL(request.url).origin },
-    });
-  }
+/** The connection pools: one for any address, one that reaches public addresses only. */
+interface Pools {
+  readonly any: Agent;
+  readonly publicOnly: Agent;
+}
+
+// The model providers a runtime calls include local ones on the owner's own machine, so only a
+// request that asks for it, such as a page the model names, is held to public addresses.
+function poolFor(pools: Pools, request: HttpRequest): Agent {
+  refusePrivateAddressHost(request);
+  return request.publicOnly === true ? pools.publicOnly : pools.any;
 }
 
 async function streamed(
-  pool: Agent,
+  pools: Pools,
   request: HttpRequest,
   userAgent: string,
 ): Promise<StreamedHttpResponse> {
-  refusePublicOnly(request);
-  const answer = await send(request.url, { dispatcher: pool, ...outboundInit(request, userAgent) });
+  const dispatcher = poolFor(pools, request);
+  const answer = await send(request.url, { dispatcher, ...outboundInit(request, userAgent) });
   return { status: answer.statusCode, headers: answerHeaders(answer.headers), body: answer.body };
 }
 
@@ -51,21 +57,26 @@ async function streamed(
  * status as it came. Every request names binference as `user-agent: binference/<version>`, in
  * place of any user agent the caller set. A request that gets no answer rejects with a retryable
  * `http.unreachable` naming only the method and the origin; one whose signal aborts rejects with
- * the signal's reason. A `publicOnly` request is refused with `http.public_only_unsupported`, and
- * one with two bodies with `http.two_bodies`.
+ * the signal's reason. A `publicOnly` request connects only to the public addresses its host
+ * resolves to, checked at connect time so a name cannot rebind to a private one after an earlier
+ * check, and rejects with `http.private_address` otherwise. One with two bodies rejects with
+ * `http.two_bodies`.
  */
 export function createNodeStreamingHttp(options: NodeStreamingHttpOptions): NodeStreamingHttp {
-  const pool = new Agent();
+  const lookup = publicOnlyLookup(options.lookup ?? systemLookup);
+  const pools = { any: new Agent(), publicOnly: new Agent({ connect: { lookup } }) };
   const userAgent = `binference/${options.version}`;
   return {
     async open(request) {
       request.signal.throwIfAborted();
       try {
-        return await streamed(pool, request, userAgent);
+        return await streamed(pools, request, userAgent);
       } catch (error) {
         return throwOutboundFailure(request, error);
       }
     },
-    close: async () => pool.close(),
+    close: async () => {
+      await Promise.all([pools.any.close(), pools.publicOnly.close()]);
+    },
   };
 }

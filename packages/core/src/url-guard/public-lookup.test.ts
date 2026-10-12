@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type HostLookup, publicOnlyLookup, resolvesToPublic } from "./public-lookup.js";
+import {
+  type HostLookup,
+  publicOnlyLookup,
+  refusePrivateAddressHost,
+  resolvesToPublic,
+} from "./public-lookup.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -114,5 +119,26 @@ describe("publicOnlyLookup", () => {
     await expect(socketAnswer(lookup, "rebind.example.com")).resolves.toMatchObject({
       error: { code: "http.private_address" },
     });
+  });
+});
+
+describe("refusePrivateAddressHost", () => {
+  const request = { method: "GET", signal: live.signal } as const;
+
+  it.each(["http://10.0.0.1/", "http://[::1]:8080/", "http://169.254.169.254/"])(
+    "refuses a public-only request to %s",
+    (url) => {
+      expect(() => refusePrivateAddressHost({ ...request, url, publicOnly: true })).toThrow(
+        expect.objectContaining({ code: "http.private_address" }),
+      );
+    },
+  );
+
+  it.each([
+    ["http://10.0.0.1/", false],
+    ["http://93.184.215.14/", true],
+    ["http://example.com/", true],
+  ])("lets %s through when public-only is %s", (url, publicOnly) => {
+    expect(() => refusePrivateAddressHost({ ...request, url, publicOnly })).not.toThrow();
   });
 });
