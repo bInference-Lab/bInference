@@ -15,9 +15,10 @@ const documented = {
   perReply: 3,
 } as const;
 
-// Counted locally on 2026-10-13 from OpenAI's published tokenizer files cl100k_base.tiktoken
-// (sha256 223921b7…b2a7) and o200k_base.tiktoken (sha256 446a9538…1a2d), each matching the hash
+// Counted locally on 2026-10-13 from OpenAI's published tokenizer files, each matching the hash
 // OpenAI's tokenizer library expects. No model or provider was called.
+// cl100k_base.tiktoken sha256 223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7
+// o200k_base.tiktoken sha256 446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d
 const counted = [
   { text: "帮我把 0.1 BNB 换成 USDT，滑点不超过 1%。", cl100k_base: 28, o200k_base: 22 },
   {
