@@ -3,6 +3,7 @@ import { createFakeVenue } from "@binference/chain/testing";
 import { type Bps, bpsSchema, err, type Id, idSchema } from "@binference/core";
 import type { IntentRequest, IntentView, RiskView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createFakeTokenFacts, fakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import {
   testAgent,
@@ -326,7 +327,31 @@ describe("the money path", () => {
     const unknown = assetRefSchema.parse("fake:1/token:0x0000000f");
     const view = await propose(await startTestEngine(), testSwap({ to: unknown }));
     expect([view.state, view.outcome?.reason]).toStrictEqual(["risk_blocked", "sources_down"]);
-    expect(Object.keys(view.assets)).toStrictEqual([testCoin]);
+    expect(view.assets[unknown]).toStrictEqual({ ...fakeTokenFacts, verified: false });
+  });
+
+  it("stores what an unlisted token answered on chain, read once at the proposal", async () => {
+    const unknown = assetRefSchema.parse("fake:1/token:0x0000000f");
+    const facts = createFakeTokenFacts({
+      facts: new Map([[unknown, { symbol: "XVS", name: "Venus", decimals: 18 }]]),
+    });
+    const test = await startTestEngine({ tokenFacts: facts.read });
+    const view = await propose(test, testSwap({ to: unknown }));
+    const listed = await propose(test);
+    expect(view.assets).toStrictEqual({
+      [testCoin]: { symbol: "FAKE", name: "Fake", decimals: 18, verified: true },
+      [unknown]: { symbol: "XVS", name: "Venus", decimals: 18, verified: false },
+    });
+    expect(Object.keys(listed.assets)).toStrictEqual([testCoin, testToken]);
+    expect(facts.reads()).toStrictEqual([[unknown]]);
+  });
+
+  it("refuses a trade of an unlisted token that answers no symbol or decimals, storing nothing", async () => {
+    const unknown = assetRefSchema.parse("fake:1/token:0x0000000f");
+    const facts = createFakeTokenFacts({ unreadable: [unknown] });
+    const test = await startTestEngine({ tokenFacts: facts.read });
+    expect(await refusal(test, testSwap({ to: unknown }))).toBe("asset.unreadable");
+    expect(await ledgerKinds(test)).toStrictEqual([]);
   });
 
   it("asks the policy about the slippage a request names on a pair of unlisted tokens", async () => {

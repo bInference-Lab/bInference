@@ -48,6 +48,12 @@ export interface IntentFields {
   readonly simulation?: JsonValue;
   readonly authorizedBy?: JsonValue;
   /**
+   * What each token the intent names and the registry does not list answered on chain at its
+   * proposal: its symbol, name and decimals, marked unverified, which its cards and views show
+   * (`assetsDocument`). Set when the intent is stored, and absent when it names no such token.
+   */
+  readonly assets?: JsonValue;
+  /**
    * The USD value, in micro-dollars rounded up, the policy judged the intent's outflows at: what
    * the rolling 24-hour cap counts from the intent's confirmation (decision 0136). Absent for an
    * intent the policy never valued, such as a rescue.
@@ -62,6 +68,7 @@ const fieldsShape = {
   risk: jsonValueSchema.exactOptional(),
   simulation: jsonValueSchema.exactOptional(),
   authorizedBy: jsonValueSchema.exactOptional(),
+  assets: jsonValueSchema.exactOptional(),
   valueUsdMicros: decimalStringSchema.exactOptional(),
 };
 

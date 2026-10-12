@@ -2,7 +2,8 @@ import type { ChainRegistry } from "@binference/chain";
 import type { AssetInfos } from "@binference/protocol";
 import type { ReceiptFill } from "../confirmations/card-closing.js";
 import { type IntentHistory, paperFillOf } from "../intents/intent-history.js";
-import { assetInfosOf } from "../money-path/asset-infos.js";
+import type { IntentRecord } from "../intents/intent-record.js";
+import { intentAssetInfos } from "../money-path/asset-infos.js";
 
 /** A confirmed paper intent's fill as its receipt shows it, with the assets the fill names. */
 export interface PaperReceipt {
@@ -11,18 +12,21 @@ export interface PaperReceipt {
   readonly assets: AssetInfos;
 }
 
-/** The paper receipt of an intent once it recorded its paper fill, or `undefined` before. */
+/**
+ * The paper receipt of an intent once it recorded its paper fill, or `undefined` before. Its
+ * assets are the registry's, or what the intent stored of an unlisted token at its proposal.
+ */
 export function paperReceiptOf(
-  history: IntentHistory,
+  intent: { readonly record: Pick<IntentRecord, "assets">; readonly history: IntentHistory },
   chains: ChainRegistry,
 ): PaperReceipt | undefined {
-  const fill = paperFillOf(history);
+  const fill = paperFillOf(intent.history);
   if (fill === undefined) {
     return undefined;
   }
   const { amountIn, amountOut } = fill;
   return {
     fill: { amountIn, amountOut },
-    assets: assetInfosOf(chains, [amountIn.asset, amountOut.asset]),
+    assets: intentAssetInfos(chains, intent.record, [amountIn.asset, amountOut.asset]),
   };
 }

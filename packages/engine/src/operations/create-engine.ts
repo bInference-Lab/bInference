@@ -188,6 +188,8 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts {
    * stop-loss or trailing order for a token it cannot (`order.unpriced_token`, decision 0194).
    */
   readonly canPrice: CanPrice;
+  /** What a token the registry does not list answers on chain, for its cards (decision 0199). */
+  readonly readTokenFacts: OrderParts["readTokenFacts"];
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly ids: IdSource;
@@ -303,6 +305,7 @@ function intentParts(
     risk: options.risk,
     simulator: paper.simulator,
     chains,
+    readTokenFacts: options.readTokenFacts,
     execute,
     isLocked,
     lowGas,

@@ -1,6 +1,8 @@
 import { amountSchema, type TxDraft, txDraftSchema } from "@binference/chain";
 import { BinferenceError, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import {
+  type AssetInfos,
+  assetInfosSchema,
   type IntentRequest,
   intentRequestSchema,
   type QuoteView,
@@ -64,6 +66,12 @@ export const requestDocument: DocumentCodec<IntentRequest> = documentCodec(
   "request",
   intentRequestSchema,
 );
+
+/**
+ * The symbol, name and decimals each token the registry does not list answered on chain when the
+ * intent was proposed, marked unverified, in the `assets` column.
+ */
+export const assetsDocument: DocumentCodec<AssetInfos> = documentCodec("assets", assetInfosSchema);
 
 /** The venue's quote as cards and views show it, in the `quote` column. */
 export const quoteDocument: DocumentCodec<QuoteView> = documentCodec("quote", quoteViewSchema);

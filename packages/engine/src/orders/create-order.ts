@@ -8,12 +8,13 @@ import {
   ok,
   type Result,
 } from "@binference/core";
-import type { OrderRequest, ProtocolErrorCode } from "@binference/protocol";
+import type { AssetInfos, OrderRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
+import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { AgentStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { autoOrderQuoteDocument } from "./auto-order-quote.js";
@@ -47,6 +48,8 @@ export interface OrderParts {
   readonly expireCard: (intent: Id<"int">, call: { readonly signal: AbortSignal }) => Promise<void>;
   /** Whether the price watcher can price a token now (decision 0194). */
   readonly canPrice: CanPrice;
+  /** Reads what a token the registry does not list answers on chain, for the order's card. */
+  readonly readTokenFacts: ReadTokenFacts;
   /** Whether a live order may fill; while it may not, no live price order is taken (decision 0197). */
   readonly liveFills: boolean;
 }
@@ -105,12 +108,19 @@ async function walletOf(
   return account.ok ? wallet : undefined;
 }
 
-// The wallet that holds the order; a price order also needs a token the price watcher can price.
+/** The wallet that holds a new order, and what its unlisted tokens answered on chain. */
+interface Holder {
+  readonly wallet: Id<"wal">;
+  readonly assets: AssetInfos;
+}
+
+// The wallet that holds the order; a price order also needs a token the price watcher can price,
+// and a token the registry does not list must answer its symbol and decimals for the card.
 async function holderOf(
-  parts: Pick<OrderParts, "wallets" | "custody" | "canPrice">,
+  parts: Pick<OrderParts, "wallets" | "custody" | "canPrice" | "chains" | "readTokenFacts">,
   checked: CheckedOrder,
   signal: AbortSignal,
-): Promise<Result<Id<"wal">, ProtocolErrorCode>> {
+): Promise<Result<Holder, ProtocolErrorCode>> {
   const wallet = await walletOf(parts, checked, signal);
   if (wallet === undefined) {
     return err("wallet.not_found");
@@ -119,7 +129,10 @@ async function holderOf(
   if (hasPriceTrigger(request.kind) && !(await parts.canPrice(request.token, { signal }))) {
     return err("order.unpriced_token");
   }
-  return ok(wallet);
+  const { token, spend } = request;
+  const named = spend === undefined ? [token] : [token, spend];
+  const assets = await unlistedAssetInfos(parts, named, signal);
+  return assets.ok ? ok({ wallet, assets: assets.value }) : assets;
 }
 
 // Whether the position of a new exit order holds another exit order that has not ended.
@@ -171,10 +184,11 @@ async function openOrderCard(
     readonly order: OrderRecord;
     readonly proposer: Proposer;
     readonly hasLinkedExits: boolean;
+    readonly assets: AssetInfos;
   },
   signal: AbortSignal,
 ): Promise<IntentSnapshot> {
-  const { order, proposer } = opening;
+  const { order, proposer, assets } = opening;
   const machine = createIntentStateMachine({ clock: parts.clock });
   const step = machine.propose({
     kind: "autoOrder",
@@ -189,6 +203,7 @@ async function openOrderCard(
     walletId: order.walletId,
     proposerRef: proposer.ref,
     request: { kind: "autoOrder", order: order.id } as const,
+    ...(Object.keys(assets).length === 0 ? {} : { assets }),
   };
   const created = step.ok
     ? await parts.stored.create({ ...intent, step: step.value }, { signal })
@@ -220,7 +235,9 @@ async function openOrderCard(
  * its `autoOrder` intent, which always opens one card, whatever the mode or the mark. The order
  * becomes `active` only on that card's Confirm. A refusal stores nothing: an unknown, archived or
  * frozen agent, a wallet that is not the agent's, a kind that does not run yet, a broken rule, or
- * a price order for a token the price watcher cannot price now (decision 0194).
+ * a price order for a token the price watcher cannot price now (decision 0194), or a token the
+ * registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
+ * decision 0199). The card shows such a token by what it answered, marked unverified.
  */
 export async function createOrder(
   parts: OrderParts,
@@ -248,7 +265,7 @@ export async function createOrder(
   if (!held.ok) {
     return held;
   }
-  const wallet = held.value;
+  const { wallet, assets } = held.value;
   const draft = draftOf(parts, checked.value, { wallet, settings, proposer });
   const isLinked = await hasLinkedExits(parts, draft, signal);
   const created = await parts.orders.create(draft, { signal });
@@ -263,7 +280,7 @@ export async function createOrder(
     });
   }
   parts.publish(orderPush(created.value, "order/created"));
-  const order = { order: created.value, proposer, hasLinkedExits: isLinked };
+  const order = { order: created.value, proposer, hasLinkedExits: isLinked, assets };
   const intent = await openOrderCard(parts, order, signal);
   return ok({ order: created.value, intent });
 }

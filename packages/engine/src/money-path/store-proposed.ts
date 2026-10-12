@@ -1,5 +1,5 @@
 import { BinferenceError, type Id, type IdSource } from "@binference/core";
-import type { IntentRequest } from "@binference/protocol";
+import type { AssetInfos, IntentRequest } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentProposal, IntentStep } from "../intents/state-machine.js";
@@ -8,8 +8,9 @@ import type { FillProposal } from "./authorize-simulated.js";
 import type { Proposer } from "./create-money-path.js";
 
 /**
- * Stores a proposal the state machine passed as a new intent in `proposed`, under a fresh id. An
- * id in use is a fault: ids never repeat.
+ * Stores a proposal the state machine passed as a new intent in `proposed`, under a fresh id, with
+ * the info of each token it names that the registry does not list. An id in use is a fault: ids
+ * never repeat.
  */
 export async function storeProposed(
   options: { readonly stored: StoredIntents; readonly ids: IdSource },
@@ -18,13 +19,23 @@ export async function storeProposed(
     readonly proposer: Pick<Proposer, "ref">;
     readonly step: IntentStep;
     readonly wallet: Id<"wal">;
+    readonly assets: AssetInfos;
   },
   signal: AbortSignal,
 ): Promise<IntentSnapshot> {
-  const { request, proposer, step, wallet } = intent;
+  const { request, proposer, step, wallet, assets } = intent;
   const id = options.ids.next("int");
+  const unlisted = Object.keys(assets).length === 0 ? {} : { assets };
   const created = await options.stored.create(
-    { id, agentId: request.agent, walletId: wallet, request, proposerRef: proposer.ref, step },
+    {
+      id,
+      agentId: request.agent,
+      walletId: wallet,
+      request,
+      proposerRef: proposer.ref,
+      step,
+      ...unlisted,
+    },
     { signal },
   );
   if (!created.ok) {

@@ -46,7 +46,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
-import { forkCustody } from "./fork-trading.js";
+import { forkCustody, forkTokenFacts } from "./fork-trading.js";
 
 /** One agent wallet of the rescue rig: its ids, its key made from fixed words, its address. */
 interface RescueRigWallet {
@@ -267,6 +267,7 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     paperBalances: [],
     isLocked: () => false,
     canPrice: async () => await Promise.resolve(true),
+    readTokenFacts: forkTokenFacts(fork),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(62) }),

@@ -28,6 +28,7 @@ import { createFakeCeilingEditor, type FakeCeilingEditor } from "../fakes/fake-c
 import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
+import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
 import { createFakeWalletMaker, type FakeWalletMaker } from "../fakes/fake-wallet-maker.js";
 import {
@@ -47,6 +48,7 @@ import {
 } from "../intents/test-intents.js";
 import type { MarketReads } from "../market/ports.js";
 import { createSourceMarketReads } from "../market/source-market-reads.js";
+import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -96,6 +98,8 @@ export interface TestEngineOptions {
   readonly timeZone?: string;
   /** The tokens the price watcher cannot price; it prices every other. */
   readonly unpriceable?: readonly AssetRef[];
+  /** What tokens the registry does not list answer on chain; `UNL` with 18 decimals when absent. */
+  readonly tokenFacts?: ReadTokenFacts;
   readonly venues?: readonly Venue[];
   /** Why the simulator refuses every intent; it reports the quote's own amounts when absent. */
   readonly refusal?: SimulationFailure;
@@ -268,11 +272,12 @@ function testTurns(): RunningTurns {
 }
 
 // What the engine reads of prices and markets: the coin at $600 and no market data, unless the
-// test gives its own, and a watcher that prices every token but those the test names.
+// test gives its own, a watcher that prices every token but those the test names, and the facts
+// of every unlisted token.
 function readsOf(
   options: TestEngineOptions,
   clock: ManualClock,
-): Pick<EngineOptions, "prices" | "marketReads" | "canPrice"> {
+): Pick<EngineOptions, "prices" | "marketReads" | "canPrice" | "readTokenFacts"> {
   const prices =
     options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]);
   const source = createFakePriceSource(prices);
@@ -281,6 +286,7 @@ function readsOf(
     marketReads:
       options.marketReads ?? createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     canPrice: async (token) => await Promise.resolve(!(options.unpriceable ?? []).includes(token)),
+    readTokenFacts: options.tokenFacts ?? createFakeTokenFacts().read,
   };
 }
 

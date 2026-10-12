@@ -1,12 +1,17 @@
 import type { Id, IdSource, JsonValue } from "@binference/core";
 import type {
+  AssetInfos,
   AutoOrderRequest,
   IntentRequest,
   RescueRequest,
   UnfreezeRequest,
 } from "@binference/protocol";
 import { autoOrderRequestDocument } from "../orders/auto-order-quote.js";
-import { authorizationDocument, requestDocument } from "./intent-documents.schema.js";
+import {
+  assetsDocument,
+  authorizationDocument,
+  requestDocument,
+} from "./intent-documents.schema.js";
 import type { IntentDraft, IntentProposerRef } from "./intent-record.js";
 import type { IntentStep } from "./state-machine.js";
 import { unfreezeRequestDocument } from "./unfreeze-quote.js";
@@ -21,6 +26,11 @@ export interface NewIntent {
   /** Who called, as the intents table keeps it: the token or device, `telegram` or `engine`. */
   readonly proposerRef: IntentProposerRef;
   readonly step: IntentStep;
+  /**
+   * What each token it names and the registry does not list answered on chain, read at the
+   * proposal; absent when it names none.
+   */
+  readonly assets?: AssetInfos;
 }
 
 function requestOf(
@@ -65,6 +75,7 @@ export function draftOf(intent: NewIntent, ids: IdSource): IntentDraft {
     ...(status.authorizedBy === undefined
       ? {}
       : { authorizedBy: authorizationDocument.encode(status.authorizedBy) }),
+    ...(intent.assets === undefined ? {} : { assets: assetsDocument.encode(intent.assets) }),
     atMs: event.atMs,
     cause,
     ...(event.hasLedgerEntry ? { ledger } : {}),

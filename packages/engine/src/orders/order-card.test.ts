@@ -1,11 +1,15 @@
+import { assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
+import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { expectOk, testNowMs } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
 import { createdOrder, startOrderEngine, tapCard, testStopLoss } from "./test-orders.js";
 
 const formatter = createFormatter({ locale: "en", timeZone: "UTC" });
+// A token the registry does not list.
+const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
 
 // The card each order opens, line by line, as a surface without buttons writes it in English.
 // Each order is confirmed before the next, so a later exit order's position holds an active one.
@@ -82,6 +86,31 @@ describe("an auto order's card in English", () => {
     );
     expect(byAmount?.[1]).toMatch(
       /^Approve Limit order: buy TKN with 1\.5 FAKE when the price is at or below \$0\.50 · /,
+    );
+  });
+
+  it("names a token the registry does not list by what it answered, with its short address", async () => {
+    const facts = new Map([[unlisted, { symbol: "XVS", name: "Venus", decimals: 18 }]]);
+    const test = await startOrderEngine({ tokenFacts: createFakeTokenFacts({ facts }).read });
+    const { intent } = await createdOrder(test, testStopLoss({ token: unlisted }));
+    const card = expectOk(await test.engine.handlers["intent/card"](testCall({ intent })));
+    const lines = card.lines.map((line) => cardLineText(line, { formatter, assets: card.assets }));
+
+    expect(lines[1]).toMatch(
+      /^Approve Stop-loss: sell all your XVS \(0x0000000f\) when the price falls to \$0\.80 · /,
+    );
+  });
+
+  it("refuses an order on an unlisted token that answers no symbol or decimals", async () => {
+    const tokenFacts = createFakeTokenFacts({ unreadable: [unlisted] }).read;
+    const test = await startOrderEngine({ tokenFacts });
+    const refused = await test.engine.handlers["order/create"](
+      testCall(testStopLoss({ token: unlisted })),
+    );
+
+    expect(refused).toStrictEqual({ ok: false, error: "asset.unreadable" });
+    expect(expectOk(await test.engine.handlers["order/list"](testCall({}))).items).toStrictEqual(
+      [],
     );
   });
 });

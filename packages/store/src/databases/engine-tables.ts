@@ -166,6 +166,8 @@ export interface IntentsTable {
   authorized_by: string | null;
   /** The USD value the policy judged the intent at, in micro-dollars (migration 0016). */
   value_usd_micros: string | null;
+  /** What its unlisted tokens answered on chain at its proposal, as JSON (migration 0034). */
+  assets: string | null;
   outside_content: number;
   paper: number;
   proposer: string;

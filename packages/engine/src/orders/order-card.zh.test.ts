@@ -1,7 +1,9 @@
+import { assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import type { FillSize } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { expectOk, testNowMs } from "../intents/test-intents.js";
 import { type TestEngine, testCall } from "../operations/test-engine.js";
 import { createdOrder, startOrderEngine, testStopLoss } from "./test-orders.js";
@@ -55,5 +57,20 @@ describe("an auto order's card in Chinese", () => {
       "批准限价单：当价格达到或低于 $0.50 时，用你可用的 FAKE 的 25.00% 买入 TKN",
       "批准限价单：当价格达到或低于 $0.50 时，用 1.5 FAKE 买入 TKN",
     ]);
+  });
+
+  it("names a token the registry does not list by what it answered, with its short address", async () => {
+    const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
+    const facts = new Map([[unlisted, { symbol: "XVS", name: "Venus", decimals: 18 }]]);
+    const test = await startOrderEngine({ tokenFacts: createFakeTokenFacts({ facts }).read });
+    const { intent } = await createdOrder(test, testStopLoss({ token: unlisted }));
+    const card = expectOk(await test.engine.handlers["intent/card"](testCall({ intent })));
+    const [, summary] = card.lines.map((line) =>
+      cardLineText(line, { formatter: display, assets: card.assets }),
+    );
+
+    expect(summary?.split(" · ")[0]).toBe(
+      "批准止损：当价格跌至 $0.80 时，卖出你持有的全部 XVS（0x0000000f）",
+    );
   });
 });

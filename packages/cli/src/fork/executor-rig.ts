@@ -56,7 +56,7 @@ import { createWalletQueue } from "@binference/engine/wallet-queue";
 import { keccak256, toHex } from "viem";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
-import { forkCustody, forkWallet, pancakeV2Venue } from "./fork-trading.js";
+import { forkCustody, forkTokenFacts, forkWallet, pancakeV2Venue } from "./fork-trading.js";
 
 /** A key made from fixed words: the fork's own test wallet, which holds nothing on BSC. */
 export const walletKey: `0x${string}` = keccak256(toHex("binference executor fork wallet"));
@@ -230,6 +230,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
     marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     isLocked: () => false,
     canPrice: async () => await Promise.resolve(true),
+    readTokenFacts: forkTokenFacts(fork),
     paperBalances: [],
     random: createSeededRandom(44),
     publish: () => undefined,

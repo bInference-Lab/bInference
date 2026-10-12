@@ -35,7 +35,7 @@ import {
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
 import { createFeeTokenVenue } from "./fee-token-venue.js";
-import { forkCustody, forkWallet } from "./fork-trading.js";
+import { forkCustody, forkTokenFacts, forkWallet } from "./fork-trading.js";
 
 /** A key made from fixed words: the skeleton's wallet, which holds nothing on BSC. */
 const walletKey: `0x${string}` = keccak256(toHex("binference orders skeleton fork wallet"));
@@ -151,6 +151,7 @@ export async function startOrdersMachine(
     version: "2026.10.0",
     owner: () => ({ locale: "en", timezone: "UTC" }),
     canPrice: async () => await Promise.resolve(true),
+    readTokenFacts: forkTokenFacts(fork),
     handlers: readyEngineOperations(parts.stores.agents),
     turns,
     telegram,

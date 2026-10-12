@@ -53,6 +53,7 @@
   "order.live_fills_off": "Live auto orders do not fill yet, so binference takes no live limit, take-profit, stop-loss or trailing stop order. Place it while the agent is in paper mode.",
   "asset.not_found": "binference does not know this token. Paste its contract address instead.",
   "asset.bad_address": "This is not a valid address. Check it and paste it again.",
+  "asset.unreadable": "This token's contract did not give its symbol and decimals, so binference cannot show its amounts on a card. Check the address.",
   "name.not_found": "No address is registered for this name. Check the spelling.",
   "name.resolver_down": "The name service is not responding. Try again later, or paste the address.",
   "quote.no_route": "No route for this trade right now. Try a smaller amount or another token.",

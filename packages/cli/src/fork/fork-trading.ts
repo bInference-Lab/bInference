@@ -17,6 +17,7 @@ import {
 } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
 import { bpsSchema, err, type Id, ok } from "@binference/core";
+import type { EngineOptions } from "@binference/engine";
 import {
   type Address,
   decodeFunctionData,
@@ -26,6 +27,7 @@ import {
   parseAbi,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { chainTokenFacts } from "../compose/token-facts.js";
 
 const routerAbi = parseAbi([
   "function getAmountsOut(uint256 amountIn, address[] path) view returns (uint256[] amounts)",
@@ -212,4 +214,10 @@ export function forkCustody(
     },
     signatures: () => signatures,
   };
+}
+
+/** Reads what the fork's tokens answer about themselves, through Multicall3, as `start` does. */
+export function forkTokenFacts(fork: Fork): EngineOptions["readTokenFacts"] {
+  const multicall = bscContract("multicall3", "multicall3");
+  return chainTokenFacts(new Map([[fork.chain.ref, { rpc: fork.rpc, multicall }]]));
 }

@@ -102,7 +102,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   identities: names("agent_id chain registry onchain_id tx_hash registered_at"),
   intents: names(
     "id agent_id wallet_id kind state reason request plan quote risk simulation authorized_by " +
-      "outside_content paper proposer created_at changed_at version value_usd_micros",
+      "outside_content paper proposer created_at changed_at version value_usd_micros assets",
   ),
   intent_events: names("id intent_id from_state to_state cause at"),
   cards: names(

@@ -123,6 +123,7 @@ export function createIntent(
       outside_content: Number(intent.hasOutsideContent),
       paper: Number(intent.isPaper),
       proposer: intent.proposer,
+      assets: optionalJsonText(intent.assets),
       created_at: atMs,
     }),
   );

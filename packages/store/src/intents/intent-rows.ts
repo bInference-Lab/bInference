@@ -32,6 +32,7 @@ export function toIntentRecord(row: Selectable<IntentsTable>): IntentRecord {
     ...jsonField("risk", row.risk),
     ...jsonField("simulation", row.simulation),
     ...jsonField("authorizedBy", row.authorized_by),
+    ...jsonField("assets", row.assets),
     ...field("valueUsdMicros", row.value_usd_micros),
     hasOutsideContent: row.outside_content === 1,
     isPaper: row.paper === 1,

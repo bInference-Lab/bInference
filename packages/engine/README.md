@@ -295,6 +295,7 @@ const engine = createEngine({
   executor,
   paperBalances, // config's `defaults.paper.balances`, resolved to assets
   canPrice, // whether the price watchers can price a token now (decision 0194)
+  readTokenFacts, // what an unlisted token answers on chain, for its cards (decision 0199)
   chains,
   clock,
   ids,

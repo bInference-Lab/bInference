@@ -44,7 +44,7 @@ function standingOf({ outcome, intent }: AnsweredCard, chains: ChainRegistry): C
     return { status: "open" };
   }
   const { closing } = intent.stored;
-  const paper = paperReceiptOf(intent.history, chains);
+  const paper = paperReceiptOf(intent, chains);
   if (closing === undefined) {
     return unknown;
   }

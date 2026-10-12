@@ -33,6 +33,7 @@ import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import {
   createFakeExecutor,
   createFakePriceSource,
+  createFakeTokenFacts,
   createFakeWalletFacts,
   createFakeCeilingEditor,
   createFakeWalletExporter,
@@ -234,6 +235,8 @@ export interface SkeletonOptions {
   readonly webPush?: ComposeEngineOptions["webPush"];
   /** The agent runtime's running turns; none started when left out. */
   readonly turns?: ComposeEngineOptions["turns"];
+  /** What tokens the registry does not list answer on chain; `UNL`, 18 decimals when left out. */
+  readonly tokenFacts?: ComposeEngineOptions["readTokenFacts"];
 }
 
 // The owner's bot and the handlers it alone runs, the HTTP listener with the console's files,
@@ -309,6 +312,7 @@ export async function composeSkeleton(
     executor,
     positions,
     canPrice: async () => await Promise.resolve(true),
+    readTokenFacts: options.tokenFacts ?? createFakeTokenFacts().read,
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),

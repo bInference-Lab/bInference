@@ -19,7 +19,7 @@ import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
-import { assetInfosOf } from "../money-path/asset-infos.js";
+import { intentAssetInfos } from "../money-path/asset-infos.js";
 import { autoOrderQuoteDocument, autoOrderRequestDocument } from "../orders/auto-order-quote.js";
 
 /** What an intent was asked: a proposal's request, a rescue's, an unfreeze's or an auto order's. */
@@ -113,7 +113,8 @@ function outcomeOf(snapshot: IntentSnapshot): IntentOutcome | undefined {
 /**
  * An intent as every surface draws it (protocol spec, section 8.3): the stored record, its quote,
  * risk check and simulation, its newest card version, its outcome with the paper fill or the
- * settled trade as its execution, and the registry's info for the assets it names.
+ * settled trade as its execution, and the info of the assets it names: the registry's, or what the
+ * intent stored of an unlisted token at its proposal.
  */
 export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): IntentView {
   const { record } = snapshot;
@@ -140,6 +141,6 @@ export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): I
     outsideContent: record.hasOutsideContent,
     createdAt: record.createdAtMs,
     changedAt: record.changedAtMs,
-    assets: assetInfosOf(chains, assetsOf(record, request)),
+    assets: intentAssetInfos(chains, record, assetsOf(record, request)),
   };
 }

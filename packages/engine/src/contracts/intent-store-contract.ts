@@ -68,6 +68,19 @@ async function keepsAFillsOrder(subject: IntentStoreSubject): Promise<void> {
   assert.deepEqual((await store.get(draft.id, live()))?.authorizedBy, authorizedBy);
 }
 
+// An unlisted token's facts are stored with the intent and kept through every move after.
+async function keepsUnlistedAssets(subject: IntentStoreSubject): Promise<void> {
+  const { store } = subject;
+  const assets = {
+    "fake:1/token:0x0000000f": { symbol: "XVS", name: "Venus", decimals: 18, verified: false },
+  };
+  const created = await store.create({ ...intentDraft(subject, 1), assets }, live());
+  assert.ok(created.ok);
+  const moved = await store.transition(intentMove(1, 0, "checked"), live());
+  assert.ok(moved.ok);
+  assert.deepEqual((await store.get(fixtureId("int", 1), live()))?.assets, assets);
+}
+
 async function movesUnderVersion(subject: IntentStoreSubject): Promise<void> {
   const { store, ledger } = subject;
   await store.create(intentDraft(subject, 1), live());
@@ -244,6 +257,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
       movesUnderVersion,
     ),
     checkOn("keeps a fill's order from its first write", create, keepsAFillsOrder),
+    checkOn("keeps an unlisted token's facts through its moves", create, keepsUnlistedAssets),
     checkOn("refuses a stale or unknown move and writes nothing", create, refusesStale),
     checkOn("lets exactly one of two racing moves from one version win", create, letsOneRacerWin),
     checkOn(

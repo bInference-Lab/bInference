@@ -9,8 +9,11 @@ export type ReadDecimals = (
   signal: AbortSignal,
 ) => Promise<ReadonlyMap<AssetRef, number>>;
 
-// The ERC-20 tokens of one chain among the tokens, by address.
-function tokensOn(chain: ChainRef, tokens: readonly AssetRef[]): ReadonlyMap<Address, AssetRef> {
+/** The ERC-20 tokens of one chain among the tokens, by address. */
+export function erc20TokensOn(
+  chain: ChainRef,
+  tokens: readonly AssetRef[],
+): ReadonlyMap<Address, AssetRef> {
   return new Map(
     tokens.flatMap((token) => {
       const parts = assetRefParts(token);
@@ -30,7 +33,7 @@ export function chainTokenDecimals(reads: ReadonlyMap<ChainRef, ChainReads>): Re
   return async (tokens, signal) => {
     const found = await Promise.all(
       [...reads].map(async ([chain, { rpc, multicall }]) => {
-        const own = tokensOn(chain, tokens);
+        const own = erc20TokensOn(chain, tokens);
         const decimals = await readTokenDecimals(rpc, {
           multicall,
           tokens: [...own.keys()],

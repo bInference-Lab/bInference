@@ -415,6 +415,11 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   risk is an intent in a terminal state (`rejected_policy`, `risk_blocked`) with its reason, not a
   `fail`. This follows [ENGINEERING.md section 7](../ENGINEERING.md#section-7): expected outcomes
   are results.
+- A `swap`, `buy` or `sell` that names a token the registry does not list reads its symbol, name
+  and decimals on chain before anything is stored; the intent keeps them, marked unverified, and
+  its cards, receipts and views show the token by them. A token that answers no symbol or no
+  decimals fails with `asset.unreadable` and stores nothing
+  ([decision 0199](../DECISIONS.md#d0199)).
 - `intent/confirm` must name the card's current `cardVersion`. A re-quote that changes the terms
   opens a new card version ([rule 4](../ARCHITECTURE.md#rule-4)), and confirming an old version
   fails with `intent.card_changed`. A Confirm that would take the agent past its rolling 24-hour
@@ -464,7 +469,9 @@ Auto orders follow [decision 0189](../DECISIONS.md#d0189):
   `limit`, `takeProfit`, `stopLoss` or `trailing` order for a token the price watcher cannot price
   now, with no venue read and no pool deep enough (`order.unpriced_token`,
   [decision 0194](../DECISIONS.md#d0194)); such an order of a live agent while live fills are off
-  (`order.live_fills_off`, [decision 0197](../DECISIONS.md#d0197)); and
+  (`order.live_fills_off`, [decision 0197](../DECISIONS.md#d0197)); a token the registry does not
+  list that answers no symbol or no decimals on chain (`asset.unreadable`,
+  [decision 0199](../DECISIONS.md#d0199)); and
   with `protocol.bad_args` a token on no chain of the registry or the chain's coin, an expiry not in
   the future, a price, worst price or size of zero, a trailing distance of 0 or `10000`, a share above
   `10000`, a `takeProfit`, `stopLoss` or `trailing` order that does not sell, and a buy whose size is
@@ -736,7 +743,9 @@ Each view is the stored record plus what a client needs to draw it. Responses th
 carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
 
 - `AssetInfo`: `{ symbol, name, decimals, verified, onCurve?, logo? }`. `symbol` and `name` are set
-  by whoever deployed the token; clients escape them ([rule 3](../ARCHITECTURE.md#rule-3)).
+  by whoever deployed the token; clients escape them ([rule 3](../ARCHITECTURE.md#rule-3)). An
+  intent's or order card's token the registry does not list carries what its contract answered at
+  the proposal, with `verified: false` ([decision 0199](../DECISIONS.md#d0199)).
 - `QuoteView`:
   `{ route: [{ venue, shareBps }], amountIn, expectedOut, minOut, priceImpactBps, gas: Amount, quotedAt, expiresAt, place? }`.
   `place`, on a `buy` or `sell` quote, is `{ kind: curve, launchpad }` or `{ kind: pools }`.
@@ -864,7 +873,7 @@ later unchanged.
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                           |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                              |
 | `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`              |
-| `asset`    | `not_found`, `bad_address`                                                                      |
+| `asset`    | `not_found`, `bad_address`, `unreadable`                                                        |
 | `name`     | `not_found`, `resolver_down`                                                                    |
 | `quote`    | `no_route`, `venue_down`                                                                        |
 | `chain`    | `rpc_down`, `simulation_failed`                                                                 |

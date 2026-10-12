@@ -9,7 +9,7 @@ import { isFirstLiveCard } from "../confirmations/first-live-card.js";
 import type { CardCloseReason, CardRecord } from "../intents/card-record.js";
 import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { assetInfosOf } from "../money-path/asset-infos.js";
+import { intentAssetInfos } from "../money-path/asset-infos.js";
 import type { AgentStore, IntentStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
@@ -164,7 +164,7 @@ async function drawOpen(
     return undefined;
   }
   const drawn = drawCard(facts);
-  const assets = assetInfosOf(chains, [...new Set(drawn.lines.flatMap(assetsOfLine))]);
+  const assets = intentAssetInfos(chains, record, drawn.lines.flatMap(assetsOfLine));
   return { card: drawn, assets };
 }
 
@@ -219,7 +219,7 @@ async function settled(
   if (record === undefined || card?.callbackRef === undefined || closing === undefined) {
     return undefined;
   }
-  const paper = paperReceiptOf({ events, cards }, chains);
+  const paper = paperReceiptOf({ record, history: { events, cards } }, chains);
   if (paper !== undefined) {
     return { ref: card.callbackRef, closing, paper };
   }
@@ -244,7 +244,8 @@ async function waiting(options: CardShowingsOptions, call: Call): Promise<readon
 
 /**
  * Creates the {@link CardShowings} over the intent and agent stores: each card version is drawn
- * from the stored intent with the registry's info for the assets it names, and a closed version
+ * from the stored intent with the info of the assets it names, the registry's or what the intent
+ * stored of an unlisted token at its proposal (decision 0199), and a closed version
  * settles with the intent's closing and its paper fill.
  */
 export function createCardShowings(options: CardShowingsOptions): CardShowings {

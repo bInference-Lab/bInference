@@ -153,6 +153,34 @@ describe("the confirmations screen", () => {
     expect(warning.parentElement?.textContent).toMatch(/^Warning This trade has no time limit/u);
   });
 
+  it("names a token the registry does not list by what it answered, with its short address", async () => {
+    const xvs = "eip155:56/erc20:0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63";
+    const [header, , expiry] = lines.lines;
+    const amount = { asset: xvs, base: 2n * 10n ** 18n };
+    const buy = {
+      ...lines,
+      assets: {
+        ...lines.assets,
+        [xvs]: { symbol: "XVS", name: "Venus", decimals: 18, verified: false },
+      },
+      lines: [
+        header,
+        {
+          key: "card.swap.action",
+          values: {
+            in: lines.lines[1]?.values.in,
+            minOut: { type: "amount", amount },
+          },
+        },
+        expiry,
+      ],
+    };
+    const { client } = fakeClient({ ...answers, "intent/card": () => buy });
+    renderSignedIn(<ConfirmationsScreen />, { client });
+    await settle();
+    expect(screen.getByText("Sell 0.5 BNB → at least 2 XVS (0xcF6B…6C63)")).toBeDefined();
+  });
+
   it("confirms the card version it shows", async () => {
     const { client, calls } = fakeClient(answers);
     renderSignedIn(<ConfirmationsScreen />, { client });

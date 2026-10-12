@@ -33,7 +33,7 @@ import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
 import { createFeeTokenVenue } from "./fee-token-venue.js";
-import { forkCustody, forkWallet } from "./fork-trading.js";
+import { forkCustody, forkTokenFacts, forkWallet } from "./fork-trading.js";
 
 /** A key made from fixed words: the order rig's wallet, which holds nothing on BSC. */
 const walletKey: `0x${string}` = keccak256(toHex("binference order fill fork wallet"));
@@ -152,6 +152,7 @@ function engineOf(
     paperBalances: [{ asset: native, base: 10n ** 18n }],
     isLocked: () => false,
     canPrice: async () => await Promise.resolve(true),
+    readTokenFacts: forkTokenFacts(fork),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(52) }),

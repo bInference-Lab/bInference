@@ -1,43 +1,26 @@
-import { BinferenceError, createSecret, type Id, idSchema } from "@binference/core";
+import { idSchema } from "@binference/core";
 import type { EngineCaller } from "@binference/engine";
-import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
-import {
-  createMemoryCardCopyStore,
-  createMemoryOwnerStore,
-  testAgent as agent,
-  testCoin as coin,
-  testToken as token,
-  testWallet as wallet,
-} from "@binference/engine/testing";
-import type { IntentRequest, OwnerInfo } from "@binference/protocol";
-import {
-  cardAnswersContract,
-  createFakeBotApi,
-  type FakeBotApi,
-  fakeBotToken,
-} from "@binference/telegram/testing";
-import { Api } from "grammy";
+import { createRunningTurns } from "@binference/engine/chat";
+import { testAgent as agent } from "@binference/engine/testing";
+import type { OwnerInfo } from "@binference/protocol";
+import { cardAnswersContract } from "@binference/telegram/testing";
 import { describe, expect, it } from "vitest";
-import type { ComposedTelegram } from "./compose-telegram.js";
-import { type ComposedSkeleton, composeSkeleton, skeletonCompositions } from "./test-skeleton.js";
+import {
+  answerInCli,
+  type Bot,
+  bot,
+  buyUnlisted,
+  createOrder,
+  never,
+  ownerId,
+  propose,
+  stopLossUnlisted,
+} from "./test-bot.js";
 
 const live = { signal: new AbortController().signal };
-const ownerId = 7_012_345_678;
 const icons = {
   paper: String.fromCodePoint(0x1f9ea),
   refused: String.fromCodePoint(0x274c),
-};
-const callers: Readonly<Record<"cli" | "mcp", EngineCaller>> = {
-  cli: {
-    credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000001",
-    client: { kind: "cli", version: "test" },
-    scopes: ["read", "propose", "chat", "confirm", "loosen", "admin"],
-  },
-  mcp: {
-    credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000002",
-    client: { kind: "mcp", version: "test" },
-    scopes: ["read", "propose"],
-  },
 };
 const runtimeToken = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000021");
 const runtime: EngineCaller = {
@@ -45,74 +28,6 @@ const runtime: EngineCaller = {
   client: { kind: "runtime", version: "test" },
   scopes: ["read", "propose", "agent"],
 };
-const swap: IntentRequest = {
-  kind: "swap",
-  agent,
-  wallet,
-  reason: "Rotate into the token",
-  from: coin,
-  to: token,
-  amount: { base: 10n ** 16n },
-};
-const [selfHosted] = skeletonCompositions;
-
-/** The composed engine with the owner's bot on the synthetic Bot API, the paper money opened. */
-interface Bot extends ComposedSkeleton {
-  readonly telegram: ComposedTelegram;
-  readonly botApi: FakeBotApi;
-}
-
-interface BotOptions {
-  readonly isPaired?: boolean;
-  readonly owner?: () => OwnerInfo;
-  readonly turns?: RunningTurns;
-}
-
-async function bot(options: BotOptions = {}): Promise<Bot> {
-  const botApi = createFakeBotApi();
-  const owners = createMemoryOwnerStore();
-  if (options.isPaired !== false) {
-    await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
-  }
-  const api = new Api(fakeBotToken, { fetch: botApi.fetch });
-  const telegram = {
-    api,
-    owners,
-    copies: createMemoryCardCopyStore(),
-    botToken: createSecret(fakeBotToken),
-  };
-  const owner = options.owner === undefined ? {} : { owner: options.owner };
-  const turns = options.turns === undefined ? {} : { turns: options.turns };
-  const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), {
-    telegram,
-    ...owner,
-    ...turns,
-  });
-  const composed = skeleton.composed.telegram ?? never();
-  const { handlers } = skeleton.composed.engine;
-  await handlers["portfolio/resetPaper"]({ args: { agent }, caller: callers.cli, ...live });
-  return { ...skeleton, telegram: composed, botApi };
-}
-
-function never(): never {
-  throw new BinferenceError({ code: "test.missing", message: "The fixture holds it." });
-}
-
-async function propose(test: Bot): Promise<{ readonly intent: Id<"int">; readonly ref: string }> {
-  const { handlers } = test.composed.engine;
-  const proposed = await handlers["intent/propose"]({ args: swap, caller: callers.mcp, ...live });
-  const intent = proposed.ok ? proposed.value.intent : never();
-  const [card] = await test.parts.stores.intents.cards(intent, live);
-  return { intent, ref: card?.callbackRef ?? never() };
-}
-
-async function answerInCli(test: Bot, intent: Id<"int">, verb: "confirm" | "deny") {
-  const [card] = await test.parts.stores.intents.cards(intent, live);
-  const args = { intent, card: card?.id ?? never(), cardVersion: 1 };
-  const { handlers } = test.composed.engine;
-  const answered = await handlers[`intent/${verb}`]({ args, caller: callers.cli, ...live });
-  expect(answered.ok).toBe(true);
-}
 
 // The owner writes to the bot, and the message's batch closes.
 async function ownerWrites(test: Bot): Promise<void> {
@@ -299,5 +214,29 @@ describe("the bot joined to the engine", () => {
     expect(test.botApi.messages().map(({ text }) => text)).toStrictEqual([
       "Calm: <b>no</b> big moves.",
     ]);
+  });
+
+  it("shows an order card for a token the registry does not list by what it answered", async () => {
+    const test = await bot({ knowsUnlisted: true });
+    await createOrder(test, stopLossUnlisted);
+    await test.telegram.idle();
+    const [card] = test.botApi.messages().map(({ text }) => text.split("\n")[1]);
+    expect(card).toMatch(
+      /^Approve Stop-loss: sell all your XVS \(0x0000000f\) when the price falls to \$0\.80 · /,
+    );
+    expect(test.logger.records().filter((record) => record.level !== "info")).toStrictEqual([]);
+  });
+
+  it("shows a buy card for a token the registry does not list, then its receipt", async () => {
+    const test = await bot({ knowsUnlisted: true });
+    const { intent } = await propose(test, buyUnlisted);
+    await test.telegram.idle();
+    const [card] = test.botApi.messages().map(({ text }) => text);
+    await answerInCli(test, intent, "confirm");
+    await test.telegram.idle();
+    const [receipt] = test.botApi.messages().map(({ text }) => text);
+    expect(card).toContain("Buy XVS (0x0000000f) with 0.01 FAKE");
+    expect(card).toContain("Not a verified token");
+    expect(receipt).toMatch(/^.+ Paper fill: 0\.01 FAKE → 0\.02 XVS \(0x0000000f\)$/u);
   });
 });

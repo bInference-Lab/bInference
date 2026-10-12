@@ -1,6 +1,6 @@
 import type { ChainRegistry, PriceSource, QuotedTrade, Signer } from "@binference/chain";
 import { type Clock, err, type IdSource, ok, type Result } from "@binference/core";
-import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
+import type { AssetInfos, IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -30,6 +30,7 @@ import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
 import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
 import { proposalOf, storeProposed } from "./store-proposed.js";
 import { type SwapTrade, swapSubjectOf } from "./swap-trade.js";
+import { type ReadTokenFacts, unlistedAssetInfos } from "./token-facts.js";
 import type { Holdings } from "./wallet-facts.js";
 
 /** Who proposes: their role for the state machine, and their id for the intents table. */
@@ -78,6 +79,8 @@ export interface MoneyPathOptions {
   readonly risk: RiskCheck;
   readonly simulator: Simulator;
   readonly chains: ChainRegistry;
+  /** Reads what a token the registry does not list answers on chain, for its card. */
+  readonly readTokenFacts: ReadTokenFacts;
   readonly execute: ExecuteConfirmed;
   /** Whether the engine is locked: no live intent is authorized by auto mode while it is. */
   readonly isLocked: () => boolean;
@@ -301,6 +304,21 @@ async function authorizeAndExecute(
   return execute(authorized, fill === undefined ? { signal } : { signal, fill });
 }
 
+// What the trade's tokens the registry does not list answer on chain, for its card. A fill opens
+// no card, so it reads none.
+async function assetsOf(
+  options: MoneyPathOptions,
+  proposal: { readonly resolved: ResolvedProposal; readonly fill: FillProposal | undefined },
+  signal: AbortSignal,
+): Promise<Result<AssetInfos, "asset.unreadable">> {
+  const { assetIn, assetOut } = proposal.resolved.ask;
+  if (proposal.fill !== undefined) {
+    return ok({});
+  }
+  const assets = assetOut === undefined ? [assetIn] : [assetIn, assetOut];
+  return unlistedAssetInfos(options, assets, signal);
+}
+
 async function propose(
   options: MoneyPathOptions,
   call: {
@@ -326,8 +344,12 @@ async function propose(
   if (!isPaper) {
     options.lowGas.check(gasReadingOf(resolved.value));
   }
+  const assets = await assetsOf(options, { resolved: resolved.value, fill }, signal);
+  if (!assets.ok) {
+    return assets;
+  }
   const intent = { request, proposer, step: step.value, wallet: resolved.value.wallet };
-  const created = await storeProposed(options, intent, signal);
+  const created = await storeProposed(options, { ...intent, assets: assets.value }, signal);
   const run = { options, machine, resolved: resolved.value, signal };
   return ok(await runSteps(fill === undefined ? run : { ...run, fill }, created));
 }

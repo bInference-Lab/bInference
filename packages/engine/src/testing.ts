@@ -64,6 +64,10 @@ export { createFakeConfirmationStore } from "./fakes/fake-confirmation-store.js"
 export type { FakeConfirmationStore } from "./fakes/fake-confirmation-store.js";
 export { createFakePriceSource } from "./fakes/fake-price-source.js";
 export type { FakePriceSource } from "./fakes/fake-price-source.js";
+export { createFakeTokenFacts, fakeTokenFacts } from "./fakes/fake-token-facts.js";
+export { createTokenModelSimulator, unknownToken } from "./risk/test-round-trip.js";
+export type { TokenModel } from "./risk/test-round-trip.js";
+export type { FakeTokenFacts, FakeTokenFactsOptions } from "./fakes/fake-token-facts.js";
 export { createFakeQuoteSource } from "./fakes/fake-quote-source.js";
 export type { FakeQuoteSource } from "./fakes/fake-quote-source.js";
 export { createFakeSimulator } from "./fakes/fake-simulator.js";
