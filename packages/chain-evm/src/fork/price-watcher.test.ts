@@ -191,13 +191,12 @@ function summaryOf(lags: readonly number[], delays: readonly number[], skipped: 
   );
 }
 
-// The one call a plan reads, as an eth_call takes it.
-function callOf(plan: PriceRead): { readonly to: Address; readonly data: Hex } {
-  const [call] = plan.calls;
-  if (call === undefined || plan.calls.length !== 1) {
-    throw new Error("The plan reads another number of calls than one.");
-  }
-  return { to: getAddress(accountRefParts(call.target).address), data: call.input as Hex };
+// The calls a plan reads, as eth_call takes them.
+function callsOf(plan: PriceRead): readonly { readonly to: Address; readonly data: Hex }[] {
+  return plan.calls.map((call) => ({
+    to: getAddress(accountRefParts(call.target).address),
+    data: call.input as Hex,
+  }));
 }
 
 // For each mined block, how many later blocks were mined before the watcher read it.
@@ -270,7 +269,9 @@ describe("the price watcher on a BSC fork", () => {
       }
     }));
 
-  it("finds a token's deepest pool on chain and prices it from one read", async ({ signal }) =>
+  it("finds a token's deepest pool on chain by what it trades and prices it from its reads", async ({
+    signal,
+  }) =>
     withFork(signal, async (fork) => {
       const reader = createPoolPriceReader({
         rpc: fork.rpc,
@@ -284,7 +285,10 @@ describe("the price watcher on a BSC fork", () => {
         minDepthUsdMicros: 1_000_000_000n,
       });
       const plan = readOf(await reader.priceRead({ token: cakeAsset, contracts: {} }, { signal }));
-      const answer = await fork.client.call(callOf(plan));
-      expect(plan.price([answer.data])).toMatchObject({ ok: true });
+      const answers = await Promise.all(
+        callsOf(plan).map(async (call) => (await fork.client.call(call)).data),
+      );
+      expect(plan.price(answers)).toMatchObject({ ok: true });
+      expect(plan.depthUsdMicros).toBeGreaterThanOrEqual(1_000_000_000n);
     }));
 });
