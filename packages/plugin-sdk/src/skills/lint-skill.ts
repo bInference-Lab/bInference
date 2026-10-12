@@ -1,11 +1,20 @@
-/** A sentence of a skill that tells the agent to ask for a secret. */
+import { type PatternCode, patternMatches, redacted } from "./skill-patterns.js";
+
+/**
+ * A sentence of a skill that the install refuses: one that tells the agent to ask for a secret
+ * (`asks_for_secret`), runs a download in a shell (`pipe_to_shell`), sends a secret store over
+ * the network (`exfiltration`), or holds a secret written out (`literal_secret`).
+ */
 export interface SkillFinding {
-  readonly code: "asks_for_secret";
+  readonly code: "asks_for_secret" | PatternCode;
   /** The line of the skill's text the sentence starts on, from 1. */
   readonly line: number;
-  /** The secret the sentence asks for, as the skill writes it. */
-  readonly secret: string;
-  /** The sentence, its whitespace collapsed. */
+  /**
+   * For `asks_for_secret`, the secret the sentence asks for, as the skill writes it; for
+   * `literal_secret`, what the secret looks like.
+   */
+  readonly secret?: string;
+  /** The sentence, its whitespace collapsed, with every secret written out in it redacted. */
   readonly text: string;
 }
 
@@ -20,7 +29,7 @@ const boundary =
   /[.!?;](?=\s|$)|[\u3002\uff01\uff1f\uff1b]|\n[ \t]*\n|\n(?=[ \t]*(?:[-*+>|#]|\d+\.)[ \t])/g;
 
 const englishSecret =
-  /\b(?:seed (?:phrase|words)|(?:secret )?recovery phrase|secret phrase|mnemonic(?: phrase)?|private keys?|secret keys?|api (?:keys?|secrets?)|passphrases?)\b/;
+  /\b(?:seed (?:phrase|words)|(?:secret )?recovery phrase|secret phrase|mnemonic(?: phrase)?|private keys?|secret keys?|api (?:keys?|secrets?)|passphrases?|passwords?|keystore(?: file)?|(?:access|auth|bot) tokens?|(?:2fa|one-time|otp) codes?)\b/;
 
 const englishAsk = new Set([
   "ask",
@@ -106,31 +115,43 @@ function asksInChinese(sentence: string): boolean {
   });
 }
 
-function findingOf(text: string, sentence: Sentence): SkillFinding | undefined {
-  const plain = sentence.text.replace(/\s+/g, " ").trim();
+// The secret a sentence asks for, as the sentence writes it, if it asks for one.
+function askedSecret(plain: string): string | undefined {
   const lower = plain.toLowerCase();
-  const english = englishSecret.exec(lower);
-  const chinese = chineseSecret.exec(plain);
-  const found = english ?? chinese;
+  const found = englishSecret.exec(lower) ?? chineseSecret.exec(plain);
   if (found === null || !(asksInEnglish(lower) || asksInChinese(plain))) {
     return undefined;
   }
-  const secret = plain.slice(found.index, found.index + found[0].length);
+  return plain.slice(found.index, found.index + found[0].length);
+}
+
+function findingsOf(text: string, sentence: Sentence): readonly SkillFinding[] {
+  const plain = sentence.text.replace(/\s+/g, " ").trim();
   const start = sentence.offset + sentence.text.length - sentence.text.trimStart().length;
   const line = text.slice(0, start).split("\n").length;
-  return { code: "asks_for_secret", line, secret, text: plain };
+  // Patterns read the sentence as written, so a command's lines and a quoted phrase stay whole.
+  const shown = redacted(plain);
+  const secret = askedSecret(plain);
+  const asks: readonly SkillFinding[] =
+    secret === undefined ? [] : [{ code: "asks_for_secret", line, secret, text: shown }];
+  const patterns = patternMatches(sentence.text).map((match): SkillFinding =>
+    match.secret === undefined
+      ? { code: match.code, line, text: shown }
+      : { code: match.code, line, secret: match.secret, text: shown },
+  );
+  return [...asks, ...patterns];
 }
 
 /**
- * Lints a skill's `SKILL.md`, frontmatter and body alike, for sentences that tell the agent to
- * ask for or collect a secret: a seed or recovery phrase, a private or secret key, an API
- * key or a passphrase, in English or Chinese. A sentence that forbids it, such as "Never ask for a
- * seed phrase", passes. It is the install lint of ARCHITECTURE.md section 5, which refuses a
- * skill with a finding; a skill's author runs it before publishing. It reads words, so a finding
- * names a sentence to review rather than proving intent.
+ * Lints a skill's text, its `SKILL.md` frontmatter and body or any other text file of the skill,
+ * for sentences that tell the agent to ask for or collect a secret (a seed or recovery phrase, a
+ * private or secret key, an API key, a token, a password or a passphrase, in English or Chinese),
+ * that pipe a download into a shell, that send the environment or a key file over the network, or
+ * that write a secret out in full. A sentence that forbids it, such as "Never ask for a seed
+ * phrase", passes. It is the install lint of ARCHITECTURE.md section 5, which refuses a skill with
+ * a finding; a skill's author runs it before publishing. It reads words and shapes, so a finding
+ * names a sentence to review rather than proving intent. No finding repeats a secret it found.
  */
 export function lintSkill(text: string): readonly SkillFinding[] {
-  return sentencesOf(text)
-    .map((sentence) => findingOf(text, sentence))
-    .filter((finding) => finding !== undefined);
+  return sentencesOf(text).flatMap((sentence) => findingsOf(text, sentence));
 }

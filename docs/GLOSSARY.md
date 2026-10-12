@@ -231,7 +231,9 @@ new name here first, in the change that uses it.
 - **bundled skills**: the skills in the repo's `skills/` folder. `binference-tools` is the one that
   teaches Claude Code, Codex and other MCP clients the engine's MCP tools.
 - **skill lint**: `lintSkill`, which names each sentence of a skill that tells the agent to ask for
-  a seed phrase, a private key, an API key or a passphrase; the install refuses such a skill.
+  a seed phrase, a private key, an API key, a token, a password or a passphrase, pipes a download
+  into a shell, sends a secret store over the network, or writes a secret out; the install refuses
+  such a skill.
 - **question**: the agent's question to the owner with two to four answer buttons (`ask_owner`).
   The answer comes back as the owner's next message.
 - **status line**: the one line a turn ends with when the owner should know why: a proposal waits,

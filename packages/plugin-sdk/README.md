@@ -41,9 +41,11 @@ needs: `parseJsonText` keeps each number as the text the answer wrote, `ratioOf`
 read under the service's published limits, waits out a 429 once and turns every other answer into a
 typed fault.
 
-A skills plugin ships `SKILL.md` files. `lintSkill` reads one and names each sentence that tells
-the agent to ask for or collect a secret: a seed or recovery phrase, a private key, an API
-key or a passphrase, in English or Chinese. It is the install lint of
+A skills plugin ships `SKILL.md` files. `lintSkill` reads one, or any other text file of a skill,
+and names each sentence that tells the agent to ask for or collect a secret (a seed or recovery
+phrase, a private key, an API key, a token, a password or a passphrase, in English or Chinese),
+that pipes a download into a shell, that sends the environment or a key file over the network, or
+that writes a secret out in full; a finding never repeats the secret. It is the install lint of
 [ARCHITECTURE.md section 5](../../docs/ARCHITECTURE.md#section-5), which refuses a skill with a
 finding, so a skill's author runs it before publishing.
 
@@ -68,7 +70,7 @@ finding, so a skill's author runs it before publishing.
 | `defineData`, `MarketDataSource`, `MarketPool`, `TrendingToken`          | A market data source, checked and frozen, and what it reads                              |
 | `MarketCandle`, `CandleRequest`, `CandleInterval`, `candleIntervals`     | A candle in USD, which candles a chart asks for, and the intervals                       |
 | `@binference/plugin-sdk/data`                                            | `createPacedReader`, `pathSegment`, `parseJsonText` and the exact figure readers         |
-| `lintSkill`, `SkillFinding`                                              | The sentences of a skill that ask for a secret, each with its line                       |
+| `lintSkill`, `SkillFinding`                                              | The sentences of a skill the install refuses, each with its code and line                |
 | `@binference/plugin-sdk/testing`                                         | The venue, curve, risk and market data contract suites, scripted HTTP and a manual clock |
 
 ## Example
