@@ -746,7 +746,9 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
 - `AssetInfo`: `{ symbol, name, decimals, verified, onCurve?, logo? }`. `symbol` and `name` are set
   by whoever deployed the token; clients escape them ([rule 3](../ARCHITECTURE.md#rule-3)). An
   intent's or order card's token the registry does not list carries what its contract answered at
-  the proposal, with `verified: false` ([decision 0199](../DECISIONS.md#d0199)).
+  the proposal, with `verified: false` ([decision 0199](../DECISIONS.md#d0199)). `order/list`,
+  `portfolio/get` and `facts/get` carry the same for such a token, from the newest intent that
+  stored it; a token no intent stored is left out, and clients show it by its address.
 - `QuoteView`:
   `{ route: [{ venue, shareBps }], amountIn, expectedOut, minOut, priceImpactBps, gas: Amount, quotedAt, expiresAt, place? }`.
   `place`, on a `buy` or `sell` quote, is `{ kind: curve, launchpad }` or `{ kind: pools }`.

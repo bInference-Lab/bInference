@@ -15,7 +15,7 @@ import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
-import type { AgentStore, WalletFactsSource } from "../ports.js";
+import type { AgentStore, IntentStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { autoOrderQuoteDocument } from "./auto-order-quote.js";
 import {
@@ -39,6 +39,8 @@ export interface OrderParts {
   /** Custody, which holds each wallet's account on each chain. */
   readonly custody: Pick<Signer, "account">;
   readonly chains: ChainRegistry;
+  /** What intents stored of tokens the registry does not list, which order lists show. */
+  readonly intents: Pick<IntentStore, "storedAssets">;
   readonly clock: Clock;
   readonly ids: IdSource;
   readonly publish: PublishPush;

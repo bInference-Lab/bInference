@@ -3,6 +3,7 @@ import type { JsonValue } from "@binference/core";
 import type { AssetInfo, AssetInfos } from "@binference/protocol";
 import { assetsDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import type { IntentStore } from "../ports.js";
 
 /**
  * What the chain registry says about an asset: its chain's native coin, or a token it lists, both
@@ -34,6 +35,30 @@ export function assetInfosOf(chains: ChainRegistry, assets: readonly AssetRef[])
       return info === undefined ? [] : [[asset, info]];
     }),
   );
+}
+
+/** Where a view finds what it shows of each asset: the registry, then the stored intents. */
+export interface AssetSources {
+  readonly chains: ChainRegistry;
+  readonly intents: Pick<IntentStore, "storedAssets">;
+}
+
+/**
+ * The info of each asset a view names: the registry's, else what the newest intent stored of a
+ * token the registry does not list when it was proposed, marked unverified (decision 0199). An
+ * asset neither knows is left out, and the view shows it by its address.
+ */
+export async function knownAssetInfos(
+  sources: AssetSources,
+  assets: readonly AssetRef[],
+  call: { readonly signal: AbortSignal },
+): Promise<AssetInfos> {
+  const listed = assetInfosOf(sources.chains, assets);
+  const unlisted = [...new Set(assets)].filter((asset) => listed[asset] === undefined);
+  if (unlisted.length === 0) {
+    return listed;
+  }
+  return { ...(await sources.intents.storedAssets(unlisted, call)), ...listed };
 }
 
 /**

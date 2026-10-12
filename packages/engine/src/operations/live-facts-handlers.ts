@@ -1,7 +1,7 @@
 import type { ChainRegistry } from "@binference/chain";
 import { BinferenceError, type Clock, err, ok } from "@binference/core";
 import type { AgentMode, LiveFactsView, PortfolioView } from "@binference/protocol";
-import { assetInfosOf } from "../money-path/asset-infos.js";
+import { knownAssetInfos } from "../money-path/asset-infos.js";
 import { recentOutflowsOf } from "../money-path/recent-outflows.js";
 import { orderViewOf } from "../orders/order-view-of.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -17,7 +17,7 @@ export interface LiveFactsHandlers {
 export interface LiveFactsParts {
   readonly agents: AgentStore;
   readonly orders: Pick<OrderStore, "list">;
-  readonly intents: Pick<IntentStore, "confirmedSince">;
+  readonly intents: Pick<IntentStore, "confirmedSince" | "storedAssets">;
   /** `portfolio/get`, which values every balance of the agent's wallets. */
   readonly portfolio: EngineHandler<"portfolio/get">;
   readonly chains: ChainRegistry;
@@ -102,7 +102,7 @@ export function createLiveFactsHandlers(parts: LiveFactsParts): LiveFactsHandler
         spentTodayUsdMicros: outflows.reduce((sum, outflow) => sum + outflow.valueUsdMicros, 0n),
         perTradeUsdMicros: limits.perTradeUsdMicros,
         rollingDayUsdMicros: limits.rollingDayUsdMicros,
-        assets: { ...assets, ...assetInfosOf(parts.chains, tokens) },
+        assets: { ...assets, ...(await knownAssetInfos(parts, tokens, { signal })) },
       });
     },
   };

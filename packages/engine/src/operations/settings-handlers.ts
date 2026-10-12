@@ -84,6 +84,7 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     agents: stores.agents,
     install: stores.install,
     portfolio: paper.portfolio,
+    intents: stores.intents,
     positions: paper.positions,
     store: options.positions,
     wallets: options.wallets,

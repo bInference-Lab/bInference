@@ -1,21 +1,21 @@
 import type { Amount, ChainRegistry } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
-import type { ArgsOf, ProtocolErrorCode, ResultOf } from "@binference/protocol";
+import type { ArgsOf, PortfolioView, ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
 import {
   createMarketHandlers,
   type MarketHandlers,
   type MarketParts,
 } from "../market/market-handlers.js";
-import { assetInfoOf } from "../money-path/asset-infos.js";
+import { assetInfoOf, knownAssetInfos } from "../money-path/asset-infos.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
-import type { AgentStore, InstallStore } from "../ports.js";
+import type { AgentStore, InstallStore, IntentStore } from "../ports.js";
 import { activeAgent } from "./active-agent.js";
 import { type AssetSearchHandlers, createAssetSearchHandlers } from "./asset-search-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { type LiveHoldingsOptions, liveHoldingsOf } from "./live-holdings.js";
 import { pnlViewOf } from "./pnl-view.js";
-import { paperHoldingsOf, portfolioViewOf } from "./portfolio-view.js";
+import { paperHoldingsOf, portfolioViewOf, type WalletHoldings } from "./portfolio-view.js";
 
 /**
  * The handlers of `portfolio/get`, `portfolio/pnl`, `portfolio/resetPaper`, `asset/search`,
@@ -32,6 +32,8 @@ export interface PortfolioHandlersOptions extends LiveHoldingsOptions, MarketPar
   readonly agents: AgentStore;
   readonly install: InstallStore;
   readonly portfolio: PaperPortfolio;
+  /** What intents stored of tokens the registry does not list, which the portfolio shows. */
+  readonly intents: Pick<IntentStore, "storedAssets">;
 }
 
 // A missing price is a feed the engine could not read now, such as the native coin's.
@@ -52,6 +54,20 @@ function balancesProblem(
   return [...assets].every((asset) => assetInfoOf(chains, asset) !== undefined)
     ? undefined
     : "asset.not_found";
+}
+
+// Each asset the portfolio names, by the registry's info or what its proposal stored.
+async function withStoredAssets(
+  options: PortfolioHandlersOptions,
+  holdings: readonly WalletHoldings[],
+  signal: AbortSignal,
+): Promise<PortfolioView> {
+  const view = portfolioViewOf(holdings, options.chains);
+  const named = [
+    ...view.balances.map(({ amount }) => amount.asset),
+    ...view.positions.map(({ asset }) => asset),
+  ];
+  return { ...view, assets: await knownAssetInfos(options, named, { signal }) };
 }
 
 interface Scope {
@@ -104,7 +120,8 @@ async function pnlOf(
  * Creates the portfolio handlers. `portfolio/get` answers the live and the paper holdings of the
  * wallets it names, live first, each with its own total (see {@link portfolioViewOf}): a live
  * wallet's balances are read on the chain (see {@link liveHoldingsOf}), a paper wallet's are its
- * paper positions. An unknown agent is `agent.not_found`, a wallet that is not one of its live
+ * paper positions. Each token shows by the registry's info, or by what its proposal stored of a
+ * token the registry does not list (decision 0199). An unknown agent is `agent.not_found`, a wallet that is not one of its live
  * wallets `wallet.not_found`. `portfolio/pnl` answers the agent's P&L over the range, live and
  * paper apart (see {@link pnlViewOf}), from every wallet the agent had, archived ones too, as
  * their trades happened; a range that ends before it starts is `protocol.bad_args`.
@@ -131,7 +148,7 @@ export function createPortfolioHandlers(options: PortfolioHandlersOptions): Port
             .then((valued) => paperHoldingsOf(wallet.id, valued)),
         ]),
       );
-      return ok(portfolioViewOf(holdings, options.chains));
+      return ok(await withStoredAssets(options, holdings, signal));
     },
     "portfolio/pnl": async ({ args, signal }) => pnlOf(options, args, signal),
     async "portfolio/resetPaper"({ args, signal }) {
@@ -155,7 +172,7 @@ export function createPortfolioHandlers(options: PortfolioHandlersOptions): Port
           ),
         ),
       );
-      return ok(portfolioViewOf(valued, options.chains));
+      return ok(await withStoredAssets(options, valued, signal));
     },
   };
 }

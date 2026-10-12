@@ -2,7 +2,7 @@ import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import type { OrderView, ProtocolErrorCode } from "@binference/protocol";
 import { orderStates } from "@binference/protocol";
 import { z } from "zod";
-import { assetInfosOf } from "../money-path/asset-infos.js";
+import { knownAssetInfos } from "../money-path/asset-infos.js";
 import { type EngineCall, type EngineHandler, proposerOf } from "../operations/engine-call.js";
 import { epochMsSchema } from "../records/record-fields.js";
 import { cancelOrder } from "./cancel-order.js";
@@ -69,7 +69,7 @@ async function listed(parts: OrderParts, call: EngineCall<"order/list">) {
   const last = records.at(-1);
   const page = {
     items: records.map((order) => orderViewOf(order)),
-    assets: assetInfosOf(parts.chains, tokens),
+    assets: await knownAssetInfos(parts, tokens, { signal: call.signal }),
   };
   return ok(
     records.length === query.value.limit && last !== undefined
@@ -82,7 +82,8 @@ async function listed(parts: OrderParts, call: EngineCall<"order/list">) {
  * Creates the auto order handlers: `order/create` stores an order awaiting its one card and
  * answers it with that card (decision 0189); `order/get` answers one order, with its open card
  * while it waits; `order/list` pages through the orders, oldest first, in one state or all, of one
- * agent or all, with the info of each token they trade; `order/cancel` ends an order at once, with
+ * agent or all, with the info of each token they trade, the registry's or what its proposal
+ * stored of a token the registry does not list; `order/cancel` ends an order at once, with
  * no card (`cancelOrder`).
  */
 export function createOrderHandlers(parts: OrderParts): OrderHandlers {

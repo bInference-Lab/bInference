@@ -1,5 +1,6 @@
 import { ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { unlistedHandlers } from "../testing/unlisted-fixtures.js";
 import { menuOf } from "./register-commands.js";
 import { startCommandBot } from "./test-command-bot.js";
 
@@ -19,6 +20,22 @@ describe("the fast commands in Chinese", () => {
       `${alarm} 所有 Agent 都已冻结，自 2026年10月10日 09:30:00 起；在解除冻结之前新建的 Agent 也会处于冻结状态。它们已打开的卡片和未签名的操作都已取消；已发送的交易会继续完成。请在命令行、控制台或 Mini App 中解除冻结。`,
       "此版本的 binference 不支持该请求。请更新 binference 或客户端。",
       "binference 与你沟通使用中文。点按一种语言即可切换，binference 会立即生效。",
+    ]);
+  });
+
+  it("name an unlisted token by its stored symbol and short address, as its card did", async () => {
+    const bot = await startCommandBot(unlistedHandlers, { locale: "zh" });
+    await bot.send("/orders");
+    await bot.send("/positions");
+    await bot.send("/balance");
+    expect(bot.texts()).toStrictEqual([
+      "止损 · 卖出 PEPE（0x6982…1933） · 价格为 $550.00 · 成交 0 次 · 2026年10月10日 09:30:00 到期",
+      `main · ${alarm} 实盘\n  2 PEPE（0x6982…1933） · 暂无价格 · 平均成本 $2.50 · 已实现盈亏 $0.00`,
+      [
+        `main · ${alarm} 实盘 · $0.00`,
+        "  2 PEPE（0x6982…1933） · 暂无价格",
+        `${alarm} 实盘 总计：$0.00`,
+      ].join("\n"),
     ]);
   });
 

@@ -31,6 +31,7 @@ export function orderPartsOf(
   return {
     orders,
     stored,
+    intents: stores.intents,
     agents,
     wallets,
     custody,

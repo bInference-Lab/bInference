@@ -11,6 +11,7 @@ import {
 } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { cardIntent, refs } from "../testing/card-fixtures.js";
+import { unlistedHandlers } from "../testing/unlisted-fixtures.js";
 import { ownerId } from "../testing/update-fixtures.js";
 import { fastCommandNames } from "./command-of.js";
 import { menuOf } from "./register-commands.js";
@@ -315,6 +316,22 @@ describe("the fast commands' replies", () => {
       [
         `main · ${icons.live} Live · $0.00`,
         "  1000 base units of 0x6982…1933 · no price now",
+        `${icons.live} Live total: $0.00`,
+      ].join("\n"),
+    ]);
+  });
+
+  it("names an unlisted token by its stored symbol and short address, as its card did", async () => {
+    const bot = await startCommandBot({ ...served, ...unlistedHandlers });
+    await bot.send("/orders");
+    await bot.send("/positions");
+    await bot.send("/balance");
+    expect(bot.texts()).toStrictEqual([
+      "Stop-loss · sell PEPE (0x6982…1933) · at $550.00 · 0 fills · ends Oct 10, 2026, 09:30:00",
+      `main · ${icons.live} Live\n  2 PEPE (0x6982…1933) · no price now · average cost $2.50 · realized P&L $0.00`,
+      [
+        `main · ${icons.live} Live · $0.00`,
+        "  2 PEPE (0x6982…1933) · no price now",
         `${icons.live} Live total: $0.00`,
       ].join("\n"),
     ]);
