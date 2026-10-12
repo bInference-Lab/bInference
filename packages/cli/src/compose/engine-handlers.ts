@@ -3,8 +3,10 @@ import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { RuntimeHealth } from "../agent-runtime/runtime-supervisor.js";
 import { composeBackupOperations } from "./backup-operations.js";
 import type { ComposedLock } from "./compose-lock.js";
+import type { ComposedRuntime } from "./compose-runtime.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
+import { createModelOperations } from "./model-operations.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { createTelegramPair } from "./telegram-pair.js";
 
@@ -26,13 +28,15 @@ interface EngineWiring {
   readonly backupKey: () => HealthSignal["state"];
   /** The agent runtime's signal: failing, since it went down, while it is down or starting. */
   readonly runtime: () => RuntimeHealth;
+  /** Puts an agent's picked models in force in the runtime. */
+  readonly pick: ComposedRuntime["pick"];
   /** The price watchers' signal, with their lag in blocks while one reads. */
   readonly watcher: () => HealthSignal;
 }
 
 /**
  * The engine's own operations: its status with the health signals, its stop, its unlock, a new
- * pairing link for the owner's bot, and the backups.
+ * pairing link for the owner's bot, the backups, and the models each agent uses.
  */
 export function engineHandlers(
   opening: Opening,
@@ -67,5 +71,11 @@ export function engineHandlers(
     }),
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
     ...composeBackupOperations(opening, opened, (push) => wiring.jobs.publish(push)),
+    ...createModelOperations({
+      models: () => opened.runtime.models,
+      agents: opened.stores.agents,
+      clock,
+      picked: async (agent, picks) => wiring.pick(agent, picks),
+    }),
   };
 }

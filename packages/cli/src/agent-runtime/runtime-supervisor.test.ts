@@ -12,6 +12,8 @@ import { createRuntimeSupervisor, runtimeTimeouts } from "./runtime-supervisor.j
 interface Watched extends InProcessRuntime {
   /** Settles once the supervisor has read the runtime's `ready` line. */
   readonly ready: Promise<void>;
+  /** Every line the supervisor wrote to the runtime, in order. */
+  readonly written: readonly string[];
 }
 
 // Passes the runtime's output through, and settles `ready` once the reader asked for what follows
@@ -29,7 +31,12 @@ function watched(runtime: InProcessRuntime): Watched {
       }
     }
   }
-  return { ...runtime, output: output(), ready };
+  const written: string[] = [];
+  const write = async (text: string): Promise<void> => {
+    written.push(text);
+    await runtime.write(text);
+  };
+  return { ...runtime, write, output: output(), ready, written };
 }
 
 function tokenId(n: number): Id<"tok"> {
@@ -104,6 +111,25 @@ describe("createRuntimeSupervisor", () => {
     expect(first.starts.map((start) => start.token)).toStrictEqual([`bnt_${"a".repeat(43)}`]);
     expect(first.starts[0]?.settings).toStrictEqual(fixtureStartLine().settings);
     expect(test.calls.turns).toStrictEqual([`start ${tokenId(1)}`]);
+  });
+
+  it("sends new settings to the running runtime, and starts the next one with them", async () => {
+    const test = started();
+    test.supervisor.begin();
+    const first = await test.nth(0);
+    await first.ready;
+    const { settings } = fixtureStartLine();
+    const picked = { agt_x: { main: "router/picked" } };
+    const next = { ...settings, models: { ...settings.models, picked } };
+    await test.supervisor.apply(next);
+    const lines = first.written.map((line) => JSON.parse(line) as { readonly t: string });
+    expect(lines.map((line) => line.t)).toStrictEqual(["start", "settings"]);
+    expect(lines[1]).toMatchObject({ settings: { models: { picked } } });
+    first.kill();
+    await first.exited;
+    const second = await test.nth(1);
+    await second.ready;
+    expect(second.starts[0]?.settings.models.picked).toStrictEqual(picked);
   });
 
   it("starts a killed runtime again at once with a new token, failing since the kill", async () => {

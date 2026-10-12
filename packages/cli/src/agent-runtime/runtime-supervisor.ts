@@ -6,6 +6,7 @@ import {
   engineLineSchema,
   readControlLines,
   runtimeLineSchema,
+  type RuntimeSettings,
   type StartLine,
 } from "@binference/runtime";
 import { restartDelayMs, stableUptimeMs } from "./restart-delay.js";
@@ -32,6 +33,11 @@ export interface RuntimeSupervisor {
   /** Routes a call to the runtime; fails `runtime.unavailable` while it is down or starting. */
   route(request: RouteRequest, signal: AbortSignal): Promise<RouteOutcome>;
   health(): RuntimeHealth;
+  /**
+   * Puts new settings in force: the running runtime gets them as a `settings` line once its start
+   * line is out, applied from its next turn, and every later start begins with them.
+   */
+  apply(settings: RuntimeSettings): Promise<void>;
   /**
    * Tells the runtime to stop and waits for its exit, at most 10 seconds, then ends it; ends it at
    * once when the signal aborts. No start follows.
@@ -60,6 +66,13 @@ interface Life {
   readonly program: NodeProgram;
   readonly routes: RouteCalls;
   readonly write: (line: EngineLine) => Promise<void>;
+  /** Settles once the start line is written, or failed to be. */
+  readonly opened: Promise<void>;
+}
+
+/** The settings each start begins with: the start line's, then each that `apply` put in force. */
+interface SettingsNow {
+  current: RuntimeSettings;
 }
 
 /** The runtime's state across its starts; only its own methods change it. */
@@ -77,11 +90,15 @@ interface Tracker {
   /** The wait before the next start after an exit, counting the exits that follow one another. */
   readonly delayAfter: (upMs: number) => number;
   readonly health: () => RuntimeHealth;
+  /** The settings the next start begins with. */
+  readonly settings: SettingsNow;
 }
 
 const ignore = (): void => undefined;
 
-function createTracker(options: Pick<RuntimeSupervisorOptions, "clock" | "logger">): Tracker {
+function createTracker(
+  options: Pick<RuntimeSupervisorOptions, "clock" | "logger" | "startLine">,
+): Tracker {
   const { clock, logger } = options;
   const state: { life?: Life; readyAtMs?: number } = {};
   const counts = { failures: 0, hasExited: false, downSince: clock.now() };
@@ -123,6 +140,7 @@ function createTracker(options: Pick<RuntimeSupervisorOptions, "clock" | "logger
       state.readyAtMs === undefined
         ? { state: "fail", since: counts.downSince }
         : { state: "ok", since: state.readyAtMs },
+    settings: { current: options.startLine.settings },
   };
 }
 
@@ -183,12 +201,17 @@ async function live(options: RuntimeSupervisorOptions, tracker: Tracker, stop: A
   }
   const write = async (line: EngineLine): Promise<void> =>
     program.write(`${JSON.stringify(engineLineSchema.encode(line))}\n`);
-  const life: Life = { program, write, routes: createRouteCalls({ write, clock: options.clock }) };
+  const start = { t: "start", token: token.token, ...options.startLine } as const;
+  const opening = write({ ...start, settings: tracker.settings.current }).catch(() => {
+    program.kill();
+  });
+  const routes = createRouteCalls({ write, clock: options.clock });
+  const life: Life = { program, write, routes, opened: opening };
   tracker.began(life);
   const reading = readOutput(life, tracker, options.logger);
   const waiting = new AbortController();
   void endIfNotReady(options, { life, tracker }, waiting.signal);
-  await write({ t: "start", token: token.token, ...options.startLine }).catch(() => program.kill());
+  await opening;
   const code = await program.exited;
   waiting.abort();
   await reading;
@@ -283,6 +306,15 @@ export function createRuntimeSupervisor(options: RuntimeSupervisorOptions): Runt
         : life.routes.send(request, signal);
     },
     health: () => tracker.health(),
+    async apply(settings) {
+      tracker.settings.current = settings;
+      const life = tracker.current();
+      if (life !== undefined) {
+        await life.opened;
+        // A runtime that went down meanwhile starts again with these settings.
+        await life.write({ t: "settings", settings }).catch(ignore);
+      }
+    },
     async stop(signal) {
       stopping.abort();
       const life = tracker.current();

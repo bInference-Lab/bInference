@@ -242,6 +242,7 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
       locked,
       jobs: wiring.jobs,
       runtime: runtime.health,
+      pick: async (agent, picks) => runtime.pick(agent, picks),
       watcher: wiring.priceWatchers.health,
     }),
   };

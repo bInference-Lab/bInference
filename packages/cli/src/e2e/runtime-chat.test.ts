@@ -133,13 +133,15 @@ function firstCall(server: StandInModelServer) {
   };
 }
 
-// Points the machine's main model at the stand-in, its key read from the engine's environment.
+// Points the machine's main model at the stand-in, its key read from the engine's environment,
+// with a second configured model as its fallback.
 async function useProvider(machine: InitMachine, server: StandInModelServer): Promise<void> {
   const text = (await configText(machine)) ?? "";
   const open = text.indexOf("{");
   const models =
     `\n  models: { providers: { local: { kind: "openai", baseUrl: "${server.origin}/v1", ` +
-    `apiKey: { fromEnv: "LOCAL_MODEL_KEY" } } }, main: "local/stand-in-model" },`;
+    `apiKey: { fromEnv: "LOCAL_MODEL_KEY" } } }, main: "local/stand-in-model", ` +
+    `fallbacks: { main: ["local/picked-model"] } },`;
   await writePrivateFile(
     join(machine.folder, "config.json5"),
     `${text.slice(0, open + 1)}${models}${text.slice(open + 1)}`,
@@ -249,4 +251,24 @@ describe("the chat relay to the agent runtime process", () => {
       ]);
     },
   );
+
+  it("runs the next turn on the model the owner picked with model/set", slow, async () => {
+    const machine = await engines.setUp();
+    const server = await standInProvider();
+    await useProvider(machine, server);
+    const env = { ...secretEnv(machine), LOCAL_MODEL_KEY: "sk-stand-in" };
+    await engines.start(machine, { env, parts: { startRuntime: realRuntime } });
+    const client = await connectClient(machine);
+    const id = firstAgent((await client.call("agent/list", {}, live())).items);
+    const pick = { agent: id, role: "main", model: "local/picked-model" } as const;
+    const models = await client.call("model/set", pick, live());
+    expect(
+      models.items.filter((item) => item.current === true).map((item) => item.model),
+    ).toStrictEqual(["local/picked-model"]);
+    const { ended } = watchChat(client, id);
+    await client.call("chat/post", { agent: id, text: "hi" }, live());
+    await ended;
+    expect(firstCall(server).head).toStrictEqual(["picked-model", 4096, true]);
+    expect(server.requests).toHaveLength(1);
+  });
 });
