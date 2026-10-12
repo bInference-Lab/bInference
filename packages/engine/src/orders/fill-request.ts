@@ -125,7 +125,12 @@ async function sizeFacts(
   return { side, heldBase, keptBase, ...(spendUsd === undefined ? {} : { spendUsd }) };
 }
 
-// The fill's request: a buy or a sale of the order's token in its wallet, with its slippage.
+// The fill's request: a buy or a sale of the order's token in its wallet, with its slippage. A sale
+// by share keeps its share, which the money path takes of what the wallet holds as its quote is
+// built (invariant 15). A buy by share spends the base its share came to here, at sizing: the
+// money path has no share of what a buy spends. The gap is the few milliseconds between sizing and
+// the quote inside the agent's line of fills, which runs no other fill of the agent; a buy that
+// spends more than the wallet then holds fails its simulation, on paper as on chain.
 function requestOf(
   order: OrderRecord,
   terms: { readonly spend: AssetRef; readonly limitBase: bigint },
