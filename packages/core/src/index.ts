@@ -15,6 +15,8 @@ export { redactedMark, redactSecrets, secretKindsIn } from "./errors/redact-secr
 export type { SecretKind } from "./errors/redact-secrets.js";
 export { fetchInputUrl } from "./fetch-input-url.js";
 export type { HttpMethod, HttpRequest, HttpResponse } from "./http-exchange.js";
+export { answerHeaders, outboundInit, throwOutboundFailure } from "./outbound-request.js";
+export type { OutboundInit } from "./outbound-request.js";
 export { createIdSource } from "./ids/id-source.js";
 export type { IdSource, IdSourceOptions } from "./ids/id-source.js";
 export { idSchema, isId, isIdPrefix } from "./ids/id.js";

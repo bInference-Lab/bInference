@@ -1,4 +1,12 @@
-import { BinferenceError, type Http, type HttpRequest, type HttpResponse } from "@binference/core";
+import {
+  answerHeaders,
+  BinferenceError,
+  type Http,
+  type HttpRequest,
+  type HttpResponse,
+  outboundInit,
+  throwOutboundFailure,
+} from "@binference/core";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the one outbound Http adapter: every other package reaches the network through the Http port
 import { Agent, request as send } from "undici";
 import { isPublicAddress, publicOnlyLookup } from "./public-address.js";
@@ -17,24 +25,6 @@ export interface SystemHttpOptions {
 
 // An answer binference reads is small JSON; a larger one is refused before it fills memory.
 const maxBodyBytes = 8 * 1024 * 1024;
-
-function headersOf(raw: Readonly<Record<string, string | string[] | undefined>>) {
-  return Object.fromEntries(
-    Object.entries(raw).flatMap(([name, value]) =>
-      value === undefined ? [] : [[name.toLowerCase(), [value].flat().join(", ")]],
-    ),
-  );
-}
-
-function unreachable(request: HttpRequest, cause: ErrorOptions["cause"]): BinferenceError {
-  return new BinferenceError({
-    code: "http.unreachable",
-    message: "No answer came from the server.",
-    retryable: true,
-    cause,
-    details: { method: request.method, origin: new URL(request.url).origin },
-  });
-}
 
 function tooLarge(request: HttpRequest): BinferenceError {
   return new BinferenceError({
@@ -55,26 +45,6 @@ async function readBody(chunks: AsyncIterable<Uint8Array>, request: HttpRequest)
     parts.push(chunk);
   }
   return Buffer.concat(parts).toString("utf8");
-}
-
-// Header names match whatever their case, so a caller's own user agent gives way to binference's.
-function headersFor(request: HttpRequest, userAgent: string): Record<string, string> {
-  const kept = Object.entries(request.headers ?? {}).filter(
-    ([name]) => name.toLowerCase() !== "user-agent",
-  );
-  return { ...Object.fromEntries(kept), "user-agent": userAgent };
-}
-
-// A request carries text or bytes, never both: two bodies are a fault of the caller.
-function bodyOf(request: HttpRequest): string | Uint8Array | undefined {
-  if (request.body !== undefined && request.bodyBytes !== undefined) {
-    throw new BinferenceError({
-      code: "http.two_bodies",
-      message: "A request sets body or bodyBytes, never both.",
-      details: { method: request.method, origin: new URL(request.url).origin },
-    });
-  }
-  return request.bodyBytes ?? request.body;
 }
 
 /** The connection pools: one for any address, one that reaches public addresses only. */
@@ -104,17 +74,11 @@ async function exchange(
   request: HttpRequest,
   userAgent: string,
 ): Promise<HttpResponse> {
-  const body = bodyOf(request);
-  const answer = await send(request.url, {
-    dispatcher: agentFor(agents, request),
-    method: request.method,
-    headers: headersFor(request, userAgent),
-    ...(body === undefined ? {} : { body }),
-    signal: request.signal,
-  });
+  const init = outboundInit(request, userAgent);
+  const answer = await send(request.url, { dispatcher: agentFor(agents, request), ...init });
   return {
     status: answer.statusCode,
-    headers: headersOf(answer.headers),
+    headers: answerHeaders(answer.headers),
     body: await readBody(answer.body, request),
   };
 }
@@ -144,10 +108,7 @@ export function createSystemHttp(options: SystemHttpOptions): SystemHttp {
       try {
         return await exchange(agents, request, userAgent);
       } catch (error) {
-        if (request.signal.aborted) {
-          throw request.signal.reason;
-        }
-        throw error instanceof BinferenceError ? error : unreachable(request, error);
+        return throwOutboundFailure(request, error);
       }
     },
     close: async () => {
