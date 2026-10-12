@@ -46,8 +46,8 @@ const feeCap = 1_000_000_000n;
 const coinPrice = { numerator: 600n, denominator: 10n ** 12n };
 const tokenPrice = { numerator: 1n, denominator: 1n };
 
-// Every request kind but the swap: sends, withdrawals, bridges, launches and the kinds the money
-// path does not route yet.
+// Every request kind but the trades the money path routes (a swap, a buy and a sell): sends,
+// withdrawals, bridges, launches and the kinds it does not route yet.
 const otherRequests: readonly IntentRequest[] = [
   { ...base, kind: "send", amount: coin, to: { address: outside } },
   {
@@ -69,8 +69,6 @@ const otherRequests: readonly IntentRequest[] = [
   { ...base, kind: "revokeApproval", token: testToken, spender: outside },
   { ...base, kind: "lend", action: "withdraw", venue: "fake-lend", amount: coin },
   { ...base, kind: "stake", action: "unstake", venue: "fake-stake", amount: coin },
-  { ...base, kind: "buy", token: testToken, spend: coin },
-  { ...base, kind: "sell", token: testToken, amount: { base: 1_000n } },
   { ...base, kind: "cexOrder", market: "BNBUSDT", side: "buy", type: "market", size: "1" },
   { ...base, kind: "registerIdentity" },
 ];
