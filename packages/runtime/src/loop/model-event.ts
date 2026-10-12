@@ -67,6 +67,8 @@ interface ErrorEvent {
   readonly type: "error";
   readonly failure: ModelFailure;
   readonly message: string;
+  /** How long the provider asked to wait before another try (`Retry-After`), when it did. */
+  readonly retryAfterMs?: number;
 }
 
 /**
