@@ -23,6 +23,12 @@ everything is frozen. Their menu is registered in English and Chinese. The engin
 such as a limit change that waits ("Not you? Cancel now") or a freeze, reach the owner's chat in
 the owner's language.
 
+Any other message from the owner goes to the agent: a paste Telegram split, or an album, goes as
+one message, with at most 4 photos. While the agent works, one status message shows how long, or
+what it has written so far; its answer arrives as new messages, which notify, and the status
+message goes away. The agent's words always show as text, never as markup. A status message's
+edit gives way to answers and cards when Telegram asks the bot to wait.
+
 ## API
 
 | Export                         | What it does                                                                   |
@@ -42,6 +48,8 @@ the owner's language.
 | `createFastCommands`           | Answers the owner's fast commands without a model and registers their menu     |
 | `OwnerCalls`                   | The engine's side of a fast command: runs its operations for the owner alone   |
 | `createNoticeOutbox`           | Sends the engine's notices from the outbox to the owner's chat, never twice    |
+| `createChatIntake`             | Batches the owner's other messages and posts them to the agent with photos     |
+| `createChatReplies`            | Shows the agent's replies: a refreshed status message, then the answer         |
 | `@binference/telegram/testing` | Contract suites and fakes of the ports, and `createFakeBotApi`                 |
 
 `createFakeBotApi` is a synthetic Bot API for tests: updates in, messages, edits and button

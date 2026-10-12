@@ -46,6 +46,16 @@ Rules for this package:
   in the queue: a 429 for its `retry_after`, a 403, a refused token and a 5xx for the backoff of
   `delivery-fate.ts`; any other 4xx fails it. Deliveries go oldest first, a waiting one holds
   the rest, and before the owner pairs they all wait; the ingress's `onOwnerPaired` sends them.
+- The owner's messages that no fast command answers go to the agent through `createChatIntake`:
+  posts within 300 ms of each other become one `chat/post` for the only agent, photos as
+  `tg:<file id>`, at most 4 of at most 5 MiB each. An edit, a forward and a post with neither
+  text nor a photo are answered at once and go nowhere (decision 0178).
+- The agent's replies come from the engine's pushes on its chat topic through `createChatReplies`:
+  one status message per turn, refreshed about once a second, then the answer as new messages and
+  the status message deleted. Model text goes out as Telegram HTML only through
+  `src/chat/chat-html.ts`, every line through `displayOutsideText` and the whole escaped.
+- A status message's edit is a preview: it goes with a `previewSignal`, and the throttler drops it
+  rather than queue it behind another call or a wait. Nothing else is sent as a preview.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, the one
   setting the chat changes, decision 0134), and only `commandCallbackSchema` reads it. A press
