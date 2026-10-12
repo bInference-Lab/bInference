@@ -1,5 +1,5 @@
 import type { ChainRegistry } from "@binference/chain";
-import { type Clock, err, ok } from "@binference/core";
+import { BinferenceError, type Clock, err, ok } from "@binference/core";
 import type { AgentMode, LiveFactsView, PortfolioView } from "@binference/protocol";
 import { assetInfosOf } from "../money-path/asset-infos.js";
 import { recentOutflowsOf } from "../money-path/recent-outflows.js";
@@ -29,19 +29,37 @@ export interface LiveFactsParts {
 // The most orders the facts list: an agent with more reads the rest with `order/list`.
 const maxOrders = 50;
 
+// The portfolio as `portfolio/get` answers it; none when a balance could not be read now, as a
+// chain no endpoint answers for.
+async function portfolioOf(
+  parts: LiveFactsParts,
+  call: EngineCall<"facts/get">,
+): Promise<PortfolioView | undefined> {
+  try {
+    const read = await parts.portfolio({ ...call, args: { agent: call.args.agent } });
+    return read.ok ? read.value : undefined;
+  } catch (error) {
+    call.signal.throwIfAborted();
+    if (error instanceof BinferenceError) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 // The balances of the agent's mode, and their total; none when a balance could not be read now.
 async function balancesOf(
   parts: LiveFactsParts,
   call: EngineCall<"facts/get"> & { readonly mode: AgentMode },
 ): Promise<Pick<LiveFactsView, "balances" | "totalUsdMicros"> & Pick<PortfolioView, "assets">> {
-  const read = await parts.portfolio({ ...call, args: { agent: call.args.agent } });
-  if (!read.ok) {
+  const read = await portfolioOf(parts, call);
+  if (read === undefined) {
     return { assets: {} };
   }
   const isPaper = call.mode === "paper";
-  const balances = read.value.balances.filter((balance) => balance.paper === isPaper);
-  const total = isPaper ? (read.value.paperTotalUsdMicros ?? 0n) : read.value.totalUsdMicros;
-  return { balances, totalUsdMicros: total, assets: read.value.assets };
+  const balances = read.balances.filter((balance) => balance.paper === isPaper);
+  const total = isPaper ? (read.paperTotalUsdMicros ?? 0n) : read.totalUsdMicros;
+  return { balances, totalUsdMicros: total, assets: read.assets };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { err } from "@binference/core";
+import { BinferenceError, err } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testCoin, testNowMs, testSwap } from "../intents/test-intents.js";
@@ -41,6 +41,23 @@ describe("the live facts", () => {
     expect(await engine.handlers["facts/get"](testCall({ agent: unknown }))).toStrictEqual(
       err("agent.not_found"),
     );
+  });
+
+  it("leave the balances out when a chain cannot be read now, and keep the rest", async () => {
+    const test = await startTestEngine();
+    const facts = createLiveFactsHandlers({
+      agents: test.stores.agents,
+      orders: test.stores.orders,
+      intents: test.stores.intents,
+      portfolio: async () =>
+        await Promise.reject(new BinferenceError({ code: "chain.rpc_down", message: "Down." })),
+      chains: testChains(),
+      clock: createManualClock(testNowMs),
+      ownerTimeZone: () => "UTC",
+    });
+    const read = expectOk(await facts["facts/get"](testCall({ agent: testAgent })));
+    expect(read).not.toHaveProperty("balances");
+    expect(read.mode).toBe("paper");
   });
 
   it("leave the balances out when they cannot be read now, and keep the rest", async () => {
