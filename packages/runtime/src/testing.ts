@@ -2,11 +2,18 @@ export { createByteChannel } from "./testing/byte-channel.js";
 export type { ByteChannel } from "./testing/byte-channel.js";
 export { startInProcessRuntime } from "./testing/in-process-runtime.js";
 export type { InProcessRuntime, InProcessRuntimeOptions } from "./testing/in-process-runtime.js";
-export { callsReply, createScriptedTransport, textReply } from "./testing/scripted-transport.js";
+export {
+  callsReply,
+  createScriptedTransport,
+  createTestChain,
+  oneModelChain,
+  textReply,
+} from "./testing/scripted-transport.js";
 export type {
   ScriptedCall,
   ScriptedReply,
   ScriptedTransport,
+  TestChainOptions,
 } from "./testing/scripted-transport.js";
 export { fixtureSettings, fixtureStartLine } from "./testing/start-line-fixture.js";
 export { startStandInModelServer } from "./testing/stand-in-model-server.js";
@@ -22,6 +29,7 @@ export type { OwnerMessage } from "./loop/model-message.js";
 export type { StreamingHttp } from "./providers/ports.js";
 export type {
   MergeSource,
+  ModelChain,
   ModelTransport,
   ToolBox,
   TurnEngine,
@@ -37,6 +45,8 @@ export { engineChatContract } from "./contracts/engine-chat-contract.js";
 export type { EngineChatHarness, EngineChatSubject } from "./contracts/engine-chat-contract.js";
 export { mergeSourceContract } from "./contracts/merge-source-contract.js";
 export type { MergeSourceHarness, MergeSourceSubject } from "./contracts/merge-source-contract.js";
+export { modelChainContract } from "./contracts/model-chain-contract.js";
+export type { ModelChainHarness, ModelChainSubject } from "./contracts/model-chain-contract.js";
 export { modelTransportContract } from "./contracts/model-transport-contract.js";
 export type { ModelTransportHarness } from "./contracts/model-transport-contract.js";
 export { streamingHttpContract } from "./contracts/streaming-http-contract.js";

@@ -1,6 +1,7 @@
 import type { TurnOutcome } from "@binference/store";
 import type { ModelFailure, ResponseReplay } from "./model-event.js";
 import type { ModelMessage, ToolCall, ToolDeclaration } from "./model-message.js";
+import type { ModelTransport } from "./ports.js";
 
 // The values the turn loop's ports take and give (see ports.ts).
 
@@ -9,6 +10,12 @@ export interface ModelRequest {
   readonly instructions: string;
   readonly messages: readonly ModelMessage[];
   readonly tools: readonly ToolDeclaration[];
+}
+
+/** One model of a turn's chain: its name, `<provider>/<model>`, and its transport. */
+export interface ChainModel {
+  readonly name: string;
+  readonly transport: ModelTransport;
 }
 
 /** What a tool does, which decides how the loop runs it (runtime spec, section 5.1). */

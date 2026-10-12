@@ -1,14 +1,14 @@
 import type { Clock, Id } from "@binference/core";
-import type { ModelTransport, ToolBox } from "../loop/ports.js";
+import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
 import type { EngineChat } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import type { AgentChats } from "./agent-chats.js";
 import type { NewMessageMode } from "./queue-merge.js";
 
-/** What an agent's next turn runs with: its model, its tools, its instructions and its limits. */
+/** What an agent's next turn runs with: its models, its tools, its instructions and its limits. */
 export interface TurnSetup {
-  readonly transport: ModelTransport;
+  readonly models: ModelChain;
   readonly tools: ToolBox;
   readonly instructions: string;
   readonly limits?: TurnLimits;

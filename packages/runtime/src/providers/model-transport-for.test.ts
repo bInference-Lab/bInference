@@ -1,14 +1,26 @@
 import type { Clock } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
+import { modelChainContract } from "../contracts/model-chain-contract.js";
 import { modelTransportContract } from "../contracts/model-transport-contract.js";
 import type { RuntimeModels, RuntimeProvider } from "../control/runtime-settings.schema.js";
 import type { ModelEvent } from "../loop/model-event.js";
+import type { ModelTransport } from "../loop/ports.js";
 import { textStream } from "../testing/recorded-chat-streams.js";
 import { createRecordedHttp, type RecordedAnswer } from "../testing/recorded-http.js";
 import { messagesTextStream } from "../testing/recorded-messages-streams.js";
-import { binferenceGatewayUrl, modelTransportFor } from "./model-transport-for.js";
+import { binferenceGatewayUrl, modelChainFor } from "./model-transport-for.js";
+import type { StreamingHttp } from "./ports.js";
 
 const clock: Clock = { now: () => 0, sleep: async () => Promise.resolve() };
+
+function firstTransportOf(models: RuntimeModels, http: StreamingHttp) {
+  const [first] = modelChainFor(models, { role: "main" }, { http, clock, rests: new Map() }).models;
+  if (first === undefined) {
+    throw new Error("A chain holds at least one model.");
+  }
+  return first.transport;
+}
 
 function modelsWith(
   providers: Readonly<Record<string, RuntimeProvider>>,
@@ -28,7 +40,7 @@ function modelsWith(
 
 async function eventsOf(models: RuntimeModels, answer: RecordedAnswer = textStream) {
   const http = createRecordedHttp([answer]);
-  const transport = modelTransportFor(models, "main", { http, clock });
+  const transport = firstTransportOf(models, http);
   const request = { instructions: "", messages: [], tools: [] };
   const events: ModelEvent[] = [];
   for await (const event of transport.stream(request, new AbortController().signal)) {
@@ -37,14 +49,25 @@ async function eventsOf(models: RuntimeModels, answer: RecordedAnswer = textStre
   return { http, events };
 }
 
-describe("modelTransportFor", () => {
+async function eventsOfTransport(transport: ModelTransport | undefined): Promise<ModelEvent[]> {
+  if (transport === undefined) {
+    throw new Error("The chain has no such model.");
+  }
+  const events: ModelEvent[] = [];
+  const request = { instructions: "", messages: [], tools: [] };
+  for await (const event of transport.stream(request, new AbortController().signal)) {
+    events.push(event);
+  }
+  return events;
+}
+
+describe("modelChainFor", () => {
   it.each(
     modelTransportContract({
       create: async () =>
-        modelTransportFor(
+        firstTransportOf(
           modelsWith({ own: { kind: "openai", apiKey: "sk-test" } }, "own/gpt-5-mini"),
-          "main",
-          { http: createRecordedHttp([textStream]), clock },
+          createRecordedHttp([textStream]),
         ),
     }),
   )("follows the contract: $name", async ({ run }) => {
@@ -123,5 +146,86 @@ describe("modelTransportFor", () => {
     const { http, events } = await eventsOf(models);
     expect(events).toStrictEqual([{ type: "error", failure: "request", message }]);
     expect(http.requests).toHaveLength(0);
+  });
+
+  it.each(
+    modelChainContract({
+      create: async () => {
+        const manual = createManualClock(5_000);
+        const models = modelsWith({ own: { kind: "openai" } }, "own/a");
+        const http = createRecordedHttp([]);
+        const chain = modelChainFor(
+          models,
+          { role: "main" },
+          { http, clock: manual, rests: new Map() },
+        );
+        return { chain, cooldownMs: models.cooldownMs, advance: manual.advance };
+      },
+    }),
+  )("keeps the chain contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("chains the role's model, then its fallbacks in order", () => {
+    const models = {
+      ...modelsWith({ a: { kind: "openai" }, b: { kind: "anthropic" } }, "a/one"),
+      fallbacks: { main: ["b/two", "a/three"], fast: [] },
+    };
+    const chain = modelChainFor(
+      models,
+      { role: "main" },
+      {
+        http: createRecordedHttp([]),
+        clock,
+        rests: new Map(),
+      },
+    );
+    expect(chain.models.map((model) => model.name)).toStrictEqual(["a/one", "b/two", "a/three"]);
+  });
+
+  it("chains only the model the owner picked, whatever the fallbacks", () => {
+    const models = {
+      ...modelsWith({ a: { kind: "openai" } }, "a/one"),
+      fallbacks: { main: ["a/two"], fast: [] },
+    };
+    const parts = { http: createRecordedHttp([]), clock, rests: new Map<string, number>() };
+    const chain = modelChainFor(models, { role: "main", picked: "a/picked" }, parts);
+    expect(chain.models.map((model) => model.name)).toStrictEqual(["a/picked"]);
+  });
+
+  it("rests every model of a provider together, in the rests the runtime's turns share", async () => {
+    const manual = createManualClock(5_000);
+    const models = {
+      ...modelsWith({ a: { kind: "openai" }, b: { kind: "openai" } }, "a/one"),
+      fallbacks: { main: ["a/two", "b/three"], fast: [] },
+    };
+    const parts = { http: createRecordedHttp([]), clock: manual, rests: new Map<string, number>() };
+    modelChainFor(models, { role: "main" }, parts).rest("a/one", 0);
+    const next = modelChainFor(models, { role: "main" }, parts);
+    expect(next.models.map((model) => next.resting(model.name))).toStrictEqual([true, true, false]);
+  });
+
+  it("refuses every call of a fallback whose provider is not configured, naming where", async () => {
+    const models = {
+      ...modelsWith({ a: { kind: "openai" } }, "a/one"),
+      fallbacks: { main: ["gone/two"], fast: [] },
+    };
+    const chain = modelChainFor(
+      models,
+      { role: "main" },
+      {
+        http: createRecordedHttp([]),
+        clock,
+        rests: new Map(),
+      },
+    );
+    const events = await eventsOfTransport(chain.models[1]?.transport);
+    expect(events).toStrictEqual([
+      {
+        type: "error",
+        failure: "request",
+        message: "The provider of a model in models.fallbacks.main is not in models.providers.",
+      },
+    ]);
   });
 });

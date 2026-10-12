@@ -1,13 +1,14 @@
 import type { Clock } from "@binference/core";
 import type { ModelMessage } from "./model-message.js";
 import type { OpenCall } from "./open-calls.js";
-import type { MergeSource, ModelTransport, ToolBox, TurnEngine, TurnJournal } from "./ports.js";
+import type { MergeSource, ModelChain, ToolBox, TurnEngine, TurnJournal } from "./ports.js";
 import type { TurnHalt } from "./turn-halt.js";
 import type { TurnTally } from "./turn-tally.js";
 
 /** What one turn works with, bound to that turn by the composition. */
 export interface TurnParts {
-  readonly transport: ModelTransport;
+  /** The models the turn may call, in order. */
+  readonly models: ModelChain;
   readonly tools: ToolBox;
   readonly journal: TurnJournal;
   readonly engine: TurnEngine;
@@ -42,6 +43,14 @@ export const turnLimits: TurnLimits = {
   endWriteTimeoutMs: 10_000,
 };
 
+/** Where a turn stands in its chain of models. */
+export interface ModelRoute {
+  /** The chain's index of the model the turn calls now. */
+  at(): number;
+  /** The turn calls the model at `index` from now on. */
+  moveTo(index: number): void;
+}
+
 /** One running turn, as each step of the loop sees it. */
 export interface TurnRun {
   readonly turnId: string;
@@ -50,6 +59,8 @@ export interface TurnRun {
   readonly instructions: string;
   /** The conversation each model call sends; the loop appends to it. */
   readonly messages: ModelMessage[];
+  /** The chain's model the turn calls now: a fallback lasts for the turn. */
+  readonly route: ModelRoute;
   readonly tally: TurnTally;
   /** Aborts, with its {@link TurnHalt}, when the turn halts. */
   readonly halted: AbortSignal;

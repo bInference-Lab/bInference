@@ -20,7 +20,11 @@ import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
 import { nthTestId } from "./memory-agent-stores.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
-import { createScriptedTransport, type ScriptedReply } from "./scripted-transport.js";
+import {
+  createScriptedTransport,
+  oneModelChain,
+  type ScriptedReply,
+} from "./scripted-transport.js";
 
 /**
  * The runtime run in the test's own process, held as the engine holds the real one: its standard
@@ -128,15 +132,17 @@ function chatHost(
   const transport = createScriptedTransport(options.replies ?? []);
   const tools = testToolBox(options.tools ?? []);
   const isLinked = options.signIn !== undefined;
+  const clock = options.clock ?? createManualClock(10_000);
+  const models = oneModelChain(transport, clock);
   return {
     openAgentDatabase: async () => memoryDatabase(database),
     turnSetup: (agent, _settings, client) => ({
-      transport,
+      models,
       tools: isLinked ? agentToolBox({ agent, client }) : tools,
       instructions: "You are a test agent.",
       limits: turnLimits,
     }),
-    clock: options.clock ?? createManualClock(10_000),
+    clock,
   };
 }
 

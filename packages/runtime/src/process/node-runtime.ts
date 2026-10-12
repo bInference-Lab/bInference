@@ -1,7 +1,7 @@
 import process from "node:process";
 import manifest from "@binference/runtime/package.json" with { type: "json" };
 import { turnLimits } from "../loop/turn-run.js";
-import { modelTransportFor, type ProviderParts } from "../providers/model-transport-for.js";
+import { type ChainParts, modelChainFor } from "../providers/model-transport-for.js";
 import { agentToolBox } from "../tools/agent-tools.js";
 import { connectEngine } from "./engine-link.js";
 import { createNodeStreamingHttp } from "./node-streaming-http.js";
@@ -25,11 +25,12 @@ async function writeLine(line: string): Promise<void> {
   });
 }
 
-// The turns of the built runtime: the main model of the settings in force, and the agent's tools
-// over the runtime's connection to the engine.
-function builtTurnSetup(parts: ProviderParts): RuntimeHost["turnSetup"] {
+// The turns of the built runtime: the main model of the settings in force and its fallbacks, whose
+// providers' rests every turn shares, and the agent's tools over the runtime's connection to the
+// engine.
+function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
   return (agent, settings, client) => ({
-    transport: modelTransportFor(settings.models, "main", parts),
+    models: modelChainFor(settings.models, { role: "main" }, parts),
     tools: agentToolBox({ agent, client }),
     instructions: "",
     limits: { ...turnLimits, maxToolCalls: settings.models.maxToolCallsPerTurn },
@@ -53,7 +54,8 @@ export async function runNodeRuntime(
       connectEngine(start, { ...processPorts, version: manifest.version, signal }),
     openAgentDatabase: async (file, signal) =>
       openSqliteAgentDatabase(file, { signal, execArgv: workerExecArgv }),
-    turnSetup: parts.turnSetup ?? builtTurnSetup({ http, clock: processPorts.clock }),
+    turnSetup:
+      parts.turnSetup ?? builtTurnSetup({ http, clock: processPorts.clock, rests: new Map() }),
     clock: processPorts.clock,
     everyTenSeconds: (onTick, signal) => {
       // A write that fails means the engine has gone; the end of the input stops the runtime.

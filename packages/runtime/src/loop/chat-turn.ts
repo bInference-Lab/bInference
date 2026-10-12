@@ -5,7 +5,13 @@ import type { ModelMessage, OwnerMessage } from "./model-message.js";
 import { trackOpenCalls } from "./open-calls.js";
 import { type TurnHalt, type TurnStop } from "./turn-halt.js";
 import type { TurnRefusal } from "./turn-records.js";
-import { type TurnLimits, turnLimits, type TurnParts, type TurnRun } from "./turn-run.js";
+import {
+  type ModelRoute,
+  type TurnLimits,
+  turnLimits,
+  type TurnParts,
+  type TurnRun,
+} from "./turn-run.js";
 import { type LoopEnd, takeStep } from "./turn-step.js";
 import { createTurnTally, type TurnState } from "./turn-tally.js";
 
@@ -65,6 +71,17 @@ function startTimeLimit(run: TurnRun): () => void {
     () => undefined,
   );
   return () => finished.abort();
+}
+
+// A turn starts at its role's first model.
+function createRoute(): ModelRoute {
+  let current = 0;
+  return {
+    at: () => current,
+    moveTo: (index) => {
+      current = index;
+    },
+  };
 }
 
 async function loopSteps(run: TurnRun): Promise<LoopEnd> {
@@ -133,6 +150,7 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
       ...options.history,
       ...options.taken.map((message) => ({ role: "owner" as const, text: message.text })),
     ],
+    route: createRoute(),
     tally,
     halted: halt.signal,
     halt: (reason: TurnHalt) => halt.abort(reason),

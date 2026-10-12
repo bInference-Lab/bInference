@@ -60,6 +60,14 @@ replay of its blocks, which the loop keeps with the response and the next call s
 A missing model ends each call as a refused request, and the turn ends `failed` with
 `turn.failed.request`.
 
+A turn calls its role's chain (`modelChainFor`): `models.main`, then `models.fallbacks.main` in
+order, or only a model the owner picked ([decision 0188](../../docs/DECISIONS.md#d0188)). A
+`transient` failure waits as the provider asked, at most 60 s, else 1 s then 4 s, and tries the same
+model twice more; then the provider rests for `models.cooldownMs` in every turn, and the next model
+takes over. `auth`, `billing` and `request` take the next model at once; `context`, `refused`, a
+stop and a committed turn end the call. One call makes at most 4 attempts, a fallback lasts for the
+turn, and only the attempt that answered reaches the transcript.
+
 The transports reach the network through the `StreamingHttp` port, which streams an answer's body
 as it arrives; the runtime process binds it to undici with a pool of its own, which names binference
 in the user agent and follows no redirect.

@@ -26,6 +26,8 @@ export interface ModelFault {
   readonly message: string;
   readonly text: string;
   readonly reasoning: string;
+  /** The wait the provider asked for before another try. */
+  readonly retryAfterMs?: number;
 }
 
 /** A model call's outcome. */
@@ -94,11 +96,17 @@ function toolCallsOf(draft: ResponseDraft): readonly ToolCall[] {
     }));
 }
 
-function fault(draft: ResponseDraft, failure: ModelFailure, message: string): ModelFault {
+function fault(
+  draft: ResponseDraft,
+  said: {
+    readonly failure: ModelFailure;
+    readonly message: string;
+    readonly retryAfterMs?: number;
+  },
+): ModelFault {
   return {
     ok: false,
-    failure,
-    message,
+    ...said,
     text: draft.textParts.join(""),
     reasoning: draft.reasoningParts.join(""),
   };
@@ -135,7 +143,15 @@ function apply(draft: ResponseDraft, event: ModelEvent): Step {
   if (event.type === "toolCallEnd") {
     return endCall(draft, event.index);
   }
-  return event.type === "done" ? finish(draft, event) : fault(draft, event.failure, event.message);
+  if (event.type === "done") {
+    return finish(draft, event);
+  }
+  const { failure, message, retryAfterMs } = event;
+  return fault(draft, {
+    failure,
+    message,
+    ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+  });
 }
 
 // A stream that will not stop is closed without waiting: its next event goes nowhere.
@@ -181,9 +197,9 @@ export async function readModelResponse(
   const draft: ResponseDraft = { textParts: [], reasoningParts: [], calls: new Map() };
   const step = await readEvents(events, draft, options);
   if (options.signal.aborted) {
-    return fault(draft, "aborted", "The model call was stopped.");
+    return fault(draft, { failure: "aborted", message: "The model call was stopped." });
   }
   return typeof step === "string"
-    ? fault(draft, "transient", `Malformed model stream: ${step}.`)
+    ? fault(draft, { failure: "transient", message: `Malformed model stream: ${step}.` })
     : step;
 }

@@ -1,8 +1,9 @@
 import type { TurnOutcome } from "@binference/store";
 import type { BatchEnd } from "./batch-call.js";
 import { canMerge } from "./can-merge.js";
+import { callModel } from "./model-call.js";
 import type { OwnerMessage, ToolCall } from "./model-message.js";
-import { type ModelAnswer, type ModelFault, readModelResponse } from "./read-model-response.js";
+import type { ModelAnswer, ModelFault } from "./read-model-response.js";
 import { markTurn } from "./record-call.js";
 import { runCutOffBatch, runToolBatch } from "./tool-batch.js";
 import { endOfHalt, haltOf } from "./turn-halt.js";
@@ -151,10 +152,7 @@ export async function takeStep(run: TurnRun): Promise<StepEnd> {
     messages: [...run.messages],
     tools: run.parts.tools.declarations,
   };
-  const response = await readModelResponse(run.parts.transport.stream(request, run.halted), {
-    signal: run.halted,
-    clock: run.parts.clock,
-  });
+  const response = await callModel(run, request);
   await keepResponse(run, response);
   return response.ok ? onAnswer(run, response) : endOfFault(run, response);
 }

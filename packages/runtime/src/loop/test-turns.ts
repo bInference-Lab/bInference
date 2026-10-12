@@ -2,6 +2,7 @@ import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
 import {
   createScriptedTransport,
+  oneModelChain,
   type ScriptedReply,
   type ScriptedTransport,
 } from "../testing/scripted-transport.js";
@@ -12,9 +13,9 @@ import {
 } from "../testing/turn-recorder.js";
 import { type ChatTurn, createChatTurn } from "./chat-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
-import type { ToolBox, TurnEngine } from "./ports.js";
+import type { ModelChain, ToolBox, TurnEngine } from "./ports.js";
 import type { ToolKind, ToolOutcome, ToolRunContext } from "./turn-records.js";
-import { type TurnLimits, turnLimits } from "./turn-run.js";
+import { type TurnLimits, turnLimits, type TurnParts } from "./turn-run.js";
 
 /** The turn id every test turn runs under. */
 export const testTurnId = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001";
@@ -87,6 +88,10 @@ export interface TestTurnOptions {
   readonly engine?: TurnEngine;
   /** The turn id the engine reserved; {@link testTurnId} when absent. */
   readonly turnId?: string;
+  /** The turn's models in place of one model answering `replies`, made on the turn's clock. */
+  readonly models?: (clock: ManualClock) => ModelChain;
+  /** The turn's clock in place of a new one, such as one a chain's rests already use. */
+  readonly clock?: ManualClock;
 }
 
 /** A test turn with its transport, recorder and clock. */
@@ -97,22 +102,35 @@ export interface TestTurn {
   readonly clock: ManualClock;
 }
 
+// The parts of a test turn: its models, its tools, and the recorder's journal, engine and queue.
+function testParts(
+  options: TestTurnOptions,
+  made: {
+    readonly transport: ScriptedTransport;
+    readonly recorder: TurnRecorder;
+    readonly clock: ManualClock;
+  },
+): TurnParts {
+  const { transport, recorder, clock } = made;
+  const tools = typeof options.tools === "function" ? options.tools(recorder) : options.tools;
+  return {
+    models: options.models?.(clock) ?? oneModelChain(transport, clock),
+    tools: options.box ?? testToolBox(tools ?? []),
+    journal: recorder.journal,
+    engine: options.engine ?? recorder.engine,
+    merge: recorder.merge,
+    clock,
+  };
+}
+
 /** Creates a turn on a scripted model, a recorder and a manual clock. */
 export function createTestTurn(options: TestTurnOptions): TestTurn {
   const transport = createScriptedTransport(options.replies);
   const recorder = createTurnRecorder(options.recorder);
-  const clock = createManualClock(1_000);
-  const tools = typeof options.tools === "function" ? options.tools(recorder) : options.tools;
+  const clock = options.clock ?? createManualClock(1_000);
   const turn = createChatTurn({
     turnId: options.turnId ?? testTurnId,
-    parts: {
-      transport,
-      tools: options.box ?? testToolBox(tools ?? []),
-      journal: recorder.journal,
-      engine: options.engine ?? recorder.engine,
-      merge: recorder.merge,
-      clock,
-    },
+    parts: testParts(options, { transport, recorder, clock }),
     instructions: "You are a test agent.",
     history: options.history ?? [],
     taken: options.taken ?? [ownerMessage(1, "hello")],

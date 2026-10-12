@@ -11,6 +11,7 @@ import { createMemoryAgentStores, nthTestId } from "./memory-agent-stores.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
 import {
   createScriptedTransport,
+  oneModelChain,
   type ScriptedReply,
   type ScriptedTransport,
 } from "./scripted-transport.js";
@@ -75,7 +76,7 @@ export async function startChatRig(options: ChatRigOptions): Promise<ChatRig> {
     stores,
     engine,
     setup: () => ({
-      transport,
+      models: oneModelChain(transport, clock),
       tools: testToolBox(tools),
       instructions: "You are a test agent.",
       limits: turnLimits,

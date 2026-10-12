@@ -3,6 +3,7 @@ import type { TurnOutcome } from "@binference/store";
 import type { ModelEvent } from "./model-event.js";
 import type { OwnerMessage, ToolCall, ToolDeclaration } from "./model-message.js";
 import type {
+  ChainModel,
   ModelRequest,
   PreparedCall,
   ProposalRecord,
@@ -24,6 +25,23 @@ import type {
  */
 export interface ModelTransport {
   stream(request: ModelRequest, signal: AbortSignal): AsyncIterable<ModelEvent>;
+}
+
+/**
+ * The models a turn's role may call, in the order a call tries them, and the rest of a provider
+ * that keeps failing (runtime spec, section 8.2): the role's model then its fallbacks, or only the
+ * model the owner picked. A rest outlives the turn that began it.
+ */
+export interface ModelChain {
+  /** Never empty. */
+  readonly models: readonly ChainModel[];
+  /** Whether the provider of the model named `<provider>/<model>` rests now. */
+  resting(model: string): boolean;
+  /**
+   * The model's provider rests from now for the cooldown (`models.cooldownMs`), or for `atLeastMs`
+   * when that is longer, as when the provider asked for a longer wait.
+   */
+  rest(model: string, atLeastMs: number): void;
 }
 
 /** The tools of a turn: what the model sees, and each call checked before it runs. */

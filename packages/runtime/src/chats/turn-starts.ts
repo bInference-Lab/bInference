@@ -182,7 +182,7 @@ async function runTurn(
   const journal = createSessionJournal(stores, place, clock);
   const turn = createChatTurn({
     turnId: place.turn,
-    parts: { transport: setup.transport, tools: setup.tools, journal, engine, merge, clock },
+    parts: { models: setup.models, tools: setup.tools, journal, engine, merge, clock },
     instructions: setup.instructions,
     history: history.messages,
     taken: owners,

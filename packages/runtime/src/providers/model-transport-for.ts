@@ -1,12 +1,13 @@
 import type { Clock } from "@binference/core";
 import type { RuntimeModels, RuntimeProvider } from "../control/runtime-settings.schema.js";
-import type { ModelTransport } from "../loop/ports.js";
+import type { ModelChain, ModelTransport } from "../loop/ports.js";
 import { createChatCompletionsTransport } from "./chat-completions-transport.js";
 import { createMessagesTransport } from "./messages-transport.js";
+import { createModelChain } from "./model-chain.js";
 import type { StreamingHttp } from "./ports.js";
 
 /** What a model transport reaches the network and the time through. */
-export interface ProviderParts {
+interface ProviderParts {
   readonly http: StreamingHttp;
   readonly clock: Clock;
 }
@@ -45,26 +46,52 @@ function baseUrlOf(provider: RuntimeProvider): string {
   return provider.baseUrl ?? defaultBaseUrls[provider.kind];
 }
 
-/**
- * The transport of a role's model under the settings in force (config spec, section 6.3): Chat
- * Completions for the `binference` and `openai` kinds and Messages for the `anthropic` kind, with
- * the provider's key and base URL, and `models.idleTimeoutMs` as the time the provider may take to
- * start its answer. A role with no model and a model whose provider is not configured get a
- * transport that refuses every call as a `request` failure naming why.
- */
-export function modelTransportFor(
+/** How the settings name a model of a chain, for the words of a call refused for its sake. */
+interface ModelPlace {
+  /** The model is missing or not `<provider>/<model>`. */
+  readonly unnamed: string;
+  /** Its provider is not configured. */
+  readonly unknown: string;
+}
+
+function placesOf(role: "main" | "fast"): {
+  readonly own: ModelPlace;
+  readonly fallback: ModelPlace;
+} {
+  return {
+    own: {
+      unnamed: `No ${role} model is set as <provider>/<model> in models.${role}.`,
+      unknown: `The provider of models.${role} is not in models.providers.`,
+    },
+    fallback: {
+      unnamed: `A model in models.fallbacks.${role} is not set as <provider>/<model>.`,
+      unknown: `The provider of a model in models.fallbacks.${role} is not in models.providers.`,
+    },
+  };
+}
+
+const pickedPlace: ModelPlace = {
+  unnamed: "The agent's model is not set as <provider>/<model>.",
+  unknown: "The provider of the agent's model is not in models.providers.",
+};
+
+// The transport of one model under the settings in force: Chat Completions for the `binference`
+// and `openai` kinds and Messages for the `anthropic` kind, with the provider's key and base URL,
+// and `models.idleTimeoutMs` as the time the provider may take to start its answer. A model that is
+// missing or whose provider is not configured gets a transport that refuses every call as a
+// `request` failure naming why.
+function transportOf(
   models: RuntimeModels,
-  role: "main" | "fast",
+  model: { readonly ref: string | undefined; readonly place: ModelPlace },
   parts: ProviderParts,
 ): ModelTransport {
-  const ref = models[role];
-  const named = ref === undefined ? undefined : splitModel(ref);
+  const named = model.ref === undefined ? undefined : splitModel(model.ref);
   if (named === undefined) {
-    return refusedTransport(`No ${role} model is set as <provider>/<model> in models.${role}.`);
+    return refusedTransport(model.place.unnamed);
   }
   const provider = models.providers[named.provider];
   if (provider === undefined) {
-    return refusedTransport(`The provider of models.${role} is not in models.providers.`);
+    return refusedTransport(model.place.unknown);
   }
   const options = {
     baseUrl: baseUrlOf(provider),
@@ -76,4 +103,43 @@ export function modelTransportFor(
   return provider.kind === "anthropic"
     ? createMessagesTransport(options)
     : createChatCompletionsTransport(options);
+}
+
+/** What a chain's transports reach the network and the time through, and the providers' rests. */
+export interface ChainParts extends ProviderParts {
+  /** When each resting provider's rest ends, shared by every turn of the runtime. */
+  readonly rests: Map<string, number>;
+}
+
+/**
+ * The chain of a role under the settings in force (config spec, section 6.3; runtime spec,
+ * section 8.2): the role's model, then `models.fallbacks.<role>` in order, each with its own
+ * transport, resting its provider for `models.cooldownMs`. A model the owner picked for the agent
+ * stands alone and is never swapped for another.
+ */
+export function modelChainFor(
+  models: RuntimeModels,
+  which: { readonly role: "main" | "fast"; readonly picked?: string },
+  parts: ChainParts,
+): ModelChain {
+  const { role, picked } = which;
+  const places = placesOf(role);
+  const own =
+    picked === undefined
+      ? { ref: models[role], place: places.own }
+      : { ref: picked, place: pickedPlace };
+  const fallbacks =
+    picked === undefined
+      ? models.fallbacks[role].map((ref) => ({ ref, place: places.fallback }))
+      : [];
+  const transportParts = { http: parts.http, clock: parts.clock };
+  const chainModel = (model: { readonly ref: string | undefined; readonly place: ModelPlace }) => ({
+    name: model.ref ?? `${role}/none`,
+    transport: transportOf(models, model, transportParts),
+  });
+  return createModelChain([chainModel(own), ...fallbacks.map(chainModel)], {
+    clock: parts.clock,
+    cooldownMs: models.cooldownMs,
+    until: parts.rests,
+  });
 }
