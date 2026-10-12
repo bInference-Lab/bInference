@@ -66,11 +66,11 @@ describe("watcher lag", () => {
     ]);
   });
 
-  it("starts the 30 seconds again when the chain catches up, and tells at most every 30 minutes", () => {
+  it("starts the 30 seconds again when the chain is back within 2 blocks, and tells at most every 30 minutes", () => {
     const { pushes, read } = alerts();
     read(20n, 0);
     read(20n, 20_000);
-    read(5n, 25_000);
+    read(2n, 25_000);
     read(20n, 26_000);
     read(20n, 50_000);
     expect(pushes).toHaveLength(0);
@@ -82,6 +82,29 @@ describe("watcher lag", () => {
     expect(pushes).toHaveLength(1);
     read(20n, 30 * 60_000 + 56_000);
     expect(pushes).toHaveLength(2);
+  });
+
+  it("counts a lag that swings across 10 blocks as failing until it is back within 2", () => {
+    const { pushes, read } = alerts();
+    read(11n, 0);
+    read(9n, 10_000);
+    read(11n, 20_000);
+    read(9n, 30_000);
+    expect(pushes).toHaveLength(0);
+    read(11n, 31_000);
+    expect(pushes).toHaveLength(1);
+  });
+
+  it("keeps when it told the owner last through a watcher that stops and starts again", () => {
+    const { subject, pushes, read } = alerts();
+    read(20n, 0);
+    read(20n, 30_000);
+    expect(pushes).toHaveLength(1);
+    subject.forget(bsc);
+    read(20n, 40_000);
+    read(20n, 80_000);
+    expect(pushes).toHaveLength(1);
+    expect(subject.health()).toMatchObject({ state: "fail", since: startMs + 40_000 });
   });
 
   it("fails while the watcher is down and tells the owner at once, once a stop", () => {

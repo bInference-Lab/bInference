@@ -34,13 +34,17 @@ export interface WatcherHealth {
 /** Turns the watchers' lag into the `watcher` health signal and tells the owner when it stays behind. */
 export interface WatcherLagAlerts {
   /**
-   * Takes one chain's lag. A chain more than 10 blocks behind for 30 seconds announces
-   * `notice.watcherLag` once, until it is back within 2 blocks, and at most once in 30 minutes. A
+   * Takes one chain's lag. A chain more than 10 blocks behind, and not back within 2 since, for 30
+   * seconds announces `notice.watcherLag` once, until it is back within 2 blocks, and at most once
+   * in 30 minutes. A
    * chain whose watcher is down fails, and announces `notice.watcherStopped` at once, once a stop
    * and at most once in 30 minutes. It never throws: a notice never stops the reads.
    */
   check(reading: WatcherLagReading): void;
-  /** Forgets a chain whose watcher stopped, since it watches no token. */
+  /**
+   * Forgets a chain whose watcher stopped, since it watches no token, but not when it told the
+   * owner last.
+   */
   forget(chain: ChainRef): void;
   /** The signal over every chain read; undefined while no watcher reads. */
   health(): WatcherHealth | undefined;
@@ -84,11 +88,24 @@ function carried(told: Told | undefined, episode: { readonly isGoingOn: boolean 
   return { isTold: episode.isGoingOn && told?.isTold === true, atMs: told?.atMs };
 }
 
-function nextLag(before: ChainLag | undefined, reading: WatcherLagReading): ChainLag {
+/** What a chain's next reading starts from: its last, or what was kept once it was forgotten. */
+type LagBefore = Pick<ChainLag, "lag" | "stop"> & {
+  readonly sinceMs?: number | undefined;
+  readonly failingSinceMs?: number | undefined;
+};
+
+function keptFailing(state: WatcherState, before: LagBefore | undefined): number | undefined {
+  return state === "ok" ? undefined : before?.failingSinceMs;
+}
+
+function nextLag(before: LagBefore | undefined, reading: WatcherLagReading): ChainLag {
   const isDown = reading.isDown === true;
   const state = isDown ? "fail" : watcherStateOf(reading.lagBlocks);
   const sinceMs = state === "ok" ? undefined : (before?.sinceMs ?? reading.atMs);
-  const failingSinceMs = state === "fail" ? (before?.failingSinceMs ?? reading.atMs) : undefined;
+  // A lag fails from its first block past 10 until it is back within 2 (decision 0194), so a lag
+  // that swings across 10 still counts its time.
+  const failingSinceMs =
+    state === "fail" ? (before?.failingSinceMs ?? reading.atMs) : keptFailing(state, before);
   return {
     reading,
     state,
@@ -106,7 +123,8 @@ function isLagDue(lag: ChainLag): boolean {
   const { failingSinceMs, reading } = lag;
   const hasFailedLong =
     failingSinceMs !== undefined && reading.atMs - failingSinceMs >= noticeAfterMs;
-  return reading.isDown !== true && hasFailedLong && isQuiet(lag.lag, reading.atMs);
+  const isFailingNow = lag.state === "fail" && reading.isDown !== true;
+  return isFailingNow && hasFailedLong && isQuiet(lag.lag, reading.atMs);
 }
 
 const toldAt = (atMs: number): Told => ({ isTold: true, atMs });
@@ -147,15 +165,23 @@ export function createWatcherLagAlerts(options: {
   readonly publish: PublishPush;
 }): WatcherLagAlerts {
   const lags = new Map<ChainRef, ChainLag>();
+  // When each forgotten chain told the owner last, so a watcher that stops and starts again is
+  // still told at most once in 30 minutes.
+  const told = new Map<ChainRef, LagBefore>();
   return {
     check(reading) {
-      const next = noticeOf(nextLag(lags.get(reading.chain), reading));
+      const before = lags.get(reading.chain) ?? told.get(reading.chain);
+      const next = noticeOf(nextLag(before, reading));
       lags.set(reading.chain, next.lag);
       if (next.push !== undefined) {
         options.publish(noticePush({ key: next.push, values: valuesOf(next.push, reading) }));
       }
     },
     forget(chain) {
+      const before = lags.get(chain);
+      if (before !== undefined) {
+        told.set(chain, { lag: before.lag, stop: before.stop });
+      }
       lags.delete(chain);
     },
     health() {
