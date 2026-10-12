@@ -1,4 +1,5 @@
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, type Clock, type Id } from "@binference/core";
+import type { TurnSetup } from "../chats/chat-context.js";
 import {
   type EngineLine,
   engineLineSchema,
@@ -8,9 +9,14 @@ import {
 } from "../control/control-line.schema.js";
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
+import type { EngineChat } from "../relay/ports.js";
+import type { AgentDatabase } from "./agent-database.js";
+import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
 
 /** The runtime's signed-in link to the engine. */
 export interface EngineLink {
+  /** The engine's side of chat over this connection. */
+  readonly chat: EngineChat;
   /** Closes the connection; the runtime holds no other. */
   close(): void;
 }
@@ -23,6 +29,11 @@ export interface RuntimeHost {
   readonly write: (line: string) => Promise<void>;
   /** Signs in to the engine at the start line's endpoint with its token. */
   readonly connect: (start: StartLine, signal: AbortSignal) => Promise<EngineLink>;
+  /** Opens `agent.sqlite` at the start line's path and migrates it. */
+  readonly openAgentDatabase: (path: string, signal: AbortSignal) => Promise<AgentDatabase>;
+  /** What an agent's next turn runs with under the settings in force. */
+  readonly turnSetup: (agent: Id<"agt">, settings: RuntimeSettings) => TurnSetup;
+  readonly clock: Clock;
   /** Calls `onTick` every 10 seconds until the signal aborts: when the runtime writes its health. */
   readonly everyTenSeconds: (onTick: () => Promise<void>, signal: AbortSignal) => void;
   /** This build's release. */
@@ -33,10 +44,8 @@ export interface RuntimeHost {
  * How the runtime ended: `stopped` on the engine's `stop` or the end of its input; any other is a
  * fault, after which the engine starts it again.
  */
-export type RuntimeExit = "stopped" | "bad_start" | "bad_line" | "not_connected";
+export type RuntimeExit = "stopped" | "bad_start" | "bad_line" | "not_connected" | "no_database";
 
-// The agent database is not opened yet: it has no schema version to report.
-const noSchemaVersion = 0;
 const connectTimeoutMs = 20_000;
 
 function encode(line: RuntimeLine): string {
@@ -65,8 +74,13 @@ function refusedRoute(route: RouteLine): RuntimeLine {
   };
 }
 
-async function writeHealth(host: RuntimeHost): Promise<void> {
-  await host.write(encode({ t: "health", runningTurns: 0, waitingMessages: 0 }));
+async function writeHealth(
+  host: RuntimeHost,
+  chat: RuntimeChat,
+  signal: AbortSignal,
+): Promise<void> {
+  const counts = await chat.runner.counts(signal);
+  await host.write(encode({ t: "health", ...counts }));
 }
 
 type NextLine = IteratorResult<string, undefined>;
@@ -94,16 +108,14 @@ async function answer(
 
 // Answers each line after the start until `stop` or the end of the input, from the line that was
 // read while the runtime signed in.
+// Answers each line after the start until `stop` or the end of the input, from the line that was
+// read while the runtime signed in. New settings apply from the next turn and merge point on.
 async function serve(
   host: RuntimeHost,
   lines: AsyncIterator<string>,
-  context: { readonly start: StartLine; readonly read: NextLine },
+  context: { readonly read: NextLine; readonly apply: (settings: RuntimeSettings) => void },
 ): Promise<RuntimeExit> {
-  const running = { settings: context.start.settings };
-  // New settings apply from the next model call on.
-  const apply = (settings: RuntimeSettings): void => {
-    running.settings = settings;
-  };
+  const { apply } = context;
   const ended =
     context.read.done === true ? "stopped" : await answer(host, context.read.value, apply);
   if (ended !== undefined) {
@@ -151,12 +163,94 @@ async function signIn(host: RuntimeHost, start: StartLine, reading: Promise<Next
   return connecting;
 }
 
+async function openAgentDatabase(
+  host: RuntimeHost,
+  start: StartLine,
+  signal: AbortSignal,
+): Promise<AgentDatabase | undefined> {
+  try {
+    return await host.openAgentDatabase(start.paths.agentDb, signal);
+  } catch {
+    return undefined;
+  }
+}
+
+/** What the runtime holds once it is connected. */
+interface Connected {
+  readonly start: StartLine;
+  readonly lines: AsyncIterator<string>;
+  readonly reading: Promise<NextLine>;
+  readonly link: EngineLink;
+  readonly prepared: PreparedChat;
+  readonly database: AgentDatabase;
+  readonly lifetime: AbortSignal;
+}
+
+// Starts the chat, writes `ready` and the health, and serves the engine's lines; on the way out
+// it ends every running turn as the runtime's stop, keeping the waiting messages.
+async function serveConnected(host: RuntimeHost, connected: Connected): Promise<RuntimeExit> {
+  const { lifetime } = connected;
+  const settings = { current: connected.start.settings };
+  const chat = await startChat({
+    prepared: connected.prepared,
+    engine: connected.link.chat,
+    settings: () => settings.current,
+    setup: host.turnSetup,
+    clock: host.clock,
+    lifetime,
+  });
+  try {
+    const { schemaVersion } = connected.database;
+    await host.write(encode({ t: "ready", version: host.version, schemaVersion }));
+    host.everyTenSeconds(async () => writeHealth(host, chat, lifetime), lifetime);
+    const apply = (next: RuntimeSettings): void => {
+      settings.current = next;
+    };
+    return await serve(host, connected.lines, { read: await connected.reading, apply });
+  } finally {
+    chat.unwatch();
+    await chat.runner.stop();
+  }
+}
+
+// Opens and prepares `agent.sqlite`, signs in, and serves until the runtime ends.
+async function runStarted(
+  host: RuntimeHost,
+  lines: AsyncIterator<string>,
+  start: StartLine,
+): Promise<RuntimeExit> {
+  const lifetime = new AbortController();
+  const database = await openAgentDatabase(host, start, lifetime.signal);
+  if (database === undefined) {
+    return "no_database";
+  }
+  try {
+    const prepared = await prepareChat(database, { clock: host.clock, signal: lifetime.signal });
+    const reading = lines.next();
+    const link = await signIn(host, start, reading);
+    if (link === "quit" || link === undefined) {
+      return link === "quit" ? "stopped" : "not_connected";
+    }
+    try {
+      const connected = { start, lines, reading, link, prepared, database };
+      return await serveConnected(host, { ...connected, lifetime: lifetime.signal });
+    } finally {
+      link.close();
+    }
+  } finally {
+    lifetime.abort();
+    await database.close();
+  }
+}
+
 /**
- * Runs the agent runtime on its pipes (runtime spec, section 2): reads the `start` line, signs in
- * to the engine with the token it holds, writes `ready`, then its health every 10 seconds, and
- * answers each line until `stop` or the end of its input, which also end a sign-in under way. A
- * first line that is not `start`, a line it cannot read, or a sign-in that fails ends it with a
- * fault; the engine starts it again.
+ * Runs the agent runtime on its pipes (runtime spec, section 2.1): reads the `start` line, opens
+ * and migrates `agent.sqlite`, takes the writer fence and repairs every turn a crash left
+ * unfinished, signs in to the engine with the token it holds, starts its chat, writes `ready`,
+ * then its health every 10 seconds, and answers each line until `stop` or the end of its input,
+ * which also end a sign-in under way. A first line that is not `start`, a line it cannot read, an
+ * agent database it cannot open or a sign-in that fails ends it with a fault; the engine starts it
+ * again.
  */
 export async function runRuntime(host: RuntimeHost): Promise<RuntimeExit> {
   const lines = readControlLines(host.input)[Symbol.asyncIterator]();
@@ -166,25 +260,7 @@ export async function runRuntime(host: RuntimeHost): Promise<RuntimeExit> {
     if (start?.t !== "start") {
       return "bad_start";
     }
-    const reading = lines.next();
-    const link = await signIn(host, start, reading);
-    if (link === "quit") {
-      return "stopped";
-    }
-    if (link === undefined) {
-      return "not_connected";
-    }
-    const lifetime = new AbortController();
-    try {
-      await host.write(
-        encode({ t: "ready", version: host.version, schemaVersion: noSchemaVersion }),
-      );
-      host.everyTenSeconds(async () => writeHealth(host), lifetime.signal);
-      return await serve(host, lines, { start, read: await reading });
-    } finally {
-      lifetime.abort();
-      link.close();
-    }
+    return await runStarted(host, lines, start);
   } catch (error) {
     if (error instanceof BinferenceError && error.code === "runtime.line_too_long") {
       return "bad_line";

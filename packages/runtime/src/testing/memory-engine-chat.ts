@@ -43,6 +43,8 @@ export interface MemoryEngineChat extends EngineChat {
   link(state: "up" | "down"): void;
   running(agent: Id<"agt">): Running | undefined;
   readonly pushes: readonly ChatPush[];
+  /** Settles with the first push `match` accepts, made already or to come. */
+  waitForPush(match: (push: ChatPush) => boolean): Promise<ChatPush>;
   /** The ids of the messages the runtime has not taken. */
   untaken(): readonly Id<"msg">[];
 }
@@ -56,11 +58,35 @@ interface FakeState {
   readonly refusals: Map<string, Refusal>;
   readonly watchers: Set<InboxWatch>;
   readonly pushes: ChatPush[];
+  readonly waiters: Set<(push: ChatPush) => void>;
   readonly ids: () => number;
   readonly down: Set<"link">;
 }
 
 const pageSize = 50;
+
+function pushChat(state: FakeState, push: ChatPush): void {
+  state.pushes.push(push);
+  for (const waiter of state.waiters) {
+    waiter(push);
+  }
+}
+
+function waitForPush(state: FakeState, match: (push: ChatPush) => boolean): Promise<ChatPush> {
+  const made = state.pushes.find(match);
+  if (made !== undefined) {
+    return Promise.resolve(made);
+  }
+  return new Promise((resolve) => {
+    const waiter = (push: ChatPush): void => {
+      if (match(push)) {
+        state.waiters.delete(waiter);
+        resolve(push);
+      }
+    };
+    state.waiters.add(waiter);
+  });
+}
 
 // Answers 1 past the last number at each call.
 function counterFrom(start: number): () => number {
@@ -106,7 +132,7 @@ function startTurn(state: FakeState, start: EngineTurnStart): TurnStartAnswer {
   }
   const { agent, turn, messages, outsideContent } = start;
   state.running.set(agent, { turn, messages, marked: outsideContent });
-  state.pushes.push({ kind: "chat/turnStarted", agent, turn });
+  pushChat(state, { kind: "chat/turnStarted", agent, turn });
   return { started: true, budgetLeftMicros: 1_000_000n };
 }
 
@@ -153,12 +179,12 @@ function turnCalls(
     },
     async sayTurn({ agent, turn, text }, signal) {
       reach(state, signal);
-      state.pushes.push({ kind: "chat/message", agent, turn, detail: text });
+      pushChat(state, { kind: "chat/message", agent, turn, detail: text });
       return Promise.resolve();
     },
     async turnStatus({ agent, turn, statusKey }, signal) {
       reach(state, signal);
-      state.pushes.push({ kind: "chat/status", agent, turn, detail: statusKey });
+      pushChat(state, { kind: "chat/status", agent, turn, detail: statusKey });
       return Promise.resolve();
     },
     async endTurn({ agent, turn, outcome }, signal) {
@@ -166,7 +192,7 @@ function turnCalls(
       if (state.running.get(agent)?.turn === turn) {
         state.running.delete(agent);
       }
-      state.pushes.push({ kind: "chat/turnEnded", agent, turn, detail: outcome });
+      pushChat(state, { kind: "chat/turnEnded", agent, turn, detail: outcome });
       return Promise.resolve();
     },
   };
@@ -208,6 +234,7 @@ export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngi
     refusals: new Map(),
     watchers: new Set(),
     pushes: [],
+    waiters: new Set(),
     ids: counterFrom(1_000),
     down: new Set(),
   };
@@ -230,6 +257,7 @@ export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngi
     },
     running: (agent) => state.running.get(agent),
     pushes: state.pushes,
+    waitForPush: async (match) => waitForPush(state, match),
     untaken: () =>
       state.inbox.filter((view) => !state.taken.has(view.message)).map((view) => view.message),
   };

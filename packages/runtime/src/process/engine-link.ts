@@ -3,6 +3,7 @@ import { createProtocolClient, type ProtocolClientOptions } from "@binference/cl
 import { operations } from "@binference/protocol";
 import { WebSocket } from "ws";
 import type { StartLine } from "../control/control-line.schema.js";
+import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
 import type { EngineLink } from "./run-runtime.js";
 
 type ClientPorts = Pick<ProtocolClientOptions, "clock" | "random" | "logger">;
@@ -21,7 +22,8 @@ function socketOn(endpoint: string): ProtocolClientOptions["openSocket"] {
 
 /**
  * Signs the runtime in to the engine over IPC with the token of the start line, as client kind
- * `runtime`. Resolves once the engine answered `ready`; the client reconnects on its own after.
+ * `runtime`. Resolves once the engine answered `ready`, with the engine's side of chat over the
+ * connection; the client reconnects on its own after.
  */
 export async function connectEngine(
   start: StartLine,
@@ -37,5 +39,5 @@ export async function connectEngine(
     logger: context.logger,
   });
   await client.connect(context.signal);
-  return { close: () => client.close() };
+  return { chat: createProtocolEngineChat(client), close: () => client.close() };
 }

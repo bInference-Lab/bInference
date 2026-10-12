@@ -30,12 +30,20 @@ store's worker threads and use the network; nothing else
 
 1. The engine writes `start`: the token it made for this start alone, its IPC address, the paths
    of `agent.sqlite` and the workspace, and the settings.
-2. The runtime signs in to the engine with the token, then writes `ready`, and its `health` every
-   10 seconds.
+2. The runtime opens and migrates `agent.sqlite`, raises its writer fence and repairs every turn a
+   crash left unfinished. It signs in to the engine with the token, sends each repaired turn's
+   status line and end, starts the turns of the messages its chat queue still holds, reads every
+   untaken message with `inbox/list`, watches the `inbox` topic, then writes `ready`, and its
+   `health` every 10 seconds: its running turns and waiting messages.
 3. The engine writes `route` for a routed operation (`chat/messages`, `notes/*`); the runtime
    answers `routeReply` with the same id.
-4. On `stop`, or when its input ends, the runtime closes its connection and exits with code 0. A
-   first line that is not `start`, a line it cannot read, or a refused sign-in ends it with code 1.
+4. On `stop`, or when its input ends, the runtime ends each running turn as a stop does, keeping
+   the waiting messages, closes its connection and `agent.sqlite`, and exits with code 0. A first
+   line that is not `start`, a line it cannot read, an agent database it cannot open, or a refused
+   sign-in ends it with code 1.
+
+The runtime has no model client yet: until the transports land in `src/providers/`, each model call
+ends as a refused request, and the turn ends `failed` with `turn.failed.request`.
 
 ## The turn loop
 
