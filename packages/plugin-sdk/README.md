@@ -23,7 +23,8 @@ A venue that holds the state a token's price comes from, such as a launchpad's c
 `price` step that turns their answers (`ReadAnswer`) into the price in its quote asset, or
 `no_price_read`. The price watcher asks every watched token's calls in one batched read at each new
 block, so the calls take no block of their own, and the step never throws: answers that price
-nothing are `unpriced`.
+nothing are `unpriced`, and answers that say the read no longer holds, such as a token that left
+its curve, are `replan` (`PriceMiss`).
 
 A risk plugin returns a `TokenRiskSource`: given a token, it reports its findings as
 `RiskFlagCode`s and the liquidity it knows of, `not_covered` for a token it has no answer for, and

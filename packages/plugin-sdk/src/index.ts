@@ -14,6 +14,7 @@ export type {
   MarketCandle,
   MarketDataSource,
   MarketPool,
+  PriceMiss,
   PriceRead,
   PriceReader,
   PriceReadRequest,

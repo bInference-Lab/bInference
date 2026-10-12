@@ -29,6 +29,14 @@ export interface ReadCall {
 export type ReadAnswer = string | undefined;
 
 /**
+ * Why a read's answers priced nothing: `unpriced` for answers that failed or fell outside their
+ * shape at that block, which may read again at the next; `replan` for answers that say the read
+ * no longer holds, such as a token that left its curve or a pool gone empty, so another read must
+ * be found.
+ */
+export type PriceMiss = "unpriced" | "replan";
+
+/**
  * How a venue prices a token each block: the calls that read the state the price comes from (a
  * pool's reserves or its current price, a curve's reserves or price), and the pure step that turns
  * their answers into the price. The watcher asks every watched token's calls in one batched read
@@ -41,9 +49,9 @@ export interface PriceRead {
   readonly calls: readonly ReadCall[];
   /**
    * The token's price from the calls' answers, in their order: base units of the quote asset for
-   * one base unit of the token, exact. Answers that price nothing, such as a call that failed, an
-   * answer outside its shape, a pool with no reserves or a token that left its curve, are
-   * `unpriced`, never a throw.
+   * one base unit of the token, exact. Answers that price nothing are a {@link PriceMiss}, never a
+   * throw: a call that failed or an answer outside its shape is `unpriced`; a pool with no
+   * reserves or a token that left its curve is `replan`.
    */
-  readonly price: (answers: readonly ReadAnswer[]) => Result<Ratio, "unpriced">;
+  readonly price: (answers: readonly ReadAnswer[]) => Result<Ratio, PriceMiss>;
 }

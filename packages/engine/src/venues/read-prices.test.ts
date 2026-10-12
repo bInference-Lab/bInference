@@ -202,4 +202,12 @@ describe("the venue host's price read", () => {
       steps.map(() => ({ ok: false, error: "unpriced" })),
     );
   });
+
+  it("hands on a venue's word that its read no longer holds", async () => {
+    const host = hostOf([
+      poolVenue((request) => ok({ ...readFor(request), price: () => err("replan") })),
+    ]);
+    const read = readOf(await host.priceRead(token, { signal }));
+    expect(read.price([])).toStrictEqual({ ok: false, error: "replan" });
+  });
 });

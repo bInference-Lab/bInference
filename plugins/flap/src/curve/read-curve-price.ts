@@ -2,6 +2,7 @@ import {
   assetRefParts,
   err,
   ok,
+  type PriceMiss,
   type PriceRead,
   type PriceReadRequest,
   type Ratio,
@@ -21,19 +22,18 @@ const hexData = /^0x(?:[0-9a-fA-F]{2})+$/;
 
 // The curve's price in one answer of `getTokenV8Safe`, while the token still trades on the curve
 // against the quote token it traded against when the read was planned.
-function curvePrice(
-  answers: readonly ReadAnswer[],
-  quoteToken: Address,
-): Result<Ratio, "unpriced"> {
+function curvePrice(answers: readonly ReadAnswer[], quoteToken: Address): Result<Ratio, PriceMiss> {
   const [answer, ...rest] = answers;
   if (answer === undefined || rest.length > 0 || !hexData.test(answer)) {
     return err("unpriced");
   }
   try {
     const state = stateOf(`0x${answer.slice(2)}`);
-    const isPriced =
-      state.status === tokenStatus.tradable && state.price > 0n && state.quoteToken === quoteToken;
-    return isPriced
+    // A token that left its curve, or trades against another asset now, needs another read.
+    if (state.status !== tokenStatus.tradable || state.quoteToken !== quoteToken) {
+      return err("replan");
+    }
+    return state.price > 0n
       ? ok({ numerator: state.price, denominator: baseUnitsPerToken })
       : err("unpriced");
   } catch {
@@ -46,8 +46,8 @@ function curvePrice(
  * the Portal, whose `price` is the curve's price in base units of its quote asset for one whole
  * token. The read is planned from the token's state now: a token Flap never launched, one that
  * left its curve, or one that is no ERC-20 token of a chain the venue trades on is
- * `no_price_read`. Once the token leaves its curve, its answers price nothing. A Portal that cannot
- * be read throws.
+ * `no_price_read`. Once the token leaves its curve, or trades against another asset, its answers
+ * say `replan`. A Portal that cannot be read throws.
  */
 export async function readCurvePrice(
   request: PriceReadRequest,

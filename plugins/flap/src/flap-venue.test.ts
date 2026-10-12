@@ -139,8 +139,10 @@ describe("the flap venue", () => {
       value: { numerator: 10_895_640_606n, denominator: 10n ** 18n },
     });
     const unpriced = { ok: false, error: "unpriced" };
-    expect(price([graduatedState])).toStrictEqual(unpriced);
-    expect(price([usdtTokenState])).toStrictEqual(unpriced);
+    // A token that left its curve, or trades against another asset, needs another read.
+    const replan = { ok: false, error: "replan" };
+    expect(price([graduatedState])).toStrictEqual(replan);
+    expect(price([usdtTokenState])).toStrictEqual(replan);
     expect(price(["0x1234"])).toStrictEqual(unpriced);
     expect(price([taxTokenState, taxTokenState])).toStrictEqual(unpriced);
   });

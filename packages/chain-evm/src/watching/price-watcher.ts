@@ -1,4 +1,4 @@
-import type { AssetRef, ReadAnswer } from "@binference/chain";
+import type { AssetRef, PriceMiss, ReadAnswer } from "@binference/chain";
 import { BinferenceError, type Clock, err, type Ratio, type Result } from "@binference/core";
 import type { Address } from "viem";
 import type { FeedAsset } from "../prices/price-from-round.js";
@@ -117,7 +117,7 @@ function times(left: Ratio, right: Ratio): Ratio {
   return { numerator: numerator / divisor, denominator: denominator / divisor };
 }
 
-function priceOf(planned: PlannedToken, answers: readonly ReadAnswer[]): Result<Ratio, "unpriced"> {
+function priceOf(planned: PlannedToken, answers: readonly ReadAnswer[]): Result<Ratio, PriceMiss> {
   try {
     return planned.price(answers);
   } catch {

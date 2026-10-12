@@ -57,7 +57,8 @@ Keep the folders that the existing venues use:
   allows only declared calls and spenders, so declare exactly what the venue calls.
 - A venue that holds the state a token's price comes from declares its price reads: `priceRead`
   answers the read calls that price a token (a pool's state, a curve's reserves or price), at
-  most four, and a pure `price` step over their answers that answers `unpriced`, never a throw.
+  most four, and a pure `price` step over their answers that answers `unpriced`, or `replan` when
+  the read no longer holds, never a throw.
   The price watcher asks every watched token's calls in one Multicall3 call each block, so the
   calls take no block of their own. A launchpad prices the tokens on its curve; an aggregator that
   owns no pools declares none, and the chain family's pool reads price its tokens (decision

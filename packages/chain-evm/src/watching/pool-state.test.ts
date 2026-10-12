@@ -58,11 +58,17 @@ describe("pool state", () => {
     ["no answer", []],
     ["two answers", [reserves(1n, 1n), reserves(1n, 1n)]],
     ["an answer of another length", [slot0(q96)]],
-    ["an empty side", [reserves(0n, 5n)]],
     ["a reserve past 112 bits", [wordsOf([2n ** 112n, 5n, 0n])]],
     ["text that is no hex", ["0xzz"]],
   ])("prices nothing from %s of a v2 pair", (_name, answers) => {
     expect(poolPrice({ kind: "v2", isToken0: true }, answers)).toStrictEqual(unpriced);
+  });
+
+  it("asks for another pool when a pair's side is empty", () => {
+    expect(poolPrice({ kind: "v2", isToken0: true }, [reserves(0n, 5n)])).toStrictEqual({
+      ok: false,
+      error: "replan",
+    });
   });
 
   it("prices nothing from a v3 pool at a price of zero or past 160 bits", () => {

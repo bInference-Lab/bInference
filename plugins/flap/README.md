@@ -19,7 +19,7 @@ sell of a curve token goes to Flap and nowhere else.
 - **Price read.** For the price watcher, one `getTokenV8Safe(token)` read of the Portal each block:
   its `price` is the curve's price in base units of the quote asset for one whole token. Only a
   token tradable on its curve gets a read; once it leaves its curve, or trades against another
-  asset, its answers price nothing.
+  asset, its answers say `replan`, so the watcher finds another read.
 
 ## API
 

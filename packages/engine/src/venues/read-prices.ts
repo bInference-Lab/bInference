@@ -4,6 +4,7 @@ import {
   type AssetRef,
   assetRefParts,
   assetRefSchema,
+  type PriceMiss,
   type PriceRead,
   type ReadAnswer,
   type ReadCall,
@@ -62,11 +63,14 @@ function isPriced(price: Ratio): boolean {
 // The venue's own pricing step, run so that it can neither throw nor answer a price at or below 0.
 function guardedPrice(
   read: PriceRead,
-): (answers: readonly ReadAnswer[]) => Result<Ratio, "unpriced"> {
+): (answers: readonly ReadAnswer[]) => Result<Ratio, PriceMiss> {
   return (answers) => {
     try {
       const price = read.price(Object.freeze([...answers]));
-      return price.ok && isPriced(price.value)
+      if (!price.ok) {
+        return price.error === "replan" ? err("replan") : unpriced;
+      }
+      return isPriced(price.value)
         ? ok(
             Object.freeze({
               numerator: price.value.numerator,

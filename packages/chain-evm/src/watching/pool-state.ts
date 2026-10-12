@@ -1,4 +1,4 @@
-import type { ReadAnswer } from "@binference/chain";
+import type { PriceMiss, ReadAnswer } from "@binference/chain";
 import { err, ok, type Ratio, type Result } from "@binference/core";
 import {
   type Address,
@@ -100,11 +100,15 @@ export interface PoolPlace {
   readonly isToken0: boolean;
 }
 
-function reservesPrice(answer: Hex, place: PoolPlace): Result<Ratio, "unpriced"> {
+function reservesPrice(answer: Hex, place: PoolPlace): Result<Ratio, PriceMiss> {
   const reserve0 = wordOf(answer, 0);
   const reserve1 = wordOf(answer, 1);
-  if (reserve0 === 0n || reserve1 === 0n || reserve0 > maxUint112 || reserve1 > maxUint112) {
+  if (reserve0 > maxUint112 || reserve1 > maxUint112) {
     return err("unpriced");
+  }
+  // A pair with an empty side no longer prices the token: another pool must.
+  if (reserve0 === 0n || reserve1 === 0n) {
+    return err("replan");
   }
   return place.isToken0
     ? ok({ numerator: reserve1, denominator: reserve0 })
@@ -112,7 +116,7 @@ function reservesPrice(answer: Hex, place: PoolPlace): Result<Ratio, "unpriced">
 }
 
 // The square of the price in Q64.96 is token1 per token0 in Q192.
-function slot0Price(answer: Hex, place: PoolPlace): Result<Ratio, "unpriced"> {
+function slot0Price(answer: Hex, place: PoolPlace): Result<Ratio, PriceMiss> {
   const sqrtPriceX96 = wordOf(answer, 0);
   if (sqrtPriceX96 === 0n || sqrtPriceX96 > maxUint160) {
     return err("unpriced");
@@ -126,12 +130,13 @@ function slot0Price(answer: Hex, place: PoolPlace): Result<Ratio, "unpriced"> {
 /**
  * The token's price from its pool's one answer, in base units of the other token for one base unit
  * of it: a v2 pair's reserves or a v3 pool's `sqrtPriceX96`. An answer that failed, has another
- * length than its function's, or holds an empty side or a value past its type is `unpriced`.
+ * length than its function's, or holds a value past its type is `unpriced`; a pair with an empty
+ * side is `replan`.
  */
 export function poolPrice(
   place: PoolPlace,
   answers: readonly ReadAnswer[],
-): Result<Ratio, "unpriced"> {
+): Result<Ratio, PriceMiss> {
   const [answer, ...rest] = answers;
   const words = place.kind === "v2" ? reservesWords : slot0Words;
   const data = rest.length === 0 ? wordsIn(answer, words) : undefined;

@@ -20,7 +20,7 @@ apply here. Rules for this plugin:
   that tax out, so the tax is judged once, against the agent's maximum tax.
 - The price read is one `getTokenV8Safe` call of the Portal, planned from the token's state now:
   only a token tradable on its curve is priced, from the state's own `price`, and an answer that is
-  no longer tradable or names another quote token prices nothing.
+  no longer tradable or names another quote token is `replan`.
 - The trade call is `swapExactInput` alone. It pays the calling wallet and takes no deadline, so
   each chain declares `noDeadline` (decision 0180). A call with permit data is never built or read.
 - Unit tests use the Portal's answers recorded in `src/testing/`, never the network. The fork tests
