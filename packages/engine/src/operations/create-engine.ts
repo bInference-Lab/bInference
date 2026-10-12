@@ -33,8 +33,8 @@ import {
   type VenueQuoteSourceOptions,
 } from "../money-path/venue-quote-source.js";
 import type { OrderParts } from "../orders/create-order.js";
-import { followWaitingOrders } from "../orders/follow-order-card.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
+import { tickOrders } from "../orders/tick-orders.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
@@ -108,9 +108,10 @@ export interface Engine {
    */
   readonly repairPaperFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
   /**
-   * Moves each auto order waiting for its card as the card says (decision 0189): active on a
-   * Confirm a stop cut short, ended once the card ended otherwise. A timer of the composition root
-   * calls it every 10 seconds; an answer moves its own order at once.
+   * The auto order work that waits for no price (decision 0189): each order waiting for its card
+   * moves as the card says, each order whose expiry came expires, and each order that ends within
+   * 24 hours gets its one `notice.orderExpiring`. A timer of the composition root calls it every 10
+   * seconds; an answer moves its own order at once.
    */
   readonly tickOrders: (options: { readonly signal: AbortSignal }) => Promise<void>;
 }
@@ -335,6 +336,6 @@ export function createEngine(given: EngineOptions): Engine {
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
-    tickOrders: async ({ signal }) => followWaitingOrders(intents.orders, signal),
+    tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
   };
 }

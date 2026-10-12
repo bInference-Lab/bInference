@@ -21,9 +21,11 @@ async function mayCancel(
   return intent?.record.proposer === canceller.ref;
 }
 
-// An order waiting for its card takes its card with it: the intent is cancelled and the card
-// closes on every surface. A card another write answered first is left to that write.
-async function cancelCard(
+/**
+ * Cancels an order's card while it waits: the `autoOrder` intent is cancelled and its card closes
+ * on every surface. A card another write answered first is left to that write.
+ */
+export async function cancelCard(
   parts: OrderParts,
   intent: Id<"int">,
   signal: AbortSignal,
