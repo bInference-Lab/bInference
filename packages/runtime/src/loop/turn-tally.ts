@@ -24,6 +24,8 @@ interface TurnMarks {
   readonly attempts: number;
   /** The engine answered a usage record with nothing left of the budget: no model call follows. */
   readonly budgetSpent: boolean;
+  /** The loop guard found the same call with the same result three times. */
+  readonly looped: boolean;
   /** The text of the last model response: the turn's final text. */
   readonly lastText: string;
   /** How the engine answered the turn's proposal: it waits for the owner, or was refused. */
@@ -45,6 +47,7 @@ export interface TurnTally {
   /** Counts one attempt of a model call and answers its number in the turn, from 1. */
   countAttempt(): number;
   spendBudget(): void;
+  markLooped(): void;
   keepText(text: string): void;
   answerProposal(answer: ProposalAnswer): void;
 }
@@ -69,6 +72,7 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     modelCalls: 0,
     attempts: 0,
     budgetSpent: false,
+    looped: false,
     lastText: "",
   };
   return {
@@ -94,6 +98,9 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     },
     spendBudget() {
       marks = { ...marks, budgetSpent: true };
+    },
+    markLooped() {
+      marks = { ...marks, looped: true };
     },
     keepText(lastText) {
       marks = { ...marks, lastText };

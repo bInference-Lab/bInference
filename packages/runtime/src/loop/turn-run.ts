@@ -1,4 +1,5 @@
 import type { Clock } from "@binference/core";
+import type { LoopGuard } from "./loop-guard.js";
 import type { ModelMessage } from "./model-message.js";
 import type { OpenCall } from "./open-calls.js";
 import type { MergeSource, ModelChain, ToolBox, TurnEngine, TurnJournal } from "./ports.js";
@@ -32,11 +33,13 @@ export interface TurnLimits {
   readonly modelIdleMs: number;
   /** How long each write of a turn's end may take before the turn ends without it. */
   readonly endWriteTimeoutMs: number;
+  /** Whether the loop guard ends a turn that repeats itself (`models.loopDetection`). */
+  readonly loopGuard: boolean;
 }
 
 /**
- * The runtime spec's limits: 25 tool calls and 40 model calls a turn, 10 minutes, and 2 minutes
- * without a model's event.
+ * The runtime spec's limits: 25 tool calls and 40 model calls a turn, 10 minutes, 2 minutes
+ * without a model's event, and the loop guard on.
  */
 export const turnLimits: TurnLimits = {
   maxToolCalls: 25,
@@ -47,6 +50,7 @@ export const turnLimits: TurnLimits = {
   turnTimeMs: 600_000,
   modelIdleMs: 120_000,
   endWriteTimeoutMs: 10_000,
+  loopGuard: true,
 };
 
 /** Where a turn stands in its chain of models. */
@@ -68,6 +72,8 @@ export interface TurnRun {
   /** The chain's model the turn calls now: a fallback lasts for the turn. */
   readonly route: ModelRoute;
   readonly tally: TurnTally;
+  /** Watches the turn's calls for the same call with the same result three times. */
+  readonly loopGuard: LoopGuard;
   /** Aborts, with its {@link TurnHalt}, when the turn halts. */
   readonly halted: AbortSignal;
   readonly halt: (reason: TurnHalt) => void;

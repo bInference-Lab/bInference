@@ -2,7 +2,12 @@ import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
-import { startTestEngine, testCall, testCallers } from "../operations/test-engine.js";
+import {
+  startTestEngine,
+  type TestEngine,
+  testCall,
+  testCallers,
+} from "../operations/test-engine.js";
 
 const runtime = testCallers.runtime;
 const turn = idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001");
@@ -20,7 +25,11 @@ const usage = {
   usdMicros: 23_400n,
 };
 
-describe("the runtime's usage in the engine", () => {
+function notices(test: TestEngine) {
+  return test.pushes.filter(({ topic }) => topic === "notice").map(({ data }) => data);
+}
+
+describe("the runtime's usage and loop guard in the engine", () => {
   it("takes each model call's usage from the runtime and answers the budget left", async () => {
     const test = await startTestEngine();
     const recorded = await test.engine.handlers["usage/record"](testCall(usage, runtime));
@@ -38,5 +47,19 @@ describe("the runtime's usage in the engine", () => {
     expect(
       await handlers["usage/record"](testCall({ ...usage, agent: stranger }, runtime)),
     ).toStrictEqual({ ok: false, error: "agent.not_found" });
+  });
+
+  it("tells the owner when the loop guard ends a turn, and only then", async () => {
+    const test = await startTestEngine();
+    const status = (statusKey: string) =>
+      test.engine.handlers["turn/status"](testCall({ agent: testAgent, turn, statusKey }, runtime));
+    await status("turn.toolCallLimit");
+    const before = notices(test);
+    await status("turn.loop");
+
+    expect(before).toStrictEqual([]);
+    expect(notices(test)).toStrictEqual([
+      { key: "notice.loop", agent: testAgent, values: { agent: "main" } },
+    ]);
   });
 });

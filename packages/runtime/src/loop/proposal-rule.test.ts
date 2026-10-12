@@ -30,6 +30,8 @@ function reads(count: number, from: number) {
   return Array.from({ length: count }, (_unused, index) => ({
     id: `r${String(from + index)}`,
     name: "portfolio",
+    // Each read asks for another page, so the loop guard sees no repeat.
+    args: { page: from + index },
   }));
 }
 

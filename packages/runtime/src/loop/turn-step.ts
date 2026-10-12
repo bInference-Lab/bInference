@@ -107,10 +107,14 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
   if (batch.askedOwner) {
     return ok;
   }
+  const { looped, budgetSpent } = run.tally.now();
+  if (looped) {
+    return { outcome: "loop", status: { line: "loop" } };
+  }
   if (batch.reachedLimit) {
     return { outcome: "loop", status: { line: "toolCallLimit" } };
   }
-  if (run.tally.now().budgetSpent) {
+  if (budgetSpent) {
     return budgetEnd;
   }
   if (batch.joined.length === 0 && canMerge(run)) {
@@ -148,9 +152,9 @@ async function onAnswer(run: TurnRun, answer: ModelAnswer): Promise<StepEnd> {
 
 /**
  * One step of the turn (runtime spec, section 4.2): a model call, then its tool batch. A halt, a
- * failure with no next step, a committed batch, a question to the owner, a spent budget, or an
- * answer with no call and no waiting message ends the loop; anything else asks for the next model
- * call.
+ * failure with no next step, a committed batch, a question to the owner, the loop guard, a spent
+ * budget, or an answer with no call and no waiting message ends the loop; anything else asks for
+ * the next model call.
  */
 export async function takeStep(run: TurnRun): Promise<StepEnd> {
   if (run.halted.aborted) {

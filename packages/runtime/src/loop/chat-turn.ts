@@ -1,6 +1,7 @@
 import { err } from "@binference/core";
 import type { TurnOutcome } from "@binference/store";
 import { answerOpenCalls, endTurn, portFailure } from "./end-turn.js";
+import { createLoopGuard } from "./loop-guard.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
 import { trackOpenCalls } from "./open-calls.js";
 import { type TurnHalt, type TurnStop } from "./turn-halt.js";
@@ -141,10 +142,11 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
   const outside = options.outsideContent || options.taken.some((message) => message.outside);
   const tally = createTurnTally({ outside });
   const journal = trackOpenCalls(options.parts.journal);
+  const limits = options.limits ?? turnLimits;
   const run: TurnRun = {
     turnId: options.turnId,
     parts: { ...options.parts, journal },
-    limits: options.limits ?? turnLimits,
+    limits,
     instructions: options.instructions,
     messages: [
       ...options.history,
@@ -152,6 +154,7 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
     ],
     route: createRoute(),
     tally,
+    loopGuard: createLoopGuard({ enabled: limits.loopGuard }),
     halted: halt.signal,
     halt: (reason: TurnHalt) => halt.abort(reason),
     writes: options.lifetime,

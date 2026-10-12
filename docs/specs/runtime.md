@@ -574,7 +574,9 @@ Orders, watchers and alerts never wait for the budget: they are code.
 
 The loop guard compares a call's tool name, the SHA-256 of its arguments as JSON with sorted keys,
 and the SHA-256 of its result. Three equal triples anywhere in one turn trip it; the third call's
-result is still stored.
+result is still stored. It counts the calls that ran, and its status line wins over the tool call
+limit's in the same batch. The engine sends `notice.loop` when the runtime sends the loop guard's
+status line (`turn.loop`) ([decision 0191](../DECISIONS.md#d0191)).
 
 <a id="section-10"></a>
 

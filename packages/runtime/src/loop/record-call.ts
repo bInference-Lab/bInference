@@ -24,7 +24,10 @@ export async function markTurn(run: TurnRun): Promise<void> {
   await run.parts.journal.markOutside(run.writes);
 }
 
-/** Writes a call's result, adds it to the conversation, and marks the turn when it is outside content. */
+/**
+ * Writes a call's result, adds it to the conversation, marks the turn when it is outside content,
+ * and shows the loop guard each call that ran.
+ */
 export async function recordResult(
   run: TurnRun,
   call: ToolCall,
@@ -38,6 +41,9 @@ export async function recordResult(
     text: result.text,
     isError: result.isError,
   });
+  if (result.ran && run.loopGuard.see(call, result.text)) {
+    run.tally.markLooped();
+  }
   if (result.outside) {
     await markTurn(run);
   }

@@ -1,6 +1,8 @@
 import { err, ok } from "@binference/core";
+import type { ProtocolId } from "@binference/protocol";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
+import { noticePush } from "../pushes/notice-push.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
 import { inboxCursorOf, parseInboxCursor } from "./inbox-cursor.schema.js";
 import { inboxViewOf } from "./inbox-views.js";
@@ -18,6 +20,22 @@ export interface RuntimeChatHandlers {
 }
 
 const defaultPageSize = 50;
+
+/** The status line of a turn the loop guard ended, and the owner's notice of it (spec 4). */
+const loopStatusKey = "turn.loop";
+const loopNoticeKey = "notice.loop";
+
+// The loop guard's status line also tells the owner, through the notice outbox (spec 4, section
+// 8.1): the notice names the agent.
+async function noticeLoop(
+  options: ChatRelayOptions,
+  agent: ProtocolId<"agent">,
+  signal: AbortSignal,
+): Promise<void> {
+  const settings = await options.agents.get(agent, { signal });
+  const name = settings?.agent.name ?? agent;
+  options.publish(noticePush({ key: loopNoticeKey, agent, values: { agent: name } }));
+}
 
 // Only the runtime the engine runs now speaks for the agent: every other caller, another client
 // with the `agent` scope or a runtime of an earlier start among them, is refused `auth.scope`, so
@@ -63,7 +81,10 @@ function turnHandlers(
       const { agent, turn, statusKey, values } = call.args;
       const data = { agent, turn, statusKey, ...(values === undefined ? {} : { values }) };
       publish({ topic: chatTopic(agent), kind: "chat/status", data });
-      return Promise.resolve(ok({}));
+      if (statusKey === loopStatusKey) {
+        await noticeLoop(options, agent, call.signal);
+      }
+      return ok({});
     },
     async "turn/end"(call) {
       const { agent, turn, outcome } = call.args;
@@ -124,8 +145,8 @@ function inboxHandlers(
  * Creates the agent's side of chat, which only the token of the runtime's current start may call
  * (runtime spec, section 4.3): `turn/start` records the agent's running turn with the mark its
  * context holds, `turn/mark` marks it for good, `turn/say`, `turn/status` and `turn/end` reach the
- * agent's chat topic, `usage/record` takes each model call's usage, and `inbox/list` and
- * `inbox/take` hand the runtime its stored messages.
+ * agent's chat topic, the loop guard's status line also sends `notice.loop`, `usage/record` takes
+ * each model call's usage, and `inbox/list` and `inbox/take` hand the runtime its stored messages.
  */
 export function createRuntimeChatHandlers(options: ChatRelayOptions): RuntimeChatHandlers {
   const turn = turnHandlers(options);

@@ -133,7 +133,9 @@ export type TurnStatusLine =
   | { readonly line: "stoppedCardOpen" }
   | { readonly line: "failed"; readonly failure: TurnFailure }
   | { readonly line: "toolCallLimit" }
-  | { readonly line: "modelCallLimit" };
+  | { readonly line: "modelCallLimit" }
+  /** The loop guard found the same call with the same result three times. */
+  | { readonly line: "loop" };
 
 /**
  * One attempt of a model call as `usage/record` takes it (runtime spec, section 8.3): the model

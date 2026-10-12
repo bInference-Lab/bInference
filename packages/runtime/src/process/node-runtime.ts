@@ -37,6 +37,7 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
       ...turnLimits,
       maxToolCalls: settings.models.maxToolCallsPerTurn,
       modelIdleMs: settings.models.idleTimeoutMs,
+      loopGuard: settings.models.loopDetection,
     },
   });
 }
