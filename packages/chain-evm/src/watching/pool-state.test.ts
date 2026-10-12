@@ -1,6 +1,6 @@
 import { encodeAbiParameters, getAddress, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
-import { addressAnswer, isToken0, numberAnswer, poolPrice } from "./pool-state.js";
+import { addressAnswer, isToken0, numberAnswer, poolPrice, poolState } from "./pool-state.js";
 
 const reserves = (reserve0: bigint, reserve1: bigint): Hex =>
   encodeAbiParameters(
@@ -27,6 +27,8 @@ const wordsOf = (words: readonly bigint[]): Hex =>
 
 const q96 = 2n ** 96n;
 const unpriced = { ok: false, error: "unpriced" };
+const replan = { ok: false, error: "replan" };
+const word = (value: bigint): Hex => encodeAbiParameters([{ type: "uint256" }], [value]);
 
 describe("pool state", () => {
   it("prices a token from a v2 pair's reserves on either side", () => {
@@ -42,12 +44,12 @@ describe("pool state", () => {
   });
 
   it("prices a token from a v3 pool's square root price on either side", () => {
-    const answer = slot0(q96 * 3n);
-    expect(poolPrice({ kind: "v3", isToken0: true }, [answer])).toStrictEqual({
+    const answers = [slot0(q96 * 3n), word(1_000n)];
+    expect(poolPrice({ kind: "v3", isToken0: true }, answers)).toStrictEqual({
       ok: true,
       value: { numerator: q96 * q96 * 9n, denominator: 2n ** 192n },
     });
-    expect(poolPrice({ kind: "v3", isToken0: false }, [answer])).toStrictEqual({
+    expect(poolPrice({ kind: "v3", isToken0: false }, answers)).toStrictEqual({
       ok: true,
       value: { numerator: 2n ** 192n, denominator: q96 * q96 * 9n },
     });
@@ -71,10 +73,38 @@ describe("pool state", () => {
     });
   });
 
-  it("prices nothing from a v3 pool at a price of zero or past 160 bits", () => {
-    expect(poolPrice({ kind: "v3", isToken0: true }, [slot0(0n)])).toStrictEqual(unpriced);
+  it("prices nothing from a v3 pool at a price of zero or past 160 bits, or without its liquidity", () => {
+    const v3 = { kind: "v3", isToken0: true } as const;
+    expect(poolPrice(v3, [slot0(0n), word(1n)])).toStrictEqual(unpriced);
     const wide = wordsOf([2n ** 160n, 0n, 0n, 0n, 0n, 0n, 0n]);
-    expect(poolPrice({ kind: "v3", isToken0: true }, [wide])).toStrictEqual(unpriced);
+    expect(poolPrice(v3, [wide, word(1n)])).toStrictEqual(unpriced);
+    expect(poolPrice(v3, [slot0(q96)])).toStrictEqual(unpriced);
+    expect(poolPrice(v3, [slot0(q96), undefined])).toStrictEqual(unpriced);
+    expect(poolPrice(v3, [slot0(q96), word(2n ** 128n)])).toStrictEqual(unpriced);
+  });
+
+  it("measures a pair's depth by its quote reserve, and a v3 pool's by its liquidity in range", () => {
+    expect(poolState({ kind: "v2", isToken0: true }, [reserves(4n, 10n)])).toMatchObject({
+      value: { depth: 10n },
+    });
+    expect(poolState({ kind: "v2", isToken0: false }, [reserves(4n, 10n)])).toMatchObject({
+      value: { depth: 4n },
+    });
+    // At a price of 9 token1 a token0, 1,000 of liquidity trades as 3,000 token1 or 333 token0.
+    const answers = [slot0(q96 * 3n), word(1_000n)];
+    expect(poolState({ kind: "v3", isToken0: true }, answers)).toMatchObject({
+      value: { depth: 3_000n },
+    });
+    expect(poolState({ kind: "v3", isToken0: false }, answers)).toMatchObject({
+      value: { depth: 333n },
+    });
+  });
+
+  it("asks for another pool when a v3 pool has no liquidity in range, or a pool is under its least depth", () => {
+    expect(poolPrice({ kind: "v3", isToken0: true }, [slot0(q96), word(0n)])).toStrictEqual(replan);
+    const thin = { kind: "v2", isToken0: true, minDepth: 11n } as const;
+    expect(poolPrice(thin, [reserves(4n, 10n)])).toStrictEqual(replan);
+    expect(poolPrice({ ...thin, minDepth: 10n }, [reserves(4n, 10n)])).toMatchObject({ ok: true });
   });
 
   it("orders a pool's tokens by address, the lower first", () => {

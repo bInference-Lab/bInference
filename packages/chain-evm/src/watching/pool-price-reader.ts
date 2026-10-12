@@ -8,15 +8,13 @@ import type { RpcFailover } from "../rpc/rpc-call.js";
 import {
   addressAnswer,
   isToken0,
-  balanceCallData,
-  liquidityCall,
-  numberAnswer,
   pairCallData,
   poolCallData,
   type PoolKind,
+  type PoolPlace,
   poolPrice,
-  reservesCall,
-  slot0Call,
+  poolReadCalls,
+  poolState,
 } from "./pool-state.js";
 import { quoteFeedReads } from "./quote-feeds.js";
 import { type AggregateCall, readAggregate } from "./read-aggregate.js";
@@ -39,7 +37,7 @@ export interface PoolPriceReaderOptions {
    * a pool's depth in USD.
    */
   readonly quotes: readonly FeedAsset[];
-  /** The least a pool must hold of its quote token, in micro-dollars, to price a token. */
+  /** The least depth a pool must have, in micro-dollars of its quote, to price a token. */
   readonly minDepthUsdMicros: bigint;
 }
 
@@ -107,45 +105,52 @@ async function findPools(
   });
 }
 
-/** A pool and its depth: the quote token it holds, in micro-dollars. */
+/** A pool and its depth when measured: in base units of its quote, and in micro-dollars. */
 interface DepthOf {
   readonly pool: FoundPool;
-  readonly depth: Ratio;
+  readonly depth: bigint;
+  readonly depthUsd: Ratio;
+  /** The quote's price, in micro-dollars per base unit. */
+  readonly quoteUsd: Ratio;
 }
 
-// Each pool's quote balance and, for a v3 pool, its liquidity in range, with the quote feeds, at
-// the latest block. A v3 pool with no liquidity in range quotes a price nobody can trade at.
+// Each pool's price and depth, as the per-block read reads them, with the quote feeds, at the
+// latest block.
 async function measure(
   options: PoolPriceReaderOptions,
-  pools: readonly FoundPool[],
+  found: { readonly token: Address; readonly pools: readonly FoundPool[] },
   signal: AbortSignal,
 ): Promise<readonly DepthOf[]> {
+  const { token, pools } = found;
   const byAsset = new Map(options.quotes.map((quote) => [quote.asset, quote]));
   const feeds = quoteFeedReads(
     byAsset,
     pools.map(({ quote }) => quote.asset),
   );
-  const poolCalls = pools.flatMap((pool): AggregateCall[] => [
-    {
-      target: pool.quoteAddress,
-      callData: balanceCallData(pool.address),
-    },
-    { target: pool.address, callData: pool.kind === "v3" ? liquidityCall : reservesCall },
-  ]);
+  const perPool = pools.map((pool) =>
+    poolReadCalls(pool.kind).map((callData): AggregateCall => ({ target: pool.address, callData })),
+  );
+  const poolCalls = perPool.flat();
   const { rpc, multicall } = options;
-  const calls = [...poolCalls, ...feeds.calls];
-  const answers = await readAggregate(rpc, { multicall, calls, signal });
+  const answers = await readAggregate(rpc, {
+    multicall,
+    calls: [...poolCalls, ...feeds.calls],
+    signal,
+  });
   const usd = feeds.usdPrices(answers.slice(poolCalls.length), options.clock.now());
+  let offset = 0;
   return pools.flatMap((pool, index) => {
-    const held = numberAnswer(answers[index * 2]);
-    const price = usd.get(pool.quote.asset);
-    // A v2 pair answers its reserves, which `numberAnswer` refuses; a v3 pool, its liquidity.
-    const state = answers[index * 2 + 1];
-    const isLive = pool.kind === "v2" ? state !== undefined : (numberAnswer(state) ?? 0n) > 0n;
-    if (held === undefined || price === undefined || !isLive) {
+    const count = perPool[index]?.length ?? 0;
+    const own = answers.slice(offset, offset + count);
+    offset += count;
+    const state = poolState(placeOf(token, pool), own);
+    const quoteUsd = usd.get(pool.quote.asset);
+    if (!state.ok || quoteUsd === undefined) {
       return [];
     }
-    return [{ pool, depth: { numerator: held * price.numerator, denominator: price.denominator } }];
+    const { depth } = state.value;
+    const depthUsd = { numerator: depth * quoteUsd.numerator, denominator: quoteUsd.denominator };
+    return [{ pool, depth, depthUsd, quoteUsd }];
   });
 }
 
@@ -153,16 +158,31 @@ function isDeeper(left: Ratio, right: Ratio): boolean {
   return left.numerator * right.denominator > right.numerator * left.denominator;
 }
 
-function readOf(options: PoolPriceReaderOptions, token: Address, pool: FoundPool): PriceRead {
-  const place = { kind: pool.kind, isToken0: isToken0(token, pool.quoteAddress) };
+function placeOf(token: Address, pool: FoundPool): PoolPlace {
+  return { kind: pool.kind, isToken0: isToken0(token, pool.quoteAddress) };
+}
+
+// The pool must keep the least depth, and half the depth it was chosen with, or another prices the
+// token (decision 0194).
+function minDepthOf(options: PoolPriceReaderOptions, chosen: DepthOf): bigint {
+  const { numerator, denominator } = chosen.quoteUsd;
+  const half = chosen.depth / 2n;
+  if (numerator <= 0n) {
+    return half;
+  }
+  const least = (options.minDepthUsdMicros * denominator + numerator - 1n) / numerator;
+  return least > half ? least : half;
+}
+
+function readOf(options: PoolPriceReaderOptions, token: Address, chosen: DepthOf): PriceRead {
+  const { pool } = chosen;
+  const place: PoolPlace = { ...placeOf(token, pool), minDepth: minDepthOf(options, chosen) };
   return {
     quoteAsset: pool.quote.asset,
-    calls: [
-      {
-        target: evmAccountRef(options.chain, pool.address),
-        input: pool.kind === "v2" ? reservesCall : slot0Call,
-      },
-    ],
+    calls: poolReadCalls(pool.kind).map((input) => ({
+      target: evmAccountRef(options.chain, pool.address),
+      input,
+    })),
     price: (answers) => poolPrice(place, answers),
   };
 }
@@ -170,11 +190,13 @@ function readOf(options: PoolPriceReaderOptions, token: Address, pool: FoundPool
 /**
  * The chain family's own price reads for tokens that trade in Uniswap-style pools, for the price
  * watcher when no venue declares one. It asks the v2 factory for the token's pair with each quote
- * token, and the v3 factory for its pool at each fee tier, then reads every pool's quote balance,
- * each v3 pool's liquidity in range and the quote tokens' Chainlink feeds, two Multicall3 calls in
- * all, at the latest block. It prices the token from the deepest pool by the USD value of the quote
- * token it holds, at least `minDepthUsdMicros`: a v2 pair by its reserves, a v3 pool by its current
- * price. A token with no such pool, or that is no ERC-20 token of the chain, is `no_price_read`.
+ * token, and the v3 factory for its pool at each fee tier, then reads every pool's price and depth
+ * as the per-block read does, a v2 pair's reserves and a v3 pool's `slot0` and liquidity in range,
+ * with the quote tokens' Chainlink feeds: two Multicall3 calls in all, at the latest block. It
+ * prices the token from the deepest pool by the USD value of the quote it can trade, never by a
+ * balance a deposit would inflate, at least `minDepthUsdMicros`. Its read measures the pool again
+ * at every block, and answers `replan` once the pool is under that least depth or under half the
+ * depth it was chosen with (decision 0194). A token with no such pool, or that is no ERC-20 token of the chain, is `no_price_read`.
  * Rejects when no endpoint answers, and with the signal's reason once it aborts.
  */
 export function createPoolPriceReader(options: PoolPriceReaderOptions): PriceReader {
@@ -187,14 +209,15 @@ export function createPoolPriceReader(options: PoolPriceReaderOptions): PriceRea
         return err("no_price_read");
       }
       const pools = await findPools(options, token, signal);
-      const measured = pools.length === 0 ? [] : await measure(options, pools, signal);
+      const measured = pools.length === 0 ? [] : await measure(options, { token, pools }, signal);
       const deepest = measured.reduce<DepthOf | undefined>(
-        (best, item) => (best === undefined || isDeeper(item.depth, best.depth) ? item : best),
+        (best, item) =>
+          best === undefined || isDeeper(item.depthUsd, best.depthUsd) ? item : best,
         undefined,
       );
-      return deepest === undefined || isDeeper(minDepth, deepest.depth)
+      return deepest === undefined || isDeeper(minDepth, deepest.depthUsd)
         ? err("no_price_read")
-        : ok(readOf(options, token, deepest.pool));
+        : ok(readOf(options, token, deepest));
     },
   };
 }

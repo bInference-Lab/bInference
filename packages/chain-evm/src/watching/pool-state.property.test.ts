@@ -27,9 +27,12 @@ const slot0Answer = (sqrtPriceX96: bigint) =>
   );
 
 // The two sides of one pool price each other at the inverse price: their product is one.
+const liquidityAnswer = encodeAbiParameters([{ type: "uint128" }], [10n ** 18n]);
+
 function inverseOf(answer: `0x${string}`, kind: "v2" | "v3"): boolean {
-  const asToken0 = poolPrice({ kind, isToken0: true }, [answer]);
-  const asToken1 = poolPrice({ kind, isToken0: false }, [answer]);
+  const answers = kind === "v2" ? [answer] : [answer, liquidityAnswer];
+  const asToken0 = poolPrice({ kind, isToken0: true }, answers);
+  const asToken1 = poolPrice({ kind, isToken0: false }, answers);
   return (
     asToken0.ok &&
     asToken1.ok &&

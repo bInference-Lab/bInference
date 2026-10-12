@@ -24,7 +24,6 @@ const poolAbi = parseAbi([
   "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
   "function slot0() view returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint32 feeProtocol, bool unlocked)",
   "function liquidity() view returns (uint128 liquidity)",
-  "function balanceOf(address account) view returns (uint256 balance)",
 ]);
 
 /** The kinds of pool the chain family prices a token from. */
@@ -40,11 +39,6 @@ export function poolCallData(token: Address, quote: Address, fee: number): Hex {
   return encodeFunctionData({ abi: poolAbi, functionName: "getPool", args: [token, quote, fee] });
 }
 
-/** The calldata of an ERC-20 token's `balanceOf(holder)`. */
-export function balanceCallData(holder: Address): Hex {
-  return encodeFunctionData({ abi: poolAbi, functionName: "balanceOf", args: [holder] });
-}
-
 /** The calldata of `getReserves()`. */
 export const reservesCall: Hex = encodeFunctionData({ abi: poolAbi, functionName: "getReserves" });
 
@@ -54,11 +48,19 @@ export const slot0Call: Hex = encodeFunctionData({ abi: poolAbi, functionName: "
 /** The calldata of `liquidity()`. */
 export const liquidityCall: Hex = encodeFunctionData({ abi: poolAbi, functionName: "liquidity" });
 
+/** The calls that read a pool's price and depth: a v2 pair's reserves; a v3 pool's `slot0` and
+ * `liquidity()`. */
+export function poolReadCalls(kind: PoolKind): readonly Hex[] {
+  return kind === "v2" ? [reservesCall] : [slot0Call, liquidityCall];
+}
+
 const wordBytes = 32;
 const reservesWords = 3;
 const slot0Words = 7;
 const maxUint112 = 2n ** 112n - 1n;
+const maxUint128 = 2n ** 128n - 1n;
 const maxUint160 = 2n ** 160n - 1n;
+const q96 = 2n ** 96n;
 const q192 = 2n ** 192n;
 
 /** The `index`th 32-byte word of an answer, as an unsigned number. */
@@ -98,9 +100,25 @@ export function isToken0(token: Address, quote: Address): boolean {
 export interface PoolPlace {
   readonly kind: PoolKind;
   readonly isToken0: boolean;
+  /**
+   * The least depth, in base units of the quote token, the pool must keep to price the token; a
+   * pool under it asks for another (decision 0194). None when absent.
+   */
+  readonly minDepth?: bigint;
 }
 
-function reservesPrice(answer: Hex, place: PoolPlace): Result<Ratio, PriceMiss> {
+/**
+ * A pool's price of the token, in base units of the quote for one base unit of it, and its depth:
+ * the quote it can trade, in base units. A v2 pair's depth is its quote reserve; a v3 pool's, its
+ * liquidity in range as a quote amount at its current price. Neither is a balance, which a deposit
+ * or liquidity out of range would inflate.
+ */
+export interface PoolState {
+  readonly price: Ratio;
+  readonly depth: bigint;
+}
+
+function reservesState(answer: Hex, place: PoolPlace): Result<PoolState, PriceMiss> {
   const reserve0 = wordOf(answer, 0);
   const reserve1 = wordOf(answer, 1);
   if (reserve0 > maxUint112 || reserve1 > maxUint112) {
@@ -111,37 +129,70 @@ function reservesPrice(answer: Hex, place: PoolPlace): Result<Ratio, PriceMiss> 
     return err("replan");
   }
   return place.isToken0
-    ? ok({ numerator: reserve1, denominator: reserve0 })
-    : ok({ numerator: reserve0, denominator: reserve1 });
+    ? ok({ price: { numerator: reserve1, denominator: reserve0 }, depth: reserve1 })
+    : ok({ price: { numerator: reserve0, denominator: reserve1 }, depth: reserve0 });
 }
 
-// The square of the price in Q64.96 is token1 per token0 in Q192.
-function slot0Price(answer: Hex, place: PoolPlace): Result<Ratio, PriceMiss> {
+// The square of the price in Q64.96 is token1 per token0 in Q192. Liquidity L in range at that
+// price trades as L·√P of token1 and L/√P of token0.
+function slot0State(
+  answer: Hex,
+  liquidity: bigint,
+  place: PoolPlace,
+): Result<PoolState, PriceMiss> {
   const sqrtPriceX96 = wordOf(answer, 0);
-  if (sqrtPriceX96 === 0n || sqrtPriceX96 > maxUint160) {
+  if (sqrtPriceX96 === 0n || sqrtPriceX96 > maxUint160 || liquidity > maxUint128) {
     return err("unpriced");
+  }
+  // A pool with no liquidity in range quotes a price nobody can trade at.
+  if (liquidity === 0n) {
+    return err("replan");
   }
   const squared = sqrtPriceX96 * sqrtPriceX96;
   return place.isToken0
-    ? ok({ numerator: squared, denominator: q192 })
-    : ok({ numerator: q192, denominator: squared });
+    ? ok({
+        price: { numerator: squared, denominator: q192 },
+        depth: (liquidity * sqrtPriceX96) / q96,
+      })
+    : ok({
+        price: { numerator: q192, denominator: squared },
+        depth: (liquidity * q96) / sqrtPriceX96,
+      });
 }
 
 /**
- * The token's price from its pool's one answer, in base units of the other token for one base unit
- * of it: a v2 pair's reserves or a v3 pool's `sqrtPriceX96`. An answer that failed, has another
- * length than its function's, or holds a value past its type is `unpriced`; a pair with an empty
- * side is `replan`.
+ * The token's price and its pool's depth from the answers of {@link poolReadCalls}. An answer
+ * that failed, has another length than its function's, or holds a value past its type is
+ * `unpriced`; a pair with an empty side, or a v3 pool with no liquidity in range, is `replan`.
+ */
+export function poolState(
+  place: PoolPlace,
+  answers: readonly ReadAnswer[],
+): Result<PoolState, PriceMiss> {
+  if (place.kind === "v2") {
+    const [reserves, ...rest] = answers;
+    const data = rest.length === 0 ? wordsIn(reserves, reservesWords) : undefined;
+    return data === undefined ? err("unpriced") : reservesState(data, place);
+  }
+  const [slot0, liquidity, ...rest] = answers;
+  const data = rest.length === 0 ? wordsIn(slot0, slot0Words) : undefined;
+  const inRange = numberAnswer(liquidity);
+  return data === undefined || inRange === undefined
+    ? err("unpriced")
+    : slot0State(data, inRange, place);
+}
+
+/**
+ * The token's price, in base units of the quote for one base unit of it, from the answers of
+ * {@link poolReadCalls}, as {@link poolState} reads it; a pool under its least depth is `replan`.
  */
 export function poolPrice(
   place: PoolPlace,
   answers: readonly ReadAnswer[],
 ): Result<Ratio, PriceMiss> {
-  const [answer, ...rest] = answers;
-  const words = place.kind === "v2" ? reservesWords : slot0Words;
-  const data = rest.length === 0 ? wordsIn(answer, words) : undefined;
-  if (data === undefined) {
-    return err("unpriced");
+  const state = poolState(place, answers);
+  if (!state.ok) {
+    return state;
   }
-  return place.kind === "v2" ? reservesPrice(data, place) : slot0Price(data, place);
+  return state.value.depth < (place.minDepth ?? 0n) ? err("replan") : ok(state.value.price);
 }
