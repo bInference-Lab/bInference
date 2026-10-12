@@ -1,13 +1,13 @@
 import type { TurnOutcome } from "@binference/store";
+import { callFitting } from "../compaction/fitting-call.js";
 import type { BatchEnd } from "./batch-call.js";
 import { canMerge } from "./can-merge.js";
-import { callModel } from "./model-call.js";
 import type { OwnerMessage, ToolCall } from "./model-message.js";
 import type { ModelAnswer, ModelFault } from "./read-model-response.js";
 import { markTurn } from "./record-call.js";
 import { runCutOffBatch, runToolBatch } from "./tool-batch.js";
 import { endOfHalt, haltOf } from "./turn-halt.js";
-import type { TurnStatusLine } from "./turn-records.js";
+import type { ModelRequest, TurnStatusLine } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 /** How a turn's loop ended, and the status line it ends with, if any. */
@@ -160,7 +160,8 @@ async function onAnswer(run: TurnRun, answer: ModelAnswer): Promise<StepEnd> {
 }
 
 /**
- * One step of the turn (runtime spec, section 4.2): a model call, then its tool batch. A halt, a
+ * One step of the turn (runtime spec, section 4.2): a model call, compacting the history first
+ * when it would not fit (section 7.3), then its tool batch. A halt, a
  * failure with no next step, a committed batch, a question to the owner, the loop guard, a spent
  * budget, or an answer with no call and no waiting message ends the loop; anything else asks for
  * the next model call.
@@ -173,13 +174,13 @@ export async function takeStep(run: TurnRun): Promise<StepEnd> {
     return { outcome: "loop", status: { line: "modelCallLimit" } };
   }
   run.tally.enter("streaming");
-  const request = {
+  const request = async (): Promise<ModelRequest> => ({
     prefix: run.prefix,
     messages: [...run.messages],
     tail: await run.tail.text(run.writes),
     tools: run.parts.tools.declarations,
-  };
-  const response = await callModel(run, request);
+  });
+  const response = await callFitting(run, request);
   await keepResponse(run, response);
   return response.ok ? onAnswer(run, response) : endOfFault(run, response);
 }

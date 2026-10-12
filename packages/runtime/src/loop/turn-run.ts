@@ -1,4 +1,5 @@
 import type { Clock } from "@binference/core";
+import type { TurnHistory } from "../compaction/turn-history.js";
 import type { LoopGuard } from "./loop-guard.js";
 import type { ModelMessage } from "./model-message.js";
 import type { OpenCall } from "./open-calls.js";
@@ -71,6 +72,17 @@ export interface ModelRoute {
   moveTo(index: number): void;
 }
 
+/** A route that starts at its chain's first model. */
+export function createModelRoute(): ModelRoute {
+  let current = 0;
+  return {
+    at: () => current,
+    moveTo: (index) => {
+      current = index;
+    },
+  };
+}
+
 /** One running turn, as each step of the loop sees it. */
 export interface TurnRun {
   readonly turnId: string;
@@ -84,6 +96,8 @@ export interface TurnRun {
   readonly messages: ModelMessage[];
   /** The chain's model the turn calls now: a fallback lasts for the turn. */
   readonly route: ModelRoute;
+  /** The history as compaction reads and replaces it; absent, the turn never compacts. */
+  readonly history?: TurnHistory;
   readonly tally: TurnTally;
   /** Watches the turn's calls for the same call with the same result three times. */
   readonly loopGuard: LoopGuard;

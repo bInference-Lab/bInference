@@ -16,6 +16,10 @@ function entryOf(step: RecordedStep): readonly JournalEntry[] {
   if (step.kind === "result") {
     return [{ kind: "result", id: step.id, ran: step.ran, outside: step.outside }];
   }
+  if (step.kind === "summary") {
+    const { text, fromSeq, throughSeq, outside } = step;
+    return [{ kind: "summary", text, fromSeq, throughSeq, outside }];
+  }
   return step.kind === "joined" ? [{ kind: "joined", ids: step.ids }] : [];
 }
 

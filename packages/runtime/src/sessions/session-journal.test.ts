@@ -10,6 +10,7 @@ import { conversationOf } from "./conversation.js";
 import {
   agentTextContentSchema,
   ownerTextContentSchema,
+  summaryContentSchema,
   toolCallContentSchema,
   toolResultContentSchema,
 } from "./event-content.schema.js";
@@ -35,6 +36,10 @@ function entryOf(event: TranscriptEvent): readonly JournalEntry[] {
   if (event.kind === "tool_result") {
     const { callId: id, ran } = toolResultContentSchema.parse(event.content);
     return [{ kind: "result", id, ran, outside: event.outside }];
+  }
+  if (event.kind === "summary") {
+    const content = summaryContentSchema.parse(event.content);
+    return [{ kind: "summary", ...content, outside: event.outside }];
   }
   return event.role === "agent"
     ? [{ kind: "response", text: agentTextContentSchema.parse(event.content).text }]

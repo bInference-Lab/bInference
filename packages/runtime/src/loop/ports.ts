@@ -9,6 +9,7 @@ import type {
   PreparedCall,
   ProposalRecord,
   ResponseRecord,
+  SummaryRecord,
   ToolResultRecord,
   TurnEndRecord,
   TurnRefusal,
@@ -65,6 +66,8 @@ export interface TurnJournal {
   toolResult(result: ToolResultRecord, signal: AbortSignal): Promise<void>;
   /** Messages that joined the turn at a merge point. */
   joined(messages: readonly OwnerMessage[], signal: AbortSignal): Promise<void>;
+  /** A summary of the session's history, which the model sees from now on in place of its range. */
+  summary(summary: SummaryRecord, signal: AbortSignal): Promise<void>;
   /** The turn holds outside content from now on. */
   markOutside(signal: AbortSignal): Promise<void>;
   end(end: TurnEndRecord, signal: AbortSignal): Promise<void>;

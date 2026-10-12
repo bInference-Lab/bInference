@@ -1,6 +1,8 @@
 import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
+import type { Locale } from "@binference/protocol";
 import { createRelayLiveFacts } from "../relay/relay-live-facts.js";
+import { messagesOf, type StoredHistory } from "../sessions/conversation.js";
 import { nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryContextSource } from "../testing/memory-context-source.js";
 import {
@@ -16,7 +18,7 @@ import {
   type TurnRecorderOptions,
 } from "../testing/turn-recorder.js";
 import type { ModelPrice } from "../usage/model-price.js";
-import { type ChatTurn, createChatTurn } from "./chat-turn.js";
+import { type ChatTurn, type ChatTurnOptions, createChatTurn } from "./chat-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
 import type { LiveFactsReader, ModelChain, ToolBox, TurnEngine } from "./ports.js";
 import type { ToolKind, ToolOutcome, ToolRunContext } from "./turn-records.js";
@@ -106,12 +108,24 @@ export interface TestTurnOptions {
   readonly facts?: LiveFactsReader;
   /** The stable prefix; one line naming a test agent when absent. */
   readonly prefix?: string;
+  /**
+   * What the turn compacts with: the summary model's replies (`test/fast`), the context window,
+   * and the stored history the turn loads, whose messages are the history when none is given.
+   */
+  readonly compaction?: {
+    readonly summaries: readonly ScriptedReply[];
+    readonly contextTokens: number;
+    readonly stored: StoredHistory;
+    readonly locale?: Locale;
+  };
 }
 
 /** A test turn with its transport, recorder and clock. */
 export interface TestTurn {
   readonly turn: ChatTurn;
   readonly transport: ScriptedTransport;
+  /** The summary model's transport, which answers `compaction.summaries`. */
+  readonly summarizer: ScriptedTransport;
   readonly recorder: TurnRecorder;
   readonly clock: ManualClock;
 }
@@ -145,22 +159,45 @@ function testParts(
   };
 }
 
+// The turn's compaction on a summary model, `test/fast`, answering the test's summaries.
+function testCompaction(
+  options: TestTurnOptions,
+  summarizer: ScriptedTransport,
+  clock: ManualClock,
+): Pick<ChatTurnOptions, "compaction"> {
+  const { compaction } = options;
+  if (compaction === undefined) {
+    return {};
+  }
+  const fast = createTestChain([{ name: "test/fast", transport: summarizer }], { clock });
+  const setup = {
+    summarizer: fast,
+    contextTokens: compaction.contextTokens,
+    locale: compaction.locale ?? "en",
+  };
+  return { compaction: { setup, stored: compaction.stored } };
+}
+
 /** Creates a turn on a scripted model, a recorder and a manual clock. */
 export function createTestTurn(options: TestTurnOptions): TestTurn {
   const transport = createScriptedTransport(options.replies);
   const recorder = createTurnRecorder(options.recorder);
   const clock = options.clock ?? createManualClock(1_000);
+  const { compaction } = options;
+  const summarizer = createScriptedTransport(compaction?.summaries ?? []);
+  const loaded = compaction === undefined ? [] : messagesOf(compaction.stored);
   const turn = createChatTurn({
     turnId: options.turnId ?? testTurnId,
     parts: testParts(options, { transport, recorder, clock }),
     prefix: options.prefix ?? "You are a test agent.",
-    history: options.history ?? [],
+    history: options.history ?? loaded,
+    ...testCompaction(options, summarizer, clock),
     taken: options.taken ?? [ownerMessage(1, "hello")],
     outsideContent: options.outsideContent ?? false,
     lifetime: new AbortController().signal,
     limits: { ...turnLimits, ...options.limits },
   });
-  return { turn, transport, recorder, clock };
+  return { turn, transport, summarizer, recorder, clock };
 }
 
 /** A promise a test settles itself. */

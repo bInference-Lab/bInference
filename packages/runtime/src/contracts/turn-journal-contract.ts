@@ -3,6 +3,7 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { TurnOutcome } from "@binference/store";
 import type { ToolCall } from "../loop/model-message.js";
 import type { TurnJournal } from "../loop/ports.js";
+import type { SummaryRecord } from "../loop/turn-records.js";
 
 /** One write of a turn's journal, as the subject reads it back. */
 export type JournalEntry =
@@ -15,7 +16,8 @@ export type JournalEntry =
       readonly ran: boolean;
       readonly outside: boolean;
     }
-  | { readonly kind: "joined"; readonly ids: readonly string[] };
+  | { readonly kind: "joined"; readonly ids: readonly string[] }
+  | ({ readonly kind: "summary" } & SummaryRecord);
 
 /** What a turn's journal holds: its writes in order, its marks and its end. */
 export interface JournalView {
@@ -77,6 +79,19 @@ async function writesProposalWithMark(harness: TurnJournalHarness): Promise<void
   assert.deepEqual((await read()).end, { outcome: "ok", heldBack: 1 });
 }
 
+async function keepsSummary(harness: TurnJournalHarness): Promise<void> {
+  const { journal, read } = await harness.create();
+  await journal.response({ text: "Looking", reasoning: "" }, live());
+  const summary = { text: "The owner bought BNB.", fromSeq: 1, throughSeq: 1, outside: true };
+  await journal.summary(summary, live());
+  assert.deepEqual((await read()).entries, [
+    { kind: "response", text: "Looking" },
+    { kind: "summary", ...summary },
+  ]);
+  await assert.rejects(journal.summary(summary, AbortSignal.abort(new Error("stopped"))));
+  assert.equal((await read()).entries.length, 2);
+}
+
 async function refusesAborted(harness: TurnJournalHarness): Promise<void> {
   const { journal, read } = await harness.create();
   const stopped = AbortSignal.abort(new Error("the turn stopped"));
@@ -89,7 +104,8 @@ async function refusesAborted(harness: TurnJournalHarness): Promise<void> {
 
 /**
  * The contract every {@link TurnJournal} keeps (runtime spec, section 11): it keeps each write in
- * order before it resolves, stores a proposal with the turn's committed mark, and on an aborted
+ * order before it resolves, a summary with its range and its outside mark, stores a proposal with
+ * the turn's committed mark, and on an aborted
  * signal rejects and writes nothing.
  */
 export function turnJournalContract(harness: TurnJournalHarness): readonly ContractCheck[] {
@@ -101,6 +117,10 @@ export function turnJournalContract(harness: TurnJournalHarness): readonly Contr
     {
       name: "writes a proposal with the turn's committed mark",
       run: async () => writesProposalWithMark(harness),
+    },
+    {
+      name: "keeps a summary with the range it covers and its outside mark",
+      run: async () => keepsSummary(harness),
     },
     {
       name: "rejects a write on an aborted signal and keeps nothing of it",

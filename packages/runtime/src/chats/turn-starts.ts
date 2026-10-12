@@ -214,6 +214,9 @@ async function runTurn(
     outsideContent: history.outside,
     lifetime,
     ...(setup.limits === undefined ? {} : { limits: setup.limits }),
+    ...(setup.compaction === undefined
+      ? {}
+      : { compaction: { setup: setup.compaction, stored: history } }),
   });
   const done = turn
     .run()

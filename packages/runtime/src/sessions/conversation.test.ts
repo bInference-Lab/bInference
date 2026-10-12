@@ -1,8 +1,15 @@
 import type { JsonValue } from "@binference/core";
 import type { EventKind, EventRole, TranscriptEvent } from "@binference/store";
 import { describe, expect, it } from "vitest";
-import { nthTestId } from "../testing/memory-agent-stores.js";
-import { conversationOf, notRunAfterRestart } from "./conversation.js";
+import { createMemoryAgentStores, nthTestId } from "../testing/memory-agent-stores.js";
+import { transcriptOf } from "../testing/transcript-events.js";
+import {
+  conversationOf,
+  historyOf,
+  loadConversation,
+  notRunAfterRestart,
+  summaryMessage,
+} from "./conversation.js";
 
 function eventsOf(
   drafts: readonly (readonly [EventRole, EventKind, JsonValue])[],
@@ -104,5 +111,53 @@ describe("conversationOf", () => {
         { argumentsText: '{"amount":"1"}' },
       ],
     });
+  });
+});
+
+describe("historyOf", () => {
+  const events = transcriptOf([
+    [{ owner: "buy BNB", outside: true }, { agent: "Proposed." }],
+    [{ owner: "and a stop-loss" }, { agent: "Set." }],
+    [{ summary: "Old summary.", fromSeq: 1, throughSeq: 1 }],
+    [{ summary: "The owner bought BNB.", fromSeq: 1, throughSeq: 2 }],
+    [{ owner: "status?" }],
+  ]);
+
+  it("starts at the latest summary and leaves out the events of its range", () => {
+    const history = historyOf(events);
+    expect(history.summary).toStrictEqual({
+      text: "The owner bought BNB.",
+      fromSeq: 1,
+      throughSeq: 2,
+      outside: false,
+    });
+    expect(history.events.map((event) => event.seq)).toStrictEqual([3, 4, 7]);
+  });
+
+  it("loads the summary as the conversation's first message, marked as a record", async () => {
+    const { stores } = await createMemoryAgentStores();
+    const signal = new AbortController().signal;
+    const session = nthTestId("ses", 1);
+    const memory = await loadConversation(
+      { ...stores.transcript, events: async () => events },
+      session,
+      signal,
+    );
+    expect(memory.messages[0]).toStrictEqual(summaryMessage("The owner bought BNB."));
+    expect(JSON.stringify(memory.messages[0])).toContain("not the owner's words");
+    expect(memory.messages.slice(1)).toStrictEqual([
+      { role: "owner", text: "and a stop-loss" },
+      { role: "agent", text: "Set.", reasoning: "", toolCalls: [] },
+      { role: "owner", text: "status?" },
+    ]);
+    expect(memory.outside).toBe(false);
+  });
+
+  it("holds outside content when the summary is marked", () => {
+    const marked = transcriptOf([
+      [{ owner: "read this post" }],
+      [{ summary: "The owner shared a post.", fromSeq: 1, throughSeq: 1, outside: true }],
+    ]);
+    expect(historyOf(marked).summary?.outside).toBe(true);
   });
 });

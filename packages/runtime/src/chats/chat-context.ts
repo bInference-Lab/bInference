@@ -1,4 +1,5 @@
 import type { Clock, Id } from "@binference/core";
+import type { TurnCompaction } from "../compaction/turn-history.js";
 import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
 import type { ContextSource, EngineChat } from "../relay/ports.js";
@@ -13,6 +14,8 @@ export interface TurnSetup {
   /** binference's instructions, which open the turn's stable prefix (runtime spec, 7.1). */
   readonly instructions: string;
   readonly limits?: TurnLimits;
+  /** What compacts the session's history when it grows too long; without it, nothing does. */
+  readonly compaction?: TurnCompaction;
 }
 
 /** What the chat runner works with. */

@@ -106,6 +106,18 @@ export interface ResponseRecord {
   readonly replay?: ResponseReplay;
 }
 
+/**
+ * A summary of the session's history as the transcript keeps it (runtime spec, section 7.3): the
+ * events from `fromSeq` through `throughSeq` reach the model as this text from now on.
+ */
+export interface SummaryRecord {
+  readonly text: string;
+  readonly fromSeq: number;
+  readonly throughSeq: number;
+  /** An event it covers, or the summary before it, held outside content. */
+  readonly outside: boolean;
+}
+
 /** How a turn ended, as the transcript keeps it. */
 export interface TurnEndRecord {
   readonly outcome: TurnOutcome;

@@ -4,6 +4,7 @@ import type { InboxMessageView } from "@binference/protocol";
 import type { MemoryAgentDatabase } from "@binference/store/testing";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import type { NewMessageMode } from "../chats/queue-merge.js";
+import type { TurnCompaction } from "../compaction/turn-history.js";
 import type { ModelChain } from "../loop/ports.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
@@ -51,6 +52,8 @@ export interface ChatRigOptions {
   readonly context?: ContextSource;
   /** The turns' models in place of one scripted model answering `replies`. */
   readonly models?: (clock: ManualClock) => ModelChain;
+  /** What the turns compact their history with; they never compact when absent. */
+  readonly compaction?: (clock: ManualClock) => TurnCompaction;
 }
 
 function notStarted(): never {
@@ -88,6 +91,7 @@ export async function startChatRig(options: ChatRigOptions): Promise<ChatRig> {
       tools: testToolBox(tools),
       instructions: "You are a test agent.",
       limits: turnLimits,
+      ...(options.compaction === undefined ? {} : { compaction: options.compaction(clock) }),
     }),
     mode: () => options.mode ?? "merge",
     clock,

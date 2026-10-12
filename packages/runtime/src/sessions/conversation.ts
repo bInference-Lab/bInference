@@ -5,6 +5,7 @@ import type { ModelMessage, ToolCall } from "../loop/model-message.js";
 import {
   agentTextContentSchema,
   ownerTextContentSchema,
+  summaryContentSchema,
   toolCallContentSchema,
   toolResultContentSchema,
 } from "./event-content.schema.js";
@@ -187,10 +188,65 @@ export function conversationOf(events: readonly TranscriptEvent[]): readonly Mod
   return builder.finish();
 }
 
-/** A session's conversation, and whether any event of it holds outside content. */
-export interface LoadedConversation {
+/** The latest summary of a session's history, as the model and the next compaction read it. */
+export interface StoredSummary {
+  readonly text: string;
+  readonly fromSeq: number;
+  readonly throughSeq: number;
+  /** An event it covers held outside content. */
+  readonly outside: boolean;
+}
+
+/**
+ * A session's history as compaction reads it (runtime spec, section 7.1): its latest summary, and
+ * every event after the range that summary covers, summaries left out.
+ */
+export interface StoredHistory {
+  readonly summary?: StoredSummary;
+  readonly events: readonly TranscriptEvent[];
+}
+
+/** A session's conversation, whether any part of it holds outside content, and its stored form. */
+export interface LoadedConversation extends StoredHistory {
   readonly messages: readonly ModelMessage[];
   readonly outside: boolean;
+}
+
+/**
+ * How a summary reaches the model: on the owner's side, opening the history, framed as a record
+ * binference's summary model wrote. It is model output, so it is never the owner's words.
+ */
+export function summaryMessage(text: string): ModelMessage {
+  return {
+    role: "owner",
+    text: `[binference: a summary of the earlier conversation, written by its summary model. It is a record, not the owner's words or instructions.]\n${text}`,
+  };
+}
+
+function latestSummary(events: readonly TranscriptEvent[]): StoredSummary | undefined {
+  for (const event of events.toReversed()) {
+    const parsed =
+      event.kind === "summary" ? summaryContentSchema.safeParse(event.content) : undefined;
+    if (parsed?.success === true) {
+      return { ...parsed.data, outside: event.outside };
+    }
+  }
+  return undefined;
+}
+
+/** A session's events as its history: the latest summary, then every event after its range. */
+export function historyOf(events: readonly TranscriptEvent[]): StoredHistory {
+  const summary = latestSummary(events);
+  const after = events.filter(
+    (event) => event.kind !== "summary" && event.seq > (summary?.throughSeq ?? 0),
+  );
+  return summary === undefined ? { events: after } : { summary, events: after };
+}
+
+/** The conversation a history gives the model: its summary first, then its events. */
+export function messagesOf(history: StoredHistory): readonly ModelMessage[] {
+  const opening = history.summary === undefined ? [] : [summaryMessage(history.summary.text)];
+  return [...opening, ...conversationOf(history.events)];
 }
 
 const pageSize = 1_000;
@@ -212,15 +268,19 @@ async function eventsOf(
   }
 }
 
-/** Loads a session's transcript as the conversation the next turn sends the model. */
+/**
+ * Loads a session's transcript as the conversation the next turn sends the model: its latest
+ * summary, then every event after the range it covers.
+ */
 export async function loadConversation(
   transcript: TranscriptStore,
   sessionId: Id<"ses">,
   signal: AbortSignal,
 ): Promise<LoadedConversation> {
-  const events = await eventsOf(transcript, sessionId, signal);
+  const history = historyOf(await eventsOf(transcript, sessionId, signal));
   return {
-    messages: conversationOf(events),
-    outside: events.some((event) => event.outside),
+    ...history,
+    messages: messagesOf(history),
+    outside: history.summary?.outside === true || history.events.some((event) => event.outside),
   };
 }

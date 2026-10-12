@@ -6,6 +6,7 @@ import { type AgentStores, written } from "./agent-stores.js";
 import type {
   AgentTextContent,
   OwnerTextContent,
+  SummaryContent,
   ToolCallContent,
 } from "./event-content.schema.js";
 
@@ -130,6 +131,11 @@ export function createSessionJournal(
   const { fence } = stores;
   return {
     ...eventWrites({ stores, place, clock }),
+    async summary({ text, fromSeq, throughSeq, outside }, signal) {
+      const content: SummaryContent = { text, fromSeq, throughSeq };
+      const event = { role: "system", kind: "summary", content: { ...content }, outside } as const;
+      await append({ stores, place, clock }, [eventOf({ stores, place, clock }, event)], signal);
+    },
     async markOutside(signal) {
       written(await stores.sessions.markOutside({ turn, fence }, { signal }), "mark");
     },

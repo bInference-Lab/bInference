@@ -53,11 +53,31 @@ built in `src/context/`:
    `agent/readFile` in spec 8's order inside a delimiter that names it, each cut at 12,000
    characters and all at 40,000. Two turns with no workspace change send the same bytes; an edit
    applies at the next turn.
-2. **The history**: the session's conversation.
+2. **The history**: the session's latest summary, then every event after the range it covers.
 3. **The volatile tail**: the live facts of `facts/get` and the model budget left, as the last user
    message after the history. They are read before the turn's first call and after a batch that
    ran a propose or control tool, never stored, and never marked for the cache. A read that fails
    says so, and the turn goes on.
+
+### Compaction
+
+Before a model call whose estimated input with its 4,096 output tokens passes 80% of the window,
+and once after a `context` failure, `src/compaction/` replaces the oldest history with a summary
+([spec 8, section 7.3](../../docs/specs/runtime.md#section-7-3);
+[decision 0202](../../docs/DECISIONS.md#d0202)):
+
+- **Estimates**: a CJK character is one token, other text one per 4 characters, plus 4 a message
+  and 3 a call; after a call answers, the provider's input count replaces the estimate of what it
+  sent. The window is 128,000 tokens, or the size of a call the provider refused as too long.
+- **The cut** keeps the turn's own messages and the newest history up to 40% of the window, from a
+  turn's start where one fits, never between a tool call and its result.
+- **The summary** comes from `models.fast` (or `models.main` when no fast model is set) through the
+  turn's retries, fallbacks and usage records, at most 16,000 characters, in the owner's language.
+- **The identifier rule**: every intent, order, alert and schedule id, transaction hash and
+  address of the compacted range and the summary before it must be in the new summary or in what
+  stays. A second request names what is missing; if one is still missing, nothing is written.
+- **Storage**: a `summary` event names the range it covers and is marked outside when the range
+  was. It opens the history as a record on the owner's side that says it is not the owner's words.
 
 ## Models
 

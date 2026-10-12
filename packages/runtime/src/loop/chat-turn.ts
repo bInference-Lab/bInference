@@ -1,5 +1,7 @@
 import { err } from "@binference/core";
 import type { TurnOutcome } from "@binference/store";
+import { createTurnHistory, type TurnCompaction } from "../compaction/turn-history.js";
+import type { StoredHistory } from "../sessions/conversation.js";
 import { answerOpenCalls, endTurn, portFailure } from "./end-turn.js";
 import { createLoopGuard } from "./loop-guard.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
@@ -7,7 +9,7 @@ import { trackOpenCalls } from "./open-calls.js";
 import { type TurnHalt, type TurnStop } from "./turn-halt.js";
 import type { TurnRefusal } from "./turn-records.js";
 import {
-  type ModelRoute,
+  createModelRoute,
   type TurnLimits,
   turnLimits,
   type TurnParts,
@@ -26,6 +28,14 @@ export interface ChatTurnOptions {
   readonly prefix: string;
   /** The session's conversation before this turn, as the context builder kept it. */
   readonly history: readonly ModelMessage[];
+  /**
+   * The same history as stored, and what compacts it (runtime spec, section 7.3); without them the
+   * turn never compacts.
+   */
+  readonly compaction?: {
+    readonly setup: TurnCompaction;
+    readonly stored: StoredHistory;
+  };
   /** The messages this turn takes from the chat queue, oldest first. */
   readonly taken: readonly OwnerMessage[];
   /** The history already holds outside content: an event or a summary marked so. */
@@ -74,17 +84,6 @@ function startTimeLimit(run: TurnRun): () => void {
     () => undefined,
   );
   return () => finished.abort();
-}
-
-// A turn starts at its role's first model.
-function createRoute(): ModelRoute {
-  let current = 0;
-  return {
-    at: () => current,
-    moveTo: (index) => {
-      current = index;
-    },
-  };
 }
 
 async function loopSteps(run: TurnRun): Promise<LoopEnd> {
@@ -156,7 +155,16 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
       ...options.history,
       ...options.taken.map((message) => ({ role: "owner" as const, text: message.text })),
     ],
-    route: createRoute(),
+    // A turn starts at its role's first model.
+    route: createModelRoute(),
+    ...(options.compaction === undefined
+      ? {}
+      : {
+          history: createTurnHistory(options.compaction.setup, {
+            stored: options.compaction.stored,
+            size: options.history.length,
+          }),
+        }),
     tally,
     loopGuard: createLoopGuard({ enabled: limits.loopGuard }),
     halted: halt.signal,

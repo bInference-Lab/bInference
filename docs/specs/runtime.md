@@ -483,6 +483,8 @@ nothing after the history carries one.
   for what that call held.
 - **Cost.** The `fast` model's calls are recorded on the turn (section 8.3) and count against the
   budget.
+- **Defaults.** The window, the summary model when no `fast` model is set, how the summary reaches
+  the model and what the identifier rule reads follow [decision 0202](../DECISIONS.md#d0202).
 
 <a id="section-8"></a>
 

@@ -38,6 +38,19 @@ export interface ToolResultContent {
   readonly ran: boolean;
 }
 
+/**
+ * A summary of the session's history up to and including `throughSeq` (runtime spec, section 7.3):
+ * the model sees it in place of those events. It is model output, outside content when any event
+ * it covers was.
+ */
+export interface SummaryContent {
+  readonly text: string;
+  /** The first event it covers. */
+  readonly fromSeq: number;
+  /** The last event it covers: the history goes on after it. */
+  readonly throughSeq: number;
+}
+
 /** Parses an owner's text. */
 export const ownerTextContentSchema: z.ZodType<OwnerTextContent> = z.object({
   message: z.string(),
@@ -69,4 +82,11 @@ export const toolResultContentSchema: z.ZodType<ToolResultContent> = z.object({
   text: z.string(),
   isError: z.boolean(),
   ran: z.boolean(),
+});
+
+/** Parses a summary. */
+export const summaryContentSchema: z.ZodType<SummaryContent> = z.object({
+  text: z.string(),
+  fromSeq: z.int().positive(),
+  throughSeq: z.int().positive(),
 });
