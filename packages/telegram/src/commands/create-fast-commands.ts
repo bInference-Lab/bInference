@@ -1,5 +1,6 @@
 import type { ChainRegistry } from "@binference/chain";
 import { BinferenceError, type Clock, type Logger } from "@binference/core";
+import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale, MessageValues } from "@binference/i18n";
 import type { Api } from "grammy";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
@@ -9,9 +10,11 @@ import type { ReplyTarget } from "../ingress/decide-update.js";
 import type { OwnerCalls } from "../ports.js";
 import type { ButtonPress, ChatPost } from "../updates/chat-update.schema.js";
 import { runHalve, runLimits, runPaper } from "./agent-commands.js";
+import { runAi, runPickModel } from "./ai-command.js";
+import { runAgents, runClear, runSchedules, runUse } from "./chat-commands.js";
 import { commandCallbackSchema } from "./command-callback.schema.js";
 import type { CommandContext, CommandRun, PressContext } from "./command-context.js";
-import { commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
+import { commandArgs, commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
 import { runConsole } from "./console-command.js";
 import { runLang, runLanguage } from "./lang-command.js";
 import { runOrders } from "./orders-command.js";
@@ -46,6 +49,8 @@ export interface FastCommandsOptions {
   readonly api: Api;
   /** The engine's side: runs each operation for the owner alone. */
   readonly calls: OwnerCalls;
+  /** The paired owner, with the agent `/use` picked for the chat (decision 0204). */
+  readonly owners: Pick<OwnerStore, "get" | "useAgent">;
   readonly cards: TelegramCards;
   /** The cards that wait for the owner's answer, oldest first (`CardShowings.waiting`). */
   readonly waiting: (options: { readonly signal: AbortSignal }) => Promise<readonly CardShowing[]>;
@@ -85,9 +90,14 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   freeze: runFreeze,
   rescue: runRescue,
   paper: runPaper,
+  agents: runAgents,
+  use: runUse,
   status: runStatus,
   limits: runLimits,
   spend: runSpend,
+  ai: runAi,
+  clear: runClear,
+  schedules: runSchedules,
   console: runConsole,
   lang: runLang,
   help: runHelp,
@@ -116,11 +126,12 @@ async function runCaught(run: CommandRun, context: CommandContext, logger: Logge
   }
 }
 
-/** Where a command answers: the chat and topic, and who asked. */
+/** Where a command answers: the chat and topic, who asked, and what followed the command. */
 interface Asker {
   readonly target: ReplyTarget;
   readonly senderId: number;
   readonly signal: AbortSignal;
+  readonly args?: string;
 }
 
 /** What every command's context is made from: the options, the bot's calls and the formatters. */
@@ -136,6 +147,7 @@ function contextOf(parts: Parts, asker: Asker): CommandContext {
   const display = options.display();
   const formatter = parts.formatters(display);
   const { target, senderId, signal } = asker;
+  const { owners } = options;
   return {
     nowMs: options.clock.now(),
     timeZone: display.timeZone,
@@ -147,6 +159,9 @@ function contextOf(parts: Parts, asker: Asker): CommandContext {
     // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
     words: (key: string, values?: MessageValues) => formatter.message(key, values),
     senderId,
+    args: asker.args ?? "",
+    pickedAgent: async () => (await owners.get({ signal }))?.agentId,
+    useAgent: async (agent) => owners.useAgent(agent, { signal }),
     ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
     issueLaunchTicket: async () => options.issueLaunchTicket({ userId: senderId, signal }),
     signal,
@@ -189,7 +204,8 @@ export function createFastCommands(options: FastCommandsOptions): FastCommands {
       if (command === undefined || senderId === undefined) {
         return false;
       }
-      const context = contextOf(parts, { target: targetOf(post), senderId, signal });
+      const asker = { target: targetOf(post), senderId, signal, args: commandArgs(post) };
+      const context = contextOf(parts, asker);
       await runCaught(runs[command], context, logger);
       return true;
     },
@@ -201,8 +217,14 @@ export function createFastCommands(options: FastCommandsOptions): FastCommands {
       }
       const context = pressContextOf(parts, { press: pressed, chatId, messageId }, signal);
       const { data } = callback;
-      const run = async (): Promise<void> =>
-        data.kind === "halve" ? runHalve(context, data.limit) : runLanguage(context, data.locale);
+      const run = async (): Promise<void> => {
+        if (data.kind === "model") {
+          return runPickModel(context, data.digest);
+        }
+        return data.kind === "halve"
+          ? runHalve(context, data.limit)
+          : runLanguage(context, data.locale);
+      };
       await runCaught(run, context, logger);
       return true;
     },

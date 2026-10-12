@@ -17,14 +17,16 @@ export type HalvableLimit = (typeof halvableLimits)[number];
 
 /**
  * What a fast command's button asks for (spec 4, section 2): halve a limit of `/limits`, or set
- * the owner's language from `/lang`.
+ * the owner's language from `/lang`, or pick a model from `/ai`.
  */
 export type CommandCallback =
   | { readonly kind: "halve"; readonly limit: HalvableLimit }
-  | { readonly kind: "language"; readonly locale: MessageLocale };
+  | { readonly kind: "language"; readonly locale: MessageLocale }
+  | { readonly kind: "model"; readonly digest: string };
 
 const halvePattern = /^bnf1:t:h:(\w{1,32})$/;
 const languagePattern = /^bnf1:l:s:(en|zh)$/;
+const modelPattern = /^bnf1:m:s:([\w-]{16})$/;
 const limits: ReadonlySet<string> = new Set(halvableLimits);
 
 function isHalvable(name: string): name is HalvableLimit {
@@ -33,14 +35,21 @@ function isHalvable(name: string): name is HalvableLimit {
 
 /**
  * The callback data of a fast command's button, within Telegram's 64 bytes: `bnf1:t:h:<limit>`
- * for a `/limits` button, the limit named by its field, and `bnf1:l:s:<en|zh>` for a `/lang`
- * button. It names no agent: a press acts on the only one.
+ * for a `/limits` button, the limit named by its field, `bnf1:l:s:<en|zh>` for a `/lang` button,
+ * and `bnf1:m:s:<digest>` for an `/ai` button. It names no agent: a press acts on the chat's.
  */
 export function commandCallbackData(callback: CommandCallback): string {
+  if (callback.kind === "model") {
+    return `bnf1:m:s:${callback.digest}`;
+  }
   return callback.kind === "halve" ? `bnf1:t:h:${callback.limit}` : `bnf1:l:s:${callback.locale}`;
 }
 
 function callbackOf(data: string): CommandCallback | undefined {
+  const digest = modelPattern.exec(data)?.[1];
+  if (digest !== undefined) {
+    return { kind: "model", digest };
+  }
   const locale = languagePattern.exec(data)?.[1];
   if (locale === "en" || locale === "zh") {
     return { kind: "language", locale };

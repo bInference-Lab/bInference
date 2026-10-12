@@ -17,8 +17,9 @@ import {
 type AgentStatus = ResultOf<"engine/status">["agents"][number];
 
 /**
- * The agent a command or a chat message is for: the only agent that is not archived. With none,
- * or several, it says why, and that the CLI names one with `--agent`, and answers `undefined`.
+ * The agent a command or a chat message is for: the one `/use` picked while it is not archived,
+ * else the only agent that is not archived (decision 0204). With none, or several and no pick, it
+ * says why, and how to pick one, and answers `undefined`.
  */
 export async function chooseAgent(context: CallContext): Promise<AgentStatus | undefined> {
   const status = await callOrSay(context, "engine/status", {});
@@ -26,9 +27,11 @@ export async function chooseAgent(context: CallContext): Promise<AgentStatus | u
     return undefined;
   }
   const { agents } = status;
+  const picked = await context.pickedAgent();
+  const chosen = agents.find((agent) => agent.id === picked);
   const [only] = agents;
-  if (only !== undefined && agents.length === 1) {
-    return only;
+  if (chosen !== undefined || (only !== undefined && agents.length === 1)) {
+    return chosen ?? only;
   }
   const ids = agents.map((agent) => agent.id).join(", ");
   await context.say(

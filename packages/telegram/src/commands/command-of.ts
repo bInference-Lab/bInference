@@ -9,9 +9,14 @@ export const fastCommandNames = [
   "freeze",
   "rescue",
   "paper",
+  "agents",
+  "use",
   "status",
   "limits",
   "spend",
+  "ai",
+  "clear",
+  "schedules",
   "console",
   "lang",
   "help",
@@ -27,6 +32,13 @@ const names: ReadonlySet<string> = new Set(fastCommandNames);
 
 function isFastCommand(name: string): name is FastCommandName {
   return names.has(name);
+}
+
+/** The text after a command's name, trimmed: `/use main` gives `main`; none gives "". */
+export function commandArgs(post: ChatPost): string {
+  const text = post.text ?? "";
+  const match = commandPattern.exec(text);
+  return match === null ? "" : text.slice(match[0].length).trim();
 }
 
 /**

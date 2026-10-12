@@ -133,7 +133,8 @@ function relayOf(
   const { showings, cards, display, questions } = chat;
   const { notices, agents } = wiring.stores;
   const outbox = createNoticeOutbox({ ...parts, notices, agents, chains, display, clock, logger });
-  const replies = createChatReplies({ ...parts, clock, logger, display });
+  const agentNames = agentNamesOf(wiring, { active: true });
+  const replies = createChatReplies({ ...parts, clock, logger, display, agentNames });
   const shown = {
     ...replies,
     show: async (...args: Parameters<typeof replies.show>) => {
@@ -145,10 +146,13 @@ function relayOf(
   return createTelegramRelay({ showings, cards, outbox, chat: shown, stored, clock, logger });
 }
 
-// Each agent's name, by its id, as the owner named it.
-function agentNamesOf(wiring: TelegramWiring) {
-  return async (call: Call): Promise<ReadonlyMap<string, string>> =>
-    new Map((await wiring.stores.agents.list(call)).map((agent) => [agent.id, agent.name]));
+// Each agent's name, by its id, as the owner named it: every agent's, or those not archived.
+function agentNamesOf(wiring: TelegramWiring, which: { readonly active: boolean }) {
+  return async (call: Call): Promise<ReadonlyMap<string, string>> => {
+    const agents = await wiring.stores.agents.list(call);
+    const kept = which.active ? agents.filter((agent) => agent.archivedAtMs === undefined) : agents;
+    return new Map(kept.map((agent) => [agent.id, agent.name]));
+  };
 }
 
 // The owner's language and timezone as config.json5 holds them now.
@@ -197,6 +201,7 @@ function commandsOf(
   return createFastCommands({
     api: parts.api,
     calls,
+    owners: parts.owners,
     cards,
     waiting: async (call) => showings.waiting(call),
     chains: wiring.chains,
@@ -225,7 +230,7 @@ function questionsOf(
     ...parts,
     questions: stores.questions,
     answers: questionAnswers,
-    agentNames: agentNamesOf(wiring),
+    agentNames: agentNamesOf(wiring, { active: false }),
     clock: wiring.clock,
     logger,
     display,
@@ -255,7 +260,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
   const commands = commandsOf(parts, wiring, { calls, cards, showings, display });
   const { questions, questionAnswers } = questionsOf(parts, wiring, { calls, display });
   const relay = relayOf(parts, wiring, { showings, cards, display, questions });
-  const chat = createChatIntake({ api: parts.api, calls, clock: wiring.clock, logger, display });
+  const chat = createChatIntake({ ...parts, calls, clock: wiring.clock, logger, display });
   const ingress = createTelegramIngress({
     api: parts.api,
     stores: { inbox: stores.inbox, access: stores.access, owners: parts.owners },

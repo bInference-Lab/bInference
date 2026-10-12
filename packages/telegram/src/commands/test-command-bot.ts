@@ -105,6 +105,7 @@ function commandsOf(
   const { handlers, options } = given;
   return createFastCommands({
     api,
+    owners: parts.owners,
     calls: createOwnerCalls({ handlers, ownerId: async () => Promise.resolve(ownerId) }),
     cards,
     waiting: async () => Promise.resolve(options.waiting ?? []),

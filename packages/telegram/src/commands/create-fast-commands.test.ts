@@ -463,7 +463,7 @@ describe("the fast commands' replies", () => {
     ]);
   });
 
-  it("names no agent with none or several, and points to the CLI", async () => {
+  it("names no agent with none or several, and points to /use", async () => {
     const none = await startCommandBot({
       ...served,
       "engine/status": async () => Promise.resolve(ok({ ...status, agents: [] })),
@@ -485,7 +485,7 @@ describe("the fast commands' replies", () => {
     await several.send("/paper");
     expect([...none.texts(), ...several.texts()]).toStrictEqual([
       "binference has no agent yet. Run `binference init` on the machine to make one.",
-      `binference has 2 agents: ${agent}, ${second}. Run this in the CLI and name one with \`--agent\`.`,
+      `binference has 2 agents: ${agent}, ${second}. Pick the one this chat talks to with /use and its name; /agents lists them.`,
     ]);
   });
 

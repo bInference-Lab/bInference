@@ -1,6 +1,7 @@
 import { type Id, idSchema, ok } from "@binference/core";
 import { createManualClock, createMemoryLogger, type ManualClock } from "@binference/core/testing";
 import { createOwnerCalls } from "@binference/engine/surfaces";
+import { createMemoryOwnerStore } from "@binference/engine/testing";
 import type { MessageLocale } from "@binference/i18n";
 import type { ArgsOf, ResultOf } from "@binference/protocol";
 import { Api } from "grammy";
@@ -82,6 +83,7 @@ export function startIntake(locale: MessageLocale = "en"): IntakeRig {
     ownerId: async () => Promise.resolve(ownerId),
   });
   const display = () => ({ locale, timeZone: "UTC" });
-  const intake = createChatIntake({ api, calls, clock, logger, display });
+  const owners = createMemoryOwnerStore();
+  const intake = createChatIntake({ api, calls, owners, clock, logger, display });
   return { botApi, clock, intake, posts, texts: () => botApi.sent().map(({ text }) => text) };
 }

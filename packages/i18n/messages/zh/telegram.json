@@ -11,5 +11,6 @@
   "chat.forwarded": "转发的消息不会发送给 Agent。请把你想让它读取的内容写在你自己的消息中。",
   "chat.edited": "编辑后的消息不会发送给 Agent。请发送一条新消息。",
   "chat.unsupported": "Agent 只读取文字和图片。请以文字或图片的形式发送。",
-  "notice.agent": "{agent} · {notice}"
+  "notice.agent": "{agent} · {notice}",
+  "chat.agent": "{agent} · {text}"
 }

@@ -1,4 +1,5 @@
 import type { ChainRegistry } from "@binference/chain";
+import type { Id } from "@binference/core";
 import type { OwnerChatOperation } from "@binference/engine/surfaces";
 import type { Formatter, MessageLocale, MessageValues } from "@binference/i18n";
 import type { ArgsOf, ResultOf } from "@binference/protocol";
@@ -24,6 +25,12 @@ export interface CommandContext {
   readonly words: (key: string, values?: MessageValues) => string;
   /** The numeric Telegram id of the owner who sent the command. */
   readonly senderId: number;
+  /** The text after the command's name, such as the agent `/use` names; "" for none. */
+  readonly args: string;
+  /** The agent `/use` picked for this chat, or `undefined` before any pick (decision 0204). */
+  readonly pickedAgent: () => Promise<string | undefined>;
+  /** Keeps the agent this chat talks to from now on; `false` before the owner pairs. */
+  readonly useAgent: (agent: Id<"agt">) => Promise<boolean>;
   /** The Mini App's HTTPS URL, which `/console` opens; none when no public address is set. */
   readonly miniAppUrl?: string;
   /**
@@ -59,7 +66,10 @@ export interface PressContext extends CommandContext {
 }
 
 /** What running an operation for the owner needs: the calls, who asked, and how to answer. */
-export type CallContext = Pick<CommandContext, "calls" | "senderId" | "signal" | "say" | "words">;
+export type CallContext = Pick<
+  CommandContext,
+  "calls" | "senderId" | "signal" | "say" | "words" | "pickedAgent"
+>;
 
 /**
  * Runs an operation for the owner and answers its result. A refusal is said in the chat as the

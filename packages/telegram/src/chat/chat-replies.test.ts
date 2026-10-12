@@ -14,7 +14,13 @@ const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
 const turn = "trn_0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
 const at = { agent, session: "ses_0190f1c2-3a4b-7c5d-8e6f-0123456789ab", turn };
 
-async function setUp(options: { readonly locale?: MessageLocale; readonly isPaired?: false } = {}) {
+async function setUp(
+  options: {
+    readonly locale?: MessageLocale;
+    readonly isPaired?: false;
+    readonly names?: ReadonlyMap<string, string>;
+  } = {},
+) {
   const botApi = createFakeBotApi();
   const clock = createManualClock(1_760_000_000_000);
   const logger = createMemoryLogger({ subsystem: "telegram" });
@@ -25,7 +31,9 @@ async function setUp(options: { readonly locale?: MessageLocale; readonly isPair
     await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
   }
   const display = () => ({ locale: options.locale ?? "en", timeZone: "UTC" }) as const;
-  const replies = createChatReplies({ api, owners, clock, logger, display });
+  const { names } = options;
+  const agentNames = names === undefined ? {} : { agentNames: async () => Promise.resolve(names) };
+  const replies = createChatReplies({ api, owners, clock, logger, display, ...agentNames });
   return { botApi, clock, logger, replies };
 }
 
@@ -152,5 +160,32 @@ describe("the agent's replies in Telegram", () => {
     await replies.show(answer("hello"), live);
     await replies.show(push("intent/changed", { intent: "x" }), live);
     expect(botApi.calls()).toStrictEqual([]);
+  });
+
+  it("starts each answer and status line with the agent's name while there are several", async () => {
+    const names = new Map([
+      [agent, "scout"],
+      ["agt_0190f1c2-3a4b-7c5d-8e6f-0123456789ac", "main"],
+    ]);
+    const { botApi, clock, replies } = await setUp({ names });
+    const line = { ...at, statusKey: "turn.stopped" };
+    const shownAnswer = replies.show(answer("Bought <b>it</b>."), live);
+    await clock.advance(0);
+    await shownAnswer;
+    const shownLine = replies.show(push("chat/status", line), live);
+    await clock.advance(1_000);
+    await shownLine;
+    expect(botApi.messages().map(({ text }) => text)).toStrictEqual([
+      "scout · Bought <b>it</b>.",
+      "scout · Stopped. Anything you already confirmed still goes through.",
+    ]);
+  });
+
+  it("names no agent while there is one", async () => {
+    const { botApi, clock, replies } = await setUp({ names: new Map([[agent, "main"]]) });
+    const shown = replies.show(answer("Done."), live);
+    await clock.advance(0);
+    await shown;
+    expect(botApi.messages().map(({ text }) => text)).toStrictEqual(["Done."]);
   });
 });

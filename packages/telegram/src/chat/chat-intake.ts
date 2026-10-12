@@ -1,4 +1,5 @@
 import { BinferenceError, type Clock, type Logger } from "@binference/core";
+import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale, MessageValues } from "@binference/i18n";
 import type { Api } from "grammy";
 import { chooseAgent } from "../commands/agent-commands.js";
@@ -33,6 +34,8 @@ export interface ChatIntakeOptions {
   readonly api: Api;
   /** The engine's side: runs `chat/post` for the owner alone. */
   readonly calls: OwnerCalls;
+  /** The paired owner, with the agent `/use` picked for the chat (decision 0204). */
+  readonly owners: Pick<OwnerStore, "get">;
   readonly clock: Clock;
   readonly logger: Logger;
   /** The owner's language and timezone as they are now, read for each reply. */
@@ -70,6 +73,7 @@ function contextOf(parts: Parts, batch: PostBatch): CallContext {
     signal,
     say: async (text) => bot.say({ chatId: batch.chatId }, text, { signal }),
     words,
+    pickedAgent: async () => (await parts.options.owners.get({ signal }))?.agentId,
   };
 }
 
@@ -86,6 +90,7 @@ async function postBatch(parts: Parts, batch: PostBatch): Promise<void> {
   if (message.text === "" && message.images.length === 0) {
     return;
   }
+  // The agent `/use` picked, else the only one (decision 0204).
   const agent = await chooseAgent(context);
   if (agent === undefined) {
     return;

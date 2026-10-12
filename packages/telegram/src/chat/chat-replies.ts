@@ -36,6 +36,11 @@ export interface ChatRepliesOptions {
   readonly logger: Logger;
   /** The owner's language and timezone as they are now, read for each message. */
   readonly display: () => { readonly locale: MessageLocale; readonly timeZone: string };
+  /**
+   * The name of each agent that is not archived, by its id. While there are several, each answer
+   * and status line starts with its agent's name (decision 0204); left out, none does.
+   */
+  readonly agentNames?: (call: Call) => Promise<ReadonlyMap<string, string>>;
 }
 
 /** One running turn in the owner's chat: its status message and what that message shows. */
@@ -210,6 +215,20 @@ async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> 
 
 type MessagePush = Extract<ChatPush, { readonly kind: "chat/message" }>;
 
+// The agent's words, after its name while the owner has several agents (decision 0204).
+async function named(
+  parts: Parts,
+  said: { readonly agent: string; readonly text: string },
+  call: Call,
+): Promise<string> {
+  const { agent, text } = said;
+  const names = await parts.options.agentNames?.(call);
+  const name = names?.get(agent);
+  return names === undefined || names.size < 2 || name === undefined
+    ? text
+    : words(parts, "telegram.chat.agent", { agent: name, text });
+}
+
 // The answer goes as new messages, which notify where an edit does not; then the status goes.
 async function answered(parts: Parts, push: MessagePush, call: Call): Promise<void> {
   const key = keyOf(push);
@@ -219,7 +238,7 @@ async function answered(parts: Parts, push: MessagePush, call: Call): Promise<vo
   if (chatId === undefined) {
     return;
   }
-  for (const html of chatHtmlOf(push.text)) {
+  for (const html of chatHtmlOf(await named(parts, push, call))) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- the pieces reach the chat in order
     await sendHtml(parts, { chatId, html }, call);
   }
@@ -246,7 +265,8 @@ function statusLine(parts: Parts, push: StatusPush): string {
 async function status(parts: Parts, push: StatusPush, call: Call): Promise<void> {
   const chatId = parts.turns.get(keyOf(push))?.chatId ?? (await ownerChat(parts, call));
   if (chatId !== undefined) {
-    await sendHtml(parts, { chatId, html: statusHtmlOf(statusLine(parts, push)) }, call);
+    const line = await named(parts, { agent: push.agent, text: statusLine(parts, push) }, call);
+    await sendHtml(parts, { chatId, html: statusHtmlOf(line) }, call);
   }
 }
 
