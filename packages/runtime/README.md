@@ -60,6 +60,27 @@ queue's merge source. Each has a contract suite in `src/contracts/`, which every
 runs. `@binference/runtime/testing` has the suites, a scripted transport and a recorder that stands
 in for the journal, the engine and the queue.
 
+## Sessions and the chat queue
+
+`src/sessions/` keeps each session in `agent.sqlite` under the fence the runtime's start raised
+(spec 8, sections 3 and 11): a turn's journal writes each response, call, result and joining
+message before the loop goes on, and a proposal with its turn's committed mark in one write. At a
+start, every turn a crash left unfinished is repaired before the runtime connects: each call with
+no result gets one, a proposal "the outcome of this proposal is unknown after a restart; it was
+not sent again", and the turn ends `failed`. Nothing is proposed again. The conversation a turn
+sends the model is repaired as it loads, so each call has exactly one result after its response
+([decision 0174](../../docs/DECISIONS.md#d0174)).
+
+`src/chats/` is the chat queue. Each message of the engine's inbox is written into it before
+`inbox/take`, once; a stop or a clear is applied at once. Each agent runs one turn at a time, at
+most 4 in the install, taking its open session's waiting messages, oldest first and at most 20. In
+`merge` mode (`chats.newMessageMode`) a message that arrives during a turn joins it at its next
+merge point; in `after` mode, and after a committed batch, it starts the next turn.
+
+`src/relay/` reaches the engine's side of chat through the `EngineChat` port, bound to the
+protocol client: the `inbox` topic, `inbox/list`, `inbox/take` and the `turn/*` operations, with a
+turn's status line sent as spec 4's keys.
+
 ## Tools
 
 `src/tools/` declares the agent's tools. `defineTool` takes a name, a kind (`read`, `propose` or
