@@ -223,10 +223,10 @@ describe("the owner's fast commands on the engine", () => {
       test.botApi
         .sent()
         .map((sent) => sent.text)
-        .filter((text) => text.startsWith("Limit changed")),
+        .filter((text) => text.startsWith("main · Limit changed")),
     ).toStrictEqual([
-      "Limit changed by Telegram: the per-trade cap changed now",
-      "Limit changed by Telegram: the per-trade cap changed now",
+      "main · Limit changed by Telegram: the per-trade cap changed now",
+      "main · Limit changed by Telegram: the per-trade cap changed now",
     ]);
   });
 

@@ -32,6 +32,7 @@ export type {
   OutboxCall,
   OutboxPass,
 } from "./notices/create-notice-outbox.js";
+export type { NoticeTopics } from "./notices/notice-places.js";
 export { issueStartCode, startCodeHash, startCodeLifetimeMs } from "./pairing/start-code.js";
 export type { StartCode, StartCodeOptions } from "./pairing/start-code.js";
 export { openPollWorker, pollWorker } from "./polling/open-poll-worker.js";

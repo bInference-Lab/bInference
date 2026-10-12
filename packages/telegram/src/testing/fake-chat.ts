@@ -1,6 +1,7 @@
 import { err, type JsonValue, ok, type Result } from "@binference/core";
 import { z } from "zod";
 import { type FakeEntity, type FormattedText, parseFakeHtml } from "./fake-html.js";
+import { createFakeTopics, type FakeTopic, type FakeTopics } from "./fake-topics.js";
 
 /** An inline keyboard button as the bot drew it. */
 export interface FakeButton {
@@ -59,6 +60,10 @@ type ChatCall = (body: string) => Result<JsonValue, string>;
 /** The bot's chats in memory: sends, edits, deletes and button answers, with Telegram's checks. */
 export interface FakeChats {
   readonly calls: Readonly<Record<string, ChatCall>>;
+  /** The topics the bot made, deleted ones left out. */
+  topics(): readonly FakeTopic[];
+  /** Deletes a topic, as the owner may in the chat: a message to it is refused from then on. */
+  deleteTopic(chatId: number, threadId: number): void;
   messages(): readonly FakeMessage[];
   sent(): readonly SentText[];
   deleted(): readonly DeletedMessage[];
@@ -67,6 +72,7 @@ export interface FakeChats {
 }
 
 interface ChatsState {
+  readonly topics: FakeTopics;
   readonly messages: Map<string, FakeMessage>;
   readonly sent: SentText[];
   readonly deleted: DeletedMessage[];
@@ -109,6 +115,7 @@ const sendSchema = z.looseObject({
 const editTextSchema = z.looseObject({ ...targetShape, ...contentShape });
 const editMarkupSchema = z.looseObject({ ...targetShape, reply_markup: markupSchema });
 const deleteSchema = z.looseObject(targetShape);
+const threadGone = "Bad Request: message thread not found";
 const answerSchema = z.looseObject({
   callback_query_id: z.string().min(1),
   text: z.string().max(200).optional(),
@@ -221,6 +228,9 @@ function sendMessage(state: ChatsState, body: string): Result<JsonValue, string>
     return content;
   }
   const threadId = call.value.message_thread_id;
+  if (threadId !== undefined && state.topics.isGone(call.value.chat_id, threadId)) {
+    return err(threadGone);
+  }
   const thread = threadId === undefined ? {} : { threadId };
   const target = { chatId: call.value.chat_id, messageId: state.nextMessageId() };
   const message = { ...target, ...thread, ...content.value };
@@ -295,10 +305,14 @@ const chatCalls = {
   answerCallbackQuery,
 };
 
-/** Creates the in-memory chats of a fake Bot API; message ids start after 1000. */
-export function createFakeChats(): FakeChats {
+/**
+ * Creates the in-memory chats of a fake Bot API; message ids start after 1000. With `hasTopics`,
+ * the bot may make topics in private chats, and a message goes only to a topic it made.
+ */
+export function createFakeChats(options: { readonly hasTopics?: boolean } = {}): FakeChats {
   let lastMessageId = 1000;
   const state: ChatsState = {
+    topics: createFakeTopics({ hasTopics: options.hasTopics ?? false }),
     messages: new Map(),
     sent: [],
     deleted: [],
@@ -309,14 +323,19 @@ export function createFakeChats(): FakeChats {
       return lastMessageId;
     },
   };
-  const calls = Object.fromEntries(
+  const calls: Record<string, ChatCall> = Object.fromEntries(
     Object.entries(chatCalls).map(([method, call]): [string, ChatCall] => [
       method,
       (body) => call(state, body),
     ]),
   );
+  calls["createForumTopic"] = (body) => state.topics.create(body);
   return {
     calls,
+    topics: () => state.topics.list(),
+    deleteTopic: (chatId, threadId) => {
+      state.topics.delete(chatId, threadId);
+    },
     messages: () => [...state.messages.values()],
     sent: () => [...state.sent],
     deleted: () => [...state.deleted],

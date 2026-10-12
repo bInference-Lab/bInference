@@ -47,13 +47,14 @@ edit gives way to answers and cards when Telegram asks the bot to wait.
 | `CardAnswers`                  | The engine's side of a card press: checks the presser, stores the answer first |
 | `createFastCommands`           | Answers the owner's fast commands without a model and registers their menu     |
 | `OwnerCalls`                   | The engine's side of a fast command: runs its operations for the owner alone   |
-| `createNoticeOutbox`           | Sends the engine's notices from the outbox to the owner's chat, never twice    |
+| `createNoticeOutbox`           | Sends the engine's notices to the owner's chat or agent topic, never twice     |
 | `createChatIntake`             | Batches the owner's other messages and posts them to the agent with photos     |
 | `createChatReplies`            | Shows the agent's replies: a refreshed status message, then the answer         |
 | `@binference/telegram/testing` | Contract suites and fakes of the ports, and `createFakeBotApi`                 |
 
 `createFakeBotApi` is a synthetic Bot API for tests: updates in, messages, edits and button
-answers out, with Telegram's checks on HTML, lengths and callback data.
+answers out, with Telegram's checks on HTML, lengths and callback data, and topics in private chats
+for a bot made with `{ hasTopics: true }`.
 
 ## Example
 

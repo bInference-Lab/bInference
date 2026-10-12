@@ -7,6 +7,7 @@ export type { FakeCardAnswers, FakeCardAnswersOptions } from "./fakes/fake-card-
 export { createFakeBotApi, fakeBotToken, fakeBotUsername } from "./testing/fake-bot-api.js";
 export type {
   FakeBotApi,
+  FakeBotOptions,
   FakeCall,
   FakeFailure,
   FakePress,
@@ -20,5 +21,6 @@ export type {
   FakeMessage,
   SentText,
 } from "./testing/fake-chat.js";
+export type { FakeTopic } from "./testing/fake-topics.js";
 export type { FakeCommand, FakeMenu } from "./testing/fake-commands.js";
 export type { FakeEntity } from "./testing/fake-html.js";

@@ -26,6 +26,16 @@ describe("botApiFault", () => {
     expect(fault).toMatchObject({ code, retryable, details: { method: "sendMessage", status } });
   });
 
+  it("marks a 400 about a deleted topic, and no other refusal", async () => {
+    const gone = await failedCall({
+      status: 400,
+      description: "Bad Request: message thread not found",
+    });
+    const other = await failedCall({ status: 400, description: "Bad Request: chat not found" });
+    expect(gone.details).toStrictEqual({ method: "sendMessage", status: 400, isTopicGone: true });
+    expect(other.details).toStrictEqual({ method: "sendMessage", status: 400 });
+  });
+
   it("keeps a fault the bot's throttler raised as it is", () => {
     const dropped = new BinferenceError({ code: "telegram.preview_dropped", message: "Gave way." });
     expect(botApiFault(dropped, "editMessageText")).toBe(dropped);

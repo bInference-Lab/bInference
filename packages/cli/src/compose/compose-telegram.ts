@@ -21,6 +21,7 @@ import {
   createTelegramCards,
   createTelegramIngress,
   type FastCommands,
+  type NoticeTopics,
   type OwnerCalls,
   type OwnerUpdateSink,
   type TelegramCards,
@@ -41,6 +42,11 @@ export interface TelegramParts {
   readonly owners: OwnerStore;
   /** Where each card version was posted, so every copy can become its receipt. */
   readonly copies: CardCopyStore;
+  /**
+   * The agents' topics in the owner's chat (decision 0186): whether `telegram.topicsPerAgent` is
+   * on now, and where each agent's topic is kept. Left out, every notice goes to the chat itself.
+   */
+  readonly topics?: NoticeTopics;
   /** The bot's token, which also checks the signature of each Mini App launch. */
   readonly botToken: Secret;
   /** The Mini App's HTTPS address, which `/console` opens; none without `remote.publicUrl`. */
@@ -113,8 +119,8 @@ function relayOf(
 ): TelegramRelay {
   const { clock, logger, chains } = wiring;
   const { showings, cards, display } = chat;
-  const notices = wiring.stores.notices;
-  const outbox = createNoticeOutbox({ ...parts, notices, chains, display, clock, logger });
+  const { notices, agents } = wiring.stores;
+  const outbox = createNoticeOutbox({ ...parts, notices, agents, chains, display, clock, logger });
   const replies = createChatReplies({ ...parts, clock, logger, display });
   const { stored } = wiring;
   return createTelegramRelay({ showings, cards, outbox, chat: replies, stored, clock, logger });

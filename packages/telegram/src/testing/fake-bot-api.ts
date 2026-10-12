@@ -10,6 +10,7 @@ import {
   type SentText,
 } from "./fake-chat.js";
 import { createFakeMenus, type FakeMenu, type FakeMenus } from "./fake-commands.js";
+import type { FakeTopic } from "./fake-topics.js";
 import { httpOverFetch } from "./fetch-http.js";
 
 /** A token in the Bot API's shape, for tests only. */
@@ -92,6 +93,10 @@ export interface FakeBotApi {
   answers(): readonly CallbackAnswer[];
   /** The command menus the bot set with `setMyCommands`. */
   menus(): readonly FakeMenu[];
+  /** The topics the bot made in private chats, deleted ones left out. */
+  topics(): readonly FakeTopic[];
+  /** Deletes a topic, as the owner may: a message to it is refused from then on. */
+  deleteTopic(chatId: number, threadId: number): void;
   /** Every request in the order it arrived, refused ones too. */
   calls(): readonly FakeCall[];
   /**
@@ -115,6 +120,7 @@ interface Failure {
 }
 
 interface State {
+  readonly user: JsonValue;
   readonly updates: { readonly id: number; readonly update: JsonValue }[];
   readonly wakers: Set<() => void>;
   readonly idlers: (() => void)[];
@@ -199,7 +205,7 @@ async function serve(state: State, request: FakeRequest): Promise<Response> {
     return getUpdates(state, body, request.signal);
   }
   if (call.method === "getMe") {
-    return answer(fakeBotUser);
+    return answer(state.user);
   }
   const chatCall =
     call.method === "setMyCommands"
@@ -271,10 +277,18 @@ async function idleOf(state: State): Promise<void> {
   });
 }
 
+/** How the synthetic Bot API's bot is set up at BotFather. */
+export interface FakeBotOptions {
+  /** Whether topics in private chats are on, which `getMe` reports as `has_topics_enabled`. */
+  readonly hasTopics?: boolean;
+}
+
 /** Creates an empty in-memory Bot API that accepts {@link fakeBotToken} only. */
-export function createFakeBotApi(): FakeBotApi {
-  const chats = createFakeChats();
+export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
+  const hasTopics = options.hasTopics ?? false;
+  const chats = createFakeChats({ hasTopics });
   const state: State = {
+    user: { ...fakeBotUser, has_topics_enabled: hasTopics, allows_users_to_create_topics: false },
     updates: [],
     wakers: new Set(),
     idlers: [],
@@ -309,6 +323,10 @@ export function createFakeBotApi(): FakeBotApi {
     edits: () => chats.edits(),
     answers: () => chats.answers(),
     menus: () => state.menus.menus(),
+    topics: () => chats.topics(),
+    deleteTopic: (chatId, threadId) => {
+      chats.deleteTopic(chatId, threadId);
+    },
     calls: () => [...state.calls],
     failNext: (method, failure, target) => {
       state.failures.push({ method, failure, ...target });

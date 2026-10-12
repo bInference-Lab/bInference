@@ -165,8 +165,8 @@
             "type": "boolean"
           },
           "topicsPerAgent": {
-            "description": "One direct-message topic per agent.",
-            "default": true,
+            "description": "One direct-message topic per agent, once the bot has topics turned on.",
+            "default": false,
             "type": "boolean"
           }
         },

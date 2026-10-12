@@ -101,7 +101,7 @@ describe("the engine's notices in the owner's chat", () => {
     expect(test.botApi.sent()).toStrictEqual([{ chatId: ownerId, text: frozenText }]);
   });
 
-  it("announces a looser limit with its time, so the owner can cancel it", async () => {
+  it("announces a looser limit with its time and its agent, so the owner can cancel it", async () => {
     const test = await bot();
     test.telegram.start();
     const args = { agent: testAgent, changes: { perTradeUsdMicros: 10_000_000_000n } };
@@ -110,7 +110,7 @@ describe("the engine's notices in the owner's chat", () => {
     await test.telegram.idle();
     const when = createFormatter({ locale: "en", timeZone: "UTC" }).dateTime(testNowMs + dayMs);
     expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([
-      `Limit changed by the CLI: the per-trade cap changes at ${when}. Not you? Cancel now.`,
+      `main · Limit changed by the CLI: the per-trade cap changes at ${when}. Not you? Cancel now.`,
     ]);
   });
 

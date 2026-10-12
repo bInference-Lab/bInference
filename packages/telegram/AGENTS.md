@@ -46,6 +46,11 @@ Rules for this package:
   in the queue: a 429 for its `retry_after`, a 403, a refused token and a 5xx for the backoff of
   `delivery-fate.ts`; any other 4xx fails it. Deliveries go oldest first, a waiting one holds
   the rest, and before the owner pairs they all wait; the ingress's `onOwnerPaired` sends them.
+  Where a notice goes is `notice-places.ts` (decision 0186): with `telegram.topicsPerAgent` on and
+  `getMe`'s `has_topics_enabled`, the agent's topic, made before the delivery is claimed and kept
+  in the `AgentTopicStore`; otherwise the chat, with the agent's name first when the words do not
+  name it. A topic refused for good leaves the notice in the chat; a send to a deleted topic
+  forgets it and queues the delivery again, since Telegram sent nothing.
 - The owner's messages that no fast command answers go to the agent through `createChatIntake`:
   posts within 300 ms of each other become one `chat/post` for the only agent, photos as
   `tg:<file id>`, at most 4 of at most 5 MiB each. An edit, a forward and a post with neither

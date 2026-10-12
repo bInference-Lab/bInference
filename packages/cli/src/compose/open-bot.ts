@@ -51,12 +51,21 @@ export async function openBot(options: OpenBotOptions): Promise<OpenedBot | unde
 }
 
 /**
- * The bot as the engine serves it: its `Api` and token, and the owner and card copies
- * `engine.sqlite` keeps, so a pairing and the cards' copies outlast a restart (decision 0139).
+ * The bot as the engine serves it: its `Api` and token, and the owner, the card copies and the
+ * agents' topics `engine.sqlite` keeps, so a pairing, the cards' copies and each agent's topic
+ * outlast a restart (decisions 0139 and 0186). `topicsOn` reads `telegram.topicsPerAgent` as it
+ * is now.
  */
 export function botParts(
   bot: OpenedBot,
-  stores: Pick<EngineStores, "owners" | "cardCopies">,
+  stores: Pick<EngineStores, "owners" | "cardCopies" | "agentTopics">,
+  topicsOn: () => boolean,
 ): TelegramParts {
-  return { api: bot.api, owners: stores.owners, copies: stores.cardCopies, botToken: bot.token };
+  return {
+    api: bot.api,
+    owners: stores.owners,
+    copies: stores.cardCopies,
+    topics: { isOn: topicsOn, store: stores.agentTopics },
+    botToken: bot.token,
+  };
 }

@@ -46,7 +46,7 @@ The owner's Telegram bot.
 - `telegram.webhookSecret`: Checks webhook calls; required with the webhook mode. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_TELEGRAM__WEBHOOK_SECRET`.
 - `telegram.confirmBotToken`: A second bot that only sends confirmations. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_TELEGRAM__CONFIRM_BOT_TOKEN`.
 - `telegram.groups`: Whether the bot answers in group chats. Takes true or false. Default: `false`. Variable: `BINFERENCE_TELEGRAM__GROUPS`.
-- `telegram.topicsPerAgent`: One direct-message topic per agent. Takes true or false. Default: `true`. Variable: `BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`.
+- `telegram.topicsPerAgent`: One direct-message topic per agent, once the bot has topics turned on. Takes true or false. Default: `false`. Variable: `BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`.
 
 ## `models`
 

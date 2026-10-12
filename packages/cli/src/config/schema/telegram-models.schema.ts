@@ -63,7 +63,10 @@ export const telegramSchema: z.ZodType<TelegramConfig> = z
       .exactOptional()
       .describe("A second bot that only sends confirmations."),
     groups: z.boolean().prefault(false).describe("Whether the bot answers in group chats."),
-    topicsPerAgent: z.boolean().prefault(true).describe("One direct-message topic per agent."),
+    topicsPerAgent: z
+      .boolean()
+      .prefault(false)
+      .describe("One direct-message topic per agent, once the bot has topics turned on."),
   })
   .describe("The owner's Telegram bot.");
 

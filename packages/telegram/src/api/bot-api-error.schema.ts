@@ -4,6 +4,8 @@ import { z } from "zod";
 
 const secondMs = 1000;
 const badRequestStatus = 400;
+// Telegram's words for a 400 about a topic the owner deleted: the message's thread is gone.
+const topicGone = /message thread not found|TOPIC_DELETED/iu;
 
 function refusal(method: string, error: GrammyError): BinferenceError {
   const status = error.error_code;
@@ -31,11 +33,12 @@ function refusal(method: string, error: GrammyError): BinferenceError {
       details: { ...details, retryAfterMs },
     });
   }
+  const gone = status === badRequestStatus && topicGone.test(error.description);
   return new BinferenceError({
     code: "telegram.api_refused",
     message: "Telegram refused a Bot API call.",
     retryable: status >= 500,
-    details,
+    details: gone ? { ...details, isTopicGone: true } : details,
   });
 }
 
@@ -83,7 +86,8 @@ export function isUnsentRequest(error: unknown): boolean {
 
 /**
  * Maps a failed Bot API call to a `BinferenceError`: `telegram.bad_token`, `telegram.poll_conflict`,
- * `telegram.flood` (with `retryAfterMs`), `telegram.api_refused` or `telegram.unreachable`. A
+ * `telegram.flood` (with `retryAfterMs`), `telegram.api_refused` (with `isTopicGone` for a 400 about
+ * a topic that no longer exists) or `telegram.unreachable`. A
  * `BinferenceError` the bot's throttler raised, such as `telegram.preview_dropped`, stays as it is.
  * `telegram.unreachable` carries `isUnsent: true` only when no connection opened, so the request
  * never reached Telegram; any other network failure may have reached it. The Bot API's own error

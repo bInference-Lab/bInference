@@ -260,4 +260,32 @@ describe("the fake Bot API", () => {
     const fault = await refusalOf(api.getChat(ownerId));
     expect(fault.error_code).toBe(404);
   });
+
+  it("makes topics in a private chat only for a bot with topics on, as getMe says", async () => {
+    const off = setUp();
+    await expect(off.api.getMe()).resolves.toMatchObject({ has_topics_enabled: false });
+    const refused = await refusalOf(off.api.createForumTopic(ownerId, "main"));
+    expect(refused.description).toBe("Bad Request: the chat is not a forum");
+    const botApi = createFakeBotApi({ hasTopics: true });
+    const api = new Api(fakeBotToken, { fetch: botApi.fetch });
+    await expect(api.getMe()).resolves.toMatchObject({ has_topics_enabled: true });
+    const topic = await api.createForumTopic(ownerId, "main");
+    expect(botApi.topics()).toStrictEqual([
+      { chatId: ownerId, threadId: topic.message_thread_id, name: "main" },
+    ]);
+  });
+
+  it("sends to a topic the bot made, and refuses one the owner deleted", async () => {
+    const botApi = createFakeBotApi({ hasTopics: true });
+    const api = new Api(fakeBotToken, { fetch: botApi.fetch });
+    const { message_thread_id: threadId } = await api.createForumTopic(ownerId, "main");
+    await api.sendMessage(ownerId, "in the topic", { message_thread_id: threadId });
+    botApi.deleteTopic(ownerId, threadId);
+    const gone = await refusalOf(
+      api.sendMessage(ownerId, "too late", { message_thread_id: threadId }),
+    );
+    expect(gone.description).toBe("Bad Request: message thread not found");
+    expect(botApi.sent()).toStrictEqual([{ chatId: ownerId, text: "in the topic", threadId }]);
+    expect(botApi.topics()).toStrictEqual([]);
+  });
 });

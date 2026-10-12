@@ -4,6 +4,7 @@ import { type NoticeStore, noticeRecordOf } from "@binference/engine/notices";
 import { type Notice, noticeText } from "@binference/engine/surfaces";
 import {
   createMemoryAgentStore,
+  createMemoryAgentTopicStore,
   createMemoryNoticeStore,
   createMemoryOwnerStore,
   testAgent,
@@ -52,10 +53,12 @@ function noticeId(n: number): Id<"ntc"> {
 interface SetUpOptions {
   readonly isPaired?: boolean;
   readonly store?: (store: NoticeStore) => NoticeStore;
+  /** Whether the bot has topics on at BotFather, and `telegram.topicsPerAgent` is on. */
+  readonly topics?: { readonly bot: boolean; readonly config: boolean };
 }
 
 async function setUp(options: SetUpOptions = {}) {
-  const botApi = createFakeBotApi();
+  const botApi = createFakeBotApi({ hasTopics: options.topics?.bot ?? false });
   const owners = createMemoryOwnerStore();
   if (options.isPaired !== false) {
     await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
@@ -66,11 +69,15 @@ async function setUp(options: SetUpOptions = {}) {
   const clock = createManualClock(nowMs);
   const logger = createMemoryLogger({ subsystem: "telegram" });
   const owner: { locale: MessageLocale } = { locale: "en" };
+  const topicStore = createMemoryAgentTopicStore();
+  const topics = { isOn: () => options.topics?.config ?? false, store: topicStore };
   const outboxOn = (notices: NoticeStore) =>
     createNoticeOutbox({
       api: new Api(fakeBotToken, { fetch: botApi.fetch }),
       owners,
       notices,
+      agents,
+      topics,
       chains: testChains(),
       display: () => ({ locale: owner.locale, timeZone: "UTC" }),
       clock,
@@ -90,7 +97,19 @@ async function setUp(options: SetUpOptions = {}) {
   const outbox = outboxOn(options.store?.(store) ?? store);
   const delivered = async () =>
     (await store.list({ limit: 100 }, live)).map((notice) => notice.delivered.telegram);
-  return { botApi, owners, store, clock, logger, owner, record, outbox, outboxOn, delivered };
+  return {
+    botApi,
+    owners,
+    store,
+    clock,
+    logger,
+    owner,
+    record,
+    outbox,
+    outboxOn,
+    delivered,
+    topicStore,
+  };
 }
 
 // Each argument a notice's English message names, such as `{agent}` or `{mode, select}`, set to
@@ -268,5 +287,129 @@ describe("the owner's notices from the outbox", () => {
     await test.outbox.send(live);
     const han = /\p{Script=Han}/u;
     expect(test.botApi.sent().map((sent) => han.test(sent.text))).toStrictEqual([false, true]);
+  });
+});
+
+describe("the agent's place in the owner's chat", () => {
+  const warning = String.fromCodePoint(0x26a0, 0xfe0f);
+  const lowGas: Notice = {
+    key: "notice.lowGas",
+    agent: testAgent,
+    values: { wallet: "Main", balance: "0.0005 BNB" },
+  };
+  const lowGasText = `${warning} Main has 0.0005 BNB left for network fees. Add BNB.`;
+
+  it("puts the agent's name before a notice whose words do not name it, with topics off", async () => {
+    const test = await setUp();
+    await test.record(lowGas);
+    await test.record(frozen);
+    await test.record(locked);
+    await test.outbox.send(live);
+    expect(test.botApi.sent()).toStrictEqual([
+      { chatId: ownerId, text: `main · ${lowGasText}` },
+      { chatId: ownerId, text: frozenText },
+      { chatId: ownerId, text: lockedText },
+    ]);
+    expect(test.botApi.calls().map((call) => call.method)).not.toContain("getMe");
+  });
+
+  it("sends an agent's notices to its own topic, made once with its name", async () => {
+    const test = await setUp({ topics: { bot: true, config: true } });
+    await test.record(lowGas);
+    await test.record(frozen);
+    await test.record(locked);
+    await test.outbox.send(live);
+    const [topic] = test.botApi.topics();
+    expect(test.botApi.topics()).toStrictEqual([
+      { chatId: ownerId, threadId: topic?.threadId, name: "main" },
+    ]);
+    expect(test.botApi.sent()).toStrictEqual([
+      { chatId: ownerId, text: lowGasText, threadId: topic?.threadId },
+      { chatId: ownerId, text: frozenText, threadId: topic?.threadId },
+      { chatId: ownerId, text: lockedText },
+    ]);
+    const methods = test.botApi.calls().map((call) => call.method);
+    expect(methods.filter((method) => method !== "sendMessage")).toStrictEqual([
+      "getMe",
+      "createForumTopic",
+    ]);
+  });
+
+  it("keeps the agent's topic across a restart", async () => {
+    const test = await setUp({ topics: { bot: true, config: true } });
+    await test.record(lowGas);
+    await test.outbox.send(live);
+    await test.record(lowGas);
+    await test.outboxOn(test.store).send(live);
+    expect(test.botApi.topics()).toHaveLength(1);
+    const threads = test.botApi.sent().map((sent) => sent.threadId);
+    expect(new Set(threads).size).toBe(1);
+  });
+
+  it("names the agent in the chat while the bot has no topics, though the setting is on", async () => {
+    const test = await setUp({ topics: { bot: false, config: true } });
+    await test.record(lowGas);
+    await test.outbox.send(live);
+    expect(test.botApi.sent()).toStrictEqual([{ chatId: ownerId, text: `main · ${lowGasText}` }]);
+    expect(test.logger.records()).toContainEqual(
+      expect.objectContaining({ event: "telegram.topics_off" }),
+    );
+  });
+
+  it("makes a new topic after the owner deleted the agent's topic, and sends the notice once", async () => {
+    const test = await setUp({ topics: { bot: true, config: true } });
+    await test.record(lowGas);
+    await test.outbox.send(live);
+    const [first] = test.botApi.topics().map((topic) => topic.threadId);
+    test.botApi.deleteTopic(ownerId, Number(first));
+    await test.record(frozen);
+    await expect(test.outbox.send(live)).resolves.toStrictEqual({
+      kind: "waiting",
+      atMs: nowMs + 5_000,
+    });
+    await expect(test.delivered()).resolves.toStrictEqual(["sent", "queued"]);
+    await test.clock.advance(5_000);
+    await test.outbox.send(live);
+    const [second] = test.botApi.topics().map((topic) => topic.threadId);
+    expect(second).not.toBe(first);
+    expect(test.botApi.sent().map((sent) => [sent.text, sent.threadId])).toStrictEqual([
+      [lowGasText, first],
+      [frozenText, second],
+    ]);
+    await expect(test.delivered()).resolves.toStrictEqual(["sent", "sent"]);
+  });
+
+  it("waits while Telegram cannot make the topic now, holding the notices behind", async () => {
+    const test = await setUp({ topics: { bot: true, config: true } });
+    await test.record(lowGas);
+    await test.record(locked);
+    test.botApi.failNext("createForumTopic", {
+      status: 429,
+      description: "Too Many Requests",
+      retryAfterS: 3,
+    });
+    await expect(test.outbox.send(live)).resolves.toStrictEqual({
+      kind: "waiting",
+      atMs: nowMs + 3_000,
+    });
+    expect(test.botApi.sent()).toStrictEqual([]);
+    await expect(test.delivered()).resolves.toStrictEqual(["queued", "queued"]);
+    await test.clock.advance(3_000);
+    await test.outbox.send(live);
+    expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([lowGasText, lockedText]);
+  });
+
+  it("sends the notice to the chat with the agent's name when Telegram refuses the topic for good", async () => {
+    const test = await setUp({ topics: { bot: true, config: true } });
+    await test.record(lowGas);
+    test.botApi.failNext("createForumTopic", { status: 400, description: "Bad Request: refused" });
+    await test.outbox.send(live);
+    expect(test.botApi.sent()).toStrictEqual([{ chatId: ownerId, text: `main · ${lowGasText}` }]);
+    expect(test.logger.records()).toContainEqual(
+      expect.objectContaining({
+        event: "telegram.topic_failed",
+        fields: { agentId: testAgent, errorCode: "telegram.api_refused" },
+      }),
+    );
   });
 });
