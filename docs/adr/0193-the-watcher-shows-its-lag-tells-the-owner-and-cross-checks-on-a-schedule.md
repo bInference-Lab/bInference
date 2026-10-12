@@ -1,6 +1,6 @@
 # 0193. The watcher shows its lag, tells the owner, and cross-checks on a schedule
 
-Status: Accepted
+Status: Amended by 0194
 
 Accepted by the owner on 2026-10-12.
 

@@ -1,6 +1,6 @@
 # 0192. The price watcher reads every watched token in one batch at each block
 
-Status: Accepted
+Status: Amended by 0194
 
 Accepted by the owner on 2026-10-12.
 
