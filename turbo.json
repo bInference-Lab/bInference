@@ -51,6 +51,9 @@
     "//#check:chain-literals": {
       "outputs": []
     },
+    "//#check:model-clients": {
+      "outputs": []
+    },
     "//#check:protocol-compat": {
       "outputs": []
     },
