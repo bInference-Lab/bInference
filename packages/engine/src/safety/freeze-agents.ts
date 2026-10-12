@@ -16,6 +16,9 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import { statesBeforeSigning } from "../intents/transition-table.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
+import { announceOrders, freezeOrderMoves } from "../orders/freeze-order-moves.js";
+import type { OrderMove } from "../orders/order-record.js";
+import type { OrderStore } from "../orders/ports.js";
 import type { AgentStore, InstallStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
@@ -29,6 +32,8 @@ export interface FreezeAgentsOptions {
   readonly agents: AgentStore;
   readonly intents: IntentStore;
   readonly install: InstallStore;
+  /** The agents' auto orders, which the freeze pauses or cancels in its own write. */
+  readonly orders: Pick<OrderStore, "list">;
   readonly clock: Clock;
   readonly ids: IdSource;
   readonly publish: PublishPush;
@@ -143,6 +148,8 @@ function frozenAtOf(
 interface FreezePlan {
   readonly targets: readonly AgentRecord[];
   readonly moves: readonly IntentMove[];
+  /** Each active order's move to `paused`, and each order waiting for its card to `cancelled`. */
+  readonly orders: readonly OrderMove[];
   readonly isWholeInstall: boolean;
   /** When the install was frozen before, for a whole-install freeze. */
   readonly installAtMs?: number;
@@ -161,6 +168,11 @@ async function planOf(
     targets.value.map(async (agent) => unsignedOf(options.intents, agent.id, { signal })),
   );
   const moves = await cancelMoves(options, listed.flat(), { by: request.author.by, signal });
+  const ids = targets.value.map((agent) => agent.id);
+  const orders = await freezeOrderMoves(options.orders, ids, {
+    nowMs: options.clock.now(),
+    signal,
+  });
   const isWholeInstall = request.agent === undefined;
   const installAtMs = isWholeInstall
     ? (await options.install.read({ signal })).frozenAtMs
@@ -168,6 +180,7 @@ async function planOf(
   return ok({
     targets: targets.value,
     moves,
+    orders,
     isWholeInstall,
     ...(installAtMs === undefined ? {} : { installAtMs }),
   });
@@ -179,14 +192,14 @@ function writeOf(
   options: FreezeAgentsOptions,
   plan: FreezePlan & { readonly unfrozen: readonly AgentRecord[]; readonly author: ConfigAuthor },
 ): StoredFreeze {
-  const { unfrozen, author, isWholeInstall, moves } = plan;
+  const { unfrozen, author, isWholeInstall, moves, orders } = plan;
   const atMs = options.clock.now();
   const agents = unfrozen.map((agent) => ({ agentId: agent.id, expectedVersion: agent.version }));
   const stamp = { atMs, author };
   const entries = unfrozen.map((agent) => freezeEntry(options, agent, stamp));
   const marksInstall = isWholeInstall && plan.installAtMs === undefined;
   const ledger = marksInstall ? [...entries, freezeEntry(options, undefined, stamp)] : entries;
-  return { atMs, isFrozen: true, agents, isWholeInstall, moves, orders: [], ledger };
+  return { atMs, isFrozen: true, agents, isWholeInstall, moves, orders, ledger };
 }
 
 function announce(
@@ -210,10 +223,10 @@ async function freezeOnce(
   if (!plan.ok) {
     return plan;
   }
-  const { targets, moves, isWholeInstall, installAtMs } = plan.value;
+  const { targets, moves, orders, isWholeInstall, installAtMs } = plan.value;
   const unfrozen = targets.filter((agent) => agent.frozenAtMs === undefined);
   const isMarked = !isWholeInstall || installAtMs !== undefined;
-  if (unfrozen.length === 0 && moves.length === 0 && isMarked) {
+  if (unfrozen.length === 0 && moves.length + orders.length === 0 && isMarked) {
     return ok(frozenAtOf(targets, { agents: [], installAtMs }));
   }
   const write = writeOf(options, { ...plan.value, unfrozen, author: request.author });
@@ -222,6 +235,7 @@ async function freezeOnce(
     return commit;
   }
   announce(options, unfrozen, request.author);
+  announceOrders(options.publish, commit.value.orders);
   const installAt = isWholeInstall ? (installAtMs ?? write.atMs) : undefined;
   return ok(frozenAtOf(targets, { agents: commit.value.agents, installAtMs: installAt }));
 }
@@ -251,7 +265,8 @@ async function freezeFrom(
 /**
  * Freezes one agent, or the whole install (ARCHITECTURE.md section 11), in one write: it marks
  * each agent frozen and cancels every intent of theirs that nothing has signed, a rescue excepted
- * (decision 0099); an intent being signed or sent runs to its end. A whole-install freeze stops
+ * (decision 0099); an intent being signed or sent runs to its end. Their active auto orders pause
+ * and those waiting for their card are cancelled in the same write (decision 0189). A whole-install freeze stops
  * every agent not archived and marks the install frozen too, so every agent created later starts
  * frozen until an unfreeze. Each newly frozen agent is announced with `notice.frozen`. An agent or
  * an install frozen before keeps its time, and a freeze that finds nothing to change writes

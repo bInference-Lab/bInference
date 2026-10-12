@@ -54,7 +54,7 @@ export function safetyHandlersOf(
   parts: { readonly stored: StoredIntents; readonly relay: ChatRelay },
 ): SafetyHandlers {
   const { stores, clock } = options;
-  const { agents, intents, install } = stores;
+  const { agents, intents, install, orders } = stores;
   const { stored, relay } = parts;
   const handlers = createSafetyHandlers({
     ...options,
@@ -62,6 +62,7 @@ export function safetyHandlersOf(
     intents,
     agents,
     install,
+    orders,
     simulator: options.chainSimulator,
     policy: createPolicyCheck({ prices: options.prices, clock }),
   });

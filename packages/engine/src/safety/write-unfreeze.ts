@@ -8,6 +8,8 @@ import type {
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
+import { announceOrders, unfreezeOrderMoves } from "../orders/freeze-order-moves.js";
+import type { OrderStore } from "../orders/ports.js";
 import type { AgentStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
@@ -20,6 +22,8 @@ export interface UnfreezeWriteParts {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   readonly intents: IntentStore;
+  /** The agents' auto orders, which the unfreeze resumes in its own write. */
+  readonly orders: Pick<OrderStore, "list">;
   readonly clock: Clock;
   readonly ids: IdSource;
   readonly publish: PublishPush;
@@ -85,6 +89,8 @@ async function writeOf(
     });
   }
   const atMs = parts.clock.now();
+  const ids = unfrozen.map((agent) => agent.id);
+  const orders = await unfreezeOrderMoves(parts.orders, ids, { nowMs: atMs, signal });
   const stamp = { atMs, tapper };
   const entries = unfrozen.map((agent) => unfreezeEntry(parts, agent, stamp));
   const move = { intent: snapshot.record.id, version: snapshot.stored.version, step: step.value };
@@ -94,7 +100,7 @@ async function writeOf(
     agents: unfrozen.map((agent) => ({ agentId: agent.id, expectedVersion: agent.version })),
     isWholeInstall: quote.isWholeInstall,
     moves: [{ ...move, by: tapper.by }],
-    orders: [],
+    orders,
     ledger: quote.isWholeInstall ? [...entries, unfreezeEntry(parts, undefined, stamp)] : entries,
   };
 }
@@ -142,6 +148,7 @@ async function writeFrom(
   const after = (await parts.stored.snapshot(snapshot.record.id, { signal })) ?? snapshot;
   if (commit.ok) {
     announce(parts, after, { quote: quoteOf(snapshot), tapper });
+    announceOrders(parts.publish, commit.value.orders);
     return after;
   }
   if (after.record.state !== "confirmed") {
@@ -159,7 +166,8 @@ async function writeFrom(
 
 /**
  * Writes a confirmed unfreeze (decision 0128) in one write: the agents its card named that are
- * frozen still are unfrozen, the install's freeze is cleared for a whole-install unfreeze, the
+ * frozen still are unfrozen, their paused auto orders resume, or expire once past their expiry
+ * (decision 0189), the install's freeze is cleared for a whole-install unfreeze, the
  * intent moves to `reconciled`, and an `unfreeze` ledger entry is appended for each agent and for
  * the install. `notice.unfrozen` then goes out on every surface, naming the surface that tapped
  * Confirm. A write another write beat is read and tried again; an unfreeze another write moved

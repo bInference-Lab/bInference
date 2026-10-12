@@ -195,7 +195,8 @@ function executeOf(
   } = parts;
   const { prices, clock, executor, publish, ids, stores } = options;
   const fills = createPaperFills({ stored, positions, portfolio, prices, clock });
-  const written = { stored, agents: stores.agents, intents: stores.intents, clock, ids, publish };
+  const { agents, intents, orders } = stores;
+  const written = { stored, agents, intents, orders, clock, ids, publish };
   return createExecuteConfirmed({
     paper: fills,
     executor,
