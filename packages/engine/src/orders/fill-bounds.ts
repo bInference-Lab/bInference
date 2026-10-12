@@ -1,4 +1,13 @@
-import { applyBps, type Bps, err, mulDiv, ok, type Ratio, type Result } from "@binference/core";
+import {
+  applyBps,
+  type Bps,
+  bpsPerWhole,
+  err,
+  mulDiv,
+  ok,
+  type Ratio,
+  type Result,
+} from "@binference/core";
 import type { FillSize, OrderRequest } from "@binference/protocol";
 import type { FillReason } from "../intents/intent-reason.js";
 import { buyFillSpendBase } from "./buy-order-amount.js";
@@ -67,8 +76,11 @@ export interface FillFacts {
   readonly nowMs: number;
   /** The most it may spend, as {@link fillLimitBase} sized it when its quote was built. */
   readonly limitBase: bigint;
-  /** The slippage its request asked; absent, the agent's own maximum. */
-  readonly maxSlippageBps?: Bps;
+  /**
+   * The agent's own maximum slippage, which holds when the order names none; absent, only the
+   * order's bounds the quote's slippage.
+   */
+  readonly agentSlippageBps?: Bps;
   /**
    * Micro-dollars for one base unit of the trade's other side: what a buy spends, what a sale
    * receives. Absent when nothing prices it.
@@ -112,11 +124,17 @@ function isInsideDollars(quote: FillQuote, facts: FillFacts): boolean {
   );
 }
 
+// The quote's own slippage, its expected output less its minimum over its expected output, is at
+// most the order's maximum, else the agent's.
+function isInsideSlippage(order: BoundedOrder, quote: FillQuote, facts: FillFacts): boolean {
+  const most = order.request.maxSlippageBps ?? facts.agentSlippageBps;
+  const given = quote.expectedOutBase - quote.minOutBase;
+  return most === undefined || given * BigInt(bpsPerWhole) <= BigInt(most) * quote.expectedOutBase;
+}
+
 // Inside the size and the slippage the order allows.
 function isInsideSize(order: BoundedOrder, quote: FillQuote, facts: FillFacts): boolean {
-  const most = order.request.maxSlippageBps;
-  const asked = facts.maxSlippageBps;
-  const isSlippageInside = most === undefined || (asked !== undefined && asked <= most);
+  const isSlippageInside = isInsideSlippage(order, quote, facts);
   const isInsideBase = quote.amountInBase > 0n && quote.amountInBase <= facts.limitBase;
   return isInsideBase && isSlippageInside && isInsideDollars(quote, facts);
 }
@@ -172,8 +190,8 @@ function isConfirmed(order: BoundedOrder, quote: FillQuote, facts: FillFacts): b
 /**
  * Holds a fill to its order's bounds at its authorization (spec 6, section 5), and names the first
  * it breaks: `order_inactive` for an order that is not active, has expired or used its last fill;
- * `fill_bounds` for a fill that spends nothing, more than its size allows or more slippage than
- * the order's maximum; `worst_price` for a quote whose price at its minimum out is worse than the
+ * `fill_bounds` for a fill that spends nothing, more than its size allows, or whose quote gives up
+ * more of its expected output than the order's maximum slippage, else the agent's; `worst_price` for a quote whose price at its minimum out is worse than the
  * order's worst price, or that nothing can value; `trigger_unconfirmed` for a quote whose own
  * expected price does not meet the level it must confirm.
  */

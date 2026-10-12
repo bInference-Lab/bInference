@@ -3,6 +3,7 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import type { FillBreach } from "../intents/intent-reason.js";
 import type { FillProposal } from "../money-path/authorize-simulated.js";
+import { tradeSlippageBps } from "../money-path/swap-trade.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import { checkFill } from "./fill-bounds.js";
 import type { FillPrice, OrderFillsParts } from "./fill-orders.js";
@@ -64,7 +65,9 @@ async function checkInLine(
     return "order_inactive";
   }
   const view = quoteDocument.decode(quote);
-  const { maxSlippageBps } = sized.request;
+  // The agent's maximum for the quote's pair, which holds when the order names none (decision 0197).
+  const pair = [view.amountIn.asset, view.minOut.asset];
+  const agentSlippageBps = tradeSlippageBps({ pair }, simulated.settings.limits, parts.chains);
   const { size } = order.request;
   const saleUsd = order.request.side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
   const checked = checkFill(
@@ -78,7 +81,7 @@ async function checkInLine(
       nowMs: parts.clock.now(),
       limitBase: sized.limitBase,
       tokenDecimals: price.decimals,
-      ...(maxSlippageBps === undefined ? {} : { maxSlippageBps }),
+      agentSlippageBps,
       ...(otherUsd === undefined ? {} : { otherUsd }),
       ...(price.confirm === undefined ? {} : { confirm: price.confirm }),
       ...(saleUsd === undefined ? {} : { saleUsdMicros: saleUsd }),

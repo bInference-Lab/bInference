@@ -18,16 +18,20 @@ const limitBuy: BoundedOrder = {
 const facts = {
   nowMs,
   limitBase: 100n * whole,
-  maxSlippageBps: bpsSchema.parse(100),
   otherUsd: dollar,
   tokenDecimals: 18,
 };
+
+// 10,000 tokens out expected for $1: a minimum of 9,900 is 100 bps of slippage, 9,899 over it.
+function at(minOut: bigint) {
+  return { amountInBase: whole, expectedOutBase: 10_000n * whole, minOutBase: minOut * whole };
+}
 
 describe("a fill's bounds", () => {
   it("takes a buy that pays exactly its worst price, and refuses one a unit dearer", () => {
     const atWorst = {
       amountInBase: 100n * whole,
-      expectedOutBase: 55n * whole,
+      expectedOutBase: (505n * whole) / 10n,
       minOutBase: 50n * whole,
     };
     expect(checkFill(limitBuy, atWorst, facts)).toStrictEqual({ ok: true, value: undefined });
@@ -42,7 +46,6 @@ describe("a fill's bounds", () => {
     const unpriced = {
       nowMs,
       limitBase: whole,
-      maxSlippageBps: facts.maxSlippageBps,
       tokenDecimals: 18,
     };
     expect(checkFill(sale, { ...low, minOutBase: 3n * whole }, unpriced)).toMatchObject({
@@ -50,12 +53,21 @@ describe("a fill's bounds", () => {
     });
   });
 
-  it("refuses more slippage than the order allows, or none named when the order names one", () => {
-    const quote = { amountInBase: whole, expectedOutBase: whole, minOutBase: whole };
-    const wider = { ...facts, maxSlippageBps: bpsSchema.parse(101) };
-    expect(checkFill(limitBuy, quote, wider)).toMatchObject({ error: "fill_bounds" });
-    const { maxSlippageBps: _left, ...agentOwn } = facts;
-    expect(checkFill(limitBuy, quote, agentOwn)).toMatchObject({ error: "fill_bounds" });
+  it("measures the quote's slippage against the order's maximum, else the agent's", () => {
+    const { maxSlippageBps: _order, ...unnamed } = limitBuy.request;
+    const agentOnly: BoundedOrder = { ...limitBuy, request: unnamed };
+    const agent = { ...facts, agentSlippageBps: bpsSchema.parse(50) };
+    expect([
+      checkFill(limitBuy, at(9_900n), agent).ok,
+      checkFill(limitBuy, at(9_899n), agent),
+      checkFill(agentOnly, at(9_950n), agent).ok,
+      checkFill(agentOnly, at(9_949n), agent),
+    ]).toStrictEqual([
+      true,
+      { ok: false, error: "fill_bounds" },
+      true,
+      { ok: false, error: "fill_bounds" },
+    ]);
   });
 
   it("refuses a fill whose order expired, whatever its quote", () => {

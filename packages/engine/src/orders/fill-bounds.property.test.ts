@@ -69,7 +69,7 @@ const factsOf: fc.Arbitrary<FillFacts> = fc.record(
   {
     nowMs: fc.constant(nowMs),
     limitBase: base,
-    maxSlippageBps: bps,
+    agentSlippageBps: bps,
     otherUsd: ratios,
     tokenDecimals: fc.integer({ min: 0, max: 30 }),
     confirm: levels,
@@ -85,9 +85,9 @@ function oracleCanFill(order: BoundedOrder): boolean {
 }
 
 function oracleSize(order: BoundedOrder, quote: FillQuote, facts: FillFacts): boolean {
-  const most = order.request.maxSlippageBps;
-  const asked = facts.maxSlippageBps;
-  const isSlippageInside = most === undefined || (asked !== undefined && asked <= most);
+  const most = order.request.maxSlippageBps ?? facts.agentSlippageBps;
+  const given = (quote.expectedOutBase - quote.minOutBase) * 10_000n;
+  const isSlippageInside = most === undefined || given <= BigInt(most) * quote.expectedOutBase;
   const { saleUsdMicros, otherUsd } = facts;
   const isInsideDollars =
     saleUsdMicros === undefined ||
