@@ -155,9 +155,9 @@ zero; [decision 0197](../DECISIONS.md#d0197)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or
-used its last fill), `fill_bounds` (it spends nothing, more than its size allows, or its quote's
-minimum gives up more of its expected output than the order's maximum slippage, else the agent's
-for the pair), `worst_price` (its quote's price at its minimum out is worse than the order's worst
+used its last fill), `fill_bounds` (it spends nothing, more than its size allows, trades another
+token, wallet, mode or side than its order, or its quote's minimum gives up more of its expected
+output than the order's maximum slippage, else the agent's for the pair), `worst_price` (its quote's price at its minimum out is worse than the order's worst
 price, or nothing values it), `trigger_unconfirmed` (a thin pool's price fired it, and the quote's
 own expected price does not meet the trigger), and `daily_cap` (another confirmation took the
 rolling cap's room after its policy step).

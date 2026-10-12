@@ -1,4 +1,5 @@
 import type { Ratio } from "@binference/core";
+import type { QuoteView } from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import type { FillBreach } from "../intents/intent-reason.js";
@@ -46,6 +47,26 @@ export function checkOf(
   };
 }
 
+// The fill trades as its order says (invariant 8 for fills): its order's wallet, mode and side, a
+// buy paying what its request spends for the order's token, a sale selling the order's token for
+// something else.
+function holdsShape(
+  fill: { readonly order: OrderRecord; readonly sized: SizedFill },
+  simulated: IntentSnapshot,
+  view: QuoteView,
+): boolean {
+  const { order, sized } = fill;
+  const { record } = simulated;
+  const { token, side } = order.request;
+  const isOrders =
+    record.walletId === order.walletId && record.isPaper === order.isPaper && record.kind === side;
+  const isTokens =
+    sized.request.kind === "buy"
+      ? view.amountIn.asset === sized.request.spend.asset && view.minOut.asset === token
+      : view.amountIn.asset === token && view.minOut.asset !== token;
+  return isOrders && isTokens && view.expectedOut.asset === view.minOut.asset;
+}
+
 // The check in the agent's line, on the other side's price read before it.
 async function checkInLine(
   parts: OrderFillsParts,
@@ -65,6 +86,9 @@ async function checkInLine(
     return "order_inactive";
   }
   const view = quoteDocument.decode(quote);
+  if (!holdsShape(fill, simulated, view)) {
+    return "fill_bounds";
+  }
   // The agent's maximum for the quote's pair, which holds when the order names none (decision 0197).
   const pair = [view.amountIn.asset, view.minOut.asset];
   const agentSlippageBps = tradeSlippageBps({ pair }, simulated.settings.limits, parts.chains);
