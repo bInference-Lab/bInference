@@ -171,7 +171,10 @@ describe("createChatCompletionsTransport", () => {
     vi.stubEnv("OPENAI_PROJECT_ID", "proj_stray");
     vi.stubEnv("OPENAI_WEBHOOK_SECRET", "whsec_stray");
     vi.stubEnv("OPENAI_LOG", "debug");
-    vi.stubEnv("OPENAI_CUSTOM_HEADERS", "x-stray: 1\nOpenAI-Organization: org-stray");
+    vi.stubEnv(
+      "OPENAI_CUSTOM_HEADERS",
+      "x-stray: 1\nOpenAI-Organization: org-stray\nAuthorization: Bearer sk-stray",
+    );
     const { http, transport } = transportOn([textStream]);
     for await (const event of transport.stream(request, new AbortController().signal)) {
       expect(event.type).not.toBe("error");

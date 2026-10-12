@@ -5,9 +5,11 @@ import { createModelFetch } from "./model-fetch.js";
 const baseUrl = "https://models.example.test/v1";
 const answer = { status: 200, headers: { "content-type": "text/event-stream" }, chunks: ["ok"] };
 
-function fetchOn(withKey = true) {
+const keyHeader = { authorization: "Bearer sk-test-key" };
+
+function fetchOn(headers: Readonly<Record<string, string>> = keyHeader) {
   const http = createRecordedHttp([answer]);
-  return { http, modelFetch: createModelFetch({ http, baseUrl, withKey }) };
+  return { http, modelFetch: createModelFetch({ http, baseUrl, headers }) };
 }
 
 const init = (extra: RequestInit = {}): RequestInit => ({
@@ -17,7 +19,7 @@ const init = (extra: RequestInit = {}): RequestInit => ({
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
-    Authorization: "Bearer sk-test-key",
+    Authorization: "Bearer sk-stray",
     "X-Stainless-OS": "MacOS",
     "OpenAI-Organization": "org-stray",
     "User-Agent": "OpenAI/JS 7.28.0",
@@ -26,7 +28,7 @@ const init = (extra: RequestInit = {}): RequestInit => ({
 });
 
 describe("createModelFetch", () => {
-  it("sends only the allowed headers and streams the answer back", async () => {
+  it("sends only the allowed headers and its own key, and streams the answer back", async () => {
     const { http, modelFetch } = fetchOn();
     const response = await modelFetch(`${baseUrl}/chat/completions`, init());
     expect([response.status, await response.text()]).toStrictEqual([200, "ok"]);
@@ -37,8 +39,8 @@ describe("createModelFetch", () => {
     });
   });
 
-  it("sends no authorization for a provider without a key", async () => {
-    const { http, modelFetch } = fetchOn(false);
+  it("sends no key the client gave for a provider without a key", async () => {
+    const { http, modelFetch } = fetchOn({});
     await modelFetch(new URL(`${baseUrl}/chat/completions`), init());
     expect(http.requests[0]?.headers).not.toHaveProperty("authorization");
   });
@@ -59,7 +61,7 @@ describe("createModelFetch", () => {
 
   it("answers a status without a body as an empty answer", async () => {
     const http = createRecordedHttp([{ status: 204, headers: {}, chunks: [] }]);
-    const modelFetch = createModelFetch({ http, baseUrl, withKey: true });
+    const modelFetch = createModelFetch({ http, baseUrl, headers: keyHeader });
     const response = await modelFetch(`${baseUrl}/chat/completions`, init());
     expect([response.status, response.body]).toStrictEqual([204, null]);
   });
