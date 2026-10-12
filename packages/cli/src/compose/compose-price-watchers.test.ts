@@ -23,6 +23,7 @@ const watched: WatchedPrice = {
   block: 100n,
   atMs: startMs,
   source: "pools",
+  plan: "pools:0x0000000000000000000000000000000000000002",
   quoteAsset: assetRefSchema.parse("eip155:56/slip44:714"),
   quotePrice: { numerator: 1n, denominator: 300n },
   usdPrice: { numerator: 2_000_000n, denominator: 10n ** 18n },

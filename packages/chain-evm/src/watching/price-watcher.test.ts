@@ -90,10 +90,14 @@ function round(): Hex {
   );
 }
 
+// What the pools' plan of a token is called: its source and its pool.
+const planOfToken = (index: number): string => `test-pools:${poolOf(tokenOf(index))}`;
+
 function plan(token: AssetRef): PricePlan {
   return {
     source: "test-pools",
     read: {
+      depthUsdMicros: 50_000_000_000n,
       quoteAsset: quote,
       calls: [
         { target: accountRefSchema.parse(`eip155:56:${poolOf(token)}`), input: reservesCall },
@@ -246,6 +250,8 @@ describe("price watcher", () => {
         block: 101n,
         atMs: startMs + blockTimeMs,
         source: "test-pools",
+        plan: planOfToken(1),
+        depthUsdMicros: 50_000_000_000n,
         quoteAsset: quote,
         quotePrice: { numerator: 1_101n, denominator: 10n },
         // 110.1 quote base units a base unit, at $600 for 10^18 base units of the quote.
@@ -253,7 +259,7 @@ describe("price watcher", () => {
       },
     ]);
     expect(subject.watcher.tokens()).toStrictEqual([
-      { token: tokenOf(1), state: "priced", source: "test-pools" },
+      { token: tokenOf(1), state: "priced", source: "test-pools", plan: planOfToken(1) },
     ]);
   });
 
@@ -433,7 +439,7 @@ describe("price watcher", () => {
     await nextBlock(subject, 104n);
     expect(subject.prices.map(({ block }) => block)).toStrictEqual([104n]);
     expect(subject.watcher.tokens()).toStrictEqual([
-      { token: tokenOf(1), state: "priced", source: "test-pools" },
+      { token: tokenOf(1), state: "priced", source: "test-pools", plan: planOfToken(1) },
     ]);
   });
 
@@ -475,6 +481,7 @@ describe("price watcher", () => {
       token: tokenOf(993),
       state: "priced",
       source: "test-pools",
+      plan: planOfToken(993),
     });
     await subject.clock.advance(29_000);
     expect(subject.planned.filter((token) => token === tokenOf(999))).toHaveLength(1);
@@ -493,6 +500,8 @@ describe("price watcher", () => {
         block: 101n,
         atMs: startMs + blockTimeMs,
         source: "test-pools",
+        plan: planOfToken(997),
+        depthUsdMicros: 50_000_000_000n,
         quoteAsset: unfed,
         quotePrice: { numerator: 1_101n, denominator: 10n },
       },

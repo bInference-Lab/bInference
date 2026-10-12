@@ -217,6 +217,7 @@ describe("pool price reader", () => {
     const { reader, node } = readerOver(deep);
     const read = valueOf(await reader.priceRead({ token: erc20(token), contracts: {} }, live));
     expect(read.quoteAsset).toBe(erc20(wrapped));
+    expect(read.depthUsdMicros).toBe(30_000_000_000n);
     expect(read.calls).toStrictEqual([
       { target: `eip155:56:${pool}`, input: slot0Call },
       { target: `eip155:56:${pool}`, input: liquidityCall },

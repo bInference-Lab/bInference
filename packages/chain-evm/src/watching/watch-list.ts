@@ -37,6 +37,10 @@ export type PlanPrices = (
 export interface PlannedToken {
   readonly token: AssetRef;
   readonly source: string;
+  /** Which plan it is: its source and the contracts it reads; another pool is another plan. */
+  readonly plan: string;
+  /** The depth of its pool when chosen, in micro-dollars, when its reader measured one. */
+  readonly depthUsdMicros?: bigint;
   readonly quoteAsset: AssetRef;
   readonly calls: readonly AggregateCall[];
   readonly price: PriceRead["price"];
@@ -48,6 +52,8 @@ export interface WatchedToken {
   readonly state: "planning" | "priced" | "unpriced";
   /** Who prices it, while it is priced. */
   readonly source?: string;
+  /** The plan that prices it, while it is priced. */
+  readonly plan?: string;
 }
 
 /** The tokens a watcher reads, each once however many watch it, and their plans. */
@@ -95,9 +101,13 @@ function plannedOf(token: AssetRef, plan: PricePlan): PlannedToken | undefined {
   if (valid.length === 0 || valid.length !== calls.length) {
     return undefined;
   }
+  const { depthUsdMicros } = plan.read;
+  const targets = valid.map(({ target }) => target).join(",");
   return {
     token,
     source: plan.source,
+    plan: `${plan.source}:${targets}`,
+    ...(depthUsdMicros === undefined ? {} : { depthUsdMicros }),
     quoteAsset: plan.read.quoteAsset,
     calls: valid,
     price: (answers) => plan.read.price(answers),

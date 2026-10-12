@@ -50,6 +50,7 @@ function fakeWatcher(options: { readonly failsWith?: Error; readonly failures?: 
         block,
         atMs: 1,
         source: "pools",
+        plan: "pools:0x00000000000000000000000000000000000000ee",
         quoteAsset: tokenOf("ff"),
         quotePrice: { numerator: 1n, denominator: 1n },
       }),

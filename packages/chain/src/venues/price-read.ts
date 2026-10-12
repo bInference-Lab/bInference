@@ -54,4 +54,10 @@ export interface PriceRead {
    * reserves or a token that left its curve is `replan`.
    */
   readonly price: (answers: readonly ReadAnswer[]) => Result<Ratio, PriceMiss>;
+  /**
+   * The depth of the pool the read prices from when it was chosen, in micro-dollars of the quote
+   * it can trade: a pool under $25,000 needs a recent cross-check before a trigger uses its price
+   * (decision 0194). Only the chain family's pool reader gives one; a venue's read carries none.
+   */
+  readonly depthUsdMicros?: bigint;
 }

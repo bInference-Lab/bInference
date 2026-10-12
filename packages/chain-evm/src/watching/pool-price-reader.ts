@@ -184,6 +184,7 @@ function readOf(options: PoolPriceReaderOptions, token: Address, chosen: DepthOf
       input,
     })),
     price: (answers) => poolPrice(place, answers),
+    depthUsdMicros: chosen.depthUsd.numerator / chosen.depthUsd.denominator,
   };
 }
 

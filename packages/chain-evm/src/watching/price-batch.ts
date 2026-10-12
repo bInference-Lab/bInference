@@ -13,6 +13,10 @@ export interface WatchedPrice {
   readonly atMs: number;
   /** Who priced it: the venue whose reads it asked, or the pools the chain family reads. */
   readonly source: string;
+  /** Which plan priced it: its source and the contracts it read; another pool is another plan. */
+  readonly plan: string;
+  /** The depth of the pool that priced it when chosen, in micro-dollars, for a pool's price. */
+  readonly depthUsdMicros?: bigint;
   readonly quoteAsset: AssetRef;
   /** Base units of the quote asset for one base unit of the token, exact. */
   readonly quotePrice: Ratio;
@@ -78,7 +82,7 @@ export function pricesOf(read: BlockRead, atMs: number): readonly TokenRead[] {
   const usd = read.feeds.usdPrices(read.feedAnswers, atMs);
   const left = read.quarantined.map(({ token }): TokenRead => ({ token, outcome: "quarantined" }));
   const priced = read.tokens.map(({ planned, answers }): TokenRead => {
-    const { token, source, quoteAsset } = planned;
+    const { token, source, plan, quoteAsset, depthUsdMicros } = planned;
     const price = priceOf(planned, answers);
     if (!price.ok) {
       return { token, outcome: price.error };
@@ -89,6 +93,8 @@ export function pricesOf(read: BlockRead, atMs: number): readonly TokenRead[] {
       block: read.block,
       atMs,
       source,
+      plan,
+      ...(depthUsdMicros === undefined ? {} : { depthUsdMicros }),
       quoteAsset,
       quotePrice: price.value,
       ...(quoteUsd === undefined ? {} : { usdPrice: times(price.value, quoteUsd) }),

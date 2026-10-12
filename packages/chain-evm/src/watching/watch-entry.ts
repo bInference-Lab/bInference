@@ -144,7 +144,7 @@ export function reported(
  */
 export function stateOf(token: AssetRef, entry: WatchEntry): WatchedToken {
   if (entry.plan !== undefined && entry.misses === 0) {
-    return { token, state: "priced", source: entry.plan.source };
+    return { token, state: "priced", source: entry.plan.source, plan: entry.plan.plan };
   }
   const isUnpriced = entry.isUnpriced || entry.misses > 0;
   return { token, state: isUnpriced ? "unpriced" : "planning" };
