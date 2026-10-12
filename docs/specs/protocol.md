@@ -4,8 +4,8 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 [decision 0088](../DECISIONS.md#d0088) and [decision 0089](../DECISIONS.md#d0089); custody
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
-[0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155) and
-[0177](../DECISIONS.md#d0177);
+[0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
+[0177](../DECISIONS.md#d0177) and [0178](../DECISIONS.md#d0178);
 the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
@@ -517,7 +517,8 @@ outside-content mark of its agent's running turn ([spec 8, section 4.3](runtime.
 `images` are upload ids from `upload/start` (section 7.9): at most 4 per message, each a PNG, JPEG
 or WebP of at most 5 MiB. A message with images marks the turn as outside content
 ([rule 13](../ARCHITECTURE.md#rule-13)). Telegram images reach the engine through Telegram and need
-no upload.
+no upload: each is named `tg:<file_id>`, the bot's id of the photo's largest size
+([decision 0178](../DECISIONS.md#d0178)).
 
 <a id="section-7-8"></a>
 

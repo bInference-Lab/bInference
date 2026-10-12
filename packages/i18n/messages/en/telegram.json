@@ -4,5 +4,10 @@
   "pairingEnded": "⚠️ Another Telegram account is now the owner of this bot: someone opened a new link from `binference telegram pair`. Cards and alerts go to that account from now on. Not you? Freeze now: run `binference freeze` on the machine binference runs on.",
   "secretDeleted": "⚠️ Message deleted: it looked like a recovery phrase, a private key or an owner key. Never paste one into a chat. If it was real, treat it as exposed. To share a transaction, paste its block explorer link instead, since a transaction hash looks like a private key.",
   "button.confirm": "✅ Confirm",
-  "button.cancel": "❌ Cancel"
+  "button.cancel": "❌ Cancel",
+  "chat.photosLeftOut": "The agent reads 4 photos of a message at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send {count, plural, one {it} other {them}} in another message.",
+  "chat.photoTooLarge": "The agent reads photos of 5 MiB at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send a smaller copy.",
+  "chat.forwarded": "A forwarded message does not reach the agent. Write what you want it to read in a message of your own.",
+  "chat.edited": "An edit does not reach the agent. Send a new message instead.",
+  "chat.unsupported": "The agent reads text and photos. Send this as text or as a photo."
 }

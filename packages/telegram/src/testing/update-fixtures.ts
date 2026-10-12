@@ -40,6 +40,49 @@ export function textUpdate(fixture: TextFixture): JsonValue {
     : { update_id: fixture.updateId, message: posted };
 }
 
+/** A photo message for {@link photoUpdate}. */
+export interface PhotoFixture {
+  readonly updateId: number;
+  readonly from: number;
+  /** The id of its largest size; its small size's id ends in `-s`. */
+  readonly fileId: string;
+  /** The largest size's bytes; Telegram may leave them out. */
+  readonly sizeBytes?: number;
+  readonly caption?: string;
+  /** The album it is one photo of. */
+  readonly albumId?: string;
+}
+
+/** A photo message in the Bot API's shape, in the sender's private chat, with two sizes. */
+export function photoUpdate(fixture: PhotoFixture): JsonValue {
+  const large = {
+    file_id: fixture.fileId,
+    file_unique_id: `${fixture.fileId}-u`,
+    width: 1280,
+    height: 960,
+    ...(fixture.sizeBytes === undefined ? {} : { file_size: fixture.sizeBytes }),
+  };
+  const small = {
+    ...large,
+    file_id: `${fixture.fileId}-s`,
+    width: 90,
+    height: 67,
+    file_size: 1_200,
+  };
+  return {
+    update_id: fixture.updateId,
+    message: {
+      message_id: fixture.updateId + 500,
+      date: 1_760_000_000,
+      chat: { id: fixture.from, type: "private" },
+      from: { id: fixture.from, is_bot: false, first_name: "Fixture" },
+      photo: [small, large],
+      ...(fixture.caption === undefined ? {} : { caption: fixture.caption }),
+      ...(fixture.albumId === undefined ? {} : { media_group_id: fixture.albumId }),
+    },
+  };
+}
+
 /** An inline button press in the Bot API's shape, on a message in the sender's private chat. */
 export function pressUpdate(updateId: number, from: number, data: string): JsonValue {
   return {

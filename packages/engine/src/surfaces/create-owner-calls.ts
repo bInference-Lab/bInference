@@ -11,11 +11,11 @@ import { z } from "zod";
 import type { EngineCaller, EngineHandler, EngineHandlerTable } from "../operations/engine-call.js";
 
 /**
- * The operations the owner's fast commands run from their Telegram chat: reads, and the braking
- * that rule 11 allows from any surface. None is local or takes the owner key. `limit/set` runs
- * with `confirm` alone, so its handler takes only a stricter limit (decision 0111).
- * `config/change` runs only to set `owner.locale`, the one exception to its `admin` scope
- * (decision 0134).
+ * The operations the owner's Telegram chat runs: the fast commands' reads and the braking that
+ * rule 11 allows from any surface, and `chat/post`, the owner's message to the agent. None is
+ * local or takes the owner key. `limit/set` runs with `confirm` alone, so its handler takes only
+ * a stricter limit (decision 0111). `config/change` runs only to set `owner.locale`, the one
+ * exception to its `admin` scope (decision 0134).
  */
 export const ownerChatOperations = [
   "engine/status",
@@ -29,17 +29,18 @@ export const ownerChatOperations = [
   "order/list",
   "wallet/list",
   "config/change",
+  "chat/post",
 ] as const;
 
 /** An operation the owner's fast commands run. */
 export type OwnerChatOperation = (typeof ownerChatOperations)[number];
 
 /**
- * The scopes the owner holds in their Telegram chat: reading, and braking, which also answers
- * cards (ARCHITECTURE.md rule 11). Loosening and settings need the CLI, the console or the Mini
- * App, never a chat message.
+ * The scopes the owner holds in their Telegram chat: reading, braking, which also answers cards
+ * (ARCHITECTURE.md rule 11), and chatting with the agent. Loosening and settings need the CLI,
+ * the console or the Mini App, never a chat message.
  */
-export const ownerChatScopes: readonly Scope[] = ["read", "confirm"];
+export const ownerChatScopes: readonly Scope[] = ["read", "confirm", "chat"];
 
 /** The handlers the fast commands run, by operation: the engine's and the composition root's. */
 export type OwnerChatHandlers = Pick<EngineHandlerTable, OwnerChatOperation>;

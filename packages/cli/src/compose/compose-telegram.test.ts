@@ -1,5 +1,6 @@
-import { BinferenceError, createSecret, type Id } from "@binference/core";
+import { BinferenceError, createSecret, type Id, idSchema } from "@binference/core";
 import type { EngineCaller } from "@binference/engine";
+import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import {
   createMemoryCardCopyStore,
   createMemoryOwnerStore,
@@ -38,6 +39,12 @@ const callers: Readonly<Record<"cli" | "mcp", EngineCaller>> = {
     scopes: ["read", "propose"],
   },
 };
+const runtimeToken = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000021");
+const runtime: EngineCaller = {
+  credential: runtimeToken,
+  client: { kind: "runtime", version: "test" },
+  scopes: ["read", "propose", "agent"],
+};
 const swap: IntentRequest = {
   kind: "swap",
   agent,
@@ -58,6 +65,7 @@ interface Bot extends ComposedSkeleton {
 interface BotOptions {
   readonly isPaired?: boolean;
   readonly owner?: () => OwnerInfo;
+  readonly turns?: RunningTurns;
 }
 
 async function bot(options: BotOptions = {}): Promise<Bot> {
@@ -74,7 +82,12 @@ async function bot(options: BotOptions = {}): Promise<Bot> {
     botToken: createSecret(fakeBotToken),
   };
   const owner = options.owner === undefined ? {} : { owner: options.owner };
-  const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), { telegram, ...owner });
+  const turns = options.turns === undefined ? {} : { turns: options.turns };
+  const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), {
+    telegram,
+    ...owner,
+    ...turns,
+  });
   const composed = skeleton.composed.telegram ?? never();
   const { handlers } = skeleton.composed.engine;
   await handlers["portfolio/resetPaper"]({ args: { agent }, caller: callers.cli, ...live });
@@ -219,8 +232,9 @@ describe("the bot joined to the engine", () => {
     expect(dropped()).toHaveLength(1);
   });
 
-  it("hands the owner's presses to the cards and the owner's chat messages to no one", async () => {
-    const test = await bot();
+  it("posts the owner's message to the agent as one written in Telegram", async () => {
+    const turns = createRunningTurns();
+    const test = await bot({ turns });
     const message = {
       update_id: 1,
       message: {
@@ -232,7 +246,17 @@ describe("the bot joined to the engine", () => {
       },
     };
     await test.telegram.ingress.receive(message, live);
-    expect(test.botApi.messages()).toStrictEqual([]);
+    await test.clock.advance(300);
+    await test.telegram.chat.idle();
+    turns.startRuntime(runtimeToken);
+    const { handlers } = test.composed.engine;
+    const listed = await handlers["inbox/list"]({ args: { agent }, caller: runtime, ...live });
+    expect(listed).toMatchObject({
+      ok: true,
+      value: {
+        items: [{ kind: "inbox/message", text: "How is the market today?", surface: "telegram" }],
+      },
+    });
     expect(test.botApi.calls()).toStrictEqual([]);
   });
 });

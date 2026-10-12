@@ -7,15 +7,20 @@ import {
   type HalvableLimit,
   halvableLimits,
 } from "./command-callback.schema.js";
-import { callOrSay, type CommandContext, type PressContext } from "./command-context.js";
+import {
+  type CallContext,
+  callOrSay,
+  type CommandContext,
+  type PressContext,
+} from "./command-context.js";
 
 type AgentStatus = ResultOf<"engine/status">["agents"][number];
 
 /**
- * The agent a command acts on: the only agent that is not archived. With none, or several, it
- * says why, and that the CLI names one with `--agent`, and answers `undefined`.
+ * The agent a command or a chat message is for: the only agent that is not archived. With none,
+ * or several, it says why, and that the CLI names one with `--agent`, and answers `undefined`.
  */
-async function chooseAgent(context: CommandContext): Promise<AgentStatus | undefined> {
+export async function chooseAgent(context: CallContext): Promise<AgentStatus | undefined> {
   const status = await callOrSay(context, "engine/status", {});
   if (status === undefined) {
     return undefined;

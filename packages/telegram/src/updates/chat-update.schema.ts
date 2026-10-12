@@ -8,6 +8,14 @@ export interface BotSender {
   readonly languageCode?: string;
 }
 
+/** A photo in a message: its largest size, as Telegram keeps it. */
+export interface PostedPhoto {
+  /** The id the bot downloads the photo by; it works only for this bot. */
+  readonly fileId: string;
+  /** Its size in bytes, when Telegram names it. */
+  readonly sizeBytes?: number;
+}
+
 /** A chat message, or an edit of one. */
 export interface ChatPost {
   readonly kind: "message" | "edit";
@@ -27,6 +35,10 @@ export interface ChatPost {
   readonly isForwarded: boolean;
   /** The text, or a media message's caption. */
   readonly text?: string;
+  /** The photo of a photo message. */
+  readonly photo?: PostedPhoto;
+  /** The album the message is one part of; Telegram sends each photo of an album on its own. */
+  readonly albumId?: string;
 }
 
 /** A press of an inline button. */
@@ -61,6 +73,13 @@ const rawChatSchema = z.looseObject({ id: z.int(), type: z.string() });
 
 const presenceSchema = z.looseObject({}).optional();
 
+const rawPhotoSizeSchema = z.looseObject({
+  file_id: z.string().min(1),
+  width: z.int(),
+  height: z.int(),
+  file_size: z.int().nonnegative().optional(),
+});
+
 const rawPostSchema = z.looseObject({
   message_id: z.int(),
   chat: rawChatSchema,
@@ -72,6 +91,8 @@ const rawPostSchema = z.looseObject({
   message_thread_id: z.int().optional(),
   text: z.string().optional(),
   caption: z.string().optional(),
+  photo: z.array(rawPhotoSizeSchema).min(1).optional(),
+  media_group_id: z.string().optional(),
 });
 
 const rawPressSchema = z.looseObject({
@@ -102,8 +123,21 @@ function senderOf(raw: RawSender): BotSender {
   };
 }
 
+// Telegram lists a photo's sizes; the bot reads the one with the most pixels.
+function photoOf(sizes: RawPost["photo"]): PostedPhoto | undefined {
+  const largest = sizes?.reduce((best, size) =>
+    size.width * size.height > best.width * best.height ? size : best,
+  );
+  if (largest === undefined) {
+    return undefined;
+  }
+  const sizeBytes = largest.file_size;
+  return { fileId: largest.file_id, ...(sizeBytes === undefined ? {} : { sizeBytes }) };
+}
+
 function postOf(kind: ChatPost["kind"], updateId: number, raw: RawPost): ChatPost {
   const text = raw.text ?? raw.caption;
+  const photo = photoOf(raw.photo);
   return {
     kind,
     updateId,
@@ -116,6 +150,8 @@ function postOf(kind: ChatPost["kind"], updateId: number, raw: RawPost): ChatPos
     isViaBot: raw.via_bot !== undefined,
     isForwarded: raw.forward_origin !== undefined || raw.is_automatic_forward === true,
     ...(text === undefined ? {} : { text }),
+    ...(photo === undefined ? {} : { photo }),
+    ...(raw.media_group_id === undefined ? {} : { albumId: raw.media_group_id }),
   };
 }
 

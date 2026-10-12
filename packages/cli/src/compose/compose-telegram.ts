@@ -13,12 +13,15 @@ import {
 import type { OwnerInfo } from "@binference/protocol";
 import {
   type CardAnswers,
+  type ChatIntake,
+  createChatIntake,
   createFastCommands,
   createNoticeOutbox,
   createTelegramCards,
   createTelegramIngress,
   type FastCommands,
   type OwnerCalls,
+  type OwnerUpdateSink,
   type TelegramCards,
   type TelegramIngress,
 } from "@binference/telegram";
@@ -76,6 +79,8 @@ export interface ComposedTelegram extends TelegramRelay {
   readonly commands: FastCommands;
   /** Where the bot's updates come in: long polling and a webhook relay both feed it. */
   readonly ingress: TelegramIngress;
+  /** The owner's messages to the agent, batched and posted with `chat/post`. */
+  readonly chat: ChatIntake;
 }
 
 interface Call {
@@ -110,19 +115,44 @@ function relayOf(
   return createTelegramRelay({ showings, cards, outbox, stored: wiring.stored, clock, logger });
 }
 
+// The owner's language and timezone as config.json5 holds them now.
+function displayOf(wiring: TelegramWiring): OwnerDisplay {
+  return () => {
+    const { locale, timezone } = wiring.owner();
+    return { locale, timeZone: timezone };
+  };
+}
+
+// A fast command and its buttons are answered here, a card's press goes to the cards, and any other
+// message goes to the agent.
+function ownerUpdateSink(to: {
+  readonly commands: FastCommands;
+  readonly cards: TelegramCards;
+  readonly chat: ChatIntake;
+}): OwnerUpdateSink {
+  return async (update, call) => {
+    if (update.kind !== "callback") {
+      if (!(await to.commands.answer(update, call))) {
+        await to.chat.take(update, call);
+      }
+      return;
+    }
+    if (!(await to.commands.press(update, call))) {
+      await to.cards.press(update, call);
+    }
+  };
+}
+
 /**
  * Joins the owner's bot to the engine: cards whose presses the engine answers (the owner's
  * numeric Telegram id only, stored before Telegram hears back), the ingress that hands the
  * owner's presses to them, and the relay that shows each new card version in the owner's chat and
- * sends the notices from the outbox once started (decision 0133). The owner's chat messages are
- * stored in the inbox and go no further until the agent runtime joins.
+ * sends the notices from the outbox once started (decision 0133). The owner's messages that are
+ * not fast commands go to the agent with `chat/post`.
  */
 export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): ComposedTelegram {
   const { stores, chains, logger } = wiring;
-  const display = () => {
-    const { locale, timezone } = wiring.owner();
-    return { locale, timeZone: timezone };
-  };
+  const display = displayOf(wiring);
   const answers = createCardPresses({
     intents: stores.intents,
     answer: wiring.answer,
@@ -144,26 +174,29 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     logger,
   });
   const relay = relayOf(parts, wiring, { showings, cards, display });
+  const chat = createChatIntake({ api: parts.api, calls, clock: wiring.clock, logger, display });
   const ingress = createTelegramIngress({
     api: parts.api,
     stores: { inbox: stores.inbox, access: stores.access, owners: parts.owners },
     clock: wiring.clock,
     logger,
     display,
-    // A fast command and its buttons are answered here; any other message waits for the agent
-    // runtime.
-    onOwnerUpdate: async (update, call) => {
-      if (update.kind !== "callback") {
-        await commands.answer(update, call);
-        return;
-      }
-      if (!(await commands.press(update, call))) {
-        await cards.press(update, call);
-      }
-    },
+    onOwnerUpdate: ownerUpdateSink({ commands, cards, chat }),
     onOwnerPaired: () => relay.paired(),
     // The replaced owner's sessions end before the bot says a word to anyone.
     onOwnerReplaced: (replaced) => wiring.ownerReplaced(replaced.userId),
   });
-  return { cards, answers, calls, commands, ingress, ...relay };
+  return {
+    cards,
+    answers,
+    calls,
+    commands,
+    ingress,
+    chat,
+    ...relay,
+    async close() {
+      await chat.close();
+      await relay.close();
+    },
+  };
 }

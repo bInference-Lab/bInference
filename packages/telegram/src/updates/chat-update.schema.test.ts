@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ownerId, pressUpdate, textUpdate } from "../testing/update-fixtures.js";
+import { ownerId, photoUpdate, pressUpdate, textUpdate } from "../testing/update-fixtures.js";
 import { chatUpdateSchema } from "./chat-update.schema.js";
 
 describe("chatUpdateSchema", () => {
@@ -48,6 +48,29 @@ describe("chatUpdateSchema", () => {
       isForwarded: true,
       text: "a picture",
     });
+  });
+
+  it("reads a photo by its largest size, with its caption and its album", () => {
+    const update = photoUpdate({
+      updateId: 13,
+      from: ownerId,
+      fileId: "AgACAgIAAx0Cphoto1",
+      sizeBytes: 180_000,
+      caption: "this chart",
+      albumId: "album-1",
+    });
+    expect(chatUpdateSchema.parse(update)).toMatchObject({
+      kind: "message",
+      text: "this chart",
+      photo: { fileId: "AgACAgIAAx0Cphoto1", sizeBytes: 180_000 },
+      albumId: "album-1",
+    });
+  });
+
+  it("reads a photo whose size Telegram leaves out", () => {
+    const update = photoUpdate({ updateId: 14, from: ownerId, fileId: "AgACphoto2" });
+    expect(chatUpdateSchema.parse(update)).toMatchObject({ photo: { fileId: "AgACphoto2" } });
+    expect(chatUpdateSchema.parse(update)).not.toHaveProperty("photo.sizeBytes");
   });
 
   it("reads a button press with the chat its message sits in", () => {

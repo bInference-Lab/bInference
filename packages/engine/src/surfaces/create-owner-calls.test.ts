@@ -46,7 +46,7 @@ async function rescuing(): Promise<TestEngine> {
 
 describe("the owner's calls from Telegram", () => {
   it.each(ownerChatOperations.filter((op) => op !== "config/change"))(
-    "runs %s, a read or a brake the owner holds in the chat",
+    "runs %s, a read, a brake or a message the owner sends in the chat",
     (op) => {
       const operation = operations[op];
       expect([
@@ -56,6 +56,23 @@ describe("the owner's calls from Telegram", () => {
       ]).toStrictEqual([true, "any", false]);
     },
   );
+
+  it("posts the owner's message to the agent as one written in Telegram", async () => {
+    const test = await startTestEngine();
+    const calls = callsOf(test.engine.handlers);
+    const post = {
+      op: "chat/post",
+      args: { agent: testAgent, text: "What moved today?" },
+    } as const;
+    expectOk(await calls.call({ ...post, senderId: ownerId }, live));
+    await expect(calls.call({ ...post, senderId: ownerId + 1 }, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "auth.scope",
+    });
+    expect(test.pushes.filter((push) => push.topic === "inbox")).toMatchObject([
+      { kind: "inbox/message", data: { text: "What moved today?", surface: "telegram" } },
+    ]);
+  });
 
   it("tightens a limit at once as the owner on Telegram, and never loosens one", async () => {
     const test = await startTestEngine();
@@ -99,7 +116,7 @@ describe("the owner's calls from Telegram", () => {
     ];
     const refused = await Promise.all(others.map(async (patch) => change(patch)));
     expect(refused.map((result) => result.ok)).toStrictEqual([false, false, false]);
-    expect(seen).toStrictEqual([[{ owner: { locale: "zh" } }, ["read", "confirm"]]]);
+    expect(seen).toStrictEqual([[{ owner: { locale: "zh" } }, ["read", "confirm", "chat"]]]);
   });
 
   it("freezes every agent as the owner on Telegram, and the notice names Telegram", async () => {

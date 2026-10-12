@@ -10,6 +10,8 @@ export type {
   TelegramCards,
   TelegramCardsOptions,
 } from "./cards/create-telegram-cards.js";
+export { createChatIntake } from "./chat/chat-intake.js";
+export type { ChatIntake, ChatIntakeOptions } from "./chat/chat-intake.js";
 export { createFastCommands } from "./commands/create-fast-commands.js";
 export type { FastCommands, FastCommandsOptions } from "./commands/create-fast-commands.js";
 export type { IngressWords, OwnerUpdateSink } from "./ingress/act-on-update.js";
@@ -46,4 +48,5 @@ export type {
   ChatPost,
   ChatUpdate,
   OtherUpdate,
+  PostedPhoto,
 } from "./updates/chat-update.schema.js";

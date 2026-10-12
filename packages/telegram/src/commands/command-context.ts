@@ -54,12 +54,15 @@ export interface PressContext extends CommandContext {
   readonly wordsIn: (locale: MessageLocale) => (key: string, values?: MessageValues) => string;
 }
 
+/** What running an operation for the owner needs: the calls, who asked, and how to answer. */
+export type CallContext = Pick<CommandContext, "calls" | "senderId" | "signal" | "say" | "words">;
+
 /**
  * Runs an operation for the owner and answers its result. A refusal is said in the chat as the
  * error message of its code, and answers `undefined`.
  */
 export async function callOrSay<N extends OwnerChatOperation>(
-  context: CommandContext,
+  context: CallContext,
   op: N,
   args: ArgsOf<N>,
 ): Promise<ResultOf<N> | undefined> {

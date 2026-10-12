@@ -393,7 +393,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | outside content                         | 外部内容                |                             |
 | gateway                                 | 网关                    |                             |
 | MCP server                              | MCP 服务器              |                             |
-| picture (one the owner sends)           | 图片                    |                             |
+| picture, photo (one the owner sends)    | 图片                    |                             |
+| send (a message, a picture)             | 发送                    | Money sent is 转账          |
 | notification                            | 通知                    |                             |
 | browser notification, browser push      | 浏览器通知              |                             |
 | console device                          | 控制台设备              |                             |

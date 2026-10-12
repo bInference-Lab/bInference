@@ -4,8 +4,8 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0101](../DECISIONS.md#d0101), [0102](../DECISIONS.md#d0102), [0103](../DECISIONS.md#d0103),
 [0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115),
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
-[0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134) and
-[0177](../DECISIONS.md#d0177).
+[0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134),
+[0177](../DECISIONS.md#d0177) and [0178](../DECISIONS.md#d0178).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
@@ -606,7 +606,7 @@ than the agent's words (italics in Telegram).
 | When                                 | Key                           | English                                                                                                    | 中文                                                                         |
 | ------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | A proposal waits for the owner       | `turn.proposalWaits`          | 🟡 Waiting for your answer on its card                                                                     | 🟡 等待你在卡片上回复                                                        |
-| Proposals held back                  | `turn.moreProposals`          | {count, plural, one {One more proposal follows} other {# more proposals follow}} once you answer this card | 你回复此卡片后，还会有 {count} 个提议                                        |
+| Proposals held back                  | `turn.moreProposals`          | {count, plural, one {One more proposal follows} other {# more proposals follow}} once you answer this card | 你回复此卡片后，还会有 {count, plural, other {# 个提议}}                     |
 | The budget is spent                  | `turn.budget`                 | Chat paused until {when}: today's model budget is spent. Orders keep running.                              | 对话暂停至 {when}：今日模型预算已用完。自动订单继续运行。                    |
 | Stopped                              | `turn.stopped`                | Stopped. Anything you already confirmed still goes through.                                                | 已停止。你已确认的操作仍会执行。                                             |
 | Stopped, a proposal's card open      | `turn.stoppedCardOpen`        | 🟡 Stopped. The card of its proposal is still open: answer it there.                                       | 🟡 已停止。其提议的卡片仍待处理，请在卡片上回复。                            |
@@ -711,6 +711,38 @@ The questions of `FIRST-CHAT.md`, in this order:
 | 6   | Never        | Which tokens or kinds of tokens should I never touch?                                                                            | 哪些代币或哪类代币我绝对不要碰？                                                                                 |
 | 7   | When to ask  | When should I ask you first, and when may I act within your limits without asking?                                               | 什么情况下我要先问你，什么情况下可以在你的限额内直接操作？                                                       |
 | 8   | Reports      | How often should I report to you, and how short should my messages be?                                                           | 我应该多久向你汇报一次？消息要多简短？                                                                           |
+
+<a id="section-8-4"></a>
+
+### 8.4 The chat in Telegram
+
+How the owner's messages reach the agent and its replies reach the owner in Telegram
+([decision 0178](../DECISIONS.md#d0178)).
+
+- **The owner's messages.** A message that is not a fast command goes to the agent with
+  `chat/post` (spec 1, section 7.7). Messages that come within 300 ms of each other, such as a
+  paste Telegram split or an album, go as one, a line apart, at most 12 messages, 50,000
+  characters or 3 seconds of them. An edit, a forwarded message, and a message with neither text
+  nor a photo go nowhere and are answered at once.
+- **Photos.** A message carries at most 4 photos of at most 5 MiB each; the others are left out
+  and the owner is told how many. Each goes as `tg:<file_id>` of its largest size.
+- **The reply.** When the agent's turn starts, one status message shows how long it has worked,
+  or the text it has written so far, edited about once a second. The final answer goes as new
+  messages, split at 4,096 characters, and the status message is deleted. A status line of
+  section 8.1 follows in italics. The agent's words are always shown as text: escaped, with every
+  character a reader cannot see written as `\u{…}`.
+- **Rate limits.** An edit of the status message is a preview: when Telegram asks the bot to wait,
+  or another message waits for the chat, the edit is dropped and the next one carries its text.
+  Answers, status lines and cards wait and go.
+
+| When                     | Key                           | English                                                                                                                                                                              | 中文                                                                                                    |
+| ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| The status message       | `telegram.chat.working`       | Working on it · {seconds} s                                                                                                                                                          | 处理中 · {seconds} 秒                                                                                   |
+| Photos past 4            | `telegram.chat.photosLeftOut` | The agent reads 4 photos of a message at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send {count, plural, one {it} other {them}} in another message. | Agent 每条消息最多读取 4 张图片，因此有 {count, plural, other {# 张图片}}未发送。请在另一条消息中发送。 |
+| A photo over 5 MiB       | `telegram.chat.photoTooLarge` | The agent reads photos of 5 MiB at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send a smaller copy.                                                  | Agent 只读取不超过 5 MiB 的图片，因此有 {count, plural, other {# 张图片}}未发送。请发送更小的图片。     |
+| A forwarded message      | `telegram.chat.forwarded`     | A forwarded message does not reach the agent. Write what you want it to read in a message of your own.                                                                               | 转发的消息不会发送给 Agent。请把你想让它读取的内容写在你自己的消息中。                                  |
+| An edit                  | `telegram.chat.edited`        | An edit does not reach the agent. Send a new message instead.                                                                                                                        | 编辑后的消息不会发送给 Agent。请发送一条新消息。                                                        |
+| Neither text nor a photo | `telegram.chat.unsupported`   | The agent reads text and photos. Send this as text or as a photo.                                                                                                                    | Agent 只读取文字和图片。请以文字或图片的形式发送。                                                      |
 
 <a id="section-9"></a>
 
