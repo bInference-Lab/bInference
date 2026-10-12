@@ -1,48 +1,16 @@
 import type {
   CeilingCapsDefinition,
   ChainDefinition,
-  ContractDefinition,
   PriceFeedDefinition,
-  TokenDefinition,
 } from "@binference/chain";
+import { registryEntryMakers } from "./entries/registry-entry-makers.js";
 
 // Every address here was read on chain on this day: its code, proxy slots and owner, and a call
 // that ties it to its siblings. KyberSwap's contracts were read a day later and OKX's three days
 // later; each says so.
 const checkedOn = "2026-10-06";
 
-type TokenRow = readonly [symbol: string, name: string, decimals: number, address: string];
-
-type AddressesBySource = Readonly<Record<string, Readonly<Record<string, string>>>>;
-
-function createTokens(
-  rowsBySource: Readonly<Record<string, readonly TokenRow[]>>,
-): TokenDefinition[] {
-  return Object.entries(rowsBySource).flatMap(([source, rows]) =>
-    rows.map(([symbol, name, decimals, address]): TokenDefinition => ({
-      symbol,
-      name,
-      decimals,
-      address,
-      verification: { source, checkedOn, control: "read" },
-    })),
-  );
-}
-
-function createContracts(
-  venue: string,
-  sources: AddressesBySource,
-  readOn = checkedOn,
-): ContractDefinition[] {
-  return Object.entries(sources).flatMap(([source, addresses]) =>
-    Object.entries(addresses).map(([name, address]): ContractDefinition => ({
-      venue,
-      name,
-      address,
-      verification: { source, checkedOn: readOn, control: "read" },
-    })),
-  );
-}
+const { createTokens, createContracts } = registryEntryMakers(checkedOn);
 
 // Stablecoins on BSC have 18 decimals, not the 6 they have elsewhere.
 const tokens = createTokens({
