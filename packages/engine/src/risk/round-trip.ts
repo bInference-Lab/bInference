@@ -8,6 +8,7 @@ import {
   type SimulatedStep,
   type TxDraft,
   type TxSimulator,
+  type VenueQuote,
 } from "@binference/chain";
 import { type Bps, bpsPerWhole, bpsSchema, type Random } from "@binference/core";
 import type { TradeQuote, VenueHost } from "../venues/venue-host.js";
@@ -50,6 +51,7 @@ interface Probe {
 }
 
 const unavailable: RoundTrip = { kind: "unavailable" };
+const noTax: Bps = bpsSchema.parse(0);
 // The test legs are never sent, so they accept any output: a tax must not trip a minimum.
 const anyOutput: Bps = bpsSchema.parse(bpsPerWhole);
 const seedBytes = 32;
@@ -83,6 +85,10 @@ async function simulate(
   });
 }
 
+// The tax a venue's own contract takes on a leg, which the leg's transfers never show.
+const venueTaxOf = (quote: VenueQuote): Bps => quote.taxBps ?? noTax;
+const higher = (left: Bps, right: Bps): Bps => (left > right ? left : right);
+
 const transfersOf = (steps: readonly SimulatedStep[]): readonly AssetTransfer[] =>
   steps.flatMap((step) => step.transfers);
 const hasReverted = (steps: readonly SimulatedStep[]): boolean =>
@@ -98,11 +104,14 @@ async function buyOf(probe: Probe): Promise<readonly TxDraft[] | undefined> {
   return built.ok ? built.value.steps.map((step) => step.draft) : undefined;
 }
 
+/** A sale's steps, and the tax its venue's own contract takes on it. */
+interface Sale {
+  readonly drafts: readonly TxDraft[];
+  readonly venueTaxBps: Bps;
+}
+
 // A sale of what the holder holds back into the trade's input, quoted and built for the holder.
-async function saleOf(
-  probe: Probe,
-  held: bigint,
-): Promise<readonly TxDraft[] | "no_route" | undefined> {
+async function saleOf(probe: Probe, held: bigint): Promise<Sale | "no_route" | undefined> {
   const { host } = probe.options;
   const { trade } = probe.quoted;
   const sale = {
@@ -117,7 +126,12 @@ async function saleOf(
     return quoted.error === "no_route" ? "no_route" : undefined;
   }
   const built = await host.build(quoted.value, { signal: probe.signal });
-  return built.ok ? built.value.steps.map((step) => step.draft) : undefined;
+  return built.ok
+    ? {
+        drafts: built.value.steps.map((step) => step.draft),
+        venueTaxBps: venueTaxOf(quoted.value.quote),
+      }
+    : undefined;
 }
 
 interface Legs {
@@ -159,17 +173,19 @@ async function roundTrip(probe: Probe): Promise<RoundTrip> {
   if (sale === "no_route") {
     return { kind: "refused", leg: "sell" };
   }
-  const steps = await simulate(probe, [...legs.buy, legs.send, ...sale]);
+  const steps = await simulate(probe, [...legs.buy, legs.send, ...sale.drafts]);
   const sold = transfersOf(steps.slice(legs.buy.length + 1));
   const input = { asset: probe.quoted.trade.amountIn.asset, family: probe.token.family };
   if (hasReverted(steps) || netIn(sold, probe.holder, input) <= 0n) {
     return { kind: "refused", leg: "sell" };
   }
+  const bought = transfersOf(steps.slice(0, legs.buy.length));
+  const soldTax = sellTaxBps(sold, probe.holder, { sold: legs.held, token: probe.token });
   return {
     kind: "measured",
-    buyTaxBps: buyTaxBps(transfersOf(steps.slice(0, legs.buy.length)), probe.buyer, probe.token),
+    buyTaxBps: higher(buyTaxBps(bought, probe.buyer, probe.token), venueTaxOf(probe.quoted.quote)),
     transferTaxBps: lostBps(legs.bought, legs.held),
-    sellTaxBps: sellTaxBps(sold, probe.holder, { sold: legs.held, token: probe.token }),
+    sellTaxBps: higher(soldTax, sale.venueTaxBps),
   };
 }
 
@@ -178,7 +194,8 @@ async function roundTrip(probe: Probe): Promise<RoundTrip> {
  * accounts made fresh for this trade, so no token can tell them from any new buyer: the first buys
  * with the trade's own input on the trade's own venue, sends all it bought to the second, and the
  * second sells it all back into that input. Each leg runs unsent on the chain's latest state,
- * accepting any output, and each leg's tax is read from the transfers it made. A transfer that
+ * accepting any output, and each leg's tax is read from the transfers it made, or is the tax the
+ * leg's venue quoted as its own contract's when that is higher. A transfer that
  * reverts or delivers nothing is a refused transfer; a sale with no route, that reverts or pays
  * nothing, a refused sale. A buy the venue will not build, that reverts or buys nothing is
  * `unavailable`, since the trade's own simulation decides whether the wallet can buy. When the

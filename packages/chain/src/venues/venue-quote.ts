@@ -29,6 +29,13 @@ export interface VenueQuote {
    */
   readonly priceImpactBps: Bps;
   /**
+   * The token tax the venue's own contract takes on this trade, which no token transfer shows,
+   * such as a launchpad's tax on its curve, taken in the asset the curve trades against. The risk
+   * check counts it as the leg's tax. Left out, the venue takes none; a tax the token takes on its
+   * transfers is the round trip's to measure.
+   */
+  readonly taxBps?: Bps;
+  /**
    * The venue's own record of the route it quoted, given back to its builder. The host stores it
    * and never reads it.
    */
@@ -39,6 +46,7 @@ export interface VenueQuote {
 export interface VenueQuoteWire {
   readonly expectedOut: AmountWire;
   readonly priceImpactBps: number;
+  readonly taxBps?: number;
   readonly route?: string;
 }
 
@@ -46,5 +54,6 @@ export interface VenueQuoteWire {
 export const venueQuoteSchema: z.ZodType<VenueQuote, VenueQuoteWire> = z.strictObject({
   expectedOut: amountSchema,
   priceImpactBps: bpsSchema,
+  taxBps: bpsSchema.exactOptional(),
   route: z.string().exactOptional(),
 });

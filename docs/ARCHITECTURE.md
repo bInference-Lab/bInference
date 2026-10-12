@@ -430,7 +430,9 @@ hash and nonce and never signed again, and the intent goes on to `executing` or 
   the owner's maximum.
 - When the risk sources are down, unknown tokens fail closed.
 - [Decision 0112](DECISIONS.md#d0112) sets which sources a token needs and what blocks it;
-  [decision 0113](DECISIONS.md#d0113) how the round trip measures each leg's tax.
+  [decision 0113](DECISIONS.md#d0113) how the round trip measures each leg's tax, and
+  [decision 0181](DECISIONS.md#d0181) how it counts a tax the venue's own contract takes, such as
+  a launchpad's on its curve.
 
 <a id="section-8"></a>
 

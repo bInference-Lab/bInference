@@ -28,6 +28,13 @@ describe("venue schemas", () => {
     expect(decodedEffectSchema.encode(decodedEffectSchema.parse(effect))).toStrictEqual(effect);
   });
 
+  it("reads the tax a venue's own contract takes in its quote", () => {
+    const quote = { expectedOut: { asset: token, base: "2" }, priceImpactBps: 410, taxBps: 300 };
+    expect(venueQuoteSchema.parse(quote).taxBps).toBe(300);
+    expect(venueQuoteSchema.encode(venueQuoteSchema.parse(quote))).toStrictEqual(quote);
+    expect(venueQuoteSchema.safeParse({ ...quote, taxBps: 10_001 }).success).toBe(false);
+  });
+
   it("reads an effect with no deadline as a call that carries none", () => {
     const effect = {
       recipient: "fake:1:0x0000000c",

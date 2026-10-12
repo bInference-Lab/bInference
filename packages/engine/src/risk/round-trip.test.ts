@@ -1,6 +1,6 @@
 import { accountRefParts, accountRefSchema, type TxSimulator, type Venue } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
-import { err } from "@binference/core";
+import { bpsSchema, err, ok } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { testAccount, testChains } from "../operations/test-engine.js";
@@ -60,6 +60,21 @@ function unbuiltSale(): Venue {
   };
 }
 
+// A venue whose own contract takes a tax on each side of the token, as a launchpad's curve does:
+// no transfer shows it, so only its quotes name it.
+function curveTaxVenue(taxes: { readonly buy: number; readonly sell: number }): Venue {
+  const venue = createFakeVenue();
+  return {
+    ...venue,
+    quote: async (request, options) => {
+      const quoted = await venue.quote(request, options);
+      const isSale = request.amountIn.asset === unknownToken;
+      const taxBps = bpsSchema.parse(isSale ? taxes.sell : taxes.buy);
+      return quoted.ok ? ok({ ...quoted.value, taxBps }) : quoted;
+    },
+  };
+}
+
 describe("round trip", () => {
   it("measures each leg's tax from two fresh accounts, in three simulations", async () => {
     const options = optionsOf({ buyTaxBps: 300, transferTaxBps: 100, sellTaxBps: 4_000 });
@@ -70,6 +85,30 @@ describe("round trip", () => {
       sellTaxBps: 4_000,
     });
     expect(options.simulator.runs()).toBe(3);
+  });
+
+  it("counts the tax a venue's own contract takes on a leg that its transfers never show", async () => {
+    const options = optionsOf({}, [curveTaxVenue({ buy: 300, sell: 500 })]);
+    const quoted = unknownTokenQuote(nowMs);
+    const taxed = { ...quoted, quote: { ...quoted.quote, taxBps: bpsSchema.parse(300) } };
+    await expect(probeRoundTrip(taxed, options, live)).resolves.toStrictEqual({
+      kind: "measured",
+      buyTaxBps: 300,
+      transferTaxBps: 0,
+      sellTaxBps: 500,
+    });
+  });
+
+  it("keeps the measured tax of a leg when it is above the venue's own", async () => {
+    const options = optionsOf({ buyTaxBps: 700, sellTaxBps: 900 }, [
+      curveTaxVenue({ buy: 300, sell: 500 }),
+    ]);
+    const quoted = unknownTokenQuote(nowMs);
+    const taxed = { ...quoted, quote: { ...quoted.quote, taxBps: bpsSchema.parse(300) } };
+    await expect(probeRoundTrip(taxed, options, live)).resolves.toMatchObject({
+      buyTaxBps: 700,
+      sellTaxBps: 900,
+    });
   });
 
   it("measures no tax for a token that takes none", async () => {

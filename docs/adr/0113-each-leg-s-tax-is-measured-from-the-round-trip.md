@@ -1,6 +1,6 @@
 # 0113. Each leg's tax is measured from the round trip
 
-Status: Accepted
+Status: Amended by 0181
 
 ## Context
 
