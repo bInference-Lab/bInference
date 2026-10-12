@@ -11,7 +11,8 @@ export type {
 export { fixtureSettings, fixtureStartLine } from "./testing/start-line-fixture.js";
 export { createTurnRecorder } from "./testing/turn-recorder.js";
 export type { RecordedStep, TurnRecorder, TurnRecorderOptions } from "./testing/turn-recorder.js";
-export { createTestTurn } from "./loop/test-turns.js";
+export { createTestTurn, testToolBox } from "./loop/test-turns.js";
+export { runNodeRuntime } from "./process/node-runtime.js";
 export type { TestTool, TestTurn, TestTurnOptions } from "./loop/test-turns.js";
 export type { OwnerMessage } from "./loop/model-message.js";
 export type {
