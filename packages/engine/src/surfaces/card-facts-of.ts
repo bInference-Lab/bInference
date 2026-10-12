@@ -241,6 +241,7 @@ function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | 
       hasUnusualName: false,
       isNewAddress: false,
       ...(isLinked ? { exitsLinkedToken: request.token } : {}),
+      ...(request.worstPrice === undefined ? {} : { worstPrice: request.worstPrice }),
     },
     ...(reason === undefined ? {} : { reason }),
   };

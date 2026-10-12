@@ -328,6 +328,7 @@ for a buy's, and `{condition}` is "at or above {price}" or "at or below {price}"
 | DCA            | `card.order.summary.dca`        | buy {token} with {spend} {schedule}, {count, plural, =0 {until the order ends} one {once} other {# times}}          | {schedule}{spend} 买入 {token}，{count, plural, =0 {直到订单结束} other {共 # 次}}                                                           |
 | Copy trade     | `card.order.summary.copy`       | copy {leader}'s buys at {perBuy} each, at most {daily} a day, and sell the share {leader} sells                     | 跟单 {leader} 的买入，每笔 {perBuy}，每天最多 {daily}；{leader} 卖出多少比例，你就卖出相同比例                                               |
 | Linked exits   | `card.order.exitsLinked`        | When an exit order sells all your {token}, your other exit orders on it end                                         | 当一个平仓订单卖出你持有的全部 {token} 时，该持仓的其他平仓订单随之结束                                                                      |
+| Worst price    | `card.order.worstPrice`         | Every fill trades at {price} or better                                                                              | 每次成交都以不差于 {price} 的价格交易                                                                                                        |
 
 - `{leader}` is the leader wallet's address book label, else its short address
   (`0x12ab…cd34`).

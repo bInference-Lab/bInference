@@ -4,7 +4,7 @@ import type { FillPrice, OrderFills } from "./fill-orders.js";
 import { moveOrder } from "./order-machine.js";
 import { hasPriceTrigger, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
-import { wholeTokenPrice } from "./price-level.js";
+import { type PriceLevel, wholeTokenPrice } from "./price-level.js";
 import { judgeTrigger, type TriggerState, triggerStateDocument } from "./price-triggers.js";
 
 /** One confirmed price of a watched token, as the price watcher read it at a block. */
@@ -113,6 +113,12 @@ async function keepState(
   return kept;
 }
 
+// A limit or take-profit fill holds its order's level at its own quote whatever the pool's depth;
+// a stop-loss or a trailing stop, which must sell, only after a thin pool's price (decision 0197).
+function holdsLevelAtFill(order: OrderRecord): boolean {
+  return order.kind === "limit" || order.kind === "takeProfit";
+}
+
 // Judges one order on one price; a lost write of its kept state is judged again on the order read
 // back. Answers the fill's price when the order fires.
 async function judgeOrder(
@@ -137,12 +143,14 @@ async function judgeOrder(
       ? judgeOrder(parts, active, { ...call, order: again, left: left - 1 })
       : undefined;
   }
-  if (judged?.fires !== true) {
-    return undefined;
-  }
+  return judged?.fires === true ? fillPriceOf(order, price, judged.level) : undefined;
+}
+
+// The price a fill runs at, with the level its own quote must meet when it must.
+function fillPriceOf(order: OrderRecord, price: WatchedOrderPrice, level: PriceLevel): FillPrice {
   const { usdPerBaseUnit, decimals } = price;
-  return price.isThin
-    ? { usdPerBaseUnit, decimals, confirm: judged.level }
+  return price.isThin || holdsLevelAtFill(order)
+    ? { usdPerBaseUnit, decimals, confirm: level }
     : { usdPerBaseUnit, decimals };
 }
 

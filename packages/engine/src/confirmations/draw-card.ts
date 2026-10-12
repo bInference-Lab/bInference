@@ -65,6 +65,8 @@ export interface CardWarnings {
    * ends the others (spec 4, section 3.8). Absent shows no line.
    */
   readonly exitsLinkedToken?: AssetRef;
+  /** An auto order's worst price, which every fill keeps to (decision 0197). Absent shows no line. */
+  readonly worstPrice?: bigint;
 }
 
 /**
@@ -170,6 +172,10 @@ function exitsLinkedLine(token: AssetRef): CardLine {
   return { key: "card.order.exitsLinked", values: { token: { type: "asset", asset: token } } };
 }
 
+function worstPriceLine(price: bigint): CardLine {
+  return { key: "card.order.worstPrice", values: { price: { type: "usd", usdMicros: price } } };
+}
+
 function taxLines(taxBps: Bps | undefined): readonly CardLine[] {
   return taxBps === undefined || taxBps === 0
     ? []
@@ -192,6 +198,7 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
     ...optional(warnings.placeChangedToken, placeChangedLine),
     ...shown([[warnings.hasNoDeadline === true, "card.warn.noDeadline"]]),
     ...optional(warnings.exitsLinkedToken, exitsLinkedLine),
+    ...optional(warnings.worstPrice, worstPriceLine),
     ...shown([
       [facts.isPaper, "card.warn.paper"],
       [warnings.isEstimate === true, "card.warn.paperEstimate"],

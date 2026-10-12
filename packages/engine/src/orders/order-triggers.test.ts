@@ -1,7 +1,9 @@
 import { assetRefSchema } from "@binference/chain";
+import { createFakeVenue } from "@binference/chain/testing";
 import { bpsSchema, type Ratio } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testToken } from "../intents/test-intents.js";
+import { firstFillWaitMs } from "./fill-pacing.js";
 import type { WatchedOrderPrice } from "./order-triggers.js";
 import { triggerStateDocument } from "./price-triggers.js";
 import { activeOrder, fillIntentsOf, startFillEngine, wholeToken } from "./test-fills.js";
@@ -116,20 +118,23 @@ describe("price triggers", () => {
     expect(dropped).toStrictEqual([{ order: order.id, outcome: "filled" }]);
   });
 
-  it("fill a thin pool's trigger only when the fill's own quote meets it too", async () => {
-    const test = await startFillEngine();
-    const takeProfit = await activeOrder(test, {
-      ...testStopLoss(),
-      kind: "takeProfit",
-      trigger: { price: 700_000n },
-    });
+  it("fill a stop-loss on a thin pool's price only when the fill's own quote meets it too", async () => {
+    // A venue that pays $1.20 a token: above the stop, so only a deep pool's price fills it.
+    const dollarTwenty = createFakeVenue({ rate: { numerator: 2n * 10n ** 9n, denominator: 1n } });
+    const test = await startFillEngine({ venues: [dollarTwenty] });
+    const stop = await activeOrder(test, testStopLoss());
 
-    const outcomes = await test.engine.seePrice(at(800_000n, true), live);
+    const thin = await test.engine.seePrice(at(800_000n, true), live);
+    await test.clock.advance(firstFillWaitMs);
+    const deep = await test.engine.seePrice(at(800_000n), live);
 
-    expect(outcomes).toStrictEqual([{ order: takeProfit.id, outcome: "skipped" }]);
+    expect([thin, deep]).toStrictEqual([
+      [{ order: stop.id, outcome: "skipped" }],
+      [{ order: stop.id, outcome: "filled" }],
+    ]);
     expect(await fillIntentsOf(test)).toMatchObject([
       { state: "failed_check", reason: "trigger_unconfirmed" },
+      { state: "paper_filled" },
     ]);
-    expect((await storedOrder(test, takeProfit.id)).state).toBe("active");
   });
 });

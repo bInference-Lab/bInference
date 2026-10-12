@@ -1,3 +1,4 @@
+import { createFakeVenue } from "@binference/chain/testing";
 import { bpsSchema, type Id, idSchema, type JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
@@ -197,7 +198,9 @@ describe("an auto order's fill", () => {
   });
 
   it("ends the position's other exit orders in the fill's own write when it sells all", async () => {
-    const test = await startFillEngine();
+    // A venue that pays $1.20 a token, so the take-profit's own quote meets its $0.70 level.
+    const dollarTwenty = createFakeVenue({ rate: { numerator: 2n * 10n ** 9n, denominator: 1n } });
+    const test = await startFillEngine({ venues: [dollarTwenty] });
     const profit = await activeOrder(test, takeProfit);
     const stop = await activeOrder(test, testStopLoss());
 

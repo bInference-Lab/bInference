@@ -111,6 +111,13 @@ function areBoundsValid(request: OrderRequest, nowMs: number): boolean {
   );
 }
 
+// A limit or take-profit order trades no worse than its trigger price unless the request names
+// a worst price of its own (decision 0197); a stop-loss or a trailing stop, which must sell, none.
+function worstPriceOf(request: OrderRequest): bigint | undefined {
+  const isLevelOrder = request.kind === "limit" || request.kind === "takeProfit";
+  return request.worstPrice ?? (isLevelOrder ? request.trigger.price : undefined);
+}
+
 // One fill unless the request names more, for every kind (decision 0197).
 function maxFillsOf(request: OrderRequest): number {
   return request.maxFills ?? 1;
@@ -129,13 +136,23 @@ function filledOrder(
   const expiresAtMs = request.expiresAt ?? nowMs + defaultOrderLifetimeMs;
   const limit = { maxFills: maxFillsOf(request) };
   const spend = found.spend === undefined ? {} : { spend: found.spend };
-  const filled = { ...request, token: found.token, ...spend, expiresAt: expiresAtMs, ...limit };
+  const worst = worstPriceOf(request);
+  const worstPrice = worst === undefined ? {} : { worstPrice: worst };
+  const filled = {
+    ...request,
+    token: found.token,
+    ...spend,
+    ...worstPrice,
+    expiresAt: expiresAtMs,
+    ...limit,
+  };
   return { request: filled, expiresAtMs, ...limit, chain: found.chain };
 }
 
 /**
  * Checks an `order/create` request against the rules of decisions 0189 and 0190 and fills its
- * defaults: an expiry 30 days after `nowMs`, one fill for an order that names no more (decision 0197),
+ * defaults: an expiry 30 days after `nowMs`, one fill for an order that names no more, a limit or
+ * take-profit order's trigger price as its worst price (decision 0197),
  * and the chain's coin as what a buy spends. A DCA or copy order is `order.kind_unavailable`; any
  * other broken rule `protocol.bad_args`.
  */

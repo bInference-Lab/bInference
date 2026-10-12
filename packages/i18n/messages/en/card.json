@@ -32,6 +32,7 @@
   "order.summary.stopLoss": "{sell} when the price falls to {price}",
   "order.summary.trailing": "{sell} when the price falls {distance} below its highest since the order started",
   "order.exitsLinked": "When an exit order sells all your {token}, your other exit orders on it end",
+  "order.worstPrice": "Every fill trades at {price} or better",
   "place.curve": "the {launchpad} curve",
   "route": "Route  {route} · impact {impact} · max slippage {slippage}",
   "fees": "Fees   network ≈ {fee}{privateSend, select, yes { · private send} other {}}",
