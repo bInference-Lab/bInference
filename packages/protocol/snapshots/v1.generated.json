@@ -1932,6 +1932,215 @@
         "result"
       ]
     },
+    "call/notice/getSettings": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "notice/getSettings"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
+          "required": [
+            "agent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/notice/getSettings": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "muted": {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][A-Za-z]{0,47}$"
+              }
+            },
+            "mutable": {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][A-Za-z]{0,47}$"
+              }
+            },
+            "dailySummaryTime": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "required": [
+            "muted",
+            "mutable",
+            "dailySummaryTime"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/notice/setSettings": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "notice/setSettings"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "muted": {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][A-Za-z]{0,47}$"
+              }
+            },
+            "dailySummaryTime": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "required": [
+            "agent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "admin",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/notice/setSettings": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "muted": {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][A-Za-z]{0,47}$"
+              }
+            },
+            "mutable": {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][A-Za-z]{0,47}$"
+              }
+            },
+            "dailySummaryTime": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+            }
+          },
+          "required": [
+            "muted",
+            "mutable",
+            "dailySummaryTime"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
     "call/telegram/pair": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",

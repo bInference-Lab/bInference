@@ -45,5 +45,6 @@ export function withLimitsInEffect(store: AgentStore, clock: Clock): AgentStore 
     addAddress: async (entry, options) => store.addAddress(entry, options),
     removeAddress: async (removal, options) => store.removeAddress(removal, options),
     setMode: async (change, options) => store.setMode(change, options),
+    setNotifications: async (change, options) => store.setNotifications(change, options),
   };
 }

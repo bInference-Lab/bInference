@@ -2,6 +2,7 @@ import { err, type Id, ok, type Result } from "@binference/core";
 import {
   type AgentDraft,
   type AgentModeChange,
+  type AgentNotificationsChange,
   type AgentRecord,
   type AgentSettings,
   agentSettingsOf,
@@ -47,9 +48,11 @@ function current(
   return version(settings) === change.expectedVersion ? ok(settings) : err("stale");
 }
 
-function setMode(
+// Writes fields of the agent row under the version the changer read, and raises that version.
+function setAgentRow(
   agents: Agents,
-  change: AgentModeChange,
+  change: AgentModeChange | AgentNotificationsChange,
+  fields: Partial<Pick<AgentRecord, "mode" | "notifications">>,
 ): Result<AgentRecord, "not_found" | "stale"> {
   const found = current(agents, change, (settings) => settings.agent.version);
   if (!found.ok) {
@@ -57,7 +60,7 @@ function setMode(
   }
   const agent = {
     ...found.value.agent,
-    mode: change.mode,
+    ...structuredClone(fields),
     changedAtMs: change.atMs,
     version: change.expectedVersion + 1,
   };
@@ -213,7 +216,10 @@ export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): M
     setApprovalMode: async (change, call) =>
       memoryCall(call, () => setApprovalMode(agents, change)),
     setLimits: async (change, call) => memoryCall(call, () => setLimits(agents, change)),
-    setMode: async (change, call) => memoryCall(call, () => setMode(agents, change)),
+    setMode: async (change, call) =>
+      memoryCall(call, () => setAgentRow(agents, change, { mode: change.mode })),
+    setNotifications: async (change, call) =>
+      memoryCall(call, () => setAgentRow(agents, change, { notifications: change.notifications })),
     setSendLevel: async (change, call) => memoryCall(call, () => setSendLevel(agents, change)),
     addAddress: async (entry, call) =>
       memoryCall(call, () => (agents.has(entry.agentId) ? book.add(entry) : err("not_found"))),

@@ -52,14 +52,11 @@ import {
 } from "../send-levels/send-level-handlers.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
-import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
-import { type CeilingHandlers, createCeilingHandlers } from "./ceiling-handlers.js";
 import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
-import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
-import { createWalletHandlers, type WalletHandlers } from "./wallet-handlers.js";
+import { type SettingsHandlers, settingsHandlers } from "./settings-handlers.js";
 
 /** The operation handlers the engine gives the protocol server, by operation name. */
 export interface EngineHandlers
@@ -68,16 +65,13 @@ export interface EngineHandlers
     IntentHandlers,
     LedgerHandlers,
     ConfigHistoryHandlers,
-    PortfolioHandlers,
-    AgentModeHandlers,
+    SettingsHandlers,
     ApprovalHandlers,
     LimitHandlers,
     SendLevelHandlers,
     AddressBookHandlers,
     RescueAddressHandlers,
-    SafetyHandlers,
-    WalletHandlers,
-    CeilingHandlers {}
+    SafetyHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
@@ -160,57 +154,6 @@ export interface EngineOptions extends MarketParts {
    * that starts the runtime keeps; an engine with no runtime has none started.
    */
   readonly turns?: RunningTurns;
-}
-
-function settingsHandlers(
-  options: EngineOptions,
-  paper: PaperParts,
-): PortfolioHandlers & AgentModeHandlers & WalletHandlers & CeilingHandlers {
-  const { stores, chains } = options;
-  const portfolio = createPortfolioHandlers({
-    marketReads: options.marketReads,
-    agents: stores.agents,
-    install: stores.install,
-    portfolio: paper.portfolio,
-    positions: paper.positions,
-    store: options.positions,
-    wallets: options.wallets,
-    prices: options.prices,
-    chains,
-  });
-  const modes = createAgentModeHandlers({
-    agents: stores.agents,
-    journal: stores.configJournal,
-    wallets: options.wallets,
-    custody: options.custody,
-    chains,
-    clock: options.clock,
-    publish: options.publish,
-  });
-  const wallets = createWalletHandlers({
-    agents: stores.agents,
-    install: stores.install,
-    custody: options.custody,
-    ceilings: options.ceilings,
-    maker: options.walletMaker,
-    ...(options.exporter === undefined ? {} : { exporter: options.exporter }),
-    ...(options.revoker === undefined ? {} : { revoker: options.revoker }),
-    journal: stores.configJournal,
-    chains,
-    clock: options.clock,
-    ids: options.ids,
-    publish: options.publish,
-  });
-  const ceilings = createCeilingHandlers({
-    agents: stores.agents,
-    install: stores.install,
-    ceilings: options.ceilings,
-    journal: stores.configJournal,
-    chains,
-    clock: options.clock,
-    publish: options.publish,
-  });
-  return { ...portfolio, ...modes, ...wallets, ...ceilings };
 }
 
 // A re-quote at a tap weighs every venue as the money path does, on the paper balances.

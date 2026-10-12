@@ -179,6 +179,23 @@ async function setsMode(store: AgentStore): Promise<void> {
   assert.equal(stored?.limits.version, 0);
 }
 
+async function setsNotifications(store: AgentStore): Promise<void> {
+  await store.create(draft(1), live());
+  const agentId = draft(1).id;
+  const notifications = { muted: ["fill", "lowGas"], dailySummaryTime: "08:30" };
+  const change = { agentId, notifications, atMs: 4_000, expectedVersion: 0 };
+  const set = await store.setNotifications(change, live());
+  const { id, name, mode, locale, models, atMs } = draft(1);
+  const fields = { id, name, mode, locale, models, notifications };
+  const record = { ...fields, createdAtMs: atMs, changedAtMs: 4_000, version: 1 };
+  assert.deepEqual(set, { ok: true, value: record });
+  assert.deepEqual(await store.setNotifications(change, live()), { ok: false, error: "stale" });
+  const unknown = { ...change, agentId: fixtureId("agt", 9) };
+  const missing = await store.setNotifications(unknown, live());
+  assert.deepEqual(missing, { ok: false, error: "not_found" });
+  assert.deepEqual((await store.get(agentId, live()))?.agent, record);
+}
+
 async function setsSendLevel(store: AgentStore): Promise<void> {
   await store.create(draft(1), live());
   const agentId = draft(1).id;
@@ -254,6 +271,8 @@ async function refusesAborted(store: AgentStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.setLimits(change, options));
   const goLive = { agentId, mode: "live", atMs: 1, expectedVersion: 0 } as const;
   await assertRefusesAborted(async (options) => store.setMode(goLive, options));
+  const muted = { agentId, notifications: { muted: ["fill"] }, atMs: 1, expectedVersion: 0 };
+  await assertRefusesAborted(async (options) => store.setNotifications(muted, options));
   const locked = { agentId, level: 3, atMs: 1, expectedVersion: 0 } as const;
   await assertRefusesAborted(async (options) => store.setSendLevel(locked, options));
   await assertRefusesAborted(async (options) => store.addAddress(entry(1, "0xa"), options));
@@ -280,6 +299,11 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
       keepsPendingLimits,
     ),
     checkOn("sets the mode under the agent row's version the changer read", create, setsMode),
+    checkOn(
+      "sets the notice settings under the agent row's version the changer read",
+      create,
+      setsNotifications,
+    ),
     checkOn(
       "sets the send level and its pending level under the version read",
       create,

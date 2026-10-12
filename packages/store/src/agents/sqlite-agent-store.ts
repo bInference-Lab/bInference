@@ -7,6 +7,7 @@ import {
   setApprovalModeTask,
   setLimitsTask,
   setModeTask,
+  setNotificationsTask,
   setSendLevelTask,
 } from "./settings-tasks.js";
 
@@ -18,6 +19,7 @@ export const agentTasks: readonly TaskRunner[] = [
   setApprovalModeTask,
   setLimitsTask,
   setModeTask,
+  setNotificationsTask,
   setSendLevelTask,
   addAddressTask,
   removeAddressTask,
@@ -33,6 +35,7 @@ export function createSqliteAgentStore(host: StoreHost): AgentStore {
     setApprovalMode: bindTask(host, setApprovalModeTask),
     setLimits: bindTask(host, setLimitsTask),
     setMode: bindTask(host, setModeTask),
+    setNotifications: bindTask(host, setNotificationsTask),
     setSendLevel: bindTask(host, setSendLevelTask),
     addAddress: bindTask(host, addAddressTask),
     removeAddress: bindTask(host, removeAddressTask),

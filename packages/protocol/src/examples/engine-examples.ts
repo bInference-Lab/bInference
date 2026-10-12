@@ -95,6 +95,14 @@ export const engineExamples: { readonly [N in keyof EngineOperationShapes]: Wire
       delivered: { telegram: "unknown_after_send" },
     }),
   },
+  "notice/getSettings": {
+    args: { agent: ids.agent },
+    result: { muted: ["lowGas"], mutable: ["fill", "lowGas", "daily"], dailySummaryTime: "09:00" },
+  },
+  "notice/setSettings": {
+    args: { agent: ids.agent, muted: ["lowGas"], dailySummaryTime: "08:30" },
+    result: { muted: ["lowGas"], mutable: ["fill", "lowGas", "daily"], dailySummaryTime: "08:30" },
+  },
   "telegram/pair": {
     args: empty,
     result: {

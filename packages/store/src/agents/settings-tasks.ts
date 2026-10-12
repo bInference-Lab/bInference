@@ -1,3 +1,4 @@
+import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type AgentModeChange,
@@ -14,6 +15,10 @@ import {
   limitsRecordSchema,
 } from "@binference/engine";
 import {
+  type AgentNotificationsChange,
+  agentNotificationsChangeSchema,
+} from "@binference/engine/notices";
+import {
   type SendLevelChange,
   sendLevelChangeSchema,
   type SendLevelRecord,
@@ -21,6 +26,7 @@ import {
 } from "@binference/engine/sends";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { toAgentRecord, toApprovalMode, toSendLevel } from "./agent-rows.js";
@@ -101,6 +107,30 @@ export const setLimitsTask: StoreTask<
   },
 });
 
+// Writes columns of the agent row under the version the changer read, and raises that version.
+function setAgentRow(
+  database: DatabaseSync,
+  change: AgentModeChange | AgentNotificationsChange,
+  columns: { readonly mode?: string; readonly notifications?: string },
+): Result<AgentRecord, "not_found" | "stale"> {
+  const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
+  const found = versioned(
+    takeFirst(kysely.selectFrom("agents").selectAll().where("id", "=", change.agentId)),
+    change.expectedVersion,
+  );
+  if (!found.ok) {
+    return found;
+  }
+  const row = {
+    ...found.value,
+    ...columns,
+    changed_at: change.atMs,
+    version: change.expectedVersion + 1,
+  };
+  execute(kysely.updateTable("agents").set(row).where("id", "=", change.agentId));
+  return ok(toAgentRecord(row));
+}
+
 /** Sets an agent's mode under the agent row's version the changer read. */
 export const setModeTask: StoreTask<
   AgentModeChange,
@@ -110,24 +140,20 @@ export const setModeTask: StoreTask<
   access: "write",
   input: agentModeChangeSchema,
   output: resultSchema(agentRecordSchema, ["not_found", "stale"]),
-  run(database, change) {
-    const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
-    const found = versioned(
-      takeFirst(kysely.selectFrom("agents").selectAll().where("id", "=", change.agentId)),
-      change.expectedVersion,
-    );
-    if (!found.ok) {
-      return found;
-    }
-    const row = {
-      ...found.value,
-      mode: change.mode,
-      changed_at: change.atMs,
-      version: change.expectedVersion + 1,
-    };
-    execute(kysely.updateTable("agents").set(row).where("id", "=", change.agentId));
-    return ok(toAgentRecord(row));
-  },
+  run: (database, change) => setAgentRow(database, change, { mode: change.mode }),
+});
+
+/** Sets an agent's notice settings under the agent row's version the changer read. */
+export const setNotificationsTask: StoreTask<
+  AgentNotificationsChange,
+  Result<AgentRecord, "not_found" | "stale">
+> = defineTask({
+  name: "agents.set_notifications",
+  access: "write",
+  input: agentNotificationsChangeSchema,
+  output: resultSchema(agentRecordSchema, ["not_found", "stale"]),
+  run: (database, change) =>
+    setAgentRow(database, change, { notifications: jsonText(change.notifications) }),
 });
 
 /** Writes an agent's send level and any pending level under the version the changer read. */

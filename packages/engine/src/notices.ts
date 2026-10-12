@@ -23,3 +23,18 @@ export type { NoticeStamp } from "./notices/notice-record-of.js";
 export { storedNoticePush } from "./pushes/notice-push.js";
 export { createNoticeHandlers } from "./notices/notice-handlers.js";
 export type { NoticeHandlers } from "./notices/notice-handlers.js";
+export {
+  defaultNoticeSettings,
+  isMutableNoticeKind,
+  isNoticeMuted,
+  mutableNoticeKinds,
+  mutableNoticeKindSchema,
+  noticeSettingsDocument,
+  noticeSettingsOf,
+  noticeSettingsSchema,
+  timeOfDaySchema,
+} from "./notices/notice-settings.js";
+export type { MutableNoticeKind, NoticeSettings } from "./notices/notice-settings.js";
+export { isNoticeMutedFor } from "./notices/notice-muting.js";
+export { agentNotificationsChangeSchema } from "./agents/agent-record.js";
+export type { AgentNotificationsChange } from "./agents/agent-record.js";

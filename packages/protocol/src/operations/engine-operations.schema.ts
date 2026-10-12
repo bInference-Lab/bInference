@@ -23,6 +23,23 @@ interface HealthSignal {
   readonly since?: number;
 }
 
+/**
+ * An agent's notice settings (decision 0185): the kinds it muted, the kinds it may mute, and the
+ * owner's time of day of its daily summary, `HH:mm`.
+ */
+interface NoticeSettingsView {
+  readonly muted: readonly string[];
+  readonly mutable: readonly string[];
+  readonly dailySummaryTime: string;
+}
+
+/** A change of an agent's notice settings: the kinds muted from now on, the summary's time, or both. */
+interface NoticeSettingsChange {
+  readonly agent: ProtocolId<"agent">;
+  readonly muted?: readonly string[];
+  readonly dailySummaryTime?: string;
+}
+
 /** The answer of `engine/status`. */
 interface EngineStatus {
   readonly state: EngineState;
@@ -119,6 +136,19 @@ export interface EngineOperationShapes {
    * recorded after it.
    */
   readonly "notice/list": { readonly args: PageArgs; readonly result: Page<NoticeView> };
+  /** An agent's notice settings (decision 0185). */
+  readonly "notice/getSettings": {
+    readonly args: { readonly agent: ProtocolId<"agent"> };
+    readonly result: NoticeSettingsView;
+  };
+  /**
+   * Mutes the kinds `muted` names and no other, or moves the daily summary, for one agent; a kind
+   * that cannot be muted is refused (decision 0185).
+   */
+  readonly "notice/setSettings": {
+    readonly args: NoticeSettingsChange;
+    readonly result: NoticeSettingsView;
+  };
   /**
    * A new single-use start code for the owner's bot, valid 10 minutes: whoever opens its link
    * becomes the owner in place of the current one, who is told (decision 0139).
@@ -127,6 +157,27 @@ export interface EngineOperationShapes {
 }
 
 const freezeArgs = z.strictObject({ agent: protocolIdSchema("agent").exactOptional() });
+
+// A notice kind is a notice's name, the key after `notice.`, such as `fill`.
+const noticeKind = z.string().regex(/^[a-z][A-Za-z]{0,47}$/u);
+const noticeKinds = z.array(noticeKind).max(64);
+const timeOfDay = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/u);
+const noticeSettingsView: z.ZodType<NoticeSettingsView> = z.object({
+  muted: noticeKinds,
+  mutable: noticeKinds,
+  dailySummaryTime: timeOfDay,
+});
+const noticeSettingsChange: z.ZodType<NoticeSettingsChange> = z
+  .strictObject({
+    agent: protocolIdSchema("agent"),
+    muted: noticeKinds.exactOptional(),
+    dailySummaryTime: timeOfDay.exactOptional(),
+  })
+  .refine(
+    (change: NoticeSettingsChange) =>
+      change.muted !== undefined || change.dailySummaryTime !== undefined,
+    { message: "Name the kinds to mute, the summary's time, or both." },
+  );
 
 /** The engine and safety operations, by name. */
 export const engineOperations: OperationTable<EngineOperationShapes> = {
@@ -238,6 +289,20 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
     scope: "read",
     args: pageArgsSchema,
     result: pageSchema(noticeViewSchema),
+  },
+  "notice/getSettings": {
+    ...readFlags,
+    name: "notice/getSettings",
+    scope: "read",
+    args: z.strictObject({ agent: protocolIdSchema("agent") }),
+    result: noticeSettingsView,
+  },
+  "notice/setSettings": {
+    ...writeFlags,
+    name: "notice/setSettings",
+    scope: "admin",
+    args: noticeSettingsChange,
+    result: noticeSettingsView,
   },
   "telegram/pair": {
     // A read: the engine keeps no answer, so no idempotency entry ever holds a start code.

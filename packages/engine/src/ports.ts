@@ -9,6 +9,7 @@ import type { AddressEntryRecord, AddressEntryRemoval } from "./agents/address-e
 import type {
   AgentDraft,
   AgentModeChange,
+  AgentNotificationsChange,
   AgentRecord,
   AgentSettings,
 } from "./agents/agent-record.js";
@@ -499,6 +500,9 @@ export interface AccessStore extends WebPushSubscriptions, MiniAppLaunches {
   ): Promise<Result<PairCodeRecord, "unknown" | "expired" | "used">>;
 }
 
+/** A write to an agent's row: the row as written, or why nothing was written. */
+type AgentRowWrite = Promise<Result<AgentRecord, "not_found" | "stale">>;
+
 /**
  * Keeps the agents and the settings the money path reads: their limits, approval modes, send
  * levels and address books.
@@ -554,10 +558,9 @@ export interface AgentStore {
    * Sets the agent's mode under the agent row's version the changer read, and raises that version
    * by one. Another version is `stale` and writes nothing.
    */
-  setMode(
-    change: AgentModeChange,
-    options: StoreCall,
-  ): Promise<Result<AgentRecord, "not_found" | "stale">>;
+  setMode(change: AgentModeChange, options: StoreCall): AgentRowWrite;
+  /** Sets the agent's notice settings as `setMode` sets its mode (decision 0185). */
+  setNotifications(change: AgentNotificationsChange, options: StoreCall): AgentRowWrite;
 }
 
 /**

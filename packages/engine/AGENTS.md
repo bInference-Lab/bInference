@@ -204,7 +204,9 @@ Rules for this package:
   surface, and `createNoticeHandlers` answers `notice/list`. The composition root's notice log is
   their one writer. A surface moves a delivery only through `NoticeStore.move`, from the state it
   read, and back from `unknown_after_send` to `queued` only when the surface answered a refusal,
-  so nothing went out.
+  so nothing went out. Each agent's notice settings (`notice-settings.ts`, decision 0185) name the
+  kinds it muted; `isNoticeMutedFor` is the log's check, and a security notice is never muted.
+  `notice/getSettings` and `notice/setSettings` read and journal them.
 - The operation handlers (`src/operations/`) have the protocol server's handler shape, call the use
   cases and map their outcomes to protocol error codes; they hold no rule of their own.
 - Button surfaces (`src/surfaces/`, exported as `@binference/engine/surfaces`) read cards and

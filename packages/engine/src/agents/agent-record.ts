@@ -127,6 +127,25 @@ export const agentModeChangeSchema: z.ZodType<AgentModeChange> = z.strictObject(
   expectedVersion: rowVersionSchema,
 });
 
+/**
+ * New notice settings for an agent (decision 0185), under the agent row's version the changer
+ * read. The store keeps them as the document it is given.
+ */
+export interface AgentNotificationsChange {
+  readonly agentId: Id<"agt">;
+  readonly notifications: JsonValue;
+  readonly atMs: number;
+  readonly expectedVersion: number;
+}
+
+/** Parses an agent notifications change. */
+export const agentNotificationsChangeSchema: z.ZodType<AgentNotificationsChange> = z.strictObject({
+  agentId: idSchema("agt"),
+  notifications: jsonValueSchema,
+  atMs: epochMsSchema,
+  expectedVersion: rowVersionSchema,
+});
+
 /** The settings a new agent starts with: its draft's values, all at version 0, and no addresses. */
 export function agentSettingsOf(draft: AgentDraft): AgentSettings {
   const { atMs, limits, approvalMode, sendLevel, bySurface, ...agent } = draft;
