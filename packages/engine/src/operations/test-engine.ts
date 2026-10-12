@@ -48,6 +48,7 @@ import {
 import type { MarketReads } from "../market/ports.js";
 import { createSourceMarketReads } from "../market/source-market-reads.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
+import type { OrderFills } from "../orders/fill-orders.js";
 import type { OrderStore } from "../orders/ports.js";
 import type {
   AgentStore,
@@ -61,7 +62,7 @@ import type {
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import { createVenueHost } from "../venues/venue-host.js";
-import { createEngine, type Engine, type EngineOptions } from "./create-engine.js";
+import { createEngineWithFills, type Engine, type EngineOptions } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
 
 /**
@@ -142,8 +143,13 @@ export interface TestEngineOptions {
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
+/** The engine a test runs, with its order fills, which a test may run at any price. */
+type TestRunningEngine = Engine & { readonly fillOrder: OrderFills["run"] };
+
 export interface TestEngine {
-  readonly engine: Engine;
+  readonly engine: TestRunningEngine;
+  /** The options the engine was made with, as a restart makes it again. */
+  readonly engineOptions: EngineOptions;
   readonly stores: MemoryEngineStores;
   readonly clock: ManualClock;
   readonly custody: FakeSigner;
@@ -162,7 +168,7 @@ export interface TestEngine {
    * Starts a new engine on the same stores and fakes, as a restart does: nothing it kept in
    * memory survives, and it opens no paper portfolio again; with live fills turned as told.
    */
-  readonly restart: (changed?: Pick<EngineOptions, "liveOrderFills">) => Engine;
+  readonly restart: (changed?: Pick<EngineOptions, "liveOrderFills">) => TestRunningEngine;
 }
 
 /** What the fake wallet facts say of the test wallet unless a test changes them. */
@@ -279,9 +285,15 @@ function readsOf(
 // A new engine on the same stores, with ids of its own, as a restart starts one.
 function restartOf(
   options: EngineOptions,
-): (changed?: Pick<EngineOptions, "liveOrderFills">) => Engine {
+): (changed?: Pick<EngineOptions, "liveOrderFills">) => TestRunningEngine {
   const ids = createIdSource({ clock: options.clock, random: createSeededRandom(5) });
-  return (changed = {}) => createEngine({ ...options, ...changed, ids });
+  return (changed = {}) => runningEngineOf({ ...options, ...changed, ids });
+}
+
+// The engine with its order fills beside it, as a test runs it.
+function runningEngineOf(options: EngineOptions): TestRunningEngine {
+  const { engine, fillOrder } = createEngineWithFills(options);
+  return { ...engine, fillOrder };
 }
 
 /** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
@@ -326,11 +338,11 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     random: createSeededRandom(4),
     publish: (push) => pushes.push(push),
   };
-  const engine = createEngine(engineOptions);
+  const engine = runningEngineOf(engineOptions);
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });
   await openPaper(engine, options.paper ?? testPaperBalances);
   const fakes = { custody, positions, executor, pushes, ceilings, walletMaker, turns };
-  return { engine, stores, clock, ...fakes, restart: restartOf(engineOptions) };
+  return { engine, engineOptions, stores, clock, ...fakes, restart: restartOf(engineOptions) };
 }
 
 /** One call with its args, from a caller, with a signal that never aborts. */

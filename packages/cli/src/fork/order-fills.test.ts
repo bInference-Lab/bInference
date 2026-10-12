@@ -12,10 +12,16 @@ import {
 } from "./order-fill-rig.js";
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
-// A dollar a whole token of 18 decimals, as a trigger reads it; any price meets the order's.
-const price = { usdPerBaseUnit: { numerator: 1n, denominator: 10n ** 12n }, decimals: 18 };
+// A dollar a whole token of 18 decimals, as a confirmed price reads it: it meets the order's level.
+const dollarOf = (token: FillRig["token"]) => ({
+  token,
+  usdPerBaseUnit: { numerator: 1n, denominator: 10n ** 12n },
+  decimals: 18,
+  isThin: false,
+});
 
-// A limit buy of the rig's token for 0.02 BNB, confirmed, then filled at the trigger's price.
+// A limit buy of the rig's token for 0.02 BNB, confirmed, then filled as a price fires it. Its
+// worst price, a million dollars a token, leaves the risk step and the simulation to judge it.
 async function limitBuy(rig: FillRig, signal: AbortSignal) {
   const order = await confirmedOrder(
     rig,
@@ -26,11 +32,13 @@ async function limitBuy(rig: FillRig, signal: AbortSignal) {
       side: "buy",
       size: { base: 2n * 10n ** 16n },
       trigger: { price: 1n, direction: "above" },
+      worstPrice: 10n ** 12n,
       reason: "Buy the token once it trades above a micro-dollar",
     },
     signal,
   );
-  const outcome = await rig.engine.fillOrder({ order, price }, { signal });
+  const outcomes = await rig.engine.seePrice(dollarOf(rig.token), { signal });
+  const outcome = outcomes.find((fired) => fired.order === order)?.outcome;
   return { order, outcome };
 }
 

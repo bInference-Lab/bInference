@@ -109,7 +109,8 @@ async function fillAtNextBlock(
   return found ?? fillAtNextBlock(fork, watched, signal);
 }
 
-// A limit buy of 0.02 BNB of the rig's token, which any price triggers.
+// A limit buy of 0.02 BNB of the rig's token, which any price triggers, up to a million dollars a
+// token: the worst price defaults to the trigger's otherwise (decision 0197).
 async function anyPriceBuy(rig: FillRig, signal: AbortSignal): Promise<void> {
   await confirmedOrder(
     rig,
@@ -120,6 +121,7 @@ async function anyPriceBuy(rig: FillRig, signal: AbortSignal): Promise<void> {
       side: "buy",
       size: { base: 2n * 10n ** 16n },
       trigger: { price: 1n, direction: "above" },
+      worstPrice: 10n ** 12n,
       reason: "Buy the token at any price",
     },
     signal,

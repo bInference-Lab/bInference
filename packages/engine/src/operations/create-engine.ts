@@ -138,12 +138,6 @@ export interface Engine {
    */
   readonly expireCards: (options: { readonly signal: AbortSignal }) => Promise<number | undefined>;
   /**
-   * Fills an active auto order at the price its trigger fired at (decision 0195): the money path
-   * runs with no card, held to the order's bounds, or the fill is skipped and reported. The price
-   * triggers call it as each price comes.
-   */
-  readonly fillOrder: OrderFills["run"];
-  /**
    * Judges the active limit, take-profit, stop-loss and trailing orders on a confirmed price of
    * their token, and fills those it triggers in the same block's processing (decision 0196). The
    * price watchers call it with each price; it answers once the fills it started ended.
@@ -359,6 +353,18 @@ function sharedParts(options: EngineOptions) {
  * confirmed quote in the paper portfolio; a confirmed live one goes to the executor.
  */
 export function createEngine(given: EngineOptions): Engine {
+  return createEngineWithFills(given).engine;
+}
+
+/**
+ * Creates the {@link Engine} and, apart from it, its order fills (decision 0195), which only its
+ * price triggers start: a test runs a fill at a price of its choice through them, never through the
+ * engine's own surface (decision 0197).
+ */
+export function createEngineWithFills(given: EngineOptions): {
+  readonly engine: Engine;
+  readonly fillOrder: OrderFills["run"];
+} {
   // Every part reads an agent's limits as they are in effect now (decision 0111).
   const agents = withLimitsInEffect(given.stores.agents, given.clock);
   const options = { ...given, stores: { ...given.stores, agents } };
@@ -367,7 +373,7 @@ export function createEngine(given: EngineOptions): Engine {
   const intents = intentParts(options, paper, chat.settled);
   chat.attach(intents.stored);
   const { rescueParts, settingsParts } = sharedParts(options);
-  return {
+  const engine: Engine = {
     handlers: {
       ...intents.handlers,
       ...createLedgerHandlers(options.stores.ledger),
@@ -401,7 +407,7 @@ export function createEngine(given: EngineOptions): Engine {
     repairOrderFills: orderRepairOf(options, intents.stored),
     tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
-    fillOrder: async (request, call) => intents.fills.run(request, call),
     seePrice: async (price, call) => intents.triggers.see(price, call),
   };
+  return { engine, fillOrder: async (request, call) => intents.fills.run(request, call) };
 }
