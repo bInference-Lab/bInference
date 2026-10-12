@@ -12,7 +12,15 @@ function alerts() {
   const subject = createWatcherLagAlerts({ publish: (push) => pushes.push(push) });
   const read = (lagBlocks: bigint, atMs: number, chain = bsc) =>
     subject.check({ chain, chainName: "Fake Chain", lagBlocks, atMs: startMs + atMs });
-  return { subject, pushes, read };
+  const down = (atMs: number) =>
+    subject.check({
+      chain: bsc,
+      chainName: "Fake Chain",
+      lagBlocks: 0n,
+      atMs: startMs + atMs,
+      isDown: true,
+    });
+  return { subject, pushes, read, down };
 }
 
 describe("watcher lag", () => {
@@ -73,6 +81,32 @@ describe("watcher lag", () => {
     read(20n, 120_000);
     expect(pushes).toHaveLength(1);
     read(20n, 30 * 60_000 + 56_000);
+    expect(pushes).toHaveLength(2);
+  });
+
+  it("fails while the watcher is down and tells the owner at once, once a stop", () => {
+    const { subject, pushes, read, down } = alerts();
+    read(0n, 0);
+    down(1_000);
+    down(2_000);
+    expect(subject.health()).toStrictEqual({
+      state: "fail",
+      since: startMs + 1_000,
+      lagBlocks: 0n,
+    });
+    expect(pushes).toStrictEqual([
+      {
+        topic: "notice",
+        kind: "notice/new",
+        data: { key: "notice.watcherStopped", values: { chain: "Fake Chain" } },
+      },
+    ]);
+    read(0n, 3_000);
+    expect(subject.health()).toStrictEqual({ state: "ok", lagBlocks: 0n });
+    down(4_000);
+    expect(pushes).toHaveLength(1);
+    read(0n, 5_000);
+    down(30 * 60_000 + 1_000);
     expect(pushes).toHaveLength(2);
   });
 });

@@ -38,6 +38,7 @@ const expected: Readonly<Record<string, string>> = {
     "main used today's model budget ($3.00). Chat resumes Oct 11, 2026, 09:30:00; orders keep running.",
   "notice.loop": "main repeated the same step and was stopped",
   "notice.watcherLag": `${warning} Prices on BNB Smart Chain are read 14 blocks behind the chain, so auto orders may fill late. Add a paid RPC under \`chains.rpc\` in config.json5, or check this machine's network.`,
+  "notice.watcherStopped": `${red} Price watching on BNB Smart Chain stopped on a fault and starts again by itself; auto orders there fill nothing until it does. Run \`binference logs\` to see why.`,
   "notice.resumed": "Engine was off 2 h: 3 orders checked, 1 filled, 2 skipped",
   "notice.update":
     "binference 2027.1.0 is out: Stop-loss orders fill faster. Run `binference update`.",

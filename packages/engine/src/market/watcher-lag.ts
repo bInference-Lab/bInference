@@ -5,6 +5,9 @@ import { noticePush } from "../pushes/notice-push.js";
 /** The message key of the watcher lag notice (spec 4, section 4). */
 export const watcherLagNoticeKey = "notice.watcherLag";
 
+/** The message key of the notice that a chain's watcher stopped on a fault (spec 4, section 4). */
+export const watcherStoppedNoticeKey = "notice.watcherStopped";
+
 /** How far one chain's price watcher trails the chain, read at one moment. */
 export interface WatcherLagReading {
   readonly chain: ChainRef;
@@ -13,6 +16,8 @@ export interface WatcherLagReading {
   /** Blocks the watcher's reads trail the chain's head. */
   readonly lagBlocks: bigint;
   readonly atMs: number;
+  /** The watcher stopped on a fault and waits to restart: it reads nothing (decision 0194). */
+  readonly isDown?: boolean;
 }
 
 /** The state of a watcher's health signal. */
@@ -30,8 +35,9 @@ export interface WatcherHealth {
 export interface WatcherLagAlerts {
   /**
    * Takes one chain's lag. A chain more than 10 blocks behind for 30 seconds announces
-   * `notice.watcherLag` once, until it is back within 2 blocks, and at most once in 30 minutes. It
-   * never throws: a notice never stops the reads.
+   * `notice.watcherLag` once, until it is back within 2 blocks, and at most once in 30 minutes. A
+   * chain whose watcher is down fails, and announces `notice.watcherStopped` at once, once a stop
+   * and at most once in 30 minutes. It never throws: a notice never stops the reads.
    */
   check(reading: WatcherLagReading): void;
   /** Forgets a chain whose watcher stopped, since it watches no token. */
@@ -55,6 +61,12 @@ export function watcherStateOf(lagBlocks: bigint): WatcherState {
   return lagBlocks <= warnLagBlocks ? "warn" : "fail";
 }
 
+/** Whether a notice was told in the episode under way, and when it was told last. */
+interface Told {
+  readonly isTold: boolean;
+  readonly atMs: number | undefined;
+}
+
 interface ChainLag {
   readonly reading: WatcherLagReading;
   readonly state: WatcherState;
@@ -62,14 +74,19 @@ interface ChainLag {
   readonly sinceMs: number | undefined;
   /** When it started failing. */
   readonly failingSinceMs: number | undefined;
-  readonly isNoticed: boolean;
-  readonly noticedAtMs: number | undefined;
+  readonly lag: Told;
+  readonly stop: Told;
 }
 
 const rank: Readonly<Record<WatcherState, number>> = { ok: 0, warn: 1, fail: 2 };
+// An episode that ends forgets that it was told, never when it was told last.
+function carried(told: Told | undefined, episode: { readonly isGoingOn: boolean }): Told {
+  return { isTold: episode.isGoingOn && told?.isTold === true, atMs: told?.atMs };
+}
 
 function nextLag(before: ChainLag | undefined, reading: WatcherLagReading): ChainLag {
-  const state = watcherStateOf(reading.lagBlocks);
+  const isDown = reading.isDown === true;
+  const state = isDown ? "fail" : watcherStateOf(reading.lagBlocks);
   const sinceMs = state === "ok" ? undefined : (before?.sinceMs ?? reading.atMs);
   const failingSinceMs = state === "fail" ? (before?.failingSinceMs ?? reading.atMs) : undefined;
   return {
@@ -77,17 +94,52 @@ function nextLag(before: ChainLag | undefined, reading: WatcherLagReading): Chai
     state,
     sinceMs,
     failingSinceMs,
-    isNoticed: state !== "ok" && before?.isNoticed === true,
-    noticedAtMs: before?.noticedAtMs,
+    lag: carried(before?.lag, { isGoingOn: state !== "ok" }),
+    stop: carried(before?.stop, { isGoingOn: isDown }),
   };
 }
 
-function isDue(lag: ChainLag): boolean {
-  const { failingSinceMs, noticedAtMs, reading } = lag;
+const isQuiet = (told: Told, atMs: number): boolean =>
+  !told.isTold && (told.atMs === undefined || atMs - told.atMs >= noticeEveryMs);
+
+function isLagDue(lag: ChainLag): boolean {
+  const { failingSinceMs, reading } = lag;
   const hasFailedLong =
     failingSinceMs !== undefined && reading.atMs - failingSinceMs >= noticeAfterMs;
-  const isQuiet = noticedAtMs === undefined || reading.atMs - noticedAtMs >= noticeEveryMs;
-  return hasFailedLong && !lag.isNoticed && isQuiet;
+  return reading.isDown !== true && hasFailedLong && isQuiet(lag.lag, reading.atMs);
+}
+
+const toldAt = (atMs: number): Told => ({ isTold: true, atMs });
+
+// The notice a chain's reading calls for, if any, and the chain's state once it is told.
+function noticeOf(lag: ChainLag): { readonly push?: NoticeKey; readonly lag: ChainLag } {
+  const { reading } = lag;
+  if (reading.isDown === true && isQuiet(lag.stop, reading.atMs)) {
+    return { push: watcherStoppedNoticeKey, lag: { ...lag, stop: toldAt(reading.atMs) } };
+  }
+  return isLagDue(lag)
+    ? { push: watcherLagNoticeKey, lag: { ...lag, lag: toldAt(reading.atMs) } }
+    : { lag };
+}
+
+type NoticeKey = typeof watcherLagNoticeKey | typeof watcherStoppedNoticeKey;
+
+function valuesOf(key: NoticeKey, reading: WatcherLagReading): Readonly<Record<string, string>> {
+  return key === watcherLagNoticeKey
+    ? { chain: reading.chainName, blocks: reading.lagBlocks.toString() }
+    : { chain: reading.chainName };
+}
+
+function worstOf(lags: Iterable<ChainLag>): ChainLag | undefined {
+  let worst: ChainLag | undefined;
+  for (const lag of lags) {
+    const isWorse =
+      worst === undefined ||
+      rank[lag.state] > rank[worst.state] ||
+      (rank[lag.state] === rank[worst.state] && lag.reading.lagBlocks > worst.reading.lagBlocks);
+    worst = isWorse ? lag : worst;
+  }
+  return worst;
 }
 
 /** Creates the {@link WatcherLagAlerts}, which keep what they saw in memory only. */
@@ -97,32 +149,17 @@ export function createWatcherLagAlerts(options: {
   const lags = new Map<ChainRef, ChainLag>();
   return {
     check(reading) {
-      const lag = nextLag(lags.get(reading.chain), reading);
-      if (!isDue(lag)) {
-        lags.set(reading.chain, lag);
-        return;
+      const next = noticeOf(nextLag(lags.get(reading.chain), reading));
+      lags.set(reading.chain, next.lag);
+      if (next.push !== undefined) {
+        options.publish(noticePush({ key: next.push, values: valuesOf(next.push, reading) }));
       }
-      lags.set(reading.chain, { ...lag, isNoticed: true, noticedAtMs: reading.atMs });
-      options.publish(
-        noticePush({
-          key: watcherLagNoticeKey,
-          values: { chain: reading.chainName, blocks: reading.lagBlocks.toString() },
-        }),
-      );
     },
     forget(chain) {
       lags.delete(chain);
     },
     health() {
-      const worst = [...lags.values()].reduce<ChainLag | undefined>(
-        (found, lag) =>
-          found === undefined ||
-          rank[lag.state] > rank[found.state] ||
-          (rank[lag.state] === rank[found.state] && lag.reading.lagBlocks > found.reading.lagBlocks)
-            ? lag
-            : found,
-        undefined,
-      );
+      const worst = worstOf(lags.values());
       if (worst === undefined) {
         return undefined;
       }

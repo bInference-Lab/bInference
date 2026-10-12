@@ -14,6 +14,7 @@ export {
   createWatcherLagAlerts,
   watcherLagNoticeKey,
   watcherStateOf,
+  watcherStoppedNoticeKey,
 } from "./market/watcher-lag.js";
 export type {
   WatcherHealth,
