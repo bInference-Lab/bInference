@@ -1,5 +1,3 @@
-import { once } from "node:events";
-import { createServer as createNetServer, type Server as NetServer } from "node:net";
 import {
   type ChainDefinition,
   type ChainRegistry,
@@ -21,7 +19,6 @@ import {
   createFakeVenue,
 } from "@binference/chain/testing";
 import { bsc } from "@binference/chains";
-import { createProtocolClient, type ProtocolClient } from "@binference/client";
 import { BinferenceError, idSchema, ok } from "@binference/core";
 import {
   createManualClock,
@@ -52,8 +49,7 @@ import {
   testWallet,
   testWalletRecord,
 } from "@binference/engine/testing";
-import { type ClientKind, type OwnerInfo, operations } from "@binference/protocol";
-import { WebSocket } from "ws";
+import type { OwnerInfo } from "@binference/protocol";
 import { sealTo } from "../export/key-recipient.js";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
 import {
@@ -64,6 +60,7 @@ import {
 } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
 import { createEngineOperations } from "./engine-operations.js";
+import { type LoopbackServing, serveOnLoopback } from "./loopback-serving.js";
 import { selfHostedMarketReads, selfHostedSources } from "./market-reads.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 
@@ -155,7 +152,11 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
   },
 ];
 
-async function addToken(parts: EngineParts, kind: "cli" | "mcp", n: number): Promise<void> {
+async function addToken(
+  parts: Pick<EngineParts, "stores">,
+  kind: "cli" | "mcp",
+  n: number,
+): Promise<void> {
   const scopes =
     kind === "cli"
       ? (["read", "propose", "chat", "confirm", "loosen", "admin"] as const)
@@ -168,21 +169,19 @@ async function addToken(parts: EngineParts, kind: "cli" | "mcp", n: number): Pro
   );
 }
 
+// Stores the CLI token, with every scope, and the MCP token, whose secrets the skeleton knows.
+async function addSkeletonTokens(parts: Pick<EngineParts, "stores">): Promise<void> {
+  await addToken(parts, "cli", 1);
+  await addToken(parts, "mcp", 2);
+}
+
 // The engine's test agent, on paper in manual mode, the CLI token and the MCP token.
 async function seed(parts: EngineParts): Promise<void> {
   const created = await parts.stores.agents.create(testAgentDraft(), live());
   if (!created.ok) {
     throw new BinferenceError({ code: "test.seed_failed", message: "The agent is stored." });
   }
-  await addToken(parts, "cli", 1);
-  await addToken(parts, "mcp", 2);
-}
-
-async function listenOnLoopback(server: NetServer): Promise<number> {
-  server.listen({ port: 0, host: "127.0.0.1" });
-  await once(server, "listening");
-  const bound = server.address();
-  return bound !== null && typeof bound === "object" ? bound.port : 0;
+  await addSkeletonTokens(parts);
 }
 
 /** The engine and its server on the profile parts, with what a test reads and drives. */
@@ -198,14 +197,7 @@ export interface ComposedSkeleton {
 }
 
 /** The engine, its server, an IPC stand-in and a CLI client, in one process. */
-export interface Skeleton extends ComposedSkeleton {
-  /** The owner's CLI, signed in with every scope. */
-  readonly client: ProtocolClient;
-  /** Opens another client over the IPC stand-in, signed in with a token's secret. */
-  connect(secret: string, kind?: ClientKind): Promise<ProtocolClient>;
-  /** Closes every client, the relays to Telegram and the browsers, the IPC stand-in and the server. */
-  close(): Promise<void>;
-}
+export interface Skeleton extends ComposedSkeleton, LoopbackServing {}
 
 // No risk source answers and no round trip step runs, so a token the registry does not list fails
 // closed.
@@ -330,36 +322,9 @@ export async function startSkeleton(
   options: SkeletonOptions = {},
 ): Promise<Skeleton> {
   const skeleton = await composeSkeleton(parts, options);
-  const { composed, clock } = skeleton;
-  // The platform's IPC endpoint hands its sockets to the server the same way.
-  const ipc = createNetServer((socket) => composed.server.acceptIpc(socket));
-  const port = await listenOnLoopback(ipc);
-  const clients: ProtocolClient[] = [];
-  const connect = async (secret: string, kind: ClientKind = "cli"): Promise<ProtocolClient> => {
-    const opened = createProtocolClient({
-      operations,
-      openSocket: () => new WebSocket(`ws://127.0.0.1:${String(port)}/ws`),
-      client: { kind, version: "test" },
-      credential: { token: secret },
-      clock,
-      random: createSeededRandom(11 + clients.length),
-      logger: createMemoryLogger({ subsystem: "client" }),
-    });
-    clients.push(opened);
-    await opened.connect(AbortSignal.timeout(10_000));
-    return opened;
-  };
-  const client = await connect(skeletonSecrets.cli);
-  return {
-    ...skeleton,
-    client,
-    connect,
-    async close() {
-      clients.forEach((opened) => opened.close());
-      await composed.telegram?.close();
-      await composed.webPush?.close();
-      ipc.close();
-      await composed.server.close();
-    },
-  };
+  const served = await serveOnLoopback(skeleton.composed, {
+    clock: skeleton.clock,
+    cliSecret: skeletonSecrets.cli,
+  });
+  return { ...skeleton, ...served };
 }
