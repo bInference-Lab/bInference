@@ -70,7 +70,7 @@ const expected: Readonly<Record<string, string>> = {
     "PEPE is at or above $0.00001: now $0.000011\nmain is looking into it.\n3 more matches did not wake main: at most 10 wake-ups an hour.",
   "notice.alertWallet": "Whale sold 2M PEPE, 40% of its holding, for $22.10",
   "notice.alertLaunch":
-    "New launch passed your filters: PEPE 0x6982…1933 · Flap · 3 min ago · curve 42% · tax 1% · 2 insider wallets · creator's other launches in 30 days: 0",
+    "New launch passed your filters: PEPE 0x6982…1933 · Pad · 3 min ago · curve 42% · tax 1% · 2 insider wallets · creator's other launches in 30 days: 0",
   "notice.ordersEnded": "Take-profit sold all your PEPE, so your 2 other exit orders on it ended",
   "notice.exitEnded": "Trailing stop on PEPE ended: the wallet holds none of it any more",
 };

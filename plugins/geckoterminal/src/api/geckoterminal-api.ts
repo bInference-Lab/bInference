@@ -8,7 +8,7 @@ import { readTokenPrices } from "./token-answer.schema.js";
 export type OhlcvTimeframe = "minute" | "hour" | "day";
 
 /** Which candles of which pool to read. */
-export interface OhlcvQuery {
+interface OhlcvQuery {
   /** GeckoTerminal's id of the pool's network, such as `bsc`. */
   readonly network: string;
   /** The pool's address or id. */
@@ -59,9 +59,9 @@ export interface GeckoterminalApiOptions {
 }
 
 /** The candles one OHLCV request reads at most, as its docs say. */
-export const candlesPerRequest = 1_000;
+const candlesPerRequest = 1_000;
 /** The addresses one request for several tokens reads at most, as its docs say. */
-export const pricesPerRequest = 30;
+const pricesPerRequest = 30;
 
 /**
  * GeckoTerminal's public API: about 10 calls a minute for every endpoint together, as its docs

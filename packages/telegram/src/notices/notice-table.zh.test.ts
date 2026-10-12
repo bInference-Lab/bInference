@@ -69,7 +69,7 @@ const expected: Readonly<Record<string, string>> = {
     "PEPE 价格达到或高于 $0.00001：现价 $0.000011\nmain 正在查看。\n另有 3 个匹配未唤醒 main：每小时最多唤醒 10 次。",
   "notice.alertWallet": "Whale 卖出 2M PEPE（占其持仓的 40%），收到 $22.10",
   "notice.alertLaunch":
-    "有新发射的代币通过了你的筛选条件：PEPE 0x6982…1933 · Flap · 3 min前 · 曲线进度 42% · 交易税 1% · 2 个内部钱包 · 创建者 30 天内其他发射：0",
+    "有新发射的代币通过了你的筛选条件：PEPE 0x6982…1933 · Pad · 3 min前 · 曲线进度 42% · 交易税 1% · 2 个内部钱包 · 创建者 30 天内其他发射：0",
   "notice.ordersEnded": "止盈已卖出你持有的全部 PEPE，该持仓的其他 2 个平仓订单已结束",
   "notice.exitEnded": "PEPE 的追踪止损已结束：钱包中已没有这种代币",
 };

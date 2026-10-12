@@ -156,7 +156,7 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
           volumeUsdMicros: "1562492011515",
         },
       ],
-      source: "geckoterminal",
+      source: "candle-source",
     },
   },
 };

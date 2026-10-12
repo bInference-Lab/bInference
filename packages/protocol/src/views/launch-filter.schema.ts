@@ -2,11 +2,11 @@ import { type AssetRef, assetRefSchema } from "@binference/chain";
 import { type Bps, bpsSchema, decimalStringSchema } from "@binference/core";
 import { z } from "zod";
 
-/** The launchpads of v1 whose launches the launch feed reads. */
-export type LaunchpadId = "flap" | "fourmeme" | "geniusfun" | "brew";
+/** A launchpad venue's registry id; the engine refuses one the registry does not list. */
+export type LaunchpadId = string;
 
-/** Every {@link LaunchpadId}. */
-export const launchpadIds: readonly LaunchpadId[] = ["flap", "fourmeme", "geniusfun", "brew"];
+/** Parses a launchpad venue's id, in the form registry venue ids take. */
+export const launchpadIdSchema: z.ZodType<LaunchpadId> = z.string().regex(/^[a-z][a-z0-9-]{0,31}$/);
 
 /**
  * Which launches pass (spec 1, section 8.4): every field given must hold, and an empty filter
@@ -27,7 +27,7 @@ const count = z.int().nonnegative();
 
 /** Parses a launch filter; unknown fields are refused, as in any args. */
 export const launchFilterSchema: z.ZodType<LaunchFilter> = z.strictObject({
-  launchpads: z.array(z.enum(launchpadIds)).min(1).max(launchpadIds.length).exactOptional(),
+  launchpads: z.array(launchpadIdSchema).min(1).max(16).exactOptional(),
   quoteTokens: z.array(assetRefSchema).min(1).max(20).exactOptional(),
   maxTaxBps: bpsSchema.exactOptional(),
   maxSnipeTaxBps: bpsSchema.exactOptional(),

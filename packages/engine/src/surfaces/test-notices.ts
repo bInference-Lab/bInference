@@ -25,7 +25,7 @@ const launch: NoticePart = {
   key: "launch.line",
   values: {
     token: "PEPE 0x6982…1933",
-    launchpad: "Flap",
+    launchpad: "Pad",
     age: "3 min",
     tax: "1%",
     insiders: "2",

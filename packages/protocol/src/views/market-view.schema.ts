@@ -2,7 +2,7 @@ import { type AssetRef, assetRefSchema, type CandleInterval } from "@binference/
 import { type Bps, bpsSchema, decimalStringSchema } from "@binference/core";
 import { z } from "zod";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
-import { type LaunchpadId, launchpadIds } from "./launch-filter.schema.js";
+import { type LaunchpadId, launchpadIdSchema } from "./launch-filter.schema.js";
 import { type RiskView, riskViewSchema } from "./risk-view.schema.js";
 
 /**
@@ -49,20 +49,20 @@ export interface ChartView {
   readonly candles: readonly CandleView[];
   /** How many whole tokens the candles' prices are for, as a power of ten; absent for one. */
   readonly priceScale?: number;
-  /** The data source, such as `geckoterminal`. */
+  /** The data source's registry id. */
   readonly source: string;
 }
 
 /** Parses a price scale: 1 to 18; a scale of 0 is written as no field. */
 export const priceScaleSchema: z.ZodType<number> = z.int().min(1).max(18);
 
-/** Parses a data source's id, such as `dexscreener`. */
+/** Parses a data source's registry id. */
 export const sourceIdSchema: z.ZodType<string> = z.string().regex(/^[a-z][a-z0-9-]{0,31}$/);
 
 /** Parses one item of a market scan. */
 export const scanItemSchema: z.ZodType<ScanItem> = z.object({
   asset: assetRefSchema,
-  launchpad: z.enum(launchpadIds).exactOptional(),
+  launchpad: launchpadIdSchema.exactOptional(),
   launchedAt: epochMsSchema.exactOptional(),
   priceUsdMicros: decimalStringSchema.exactOptional(),
   priceScale: priceScaleSchema.exactOptional(),

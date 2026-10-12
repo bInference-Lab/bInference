@@ -1,7 +1,7 @@
 import type { Ratio } from "@binference/core";
 
 /** The largest price scale: prices for 10^18 whole tokens. */
-export const maxPriceScale = 18;
+const maxPriceScale = 18;
 
 const microsPerDollar = 1_000_000n;
 

@@ -151,7 +151,7 @@ export { alertConditionSchema, alertViewSchema } from "./views/alert-view.schema
 export type { AlertCondition, AlertView, PriceCondition } from "./views/alert-view.schema.js";
 export { assetInfosSchema, assetViewSchema } from "./views/asset-info.schema.js";
 export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema.js";
-export { launchFilterSchema, launchpadIds } from "./views/launch-filter.schema.js";
+export { launchFilterSchema, launchpadIdSchema } from "./views/launch-filter.schema.js";
 export type { LaunchFilter, LaunchpadId } from "./views/launch-filter.schema.js";
 export {
   candleViewSchema,
