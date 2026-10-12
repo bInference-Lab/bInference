@@ -5,7 +5,8 @@ import {
   type TxSimulator,
 } from "@binference/chain";
 import { createFakeFamily, createFakeTxSimulator } from "@binference/chain/testing";
-import { BinferenceError, createSecret, type JsonValue, ok } from "@binference/core";
+import { BinferenceError, createSecret, idSchema, type JsonValue, ok } from "@binference/core";
+import type { ModelCharge } from "@binference/engine";
 import {
   createMemoryCardCopyStore,
   createMemoryOwnerStore,
@@ -179,6 +180,40 @@ describe("the owner's fast commands on the engine", () => {
     expect(buttons[0]?.webApp).toMatch(
       /^https:\/\/owner\.example\.ts\.net\/mini#ticket=[\w-]{43}$/,
     );
+  });
+
+  it("answers /spend with the usage the engine stored, by day and model", async () => {
+    const test = await bot();
+    const turn = idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+    const tokens = { inputTokens: 1_000, outputTokens: 100, cachedTokens: 0 };
+    const attempt = (n: number, spent: Pick<ModelCharge, "model" | "usdMicros" | "atMs">) => ({
+      ...tokens,
+      ...spent,
+      agent: testAgent,
+      turn,
+      key: `${turn}.usage.${String(n)}`,
+    });
+    const usage = test.parts.stores.modelUsage;
+    const [gpt, sonnet] = ["openai/gpt-5.4", "anthropic/claude-sonnet-4-6"];
+    await usage.record(
+      attempt(1, { model: gpt, usdMicros: 1_000_000n, atMs: testNowMs - 3 * dayMs }),
+      live,
+    );
+    await usage.record(attempt(2, { model: gpt, usdMicros: 250_000n, atMs: testNowMs - 1 }), live);
+    await usage.record(
+      attempt(3, { model: sonnet, usdMicros: 1_000_000n, atMs: testNowMs - 2 }),
+      live,
+    );
+    await test.send("/spend");
+
+    expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([
+      [
+        `${testAgent}: $1.25 of today's $5.00 model budget spent, $3.75 left`,
+        "This month: $2.25",
+        "openai/gpt-5.4: $1.25 this month",
+        "anthropic/claude-sonnet-4-6: $1.00 this month",
+      ].join("\n"),
+    ]);
   });
 
   it("freezes every agent from Telegram, and the engine says Telegram did", async () => {

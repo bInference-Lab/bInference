@@ -1,5 +1,5 @@
 import type { ChainRegistry } from "@binference/chain";
-import { BinferenceError, type Logger } from "@binference/core";
+import { BinferenceError, type Clock, type Logger } from "@binference/core";
 import type { MessageLocale, MessageValues } from "@binference/i18n";
 import type { Api } from "grammy";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
@@ -18,6 +18,7 @@ import { runOrders } from "./orders-command.js";
 import { runBalance, runPositions } from "./portfolio-commands.js";
 import { registerCommands } from "./register-commands.js";
 import { runCancel, runFreeze, runRescue } from "./safety-commands.js";
+import { runSpend } from "./spend-command.js";
 import { runStatus } from "./status-command.js";
 
 /** The owner's fast commands in Telegram: answered by the engine's code, never by a model. */
@@ -64,6 +65,8 @@ export interface FastCommandsOptions {
     readonly userId: number;
     readonly signal: AbortSignal;
   }) => Promise<string>;
+  /** The time now, which `/spend` counts the owner's day and month from. */
+  readonly clock: Clock;
   readonly logger: Logger;
 }
 
@@ -84,6 +87,7 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   paper: runPaper,
   status: runStatus,
   limits: runLimits,
+  spend: runSpend,
   console: runConsole,
   lang: runLang,
   help: runHelp,
@@ -129,9 +133,12 @@ interface Parts {
 function contextOf(parts: Parts, asker: Asker): CommandContext {
   const { options, bot } = parts;
   const { calls, cards, waiting, chains } = options;
-  const formatter = parts.formatters(options.display());
+  const display = options.display();
+  const formatter = parts.formatters(display);
   const { target, senderId, signal } = asker;
   return {
+    nowMs: options.clock.now(),
+    timeZone: display.timeZone,
     calls,
     cards,
     waiting,

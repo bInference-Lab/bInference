@@ -129,6 +129,10 @@ const served: OwnerChatHandlers = {
   "limit/get": async () => Promise.resolve(ok(limits)),
   "portfolio/get": async () => Promise.resolve(ok(portfolio)),
   "order/list": async () => Promise.resolve(ok({ items: [stopLoss], assets: orderAssets })),
+  "usage/get": async () =>
+    Promise.resolve(
+      ok({ rows: [], budgets: [{ agent, dailyUsdMicros: 3_000_000n, leftUsdMicros: 3_000_000n }] }),
+    ),
   "wallet/list": async () =>
     Promise.resolve(
       ok({

@@ -182,6 +182,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     display,
     ...(parts.miniAppUrl === undefined ? {} : { miniAppUrl: parts.miniAppUrl }),
     issueLaunchTicket: launchTicketsOf(wiring),
+    clock: wiring.clock,
     logger,
   });
   const relay = relayOf(parts, wiring, { showings, cards, display });

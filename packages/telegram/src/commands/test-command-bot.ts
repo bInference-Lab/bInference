@@ -113,6 +113,7 @@ function commandsOf(
     ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
     issueLaunchTicket: async (request) =>
       issueLaunchTicket({ access, clock, random: createSeededRandom(9) }, request),
+    clock,
     logger,
   });
 }

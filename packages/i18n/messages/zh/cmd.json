@@ -8,6 +8,7 @@
   "menu.paper": "将 Agent 切换回模拟模式",
   "menu.status": "binference 的状态、Agent、冻结情况和健康状况",
   "menu.limits": "Agent 的限额",
+  "menu.spend": "今日及本月的模型花费与预算",
   "menu.console": "在 Telegram 中打开控制台",
   "menu.lang": "binference 与你沟通使用的语言",
   "menu.help": "所有命令，每行一个",
@@ -63,6 +64,11 @@
   "limits.halve": "{limit, select, perTradeUsdMicros {单笔上限减半} rollingDayUsdMicros {24 小时上限减半} slippageRegistryBps {已验证代币的滑点上限减半} slippageOtherBps {其他代币的滑点上限减半} other {限额减半}}",
   "limits.halved": "{name}现为 {value}。",
   "limits.lowest": "{name}已是 {value}，不能再低。",
+  "spend.today": "{agent}：今日模型预算 {budget}，已花费 {spent}，剩余 {left}",
+  "spend.paused": "对话暂停至 {when}；自动订单继续运行。",
+  "spend.month": "本月：{spent}",
+  "spend.model": "{model}：本月 {spent}",
+  "spend.none": "binference 还没有 Agent，因此没有模型花费。",
   "lang.current": "binference 与你沟通使用{locale, select, zh {中文} other {英文}}。点按一种语言即可切换，binference 会立即生效。",
   "lang.switched": "binference 现在与你沟通使用{locale, select, zh {中文} other {英文}}。"
 }

@@ -16,6 +16,10 @@ export interface CommandContext {
   readonly chains: ChainRegistry;
   /** The owner's formatter, as the owner's language and timezone are now. */
   readonly formatter: Formatter;
+  /** When the command came, as the engine's clock reads it. */
+  readonly nowMs: number;
+  /** The owner's timezone now, whose days and months the replies count. */
+  readonly timeZone: string;
   /** The text of a message key in the owner's language. */
   readonly words: (key: string, values?: MessageValues) => string;
   /** The numeric Telegram id of the owner who sent the command. */

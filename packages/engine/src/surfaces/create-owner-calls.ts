@@ -28,6 +28,7 @@ export const ownerChatOperations = [
   "portfolio/get",
   "order/list",
   "wallet/list",
+  "usage/get",
   "config/change",
   "chat/post",
 ] as const;

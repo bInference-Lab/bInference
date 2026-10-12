@@ -8,6 +8,7 @@
   "menu.paper": "Switch the agent back to paper mode",
   "menu.status": "binference's state, its agents, freezes and health",
   "menu.limits": "The agent's limits",
+  "menu.spend": "Model spend today and this month against the budget",
   "menu.console": "Open the console inside Telegram",
   "menu.lang": "The language binference uses with you",
   "menu.help": "The commands, one line each",
@@ -63,6 +64,11 @@
   "limits.halve": "{limit, select, perTradeUsdMicros {Halve the per-trade cap} rollingDayUsdMicros {Halve the 24-hour cap} slippageRegistryBps {Halve the slippage limit on verified tokens} slippageOtherBps {Halve the slippage limit on other tokens} other {Halve the limit}}",
   "limits.halved": "{name} is {value} now.",
   "limits.lowest": "{name} is {value} already, the lowest it goes.",
+  "spend.today": "{agent}: {spent} of today's {budget} model budget spent, {left} left",
+  "spend.paused": "Chat is paused until {when}; orders keep running.",
+  "spend.month": "This month: {spent}",
+  "spend.model": "{model}: {spent} this month",
+  "spend.none": "binference has no agent yet, so nothing is spent on models.",
   "lang.current": "binference uses {locale, select, zh {Chinese} other {English}} with you. Tap a language to switch; binference applies it at once.",
   "lang.switched": "binference uses {locale, select, zh {Chinese} other {English}} with you now."
 }
