@@ -34,4 +34,6 @@ export { cardCopySchema } from "./surfaces/card-copy.js";
 export type { CardCopy } from "./surfaces/card-copy.js";
 export { ownerBindingSchema } from "./surfaces/owner-binding.js";
 export type { OwnerBinding } from "./surfaces/owner-binding.js";
-export type { CardCopyStore, OwnerStore } from "./surfaces/ports.js";
+export type { AgentTopicStore, CardCopyStore, OwnerStore } from "./surfaces/ports.js";
+export { agentTopicKeySchema, agentTopicSchema } from "./surfaces/agent-topic.js";
+export type { AgentTopic, AgentTopicKey } from "./surfaces/agent-topic.js";

@@ -11,7 +11,7 @@ import type {
   NoticeStore,
   TransactionStore,
 } from "../ports.js";
-import type { CardCopyStore, OwnerStore } from "../surfaces/ports.js";
+import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/ports.js";
 
 /**
  * Every store port of the engine database, as the composition root hands them to the engine, the
@@ -34,6 +34,8 @@ export interface EngineStores {
   readonly owners: OwnerStore;
   /** Where each card version was posted in Telegram. */
   readonly cardCopies: CardCopyStore;
+  /** The topic of each agent in the owner's Telegram chat (decision 0186). */
+  readonly agentTopics: AgentTopicStore;
   /** The agent inbox and each agent's open chat session. */
   readonly agentInbox: AgentInboxStore;
 }

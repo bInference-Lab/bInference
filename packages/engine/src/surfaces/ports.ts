@@ -1,4 +1,5 @@
 import type { Id } from "@binference/core";
+import type { AgentTopic, AgentTopicKey } from "./agent-topic.js";
 import type { CardCopy } from "./card-copy.js";
 import type { OwnerBinding } from "./owner-binding.js";
 
@@ -37,4 +38,27 @@ export interface CardCopyStore {
     intent: Id<"int">,
     options: { readonly signal: AbortSignal },
   ): Promise<readonly CardCopy[]>;
+}
+
+/**
+ * Keeps the topic the owner's bot made for each agent in the owner's chat (decision 0186), so an
+ * agent keeps one topic across restarts. Adapters: a SQLite store in `@binference/store`, and an
+ * in-memory fake.
+ */
+export interface AgentTopicStore {
+  /** The agent's topic in the chat, or `undefined` before the bot made one. */
+  find(
+    key: AgentTopicKey,
+    options: { readonly signal: AbortSignal },
+  ): Promise<AgentTopic | undefined>;
+  /** Keeps a topic in place of any earlier one of the agent in that chat. */
+  keep(topic: AgentTopic, options: { readonly signal: AbortSignal }): Promise<void>;
+  /**
+   * Forgets the agent's topic in the chat when it is still the one with `threadId`, as after
+   * Telegram said the topic is gone; a newer topic stays.
+   */
+  forget(
+    gone: AgentTopicKey & { readonly threadId: number },
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
 }

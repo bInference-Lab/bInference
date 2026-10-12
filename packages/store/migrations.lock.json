@@ -32,6 +32,7 @@
     "engine/0026_backup_digests.ts": "f28c5ef44c6f6c4276c5a7910dc8d9e7351cea62b3bcd403e6116e42d906c064",
     "engine/0027_seal_key.ts": "8dd2aa56627fac3b57d81c4335be2b15cd954e60b7017b591621e88c85acbdf9",
     "engine/0028_agent_inbox.ts": "709bcbd557d0ab860c62d51e59971d643c5f5c19e741a72300e9540033c1b974",
-    "engine/0029_card_places.ts": "db2876a31c00c2d4717153ae546a4df19d289f6221d903ffb30fee42ffb22ead"
+    "engine/0029_card_places.ts": "db2876a31c00c2d4717153ae546a4df19d289f6221d903ffb30fee42ffb22ead",
+    "engine/0030_telegram_topics.ts": "50c05162821abf261fa34074dc62dd4d286f7aa010d8083e7f009d038802a6f3"
   }
 }

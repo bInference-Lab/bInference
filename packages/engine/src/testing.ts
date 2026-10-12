@@ -86,6 +86,8 @@ export { cardCopyStoreContract } from "./contracts/card-copy-store-contract.js";
 export type { CardCopyStoreHarness, CardVersionKey } from "./contracts/card-copy-store-contract.js";
 export { noticeStoreContract } from "./contracts/notice-store-contract.js";
 export { ownerStoreContract } from "./contracts/owner-store-contract.js";
+export { agentTopicStoreContract } from "./contracts/agent-topic-store-contract.js";
+export type { AgentTopicStoreHarness } from "./contracts/agent-topic-store-contract.js";
 export type { OwnerStoreHarness } from "./contracts/owner-store-contract.js";
 export type { NoticeStoreHarness, NoticeStoreSubject } from "./contracts/notice-store-contract.js";
 export type { IntentStoreSubject } from "./contracts/intent-fixtures.js";
@@ -109,6 +111,7 @@ export { createMemoryIdempotencyStore } from "./fakes/memory-idempotency-store.j
 export { createMemoryInboxStore } from "./fakes/memory-inbox-store.js";
 export { createMemoryNoticeStore } from "./fakes/memory-notice-store.js";
 export { createMemoryOwnerStore } from "./fakes/memory-owner-store.js";
+export { createMemoryAgentTopicStore } from "./fakes/memory-agent-topic-store.js";
 export type { MemoryNoticeStoreOptions } from "./fakes/memory-notice-store.js";
 export { createMemoryInstallStore } from "./fakes/memory-install-store.js";
 export type { MemoryInstallStore } from "./fakes/memory-install-store.js";
