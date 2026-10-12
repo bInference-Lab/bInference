@@ -15,7 +15,7 @@ import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { type CapGate, createCapGate } from "../confirmations/cap-gate.js";
 import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
-import { type Confirmations, createConfirmations } from "../confirmations/create-confirmations.js";
+import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type {
@@ -35,7 +35,6 @@ import {
 } from "../money-path/venue-quote-source.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import type { OrderFills } from "../orders/fill-orders.js";
-import { followOrderCard } from "../orders/follow-order-card.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
 import { createOrderTriggers, type OrderTriggers } from "../orders/order-triggers.js";
 import { tickOrders } from "../orders/tick-orders.js";
@@ -60,6 +59,7 @@ import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import {
+  cardTimerOf,
   fillEndOf,
   fillOnPaperOf,
   followCardOf,
@@ -257,24 +257,6 @@ function storedIntentsOf(
   const fillEnd = fillEndOf(options, parts.gate);
   const { settled } = parts;
   return createStoredIntents({ intents, agents, ids, random, publish, settled, fillEnd });
-}
-
-// The card timer closes an intent's card through the confirmations, and an auto order's card
-// through its order, which moves with it.
-function cardTimerOf(
-  options: EngineOptions,
-  parts: { readonly confirmations: Confirmations; readonly orders: OrderParts },
-): CardTimerParts {
-  const { confirmations, orders } = parts;
-  return {
-    intents: options.stores.intents,
-    now: () => options.clock.now(),
-    expire: async (intent, { signal }) => {
-      await (intent.kind === "autoOrder"
-        ? followOrderCard(orders, intent.id, signal)
-        : confirmations.expire(intent.id, { signal }));
-    },
-  };
 }
 
 /** The intent and order parts of the engine. */

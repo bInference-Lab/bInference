@@ -1,4 +1,5 @@
 import type { CapGate } from "../confirmations/cap-gate.js";
+import type { CardTimerParts } from "../confirmations/card-timer.js";
 import type { Confirmations } from "../confirmations/create-confirmations.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
@@ -98,4 +99,24 @@ export function fillEndOf(options: EngineOptions, gate: CapGate): FillEnd {
   const { stores, ids } = options;
   const spent: CapGate["spent"] = async (snapshot, call) => gate.spent(snapshot, call);
   return createFillEnd({ orders: stores.orders, spent, ids });
+}
+
+/**
+ * What the card timer closes cards through: an intent's card through the confirmations, and an
+ * auto order's card through its order, which moves with it.
+ */
+export function cardTimerOf(
+  options: EngineOptions,
+  parts: { readonly confirmations: Confirmations; readonly orders: OrderParts },
+): CardTimerParts {
+  const { confirmations, orders } = parts;
+  return {
+    intents: options.stores.intents,
+    now: () => options.clock.now(),
+    expire: async (intent, { signal }) => {
+      await (intent.kind === "autoOrder"
+        ? followOrderCard(orders, intent.id, signal)
+        : confirmations.expire(intent.id, { signal }));
+    },
+  };
 }
