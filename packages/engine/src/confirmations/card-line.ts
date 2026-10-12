@@ -11,6 +11,8 @@ export const cardKeys = [
   "card.swap.action",
   "card.buy.action",
   "card.sell.action",
+  "card.sell.share",
+  "card.sell.all",
   "card.send.action",
   "card.revoke.action",
   "card.lend.supply",

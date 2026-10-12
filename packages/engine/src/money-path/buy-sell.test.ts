@@ -306,3 +306,58 @@ describe("a re-quote of a buy or a sell at the tap", () => {
     });
   });
 });
+
+// The header's action and the action line of a proposal's card.
+async function cardActionOf(test: TestEngine, request: IntentRequest) {
+  const view = await propose(test, request);
+  const drawn = await test.engine.handlers["intent/card"](testCall({ intent: view.intent }));
+  if (!drawn.ok) {
+    throw new Error(`Expected a card, got ${drawn.error}.`);
+  }
+  const [header, action] = drawn.value.lines;
+  return { header: header?.values["action"], action };
+}
+
+describe("a buy's and a sell's card", () => {
+  it("names a curve buy's launchpad, and confirms a buy", async () => {
+    const launchpad = createFakeLaunchpad({ onCurve: [testToken] });
+    const test = await engineWith([createFakeVenue(), launchpad]);
+    expect(await cardActionOf(test, testBuy())).toStrictEqual({
+      header: { type: "choice", choice: "buy" },
+      action: {
+        key: "card.buy.action",
+        values: {
+          token: { type: "asset", asset: testToken },
+          spend: { type: "amount", amount: { asset: testCoin, base: 1_000_000n } },
+          place: {
+            type: "line",
+            line: { key: "card.place.curve", values: { launchpad: { type: "text", text: curve } } },
+          },
+        },
+      },
+    });
+  });
+
+  it("names the venue a sale in the pools runs on, and the share a sale by share sells", async () => {
+    const test = await engineWith([createFakeVenue()]);
+    const byAmount = await cardActionOf(test, testSell());
+    const byShare = await cardActionOf(test, testSell({ amount: share(2_000) }));
+    const all = await cardActionOf(test, testSell({ amount: share(10_000) }));
+    expect(byAmount).toMatchObject({
+      header: { type: "choice", choice: "sell" },
+      action: { key: "card.sell.action", values: { place: { type: "text", text: "fake-swap" } } },
+    });
+    expect(byShare.action).toMatchObject({
+      key: "card.sell.share",
+      values: {
+        share: { type: "percent", bps: 2_000 },
+        token: { type: "asset", asset: testToken },
+        amount: { type: "amount", amount: { asset: testToken, base: 1_000n } },
+      },
+    });
+    expect(all.action).toMatchObject({
+      key: "card.sell.all",
+      values: { amount: { type: "amount", amount: { asset: testToken, base: 5_000n } } },
+    });
+  });
+});

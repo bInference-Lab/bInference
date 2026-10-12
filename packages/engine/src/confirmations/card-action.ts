@@ -1,5 +1,5 @@
 import type { AccountRef, Amount, AssetRef, ChainRef } from "@binference/chain";
-import type { Ratio } from "@binference/core";
+import { type Bps, bpsPerWhole, type Ratio } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
@@ -27,7 +27,13 @@ export type StakeMove =
 export interface CardActionFacts {
   readonly swap: { readonly amountIn: Amount; readonly minOut: Amount };
   readonly buy: { readonly token: AssetRef; readonly spend: Amount; readonly place: TradePlace };
-  readonly sell: { readonly amount: Amount; readonly minOut: Amount; readonly place: TradePlace };
+  /** A sale by share names it: the share of the holding, whose amount the quote fixed. */
+  readonly sell: {
+    readonly amount: Amount;
+    readonly minOut: Amount;
+    readonly place: TradePlace;
+    readonly share?: Bps;
+  };
   readonly send: { readonly amount: Amount; readonly recipient: AccountRef };
   readonly revokeApproval: { readonly token: AssetRef; readonly spender: AccountRef };
   readonly lend: {
@@ -96,6 +102,26 @@ function placeOf(place: TradePlace): CardValue {
     : text(place.pool);
 }
 
+// Spec 4, section 3.6: a sale by share says the share and what it came to; all of it says all.
+function sellLine(action: CardAction<"sell">): CardLine {
+  const values = {
+    amount: amount(action.amount),
+    minOut: amount(action.minOut),
+    place: placeOf(action.place),
+  };
+  const { share } = action;
+  if (share === undefined) {
+    return { key: "card.sell.action", values };
+  }
+  const token = asset(action.amount.asset);
+  return share === bpsPerWhole
+    ? { key: "card.sell.all", values: { ...values, token } }
+    : {
+        key: "card.sell.share",
+        values: { ...values, token, share: { type: "percent", bps: share } },
+      };
+}
+
 function stakeLine(move: StakeMove): CardLine {
   const values = { amount: amount(move.amount), validator: account(move.validator) };
   return move.action === "unstake"
@@ -118,14 +144,7 @@ const actionLines: ActionLines = {
       place: placeOf(action.place),
     },
   }),
-  sell: (action) => ({
-    key: "card.sell.action",
-    values: {
-      amount: amount(action.amount),
-      minOut: amount(action.minOut),
-      place: placeOf(action.place),
-    },
-  }),
+  sell: sellLine,
   send: (action) => ({
     key: "card.send.action",
     values: { amount: amount(action.amount), recipient: account(action.recipient) },

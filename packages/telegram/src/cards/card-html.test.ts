@@ -28,6 +28,13 @@ const english = createFormatter({ locale: "en", timeZone: "UTC" });
 const display: CardDisplay = { formatter: english, assets: assetsWith() };
 const recipient = accountRef("fake:1:0xAbCdEf0123456789aBcDeF0123456789AbCdEf12");
 const oneUsdt = { asset: refs.usdt, base: 10n ** 18n };
+const onePepe = { asset: refs.pepe, base: 10n ** 18n };
+const pepeSale = {
+  kind: "sell",
+  amount: onePepe,
+  minOut: oneUsdt,
+  place: { curve: "Flap" },
+} as const satisfies CardAction;
 
 // What a reader sees: Telegram's parse of the HTML, which must parse.
 function shown(html: string) {
@@ -131,9 +138,29 @@ describe("a card in Telegram HTML", () => {
       "Buy PEPE (0x6982…1933) with 1 USDT · on the Flap curve",
     ],
     [
+      "buy",
+      { kind: "buy", token: refs.pepe, spend: oneUsdt, place: { pool: "KyberSwap" } },
+      "Buy PEPE (0x6982…1933) with 1 USDT · on KyberSwap",
+    ],
+    [
       "sell",
       { kind: "sell", amount: oneUsdt, minOut: oneUsdt, place: { pool: "PancakeSwap v3" } },
       "Sell 1 USDT → at least 1 USDT · on PancakeSwap v3",
+    ],
+    [
+      "sell",
+      { kind: "sell", amount: onePepe, minOut: oneUsdt, place: { curve: "Flap" } },
+      "Sell 1 PEPE (0x6982…1933) → at least 1 USDT · on the Flap curve",
+    ],
+    [
+      "sell",
+      { ...pepeSale, share: bpsSchema.parse(2_500) },
+      "Sell 25.00% of your PEPE (0x6982…1933) (1 PEPE (0x6982…1933)) → at least 1 USDT · on the Flap curve",
+    ],
+    [
+      "sell",
+      { ...pepeSale, share: bpsSchema.parse(10_000) },
+      "Sell all your PEPE (0x6982…1933) (1 PEPE (0x6982…1933)) → at least 1 USDT · on the Flap curve",
     ],
     ["send", { kind: "send", amount: oneUsdt, recipient }, "Send 1 USDT to 0xAbCd…Ef12"],
     [

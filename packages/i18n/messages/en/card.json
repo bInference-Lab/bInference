@@ -4,6 +4,8 @@
   "swap.action": "Sell {in} → at least {minOut}",
   "buy.action": "Buy {token} with {spend} · on {place}",
   "sell.action": "Sell {amount} → at least {minOut} · on {place}",
+  "sell.share": "Sell {share} of your {token} ({amount}) → at least {minOut} · on {place}",
+  "sell.all": "Sell all your {token} ({amount}) → at least {minOut} · on {place}",
   "send.action": "Send {amount} to {recipient}",
   "revoke.action": "Remove {spender}'s approval for {token}",
   "lend.supply": "Supply {amount} to {venue} · health factor {hf}",

@@ -1,4 +1,5 @@
 import type { AccountRef, AssetRef, ChainRef } from "@binference/chain";
+import type { Bps } from "@binference/core";
 import { messages } from "@binference/i18n";
 import { parseMessage } from "@binference/i18n/check";
 import { describe, expect, it } from "vitest";
@@ -20,6 +21,16 @@ const actions: readonly (readonly [CardAction, string, string])[] = [
   [
     { kind: "sell", amount: out, minOut: half, place: { curve: "Flap" } },
     "card.sell.action",
+    "sell",
+  ],
+  [
+    { kind: "sell", amount: out, minOut: half, place: { curve: "Flap" }, share: 2_500 as Bps },
+    "card.sell.share",
+    "sell",
+  ],
+  [
+    { kind: "sell", amount: out, minOut: half, place: { pool: "Kyber" }, share: 10_000 as Bps },
+    "card.sell.all",
     "sell",
   ],
   [{ kind: "send", amount: half, recipient: wallet }, "card.send.action", "send"],
@@ -114,6 +125,8 @@ describe("action lines", () => {
       ["amount", "amount"],
       ["asset", "amount", "text"],
       ["amount", "amount", "line"],
+      ["amount", "amount", "line", "asset", "percent"],
+      ["amount", "amount", "text", "asset"],
       ["amount", "account"],
       ["account", "asset"],
       ["amount", "text", "ratio"],

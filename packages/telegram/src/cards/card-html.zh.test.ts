@@ -1,4 +1,5 @@
-import { drawCard } from "@binference/engine";
+import { bpsSchema } from "@binference/core";
+import { type CardAction, drawCard } from "@binference/engine";
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import {
@@ -44,6 +45,50 @@ describe("a card in Telegram HTML, in Chinese", () => {
   it("follows an unverified token's symbol with its short address in full-width brackets", () => {
     const lines = textOf(cardHtml(drawCard(pepeBuyFacts), display)).split("\n");
     expect(lines[1]).toBe("卖出 0.1 BNB → 至少收到 1,000,000 PEPE（0x6982…1933）");
+  });
+
+  const sale = {
+    kind: "sell",
+    amount: { asset: refs.usdt, base: 10n ** 18n },
+    minOut: { asset: refs.bnb, base: 10n ** 16n },
+    place: { curve: "Flap" },
+  } as const satisfies CardAction;
+
+  it.each<[string, CardAction, string]>([
+    [
+      "a buy on a curve",
+      {
+        kind: "buy",
+        token: refs.usdt,
+        spend: { asset: refs.bnb, base: 10n ** 17n },
+        place: { curve: "Flap" },
+      },
+      "用 0.1 BNB 买入 USDT · 在 Flap 联合曲线",
+    ],
+    [
+      "a buy in the pools",
+      {
+        kind: "buy",
+        token: refs.usdt,
+        spend: { asset: refs.bnb, base: 10n ** 17n },
+        place: { pool: "KyberSwap" },
+      },
+      "用 0.1 BNB 买入 USDT · 在 KyberSwap",
+    ],
+    ["a sale of an amount", sale, "卖出 1 USDT → 至少收到 0.01 BNB · 在 Flap 联合曲线"],
+    [
+      "a sale of a share",
+      { ...sale, share: bpsSchema.parse(5_000), place: { pool: "KyberSwap" } },
+      "卖出你持有的 USDT 的 50.00%（1 USDT）→ 至少收到 0.01 BNB · 在 KyberSwap",
+    ],
+    [
+      "a sale of all of it",
+      { ...sale, share: bpsSchema.parse(10_000) },
+      "卖出你持有的全部 USDT（1 USDT）→ 至少收到 0.01 BNB · 在 Flap 联合曲线",
+    ],
+  ])("draws %s in Chinese", (_name, action, line) => {
+    const lines = textOf(cardHtml(drawCard({ ...swapFacts, action }), display)).split("\n");
+    expect(lines[1]).toBe(line);
   });
 
   it("draws the receipts in Chinese", () => {

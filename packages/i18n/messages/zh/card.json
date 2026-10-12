@@ -4,6 +4,8 @@
   "swap.action": "卖出 {in} → 至少收到 {minOut}",
   "buy.action": "用 {spend} 买入 {token} · 在 {place}",
   "sell.action": "卖出 {amount} → 至少收到 {minOut} · 在 {place}",
+  "sell.share": "卖出你持有的 {token} 的 {share}（{amount}）→ 至少收到 {minOut} · 在 {place}",
+  "sell.all": "卖出你持有的全部 {token}（{amount}）→ 至少收到 {minOut} · 在 {place}",
   "send.action": "向 {recipient} 转账 {amount}",
   "revoke.action": "撤销 {spender} 对 {token} 的授权",
   "lend.supply": "向 {venue} 存入 {amount} · 健康因子 {hf}",

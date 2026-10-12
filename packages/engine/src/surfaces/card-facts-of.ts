@@ -1,8 +1,15 @@
 import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
 import type { Bps } from "@binference/core";
-import type { QuoteView, SimulationView, SwapRequest } from "@binference/protocol";
+import type {
+  BuyRequest,
+  QuoteView,
+  SellRequest,
+  SimulationView,
+  SwapRequest,
+} from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { limitsRecordAt } from "../agents/limits-in-effect.js";
+import type { CardAction, TradePlace } from "../confirmations/card-action.js";
 import type { CardCheck, CardFacts, CardRoute } from "../confirmations/draw-card.js";
 import type { CardRecord } from "../intents/card-record.js";
 import {
@@ -33,11 +40,14 @@ export interface CardSource {
   readonly chains: ChainRegistry;
 }
 
+/** A request the money path quotes: a swap, a buy or a sell. */
+type TradeRequest = SwapRequest | BuyRequest | SellRequest;
+
 // The venue that quoted leads the route; its legs are the route's shares.
 function routeOf(
   quote: QuoteView,
   source: CardSource,
-  request: SwapRequest,
+  request: TradeRequest,
 ): CardRoute | undefined {
   const [first] = quote.route;
   return first === undefined
@@ -49,7 +59,7 @@ function routeOf(
         // The limits in effect when the card version opened, as its trade was quoted under them.
         maxSlippageBps: tradeSlippageBps(
           {
-            pair: [request.from, request.to],
+            pair: [quote.amountIn.asset, quote.minOut.asset],
             ...(request.maxSlippageBps === undefined ? {} : { asked: request.maxSlippageBps }),
           },
           limitsRecordAt(source.settings.limits, source.card.openedAtMs),
@@ -83,19 +93,41 @@ function taxOf(record: IntentRecord): Bps | undefined {
   );
 }
 
-function swapFacts(request: SwapRequest, quote: QuoteView, source: CardSource): CardFacts {
+// Where a buy or a sell runs: the launchpad's curve its quote names, or the pools of the venue
+// that quoted.
+function placeOf(quote: QuoteView): TradePlace {
+  return quote.place?.kind === "curve"
+    ? { curve: quote.place.launchpad }
+    : { pool: quote.route[0]?.venue ?? "" };
+}
+
+// A trade's action line from its quote: what it spends and receives, and a buy's or a sell's
+// place; a sale by share names its share.
+function actionOf(request: TradeRequest, quote: QuoteView): CardAction {
+  const { amountIn, minOut } = quote;
+  if (request.kind === "buy") {
+    return { kind: "buy", token: minOut.asset, spend: amountIn, place: placeOf(quote) };
+  }
+  if (request.kind === "swap") {
+    return { kind: "swap", amountIn, minOut };
+  }
+  const sale = { kind: "sell", amount: amountIn, minOut, place: placeOf(quote) } as const;
+  return "percentBps" in request.amount ? { ...sale, share: request.amount.percentBps } : sale;
+}
+
+function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource): CardFacts {
   const { record, card, settings, isFirstLive, chains } = source;
   const route = routeOf(quote, source, request);
   const simulation =
     record.simulation === undefined ? undefined : simulationDocument.decode(record.simulation);
-  const check = checkOf(simulation, request.to, chains);
+  const check = checkOf(simulation, quote.minOut.asset, chains);
   const taxBps = taxOf(record);
   return {
     agentName: settings.agent.name,
     isPaper: record.isPaper,
     hasOutsideContent: record.hasOutsideContent,
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
-    action: { kind: "swap", amountIn: quote.amountIn, minOut: quote.minOut },
+    action: actionOf(request, quote),
     ...(route === undefined ? {} : { route }),
     ...(check === undefined ? {} : { check }),
     warnings: {
@@ -154,11 +186,12 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
 
 /**
  * The facts a card version is drawn from (spec 4, section 3), read from the stored intent: the
- * quote's amounts and route, the simulation's check (or that a paper sale's fill is an estimate),
- * the highest tax the risk step measured and the agent's reason; for a rescue, its address, what
- * it moves and their value; for an unfreeze, what it unfreezes. The money path quotes swaps,
- * rescues and unfreezes only, so an intent of another kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
- * no source marks unusual names yet.
+ * quote's amounts and route, a buy's or a sell's place, the simulation's check (or that a paper
+ * sale's fill is an estimate), the highest tax the risk step measured and the agent's reason; for
+ * a rescue, its address, what it moves and their value; for an unfreeze, what it unfreezes. The
+ * money path quotes trades, rescues and unfreezes only, so an intent of another kind, or one
+ * without a quote, has none. The fees line waits for a gas estimate in the quote, and no source
+ * marks unusual names yet.
  */
 export function cardFactsOf(source: CardSource): CardFacts | undefined {
   const { record } = source;
@@ -173,8 +206,9 @@ export function cardFactsOf(source: CardSource): CardFacts | undefined {
       : unfreezeFacts(unfreezeQuoteDocument.decode(record.quote), source);
   }
   const request = requestDocument.decode(record.request);
-  if (request.kind !== "swap" || record.quote === undefined) {
+  const isTrade = request.kind === "swap" || request.kind === "buy" || request.kind === "sell";
+  if (!isTrade || record.quote === undefined) {
     return undefined;
   }
-  return swapFacts(request, quoteDocument.decode(record.quote), source);
+  return tradeFacts(request, quoteDocument.decode(record.quote), source);
 }
