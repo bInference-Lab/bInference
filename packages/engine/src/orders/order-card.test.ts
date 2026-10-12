@@ -62,10 +62,26 @@ describe("an auto order's card in English", () => {
     ]);
 
     expect(buy?.[1]).toMatch(
-      /^Approve Limit order: buy TKN with \$25\.00 when the price is at or below \$0\.50 · up to 1 fill until /,
+      /^Approve Limit order: buy TKN with \$25\.00 of FAKE when the price is at or below \$0\.50 · up to 1 fill until /,
     );
     expect(trailing?.[1]).toMatch(
       /^Approve Trailing stop: sell 50\.00% of your TKN when the price falls 8\.00% below its highest since the order started · no fill limit until /,
+    );
+  });
+
+  it("words a buy by share of what the wallet may spend, and by an amount", async () => {
+    const buy = { ...testStopLoss(), kind: "limit", side: "buy" } as const;
+    const trigger = { price: 500_000n, direction: "below" } as const;
+    const [byShare, byAmount] = await cardOf([
+      { ...buy, trigger, size: { percentBps: bpsSchema.parse(2_500) } },
+      { ...buy, trigger, size: { base: 1_500_000_000_000_000_000n } },
+    ]);
+
+    expect(byShare?.[1]).toMatch(
+      /^Approve Limit order: buy TKN with 25\.00% of your spendable FAKE when the price is at or below \$0\.50 · /,
+    );
+    expect(byAmount?.[1]).toMatch(
+      /^Approve Limit order: buy TKN with 1\.5 FAKE when the price is at or below \$0\.50 · /,
     );
   });
 });

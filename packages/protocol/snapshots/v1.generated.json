@@ -17281,6 +17281,9 @@
                   "minimum": 1,
                   "maximum": 9007199254740991
                 },
+                "spend": {
+                  "type": "string"
+                },
                 "reason": {
                   "type": "string",
                   "minLength": 1
@@ -17401,6 +17404,9 @@
                   "minimum": 1,
                   "maximum": 9007199254740991
                 },
+                "spend": {
+                  "type": "string"
+                },
                 "reason": {
                   "type": "string",
                   "minLength": 1
@@ -17512,6 +17518,9 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "spend": {
+                  "type": "string"
                 },
                 "reason": {
                   "type": "string",
@@ -17625,6 +17634,9 @@
                   "minimum": 1,
                   "maximum": 9007199254740991
                 },
+                "spend": {
+                  "type": "string"
+                },
                 "reason": {
                   "type": "string",
                   "minLength": 1
@@ -17735,6 +17747,9 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "spend": {
+                  "type": "string"
                 },
                 "reason": {
                   "type": "string",
@@ -17858,6 +17873,9 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 9007199254740991
+                },
+                "spend": {
+                  "type": "string"
                 },
                 "reason": {
                   "type": "string",
@@ -18054,6 +18072,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -18173,6 +18194,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -18283,6 +18307,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -18395,6 +18422,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -18504,6 +18534,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -18626,6 +18659,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -18953,6 +18989,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -19072,6 +19111,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -19182,6 +19224,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -19294,6 +19339,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -19403,6 +19451,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -19525,6 +19576,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -19876,6 +19930,9 @@
                             "minimum": 1,
                             "maximum": 9007199254740991
                           },
+                          "spend": {
+                            "type": "string"
+                          },
                           "reason": {
                             "type": "string",
                             "minLength": 1
@@ -19995,6 +20052,9 @@
                             "minimum": 1,
                             "maximum": 9007199254740991
                           },
+                          "spend": {
+                            "type": "string"
+                          },
                           "reason": {
                             "type": "string",
                             "minLength": 1
@@ -20105,6 +20165,9 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991
+                          },
+                          "spend": {
+                            "type": "string"
                           },
                           "reason": {
                             "type": "string",
@@ -20217,6 +20280,9 @@
                             "minimum": 1,
                             "maximum": 9007199254740991
                           },
+                          "spend": {
+                            "type": "string"
+                          },
                           "reason": {
                             "type": "string",
                             "minLength": 1
@@ -20326,6 +20392,9 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991
+                          },
+                          "spend": {
+                            "type": "string"
                           },
                           "reason": {
                             "type": "string",
@@ -20448,6 +20517,9 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 9007199254740991
+                          },
+                          "spend": {
+                            "type": "string"
                           },
                           "reason": {
                             "type": "string",
@@ -20823,6 +20895,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -20942,6 +21017,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -21052,6 +21130,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -21164,6 +21245,9 @@
                       "minimum": 1,
                       "maximum": 9007199254740991
                     },
+                    "spend": {
+                      "type": "string"
+                    },
                     "reason": {
                       "type": "string",
                       "minLength": 1
@@ -21273,6 +21357,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",
@@ -21395,6 +21482,9 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 9007199254740991
+                    },
+                    "spend": {
+                      "type": "string"
                     },
                     "reason": {
                       "type": "string",

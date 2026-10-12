@@ -1,5 +1,5 @@
 import type { AssetRef } from "@binference/chain";
-import { bpsPerWhole } from "@binference/core";
+import { BinferenceError, bpsPerWhole } from "@binference/core";
 import type {
   LimitOrderRequest,
   StopLossOrderRequest,
@@ -45,14 +45,47 @@ function sellLine(token: AssetRef, size: FillSize): CardLine {
   return { key: "card.order.sell", values: { size: choice("other"), amount } };
 }
 
-// What a buy spends: a buy order takes its size in dollars (decision 0189).
-function spendOf(token: AssetRef, size: FillSize): CardValue {
+// Spec 4, section 3.8: what a buy spends, a dollar value, an amount, or a share of what the wallet
+// may spend of it (decision 0190).
+function spendLine(spent: AssetRef, size: FillSize): CardLine {
   if ("usdMicros" in size) {
-    return usd(size.usdMicros);
+    return {
+      key: "card.order.spend",
+      values: { size: choice("usd"), usd: usd(size.usdMicros), asset: asset(spent) },
+    };
   }
-  return "percentBps" in size
-    ? { type: "percent", bps: size.percentBps }
-    : { type: "amount", amount: { asset: token, base: size.base } };
+  if ("percentBps" in size) {
+    return {
+      key: "card.order.spend",
+      values: {
+        size: choice("share"),
+        share: { type: "percent", bps: size.percentBps },
+        asset: asset(spent),
+      },
+    };
+  }
+  const amount: CardValue = { type: "amount", amount: { asset: spent, base: size.base } };
+  return { key: "card.order.spend", values: { size: choice("other"), amount } };
+}
+
+// A buy order names what it spends once its rules filled the default (decision 0190). One stored
+// before then took dollars only, and its card says the dollar value alone; any other size without
+// what it spends cannot be drawn, so it is never confirmed.
+function spendOf(request: LimitOrderRequest): CardLine {
+  const { spend, size } = request;
+  if (spend !== undefined) {
+    return spendLine(spend, size);
+  }
+  if ("usdMicros" in size) {
+    return {
+      key: "card.order.spend",
+      values: { size: choice("usdOnly"), usd: usd(size.usdMicros) },
+    };
+  }
+  throw new BinferenceError({
+    code: "engine.bad_document",
+    message: "A buy order sized in base units or by share names nothing to spend.",
+  });
 }
 
 function limitLine(request: LimitOrderRequest): CardLine {
@@ -68,7 +101,7 @@ function limitLine(request: LimitOrderRequest): CardLine {
         key: "card.order.summary.limitBuy",
         values: {
           token: asset(request.token),
-          spend: spendOf(request.token, request.size),
+          spend: { type: "line", line: spendOf(request) },
           condition,
         },
       }

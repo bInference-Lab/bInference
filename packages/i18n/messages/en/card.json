@@ -24,6 +24,7 @@
   "unfreeze.all": "Unfreeze every agent: {count, plural, one {# is frozen now} other {# are frozen now}}, and new agents start unfrozen",
   "order.action": "Approve {orderKind}: {summary} · {maxFills, plural, =0 {no fill limit} one {up to # fill} other {up to # fills}} until {expiry}",
   "order.sell": "sell {size, select, share {{share} of your {token}} usd {{usd} of {token}} all {all your {token}} other {{amount}}}",
+  "order.spend": "{size, select, share {{share} of your spendable {asset}} usd {{usd} of {asset}} usdOnly {{usd}} other {{amount}}}",
   "order.condition": "{direction, select, above {at or above {price}} other {at or below {price}}}",
   "order.summary.limitBuy": "buy {token} with {spend} when the price is {condition}",
   "order.summary.limitSell": "{sell} when the price is {condition}",

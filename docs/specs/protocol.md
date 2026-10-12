@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185) and [0189](../DECISIONS.md#d0189); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189) and [0190](../DECISIONS.md#d0190); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -690,7 +690,7 @@ the engine for an auto order or webhook rule.
 
 ### 8.2 Auto order requests
 
-`{ agent, wallet?, kind, token, side, size, trigger, worstPrice?, maxSlippageBps?, expiresAt?, maxFills? }`
+`{ agent, wallet?, kind, token, side, size, spend?, trigger, worstPrice?, maxSlippageBps?, expiresAt?, maxFills? }`
 
 `reason?` is the agent's words on why, as an intent request's `reason`: the order's card shows it
 as what the agent says, escaped ([decision 0177](../DECISIONS.md#d0177)). The agent runtime always
@@ -708,6 +708,16 @@ sends one; another client may leave it out.
 `size` is `{ base }`, `{ usdMicros }` or `{ percentBps }`. Defaults come from the agent's limits
 ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28)): 30-day expiry, one fill for limit,
 take-profit and stop-loss.
+
+**Buy sizes** ([decision 0190](../DECISIONS.md#d0190)). `spend` names what a buy order spends: the
+chain's coin or a token the registry lists on the token's chain (BNB or a stablecoin), never the
+token it buys; absent, the chain's coin, which `order/create` fills in. A sell order names none. A
+buy's `size` counts what it spends: `{ usdMicros }` that many dollars of it, priced at the fill;
+`{ base }` that amount in its base units; `{ percentBps }` that share of the wallet's spendable
+balance of it when the fill is quoted, rounded down. The spendable balance is the whole balance of
+a token, and of the chain's coin what lies above the agent's gas reserve
+([decision 0045](../DECISIONS.md#d0045)), never below zero. Every fill still passes the per-trade
+and 24-hour caps, at its own value.
 
 **Exit orders.** A `takeProfit`, a `stopLoss`, a `trailing` order, or a `limit` order with
 `side: sell`, is an exit order of its position: its wallet, its token, and its mode, live or paper.

@@ -31,6 +31,7 @@ export const cardKeys = [
   "card.unfreeze.all",
   "card.order.action",
   "card.order.sell",
+  "card.order.spend",
   "card.order.condition",
   "card.order.summary.limitBuy",
   "card.order.summary.limitSell",

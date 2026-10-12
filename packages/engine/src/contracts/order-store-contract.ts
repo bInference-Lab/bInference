@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { bpsSchema } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import type { OrderQuery } from "../orders/order-record.js";
+import type { FillSize } from "@binference/protocol";
+import { testCoin } from "../intents/test-intents.js";
+import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
 import { orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.js";
 import {
   activatesOnTheConfirmedCard,
@@ -40,6 +43,23 @@ async function createsOrders(subject: OrderStoreSubject): Promise<void> {
   });
   assert.equal(await store.get(fixtureId("ord", 9), live()), undefined);
   assert.equal(await store.byIntent(fixtureId("int", 9), live()), undefined);
+}
+
+// A buy order of order `n`, spending the chain's coin, sized as given.
+function buyDraft(subject: OrderStoreSubject, n: number, size: FillSize): OrderDraft {
+  const draft = orderDraft(subject, n);
+  return { ...draft, request: { ...draft.request, side: "buy", spend: testCoin, size } };
+}
+
+// A buy order keeps what it spends and its size exact: base units past 64 bits, or a share.
+async function keepsBuySizes(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  const byBase = buyDraft(subject, 1, { base: 2n ** 64n + 3n });
+  const byShare = buyDraft(subject, 2, { percentBps: bpsSchema.parse(2_500) });
+  assert.ok((await store.create(byBase, live())).ok);
+  assert.ok((await store.create(byShare, live())).ok);
+  assert.deepEqual((await store.get(byBase.id, live()))?.request, byBase.request);
+  assert.deepEqual((await store.get(byShare.id, live()))?.request, byShare.request);
 }
 
 async function refusesStrangers(subject: OrderStoreSubject): Promise<void> {
@@ -134,7 +154,7 @@ async function refusesAborted(subject: OrderStoreSubject): Promise<void> {
 
 /**
  * The checks every {@link OrderStore} adapter passes: orders created once and kept exact past 64
- * bits, moves all or nothing under their versions, the rules no move may break, an order active
+ * bits, a buy's spent asset and size among them, moves all or nothing under their versions, the rules no move may break, an order active
  * only on its card's confirmation and never for a frozen agent, the freeze's own order moves,
  * listing by state, agent, wallet, mode and expiry page by page, and aborted calls.
  */
@@ -142,6 +162,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
   const create = async (): Promise<OrderStoreSubject> => harness.create();
   return [
     checkOn("creates an order awaiting its card, once, its amounts exact", create, createsOrders),
+    checkOn("keeps what a buy order spends and its size, exact", create, keepsBuySizes),
     checkOn("refuses an unknown agent or another agent's wallet", create, refusesStrangers),
     checkOn("moves orders under their versions, all or nothing", create, movesUnderVersion),
     checkOn(

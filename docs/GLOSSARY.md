@@ -99,6 +99,8 @@ new name here first, in the change that uses it.
   sends and of each capped token's approvals, which every wallet of the install shares
   (decision 0149). Each is sized in dollars at its asset's **floor price**, such as $100 a BNB.
 - **gas reserve**: the BNB a wallet keeps for network fees. Trades never spend it.
+- **spendable balance**: what a buy order may spend of an asset: all of a token, and of the chain's
+  coin what lies above the gas reserve (decision 0190).
 - **wallet facts**: what the money path reads about an agent's wallets outside the store ports:
   which wallets the agent owns, the native balance (the paper balance in paper mode), the ceiling's
   cap per transaction, the fee per gas, the network fee cap and the agent's recent outflows.
@@ -569,6 +571,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | trade limits                             | 交易限额               |                                  |
 | spending limit                           | 消费上限               |                                  |
 | gas reserve                              | 网络费预留             |                                  |
+| spendable (balance)                      | 可用                   |                                  |
 | network fee cap                          | 网络费上限             |                                  |
 | freeze, unfreeze                         | 冻结, 解除冻结         |                                  |
 | rescue, rescue address                   | 紧急转出, 紧急转出地址 |                                  |

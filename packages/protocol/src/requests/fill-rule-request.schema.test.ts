@@ -60,6 +60,17 @@ describe("orderRequestSchema", () => {
     expect(orderRequestSchema.safeParse({ ...orders[2][1], reason: "" }).success).toBe(false);
   });
 
+  it("takes what a buy spends, sized in its base units or as a share of it", () => {
+    const limit = orders[0][1];
+    const byBase = { ...limit, spend: refs.native, size: { base: "500000000000000000" } };
+    const byShare = { ...limit, spend: refs.native, size: { percentBps: 2_500 } };
+    expect(z.encode(orderRequestSchema, z.decode(orderRequestSchema, byBase))).toStrictEqual(
+      byBase,
+    );
+    expect(orderRequestSchema.parse(byShare)).toMatchObject({ spend: refs.native });
+    expect(orderRequestSchema.safeParse({ ...byBase, spend: "BNB" }).success).toBe(false);
+  });
+
   it("reads a stored order with a field a newer engine adds, and drops the field", () => {
     const stored = { ...orders[3][1], note: "x" };
     expect(readOrderRequestSchema.parse(stored)).not.toHaveProperty("note");

@@ -9,7 +9,7 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), [0157](../DECISIONS.md#d0157)
-[0179](../DECISIONS.md#d0179) and [0189](../DECISIONS.md#d0189). Accepted by the owner on 2026-10-12: a token launch refused in
+[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189) and [0190](../DECISIONS.md#d0190). Accepted by the owner on 2026-10-12: a token launch refused in
 paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
 whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
 to 13.
@@ -293,6 +293,14 @@ and `step_unsent` (a step never signed after an earlier one landed,
   the auto test (`kind`), and opens one card. On the Confirm, the order becomes `active` in one
   write that checks the confirmation, then the intent moves to `reconciled`; a paper `autoOrder`
   never reaches the paper fill, and none reaches a queue. A card that ends otherwise ends its order.
+- **Buy order sizes** ([decision 0190](../DECISIONS.md#d0190)): a buy order's fill spends the asset
+  its order names (spec 1, section 8.2). A fill sized `{ percentBps }` reads the wallet's balance
+  of that asset when its quote is built, on chain for a live wallet and from the paper portfolio
+  for a paper one, takes the spendable part (all of a token; of the chain's coin, what lies above
+  the gas reserve) and spends that share of it, rounded down. A fill sized `{ base }` spends that
+  amount, and one sized `{ usdMicros }` that value priced at the fill. Each fill is a `buy` intent
+  that runs policy and risk again, so the per-trade cap, the rolling 24-hour cap and the gas
+  reserve hold for it as for any trade.
 - **CEX orders** run through the Binance plugin: no transaction steps; `executing` means the order
   was sent, `included` that it was accepted, `finalized` that it filled or ended, and `reconciled`
   that the plugin's account reads agree.
@@ -457,3 +465,6 @@ Property tests (fast-check) hold these for every generated history:
 13. A paper launch never uploads, pins or signs anything.
 14. No auto order is `active` without a confirmation of its `autoOrder` intent's card, and a frozen
     agent has no `active` order ([decision 0189](../DECISIONS.md#d0189)).
+15. A buy order's fill by `percentBps` never spends more than the wallet's spendable balance of
+    what it spends when its quote was built, and never the gas reserve
+    ([decision 0190](../DECISIONS.md#d0190)).

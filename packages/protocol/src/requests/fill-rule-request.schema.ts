@@ -33,6 +33,12 @@ export interface FillBounds {
 /** What every auto order request carries besides its bounds. */
 export interface OrderBase extends FillBounds {
   /**
+   * What a buy order spends: the chain's coin or a token the registry lists, such as a stablecoin.
+   * Absent: the chain's coin. `size` counts it: `{ base }` in its base units, `{ percentBps }` as a
+   * share of what the wallet can spend of it when a fill is quoted. A sell order names none.
+   */
+  readonly spend?: AssetRef;
+  /**
    * The agent's words on why, shown on the order's card as what the agent says, escaped and cut
    * to 200 characters. A client other than the agent may leave it out.
    */
@@ -123,8 +129,9 @@ const fillBounds = {
   ...boundsFields,
 };
 const reason = z.string().min(1);
-const orderBase = { ...fillBounds, reason: reason.exactOptional() };
-const termsBase = { ...boundsFields, reason };
+const spend = assetRefSchema.exactOptional();
+const orderBase = { ...fillBounds, spend, reason: reason.exactOptional() };
+const termsBase = { ...boundsFields, spend, reason };
 
 const price = decimalStringSchema;
 

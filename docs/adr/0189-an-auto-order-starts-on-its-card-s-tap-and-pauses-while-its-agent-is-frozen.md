@@ -1,6 +1,6 @@
 # 0189. An auto order starts on its card's tap and pauses while its agent is frozen
 
-Status: Accepted
+Status: Amended by 0190
 
 Accepted by the owner on 2026-10-12.
 
