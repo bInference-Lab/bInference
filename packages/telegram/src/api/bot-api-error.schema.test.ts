@@ -1,3 +1,4 @@
+import { BinferenceError } from "@binference/core";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
@@ -23,6 +24,11 @@ describe("botApiFault", () => {
   ] as const)("maps a %i answer to %s", async (status, code, retryable) => {
     const fault = await failedCall({ status, description: "refused" });
     expect(fault).toMatchObject({ code, retryable, details: { method: "sendMessage", status } });
+  });
+
+  it("keeps a fault the bot's throttler raised as it is", () => {
+    const dropped = new BinferenceError({ code: "telegram.preview_dropped", message: "Gave way." });
+    expect(botApiFault(dropped, "editMessageText")).toBe(dropped);
   });
 
   it("maps a flood to the wait Telegram asks for", async () => {

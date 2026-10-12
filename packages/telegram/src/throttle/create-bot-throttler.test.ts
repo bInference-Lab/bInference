@@ -5,6 +5,7 @@ import { assertGrammySignal } from "../api/assert-grammy-signal.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
 import { ownerId, strangerId } from "../testing/update-fixtures.js";
 import { createBotThrottler } from "./create-bot-throttler.js";
+import { previewSignal } from "./preview-signal.js";
 
 const groupId = -1_001_234_567_890;
 
@@ -34,6 +35,12 @@ function setUp() {
 
 function flood(retryAfterS: number) {
   return { status: 429, description: "Too Many Requests", retryAfterS };
+}
+
+// An edit of a status message, sent as a preview.
+async function previewOf(api: Api, messageId: number, text: string) {
+  const signal = assertGrammySignal(previewSignal(new AbortController().signal));
+  return api.editMessageText(ownerId, messageId, text, {}, signal);
 }
 
 // Tracks whether a call has settled, without awaiting it.
@@ -163,6 +170,48 @@ describe("the bot throttler", () => {
     await expect(waiting).rejects.toThrow("stopped before its turn");
     await clock.advance(0);
     await first;
+  });
+
+  it("drops a preview Telegram answers with a 429, and pauses its chat for the result", async () => {
+    const { botApi, clock, api, arrivals } = setUp();
+    const status = await api.sendMessage(ownerId, "Working");
+    await clock.advance(1_000);
+    botApi.failNext("editMessageText", flood(3), { chatId: ownerId });
+    const preview = previewOf(api, status.message_id, "Working 1 s");
+    await expect(preview).rejects.toMatchObject({ code: "telegram.preview_dropped" });
+    const result = api.sendMessage(ownerId, "the answer");
+    await clock.advance(3_000);
+    expect((await result).text).toBe("the answer");
+    expect(arrivals.map(({ atMs, method }) => [atMs, method])).toStrictEqual([
+      [0, "sendMessage"],
+      [1_000, "editMessageText"],
+      [4_000, "sendMessage"],
+    ]);
+  });
+
+  it("drops a preview while its chat waits out a 429, and sends none of it", async () => {
+    const { botApi, clock, api, arrivals } = setUp();
+    botApi.failNext("sendMessage", flood(5), { chatId: ownerId });
+    const card = api.sendMessage(ownerId, "card");
+    await clock.advance(0);
+    await expect(previewOf(api, 1001, "Working 1 s")).rejects.toMatchObject({
+      code: "telegram.preview_dropped",
+    });
+    await clock.advance(5_000);
+    await card;
+    expect(arrivals.map(({ method }) => method)).toStrictEqual(["sendMessage", "sendMessage"]);
+  });
+
+  it("drops a preview that would wait behind another call of its chat", async () => {
+    const { clock, api, arrivals } = setUp();
+    const first = api.sendMessage(ownerId, "Working");
+    const answer = api.sendMessage(ownerId, "the answer");
+    await expect(previewOf(api, 1001, "Working 1 s")).rejects.toMatchObject({
+      code: "telegram.preview_dropped",
+    });
+    await clock.advance(1_000);
+    await Promise.all([first, answer]);
+    expect(arrivals.map(({ method }) => method)).toStrictEqual(["sendMessage", "sendMessage"]);
   });
 
   it("lets the poller's getUpdates through untouched, 429 and all", async () => {

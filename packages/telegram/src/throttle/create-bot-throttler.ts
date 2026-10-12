@@ -1,7 +1,8 @@
-import type { Clock, Logger } from "@binference/core";
+import { BinferenceError, type Clock, type Logger } from "@binference/core";
 import type { Transformer } from "grammy";
 import { assertGrammySignal, type GrammySignal } from "../api/assert-grammy-signal.js";
 import { abortReasonOf, chatIdOf, floodWaitMsOf } from "./bot-call.schema.js";
+import { isPreviewSignal } from "./preview-signal.js";
 
 /** What a bot's throttler waits through and reports to. */
 export interface BotThrottlerOptions {
@@ -17,6 +18,8 @@ interface ChatPace {
   readonly tail: Promise<void>;
   readonly inLine: number;
   readonly readyAtMs: number;
+  /** Until when Telegram asked the bot to wait in this chat. */
+  readonly floodUntilMs: number;
 }
 
 /** One bot's throttle: each chat's pace, and the send times reserved in the last second. */
@@ -33,6 +36,8 @@ interface ThrottledCall<R> {
   readonly key: string;
   readonly spacingMs: number;
   readonly signal: AbortSignal;
+  /** A preview gives way: it is dropped, never queued behind a call or a wait, never resent. */
+  readonly isPreview: boolean;
   readonly send: (attempt: AbortSignal) => Promise<R>;
 }
 
@@ -47,7 +52,7 @@ const floodBudgetMs = 5 * 60_000;
 const defaultAttemptTimeoutMs = 30_000;
 // Past this many chats, the ones with nothing in line and no wait left are forgotten.
 const maxKnownChats = 256;
-const idle: ChatPace = { tail: Promise.resolve(), inLine: 0, readyAtMs: 0 };
+const idle: ChatPace = { tail: Promise.resolve(), inLine: 0, readyAtMs: 0, floodUntilMs: 0 };
 const settled = (): void => undefined;
 
 function spacingMsOf(chatId: number | string | undefined): number {
@@ -94,9 +99,21 @@ async function waitForTurn<R>(throttle: Throttle, call: ThrottledCall<R>): Promi
 
 function pause(throttle: Throttle, key: string, waitMs: number): void {
   const pace = paceOf(throttle, key);
-  const readyAtMs = Math.max(pace.readyAtMs, throttle.clock.now() + waitMs);
-  throttle.paces.set(key, { ...pace, readyAtMs });
+  const untilMs = throttle.clock.now() + waitMs;
+  const readyAtMs = Math.max(pace.readyAtMs, untilMs);
+  throttle.paces.set(key, {
+    ...pace,
+    readyAtMs,
+    floodUntilMs: Math.max(pace.floodUntilMs, untilMs),
+  });
   throttle.logger.warn("telegram.flood_wait", { durationMs: waitMs });
+}
+
+function previewDropped(): BinferenceError {
+  return new BinferenceError({
+    code: "telegram.preview_dropped",
+    message: "A preview gave way to the chat's other calls or to a wait Telegram asked for.",
+  });
 }
 
 // Sends until Telegram answers with anything but a 429, or the waits pass the budget.
@@ -113,6 +130,9 @@ async function sendUntilAnswered<R>(
     return answer;
   }
   pause(throttle, call.key, floodMs);
+  if (call.isPreview) {
+    throw previewDropped();
+  }
   return sendUntilAnswered(throttle, call, waitedMs + floodMs);
 }
 
@@ -149,8 +169,17 @@ function leaveLine(throttle: Throttle, key: string): void {
   }
 }
 
+// A preview goes only when its chat has no call in line and no wait Telegram asked for.
+function givesWay<R>(throttle: Throttle, call: ThrottledCall<R>): boolean {
+  const pace = paceOf(throttle, call.key);
+  return call.isPreview && (pace.inLine > 0 || pace.floodUntilMs > throttle.clock.now());
+}
+
 // One call at a time per chat, in the order the calls came.
 async function inTurn<R>(throttle: Throttle, call: ThrottledCall<R>): Promise<R> {
+  if (givesWay(throttle, call)) {
+    throw previewDropped();
+  }
   const pace = paceOf(throttle, call.key);
   let release = settled;
   const done = new Promise<void>((resolve) => {
@@ -186,7 +215,10 @@ function followed(signal: GrammySignal | undefined) {
  * the `retry_after` Telegram names, then the call is sent again: the caller sees the answer that
  * follows, never the 429, unless the waits pass five minutes. Other chats keep going.
  * `getUpdates` passes straight through: the poller owns its own waits. Each attempt is bounded by
- * `attemptTimeoutMs`, so a caller's signal only has to say when to stop.
+ * `attemptTimeoutMs`, so a caller's signal only has to say when to stop. A call whose signal is a
+ * `previewSignal` gives way instead: it rejects with `telegram.preview_dropped` when its chat has
+ * a call in line or a wait running, and when Telegram answers it with a 429, which still pauses
+ * the chat for every other call.
  */
 export function createBotThrottler(options: BotThrottlerOptions): Transformer {
   const throttle: Throttle = {
@@ -209,6 +241,7 @@ export function createBotThrottler(options: BotThrottlerOptions): Transformer {
         key: chatId === undefined ? "" : String(chatId),
         spacingMs: spacingMsOf(chatId),
         signal: caller.signal,
+        isPreview: isPreviewSignal(signal),
         send: async (attempt) => prev(method, payload, assertGrammySignal(attempt)),
       });
     } finally {

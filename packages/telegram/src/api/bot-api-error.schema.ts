@@ -83,13 +83,18 @@ export function isUnsentRequest(error: unknown): boolean {
 
 /**
  * Maps a failed Bot API call to a `BinferenceError`: `telegram.bad_token`, `telegram.poll_conflict`,
- * `telegram.flood` (with `retryAfterMs`), `telegram.api_refused` or `telegram.unreachable`.
+ * `telegram.flood` (with `retryAfterMs`), `telegram.api_refused` or `telegram.unreachable`. A
+ * `BinferenceError` the bot's throttler raised, such as `telegram.preview_dropped`, stays as it is.
  * `telegram.unreachable` carries `isUnsent: true` only when no connection opened, so the request
  * never reached Telegram; any other network failure may have reached it. The Bot API's own error
  * never becomes the cause: its request URL holds the bot token, and its payload holds the chat
  * text.
  */
 export function botApiFault(error: unknown, method: string): BinferenceError {
+  // binference's own word from the throttler, such as a dropped preview, stays as it is.
+  if (error instanceof BinferenceError) {
+    return error;
+  }
   if (error instanceof GrammyError) {
     return refusal(method, error);
   }
