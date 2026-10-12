@@ -31,6 +31,20 @@ interface Running {
 
 const controllers: AbortController[] = [];
 
+// Hands on one head a block time, as a node behind the chain does.
+async function trickle(
+  clock: ManualClock,
+  numbers: readonly bigint[],
+  send: (number: bigint) => void,
+): Promise<void> {
+  const [number, ...rest] = numbers;
+  if (number !== undefined) {
+    send(number);
+    await clock.advance(blockTimeMs);
+    await trickle(clock, rest, send);
+  }
+}
+
 const refuseSocket = (): never => {
   throw new Error("not a WebSocket URL");
 };
@@ -189,6 +203,38 @@ describe("block source", () => {
     expect(source.state().mode).toBe("subscription");
     await clock.advance(1);
     expect(source.state()).toMatchObject({ mode: "polling", fault: "head_timeout", head: 100n });
+  });
+
+  it("gives up a socket that repeats one head, as one that sends none", async () => {
+    const { clock, sockets, source } = start({ subscribe: true });
+    await clock.advance(0);
+    const [socket] = sockets.opened();
+    socket?.accept();
+    socket?.receive(subscribed);
+    socket?.receive(headMessage(150n));
+    await clock.advance(1_000);
+    socket?.receive(headMessage(150n));
+    await clock.advance(1_000);
+    socket?.receive(headMessage(150n));
+    await clock.advance(1_000);
+    expect(source.state()).toMatchObject({ mode: "polling", fault: "head_timeout", head: 150n });
+  });
+
+  it("gives up a socket whose heads trail the head the polls saw", async () => {
+    const { clock, sockets, source, heads } = start({ subscribe: true });
+    await clock.advance(0);
+    const [first] = sockets.opened();
+    first?.drop();
+    await clock.advance(30_000 + blockTimeMs);
+    const [, second] = sockets.opened();
+    second?.accept();
+    second?.receive(subscribed);
+    await settle(clock, 1);
+    await trickle(clock, [60n, 61n, 62n, 63n, 64n, 65n, 66n, 67n], (number) =>
+      second?.receive(headMessage(number)),
+    );
+    expect(heads).toStrictEqual([100n]);
+    expect(source.state()).toMatchObject({ mode: "polling", fault: "head_timeout" });
   });
 
   it("polls when the node refuses the subscription", async () => {

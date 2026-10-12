@@ -19,8 +19,11 @@ type SocketEvent =
 export interface FollowParts {
   readonly subscription: HeadSubscription;
   readonly clock: Clock;
-  /** Called with each new head's number, in the order the node sent them. */
-  readonly onHead: (number: bigint) => void;
+  /**
+   * Called with each head's number, in the order the node sent them; answers whether it is above
+   * every head seen. Only such a head counts as progress against the subscription's timeout.
+   */
+  readonly onHead: (number: bigint) => boolean;
 }
 
 // A node that floods the socket faster than heads are read loses the oldest messages first.
@@ -100,10 +103,16 @@ function onEvent(
   if (message?.kind === "subscribed") {
     state.subscribed(message.subscription);
   } else if (message?.kind === "head" && message.subscription === state.subscription()) {
-    state.sawHead(context.parts.clock.now());
-    context.parts.onHead(message.number);
+    onHeadMessage(message.number, state, context.parts);
   }
   return undefined;
+}
+
+// A node that repeats a head, or trails the chain, makes no progress: it times out.
+function onHeadMessage(number: bigint, state: Following, parts: FollowParts): void {
+  if (parts.onHead(number)) {
+    state.sawHead(parts.clock.now());
+  }
 }
 
 // Reads one event; the subscription goes on while this answers undefined.
@@ -134,7 +143,7 @@ function openSocket(subscription: HeadSubscription): HeadSocket | undefined {
  * Follows new block headers over one WebSocket: opens it, subscribes with `eth_subscribe` to
  * `newHeads` and hands each head's number on. It ends when the socket closes or fails, when the
  * node refuses the subscription, and when the socket goes the subscription's timeout without a
- * head, subscribing included; the socket is closed whatever ended it. A socket that cannot be
+ * head above every head seen, subscribing included; the socket is closed whatever ended it. A socket that cannot be
  * opened ends as closed. Rejects with the signal's reason once it aborts.
  */
 export async function followHeads(parts: FollowParts, signal: AbortSignal): Promise<HeadsEnded> {

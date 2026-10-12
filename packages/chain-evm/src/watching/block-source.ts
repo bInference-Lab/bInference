@@ -52,7 +52,8 @@ export interface BlockSourceOptions {
 
 interface SourceRun {
   readonly options: BlockSourceOptions;
-  readonly see: (number: bigint, mode: BlockSourceState["mode"]) => void;
+  /** Records a head; answers whether it is above every head seen. */
+  readonly see: (number: bigint, mode: BlockSourceState["mode"]) => boolean;
   readonly fail: (fault: BlockSourceFault) => void;
   readonly signal: AbortSignal;
   /** When the subscription may be tried again. */
@@ -107,7 +108,8 @@ async function step(run: SourceRun): Promise<void> {
 /**
  * Creates the block source of one chain (ARCHITECTURE.md section 9). With a WebSocket endpoint it
  * subscribes to `newHeads` and polls only while the socket is dead, for the subscription's rest,
- * before it opens a new one; without one, it polls `eth_blockNumber` once a block time through the
+ * before it opens a new one. A socket that brings no head above every head seen within its
+ * timeout, such as one whose node repeats a head or trails the chain, counts as dead. Without one, it polls `eth_blockNumber` once a block time through the
  * chain's failover, which moves to the next endpoint within its timeout. A head that is not above
  * the newest seen, such as a node behind the others or a reorganised height, is not handed on.
  */
@@ -137,6 +139,7 @@ export function createBlockSource(options: BlockSourceOptions): BlockSource {
           if (isNew) {
             onHead(number);
           }
+          return isNew;
         },
         fail: (fault) => {
           current = { ...current, mode: "polling", fault };
