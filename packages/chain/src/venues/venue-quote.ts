@@ -31,8 +31,8 @@ export interface VenueQuote {
   /**
    * The token tax the venue's own contract takes on this trade, which no token transfer shows,
    * such as a launchpad's tax on its curve, taken in the asset the curve trades against. The risk
-   * check counts it as the leg's tax. Left out, the venue takes none; a tax the token takes on its
-   * transfers is the round trip's to measure.
+   * check counts it as the leg's tax, so the quote's price impact leaves it out. Left out, the
+   * venue takes none; a tax the token takes on its transfers is the round trip's to measure.
    */
   readonly taxBps?: Bps;
   /**
