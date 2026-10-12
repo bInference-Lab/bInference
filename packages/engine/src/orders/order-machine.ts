@@ -2,6 +2,7 @@ import { err, type Id, type JsonValue, ok, type Result } from "@binference/core"
 import type { OrderState } from "@binference/protocol";
 import { isExitOrder, type OrderMove, type OrderRecord } from "./order-record.js";
 import { isOrderEnded } from "./order-states.js";
+import { disarmedAfterFill } from "./price-triggers.js";
 
 /** How long before an order expires `notice.orderExpiring` goes: 24 hours (decision 0189). */
 export const orderExpiryNoticeMs = 86_400_000;
@@ -30,7 +31,11 @@ export type OrderTrigger =
   | { readonly type: "expiry_reached" }
   | { readonly type: "agent_frozen" }
   | { readonly type: "agent_unfrozen" }
-  | { readonly type: "fill_recorded" }
+  | {
+      readonly type: "fill_recorded";
+      /** The fill sold everything its position held (spec 6, section 5). */
+      readonly emptiesPosition?: boolean;
+    }
   | { readonly type: "position_closed" }
   | { readonly type: "expiry_noticed" }
   | { readonly type: "trigger_kept"; readonly triggerState: JsonValue };
@@ -92,7 +97,14 @@ function confirmCard({
     : ok({ state: "active", cardId: confirmation.cardId });
 }
 
-function recordFill({ order, nowMs }: GuardInput<"fill_recorded">): Result<Change, OrderProblem> {
+// A fill counts once; the last fill fills the order. An exit order whose fill emptied its position
+// ends with it; any other order with a fill left waits, disarmed, for its condition to stop
+// holding before it fires again, a trailing stop's peak starting again (decision 0197).
+function recordFill({
+  order,
+  trigger,
+  nowMs,
+}: GuardInput<"fill_recorded">): Result<Change, OrderProblem> {
   if (isPast(order, nowMs)) {
     return err("expired");
   }
@@ -101,7 +113,12 @@ function recordFill({ order, nowMs }: GuardInput<"fill_recorded">): Result<Chang
     return err("no_fill_left");
   }
   const fills = order.fills + 1;
-  return ok({ state: fills === maxFills ? "filled" : "active", fills });
+  if (fills === maxFills) {
+    return ok({ state: "filled", fills });
+  }
+  return trigger.emptiesPosition === true && isExitOrder(order.request)
+    ? ok({ state: "ended", fills, endReason: "position_closed" })
+    : ok({ state: "active", fills, triggerState: disarmedAfterFill });
 }
 
 function resume({ order, nowMs }: GuardInput<"agent_unfrozen">): Result<Change, OrderProblem> {

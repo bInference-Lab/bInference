@@ -111,9 +111,9 @@ function areBoundsValid(request: OrderRequest, nowMs: number): boolean {
   );
 }
 
-// One fill by default for a limit, take-profit or stop-loss order; none for a trailing stop.
-function maxFillsOf(request: OrderRequest): number | undefined {
-  return request.maxFills ?? (request.kind === "trailing" ? undefined : 1);
+// One fill unless the request names more, for every kind (decision 0197).
+function maxFillsOf(request: OrderRequest): number {
+  return request.maxFills ?? 1;
 }
 
 // The order with every default filled, its token and what it spends in their canonical forms.
@@ -127,8 +127,7 @@ function filledOrder(
   nowMs: number,
 ): CheckedOrder {
   const expiresAtMs = request.expiresAt ?? nowMs + defaultOrderLifetimeMs;
-  const maxFills = maxFillsOf(request);
-  const limit = maxFills === undefined ? {} : { maxFills };
+  const limit = { maxFills: maxFillsOf(request) };
   const spend = found.spend === undefined ? {} : { spend: found.spend };
   const filled = { ...request, token: found.token, ...spend, expiresAt: expiresAtMs, ...limit };
   return { request: filled, expiresAtMs, ...limit, chain: found.chain };
@@ -136,7 +135,7 @@ function filledOrder(
 
 /**
  * Checks an `order/create` request against the rules of decisions 0189 and 0190 and fills its
- * defaults: an expiry 30 days after `nowMs`, one fill for a limit, take-profit or stop-loss order,
+ * defaults: an expiry 30 days after `nowMs`, one fill for an order that names no more (decision 0197),
  * and the chain's coin as what a buy spends. A DCA or copy order is `order.kind_unavailable`; any
  * other broken rule `protocol.bad_args`.
  */

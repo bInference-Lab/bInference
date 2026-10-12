@@ -1,6 +1,6 @@
 import { bpsSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { judgeTrigger, trailingStateDocument } from "./price-triggers.js";
+import { judgeTrigger, triggerStateDocument } from "./price-triggers.js";
 import { testStopLoss } from "./test-orders.js";
 
 const at = (micros: bigint) => ({ numerator: micros, denominator: 1n });
@@ -29,7 +29,7 @@ describe("a price trigger", () => {
   it("fires a trailing stop exactly at its distance under the peak it kept", () => {
     const kept = {
       ...trailing,
-      triggerState: trailingStateDocument.encode({ peak: at(1_000_000n) }),
+      triggerState: triggerStateDocument.encode({ peak: at(1_000_000n) }),
     };
     expect(judgeTrigger(kept, at(900_001n))).toStrictEqual({
       level: { side: "atOrBelow", price: { numerator: 9_000_000_000n, denominator: 10_000n } },
@@ -38,13 +38,16 @@ describe("a price trigger", () => {
     expect(judgeTrigger(kept, at(900_000n))?.fires).toBe(true);
     expect(judgeTrigger(kept, at(1_100_000n))).toMatchObject({
       fires: false,
-      peak: at(1_100_000n),
+      state: { peak: at(1_100_000n) },
     });
   });
 
   it("starts a trailing stop again from the price now when its kept state does not read", () => {
     const broken = { ...trailing, triggerState: { peak: "high" } };
-    expect(judgeTrigger(broken, at(500_000n))).toMatchObject({ fires: false, peak: at(500_000n) });
+    expect(judgeTrigger(broken, at(500_000n))).toMatchObject({
+      fires: false,
+      state: { peak: at(500_000n) },
+    });
   });
 
   it("judges no price for an order its price does not trigger", () => {

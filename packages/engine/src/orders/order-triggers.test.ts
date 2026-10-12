@@ -3,7 +3,7 @@ import { bpsSchema, type Ratio } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testToken } from "../intents/test-intents.js";
 import type { WatchedOrderPrice } from "./order-triggers.js";
-import { trailingStateDocument } from "./price-triggers.js";
+import { triggerStateDocument } from "./price-triggers.js";
 import { activeOrder, fillIntentsOf, startFillEngine, wholeToken } from "./test-fills.js";
 import { storedOrder, testStopLoss } from "./test-orders.js";
 
@@ -27,8 +27,8 @@ const trailingStop = {
 } as const;
 
 // The peak an order keeps, in micro-dollars a whole token, rounded down.
-function peakMicros(state: Parameters<typeof trailingStateDocument.decode>[0] | undefined): bigint {
-  const peak: Ratio = trailingStateDocument.decode(state ?? null).peak;
+function peakMicros(state: Parameters<typeof triggerStateDocument.decode>[0] | undefined): bigint {
+  const peak: Ratio = triggerStateDocument.decode(state ?? null).peak ?? at(0n).usdPerBaseUnit;
   return peak.numerator / peak.denominator;
 }
 

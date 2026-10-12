@@ -44,7 +44,7 @@ describe("an auto order's card in English", () => {
     );
   });
 
-  it("words a limit buy, a share sold by a trailing stop and an order with no fill limit", async () => {
+  it("words a limit buy and a share sold by a trailing stop, each with one fill", async () => {
     const [buy, trailing] = await cardOf([
       {
         ...testStopLoss(),
@@ -65,7 +65,7 @@ describe("an auto order's card in English", () => {
       /^Approve Limit order: buy TKN with \$25\.00 of FAKE when the price is at or below \$0\.50 · up to 1 fill until /,
     );
     expect(trailing?.[1]).toMatch(
-      /^Approve Trailing stop: sell 50\.00% of your TKN when the price falls 8\.00% below its highest since the order started · no fill limit until /,
+      /^Approve Trailing stop: sell 50\.00% of your TKN when the price falls 8\.00% below its highest since the order started · up to 1 fill until /,
     );
   });
 

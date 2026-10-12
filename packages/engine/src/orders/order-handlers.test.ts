@@ -100,7 +100,7 @@ describe("an auto order's card", () => {
 });
 
 describe("the rules of a new auto order", () => {
-  it("fills one fill and 30 days, and a trailing stop gets no fill limit", async () => {
+  it("fills one fill and 30 days, a trailing stop's too, unless the request names more", async () => {
     const test = await startOrderEngine();
     const trailing = await createdOrder(test, {
       ...testStopLoss(),
@@ -118,7 +118,7 @@ describe("the rules of a new auto order", () => {
     });
 
     expect([trailing.maxFills, trailing.expiresAt]).toStrictEqual([
-      undefined,
+      1,
       testNowMs + defaultOrderLifetimeMs,
     ]);
     expect([limit.maxFills, limit.expiresAt]).toStrictEqual([3, testNowMs + 60_000]);

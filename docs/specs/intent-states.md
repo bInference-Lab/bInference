@@ -191,6 +191,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
     the wait doubling up to 5 minutes; the owner hears a skip once per reason in a row.
   - A paper fill moves its intent to `paper_filled`, records the fill on its order and in
     `order_fills`, and ends the other exit orders of a position it emptied, in one write.
+  - An order fills once unless it names more fills. One with a fill left waits after each fill
+    until its condition stops holding at a confirmed price, and a trailing stop's highest price
+    starts again; an exit order whose fill emptied its position ends with `position_closed`
+    ([decision 0197](../DECISIONS.md#d0197)).
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when

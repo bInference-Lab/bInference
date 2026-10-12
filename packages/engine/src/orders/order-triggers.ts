@@ -5,7 +5,7 @@ import { moveOrder } from "./order-machine.js";
 import { hasPriceTrigger, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import { wholeTokenPrice } from "./price-level.js";
-import { judgeTrigger, trailingStateDocument } from "./price-triggers.js";
+import { judgeTrigger, type TriggerState, triggerStateDocument } from "./price-triggers.js";
 
 /** One confirmed price of a watched token, as the price watcher read it at a block. */
 export interface WatchedOrderPrice {
@@ -87,14 +87,15 @@ function createActiveOrders(parts: OrderTriggersParts): ActiveOrders {
   };
 }
 
-// Keeps a trailing stop's new highest price; a write another write beat is judged again later.
-async function keepPeak(
+// Keeps what a trigger keeps between prices, a new peak or the order armed again; a write another
+// write beat is judged again later.
+async function keepState(
   parts: OrderTriggersParts,
   active: ActiveOrders,
-  call: { readonly order: OrderRecord; readonly peak: Ratio; readonly signal: AbortSignal },
+  call: { readonly order: OrderRecord; readonly state: TriggerState; readonly signal: AbortSignal },
 ): Promise<void> {
-  const { order, peak, signal } = call;
-  const triggerState = trailingStateDocument.encode({ peak });
+  const { order, state, signal } = call;
+  const triggerState = triggerStateDocument.encode(state);
   const move = moveOrder(order, { type: "trigger_kept", triggerState }, parts.clock.now());
   const written = move.ok ? await parts.orders.move([move.value], { signal }) : undefined;
   const [kept] = written?.ok === true ? written.value : [];
@@ -116,8 +117,8 @@ async function judge(
 ): Promise<TriggerOutcome | undefined> {
   const { order, price, signal } = call;
   const judged = judgeTrigger(order, wholeTokenPrice(price.usdPerBaseUnit, price.decimals));
-  if (judged?.peak !== undefined) {
-    await keepPeak(parts, active, { order, peak: judged.peak, signal });
+  if (judged?.state !== undefined) {
+    await keepState(parts, active, { order, state: judged.state, signal });
   }
   if (judged?.fires !== true) {
     return undefined;

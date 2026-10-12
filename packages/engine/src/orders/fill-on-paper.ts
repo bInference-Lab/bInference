@@ -58,8 +58,9 @@ async function fillWriteOf(
   call: { readonly order: OrderRecord; readonly fill: PaperFill; readonly signal: AbortSignal },
 ): Promise<FillWrite> {
   const { order, fill, signal } = call;
-  const recorded = moveOrder(order, { type: "fill_recorded" }, fill.atMs);
-  const ended = (await empties(parts, order, { fill, signal }))
+  const emptiesPosition = await empties(parts, order, { fill, signal });
+  const recorded = moveOrder(order, { type: "fill_recorded", emptiesPosition }, fill.atMs);
+  const ended = emptiesPosition
     ? await exitEndMovesOf(parts, { emptiedBy: order, nowMs: fill.atMs, signal })
     : [];
   const row = {

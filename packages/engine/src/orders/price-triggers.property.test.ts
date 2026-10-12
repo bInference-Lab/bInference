@@ -2,7 +2,7 @@ import { type Bps, bpsPerWhole, type JsonValue, type Ratio } from "@binference/c
 import type { OrderRequest } from "@binference/protocol";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { judgeTrigger, type TriggerJudgment, trailingStateDocument } from "./price-triggers.js";
+import { judgeTrigger, type TriggerJudgment, triggerStateDocument } from "./price-triggers.js";
 import { testStopLoss } from "./test-orders.js";
 
 const prices = fc.bigInt({ min: 1n, max: 10n ** 12n });
@@ -67,7 +67,7 @@ function oracleFires(request: OrderRequest, price: Ratio, peak: Ratio | undefine
 }
 
 function stateOf(peak: Ratio | undefined): { readonly triggerState?: JsonValue } {
-  return peak === undefined ? {} : { triggerState: trailingStateDocument.encode({ peak }) };
+  return peak === undefined ? {} : { triggerState: triggerStateDocument.encode({ peak }) };
 }
 
 function firesOf(judged: TriggerJudgment | undefined): boolean | undefined {
@@ -77,7 +77,7 @@ function firesOf(judged: TriggerJudgment | undefined): boolean | undefined {
 // What a trailing stop's judgment breaks of its peak: a peak raised on a price no higher, a higher
 // price that raised none, or a peak other than the highest.
 function peakViolation(request: OrderRequest, price: Ratio, peak: Ratio | undefined): string {
-  const raised = judgeTrigger({ request, ...stateOf(peak) }, price)?.peak;
+  const raised = judgeTrigger({ request, ...stateOf(peak) }, price)?.state?.peak;
   const rises = peak === undefined || sign(price, peak) > 0;
   if (raised === undefined) {
     return rises ? "a higher price raised no peak" : "";
