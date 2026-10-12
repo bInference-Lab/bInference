@@ -2,8 +2,10 @@ import type { CapGate } from "../confirmations/cap-gate.js";
 import type { Confirmations } from "../confirmations/create-confirmations.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
+import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { Holdings } from "../money-path/wallet-facts.js";
 import type { OrderParts } from "../orders/create-order.js";
+import { createFillOnPaper, type FillOnPaperParts } from "../orders/fill-on-paper.js";
 import { createOrderFills, type OrderFills } from "../orders/fill-orders.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
 import type { EngineOptions } from "./create-engine.js";
@@ -74,4 +76,13 @@ export function orderFillsOf(
     ids,
     publish,
   });
+}
+
+/** The execute step of an order's paper fill, which writes the fill on its order (decision 0195). */
+export function fillOnPaperOf(
+  options: EngineOptions,
+  parts: Pick<FillOnPaperParts, "paper" | "stored" | "portfolio">,
+): ExecuteConfirmed {
+  const { stores, chains, clock, ids, publish } = options;
+  return createFillOnPaper({ ...parts, orders: stores.orders, chains, clock, ids, publish });
 }

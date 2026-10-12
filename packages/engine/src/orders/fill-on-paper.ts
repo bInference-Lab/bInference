@@ -1,12 +1,13 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { IdSource } from "@binference/core";
+import type { Clock, IdSource } from "@binference/core";
 import { isFillAuthorization } from "../intents/authorization.js";
-import type { IntentSnapshot } from "../intents/create-stored-intents.js";
+import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import { cancelCard } from "./cancel-order.js";
 import { announceEndedExits, exitEndMovesOf } from "./end-exit-orders.js";
 import type { OrderFillWrite } from "./order-fill.js";
 import { moveOrder } from "./order-machine.js";
@@ -16,6 +17,8 @@ import type { OrderStore } from "./ports.js";
 /** What an order's paper fill writes through, reads its position from, and announces on. */
 export interface FillOnPaperParts {
   readonly paper: PaperFills;
+  readonly stored: StoredIntents;
+  readonly clock: Clock;
   readonly orders: OrderStore;
   /** What each wallet holds on paper now, which tells whether a sale empties its position. */
   readonly portfolio: Pick<PaperPortfolio, "balance">;
@@ -107,7 +110,9 @@ async function orderOf(
  * The execute step of an auto order's confirmed paper fill (decision 0195): the intent fills at its
  * confirmed quote, and in the same write its order records the fill, the fill's `order_fills` row
  * is added, and a sale that empties its position ends the position's other exit orders, which the
- * owner hears of in one `notice.ordersEnded`. A fill still `confirmed` after a try, because its
+ * owner hears of in one `notice.ordersEnded`. A fill whose order can no longer record it, as one
+ * that expired or ended since the fill's authorization, is cancelled unsigned and fills nothing.
+ * A fill still `confirmed` after a try, because its
  * write lost a race to another write of its order or its sold asset had no usable price, is tried
  * again on what it reads then, up to three tries in all. Any other intent comes back as it was.
  */
@@ -120,6 +125,10 @@ export function createFillOnPaper(parts: FillOnPaperParts): ExecuteConfirmed {
     const order = await orderOf(parts, snapshot, signal);
     if (order === undefined || snapshot.record.state !== "confirmed") {
       return snapshot;
+    }
+    if (!moveOrder(order, { type: "fill_recorded" }, parts.clock.now()).ok) {
+      await cancelCard(parts, snapshot.record.id, signal);
+      return (await parts.stored.snapshot(snapshot.record.id, { signal })) ?? snapshot;
     }
     const filled = await tryFill(parts, snapshot, { order, signal });
     return filled.record.state !== "confirmed" || left <= 1

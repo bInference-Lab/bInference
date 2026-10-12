@@ -34,7 +34,6 @@ import {
   type VenueQuoteSourceOptions,
 } from "../money-path/venue-quote-source.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
-import { createFillOnPaper } from "../orders/fill-on-paper.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
@@ -61,7 +60,7 @@ import {
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
-import { followCardOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
+import { fillOnPaperOf, followCardOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
 import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
@@ -231,14 +230,13 @@ function executeOf(
   const fills = createPaperFills({ stored, positions, portfolio, prices, clock });
   const { agents, intents, orders } = stores;
   const written = { stored, agents, intents, orders, clock, ids, publish };
-  const { chains } = options;
   return createExecuteConfirmed({
     paper: fills,
     executor,
     publish,
     unfreeze: async (snapshot, call) => writeUnfreeze(written, snapshot, call.signal),
     autoOrder: followCardOf(parts.orders),
-    orderFill: createFillOnPaper({ paper: fills, orders, portfolio, chains, ids, publish }),
+    orderFill: fillOnPaperOf(options, { paper: fills, stored, portfolio }),
   });
 }
 

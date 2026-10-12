@@ -2,6 +2,7 @@ import { bpsSchema, type Id, idSchema, type JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
+import type { IntentStore } from "../ports.js";
 import { firstFillWaitMs } from "./fill-pacing.js";
 import {
   activeOrder,
@@ -34,6 +35,24 @@ function idOf(intent: Id<"int"> | undefined): Id<"int"> {
     throw new Error("Expected the fill row to name its intent.");
   }
   return intent;
+}
+
+// An intent store whose fill's own confirmation, which carries no card, moves the clock a minute
+// on, past the order's expiry, before the paper fill.
+function passingExpiryAtFill(
+  store: IntentStore,
+  holder: { readonly test?: TestEngine },
+): IntentStore {
+  return {
+    ...store,
+    transition: async (change, call) => {
+      const moved = await store.transition(change, call);
+      if (change.state === "confirmed" && change.confirmation === undefined) {
+        await holder.test?.clock.advance(60_000);
+      }
+      return moved;
+    },
+  };
 }
 
 const takeProfit = { ...testStopLoss(), kind: "takeProfit", trigger: { price: 700_000n } } as const;
@@ -214,6 +233,20 @@ describe("an auto order's fill", () => {
 
     expect(await fillIntentsOf(test)).toMatchObject([{ kind: "buy", state: "paper_filled" }]);
     expect(await fillRowsOf(unpriced, inDollars.id)).toMatchObject([{ reason: "no_price" }]);
+  });
+
+  it("cancels a confirmed fill unsigned when its order expired before the fill could record it", async () => {
+    const holder: { test?: TestEngine } = {};
+    const test = await startFillEngine({ intents: (store) => passingExpiryAtFill(store, holder) });
+    holder.test = test;
+    const order = await activeOrder(test, testStopLoss({ expiresAt: testNowMs + 30_000 }));
+
+    const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    expect(outcome).toBe("inactive");
+    expect(await fillIntentsOf(test)).toMatchObject([{ state: "cancelled" }]);
+    expect(await storedOrder(test, order.id)).toMatchObject({ fills: 0 });
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
   });
 
   it("fills nothing for an order that is not active, or past its expiry", async () => {
