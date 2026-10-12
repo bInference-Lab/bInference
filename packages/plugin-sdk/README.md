@@ -25,7 +25,11 @@ rejects when its service is down. It decides nothing; the engine's risk step doe
 A data plugin defines itself with `defineData`: a `MarketDataSource` that reads a token's pools
 (`MarketPool`) and a chain's trending tokens (`TrendingToken`), `not_covered` for a chain it does
 not serve, and rejects when its service is down. Its figures inform the owner and the agent and
-never price a trade.
+never price a trade. `@binference/plugin-sdk/data` gives it what every data service's client
+needs: `parseJsonText` keeps each number as the text the answer wrote, `ratioOf`, `usdMicrosOf`,
+`changeBpsOf` and `wholeOf` read those texts exactly, and `createPacedReader` sends each documented
+read under the service's published limits, waits out a 429 once and turns every other answer into
+a typed fault.
 
 A skills plugin ships `SKILL.md` files. `lintSkill` reads one and names each sentence that tells
 the agent to ask for or collect a secret: a seed or recovery phrase, a private key, an API
@@ -51,6 +55,7 @@ finding, so a skill's author runs it before publishing.
 | `TokenRiskSource`, `TokenRiskReport`, `RiskFlagCode`            | A risk data source and what it reports about a token                                     |
 | `orderedFlags`                                                  | A report's findings in their fixed order, each once                                      |
 | `defineData`, `MarketDataSource`, `MarketPool`, `TrendingToken` | A market data source, checked and frozen, and what it reads                              |
+| `@binference/plugin-sdk/data`                                   | `createPacedReader`, `pathSegment`, `parseJsonText` and the exact figure readers         |
 | `lintSkill`, `SkillFinding`                                     | The sentences of a skill that ask for a secret, each with its line                       |
 | `@binference/plugin-sdk/testing`                                | The venue, curve, risk and market data contract suites, scripted HTTP and a manual clock |
 

@@ -1,5 +1,5 @@
-import type { Ratio } from "@binference/plugin-sdk";
-import { isJsonNumber } from "./api/json-text.schema.js";
+import type { Ratio } from "@binference/core";
+import { isJsonNumber } from "./json-text.schema.js";
 
 /** A decimal number exactly: `digits × 10^-scale`, with a scale of zero or more. */
 interface ExactDecimal {

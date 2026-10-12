@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { changeBpsOf, ratioOf, usdMicrosOf, wholeOf } from "./market-figures.js";
+import { changeBpsOf, ratioOf, usdMicrosOf, wholeOf } from "./exact-figures.js";
 
-describe("market figures", () => {
+describe("exact figures", () => {
   it.each([
     ["753.55", { numerator: 75_355n, denominator: 100n }],
     ["0", { numerator: 0n, denominator: 1n }],

@@ -13,11 +13,11 @@ import {
   ok,
   type TrendingToken,
 } from "@binference/plugin-sdk";
+import { changeBpsOf, ratioOf, usdMicrosOf, wholeOf } from "@binference/plugin-sdk/data";
 import { parseEvmAddress } from "@binference/plugin-sdk/evm";
 import type { DexBoost } from "./api/boost-answer.schema.js";
 import { createDexscreenerApi, tokensPerRequest } from "./api/dexscreener-api.js";
 import type { DexPair } from "./api/pair-answer.schema.js";
-import { changeBpsOf, ratioOf, usdMicrosOf, wholeOf } from "./market-figures.js";
 
 /** What the DEX Screener source is made from. */
 export interface DexscreenerOptions {

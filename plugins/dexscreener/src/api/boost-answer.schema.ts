@@ -1,5 +1,5 @@
+import { isJsonNumber, parseJsonText } from "@binference/plugin-sdk/data";
 import { z } from "zod";
-import { isJsonNumber, parseAnswer } from "./json-text.schema.js";
 
 /** One token of DEX Screener's boosts list, with the fields the source reads. */
 export interface DexBoost {
@@ -23,7 +23,7 @@ const boostListSchema = z.array(boostSchema);
  * DEX Screener's order. An answer outside its documented item schema is undefined.
  */
 export function readBoostList(text: string): readonly DexBoost[] | undefined {
-  const answer = boostListSchema.safeParse(parseAnswer(text));
+  const answer = boostListSchema.safeParse(parseJsonText(text));
   return answer.success
     ? answer.data.map(({ chainId, tokenAddress, totalAmount }) => ({
         chainId,

@@ -2,7 +2,7 @@ import { BinferenceError, type HttpRequest, type HttpResponse } from "@binferenc
 import { createManualClock, type ManualClock } from "@binference/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
 import { topBoostsAnswer, wbnbAddress, wbnbPairsAnswer } from "../testing/recorded-answers.js";
-import { createDexscreenerApi, pauseOf } from "./dexscreener-api.js";
+import { createDexscreenerApi } from "./dexscreener-api.js";
 
 const origin = "https://api.dexscreener.com";
 const boostsUrl = `${origin}/token-boosts/top/v1`;
@@ -192,14 +192,5 @@ describe("the DEX Screener API client", () => {
       code: "dexscreener.bad_request",
     });
     expect(http.requests).toHaveLength(0);
-  });
-
-  it("reads a pause from Retry-After, never longer than five minutes", () => {
-    expect([
-      pauseOf(tooMany({ "retry-after": "7" }), startMs),
-      pauseOf(tooMany({ "retry-after": "86400" }), startMs),
-      pauseOf(tooMany({ "retry-after": "soon" }), startMs),
-      pauseOf(tooMany(), startMs),
-    ]).toStrictEqual([7_000, 300_000, 60_000, 60_000]);
   });
 });

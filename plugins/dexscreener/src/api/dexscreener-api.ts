@@ -1,12 +1,7 @@
-import { BinferenceError, type Clock, type Http, type HttpResponse } from "@binference/plugin-sdk";
+import type { Clock, Http } from "@binference/plugin-sdk";
+import { createPacedReader, pathSegment } from "@binference/plugin-sdk/data";
 import { type DexBoost, readBoostList } from "./boost-answer.schema.js";
 import { type DexPair, readPairList } from "./pair-answer.schema.js";
-import {
-  createRequestBudget,
-  type EndpointGroup,
-  rateLimited,
-  type RequestBudget,
-} from "./request-budget.js";
 
 /** DEX Screener's public API, keyless: the reads the source makes. */
 export interface DexscreenerApi {
@@ -37,97 +32,25 @@ export interface DexscreenerApiOptions {
   readonly maxWaitMs: number;
 }
 
-const origin = "https://api.dexscreener.com";
 /** The addresses `/tokens/v1` reads in one request, as its docs say. */
 export const tokensPerRequest = 30;
-// The published limits: 300 requests a minute on pairs and tokens, 60 on the boosts.
-const windows = {
-  pairs: { max: 300, windowMs: 60_000 },
-  feeds: { max: 60, windowMs: 60_000 },
-} as const;
-// A 429 that names no wait pauses its group for the limits' whole window.
-const defaultPauseMs = 60_000;
-// The longest pause a Retry-After header may ask for.
-const maxPauseMs = 300_000;
-
-function unavailable(path: string, status: number): BinferenceError {
-  return new BinferenceError({
-    code: "dexscreener.unavailable",
-    message: `DEX Screener's API gave no answer to ${path} (HTTP ${String(status)}).`,
-    retryable: status === 408 || status >= 500,
-    details: { status },
-  });
-}
-
-function badAnswer(path: string): BinferenceError {
-  return new BinferenceError({
-    code: "dexscreener.bad_answer",
-    message: `DEX Screener's answer to ${path} is outside its documented shape.`,
-  });
-}
 
 /**
- * How long a 429 asks to wait: its Retry-After, in seconds or as an HTTP date, else the limits'
- * whole minute, at most five minutes.
+ * DEX Screener's API and its two published limits: 300 requests a minute on the pairs, tokens,
+ * token pairs and search endpoints (`pairs`), and 60 a minute on the profiles, boosts, orders,
+ * takeovers, ads and metas (`feeds`).
  */
-export function pauseOf(response: HttpResponse, nowMs: number): number {
-  const header = response.headers["retry-after"]?.trim() ?? "";
-  const asked = /^\d+$/.test(header) ? Number(header) * 1_000 : Date.parse(header) - nowMs;
-  return Number.isFinite(asked) && asked >= 0 ? Math.min(asked, maxPauseMs) : defaultPauseMs;
-}
+const service = {
+  id: "dexscreener",
+  name: "DEX Screener",
+  origin: "https://api.dexscreener.com",
+  limits: {
+    pairs: { max: 300, windowMs: 60_000 },
+    feeds: { max: 60, windowMs: 60_000 },
+  },
+} as const;
 
-// The path segment of a chain id or an address: only what DEX Screener's ids are made of.
-function segment(text: string): string {
-  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(text)) {
-    throw new BinferenceError({
-      code: "dexscreener.bad_request",
-      message: "A DEX Screener path names something that is no chain id or address.",
-    });
-  }
-  return text;
-}
-
-/** Where one documented read goes: its group of endpoints and its path. */
-interface ReadTarget {
-  readonly group: EndpointGroup;
-  readonly path: string;
-}
-
-/** One documented read, with the schema its answer passes. */
-interface Read<T> extends ReadTarget {
-  readonly reader: (text: string) => T | undefined;
-}
-
-// Sends one read under the budget: a 429 pauses its group and the read goes once more.
-function createReader(http: Http, clock: Clock, budget: RequestBudget) {
-  const send = async (read: ReadTarget, signal: AbortSignal) => {
-    await budget.take(read.group, signal);
-    return await http.request({ method: "GET", url: `${origin}${read.path}`, signal });
-  };
-  const textOf = async (read: ReadTarget, signal: AbortSignal): Promise<string> => {
-    const first = await send(read, signal);
-    if (first.status === 429) {
-      budget.pause(read.group, pauseOf(first, clock.now()));
-    }
-    const response = first.status === 429 ? await send(read, signal) : first;
-    if (response.status === 429) {
-      const pauseMs = pauseOf(response, clock.now());
-      budget.pause(read.group, pauseMs);
-      throw rateLimited(pauseMs);
-    }
-    if (response.status !== 200) {
-      throw unavailable(read.path, response.status);
-    }
-    return response.body;
-  };
-  return async <T>(read: Read<T>, signal: AbortSignal): Promise<T> => {
-    const answer = read.reader(await textOf(read, signal));
-    if (answer === undefined) {
-      throw badAnswer(read.path);
-    }
-    return answer;
-  };
-}
+const segment = (text: string): string => pathSegment(service.id, text);
 
 // The addresses in parts of at most one request's.
 function partsOf(addresses: readonly string[]): readonly (readonly string[])[] {
@@ -146,9 +69,7 @@ function partsOf(addresses: readonly string[]): readonly (readonly string[])[] {
  * 408 and 5xx), and a 200 outside the documented schema is `dexscreener.bad_answer`.
  */
 export function createDexscreenerApi(options: DexscreenerApiOptions): DexscreenerApi {
-  const { clock, maxWaitMs } = options;
-  const budget = createRequestBudget({ clock, windows, maxWaitMs });
-  const read = createReader(options.http, clock, budget);
+  const read = createPacedReader({ ...options, service });
   return {
     tokenPairs: async (chainId, tokenAddress, signal) =>
       read(

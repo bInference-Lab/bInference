@@ -1,5 +1,5 @@
+import { isJsonNumber, parseJsonText } from "@binference/plugin-sdk/data";
 import { z } from "zod";
-import { isJsonNumber, parseAnswer } from "./json-text.schema.js";
 
 /** A number of an answer, kept as the text DEX Screener wrote. */
 const decimalText = z.string().refine(isJsonNumber);
@@ -62,6 +62,6 @@ const pairListSchema = z.array(pairSchema);
  * `Pair` schema is undefined.
  */
 export function readPairList(text: string): readonly DexPair[] | undefined {
-  const answer = pairListSchema.safeParse(parseAnswer(text));
+  const answer = pairListSchema.safeParse(parseJsonText(text));
   return answer.success ? answer.data.map(pairOf) : undefined;
 }

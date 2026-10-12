@@ -15,4 +15,7 @@ Rules for this package:
   re-exports the types and adds `defineVenue`, which checks a declaration when the plugin loads.
 - The root export is chain-neutral. A family's helpers sit behind their own subpath, such as
   `@binference/plugin-sdk/evm`, and come from that family's package.
+- `@binference/plugin-sdk/data` holds what data plugins share: exact reading of an answer's
+  numbers and paced, keyless reads of a documented API. It names no service; each plugin declares
+  its own origin, limits and schemas.
 - `@binference/plugin-sdk/testing` gives plugins the contract suites their venues pass.

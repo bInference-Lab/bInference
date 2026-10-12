@@ -7,11 +7,11 @@ export function isJsonNumber(text: string): boolean {
 }
 
 /**
- * Parses an answer of DEX Screener's API with every number kept as the text the answer wrote, so
- * no figure passes through a floating-point number. Text that is not JSON is undefined, never a
- * throw.
+ * Parses a data service's JSON answer with every number kept as the text the answer wrote, so no
+ * figure passes through a floating-point number: `753.55` comes back as the string `"753.55"`.
+ * Text that is not JSON is undefined, never a throw. The result goes through a zod schema next.
  */
-export function parseAnswer(text: string): unknown {
+export function parseJsonText(text: string): unknown {
   try {
     return JSON.parse(text, (_key, value: unknown, context?: { readonly source?: string }) =>
       typeof value === "number" ? (context?.source ?? String(value)) : value,
