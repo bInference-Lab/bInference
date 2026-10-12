@@ -1,3 +1,4 @@
+import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, type Clock } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import {
@@ -13,6 +14,8 @@ import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
 import { type EngineLink, type RuntimeHost, runRuntime } from "../process/run-runtime.js";
+import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
+import { agentToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
 import { nthTestId } from "./memory-agent-stores.js";
@@ -49,6 +52,11 @@ export interface InProcessRuntimeOptions {
   readonly isStuck?: boolean;
   /** The engine's side of chat; a fake engine with one agent, `agt_…01`, by default. */
   readonly engine?: MemoryEngineChat;
+  /**
+   * Signs in to a real engine instead, with the start line's token: its chat and the agent's own
+   * tools go over the client this opens, and `tools` is not read.
+   */
+  readonly signIn?: (start: StartLine, signal: AbortSignal) => Promise<ProtocolClient>;
   /** The agent database, as a runtime that ran before left it; an empty one by default. */
   readonly database?: MemoryAgentDatabase;
   /** The model's answers, across every turn; none by default. */
@@ -80,11 +88,17 @@ const unservedClient: ToolClient = {
     ),
 };
 
-// A sign-in as the options shape it: at once, refused, or never ending until it is abandoned.
+// A sign-in as the options shape it: to a real engine, at once, refused, or never ending until it
+// is abandoned.
 async function signIn(
   options: InProcessRuntimeOptions & { readonly engine: MemoryEngineChat },
+  start: StartLine,
   signal: AbortSignal,
 ): Promise<EngineLink> {
+  if (options.signIn !== undefined) {
+    const client = await options.signIn(start, signal);
+    return { chat: createProtocolEngineChat(client), client, close: () => client.close() };
+  }
   if (options.hangsAtSignIn === true) {
     await new Promise((_, reject) => signal.addEventListener("abort", reject, { once: true }));
   }
@@ -113,11 +127,12 @@ function chatHost(
 ): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "clock"> {
   const transport = createScriptedTransport(options.replies ?? []);
   const tools = testToolBox(options.tools ?? []);
+  const isLinked = options.signIn !== undefined;
   return {
     openAgentDatabase: async () => memoryDatabase(database),
-    turnSetup: () => ({
+    turnSetup: (agent, _settings, client) => ({
       transport,
-      tools,
+      tools: isLinked ? agentToolBox({ agent, client }) : tools,
       instructions: "You are a test agent.",
       limits: turnLimits,
     }),
@@ -140,7 +155,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
     write: async (line) => output.push(`${line}\n`),
     connect: async (start, signal) => {
       starts.push(start);
-      return signIn({ ...options, engine }, signal);
+      return signIn({ ...options, engine }, start, signal);
     },
     ...chatHost(options, database),
     everyTenSeconds: (onTick, signal) => {
