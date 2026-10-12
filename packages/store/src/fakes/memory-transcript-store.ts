@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
-import type { CommittingAppend, EventAppend, TranscriptEvent } from "../chats/transcript-event.js";
+import { commitRefusalOf } from "../chats/commit-refusal.js";
+import type { EventAppend, TranscriptEvent } from "../chats/transcript-event.js";
 import type { TranscriptStore } from "../ports.js";
 import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-database.js";
 
@@ -25,18 +26,6 @@ function numbered(database: MemoryAgentDatabase, append: EventAppend): Appended 
       seq: last + index + 1,
     })),
   );
-}
-
-// Why a committing append may not be written beyond an append's refusal.
-function commitRefusal(database: MemoryAgentDatabase, append: CommittingAppend) {
-  const turn = database.turns.get(append.turn);
-  if (turn?.sessionId !== append.sessionId) {
-    return "no_turn";
-  }
-  if (append.events.some((event) => event.turnId !== append.turn)) {
-    return "no_turn";
-  }
-  return turn.endedAtMs === undefined ? undefined : "ended";
 }
 
 function write(database: MemoryAgentDatabase, events: readonly TranscriptEvent[]): void {
@@ -67,7 +56,7 @@ export function createMemoryTranscriptStore(database: MemoryAgentDatabase): Tran
         if (!events.ok) {
           return events;
         }
-        const refusal = commitRefusal(database, append);
+        const refusal = commitRefusalOf(database.turns.get(append.turn), append);
         if (refusal !== undefined) {
           return err(refusal);
         }

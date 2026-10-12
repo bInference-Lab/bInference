@@ -7,6 +7,7 @@ import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
+import { commitRefusalOf } from "./commit-refusal.js";
 import { holdsFence } from "./fence-tasks.js";
 import type { Fenced, FenceRefusal } from "./fenced.js";
 import { readSession } from "./session-tasks.js";
@@ -92,19 +93,6 @@ function insertEvents(database: DatabaseSync, append: EventAppend): readonly Tra
   return rows.map(toEvent);
 }
 
-// Why a committing append may not be written beyond any append's refusal: its turn is not one of
-// the session's, an event names another turn, or the turn has ended.
-function commitRefusalOf(database: DatabaseSync, append: CommittingAppend) {
-  const turn = readTurn(database, append.turn);
-  if (turn?.sessionId !== append.sessionId) {
-    return "no_turn";
-  }
-  if (append.events.some((event) => event.turnId !== append.turn)) {
-    return "no_turn";
-  }
-  return turn.endedAtMs === undefined ? undefined : "ended";
-}
-
 /** Appends events to one session, numbered after its last. */
 export const appendEventsTask: StoreTask<Fenced<EventAppend>, Appended> = defineTask({
   name: "chats.append_events",
@@ -129,7 +117,8 @@ export const appendCommittingTask: StoreTask<Fenced<CommittingAppend>, Committed
     "ended",
   ]),
   run(database, append) {
-    const refusal = refusalOf(database, append) ?? commitRefusalOf(database, append);
+    const refusal =
+      refusalOf(database, append) ?? commitRefusalOf(readTurn(database, append.turn), append);
     if (refusal !== undefined) {
       return err(refusal);
     }
