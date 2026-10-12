@@ -7,7 +7,7 @@ import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
 import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
 import { plantAgent } from "../testing/plant-agent.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
-import { createSqliteAgentInboxStore } from "./sqlite-agent-inbox-store.js";
+import { agentInboxTasks, createSqliteAgentInboxStore } from "./sqlite-agent-inbox-store.js";
 
 const databases = createTestDatabases();
 afterAll(() => {
@@ -31,5 +31,9 @@ describe("sqlite agent inbox store", () => {
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("has every task it runs served by the engine database's workers", () => {
+    expect(engineDatabase.tasks).toStrictEqual(expect.arrayContaining([...agentInboxTasks]));
   });
 });

@@ -1,4 +1,5 @@
 import { accessTasks } from "../access/sqlite-access-store.js";
+import { agentInboxTasks } from "../agent-inbox/sqlite-agent-inbox-store.js";
 import { agentTasks } from "../agents/sqlite-agent-store.js";
 import { configJournalTasks } from "../audit/config-journal-tasks.js";
 import { backupTasks } from "../backups/backup-tasks.js";
@@ -29,6 +30,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...inboxTasks,
     ...accessTasks,
     ...agentTasks,
+    ...agentInboxTasks,
     ...configJournalTasks,
     ...transactionTasks,
     ...installTasks,
