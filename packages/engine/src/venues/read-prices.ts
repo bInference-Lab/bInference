@@ -1,6 +1,5 @@
 import {
   type AccountRef,
-  accountRefParts,
   accountRefSchema,
   type AssetRef,
   assetRefParts,
@@ -81,14 +80,10 @@ function guardedPrice(
   };
 }
 
-function isOnChain(target: AccountRef, token: AssetRef): boolean {
-  return accountRefParts(target).chain === assetRefParts(token).chain;
-}
-
-// A read the host trusts: of its types, at most four calls on the token's chain, quoted in another
-// asset of that chain.
+// A read the host trusts: of its types, at most four calls, each to a contract the venue declares
+// on the token's chain, quoted in another asset of that chain.
 function hostedReadOf(
-  venue: string,
+  venue: { readonly id: string; readonly declared: readonly AccountRef[] },
   token: AssetRef,
   read: PriceRead,
 ): HostedPriceRead | undefined {
@@ -101,12 +96,12 @@ function hostedReadOf(
   if (
     !isSameChain ||
     quoteAsset === token ||
-    !calls.every(({ target }) => isOnChain(target, token))
+    !calls.every(({ target }) => venue.declared.includes(target))
   ) {
     return undefined;
   }
   return Object.freeze({
-    venue,
+    venue: venue.id,
     quoteAsset,
     calls: Object.freeze(calls.map((call) => Object.freeze({ ...call }))),
     price: guardedPrice(read),
@@ -143,7 +138,8 @@ async function askVenue(
   if (!parsed.data.ok) {
     return err("no_price_read");
   }
-  const hostedRead = hostedReadOf(venue.id, token, parsed.data.value);
+  const declared = Object.values(contracts);
+  const hostedRead = hostedReadOf({ id: venue.id, declared }, token, parsed.data.value);
   return hostedRead === undefined ? err("venue_down") : ok(hostedRead);
 }
 
@@ -176,8 +172,9 @@ async function firstPriced(
  * Asks the venues how to price a token each block (ARCHITECTURE.md section 9). A token a
  * launchpad holds on its curve is priced by that launchpad alone, since its curve sets its price;
  * any other token by the first other venue, in the host's order, that declares a read for it. The
- * host copies each read: at most four calls, all on the token's chain, quoted in another asset of
- * that chain, and a pricing step that can neither throw nor give a price at or below zero. A token
+ * host copies each read: at most four calls, each to a contract the venue declares on the token's
+ * chain, quoted in another asset of that chain, and a pricing step that can neither throw nor give
+ * a price at or below zero. A token
  * no venue prices is `no_price_read`; a venue that throws, times out or answers outside its types,
  * when no other venue priced the token, is `venue_down`. Rejects with the signal's reason once it
  * aborts.

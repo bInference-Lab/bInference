@@ -152,6 +152,10 @@ describe("the venue host's price read", () => {
       "a call on another chain",
       (read: PriceRead) => ({ ...read, calls: [{ target: "fake:2:0x0000000e", input: "a" }] }),
     ],
+    [
+      "a call to a contract the venue does not declare",
+      (read: PriceRead) => ({ ...read, calls: [{ target: "fake:1:0x0000000a", input: "a" }] }),
+    ],
     ["the token as its own quote", (read: PriceRead) => ({ ...read, quoteAsset: token })],
     ["a quote on another chain", (read: PriceRead) => ({ ...read, quoteAsset: "fake:2/slip44:1" })],
     ["no pricing step", (read: PriceRead) => ({ ...read, price: "three" })],
