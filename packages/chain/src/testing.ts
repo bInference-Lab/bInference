@@ -67,6 +67,13 @@ export type { TxPreparerHarness, TxPreparerSubject } from "./contracts/tx-prepar
 export { createFakeNetwork } from "./fakes/fake-network.js";
 export type { FakeNetwork, FakeNetworkOptions } from "./fakes/fake-network.js";
 export type { FakeSent } from "./fakes/fake-ledger.js";
+export { marketDataSourceContract } from "./contracts/market-data-source-contract.js";
+export type {
+  MarketDataSourceHarness,
+  MarketDataSourceSubject,
+} from "./contracts/market-data-source-contract.js";
+export { createFakeMarketSource } from "./fakes/fake-market-source.js";
+export type { FakeMarketSource, FakeMarketSourceOptions } from "./fakes/fake-market-source.js";
 export { tokenRiskSourceContract } from "./contracts/token-risk-source-contract.js";
 export type {
   TokenRiskSourceHarness,

@@ -9,11 +9,14 @@ export type {
   CurveRequest,
   DecodedEffect,
   LaunchpadVenue,
+  MarketDataSource,
+  MarketPool,
   QuoteRequest,
   Quoter,
   RiskFlagCode,
   TokenRiskReport,
   TokenRiskSource,
+  TrendingToken,
   TxBuilder,
   TxDecoder,
   TxDraft,
@@ -47,9 +50,11 @@ export type {
   HttpRequest,
   HttpResponse,
   JsonValue,
+  Ratio,
   Result,
   Secret,
 } from "@binference/core";
+export { defineData } from "./define-data.js";
 export { defineLaunchpad, defineVenue } from "./define-venue.js";
 export { lintSkill } from "./skills/lint-skill.js";
 export type { SkillFinding } from "./skills/lint-skill.js";
