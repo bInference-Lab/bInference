@@ -46,8 +46,12 @@ Keep the folders that the existing venues use:
 - `src/routes/`: the quote. It refuses a route that trades other tokens or another amount, that
   takes a fee, or that passes a pool hook off the chain's allowlist.
 - `src/router/`: the build and the decoder. The build carries the host's recipient, deadline and
-  minimum out. The decoder reads every term the host checks from the calldata; a call in any other
+  minimum out. A venue whose trade call takes no deadline, such as a launchpad's curve, declares
+  `noDeadline` on that chain (decision 0180), and its decoder leaves the deadline out. The decoder reads every term the host checks from the calldata; a call in any other
   shape is `unknown_call`, never a guess.
+- A launchpad uses `defineLaunchpad` instead and adds `src/curve/`: the curve read from its own
+  contracts, which passes `curveReaderContract`. A tax its contract takes on the curve goes in the
+  quote's `taxBps` (decision 0181).
 - `src/<venue>-venue.ts`: `defineVenue` with the id and, per chain, the registry contract names,
   the calls the venue makes (contract and ABI) and the spenders it approves. The Privy ceiling
   allows only declared calls and spenders, so declare exactly what the venue calls.

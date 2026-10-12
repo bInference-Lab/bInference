@@ -1,4 +1,5 @@
 import {
+  type LaunchpadVenue,
   type Venue,
   type VenueCall,
   type VenueContracts,
@@ -20,6 +21,7 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
         names: Object.freeze([...item.names]),
         ...(item.calls === undefined ? {} : { calls: Object.freeze(item.calls.map(frozenCall)) }),
         ...(item.spenders === undefined ? {} : { spenders: Object.freeze([...item.spenders]) }),
+        ...(item.noDeadline === undefined ? {} : { noDeadline: item.noDeadline }),
       }),
     ),
   );
@@ -34,8 +36,9 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
  *
  * The venue quotes, builds and decodes. `build` must spend exactly the request's input, pay its
  * output to the request's wallet, revert below `minOut` and after `deadlineMs`; `decode` reads
- * those terms back from the bytes alone. The engine decodes every transaction the venue builds
- * and refuses one whose terms differ.
+ * those terms back from the bytes alone. A chain whose trade calls have no deadline says so with
+ * `noDeadline`, and its decoder then leaves the deadline out. The engine decodes every transaction
+ * the venue builds and refuses one whose terms differ.
  *
  * The declaration is checked at once: a bad one is a fault (`plugin.bad_venue`), so the plugin
  * fails when it loads, never when it trades. The returned venue is frozen, and calls its methods
@@ -57,4 +60,19 @@ export function defineVenue(definition: Venue): Venue {
     decode: (draft) => definition.decode(draft),
   };
   return Object.freeze(venue);
+}
+
+/**
+ * Defines a launchpad plugin: a venue that trades the tokens on its bonding curve and reads its
+ * curve. It checks and freezes the declaration as {@link defineVenue} does, and keeps `curve`,
+ * which must answer from the launchpad's own contracts at the latest block: a token on its curve
+ * with the asset the curve trades it against, any other token as off its curve.
+ */
+export function defineLaunchpad(definition: LaunchpadVenue): LaunchpadVenue {
+  const venue = defineVenue(definition);
+  const launchpad: LaunchpadVenue = {
+    ...venue,
+    curve: async (request, options) => definition.curve(request, options),
+  };
+  return Object.freeze(launchpad);
 }

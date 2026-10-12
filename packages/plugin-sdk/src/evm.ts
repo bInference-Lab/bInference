@@ -20,4 +20,9 @@ export type {
   EvmApproval,
   EvmCallRequest,
   EvmDraftCall,
+  RpcCall,
+  RpcErrorReply,
+  RpcFailover,
+  RpcReply,
+  RpcResultReply,
 } from "@binference/chain-evm";

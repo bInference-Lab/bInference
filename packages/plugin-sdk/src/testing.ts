@@ -1,10 +1,13 @@
 export {
+  curveReaderContract,
   quoterContract,
   tokenRiskSourceContract,
   txBuilderContract,
   txDecoderContract,
 } from "@binference/chain/testing";
 export type {
+  CurveReaderHarness,
+  CurveReaderSubject,
   QuoterHarness,
   QuoterSubject,
   TokenRiskSourceHarness,

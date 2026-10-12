@@ -5,11 +5,21 @@ import {
   chainRefSchema,
   type Venue,
 } from "@binference/chain";
-import { createFakeVenue, fakeDraft, fakeSwapData } from "@binference/chain/testing";
+import {
+  createFakeLaunchpad,
+  createFakeVenue,
+  fakeDraft,
+  fakeSwapData,
+} from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
-import { defineVenue } from "./define-venue.js";
+import { defineLaunchpad, defineVenue } from "./define-venue.js";
 import type { BuildRequest, Bps, DecodedEffect } from "./index.js";
-import { quoterContract, txBuilderContract, txDecoderContract } from "./testing.js";
+import {
+  curveReaderContract,
+  quoterContract,
+  txBuilderContract,
+  txDecoderContract,
+} from "./testing.js";
 
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
 const router = accountRefSchema.parse("fake:1:0x0000000b");
@@ -79,6 +89,42 @@ describe("defineVenue", () => {
     expect(declared?.spenders).toStrictEqual(["router"]);
     expect(Object.isFrozen(declared?.calls?.[0]?.walletInputs)).toBe(true);
     expect(Object.isFrozen(declared?.spenders)).toBe(true);
+  });
+
+  it("keeps a chain's declaration that its trade calls carry no deadline", () => {
+    const venue = defineVenue(createFakeVenue({ noDeadline: true }));
+    expect(venue.contracts).toStrictEqual([
+      { chain: "fake:1", names: ["router"], noDeadline: true },
+    ]);
+  });
+
+  it.each(
+    curveReaderContract({
+      create: () => ({
+        reader: defineLaunchpad(createFakeLaunchpad({ onCurve: [token] })),
+        onCurve: { token, contracts: { router } },
+        offCurve: { token: assetRefSchema.parse("fake:1/token:0x0000000e"), contracts: { router } },
+      }),
+    }),
+  )("gives a launchpad that follows the curve reader contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("gives a frozen launchpad that reads its curve through the definition", async () => {
+    const definition = createFakeLaunchpad({ onCurve: [token] });
+    const launchpad = defineLaunchpad(definition);
+    definition.graduate(token);
+    expect(Object.isFrozen(launchpad)).toBe(true);
+    await expect(
+      launchpad.curve({ token, contracts: { router } }, { signal: new AbortController().signal }),
+    ).resolves.toStrictEqual({ onCurve: false });
+  });
+
+  it("refuses a launchpad whose declaration is wrong", () => {
+    const definition = { ...createFakeLaunchpad({ onCurve: [token] }), id: "Fake Pad" };
+    expect(() => defineLaunchpad(definition)).toThrow(
+      expect.objectContaining({ code: "plugin.bad_venue" }),
+    );
   });
 
   it("calls the definition's own methods", () => {

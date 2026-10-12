@@ -9,7 +9,14 @@ lets the wallet call those functions and approve those spenders, and nothing els
 The engine's venue host gives the venue its contracts' addresses, sets the trade's terms, and
 decodes every transaction the venue builds; it refuses one that calls another contract, pays
 another account, spends another amount, accepts less than the policy's minimum output or runs past
-60 seconds.
+60 seconds. A chain whose trade calls carry no deadline, such as a launchpad's curve, says so with
+`noDeadline`, and only there does the host pass a call without one.
+
+A launchpad defines itself with `defineLaunchpad`: a venue that also reads its curve. Given a
+token, `curve` answers from the launchpad's own contracts whether the token is on its bonding curve
+now and what the curve trades it against. The engine sends a buy or a sell of a curve token to its
+launchpad and nowhere else. A launchpad that reads a chain takes that chain's `RpcFailover` from
+`@binference/plugin-sdk/evm`, given by the composition root.
 
 A risk plugin returns a `TokenRiskSource`: given a token, it reports its findings as
 `RiskFlagCode`s and the liquidity it knows of, `not_covered` for a token it has no answer for, and
@@ -26,6 +33,8 @@ finding, so a skill's author runs it before publishing.
 | Export                                                         | What it does                                                        |
 | -------------------------------------------------------------- | ------------------------------------------------------------------- |
 | `defineVenue`                                                  | Checks a venue's declaration and returns the frozen venue           |
+| `defineLaunchpad`, `LaunchpadVenue`, `CurveReader`             | A venue that also says which tokens are on its bonding curve        |
+| `CurveRequest`, `CurveHolding`                                 | What the host asks a launchpad, and where it holds the token        |
 | `Venue`, `VenueDeclaration`, `VenueContracts`, `VenueCall`     | A venue: its contracts, calls and spenders per chain, and its parts |
 | `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`  | What the host asks and what the venue answers                       |
 | `TxDraft`                                                      | A transaction before the wallet queue adds its nonce and fees       |
@@ -33,10 +42,11 @@ finding, so a skill's author runs it before publishing.
 | `Http`, `HttpRequest`, `HttpResponse`                          | The port a venue reaches its API through                            |
 | `chainRefSchema`, `accountRefSchema`, `assetRefSchema`         | CAIP ids, parsed; `accountRefParts`, `assetRefParts` split them     |
 | `@binference/plugin-sdk/evm`                                   | `encodeEvmDraft`, `decodeEvmDraft`, `decodeCall`, `callAbiJson`     |
+| `RpcFailover`, `RpcCall`, `RpcReply` (from `/evm`)             | The port a venue reads its contracts through, by `eth_call`         |
 | `TokenRiskSource`, `TokenRiskReport`, `RiskFlagCode`           | A risk data source and what it reports about a token                |
 | `orderedFlags`                                                 | A report's findings in their fixed order, each once                 |
 | `lintSkill`, `SkillFinding`                                    | The sentences of a skill that ask for a secret, each with its line  |
-| `@binference/plugin-sdk/testing`                               | The venue and risk source contract suites, and `createScriptedHttp` |
+| `@binference/plugin-sdk/testing`                               | The venue, curve and risk source contract suites, and scripted HTTP |
 
 ## Example
 
