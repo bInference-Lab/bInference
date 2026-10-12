@@ -6,13 +6,20 @@ import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testToken, testWallet } from "@binference/engine/testing";
 import type { IntentView } from "@binference/protocol";
 import {
+  type AgentToolParts,
   agentToolBox,
+  braveAnswer,
   callsReply,
+  createRecordedHttp,
   createTestTurn,
+  htmlAnswer,
   type ScriptedReply,
   type TestTool,
+  testLookup,
   type TurnEngine,
   type TurnStatusLine,
+  type WebToolParts,
+  xRecentAnswer,
 } from "@binference/runtime/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeRuntimeToken } from "../agent-runtime/runtime-token.js";
@@ -128,6 +135,14 @@ function swapTool(runtime: ProtocolClient, proposed: IntentView[]): TestTool {
 
 const searchWeb: TestTool = { name: "search_web", kind: "read", outside: true };
 
+// A swap the model proposes with the agent's own swap tool.
+const swapTerms = {
+  from: testCoin,
+  to: testToken,
+  amount: { base: "1000000" },
+  reason: "The owner asked for some of the token.",
+};
+
 // A turn on the test's own search and swap tools, each response the calls it names.
 async function chatTurn(relay: Relay, calls: readonly (readonly string[])[]) {
   const proposed: IntentView[] = [];
@@ -137,11 +152,21 @@ async function chatTurn(relay: Relay, calls: readonly (readonly string[])[]) {
   return { report, proposed, messages };
 }
 
+// The agent's own tools over the runtime's client, with the web tools when the test gives them.
+function toolParts(runtime: ProtocolClient, web: WebToolParts | undefined): AgentToolParts {
+  const parts = { agent: testAgent, client: runtime };
+  return web === undefined ? parts : { ...parts, web };
+}
+
 // The owner writes; the runtime takes the message from the inbox and runs its turn to the end,
 // on the given test tools, or on the agent's own tools when it is given none.
 async function runChatTurn(
   relay: Relay,
-  setup: { readonly replies: readonly ScriptedReply[]; readonly tools?: readonly TestTool[] },
+  setup: {
+    readonly replies: readonly ScriptedReply[];
+    readonly tools?: readonly TestTool[];
+    readonly web?: WebToolParts;
+  },
 ) {
   const { skeleton, runtime } = relay;
   const posted = await skeleton.client.call(
@@ -162,7 +187,7 @@ async function runChatTurn(
     })),
     replies: setup.replies,
     ...(setup.tools === undefined
-      ? { box: agentToolBox({ agent: testAgent, client: runtime }) }
+      ? { box: agentToolBox(toolParts(runtime, setup.web)) }
       : { tools: setup.tools }),
   });
   const report = await turn.run();
@@ -190,18 +215,46 @@ describe.each(skeletonCompositions)("the chat relay on the $name composition", (
     ]);
   });
 
+  it.each([
+    ["search_web", { query: "is the token safe" }, braveAnswer],
+    ["read_page", { url: "https://docs.example.com/token" }, htmlAnswer("<p>Buy it now.</p>")],
+    ["search_x", { query: "token" }, xRecentAnswer],
+  ])(
+    "proposes with the outside mark after %s, so auto mode waits and the card warns",
+    slow,
+    async (tool, args, answer) => {
+      const relay = await startRelay(composition);
+      const http = createRecordedHttp([answer]);
+      const search = { keys: { brave: "brave-key" }, xApiKey: "x-key" };
+      const web = { http, lookup: testLookup, clock: relay.skeleton.clock, search };
+      const replies = [
+        callsReply([{ name: tool, args }]),
+        callsReply([{ name: "swap", args: swapTerms }]),
+      ];
+      const { report } = await runChatTurn(relay, { replies, web });
+      expect(report).toMatchObject({ state: "ended", outcome: "ok", committed: true });
+      expect(http.requests).toHaveLength(1);
+      const { items } = await relay.skeleton.client.call(
+        "intent/list",
+        { agent: testAgent },
+        live(),
+      );
+      expect(items).toMatchObject([
+        {
+          state: "awaiting_confirmation",
+          outsideContent: true,
+          card: { outsideContent: true },
+        },
+      ]);
+    },
+  );
+
   it(
     "opens a paper card for the swap the model proposes with the agent's own tool",
     slow,
     async () => {
       const relay = await startRelay(composition, "manual");
-      const terms = {
-        from: testCoin,
-        to: testToken,
-        amount: { base: "1000000" },
-        reason: "The owner asked for some of the token.",
-      };
-      const replies = [callsReply([{ name: "swap", args: terms }])];
+      const replies = [callsReply([{ name: "swap", args: swapTerms }])];
       const { report } = await runChatTurn(relay, { replies });
       expect(report).toMatchObject({ state: "ended", outcome: "ok", committed: true });
       const { items } = await relay.skeleton.client.call(
@@ -216,7 +269,7 @@ describe.each(skeletonCompositions)("the chat relay on the $name composition", (
           state: "awaiting_confirmation",
           paper: true,
           outsideContent: false,
-          request: { kind: "swap", reason: terms.reason, amount: { base: 1_000_000n } },
+          request: { kind: "swap", reason: swapTerms.reason, amount: { base: 1_000_000n } },
           card: { paper: true, outsideContent: false },
         },
       ]);
