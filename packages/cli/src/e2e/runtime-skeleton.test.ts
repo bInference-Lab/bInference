@@ -1,28 +1,20 @@
-import type { ProtocolClient } from "@binference/client";
-import { BinferenceError, createSecret, type JsonValue } from "@binference/core";
-import { createSeededRandom } from "@binference/core/testing";
+import { BinferenceError } from "@binference/core";
 import { createRunningTurns } from "@binference/engine/chat";
-import {
-  createMemoryCardCopyStore,
-  createMemoryOwnerStore,
-  testAgent,
-  testCoin,
-  testToken,
-} from "@binference/engine/testing";
-import type { PushFrame } from "@binference/protocol";
-import {
-  callsReply,
-  fixtureSettings,
-  startInProcessRuntime,
-  textReply,
-} from "@binference/runtime/testing";
-import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "@binference/telegram/testing";
-import { Api } from "grammy";
+import { testAgent, testCoin, testToken } from "@binference/engine/testing";
+import { callsReply, textReply } from "@binference/runtime/testing";
+import type { FakeBotApi } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
-import { createRuntimeSupervisor } from "../agent-runtime/runtime-supervisor.js";
-import { makeRuntimeToken } from "../agent-runtime/runtime-token.js";
 import type { ComposedTelegram } from "../compose/compose-telegram.js";
 import { type Skeleton, skeletonCompositions, startSkeleton } from "../compose/test-skeleton.js";
+import {
+  type ChatWatch,
+  confirmOf,
+  ownerBot,
+  ownerId,
+  ownerText,
+  superviseRuntime,
+  watchChat,
+} from "./runtime-machine.js";
 
 // The runtime skeleton: the owner writes in Telegram (the synthetic Bot API), the message reaches
 // the agent runtime through the engine, which starts the runtime as it starts the real one, the
@@ -34,7 +26,6 @@ import { type Skeleton, skeletonCompositions, startSkeleton } from "../compose/t
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 const slow = { timeout: 30_000 };
-const ownerId = 7_012_345_678;
 const report = "Bought 2 TKN on paper for 0.000000000001 FAKE.";
 const icons = { waiting: String.fromCodePoint(0x1f7e1), paper: String.fromCodePoint(0x1f9ea) };
 const stops: (() => Promise<void>)[] = [];
@@ -73,35 +64,6 @@ const trades = [
   },
 ] as const;
 
-/** The pushes of the agent's chat topic, and a wait for the end of its nth turn. */
-interface ChatWatch {
-  readonly pushes: readonly PushFrame[];
-  turnsEnded(count: number): Promise<void>;
-}
-
-function watchChat(client: ProtocolClient): ChatWatch {
-  const pushes: PushFrame[] = [];
-  const waiting: { readonly count: number; readonly resolve: () => void }[] = [];
-  const ends = (): number => pushes.filter((push) => push.kind === "chat/turnEnded").length;
-  client.subscribe(`chat:${testAgent}`, {
-    onPush: (push) => {
-      pushes.push(push);
-      waiting.filter((wait) => ends() >= wait.count).forEach((wait) => wait.resolve());
-    },
-    refetch: async () => Promise.resolve(),
-  });
-  return {
-    pushes,
-    turnsEnded: async (count) =>
-      new Promise((resolve) => {
-        waiting.push({ count, resolve });
-        if (ends() >= count) {
-          resolve();
-        }
-      }),
-  };
-}
-
 /** The engine with the owner's bot, and the agent runtime it started. */
 interface Machine {
   readonly skeleton: Skeleton;
@@ -116,69 +78,21 @@ async function startMachine(
   composition: (typeof skeletonCompositions)[number],
   replies: (typeof trades)[number]["replies"],
 ): Promise<Machine> {
-  const botApi = createFakeBotApi();
-  const owners = createMemoryOwnerStore();
-  await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live());
-  const api = new Api(fakeBotToken, { fetch: botApi.fetch });
-  const telegram = {
-    api,
-    owners,
-    copies: createMemoryCardCopyStore(),
-    botToken: createSecret(fakeBotToken),
-  };
+  const { botApi, telegram } = await ownerBot();
   const turns = createRunningTurns();
   const skeleton = await startSkeleton(composition.parts(), { telegram, turns });
   stops.push(async () => skeleton.close());
   await skeleton.client.call("approval/set", { agent: testAgent, mode: "manual" }, live());
   await skeleton.client.call("portfolio/resetPaper", { agent: testAgent }, live());
-  const { access } = skeleton.parts.stores;
-  const supervisor = createRuntimeSupervisor({
-    start: async () =>
-      startInProcessRuntime({
-        replies,
-        signIn: async (start) => skeleton.connect(start.token, "runtime"),
-      }),
-    makeToken: async (signal) =>
-      makeRuntimeToken({ access, clock: skeleton.clock, random: createSeededRandom(21) }, signal),
-    startLine: {
-      endpoint: "skeleton",
-      paths: { agentDb: "agent.sqlite", workspace: "workspace" },
-      settings: fixtureSettings,
-    },
-    turns,
-    onRevoked: (tokens) =>
-      tokens.forEach((token) => skeleton.composed.server.endSessions(token, "auth.revoked")),
-    clock: skeleton.clock,
-    logger: skeleton.logger,
-  });
+  const engine = { ...skeleton, stores: skeleton.parts.stores, server: skeleton.composed.server };
+  const chat = watchChat(skeleton.client, testAgent);
+  const supervisor = superviseRuntime(engine, { turns, script: { replies } });
   stops.unshift(async () => supervisor.stop(AbortSignal.timeout(10_000)));
-  const chat = watchChat(skeleton.client);
-  supervisor.begin();
   const { telegram: composed } = skeleton.composed;
   if (composed === undefined) {
     throw new BinferenceError({ code: "test.no_bot", message: "The skeleton serves the bot." });
   }
   return { skeleton, botApi, chat, telegram: composed };
-}
-
-function ownerText(text: string): JsonValue {
-  return {
-    update_id: 1,
-    message: {
-      message_id: 7,
-      date: 1_760_000_000,
-      chat: { id: ownerId, type: "private" },
-      from: { id: ownerId, is_bot: false, first_name: "Owner" },
-      text,
-    },
-  };
-}
-
-// The Confirm button of the one card in the owner's chat.
-function confirmOf(botApi: FakeBotApi): { readonly data: string; readonly messageId: number } {
-  const card = botApi.messages().find((message) => message.buttons.length > 0);
-  const data = card?.buttons[0]?.[0]?.data ?? "";
-  return { data, messageId: card?.messageId ?? 0 };
 }
 
 describe.each(skeletonCompositions)(
