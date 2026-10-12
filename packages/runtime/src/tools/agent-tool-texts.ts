@@ -28,7 +28,9 @@ export type AgentToolName =
   | "sell"
   | "order_create"
   | "order_cancel"
-  | "read_page";
+  | "search_web"
+  | "read_page"
+  | "search_x";
 
 /** The description of each of the agent's tools, by tool name. */
 export const agentToolTexts: Readonly<Record<AgentToolName, string>> = {
@@ -47,5 +49,7 @@ export const agentToolTexts: Readonly<Record<AgentToolName, string>> = {
   order_create: `Proposes an auto order (limit, takeProfit, stopLoss, trailing, dca or copy) with its trigger and the bounds each fill stays inside. Prices are micro-dollars per whole token. ${reason} ${waits} Once confirmed, each fill runs inside those bounds without another card. ${once} ${ids} ${units}`,
   order_cancel:
     "Cancels one of this agent's auto orders by its id, at once and without a card: it only stops fills that have not happened. Use it when the owner asks, or when the order's reason is gone.",
+  search_web: `Searches the web and answers up to count results (5 unless you ask for up to 10), each with its title, URL and a snippet. ${outside} Open a result with read_page when its snippet is not enough.`,
   read_page: `Reads one public web page by its http or https URL and answers its title and text. It never reaches the owner's machine, a private network or a metadata service, and reads at most 2 MiB of a page. ${outside}`,
+  search_x: `Searches posts on X from the last 7 days with X's search syntax and answers up to 10 posts, each with its id, author id, time, counts, link and text. ${outside}`,
 };

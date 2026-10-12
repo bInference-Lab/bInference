@@ -32,7 +32,7 @@ async function writeLine(line: string): Promise<void> {
 // The turns of the built runtime: binference's instructions in the owner's language, the main
 // model of the settings in force and its fallbacks, or the model the owner picked for the agent
 // alone (decision 0204), whose providers' rests every turn shares, the agent's tools over the
-// runtime's connection to the engine and its web tools, and
+// runtime's connection to the engine and its web tools on the settings' search keys, and
 // compaction on the fast model, or on the main model when no fast model is set (decision 0202).
 function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
   return (agent, settings, client) => {
@@ -47,7 +47,7 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
       tools: agentToolBox({
         agent,
         client,
-        web: { http: parts.http, lookup, clock: parts.clock },
+        web: { http: parts.http, lookup, clock: parts.clock, search: settings.search },
       }),
       instructions: agentInstructions(settings.owner.locale),
       limits: {

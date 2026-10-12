@@ -1,5 +1,6 @@
 import { type Clock, type HostLookup, maxUrlChars } from "@binference/core";
 import { z } from "zod";
+import type { RuntimeSearch } from "../control/runtime-settings.schema.js";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import type { StreamingHttp } from "../providers/ports.js";
 import {
@@ -10,15 +11,40 @@ import {
   readPublicPage,
 } from "../web/read-page.js";
 import { outsideAnswer, refusalAnswer } from "../web/web-answers.js";
+import { searchWeb, type WebSearchTerms } from "../web/web-search.js";
+import { maxXQueryChars, searchX } from "../web/x-search.js";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
 
-/** How the web tools reach the internet. */
+/** How the web tools reach the internet, and the search providers the owner set up. */
 export interface WebToolParts {
   readonly http: StreamingHttp;
   /** Looks a page's host up, for the URL guard. */
   readonly lookup: HostLookup;
   readonly clock: Clock;
+  readonly search: RuntimeSearch;
+}
+
+/** The longest query `search_web` sends. */
+const maxQueryChars = 400;
+
+const searchArgs: z.ZodType<{ readonly query: string; readonly count?: number }> = z.strictObject({
+  query: z.string().trim().min(1).max(maxQueryChars),
+  count: z.int().min(1).max(10).exactOptional(),
+});
+
+function searchWebTool(web: WebToolParts): AgentTool {
+  return defineTool({
+    name: "search_web",
+    kind: "read",
+    parallel: true,
+    description: agentToolTexts.search_web,
+    args: searchArgs,
+    run: async (args, { signal }) => {
+      const terms: WebSearchTerms = { query: args.query, count: args.count ?? 5 };
+      return searchWeb(terms, web.search, { parts: web, signal });
+    },
+  });
 }
 
 const refusalTexts: Readonly<
@@ -79,10 +105,27 @@ function readPageTool(web: WebToolParts): AgentTool {
   });
 }
 
+function searchXTool(web: WebToolParts, key: string): AgentTool {
+  return defineTool({
+    name: "search_x",
+    kind: "read",
+    parallel: true,
+    description: agentToolTexts.search_x,
+    args: z.strictObject({ query: z.string().trim().min(1).max(maxXQueryChars) }),
+    run: async (args, { signal }) => searchX(args.query, key, { parts: web, signal }),
+  });
+}
+
 /**
- * The agent's web tools (decision 0205): `read_page`, whose page is outside content and marks the
- * turn.
+ * The agent's web tools (decision 0205): `search_web` and `read_page`, and `search_x` only when
+ * the owner set an X key. Each result that holds a third party's words is outside content and
+ * marks the turn.
  */
 export function webTools(web: WebToolParts): readonly AgentTool[] {
-  return [readPageTool(web)];
+  const { xApiKey } = web.search;
+  return [
+    searchWebTool(web),
+    readPageTool(web),
+    ...(xApiKey === undefined ? [] : [searchXTool(web, xApiKey)]),
+  ];
 }

@@ -20,7 +20,13 @@ export { startStandInModelServer } from "./testing/stand-in-model-server.js";
 export type { StandInModelServer, StandInRequest } from "./testing/stand-in-model-server.js";
 export { createRecordedHttp } from "./testing/recorded-http.js";
 export type { RecordedAnswer, RecordedHttp } from "./testing/recorded-http.js";
-export { htmlAnswer, testLookup } from "./testing/recorded-web.js";
+export {
+  braveAnswer,
+  htmlAnswer,
+  tavilyAnswer,
+  testLookup,
+  xRecentAnswer,
+} from "./testing/recorded-web.js";
 export { createTurnRecorder } from "./testing/turn-recorder.js";
 export type { RecordedStep, TurnRecorder, TurnRecorderOptions } from "./testing/turn-recorder.js";
 export { createTestTurn, testToolBox } from "./loop/test-turns.js";
