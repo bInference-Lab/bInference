@@ -353,13 +353,29 @@ describe("refusing a trigger", () => {
     );
   });
 
+  it("ends a fill that breaks its order's bounds in failed_check, with the bound as its reason", () => {
+    const fill = statusAt("simulated", { authorizedBy: { order }, proposer: "engine" });
+    const trigger: IntentTrigger = {
+      type: "authorization_checked",
+      check: { by: "fill", breach: "worst_price" },
+      cards,
+    };
+    expect(unwrap(machineAt(0).apply(fill, trigger)).status).toMatchObject({
+      state: "failed_check",
+      reason: "worst_price",
+    });
+  });
+
   it("answers with the first row's problem when no guard passes", () => {
     const fill = statusAt("simulated", { authorizedBy: { order }, proposer: "engine" });
     const trigger: IntentTrigger = {
       type: "authorization_checked",
-      check: { by: "fill", isValid: false },
+      check: { by: "auto_mode", facts: autoFacts },
       cards,
     };
-    expect(machineAt(0).apply(fill, trigger)).toStrictEqual({ ok: false, error: "fill_invalid" });
+    expect(machineAt(0).apply(fill, trigger)).toStrictEqual({
+      ok: false,
+      error: "authorization_mismatch",
+    });
   });
 });

@@ -1,6 +1,7 @@
 /**
  * Why policy refused an intent (spec 6, section 4). `price_impact` is checked after quoting, so it
- * is stored with `failed_check`; every other code is stored with `rejected_policy`. No rule stores
+ * is stored with `failed_check`, as is `daily_cap` for a fill whose cap room went before its
+ * authorization (decision 0195); every other code is stored with `rejected_policy`. No rule stores
  * `tax` yet: the risk step measures a token's tax and refuses with `high_tax` (decision 0113).
  */
 export const policyReasons = [
@@ -102,6 +103,15 @@ export const fillReasons = [
 
 /** A reason an auto order's fill broke its order at its authorization. */
 export type FillReason = (typeof fillReasons)[number];
+
+/**
+ * What a fill's authorization ends it with: a bound of its order it breaks, or `daily_cap` when
+ * the agent's other confirmations took the rolling cap's room after the fill's policy step.
+ */
+export type FillBreach = FillReason | Extract<PolicyReason, "daily_cap">;
+
+/** Every breach a fill's authorization can end it with. */
+export const fillBreaches: readonly FillBreach[] = [...fillReasons, "daily_cap"];
 
 /** A reason stored with a terminal state. */
 export type IntentReason = PolicyReason | RiskReason | CheckReason | FailureReason | FillReason;

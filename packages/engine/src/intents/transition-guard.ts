@@ -14,6 +14,7 @@ export type TransitionProblem =
   | "wrong_state"
   | "authorization_mismatch"
   | "fill_invalid"
+  | "fill_holds"
   | "auto_mode_refused"
   | "needs_no_card"
   | "card_changed"

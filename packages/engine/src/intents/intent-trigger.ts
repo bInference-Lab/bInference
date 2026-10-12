@@ -1,6 +1,7 @@
 import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type {
+  FillBreach,
   PolicyRejection,
   QuoteFailure,
   RiskReason,
@@ -56,10 +57,14 @@ export type TriggerType = (typeof triggerTypes)[number];
  */
 export type CancelCause = "request" | "freeze" | "engine_stopping" | "step_unsent";
 
-/** At `simulated`: whether a fill's auto order or webhook rule still holds within its bounds. */
+/**
+ * At `simulated`: whether a fill's auto order or webhook rule still holds within its bounds, and
+ * the first bound it breaks when it does not (spec 6, section 5).
+ */
 export interface FillCheck {
   readonly by: "fill";
-  readonly isValid: boolean;
+  /** Absent: the fill holds. */
+  readonly breach?: FillBreach;
 }
 
 /** At `simulated`: the facts the auto test reads, for an intent that is not a fill. */

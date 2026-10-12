@@ -9,6 +9,7 @@ import { type IntentKind, intentKinds } from "./intent-kind.js";
 import {
   checkReasons,
   failureReasons,
+  fillBreaches,
   type IntentReason,
   policyReasons,
   riskReasons,
@@ -36,7 +37,6 @@ const order = "ord_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"ord">;
 const rule = "whr_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"whr">;
 const rules = listTransitions();
 const ruleKeys = new Set(rules.map((item) => `${item.from}|${item.trigger}|${item.to}`));
-const autoKinds: ReadonlySet<IntentKind> = new Set(["swap", "buy", "sell", "lend", "stake"]);
 
 // The data any trigger may need. Each step picks a trigger type and builds it from these.
 interface Facts {
@@ -49,7 +49,7 @@ interface Facts {
   readonly requoteAgoMs: number;
   readonly requoteMinOutBase: bigint | undefined;
   readonly checkMatches: boolean;
-  readonly isFillValid: boolean;
+  readonly fillBreach: (typeof fillBreaches)[number] | undefined;
   readonly auto: AutoModeFacts;
   readonly versionOffset: number;
   readonly cancelCause: "request" | "freeze" | "engine_stopping";
@@ -78,7 +78,7 @@ function quoteAt(nowMs: number, agoMs: number, minOutBase: bigint | undefined): 
 // Mostly the check the intent expects: a fill check for a fill, auto-mode facts otherwise.
 function authorizationCheck(facts: Facts, status: IntentStatus): AuthorizationCheck {
   return (status.authorizedBy !== undefined) === facts.checkMatches
-    ? { by: "fill", isValid: facts.isFillValid }
+    ? { by: "fill", ...(facts.fillBreach === undefined ? {} : { breach: facts.fillBreach }) }
     : { by: "auto_mode", facts: facts.auto };
 }
 
@@ -193,7 +193,7 @@ const facts: fc.Arbitrary<Facts> = fc.record({
   requoteAgoMs: fc.nat(12_000),
   requoteMinOutBase: minOut,
   checkMatches: mostly(true, false),
-  isFillValid: mostly(true, false),
+  fillBreach: fc.option(fc.constantFrom(...fillBreaches), { nil: undefined, freq: 9 }),
   auto: autoFacts,
   versionOffset: mostly(0, -1),
   cancelCause: fc.constantFrom("request", "freeze", "engine_stopping"),
@@ -380,7 +380,7 @@ function tableViolations({ before, trigger, nowMs, result }: Outcome): readonly 
 const reasonLists: Readonly<Partial<Record<IntentState, readonly IntentReason[]>>> = {
   rejected_policy: policyReasons.filter((code) => code !== "price_impact"),
   risk_blocked: riskReasons,
-  failed_check: checkReasons,
+  failed_check: [...checkReasons, ...fillBreaches],
   failed_onchain: failureReasons,
 };
 
@@ -409,7 +409,7 @@ function fitsAutoCaps(auto: AutoModeFacts): boolean {
 function isAutoKind(status: IntentStatus, auto: AutoModeFacts): boolean {
   return (
     ["swap", "buy", "sell"].includes(status.kind) ||
-    (autoKinds.has(status.kind) && auto.isInsideOwnPositions)
+    (["lend", "stake"].includes(status.kind) && auto.isInsideOwnPositions)
   );
 }
 

@@ -1,6 +1,6 @@
 import type { Bps, Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { authorizeIntent, openCard } from "./authorization-guards.js";
+import { authorizeIntent, breakFill, openCard } from "./authorization-guards.js";
 import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type { IntentStatus } from "./intent-status.js";
@@ -55,7 +55,7 @@ function expiryOf(verdict: ReturnType<typeof openCard>): number | undefined {
   return verdict.ok ? verdict.value.card?.expiresAtMs : undefined;
 }
 
-const valid: AuthorizationCheck = { by: "fill", isValid: true };
+const valid: AuthorizationCheck = { by: "fill" };
 const auto: AuthorizationCheck = { by: "auto_mode", facts: autoFacts };
 const manual: AuthorizationCheck = {
   by: "auto_mode",
@@ -70,10 +70,23 @@ describe("authorizing an intent at simulated", () => {
   });
 
   it("refuses a fill whose order or rule no longer holds", () => {
-    const invalid: AuthorizationCheck = { by: "fill", isValid: false };
+    const invalid: AuthorizationCheck = { by: "fill", breach: "worst_price" };
     expect(authorizeIntent(input(fill, invalid))).toStrictEqual({
       ok: false,
       error: "fill_invalid",
+    });
+  });
+
+  it("ends a fill that breaks its order's bounds with the bound it breaks", () => {
+    const invalid: AuthorizationCheck = { by: "fill", breach: "order_inactive" };
+    expect(breakFill(input(fill, invalid))).toStrictEqual({
+      ok: true,
+      value: { reason: "order_inactive" },
+    });
+    expect(breakFill(input(fill, valid))).toStrictEqual({ ok: false, error: "fill_holds" });
+    expect(breakFill(input(simulated, auto))).toStrictEqual({
+      ok: false,
+      error: "authorization_mismatch",
     });
   });
 

@@ -1,5 +1,5 @@
 import { ok, type Result } from "@binference/core";
-import { authorizeIntent, openCard } from "./authorization-guards.js";
+import { authorizeIntent, breakFill, openCard } from "./authorization-guards.js";
 import {
   confirmRequote,
   confirmTap,
@@ -88,6 +88,7 @@ export const transitionTable: TransitionTable = {
   simulation_failed: [{ from: ["quoted", "assessed"], to: "failed_check", guard: storeReason }],
   authorization_checked: [
     { from: ["simulated"], to: "confirmed", guard: authorizeIntent },
+    { from: ["simulated"], to: "failed_check", guard: breakFill },
     { from: ["simulated"], to: "awaiting_confirmation", guard: openCard },
   ],
   confirm_tapped: [{ from: ["awaiting_confirmation"], to: "confirmed", guard: confirmTap }],

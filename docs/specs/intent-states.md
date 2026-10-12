@@ -9,7 +9,7 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), [0157](../DECISIONS.md#d0157)
-[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189) and [0190](../DECISIONS.md#d0190). Accepted by the owner on 2026-10-12: a token launch refused in
+[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190) and [0195](../DECISIONS.md#d0195). Accepted by the owner on 2026-10-12: a token launch refused in
 paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
 whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
 to 13.
@@ -86,6 +86,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `assessed`                   | `failed_check`          | simulation                                                                                           | reverted, or effects differ                                                                                                                                                                            |
 | `simulated`                  | `awaiting_confirmation` | card opened                                                                                          | not authorized by an order, a rule, the rescue's own tap or the auto mode                                                                                                                              |
 | `simulated`                  | `confirmed`             | authorization present                                                                                | `authorizedBy` names an active order or webhook rule whose bounds hold, or the agent's auto mode and the intent passes section 5's auto test                                                           |
+| `simulated`                  | `failed_check`          | authorization present                                                                                | a fill whose order or rule no longer holds, or whose quote breaks one of its bounds: the first it breaks is stored as the reason ([decision 0195](../DECISIONS.md#d0195))                              |
 | `awaiting_confirmation`      | `awaiting_confirmation` | tap with a stale quote                                                                               | quote older than 10 s: re-quote and re-simulate; a minimum out worse by more than 0.5% opens card version n+1                                                                                          |
 | `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                                                        | the card version tapped is the current one; the card has not expired; the rolling cap still holds ([decision 0136](../DECISIONS.md#d0136))                                                             |
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                                                            |                                                                                                                                                                                                        |
@@ -150,9 +151,20 @@ Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 token the wallet holds none of, or whose share rounds to zero; or a paper sale or swap whose paper
 portfolio holds less of its input at the fill than its confirmed quote spends).
 
+Fill reasons for `failed_check`, stored at a fill's authorization
+([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or
+used its last fill), `fill_bounds` (it spends nothing, more than its size allows, or asks more
+slippage than the order's maximum), `worst_price` (its quote's price at its minimum out is worse
+than the order's worst price, or nothing values it), `trigger_unconfirmed` (a thin pool's price
+fired it, and the quote's own expected price does not meet the trigger), and `daily_cap` (another
+confirmation took the rolling cap's room after its policy step).
+
 An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
-order's buy that would pass its daily cap for the leader. The skip is an `order_fills` row with its
-reason, reported as `notice.skipped`, like a fill that policy or risk refused.
+order's buy that would pass its daily cap for the leader; `engine_locked`, the engine is locked;
+`live_fills_off`, a live order while live fills are off; `nothing_to_spend`, a buy whose size comes
+to nothing; and `no_price`, a size in dollars whose asset has no USD price. The skip is an
+`order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
+refused.
 
 Failure reasons for `failed_onchain`: `reverted` (a step's receipt has status 0), `stuck_cancelled`
 and `stuck_dropped` (section 6, [decision 0115](../DECISIONS.md#d0115)), `nonce_taken` (section 7)
@@ -166,6 +178,19 @@ and `step_unsent` (a step never signed after an earlier one landed,
 - **Auto order fills** start with `authorizedBy: { order }` and skip `awaiting_confirmation`. Every
   fill runs policy and risk again; a fill that fails is skipped and reported, and the order stays
   active unless its own rules end it ([ARCHITECTURE.md section 9](../ARCHITECTURE.md#section-9)).
+  [Decision 0195](../DECISIONS.md#d0195) settles the rest:
+  - A fill runs in its order's mode, keeps the order's outside-content mark and runs all the same,
+    since the owner confirmed the order's card. The policy refuses a fill that sells a token on the
+    deny list as `token_denied`.
+  - At `simulated` it reads its order again and holds the chosen quote to the order's bounds, in
+    the agent's line of confirmations with the rolling cap (section 9); a broken bound ends it
+    `failed_check` with the fill reason (section 4).
+  - A live order's fill is skipped with `live_fills_off` until the crash suite on fills passes, and
+    a locked engine skips every fill with `engine_locked`.
+  - One agent's fills run one at a time. After a skip, an order may fill again 15 seconds later,
+    the wait doubling up to 5 minutes; the owner hears a skip once per reason in a row.
+  - A paper fill moves its intent to `paper_filled`, records the fill on its order and in
+    `order_fills`, and ends the other exit orders of a position it emptied, in one write.
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when
@@ -454,7 +479,10 @@ Property tests (fast-check) hold these for every generated history:
 7. Every terminal state has exactly one ledger entry, and the ledger's hash chain verifies.
 8. An auto-authorized intent is never a send, withdrawal, bridge, launch or new-spender approval,
    never exceeds a cap, never sells a token on the deny list, never pays a fee per gas above the
-   network fee cap, and never comes from an outside-content turn or an MCP client.
+   network fee cap, and never comes from an outside-content turn or an MCP client. A fill is held
+   to the same, but for the outside-content mark its order's confirmed card carried: it is a buy or
+   a sell of its order's token in its order's wallet and mode, inside its order's bounds, and is
+   confirmed only on a fill check that names no breach ([decision 0195](../DECISIONS.md#d0195)).
 9. A send's target is always the rescue address or a saved address
    ([decision 0091](../DECISIONS.md#d0091)).
 10. No 24-hour window holds confirmations of one agent in one mode whose values together pass its
