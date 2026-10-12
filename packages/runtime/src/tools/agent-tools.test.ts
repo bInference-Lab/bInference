@@ -43,6 +43,15 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "order/create": orderWire("awaiting_confirmation"),
   "order/get": orderWire("active"),
   "order/cancel": orderWire("cancelled"),
+  "notes/search": { items: [] },
+  "notes/write": {
+    note: "1",
+    agent,
+    text: "Likes stablecoins",
+    origin: "agent",
+    createdAt: 1,
+    changedAt: 1,
+  },
 };
 
 const key = context.idempotencyKey;
@@ -66,6 +75,11 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     [{ op: "order/list", args: { state: "active", cursor: "c1", agent } }],
   ],
   ["tx_status", { intent }, [{ op: "intent/get", args: { intent } }]],
+  [
+    "notes_search",
+    { query: "stable" },
+    [{ op: "notes/search", args: { agent, query: "stable", limit: 10 } }],
+  ],
   ["swap", swapTerms, [{ op: "intent/propose", args: { ...swapTerms, agent, kind: "swap" }, key }]],
   ["buy", buyTerms, [{ op: "intent/propose", args: { ...buyTerms, agent, kind: "buy" }, key }]],
   ["sell", sellTerms, [{ op: "intent/propose", args: { ...sellTerms, agent, kind: "sell" }, key }]],
@@ -81,6 +95,11 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
       { op: "order/get", args: { order } },
       { op: "order/cancel", args: { order }, key },
     ],
+  ],
+  [
+    "notes_write",
+    { text: "Likes stablecoins" },
+    [{ op: "notes/write", args: { agent, text: "Likes stablecoins" }, key }],
   ],
 ];
 
@@ -98,7 +117,7 @@ describe("the agent's tools", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("are the reads, then the proposals, then the brake", () => {
+  it("are the reads, then the proposals, then the brake, then the note it writes", () => {
     const tools = agentTools({ agent, client: createFakeToolClient({}) });
     expect(tools.map((tool) => tool.name)).toStrictEqual(names);
   });

@@ -236,6 +236,8 @@ export interface SkeletonOptions {
   readonly webPush?: ComposeEngineOptions["webPush"];
   /** The agent runtime's running turns; none started when left out. */
   readonly turns?: ComposeEngineOptions["turns"];
+  /** Handlers the test adds, such as the routed operations over a runtime of its own. */
+  readonly handlers?: ComposeEngineOptions["handlers"];
   /** What tokens the registry does not list answer on chain; `UNL`, 18 decimals when left out. */
   readonly tokenFacts?: ComposeEngineOptions["readTokenFacts"];
   /** The agents' workspace files; in memory when left out. */
@@ -320,7 +322,7 @@ export async function composeSkeleton(
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),
-    handlers: readyEngineOperations(parts.stores.agents),
+    handlers: { ...readyEngineOperations(parts.stores.agents), ...options.handlers },
     ...surfacesOf(options),
     clock,
     random: createSeededRandom(7),

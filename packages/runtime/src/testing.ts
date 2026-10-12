@@ -18,6 +18,8 @@ export type {
 export { fixtureSettings, fixtureStartLine } from "./testing/start-line-fixture.js";
 export { startStandInModelServer } from "./testing/stand-in-model-server.js";
 export type { StandInModelServer, StandInRequest } from "./testing/stand-in-model-server.js";
+export { answerNoteRoute } from "./notes/note-routes.js";
+export type { NoteRouteParts } from "./notes/note-routes.js";
 export { createRecordedHttp } from "./testing/recorded-http.js";
 export type { RecordedAnswer, RecordedHttp } from "./testing/recorded-http.js";
 export {

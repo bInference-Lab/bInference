@@ -1,13 +1,15 @@
 import type { ProtocolClient } from "@binference/client";
 import { err, type Id, idSchema, ok } from "@binference/core";
-import { createSeededRandom } from "@binference/core/testing";
+import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { sha256Hex } from "@binference/engine";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testToken, testWallet } from "@binference/engine/testing";
 import type { IntentView } from "@binference/protocol";
+import type { RouteLine } from "@binference/runtime";
 import {
   type AgentToolParts,
   agentToolBox,
+  answerNoteRoute,
   braveAnswer,
   callsReply,
   createRecordedHttp,
@@ -17,11 +19,19 @@ import {
   type TestTool,
   testLookup,
   type TurnEngine,
+  textReply,
   type TurnStatusLine,
   type WebToolParts,
   xRecentAnswer,
 } from "@binference/runtime/testing";
+import type { NoteStore } from "@binference/store";
+import {
+  createMemoryAgentDatabase,
+  createMemoryNoteStore,
+  createMemoryWriterFence,
+} from "@binference/store/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { createRoutedHandlers } from "../agent-runtime/routed-handlers.js";
 import { makeRuntimeToken } from "../agent-runtime/runtime-token.js";
 import { type Skeleton, skeletonCompositions, startSkeleton } from "../compose/test-skeleton.js";
 
@@ -42,6 +52,8 @@ interface Relay {
   readonly turns: RunningTurns;
   /** The runtime, signed in with the token of its current start. */
   readonly runtime: ProtocolClient;
+  /** The notes the routed operations keep. */
+  readonly notes: NoteStore;
 }
 
 async function startRelay(
@@ -49,7 +61,9 @@ async function startRelay(
   approval: "auto" | "manual" = "auto",
 ): Promise<Relay> {
   const turns = createRunningTurns();
-  const skeleton = await startSkeleton(composition.parts(), { turns });
+  const notes = runtimeNotes();
+  const handlers = createRoutedHandlers(notes.route, turns);
+  const skeleton = await startSkeleton(composition.parts(), { turns, handlers });
   skeletons.push(skeleton);
   await skeleton.client.call("approval/set", { agent: testAgent, mode: approval }, live());
   await skeleton.client.call("portfolio/resetPaper", { agent: testAgent }, live());
@@ -58,7 +72,39 @@ async function startRelay(
   const token = await makeRuntimeToken(options, live().signal);
   turns.startRuntime(token.id);
   const runtime = await skeleton.connect(token.token, "runtime");
-  return { skeleton, turns, runtime };
+  return { skeleton, turns, runtime, notes: notes.store };
+}
+
+type Route = Parameters<typeof createRoutedHandlers>[0];
+type NoteLine = Parameters<typeof answerNoteRoute>[0];
+
+const noteOps: ReadonlySet<string> = new Set([
+  "notes/search",
+  "notes/list",
+  "notes/write",
+  "notes/delete",
+]);
+
+function isNoteOp(line: RouteLine): line is NoteLine {
+  return noteOps.has(line.op);
+}
+
+// The runtime's side of the routed notes operations, over notes in memory: what the engine's
+// routed handlers reach in place of the runtime's process.
+function runtimeNotes(): { readonly store: NoteStore; readonly route: Route } {
+  const database = createMemoryAgentDatabase();
+  const store = createMemoryNoteStore(database);
+  const raised = createMemoryWriterFence(database).raise(live());
+  const route: Route = async (request, signal) => {
+    const parts = { notes: store, fence: await raised, clock: createManualClock(1_000) };
+    const line = { t: "route", id: "r1", ...request } as const;
+    const reply = isNoteOp(line) ? await answerNoteRoute(line, parts, signal) : undefined;
+    if (reply === undefined) {
+      return err("protocol.unknown_op");
+    }
+    return "result" in reply ? ok(reply.result) : err("internal.error");
+  };
+  return { store, route };
 }
 
 /** Where a turn runs: its agent's session, and the turn the engine reserved for its message. */
@@ -134,6 +180,9 @@ function swapTool(runtime: ProtocolClient, proposed: IntentView[]): TestTool {
 }
 
 const searchWeb: TestTool = { name: "search_web", kind: "read", outside: true };
+
+// The owner's search keys: Brave Search for search_web, and X.
+const braveKey = { keys: { brave: "brave-key" }, xApiKey: "x-key" };
 
 // A swap the model proposes with the agent's own swap tool.
 const swapTerms = {
@@ -225,8 +274,7 @@ describe.each(skeletonCompositions)("the chat relay on the $name composition", (
     async (tool, args, answer) => {
       const relay = await startRelay(composition);
       const http = createRecordedHttp([answer]);
-      const search = { keys: { brave: "brave-key" }, xApiKey: "x-key" };
-      const web = { http, lookup: testLookup, clock: relay.skeleton.clock, search };
+      const web = { http, lookup: testLookup, clock: relay.skeleton.clock, search: braveKey };
       const replies = [
         callsReply([{ name: tool, args }]),
         callsReply([{ name: "swap", args: swapTerms }]),
@@ -248,6 +296,28 @@ describe.each(skeletonCompositions)("the chat relay on the $name composition", (
       ]);
     },
   );
+
+  it.each([
+    [
+      "after reading outside content",
+      [callsReply([{ name: "search_web", args: { query: "token" } }])],
+      "untrusted",
+    ],
+    ["in a clean turn", [], "agent"],
+  ] as const)("stores the note the agent writes %s as %s", slow, async (_name, before, origin) => {
+    const relay = await startRelay(composition);
+    const http = createRecordedHttp([braveAnswer]);
+    const web = { http, lookup: testLookup, clock: relay.skeleton.clock, search: braveKey };
+    const replies = [
+      ...before,
+      callsReply([{ name: "notes_write", args: { text: "Watch the token" } }]),
+      textReply("Noted."),
+    ];
+    const { report } = await runChatTurn(relay, { replies, web });
+    expect(report).toMatchObject({ state: "ended", outcome: "ok" });
+    const notes = await relay.notes.list({ agentId: testAgent, limit: 10 }, live());
+    expect(notes).toMatchObject([{ text: "Watch the token", origin }]);
+  });
 
   it(
     "opens a paper card for the swap the model proposes with the agent's own tool",
