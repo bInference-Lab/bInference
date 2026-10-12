@@ -54,7 +54,9 @@ export function readFakeRpcRequest(body: string | undefined): FakeRpcRequest {
 }
 
 /** A fake endpoint that answers each JSON-RPC request with this request's id. */
-export function fakeRpcNode(answer: (request: FakeRpcRequest) => FakeRpcAnswer): FakeEndpoint {
+export function fakeRpcNode(
+  answer: (request: FakeRpcRequest) => FakeRpcAnswer,
+): (request: HttpRequest) => HttpResponse {
   return (request) => {
     const call = readFakeRpcRequest(request.body);
     const reply = answer(call);

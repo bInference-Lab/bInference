@@ -14,7 +14,9 @@ Rules for this package:
 - Every RPC answer passes a zod schema before it leaves the failover, and leaves the package as our
   own types: CAIP ids, `Amount`, `bigint`. A `*.schema.ts` file holds every `unknown`.
 - Outbound HTTP goes through the core `Http` port. viem's own transports and retries stay unused:
-  viem clients ride on `createRpcFailover` through `createEvmClient`.
+  viem clients ride on `createRpcFailover` through `createEvmClient`. The one socket, the block
+  source's `newHeads` subscription (`src/watching/`), opens through a `HeadSocketFactory` the
+  composition root gives; its URL may carry a key, so no error, state or log names it.
 - The failover reads. It refuses `eth_send*`, `eth_sign*`, `personal_*` and `wallet_*`, so a retried
   send can never reach a public node; sends go through the private relays.
 - A node that pruned the state a read needs is a `missing_state` fault, not a failure: the read

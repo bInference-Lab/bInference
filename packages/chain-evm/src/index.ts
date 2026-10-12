@@ -68,3 +68,18 @@ export type {
   SimulationRequest,
 } from "./simulation/simulate.js";
 export type { EvmLog } from "./simulation/simulation-reply.schema.js";
+export { createBlockSource } from "./watching/block-source.js";
+export type {
+  BlockSource,
+  BlockSourceFault,
+  BlockSourceOptions,
+  BlockSourceState,
+} from "./watching/block-source.js";
+export type { HeadsEnded } from "./watching/follow-heads.js";
+export type {
+  HeadSocket,
+  HeadSocketEvents,
+  HeadSocketFactory,
+  HeadSocketMessage,
+  HeadSubscription,
+} from "./watching/head-socket.js";
