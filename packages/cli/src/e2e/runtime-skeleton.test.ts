@@ -43,21 +43,35 @@ afterEach(async () => {
   await Promise.all(stops.splice(0).map(async (stop) => stop()));
 });
 
-// The model's two answers: the swap the owner asked for, then the report once it filled.
-const replies = [
-  callsReply([
-    {
-      name: "swap",
-      args: {
-        from: testCoin,
-        to: testToken,
-        amount: { base: "1000000" },
-        reason: "You asked for some of the token.",
-      },
-    },
-  ]),
-  textReply(report),
-];
+// The model's two answers for each trade: the proposal the owner asked for, as a swap or as a
+// buy of the token, then the report once it filled.
+const reason = "You asked for some of the token.";
+const trades = [
+  {
+    kind: "swap",
+    replies: [
+      callsReply([
+        {
+          name: "swap",
+          args: { from: testCoin, to: testToken, amount: { base: "1000000" }, reason },
+        },
+      ]),
+      textReply(report),
+    ],
+  },
+  {
+    kind: "buy",
+    replies: [
+      callsReply([
+        {
+          name: "buy",
+          args: { token: testToken, spend: { asset: testCoin, base: "1000000" }, reason },
+        },
+      ]),
+      textReply(report),
+    ],
+  },
+] as const;
 
 /** The pushes of the agent's chat topic, and a wait for the end of its nth turn. */
 interface ChatWatch {
@@ -98,7 +112,10 @@ interface Machine {
 
 // The owner's bot on the synthetic Bot API, the agent on paper in manual mode, and the runtime the
 // engine starts with a token of its own, in this process, on the scripted model.
-async function startMachine(composition: (typeof skeletonCompositions)[number]): Promise<Machine> {
+async function startMachine(
+  composition: (typeof skeletonCompositions)[number],
+  replies: (typeof trades)[number]["replies"],
+): Promise<Machine> {
   const botApi = createFakeBotApi();
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live());
@@ -167,11 +184,11 @@ function confirmOf(botApi: FakeBotApi): { readonly data: string; readonly messag
 describe.each(skeletonCompositions)(
   "the runtime skeleton on the $name composition",
   (composition) => {
-    it(
-      "fills a swap the agent proposes from a Telegram chat on paper, and reports it",
+    it.each(trades)(
+      "fills a $kind the agent proposes from a Telegram chat on paper, and reports it",
       slow,
-      async () => {
-        const { skeleton, botApi, chat, telegram } = await startMachine(composition);
+      async ({ kind, replies }) => {
+        const { skeleton, botApi, chat, telegram } = await startMachine(composition, replies);
         await telegram.ingress.receive(ownerText("Buy some of the token"), live());
         await skeleton.clock.advance(300);
         await telegram.chat.idle();
@@ -193,7 +210,7 @@ describe.each(skeletonCompositions)(
         ]);
         expect(botApi.sent().map(({ text }) => text.split("\n")[0])).toStrictEqual([
           "Working on it · 0 s",
-          `${icons.waiting} Confirm swap · main · ${icons.paper} Paper`,
+          `${icons.waiting} Confirm ${kind} · main · ${icons.paper} Paper`,
           `${icons.waiting} Waiting for your answer on its card`,
           "Working on it · 0 s",
           report,
