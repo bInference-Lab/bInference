@@ -444,6 +444,9 @@
         "agent.frozen",
         "agent.paper_only",
         "agent.disclaimer",
+        "market.no_data",
+        "market.source_down",
+        "market.no_launch_feed",
         "wallet.not_found",
         "wallet.unfunded",
         "wallet.bad_owner_key",
@@ -7141,6 +7144,465 @@
             "flags",
             "onCurve",
             "checkedAt"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/market/scan": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "market/scan"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "chain": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "launches",
+                "trending"
+              ]
+            },
+            "filters": {
+              "type": "object",
+              "properties": {
+                "launchpads": {
+                  "minItems": 1,
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "flap",
+                      "fourmeme",
+                      "geniusfun",
+                      "brew"
+                    ]
+                  }
+                },
+                "quoteTokens": {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "maxTaxBps": {
+                  "type": "number"
+                },
+                "maxSnipeTaxBps": {
+                  "type": "number"
+                },
+                "minCurveProgressBps": {
+                  "type": "number"
+                },
+                "minLiquidityUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "maxInsiders": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maxCreatorLaunches30d": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "additionalProperties": false
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          "required": [
+            "chain",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/market/scan": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset": {
+                    "type": "string"
+                  },
+                  "launchpad": {
+                    "type": "string",
+                    "enum": [
+                      "flap",
+                      "fourmeme",
+                      "geniusfun",
+                      "brew"
+                    ]
+                  },
+                  "launchedAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "priceUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "priceScale": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 18
+                  },
+                  "liquidityUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "volume24hUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "change24hBps": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "curveProgressBps": {
+                    "type": "number"
+                  },
+                  "graduated": {
+                    "type": "boolean"
+                  },
+                  "activeBoosts": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "risk": {
+                    "type": "object",
+                    "properties": {
+                      "verdict": {
+                        "type": "string",
+                        "enum": [
+                          "pass",
+                          "warn",
+                          "block"
+                        ]
+                      },
+                      "flags": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_]*$"
+                            },
+                            "source": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9_]*$"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "source"
+                          ]
+                        }
+                      },
+                      "buyTaxBps": {
+                        "type": "number"
+                      },
+                      "sellTaxBps": {
+                        "type": "number"
+                      },
+                      "liquidityUsdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      },
+                      "onCurve": {
+                        "type": "boolean"
+                      },
+                      "checkedAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "verdict",
+                      "flags",
+                      "onCurve",
+                      "checkedAt"
+                    ]
+                  }
+                },
+                "required": [
+                  "asset"
+                ]
+              }
+            },
+            "assets": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "decimals": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "verified": {
+                    "type": "boolean"
+                  },
+                  "onCurve": {
+                    "type": "boolean"
+                  },
+                  "logo": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "name",
+                  "decimals",
+                  "verified"
+                ]
+              }
+            }
+          },
+          "required": [
+            "items",
+            "assets"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/market/chart": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "market/chart"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "asset": {
+              "type": "string"
+            },
+            "interval": {
+              "type": "string",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "1h",
+                "4h",
+                "1d"
+              ]
+            },
+            "to": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          },
+          "required": [
+            "asset",
+            "interval"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/market/chart": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "asset": {
+              "type": "string"
+            },
+            "interval": {
+              "type": "string",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "1h",
+                "4h",
+                "1d"
+              ]
+            },
+            "candles": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "openUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "highUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "lowUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "closeUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  },
+                  "volumeUsdMicros": {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                  }
+                },
+                "required": [
+                  "at",
+                  "openUsdMicros",
+                  "highUsdMicros",
+                  "lowUsdMicros",
+                  "closeUsdMicros",
+                  "volumeUsdMicros"
+                ]
+              }
+            },
+            "priceScale": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 18
+            },
+            "source": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+            }
+          },
+          "required": [
+            "asset",
+            "interval",
+            "candles",
+            "source"
           ]
         }
       },

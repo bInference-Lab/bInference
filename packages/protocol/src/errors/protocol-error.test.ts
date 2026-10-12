@@ -17,6 +17,7 @@ describe("protocolErrorCodes", () => {
       "engine",
       "runtime",
       "agent",
+      "market",
       "wallet",
       "address",
       "rescue",

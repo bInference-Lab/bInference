@@ -220,6 +220,24 @@ describe("createCallDispatch", () => {
     ]);
   });
 
+  it("fails a market read whose source is down as retryable, and one with no data as not", async () => {
+    const asset = "eip155:56/erc20:0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
+    const { dispatch } = setup({
+      handlers: {
+        "market/chart": async () => err("market.source_down"),
+        "market/scan": async () => err("market.no_data"),
+      },
+    });
+    const chart = call("market/chart", { asset, interval: "1h" });
+    const scan = call("market/scan", { chain: "eip155:56", source: "trending" });
+    await expect(framesOf(dispatch(chart, session(["read"])))).resolves.toMatchObject([
+      { t: "fail", error: { code: "market.source_down", retryable: true } },
+    ]);
+    await expect(framesOf(dispatch(scan, session(["read"])))).resolves.toMatchObject([
+      { t: "fail", error: { code: "market.no_data", retryable: false } },
+    ]);
+  });
+
   it("serves only the engine status and subscriptions while starting", async () => {
     const status = {
       state: "starting",

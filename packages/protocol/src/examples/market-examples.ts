@@ -115,6 +115,50 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
   },
   "quote/get": { args: swapRequest, result: quoteView },
   "risk/check": { args: { asset: refs.token }, result: riskView },
+  "market/scan": {
+    args: { chain: refs.chain, source: "trending", limit: 20 },
+    result: {
+      items: [
+        {
+          asset: refs.token,
+          priceUsdMicros: "7525000",
+          priceScale: 5,
+          liquidityUsdMicros: "84000250000",
+          volume24hUsdMicros: "250000500000",
+          change24hBps: 31_245,
+          activeBoosts: 1500,
+          risk: riskView,
+        },
+      ],
+      assets,
+    },
+  },
+  "market/chart": {
+    args: { asset: refs.token, interval: "4h", to: at, limit: 2 },
+    result: {
+      asset: refs.token,
+      interval: "4h",
+      candles: [
+        {
+          at: at - 28_800_000,
+          openUsdMicros: "753470000",
+          highUsdMicros: "754630000",
+          lowUsdMicros: "749960000",
+          closeUsdMicros: "750830000",
+          volumeUsdMicros: "462391110553",
+        },
+        {
+          at: at - 14_400_000,
+          openUsdMicros: "750830000",
+          highUsdMicros: "756780000",
+          lowUsdMicros: "750090000",
+          closeUsdMicros: "753960000",
+          volumeUsdMicros: "1562492011515",
+        },
+      ],
+      source: "geckoterminal",
+    },
+  },
 };
 
 /** An example call of every intent operation. */

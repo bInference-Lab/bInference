@@ -2,10 +2,12 @@ import {
   type AccountRef,
   type Amount,
   type AssetRef,
+  type CandleInterval,
   type ChainRef,
   accountRefSchema,
   amountSchema,
   assetRefSchema,
+  candleIntervals,
   chainRefSchema,
 } from "@binference/chain";
 import { z } from "zod";
@@ -20,6 +22,15 @@ import {
   type AssetView,
   assetViewSchema,
 } from "../views/asset-info.schema.js";
+import { type LaunchFilter, launchFilterSchema } from "../views/launch-filter.schema.js";
+import {
+  candleViewSchema,
+  type ChartView,
+  priceScaleSchema,
+  type ScanItem,
+  scanItemSchema,
+  sourceIdSchema,
+} from "../views/market-view.schema.js";
 import { type PortfolioView, portfolioViewSchema } from "../views/portfolio-view.schema.js";
 import { type QuoteView, quoteViewSchema } from "../views/quote-view.schema.js";
 import { type RiskView, riskViewSchema } from "../views/risk-view.schema.js";
@@ -112,6 +123,33 @@ interface ResolvedName {
   readonly resolvedAt: number;
 }
 
+/** The args of `market/scan`: the chain, where the tokens come from, and how many. */
+interface ScanArgs {
+  readonly chain: ChainRef;
+  /** New launches from the launch feed, or the data source's trending tokens. */
+  readonly source: "launches" | "trending";
+  /** Which launches pass; launches only. */
+  readonly filters?: LaunchFilter;
+  /** 20 by default, at most 50. */
+  readonly limit?: number;
+}
+
+/** The answer of `market/scan`: its tokens in the source's order, and the info of those known. */
+interface ScanView {
+  readonly items: readonly ScanItem[];
+  readonly assets: AssetInfos;
+}
+
+/** The args of `market/chart`: the token, the candle width, and the candles before `to`. */
+interface ChartArgs {
+  readonly asset: AssetRef;
+  readonly interval: CandleInterval;
+  /** The candles start before this time; now when absent. */
+  readonly to?: number;
+  /** 100 by default, at most 500. */
+  readonly limit?: number;
+}
+
 /** The market read operations of protocol spec section 7.3. */
 export interface MarketOperationShapes {
   readonly "portfolio/get": { readonly args: PortfolioArgs; readonly result: PortfolioView };
@@ -128,6 +166,8 @@ export interface MarketOperationShapes {
   };
   readonly "quote/get": { readonly args: SwapRequest; readonly result: QuoteView };
   readonly "risk/check": { readonly args: AssetArgs; readonly result: RiskView };
+  readonly "market/scan": { readonly args: ScanArgs; readonly result: ScanView };
+  readonly "market/chart": { readonly args: ChartArgs; readonly result: ChartView };
 }
 
 const assetArgs = z.strictObject({ asset: assetRefSchema });
@@ -225,5 +265,35 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
     scope: "read",
     args: assetArgs,
     result: riskViewSchema,
+  },
+  "market/scan": {
+    ...readFlags,
+    name: "market/scan",
+    scope: "read",
+    args: z.strictObject({
+      chain: chainRefSchema,
+      source: z.enum(["launches", "trending"]),
+      filters: launchFilterSchema.exactOptional(),
+      limit: z.int().min(1).max(50).exactOptional(),
+    }),
+    result: z.object({ items: z.array(scanItemSchema), assets: assetInfosSchema }),
+  },
+  "market/chart": {
+    ...readFlags,
+    name: "market/chart",
+    scope: "read",
+    args: z.strictObject({
+      asset: assetRefSchema,
+      interval: z.enum(candleIntervals),
+      to: epochMsSchema.exactOptional(),
+      limit: z.int().min(1).max(500).exactOptional(),
+    }),
+    result: z.object({
+      asset: assetRefSchema,
+      interval: z.enum(candleIntervals),
+      candles: z.array(candleViewSchema),
+      priceScale: priceScaleSchema.exactOptional(),
+      source: sourceIdSchema,
+    }),
   },
 };

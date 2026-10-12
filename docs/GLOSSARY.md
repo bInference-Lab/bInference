@@ -528,6 +528,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | insider wallets                                    | 内部钱包                     |                                         |
 | creator (of a token)                               | 创建者                       |                                         |
 | trending (tokens)                                  | 热门                         |                                         |
+| market data source                                 | 行情数据源                   |                                         |
 | chart, candle                                      | K 线图, K 线                 |                                         |
 | price scale                                        | 价格单位                     | Prices per 10^n tokens                  |
 | leader wallet (of a copy trade)                    | 带单钱包                     |                                         |

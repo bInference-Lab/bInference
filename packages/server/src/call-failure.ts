@@ -19,6 +19,7 @@ const retryableCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "wallet.custody_down",
   "name.resolver_down",
   "quote.venue_down",
+  "market.source_down",
   "chain.rpc_down",
   "telegram.unreachable",
 ]);
