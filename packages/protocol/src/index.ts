@@ -139,7 +139,7 @@ export type {
   TokenAmount,
   UsdValue,
 } from "./values/token-amount.schema.js";
-export { proposalAnswer, toolSentences } from "./tools/tool-sentences.js";
+export { orderProposalAnswer, proposalAnswer, toolSentences } from "./tools/tool-sentences.js";
 export type { ToolSentences } from "./tools/tool-sentences.js";
 export { checkProtocolVersion, protocolVersion } from "./versions/protocol-version.js";
 export { agentModeSchema, agentViewSchema } from "./views/agent-view.schema.js";

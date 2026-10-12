@@ -15,6 +15,8 @@ export { createTurnRecorder } from "./testing/turn-recorder.js";
 export type { RecordedStep, TurnRecorder, TurnRecorderOptions } from "./testing/turn-recorder.js";
 export { createTestTurn, testToolBox } from "./loop/test-turns.js";
 export { runNodeRuntime } from "./process/node-runtime.js";
+export { agentToolBox, agentTools } from "./tools/agent-tools.js";
+export type { AgentToolParts, ToolClient } from "./tools/tool-client.js";
 export type { TestTool, TestTurn, TestTurnOptions } from "./loop/test-turns.js";
 export type { OwnerMessage } from "./loop/model-message.js";
 export type { StreamingHttp } from "./providers/ports.js";

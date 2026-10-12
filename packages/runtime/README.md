@@ -119,6 +119,20 @@ an integer past 2^53 not written as plain digits are refused before they are rea
 fails a check never runs, and the model reads why.
 `createToolBox` holds an agent's tools for its turns.
 
+`agentTools` are the agent's first tools, each mapped onto one operation of the engine and called
+over the runtime's connection: the reads `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
+`token_risk` (`risk/check`), `quote` (`quote/get`), `orders` (`order/list`) and `tx_status`
+(`intent/get`); the proposals `swap`, `buy` and `sell` (`intent/propose`) and `order_create`
+(`order/create`); and `order_cancel` (`order/cancel`), a control tool that brakes, so it runs in a
+committed turn's batch too. The model writes the terms and its reason; the runtime names the turn's
+agent and no wallet, so the engine acts from the agent's default wallet, and a call that names an
+agent or a wallet fails its check ([decision 0176](../../docs/DECISIONS.md#d0176)). A tool reads and
+cancels only its own agent's intents and orders, and shows a token the registry does not list as
+"unlisted token", except in `token_info`, whose result is then outside content. A proposal sends
+the call's key as its idempotency key and answers the intent's or order's id and that it waits for
+the owner; a refusal the engine answered is an error result, and any other failure leaves the
+outcome unknown, so it is never sent again.
+
 ## Example
 
 ```ts

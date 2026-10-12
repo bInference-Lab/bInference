@@ -1,5 +1,6 @@
 import type { IntentState } from "../views/intent-state.schema.js";
 import type { IntentView } from "../views/intent-view.schema.js";
+import type { OrderView } from "../views/order-view.schema.js";
 
 /**
  * The sentences a model reads in more than one tool's text, for the agent's tools and the MCP
@@ -47,4 +48,15 @@ export function proposalAnswer(intent: Pick<IntentView, "intent" | "state" | "ou
   const reason = intent.outcome?.reason;
   const why = reason === undefined ? "" : ` with reason ${reason}`;
   return `Intent ${intent.intent} is in state ${intent.state}${why}.`;
+}
+
+/**
+ * The sentence an auto order's proposal answers with: the order's id and, while its one card is
+ * open, that it waits for the owner's confirmation in Telegram or the console. Any other order
+ * names its state.
+ */
+export function orderProposalAnswer(order: Pick<OrderView, "order" | "state">): string {
+  return order.state === "awaiting_confirmation"
+    ? `Auto order ${order.order} ${waitingText}`
+    : `Auto order ${order.order} is in state ${order.state}.`;
 }

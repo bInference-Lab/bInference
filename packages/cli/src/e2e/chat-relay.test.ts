@@ -6,8 +6,10 @@ import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testToken, testWallet } from "@binference/engine/testing";
 import type { IntentView } from "@binference/protocol";
 import {
+  agentToolBox,
   callsReply,
   createTestTurn,
+  type ScriptedReply,
   type TestTool,
   type TurnEngine,
   type TurnStatusLine,
@@ -35,11 +37,14 @@ interface Relay {
   readonly runtime: ProtocolClient;
 }
 
-async function startRelay(composition: (typeof skeletonCompositions)[number]): Promise<Relay> {
+async function startRelay(
+  composition: (typeof skeletonCompositions)[number],
+  approval: "auto" | "manual" = "auto",
+): Promise<Relay> {
   const turns = createRunningTurns();
   const skeleton = await startSkeleton(composition.parts(), { turns });
   skeletons.push(skeleton);
-  await skeleton.client.call("approval/set", { agent: testAgent, mode: "auto" }, live());
+  await skeleton.client.call("approval/set", { agent: testAgent, mode: approval }, live());
   await skeleton.client.call("portfolio/resetPaper", { agent: testAgent }, live());
   const { access } = skeleton.parts.stores;
   const options = { access, clock: skeleton.clock, random: createSeededRandom(21) };
@@ -120,8 +125,21 @@ function swapTool(runtime: ProtocolClient, proposed: IntentView[]): TestTool {
 
 const searchWeb: TestTool = { name: "search_web", kind: "read", outside: true };
 
-// The owner writes; the runtime takes the message from the inbox and runs its turn to the end.
+// A turn on the test's own search and swap tools, each response the calls it names.
 async function chatTurn(relay: Relay, calls: readonly (readonly string[])[]) {
+  const proposed: IntentView[] = [];
+  const tools = [searchWeb, swapTool(relay.runtime, proposed)];
+  const replies = calls.map((names) => callsReply(names.map((name) => ({ name }))));
+  const { report, messages } = await runChatTurn(relay, { replies, tools });
+  return { report, proposed, messages };
+}
+
+// The owner writes; the runtime takes the message from the inbox and runs its turn to the end,
+// on the given test tools, or on the agent's own tools when it is given none.
+async function runChatTurn(
+  relay: Relay,
+  setup: { readonly replies: readonly ScriptedReply[]; readonly tools?: readonly TestTool[] },
+) {
   const { skeleton, runtime } = relay;
   const posted = await skeleton.client.call(
     "chat/post",
@@ -131,7 +149,6 @@ async function chatTurn(relay: Relay, calls: readonly (readonly string[])[]) {
   const { items } = await runtime.call("inbox/list", { agent: testAgent }, live());
   const messages = items.map((view) => view.message);
   await runtime.call("inbox/take", { messages }, live());
-  const proposed: IntentView[] = [];
   const { turn } = createTestTurn({
     turnId: posted.turn,
     engine: engineOver(runtime, posted),
@@ -140,11 +157,13 @@ async function chatTurn(relay: Relay, calls: readonly (readonly string[])[]) {
       text: "Buy some of the token",
       outside: false,
     })),
-    replies: calls.map((names) => callsReply(names.map((name) => ({ name })))),
-    tools: [searchWeb, swapTool(runtime, proposed)],
+    replies: setup.replies,
+    ...(setup.tools === undefined
+      ? { box: agentToolBox({ agent: testAgent, client: runtime }) }
+      : { tools: setup.tools }),
   });
   const report = await turn.run();
-  return { report, proposed, messages };
+  return { report, messages };
 }
 
 describe.each(skeletonCompositions)("the chat relay on the $name composition", (composition) => {
@@ -167,6 +186,39 @@ describe.each(skeletonCompositions)("the chat relay on the $name composition", (
       { kind: "inbox/intentSettled", intent: { intent: proposed[0]?.intent } },
     ]);
   });
+
+  it(
+    "opens a paper card for the swap the model proposes with the agent's own tool",
+    slow,
+    async () => {
+      const relay = await startRelay(composition, "manual");
+      const terms = {
+        from: testCoin,
+        to: testToken,
+        amount: { base: "1000000" },
+        reason: "The owner asked for some of the token.",
+      };
+      const replies = [callsReply([{ name: "swap", args: terms }])];
+      const { report } = await runChatTurn(relay, { replies });
+      expect(report).toMatchObject({ state: "ended", outcome: "ok", committed: true });
+      const { items } = await relay.skeleton.client.call(
+        "intent/list",
+        { agent: testAgent },
+        live(),
+      );
+      expect(items).toMatchObject([
+        {
+          agent: testAgent,
+          wallet: testWallet,
+          state: "awaiting_confirmation",
+          paper: true,
+          outsideContent: false,
+          request: { kind: "swap", reason: terms.reason, amount: { base: 1_000_000n } },
+          card: { paper: true, outsideContent: false },
+        },
+      ]);
+    },
+  );
 
   it(
     "refuses turn/start and turn/mark from another client with the agent scope",

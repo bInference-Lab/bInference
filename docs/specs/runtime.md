@@ -321,7 +321,8 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 - A call that fails the check, or names no known tool, does not run: its result is the error with
   the schema's issues, so the model can correct it. A refused call never commits the turn.
 - The runtime fills the agent and the wallet; the model gives the terms and its reason, shown on the
-  card as "agent says". A wallet outside the agent's own is refused.
+  card as "agent says". A wallet outside the agent's own is refused
+  ([decision 0176](../DECISIONS.md#d0176)).
 - A result is text for the model, cut to 12,000 characters with a line saying how much was cut.
   A tool's error is a result too, never a turn failure.
 - A read or control call times out after 60 seconds and returns its timeout as its result. A
