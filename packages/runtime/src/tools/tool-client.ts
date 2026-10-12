@@ -1,5 +1,6 @@
 import type { ProtocolClient } from "@binference/client";
 import type { Id } from "@binference/core";
+import type { WebToolParts } from "./web-tools.js";
 
 /** The protocol client calls an agent's tools make, over the runtime's connection to the engine. */
 export type ToolClient = Pick<ProtocolClient, "call">;
@@ -12,4 +13,6 @@ export interface AgentToolParts {
    */
   readonly agent: Id<"agt">;
   readonly client: ToolClient;
+  /** How the web tools reach the internet; without it, the agent has no web tools. */
+  readonly web?: WebToolParts;
 }
