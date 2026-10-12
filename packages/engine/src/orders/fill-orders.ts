@@ -7,6 +7,7 @@ import type { PublishPush } from "../pushes/engine-push.js";
 import { endEmptyExit } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
 import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
+import { unfinishedFills } from "./fill-faults.js";
 import { agentWideReasons, isWaiting, paceRows } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
 import type { OrderFillReason } from "./order-fill.js";
@@ -214,6 +215,48 @@ async function fillNow(
   return settle(parts, state, { order, snapshot: proposed.value, signal });
 }
 
+// A fill that threw is a skip, `fill_failed`, paced as any skip: the newest intent it left
+// unfinished is cancelled unsigned with the skip's row, and any older one with none (decision
+// 0197).
+async function failed(
+  parts: OrderFillsParts,
+  state: FillState,
+  run: { readonly order: OrderRecord; readonly signal: AbortSignal },
+): Promise<FillOutcome> {
+  const { order, signal } = run;
+  const query = { isPaper: order.isPaper, agentId: order.agentId, order: order.id };
+  const left = await unfinishedFills(parts.stored, query, { signal });
+  const newest = left.at(-1);
+  // One at a time, so no two writes of one order race.
+  await left.slice(0, -1).reduce(async (before, snapshot) => {
+    await before;
+    await cancelFill(rowParts(parts), { snapshot, signal });
+  }, Promise.resolve());
+  if (newest === undefined) {
+    return skip(parts, state, { order, reason: "fill_failed", signal });
+  }
+  const skipped = { order, reason: "fill_failed" as const };
+  await cancelFill(rowParts(parts), { snapshot: newest, skip: skipped, signal });
+  await announceOrder(parts, order.id, signal);
+  return "skipped";
+}
+
+// Runs the fill; a fault in it is a skip. A stop is no fault: it throws on.
+async function fillOrFail(
+  parts: OrderFillsParts,
+  state: FillState,
+  run: { readonly order: OrderRecord; readonly price: FillPrice; readonly signal: AbortSignal },
+): Promise<FillOutcome> {
+  try {
+    return await fillNow(parts, state, run);
+  } catch (error) {
+    if (run.signal.aborted) {
+      throw error;
+    }
+    return failed(parts, state, run);
+  }
+}
+
 // Runs `work` once every earlier fill of the agent has ended.
 async function inLine<T>(state: FillState, agent: Id<"agt">, work: () => Promise<T>): Promise<T> {
   const before = state.lines.get(agent) ?? Promise.resolve();
@@ -255,7 +298,7 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
         return await inLine(state, read.agentId, async () => {
           const order = await parts.orders.get(id, { signal });
           return order?.state === "active" && parts.clock.now() < order.expiresAtMs
-            ? fillNow(parts, state, { order, price, signal })
+            ? fillOrFail(parts, state, { order, price, signal })
             : "inactive";
         });
       } finally {

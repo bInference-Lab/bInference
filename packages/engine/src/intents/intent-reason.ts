@@ -134,7 +134,8 @@ export const intentReasons: readonly IntentReason[] = [
  * Why an auto order skipped a fill before any intent was stored (spec 6, section 4):
  * `copy_daily_cap`, a copy order's buy that would pass its daily cap for the leader;
  * `engine_locked`, the engine is locked; `live_fills_off`, a live order while live fills are off;
- * `nothing_to_spend`, a buy whose size comes to nothing (decision 0195). A size in dollars with no
+ * `nothing_to_spend`, a buy whose size comes to nothing (decision 0195); `fill_failed`, a fill that
+ * threw or ran past its deadline (decision 0197). A size in dollars with no
  * USD price skips with the policy's `no_price`. The skip is an `order_fills` row with its reason,
  * and its message is `reason.<code>` like an intent's.
  */
@@ -143,6 +144,7 @@ export const orderSkipReasons = [
   "engine_locked",
   "live_fills_off",
   "nothing_to_spend",
+  "fill_failed",
 ] as const;
 
 /** A reason an auto order skipped a fill before any intent was stored. */

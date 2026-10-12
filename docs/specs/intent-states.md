@@ -162,7 +162,9 @@ confirmation took the rolling cap's room after its policy step).
 An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
 order's buy that would pass its daily cap for the leader; `engine_locked`, the engine is locked;
 `live_fills_off`, a live order while live fills are off; `nothing_to_spend`, a buy whose size comes
-to nothing; and `no_price`, a size in dollars whose asset has no USD price. The skip is an
+to nothing; `fill_failed`, a fill that threw or ran past its deadline, whose unfinished intent is
+cancelled unsigned ([decision 0197](../DECISIONS.md#d0197)); and `no_price`, a size in dollars
+whose asset has no USD price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
 refused.
 

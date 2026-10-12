@@ -40,5 +40,6 @@
   "copy_daily_cap": "将超过该带单钱包的每日上限（已用 {used}，上限 {cap}）",
   "engine_locked": "binference 已锁定，运行 `binference unlock` 之前不会成交任何订单",
   "live_fills_off": "实盘自动订单暂时不会成交，目前只有模拟订单会成交",
-  "nothing_to_spend": "钱包中订单要花费的资产不足"
+  "nothing_to_spend": "钱包中订单要花费的资产不足",
+  "fill_failed": "成交中途出错，未进行任何交易；系统会再次尝试"
 }
