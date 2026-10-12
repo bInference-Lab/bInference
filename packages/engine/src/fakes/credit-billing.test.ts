@@ -7,7 +7,14 @@ const first = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"agt">;
 const second = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000002" as Id<"agt">;
 const stranger = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000003" as Id<"agt">;
 const live = { signal: new AbortController().signal };
-const charge = (agent: Id<"agt">, usdMicros: bigint) => ({ agent, model: "m", usdMicros, atMs: 0 });
+const turn = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"trn">;
+let attempts = 0;
+const charge = (agent: Id<"agt">, usdMicros: bigint) => {
+  attempts += 1;
+  const key = `${turn}.usage.${String(attempts)}`;
+  const tokens = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
+  return { agent, turn, key, model: "m", ...tokens, usdMicros, atMs: 0 };
+};
 
 describe("credit billing", () => {
   it.each(

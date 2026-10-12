@@ -17,12 +17,24 @@ const first = fixtureId("agt", 1);
 const second = fixtureId("agt", 2);
 const dollars = (n: bigint): bigint => n * 1_000_000n;
 
-const charge = (agent: Id<"agt">, usdMicros: bigint): ModelCharge => ({
-  agent,
-  model: "main-model",
-  usdMicros,
-  atMs: 1_800_000_000_000,
-});
+const turn = fixtureId("trn", 1);
+let attempts = 0;
+
+// One attempt of a model call, under a key of its own unless the check names one.
+const charge = (agent: Id<"agt">, usdMicros: bigint, key?: string): ModelCharge => {
+  attempts += 1;
+  return {
+    agent,
+    turn,
+    key: key ?? `${turn}.usage.${String(attempts)}`,
+    model: "main-model",
+    inputTokens: 1_000,
+    outputTokens: 100,
+    cachedTokens: 0,
+    usdMicros,
+    atMs: 1_800_000_000_000,
+  };
+};
 
 async function threeDollarsEach(harness: ModelBillingHarness): Promise<ModelBilling> {
   return harness.create(
@@ -54,6 +66,16 @@ const spendChecks = (harness: ModelBillingHarness): readonly ContractCheck[] => 
       assert.equal(await billing.charge(charge(first, 1_250_001n), live()), 1_749_999n);
       assert.equal(await billing.charge(charge(first, 0n), live()), 1_749_999n);
       assert.equal(await billing.left(first, live()), 1_749_999n);
+    },
+  },
+  {
+    name: "charges an attempt sent twice under its key once",
+    run: async () => {
+      const billing = await threeDollarsEach(harness);
+      const key = `${turn}.usage.1`;
+      assert.equal(await billing.charge(charge(first, dollars(1n), key), live()), dollars(2n));
+      assert.equal(await billing.charge(charge(first, dollars(1n), key), live()), dollars(2n));
+      assert.equal(await billing.left(first, live()), dollars(2n));
     },
   },
   {

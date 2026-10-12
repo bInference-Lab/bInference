@@ -20,3 +20,13 @@ export { createRunningTurns } from "./chat/running-turns.js";
 export type { RunningTurn, RunningTurns } from "./chat/running-turns.js";
 export { createChatRelay } from "./chat/chat-relay.js";
 export type { ChatHandlers, ChatRelay } from "./chat/chat-relay.js";
+export {
+  budgetNoticeClaimSchema,
+  modelChargeSchema,
+  modelSpendSchema,
+  spendQuerySchema,
+} from "./billing/model-charge.js";
+export type { BudgetNoticeClaim, ModelSpend, SpendQuery } from "./billing/model-charge.js";
+export type { ModelUsageStore } from "./billing/ports.js";
+export { createDailyModelBudget, ownerDayOf } from "./billing/daily-model-budget.js";
+export type { DailyModelBudgetOptions, OwnerDay } from "./billing/daily-model-budget.js";

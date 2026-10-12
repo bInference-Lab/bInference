@@ -11,10 +11,11 @@ export interface CreditAccount {
 /**
  * Creates a {@link ModelBilling} for tests, shaped like prepaid AI credit: each owner holds one
  * balance that every agent of theirs spends from, and it never renews by itself. An agent no
- * account pays for has nothing to spend.
+ * account pays for has nothing to spend. An attempt is charged once by its key.
  */
 export function createCreditBilling(accounts: readonly CreditAccount[]): ModelBilling {
   const purses = new Map<Id<"agt">, { balance: bigint }>();
+  const charged = new Set<string>();
   for (const account of accounts) {
     const purse = { balance: account.credit };
     for (const agent of account.agents) {
@@ -29,6 +30,10 @@ export function createCreditBilling(accounts: readonly CreditAccount[]): ModelBi
     async charge(charge, options) {
       options.signal.throwIfAborted();
       const purse = purses.get(charge.agent) ?? { balance: 0n };
+      if (charged.has(charge.key)) {
+        return await Promise.resolve(purse.balance);
+      }
+      charged.add(charge.key);
       const after = purse.balance - charge.usdMicros;
       purse.balance = after > 0n ? after : 0n;
       return await Promise.resolve(purse.balance);
