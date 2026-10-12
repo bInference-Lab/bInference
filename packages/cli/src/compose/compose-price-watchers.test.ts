@@ -4,13 +4,13 @@ import {
   type ChainRef,
   type RegisteredChain,
 } from "@binference/chain";
-import type { WatchedPrice, WatcherLag } from "@binference/chain-evm";
+import type { WatcherLag } from "@binference/chain-evm";
 import { createFakeMarketSource } from "@binference/chain/testing";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import type { EnginePush } from "@binference/engine";
 import type { OrderRecord } from "@binference/engine/orders";
 import { describe, expect, it } from "vitest";
-import type { ChainWatch } from "./chain-watch.js";
+import type { ChainWatch, LatestPrice } from "./chain-watch.js";
 import { createClosers } from "./closers.js";
 import { composePriceWatchers } from "./compose-price-watchers.js";
 
@@ -18,7 +18,7 @@ const bsc = "eip155:56" as ChainRef;
 const token = assetRefSchema.parse("eip155:56/erc20:0x0000000000000000000000000000000000000001");
 const startMs = 1_800_000_000_000;
 // $2 a whole token of 18 decimals, as the watcher read it.
-const watched: WatchedPrice = {
+const watched: LatestPrice = {
   token,
   block: 100n,
   atMs: startMs,
@@ -27,13 +27,14 @@ const watched: WatchedPrice = {
   quoteAsset: assetRefSchema.parse("eip155:56/slip44:714"),
   quotePrice: { numerator: 1n, denominator: 300n },
   usdPrice: { numerator: 2_000_000n, denominator: 10n ** 18n },
+  planSinceMs: startMs,
 };
 
 /** A chain watch a test steers: its lag, whether it runs, its latest prices and its watches. */
 function fakeWatch() {
   const state = {
     lag: 0n,
-    latest: [] as WatchedPrice[],
+    latest: [] as LatestPrice[],
     watches: [] as AssetRef[],
     closed: 0,
     downSinceMs: undefined as number | undefined,
@@ -132,6 +133,14 @@ describe("the composed price watchers", () => {
         fields: { assetId: token, sourceId: "dexscreener", gapBps: 3_333 },
       }),
     );
+  });
+
+  it("hands a trigger a pool's price only once the cross-check proved it", async () => {
+    const { clock, fake, watchers } = rig();
+    fake.state.latest = [watched];
+    expect(watchers.confirmedPrices()).toStrictEqual([]);
+    await clock.advance(15_000);
+    expect(watchers.confirmedPrices()).toStrictEqual([watched]);
   });
 
   it("stops every watcher when the engine shuts down", async () => {

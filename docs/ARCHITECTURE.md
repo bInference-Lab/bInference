@@ -519,7 +519,9 @@ interface Signer {
     ([decision 0192](DECISIONS.md#d0192)). New blocks come over the owner's WebSocket RPC when
     config names one, else by polling. DEX Screener and GeckoTerminal cross-check the prices on a
     schedule, and the watcher reports its lag in blocks and tells the owner when it stays behind
-    ([decision 0193](DECISIONS.md#d0193)).
+    ([decision 0193](DECISIONS.md#d0193)). A pool is chosen and measured again at every block by
+    what it can trade, and its price sets a trigger only once the cross-check proved it; a token
+    the watcher cannot price is never silent ([decision 0194](DECISIONS.md#d0194)).
   - Leader wallets and launches are watched through new-block logs.
 - **After downtime ([decision 0066](DECISIONS.md#d0066)).** When the engine resumes after sleep, a
   reboot or a crash, each auto order checks the price now. It fills only if its trigger still holds

@@ -4,14 +4,16 @@ import type { EnginePush } from "@binference/engine";
 import {
   createPriceCrossCheck,
   createWatcherLagAlerts,
+  type PriceCheck,
   type PriceCrossCheck,
   type PriceSample,
   type WatcherLagAlerts,
 } from "@binference/engine/market";
 import type { OrderStore } from "@binference/engine/orders";
-import type { ChainWatch } from "./chain-watch.js";
+import type { ChainWatch, LatestPrice } from "./chain-watch.js";
 import type { Closers } from "./closers.js";
 import type { HealthSignal } from "./health-signals.js";
+import { isConfirmed, isUrgent } from "./price-confirmation.js";
 import { startRepeatingTimer } from "./repeating-timer.js";
 import type { ReadDecimals } from "./token-decimals.js";
 import { createWatchedOrders, type WatchedOrders } from "./watched-orders.js";
@@ -20,6 +22,11 @@ import { createWatchedOrders, type WatchedOrders } from "./watched-orders.js";
 export interface ComposedPriceWatchers {
   /** The `watcher` health signal, with its lag in blocks while a watcher reads. */
   readonly health: () => HealthSignal;
+  /**
+   * The latest price of each watched token a trigger may use now: a curve's as read, a pool's once
+   * the cross-check proved it (decision 0194).
+   */
+  readonly confirmedPrices: () => readonly LatestPrice[];
   /** How many active orders with a price trigger the watchers read for, at the last sync. */
   readonly activeOrders: () => number;
   /** Starts following the active orders, the lag checks and the cross-check. */
@@ -77,18 +84,26 @@ function decimalsBookOf(readDecimals: ReadDecimals): DecimalsBook {
   };
 }
 
+function latestOf(watches: ReadonlyMap<ChainRef, ChainWatch>): readonly LatestPrice[] {
+  return [...watches.values()].flatMap((watch) => watch.latest());
+}
+
+// The watchers' prices in USD, those from a pool not yet proven or thin checked first.
 function samplesOf(
-  watches: ReadonlyMap<ChainRef, ChainWatch>,
+  options: PriceWatchersOptions,
   decimals: DecimalsBook,
+  checks: () => readonly PriceCheck[],
 ): readonly PriceSample[] {
-  return [...watches.values()].flatMap((watch) =>
-    watch.latest().flatMap(({ token, usdPrice, plan }) => {
-      const tokenDecimals = decimals.known.get(token);
-      return usdPrice === undefined || tokenDecimals === undefined
-        ? []
-        : [{ token, usdPrice, decimals: tokenDecimals, plan }];
-    }),
-  );
+  const nowMs = options.clock.now();
+  const known = checks();
+  return latestOf(options.watches).flatMap((price) => {
+    const { token, usdPrice, plan } = price;
+    const tokenDecimals = decimals.known.get(token);
+    const isUrgentNow = isUrgent(price, known, nowMs);
+    return usdPrice === undefined || tokenDecimals === undefined
+      ? []
+      : [{ token, usdPrice, decimals: tokenDecimals, plan, isUrgent: isUrgentNow }];
+  });
 }
 
 function crossCheckOf(
@@ -97,12 +112,13 @@ function crossCheckOf(
   logger: Logger,
 ): PriceCrossCheck {
   const { dexscreener, geckoterminal } = options.sources;
-  return createPriceCrossCheck({
+  const made: { check?: PriceCrossCheck } = {};
+  made.check = createPriceCrossCheck({
     sources: [
       { source: dexscreener, everyMs: 60_000, maxTokens: 90 },
       { source: geckoterminal, everyMs: 300_000, maxTokens: 30 },
     ],
-    samples: () => samplesOf(options.watches, decimals),
+    samples: () => samplesOf(options, decimals, () => made.check?.checks() ?? []),
     watched: () =>
       [...options.watches.values()].flatMap((watch) =>
         watch.watcher.tokens().map(({ token }) => token),
@@ -114,6 +130,7 @@ function crossCheckOf(
     onSourceFailed: (source, errorCode) =>
       logger.warn("watcher.cross_check_failed", { sourceId: source, errorCode }),
   });
+  return made.check;
 }
 
 function checkLag(options: PriceWatchersOptions, alerts: WatcherLagAlerts): void {
@@ -168,6 +185,11 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
   const parts: { check?: PriceCrossCheck } = {};
   return {
     health: () => healthOf(alerts, parts.check, options.watches),
+    confirmedPrices: () => {
+      const checks = parts.check?.checks() ?? [];
+      const nowMs = options.clock.now();
+      return latestOf(options.watches).filter((price) => isConfirmed(price, checks, nowMs));
+    },
     activeOrders: () => orders.activeOrders(),
     start(closers, logger) {
       const { clock } = options;

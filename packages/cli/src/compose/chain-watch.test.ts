@@ -1,5 +1,5 @@
 import { assetRefSchema, type AssetRef, type RegisteredChain } from "@binference/chain";
-import type { PriceWatcher, WatchedPrice } from "@binference/chain-evm";
+import type { PriceWatcher, WatchedPrice, WatchedToken } from "@binference/chain-evm";
 import { BinferenceError } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
@@ -12,11 +12,16 @@ const chain = {
 const tokenOf = (byte: string): AssetRef =>
   assetRefSchema.parse(`eip155:56/erc20:0x00000000000000000000000000000000000000${byte}`);
 
+const poolPlan = "pools:0x00000000000000000000000000000000000000ee";
+const otherPlan = "pools:0x00000000000000000000000000000000000000ef";
+
 /** A watcher a test drives: it counts runs and watches, and hands on the prices the test makes. */
 function fakeWatcher(options: { readonly failsWith?: Error; readonly failures?: number } = {}) {
   const listeners = new Set<(price: WatchedPrice) => void>();
   const watches = new Map<AssetRef, number>();
   const state = { runs: 0, running: 0 };
+  // Where each token stands; a token not set is priced by the pools' plan.
+  const standing = new Map<AssetRef, WatchedToken>();
   const watcher: PriceWatcher = {
     watch(token) {
       watches.set(token, (watches.get(token) ?? 0) + 1);
@@ -26,7 +31,11 @@ function fakeWatcher(options: { readonly failsWith?: Error; readonly failures?: 
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    tokens: () => [],
+    tokens: () =>
+      [...watches.keys()].map(
+        (token) =>
+          standing.get(token) ?? { token, state: "priced", source: "pools", plan: poolPlan },
+      ),
     lag: () => ({ lagBlocks: 0n, skippedBlocks: 0n, source: { mode: "polling" } }),
     async run(signal) {
       state.runs += 1;
@@ -43,19 +52,19 @@ function fakeWatcher(options: { readonly failsWith?: Error; readonly failures?: 
       });
     },
   };
-  const emit = (token: AssetRef, block: bigint) =>
+  const emit = (token: AssetRef, block: bigint, by: { plan?: string; atMs?: number } = {}) =>
     listeners.forEach((listener) =>
       listener({
         token,
         block,
-        atMs: 1,
+        atMs: by.atMs ?? 1,
         source: "pools",
-        plan: "pools:0x00000000000000000000000000000000000000ee",
+        plan: by.plan ?? poolPlan,
         quoteAsset: tokenOf("ff"),
         quotePrice: { numerator: 1n, denominator: 1n },
       }),
     );
-  return { watcher, watches, state, emit };
+  return { watcher, watches, state, emit, standing };
 }
 
 describe("a chain's price watch", () => {
@@ -89,6 +98,31 @@ describe("a chain's price watch", () => {
     );
     await watch.close();
     expect(fake.state.running).toBe(0);
+  });
+
+  it("keeps a latest price only while the watcher prices the token by the plan that read it", async () => {
+    const fake = fakeWatcher();
+    const watch = createChainWatch({
+      chain,
+      watcher: fake.watcher,
+      logger: createMemoryLogger({ subsystem: "watcher" }),
+      clock: createManualClock(0),
+    });
+    watch.watch(tokenOf("01"));
+    fake.emit(tokenOf("01"), 7n, { atMs: 10 });
+    fake.emit(tokenOf("01"), 8n, { atMs: 20 });
+    expect(watch.latest().map(({ block, planSinceMs }) => [block, planSinceMs])).toStrictEqual([
+      [8n, 10],
+    ]);
+    fake.standing.set(tokenOf("01"), { token: tokenOf("01"), state: "unpriced" });
+    expect(watch.latest()).toStrictEqual([]);
+    const repriced = { token: tokenOf("01"), state: "priced", source: "pools" } as const;
+    fake.standing.set(tokenOf("01"), { ...repriced, plan: otherPlan });
+    expect(watch.latest()).toStrictEqual([]);
+    fake.emit(tokenOf("01"), 9n, { plan: otherPlan, atMs: 30 });
+    expect(watch.latest().map(({ block, planSinceMs }) => [block, planSinceMs])).toStrictEqual([
+      [9n, 30],
+    ]);
   });
 
   it("logs a watcher that stops on a fault, and restarts it with a growing wait", async () => {
