@@ -82,4 +82,23 @@ describe("auto orders under a freeze", () => {
     expect((await storedOrder(test, waiting.order)).state).toBe("cancelled");
     expect(await activeOrders(test)).toStrictEqual([]);
   });
+
+  it("cancels a waiting order a freeze's read missed, tapped or not, with its card", async () => {
+    const test = await startOrderEngine();
+    const untapped = await createdOrder(test);
+    const tapped = await createdOrder(test);
+    // The agent froze in a write that read the orders before these two were stored.
+    test.stores.agents.freezeNow([{ agentId: testAgent, expectedVersion: 0 }], {
+      atMs: testNowMs,
+      isFrozen: true,
+    });
+
+    await tapCard(test, tapped.intent, "confirm");
+    await test.engine.tickOrders(live);
+
+    expect((await storedOrder(test, tapped.order)).state).toBe("cancelled");
+    expect((await storedOrder(test, untapped.order)).state).toBe("cancelled");
+    expect((await test.stores.intents.get(untapped.intent, live))?.state).toBe("cancelled");
+    expect(await activeOrders(test)).toStrictEqual([]);
+  });
 });

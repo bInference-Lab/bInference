@@ -2,6 +2,7 @@ import type { Id } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentState } from "../intents/intent-state.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
+import { cancelCard } from "./cancel-order.js";
 import type { OrderParts } from "./create-order.js";
 import { moveOrder, type OrderTrigger } from "./order-machine.js";
 import type { OrderRecord } from "./order-record.js";
@@ -50,7 +51,24 @@ function triggerOf(snapshot: IntentSnapshot | undefined): OrderTrigger | undefin
     : { type: "card_closed", outcome: "cancelled" };
 }
 
-// Moves a waiting order as its card says; a move another write beat leaves the order to it.
+// What moves a waiting order: its card, or its agent's freeze. A frozen agent's order that still
+// waits, which a freeze stored after its read left out, ends as the freeze would have ended it,
+// tapped or not.
+function waitingTrigger(snapshot: IntentSnapshot | undefined): OrderTrigger | undefined {
+  const isFrozen = snapshot?.settings.agent.frozenAtMs !== undefined;
+  return isFrozen ? { type: "agent_frozen" } : triggerOf(snapshot);
+}
+
+// The move a trigger decides; a tap that came after the order's own expiry ends it as expired.
+function decidedMove(order: OrderRecord, trigger: OrderTrigger, nowMs: number) {
+  const decided = moveOrder(order, trigger, nowMs);
+  return !decided.ok && decided.error === "expired"
+    ? moveOrder(order, { type: "expiry_reached" }, nowMs)
+    : decided;
+}
+
+// Moves a waiting order as its card says; a move another write beat leaves the order to it. A
+// frozen agent's order takes its card with it.
 async function moveWaiting(
   parts: OrderParts,
   read: {
@@ -61,21 +79,18 @@ async function moveWaiting(
   signal: AbortSignal,
 ): Promise<void> {
   const { order, snapshot, nowMs } = read;
-  const trigger = triggerOf(snapshot);
+  const trigger = waitingTrigger(snapshot);
   if (order.state !== "awaiting_confirmation" || trigger === undefined) {
     return;
   }
-  const decided = moveOrder(order, trigger, nowMs);
-  // A tap that came after the order's own expiry ends it as expired.
-  const move =
-    !decided.ok && decided.error === "expired"
-      ? moveOrder(order, { type: "expiry_reached" }, nowMs)
-      : decided;
+  const move = decidedMove(order, trigger, nowMs);
   const written = move.ok ? await parts.orders.move([move.value], { signal }) : undefined;
-  if (written?.ok === true) {
-    written.value.forEach((moved) => {
-      parts.publish(orderPush(moved, "order/changed"));
-    });
+  const moved = written?.ok === true ? written.value : [];
+  moved.forEach((after) => {
+    parts.publish(orderPush(after, "order/changed"));
+  });
+  if (moved.length > 0 && trigger.type === "agent_frozen") {
+    await cancelCard(parts, order.intentId, signal);
   }
 }
 
@@ -120,8 +135,8 @@ async function closeIntent(
 
 /**
  * Follows an order's card (decision 0189): on its Confirm the order becomes `active`, unless it
- * expired meanwhile or its agent is frozen; on Cancel, a cancel of the intent or a freeze it
- * becomes `cancelled`, on the card's timer `expired`. The confirmed intent then moves to
+ * expired meanwhile; on Cancel, a cancel of the intent or a freeze it becomes `cancelled`, on the
+ * card's timer `expired`. A frozen agent's waiting order is cancelled with its card. The confirmed intent then moves to
  * `reconciled`. An answer runs it at once; the order timer runs it for every waiting order, which
  * also finishes a tap a stop cut short. It answers the intent as it stands after.
  */
