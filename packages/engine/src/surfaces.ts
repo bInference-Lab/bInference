@@ -1,6 +1,13 @@
 export type { CardPress, CardStanding } from "./surfaces/card-press.js";
 export { createCardPresses } from "./surfaces/create-card-presses.js";
 export type { CardPresses, CardPressesOptions } from "./surfaces/create-card-presses.js";
+export { createQuestionPresses } from "./surfaces/create-question-presses.js";
+export type {
+  QuestionPress,
+  QuestionPresses,
+  QuestionPressesOptions,
+  QuestionStanding,
+} from "./surfaces/create-question-presses.js";
 export { createCardShowings } from "./surfaces/create-card-showings.js";
 export type { PaperReceipt } from "./surfaces/paper-receipt.js";
 export type {

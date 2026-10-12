@@ -42,6 +42,7 @@ export function engineChatOf(options: EngineOptions): EngineChat {
   const late: { stored?: StoredIntents } = {};
   const relay = createChatRelay({
     agentInbox: stores.agentInbox,
+    questions: stores.questions,
     agents: stores.agents,
     turns: options.turns ?? createRunningTurns(),
     budget: createModelBudget({
@@ -56,6 +57,7 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       return snapshot === undefined ? undefined : intentViewOf(snapshot, chains);
     },
     ids: options.ids,
+    random: options.random,
     clock: options.clock,
     publish: options.publish,
   });

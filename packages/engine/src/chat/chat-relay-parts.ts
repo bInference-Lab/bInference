@@ -1,16 +1,18 @@
-import type { Clock, IdSource } from "@binference/core";
+import type { Clock, IdSource, Random } from "@binference/core";
 import type { ProtocolId, PushTopic } from "@binference/protocol";
 import type { ModelBudget } from "../billing/model-budget.js";
 import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { inboxPushData, inboxViewOf, type IntentViewOf } from "./inbox-views.js";
-import type { AgentInboxStore } from "./ports.js";
+import type { AgentInboxStore, QuestionStore } from "./ports.js";
 import type { RunningTurns } from "./running-turns.js";
 
 /** What the chat relay reads, writes and pushes through. */
 export interface ChatRelayOptions {
   readonly agentInbox: AgentInboxStore;
+  /** The agent's questions to the owner, answered with their message in one write. */
+  readonly questions: QuestionStore;
   readonly agents: AgentStore;
   /** The runtime's running turns, and the token of its current start. */
   readonly turns: RunningTurns;
@@ -18,6 +20,8 @@ export interface ChatRelayOptions {
   readonly budget: ModelBudget;
   readonly intentView: IntentViewOf;
   readonly ids: IdSource;
+  /** The random bytes of each question's button reference. */
+  readonly random: Random;
   readonly clock: Clock;
   readonly publish: PublishPush;
 }

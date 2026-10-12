@@ -1,15 +1,19 @@
 import { type Id, idSchema } from "@binference/core";
-import { chatSurfaceSchema, type ChatSurface } from "@binference/protocol";
+import { chatSurfaceSchema, type ChatSurface, choicePlaceSchema } from "@binference/protocol";
 import { z } from "zod";
 
 // The payload of each kind of agent inbox message, as `agent_inbox.payload` stores it: the kind's
 // own fields of the runtime spec's section 3.3, in their wire form.
 
-/** An owner's message: its text, its images' upload ids and the surface it came from. */
+/**
+ * An owner's message: its text, its images' upload ids, the surface it came from, and for a press
+ * of a question's button, the question and the place of the choice pressed.
+ */
 export interface OwnerMessagePayload {
   readonly text: string;
   readonly images?: readonly string[];
   readonly surface: ChatSurface;
+  readonly answer?: { readonly question: Id<"qst">; readonly choice: number };
 }
 
 /** Parses an owner's message payload. */
@@ -17,6 +21,7 @@ export const ownerMessagePayloadSchema: z.ZodType<OwnerMessagePayload> = z.stric
   text: z.string(),
   images: z.array(z.string().min(1)).min(1).max(4).exactOptional(),
   surface: chatSurfaceSchema,
+  answer: z.strictObject({ question: idSchema("qst"), choice: choicePlaceSchema }).exactOptional(),
 });
 
 /** A settle message: the intent that ended. */

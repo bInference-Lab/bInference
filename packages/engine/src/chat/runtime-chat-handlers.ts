@@ -6,6 +6,7 @@ import { noticePush } from "../pushes/notice-push.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
 import { inboxCursorOf, parseInboxCursor } from "./inbox-cursor.schema.js";
 import { inboxViewOf } from "./inbox-views.js";
+import { askOwner } from "./question-flow.js";
 
 /** The agent's side of chat that the engine answers (protocol spec, section 7.7). */
 export interface RuntimeChatHandlers {
@@ -13,6 +14,7 @@ export interface RuntimeChatHandlers {
   readonly "turn/mark": EngineHandler<"turn/mark">;
   readonly "turn/say": EngineHandler<"turn/say">;
   readonly "turn/status": EngineHandler<"turn/status">;
+  readonly "turn/ask": EngineHandler<"turn/ask">;
   readonly "turn/end": EngineHandler<"turn/end">;
   readonly "usage/record": EngineHandler<"usage/record">;
   readonly "inbox/list": EngineHandler<"inbox/list">;
@@ -154,8 +156,8 @@ function inboxHandlers(
  * (runtime spec, section 4.3): `turn/start` records the agent's running turn with the mark its
  * context holds, `turn/mark` marks it for good, `turn/say`, `turn/status` and `turn/end` reach the
  * agent's chat topic, the loop guard's status line also sends `notice.loop`, `turn/start` refuses
- * a turn once the agent's model budget of the day is spent, `usage/record` charges each model call
- * attempt once, and `inbox/list` and `inbox/take` hand the runtime its stored messages.
+ * a turn once the agent's model budget of the day is spent, `turn/ask` asks the owner the agent's
+ * question, `usage/record` charges each model call attempt once, and `inbox/list` and `inbox/take` hand the runtime its stored messages.
  */
 export function createRuntimeChatHandlers(options: ChatRelayOptions): RuntimeChatHandlers {
   const turn = turnHandlers(options);
@@ -165,6 +167,7 @@ export function createRuntimeChatHandlers(options: ChatRelayOptions): RuntimeCha
     "turn/mark": runtimeOnly(options, turn["turn/mark"]),
     "turn/say": runtimeOnly(options, turn["turn/say"]),
     "turn/status": runtimeOnly(options, turn["turn/status"]),
+    "turn/ask": runtimeOnly(options, async (call) => askOwner(options, call)),
     "turn/end": runtimeOnly(options, turn["turn/end"]),
     "usage/record": runtimeOnly(options, usageHandler(options)),
     "inbox/list": runtimeOnly(options, inbox["inbox/list"]),

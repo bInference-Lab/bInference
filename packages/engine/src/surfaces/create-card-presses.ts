@@ -3,6 +3,7 @@ import type { AnswerCard, AnsweredCard } from "../operations/answer-card.js";
 import type { IntentStore } from "../ports.js";
 import type { CardPress, CardStanding } from "./card-press.js";
 import { paperReceiptOf } from "./paper-receipt.js";
+import { type OwnerIdOf, pressedByOwner } from "./pressed-by-owner.js";
 
 /**
  * The engine's side of the owner's presses of Telegram card buttons: it finds the card version by
@@ -24,7 +25,7 @@ export interface CardPressesOptions {
   /** The engine's answer step: it stores the answer, then fills or queues a confirmed intent. */
   readonly answer: AnswerCard;
   /** The owner's numeric Telegram id, or `undefined` before the owner pairs. */
-  readonly ownerId: (options: { readonly signal: AbortSignal }) => Promise<number | undefined>;
+  readonly ownerId: OwnerIdOf;
   /** The registry the assets of a paper receipt are named from. */
   readonly chains: ChainRegistry;
 }
@@ -59,9 +60,7 @@ function standingOf({ outcome, intent }: AnsweredCard, chains: ChainRegistry): C
 export function createCardPresses(options: CardPressesOptions): CardPresses {
   return {
     async answer(press, { signal }) {
-      signal.throwIfAborted();
-      const owner = await options.ownerId({ signal });
-      if (owner === undefined || owner !== press.presserId) {
+      if (!(await pressedByOwner(options.ownerId, press.presserId, signal))) {
         return unknown;
       }
       const card = await options.intents.cardByRef(press.ref, { signal });

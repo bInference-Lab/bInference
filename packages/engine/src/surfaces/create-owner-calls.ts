@@ -12,9 +12,10 @@ import type { EngineCaller, EngineHandler, EngineHandlerTable } from "../operati
 
 /**
  * The operations the owner's Telegram chat runs: the fast commands' reads and the braking that
- * rule 11 allows from any surface, and `chat/post`, the owner's message to the agent. None is
- * local or takes the owner key. `limit/set` runs with `confirm` alone, so its handler takes only
- * a stricter limit (decision 0111). `config/change` runs only to set `owner.locale`, the one
+ * rule 11 allows from any surface, `chat/post`, the owner's message to the agent, and
+ * `chat/answer`, the owner's press of a question's button. None is local or takes the owner key.
+ * `limit/set` runs with `confirm` alone, so its handler takes only a stricter limit
+ * (decision 0111). `config/change` runs only to set `owner.locale`, the one
  * exception to its `admin` scope (decision 0134).
  */
 export const ownerChatOperations = [
@@ -31,6 +32,7 @@ export const ownerChatOperations = [
   "usage/get",
   "config/change",
   "chat/post",
+  "chat/answer",
 ] as const;
 
 /** An operation the owner's fast commands run. */
