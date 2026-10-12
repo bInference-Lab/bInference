@@ -478,8 +478,9 @@ nothing after the history carries one.
 - **Storage.** The summary is a `summary` event that names the range it covers, marked `outside`
   when any event of the range was. The transcript keeps every event for `chats.keepDays`;
   compaction only changes what the model sees.
-- **Estimates.** A CJK character counts as one token, other text as one token per 4 characters,
-  and an image as 1,500 tokens. After each call, the provider's input count replaces the estimate
+- **Estimates.** A Han ideograph counts as 1.15 tokens and any other CJK character as one; other
+  text counts one token per 4 characters, or one per number, word or symbol run when those are
+  more ([decision 0203](../DECISIONS.md#d0203)); an image counts as 1,500 tokens. After each call, the provider's input count replaces the estimate
   for what that call held.
 - **Cost.** The `fast` model's calls are recorded on the turn (section 8.3) and count against the
   budget.

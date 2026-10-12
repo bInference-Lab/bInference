@@ -1,9 +1,10 @@
 import type { ModelMessage, ToolDeclaration } from "../loop/model-message.js";
 import type { ModelRequest } from "../loop/turn-records.js";
 
-// Ideographs, kana, Hangul, Bopomofo, CJK punctuation and full-width forms: one token each.
+const hanPattern = /\p{Script=Han}/u;
+
+// Kana, Hangul, Bopomofo, CJK punctuation and full-width forms: one token each.
 const cjkClasses = [
-  String.raw`\p{Script=Han}`,
   String.raw`\p{Script=Hiragana}`,
   String.raw`\p{Script=Katakana}`,
   String.raw`\p{Script=Hangul}`,
@@ -13,8 +14,20 @@ const cjkClasses = [
 ];
 const cjkPattern = new RegExp(`[${cjkClasses.join("")}]`, "u");
 
-/** Other text: one token per this many characters. */
+/**
+ * What 100 Han ideographs cost: the larger tokenizers split a share of them in two, so each counts
+ * as 1.15 tokens.
+ */
+const hanTokensPerHundred = 115;
+
+/** Other text: at least one token per this many characters. */
 const charactersPerToken = 4;
+
+/**
+ * The pieces a tokenizer never joins: a number of up to 3 digits, a word, a run of symbols, or
+ * spaces that no word follows.
+ */
+const piecePattern = /\p{N}{1,3}|\s?[^\s\p{L}\p{N}]+|\s?\p{L}+|\s+/gu;
 
 /**
  * What each message costs beside its text: OpenAI's published counting rules give each chat
@@ -25,21 +38,46 @@ const tokensPerMessage = 4;
 /** What a request costs beside its messages: the 3 tokens that open the model's answer. */
 const tokensPerRequest = 3;
 
+/** One stretch of text without CJK: one token per 4 characters, or per piece when it has more. */
+function runTokens(run: string, characters: number): number {
+  if (characters === 0) {
+    return 0;
+  }
+  const pieces = run.match(piecePattern)?.length ?? 0;
+  return Math.max(Math.ceil(characters / charactersPerToken), pieces);
+}
+
 /**
- * The estimated tokens of a text (runtime spec, section 7.3): a CJK character counts as one
- * token, and other text as one token per 4 characters, rounded up.
+ * The estimated tokens of a text (runtime spec, section 7.3, and decision 0203): a Han ideograph
+ * counts as 1.15 tokens and any other CJK character as one; each stretch of other text counts one
+ * token per 4 characters, or one per number, word or symbol run when those are more, as tickers
+ * and amounts between CJK characters are.
  */
 export function estimateTextTokens(text: string): number {
+  let han = 0;
   let cjk = 0;
   let other = 0;
+  let runStart = 0;
+  let runCharacters = 0;
+  let index = 0;
   for (const character of text) {
-    if (cjkPattern.test(character)) {
-      cjk += 1;
+    const isHan = hanPattern.test(character);
+    if (isHan || cjkPattern.test(character)) {
+      other += runTokens(text.slice(runStart, index), runCharacters);
+      runCharacters = 0;
+      runStart = index + character.length;
+      if (isHan) {
+        han += 1;
+      } else {
+        cjk += 1;
+      }
     } else {
-      other += 1;
+      runCharacters += 1;
     }
+    index += character.length;
   }
-  return cjk + Math.ceil(other / charactersPerToken);
+  other += runTokens(text.slice(runStart), runCharacters);
+  return Math.ceil((han * hanTokensPerHundred) / 100) + cjk + other;
 }
 
 /** The texts a message sends the model: its words, its reasoning, and its calls or result. */

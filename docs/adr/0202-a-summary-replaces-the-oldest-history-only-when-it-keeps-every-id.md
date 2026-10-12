@@ -1,6 +1,6 @@
 # 0202. A summary replaces the oldest history only when it keeps every id
 
-Status: Accepted
+Status: Amended by 0203
 
 Accepted by the owner on 2026-10-12.
 
