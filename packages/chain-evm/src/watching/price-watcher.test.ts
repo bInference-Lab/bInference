@@ -416,6 +416,38 @@ describe("price watcher", () => {
     expect(subject.prices.map(({ block }) => block)).toStrictEqual([101n, 102n]);
   });
 
+  it("ends its block source with its reads when the reads fail on a fault", async () => {
+    const clock = createManualClock();
+    const node = createFakeEvmNode({ multicall, head: 1n, answer: () => undefined });
+    const http = createFakeRpcHttp({ "https://node.test": node.endpoint });
+    const rpc = createRpcFailover({
+      endpoints: [{ name: "node", url: "https://node.test" }],
+      http,
+      clock,
+      timeoutMs: 1_000,
+      restMs: 1,
+    });
+    const fault = new TypeError("a planner that broke");
+    const watcher = createPriceWatcher({
+      rpc,
+      blocks: createBlockSource({ rpc, clock, blockTimeMs }),
+      clock,
+      multicall,
+      blockTimeMs,
+      planPrices: () => {
+        throw fault;
+      },
+      feeds: [],
+    });
+    watcher.watch(tokenOf(1));
+    const running = watcher.run(new AbortController().signal);
+    await clock.advance(0);
+    await expect(running).rejects.toBe(fault);
+    const polls = http.requests().length;
+    await clock.advance(blockTimeMs * 10);
+    expect(http.requests()).toHaveLength(polls);
+  });
+
   it("stops with the signal's reason", async () => {
     const clock = createManualClock();
     const node = createFakeEvmNode({ multicall, head: 1n, answer: () => undefined });

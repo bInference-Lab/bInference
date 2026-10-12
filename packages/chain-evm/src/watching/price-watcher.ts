@@ -248,6 +248,40 @@ function lagOf(options: PriceWatcherOptions, progress: ReadProgress): WatcherLag
   };
 }
 
+/** What one run of a watcher reads with, besides its signal. */
+type RunParts = Pick<WatcherRun, "options" | "list" | "progress" | "emit">;
+
+// The block source and the reads end together: a fault in either stops both.
+async function runWatcher(parts: RunParts, signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted();
+  const { options, progress } = parts;
+  const both = new AbortController();
+  const stopBoth = (): void => both.abort(signal.reason);
+  signal.addEventListener("abort", stopBoth, { once: true });
+  const wake = createWakeUp(options.clock);
+  const feeds = new Map(options.feeds.map((feed) => [feed.asset, feed]));
+  const run: WatcherRun = { ...parts, feeds, wake, signal: both.signal };
+  const onHead = (number: bigint, endpoint?: string): void => {
+    progress.seeHead(number, endpoint);
+    wake.wake();
+  };
+  const endingBoth = async (work: Promise<void>): Promise<void> => {
+    try {
+      await work;
+    } finally {
+      both.abort();
+    }
+  };
+  try {
+    await Promise.all([
+      endingBoth(options.blocks.run(onHead, both.signal)),
+      endingBoth(repeatSteps(async () => readStep(run))),
+    ]);
+  } finally {
+    signal.removeEventListener("abort", stopBoth);
+  }
+}
+
 /**
  * Creates the price watcher of one chain (ARCHITECTURE.md section 9). Each new block the block
  * source hands on, it reads every watched token's price reads and the Chainlink feeds of their
@@ -256,7 +290,8 @@ function lagOf(options: PriceWatcherOptions, progress: ReadProgress): WatcherLag
  * Behind by more than four blocks, it reads the newest four and counts the rest as skipped. A token
  * whose answers price nothing, such as one that left its curve, is planned again; one no reader
  * prices is asked about again 30 seconds later. A batch that fails is read again a block time
- * later; the watcher never stops for the chain.
+ * later; the watcher never stops for the chain. A fault of its own ends the block source and the
+ * reads together, and `run` rejects with it.
  */
 export function createPriceWatcher(options: PriceWatcherOptions): PriceWatcher {
   const list = createWatchList({ planPrices: options.planPrices, clock: options.clock, replanMs });
@@ -280,19 +315,6 @@ export function createPriceWatcher(options: PriceWatcherOptions): PriceWatcher {
     },
     tokens: () => list.tokens(),
     lag: () => lagOf(options, progress),
-    async run(signal) {
-      signal.throwIfAborted();
-      const wake = createWakeUp(options.clock);
-      const feeds = new Map(options.feeds.map((feed) => [feed.asset, feed]));
-      const run: WatcherRun = { options, feeds, list, progress, emit, wake, signal };
-      const onHead = (number: bigint, endpoint?: string): void => {
-        progress.seeHead(number, endpoint);
-        wake.wake();
-      };
-      await Promise.all([
-        options.blocks.run(onHead, signal),
-        repeatSteps(async () => readStep(run)),
-      ]);
-    },
+    run: async (signal) => runWatcher({ options, list, progress, emit }, signal),
   };
 }
