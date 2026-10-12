@@ -1,6 +1,12 @@
 import { assetRefSchema, type AssetRef, type RegisteredChain } from "@binference/chain";
-import type { PriceWatcher, WatchedPrice, WatchedToken } from "@binference/chain-evm";
-import { BinferenceError } from "@binference/core";
+import type {
+  PlanPrices,
+  PricePlan,
+  PriceWatcher,
+  WatchedPrice,
+  WatchedToken,
+} from "@binference/chain-evm";
+import { BinferenceError, err, ok } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createChainWatch } from "./chain-watch.js";
@@ -11,6 +17,18 @@ const chain = {
 } as unknown as RegisteredChain;
 const tokenOf = (byte: string): AssetRef =>
   assetRefSchema.parse(`eip155:56/erc20:0x00000000000000000000000000000000000000${byte}`);
+
+// A planner that finds a read for one token only, and notes each token it is asked about.
+function plansOnly(priced: AssetRef, asked: AssetRef[]): PlanPrices {
+  const read = { source: "pools", read: {} } as unknown as PricePlan;
+  return async (token) => {
+    asked.push(token);
+    return await Promise.resolve(token === priced ? ok(read) : err("no_price_read"));
+  };
+}
+
+// A planner that finds no read for any token.
+const noPlan: PlanPrices = async () => await Promise.resolve(err("no_price_read"));
 
 const poolPlan = "pools:0x00000000000000000000000000000000000000ee";
 const otherPlan = "pools:0x00000000000000000000000000000000000000ef";
@@ -73,6 +91,7 @@ describe("a chain's price watch", () => {
     const watch = createChainWatch({
       chain,
       watcher: fake.watcher,
+      planPrices: noPlan,
       logger: createMemoryLogger({ subsystem: "watcher" }),
       clock: createManualClock(0),
     });
@@ -105,6 +124,7 @@ describe("a chain's price watch", () => {
     const watch = createChainWatch({
       chain,
       watcher: fake.watcher,
+      planPrices: noPlan,
       logger: createMemoryLogger({ subsystem: "watcher" }),
       clock: createManualClock(0),
     });
@@ -125,12 +145,38 @@ describe("a chain's price watch", () => {
     ]);
   });
 
+  it("can price a token it prices now, or one a read would price, and no other", async () => {
+    const fake = fakeWatcher();
+    const asked: AssetRef[] = [];
+    const planPrices = plansOnly(tokenOf("02"), asked);
+    const watch = createChainWatch({
+      chain,
+      watcher: fake.watcher,
+      planPrices,
+      logger: createMemoryLogger({ subsystem: "watcher" }),
+      clock: createManualClock(0),
+    });
+    watch.watch(tokenOf("01"));
+    const live = new AbortController().signal;
+    const answers = await Promise.all(
+      ["01", "02", "03"].map(async (byte) => watch.canPrice(tokenOf(byte), live)),
+    );
+    expect(answers).toStrictEqual([true, true, false]);
+    expect(asked).toStrictEqual([tokenOf("02"), tokenOf("03")]);
+  });
+
   it("logs a watcher that stops on a fault, and restarts it with a growing wait", async () => {
     const fault = new BinferenceError({ code: "chain.multicall_mismatch", message: "broken" });
     const fake = fakeWatcher({ failsWith: fault });
     const logger = createMemoryLogger({ subsystem: "watcher" });
     const clock = createManualClock(0);
-    const watch = createChainWatch({ chain, watcher: fake.watcher, logger, clock });
+    const watch = createChainWatch({
+      chain,
+      watcher: fake.watcher,
+      planPrices: noPlan,
+      logger,
+      clock,
+    });
     watch.watch(tokenOf("01"));
     await clock.advance(0);
     expect([watch.isRunning(), watch.downSinceMs()]).toStrictEqual([false, 0]);
@@ -156,7 +202,13 @@ describe("a chain's price watch", () => {
     const fake = fakeWatcher({ failsWith: new TypeError("once"), failures: 1 });
     const clock = createManualClock(0);
     const logger = createMemoryLogger({ subsystem: "watcher" });
-    const watch = createChainWatch({ chain, watcher: fake.watcher, logger, clock });
+    const watch = createChainWatch({
+      chain,
+      watcher: fake.watcher,
+      planPrices: noPlan,
+      logger,
+      clock,
+    });
     const release = watch.watch(tokenOf("01"));
     await clock.advance(1_000);
     expect(fake.state.runs).toBe(2);
@@ -168,7 +220,13 @@ describe("a chain's price watch", () => {
     expect(fake.state.runs).toBe(2);
 
     const failing = fakeWatcher({ failsWith: new TypeError("always") });
-    const quiet = createChainWatch({ chain, watcher: failing.watcher, logger, clock });
+    const quiet = createChainWatch({
+      chain,
+      watcher: failing.watcher,
+      planPrices: noPlan,
+      logger,
+      clock,
+    });
     const once = quiet.watch(tokenOf("02"));
     await clock.advance(0);
     once();

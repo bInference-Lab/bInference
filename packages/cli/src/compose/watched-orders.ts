@@ -1,5 +1,5 @@
 import { type AssetRef, assetRefParts, type ChainRef } from "@binference/chain";
-import type { OrderRecord, OrderStore } from "@binference/engine/orders";
+import { hasPriceTrigger, type OrderRecord, type OrderStore } from "@binference/engine/orders";
 import type { ChainWatch } from "./chain-watch.js";
 
 /** The tokens the price watchers read for the active auto orders, kept in step with the store. */
@@ -18,13 +18,6 @@ export interface WatchedOrders {
 }
 
 const pageSize = 1_000;
-// The kinds whose trigger is a price; a DCA order waits for its time, a copy order for its leader.
-const priceKinds: ReadonlySet<OrderRecord["kind"]> = new Set([
-  "limit",
-  "takeProfit",
-  "stopLoss",
-  "trailing",
-]);
 
 async function activeOrders(
   orders: Pick<OrderStore, "list">,
@@ -55,7 +48,7 @@ export function createWatchedOrders(options: {
   return {
     async sync({ signal }) {
       const read = (await activeOrders(options.orders, signal)).filter(({ kind }) =>
-        priceKinds.has(kind),
+        hasPriceTrigger(kind),
       );
       count = read.length;
       const tokens = new Set(read.map(({ request }) => request.token));

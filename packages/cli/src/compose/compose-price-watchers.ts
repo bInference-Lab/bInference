@@ -1,4 +1,9 @@
-import type { AssetRef, ChainRef, MarketDataSource } from "@binference/chain";
+import {
+  type AssetRef,
+  assetRefParts,
+  type ChainRef,
+  type MarketDataSource,
+} from "@binference/chain";
 import { type Clock, createDeadline, type Logger } from "@binference/core";
 import type { EnginePush } from "@binference/engine";
 import {
@@ -27,6 +32,11 @@ export interface ComposedPriceWatchers {
    * the cross-check proved it (decision 0194).
    */
   readonly confirmedPrices: () => readonly LatestPrice[];
+  /**
+   * Whether a chain's watcher can price a token now; a token of a chain with no watcher it cannot.
+   * Rejects with the signal's reason once it aborts.
+   */
+  readonly canPrice: (token: AssetRef, call: { readonly signal: AbortSignal }) => Promise<boolean>;
   /** How many active orders with a price trigger the watchers read for, at the last sync. */
   readonly activeOrders: () => number;
   /** Starts following the active orders, the lag checks and the cross-check. */
@@ -190,6 +200,8 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
       const nowMs = options.clock.now();
       return latestOf(options.watches).filter((price) => isConfirmed(price, checks, nowMs));
     },
+    canPrice: async (token, { signal }) =>
+      (await options.watches.get(assetRefParts(token).chain)?.canPrice(token, signal)) ?? false,
     activeOrders: () => orders.activeOrders(),
     start(closers, logger) {
       const { clock } = options;

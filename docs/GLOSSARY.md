@@ -488,6 +488,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | bonding curve                                      | 联合曲线                     |                                         |
 | graduate, graduation                               | 毕业                         | A token moving from its curve to a pool |
 | pool (a DEX trading pool)                          | 交易池                       |                                         |
+| stablecoin                                         | 稳定币                       |                                         |
 | holder, holders (count)                            | 持有者, 持有人数             |                                         |
 | supply (of a token)                                | 供应量                       |                                         |
 | honeypot (a token you cannot sell)                 | 貔貅盘                       |                                         |

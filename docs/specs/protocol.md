@@ -460,7 +460,10 @@ Auto orders follow [decision 0189](../DECISIONS.md#d0189):
   `order/changed`.
 - It refuses, storing nothing: an agent that is unknown (`agent.not_found`), archived
   (`agent.archived`) or frozen (`agent.frozen`); a wallet that is not the agent's
-  (`wallet.not_found`); `dca` and `copy`, until their watchers run (`order.kind_unavailable`); and
+  (`wallet.not_found`); `dca` and `copy`, until their watchers run (`order.kind_unavailable`); a
+  `limit`, `takeProfit`, `stopLoss` or `trailing` order for a token the price watcher cannot price
+  now, with no venue read and no pool deep enough (`order.unpriced_token`,
+  [decision 0194](../DECISIONS.md#d0194)); and
   with `protocol.bad_args` a token on no chain of the registry or the chain's coin, an expiry not in
   the future, a price, worst price or size of zero, a trailing distance of 0 or `10000`, a share above
   `10000`, a `takeProfit`, `stopLoss` or `trailing` order that does not sell, and a buy whose size is
@@ -859,7 +862,7 @@ later unchanged.
 | `rescue`   | `no_address`, `nothing_to_move`                                                                 |
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                           |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                              |
-| `order`    | `not_found`, `wrong_state`, `kind_unavailable`                                                  |
+| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`                                |
 | `asset`    | `not_found`, `bad_address`                                                                      |
 | `name`     | `not_found`, `resolver_down`                                                                    |
 | `quote`    | `no_route`, `venue_down`                                                                        |

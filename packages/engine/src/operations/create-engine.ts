@@ -33,7 +33,7 @@ import {
   createVenueQuoteSource,
   type VenueQuoteSourceOptions,
 } from "../money-path/venue-quote-source.js";
-import type { OrderParts } from "../orders/create-order.js";
+import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
 import { tickOrders } from "../orders/tick-orders.js";
@@ -163,6 +163,11 @@ export interface EngineOptions extends MarketParts {
    * live intents to the owner; reads, paper intents and Cancel work as ever.
    */
   readonly isLocked: () => boolean;
+  /**
+   * Whether the price watcher can price a token now; `order/create` refuses a limit, take-profit,
+   * stop-loss or trailing order for a token it cannot (`order.unpriced_token`, decision 0194).
+   */
+  readonly canPrice: CanPrice;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly ids: IdSource;

@@ -88,6 +88,8 @@ export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCalle
 /** How a test engine differs from the default: a paper agent in manual mode on the fake venue. */
 export interface TestEngineOptions {
   readonly agent?: Partial<AgentDraft>;
+  /** The tokens the price watcher cannot price; it prices every other. */
+  readonly unpriceable?: readonly AssetRef[];
   readonly venues?: readonly Venue[];
   /** Why the simulator refuses every intent; it reports the quote's own amounts when absent. */
   readonly refusal?: SimulationFailure;
@@ -278,6 +280,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
     isLocked: options.isLocked ?? (() => false),
+    canPrice: async (token) => await Promise.resolve(!(options.unpriceable ?? []).includes(token)),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),

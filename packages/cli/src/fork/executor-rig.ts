@@ -229,6 +229,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
     // The rig trades on a fork; it reads no market data.
     marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     isLocked: () => false,
+    canPrice: async () => await Promise.resolve(true),
     paperBalances: [],
     random: createSeededRandom(44),
     publish: () => undefined,

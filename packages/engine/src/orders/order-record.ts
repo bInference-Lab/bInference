@@ -174,6 +174,22 @@ export function isExitOrder(request: OrderRequest): boolean {
   return request.kind === "limit" ? request.side === "sell" : isAlwaysExit(request.kind);
 }
 
+const priceKinds: ReadonlySet<OrderKind> = new Set<OrderKind>([
+  "limit",
+  "takeProfit",
+  "stopLoss",
+  "trailing",
+]);
+
+/**
+ * Whether an order's trigger is its token's price, which the price watcher reads: a limit,
+ * take-profit, stop-loss or trailing order. A DCA order waits for its time, a copy order for its
+ * leader.
+ */
+export function hasPriceTrigger(kind: OrderKind): boolean {
+  return priceKinds.has(kind);
+}
+
 const exitKinds: ReadonlySet<OrderKind> = new Set<OrderKind>([
   "takeProfit",
   "stopLoss",

@@ -275,6 +275,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ...(opened.consoleFiles === undefined ? {} : { consoleFiles: opened.consoleFiles }),
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
+      canPrice: wiring.priceWatchers.canPrice,
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
       ...(opened.webPushKey === undefined
         ? {}

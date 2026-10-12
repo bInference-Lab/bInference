@@ -266,6 +266,7 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     executor: executorOn(fork, { stores, custody }),
     paperBalances: [],
     isLocked: () => false,
+    canPrice: async () => await Promise.resolve(true),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(62) }),

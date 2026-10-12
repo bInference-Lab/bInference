@@ -13,7 +13,7 @@ export function orderPartsOf(
     readonly wallets: OrderParts["wallets"];
   },
 ): OrderParts {
-  const { stores, chains, clock, ids, publish, isLocked, custody } = options;
+  const { stores, chains, clock, ids, publish, isLocked, custody, canPrice } = options;
   const { orders, agents } = stores;
   const { stored, confirmations, wallets } = parts;
   const expireCard: OrderParts["expireCard"] = async (intent, call) => {
@@ -31,6 +31,7 @@ export function orderPartsOf(
     publish,
     isLocked,
     expireCard,
+    canPrice,
   };
 }
 

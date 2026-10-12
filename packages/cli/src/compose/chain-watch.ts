@@ -1,5 +1,5 @@
 import type { AssetRef, RegisteredChain } from "@binference/chain";
-import type { PriceWatcher, WatchedPrice } from "@binference/chain-evm";
+import type { PlanPrices, PriceWatcher, WatchedPrice } from "@binference/chain-evm";
 import type { Clock, Logger } from "@binference/core";
 import { createWatcherRunner } from "./watcher-runner.js";
 
@@ -28,6 +28,11 @@ export interface ChainWatch {
    * token that went unpriced, or whose plan changed since, has none.
    */
   latest(): readonly LatestPrice[];
+  /**
+   * Whether the watcher can price a token now: it prices it already, or a venue's read or a pool
+   * deep enough would. Rejects with the signal's reason once it aborts.
+   */
+  canPrice(token: AssetRef, signal: AbortSignal): Promise<boolean>;
   /** Stops the watcher and waits for its reads to end. */
   close(): Promise<void>;
 }
@@ -36,8 +41,20 @@ export interface ChainWatch {
 interface ChainWatchOptions {
   readonly chain: RegisteredChain;
   readonly watcher: PriceWatcher;
+  /** How the watcher finds a token's price read. */
+  readonly planPrices: PlanPrices;
   readonly clock: Clock;
   readonly logger: Logger;
+}
+
+// A token the watcher prices now, or one a plan would price.
+function canPriceWith(watcher: PriceWatcher, planPrices: PlanPrices): ChainWatch["canPrice"] {
+  return async (token, signal) => {
+    const isPriced = watcher
+      .tokens()
+      .some((each) => each.token === token && each.state === "priced");
+    return isPriced || (await planPrices(token, signal)).ok;
+  };
 }
 
 // The latest prices the watcher's current plans read.
@@ -103,6 +120,7 @@ export function createChainWatch(options: ChainWatchOptions): ChainWatch {
     isRunning: () => runner.isRunning(),
     downSinceMs: () => runner.downSinceMs(),
     latest: () => currentOf(watcher, latest),
+    canPrice: canPriceWith(watcher, options.planPrices),
     close: async () => runner.stop(),
   };
 }

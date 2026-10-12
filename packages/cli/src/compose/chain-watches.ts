@@ -129,7 +129,7 @@ function watchOf(options: ChainWatchesOptions, reads: ChainReads): ChainWatch {
     callTimeoutMs: watchCallTimeoutMs,
     onQuarantine: quarantineLog(options.logger, chain.ref),
   });
-  return createChainWatch({ chain, watcher, clock, logger: options.logger });
+  return createChainWatch({ chain, watcher, planPrices, clock, logger: options.logger });
 }
 
 /**

@@ -293,6 +293,7 @@ const engine = createEngine({
   simulator,
   executor,
   paperBalances, // config's `defaults.paper.balances`, resolved to assets
+  canPrice, // whether the price watchers can price a token now (decision 0194)
   chains,
   clock,
   ids,

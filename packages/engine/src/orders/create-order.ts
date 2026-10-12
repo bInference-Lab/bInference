@@ -1,4 +1,4 @@
-import type { ChainRegistry, RegisteredChain, Signer } from "@binference/chain";
+import type { AssetRef, ChainRegistry, RegisteredChain, Signer } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -17,7 +17,13 @@ import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import type { AgentStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { autoOrderQuoteDocument } from "./auto-order-quote.js";
-import { isExitOrder, type OrderDraft, type OrderRecord, positionOf } from "./order-record.js";
+import {
+  hasPriceTrigger,
+  isExitOrder,
+  type OrderDraft,
+  type OrderRecord,
+  positionOf,
+} from "./order-record.js";
 import { checkOrderRequest, type CheckedOrder } from "./order-rules.js";
 import { orderPush } from "./order-view-of.js";
 import type { OrderStore } from "./ports.js";
@@ -39,7 +45,18 @@ export interface OrderParts {
   readonly isLocked: () => boolean;
   /** The card timer: closes an intent's card as expired once its time is up. */
   readonly expireCard: (intent: Id<"int">, call: { readonly signal: AbortSignal }) => Promise<void>;
+  /** Whether the price watcher can price a token now (decision 0194). */
+  readonly canPrice: CanPrice;
 }
+
+/**
+ * Whether the price watcher can price a token now: a venue's read of it, or a pool deep enough.
+ * Rejects with the signal's reason once it aborts.
+ */
+export type CanPrice = (
+  token: AssetRef,
+  call: { readonly signal: AbortSignal },
+) => Promise<boolean>;
 
 /** A new order with the `autoOrder` intent that carries its card. */
 export interface CreatedOrder {
@@ -73,6 +90,23 @@ async function walletOf(
   }
   const account = await parts.custody.account(wallet, chain.ref, { signal });
   return account.ok ? wallet : undefined;
+}
+
+// The wallet that holds the order; a price order also needs a token the price watcher can price.
+async function holderOf(
+  parts: Pick<OrderParts, "wallets" | "custody" | "canPrice">,
+  checked: CheckedOrder,
+  signal: AbortSignal,
+): Promise<Result<Id<"wal">, ProtocolErrorCode>> {
+  const wallet = await walletOf(parts, checked, signal);
+  if (wallet === undefined) {
+    return err("wallet.not_found");
+  }
+  const { request } = checked;
+  if (hasPriceTrigger(request.kind) && !(await parts.canPrice(request.token, { signal }))) {
+    return err("order.unpriced_token");
+  }
+  return ok(wallet);
 }
 
 // Whether the position of a new exit order holds another exit order that has not ended.
@@ -172,7 +206,8 @@ async function openOrderCard(
  * order `awaiting_confirmation` in its agent's mode with the proposal's outside-content mark, then
  * its `autoOrder` intent, which always opens one card, whatever the mode or the mark. The order
  * becomes `active` only on that card's Confirm. A refusal stores nothing: an unknown, archived or
- * frozen agent, a wallet that is not the agent's, a kind that does not run yet, or a broken rule.
+ * frozen agent, a wallet that is not the agent's, a kind that does not run yet, a broken rule, or
+ * a price order for a token the price watcher cannot price now (decision 0194).
  */
 export async function createOrder(
   parts: OrderParts,
@@ -192,10 +227,11 @@ export async function createOrder(
   if (refusal !== undefined || settings === undefined) {
     return err(refusal ?? "agent.not_found");
   }
-  const wallet = await walletOf(parts, checked.value, signal);
-  if (wallet === undefined) {
-    return err("wallet.not_found");
+  const held = await holderOf(parts, checked.value, signal);
+  if (!held.ok) {
+    return held;
   }
+  const wallet = held.value;
   const draft = draftOf(parts, checked.value, { wallet, settings, proposer });
   const isLinked = await hasLinkedExits(parts, draft, signal);
   const created = await parts.orders.create(draft, { signal });

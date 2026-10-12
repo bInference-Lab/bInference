@@ -150,6 +150,19 @@ describe("the rules of a new auto order", () => {
     expect(all).toStrictEqual([]);
   });
 
+  it("refuses a price order for a token the price watcher cannot price now, storing nothing", async () => {
+    const test = await startOrderEngine({ unpriceable: [testToken] });
+
+    expect(await test.engine.handlers["order/create"](testCall(testStopLoss()))).toStrictEqual(
+      err("order.unpriced_token"),
+    );
+    const all = await test.stores.orders.list(
+      { states: ["awaiting_confirmation"], limit: 10 },
+      live,
+    );
+    expect(all).toStrictEqual([]);
+  });
+
   it("refuses an order of a frozen agent", async () => {
     const test = await startOrderEngine();
     expectOk(await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));

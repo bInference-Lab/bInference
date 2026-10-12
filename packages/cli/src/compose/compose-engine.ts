@@ -11,6 +11,7 @@ import {
   createEngine,
   createVenueHost,
   type Engine,
+  type EngineOptions,
   type EnginePush,
   type Executor,
   type PositionStore,
@@ -96,6 +97,8 @@ export interface ComposeEngineOptions {
    * never locked when left out.
    */
   readonly isLocked?: () => boolean;
+  /** Whether the price watchers can price a token now, which a price order needs (decision 0194). */
+  readonly canPrice: EngineOptions["canPrice"];
   /** Handlers of operations the composition root answers, such as `engine/status`. */
   readonly handlers?: EngineHandlerTable;
   /**
@@ -287,6 +290,7 @@ function engineOf(
     executor: options.executor,
     paperBalances: options.paperBalances,
     isLocked: options.isLocked ?? (() => false),
+    canPrice: options.canPrice,
     chains: options.chains,
     clock: options.clock,
     ids: given.ids,

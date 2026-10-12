@@ -261,6 +261,15 @@ function surfacesOf(
   };
 }
 
+// The skeleton wallet's facts: 1 coin, a ceiling of 1 coin a transaction, a 1 gwei fee.
+const facts = {
+  nativeBalanceBase: 10n ** 18n,
+  ceilingPerTxNativeBase: 10n ** 18n,
+  feePerGasNativeBase: 1_000_000_000n,
+  networkFeeCapNativeBase: 1_000_000_000n,
+  recentOutflows: [],
+};
+
 /**
  * Composes the engine on the profile parts with its agent and tokens stored: the fake chain and
  * venue, a quote simulator, a manual clock and `engine/status` with no health signal. Nothing
@@ -277,13 +286,6 @@ export async function composeSkeleton(
     families: [createFakeFamily(), createEvmFamily()],
     signingSchemes: [createFakeSigningScheme(), createEvmSigningScheme()],
   });
-  const facts = {
-    nativeBalanceBase: 10n ** 18n,
-    ceilingPerTxNativeBase: 10n ** 18n,
-    feePerGasNativeBase: 1_000_000_000n,
-    networkFeeCapNativeBase: 1_000_000_000n,
-    recentOutflows: [],
-  };
   const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
   const logger = createMemoryLogger({ subsystem: "engine" });
@@ -298,6 +300,7 @@ export async function composeSkeleton(
     wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts, options.held),
     executor,
     positions,
+    canPrice: async () => await Promise.resolve(true),
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),
