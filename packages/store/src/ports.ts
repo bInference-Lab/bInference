@@ -145,7 +145,8 @@ export interface NoteStore {
   /**
    * An agent's notes that are not removed and whose text holds the query, the best match first.
    * Matching is by runs of three characters, ignoring letter case, so it finds a word inside
-   * Chinese text; a query shorter than three characters matches no note.
+   * Chinese text; a query shorter than three characters is looked for as a substring, ignoring
+   * the case of ASCII letters, oldest note first.
    */
   search(query: NoteSearch, options: StoreCall): Promise<readonly NoteRecord[]>;
 }

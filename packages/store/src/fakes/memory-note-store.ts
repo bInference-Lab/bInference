@@ -3,7 +3,7 @@ import type { NoteRecord } from "../notes/note-record.js";
 import type { NoteStore } from "../ports.js";
 import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-database.js";
 
-// The shortest query the trigram index matches.
+// The shortest query the trigram index matches; a shorter one is looked for as a substring.
 const shortestQuery = 3;
 
 // The characters of a text, as the trigram index counts them: code points.
@@ -19,6 +19,17 @@ function listedOf(notes: ReadonlyMap<number, NoteRecord>, agentId: string): read
   return [...notes.values()]
     .filter((note) => isListed(note, agentId))
     .toSorted((left, right) => left.id - right.id);
+}
+
+// The notes whose text holds the query: a short one as a substring in any ASCII letter case, as
+// the database's does, a longer one in any letter case.
+function found(notes: readonly NoteRecord[], query: string): readonly NoteRecord[] {
+  const fold = (text: string): string =>
+    characters(query) < shortestQuery
+      ? text.replace(/[A-Z]+/g, (run) => run.toLowerCase())
+      : text.toLowerCase();
+  const wanted = fold(query);
+  return notes.filter((note) => fold(note.text).includes(wanted));
 }
 
 /** The {@link NoteStore} of an in-memory agent database. */
@@ -61,14 +72,10 @@ export function createMemoryNoteStore(database: MemoryAgentDatabase): NoteStore 
           .map((note) => structuredClone(note)),
       ),
     search: async ({ agentId, query, limit }, options) =>
-      inMemory(options, () => {
-        const wanted = query.toLowerCase();
-        return characters(query) < shortestQuery
-          ? []
-          : listed(agentId)
-              .filter((note) => note.text.toLowerCase().includes(wanted))
-              .slice(0, limit)
-              .map((note) => structuredClone(note));
-      }),
+      inMemory(options, () =>
+        found(listed(agentId), query)
+          .slice(0, limit)
+          .map((note) => structuredClone(note)),
+      ),
   };
 }

@@ -21,7 +21,7 @@ import {
   noteSearchSchema,
 } from "./note-record.js";
 
-// The shortest query the trigram index matches; a shorter one finds nothing.
+// The shortest query the trigram index matches; a shorter one is looked for as a substring.
 const shortestQuery = 3;
 
 function toNote(row: NoteRow): NoteRecord {
@@ -127,7 +127,31 @@ export const listNotesTask: StoreTask<NoteList, readonly NoteRecord[]> = defineT
   },
 });
 
-/** Searches an agent's notes through the trigram index, the best match first. */
+// A query under three characters, which the trigram index cannot match: the notes whose text holds
+// it, in any ASCII letter case, oldest first. `instr` reads no wildcard, so `%` and `_` match
+// themselves.
+function searchShort(database: DatabaseSync, query: NoteSearch): readonly NoteRecord[] {
+  const { kysely, execute } = createSyncKysely<AgentTables>(database);
+  const found = kysely
+    .selectFrom("notes")
+    .selectAll()
+    .where("agent_id", "=", query.agentId)
+    .where("deleted_at", "is", null)
+    .where(
+      (eb) =>
+        eb.fn<number>("instr", [eb.fn("lower", ["text"]), eb.fn("lower", [eb.val(query.query)])]),
+      ">",
+      0,
+    )
+    .orderBy("id")
+    .limit(query.limit);
+  return execute(found).rows.map(toNote);
+}
+
+/**
+ * Searches an agent's notes through the trigram index, the best match first; a query under three
+ * characters is looked for as a substring instead.
+ */
 export const searchNotesTask: StoreTask<NoteSearch, readonly NoteRecord[]> = defineTask({
   name: "notes.search",
   access: "read",
@@ -135,7 +159,7 @@ export const searchNotesTask: StoreTask<NoteSearch, readonly NoteRecord[]> = def
   output: z.array(noteRecordSchema),
   run(database, query) {
     if ((query.query.match(/./gsu)?.length ?? 0) < shortestQuery) {
-      return [];
+      return searchShort(database, query);
     }
     const { kysely, execute } = createSyncKysely<AgentTables>(database);
     const found = kysely

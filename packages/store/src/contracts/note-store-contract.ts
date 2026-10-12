@@ -16,11 +16,12 @@ export interface NoteStoreHarness {
 }
 
 // Chinese text from its code points, which only zh files may spell out: "the owner likes
-// stablecoins", "check the market once every morning" and "stablecoin" itself.
+// stablecoins", "check the market once every morning", "stablecoin" itself and "stable".
 const chinese = (...codePoints: readonly number[]): string => String.fromCodePoint(...codePoints);
 const likesStablecoins = chinese(0x4e3b, 0x4eba, 0x559c, 0x6b22, 0x7a33, 0x5b9a, 0x5e01);
 const marketEachMorning = chinese(0x6bcf, 0x5929, 0x65e9, 0x4e0a, 0x770b, 0x884c, 0x60c5);
 const stablecoin = chinese(0x7a33, 0x5b9a, 0x5e01);
+const stable = chinese(0x7a33, 0x5b9a);
 
 function note(text: string, agent = 1, origin: NoteDraft["origin"] = "owner"): NoteDraft {
   return { agentId: nthId("agt", agent), text, origin, atMs: 1_000 };
@@ -77,7 +78,24 @@ async function searchesText(subject: NoteStoreSubject, fence: number): Promise<v
   assert.deepEqual(await search("pancake"), [ids[2]]);
   assert.deepEqual(await search("SMALL TRADES"), [ids[2]]);
   assert.deepEqual(await search("bitcoin"), []);
-  assert.deepEqual(await search("on"), []);
+}
+
+async function searchesShortQueries(subject: NoteStoreSubject, fence: number): Promise<void> {
+  const ids = await writeAll(subject, fence, [
+    note(likesStablecoins),
+    note("Sell 50% at 2x"),
+    note("Prefers small trades on PancakeSwap"),
+    note(stable, 2),
+  ]);
+  const search = async (query: string): Promise<readonly number[]> =>
+    (await subject.store.search({ agentId: nthId("agt", 1), query, limit: 10 }, go())).map(
+      (record) => record.id,
+    );
+  assert.deepEqual(await search(stable), [ids[0]]);
+  assert.deepEqual(await search("2X"), [ids[1]]);
+  assert.deepEqual(await search("%"), [ids[1]]);
+  assert.deepEqual(await search("_"), []);
+  assert.deepEqual(await search("on"), [ids[2]]);
 }
 
 async function deletesNotes(subject: NoteStoreSubject, fence: number): Promise<void> {
@@ -131,6 +149,11 @@ export function noteStoreContract(harness: NoteStoreHarness): readonly ContractC
       "finds a note by three characters or more, in Chinese and in any letter case",
       create,
       searchesText,
+    ),
+    fencedCheck(
+      "finds a note by a query under three characters as a substring, wildcards as themselves",
+      create,
+      searchesShortQueries,
     ),
     fencedCheck("removes a note from lists and searches, once", create, deletesNotes),
     fencedCheck("refuses every write made with a fence raised since", create, refusesStaleFence),
