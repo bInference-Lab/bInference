@@ -59,15 +59,15 @@ agent's workspace files from the engine with `agent/readFile` ([decision 0200](.
 The engine and the runtime also talk over the child's standard input and output, one JSON line per
 message, zod-checked on both sides. Everything else goes over the protocol.
 
-| Line         | From    | Fields                                                                                       |
-| ------------ | ------- | -------------------------------------------------------------------------------------------- |
-| `start`      | engine  | `token`, `endpoint` (the IPC address), `paths` (`agentDb`, `workspace`), `settings`          |
-| `settings`   | engine  | `settings`, sent again whole after a reload changes a key the runtime uses                   |
-| `route`      | engine  | `id`, `op`, `args`, `origin` (`owner`, `agent` or `system`): a routed operation (section 10) |
-| `stop`       | engine  | none: the shutdown order has begun                                                           |
-| `ready`      | runtime | `version`, `schemaVersion`                                                                   |
-| `routeReply` | runtime | `id`, then `result` or `error` (a spec 1 error)                                              |
-| `health`     | runtime | `runningTurns`, `waitingMessages`, `lastModelError?`; every 10 seconds                       |
+| Line         | From    | Fields                                                                                                    |
+| ------------ | ------- | --------------------------------------------------------------------------------------------------------- |
+| `start`      | engine  | `token`, `endpoint` (the IPC address), `paths` (`agentDb`, `workspace`), `settings`                       |
+| `settings`   | engine  | `settings`, sent again whole after a reload changes a key the runtime uses                                |
+| `route`      | engine  | `id`, `op`, `args`, `origin` (`owner`, `agent`, `untrusted` or `system`): a routed operation (section 10) |
+| `stop`       | engine  | none: the shutdown order has begun                                                                        |
+| `ready`      | runtime | `version`, `schemaVersion`                                                                                |
+| `routeReply` | runtime | `id`, then `result` or `error` (a spec 1 error)                                                           |
+| `health`     | runtime | `runningTurns`, `waitingMessages`, `lastModelError?`; every 10 seconds                                    |
 
 `settings` holds what the runtime needs and nothing more: `models` (spec 2, section 6.3) with each
 provider's key already resolved from its secret source, `chats.newMessageMode`, the search
@@ -361,8 +361,9 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
   marked event is marked.
 - So the mark lasts as long as the session holds the content: until the owner clears the session
   (`/clear`). A turn that never saw outside content in its context proposes without the mark.
-- A note written in a marked turn is stored `untrusted`, and no propose tool takes an address that
-  only a note holds ([rule 10](../ARCHITECTURE.md#rule-10)).
+- A note written in a marked turn is stored `untrusted`, the label the engine sets, and no propose
+  tool takes an address that only a note holds ([rule 10](../ARCHITECTURE.md#rule-10),
+  [decision 0206](../DECISIONS.md#d0206)).
 
 <a id="section-6"></a>
 
@@ -595,8 +596,9 @@ status line (`turn.loop`) ([decision 0191](../DECISIONS.md#d0191)).
 
 1. The engine checks the caller's scopes, as for any operation.
 2. It sends a `route` line with the operation, its parsed args and the origin it sets from the
-   caller: `owner` for a client with `confirm` or `admin`, `agent` for the runtime, `system` for the
-   engine itself.
+   caller: `owner` for a client with `confirm` or `admin`; `agent` for the runtime, in a turn of
+   the agent the call names whose context holds no outside content; `untrusted` for any other
+   caller; `system` for the engine itself ([decision 0206](../DECISIONS.md#d0206)).
 3. The runtime answers with `routeReply` within 10 seconds, or the call fails `engine.timeout`.
    While the runtime is down it fails `runtime.unavailable`.
 

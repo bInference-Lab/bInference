@@ -120,7 +120,10 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
   const picks = runtimePicksOf(opened, supervisor);
   return {
     turns,
-    handlers: createRoutedHandlers(async (request, signal) => supervisor.route(request, signal)),
+    handlers: createRoutedHandlers(
+      async (request, signal) => supervisor.route(request, signal),
+      turns,
+    ),
     health: () => supervisor.health(),
     pick: picks.pick,
     begin(server) {

@@ -297,7 +297,8 @@ database holds each message for the runtime until the runtime takes it into `cha
 
 Notes never hold a contract or token address as a source for actions
 ([rule 10](../ARCHITECTURE.md#rule-10)); the runtime does not pass note text to propose tools as an
-address.
+address ([decision 0206](../DECISIONS.md#d0206)). A query under three characters finds the notes
+whose text holds it.
 
 <a id="section-4"></a>
 
