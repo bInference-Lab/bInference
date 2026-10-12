@@ -67,6 +67,11 @@ export interface TradeBounds {
   readonly minOutBase: bigint;
   /** The latest deadline a trade call may carry, in epoch milliseconds. */
   readonly latestDeadlineMs: number;
+  /**
+   * The venue declares that its trade calls on the chain carry no deadline, so a call without one
+   * passes; any other call without one is refused as `late_deadline`.
+   */
+  readonly allowsNoDeadline: boolean;
   /** The family that writes the wallet's addresses, which compares accounts. */
   readonly family: ChainFamily;
 }
@@ -109,6 +114,11 @@ function spendsExactly({ call, effect }: TradeStep, bounds: TradeBounds): boolea
   return isInput && call.nativeValue === value;
 }
 
+// A call with no deadline never expires: only a venue that declared so may build one.
+function isTimely({ deadlineMs }: DecodedEffect, bounds: TradeBounds): boolean {
+  return deadlineMs === undefined ? bounds.allowsNoDeadline : deadlineMs <= bounds.latestDeadlineMs;
+}
+
 function tradeMismatch(step: TradeStep, bounds: TradeBounds): BuildMismatch | undefined {
   const { call, effect } = step;
   if (!isDeclared(call.target, bounds)) {
@@ -123,7 +133,7 @@ function tradeMismatch(step: TradeStep, bounds: TradeBounds): BuildMismatch | un
   if (effect.minOut.asset !== bounds.assetOut || effect.minOut.base < bounds.minOutBase) {
     return "low_min_out";
   }
-  return effect.deadlineMs > bounds.latestDeadlineMs ? "late_deadline" : undefined;
+  return isTimely(effect, bounds) ? undefined : "late_deadline";
 }
 
 interface OrderedPlan {
@@ -150,7 +160,8 @@ function orderOf(steps: readonly PlanStep[]): OrderedPlan | undefined {
  * is at most one token approval, then exactly one trade call; the approval is exact on the input
  * token, to a contract the venue declared; and the trade call goes to a declared contract, pays
  * the wallet, spends exactly the input, accepts no less than the policy's minimum output and
- * expires by the latest deadline. Gives the trade call's effect, or the first check that fails.
+ * expires by the latest deadline, or carries none where the venue declared its calls carry none.
+ * Gives the trade call's effect, or the first check that fails.
  */
 export function checkSteps(
   steps: readonly PlanStep[],

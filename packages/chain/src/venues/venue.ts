@@ -26,6 +26,12 @@ export interface VenueContracts {
   readonly calls?: readonly VenueCall[];
   /** The names among `names` a token approval may name as its spender; left out, none. */
   readonly spenders?: readonly string[];
+  /**
+   * The venue's trade calls on this chain carry no deadline, as a launchpad's curve call may not.
+   * The host then accepts a decoded effect without one; its minimum out still binds it. Left out,
+   * every trade call must carry a deadline.
+   */
+  readonly noDeadline?: boolean;
 }
 
 /** What a venue declares about itself: its id and the contracts it touches on each chain. */
@@ -50,6 +56,7 @@ export interface VenueDeclarationWire {
     readonly names: readonly string[];
     readonly calls?: readonly VenueCallWire[];
     readonly spenders?: readonly string[];
+    readonly noDeadline?: boolean;
   }[];
 }
 
@@ -89,6 +96,7 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
           names: z.array(kebabCaseSchema).min(1).refine(isUnique, { message: "A name repeats." }),
           calls: z.array(callSchema).exactOptional(),
           spenders: z.array(kebabCaseSchema).exactOptional(),
+          noDeadline: z.boolean().exactOptional(),
         })
         .refine(namesDeclared, { message: "A call or a spender names no declared contract." }),
     )

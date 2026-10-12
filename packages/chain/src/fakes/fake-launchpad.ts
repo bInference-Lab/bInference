@@ -13,6 +13,8 @@ export interface FakeLaunchpadOptions {
   readonly quoteAsset?: AssetRef;
   /** Base units out per base unit in, either way; 2 to 1 when absent. */
   readonly rate?: Ratio;
+  /** Its trade calls carry no deadline, as a curve's may not; when absent, each carries one. */
+  readonly noDeadline?: boolean;
 }
 
 /** A fake launchpad, whose tokens can graduate during a test. */
@@ -29,7 +31,10 @@ const fakeCoin = assetRefSchema.parse("fake:1/slip44:1");
  * `router` as the fake venue does, and answers any other pair as `no_route`.
  */
 export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpad {
-  const venue = createFakeVenue(options.rate === undefined ? {} : { rate: options.rate });
+  const venue = createFakeVenue({
+    ...(options.rate === undefined ? {} : { rate: options.rate }),
+    ...(options.noDeadline === undefined ? {} : { noDeadline: options.noDeadline }),
+  });
   const held = new Set(options.onCurve);
   const quoteAsset = options.quoteAsset ?? fakeCoin;
   const isCurvePair = (assets: readonly AssetRef[]): boolean =>

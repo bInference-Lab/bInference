@@ -368,7 +368,8 @@ client (agent runtime, MCP): swap(tokenIn, tokenOut, amount, maxSlippage, reason
   │                                                                        → rejected_policy
   ├─3 quote/build  venue adapter: quote → unsigned txs (exact approve + action)
   │                decode and assert: `to` in the adapter's declared contracts, recipient = own wallet,
-  │                amounts = intent, minOut ≥ policy, deadline ≤ 60 s
+  │                amounts = intent, minOut ≥ policy, deadline ≤ 60 s (none only where the
+  │                venue declares its calls carry none, decision 0180)
   ├─4 risk         unknown tokens: GoPlus + honeypot.is + our buy → transfer → sell simulation from
   │                fresh addresses; launchpad mode and tax decode         → risk_blocked
   ├─5 simulate     eth_simulateV1 (traceTransfers): net balance changes must match the intent;

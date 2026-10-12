@@ -37,6 +37,7 @@ const bounds: TradeBounds = {
   contracts: [router],
   minOutBase: 990n,
   latestDeadlineMs: nowMs + 60_000,
+  allowsNoDeadline: false,
   family: createFakeFamily(),
 };
 
@@ -178,6 +179,23 @@ describe("build-step checks", () => {
     const step = tradeStep();
     const elsewhere: PlanStep = { ...step, draft: { ...step.draft, ...changes } };
     expect(checkSteps([elsewhere], bounds)).toStrictEqual({ ok: false, error: "other_sender" });
+  });
+
+  it("refuses a trade call with no deadline from a venue whose calls carry one", () => {
+    const { deadlineMs: _deadline, ...untimed } = effect;
+    const step: TradeStep = { ...tradeStep(), effect: untimed };
+    expect(checkSteps([step], bounds)).toStrictEqual({ ok: false, error: "late_deadline" });
+  });
+
+  it("passes a trade call with no deadline from a venue that declares its calls carry none", () => {
+    const { deadlineMs: _deadline, ...untimed } = effect;
+    const step: TradeStep = { ...tradeStep(), effect: untimed };
+    const declared = { ...bounds, allowsNoDeadline: true };
+    expect(checkSteps([step], declared)).toStrictEqual({ ok: true, value: untimed });
+    expect(checkSteps([tradeStep({ deadlineMs: nowMs + 60_001 })], declared)).toStrictEqual({
+      ok: false,
+      error: "late_deadline",
+    });
   });
 
   it("rounds the policy's minimum out up", () => {

@@ -134,6 +134,26 @@ describe("venue host", () => {
     });
   });
 
+  it("plans a call with no deadline from a venue that declares its calls carry none", async () => {
+    const plan = planOf(await hostOf(createFakeVenue({ noDeadline: true })).plan(buy, { signal }));
+    const { deadlineMs: _deadline, ...untimed } = terms;
+    expect(plan.steps).toMatchObject([{ kind: "trade", effect: untimed }]);
+    expect(plan.steps[0]).not.toHaveProperty("effect.deadlineMs");
+  });
+
+  it("refuses a call with no deadline from a venue whose calls carry one", async () => {
+    const untimed = createFakeVenue({ noDeadline: true });
+    const venue: Venue = {
+      ...createFakeVenue(),
+      build: async (request, options) => untimed.build(request, options),
+    };
+    expect(await hostOf(venue).plan(buy, { signal })).toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "late_deadline",
+    });
+  });
+
   it("quotes a trade without building it, then builds that quote with its own time", async () => {
     const clock = createManualClock(nowMs);
     const builds: BuildRequest[] = [];

@@ -108,6 +108,10 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `included`                   | `executing`             | a reorg removes a step's block before it is final                                    |                                                                                                                                                                                                        |
 | `finalized`                  | `reconciled`            | reconciliation                                                                       | fills decoded and compared with the simulation; a difference above 1% raises an alarm notice but still reconciles                                                                                      |
 
+The deadline check of `checked → quoted` passes a trade call that carries no deadline only from a
+venue that declares its calls on the chain carry none, such as a launchpad's curve call; its
+minimum out still binds it ([decision 0180](../DECISIONS.md#d0180)).
+
 Nothing leaves a terminal state. A freeze never interrupts `executing`: a running transaction is
 finished, never cut in half. A freeze never cancels a rescue either (section 5).
 

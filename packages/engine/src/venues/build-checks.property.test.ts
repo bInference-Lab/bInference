@@ -29,6 +29,7 @@ const bounds: TradeBounds = {
   contracts: [router],
   minOutBase: 990n,
   latestDeadlineMs: nowMs + 60_000,
+  allowsNoDeadline: false,
   family: createFakeFamily(),
 };
 const address = fc.stringMatching(/^0x[0-9a-fA-F]{8}$/);
@@ -140,6 +141,24 @@ describe("build-step check invariants", () => {
             error: "late_deadline",
           });
           expect(checkSteps([trade({ deadlineMs: latest - early })], bounds).ok).toBe(true);
+        },
+      ),
+    );
+  });
+
+  it("passes a call with no deadline only where the venue declared its calls carry none", () => {
+    fc.assert(
+      fc.property(
+        fc.boolean(),
+        fc.bigInt({ min: bounds.minOutBase, max: 2n ** 128n }),
+        (allowsNoDeadline, minOutBase) => {
+          const step = trade({ minOut: { asset: coin, base: minOutBase } });
+          const { deadlineMs: _deadline, ...untimed } = step.effect;
+          const checked = checkSteps([{ ...step, effect: untimed }], {
+            ...bounds,
+            allowsNoDeadline,
+          });
+          expect(checked.ok).toBe(allowsNoDeadline);
         },
       ),
     );

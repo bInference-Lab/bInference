@@ -125,6 +125,18 @@ describe("fake venue", () => {
     ]);
   });
 
+  it("declares and builds trade calls with no deadline when made so", async () => {
+    const venue = createFakeVenue({ noDeadline: true });
+    const drafts = await venue.build(spendCoin, { signal });
+    const { deadlineMs: _deadline, ...untimed } = effectOf(spendCoin);
+    expect(venue.contracts).toStrictEqual([
+      { chain: "fake:1", names: ["router"], noDeadline: true },
+    ]);
+    expect(drafts.map((draft) => venue.decode(draft))).toStrictEqual([
+      { ok: true, value: untimed },
+    ]);
+  });
+
   it.each([
     ["a word short", "swap,0x0000000c,5,fake:1/slip44:1,5,fake:1/token:0x0000000a"],
     ["a deadline that is no number", `${fakeSwapData(effectOf(spendCoin)).slice(0, -1)}x`],

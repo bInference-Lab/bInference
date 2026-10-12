@@ -28,6 +28,24 @@ describe("venue schemas", () => {
     expect(decodedEffectSchema.encode(decodedEffectSchema.parse(effect))).toStrictEqual(effect);
   });
 
+  it("reads an effect with no deadline as a call that carries none", () => {
+    const effect = {
+      recipient: "fake:1:0x0000000c",
+      amountIn: { asset: coin, base: "1" },
+      minOut: { asset: token, base: "1" },
+    };
+    expect(decodedEffectSchema.parse(effect)).not.toHaveProperty("deadlineMs");
+    expect(decodedEffectSchema.encode(decodedEffectSchema.parse(effect))).toStrictEqual(effect);
+  });
+
+  it("keeps a chain's declaration that its trade calls carry no deadline", () => {
+    const wire: VenueDeclarationWire = {
+      ...declaration,
+      contracts: [{ chain: "fake:1", names: ["router"], noDeadline: true }],
+    };
+    expect(venueDeclarationSchema.parse(wire)).toStrictEqual(wire);
+  });
+
   it("accepts a venue's declaration and keeps only the declared fields", () => {
     expect(venueDeclarationSchema.parse({ ...declaration, decode: "anything" })).toStrictEqual(
       declaration,

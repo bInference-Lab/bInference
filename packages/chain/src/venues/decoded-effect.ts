@@ -13,8 +13,12 @@ export interface DecodedEffect {
   readonly amountIn: Amount;
   /** The asset the call buys and the least it accepts, in base units. */
   readonly minOut: Amount;
-  /** Epoch milliseconds after which the call reverts. */
-  readonly deadlineMs: number;
+  /**
+   * Epoch milliseconds after which the call reverts. Absent when the call carries no deadline, as
+   * a launchpad's curve call may not: the host accepts that only from a venue that declares its
+   * trade calls on the chain as having none (`noDeadline` in its declaration).
+   */
+  readonly deadlineMs?: number;
 }
 
 /** A {@link DecodedEffect} as JSON carries it. */
@@ -22,7 +26,7 @@ export interface DecodedEffectWire {
   readonly recipient: string;
   readonly amountIn: AmountWire;
   readonly minOut: AmountWire;
-  readonly deadlineMs: number;
+  readonly deadlineMs?: number;
 }
 
 /** Decodes a decoded effect from JSON, and encodes it back with `z.encode`. */
@@ -30,5 +34,5 @@ export const decodedEffectSchema: z.ZodType<DecodedEffect, DecodedEffectWire> = 
   recipient: accountRefSchema,
   amountIn: amountSchema,
   minOut: amountSchema,
-  deadlineMs: z.int().nonnegative(),
+  deadlineMs: z.int().nonnegative().exactOptional(),
 });

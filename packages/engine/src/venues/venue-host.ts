@@ -209,6 +209,7 @@ function boundsOf(context: TradeContext, minOut: Amount, deadlineMs: number): Tr
     contracts: Object.values(request.contracts),
     minOutBase: minOut.base,
     latestDeadlineMs: deadlineMs,
+    allowsNoDeadline: context.hosted.noDeadline.has(chain.ref),
     family: chain.family,
   };
 }

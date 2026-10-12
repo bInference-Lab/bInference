@@ -26,17 +26,22 @@ export interface FakeVenueOptions {
   readonly rate?: Ratio;
   /** The price impact every quote reports; 10 bp when absent. */
   readonly priceImpactBps?: Bps;
+  /** Its trade calls carry no deadline, as it declares; when absent, each carries the host's. */
+  readonly noDeadline?: boolean;
 }
 
 const fakeChain = createFakeChainDefinition();
 const fakeChainRef = chainRefSchema.parse(fakeChain.id);
 const defaultImpactBps = bpsSchema.parse(10);
 
-// Epoch milliseconds in decimal, up to 16 digits, which a number holds exactly.
-const deadlineSchema = z
-  .string()
-  .regex(/^(?:0|[1-9]\d{0,15})$/)
-  .pipe(z.coerce.number<string>());
+// Epoch milliseconds in decimal, up to 16 digits, which a number holds exactly; empty for none.
+const deadlineSchema = z.union([
+  z.literal("").transform(() => undefined),
+  z
+    .string()
+    .regex(/^(?:0|[1-9]\d{0,15})$/)
+    .pipe(z.coerce.number<string>()),
+]);
 
 // The fake chain's own coin, which the fake venue spends without an approval.
 function isNative(amount: Amount): boolean {
@@ -58,7 +63,7 @@ export function fakeSwapData(effect: DecodedEffect): string {
     amountIn.asset,
     minOut.base.toString(),
     minOut.asset,
-    String(deadlineMs),
+    deadlineMs === undefined ? "" : String(deadlineMs),
   ].join(",");
 }
 
@@ -91,7 +96,8 @@ function effectOf(chain: ChainRef, words: readonly string[]): DecodedEffect | un
   if (!recipient.ok || amounts === undefined || !deadlineMs.success) {
     return undefined;
   }
-  return { recipient: recipient.value, ...amounts, deadlineMs: deadlineMs.data };
+  const timed = deadlineMs.data === undefined ? {} : { deadlineMs: deadlineMs.data };
+  return { recipient: recipient.value, ...amounts, ...timed };
 }
 
 function decode(draft: TxDraft): Result<DecodedEffect, "unknown_call"> {
@@ -111,9 +117,14 @@ function routerOf(request: BuildRequest): AccountRef {
   return router;
 }
 
-function build(request: BuildRequest): readonly TxDraft[] {
+function build(
+  request: BuildRequest,
+  timing: { readonly noDeadline: boolean },
+): readonly TxDraft[] {
   const router = accountRefParts(routerOf(request)).address;
-  const effect = { ...request, recipient: request.wallet };
+  const { amountIn, minOut, deadlineMs, wallet } = request;
+  const timed = timing.noDeadline ? {} : { deadlineMs };
+  const effect = { recipient: wallet, amountIn, minOut, ...timed };
   const swap = fakeDraft(request.wallet, {
     to: router,
     value: isNative(request.amountIn) ? request.amountIn.base : 0n,
@@ -134,14 +145,16 @@ function build(request: BuildRequest): readonly TxDraft[] {
 /**
  * Creates the `fake-swap` venue of the fake chain, for tests. It quotes at a fixed rate, answers
  * a pair of one asset as `no_route`, builds an exact approval for a token input and then its
- * trade call through its `router`, and decodes its own trade calls honestly.
+ * trade call through its `router`, and decodes its own trade calls honestly. With `noDeadline`, it
+ * declares and builds trade calls that carry no deadline.
  */
 export function createFakeVenue(options: FakeVenueOptions = {}): Venue {
   const rate = options.rate ?? { numerator: 2n, denominator: 1n };
   const priceImpactBps = options.priceImpactBps ?? defaultImpactBps;
+  const noDeadline = options.noDeadline === true;
   return {
     id: "fake-swap",
-    contracts: [{ chain: fakeChainRef, names: ["router"] }],
+    contracts: [{ chain: fakeChainRef, names: ["router"], ...(noDeadline ? { noDeadline } : {}) }],
     async quote(request, { signal }) {
       signal.throwIfAborted();
       const expectedOut = {
@@ -156,7 +169,7 @@ export function createFakeVenue(options: FakeVenueOptions = {}): Venue {
     },
     async build(request, { signal }) {
       signal.throwIfAborted();
-      return await Promise.resolve(build(request));
+      return await Promise.resolve(build(request, { noDeadline }));
     },
     decode,
   };
