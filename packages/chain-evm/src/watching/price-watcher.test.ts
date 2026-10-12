@@ -47,7 +47,12 @@ interface Rig {
   readonly rpc: RpcFailover;
   readonly socket: ReturnType<typeof manualHeads>;
   /** Takes the node down, its batches only, or makes its pools answer nothing. */
-  readonly pools: { isDown: boolean; isCallDown: boolean; isUnpriced: boolean };
+  readonly pools: {
+    isDown: boolean;
+    isCallDown: boolean;
+    isUnpriced: boolean;
+    failingBlock?: bigint | undefined;
+  };
 }
 
 const controllers: AbortController[] = [];
@@ -148,7 +153,7 @@ function manualHeads(clock: ManualClock): BlockSource & { announce(number: bigin
 
 function rig(options: { readonly heads?: "socket" } = {}): Rig {
   const clock = createManualClock(startMs);
-  const pools = { isDown: false, isCallDown: false, isUnpriced: false };
+  const pools: Rig["pools"] = { isDown: false, isCallDown: false, isUnpriced: false };
   const answer = (read: FakeRead): Hex | undefined => {
     if (read.target === feedAddress) {
       return round();
@@ -158,8 +163,11 @@ function rig(options: { readonly heads?: "socket" } = {}): Rig {
   const node = createFakeEvmNode({ multicall, head: 100n, answer });
   const live = node.endpoint;
   const endpoint: FakeEndpoint = (request) => {
-    const isCall = readFakeRpcRequest(request.body).method === "eth_call";
-    if (pools.isDown || (isCall && pools.isCallDown)) {
+    const { method, params } = readFakeRpcRequest(request.body);
+    const isCall = method === "eth_call";
+    const failing = pools.failingBlock === undefined ? "none" : toHex(pools.failingBlock);
+    const isFailing = isCall && params[1] === failing;
+    if (pools.isDown || (isCall && pools.isCallDown) || isFailing) {
       throw new Error("down");
     }
     return live(request);
@@ -289,6 +297,34 @@ describe("price watcher", () => {
       lagBlocks: 0n,
       skippedBlocks: 5n,
     });
+  });
+
+  it("sends a catch-up's batches together and hands their prices on in block order", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    const sentByFirstPrice: (bigint | "latest")[][] = [];
+    subject.watcher.onPrice(() => {
+      sentByFirstPrice.push(subject.node.batches().map(({ block }) => block));
+    });
+    await nextBlock(subject, 105n);
+    expect(sentByFirstPrice[0]).toStrictEqual([101n, 102n, 103n, 104n, 105n]);
+    expect(subject.prices.map(({ block }) => block)).toStrictEqual([101n, 102n, 103n, 104n, 105n]);
+  });
+
+  it("hands on no block after one it could not read", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    subject.pools.failingBlock = 103n;
+    await nextBlock(subject, 104n);
+    expect(subject.prices.map(({ block }) => block)).toStrictEqual([101n, 102n]);
+    expect(subject.watcher.lag()).toMatchObject({ read: 102n, readFault: "chain.rpc_down" });
+    subject.pools.failingBlock = undefined;
+    await subject.clock.advance(blockTimeMs);
+    expect(subject.prices.map(({ block }) => block)).toStrictEqual([101n, 102n, 103n, 104n]);
   });
 
   it("counts the blocks the chain should have made while no head came", async () => {

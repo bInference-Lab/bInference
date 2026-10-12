@@ -1,40 +1,22 @@
-import type { AssetRef, PriceMiss, ReadAnswer } from "@binference/chain";
-import { BinferenceError, type Clock, err, type Ratio, type Result } from "@binference/core";
+import type { AssetRef } from "@binference/chain";
+import type { Clock } from "@binference/core";
 import type { Address } from "viem";
 import type { FeedAsset } from "../prices/price-from-round.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import type { BlockSource, BlockSourceState } from "./block-source.js";
-import { type QuoteFeedReads, quoteFeedReads } from "./quote-feeds.js";
-import { readAggregate } from "./read-aggregate.js";
+import { pricesOf, type WatchedPrice } from "./price-batch.js";
+import { type BlockOutcome, type BlockReader, readBlocks } from "./read-blocks.js";
 import { createReadProgress, type ReadProgress } from "./read-progress.js";
 import { repeatSteps } from "./repeat-steps.js";
 import { createWakeUp, type WakeUp } from "./wake-up.js";
 import {
   createWatchList,
-  type PlannedToken,
   type PlanPrices,
   type WatchedToken,
   type WatchList,
 } from "./watch-list.js";
 
-/** A token's price the watcher read at one block. */
-export interface WatchedPrice {
-  readonly token: AssetRef;
-  /** The block whose state priced it. */
-  readonly block: bigint;
-  /** When the watcher read it, by its clock. */
-  readonly atMs: number;
-  /** Who priced it: the venue whose reads it asked, or the pools the chain family reads. */
-  readonly source: string;
-  readonly quoteAsset: AssetRef;
-  /** Base units of the quote asset for one base unit of the token, exact. */
-  readonly quotePrice: Ratio;
-  /**
-   * Micro-dollars for one base unit of the token, exact: the quote price times the quote asset's
-   * Chainlink price at the same block. Absent when the quote asset has no usable feed.
-   */
-  readonly usdPrice?: Ratio;
-}
+export type { WatchedPrice } from "./price-batch.js";
 
 /** How far the watcher's reads trail the chain. */
 export interface WatcherLag {
@@ -106,105 +88,49 @@ interface WatcherRun {
   readonly signal: AbortSignal;
 }
 
-function gcd(left: bigint, right: bigint): bigint {
-  return right === 0n ? left : gcd(right, left % right);
-}
-
-function times(left: Ratio, right: Ratio): Ratio {
-  const numerator = left.numerator * right.numerator;
-  const denominator = left.denominator * right.denominator;
-  const divisor = gcd(numerator, denominator);
-  return { numerator: numerator / divisor, denominator: denominator / divisor };
-}
-
-function priceOf(planned: PlannedToken, answers: readonly ReadAnswer[]): Result<Ratio, PriceMiss> {
-  try {
-    return planned.price(answers);
-  } catch {
-    return err("unpriced");
-  }
-}
-
-/** One block's batch: the planned tokens, the feeds of their quote assets, and the block. */
-interface Batch {
-  readonly planned: readonly PlannedToken[];
-  readonly feeds: QuoteFeedReads;
-  readonly block: bigint;
-}
-
-function priceAll(run: WatcherRun, batch: Batch, answers: readonly ReadAnswer[]): void {
-  const atMs = run.options.clock.now();
-  const tokenCalls = batch.planned.reduce((sum, { calls }) => sum + calls.length, 0);
-  const usd = batch.feeds.usdPrices(answers.slice(tokenCalls), atMs);
-  let offset = 0;
-  for (const planned of batch.planned) {
-    const own = answers.slice(offset, offset + planned.calls.length);
-    offset += planned.calls.length;
-    const price = priceOf(planned, own);
-    run.list.report(planned.token, price.ok ? "priced" : price.error);
-    if (!price.ok) {
-      continue;
-    }
-    const quoteUsd = usd.get(planned.quoteAsset);
-    const { token, source, quoteAsset } = planned;
-    run.emit({
-      token,
-      block: batch.block,
-      atMs,
-      source,
-      quoteAsset,
-      quotePrice: price.value,
-      ...(quoteUsd === undefined ? {} : { usdPrice: times(price.value, quoteUsd) }),
-    });
-  }
-}
-
-// One batch for every planned token and the feeds of their quote assets, at one block. A batch no
-// endpoint answers is read again a block time later.
-/** How a block's read ended: read, failed, or ahead of every node, to be read again in a moment. */
-type BlockOutcome = "read" | "failed" | "not_yet";
-
 // A node imports a new block within about a third of a block time of the one that announced it.
 const notYetRetryMs = 150;
 
-async function readBlock(
-  run: WatcherRun,
-  planned: readonly PlannedToken[],
-  block: bigint,
-): Promise<BlockOutcome> {
-  const { rpc, multicall } = run.options;
-  const feeds = quoteFeedReads(
-    run.feeds,
-    planned.map(({ quoteAsset }) => quoteAsset),
-  );
-  const calls = [...planned.flatMap((token) => token.calls), ...feeds.calls];
-  try {
-    const timeout =
-      run.options.callTimeoutMs === undefined ? {} : { timeoutMs: run.options.callTimeoutMs };
-    const preferEndpoint = run.progress.headEndpoint();
-    const answers = await readAggregate(rpc, {
-      multicall,
-      calls,
-      block,
-      signal: run.signal,
-      atHead: true,
-      ...timeout,
-      ...(preferEndpoint === undefined ? {} : { preferEndpoint }),
-    });
-    run.progress.markRead(block);
-    priceAll(run, { planned, feeds, block }, answers);
-    return "read";
-  } catch (error) {
-    run.signal.throwIfAborted();
-    if (!(error instanceof BinferenceError)) {
-      throw error;
-    }
-    if (error.code === "chain.block_ahead") {
-      return "not_yet";
-    }
-    run.progress.markFailed(error.code);
-    return "failed";
+function blocksFrom(first: bigint, last: bigint): readonly bigint[] {
+  const blocks: bigint[] = [];
+  for (let block = first; block <= last; block += 1n) {
+    blocks.push(block);
   }
+  return blocks;
+}
+
+// Hands on the prices of each block read, in block order, and answers the outcome that stopped
+// the reads, if one did.
+function handOn(run: WatcherRun, outcomes: readonly BlockOutcome[]): BlockOutcome | undefined {
+  for (const outcome of outcomes) {
+    if (outcome.kind === "failed") {
+      run.progress.markFailed(outcome.code);
+    }
+    if (outcome.kind !== "read") {
+      return outcome;
+    }
+    run.progress.markRead(outcome.read.block);
+    for (const { token, outcome: read, price } of pricesOf(outcome.read, run.options.clock.now())) {
+      run.list.report(token, read);
+      if (price !== undefined) {
+        run.emit(price);
+      }
+    }
+  }
+  return undefined;
+}
+
+function readerOf(run: WatcherRun): BlockReader {
+  const { rpc, multicall, callTimeoutMs } = run.options;
+  const preferEndpoint = run.progress.headEndpoint();
+  return {
+    rpc,
+    multicall,
+    feeds: run.feeds,
+    signal: run.signal,
+    ...(callTimeoutMs === undefined ? {} : { timeoutMs: callTimeoutMs }),
+    ...(preferEndpoint === undefined ? {} : { preferEndpoint }),
+  };
 }
 
 async function readStep(run: WatcherRun): Promise<undefined> {
@@ -221,10 +147,10 @@ async function readStep(run: WatcherRun): Promise<undefined> {
     progress.markRead(head);
     return undefined;
   }
-  const block = progress.nextBlock(head, maxCatchUpBlocks);
-  const outcome = await readBlock(run, planned, block);
-  if (outcome !== "read") {
-    const waitMs = outcome === "not_yet" ? notYetRetryMs : options.blockTimeMs;
+  const blocks = blocksFrom(progress.nextBlock(head, maxCatchUpBlocks), head);
+  const stopped = handOn(run, await readBlocks(readerOf(run), planned, blocks));
+  if (stopped !== undefined) {
+    const waitMs = stopped.kind === "not_yet" ? notYetRetryMs : options.blockTimeMs;
     await options.clock.sleep(waitMs, run.signal);
   }
   return undefined;
@@ -287,7 +213,9 @@ async function runWatcher(parts: RunParts, signal: AbortSignal): Promise<void> {
  * source hands on, it reads every watched token's price reads and the Chainlink feeds of their
  * quote assets in one Multicall3 call at that block, so a price change at block N is read at block
  * N, and 200 tokens cost one call a block as one does. A token is read once however many watch it.
- * Behind by more than four blocks, it reads the newest four and counts the rest as skipped. A token
+ * Behind, it reads the blocks up to the head at once, each its own call sent together, and hands
+ * their prices on in block order; behind by more than four, it reads the newest four and counts
+ * the rest as skipped. A token
  * whose answers price nothing, such as one that left its curve, is planned again; one no reader
  * prices is asked about again 30 seconds later. A batch that fails is read again a block time
  * later; the watcher never stops for the chain. A fault of its own ends the block source and the
