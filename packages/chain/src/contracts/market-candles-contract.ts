@@ -29,7 +29,7 @@ function assertCandle(candle: MarketCandle, request: CandleRequest): void {
   assert.ok(request.beforeMs === undefined || candle.atMs < request.beforeMs);
 }
 
-const request: CandleRequest = { interval: "1h", limit: 3 };
+const request: CandleRequest = { interval: "4h", limit: 3 };
 
 const readChecks = (harness: MarketDataSourceHarness): readonly ContractCheck[] => [
   {
@@ -92,7 +92,7 @@ const refusalChecks = (harness: MarketDataSourceHarness): readonly ContractCheck
 
 /**
  * The contract of a `MarketDataSource` that reads candles, run beside
- * `marketDataSourceContract`: the harness's known token has candles at the hour interval.
+ * `marketDataSourceContract`: the harness's known token has candles at the four-hour interval.
  */
 export function marketCandlesContract(harness: MarketDataSourceHarness): readonly ContractCheck[] {
   return [...readChecks(harness), ...refusalChecks(harness)];

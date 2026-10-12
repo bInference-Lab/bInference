@@ -931,6 +931,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/chain-evm
 
+  plugins/geckoterminal:
+    dependencies:
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   plugins/goplus:
     dependencies:
       '@binference/plugin-sdk':
