@@ -103,11 +103,13 @@
         "openai",
         "@anthropic-ai/sdk",
         "partial-json",
-        "yaml"
+        "yaml",
+        "undici"
       ],
       "only": {
         "openai": "src/providers",
-        "@anthropic-ai/sdk": "src/providers"
+        "@anthropic-ai/sdk": "src/providers",
+        "undici": "src/process"
       }
     },
     "tui": {

@@ -33,6 +33,8 @@
     "@binference/core": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/store": "workspace:*",
+    "openai": "catalog:",
+    "undici": "catalog:",
     "ws": "catalog:",
     "zod": "catalog:"
   },

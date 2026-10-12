@@ -45,6 +45,7 @@ catalog:
   kysely: 0.29.6
   lucide-react: 1.51.0
   markdownlint-cli2: 0.23.3
+  openai: 7.28.0
   oxfmt: 0.71.0
   oxlint: 1.86.0
   oxlint-tsgolint: 7.0.2003
