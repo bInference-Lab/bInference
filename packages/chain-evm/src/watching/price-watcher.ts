@@ -4,7 +4,7 @@ import type { Address } from "viem";
 import type { FeedAsset } from "../prices/price-from-round.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import type { BlockSource, BlockSourceState } from "./block-source.js";
-import { pricesOf, type WatchedPrice } from "./price-batch.js";
+import { pricesOf, type ReadQuarantine, type WatchedPrice } from "./price-batch.js";
 import { type BlockOutcome, type BlockReader, readBlocks } from "./read-blocks.js";
 import { createReadProgress, type ReadProgress } from "./read-progress.js";
 import { repeatSteps } from "./repeat-steps.js";
@@ -16,7 +16,7 @@ import {
   type WatchList,
 } from "./watch-list.js";
 
-export type { WatchedPrice } from "./price-batch.js";
+export type { ReadQuarantine, WatchedPrice } from "./price-batch.js";
 
 /** How far the watcher's reads trail the chain. */
 export interface WatcherLag {
@@ -70,6 +70,11 @@ export interface PriceWatcherOptions {
    * failover's own timeout when absent.
    */
   readonly callTimeoutMs?: number;
+  /**
+   * Told of each token whose calls failed a block's whole batch and left it, to be planned again
+   * 30 s later (decision 0194).
+   */
+  readonly onQuarantine?: (quarantine: ReadQuarantine) => void;
 }
 
 // A watcher this far behind reads the newest blocks and leaves the older ones: a price that old no
@@ -110,6 +115,7 @@ function handOn(run: WatcherRun, outcomes: readonly BlockOutcome[]): BlockOutcom
       return outcome;
     }
     run.progress.markRead(outcome.read.block);
+    outcome.read.quarantined.forEach((quarantine) => run.options.onQuarantine?.(quarantine));
     for (const { token, outcome: read, price } of pricesOf(outcome.read, run.options.clock.now())) {
       run.list.report(token, read);
       if (price !== undefined) {

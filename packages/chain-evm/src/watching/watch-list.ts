@@ -8,6 +8,7 @@ import {
   newEntry,
   planFound,
   planMissing,
+  quarantined,
   type ReadOutcome,
   reported,
   stateOf,
@@ -67,7 +68,10 @@ export interface WatchList {
 export interface WatchListOptions {
   readonly planPrices: PlanPrices;
   readonly clock: Clock;
-  /** How long a token waits to be planned again when no reader prices it. */
+  /**
+   * How long a token waits to be planned again when no reader prices it, or after its calls
+   * failed a whole batch.
+   */
   readonly noReaderMs: number;
   /**
    * How long it waits when its reader could not answer, such as for want of an RPC: about a block
@@ -177,9 +181,16 @@ export function createWatchList(options: WatchListOptions): WatchList {
     },
     report(token, read) {
       const entry = entries.map.get(token);
-      if (entry !== undefined) {
-        entries.map.set(token, reported(entry, { read, nowMs: options.clock.now() }));
+      if (entry === undefined) {
+        return;
       }
+      const nowMs = options.clock.now();
+      entries.map.set(
+        token,
+        read === "quarantined"
+          ? quarantined(entry, nowMs + options.noReaderMs)
+          : reported(entry, { read, nowMs }),
+      );
     },
     tokens: () => [...entries.map.entries()].map(([token, entry]) => stateOf(token, entry)),
   };

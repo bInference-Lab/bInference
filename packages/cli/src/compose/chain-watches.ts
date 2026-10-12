@@ -15,6 +15,7 @@ import {
   parseEvmAddress,
   type PlanPrices,
   poolSource,
+  type ReadQuarantine,
 } from "@binference/chain-evm";
 import { type Clock, err, type Logger, ok } from "@binference/core";
 import type { VenueHost } from "@binference/engine";
@@ -79,6 +80,13 @@ function planPricesOf(
   };
 }
 
+// A token whose calls fail a block's whole batch leaves it for 30 s; the log says which and why.
+function quarantineLog(logger: Logger, chain: ChainRef): (quarantine: ReadQuarantine) => void {
+  return ({ token, code }) => {
+    logger.warn("watcher.read_quarantined", { chain, assetId: token, errorCode: code });
+  };
+}
+
 function watchOf(options: ChainWatchesOptions, reads: ChainReads): ChainWatch {
   const { clock } = options;
   const { rpc, evm, multicall, chain } = reads;
@@ -119,6 +127,7 @@ function watchOf(options: ChainWatchesOptions, reads: ChainReads): ChainWatch {
     planPrices,
     feeds,
     callTimeoutMs: watchCallTimeoutMs,
+    onQuarantine: quarantineLog(options.logger, chain.ref),
   });
   return createChainWatch({ chain, watcher, clock, logger: options.logger });
 }

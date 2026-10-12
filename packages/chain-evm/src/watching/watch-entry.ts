@@ -1,8 +1,11 @@
 import type { AssetRef } from "@binference/chain";
 import type { PlannedToken, WatchedToken } from "./watch-list.js";
 
-/** What one block's read of a token's plan came to. */
-export type ReadOutcome = "priced" | "unpriced" | "replan";
+/**
+ * What one block's read of a token's plan came to: priced; nothing priced; a plan that no longer
+ * holds; or calls that failed the block's whole batch, which leave it (decision 0194).
+ */
+export type ReadOutcome = "priced" | "unpriced" | "replan" | "quarantined";
 
 /** One watched token. A token watched again after its last release starts a new life. */
 export interface WatchEntry {
@@ -77,6 +80,17 @@ function withoutPlan(entry: WatchEntry): Omit<WatchEntry, "plan"> {
   return rest;
 }
 
+/** A plan whose calls failed a whole batch leaves the batch, and the next look is at `untilMs`. */
+export function quarantined(entry: WatchEntry, untilMs: number): WatchEntry {
+  return {
+    ...withoutPlan(entry),
+    misses: 0,
+    wantsPlan: true,
+    nextPlanAtMs: untilMs,
+    isUnpriced: true,
+  };
+}
+
 /**
  * Takes one block's outcome of the plan in hand. A priced block clears the misses; a plan whose
  * answers price nothing three blocks in a row is kept while a new one is found; a plan whose
@@ -84,7 +98,7 @@ function withoutPlan(entry: WatchEntry): Omit<WatchEntry, "plan"> {
  */
 export function reported(
   entry: WatchEntry,
-  outcome: { readonly read: ReadOutcome; readonly nowMs: number },
+  outcome: { readonly read: Exclude<ReadOutcome, "quarantined">; readonly nowMs: number },
 ): WatchEntry {
   if (outcome.read === "priced") {
     return { ...entry, misses: 0 };

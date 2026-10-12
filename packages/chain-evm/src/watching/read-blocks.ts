@@ -3,9 +3,9 @@ import { BinferenceError } from "@binference/core";
 import type { Address } from "viem";
 import type { FeedAsset } from "../prices/price-from-round.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
-import type { BlockRead } from "./price-batch.js";
+import type { BlockRead, ReadQuarantine } from "./price-batch.js";
 import { quoteFeedReads } from "./quote-feeds.js";
-import { readAggregate } from "./read-aggregate.js";
+import { type AggregateCall, readAggregate } from "./read-aggregate.js";
 import type { PlannedToken } from "./watch-list.js";
 
 /** What a watcher reads its blocks' batches with. */
@@ -42,29 +42,110 @@ function splitAnswers(
   return { tokens, rest: answers.slice(offset) };
 }
 
-// One batch for every planned token and the feeds of their quote assets, at one block.
+// Multicall3 hands every call all the gas left and takes no limit per call, so the batch is bounded
+// as a whole: 1,000,000 a call, at most the 50,000,000 that geth and its forks allow a call by
+// default (decision 0194).
+const gasPerCall = 1_000_000n;
+const maxBatchGas = 50_000_000n;
+
+// Faults a node answers about the batch itself, which a call in it may have caused.
+const batchFaults: ReadonlySet<string> = new Set(["chain.rpc_error", "chain.multicall_mismatch"]);
+
+async function ask(
+  reader: BlockReader,
+  calls: readonly AggregateCall[],
+  block: bigint,
+): Promise<readonly ReadAnswer[]> {
+  const gas = BigInt(calls.length + 1) * gasPerCall;
+  return readAggregate(reader.rpc, {
+    multicall: reader.multicall,
+    calls,
+    block,
+    signal: reader.signal,
+    atHead: true,
+    gas: gas < maxBatchGas ? gas : maxBatchGas,
+    ...(reader.timeoutMs === undefined ? {} : { timeoutMs: reader.timeoutMs }),
+    ...(reader.preferEndpoint === undefined ? {} : { preferEndpoint: reader.preferEndpoint }),
+  });
+}
+
+/** Tokens read apart: each with its answers, and the ones whose calls fail any batch. */
+interface Isolated {
+  readonly tokens: BlockRead["tokens"];
+  readonly quarantined: readonly ReadQuarantine[];
+}
+
+// Reads a group of tokens at one block, and, when the node refuses the group's batch, each half
+// apart at the same block, down to the single tokens whose calls the node refuses.
+async function isolate(
+  reader: BlockReader,
+  group: readonly PlannedToken[],
+  block: bigint,
+): Promise<Isolated> {
+  try {
+    const answers = await ask(
+      reader,
+      group.flatMap(({ calls }) => calls),
+      block,
+    );
+    return { tokens: splitAnswers(group, answers).tokens, quarantined: [] };
+  } catch (error) {
+    if (!(error instanceof BinferenceError) || !batchFaults.has(error.code)) {
+      throw error;
+    }
+    const [only] = group;
+    if (group.length === 1 && only !== undefined) {
+      return { tokens: [], quarantined: [{ token: only.token, block, code: error.code }] };
+    }
+    const middle = Math.ceil(group.length / 2);
+    const halves = await Promise.all([
+      isolate(reader, group.slice(0, middle), block),
+      isolate(reader, group.slice(middle), block),
+    ]);
+    return {
+      tokens: halves.flatMap(({ tokens }) => tokens),
+      quarantined: halves.flatMap(({ quarantined }) => quarantined),
+    };
+  }
+}
+
+// One batch for every planned token and the feeds of their quote assets, at one block. A batch the
+// node refuses is read again at the same block: the feeds alone, which a refusal too shows to be
+// the node's fault and no call's, then the tokens in halves, so the calls that fail it leave it.
+async function readWhole(
+  reader: BlockReader,
+  planned: readonly PlannedToken[],
+  block: bigint,
+): Promise<BlockRead> {
+  const feeds = quoteFeedReads(
+    reader.feeds,
+    planned.map(({ quoteAsset }) => quoteAsset),
+  );
+  try {
+    const answers = await ask(
+      reader,
+      [...planned.flatMap(({ calls }) => calls), ...feeds.calls],
+      block,
+    );
+    const { tokens, rest } = splitAnswers(planned, answers);
+    return { block, tokens, feeds, feedAnswers: rest, quarantined: [] };
+  } catch (error) {
+    if (!(error instanceof BinferenceError) || !batchFaults.has(error.code)) {
+      throw error;
+    }
+    const feedAnswers = await ask(reader, feeds.calls, block);
+    const { tokens, quarantined } = await isolate(reader, planned, block);
+    return { block, tokens, feeds, feedAnswers, quarantined };
+  }
+}
+
 async function readOne(
   reader: BlockReader,
   planned: readonly PlannedToken[],
   block: bigint,
 ): Promise<BlockOutcome> {
-  const feeds = quoteFeedReads(
-    reader.feeds,
-    planned.map(({ quoteAsset }) => quoteAsset),
-  );
-  const calls = [...planned.flatMap((token) => token.calls), ...feeds.calls];
   try {
-    const answers = await readAggregate(reader.rpc, {
-      multicall: reader.multicall,
-      calls,
-      block,
-      signal: reader.signal,
-      atHead: true,
-      ...(reader.timeoutMs === undefined ? {} : { timeoutMs: reader.timeoutMs }),
-      ...(reader.preferEndpoint === undefined ? {} : { preferEndpoint: reader.preferEndpoint }),
-    });
-    const { tokens, rest } = splitAnswers(planned, answers);
-    return { kind: "read", read: { block, tokens, feeds, feedAnswers: rest } };
+    return { kind: "read", read: await readWhole(reader, planned, block) };
   } catch (error) {
     reader.signal.throwIfAborted();
     if (!(error instanceof BinferenceError)) {
@@ -80,7 +161,8 @@ async function readOne(
  * Reads the batches of several blocks at once, each its own `eth_call` sent together, so a
  * watcher behind the head catches up in one round trip (decision 0194). Answers the outcomes in
  * block order, up to and with the first that was not read: a later block is never handed on
- * before an earlier one. Rejects on a fault of its own, or with the signal's reason once it aborts.
+ * before an earlier one. A token whose calls fail a block's whole batch leaves that block's read,
+ * `quarantined`, and the other tokens are priced without it. Rejects on a fault of its own, or with the signal's reason once it aborts.
  */
 export async function readBlocks(
   reader: BlockReader,

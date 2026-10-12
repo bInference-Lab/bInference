@@ -89,6 +89,7 @@ export { createPriceWatcher } from "./watching/price-watcher.js";
 export type {
   PriceWatcher,
   PriceWatcherOptions,
+  ReadQuarantine,
   WatchedPrice,
   WatcherLag,
 } from "./watching/price-watcher.js";

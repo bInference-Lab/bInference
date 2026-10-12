@@ -31,6 +31,8 @@ export interface AggregateRead {
   readonly atHead?: boolean;
   /** The endpoint to ask first, such as the one whose poll announced the block. */
   readonly preferEndpoint?: string;
+  /** The gas the whole call may burn; the node's own cap when absent. */
+  readonly gas?: bigint;
 }
 
 // The answer's results, or none for an answer outside `aggregate3`'s shape.
@@ -63,7 +65,10 @@ export async function readAggregate(
   });
   const answer = await requestResult(rpc, {
     method: "eth_call",
-    params: [{ to: read.multicall, data }, read.block === undefined ? "latest" : toHex(read.block)],
+    params: [
+      { to: read.multicall, data, ...(read.gas === undefined ? {} : { gas: toHex(read.gas) }) },
+      read.block === undefined ? "latest" : toHex(read.block),
+    ],
     result: hexSchema,
     signal: read.signal,
     ...(read.timeoutMs === undefined ? {} : { timeoutMs: read.timeoutMs }),

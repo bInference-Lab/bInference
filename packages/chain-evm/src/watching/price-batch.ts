@@ -32,6 +32,15 @@ export interface BlockRead {
   }[];
   readonly feeds: QuoteFeedReads;
   readonly feedAnswers: readonly ReadAnswer[];
+  /** The tokens whose calls failed the whole batch, which left it, with the batch's fault. */
+  readonly quarantined: readonly ReadQuarantine[];
+}
+
+/** A token whose calls failed a block's whole batch, the block, and the fault's code. */
+export interface ReadQuarantine {
+  readonly token: AssetRef;
+  readonly block: bigint;
+  readonly code: string;
 }
 
 /** What one block's read came to for one token: the outcome of its plan, and its price. */
@@ -63,11 +72,12 @@ function priceOf(planned: PlannedToken, answers: readonly ReadAnswer[]): Result<
 /**
  * Prices every token of one block's read at `atMs`: in its quote asset by its own pricing step,
  * and in USD by its quote asset's feed at the same block. A pricing step that throws prices
- * nothing.
+ * nothing; a token whose calls left the batch is `quarantined`.
  */
 export function pricesOf(read: BlockRead, atMs: number): readonly TokenRead[] {
   const usd = read.feeds.usdPrices(read.feedAnswers, atMs);
-  return read.tokens.map(({ planned, answers }) => {
+  const left = read.quarantined.map(({ token }): TokenRead => ({ token, outcome: "quarantined" }));
+  const priced = read.tokens.map(({ planned, answers }): TokenRead => {
     const { token, source, quoteAsset } = planned;
     const price = priceOf(planned, answers);
     if (!price.ok) {
@@ -85,4 +95,5 @@ export function pricesOf(read: BlockRead, atMs: number): readonly TokenRead[] {
     };
     return { token, outcome: "priced", price: watched };
   });
+  return [...priced, ...left];
 }

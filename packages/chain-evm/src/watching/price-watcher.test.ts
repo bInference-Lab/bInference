@@ -14,7 +14,12 @@ import {
 } from "../testing/fake-rpc-http.js";
 import { type BlockSource, type BlockSourceState, createBlockSource } from "./block-source.js";
 import { poolPrice, reservesCall } from "./pool-state.js";
-import { createPriceWatcher, type PriceWatcher, type WatchedPrice } from "./price-watcher.js";
+import {
+  createPriceWatcher,
+  type PriceWatcher,
+  type ReadQuarantine,
+  type WatchedPrice,
+} from "./price-watcher.js";
 import type { PlanFailure, PricePlan } from "./watch-list.js";
 
 const multicall = getAddress("0xca11bde05977b3631167028862be2a173976ca11");
@@ -52,7 +57,10 @@ interface Rig {
     isCallDown: boolean;
     isUnpriced: boolean;
     failingBlock?: bigint | undefined;
+    /** Contracts whose reads burn their gas. */
+    readonly burning: Set<Address>;
   };
+  readonly quarantines: ReadQuarantine[];
 }
 
 const controllers: AbortController[] = [];
@@ -153,8 +161,16 @@ function manualHeads(clock: ManualClock): BlockSource & { announce(number: bigin
 
 function rig(options: { readonly heads?: "socket" } = {}): Rig {
   const clock = createManualClock(startMs);
-  const pools: Rig["pools"] = { isDown: false, isCallDown: false, isUnpriced: false };
-  const answer = (read: FakeRead): Hex | undefined => {
+  const pools: Rig["pools"] = {
+    isDown: false,
+    isCallDown: false,
+    isUnpriced: false,
+    burning: new Set(),
+  };
+  const answer = (read: FakeRead): Hex | undefined | "burn" => {
+    if (pools.burning.has(read.target)) {
+      return "burn";
+    }
     if (read.target === feedAddress) {
       return round();
     }
@@ -190,6 +206,7 @@ function rig(options: { readonly heads?: "socket" } = {}): Rig {
     return await Promise.resolve(planOf(token));
   };
   const socket = manualHeads(clock);
+  const quarantines: ReadQuarantine[] = [];
   const blocks =
     options.heads === "socket" ? socket : createBlockSource({ rpc, clock, blockTimeMs });
   const watcher = createPriceWatcher({
@@ -200,13 +217,14 @@ function rig(options: { readonly heads?: "socket" } = {}): Rig {
     blockTimeMs,
     planPrices,
     feeds: [feed],
+    onQuarantine: (quarantine) => quarantines.push(quarantine),
   });
   const prices: WatchedPrice[] = [];
   watcher.onPrice((price) => prices.push(price));
   const controller = new AbortController();
   controllers.push(controller);
   watcher.run(controller.signal).catch(() => undefined);
-  return { clock, node, watcher, prices, planned, pools, rpc, socket };
+  return { clock, node, watcher, prices, planned, pools, rpc, socket, quarantines };
 }
 
 // Moves the chain one block and lets the watcher read it.
@@ -353,6 +371,50 @@ describe("price watcher", () => {
     await subject.clock.advance(blockTimeMs * 2);
     expect(subject.node.batches().map(({ block }) => block)).toStrictEqual([101n]);
     expect(subject.watcher.lag().readFault).toBeUndefined();
+  });
+
+  it("bounds a batch's gas at 1,000,000 a call, and at most 50,000,000", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    Array.from({ length: 99 }, (_unused, index) => subject.watcher.watch(tokenOf(index + 2)));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 102n);
+    await nextBlock(subject, 103n);
+    expect(subject.node.gasLimits()).toStrictEqual([3_000_000n, 3_000_000n, 50_000_000n]);
+  });
+
+  it("reads a batch a call fails again in halves at its block, and leaves that token out", async () => {
+    const subject = rig();
+    [1, 2, 3, 4, 5].forEach((index) => subject.watcher.watch(tokenOf(index)));
+    await subject.clock.advance(0);
+    subject.pools.burning.add(poolOf(tokenOf(4)));
+    await nextBlock(subject, 101n);
+    expect(subject.prices.map(({ token, block }) => [token, block])).toStrictEqual(
+      [1, 2, 3, 5].map((index) => [tokenOf(index), 101n]),
+    );
+    expect(subject.quarantines).toStrictEqual([
+      { token: tokenOf(4), block: 101n, code: "chain.rpc_error" },
+    ]);
+    expect(subject.watcher.tokens()[3]).toStrictEqual({ token: tokenOf(4), state: "unpriced" });
+    expect(subject.watcher.lag()).toMatchObject({ read: 101n });
+    await nextBlock(subject, 102n);
+    expect(subject.node.batches().at(-1)).toStrictEqual({ block: 102n, calls: 5 });
+    subject.pools.burning.clear();
+    await subject.clock.advance(30_000);
+    expect(subject.planned.filter((token) => token === tokenOf(4))).toHaveLength(2);
+  });
+
+  it("fails the block when the node refuses the feeds' batch alone too", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    subject.pools.burning.add(feedAddress);
+    await nextBlock(subject, 101n);
+    expect(subject.prices).toStrictEqual([]);
+    expect(subject.quarantines).toStrictEqual([]);
+    expect(subject.watcher.lag()).toMatchObject({ read: 100n, readFault: "chain.rpc_error" });
   });
 
   it("keeps a plan through two blocks that price nothing, and finds another after the third", async () => {

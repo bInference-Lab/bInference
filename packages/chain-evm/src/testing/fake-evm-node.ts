@@ -9,7 +9,7 @@ import {
   toHex,
 } from "viem";
 import { z } from "zod";
-import { hexSchema } from "../rpc/evm-wire.schema.js";
+import { hexSchema, quantitySchema } from "../rpc/evm-wire.schema.js";
 import type { JsonValue } from "../rpc/json-value.schema.js";
 import { type FakeRpcAnswer, fakeRpcNode } from "./fake-rpc-http.js";
 
@@ -21,8 +21,11 @@ export interface FakeRead {
   readonly block: bigint | "latest";
 }
 
-/** What a fake EVM node answers one read call: return data, or `undefined` for a revert. */
-export type FakeReadAnswer = (read: FakeRead) => Hex | undefined;
+/**
+ * What a fake EVM node answers one read call: return data, `undefined` for a revert, or `burn`
+ * for a call that burns its gas and fails the whole `eth_call`.
+ */
+export type FakeReadAnswer = (read: FakeRead) => Hex | undefined | "burn";
 
 /** A batch of reads a fake node received through Multicall3. */
 interface FakeBatch {
@@ -37,6 +40,8 @@ export interface FakeEvmNode {
   setHead(head: bigint): void;
   /** Every Multicall3 batch the node answered, oldest first. */
   batches(): readonly FakeBatch[];
+  /** The gas each `eth_call` asked for, oldest first; `undefined` for one that named none. */
+  gasLimits(): readonly (bigint | undefined)[];
 }
 
 function stringParam(params: readonly JsonValue[], index: number): string | undefined {
@@ -44,19 +49,45 @@ function stringParam(params: readonly JsonValue[], index: number): string | unde
   return typeof value === "string" ? value : undefined;
 }
 
-const callSchema = z.looseObject({ to: z.string(), data: hexSchema });
+const noData: Hex = "0x";
+
+const callSchema = z.looseObject({
+  to: z.string(),
+  data: hexSchema,
+  gas: quantitySchema.optional(),
+});
 
 function callOf(
   params: readonly JsonValue[],
-): { readonly to: string; readonly data: Hex } | undefined {
+): { readonly to: string; readonly data: Hex; readonly gas?: bigint | undefined } | undefined {
   const call = callSchema.safeParse(params[0]);
   return call.success ? call.data : undefined;
+}
+
+// The node's answer to a batch: each call's return data, or "out of gas" when a call burns its gas.
+function aggregateAnswer(answers: readonly (Hex | undefined | "burn")[]): FakeRpcAnswer {
+  if (answers.includes("burn")) {
+    return { error: { code: -32_000, message: "out of gas" } };
+  }
+  const results = answers.map((returnData) =>
+    returnData === undefined || returnData === "burn"
+      ? { success: false, returnData: noData }
+      : { success: true, returnData },
+  );
+  return {
+    result: encodeFunctionResult({
+      abi: multicall3Abi,
+      functionName: "aggregate3",
+      result: results,
+    }),
+  };
 }
 
 /**
  * Creates a fake EVM node for tests: it answers `eth_blockNumber` with its head, and `eth_call`
  * of Multicall3's `aggregate3` at `multicall` by answering each call with `answer`; a block above
- * its head is "header not found", as geth answers. Any other request is JSON-RPC's
+ * its head is "header not found", as geth answers, and a batch with a call that burns its gas is
+ * "out of gas". Any other request is JSON-RPC's
  * method-not-found.
  */
 export function createFakeEvmNode(options: {
@@ -66,9 +97,11 @@ export function createFakeEvmNode(options: {
 }): FakeEvmNode {
   let head = options.head;
   const batches: FakeBatch[] = [];
+  const gasLimits: (bigint | undefined)[] = [];
   const aggregate = (params: readonly JsonValue[]): FakeRpcAnswer => {
     const call = callOf(params);
     const tag = stringParam(params, 1);
+    gasLimits.push(call?.gas);
     if (call === undefined || getAddress(call.to) !== options.multicall) {
       return { error: { code: -32_000, message: "execution reverted" } };
     }
@@ -80,17 +113,10 @@ export function createFakeEvmNode(options: {
     const decoded = decodeFunctionData({ abi: multicall3Abi, data: call.data });
     const reads = decoded.functionName === "aggregate3" ? decoded.args[0] : [];
     batches.push({ block, calls: reads.length });
-    const results = reads.map(({ target, callData }) => {
-      const returnData = options.answer({ target: getAddress(target), callData, block });
-      return { success: returnData !== undefined, returnData: returnData ?? "0x" };
-    });
-    return {
-      result: encodeFunctionResult({
-        abi: multicall3Abi,
-        functionName: "aggregate3",
-        result: results,
-      }),
-    };
+    const answers = reads.map(({ target, callData }) =>
+      options.answer({ target: getAddress(target), callData, block }),
+    );
+    return aggregateAnswer(answers);
   };
   return {
     endpoint: fakeRpcNode(({ method, params }) => {
@@ -105,5 +131,6 @@ export function createFakeEvmNode(options: {
       head = next;
     },
     batches: () => [...batches],
+    gasLimits: () => [...gasLimits],
   };
 }
