@@ -37,6 +37,7 @@ const expected: Readonly<Record<string, string>> = {
     "main 已用完今日模型预算（$3.00）。对话将于 2026年10月11日 09:30:00 恢复；自动订单继续运行。",
   "notice.loop": "main 重复执行同一步骤，已停止",
   "notice.watcherLag": `${warning} BNB Smart Chain 的价格读取落后链上 14 个区块，自动订单可能延迟成交。请在 config.json5 的 \`chains.rpc\` 中添加付费 RPC，或检查本机网络。`,
+  "notice.watcherUnpriced": `${warning} BNB Smart Chain 的价格监控无法获取 2 个监控中代币的价格（首个为 0x9F3c…41aB），在价格恢复之前，这些代币的自动订单无法触发。价格来自发射台联合曲线，或可交易至少 $1,000 WBNB 或稳定币的 PancakeSwap 交易池。`,
   "notice.watcherStopped": `${red} BNB Smart Chain 的价格监控因故障停止，会自动重新启动；在此之前，该链上的自动订单不会成交。请运行 \`binference logs\` 查看原因。`,
   "notice.resumed": "引擎停止了 2 h：已检查 3 个订单，成交 1 个，跳过 2 个",
   "notice.update":

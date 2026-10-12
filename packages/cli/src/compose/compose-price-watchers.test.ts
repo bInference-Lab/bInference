@@ -143,6 +143,34 @@ describe("the composed price watchers", () => {
     expect(watchers.confirmedPrices()).toStrictEqual([watched]);
   });
 
+  it("counts a watched token without a confirmed price for a minute, warns and tells the owner once", async () => {
+    // The token is watched from the sync at 1 s and seen unpriced from 2 s.
+    const { clock, fake, watchers, pushes } = rig();
+    await clock.advance(60_000);
+    expect(watchers.health()).toStrictEqual({ signal: "watcher", state: "ok", lagBlocks: 0 });
+    await clock.advance(2_000);
+    expect(watchers.health()).toStrictEqual({
+      signal: "watcher",
+      state: "warn",
+      since: startMs + 62_000,
+      lagBlocks: 0,
+      unpricedTokens: 1,
+    });
+    await clock.advance(60_000);
+    const unpriced = {
+      topic: "notice",
+      kind: "notice/new",
+      data: {
+        key: "notice.watcherUnpriced",
+        values: { chain: "BNB Smart Chain", count: "1", token: "0x0000…0001" },
+      },
+    };
+    expect(pushes).toStrictEqual([unpriced]);
+    fake.state.latest = [watched];
+    await clock.advance(60_000);
+    expect(watchers.health()).toStrictEqual({ signal: "watcher", state: "ok", lagBlocks: 0 });
+  });
+
   it("stops every watcher when the engine shuts down", async () => {
     const { fake, closers } = rig();
     await closers.closeAll(new AbortController().signal);

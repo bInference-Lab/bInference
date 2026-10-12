@@ -9,10 +9,10 @@ import type { EnginePush } from "@binference/engine";
 import {
   createPriceCrossCheck,
   createWatcherLagAlerts,
+  createWatcherUnpricedAlerts,
   type PriceCheck,
   type PriceCrossCheck,
   type PriceSample,
-  type WatcherLagAlerts,
 } from "@binference/engine/market";
 import type { OrderStore } from "@binference/engine/orders";
 import type { ChainWatch, LatestPrice } from "./chain-watch.js";
@@ -22,6 +22,7 @@ import { isConfirmed, isUrgent } from "./price-confirmation.js";
 import { startRepeatingTimer } from "./repeating-timer.js";
 import type { ReadDecimals } from "./token-decimals.js";
 import { createWatchedOrders, type WatchedOrders } from "./watched-orders.js";
+import { checkWatchers, type WatcherChecks, watcherHealthOf } from "./watcher-health.js";
 
 /** The price watchers as the engine serves them: their health, and their timers to start. */
 export interface ComposedPriceWatchers {
@@ -70,8 +71,6 @@ const crossCheckEveryMs = 15_000;
 const gapLimitBps = 1_000;
 // A round of the cross-check gives up past this, each source's wait for its turn included.
 const crossCheckTimeoutMs = 30_000;
-// A lag past this many blocks shows as this many.
-const maxShownLag = 1_000_000n;
 
 /** The decimals of the watched tokens, each read once. */
 interface DecimalsBook {
@@ -143,58 +142,26 @@ function crossCheckOf(
   return made.check;
 }
 
-function checkLag(options: PriceWatchersOptions, alerts: WatcherLagAlerts): void {
-  const atMs = options.clock.now();
-  for (const [chain, watch] of options.watches) {
-    const chainName = watch.chain.definition.name;
-    const downSinceMs = watch.downSinceMs();
-    if (downSinceMs !== undefined) {
-      alerts.check({ chain, chainName, lagBlocks: 0n, atMs, isDown: true });
-    } else if (watch.isRunning()) {
-      alerts.check({ chain, chainName, lagBlocks: watch.watcher.lag().lagBlocks, atMs });
-    } else {
-      alerts.forget(chain);
-    }
-  }
-}
-
-function healthOf(
-  alerts: WatcherLagAlerts,
-  check: PriceCrossCheck | undefined,
-  watches: ReadonlyMap<ChainRef, ChainWatch>,
-): HealthSignal {
-  const lag = alerts.health();
-  const watched = [...watches.values()].flatMap((watch) =>
-    watch.latest().map(({ token }) => token),
-  );
-  const hasGap = check !== undefined && watched.some((token) => check.hasGap(token));
-  if (lag === undefined) {
-    return { signal: "watcher", state: hasGap ? "warn" : "ok" };
-  }
-  const state = lag.state === "ok" && hasGap ? "warn" : lag.state;
-  const lagBlocks = Number(lag.lagBlocks > maxShownLag ? maxShownLag : lag.lagBlocks);
-  return {
-    signal: "watcher",
-    state,
-    ...(state === "ok" || lag.since === undefined ? {} : { since: lag.since }),
-    lagBlocks,
-  };
-}
-
 /**
- * The price watchers' part of the engine (decisions 0192 and 0193). It watches the token of each
+ * The price watchers' part of the engine (decisions 0192 to 0194). It watches the token of each
  * active auto order with a price trigger, synced with the order store every 5 seconds; reads each
- * running watcher's lag every second into the `watcher` health signal and `notice.watcherLag`; and
+ * running watcher's lag and its tokens without a confirmed price every second into the `watcher`
+ * health signal, `notice.watcherLag` and `notice.watcherUnpriced`; and
  * cross-checks the watchers' USD prices with DEX Screener and GeckoTerminal on their own schedule,
  * logging `watcher.price_gap` for a price 10% or more away from a source's.
  */
 export function composePriceWatchers(options: PriceWatchersOptions): ComposedPriceWatchers {
-  const alerts = createWatcherLagAlerts({ publish: options.publish });
   const decimals = decimalsBookOf(options.decimals);
   const orders: WatchedOrders = createWatchedOrders(options);
   const parts: { check?: PriceCrossCheck } = {};
+  const watching: WatcherChecks = {
+    lag: createWatcherLagAlerts({ publish: options.publish }),
+    unpriced: createWatcherUnpricedAlerts({ publish: options.publish }),
+    unpricedSince: new Map(),
+    checks: () => parts.check?.checks() ?? [],
+  };
   return {
-    health: () => healthOf(alerts, parts.check, options.watches),
+    health: () => watcherHealthOf(watching, parts.check, options.watches),
     confirmedPrices: () => {
       const checks = parts.check?.checks() ?? [];
       const nowMs = options.clock.now();
@@ -222,7 +189,7 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
         closers,
         logger,
         run: async ({ signal }) => {
-          checkLag(options, alerts);
+          checkWatchers(options.watches, watching, clock.now());
           if (clock.now() >= syncs.nextAtMs) {
             syncs.nextAtMs = clock.now() + syncEveryMs;
             await orders.sync({ signal });

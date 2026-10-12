@@ -132,6 +132,10 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
     values: { chain: "BNB Smart Chain", blocks: "14" },
   },
   "notice.watcherStopped": { key: "notice.watcherStopped", values: { chain: "BNB Smart Chain" } },
+  "notice.watcherUnpriced": {
+    key: "notice.watcherUnpriced",
+    values: { chain: "BNB Smart Chain", count: "2", token: "0x9F3c…41aB" },
+  },
   "notice.resumed": {
     key: "notice.resumed",
     values: { duration: "2 h", checked: "3", filled: "1", skipped: "2" },

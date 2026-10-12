@@ -23,6 +23,8 @@ interface HealthSignal {
   readonly since?: number;
   /** For the `watcher` signal while it reads: how many blocks its price reads trail the chain. */
   readonly lagBlocks?: number;
+  /** For the `watcher` signal: how many watched tokens have had no price for a minute. */
+  readonly unpricedTokens?: number;
 }
 
 /**
@@ -202,6 +204,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
           state: z.enum(["ok", "warn", "fail"]),
           since: epochMsSchema.exactOptional(),
           lagBlocks: z.int().nonnegative().exactOptional(),
+          unpricedTokens: z.int().nonnegative().exactOptional(),
         }),
       ),
     }),

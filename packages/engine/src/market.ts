@@ -22,3 +22,12 @@ export type {
   WatcherLagReading,
   WatcherState,
 } from "./market/watcher-lag.js";
+export {
+  createWatcherUnpricedAlerts,
+  watcherUnpricedNoticeKey,
+} from "./market/watcher-unpriced.js";
+export type {
+  UnpricedCount,
+  UnpricedReading,
+  WatcherUnpricedAlerts,
+} from "./market/watcher-unpriced.js";

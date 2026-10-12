@@ -132,6 +132,7 @@
   "signal.runtime": "Agent 运行时",
   "signal.watcher": "价格监控",
   "status.signalLag": "{name}：落后链上 {blocks, plural, other {# 个区块}}",
+  "status.signalUnpriced": "{name}：{count, plural, other {# 个}}监控中代币没有价格，其自动订单无法触发",
   "status.backupKeyOld": "备份仍然直接加密到所有者密钥。在任何要求输入所有者密钥代码的命令中输入一次，之后的备份就会加密到它们自己的密钥。",
   "health.ready": "binference 正在运行并已就绪。",
   "health.starting": "binference 仍在启动。请几秒后再试。",
