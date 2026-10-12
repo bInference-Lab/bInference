@@ -5,6 +5,7 @@ import { z } from "zod";
 import { assetInfosOf } from "../money-path/asset-infos.js";
 import { type EngineCall, type EngineHandler, proposerOf } from "../operations/engine-call.js";
 import { epochMsSchema } from "../records/record-fields.js";
+import { cancelOrder } from "./cancel-order.js";
 import { createOrder, type OrderParts } from "./create-order.js";
 import type { OrderQuery, OrderRecord } from "./order-record.js";
 import { orderViewOf } from "./order-view-of.js";
@@ -14,6 +15,7 @@ export interface OrderHandlers {
   readonly "order/create": EngineHandler<"order/create">;
   readonly "order/get": EngineHandler<"order/get">;
   readonly "order/list": EngineHandler<"order/list">;
+  readonly "order/cancel": EngineHandler<"order/cancel">;
 }
 
 const defaultPageSize = 50;
@@ -80,7 +82,8 @@ async function listed(parts: OrderParts, call: EngineCall<"order/list">) {
  * Creates the auto order handlers: `order/create` stores an order awaiting its one card and
  * answers it with that card (decision 0189); `order/get` answers one order, with its open card
  * while it waits; `order/list` pages through the orders, oldest first, in one state or all, of one
- * agent or all, with the info of each token they trade.
+ * agent or all, with the info of each token they trade; `order/cancel` ends an order at once, with
+ * no card (`cancelOrder`).
  */
 export function createOrderHandlers(parts: OrderParts): OrderHandlers {
   return {
@@ -101,5 +104,13 @@ export function createOrderHandlers(parts: OrderParts): OrderHandlers {
       return order === undefined ? err("order.not_found") : ok(await viewOf(parts, order, signal));
     },
     "order/list": async (call) => listed(parts, call),
+    async "order/cancel"({ args, caller, signal }) {
+      const canceller = proposerOf(caller);
+      if (canceller === undefined) {
+        return err("auth.scope");
+      }
+      const cancelled = await cancelOrder(parts, { order: args.order, canceller, signal });
+      return cancelled.ok ? ok(orderViewOf(cancelled.value)) : cancelled;
+    },
   };
 }
