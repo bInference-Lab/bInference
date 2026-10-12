@@ -1,4 +1,10 @@
-import type { ModelEvent, ModelFailure, ModelStop, ModelUsage } from "./model-event.js";
+import type {
+  ModelEvent,
+  ModelFailure,
+  ModelStop,
+  ModelUsage,
+  ResponseReplay,
+} from "./model-event.js";
 import type { ToolCall } from "./model-message.js";
 import { type SettleOptions, settleBy } from "./settle-by.js";
 
@@ -10,6 +16,7 @@ export interface ModelAnswer {
   readonly toolCalls: readonly ToolCall[];
   readonly stop: ModelStop;
   readonly usage: ModelUsage;
+  readonly replay?: ResponseReplay;
 }
 
 /** A model call that failed, with what the model wrote before it did. */
@@ -110,6 +117,7 @@ function finish(draft: ResponseDraft, event: Extract<ModelEvent, { type: "done" 
     toolCalls: toolCallsOf(draft),
     stop: event.stop,
     usage: event.usage,
+    ...(event.replay === undefined ? {} : { replay: event.replay }),
   };
 }
 

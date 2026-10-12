@@ -1,5 +1,6 @@
 import { type Id, type JsonValue, jsonValueSchema } from "@binference/core";
 import type { TranscriptEvent, TranscriptStore } from "@binference/store";
+import type { ResponseReplay } from "../loop/model-event.js";
 import type { ModelMessage, ToolCall } from "../loop/model-message.js";
 import {
   agentTextContentSchema,
@@ -18,6 +19,7 @@ type OwnerEntry = Extract<ModelMessage, { readonly role: "owner" }>;
 interface OpenResponse {
   readonly text: string;
   readonly reasoning: string;
+  readonly replay?: ResponseReplay;
   readonly calls: ToolCall[];
   readonly results: Map<string, ToolEntry>;
   readonly held: OwnerEntry[];
@@ -51,12 +53,17 @@ function closed(response: OpenResponse): readonly ModelMessage[] {
     text: response.text,
     reasoning: response.reasoning,
     toolCalls: [...response.calls],
+    ...(response.replay === undefined ? {} : { replay: response.replay }),
   };
   return [agent, ...results, ...response.held];
 }
 
-function opened(text: string, reasoning: string): OpenResponse {
-  return { text, reasoning, calls: [], results: new Map(), held: [] };
+function opened(said: {
+  readonly text: string;
+  readonly reasoning: string;
+  readonly replay?: ResponseReplay;
+}): OpenResponse {
+  return { ...said, calls: [], results: new Map(), held: [] };
 }
 
 /** Builds a conversation from transcript events, one at a time, repairing it as it goes. */
@@ -77,7 +84,7 @@ function createBuilder(): Builder {
   };
   const handlers = {
     call: (content: JsonValue) => {
-      state.open ??= opened("", "");
+      state.open ??= opened({ text: "", reasoning: "" });
       addCall(state.open, content);
     },
     result: (content: JsonValue) => {
@@ -89,7 +96,7 @@ function createBuilder(): Builder {
       const parsed = agentTextContentSchema.safeParse(content);
       if (parsed.success) {
         close();
-        state.open = opened(parsed.data.text, parsed.data.reasoning);
+        state.open = opened(parsed.data);
       }
     },
     owner: (content: JsonValue) => {

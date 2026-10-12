@@ -1,3 +1,5 @@
+import type { JsonValue } from "@binference/core";
+
 /**
  * Why a model response ended: `end` when the model finished its answer, `tool_calls` when it
  * waits for the results of its calls, `length` when it reached its output limit.
@@ -13,6 +15,17 @@ export type ModelFailure =
   | "request"
   | "refused"
   | "aborted";
+
+/**
+ * A response as its provider wants it back in the calls that follow, which the loop keeps with
+ * the response and never reads: the Messages transport's content blocks when they hold the model's
+ * thinking, whose signatures must return unchanged. A transport of another format ignores it.
+ */
+export interface ResponseReplay {
+  /** The wire format that wrote it. */
+  readonly format: "messages";
+  readonly content: JsonValue;
+}
 
 /** The tokens one model call used, and its cost when the provider reports one. */
 export interface ModelUsage {
@@ -60,6 +73,7 @@ interface DoneEvent {
   readonly type: "done";
   readonly stop: ModelStop;
   readonly usage: ModelUsage;
+  readonly replay?: ResponseReplay;
 }
 
 /** The call failed; the stream ends here. A transport reports a failure this way, never by throwing. */

@@ -1,4 +1,5 @@
 import type { JsonValue } from "@binference/core";
+import type { ResponseReplay } from "./model-event.js";
 
 /** A tool call as the model wrote it: its arguments are JSON text, parsed only by the tool box. */
 export interface ToolCall {
@@ -29,6 +30,8 @@ interface AgentEntry {
   readonly text: string;
   readonly reasoning: string;
   readonly toolCalls: readonly ToolCall[];
+  /** What its provider wants back in place of the text, reasoning and calls, when it said so. */
+  readonly replay?: ResponseReplay;
 }
 
 /** The result of one tool call, which every call in the conversation has exactly once. */

@@ -45,16 +45,15 @@ async function keepResponse(run: TurnRun, response: ModelAnswer | ModelFault): P
   if (!response.ok && response.text === "" && response.reasoning === "") {
     return;
   }
-  await run.parts.journal.response(
-    { text: response.text, reasoning: response.reasoning },
-    run.writes,
-  );
+  const replay = response.ok ? response.replay : undefined;
+  const kept = { text: response.text, reasoning: response.reasoning };
+  await run.parts.journal.response(replay === undefined ? kept : { ...kept, replay }, run.writes);
   const toolCalls = response.ok ? sentBack(response) : [];
   run.messages.push({
     role: "agent",
-    text: response.text,
-    reasoning: response.reasoning,
+    ...kept,
     toolCalls,
+    ...(replay === undefined ? {} : { replay }),
   });
   run.tally.keepText(response.text);
 }

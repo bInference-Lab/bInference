@@ -3,7 +3,11 @@ import type { EventDraft } from "@binference/store";
 import type { OwnerMessage } from "../loop/model-message.js";
 import type { TurnJournal } from "../loop/ports.js";
 import { type AgentStores, written } from "./agent-stores.js";
-import type { OwnerTextContent, ToolCallContent } from "./event-content.schema.js";
+import type {
+  AgentTextContent,
+  OwnerTextContent,
+  ToolCallContent,
+} from "./event-content.schema.js";
 
 /** Where a journal writes: one turn of one session. */
 export interface JournalPlace {
@@ -72,8 +76,14 @@ function eventWrites(
   const agentEvent = (kind: "text" | "tool_call", content: JsonValue): EventDraft =>
     eventOf(parts, { role: "agent", kind, content, outside: false });
   return {
-    response: async ({ text, reasoning }, signal) =>
-      append(parts, [agentEvent("text", { text, reasoning })], signal),
+    response: async ({ text, reasoning, replay }, signal) => {
+      const content: AgentTextContent = {
+        text,
+        reasoning,
+        ...(replay === undefined ? {} : { replay }),
+      };
+      await append(parts, [agentEvent("text", { ...content })], signal);
+    },
     toolCall: async (call, signal) =>
       append(parts, [agentEvent("tool_call", callContent(call))], signal),
     async proposal({ call, idempotencyKey }, signal) {

@@ -6,6 +6,7 @@ import type { JournalEntry, JournalView } from "../contracts/turn-journal-contra
 import { turnJournalContract } from "../contracts/turn-journal-contract.js";
 import { createMemoryAgentStores, nthTestId } from "../testing/memory-agent-stores.js";
 import type { AgentStores } from "./agent-stores.js";
+import { conversationOf } from "./conversation.js";
 import {
   agentTextContentSchema,
   ownerTextContentSchema,
@@ -76,6 +77,21 @@ describe("createSessionJournal", () => {
     }),
   )("keeps the journal contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("keeps a response's replay as its provider gave it, and loads it back", async () => {
+    const { stores } = await createMemoryAgentStores();
+    await openTurn(stores);
+    const journal = createSessionJournal(stores, { session, turn }, createManualClock(5));
+    const replay = {
+      format: "messages",
+      content: [{ type: "thinking", thinking: "", signature: "c2ln" }],
+    } as const;
+    await journal.response({ text: "", reasoning: "", replay }, live().signal);
+    const events = await stores.transcript.events({ sessionId: session, limit: 10 }, live());
+    expect(conversationOf(events)).toStrictEqual([
+      { role: "agent", text: "", reasoning: "", toolCalls: [], replay },
+    ]);
   });
 
   it("throws when a later start raised the fence, and writes nothing", async () => {

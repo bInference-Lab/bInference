@@ -1,5 +1,5 @@
 import type { TurnOutcome } from "@binference/store";
-import type { ModelFailure } from "./model-event.js";
+import type { ModelFailure, ResponseReplay } from "./model-event.js";
 import type { ModelMessage, ToolCall, ToolDeclaration } from "./model-message.js";
 
 // The values the turn loop's ports take and give (see ports.ts).
@@ -82,6 +82,8 @@ export interface ProposalRecord {
 export interface ResponseRecord {
   readonly text: string;
   readonly reasoning: string;
+  /** What its provider wants back in the calls that follow, kept as it came. */
+  readonly replay?: ResponseReplay;
 }
 
 /** How a turn ended, as the transcript keeps it. */

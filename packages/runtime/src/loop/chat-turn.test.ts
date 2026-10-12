@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { RecordedStep, TurnRecorder } from "../testing/turn-recorder.js";
-import type { ModelEvent } from "./model-event.js";
+import type { ModelEvent, ResponseReplay } from "./model-event.js";
 import { createTestTurn, ownerMessage, type TestTool } from "./test-turns.js";
 
 const usage = { inputTokens: 1, outputTokens: 1, cachedTokens: 0 };
@@ -47,6 +47,25 @@ describe("createChatTurn", () => {
       ],
       tools: [{ name: "portfolio", description: "portfolio", parameters: {} }],
     });
+  });
+
+  it("sends a response's replay back with it in the next model call", async () => {
+    const kept: ResponseReplay = {
+      format: "messages",
+      content: [{ type: "redacted_thinking", data: "ZW5j" }],
+    };
+    const { turn, transport } = createTestTurn({
+      replies: [
+        [
+          ...callsReply([{ name: "portfolio" }]).filter((event) => event.type !== "done"),
+          { type: "done", stop: "tool_calls", usage, replay: kept },
+        ],
+        textReply("Done."),
+      ],
+      tools: [portfolio],
+    });
+    await turn.run();
+    expect(transport.requests[1]?.messages[1]).toMatchObject({ role: "agent", replay: kept });
   });
 
   it("runs a response's calls, then calls the model again with each result after its call", async () => {

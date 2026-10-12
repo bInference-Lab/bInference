@@ -1,3 +1,4 @@
+import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { z } from "zod";
 
 // What each kind of transcript event holds in its `content`, as the runtime writes and reads it.
@@ -15,6 +16,8 @@ export interface OwnerTextContent {
 export interface AgentTextContent {
   readonly text: string;
   readonly reasoning: string;
+  /** What its provider wants back in the calls that follow (`ResponseReplay`). */
+  readonly replay?: { readonly format: "messages"; readonly content: JsonValue };
 }
 
 /** A tool call as the model wrote it; a proposal also keeps the key it is sent with. */
@@ -45,6 +48,9 @@ export const ownerTextContentSchema: z.ZodType<OwnerTextContent> = z.object({
 export const agentTextContentSchema: z.ZodType<AgentTextContent> = z.object({
   text: z.string(),
   reasoning: z.string(),
+  replay: z
+    .strictObject({ format: z.literal("messages"), content: jsonValueSchema })
+    .exactOptional(),
 });
 
 /** Parses a tool call. */
