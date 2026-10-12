@@ -48,10 +48,33 @@ function stateMissing(method: string, faults: readonly RpcFault[]): BinferenceEr
   });
 }
 
-// Every endpoint answered that it pruned the state: asking again later cannot help.
+function blockAhead(method: string, faults: readonly RpcFault[]): BinferenceError {
+  return new BinferenceError({
+    code: "chain.block_ahead",
+    message: `No RPC endpoint has imported the block ${method} reads yet.`,
+    retryable: true,
+    details: { method, endpoints: faults.length },
+  });
+}
+
+const everyFault = (faults: readonly RpcFault[], kind: RpcFault): boolean =>
+  faults.length > 0 && faults.every((fault) => fault === kind);
+
+// Every endpoint answered that it pruned the state: asking again later cannot help. Every endpoint
+// answered that it has not imported the block yet: asking again in a moment will.
 function exhausted(method: string, faults: readonly RpcFault[]): BinferenceError {
-  const isStateGone = faults.length > 0 && faults.every((fault) => fault === "missing_state");
-  return isStateGone ? stateMissing(method, faults) : rpcDown(method, faults);
+  if (everyFault(faults, "missing_state")) {
+    return stateMissing(method, faults);
+  }
+  return everyFault(faults, "not_yet") ? blockAhead(method, faults) : rpcDown(method, faults);
+}
+
+// Healthy endpoints first, the preferred one before them while it is healthy.
+function queueFor(book: EndpointBook, prefer: string | undefined): readonly RpcEndpoint[] {
+  const inTurn = book.inTurn();
+  const preferred = inTurn.find((endpoint) => endpoint.name === prefer);
+  const isHealthy = preferred !== undefined && !book.isResting(preferred);
+  return isHealthy ? [preferred, ...inTurn.filter((endpoint) => endpoint !== preferred)] : inTurn;
 }
 
 function validate(endpoints: readonly RpcEndpoint[]): void {
@@ -77,8 +100,10 @@ async function askInTurn<T>(run: FailoverRun<T>, parts: FailoverParts): Promise<
     parts.book.settle(endpoint, undefined);
     return outcome.reply;
   }
-  // A node that pruned an old block's state still answers everything newer.
-  parts.book.settle(endpoint, outcome.fault === "missing_state" ? undefined : outcome.fault);
+  // A node that pruned an old block's state still answers everything newer, and one that has not
+  // imported the newest block yet is no less healthy for it.
+  const isHealthy = outcome.fault === "missing_state" || outcome.fault === "not_yet";
+  parts.book.settle(endpoint, isHealthy ? undefined : outcome.fault);
   return askInTurn({ ...run, queue: rest, faults: [...run.faults, outcome.fault] }, parts);
 }
 
@@ -87,8 +112,10 @@ async function askInTurn<T>(run: FailoverRun<T>, parts: FailoverParts): Promise<
  * a timeout, a refused connection, an HTTP error, a malformed reply or a node failure moves the
  * call to the next endpoint and rests the failed one for `restMs`. A JSON-RPC error about the call
  * itself, such as a revert, is a reply. When every endpoint answers that it pruned the state the
- * call reads, the call fails with `chain.state_missing`, which no retry mends; any other failure of
- * every endpoint is a retryable `chain.rpc_down`. Write and signing methods are refused, since a
+ * call reads, the call fails with `chain.state_missing`, which no retry mends; when every endpoint
+ * answers a call at the head that it has not imported the block yet, with a retryable
+ * `chain.block_ahead`, and no endpoint rests for it; any other failure of every endpoint is a
+ * retryable `chain.rpc_down`. A call may name an endpoint to ask first while it is healthy. Write and signing methods are refused, since a
  * retried send must never reach a public node.
  */
 export function createRpcFailover(options: RpcFailoverOptions): RpcFailover {
@@ -107,7 +134,10 @@ export function createRpcFailover(options: RpcFailoverOptions): RpcFailover {
       call.signal.throwIfAborted();
       const id = nextId;
       nextId += 1;
-      return askInTurn({ call, id, queue: parts.book.inTurn(), faults: [] }, parts);
+      return askInTurn(
+        { call, id, queue: queueFor(parts.book, call.preferEndpoint), faults: [] },
+        parts,
+      );
     },
     health: () => parts.book.health(),
   };

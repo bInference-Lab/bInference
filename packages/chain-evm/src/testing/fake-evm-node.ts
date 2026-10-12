@@ -55,8 +55,9 @@ function callOf(
 
 /**
  * Creates a fake EVM node for tests: it answers `eth_blockNumber` with its head, and `eth_call`
- * of Multicall3's `aggregate3` at `multicall` by answering each call with `answer`. Any other
- * request is JSON-RPC's method-not-found.
+ * of Multicall3's `aggregate3` at `multicall` by answering each call with `answer`; a block above
+ * its head is "header not found", as geth answers. Any other request is JSON-RPC's
+ * method-not-found.
  */
 export function createFakeEvmNode(options: {
   readonly multicall: Address;
@@ -72,6 +73,10 @@ export function createFakeEvmNode(options: {
       return { error: { code: -32_000, message: "execution reverted" } };
     }
     const block = tag === undefined || tag === "latest" ? "latest" : BigInt(tag);
+    // A node answers a block it has not imported as geth does.
+    if (block !== "latest" && block > head) {
+      return { error: { code: -32_000, message: "header not found" } };
+    }
     const decoded = decodeFunctionData({ abi: multicall3Abi, data: call.data });
     const reads = decoded.functionName === "aggregate3" ? decoded.args[0] : [];
     batches.push({ block, calls: reads.length });

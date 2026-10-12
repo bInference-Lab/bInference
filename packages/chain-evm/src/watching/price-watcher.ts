@@ -161,11 +161,17 @@ function priceAll(run: WatcherRun, batch: Batch, answers: readonly ReadAnswer[])
 
 // One batch for every planned token and the feeds of their quote assets, at one block. A batch no
 // endpoint answers is read again a block time later.
+/** How a block's read ended: read, failed, or ahead of every node, to be read again in a moment. */
+type BlockOutcome = "read" | "failed" | "not_yet";
+
+// A node imports a new block within about a third of a block time of the one that announced it.
+const notYetRetryMs = 150;
+
 async function readBlock(
   run: WatcherRun,
   planned: readonly PlannedToken[],
   block: bigint,
-): Promise<boolean> {
+): Promise<BlockOutcome> {
   const { rpc, multicall } = run.options;
   const feeds = quoteFeedReads(
     run.feeds,
@@ -175,23 +181,29 @@ async function readBlock(
   try {
     const timeout =
       run.options.callTimeoutMs === undefined ? {} : { timeoutMs: run.options.callTimeoutMs };
+    const preferEndpoint = run.progress.headEndpoint();
     const answers = await readAggregate(rpc, {
       multicall,
       calls,
       block,
       signal: run.signal,
+      atHead: true,
       ...timeout,
+      ...(preferEndpoint === undefined ? {} : { preferEndpoint }),
     });
     run.progress.markRead(block);
     priceAll(run, { planned, feeds, block }, answers);
-    return true;
+    return "read";
   } catch (error) {
     run.signal.throwIfAborted();
     if (!(error instanceof BinferenceError)) {
       throw error;
     }
+    if (error.code === "chain.block_ahead") {
+      return "not_yet";
+    }
     run.progress.markFailed(error.code);
-    return false;
+    return "failed";
   }
 }
 
@@ -210,8 +222,10 @@ async function readStep(run: WatcherRun): Promise<undefined> {
     return undefined;
   }
   const block = progress.nextBlock(head, maxCatchUpBlocks);
-  if (!(await readBlock(run, planned, block))) {
-    await options.clock.sleep(options.blockTimeMs, run.signal);
+  const outcome = await readBlock(run, planned, block);
+  if (outcome !== "read") {
+    const waitMs = outcome === "not_yet" ? notYetRetryMs : options.blockTimeMs;
+    await options.clock.sleep(waitMs, run.signal);
   }
   return undefined;
 }
@@ -271,8 +285,8 @@ export function createPriceWatcher(options: PriceWatcherOptions): PriceWatcher {
       const wake = createWakeUp(options.clock);
       const feeds = new Map(options.feeds.map((feed) => [feed.asset, feed]));
       const run: WatcherRun = { options, feeds, list, progress, emit, wake, signal };
-      const onHead = (number: bigint): void => {
-        progress.seeHead(number);
+      const onHead = (number: bigint, endpoint?: string): void => {
+        progress.seeHead(number, endpoint);
         wake.wake();
       };
       await Promise.all([

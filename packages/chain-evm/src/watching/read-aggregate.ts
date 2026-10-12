@@ -27,6 +27,10 @@ export interface AggregateRead {
   readonly signal: AbortSignal;
   /** How long one endpoint may take; the failover's own timeout when absent. */
   readonly timeoutMs?: number;
+  /** The block is the newest: a node that has not imported it yet is not at fault. */
+  readonly atHead?: boolean;
+  /** The endpoint to ask first, such as the one whose poll announced the block. */
+  readonly preferEndpoint?: string;
 }
 
 // The answer's results, or none for an answer outside `aggregate3`'s shape.
@@ -63,6 +67,8 @@ export async function readAggregate(
     result: hexSchema,
     signal: read.signal,
     ...(read.timeoutMs === undefined ? {} : { timeoutMs: read.timeoutMs }),
+    ...(read.atHead === true ? { atHead: true } : {}),
+    ...(read.preferEndpoint === undefined ? {} : { preferEndpoint: read.preferEndpoint }),
   });
   const results = resultsOf(answer);
   if (results?.length !== read.calls.length) {

@@ -26,6 +26,7 @@ interface Running {
   readonly node: FakeEvmNode;
   readonly source: BlockSource;
   readonly heads: bigint[];
+  readonly endpoints: (string | undefined)[];
   readonly sockets: FakeHeadSockets;
 }
 
@@ -120,8 +121,13 @@ function start(
   const heads: bigint[] = [];
   const controller = new AbortController();
   controllers.push(controller);
-  source.run((number) => heads.push(number), controller.signal).catch(() => undefined);
-  return { clock, node, source, heads, sockets };
+  const endpoints: (string | undefined)[] = [];
+  const onHead = (number: bigint, endpoint?: string): void => {
+    heads.push(number);
+    endpoints.push(endpoint);
+  };
+  source.run(onHead, controller.signal).catch(() => undefined);
+  return { clock, node, source, heads, endpoints, sockets };
 }
 
 describe("block source", () => {
@@ -137,6 +143,20 @@ describe("block source", () => {
     await clock.advance(blockTimeMs);
     expect(heads).toStrictEqual([100n, 102n]);
     expect(source.state()).toStrictEqual({ mode: "polling", head: 102n, headAtMs: 1_900 });
+  });
+
+  it("names the endpoint whose poll saw a head, and none for a socket's", async () => {
+    const polled = start({ first: "refuse" });
+    await polled.clock.advance(0);
+    expect(polled.endpoints).toStrictEqual(["second"]);
+    const followed = start({ subscribe: true });
+    await followed.clock.advance(0);
+    const [socket] = followed.sockets.opened();
+    socket?.accept();
+    socket?.receive(subscribed);
+    socket?.receive(headMessage(300n));
+    await followed.clock.advance(0);
+    expect(followed.endpoints).toStrictEqual([undefined]);
   });
 
   it("fails over from a dead endpoint within the failover's timeout", async () => {

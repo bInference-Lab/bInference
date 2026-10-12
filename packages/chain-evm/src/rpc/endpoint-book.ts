@@ -9,6 +9,8 @@ export interface EndpointBook {
   settle(endpoint: RpcEndpoint, fault: RpcFault | undefined): void;
   /** Each endpoint's health, in the configured order. */
   health(): readonly EndpointHealth[];
+  /** Whether the endpoint rests after a failure now. */
+  isResting(endpoint: RpcEndpoint): boolean;
 }
 
 /** What an {@link EndpointBook} keeps. */
@@ -47,5 +49,6 @@ export function createEndpointBook(options: EndpointBookOptions): EndpointBook {
       );
     },
     health: () => options.endpoints.map(healthOf),
+    isResting: (endpoint) => restEnd(endpoint) > options.clock.now(),
   };
 }

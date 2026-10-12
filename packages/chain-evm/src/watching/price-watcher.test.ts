@@ -5,13 +5,14 @@ import { type Address, encodeAbiParameters, getAddress, type Hex, toHex } from "
 import { afterEach, describe, expect, it } from "vitest";
 import type { FeedAsset } from "../prices/price-from-round.js";
 import { createRpcFailover } from "../rpc/create-rpc-failover.js";
+import type { RpcFailover } from "../rpc/rpc-call.js";
 import { createFakeEvmNode, type FakeEvmNode, type FakeRead } from "../testing/fake-evm-node.js";
 import {
   createFakeRpcHttp,
   type FakeEndpoint,
   readFakeRpcRequest,
 } from "../testing/fake-rpc-http.js";
-import { createBlockSource } from "./block-source.js";
+import { type BlockSource, type BlockSourceState, createBlockSource } from "./block-source.js";
 import { poolPrice, reservesCall } from "./pool-state.js";
 import { createPriceWatcher, type PriceWatcher, type WatchedPrice } from "./price-watcher.js";
 import type { PlanFailure, PricePlan } from "./watch-list.js";
@@ -43,6 +44,8 @@ interface Rig {
   readonly watcher: PriceWatcher;
   readonly prices: WatchedPrice[];
   readonly planned: AssetRef[];
+  readonly rpc: RpcFailover;
+  readonly socket: ReturnType<typeof manualHeads>;
   /** Takes the node down, its batches only, or makes its pools answer nothing. */
   readonly pools: { isDown: boolean; isCallDown: boolean; isUnpriced: boolean };
 }
@@ -121,7 +124,28 @@ function planOf(token: AssetRef): Result<PricePlan, PlanFailure> {
   return token === tokenOf(999) ? err("no_price_read") : ok(edges.get(token) ?? base);
 }
 
-function rig(): Rig {
+const ignoreHead = (_number: bigint): void => undefined;
+
+/** A block source a test drives, as a socket ahead of the HTTP nodes would. */
+function manualHeads(clock: ManualClock): BlockSource & { announce(number: bigint): void } {
+  let onHead: (number: bigint) => void = ignoreHead;
+  let state: BlockSourceState = { mode: "subscription" };
+  return {
+    async run(listener, signal) {
+      onHead = listener;
+      await new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason));
+      });
+    },
+    state: () => state,
+    announce(number) {
+      state = { mode: "subscription", head: number, headAtMs: clock.now() };
+      onHead(number);
+    },
+  };
+}
+
+function rig(options: { readonly heads?: "socket" } = {}): Rig {
   const clock = createManualClock(startMs);
   const pools = { isDown: false, isCallDown: false, isUnpriced: false };
   const answer = (read: FakeRead): Hex | undefined => {
@@ -151,7 +175,9 @@ function rig(): Rig {
     planned.push(token);
     return await Promise.resolve(planOf(token));
   };
-  const blocks = createBlockSource({ rpc, clock, blockTimeMs });
+  const socket = manualHeads(clock);
+  const blocks =
+    options.heads === "socket" ? socket : createBlockSource({ rpc, clock, blockTimeMs });
   const watcher = createPriceWatcher({
     rpc,
     blocks,
@@ -166,7 +192,7 @@ function rig(): Rig {
   const controller = new AbortController();
   controllers.push(controller);
   watcher.run(controller.signal).catch(() => undefined);
-  return { clock, node, watcher, prices, planned, pools };
+  return { clock, node, watcher, prices, planned, pools, rpc, socket };
 }
 
 // Moves the chain one block and lets the watcher read it.
@@ -346,6 +372,24 @@ describe("price watcher", () => {
       { token: tokenOf(996), state: "unpriced" },
       { token: tokenOf(995), state: "unpriced" },
     ]);
+  });
+
+  it("reads a block no node has imported yet again in a moment, and rests no endpoint", async () => {
+    const subject = rig({ heads: "socket" });
+    subject.watcher.watch(tokenOf(1));
+    subject.socket.announce(100n);
+    await subject.clock.advance(0);
+    subject.socket.announce(101n);
+    await subject.clock.advance(0);
+    expect(subject.node.batches()).toStrictEqual([]);
+    subject.node.setHead(101n);
+    await subject.clock.advance(150);
+    expect(subject.node.batches()).toStrictEqual([{ block: 101n, calls: 2 }]);
+    expect(subject.prices.map(({ block, atMs }) => [block, atMs])).toStrictEqual([
+      [101n, startMs + 150],
+    ]);
+    expect(subject.rpc.health()).toStrictEqual([{ name: "node" }]);
+    expect(subject.watcher.lag().readFault).toBeUndefined();
   });
 
   it("reads nothing while it watches no token", async () => {

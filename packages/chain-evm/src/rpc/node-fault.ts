@@ -32,3 +32,10 @@ export function isNodeFault(error: JsonRpcError): boolean {
   }
   return nodeFaultCodes.has(error.code) || nodeFaultMessage.test(error.message);
 }
+
+const notYetMessage = /header not found|unknown block/i;
+
+/** Whether a JSON-RPC error says the node has not imported the block a call asked for. */
+export function isBlockUnknown(error: JsonRpcError): boolean {
+  return notYetMessage.test(error.message);
+}

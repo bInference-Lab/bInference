@@ -8,7 +8,9 @@ export interface ReadProgress {
   skipped(): bigint;
   /** The code of the last batch read that failed, until one succeeds. */
   fault(): string | undefined;
-  seeHead(head: bigint): void;
+  /** The failover endpoint whose poll announced the head, when a poll did. */
+  headEndpoint(): string | undefined;
+  seeHead(head: bigint, endpoint?: string): void;
   /**
    * The block to read next: the one after the last read, or, more than `maxCatchUp` blocks
    * behind the head, the oldest of the newest `maxCatchUp`, counting the ones between as skipped.
@@ -26,13 +28,16 @@ export function createReadProgress(): ReadProgress {
   let read: bigint | undefined;
   let skipped = 0n;
   let fault: string | undefined;
+  let announcedBy: string | undefined;
   return {
     head: () => head,
     read: () => read,
     skipped: () => skipped,
     fault: () => fault,
-    seeHead: (seen) => {
+    headEndpoint: () => announcedBy,
+    seeHead: (seen, endpoint) => {
       head = seen;
+      announcedBy = endpoint;
     },
     nextBlock(newest, maxCatchUp) {
       const next = read === undefined ? newest : read + 1n;

@@ -32,7 +32,7 @@ describe("aggregate read", () => {
   it("answers each call's data in order, and undefined for one that reverted", async () => {
     const node = createFakeEvmNode({
       multicall,
-      head: 1n,
+      head: 7n,
       answer: firstOnly,
     });
     const answers = await readAggregate(rpcOver(node.endpoint), {

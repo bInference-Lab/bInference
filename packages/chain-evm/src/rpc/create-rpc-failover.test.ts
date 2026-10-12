@@ -279,4 +279,39 @@ describe("rpc failover", () => {
       }),
     ).toThrow(expect.objectContaining({ code: "chain.bad_rpc_endpoints" }));
   });
+
+  it("does not rest a node that has not imported the newest block yet", async () => {
+    const notYet = fakeRpcNode(() => ({ error: { code: -32_000, message: "header not found" } }));
+    const { rpc, http } = setup({ [primary]: notYet, [secondary]: notYet });
+    const read = rpc.request({
+      method: "eth_call",
+      params: [],
+      result: quantitySchema,
+      signal: new AbortController().signal,
+      atHead: true,
+    });
+    await expect(read).rejects.toMatchObject({ code: "chain.block_ahead", retryable: true });
+    expect(rpc.health()).toStrictEqual([{ name: "primary" }, { name: "secondary" }]);
+    expect(http.requests()).toHaveLength(2);
+  });
+
+  it("still rests a node that does not know a block below the head", async () => {
+    const notYet = fakeRpcNode(() => ({ error: { code: -32_000, message: "header not found" } }));
+    const { chainId, rpc } = setup({ [primary]: notYet, [secondary]: chainIdNode });
+    await expect(chainId()).resolves.toStrictEqual(fromSecondary);
+    expect(rpc.health()[0]).toMatchObject({ name: "primary", lastFault: "node_error" });
+  });
+
+  it("asks first the endpoint a call prefers, while it is healthy", async () => {
+    const { rpc, asked } = setup({ [primary]: chainIdNode, [secondary]: chainIdNode });
+    const reply = await rpc.request({
+      method: "eth_chainId",
+      params: [],
+      result: quantitySchema,
+      signal: new AbortController().signal,
+      preferEndpoint: "secondary",
+    });
+    expect(reply).toStrictEqual(fromSecondary);
+    expect(asked()).toStrictEqual([secondary]);
+  });
 });

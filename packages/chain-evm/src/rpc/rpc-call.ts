@@ -23,6 +23,13 @@ export interface RpcCall<T> {
    * timeout when absent.
    */
   readonly timeoutMs?: number;
+  /**
+   * The call reads the newest block: a node that answers "header not found" or "unknown block"
+   * has not imported it yet, which is no fault of the node (`not_yet`).
+   */
+  readonly atHead?: boolean;
+  /** An endpoint to ask first while it is healthy, such as the one that announced the block. */
+  readonly preferEndpoint?: string;
 }
 
 /** A result the node answered, checked by the call's schema. */
@@ -59,6 +66,8 @@ export type RpcReply<T> = RpcResultReply<T> | RpcErrorReply;
  * - `node_error`: a JSON-RPC error that says the node, not the call, failed;
  * - `missing_state`: a JSON-RPC error that says the node no longer holds the state the call reads,
  *   such as an old block's a node that prunes has dropped. The node stays healthy.
+ * - `not_yet`: for a call at the head, a JSON-RPC error that says the node has not imported the
+ *   block yet. The node stays healthy.
  */
 export type RpcFault =
   | "timeout"
@@ -67,7 +76,8 @@ export type RpcFault =
   | "bad_status"
   | "malformed"
   | "node_error"
-  | "missing_state";
+  | "missing_state"
+  | "not_yet";
 
 /** One endpoint's state, for health signals. */
 export interface EndpointHealth {

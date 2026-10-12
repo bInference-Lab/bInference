@@ -1,6 +1,5 @@
 import { BinferenceError, type Clock } from "@binference/core";
 import { quantitySchema } from "../rpc/evm-wire.schema.js";
-import { requestResult } from "../rpc/request-result.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { followHeads, type HeadsEnded } from "./follow-heads.js";
 import type { HeadSubscription } from "./head-socket.js";
@@ -29,12 +28,13 @@ export interface BlockSourceState {
 /** Hands on each new block of one chain, by subscription where it can, else by polling. */
 export interface BlockSource {
   /**
-   * Calls `onHead` with each block number above every one before, as soon as it is seen, until
+   * Calls `onHead` with each block number above every one before, as soon as it is seen, and the
+   * failover endpoint that answered the poll that saw it (none for a socket's head), until
    * the signal aborts. It never fails for the chain: a dead socket gives way to polling, and a
    * poll no endpoint answers is tried again a block time later. Rejects with the signal's reason
    * once it aborts.
    */
-  run(onHead: (number: bigint) => void, signal: AbortSignal): Promise<void>;
+  run(onHead: (number: bigint, endpoint?: string) => void, signal: AbortSignal): Promise<void>;
   /** How the source reads now. */
   state(): BlockSourceState;
 }
@@ -58,7 +58,7 @@ export interface BlockSourceOptions {
 interface SourceRun {
   readonly options: BlockSourceOptions;
   /** Records a head; answers whether it is above every head seen. */
-  readonly see: (number: bigint, mode: BlockSourceState["mode"]) => boolean;
+  readonly see: (number: bigint, mode: BlockSourceState["mode"], endpoint?: string) => boolean;
   readonly fail: (fault: BlockSourceFault) => void;
   readonly signal: AbortSignal;
   /** When the subscription may be tried again. */
@@ -70,14 +70,18 @@ interface SourceRun {
 async function pollOnce(run: SourceRun): Promise<void> {
   const { options, signal } = run;
   try {
-    const number = await requestResult(options.rpc, {
+    const reply = await options.rpc.request({
       method: "eth_blockNumber",
       params: [],
       result: quantitySchema,
       signal,
       ...(options.callTimeoutMs === undefined ? {} : { timeoutMs: options.callTimeoutMs }),
     });
-    run.see(number, "polling");
+    if (reply.kind === "result") {
+      run.see(reply.value, "polling", reply.endpoint);
+    } else {
+      run.fail("rpc_down");
+    }
   } catch (error) {
     signal.throwIfAborted();
     // No endpoint answered, or one answered with an error: the next poll asks again.
@@ -135,7 +139,7 @@ export function createBlockSource(options: BlockSourceOptions): BlockSource {
         restUntil: (atMs) => {
           retryAtMs = atMs;
         },
-        see: (number, mode) => {
+        see: (number, mode, endpoint) => {
           // A head by polling ends a poll's fault; the socket's stays until a socket gives heads.
           const fault =
             mode === "subscription" || current.fault === "rpc_down" ? undefined : current.fault;
@@ -144,7 +148,7 @@ export function createBlockSource(options: BlockSourceOptions): BlockSource {
           const { head = number, headAtMs = options.clock.now() } = isNew ? {} : current;
           current = { mode, head, headAtMs, ...kept };
           if (isNew) {
-            onHead(number);
+            onHead(number, endpoint);
           }
           return isNew;
         },

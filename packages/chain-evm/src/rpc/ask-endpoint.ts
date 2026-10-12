@@ -6,7 +6,7 @@ import {
   type HttpResponse,
 } from "@binference/core";
 import { type JsonRpcError, readJsonRpcReply } from "./json-rpc-reply.schema.js";
-import { isMissingState, isNodeFault } from "./node-fault.js";
+import { isBlockUnknown, isMissingState, isNodeFault } from "./node-fault.js";
 import type { RpcCall, RpcEndpoint, RpcErrorReply, RpcFault, RpcReply } from "./rpc-call.js";
 
 /** What one endpoint gave a call: a reply, or a failure that sends the call on. */
@@ -40,9 +40,16 @@ function isTimeout(error: Readonly<Error>): boolean {
   return error instanceof BinferenceError && error.code === "core.timeout";
 }
 
-function errorOutcome<T>(error: JsonRpcError, endpoint: string): EndpointOutcome<T> {
+function errorOutcome<T>(
+  error: JsonRpcError,
+  attempt: { readonly endpoint: string; readonly atHead: boolean },
+): EndpointOutcome<T> {
+  const { endpoint } = attempt;
   if (isMissingState(error)) {
     return fault("missing_state");
+  }
+  if (attempt.atHead && isBlockUnknown(error)) {
+    return fault("not_yet");
   }
   if (isNodeFault(error)) {
     return fault("node_error");
@@ -67,7 +74,10 @@ function readOutcome<T>(response: HttpResponse, attempt: EndpointAttempt<T>): En
   const success = isSuccess(response.status);
   const reply = readJsonRpcReply(response.body);
   if (reply !== undefined && "error" in reply) {
-    return errorOutcome(reply.error, attempt.endpoint.name);
+    return errorOutcome(reply.error, {
+      endpoint: attempt.endpoint.name,
+      atHead: attempt.call.atHead === true,
+    });
   }
   if (!success) {
     return fault("bad_status");
