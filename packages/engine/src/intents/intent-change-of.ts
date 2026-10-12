@@ -118,6 +118,14 @@ function termsHashOf(record: IntentRecord, version: number, terms: Terms): Sha25
   return sha256Hex(stableJson(covered));
 }
 
+// A buy's or a sell's card version keeps the place its quote names.
+function placeOf(record: IntentRecord, terms: Terms): Pick<CardOpening, "place"> {
+  const isPlaced = record.kind === "buy" || record.kind === "sell";
+  const place =
+    isPlaced && terms.quote !== undefined ? quoteDocument.decode(terms.quote).place : undefined;
+  return place === undefined ? {} : { place };
+}
+
 function opening(card: CardTerms, context: MoveContext, terms: Terms): CardOpening {
   const { record, ids, random } = context;
   const { version } = card;
@@ -130,6 +138,7 @@ function opening(card: CardTerms, context: MoveContext, terms: Terms): CardOpeni
       : { callbackRef: Buffer.from(random.bytes(callbackRefBytes)).toString("base64url") }),
     openedAtMs: card.openedAtMs,
     expiresAtMs: card.expiresAtMs,
+    ...placeOf(record, terms),
   };
 }
 

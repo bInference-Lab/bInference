@@ -273,6 +273,15 @@ describe("a sale by share", () => {
   });
 });
 
+// The open card version of an intent as the engine draws it.
+async function cardOf(test: TestEngine, intent: IntentView["intent"]) {
+  const drawn = await test.engine.handlers["intent/card"](testCall({ intent }));
+  if (!drawn.ok) {
+    throw new Error(`Expected a card, got ${drawn.error}.`);
+  }
+  return drawn.value;
+}
+
 // The owner's tap on a card's first version once its quote is older than the re-quote age.
 async function tapLate(test: TestEngine, view: IntentView) {
   await test.clock.advance(11_000);
@@ -285,14 +294,54 @@ async function tapLate(test: TestEngine, view: IntentView) {
 }
 
 describe("a re-quote of a buy or a sell at the tap", () => {
-  it("never confirms a buy whose token graduated since its card, and leaves the card open", async () => {
+  it("opens a new card in the pools that says so when the token graduated since its card", async () => {
     const launchpad = createFakeLaunchpad({ onCurve: [testToken] });
     const test = await engineWith([createFakeVenue(), launchpad]);
     const view = await propose(test, testBuy());
     launchpad.graduate(testToken);
-    expect(await tapLate(test, view)).toStrictEqual({ ok: false, error: "quote.no_route" });
+    await tapLate(test, view);
     const after = await test.engine.handlers["intent/get"](testCall({ intent: view.intent }));
-    expect(after).toMatchObject({ ok: true, value: { state: "awaiting_confirmation" } });
+    expect(after).toMatchObject({
+      ok: true,
+      value: {
+        state: "awaiting_confirmation",
+        card: { version: 2 },
+        quote: { place: { kind: "pools" }, route: [{ venue: "fake-swap" }] },
+      },
+    });
+    const cards = await test.stores.intents.cards(view.intent, {
+      signal: new AbortController().signal,
+    });
+    expect(cards.map((card) => [card.version, card.place, card.closeReason])).toStrictEqual([
+      [1, { kind: "curve", launchpad: curve }, "replaced"],
+      [2, { kind: "pools" }, undefined],
+    ]);
+  });
+
+  it("warns on the new card version that the token graduated", async () => {
+    const launchpad = createFakeLaunchpad({ onCurve: [testToken] });
+    const test = await engineWith([createFakeVenue(), launchpad]);
+    const view = await propose(test, testBuy());
+    launchpad.graduate(testToken);
+    await tapLate(test, view);
+    const drawn = await cardOf(test, view.intent);
+    expect(drawn.version).toBe(2);
+    expect(drawn.lines).toContainEqual({
+      key: "card.warn.placeChanged",
+      values: { token: { type: "asset", asset: testToken } },
+    });
+  });
+
+  it("confirms on the card's place when the token is still on its curve", async () => {
+    const launchpad = createFakeLaunchpad({ onCurve: [testToken] });
+    const test = await engineWith([createFakeVenue(), launchpad]);
+    const view = await propose(test, testBuy());
+    await tapLate(test, view);
+    const after = await test.engine.handlers["intent/get"](testCall({ intent: view.intent }));
+    expect(after).toMatchObject({
+      ok: true,
+      value: { state: "paper_filled", card: { version: 1 } },
+    });
   });
 
   it("sells its share of what the wallet holds at the re-quote, on a new card when worse", async () => {

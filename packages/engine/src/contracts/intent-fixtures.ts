@@ -63,7 +63,10 @@ export function intentMove(n: number, version: number, state: IntentState): Inte
   };
 }
 
-/** Card version `version` of intent `n`, open for a minute. */
+/**
+ * Card version `version` of intent `n`, open for a minute: the first on a launchpad's curve, a
+ * later one in the pools, as a token that graduated between them.
+ */
 export function cardOf(n: number, version: number): CardOpening {
   return {
     id: fixtureId("crd", n * 10 + version),
@@ -72,6 +75,7 @@ export function cardOf(n: number, version: number): CardOpening {
     callbackRef: `ref${String(n)}v${String(version)}`.padEnd(16, "x"),
     openedAtMs: 1_000 * n,
     expiresAtMs: 1_000 * n + 60_000,
+    place: version === 1 ? { kind: "curve", launchpad: "fake-curve" } : { kind: "pools" },
   };
 }
 

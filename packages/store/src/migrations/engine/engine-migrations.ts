@@ -27,6 +27,7 @@ import { migration as carriedOutflows } from "./0025_carried_outflows.js";
 import { migration as backupDigests } from "./0026_backup_digests.js";
 import { migration as sealKey } from "./0027_seal_key.js";
 import { migration as agentInbox } from "./0028_agent_inbox.js";
+import { migration as cardPlaces } from "./0029_card_places.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -58,4 +59,5 @@ export const engineMigrations: readonly Migration[] = [
   backupDigests,
   sealKey,
   agentInbox,
+  cardPlaces,
 ];

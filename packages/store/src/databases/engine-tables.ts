@@ -193,6 +193,8 @@ export interface CardsTable {
   expires_at: number;
   closed_at: number | null;
   close_reason: string | null;
+  /** Where the buy or sell the version shows trades, as JSON; none for any other kind. */
+  place: string | null;
 }
 
 /** `confirmations`. */

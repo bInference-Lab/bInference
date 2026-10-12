@@ -96,6 +96,13 @@ describe("drawing a card in Chinese", () => {
     expect(rendered(firstLive)).toContain(`${icons.live} 首笔实盘交易：此交易使用真实资金`);
   });
 
+  it("says in Chinese that a token graduated since the last quote", () => {
+    const moved = { ...swap, warnings: { ...swap.warnings, placeChangedToken: usdt } };
+    expect(rendered(moved)).toContainEqual(
+      expect.stringContaining("自上次报价以来 USDT 已毕业：此交易现在在交易池中进行"),
+    );
+  });
+
   it("draws the example swap card of spec 4", () => {
     const lines = rendered(swap);
     expect(lines).toStrictEqual([

@@ -135,6 +135,51 @@ describe("a tap after a re-quote", () => {
   });
 });
 
+describe("a re-quote that finds another place", () => {
+  const onCurve = { kind: "curve", launchpad: "fake-curve" } as const;
+  const placed = (status: IntentStatus): IntentStatus =>
+    status.quote === undefined ? status : { ...status, quote: { ...status.quote, place: onCurve } };
+
+  function requotedAt(requote: QuoteTerms): GuardInput<"confirm_requoted"> {
+    const input = requoted(requote);
+    return { ...input, status: placed(input.status) };
+  }
+
+  it("opens the next card version even when the minimum out holds", () => {
+    const requote = {
+      quotedAtMs: 29_000,
+      minOutBase: 1_200_000n,
+      place: { kind: "pools" },
+    } as const;
+    expect(confirmRequote(requotedAt(requote))).toStrictEqual({
+      ok: false,
+      error: "place_changed",
+    });
+    expect(reopenCard(requotedAt(requote))).toStrictEqual({
+      ok: true,
+      value: { quote: requote, card: { version: 3, openedAtMs: 30_000, expiresAtMs: 90_000 } },
+    });
+  });
+
+  it("confirms on the card's own place when the minimum out holds", () => {
+    const requote = { quotedAtMs: 29_000, minOutBase: 1_000_000n, place: onCurve };
+    expect(confirmRequote(requotedAt(requote))).toStrictEqual({
+      ok: true,
+      value: { quote: requote },
+    });
+    expect(reopenCard(requotedAt(requote))).toStrictEqual({ ok: false, error: "quote_held" });
+  });
+
+  it("counts another launchpad's curve as another place", () => {
+    const elsewhere = { kind: "curve", launchpad: "other-curve" } as const;
+    const requote = { quotedAtMs: 29_000, minOutBase: 1_000_000n, place: elsewhere };
+    expect(confirmRequote(requotedAt(requote))).toStrictEqual({
+      ok: false,
+      error: "place_changed",
+    });
+  });
+});
+
 describe("the card timer", () => {
   it("expires the card at its expiry and not before", () => {
     const early: GuardInput<"card_timer_fired"> = {

@@ -3,7 +3,7 @@ import { BinferenceError } from "@binference/core";
 import type { IntentChange } from "@binference/engine";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
-import { orNull } from "../rows/column-values.js";
+import { optionalJsonText, orNull } from "../rows/column-values.js";
 
 function closeCard(database: DatabaseSync, change: IntentChange): void {
   const closing = change.closeCard;
@@ -50,6 +50,7 @@ export function writeCardChanges(database: DatabaseSync, change: IntentChange): 
         expires_at: openCard.expiresAtMs,
         closed_at: null,
         close_reason: null,
+        place: optionalJsonText(openCard.place),
       }),
     );
   }

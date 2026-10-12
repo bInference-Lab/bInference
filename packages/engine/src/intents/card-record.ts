@@ -1,4 +1,5 @@
 import { type Id, idSchema } from "@binference/core";
+import { type TradePlace, tradePlaceSchema } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 import { type Sha256Hex, sha256HexSchema } from "../records/sha256-hex.js";
@@ -36,6 +37,11 @@ export interface CardOpening {
   readonly openedAtMs: number;
   /** No answer by then is a no. */
   readonly expiresAtMs: number;
+  /**
+   * Where the `buy` or `sell` this version shows trades (spec 6, section 5), so the next version
+   * can say the place changed. Absent for any other kind.
+   */
+  readonly place?: TradePlace;
 }
 
 const cardOpeningShape = {
@@ -48,6 +54,7 @@ const cardOpeningShape = {
     .exactOptional(),
   openedAtMs: epochMsSchema,
   expiresAtMs: epochMsSchema,
+  place: tradePlaceSchema.exactOptional(),
 };
 
 /** Parses a new card version. */

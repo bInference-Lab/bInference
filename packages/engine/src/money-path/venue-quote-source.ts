@@ -1,9 +1,8 @@
 import type { ChainRegistry, PriceSource, RegisteredChain, Signer } from "@binference/chain";
 import { type Clock, err, type Id, ok, type Result } from "@binference/core";
-import type { TradePlace } from "@binference/protocol";
 import type { BuiltQuote } from "../confirmations/stored-intent.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
+import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { QuoteFailure } from "../intents/intent-reason.js";
 import type { QuoteSource, Simulator, WalletFactsSource } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
@@ -13,19 +12,6 @@ import { quoteVenues } from "./quote-venues.js";
 import { nativeAssetOf } from "./resolve-proposal.js";
 import { type TradeAsk, tradeAskOf, tradeChainOf } from "./swap-trade.js";
 import type { Holdings } from "./wallet-facts.js";
-
-// The launchpad of a curve place; none for the pools.
-function launchpadOf(place: TradePlace): string | undefined {
-  return place.kind === "curve" ? place.launchpad : undefined;
-}
-
-// The place a card named, compared with the one a re-quote found: a swap has none either time.
-function isSamePlace(before: TradePlace | undefined, now: TradePlace | undefined): boolean {
-  if (before === undefined || now === undefined) {
-    return before === now;
-  }
-  return before.kind === now.kind && launchpadOf(before) === launchpadOf(now);
-}
 
 /** What intents are quoted again with. */
 export interface VenueQuoteSourceOptions {
@@ -82,9 +68,8 @@ async function requote(
   const nativeAsset = nativeAssetOf(chain);
   const placing = { limits, account: account.value, chains, host, nativeAsset, holdings };
   const placed = await placeTrade(ask, { ...placing, wallet, isPaper, signal });
-  const before = record.quote === undefined ? undefined : quoteDocument.decode(record.quote);
-  if (placed.refusal !== undefined || !isSamePlace(before?.place, placed.swap.place)) {
-    return err(placed.refusal ?? "no_route");
+  if (placed.refusal !== undefined) {
+    return err(placed.refusal);
   }
   const quotes = await quoteVenues(placed.swap, { host, clock, signal });
   const chosen = await chooseRoute(quotes, {
@@ -108,9 +93,10 @@ async function requote(
  * now, asks the venues of its place and picks the route by simulation, through the venue host,
  * which checks every step it builds. A quote above the agent's maximum price impact is dropped,
  * and with none left the re-quote is `price_impact`. An intent the money path cannot route again,
- * an unknown one included, is `no_route`, and so is a buy or a sell whose place changed since its
- * card: the card named the place, so the tap never confirms another. A wallet the custodian no
- * longer holds is `venue_down`. Each failure leaves the card open, and the owner can cancel it.
+ * an unknown one included, is `no_route`. A buy or a sell whose place changed since its card, a
+ * token that graduated, is quoted at its new place; the state machine then opens the next card
+ * version, since the card named the place. A wallet the custodian no longer holds is
+ * `venue_down`. Each failure leaves the card open, and the owner can cancel it.
  */
 export function createVenueQuoteSource(options: VenueQuoteSourceOptions): QuoteSource {
   return {

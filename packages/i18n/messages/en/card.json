@@ -32,6 +32,7 @@
   "warn.unverified": "⚠️ Not a verified token: risk checks passed, but check the address",
   "warn.highTax": "⚠️ This token takes {tax} tax on every trade",
   "warn.requoted": "⚠️ The price moved: this is a new quote",
+  "warn.placeChanged": "⚠️ {token} graduated since the last quote: this trade now runs in the pools",
   "warn.paper": "🧪 Paper mode: nothing is sent on chain",
   "warn.paperEstimate": "⚠️ Estimate: binference cannot simulate a sale of this token, so the paper fill uses the quote",
   "warn.firstLive": "🔴 First live trade: this one uses real money",

@@ -50,6 +50,11 @@ export interface CardWarnings {
   readonly isFirstLive?: boolean;
   /** A paper sale nothing could simulate: its fill is the quote's estimate. */
   readonly isEstimate?: boolean;
+  /**
+   * The token of a `buy` or `sell` whose place differs from the card version before: it
+   * graduated since, so the trade now runs in the pools. Absent shows no warning.
+   */
+  readonly placeChangedToken?: AssetRef;
 }
 
 /**
@@ -147,6 +152,10 @@ function shown(flagged: readonly (readonly [boolean, CardKey])[]): readonly Card
   return flagged.filter(([isShown]) => isShown).map(([, key]) => bare(key));
 }
 
+function placeChangedLine(token: AssetRef): CardLine {
+  return { key: "card.warn.placeChanged", values: { token: { type: "asset", asset: token } } };
+}
+
 function taxLines(taxBps: Bps | undefined): readonly CardLine[] {
   return taxBps === undefined || taxBps === 0
     ? []
@@ -165,8 +174,9 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
       [facts.check?.isTokenVerified === false, "card.warn.unverified"],
     ]),
     ...taxLines(warnings.taxBps),
+    ...shown([[facts.card.version > 1, "card.warn.requoted"]]),
+    ...optional(warnings.placeChangedToken, placeChangedLine),
     ...shown([
-      [facts.card.version > 1, "card.warn.requoted"],
       [facts.isPaper, "card.warn.paper"],
       [warnings.isEstimate === true, "card.warn.paperEstimate"],
       [warnings.isFirstLive === true && !facts.isPaper, "card.warn.firstLive"],

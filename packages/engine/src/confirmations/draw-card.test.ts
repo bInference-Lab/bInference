@@ -205,6 +205,23 @@ describe("drawing a card", () => {
     ]);
   });
 
+  it("says a buy's or a sell's token graduated, right after the re-quote line", () => {
+    const moved: CardFacts = {
+      ...flagged,
+      warnings: { ...flagged.warnings, placeChangedToken: usdt },
+    };
+    const keys = warnings(moved);
+    expect(
+      keys.slice(keys.indexOf("card.warn.requoted"), keys.indexOf("card.warn.paper")),
+    ).toStrictEqual(["card.warn.requoted", "card.warn.placeChanged"]);
+    expect(rendered(moved)).toContainEqual(
+      expect.stringContaining(
+        "USDT graduated since the last quote: this trade now runs in the pools",
+      ),
+    );
+    expect(warnings(flagged)).not.toContain("card.warn.placeChanged");
+  });
+
   it("says so on the agent's first live card, after the other warnings, never on paper", () => {
     const firstLive: CardFacts = {
       ...flagged,

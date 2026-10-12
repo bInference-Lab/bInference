@@ -32,6 +32,7 @@
   "warn.unverified": "⚠️ 非已验证代币：风险检查已通过，但请核对地址",
   "warn.highTax": "⚠️ 此代币每笔交易收取 {tax} 交易税",
   "warn.requoted": "⚠️ 价格已变动：这是新的报价",
+  "warn.placeChanged": "⚠️ 自上次报价以来 {token} 已毕业：此交易现在在交易池中进行",
   "warn.paper": "🧪 模拟模式：不会发送链上交易",
   "warn.paperEstimate": "⚠️ 估算：binference 无法模拟卖出此代币，模拟成交按报价计算",
   "warn.firstLive": "🔴 首笔实盘交易：此交易使用真实资金",

@@ -21,6 +21,7 @@ export type TransitionProblem =
   | "quote_stale"
   | "quote_worse"
   | "quote_held"
+  | "place_changed"
   | "not_expired"
   | "already_signed"
   | "nothing_signed"

@@ -20,6 +20,7 @@ import {
 } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { type RescueQuote, rescueQuoteDocument } from "../intents/rescue-quote.js";
+import { isSamePlace } from "../intents/same-place.js";
 import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
@@ -34,6 +35,8 @@ function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
 export interface CardSource {
   readonly record: IntentRecord;
   readonly card: CardRecord;
+  /** The card version before this one, which a worse re-quote or a new place replaced. */
+  readonly previous?: CardRecord;
   readonly settings: AgentSettings;
   /** Whether the card is the agent's first live card (`isFirstLiveCard`). */
   readonly isFirstLive: boolean;
@@ -115,8 +118,22 @@ function actionOf(request: TradeRequest, quote: QuoteView): CardAction {
   return "percentBps" in request.amount ? { ...sale, share: request.amount.percentBps } : sale;
 }
 
+// The token of a buy or a sell whose card version trades at another place than the one before.
+function placeChangedToken(action: CardAction, source: CardSource): AssetRef | undefined {
+  const { card, previous } = source;
+  if (previous === undefined || isSamePlace(previous.place, card.place)) {
+    return undefined;
+  }
+  if (action.kind === "buy") {
+    return action.token;
+  }
+  return action.kind === "sell" ? action.amount.asset : undefined;
+}
+
 function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource): CardFacts {
   const { record, card, settings, isFirstLive, chains } = source;
+  const action = actionOf(request, quote);
+  const changedToken = placeChangedToken(action, source);
   const route = routeOf(quote, source, request);
   const simulation =
     record.simulation === undefined ? undefined : simulationDocument.decode(record.simulation);
@@ -127,7 +144,7 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
     isPaper: record.isPaper,
     hasOutsideContent: record.hasOutsideContent,
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
-    action: actionOf(request, quote),
+    action,
     ...(route === undefined ? {} : { route }),
     ...(check === undefined ? {} : { check }),
     warnings: {
@@ -136,6 +153,7 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
       ...(isFirstLive ? { isFirstLive } : {}),
       ...(taxBps === undefined ? {} : { taxBps }),
       ...(simulation?.estimated === true ? { isEstimate: true } : {}),
+      ...(changedToken === undefined ? {} : { placeChangedToken: changedToken }),
     },
     reason: request.reason,
   };

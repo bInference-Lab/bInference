@@ -32,8 +32,8 @@ export interface QuoteView {
   readonly place?: TradePlace;
 }
 
-// A launchpad is named by its venue id.
-const tradePlaceSchema: z.ZodType<TradePlace> = z.discriminatedUnion("kind", [
+/** Parses the place of a `buy` or a `sell`; a launchpad is named by its venue id. */
+export const tradePlaceSchema: z.ZodType<TradePlace> = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("curve"), launchpad: venueIdSchema }),
   z.object({ kind: z.literal("pools") }),
 ]);

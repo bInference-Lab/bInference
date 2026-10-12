@@ -153,7 +153,10 @@ async function drawOpen(
   const { record, card } = stored;
   const settings = await settingsOf(options, record, call);
   const isFirstLive = await isFirstLiveCard(intents, record, call);
-  const facts = cardFactsOf({ record, card, settings, isFirstLive, chains });
+  const cards = card.version > 1 ? await intents.cards(record.id, call) : [];
+  const previous = cards.find((each) => each.version === card.version - 1);
+  const source = { record, card, settings, isFirstLive, chains };
+  const facts = cardFactsOf(previous === undefined ? source : { ...source, previous });
   if (facts === undefined) {
     return undefined;
   }

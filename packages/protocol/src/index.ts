@@ -199,7 +199,7 @@ export { orderStateSchema, orderViewSchema } from "./views/order-view.schema.js"
 export type { OrderFillView, OrderState, OrderView } from "./views/order-view.schema.js";
 export { portfolioViewSchema } from "./views/portfolio-view.schema.js";
 export type { BalanceView, PortfolioView, PositionView } from "./views/portfolio-view.schema.js";
-export { quoteViewSchema } from "./views/quote-view.schema.js";
+export { quoteViewSchema, tradePlaceSchema } from "./views/quote-view.schema.js";
 export type { QuoteView, RouteLeg, TradePlace } from "./views/quote-view.schema.js";
 export { riskViewSchema } from "./views/risk-view.schema.js";
 export type { RiskFlag, RiskView } from "./views/risk-view.schema.js";

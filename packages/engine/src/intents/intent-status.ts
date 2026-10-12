@@ -1,3 +1,4 @@
+import type { TradePlace } from "@binference/protocol";
 import type { Authorization } from "./authorization.js";
 import type { IntentKind } from "./intent-kind.js";
 import type { IntentReason } from "./intent-reason.js";
@@ -15,6 +16,8 @@ export interface QuoteTerms {
   readonly quotedAtMs: number;
   /** The minimum output in base units; absent for a kind without a price, such as a send. */
   readonly minOutBase?: bigint;
+  /** Where a `buy` or a `sell` trades (spec 6, section 5); absent for any other kind. */
+  readonly place?: TradePlace;
 }
 
 /** One version of an intent's card. A worse re-quote opens the next version. */

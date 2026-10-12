@@ -184,11 +184,12 @@ async function requoteIntent(
 }
 
 function requoteTrigger(answer: CardAnswer, stored: StoredIntent, requote: Requote): IntentTrigger {
-  const { quotedAt, minOut } = requote.quote;
+  const { quotedAt, minOut, place } = requote.quote;
+  const terms = { quotedAtMs: quotedAt, minOutBase: minOut.base };
   return {
     type: "confirm_requoted",
     cardVersion: answer.cardVersion,
-    requote: { quotedAtMs: quotedAt, minOutBase: minOut.base },
+    requote: place === undefined ? terms : { ...terms, place },
     cards: stored.cards,
   };
 }

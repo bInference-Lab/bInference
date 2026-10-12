@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "@binference/core";
 import { cardExpiresAt, isQuoteStale, isWorseThanTolerance } from "./card-rules.js";
 import type { CardTerms, IntentStatus, QuoteTerms } from "./intent-status.js";
+import { isSamePlace } from "./same-place.js";
 import type { GuardInput, IntentChange, TransitionProblem } from "./transition-guard.js";
 
 /** The card the owner sees and the quote it shows. */
@@ -51,7 +52,8 @@ function requotedCard({
 
 /**
  * `awaiting_confirmation` to `confirmed` after a re-quote: the new minimum out is within the
- * tolerance of the card's, so the tap counts on the new quote.
+ * tolerance of the card's, and the trade runs at the place the card named, so the tap counts on
+ * the new quote.
  */
 export function confirmRequote(input: RequoteInput): Result<IntentChange, TransitionProblem> {
   const open = requotedCard(input);
@@ -59,6 +61,9 @@ export function confirmRequote(input: RequoteInput): Result<IntentChange, Transi
     return open;
   }
   const { requote, cards } = input.trigger;
+  if (!isSamePlace(open.value.quote.place, requote.place)) {
+    return err("place_changed");
+  }
   return isWorseThanTolerance(open.value.quote, requote, cards)
     ? err("quote_worse")
     : ok({ quote: requote });
@@ -66,7 +71,8 @@ export function confirmRequote(input: RequoteInput): Result<IntentChange, Transi
 
 /**
  * `awaiting_confirmation` to itself after a re-quote: the new minimum out is worse than the card's
- * by more than the tolerance, so card version n+1 opens with the new quote.
+ * by more than the tolerance, or the trade now runs at another place than the card named (a token
+ * that graduated since), so card version n+1 opens with the new quote.
  */
 export function reopenCard(input: RequoteInput): Result<IntentChange, TransitionProblem> {
   const open = requotedCard(input);
@@ -74,7 +80,8 @@ export function reopenCard(input: RequoteInput): Result<IntentChange, Transition
     return open;
   }
   const { status, trigger, nowMs } = input;
-  if (!isWorseThanTolerance(open.value.quote, trigger.requote, trigger.cards)) {
+  const isPlaceChanged = !isSamePlace(open.value.quote.place, trigger.requote.place);
+  if (!isPlaceChanged && !isWorseThanTolerance(open.value.quote, trigger.requote, trigger.cards)) {
     return err("quote_held");
   }
   const card: CardTerms = {

@@ -37,7 +37,8 @@ function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
     return { quotedAtMs: unfreezeQuoteDocument.decode(record.quote).quotedAtMs };
   }
   const quote = quoteDocument.decode(record.quote);
-  return { quotedAtMs: quote.quotedAt, minOutBase: quote.minOut.base };
+  const terms = { quotedAtMs: quote.quotedAt, minOutBase: quote.minOut.base };
+  return quote.place === undefined ? terms : { ...terms, place: quote.place };
 }
 
 function cardTermsOf(history: IntentHistory): CardTerms | undefined {

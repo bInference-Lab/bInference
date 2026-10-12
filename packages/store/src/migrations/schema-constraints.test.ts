@@ -170,7 +170,7 @@ describe("the engine database's constraints", () => {
     plantIntent(database, "int_1");
     run(
       database,
-      "INSERT INTO cards VALUES ('crd_1', 'int_1', 1, ?, NULL, 1, 2, NULL, NULL)",
+      "INSERT INTO cards VALUES ('crd_1', 'int_1', 1, ?, NULL, 1, 2, NULL, NULL, NULL)",
       hash("a"),
     );
     const confirm = (version: number): void =>
