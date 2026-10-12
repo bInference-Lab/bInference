@@ -1,7 +1,14 @@
 import { type AccountRef, chainRefSchema } from "@binference/chain";
-import { createFakeRiskSource, createFakeSigner, type FakeSigner } from "@binference/chain/testing";
+import {
+  createFakeMarketSource,
+  createFakeRiskSource,
+  createFakeSigner,
+  type FakeMarketSource,
+  type FakeSigner,
+} from "@binference/chain/testing";
 import type { Id } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
+import { createSourceMarketReads } from "@binference/engine/market";
 import {
   type CreditAccount,
   createCreditBilling,
@@ -40,6 +47,8 @@ export interface CloudTestRoot extends ProfileParts {
   readonly prices: SharedMarketData;
   /** The same service, as the watchers' streams. */
   readonly market: SharedMarketData;
+  /** The market data source the service reads once for every owner. */
+  readonly marketSource: FakeMarketSource;
 }
 
 /**
@@ -51,6 +60,10 @@ export interface CloudTestRoot extends ProfileParts {
 export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudTestRoot {
   const market = createSharedMarketData();
   const clock = createManualClock(0);
+  const marketSource = createFakeMarketSource({
+    id: "dexscreener",
+    chains: [chainRefSchema.parse("fake:1")],
+  });
   const wallets = new Map(options.wallets ?? []);
   const ceilings = createFakeCeilingEditor({ clock });
   return {
@@ -70,6 +83,8 @@ export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudT
     stores: createMemoryEngineStores(),
     prices: market,
     market,
+    marketSource,
+    marketReads: createSourceMarketReads({ sources: [marketSource], clock, timeoutMs: 5_000 }),
     // GoPlus alone: honeypot.is's terms forbid sharing its API, so Cloud never asks it.
     riskSources: [
       { source: createFakeRiskSource({ id: "goplus", reports: new Map() }), isRequired: true },

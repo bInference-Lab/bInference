@@ -7,6 +7,7 @@ import type {
   WalletExporter,
   WalletMaker,
 } from "@binference/engine/install";
+import type { MarketReads } from "@binference/engine/market";
 import type { RiskSourceUse } from "@binference/engine/risk";
 
 /**
@@ -43,6 +44,11 @@ export interface ProfileParts {
   readonly prices: PriceSource;
   /** Market data: the blocks and prices the watchers stream. */
   readonly market: MarketData;
+  /**
+   * Market data: a token's pools and a chain's trending tokens, for `market/scan` and the agent's
+   * market tools. Self-hosted reads DEX Screener itself; Cloud reads it once for every owner.
+   */
+  readonly marketReads: MarketReads;
   /**
    * Token risk: the risk data sources, each marked as one a token needs a report from or not.
    * Self-hosted asks GoPlus and honeypot.is; Cloud asks GoPlus alone, since honeypot.is's terms

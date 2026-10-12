@@ -45,6 +45,16 @@ describe("cloud test root", () => {
     expect(root.market.subscriptions()).toBe(0);
   });
 
+  it("reads the market through one data source shared by every owner", async () => {
+    const root = composeCloudTestRoot();
+    await expect(root.marketReads.trending("fake:1" as ChainRef, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "no_data",
+    });
+    await expect(root.marketReads.pools(coin, live)).resolves.toMatchObject({ ok: false });
+    expect(root.marketSource.reads()).toBe(2);
+  });
+
   it("starts from the wallets and credit it is given, and nothing else", async () => {
     const root = composeCloudTestRoot({
       wallets: new Map([[wallet, account]]),

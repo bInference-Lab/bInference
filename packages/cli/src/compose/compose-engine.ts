@@ -54,6 +54,7 @@ export type EngineParts = Pick<
   | "stores"
   | "prices"
   | "riskSources"
+  | "marketReads"
 >;
 
 /** What the token risk step runs on besides the venue host. */

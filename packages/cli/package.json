@@ -31,6 +31,7 @@
     "@binference/console": "workspace:*",
     "@binference/core": "workspace:*",
     "@binference/custody-privy": "workspace:*",
+    "@binference/dexscreener": "workspace:*",
     "@binference/engine": "workspace:*",
     "@binference/flap": "workspace:*",
     "@binference/goplus": "workspace:*",

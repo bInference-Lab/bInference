@@ -28,6 +28,8 @@ export type {
 } from "./contracts/confirmation-store-contract.js";
 export { marketDataContract } from "./contracts/market-data-contract.js";
 export type { MarketDataHarness, MarketDataSubject } from "./contracts/market-data-contract.js";
+export { marketReadsContract } from "./contracts/market-reads-contract.js";
+export type { MarketReadsHarness, MarketReadsSubject } from "./contracts/market-reads-contract.js";
 export { modelBillingContract } from "./contracts/model-billing-contract.js";
 export type { ModelBillingHarness } from "./contracts/model-billing-contract.js";
 export { quoteSourceContract } from "./contracts/quote-source-contract.js";

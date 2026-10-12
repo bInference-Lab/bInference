@@ -24,6 +24,7 @@ import { type ComposedLock, composeLock } from "./compose-lock.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
 import { engineHandlers } from "./engine-handlers.js";
+import { selfHostedMarketReads } from "./market-reads.js";
 import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
@@ -239,6 +240,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       stores,
       prices: parts.prices,
       riskSources: selfHostedRiskSources(host.http),
+      marketReads: selfHostedMarketReads({ http: host.http, clock: host.clock }),
     },
     {
       chains: wiring.chains,

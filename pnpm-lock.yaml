@@ -482,6 +482,9 @@ importers:
       '@binference/custody-privy':
         specifier: workspace:*
         version: link:../custody-privy
+      '@binference/dexscreener':
+        specifier: workspace:*
+        version: link:../../plugins/dexscreener
       '@binference/engine':
         specifier: workspace:*
         version: link:../engine
