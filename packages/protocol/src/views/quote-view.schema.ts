@@ -10,6 +10,14 @@ export interface RouteLeg {
   readonly shareBps: Bps;
 }
 
+/**
+ * Where a `buy` or a `sell` trades (spec 6, section 5): on the bonding curve of the launchpad that
+ * holds the token, or in the pools, through the aggregators.
+ */
+export type TradePlace =
+  | { readonly kind: "curve"; readonly launchpad: string }
+  | { readonly kind: "pools" };
+
 /** A venue quote: the route, what goes in, what comes out at worst, its impact and gas. */
 export interface QuoteView {
   readonly route: readonly RouteLeg[];
@@ -20,7 +28,15 @@ export interface QuoteView {
   readonly gas: Amount;
   readonly quotedAt: number;
   readonly expiresAt: number;
+  /** The place a `buy` or a `sell` trades at, which the engine chose; a swap has none. */
+  readonly place?: TradePlace;
 }
+
+// A launchpad is named by its venue id.
+const tradePlaceSchema: z.ZodType<TradePlace> = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("curve"), launchpad: venueIdSchema }),
+  z.object({ kind: z.literal("pools") }),
+]);
 
 /** Parses a quote view. */
 export const quoteViewSchema: z.ZodType<QuoteView> = z.object({
@@ -32,4 +48,5 @@ export const quoteViewSchema: z.ZodType<QuoteView> = z.object({
   gas: amountSchema,
   quotedAt: epochMsSchema,
   expiresAt: epochMsSchema,
+  place: tradePlaceSchema.exactOptional(),
 });
