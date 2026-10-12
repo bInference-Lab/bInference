@@ -903,6 +903,15 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  plugins/dexscreener:
+    dependencies:
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   plugins/flap:
     dependencies:
       '@binference/plugin-sdk':
