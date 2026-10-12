@@ -19,7 +19,7 @@ interface PostArgs extends AgentArgs {
 }
 
 /** The session and turn a message started. */
-interface TurnRef {
+export interface TurnRef {
   readonly session: ProtocolId<"chatSession">;
   readonly turn: ProtocolId<"chatTurn">;
 }

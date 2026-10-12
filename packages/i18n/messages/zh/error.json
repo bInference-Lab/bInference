@@ -27,6 +27,8 @@
   "agent.paper_only": "此 Agent 处于模拟模式，而此操作需要实盘。请运行 `binference live` 切换到实盘。",
   "agent.disclaimer": "切换到实盘前，请先接受免责声明。请运行 `binference live` 并按提示操作。",
   "agent.file_missing": "此 Agent 没有这个工作区文件。写入该文件即可创建它。",
+  "question.not_found": "此问题不存在。请直接在对话中回答 Agent。",
+  "question.closed": "此问题已关闭。请直接在对话中回答 Agent。",
   "agent.budget": "此 Agent 已用完今日模型预算。对话将于你所在时区的午夜恢复；自动订单继续运行。",
   "market.no_data": "暂无行情数据源收录此代币。请检查地址，或稍后再试。",
   "market.source_down": "行情数据源暂无响应。请一分钟后再试。",

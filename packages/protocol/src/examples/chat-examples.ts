@@ -1,6 +1,7 @@
 import type { ChatOperationShapes } from "../operations/chat-operations.schema.js";
 import type { LimitOperationShapes } from "../operations/limit-operations.schema.js";
 import type { NoteOperationShapes } from "../operations/note-operations.schema.js";
+import type { QuestionOperationShapes } from "../operations/question-operations.schema.js";
 import { at, ids, pageOf, refs, type WireExample } from "./wire-values.js";
 
 const empty = {};
@@ -148,6 +149,17 @@ export const chatExamples: { readonly [N in keyof ChatOperationShapes]: WireExam
       },
       {
         message: ids.message,
+        kind: "inbox/message",
+        agent: ids.agent,
+        session: ids.session,
+        at,
+        turn: ids.turn,
+        text: "Stop-loss at -20%",
+        surface: "telegram",
+        answer: { question: ids.question, choice: 1 },
+      },
+      {
+        message: ids.message,
         kind: "inbox/stop",
         agent: ids.agent,
         session: ids.session,
@@ -157,6 +169,36 @@ export const chatExamples: { readonly [N in keyof ChatOperationShapes]: WireExam
     ),
   },
   "inbox/take": { args: { messages: [ids.message] }, result: empty },
+};
+
+/** Example calls of the agent's questions. */
+export const questionExamples: {
+  readonly [N in keyof QuestionOperationShapes]: WireExample;
+} = {
+  "turn/ask": {
+    args: {
+      agent: ids.agent,
+      session: ids.session,
+      turn: ids.turn,
+      text: "Which exit should I set for PEPE first?",
+      choices: ["Take-profit at +50%", "Stop-loss at -20%"],
+    },
+    result: {
+      question: ids.question,
+      agent: ids.agent,
+      session: ids.session,
+      turn: ids.turn,
+      text: "Which exit should I set for PEPE first?",
+      choices: ["Take-profit at +50%", "Stop-loss at -20%"],
+      state: "open",
+      createdAt: at,
+      closesAt: at + 86_400_000,
+    },
+  },
+  "chat/answer": {
+    args: { agent: ids.agent, question: ids.question, choice: 1 },
+    result: { session: ids.session, turn: ids.turn },
+  },
 };
 
 /** An example call of every notes operation. */

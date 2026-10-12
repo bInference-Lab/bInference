@@ -18,11 +18,20 @@ interface ModelPrices {
   readonly cachedPerMTokUsdMicros: bigint;
 }
 
-/** The model a role uses, `<provider>/<model>`, with its prices when known. */
+/**
+ * A configured model of a role, `<provider>/<model>`, with its prices when known. For one agent,
+ * `current` marks the model its next turn uses for the role (decision 0204).
+ */
 interface ModelView {
   readonly role: ModelRole;
   readonly model: string;
   readonly prices?: ModelPrices;
+  readonly current?: boolean;
+}
+
+/** The args of `model/list`: every configured model, and for one agent which one it uses. */
+interface ModelListArgs {
+  readonly agent?: ProtocolId<"agent">;
 }
 
 /** The args of `model/set` (`/ai`). */
@@ -68,7 +77,7 @@ interface PluginArgs {
 
 /** The model, plugin and skill operations of protocol spec section 7.8. */
 export interface PluginOperationShapes {
-  readonly "model/list": { readonly args: Empty; readonly result: Page<ModelView> };
+  readonly "model/list": { readonly args: ModelListArgs; readonly result: Page<ModelView> };
   readonly "model/set": { readonly args: SetModelArgs; readonly result: Page<ModelView> };
   readonly "plugin/list": { readonly args: Empty; readonly result: Page<PluginView> };
   readonly "plugin/add": { readonly args: InstallArgs; readonly result: JobRef };
@@ -96,6 +105,7 @@ const models = pageSchema(
         cachedPerMTokUsdMicros: decimalStringSchema,
       })
       .exactOptional(),
+    current: z.boolean().exactOptional(),
   }),
 );
 const pluginView = z.object({
@@ -121,7 +131,7 @@ export const pluginOperations: OperationTable<PluginOperationShapes> = {
     ...readFlags,
     name: "model/list",
     scope: "read",
-    args: emptyArgsSchema,
+    args: z.strictObject({ agent: protocolIdSchema("agent").exactOptional() }),
     result: models,
   },
   "model/set": {

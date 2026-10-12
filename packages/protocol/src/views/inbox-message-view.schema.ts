@@ -24,6 +24,14 @@ interface InboxOwnerMessage extends InboxMessageBase {
   /** Upload ids of the message's images; a message with images is outside content. */
   readonly images?: readonly string[];
   readonly surface: ChatSurface;
+  /** The question a press of its button answers, and the place of the choice pressed. */
+  readonly answer?: InboxAnswer;
+}
+
+/** A press of a question's button, as the message that answers it carries it. */
+interface InboxAnswer {
+  readonly question: ProtocolId<"question">;
+  readonly choice: number;
 }
 
 /** An intent the agent runtime proposed reached a terminal state: it starts a turn. */
@@ -77,6 +85,9 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
     text: z.string(),
     images: z.array(plainIdSchema).min(1).max(4).exactOptional(),
     surface: chatSurfaceSchema,
+    answer: z
+      .object({ question: protocolIdSchema("question"), choice: z.int().min(0).max(3) })
+      .exactOptional(),
   }),
   z.object({ ...base, kind: z.literal("inbox/intentSettled"), turn, intent: intentViewSchema }),
   z.object({ ...base, kind: z.literal("inbox/stop"), reason: z.enum(["owner", "freeze"]) }),

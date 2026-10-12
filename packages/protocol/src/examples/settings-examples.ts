@@ -37,10 +37,13 @@ const trade = { at, what: "buy", orderId: "991", outcome: "filled" };
 
 /** An example call of every model, plugin and skill operation. */
 export const pluginExamples: { readonly [N in keyof PluginOperationShapes]: WireExample } = {
-  "model/list": { args: empty, result: pageOf(model, { role: "vision", model: "fake/eyes" }) },
+  "model/list": {
+    args: { agent: ids.agent },
+    result: pageOf({ ...model, current: true }, { role: "vision", model: "fake/eyes" }),
+  },
   "model/set": {
     args: { agent: ids.agent, role: "main", model: "binference/large" },
-    result: pageOf(model),
+    result: pageOf({ ...model, current: true }),
   },
   "plugin/list": { args: empty, result: pageOf(plugin) },
   "plugin/add": { args: install, result: job },

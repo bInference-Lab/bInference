@@ -446,6 +446,8 @@
         "agent.disclaimer",
         "agent.budget",
         "agent.file_missing",
+        "question.not_found",
+        "question.closed",
         "market.no_data",
         "market.source_down",
         "market.no_launch_feed",
@@ -523,6 +525,7 @@
         "ses",
         "trn",
         "msg",
+        "qst",
         "dev",
         "con",
         "bkp",
@@ -27000,6 +27003,24 @@
                           "cli",
                           "mini"
                         ]
+                      },
+                      "answer": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "string",
+                            "pattern": "^qst_"
+                          },
+                          "choice": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "choice"
+                        ]
                       }
                     },
                     "required": [
@@ -28474,6 +28495,298 @@
         "result"
       ]
     },
+    "call/turn/ask": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "turn/ask"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "choices": {
+              "minItems": 2,
+              "maxItems": 4,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[^\\r\\n]+$"
+              }
+            }
+          },
+          "required": [
+            "agent",
+            "session",
+            "turn",
+            "text",
+            "choices"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "agent",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/turn/ask": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "pattern": "^qst_"
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            },
+            "text": {
+              "type": "string"
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "open",
+                "answered",
+                "closed"
+              ]
+            },
+            "answer": {
+              "type": "object",
+              "properties": {
+                "choice": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3
+                },
+                "typed": {
+                  "type": "string"
+                },
+                "surface": {
+                  "type": "string",
+                  "enum": [
+                    "telegram",
+                    "console",
+                    "cli",
+                    "mini"
+                  ]
+                },
+                "at": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "surface",
+                "at"
+              ]
+            },
+            "closeReason": {
+              "type": "string",
+              "enum": [
+                "replaced",
+                "cleared",
+                "expired"
+              ]
+            },
+            "createdAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "closesAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "question",
+            "agent",
+            "session",
+            "turn",
+            "text",
+            "choices",
+            "state",
+            "createdAt",
+            "closesAt"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/chat/answer": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "chat/answer"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "question": {
+              "type": "string",
+              "pattern": "^qst_"
+            },
+            "choice": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            }
+          },
+          "required": [
+            "agent",
+            "question",
+            "choice"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "chat",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/chat/answer": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            }
+          },
+          "required": [
+            "session",
+            "turn"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
     "call/notes/search": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
@@ -28959,7 +29272,12 @@
         },
         "args": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
           "additionalProperties": false
         },
         "key": {
@@ -29034,6 +29352,9 @@
                       "outputPerMTokUsdMicros",
                       "cachedPerMTokUsdMicros"
                     ]
+                  },
+                  "current": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -29175,6 +29496,9 @@
                       "outputPerMTokUsdMicros",
                       "cachedPerMTokUsdMicros"
                     ]
+                  },
+                  "current": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

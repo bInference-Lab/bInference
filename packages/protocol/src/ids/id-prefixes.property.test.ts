@@ -7,9 +7,9 @@ import { type IdKind, idPrefixes, protocolIdSchema } from "./id-prefixes.js";
 const kinds = Object.keys(idPrefixes) as IdKind[];
 
 describe("idPrefixes", () => {
-  it("holds the 23 prefixes of the spec, distinct and well formed", () => {
+  it("holds the 24 prefixes of the spec, distinct and well formed", () => {
     const prefixes = Object.values(idPrefixes);
-    expect(prefixes).toHaveLength(23);
+    expect(prefixes).toHaveLength(24);
     expect(new Set(prefixes).size).toBe(prefixes.length);
     expect(prefixes.filter((prefix) => !isIdPrefix(prefix))).toStrictEqual([]);
   });

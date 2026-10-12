@@ -434,6 +434,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | approve (an agent, an order, a rule)    | 批准                    | Token approvals are 授权    |
 | question (the agent asks the owner)     | 问题                    | "asks" = 想问你             |
 | question (asked before an action)       | 询问                    |                             |
+| closed (a question)                     | 已关闭                  | A question no longer open   |
 | status line                             | 状态行                  |                             |
 | first chat                              | 初次对话                |                             |
 | disclaimer, privacy statement           | 免责声明, 隐私声明      |                             |

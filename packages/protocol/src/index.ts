@@ -178,6 +178,17 @@ export { ceilingChangesSchema, ceilingViewSchema } from "./views/ceiling-view.sc
 export type { CeilingChanges, CeilingView, DayCapView } from "./views/ceiling-view.schema.js";
 export type { FileTicket } from "./views/file-ticket.schema.js";
 export { chatSurfaceSchema, inboxMessageViewSchema } from "./views/inbox-message-view.schema.js";
+export {
+  choicePlaceSchema,
+  questionLimits,
+  questionViewSchema,
+} from "./views/question-view.schema.js";
+export type {
+  QuestionAnswerView,
+  QuestionCloseReason,
+  QuestionState,
+  QuestionView,
+} from "./views/question-view.schema.js";
 export type { ChatSurface, InboxMessageView } from "./views/inbox-message-view.schema.js";
 export { intentKindSchema } from "./views/intent-kind.schema.js";
 export type { IntentKind } from "./views/intent-kind.schema.js";

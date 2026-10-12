@@ -32,6 +32,8 @@ export const protocolErrorCodes = [
   "agent.disclaimer",
   "agent.budget",
   "agent.file_missing",
+  "question.not_found",
+  "question.closed",
   "market.no_data",
   "market.source_down",
   "market.no_launch_feed",
