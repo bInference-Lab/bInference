@@ -34,6 +34,7 @@ import { migration as fillNotices } from "./0032_fill_notices.js";
 import { migration as modelBudget } from "./0033_model_budget.js";
 import { migration as intentAssets } from "./0034_intent_assets.js";
 import { migration as questions } from "./0035_questions.js";
+import { migration as ownerAgent } from "./0036_owner_agent.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -72,4 +73,5 @@ export const engineMigrations: readonly Migration[] = [
   modelBudget,
   intentAssets,
   questions,
+  ownerAgent,
 ];

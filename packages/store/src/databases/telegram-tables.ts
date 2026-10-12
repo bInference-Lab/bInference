@@ -1,11 +1,13 @@
 // The tables of the owner's bot, as SQLite returns them: migration 0004 defines `card_messages`,
-// migration 0019 adds `telegram_owner`, and migration 0030 `telegram_topics`.
+// migration 0019 adds `telegram_owner`, migration 0030 `telegram_topics`, and migration 0036
+// `telegram_owner.agent_id`.
 
 /** `telegram_owner`: one row, `id = 1`, the owner's numeric Telegram id once paired. */
 interface TelegramOwnerTable {
   id: number;
   user_id: number;
   paired_at: number;
+  agent_id: string | null;
 }
 
 /** `telegram_topics`: the topic the owner's bot made for one agent in one chat. */

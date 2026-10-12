@@ -13,12 +13,18 @@ export interface OwnerStore {
   get(options: { readonly signal: AbortSignal }): Promise<OwnerBinding | undefined>;
   /**
    * Binds the owner in place of any earlier one, as a spent start code allows (decision 0139), and
-   * answers the owner it replaced, or `undefined` for the first pairing.
+   * answers the owner it replaced, or `undefined` for the first pairing. The binding names no
+   * picked agent: a new pairing clears the pick.
    */
   bind(
-    binding: OwnerBinding,
+    binding: Omit<OwnerBinding, "agentId">,
     options: { readonly signal: AbortSignal },
   ): Promise<OwnerBinding | undefined>;
+  /**
+   * Keeps the agent the owner's chat talks to, as `/use` picks it (decision 0204); `false`, and
+   * nothing kept, before the owner pairs.
+   */
+  useAgent(agent: Id<"agt">, options: { readonly signal: AbortSignal }): Promise<boolean>;
 }
 
 /**

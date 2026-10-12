@@ -12,8 +12,16 @@ export function createMemoryOwnerStore(): OwnerStore {
     bind: async (binding, options) => {
       options.signal.throwIfAborted();
       const replaced = owner;
-      owner = { ...binding };
+      owner = { userId: binding.userId, pairedAtMs: binding.pairedAtMs };
       return Promise.resolve(replaced);
+    },
+    useAgent: async (agentId, options) => {
+      options.signal.throwIfAborted();
+      if (owner === undefined) {
+        return Promise.resolve(false);
+      }
+      owner = { ...owner, agentId };
+      return Promise.resolve(true);
     },
   };
 }
