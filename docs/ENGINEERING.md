@@ -757,8 +757,9 @@ Decided in [decision 0033](DECISIONS.md#d0033).
   explicitly: retries 0, logging off, our own `fetch`, base URL and headers from config. Both
   official SDKs otherwise read their own environment variables and retry twice. Enforcer: Oxlint
   `eslint/no-restricted-imports` (`openai` and `@anthropic-ai/sdk` outside
-  `runtime/src/providers/`); `check:model-clients` (an SDK import or a client constructor outside
-  that folder, tests included); the options: `review-diff`.
+  `runtime/src/providers/`); `check:model-clients` (an import of `openai` or any `@anthropic-ai/`
+  package, or a client constructor, outside that folder, tests included); the options:
+  `review-diff`.
 - Renovate opens grouped update PRs weekly.
 
 <a id="section-18"></a>

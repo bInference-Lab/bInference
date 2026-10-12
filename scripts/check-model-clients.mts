@@ -8,12 +8,14 @@ import { listRepoFiles } from "./repo-files.mjs";
 // on its own and log to the console.
 const providersFolder = "packages/runtime/src/providers/";
 const sourceFile = /^(?:packages|plugins)\/[^/]+\/src\/.+\.[cm]?tsx?$/;
-const sdkPackages = String.raw`(?:openai|@anthropic-ai\/sdk)(?:\/[^"'\x60]*)?`;
+// The openai and Anthropic SDKs, and Anthropic's clients for other clouds (bedrock-sdk,
+// vertex-sdk, foundry-sdk).
+const sdkPackages = String.raw`(?:openai|@anthropic-ai\/[\w.-]+)(?:\/[^"'\x60]*)?`;
 
 const rules: readonly { readonly pattern: RegExp; readonly message: string }[] = [
   {
     pattern:
-      /\bnew\s+(?:OpenAI|AzureOpenAI|BedrockOpenAI|Anthropic|AnthropicBedrock|AnthropicVertex|AnthropicFoundry)\s*\(/,
+      /\bnew\s+(?:OpenAI|AzureOpenAI|BedrockOpenAI|Anthropic(?:Bedrock(?:Mantle)?|Vertex|Foundry|Aws)?)\s*\(/,
     message: "builds a model SDK client",
   },
   {

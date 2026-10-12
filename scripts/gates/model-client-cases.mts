@@ -4,8 +4,34 @@ import { failingCase, type GateCase } from "./gate-case.mjs";
 // check refuses.
 const sdk = ["open", "ai"].join("");
 const client = ["Open", "AI"].join("");
+const anthropicSdk = ["@anthropic-ai", "sdk"].join("/");
+const anthropicClient = ["Anthro", "pic"].join("");
 
 const finding = /packages\/engine\/src\/seeded-client\.ts:\d+: check:model-clients: /;
+
+// Anthropic's client, and a client of its for another cloud, planted in engine.
+function anthropicClientCases(): readonly GateCase[] {
+  return [
+    failingCase(
+      "an Anthropic client built in engine fails check:model-clients",
+      {
+        "packages/engine/src/seeded-client.ts": [
+          `import ${anthropicClient} from "${anthropicSdk}";`,
+          `export const model = new ${anthropicClient}({ apiKey: "sk-ant-seeded" });`,
+          "",
+        ].join("\n"),
+      },
+      ["check:model-clients", new RegExp(`${finding.source}builds a model SDK client`)],
+    ),
+    failingCase(
+      "an Anthropic cloud SDK imported in engine fails check:model-clients",
+      {
+        "packages/engine/src/seeded-client.ts": `export { ${anthropicClient}BedrockMantle } from "${["@anthropic-ai", "bedrock-sdk"].join("/")}";\n`,
+      },
+      ["check:model-clients", new RegExp(`${finding.source}imports a model SDK`)],
+    ),
+  ];
+}
 
 /** Cases for check:model-clients: a model SDK client built outside the runtime's providers. */
 export function modelClientCases(): readonly GateCase[] {
@@ -21,6 +47,7 @@ export function modelClientCases(): readonly GateCase[] {
       },
       ["check:model-clients", new RegExp(`${finding.source}builds a model SDK client`)],
     ),
+    ...anthropicClientCases(),
     failingCase(
       "a model SDK imported in a runtime folder other than providers fails check:model-clients",
       {
