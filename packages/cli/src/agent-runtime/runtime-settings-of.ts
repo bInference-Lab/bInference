@@ -58,7 +58,7 @@ async function searchOf(config: RuntimeConfig, call: ReadCall): Promise<RuntimeS
     keyOf("search.xApiKey", xApiKey, call),
   ]);
   return {
-    provider,
+    ...(provider === undefined ? {} : { provider }),
     keys: {
       ...(brave.key === undefined ? {} : { brave: brave.key }),
       ...(tavily.key === undefined ? {} : { tavily: tavily.key }),

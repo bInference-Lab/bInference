@@ -1118,8 +1118,9 @@ Decided in [decision 0049](DECISIONS.md#d0049).
 - **Schedules.** "Every morning, review my portfolio" in chat creates a schedule through
   `schedule_create`: no money, no tap, owner timezone. `/schedules` lists them, and each run counts
   toward the budget.
-- **Search.** `search_web` uses DuckDuckGo with no key by default; other providers take keys.
-  `search_x` needs an X API key.
+- **Search.** `search_web` uses Brave Search or Tavily with the owner's key; without one it
+  answers that no search provider is configured. `search_x` needs an X API key. `read_page` reads
+  a page through the URL guard ([decision 0205](DECISIONS.md#d0205)).
 
 <a id="section-27"></a>
 

@@ -1,5 +1,8 @@
+import { valueAt } from "./config-edit.js";
 import type { ConfigMigration } from "./migrate-config.js";
 import { usdAsText } from "./usd-as-text.js";
+
+const searchProvider: readonly string[] = ["search", "provider"];
 
 /**
  * Every config migration, oldest first: the one at index `n` reads version `n + 1`. A change to
@@ -34,6 +37,16 @@ export const configMigrations: readonly ConfigMigration[] = [
     summary:
       "Adds chains.rpc.<chain>.ws, the owner's WebSocket RPC for new blocks, which no file sets yet.",
     edits: () => [],
+  },
+  {
+    from: 7,
+    summary:
+      'Removes search.provider "duckduckgo", which has no web search API: search_web uses the ' +
+      "first of brave and tavily with a key.",
+    edits: (file) =>
+      valueAt(file, searchProvider) === "duckduckgo"
+        ? [{ kind: "remove", path: searchProvider }]
+        : [],
   },
 ];
 

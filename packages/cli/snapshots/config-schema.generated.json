@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -798,10 +798,9 @@
         "properties": {
           "provider": {
             "description": "The provider behind search_web.",
-            "default": "duckduckgo",
+            "defaultText": "the first of brave and tavily with a key",
             "type": "string",
             "enum": [
-              "duckduckgo",
               "brave",
               "tavily"
             ]

@@ -42,7 +42,8 @@ export interface RuntimeModels {
 
 /** The web search provider and the keys the search tools use, resolved. */
 export interface RuntimeSearch {
-  readonly provider: "duckduckgo" | "brave" | "tavily";
+  /** The provider the owner picked; without one, the first of Brave and Tavily with a key. */
+  readonly provider?: "brave" | "tavily";
   readonly keys: { readonly brave?: string; readonly tavily?: string };
   readonly xApiKey?: string;
 }
@@ -118,7 +119,7 @@ export const runtimeSettingsSchema: z.ZodType<RuntimeSettings, RuntimeSettingsWi
     models: modelsSchema,
     chats: z.strictObject({ newMessageMode: z.enum(["merge", "after"]) }),
     search: z.strictObject({
-      provider: z.enum(["duckduckgo", "brave", "tavily"]),
+      provider: z.enum(["brave", "tavily"]).exactOptional(),
       keys: z.strictObject({
         brave: secretTextSchema.exactOptional(),
         tavily: secretTextSchema.exactOptional(),

@@ -132,6 +132,17 @@ describe("migrate config", () => {
     });
   });
 
+  it.each([
+    ["duckduckgo", [{ kind: "remove", path: ["search", "provider"] }]],
+    ["brave", []],
+  ])("moves a version 7 file to version 8 with the search provider %s", (provider, edits) => {
+    const seventh: JsonObject = { version: 7, search: { provider } };
+    expect(migrateConfig(seventh, configMigrations)).toMatchObject({
+      ok: true,
+      steps: [{ from: 7, to: 8, edits }],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);

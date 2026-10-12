@@ -60,7 +60,8 @@ export interface RiskConfig {
 
 /** The web search provider and its keys. */
 export interface SearchConfig {
-  readonly provider: "duckduckgo" | "brave" | "tavily";
+  /** The provider behind `search_web`; without one, the first of Brave and Tavily with a key. */
+  readonly provider?: "brave" | "tavily";
   readonly keys: { readonly brave?: SecretSource; readonly tavily?: SecretSource };
   readonly xApiKey?: SecretSource;
 }
@@ -155,10 +156,10 @@ export const riskSchema: z.ZodType<RiskConfig> = z
 /** Parses `search`. */
 export const searchSchema: z.ZodType<SearchConfig> = z
   .strictObject({
-    provider: z
-      .enum(["duckduckgo", "brave", "tavily"])
-      .prefault("duckduckgo")
-      .describe("The provider behind search_web."),
+    provider: z.enum(["brave", "tavily"]).exactOptional().meta({
+      description: "The provider behind search_web.",
+      defaultText: "the first of brave and tavily with a key",
+    }),
     keys: z
       .strictObject({
         brave: secretSourceSchema.exactOptional().describe("Brave Search's key."),

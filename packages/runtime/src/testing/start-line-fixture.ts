@@ -20,7 +20,7 @@ export const fixtureSettings: RuntimeSettings = {
     },
   },
   chats: { newMessageMode: "merge" },
-  search: { provider: "duckduckgo", keys: {} },
+  search: { keys: {} },
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
 };
 

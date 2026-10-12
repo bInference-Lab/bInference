@@ -2,7 +2,7 @@
 
 This file is generated from the config schema by `pnpm check:config-schema --write`. Change the schema in `packages/cli/src/config/schema/`, never this file.
 
-This binference reads `config.json5` version 7. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 8. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -135,7 +135,7 @@ Risk data.
 
 Web search.
 
-- `search.provider`: The provider behind search_web. Takes one of "duckduckgo", "brave", "tavily". Default: `"duckduckgo"`. Variable: `BINFERENCE_SEARCH__PROVIDER`.
+- `search.provider`: The provider behind search_web. Takes one of "brave", "tavily". Default: the first of brave and tavily with a key. Variable: `BINFERENCE_SEARCH__PROVIDER`.
 - `search.keys.brave`: Brave Search's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_SEARCH__KEYS__BRAVE`.
 - `search.keys.tavily`: Tavily's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_SEARCH__KEYS__TAVILY`.
 - `search.xApiKey`: Turns search_x on. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_SEARCH__X_API_KEY`.
