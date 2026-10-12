@@ -13,6 +13,7 @@ import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { StoredIntent } from "../confirmations/stored-intent.js";
 import { ledgerEntryViewOf } from "../ledger/ledger-entry-view.js";
+import type { OrderFillWrite } from "../orders/order-fill.js";
 import { orderPush } from "../orders/order-view-of.js";
 import type { AgentStore, ConfirmationStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -101,6 +102,15 @@ export interface StoredIntentsOptions {
    * so it reaches the `inbox` topic.
    */
   readonly settled?: (message: AgentInboxMessage) => void;
+  /**
+   * The write on its order of a move that ends an auto order's fill without filling, which lands
+   * with the move (decision 0197); a move carries none when absent.
+   */
+  readonly fillEnd?: (
+    before: IntentSnapshot,
+    move: IntentMove,
+    options: { readonly signal: AbortSignal },
+  ) => Promise<OrderFillWrite | undefined>;
 }
 
 // A write's pushes and those of the orders a fill moved, then the settle message it stored, if any.
@@ -203,8 +213,15 @@ async function changeFor(
     return undefined;
   }
   const { record, history } = before;
-  const { ids, random } = options;
-  return changeOf(move, { record, history, ids, ...(random === undefined ? {} : { random }) });
+  const { ids, random, fillEnd } = options;
+  const order = await fillEnd?.(before, move, { signal });
+  const withOrder = order === undefined ? move : { ...move, order };
+  return changeOf(withOrder, {
+    record,
+    history,
+    ids,
+    ...(random === undefined ? {} : { random }),
+  });
 }
 
 async function moveIntent(

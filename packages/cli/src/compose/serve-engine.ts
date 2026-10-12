@@ -135,6 +135,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   const unlocked = await locked.lock.unlock({ signal });
   await executor.recover({ signal });
   await composed.repairPaperFills({ signal });
+  await composed.repairOrderFills({ signal });
   if (unlocked.ok) {
     await composed.resume(signal);
   }

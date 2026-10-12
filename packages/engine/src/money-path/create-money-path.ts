@@ -298,7 +298,7 @@ async function authorizeAndExecute(
     simulated,
     pass,
   );
-  return execute(authorized, { signal });
+  return execute(authorized, fill === undefined ? { signal } : { signal, fill });
 }
 
 async function propose(

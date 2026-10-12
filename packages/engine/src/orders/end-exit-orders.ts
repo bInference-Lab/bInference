@@ -2,7 +2,7 @@ import { assetRefParts, type AssetRef, type ChainRegistry } from "@binference/ch
 import type { Id } from "@binference/core";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { noticePush } from "../pushes/notice-push.js";
+import { type Notice, noticePush } from "../pushes/notice-push.js";
 import { moveOrder } from "./order-machine.js";
 import {
   isExitOrder,
@@ -80,22 +80,21 @@ export async function exitEndMovesOf(
 }
 
 /**
- * Tells the owner, with one `notice.ordersEnded`, of the other exit orders an exit order's fill
- * ended as it emptied their position; no notice when it ended none.
+ * The one `notice.ordersEnded` that tells the owner of the other exit orders an exit order's fill
+ * ended as it emptied their position; none when it ended none.
  */
-export function announceEndedExits(
-  parts: Pick<ExitParts, "chains" | "publish">,
+export function endedExitsNotice(
+  parts: Pick<ExitParts, "chains">,
   call: { readonly emptiedBy: OrderRecord; readonly count: number },
-): void {
+): Notice | undefined {
   const { emptiedBy, count } = call;
   if (count === 0) {
-    return;
+    return undefined;
   }
   const orderKind = { key: "order.kind", values: { kind: emptiedBy.kind } };
   const token = tokenText(parts.chains, emptiedBy.request.token);
   const values = { token, count: String(count) };
-  const notice = { key: "notice.ordersEnded", agent: emptiedBy.agentId, values };
-  parts.publish(noticePush({ ...notice, parts: { orderKind } }));
+  return { key: "notice.ordersEnded", agent: emptiedBy.agentId, values, parts: { orderKind } };
 }
 
 /**

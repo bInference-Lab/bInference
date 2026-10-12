@@ -1,8 +1,10 @@
 import type { Id } from "@binference/core";
 import {
+  type FillAnnouncement,
   type OrderFillQuery,
   type OrderFillRecord,
   orderFillRecordSchema,
+  type UnannouncedFillQuery,
 } from "../orders/order-fill.js";
 import { constraintFault, memoryCall } from "./memory-call.js";
 
@@ -19,6 +21,14 @@ export interface MemoryOrderFills {
     query: OrderFillQuery,
     options: { readonly signal: AbortSignal },
   ): Promise<readonly OrderFillRecord[]>;
+  unannounced(
+    query: UnannouncedFillQuery,
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly OrderFillRecord[]>;
+  markAnnounced(
+    announcement: FillAnnouncement,
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
   /** Checks a fill row inside another in-memory store's write; a broken rule throws. */
   checkFillNow(fill: OrderFillRecord): void;
   /** Writes a fill row `checkFillNow` passed, once the rest of the write has passed its checks. */
@@ -53,6 +63,26 @@ function byNewest(left: OrderFillRecord, right: OrderFillRecord): number {
   return left.id < right.id ? 1 : -1;
 }
 
+// Oldest first, then by id, as the SQLite store pages the rows to announce.
+function byOldest(left: OrderFillRecord, right: OrderFillRecord): number {
+  return -byNewest(left, right);
+}
+
+// Marks rows announced, keeping an earlier time; an unknown row, or one with no notices, throws
+// before any row changes.
+function announce(fills: Fills, announcement: FillAnnouncement): void {
+  const rows = announcement.ids.map((id) => fills.get(id));
+  const isKnown = rows.every((row) => row?.notices !== undefined);
+  if (!isKnown) {
+    throw constraintFault("an announcement names an unknown row or one without notices");
+  }
+  for (const row of rows) {
+    if (row !== undefined && row.announcedAtMs === undefined) {
+      fills.set(row.id, { ...row, announcedAtMs: announcement.atMs });
+    }
+  }
+}
+
 /** Creates the fill rows of an in-memory order store, empty. */
 export function createMemoryOrderFills(options: MemoryOrderFillsOptions): MemoryOrderFills {
   const fills: Fills = new Map();
@@ -71,6 +101,19 @@ export function createMemoryOrderFills(options: MemoryOrderFillsOptions): Memory
       memoryCall(call, () => {
         checkFill(fills, options, fill);
         return save(fill);
+      }),
+    unannounced: async (query, call) =>
+      memoryCall(call, () =>
+        structuredClone(
+          [...fills.values()]
+            .filter((fill) => fill.notices !== undefined && fill.announcedAtMs === undefined)
+            .toSorted(byOldest)
+            .slice(0, query.limit),
+        ),
+      ),
+    markAnnounced: async (announcement, call) =>
+      memoryCall(call, () => {
+        announce(fills, announcement);
       }),
     fills: async (query, call) =>
       memoryCall(call, () =>

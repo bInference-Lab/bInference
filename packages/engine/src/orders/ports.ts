@@ -1,5 +1,10 @@
 import type { Id, Result } from "@binference/core";
-import type { OrderFillQuery, OrderFillRecord } from "./order-fill.js";
+import type {
+  FillAnnouncement,
+  OrderFillQuery,
+  OrderFillRecord,
+  UnannouncedFillQuery,
+} from "./order-fill.js";
 import type {
   OrderDraft,
   OrderMove,
@@ -50,4 +55,14 @@ export interface OrderStore {
   recordFill(fill: OrderFillRecord, options: StoreCall): Promise<OrderFillRecord>;
   /** One order's fill rows, the newest first, then by id from the last. */
   fills(query: OrderFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
+  /**
+   * The fill rows of every order whose notices were never announced, the oldest first, then by
+   * id (decision 0197).
+   */
+  unannounced(query: UnannouncedFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
+  /**
+   * Marks the notices of fill rows announced at `atMs`. A row already announced keeps its time;
+   * an unknown row, or one without notices, throws `store.constraint`.
+   */
+  markAnnounced(announcement: FillAnnouncement, options: StoreCall): Promise<void>;
 }

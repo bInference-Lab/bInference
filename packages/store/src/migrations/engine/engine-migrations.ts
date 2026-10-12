@@ -30,6 +30,7 @@ import { migration as agentInbox } from "./0028_agent_inbox.js";
 import { migration as cardPlaces } from "./0029_card_places.js";
 import { migration as telegramTopics } from "./0030_telegram_topics.js";
 import { migration as orderCards } from "./0031_order_cards.js";
+import { migration as fillNotices } from "./0032_fill_notices.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -64,4 +65,5 @@ export const engineMigrations: readonly Migration[] = [
   cardPlaces,
   telegramTopics,
   orderCards,
+  fillNotices,
 ];

@@ -5,6 +5,7 @@ import type { FillSize } from "@binference/protocol";
 import { testCoin } from "../intents/test-intents.js";
 import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
 import {
+  announcesFillNotices,
   recordsSkips,
   refusesAbortedFills,
   refusesAFillWithoutItsOrderMove,
@@ -193,6 +194,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     checkOn("keeps an order's skips, the newest first", create, recordsSkips),
     checkOn("writes a fill on its order with its intent's move", create, writesAFillWithItsIntent),
     checkOn("refuses fill calls on an aborted signal", create, refusesAbortedFills),
+    checkOn("keeps a row's notices until they are announced", create, announcesFillNotices),
     checkOn(
       "refuses a fill row without its order's own move",
       create,

@@ -4,6 +4,7 @@ import type { PaperFills } from "../paper/paper-fills.js";
 import type { Executor } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { rescueNotice } from "../safety/rescue-notice.js";
+import type { FillProposal } from "./authorize-simulated.js";
 
 /**
  * The execute step of the money path (ARCHITECTURE.md section 7, step 8) for an intent the owner,
@@ -17,7 +18,11 @@ import { rescueNotice } from "../safety/rescue-notice.js";
  */
 export type ExecuteConfirmed = (
   snapshot: IntentSnapshot,
-  options: { readonly signal: AbortSignal },
+  options: {
+    readonly signal: AbortSignal;
+    /** The proposal of the auto order fill the money path authorized in this run, if any. */
+    readonly fill?: FillProposal;
+  },
 ) => Promise<IntentSnapshot>;
 
 /**

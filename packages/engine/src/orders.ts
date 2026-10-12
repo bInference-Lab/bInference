@@ -1,14 +1,18 @@
 export {
+  fillAnnouncementSchema,
   orderFillQuerySchema,
   orderFillRecordSchema,
   orderFillWriteSchema,
   recordsOwnFill,
+  unannouncedFillQuerySchema,
 } from "./orders/order-fill.js";
 export type {
+  FillAnnouncement,
   OrderFillQuery,
   OrderFillReason,
   OrderFillRecord,
   OrderFillWrite,
+  UnannouncedFillQuery,
 } from "./orders/order-fill.js";
 export {
   hasPriceTrigger,

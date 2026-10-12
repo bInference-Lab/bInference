@@ -1,5 +1,7 @@
 import { type Id, idSchema, type Result } from "@binference/core";
 import {
+  type FillAnnouncement,
+  fillAnnouncementSchema,
   type OrderDraft,
   orderDraftSchema,
   type OrderFillQuery,
@@ -13,13 +15,21 @@ import {
   orderQuerySchema,
   type OrderRecord,
   orderRecordSchema,
+  type UnannouncedFillQuery,
+  unannouncedFillQuerySchema,
 } from "@binference/engine/orders";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
-import { checkOrderFill, insertOrderFill, listOrderFills } from "./order-fill-writes.js";
+import {
+  checkOrderFill,
+  insertOrderFill,
+  listOrderFills,
+  listUnannounced,
+  markAnnounced,
+} from "./order-fill-writes.js";
 import { toOrderRecord } from "./order-rows.js";
 import { checkOrderMoves, createOrder, readOrder, writeOrderMoves } from "./order-writes.js";
 
@@ -138,6 +148,27 @@ export const listOrderFillsTask: StoreTask<OrderFillQuery, readonly OrderFillRec
   },
 );
 
+/** Lists the fill rows whose notices were never announced, the oldest first. */
+export const unannouncedFillsTask: StoreTask<UnannouncedFillQuery, readonly OrderFillRecord[]> =
+  defineTask({
+    name: "orders.unannounced",
+    access: "read",
+    input: unannouncedFillQuerySchema,
+    output: z.array(orderFillRecordSchema),
+    run: (database, query) => listUnannounced(database, query),
+  });
+
+/** Marks fill rows' notices announced. */
+export const markAnnouncedTask: StoreTask<FillAnnouncement, void> = defineTask({
+  name: "orders.markAnnounced",
+  access: "write",
+  input: fillAnnouncementSchema,
+  output: z.undefined(),
+  run(database, announcement) {
+    markAnnounced(database, announcement);
+  },
+});
+
 /** Every task of the SQLite order store. */
 export const orderTasks: readonly TaskRunner[] = [
   createOrderTask,
@@ -147,4 +178,6 @@ export const orderTasks: readonly TaskRunner[] = [
   listOrdersTask,
   recordOrderFillTask,
   listOrderFillsTask,
+  unannouncedFillsTask,
+  markAnnouncedTask,
 ];

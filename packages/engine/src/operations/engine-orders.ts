@@ -5,6 +5,7 @@ import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { Holdings } from "../money-path/wallet-facts.js";
 import type { OrderParts } from "../orders/create-order.js";
+import { createFillEnd, type FillEnd } from "../orders/fill-ends.js";
 import { createFillOnPaper, type FillOnPaperParts } from "../orders/fill-on-paper.js";
 import { createOrderFills, type OrderFills } from "../orders/fill-orders.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
@@ -84,6 +85,16 @@ export function fillOnPaperOf(
   options: EngineOptions,
   parts: Pick<FillOnPaperParts, "paper" | "stored" | "portfolio">,
 ): ExecuteConfirmed {
-  const { stores, chains, clock, ids, publish } = options;
-  return createFillOnPaper({ ...parts, orders: stores.orders, chains, clock, ids, publish });
+  const { stores, chains, clock, ids } = options;
+  return createFillOnPaper({ ...parts, orders: stores.orders, chains, clock, ids });
+}
+
+/**
+ * The skip of an order's fill that the one writer of intents adds to the move ending its intent
+ * (decision 0197), with the rolling cap's use a skip for the cap reports.
+ */
+export function fillEndOf(options: EngineOptions, gate: CapGate): FillEnd {
+  const { stores, ids } = options;
+  const spent: CapGate["spent"] = async (snapshot, call) => gate.spent(snapshot, call);
+  return createFillEnd({ orders: stores.orders, spent, ids });
 }

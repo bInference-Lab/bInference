@@ -13,7 +13,7 @@ import {
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { ChatHandlers } from "../chat/chat-relay.js";
 import type { RunningTurns } from "../chat/running-turns.js";
-import { createCapGate } from "../confirmations/cap-gate.js";
+import { type CapGate, createCapGate } from "../confirmations/cap-gate.js";
 import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
 import { type Confirmations, createConfirmations } from "../confirmations/create-confirmations.js";
 import { createGasCheck } from "../gas/check-gas.js";
@@ -41,7 +41,6 @@ import { createOrderTriggers, type OrderTriggers } from "../orders/order-trigger
 import { tickOrders } from "../orders/tick-orders.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
-import { repairPaperFills } from "../paper/repair-paper-fills.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -60,8 +59,15 @@ import {
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
-import { fillOnPaperOf, followCardOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
+import {
+  fillEndOf,
+  fillOnPaperOf,
+  followCardOf,
+  orderFillsOf,
+  orderPartsOf,
+} from "./engine-orders.js";
 import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
+import { orderRepairOf, paperRepairOf } from "./engine-repairs.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
 import { type SettingsHandlers, settingsHandlers } from "./settings-handlers.js";
@@ -111,6 +117,12 @@ export interface Engine {
    * it before the engine takes any work; it answers how many fills it repaired.
    */
   readonly repairPaperFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
+  /**
+   * Cancels, unsigned, each paper fill of an auto order a stop left unfinished, and tells the
+   * owner every fill notice a stop kept from being announced (decision 0197). The startup calls it
+   * before any price can fire an order; it answers how many intents and rows it repaired.
+   */
+  readonly repairOrderFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
   /**
    * The auto order work that waits for no price (decision 0189): each order waiting for its card
    * moves as the card says, each order whose expiry came expires, and each order that ends within
@@ -240,14 +252,17 @@ function executeOf(
   });
 }
 
-// The one writer of intents, which tells the chat relay of each settle message it stores.
+// The one writer of intents, which tells the chat relay of each settle message it stores, and
+// writes the skip of an order's fill with the move that ends its intent (decision 0197).
 function storedIntentsOf(
   options: EngineOptions,
-  settled: (message: AgentInboxMessage) => void,
+  parts: { readonly settled: (message: AgentInboxMessage) => void; readonly gate: CapGate },
 ): StoredIntents {
   const { stores, ids, random, publish } = options;
   const { intents, agents } = stores;
-  return createStoredIntents({ intents, agents, ids, random, publish, settled });
+  const fillEnd = fillEndOf(options, parts.gate);
+  const { settled } = parts;
+  return createStoredIntents({ intents, agents, ids, random, publish, settled, fillEnd });
 }
 
 // The card timer closes an intent's card through the confirmations, and an auto order's card
@@ -287,7 +302,8 @@ function intentParts(
   settled: (message: AgentInboxMessage) => void,
 ): IntentParts {
   const { stores, custody, host, chains, clock, ids, isLocked } = options;
-  const stored = storedIntentsOf(options, settled);
+  const gate = createCapGate({ intents: stores.intents, clock });
+  const stored = storedIntentsOf(options, { settled, gate });
   const confirmations = createConfirmations({
     clock,
     store: stored,
@@ -296,7 +312,6 @@ function intentParts(
   });
   const orders = orderPartsOf(options, { stored, confirmations, wallets: paper.wallets });
   const execute = executeOf(options, { stored, paper, orders });
-  const gate = createCapGate({ intents: stores.intents, clock });
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
   const showings = createCardShowings({ ...stores, chains, venues: host });
@@ -327,21 +342,6 @@ function intentParts(
   const fills = orderFillsOf(options, { stored, moneyPath, gate, holdings: paper.holdings });
   const triggers = createOrderTriggers({ orders: stores.orders, fills, clock });
   return { answer, stored, orders, fills, triggers, handlers, lowGas, cardTimer };
-}
-
-// The startup's repair of paper fills a crash left without positions.
-function paperRepairOf(
-  options: EngineOptions,
-  parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
-): Engine["repairPaperFills"] {
-  const repair = {
-    intents: options.stores.intents,
-    stored: parts.stored,
-    store: options.positions,
-    positions: parts.paper.positions,
-    clock: options.clock,
-  };
-  return async (call) => repairPaperFills(repair, call);
 }
 
 // What the rescue address, the address book and the settings operations each read and push.
@@ -398,6 +398,7 @@ export function createEngine(given: EngineOptions): Engine {
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
+    repairOrderFills: orderRepairOf(options, intents.stored),
     tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
     fillOrder: async (request, call) => intents.fills.run(request, call),

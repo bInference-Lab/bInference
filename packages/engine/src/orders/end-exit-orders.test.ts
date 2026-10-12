@@ -4,8 +4,8 @@ import { testAgent, testNowMs } from "../intents/test-intents.js";
 import { testChains, type TestEngine } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import {
-  announceEndedExits,
   endEmptyExit,
+  endedExitsNotice,
   type ExitParts,
   exitEndMovesOf,
 } from "./end-exit-orders.js";
@@ -54,15 +54,17 @@ async function threeOrders() {
 
 describe("exit orders on one position", () => {
   it("names the moves that end the other exit orders of a position an exit empties, and one notice", async () => {
-    const { test, takeProfit, stopLoss, buy, parts, notices } = await threeOrders();
+    const { test, takeProfit, stopLoss, buy, parts } = await threeOrders();
 
     const moves = await exitEndMovesOf(parts, {
       emptiedBy: takeProfit,
       nowMs: testNowMs + 5,
       ...live,
     });
-    announceEndedExits(parts, { emptiedBy: takeProfit, count: moves.length });
-    announceEndedExits(parts, { emptiedBy: takeProfit, count: 0 });
+    const said = [
+      endedExitsNotice(parts, { emptiedBy: takeProfit, count: moves.length }),
+      endedExitsNotice(parts, { emptiedBy: takeProfit, count: 0 }),
+    ];
 
     expect(moves).toStrictEqual([
       {
@@ -75,13 +77,14 @@ describe("exit orders on one position", () => {
     ]);
     expect((await storedOrder(test, buy.id)).state).toBe("active");
     expect((await storedOrder(test, stopLoss.id)).state).toBe("active");
-    expect(notices()).toStrictEqual([
+    expect(said).toStrictEqual([
       {
         key: "notice.ordersEnded",
         agent: testAgent,
         values: { token: "TKN", count: "1" },
         parts: { orderKind: { key: "order.kind", values: { kind: "takeProfit" } } },
       },
+      undefined,
     ]);
   });
 

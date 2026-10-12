@@ -132,7 +132,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
     "id agent_id wallet_id kind state request trigger_state fills max_fills expires_at intent_id " +
       "card_id paper outside_content end_reason expiry_noticed_at created_at changed_at version",
   ),
-  order_fills: names("id order_id intent_id outcome reason at"),
+  order_fills: names("id order_id intent_id outcome reason at notices announced_at"),
   alerts: names("id agent_id condition state created_at fired_at"),
   webhook_rules: names(
     "id agent_id name secret_hash action state rate_per_min fills max_fills expires_at card_id " +
@@ -212,7 +212,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   arrivals: ["index|wallet_id,at"],
   departures: ["index|intent_id", "index|wallet_id,at"],
   orders: ["index|state,agent_id", "index|wallet_id,paper,state", "unique|intent_id"],
-  order_fills: ["index|order_id,at"],
+  order_fills: ["index|at|partial", "index|order_id,at"],
   alerts: ["index|state"],
   webhook_rules: ["index|state"],
   webhook_events: ["index|rule_id,alert_id", "index|rule_id,received_at"],

@@ -17,6 +17,8 @@ import type { WalletFacts } from "./wallet-facts.js";
 export interface FillProposal {
   readonly authorization: FillAuthorization;
   readonly isPaper: boolean;
+  /** The decimals of the order's token, which the fill's notice prices a whole token by. */
+  readonly decimals: number;
   readonly check: (
     simulated: IntentSnapshot,
     call: { readonly signal: AbortSignal },

@@ -1,20 +1,21 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { Clock, IdSource } from "@binference/core";
+import type { Clock, IdSource, JsonValue } from "@binference/core";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
-import type { PublishPush } from "../pushes/engine-push.js";
-import { cancelCard } from "./cancel-order.js";
-import { announceEndedExits, exitEndMovesOf } from "./end-exit-orders.js";
+import { noticePush } from "../pushes/notice-push.js";
+import { endedExitsNotice, exitEndMovesOf } from "./end-exit-orders.js";
+import { cancelFill } from "./fill-ends.js";
+import { fillNotice } from "./fill-notices.js";
 import type { OrderFillWrite } from "./order-fill.js";
 import { moveOrder } from "./order-machine.js";
-import { isExitOrder, type OrderMove, type OrderRecord } from "./order-record.js";
+import { isExitOrder, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 
-/** What an order's paper fill writes through, reads its position from, and announces on. */
+/** What an order's paper fill writes through and reads its position from. */
 export interface FillOnPaperParts {
   readonly paper: PaperFills;
   readonly stored: StoredIntents;
@@ -24,7 +25,6 @@ export interface FillOnPaperParts {
   readonly portfolio: Pick<PaperPortfolio, "balance">;
   readonly chains: ChainRegistry;
   readonly ids: IdSource;
-  readonly publish: PublishPush;
 }
 
 // A fill whose move lost its race to another write of its order is tried again this many times.
@@ -44,23 +44,42 @@ async function empties(
   return held <= fill.amountIn.base;
 }
 
-/**
- * A fill's write on its order, and the other exit orders it ends with it. The order's own move
- * comes first; without it there is no write (decision 0197).
- */
-interface FillWrite {
-  readonly write: OrderFillWrite;
-  readonly ended: readonly OrderMove[];
+// What the owner hears of the fill, written on its row: the fill, at a whole token's price when the
+// token's decimals are known, and the other exit orders it ended.
+function noticesOf(
+  parts: FillOnPaperParts,
+  call: {
+    readonly order: OrderRecord;
+    readonly fill: PaperFill;
+    readonly decimals?: number;
+    readonly ended: number;
+  },
+): readonly JsonValue[] {
+  const { order, fill, decimals, ended } = call;
+  const { soldPrice } = fill;
+  const filled =
+    soldPrice === undefined || decimals === undefined
+      ? undefined
+      : fillNotice(order, { ...fill, soldPrice }, decimals);
+  const exits = endedExitsNotice(parts, { emptiedBy: order, count: ended });
+  return [filled, exits]
+    .filter((notice) => notice !== undefined)
+    .map((notice) => noticePush(notice).data);
 }
 
 // The order records the fill at the fill's own time; an order that cannot, as one that expired
-// since the check, takes no write. A sale that empties its position ends the position's other
-// exit orders; the fill's row is `filled`.
+// since the check, takes no write (decision 0197). A sale that empties its position ends the
+// position's other exit orders; the fill's row is `filled` and carries what the owner hears.
 async function fillWriteOf(
   parts: FillOnPaperParts,
   snapshot: IntentSnapshot,
-  call: { readonly order: OrderRecord; readonly fill: PaperFill; readonly signal: AbortSignal },
-): Promise<FillWrite | undefined> {
+  call: {
+    readonly order: OrderRecord;
+    readonly fill: PaperFill;
+    readonly decimals?: number;
+    readonly signal: AbortSignal;
+  },
+): Promise<OrderFillWrite | undefined> {
   const { order, fill, signal } = call;
   const emptiesPosition = await empties(parts, order, { fill, signal });
   const recorded = moveOrder(order, { type: "fill_recorded", emptiesPosition }, fill.atMs);
@@ -70,35 +89,36 @@ async function fillWriteOf(
   const ended = emptiesPosition
     ? await exitEndMovesOf(parts, { emptiedBy: order, nowMs: fill.atMs, signal })
     : [];
+  const notices = noticesOf(parts, { ...call, ended: ended.length });
   const row = {
     id: parts.ids.next("fil"),
     orderId: order.id,
     intentId: snapshot.record.id,
     outcome: "filled" as const,
     atMs: fill.atMs,
+    ...(notices.length === 0 ? {} : { notices }),
   };
-  return { write: { moves: [recorded.value, ...ended], fill: row }, ended };
+  return { moves: [recorded.value, ...ended], fill: row };
 }
 
-// One try at the paper fill with its order's write; answers the intent after it.
+// One try at the paper fill with its order's write; answers the intent after it, and whether the
+// sold asset had a usable price.
 async function tryFill(
   parts: FillOnPaperParts,
   snapshot: IntentSnapshot,
-  call: { readonly order: OrderRecord; readonly signal: AbortSignal },
-): Promise<IntentSnapshot> {
-  const { order, signal } = call;
-  const written: { value?: FillWrite | undefined } = {};
+  call: { readonly order: OrderRecord; readonly decimals?: number; readonly signal: AbortSignal },
+): Promise<{ readonly filled: IntentSnapshot; readonly wasPriced: boolean }> {
+  const { signal } = call;
+  // The paper fill asks for the order's write only once it priced the sold asset.
+  const priced: true[] = [];
   const filled = await parts.paper.fillAtQuote(snapshot, {
     signal,
     order: async (fill) => {
-      written.value = await fillWriteOf(parts, snapshot, { order, fill, signal });
-      return written.value?.write;
+      priced.push(true);
+      return fillWriteOf(parts, snapshot, { ...call, fill });
     },
   });
-  if (filled.record.state === "paper_filled" && written.value !== undefined) {
-    announceEndedExits(parts, { emptiedBy: order, count: written.value.ended.length });
-  }
-  return filled;
+  return { filled, wasPriced: priced.length > 0 };
 }
 
 // The order an order fill's intent fills, as it stands now.
@@ -126,7 +146,12 @@ async function orderOf(
 export function createFillOnPaper(parts: FillOnPaperParts): ExecuteConfirmed {
   const attempt = async (
     snapshot: IntentSnapshot,
-    call: { readonly signal: AbortSignal; readonly left: number },
+    call: {
+      readonly signal: AbortSignal;
+      readonly left: number;
+      readonly decimals?: number;
+      readonly wasPriced?: boolean;
+    },
   ): Promise<IntentSnapshot> => {
     const { signal, left } = call;
     const order = await orderOf(parts, snapshot, signal);
@@ -134,17 +159,24 @@ export function createFillOnPaper(parts: FillOnPaperParts): ExecuteConfirmed {
       return snapshot;
     }
     if (!moveOrder(order, { type: "fill_recorded" }, parts.clock.now()).ok) {
-      await cancelCard(parts, snapshot.record.id, signal);
-      return (await parts.stored.snapshot(snapshot.record.id, { signal })) ?? snapshot;
+      return cancelFill(parts, { snapshot, signal });
     }
-    // After the last try, only the check above runs: a fill its order could not take is cancelled.
+    // After the last try, only the check above runs, and a fill still waiting is cancelled: one
+    // whose sold asset had no usable price is a skip, `no_price`.
     if (left <= 0) {
-      return snapshot;
+      const skip = call.wasPriced === true ? {} : { skip: { order, reason: "no_price" as const } };
+      return cancelFill(parts, { snapshot, ...skip, signal });
     }
-    const filled = await tryFill(parts, snapshot, { order, signal });
-    return filled.record.state === "confirmed"
-      ? attempt(filled, { signal, left: left - 1 })
-      : filled;
+    const decimals = call.decimals === undefined ? {} : { decimals: call.decimals };
+    const tried = await tryFill(parts, snapshot, { order, ...decimals, signal });
+    return tried.filled.record.state === "confirmed"
+      ? attempt(tried.filled, { ...call, left: left - 1, wasPriced: tried.wasPriced })
+      : tried.filled;
   };
-  return async (snapshot, { signal }) => attempt(snapshot, { signal, left: fillAttempts });
+  return async (snapshot, { signal, fill }) =>
+    attempt(snapshot, {
+      signal,
+      left: fillAttempts,
+      ...(fill === undefined ? {} : { decimals: fill.decimals }),
+    });
 }

@@ -199,6 +199,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
     store refuses a `filled` row without its order's own move to one fill more, and a fill whose
     order cannot take it at the fill's own time fills nothing and is cancelled
     ([decision 0197](../DECISIONS.md#d0197)).
+  - A fill's row carries the notices the owner hears of it, and a skip's row is written in the
+    transaction that ends its intent. Notices are announced after the commit, and at the next
+    start for any row not yet announced; the start also cancels, unsigned, each paper fill a stop
+    left unfinished ([decision 0197](../DECISIONS.md#d0197)).
   - An order fills once unless it names more fills. One with a fill left waits after each fill
     until its condition stops holding at a confirmed price, and a trailing stop's highest price
     starts again; an exit order whose fill emptied its position ends with `position_closed`

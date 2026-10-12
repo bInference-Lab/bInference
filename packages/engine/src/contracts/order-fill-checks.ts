@@ -111,6 +111,43 @@ export async function refusesAFillWithoutItsOrderMove(subject: OrderStoreSubject
   assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), []);
 }
 
+/**
+ * Checks that a row keeps its notices and lists as unannounced, the oldest first, until it is
+ * marked announced, which keeps the first time; a row without notices, or an unknown one, is
+ * refused and marks nothing.
+ */
+export async function announcesFillNotices(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  assert.ok((await store.create(orderDraft(subject, 1), live())).ok);
+  assert.ok((await store.create(orderDraft(subject, 2), live())).ok);
+  const notices = [{ key: "notice.skipped", values: { amount: "18446744073709551617" } }];
+  const late = { ...fillRow(1, 5, "skipped"), notices };
+  const early = { ...fillRow(2, 3, "skipped"), notices };
+  const quiet = fillRow(1, 4, "skipped");
+  assert.deepEqual(await store.recordFill(late, live()), late);
+  assert.deepEqual(await store.recordFill(early, live()), early);
+  assert.deepEqual(await store.recordFill(quiet, live()), quiet);
+  assert.deepEqual(await store.unannounced({ limit: 10 }, live()), [early, late]);
+  assert.deepEqual(await store.unannounced({ limit: 1 }, live()), [early]);
+  await assert.rejects(store.markAnnounced({ ids: [early.id, quiet.id], atMs: 7 }, live()), {
+    code: "store.constraint",
+  });
+  await assert.rejects(
+    store.markAnnounced({ ids: [early.id, fixtureId("fil", 9)], atMs: 7 }, live()),
+    { code: "store.constraint" },
+  );
+  assert.equal((await store.unannounced({ limit: 10 }, live())).length, 2);
+  await store.markAnnounced({ ids: [early.id], atMs: 7 }, live());
+  await store.markAnnounced({ ids: [early.id, late.id], atMs: 9 }, live());
+  assert.deepEqual(await store.unannounced({ limit: 10 }, live()), []);
+  const query = { orderId: fixtureId("ord", 2), limit: 5 };
+  assert.deepEqual(await store.fills(query, live()), [{ ...early, announcedAtMs: 7 }]);
+  await assertRefusesAborted(async (options) => store.unannounced({ limit: 5 }, options));
+  await assertRefusesAborted(async (options) =>
+    store.markAnnounced({ ids: [late.id], atMs: 11 }, options),
+  );
+}
+
 /** Checks that the fill calls refuse an aborted signal and write nothing. */
 export async function refusesAbortedFills(subject: OrderStoreSubject): Promise<void> {
   const { store } = subject;

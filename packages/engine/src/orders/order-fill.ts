@@ -1,4 +1,4 @@
-import { type Id, idSchema } from "@binference/core";
+import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { z } from "zod";
 import {
   type IntentReason,
@@ -25,6 +25,24 @@ export interface OrderFillRecord {
   /** Absent for a fill. */
   readonly reason?: OrderFillReason;
   readonly atMs: number;
+  /**
+   * What the owner hears of this fill or skip, each notice as its push carries it, written with
+   * the row (decision 0197); absent when the owner hears nothing of it.
+   */
+  readonly notices?: readonly JsonValue[];
+  /** When the notices were announced; absent until they are, and for a row without notices. */
+  readonly announcedAtMs?: number;
+}
+
+// A skip carries its reason and a fill none; only a row with notices is announced.
+function isWellFormed(row: {
+  readonly outcome: string;
+  readonly reason?: string | undefined;
+  readonly notices?: readonly JsonValue[] | undefined;
+  readonly announcedAtMs?: number | undefined;
+}): boolean {
+  const isReasoned = (row.outcome === "skipped") === (row.reason !== undefined);
+  return isReasoned && (row.announcedAtMs === undefined || row.notices !== undefined);
 }
 
 const fillReasonCodes: ReadonlySet<string> = new Set<string>([
@@ -44,9 +62,11 @@ export const orderFillRecordSchema: z.ZodType<OrderFillRecord> = z
       .refine((code): code is OrderFillReason => fillReasonCodes.has(code))
       .exactOptional(),
     atMs: epochMsSchema,
+    notices: z.array(jsonValueSchema).min(1).exactOptional(),
+    announcedAtMs: epochMsSchema.exactOptional(),
   })
-  .refine((row) => (row.outcome === "skipped") === (row.reason !== undefined), {
-    message: "A skip carries its reason, and a fill none.",
+  .refine(isWellFormed, {
+    message: "A skip carries its reason and a fill none, and only a row with notices is announced.",
   });
 
 /**
@@ -82,6 +102,28 @@ export interface OrderFillQuery {
   readonly orderId: Id<"ord">;
   readonly limit: number;
 }
+
+/** A page of the fill rows whose notices were never announced, the oldest first. */
+export interface UnannouncedFillQuery {
+  readonly limit: number;
+}
+
+/** Parses an unannounced fill query. */
+export const unannouncedFillQuerySchema: z.ZodType<UnannouncedFillQuery> = z.strictObject({
+  limit: pageLimitSchema,
+});
+
+/** The rows whose notices are announced, and when. */
+export interface FillAnnouncement {
+  readonly ids: readonly Id<"fil">[];
+  readonly atMs: number;
+}
+
+/** Parses a fill announcement. */
+export const fillAnnouncementSchema: z.ZodType<FillAnnouncement> = z.strictObject({
+  ids: z.array(idSchema("fil")).min(1).max(500),
+  atMs: epochMsSchema,
+});
 
 /** Parses an order fill query. */
 export const orderFillQuerySchema: z.ZodType<OrderFillQuery> = z.strictObject({

@@ -31,6 +31,9 @@ export interface OrderFillsTable {
   outcome: string;
   reason: string | null;
   at: number;
+  /** The notices of the fill or skip as JSON, their pushes' data (migration 0032). */
+  notices: string | null;
+  announced_at: number | null;
 }
 
 /** The order store's tables, by name. */

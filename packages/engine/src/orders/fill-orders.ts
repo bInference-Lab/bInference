@@ -1,18 +1,15 @@
 import type { Clock, Id, IdSource, Ratio } from "@binference/core";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import { paperFillOf } from "../intents/intent-history.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { noticePush } from "../pushes/notice-push.js";
-import { cancelCard } from "./cancel-order.js";
 import { endEmptyExit } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
-import { fillNotice, skippedNotice } from "./fill-notices.js";
-import { agentWideReasons, isNewReason, isWaiting, paceRows } from "./fill-pacing.js";
+import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
+import { agentWideReasons, isWaiting, paceRows } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
-import type { OrderFillReason, OrderFillRecord } from "./order-fill.js";
+import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
@@ -68,99 +65,78 @@ interface FillState {
   readonly told: Map<Id<"agt">, Set<OrderFillReason>>;
 }
 
+/** One skip before any intent: its order, its reason, and the signal of its run. */
 interface Skip {
   readonly order: OrderRecord;
-  /** The order's newest fill rows before this skip. */
-  readonly rows: readonly OrderFillRecord[];
   readonly reason: OrderFillReason;
-  readonly intent?: IntentSnapshot;
   readonly signal: AbortSignal;
 }
 
-// What the owner reads of a skip for the rolling cap: what the agent used of it, and the cap.
-async function capOf(parts: OrderFillsParts, skipped: Skip) {
-  const { intent, reason, signal } = skipped;
-  if (intent === undefined || reason !== "daily_cap") {
-    return undefined;
-  }
-  const usedUsdMicros = await parts.gate.spent(intent, { signal });
-  return { usedUsdMicros, capUsdMicros: intent.settings.limits.rollingDayUsdMicros };
+// The parts a skip's row and a fill's cancel are written with.
+function rowParts(parts: OrderFillsParts): CancelFillParts {
+  const { orders, ids, stored, clock, gate } = parts;
+  const spent: CapGate["spent"] = async (snapshot, call) => gate.spent(snapshot, call);
+  return { orders, ids, stored, clock, spent };
 }
 
-// The owner hears a skip once per reason in a row for its order, and an agent-wide reason once per
-// agent until one of its orders fills (decision 0197).
-function shouldTell(state: FillState, skipped: Skip): boolean {
-  const { order, reason, rows } = skipped;
-  const heard = state.told.get(order.agentId) ?? new Set<OrderFillReason>();
+// An agent-wide reason is heard once per agent until one of its orders fills (decision 0197);
+// `undefined` for a reason of the order's own, heard once in a row.
+function agentWideTells(state: FillState, skipped: Skip): boolean | undefined {
+  const { order, reason } = skipped;
   if (!agentWideReasons.has(reason)) {
-    return isNewReason(rows, reason);
+    return undefined;
   }
+  const heard = state.told.get(order.agentId) ?? new Set<OrderFillReason>();
   const isNew = !heard.has(reason);
   state.told.set(order.agentId, heard.add(reason));
   return isNew;
 }
 
-// Stores the skip's row and tells the owner of a new reason in a row; the order stays as it is.
+// Stores a skip before any intent, with its notice in the same write, and tells the owner; the
+// order stays as it is.
 async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Promise<FillOutcome> {
-  const { order, reason, intent, signal } = skipped;
+  const { order, reason, signal } = skipped;
+  const tells = agentWideTells(state, skipped);
   const atMs = parts.clock.now();
-  const row = {
-    id: parts.ids.next("fil"),
-    orderId: order.id,
-    ...(intent === undefined ? {} : { intentId: intent.record.id }),
-    outcome: "skipped" as const,
-    reason,
-    atMs,
-  };
+  const call = { order, reason, atMs, signal, ...(tells === undefined ? {} : { tells }) };
+  const row = await skipRowOf(rowParts(parts), call);
   await parts.orders.recordFill(row, { signal });
-  if (shouldTell(state, skipped)) {
-    const cap = await capOf(parts, skipped);
-    parts.publish(
-      noticePush(skippedNotice(order, cap === undefined ? { reason } : { reason, cap })),
-    );
-  }
+  await announceOrder(parts, order.id, signal);
   return "skipped";
 }
 
-// The reason a fill's intent ended without filling; `undefined` for a stop's cancel, which is no
-// skip, and a fill that went on.
-function endReasonOf(snapshot: IntentSnapshot): OrderFillReason | undefined {
+// Whether a fill's intent ended as a skip: a refusal, or a freeze's cancel. A stop's cancel, or
+// one the fill made itself, is no skip.
+function isSkipEnd(snapshot: IntentSnapshot): boolean {
   const { record, settings } = snapshot;
   if (record.state === "cancelled") {
-    return settings.agent.frozenAtMs === undefined ? undefined : "frozen";
+    return settings.agent.frozenAtMs !== undefined;
   }
-  return record.state === "confirmed" ? "no_price" : record.reason;
+  return record.reason !== undefined;
 }
 
-// What the fill's intent came to: a paper fill, told to the owner, or a skip with its reason.
+// What the fill's intent came to. Its row and notices were written with its end; they are told
+// now. A fill still `confirmed`, which no paper fill took, is cancelled unsigned.
 async function settle(
   parts: OrderFillsParts,
   state: FillState,
   run: {
     readonly order: OrderRecord;
-    readonly rows: readonly OrderFillRecord[];
-    readonly price: FillPrice;
     readonly snapshot: IntentSnapshot;
     readonly signal: AbortSignal;
   },
 ): Promise<FillOutcome> {
-  const { order, rows, price, snapshot, signal } = run;
-  const fill = paperFillOf(snapshot.history);
-  if (snapshot.record.state === "paper_filled" && fill?.soldPrice !== undefined) {
+  const { order, signal } = run;
+  const snapshot =
+    run.snapshot.record.state === "confirmed"
+      ? await cancelFill(rowParts(parts), { snapshot: run.snapshot, signal })
+      : run.snapshot;
+  await announceOrder(parts, order.id, signal);
+  if (snapshot.record.state === "paper_filled") {
     state.told.delete(order.agentId);
-    parts.publish(
-      noticePush(fillNotice(order, { ...fill, soldPrice: fill.soldPrice }, price.decimals)),
-    );
     return "filled";
   }
-  // A paper fill no price could value stays `confirmed`; a fill never waits for one.
-  if (snapshot.record.state === "confirmed") {
-    await cancelCard(parts, snapshot.record.id, signal);
-  }
-  const reason = endReasonOf(snapshot);
-  return reason === undefined
-    ? "inactive"
-    : skip(parts, state, { order, rows, reason, intent: snapshot, signal });
+  return isSkipEnd(snapshot) ? "skipped" : "inactive";
 }
 
 // A gate a fill meets before any intent: a live order while live fills are off, a locked engine.
@@ -190,6 +166,7 @@ async function proposeFill(
   const proposal = {
     authorization: { order: order.id },
     isPaper: order.isPaper,
+    decimals: price.decimals,
     check: checkOf(parts, { order, sized, price }),
   };
   return parts.moneyPath.propose(sized.request, proposer, { signal, fill: proposal });
@@ -200,15 +177,14 @@ async function fillNow(
   state: FillState,
   request: {
     readonly order: OrderRecord;
-    readonly rows: readonly OrderFillRecord[];
     readonly price: FillPrice;
     readonly signal: AbortSignal;
   },
 ): Promise<FillOutcome> {
-  const { order, rows, price, signal } = request;
+  const { order, price, signal } = request;
   const gated = gateOf(parts, order);
   if (gated !== undefined) {
-    return skip(parts, state, { order, rows, reason: gated, signal });
+    return skip(parts, state, { order, reason: gated, signal });
   }
   const settings = await parts.agents.get(order.agentId, { signal });
   if (settings === undefined) {
@@ -221,7 +197,7 @@ async function fillNow(
     return "ended";
   }
   if (sized.kind === "skip") {
-    return skip(parts, state, { order, rows, reason: sized.reason, signal });
+    return skip(parts, state, { order, reason: sized.reason, signal });
   }
   const first = await proposeFill(parts, { order, sized, price, signal });
   // A sale in dollars that its quote valued above its size is sized again at that quote's price.
@@ -233,9 +209,9 @@ async function fillNow(
       ? first
       : await proposeFill(parts, { order, sized: resized, price, signal });
   if (!proposed.ok) {
-    return skip(parts, state, { order, rows, reason: "no_route", signal });
+    return skip(parts, state, { order, reason: "no_route", signal });
   }
-  return settle(parts, state, { order, rows, price, snapshot: proposed.value, signal });
+  return settle(parts, state, { order, snapshot: proposed.value, signal });
 }
 
 // Runs `work` once every earlier fill of the agent has ended.
@@ -279,7 +255,7 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
         return await inLine(state, read.agentId, async () => {
           const order = await parts.orders.get(id, { signal });
           return order?.state === "active" && parts.clock.now() < order.expiresAtMs
-            ? fillNow(parts, state, { order, rows, price, signal })
+            ? fillNow(parts, state, { order, price, signal })
             : "inactive";
         });
       } finally {

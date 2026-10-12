@@ -208,8 +208,8 @@ describe("an auto order's fill", () => {
 
     expect((await storedOrder(test, stop.id)).state).toBe("ended");
     expect(noticesOf(test)).toMatchObject([
-      { key: "notice.ordersEnded", values: { token: "TKN", count: "1" } },
       { key: "notice.fill" },
+      { key: "notice.ordersEnded", values: { token: "TKN", count: "1" } },
     ]);
     await expect(test.engine.fillOrder({ order: stop.id, price: eightyCents }, live)).resolves.toBe(
       "inactive",

@@ -2,17 +2,19 @@
 import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError } from "@binference/core";
 import {
+  type FillAnnouncement,
   type OrderFillQuery,
   type OrderFillRecord,
   type OrderFillWrite,
   orderFillRecordSchema,
   recordsOwnFill,
+  type UnannouncedFillQuery,
 } from "@binference/engine/orders";
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { OrderFillsTable } from "../databases/order-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
-import { field, orNull } from "../rows/column-values.js";
+import { field, jsonField, optionalJsonText, orNull } from "../rows/column-values.js";
 
 function toOrderFillRecord(row: Selectable<OrderFillsTable>): OrderFillRecord {
   return orderFillRecordSchema.parse({
@@ -22,6 +24,8 @@ function toOrderFillRecord(row: Selectable<OrderFillsTable>): OrderFillRecord {
     outcome: row.outcome,
     ...field("reason", row.reason),
     atMs: row.at,
+    ...jsonField("notices", row.notices),
+    ...field("announcedAtMs", row.announced_at),
   });
 }
 
@@ -77,6 +81,8 @@ export function insertOrderFill(database: DatabaseSync, fill: OrderFillRecord): 
       outcome: fill.outcome,
       reason: orNull(fill.reason),
       at: fill.atMs,
+      notices: optionalJsonText(fill.notices === undefined ? undefined : [...fill.notices]),
+      announced_at: orNull(fill.announcedAtMs),
     }),
   );
   return fill;
@@ -96,4 +102,51 @@ export function listOrderFills(
     .orderBy("id", "desc")
     .limit(query.limit);
   return execute(select).rows.map(toOrderFillRecord);
+}
+
+/** The rows of every order whose notices were never announced, the oldest first, then by id. */
+export function listUnannounced(
+  database: DatabaseSync,
+  query: UnannouncedFillQuery,
+): readonly OrderFillRecord[] {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const select = kysely
+    .selectFrom("order_fills")
+    .selectAll()
+    .where("notices", "is not", null)
+    .where("announced_at", "is", null)
+    .orderBy("at")
+    .orderBy("id")
+    .limit(query.limit);
+  return execute(select).rows.map(toOrderFillRecord);
+}
+
+/**
+ * Marks rows' notices announced, keeping an earlier time. An unknown row, or one with no notices,
+ * throws `store.constraint` before any row changes.
+ */
+export function markAnnounced(database: DatabaseSync, announcement: FillAnnouncement): void {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const ids = [...new Set(announcement.ids)];
+  const known = execute(
+    kysely
+      .selectFrom("order_fills")
+      .select("id")
+      .where("id", "in", ids)
+      .where("notices", "is not", null),
+  ).rows;
+  if (known.length !== ids.length) {
+    throw new BinferenceError({
+      code: "store.constraint",
+      message: "An announcement names only stored rows with notices.",
+      details: { rows: ids.length },
+    });
+  }
+  execute(
+    kysely
+      .updateTable("order_fills")
+      .set({ announced_at: announcement.atMs })
+      .where("id", "in", ids)
+      .where("announced_at", "is", null),
+  );
 }
