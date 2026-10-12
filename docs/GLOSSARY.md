@@ -69,6 +69,16 @@ new name here first, in the change that uses it.
 - **fill**: one execution of an auto order or a webhook rule.
 - **watcher**: code that reads blocks, prices, leader wallets or launches and triggers fills. No
   model runs in it.
+- **price watcher**: the watcher that reads the price of every token with an active auto order at
+  each new block, all in one batched call, and says how many blocks it trails the chain (its
+  **lag**).
+- **block source**: what hands the watchers each new block of a chain: a WebSocket subscription to
+  new heads where config names one, else polling the chain's RPCs once a block time.
+- **price read**: the calls a venue declares to price a token from the chain's state (a pool's
+  reserves or price, a launchpad curve's price), and the pure step that turns their answers into
+  the price. A token no venue prices is priced from its deepest Uniswap-style pool.
+- **cross-check**: comparing the price watcher's prices with the market data sources' on a
+  schedule; a price too far apart is flagged as a **gap**.
 - **alert**: a price, wallet or launch condition that notifies and sends no transaction. An alert
   with **wake** also starts a turn of the agent when it fires.
 - **launch feed**: the tokens the launchpads created, read from their create events by the launch
@@ -508,6 +518,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | chain access                                       | 链上访问                     |                                         |
 | block, nonce                                       | 区块, 随机数                 |                                         |
 | tracing RPC                                        | 追踪 RPC                     |                                         |
+| public RPC, paid RPC                               | 公共 RPC, 付费 RPC           |                                         |
+| price watcher, price watching                      | 价格监控                     |                                         |
 | finality, final                                    | 最终确认                     |                                         |
 | transaction (on chain)                             | 交易, 链上交易               | 链上交易 where "trade" could be meant   |
 | a transaction lands                                | 上链                         |                                         |

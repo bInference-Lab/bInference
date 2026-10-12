@@ -763,6 +763,14 @@
     "0191": {
       "status": "Accepted",
       "sha256": "6e4b01ff89dfcb7b367c94bfdaa3ca694a41e90e2817626133e92c204ba099a0"
+    },
+    "0192": {
+      "status": "Accepted",
+      "sha256": "8bc711631faeaf34f022821bbc00557f56497604420f9575a3160dc6f204bd54"
+    },
+    "0193": {
+      "status": "Accepted",
+      "sha256": "6bfe5e7ec7668087efe701aad38914e9e8a91b9c69b85726ae5cb6d008fecd2b"
     }
   }
 }

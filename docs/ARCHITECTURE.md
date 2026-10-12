@@ -513,8 +513,13 @@ interface Signer {
   - a copy-trade rule: a leader wallet, size scaling and a per-leader cap, and token risk must pass;
   - price and wallet alerts, which send no transaction.
 - **Watchers are code.**
-  - Prices come from pool state read every block (or every N blocks) for the tokens with live
-    orders. DEX Screener and GeckoTerminal serve as a cross-check.
+  - Prices come from pool state read every block for the tokens with live orders, all in one
+    Multicall3 call at that block: each venue declares the reads that price a token, a launchpad its
+    curve's, and the deepest PancakeSwap pool prices any other
+    ([decision 0192](DECISIONS.md#d0192)). New blocks come over the owner's WebSocket RPC when
+    config names one, else by polling. DEX Screener and GeckoTerminal cross-check the prices on a
+    schedule, and the watcher reports its lag in blocks and tells the owner when it stays behind
+    ([decision 0193](DECISIONS.md#d0193)).
   - Leader wallets and launches are watched through new-block logs.
 - **After downtime ([decision 0066](DECISIONS.md#d0066)).** When the engine resumes after sleep, a
   reboot or a crash, each auto order checks the price now. It fills only if its trigger still holds
@@ -1049,7 +1054,8 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
   published.
 - **Proxy.** An outbound HTTP proxy setting (`core/src/proxy/`), for owners who need one to reach
   Telegram or model providers.
-- **Health signals** in `status`: event-loop lag, memory, RPC and relay health, model reachability.
+- **Health signals** in `status`: event-loop lag, memory, RPC and relay health, model reachability,
+  and the price watchers' lag in blocks.
 - **Targets.** Runs on 1 vCPU and 1 GB RAM; idle memory under 300 MB; a card within 2 seconds of a
   proposal (risk APIs excluded); an auto-order trigger broadcast within 1 block.
 
