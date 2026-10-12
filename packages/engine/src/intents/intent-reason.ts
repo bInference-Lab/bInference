@@ -85,15 +85,39 @@ export const failureReasons = [
 /** A reason a sent intent failed on chain. */
 export type FailureReason = (typeof failureReasons)[number];
 
+/**
+ * Why an auto order's fill ended `failed_check` at its authorization, once its quote, risk and
+ * simulation passed (spec 6, section 5): `order_inactive`, its order ended, paused, used its
+ * last fill or expired meanwhile; `fill_bounds`, it would spend or sell more than the order's size
+ * allows, or ask more slippage than the order's maximum; `worst_price`, its quote's price at its
+ * minimum out is worse than the order's worst price, or cannot be valued; `trigger_unconfirmed`,
+ * a thin pool's price fired it and its quote's own price does not meet the trigger.
+ */
+export const fillReasons = [
+  "order_inactive",
+  "fill_bounds",
+  "worst_price",
+  "trigger_unconfirmed",
+] as const;
+
+/** A reason an auto order's fill broke its order at its authorization. */
+export type FillReason = (typeof fillReasons)[number];
+
 /** A reason stored with a terminal state. */
-export type IntentReason = PolicyReason | RiskReason | CheckReason | FailureReason;
+export type IntentReason = PolicyReason | RiskReason | CheckReason | FailureReason | FillReason;
 
 /**
  * Every reason code an intent can store, each once. Each code has a message `reason.<code>` in
  * English and Chinese (spec 4, section 6).
  */
 export const intentReasons: readonly IntentReason[] = [
-  ...new Set<IntentReason>([...policyReasons, ...riskReasons, ...checkReasons, ...failureReasons]),
+  ...new Set<IntentReason>([
+    ...policyReasons,
+    ...riskReasons,
+    ...checkReasons,
+    ...failureReasons,
+    ...fillReasons,
+  ]),
 ];
 
 /**

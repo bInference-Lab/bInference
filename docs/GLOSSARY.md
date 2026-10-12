@@ -508,6 +508,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | auto order                                         | 自动订单                     |                                         |
 | auto trade                                         | 自动交易                     |                                         |
 | trigger price                                      | 触发价格                     |                                         |
+| worst price (of an auto order)                     | 最差价格                     |                                         |
 | filled, cancelled                                  | 已成交, 已取消               |                                         |
 | open orders, order history                         | 挂单, 订单记录               |                                         |
 | stake, unstake, claim                              | 质押, 解除质押, 领取         |                                         |

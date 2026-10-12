@@ -33,5 +33,9 @@
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",
   "step_unsent": "an earlier step landed, but a later one was never signed",
   "stuck_dropped": "the transaction was stuck and could not be sent any more, so it did not go through",
+  "order_inactive": "the order ended, was paused or used its last fill before the trade could run",
+  "fill_bounds": "the trade would go past the order's size or slippage",
+  "worst_price": "the price is worse than the order's worst price",
+  "trigger_unconfirmed": "the trade's own price did not reach the order's trigger price",
   "copy_daily_cap": "it would pass this leader's daily cap ({used} of {cap} used)"
 }

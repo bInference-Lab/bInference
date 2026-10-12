@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkReasons,
   failureReasons,
+  fillReasons,
   intentReasons,
   orderSkipReasons,
   policyReasons,
@@ -57,12 +58,24 @@ describe("intent reasons", () => {
       "step_unsent",
       "stuck_dropped",
     ]);
+    expect(fillReasons).toStrictEqual([
+      "order_inactive",
+      "fill_bounds",
+      "worst_price",
+      "trigger_unconfirmed",
+    ]);
   });
 
   it("holds every reason code once in the closed list", () => {
-    const all = [...policyReasons, ...riskReasons, ...checkReasons, ...failureReasons];
+    const all = [
+      ...policyReasons,
+      ...riskReasons,
+      ...checkReasons,
+      ...failureReasons,
+      ...fillReasons,
+    ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(34);
+    expect(intentReasons).toHaveLength(38);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {
