@@ -38,8 +38,8 @@ Rules for this package:
   (`@binference/engine/testing`), which only tests import.
 - The store ports in `src/ports.ts` (`IntentStore`, `LedgerStore`, `IdempotencyStore`,
   `InboxStore`, `AccessStore`, `AgentStore`, `InstallStore`, `ConfigJournal`, `NoticeStore`), and
-  the owner's bot's `OwnerStore` and `CardCopyStore` in `src/surfaces/ports.ts`, are implemented in
-  `@binference/store`, which imports this package. Each record they pass has a
+  the owner's bot's `OwnerStore` and `CardCopyStore` in `src/surfaces/ports.ts`, and `OrderStore`
+  in `src/orders/ports.ts`, are implemented in `@binference/store`, which imports this package. Each record they pass has a
   declared type and a zod schema, since it crosses the store worker boundary. A change to a store
   port changes its contract suite, its fake and its SQLite adapter together.
 - `BotUpdateSource`, `ModelBilling`, `MarketData` and `PriceSource` (a port of `@binference/chain`,
@@ -69,6 +69,11 @@ Rules for this package:
   intents: every new intent and every move goes through them, so each write lands as the state
   machine decided it and pushes its events. The confirmations write through them as their
   `ConfirmationStore`; nothing else calls `IntentStore.create` or `transition`.
+- Auto orders (`src/orders/`, decision 0189): `order-machine.ts` decides every move of an order,
+  as the intent state machine decides an intent's; the order store writes the moves under their
+  versions and moves an order into `active` only on its `autoOrder` intent's confirmation, for an
+  agent that is not frozen. A freeze and an unfreeze carry their order moves in their own write.
+  A new trigger adds its rule, a row of `order-machine.test.ts` and a case of the property test.
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
   reports each outcome to the state machine as a trigger. Only the venues' quotes run before the
   policy, which prices a token without a feed from the first venue's quote; no venue builds until

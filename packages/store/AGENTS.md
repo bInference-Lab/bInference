@@ -29,11 +29,12 @@ Rules for this package:
   helper could.
 - The ledger is append-only: no `updateTable`, `deleteFrom` or `replaceInto` on it, in code or SQL;
   its triggers refuse an entry off the chain and any change. One file writes `intents.state`:
-  `src/intents/intent-writes.ts`, the intent state machine's store adapter.
+  `src/intents/intent-writes.ts`, the intent state machine's store adapter; one file writes
+  `orders.state`: `src/orders/order-writes.ts`, the order state machine's.
 - The store ports live in `@binference/engine` (`src/ports.ts`), which also holds their contract
   suites and in-memory fakes. An adapter here is a set of store tasks in a feature folder
-  (`intents/`, `ledger/`, `ingress/`, `access/`, `agents/`, `audit/`, `transactions/`,
-  `risk-cache/`, `positions/`, `notices/`), listed in
+  (`intents/`, `orders/`, `ledger/`, `ingress/`, `access/`, `agents/`, `audit/`,
+  `transactions/`, `risk-cache/`, `positions/`, `notices/`), listed in
   `databases/engine-database.ts`, and a `createSqlite…` factory that binds them to a `StoreHost`.
   Its test runs the port's contract suite on a fresh migrated database from
   `testing/test-databases.worker.ts`, which runs tasks in the test's thread.
