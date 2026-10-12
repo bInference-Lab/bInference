@@ -1,6 +1,7 @@
 import { BinferenceError, createSecret } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import type { EngineCaller } from "@binference/engine";
+import type { NoticeStore } from "@binference/engine/notices";
 import {
   createMemoryCardCopyStore,
   createMemoryOwnerStore,
@@ -33,6 +34,24 @@ const cli: EngineCaller = {
   transport: "ipc",
 };
 
+const engineStopped = new BinferenceError({ code: "test.stopped", message: "The engine stopped." });
+
+// A notice store the engine stops in front of once, after Telegram took a message and before the
+// send is stored.
+function stoppingOnceBeforeSent(store: NoticeStore): NoticeStore {
+  let stops = 1;
+  return {
+    ...store,
+    move: async (move, call) => {
+      if (move.to === "sent" && stops > 0) {
+        stops -= 1;
+        throw engineStopped;
+      }
+      return store.move(move, call);
+    },
+  };
+}
+
 /** The composed engine with the owner's bot on the synthetic Bot API. */
 interface Bot extends ComposedSkeleton {
   readonly telegram: ComposedTelegram;
@@ -41,6 +60,8 @@ interface Bot extends ComposedSkeleton {
 
 interface BotOptions {
   readonly isPaired?: boolean;
+  /** Wraps the engine's notice store, as a fault-injection test does. */
+  readonly notices?: (store: NoticeStore) => NoticeStore;
 }
 
 function never(): never {
@@ -60,7 +81,12 @@ async function bot(options: BotOptions = {}): Promise<Bot> {
     copies: createMemoryCardCopyStore(),
     botToken: createSecret(fakeBotToken),
   };
-  const skeleton = await composeSkeleton(selfHosted?.parts() ?? never(), { telegram });
+  const parts = selfHosted?.parts() ?? never();
+  const notices = options.notices?.(parts.stores.notices) ?? parts.stores.notices;
+  const skeleton = await composeSkeleton(
+    { ...parts, stores: { ...parts.stores, notices } },
+    { telegram },
+  );
   return { ...skeleton, telegram: skeleton.composed.telegram ?? never(), botApi };
 }
 
@@ -164,5 +190,55 @@ describe("the engine's notices in the owner's chat", () => {
     await test.telegram.idle();
     expect(test.botApi.calls()).toStrictEqual([]);
     expect(await test.parts.stores.notices.list({ limit: 10 }, live)).toStrictEqual([]);
+  });
+
+  it("sends nothing for a kind the owner muted, and still sends a security notice", async () => {
+    const test = await bot();
+    test.telegram.start();
+    const args = { agent: testAgent, muted: ["lowGas"] };
+    const muted = await test.composed.engine.handlers["notice/setSettings"]({
+      args,
+      caller: cli,
+      ...live,
+    });
+    expect(muted.ok).toBe(true);
+    test.composed.publish({
+      topic: "notice",
+      kind: "notice/new",
+      data: {
+        key: "notice.lowGas",
+        agent: testAgent,
+        values: { wallet: "Main", balance: "0.001 BNB" },
+      },
+    });
+    await test.telegram.idle();
+    await freezeFromCli(test);
+    expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([frozenText]);
+    const kept = await test.parts.stores.notices.list({ limit: 10 }, live);
+    const delivered = Object.fromEntries(kept.map((notice) => [notice.kind, notice.delivered]));
+    expect(delivered).toStrictEqual({ lowGas: {}, frozen: { telegram: "sent" } });
+  });
+
+  it("never sends a notice twice when the engine stops between its send and its record", async () => {
+    const test = await bot({ notices: stoppingOnceBeforeSent });
+    test.telegram.start();
+    await freezeFromCli(test);
+    const limit = { agent: testAgent, changes: { perTradeUsdMicros: 1n } };
+    const set = await test.composed.engine.handlers["limit/set"]({
+      args: limit,
+      caller: cli,
+      ...live,
+    });
+    expect(set.ok).toBe(true);
+    await test.telegram.idle();
+    const texts = test.botApi.sent().map((sent) => sent.text);
+    expect(texts.filter((text) => text === frozenText)).toHaveLength(1);
+    expect(texts).toHaveLength(2);
+    const kept = await test.parts.stores.notices.list({ limit: 10 }, live);
+    const delivered = Object.fromEntries(kept.map((notice) => [notice.kind, notice.delivered]));
+    expect(delivered).toStrictEqual({
+      frozen: { telegram: "unknown_after_send" },
+      limitChange: { telegram: "sent" },
+    });
   });
 });
