@@ -89,6 +89,11 @@
       "types": "./dist/notices.d.mts",
       "default": "./dist/notices.mjs"
     },
+    "./orders": {
+      "@binference/source": "./src/orders.ts",
+      "types": "./dist/orders.d.mts",
+      "default": "./dist/orders.mjs"
+    },
     "./chat": {
       "@binference/source": "./src/chat.ts",
       "types": "./dist/chat.d.mts",

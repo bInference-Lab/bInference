@@ -11,6 +11,7 @@ import { intentTasks } from "../intents/intent-tasks.js";
 import { ledgerTasks } from "../ledger/ledger-tasks.js";
 import { engineMigrations } from "../migrations/engine/engine-migrations.js";
 import { noticeTasks } from "../notices/notice-tasks.js";
+import { orderTasks } from "../orders/order-tasks.js";
 import { positionTasks } from "../positions/sqlite-position-store.js";
 import { riskCacheTasks } from "../risk-cache/risk-cache-tasks.js";
 import { agentTopicTasks } from "../surfaces/sqlite-agent-topic-store.js";
@@ -26,6 +27,7 @@ export const engineDatabase: DatabaseDefinition = {
   migrations: engineMigrations,
   tasks: [
     ...intentTasks,
+    ...orderTasks,
     ...ledgerTasks,
     ...idempotencyTasks,
     ...inboxTasks,

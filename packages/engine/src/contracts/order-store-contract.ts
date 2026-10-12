@@ -1,0 +1,166 @@
+import assert from "node:assert/strict";
+import type { ContractCheck } from "@binference/core/testing";
+import type { OrderQuery } from "../orders/order-record.js";
+import { orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.js";
+import {
+  activatesOnTheConfirmedCard,
+  freezesAndUnfreezesOrders,
+  refusesAnActiveOrderOfAFrozenAgent,
+} from "./order-freeze-checks.js";
+import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
+
+const id = (n: number) => fixtureId("ord", n);
+
+/** Makes a fresh, empty order store for each check. */
+export interface OrderStoreHarness {
+  create(): Promise<OrderStoreSubject>;
+}
+
+async function createsOrders(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  const draft = orderDraft(subject, 1);
+  const created = await store.create(draft, live());
+  assert.ok(created.ok);
+  const { atMs, ...fields } = draft;
+  const expected = {
+    ...fields,
+    kind: "limit",
+    state: "awaiting_confirmation",
+    fills: 0,
+    createdAtMs: atMs,
+    changedAtMs: atMs,
+    version: 0,
+  };
+  assert.deepEqual(created.value, expected);
+  assert.deepEqual(await store.get(draft.id, live()), expected);
+  assert.deepEqual(await store.byIntent(draft.intentId, live()), expected);
+  assert.deepEqual(await store.create({ ...draft, atMs: 999 }, live()), {
+    ok: false,
+    error: "exists",
+  });
+  assert.equal(await store.get(fixtureId("ord", 9), live()), undefined);
+  assert.equal(await store.byIntent(fixtureId("int", 9), live()), undefined);
+}
+
+async function refusesStrangers(subject: OrderStoreSubject): Promise<void> {
+  const { store, other } = subject;
+  const foreign = { ...orderDraft(subject, 1), walletId: other.walletId };
+  await assert.rejects(store.create(foreign, live()), { code: "store.constraint" });
+  const unknown = { ...orderDraft(subject, 2), agentId: fixtureId("agt", 99) };
+  await assert.rejects(store.create(unknown, live()), { code: "store.constraint" });
+  assert.deepEqual(await store.list({ states: ["awaiting_confirmation"], limit: 10 }, live()), []);
+}
+
+async function movesUnderVersion(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  await store.create(orderDraft(subject, 1), live());
+  await store.create(orderDraft(subject, 2), live());
+  const cancelled = await store.move([orderMove(1, 0, "cancelled")], live());
+  assert.ok(cancelled.ok);
+  assert.deepEqual(
+    cancelled.value.map(({ state, version, changedAtMs }) => ({ state, version, changedAtMs })),
+    [{ state: "cancelled", version: 1, changedAtMs: 1_000 }],
+  );
+  assert.deepEqual(await store.move([orderMove(2, 1, "expired")], live()), {
+    ok: false,
+    error: "stale",
+  });
+  assert.deepEqual(await store.move([orderMove(9, 0, "expired")], live()), {
+    ok: false,
+    error: "not_found",
+  });
+  const noticed = { ...orderMove(2, 0, "awaiting_confirmation"), expiryNoticedAtMs: 1_500 };
+  const both = await store.move([noticed, orderMove(9, 0, "expired")], live());
+  assert.deepEqual(both, { ok: false, error: "not_found" });
+  assert.equal((await store.get(fixtureId("ord", 2), live()))?.version, 0);
+  const marked = await store.move([noticed], live());
+  assert.ok(marked.ok);
+  assert.equal(marked.value[0]?.expiryNoticedAtMs, 1_500);
+}
+
+async function refusesBrokenRules(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  await store.create(orderDraft(subject, 1), live());
+  await store.create(orderDraft(subject, 2), live());
+  const twice = [orderMove(1, 0, "cancelled"), orderMove(1, 0, "expired")];
+  await assert.rejects(store.move(twice, live()), { code: "store.constraint" });
+  const reason = { ...orderMove(1, 0, "cancelled"), endReason: "position_closed" } as const;
+  await assert.rejects(store.move([reason], live()), { code: "store.constraint" });
+  assert.ok((await store.move([orderMove(1, 0, "cancelled")], live())).ok);
+  await assert.rejects(store.move([orderMove(1, 1, "active")], live()), {
+    code: "store.constraint",
+  });
+  const ended = { ...orderMove(2, 0, "ended"), endReason: "position_closed" } as const;
+  const moved = await store.move([ended], live());
+  assert.ok(moved.ok);
+  assert.equal(moved.value[0]?.endReason, "position_closed");
+}
+
+async function listsByQuery(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  await inOrder([3, 1, 2], async (n) =>
+    store.create({ ...orderDraft(subject, n), atMs: 100, expiresAtMs: 1_000 * n }, live()),
+  );
+  await store.create({ ...orderDraft(subject, 4), isPaper: false, atMs: 50 }, live());
+  await store.move([orderMove(2, 0, "cancelled")], live());
+  const listed = async (query: Partial<OrderQuery>): Promise<readonly string[]> =>
+    (await store.list({ states: ["awaiting_confirmation"], limit: 10, ...query }, live())).map(
+      (order) => order.id,
+    );
+  assert.deepEqual(await listed({}), [id(4), id(1), id(3)]);
+  assert.deepEqual(await listed({ isPaper: true }), [id(1), id(3)]);
+  assert.deepEqual(await listed({ expiresByMs: 1_000 }), [id(1)]);
+  assert.deepEqual(await listed({ states: ["cancelled", "awaiting_confirmation"], limit: 2 }), [
+    id(4),
+    id(1),
+  ]);
+  assert.deepEqual(await listed({ after: { createdAtMs: 100, id: id(1) } }), [id(3)]);
+  assert.deepEqual(await listed({ agentId: subject.other.agentId }), []);
+  assert.deepEqual(await listed({ walletId: subject.walletId }), [id(4), id(1), id(3)]);
+}
+
+async function refusesAborted(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  const draft = orderDraft(subject, 1);
+  await assertRefusesAborted(async (options) => store.create(draft, options));
+  await assertRefusesAborted(async (options) => store.get(draft.id, options));
+  await assertRefusesAborted(async (options) => store.byIntent(draft.intentId, options));
+  await assertRefusesAborted(async (options) =>
+    store.list({ states: ["active"], limit: 1 }, options),
+  );
+  await assertRefusesAborted(async (options) => store.move([orderMove(1, 0, "active")], options));
+  assert.equal(await store.get(draft.id, live()), undefined);
+}
+
+/**
+ * The checks every {@link OrderStore} adapter passes: orders created once and kept exact past 64
+ * bits, moves all or nothing under their versions, the rules no move may break, an order active
+ * only on its card's confirmation and never for a frozen agent, the freeze's own order moves,
+ * listing by state, agent, wallet, mode and expiry page by page, and aborted calls.
+ */
+export function orderStoreContract(harness: OrderStoreHarness): readonly ContractCheck[] {
+  const create = async (): Promise<OrderStoreSubject> => harness.create();
+  return [
+    checkOn("creates an order awaiting its card, once, its amounts exact", create, createsOrders),
+    checkOn("refuses an unknown agent or another agent's wallet", create, refusesStrangers),
+    checkOn("moves orders under their versions, all or nothing", create, movesUnderVersion),
+    checkOn(
+      "refuses a move that breaks an order rule and writes nothing",
+      create,
+      refusesBrokenRules,
+    ),
+    checkOn(
+      "activates an order only on its card's confirmation",
+      create,
+      activatesOnTheConfirmedCard,
+    ),
+    checkOn("never activates a frozen agent's order", create, refusesAnActiveOrderOfAFrozenAgent),
+    checkOn(
+      "pauses and resumes orders in the freeze's own write",
+      create,
+      freezesAndUnfreezesOrders,
+    ),
+    checkOn("lists orders by state, agent, wallet, mode and expiry", create, listsByQuery),
+    checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
+  ];
+}

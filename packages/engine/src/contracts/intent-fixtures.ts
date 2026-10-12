@@ -35,7 +35,10 @@ export function intentLedger(n: number, step: number, kind: string): LedgerDraft
 }
 
 /** A new swap intent `n` of the subject's agent, proposed at `1000 * n`. */
-export function intentDraft(subject: IntentStoreSubject, n: number): IntentDraft {
+export function intentDraft(
+  subject: Pick<IntentStoreSubject, "agentId" | "walletId">,
+  n: number,
+): IntentDraft {
   return {
     id: fixtureId("int", n),
     agentId: subject.agentId,

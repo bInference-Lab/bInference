@@ -6,6 +6,7 @@ import { readAgentFreezes, writeAgentFreezes } from "../agents/agent-freeze-writ
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
+import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { moveIntent, readMoved } from "./intent-writes.js";
 
 function moved(write: FreezeWrite["moves"][number], database: DatabaseSync): IntentCommit {
@@ -38,12 +39,12 @@ function freezeInstall(
 }
 
 /**
- * Writes a freeze or an unfreeze in the caller's transaction: every intent move and agent row is read first, and
- * an unknown one is `not_found`, one at another version `stale`, before anything is written. Then
- * each move lands with its event, ledger entry and card writes, each agent is marked frozen or
- * unfrozen, the install too when the write covers it, and the write's own entries follow the
- * moves' on the ledger. A card write that would fail throws,
- * which rolls the whole freeze back.
+ * Writes a freeze or an unfreeze in the caller's transaction: every intent move, agent row and
+ * order move is read first, and an unknown one is `not_found`, one at another version `stale`,
+ * before anything is written; an order move the order rules refuse is `stale` too. Then each move
+ * lands with its event, ledger entry and card writes, each agent is marked frozen or unfrozen, the
+ * install too when the write covers it, each order moves, and the write's own entries follow the
+ * moves' on the ledger. A card write that would fail throws, which rolls the whole freeze back.
  */
 export function writeFreeze(
   database: DatabaseSync,
@@ -59,12 +60,19 @@ export function writeFreeze(
   if (!rows.ok) {
     return rows;
   }
+  // An unfreeze lifts its agents before their orders move back to `active`.
+  const unfrozen = new Set(write.isFrozen ? [] : write.agents.map(({ agentId }) => agentId));
+  const orderMoves = checkOrderMoves(database, write.orders, unfrozen);
+  if (!orderMoves.ok) {
+    return err(orderMoves.error === "not_found" ? "not_found" : "stale");
+  }
   const moves = write.moves.map((change) => moved(change, database));
   const change = { atMs: write.atMs, isFrozen: write.isFrozen };
   const agents = writeAgentFreezes(database, rows.value, change);
   if (write.isWholeInstall) {
     freezeInstall(database, change);
   }
+  const orders = writeOrderMoves(database, orderMoves.value);
   const ledgerEntries = write.ledger.map((draft) => appendLedgerEntry(database, draft));
-  return ok({ agents, moves, ledgerEntries });
+  return ok({ agents, moves, orders, ledgerEntries });
 }

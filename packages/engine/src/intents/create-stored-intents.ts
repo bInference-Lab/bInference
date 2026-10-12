@@ -241,8 +241,8 @@ async function freezeIntents(
   if (changes === undefined) {
     return err("stale");
   }
-  const { atMs, isFrozen, agents, isWholeInstall, ledger } = freeze;
-  const write = { atMs, isFrozen, agents, isWholeInstall, moves: changes, ledger };
+  const { atMs, isFrozen, agents, isWholeInstall, orders, ledger } = freeze;
+  const write = { atMs, isFrozen, agents, isWholeInstall, moves: changes, orders, ledger };
   const commit = await options.intents.freeze(write, { signal });
   if (!commit.ok) {
     return err("stale");

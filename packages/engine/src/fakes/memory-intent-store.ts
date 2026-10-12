@@ -1,4 +1,5 @@
 import { err, type Id, ok, type Result } from "@binference/core";
+import type { StoredConfirmation } from "../intents/confirmation-record.js";
 import type { ConfirmedIntent, ConfirmedQuery } from "../intents/confirmed-intent.js";
 import type { FreezeCommit, FreezeWrite } from "../intents/freeze-write.js";
 import type {
@@ -10,23 +11,34 @@ import type {
 import type { IntentDraft, IntentRecord } from "../intents/intent-record.js";
 import type { LateLanding } from "../intents/late-landing.js";
 import type { LedgerDraft, LedgerEntry } from "../ledger/ledger-entry.js";
+import type { OrderRecord } from "../orders/order-record.js";
 import type { IntentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
-import { memoryCall } from "./memory-call.js";
+import { constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentTables, type MemoryIntentTables } from "./memory-intent-tables.js";
 import type { MemoryLedgerStore } from "./memory-ledger-store.js";
+import type { MemoryOrderStore } from "./memory-order-store.js";
 
 /**
  * What an in-memory intent store writes its ledger entries to, the agents and the install a
- * freeze marks, and the agent inbox it writes settle messages to, when there is one.
+ * freeze marks, the orders a freeze moves, and the agent inbox it writes settle messages to, when
+ * there is one.
  */
 export interface MemoryIntentStoreOptions {
   readonly ledger: MemoryLedgerStore;
   readonly agents: MemoryAgentStore;
   readonly install: MemoryInstallStore;
+  /** The orders of the same database; a freeze that moves an order needs them. */
+  readonly orders?: MemoryOrderStore;
   readonly agentInbox?: MemoryAgentInboxStore;
+}
+
+/** An in-memory intent store whose confirmations another in-memory store's write can read. */
+export interface MemoryIntentStore extends IntentStore {
+  /** The confirmation the intent holds now, or `undefined`. */
+  confirmationNow(id: Id<"int">): StoredConfirmation | undefined;
 }
 
 function appendTo(
@@ -133,6 +145,24 @@ function transition(
 }
 
 // Every move is checked before the agents are marked, and nothing is written before both pass.
+// The freeze's order moves, checked as they would land after its agents are marked: an agent an
+// unfreeze lifts counts as not frozen. A refusal is the freeze's `stale`, as the SQLite store's.
+function checkOrders(
+  options: MemoryIntentStoreOptions,
+  write: FreezeWrite,
+): Result<readonly OrderRecord[], "stale"> {
+  if (write.orders.length === 0) {
+    return ok([]);
+  }
+  const store = options.orders;
+  if (store === undefined) {
+    throw constraintFault("a freeze moves orders this store holds none of");
+  }
+  const unfrozen = new Set(write.isFrozen ? [] : write.agents.map(({ agentId }) => agentId));
+  const checked = store.checkNow(write.orders, unfrozen);
+  return checked.ok ? checked : err("stale");
+}
+
 function freeze(
   tables: MemoryIntentTables,
   options: MemoryIntentStoreOptions,
@@ -146,17 +176,22 @@ function freeze(
     }
     checked.push({ change, current: current.value });
   }
+  const orders = checkOrders(options, write);
+  if (!orders.ok) {
+    return orders;
+  }
   const change = { atMs: write.atMs, isFrozen: write.isFrozen };
   const agents = options.agents.freezeNow(write.agents, change);
   if (!agents.ok) {
     return agents;
   }
+  options.orders?.saveNow(orders.value);
   if (write.isWholeInstall) {
     options.install.freezeNow(change);
   }
   const moves = checked.map((move) => writeMove(tables, options, move));
   const ledgerEntries = write.ledger.map((draft) => options.ledger.appendNow(draft));
-  return ok(structuredClone({ agents: agents.value, moves, ledgerEntries }));
+  return ok(structuredClone({ agents: agents.value, moves, orders: orders.value, ledgerEntries }));
 }
 
 // Orders as the SQLite store does: by change time, then by id in code-unit order, never by locale.
@@ -235,10 +270,11 @@ function recordLandedLate(
  * Creates an empty in-memory {@link IntentStore} for tests. Each write checks everything first and
  * changes nothing when a check fails, as the SQLite store's transaction does.
  */
-export function createMemoryIntentStore(options: MemoryIntentStoreOptions): IntentStore {
+export function createMemoryIntentStore(options: MemoryIntentStoreOptions): MemoryIntentStore {
   const tables = createMemoryIntentTables();
   const landings = new Map<Id<"int">, LateLanding>();
   return {
+    confirmationNow: (id) => tables.confirmation(id),
     create: async (draft, call) => memoryCall(call, () => create(tables, options, draft)),
     get: async (id, call) => memoryCall(call, () => tables.intent(id)),
     transition: async (change, call) => memoryCall(call, () => transition(tables, options, change)),

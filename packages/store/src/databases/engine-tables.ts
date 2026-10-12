@@ -3,6 +3,7 @@ import type { AccessTables } from "./access-tables.js";
 import type { AgentInboxTables } from "./agent-inbox-tables.js";
 import type { BackupTables } from "./backup-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
+import type { OrderTables } from "./order-tables.js";
 import type { PositionTables } from "./position-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
 
@@ -321,6 +322,7 @@ export interface EngineTables
   extends
     PositionTables,
     NoticeTables,
+    OrderTables,
     TelegramTables,
     BackupTables,
     AccessTables,

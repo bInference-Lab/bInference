@@ -129,8 +129,8 @@ const columns: Readonly<Record<string, readonly string[]>> = {
     "wallet_id asset paper quantity cost_usd_micros realized_usd_micros changed_at version",
   ),
   orders: names(
-    "id agent_id wallet_id kind state request trigger_state fills max_fills expires_at card_id " +
-      "created_at changed_at version",
+    "id agent_id wallet_id kind state request trigger_state fills max_fills expires_at intent_id " +
+      "card_id paper outside_content end_reason expiry_noticed_at created_at changed_at version",
   ),
   order_fills: names("id order_id intent_id outcome reason at"),
   alerts: names("id agent_id condition state created_at fired_at"),
@@ -211,7 +211,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   executions: ["index|wallet_id,at"],
   arrivals: ["index|wallet_id,at"],
   departures: ["index|intent_id", "index|wallet_id,at"],
-  orders: ["index|state,agent_id"],
+  orders: ["index|state,agent_id", "index|wallet_id,paper,state", "unique|intent_id"],
   order_fills: ["index|order_id,at"],
   alerts: ["index|state"],
   webhook_rules: ["index|state"],

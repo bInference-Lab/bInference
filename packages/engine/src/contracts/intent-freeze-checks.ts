@@ -54,6 +54,7 @@ function freezeOf(subject: IntentStoreSubject, agentVersion = 0): FreezeWrite {
       cancel(1, 0),
       { ...cancel(2, 1), closeCard: { id: cardOf(2, 1).id, reason: "cancelled" } },
     ],
+    orders: [],
     ledger: [freezeEntry(subject, 1)],
     isWholeInstall: false,
   };
@@ -166,6 +167,7 @@ export async function freezesTheWholeInstall(subject: IntentStoreSubject): Promi
     isFrozen: true,
     agents: [],
     moves: [],
+    orders: [],
     ledger: [],
     isWholeInstall: true,
   };

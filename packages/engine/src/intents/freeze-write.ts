@@ -7,6 +7,12 @@ import {
   type LedgerEntry,
   ledgerEntrySchema,
 } from "../ledger/ledger-entry.js";
+import {
+  type OrderMove,
+  orderMoveSchema,
+  type OrderRecord,
+  orderRecordSchema,
+} from "../orders/order-record.js";
 import { epochMsSchema, rowVersionSchema } from "../records/record-fields.js";
 import {
   type IntentChange,
@@ -28,10 +34,10 @@ export const agentFreezeSchema: z.ZodType<AgentFreeze> = z.strictObject({
 });
 
 /**
- * One freeze or unfreeze, written all or nothing (ARCHITECTURE.md section 11, decision 0128): each
- * agent marked frozen at `atMs`, or unfrozen, the install too when the write covers the whole
- * install, each intent's move with its event, ledger entry and card writes, and the write's own
- * ledger entries.
+ * One freeze or unfreeze, written all or nothing (ARCHITECTURE.md section 11, decisions 0128 and
+ * 0189): each agent marked frozen at `atMs`, or unfrozen, the install too when the write covers the
+ * whole install, each intent's move with its event, ledger entry and card writes, each auto order's
+ * move after the agents are marked, and the write's own ledger entries.
  */
 export interface FreezeWrite {
   readonly atMs: number;
@@ -50,6 +56,12 @@ export interface FreezeWrite {
    * own intent to `reconciled`.
    */
   readonly moves: readonly IntentChange[];
+  /**
+   * A freeze's moves of the agents' active orders to `paused` and of those awaiting their card to
+   * `cancelled`, or an unfreeze's moves of its agents' paused orders back to `active`, or to
+   * `expired` once past their expiry.
+   */
+  readonly orders: readonly OrderMove[];
   /** One `freeze` or `unfreeze` entry for each agent it marks, and one for the install. */
   readonly ledger: readonly LedgerDraft[];
 }
@@ -61,13 +73,18 @@ export const freezeWriteSchema: z.ZodType<FreezeWrite> = z.strictObject({
   agents: z.array(agentFreezeSchema),
   isWholeInstall: z.boolean(),
   moves: z.array(intentChangeSchema),
+  orders: z.array(orderMoveSchema),
   ledger: z.array(ledgerDraftSchema),
 });
 
-/** What a freeze wrote: each agent as it is now, each intent move, and the freeze's entries. */
+/**
+ * What a freeze wrote: each agent as it is now, each intent move, each order after its move, and
+ * the freeze's entries.
+ */
 export interface FreezeCommit {
   readonly agents: readonly AgentRecord[];
   readonly moves: readonly IntentCommit[];
+  readonly orders: readonly OrderRecord[];
   readonly ledgerEntries: readonly LedgerEntry[];
 }
 
@@ -75,6 +92,7 @@ export interface FreezeCommit {
 export const freezeCommitSchema: z.ZodType<FreezeCommit> = z.strictObject({
   agents: z.array(agentRecordSchema),
   moves: z.array(intentCommitSchema),
+  orders: z.array(orderRecordSchema),
   ledgerEntries: z.array(ledgerEntrySchema),
 });
 

@@ -1,0 +1,43 @@
+import type { Id, Result } from "@binference/core";
+import type {
+  OrderDraft,
+  OrderMove,
+  OrderMoveRefusal,
+  OrderQuery,
+  OrderRecord,
+} from "./order-record.js";
+
+/** What every store call takes: a call on an aborted signal rejects and changes nothing. */
+interface StoreCall {
+  readonly signal: AbortSignal;
+}
+
+/**
+ * Keeps auto orders (database spec, section 2.4; decision 0189). The order state machine decides
+ * each move, and this store writes the moves all or nothing, each under the version its mover read.
+ * Whatever the mover read, an order moves into `active` only while its `autoOrder` intent holds a
+ * confirmation of the order's card and its agent is not frozen, both read in the same write.
+ */
+export interface OrderStore {
+  /**
+   * Stores a new order `awaiting_confirmation`, with no fill. An id in use is `exists` and a frozen
+   * agent `frozen`; either stores nothing. An unknown agent, or a wallet that is not the agent's,
+   * throws `store.constraint`.
+   */
+  create(draft: OrderDraft, options: StoreCall): Promise<Result<OrderRecord, "exists" | "frozen">>;
+  /** One order, or `undefined` when the store has none with that id. */
+  get(id: Id<"ord">, options: StoreCall): Promise<OrderRecord | undefined>;
+  /** The order whose card the `autoOrder` intent carries, or `undefined`. */
+  byIntent(intent: Id<"int">, options: StoreCall): Promise<OrderRecord | undefined>;
+  /** Orders in the query's states, the oldest first, then by id. */
+  list(query: OrderQuery, options: StoreCall): Promise<readonly OrderRecord[]>;
+  /**
+   * Writes every move all or nothing and answers the orders after them, in the moves' order. A
+   * move out of `filled`, `cancelled`, `expired` or `ended`, an end reason on a move to another
+   * state than `ended`, or two moves of one order throw `store.constraint`.
+   */
+  move(
+    moves: readonly OrderMove[],
+    options: StoreCall,
+  ): Promise<Result<readonly OrderRecord[], OrderMoveRefusal>>;
+}

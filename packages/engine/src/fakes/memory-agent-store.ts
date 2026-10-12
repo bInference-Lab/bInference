@@ -145,6 +145,8 @@ export interface MemoryAgentStore extends AgentStore {
     freezes: readonly AgentFreeze[],
     change: FreezeChange,
   ): Result<readonly AgentRecord[], "not_found" | "stale">;
+  /** The agent as stored now, for another in-memory store's write, or `undefined`. */
+  agentNow(id: Id<"agt">): AgentRecord | undefined;
 }
 
 // The agent as a freeze leaves it, or an unfreeze, without its freeze time.
@@ -199,6 +201,7 @@ export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): M
   });
   return {
     freezeNow: (freezes, change) => freezeNow(agents, structuredClone(freezes), change),
+    agentNow: (id) => structuredClone(agents.get(id)?.agent),
     create: async (draft, call) => memoryCall(call, () => create(agents, draft, install())),
     get: async (id, call) =>
       memoryCall(call, () => {

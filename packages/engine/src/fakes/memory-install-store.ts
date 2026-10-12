@@ -225,6 +225,8 @@ export interface MemoryInstallStore extends InstallStore {
   freezeNow(change: FreezeChange): void;
   /** When the whole install was frozen, or `undefined` while it is not. */
   frozenAt(): number | undefined;
+  /** A stored wallet, for another in-memory store's write, or `undefined`. */
+  walletNow(id: Id<"wal">): WalletRecord | undefined;
 }
 
 /** Creates an empty in-memory {@link InstallStore} for tests. */
@@ -248,6 +250,7 @@ export function createMemoryInstallStore(): MemoryInstallStore {
       }),
     freezeNow: (change) => update((state) => withFreeze(state, change)),
     frozenAt: () => held.state.frozenAtMs,
+    walletNow: (id) => structuredClone(held.state.wallets.find((wallet) => wallet.id === id)),
     read: async (call) => memoryCall(call, () => structuredClone(factsOf(held.state))),
     setUp: async (setup, call) =>
       memoryCall(call, () => {

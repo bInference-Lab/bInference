@@ -94,6 +94,7 @@ async function writeOf(
     agents: unfrozen.map((agent) => ({ agentId: agent.id, expectedVersion: agent.version })),
     isWholeInstall: quote.isWholeInstall,
     moves: [{ ...move, by: tapper.by }],
+    orders: [],
     ledger: quote.isWholeInstall ? [...entries, unfreezeEntry(parts, undefined, stamp)] : entries,
   };
 }

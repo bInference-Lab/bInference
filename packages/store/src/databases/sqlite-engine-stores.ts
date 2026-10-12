@@ -9,6 +9,7 @@ import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
 import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
 import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
+import { createSqliteOrderStore } from "../orders/sqlite-order-store.js";
 import { createSqliteAgentTopicStore } from "../surfaces/sqlite-agent-topic-store.js";
 import { createSqliteCardCopyStore } from "../surfaces/sqlite-card-copy-store.js";
 import { createSqliteOwnerStore } from "../surfaces/sqlite-owner-store.js";
@@ -22,6 +23,7 @@ import { createSqliteTransactionStore } from "../transactions/sqlite-transaction
 export function createSqliteEngineStores(host: StoreHost): EngineStores {
   return {
     intents: createSqliteIntentStore(host),
+    orders: createSqliteOrderStore(host),
     ledger: createSqliteLedgerStore(host),
     idempotency: createSqliteIdempotencyStore(host),
     inbox: createSqliteInboxStore(host),

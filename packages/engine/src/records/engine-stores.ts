@@ -1,4 +1,5 @@
 import type { AgentInboxStore } from "../chat/ports.js";
+import type { OrderStore } from "../orders/ports.js";
 import type {
   AccessStore,
   AgentStore,
@@ -21,6 +22,8 @@ import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/por
  */
 export interface EngineStores {
   readonly intents: IntentStore;
+  /** Auto orders; the intent store's freeze moves them in the same database. */
+  readonly orders: OrderStore;
   readonly ledger: LedgerStore;
   readonly idempotency: IdempotencyStore;
   readonly inbox: InboxStore;

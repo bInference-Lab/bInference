@@ -35,7 +35,8 @@ describe("checkIntegrity", () => {
       schemaVersion: latest,
       expectedVersion: latest,
       pageCount: report.pageCount,
-      freePages: 0,
+      // A migration that makes a table again leaves the old table's pages free.
+      freePages: report.freePages,
     });
     expect(report.pageCount).toBeGreaterThan(0);
     expect(integrityReportSchema.parse(report)).toStrictEqual(report);

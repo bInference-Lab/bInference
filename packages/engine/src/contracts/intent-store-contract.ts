@@ -185,7 +185,7 @@ async function refusesAborted(subject: IntentStoreSubject): Promise<void> {
     isWholeInstall: false,
   };
   await assertRefusesAborted(async (options) =>
-    store.freeze({ ...freeze, moves: [], ledger: [] }, options),
+    store.freeze({ ...freeze, moves: [], orders: [], ledger: [] }, options),
   );
   assert.equal((await agentOf(subject))?.frozenAtMs, undefined);
   assert.equal(await store.get(id, live()), undefined);

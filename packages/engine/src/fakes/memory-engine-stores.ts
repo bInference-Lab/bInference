@@ -8,9 +8,10 @@ import { createMemoryConfigJournal } from "./memory-config-journal.js";
 import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
 import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryInstallStore, type MemoryInstallStore } from "./memory-install-store.js";
-import { createMemoryIntentStore } from "./memory-intent-store.js";
+import { createMemoryIntentStore, type MemoryIntentStore } from "./memory-intent-store.js";
 import { createMemoryLedgerStore, type MemoryLedgerStore } from "./memory-ledger-store.js";
 import { createMemoryNoticeStore } from "./memory-notice-store.js";
+import { createMemoryOrderStore, type MemoryOrderStore } from "./memory-order-store.js";
 import { createMemoryOwnerStore } from "./memory-owner-store.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 
@@ -22,6 +23,8 @@ export interface MemoryEngineStores extends EngineStores {
   readonly ledger: MemoryLedgerStore;
   readonly agents: MemoryAgentStore;
   readonly install: MemoryInstallStore;
+  readonly intents: MemoryIntentStore;
+  readonly orders: MemoryOrderStore;
 }
 
 /**
@@ -34,8 +37,16 @@ export function createMemoryEngineStores(): MemoryEngineStores {
   const install = createMemoryInstallStore();
   const agents = createMemoryAgentStore({ install });
   const agentInbox = createMemoryAgentInboxStore({ agents });
+  // A freeze of the intent store moves orders, and a move into `active` reads a confirmation.
+  const orders = createMemoryOrderStore({
+    agents,
+    install,
+    confirmation: (id) => intents.confirmationNow(id),
+  });
+  const intents = createMemoryIntentStore({ ledger, agents, install, agentInbox, orders });
   return {
-    intents: createMemoryIntentStore({ ledger, agents, install, agentInbox }),
+    intents,
+    orders,
     agentInbox,
     ledger,
     idempotency: createMemoryIdempotencyStore(),
