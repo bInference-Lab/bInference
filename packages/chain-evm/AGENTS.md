@@ -26,6 +26,11 @@ Rules for this package:
   each request with its own timeout. A relay's error becomes a `RelayRefusal` by its code or its
   documented text (`relay-refusal.ts` cites each source); the text itself goes nowhere. A new
   documented error is a line there and a case in its test.
+- The price watcher (`src/watching/`, decision 0192) reads every watched token's price reads and
+  their quote assets' feeds in one Multicall3 `aggregate3` call at each new block, encoded here and
+  never split, with the block's number as the call's block. It never stops for the chain: a dead
+  socket gives way to polling, a failed batch is read again, and its lag is reported, not thrown.
+  Its loops run through `repeatSteps`, so a run of hours never chains promises up.
 - Prices come from the Chainlink feeds the composition root names. A feed that cannot be read, a
   broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw.
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.

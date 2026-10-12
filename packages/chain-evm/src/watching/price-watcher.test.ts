@@ -1,0 +1,401 @@
+import { type AssetRef, accountRefSchema, assetRefSchema } from "@binference/chain";
+import { err, ok, type Result } from "@binference/core";
+import { createManualClock, type ManualClock } from "@binference/core/testing";
+import { type Address, encodeAbiParameters, getAddress, type Hex, toHex } from "viem";
+import { afterEach, describe, expect, it } from "vitest";
+import type { FeedAsset } from "../prices/price-from-round.js";
+import { createRpcFailover } from "../rpc/create-rpc-failover.js";
+import { createFakeEvmNode, type FakeEvmNode, type FakeRead } from "../testing/fake-evm-node.js";
+import {
+  createFakeRpcHttp,
+  type FakeEndpoint,
+  readFakeRpcRequest,
+} from "../testing/fake-rpc-http.js";
+import { createBlockSource } from "./block-source.js";
+import { poolPrice, reservesCall } from "./pool-state.js";
+import { createPriceWatcher, type PriceWatcher, type WatchedPrice } from "./price-watcher.js";
+import type { PlanFailure, PricePlan } from "./watch-list.js";
+
+const multicall = getAddress("0xca11bde05977b3631167028862be2a173976ca11");
+const blockTimeMs = 450;
+const startMs = 1_800_000_000_000;
+const quoteAddress = getAddress("0x00000000000000000000000000000000000000f1");
+const feedAddress = getAddress("0x00000000000000000000000000000000000000fe");
+const quote = assetRefSchema.parse(`eip155:56/erc20:${quoteAddress}`);
+// The quote token is worth $600, with 18 decimals, by a feed of 8 decimals.
+const feed: FeedAsset = {
+  asset: quote,
+  decimals: 18,
+  isStablecoin: false,
+  feed: { address: feedAddress, decimals: 8, heartbeatSeconds: 60 },
+};
+
+const addressOf = (index: number): Address => getAddress(toHex(0x1000 + index, { size: 20 }));
+const tokenOf = (index: number): AssetRef =>
+  assetRefSchema.parse(`eip155:56/erc20:${addressOf(index)}`);
+// Each token's pool sits at its address plus 0x100000; its quote reserve grows with the block.
+const poolOf = (token: AssetRef): Address =>
+  getAddress(toHex(BigInt(`0x${token.slice(-40)}`) + 0x100000n, { size: 20 }));
+
+interface Rig {
+  readonly clock: ManualClock;
+  readonly node: FakeEvmNode;
+  readonly watcher: PriceWatcher;
+  readonly prices: WatchedPrice[];
+  readonly planned: AssetRef[];
+  /** Takes the node down, its batches only, or makes its pools answer nothing. */
+  readonly pools: { isDown: boolean; isCallDown: boolean; isUnpriced: boolean };
+}
+
+const controllers: AbortController[] = [];
+
+afterEach(() => {
+  controllers.splice(0).forEach((controller) => controller.abort());
+});
+
+function reserves(block: bigint | "latest"): Hex {
+  const quoteReserve = block === "latest" ? 1_000n : 1_000n + block;
+  return encodeAbiParameters(
+    [{ type: "uint112" }, { type: "uint112" }, { type: "uint32" }],
+    [10n, quoteReserve, 0],
+  );
+}
+
+function round(): Hex {
+  return encodeAbiParameters(
+    [
+      { type: "uint80" },
+      { type: "int256" },
+      { type: "uint256" },
+      { type: "uint256" },
+      { type: "uint80" },
+    ],
+    [1n, 600n * 10n ** 8n, 0n, BigInt(startMs / 1_000), 1n],
+  );
+}
+
+function plan(token: AssetRef): PricePlan {
+  return {
+    source: "test-pools",
+    read: {
+      quoteAsset: quote,
+      calls: [
+        { target: accountRefSchema.parse(`eip155:56:${poolOf(token)}`), input: reservesCall },
+      ],
+      price: (answers) => poolPrice({ kind: "v2", isToken0: true }, answers),
+    },
+  };
+}
+
+const unfed = assetRefSchema.parse("eip155:56/erc20:0x00000000000000000000000000000000000000f2");
+
+// Plans that test the edges: a quote with no feed, a call no batch can carry, a pricing step that
+// throws. Any other token has the pools' plan, and token 999 none.
+function planOf(token: AssetRef): Result<PricePlan, PlanFailure> {
+  const base = plan(token);
+  const edges = new Map<AssetRef, PricePlan>([
+    [tokenOf(997), { ...base, read: { ...base.read, quoteAsset: unfed } }],
+    [
+      tokenOf(996),
+      {
+        ...base,
+        read: {
+          ...base.read,
+          calls: [{ target: base.read.calls[0]?.target ?? (quote as never), input: "pool" }],
+        },
+      },
+    ],
+    [
+      tokenOf(995),
+      {
+        ...base,
+        read: {
+          ...base.read,
+          price: () => {
+            throw new Error("broken");
+          },
+        },
+      },
+    ],
+  ]);
+  return token === tokenOf(999) ? err("no_price_read") : ok(edges.get(token) ?? base);
+}
+
+function rig(): Rig {
+  const clock = createManualClock(startMs);
+  const pools = { isDown: false, isCallDown: false, isUnpriced: false };
+  const answer = (read: FakeRead): Hex | undefined => {
+    if (read.target === feedAddress) {
+      return round();
+    }
+    return pools.isUnpriced ? undefined : reserves(read.block);
+  };
+  const node = createFakeEvmNode({ multicall, head: 100n, answer });
+  const live = node.endpoint;
+  const endpoint: FakeEndpoint = (request) => {
+    const isCall = readFakeRpcRequest(request.body).method === "eth_call";
+    if (pools.isDown || (isCall && pools.isCallDown)) {
+      throw new Error("down");
+    }
+    return live(request);
+  };
+  const rpc = createRpcFailover({
+    endpoints: [{ name: "node", url: "https://node.test" }],
+    http: createFakeRpcHttp({ "https://node.test": endpoint }),
+    clock,
+    timeoutMs: 1_000,
+    restMs: 1,
+  });
+  const planned: AssetRef[] = [];
+  const planPrices = async (token: AssetRef): Promise<Result<PricePlan, PlanFailure>> => {
+    planned.push(token);
+    return await Promise.resolve(planOf(token));
+  };
+  const blocks = createBlockSource({ rpc, clock, blockTimeMs });
+  const watcher = createPriceWatcher({
+    rpc,
+    blocks,
+    clock,
+    multicall,
+    blockTimeMs,
+    planPrices,
+    feeds: [feed],
+  });
+  const prices: WatchedPrice[] = [];
+  watcher.onPrice((price) => prices.push(price));
+  const controller = new AbortController();
+  controllers.push(controller);
+  watcher.run(controller.signal).catch(() => undefined);
+  return { clock, node, watcher, prices, planned, pools };
+}
+
+// Moves the chain one block and lets the watcher read it.
+async function nextBlock(subject: Rig, head: bigint): Promise<void> {
+  subject.node.setHead(head);
+  await subject.clock.advance(blockTimeMs);
+}
+
+describe("price watcher", () => {
+  it("reads a watched token at each new block, in one call at that block, in its quote and USD", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    expect(subject.node.batches()).toStrictEqual([{ block: 101n, calls: 2 }]);
+    expect(subject.prices).toStrictEqual([
+      {
+        token: tokenOf(1),
+        block: 101n,
+        atMs: startMs + blockTimeMs,
+        source: "test-pools",
+        quoteAsset: quote,
+        quotePrice: { numerator: 1_101n, denominator: 10n },
+        // 110.1 quote base units a base unit, at $600 for 10^18 base units of the quote.
+        usdPrice: { numerator: 3_303n, denominator: 50_000_000_000n },
+      },
+    ]);
+    expect(subject.watcher.tokens()).toStrictEqual([
+      { token: tokenOf(1), state: "priced", source: "test-pools" },
+    ]);
+  });
+
+  it("reads 200 watched tokens in one multicall a block", async () => {
+    const subject = rig();
+    Array.from({ length: 200 }, (_unused, index) => subject.watcher.watch(tokenOf(index)));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    await nextBlock(subject, 102n);
+    await nextBlock(subject, 103n);
+    expect(subject.node.batches()).toStrictEqual([
+      { block: 101n, calls: 201 },
+      { block: 102n, calls: 201 },
+      { block: 103n, calls: 201 },
+    ]);
+    expect(subject.prices).toHaveLength(600);
+  });
+
+  it("reads a token once however many watch it, until the last watch ends", async () => {
+    const subject = rig();
+    const releases = [1, 1, 1, 2].map((index) => subject.watcher.watch(tokenOf(index)));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    expect(subject.planned).toStrictEqual([tokenOf(1), tokenOf(2)]);
+    releases[0]?.();
+    releases[0]?.();
+    releases[1]?.();
+    await nextBlock(subject, 102n);
+    releases[2]?.();
+    await nextBlock(subject, 103n);
+    releases[3]?.();
+    await nextBlock(subject, 104n);
+    expect(subject.node.batches()).toStrictEqual([
+      { block: 101n, calls: 3 },
+      { block: 102n, calls: 3 },
+      { block: 103n, calls: 2 },
+    ]);
+  });
+
+  it("reads each block in order when behind, and only the newest four past that", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    await nextBlock(subject, 103n);
+    await nextBlock(subject, 112n);
+    expect(subject.node.batches().map(({ block }) => block)).toStrictEqual([
+      101n,
+      102n,
+      103n,
+      109n,
+      110n,
+      111n,
+      112n,
+    ]);
+    expect(subject.watcher.lag()).toMatchObject({
+      head: 112n,
+      read: 112n,
+      lagBlocks: 0n,
+      skippedBlocks: 5n,
+    });
+  });
+
+  it("counts the blocks the chain should have made while no head came", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    subject.pools.isDown = true;
+    await subject.clock.advance(blockTimeMs * 10);
+    expect(subject.watcher.lag()).toMatchObject({ head: 101n, read: 101n, lagBlocks: 9n });
+    expect(subject.watcher.lag().source).toMatchObject({ mode: "polling", fault: "rpc_down" });
+  });
+
+  it("reads a block again when its batch fails, and says why until one succeeds", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    subject.pools.isCallDown = true;
+    await nextBlock(subject, 101n);
+    expect(subject.watcher.lag()).toMatchObject({
+      head: 101n,
+      read: 100n,
+      readFault: "chain.rpc_down",
+    });
+    subject.pools.isCallDown = false;
+    await subject.clock.advance(blockTimeMs * 2);
+    expect(subject.node.batches().map(({ block }) => block)).toStrictEqual([101n]);
+    expect(subject.watcher.lag().readFault).toBeUndefined();
+  });
+
+  it("plans a token again once its answers price nothing, and one no reader prices later", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    subject.watcher.watch(tokenOf(999));
+    await subject.clock.advance(0);
+    subject.pools.isUnpriced = true;
+    await nextBlock(subject, 101n);
+    expect(subject.prices).toStrictEqual([]);
+    expect(subject.watcher.tokens()).toStrictEqual([
+      { token: tokenOf(1), state: "unpriced" },
+      { token: tokenOf(999), state: "unpriced" },
+    ]);
+    subject.pools.isUnpriced = false;
+    await subject.clock.advance(30_000);
+    expect(subject.planned).toStrictEqual([tokenOf(1), tokenOf(999), tokenOf(1), tokenOf(999)]);
+    expect(subject.watcher.tokens()[0]).toStrictEqual({
+      token: tokenOf(1),
+      state: "priced",
+      source: "test-pools",
+    });
+  });
+
+  it("prices a token in its quote alone when the quote has no feed", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(997));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    expect(subject.prices).toStrictEqual([
+      {
+        token: tokenOf(997),
+        block: 101n,
+        atMs: startMs + blockTimeMs,
+        source: "test-pools",
+        quoteAsset: unfed,
+        quotePrice: { numerator: 1_101n, denominator: 10n },
+      },
+    ]);
+  });
+
+  it("leaves out the USD price once the quote's feed is stale", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await subject.clock.advance(91_000);
+    await nextBlock(subject, 101n);
+    expect(subject.prices.map(({ usdPrice }) => usdPrice)).toStrictEqual([undefined]);
+  });
+
+  it("counts a plan it cannot batch, or whose pricing step throws, as unpriced", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(996));
+    subject.watcher.watch(tokenOf(995));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    expect(subject.prices).toStrictEqual([]);
+    expect(subject.watcher.tokens()).toStrictEqual([
+      { token: tokenOf(996), state: "unpriced" },
+      { token: tokenOf(995), state: "unpriced" },
+    ]);
+  });
+
+  it("reads nothing while it watches no token", async () => {
+    const subject = rig();
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    expect(subject.node.batches()).toStrictEqual([]);
+    expect(subject.watcher.lag()).toMatchObject({ head: 101n, read: 101n, lagBlocks: 0n });
+  });
+
+  it("goes on reading when a listener fails, and stops a listener on its release", async () => {
+    const subject = rig();
+    const seen: bigint[] = [];
+    subject.watcher.onPrice(() => {
+      throw new Error("listener broke");
+    });
+    const release = subject.watcher.onPrice((price) => seen.push(price.block));
+    subject.watcher.watch(tokenOf(1));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    release();
+    await nextBlock(subject, 102n);
+    expect(seen).toStrictEqual([101n]);
+    expect(subject.prices.map(({ block }) => block)).toStrictEqual([101n, 102n]);
+  });
+
+  it("stops with the signal's reason", async () => {
+    const clock = createManualClock();
+    const node = createFakeEvmNode({ multicall, head: 1n, answer: () => undefined });
+    const rpc = createRpcFailover({
+      endpoints: [{ name: "node", url: "https://node.test" }],
+      http: createFakeRpcHttp({ "https://node.test": node.endpoint }),
+      clock,
+      timeoutMs: 1_000,
+      restMs: 1,
+    });
+    const watcher = createPriceWatcher({
+      rpc,
+      blocks: createBlockSource({ rpc, clock, blockTimeMs }),
+      clock,
+      multicall,
+      blockTimeMs,
+      planPrices: async () => await Promise.resolve(err("no_price_read")),
+      feeds: [],
+    });
+    const controller = new AbortController();
+    const running = watcher.run(controller.signal);
+    const reason = new Error("stopped");
+    await clock.advance(0);
+    controller.abort(reason);
+    await expect(running).rejects.toBe(reason);
+  });
+});

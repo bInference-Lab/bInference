@@ -4,10 +4,12 @@
 
 The EVM chain family. It reads a chain through its RPC endpoints with failover, prices gas,
 simulates calls with `eth_simulateV1` and reads the transfers they make, decodes calldata, and
-builds, hashes and checks the transactions a signer signs. It reads a venue's transaction draft
-for the chain-neutral core: the contract it calls, the wei it sends, and the ERC-20 approval it
-grants. It prices the native coin and the stablecoins in USD from Chainlink's feeds. Chain facts
-come in as data from `@binference/chains`; nothing here names a chain.
+builds, hashes and checks the transactions a signer signs. It reads a venue's transaction draft for
+the chain-neutral core: the contract it calls, the wei it sends, and the ERC-20 approval it grants.
+It prices the native coin and the stablecoins in USD from Chainlink's feeds. Its price watcher
+reads the price of every watched token at each new block, in one batched call, from the reads each
+venue declares or from the token's deepest pool. Chain facts come in as data from
+`@binference/chains`; nothing here names a chain.
 
 ## API
 
@@ -29,6 +31,7 @@ come in as data from `@binference/chains`; nothing here names a chain.
 | `callAbiJson`                                                            | One function of an ABI as plain JSON, as a venue declares the calls its trades make                                                                              |
 | `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions                                                                                             |
 | `createBlockSource`, `HeadSubscription`, `HeadSocket`                    | Each new block of a chain: `newHeads` over the owner's WebSocket RPC, else polling once a block time                                                             |
+| `createPriceWatcher`, `PriceWatcher`, `WatchedPrice`, `WatcherLag`       | Every watched token's price reads and quote feeds in one Multicall3 call per block, and the lag                                                                  |
 | `createPoolPriceReader`, `poolSource`                                    | A `PriceReader` over the deepest Uniswap-style v2 pair or v3 pool against a token with a feed                                                                    |
 | `readTokenDecimals`                                                      | ERC-20 decimals of many tokens in one Multicall3 call                                                                                                            |
 | `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                                                                                                 |

@@ -85,4 +85,12 @@ export type {
 } from "./watching/head-socket.js";
 export { createPoolPriceReader, poolSource } from "./watching/pool-price-reader.js";
 export type { PoolPriceReaderOptions } from "./watching/pool-price-reader.js";
+export { createPriceWatcher } from "./watching/price-watcher.js";
+export type {
+  PriceWatcher,
+  PriceWatcherOptions,
+  WatchedPrice,
+  WatcherLag,
+} from "./watching/price-watcher.js";
+export type { PlanFailure, PlanPrices, PricePlan, WatchedToken } from "./watching/watch-list.js";
 export { readTokenDecimals } from "./tokens/read-token-decimals.js";
