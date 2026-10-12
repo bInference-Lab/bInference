@@ -8,17 +8,13 @@ import {
   type Result,
 } from "@binference/core";
 import type { ProtocolErrorCode, UnfreezeRequest } from "@binference/protocol";
-import type { AgentRecord, AgentSettings } from "../agents/agent-record.js";
-import { cardRulesOf } from "../agents/card-rules-of.js";
+import type { AgentRecord } from "../agents/agent-record.js";
 import type { InstallFacts } from "../install/install-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import type { IntentMove } from "../intents/intent-change-of.js";
 import type { IntentProposerRef } from "../intents/intent-record.js";
-import type { IntentState } from "../intents/intent-state.js";
-import type { IntentTrigger } from "../intents/intent-trigger.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
-import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
-import { type AdvanceParts, advanceIntent } from "../money-path/advance-intent.js";
+import { unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
+import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import type { AgentStore, InstallStore } from "../ports.js";
 
 /** What an unfreeze is planned and stored through. */
@@ -101,33 +97,6 @@ async function planOf(
     : ok({ agents: frozen.value, isWholeInstall: agent === undefined, owner });
 }
 
-// The auto test never lets an unfreeze skip its card: it is not a trade (spec 6, section 5).
-function authorizationOf(
-  settings: AgentSettings,
-  engine: Pick<UnfreezeProposalParts, "isLocked">,
-): IntentTrigger<"authorization_checked"> {
-  const { limits, approvalMode } = settings;
-  const facts = {
-    approvalMode: approvalMode.mode,
-    modeVersion: approvalMode.version,
-    isLocked: engine.isLocked(),
-    isInsideOwnPositions: false,
-    sellsDeniedToken: false,
-    valueUsdMicros: 0n,
-    perTradeCapUsdMicros: limits.perTradeUsdMicros,
-    rollingDayCapUsdMicros: limits.rollingDayUsdMicros,
-    rollingDaySpentUsdMicros: 0n,
-    feePerGasNativeBase: 0n,
-    networkFeeCapNativeBase: 0n,
-    hasUnlistedSpender: false,
-  };
-  return {
-    type: "authorization_checked",
-    check: { by: "auto_mode", facts },
-    cards: cardRulesOf(limits),
-  };
-}
-
 async function create(
   parts: UnfreezeProposalParts,
   plan: UnfreezePlan,
@@ -162,48 +131,6 @@ async function create(
   return created.value;
 }
 
-/** One move toward the card, and the state it reaches when nothing else moved the intent. */
-interface CardStep {
-  readonly move: { readonly trigger: IntentTrigger } & Pick<IntentMove, "fields">;
-  readonly to: IntentState;
-}
-
-// Moves the intent through each step in turn; one another write moved first ends the run there.
-async function through(
-  advance: AdvanceParts,
-  snapshot: IntentSnapshot,
-  steps: readonly CardStep[],
-): Promise<IntentSnapshot> {
-  const [first, ...rest] = steps;
-  if (first === undefined) {
-    return snapshot;
-  }
-  const moved = await advanceIntent(advance, snapshot, first.move);
-  return moved.record.state === first.to ? through(advance, moved, rest) : moved;
-}
-
-// The unfreeze runs to its card: it has no policy, venue, risk or simulation step of its own, and
-// its quote names what it unfreezes, so the card's terms hash binds them (decision 0128).
-async function runToCard(
-  parts: UnfreezeProposalParts,
-  advance: AdvanceParts,
-  run: { readonly proposed: IntentSnapshot; readonly quote: UnfreezeQuote },
-): Promise<IntentSnapshot> {
-  const { quotedAtMs } = run.quote;
-  const fields = { quote: unfreezeQuoteDocument.encode(run.quote) };
-  const simulated = await through(advance, run.proposed, [
-    { move: { trigger: { type: "policy_passed" } }, to: "checked" },
-    { move: { trigger: { type: "quote_built", quote: { quotedAtMs } }, fields }, to: "quoted" },
-    { move: { trigger: { type: "risk_passed" } }, to: "assessed" },
-    { move: { trigger: { type: "simulation_matched" } }, to: "simulated" },
-  ]);
-  if (simulated.record.state !== "simulated") {
-    return simulated;
-  }
-  const trigger = authorizationOf(simulated.settings, parts);
-  return advanceIntent(advance, simulated, { trigger });
-}
-
 /**
  * Stores an unfreeze of one agent, or of the whole install, and takes it to its card, which waits
  * for the owner's tap from any surface (decision 0128). Its quote names every frozen agent it
@@ -233,5 +160,8 @@ export async function proposeUnfreeze(
   };
   const proposed = await create(parts, plan.value, call);
   const advance = { stored: parts.stored, machine: createIntentStateMachine(parts), signal };
-  return ok(await runToCard(parts, advance, { proposed, quote }));
+  const { quotedAtMs } = quote;
+  const encoded = unfreezeQuoteDocument.encode(quote);
+  const run = { proposed, quote: encoded, quotedAtMs, isLocked: parts.isLocked() };
+  return ok(await openCardUnchecked(advance, run));
 }
