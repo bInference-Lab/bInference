@@ -203,6 +203,16 @@ interface Traded {
   readonly steps: readonly TransactionReceipt[];
 }
 
+// The value of a result that succeeded; a test that expects one fails on any other.
+function expectOk<T>(
+  result: { readonly ok: true; readonly value: T } | { readonly ok: false } | undefined,
+): T {
+  if (result?.ok !== true) {
+    throw new Error("The read answered no value.");
+  }
+  return result.value;
+}
+
 // Quotes, builds and sends one trade through the venue, as the venue host would ask for it.
 async function trade(trading: Trading, asked: Trade): Promise<Traded> {
   const { fork, venue, wallet, contracts } = trading;
@@ -292,6 +302,50 @@ describe("flap on a BSC fork", () => {
       expect(sale.received).toBeGreaterThanOrEqual(sale.minOut);
       expect(await balanceOf(fork, token.address)).toBe(0n);
       await annotate(report(fork, token.address, [buy, sale]));
+    }));
+
+  it("prices a curve token each block at the price a small buy on the Portal pays", async ({
+    signal,
+    annotate,
+  }) =>
+    withFork(signal, async (fork) => {
+      const trading = tradingOn(fork, signal);
+      const token = await curveToken(fork, { quoteToken: zeroAddress, taxed: false });
+      const asset = assetRefSchema.parse(`${fork.chain.ref}/erc20:${token.address}`);
+      const priced = await trading.venue.priceRead?.(
+        { token: asset, contracts: trading.contracts },
+        { signal },
+      );
+      const read = expectOk(priced);
+      const answers = await Promise.all(
+        read.calls.map(async ({ target, input }) => {
+          const call = await fork.client.call({
+            to: getAddress(target.slice(target.lastIndexOf(":") + 1)),
+            data: `0x${input.slice(2)}`,
+          });
+          return call.data;
+        }),
+      );
+      const curve = expectOk(read.price(answers));
+      // A buy this small moves the curve by a hair: what it pays a token, Flap's fee aside, is the
+      // curve's price.
+      const amountIn = parseEther("0.001");
+      const request = {
+        wallet: trading.wallet,
+        amountIn: { asset: fork.chain.nativeAsset, base: amountIn },
+        assetOut: asset,
+        contracts: trading.contracts,
+      };
+      const quote = await quoteOf(trading, request);
+      // Basis points the buy paid above the curve's price, fee and impact included.
+      const paidBps =
+        (amountIn * curve.denominator * 10_000n) / (quote.expectedOut.base * curve.numerator) -
+        10_000n;
+      expect(paidBps).toBeGreaterThanOrEqual(0n);
+      expect(paidBps).toBeLessThanOrEqual(300n);
+      await annotate(
+        `block ${String(fork.block)}, token ${token.address}: a 0.001 BNB buy paid ${String(paidBps)} bp above the curve's price`,
+      );
     }));
 
   it("buys a USDT curve token with USDT and sells it back for USDT", async ({ signal, annotate }) =>
