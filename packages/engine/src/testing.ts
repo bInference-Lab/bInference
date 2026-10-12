@@ -79,6 +79,8 @@ export type {
   AgentInboxSubject,
 } from "./contracts/agent-inbox-store-contract.js";
 export { agentStoreContract } from "./contracts/agent-store-contract.js";
+export { questionStoreContract } from "./contracts/question-store-contract.js";
+export type { QuestionStoreHarness, QuestionSubject } from "./contracts/question-store-contract.js";
 export { installStoreContract } from "./contracts/install-store-contract.js";
 export type { InstallStoreHarness, InstallStoreSubject } from "./contracts/install-store-setups.js";
 export type { AgentStoreHarness } from "./contracts/agent-store-contract.js";

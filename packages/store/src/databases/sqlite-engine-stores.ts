@@ -1,6 +1,7 @@
 import type { EngineStores } from "@binference/engine";
 import { createSqliteAccessStore } from "../access/sqlite-access-store.js";
 import { createSqliteAgentInboxStore } from "../agent-inbox/sqlite-agent-inbox-store.js";
+import { createSqliteQuestionStore } from "../agent-inbox/sqlite-question-store.js";
 import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { createSqliteConfigJournal } from "../audit/sqlite-config-journal.js";
 import { createSqliteIdempotencyStore } from "../ingress/sqlite-idempotency-store.js";
@@ -35,6 +36,7 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     install: createSqliteInstallStore(host),
     notices: createSqliteNoticeStore(host),
     agentInbox: createSqliteAgentInboxStore(host),
+    questions: createSqliteQuestionStore(host),
     owners: createSqliteOwnerStore(host),
     cardCopies: createSqliteCardCopyStore(host),
     agentTopics: createSqliteAgentTopicStore(host),

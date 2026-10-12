@@ -14,7 +14,23 @@ export type {
   InboxTake,
   UntakenQuery,
 } from "./chat/agent-inbox-record.js";
-export type { AgentInboxStore } from "./chat/ports.js";
+export type { AgentInboxStore, QuestionStore } from "./chat/ports.js";
+export {
+  isAnswerable,
+  questionAnswerDraftSchema,
+  questionClosingSchema,
+  questionCopySchema,
+  questionOpenMs,
+  questionRecordSchema,
+  questionRefSchema,
+} from "./chat/question-record.js";
+export type {
+  QuestionAnswer,
+  QuestionAnswerDraft,
+  QuestionClosing,
+  QuestionCopy,
+  QuestionRecord,
+} from "./chat/question-record.js";
 export { markRuntimeTurns } from "./chat/mark-runtime-turns.js";
 export { createRunningTurns } from "./chat/running-turns.js";
 export type { RunningTurn, RunningTurns } from "./chat/running-turns.js";

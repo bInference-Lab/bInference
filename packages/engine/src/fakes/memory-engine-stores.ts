@@ -14,6 +14,7 @@ import { createMemoryModelUsageStore } from "./memory-model-usage-store.js";
 import { createMemoryNoticeStore } from "./memory-notice-store.js";
 import { createMemoryOrderStore, type MemoryOrderStore } from "./memory-order-store.js";
 import { createMemoryOwnerStore } from "./memory-owner-store.js";
+import { createMemoryQuestionStore } from "./memory-question-store.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 
 /**
@@ -50,6 +51,7 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     intents,
     orders,
     agentInbox,
+    questions: createMemoryQuestionStore({ agentInbox }),
     ledger,
     idempotency: createMemoryIdempotencyStore(),
     inbox: createMemoryInboxStore(),

@@ -25,6 +25,11 @@ export interface MemoryAgentInboxStore extends AgentInboxStore {
     intent: IntentRecord,
     firstEvent: IntentEventRecord | undefined,
   ): AgentInboxMessage | undefined;
+  /**
+   * Stores an owner's message at once, inside another in-memory store's own write, for an agent
+   * the caller knows: `busy` while the agent holds 200 untaken messages.
+   */
+  addNow(draft: AgentInboxDraft): Result<AgentInboxMessage, "busy" | "not_found">;
 }
 
 /** The agents an in-memory agent inbox knows. */
@@ -165,6 +170,7 @@ export function createMemoryAgentInboxStore(
   const rows = createRows();
   return {
     settleNow: (intent, firstEvent) => settle(rows, intent, firstEvent),
+    addNow: (draft) => add(rows, structuredClone(draft)),
     async add(draft, call) {
       call.signal.throwIfAborted();
       const agent = await options.agents.get(draft.agentId, call);
