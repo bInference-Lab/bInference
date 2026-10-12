@@ -9202,6 +9202,8 @@
         "packages/store/src/testing.ts",
         "packages/telegram/src/index.ts",
         "packages/telegram/src/testing.ts",
+        "plugins/flap/src/index.ts",
+        "plugins/flap/src/testing.ts",
         "plugins/goplus/src/index.ts",
         "plugins/honeypot-is/src/index.ts",
         "plugins/kyberswap/src/index.ts",
