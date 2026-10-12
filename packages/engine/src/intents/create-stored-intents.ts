@@ -13,6 +13,7 @@ import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { StoredIntent } from "../confirmations/stored-intent.js";
 import { ledgerEntryViewOf } from "../ledger/ledger-entry-view.js";
+import { orderPush } from "../orders/order-view-of.js";
 import type { AgentStore, ConfirmationStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { intentPushes } from "../pushes/intent-pushes.js";
@@ -102,9 +103,12 @@ export interface StoredIntentsOptions {
   readonly settled?: (message: AgentInboxMessage) => void;
 }
 
-// A write's pushes, then the settle message it stored, if any.
+// A write's pushes and those of the orders a fill moved, then the settle message it stored, if any.
 function announce(options: StoredIntentsOptions, commit: IntentCommit, change?: IntentChange) {
   intentPushes(commit, change).forEach(options.publish);
+  commit.orders?.forEach((order) => {
+    options.publish(orderPush(order, "order/changed"));
+  });
   if (commit.settled !== undefined) {
     options.settled?.(commit.settled);
   }

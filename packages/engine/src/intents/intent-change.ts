@@ -8,6 +8,8 @@ import {
   type LedgerEntry,
   ledgerEntrySchema,
 } from "../ledger/ledger-entry.js";
+import { type OrderFillWrite, orderFillWriteSchema } from "../orders/order-fill.js";
+import { type OrderRecord, orderRecordSchema } from "../orders/order-record.js";
 import {
   epochMsSchema,
   pageLimitSchema,
@@ -70,6 +72,11 @@ export interface IntentChange {
   /** Closes an open card version of this intent at `atMs`. */
   readonly closeCard?: CardVersionClosing;
   readonly confirmation?: ConfirmationDraft;
+  /**
+   * An auto order fill's write on its order, stored with the move (spec 6, section 5): the order's
+   * moves under their versions and the fill's row.
+   */
+  readonly order?: OrderFillWrite;
 }
 
 /** Parses an intent change. */
@@ -84,6 +91,7 @@ export const intentChangeSchema: z.ZodType<IntentChange> = z.strictObject({
   openCard: cardOpeningSchema.exactOptional(),
   closeCard: cardVersionClosingSchema.exactOptional(),
   confirmation: confirmationDraftSchema.exactOptional(),
+  order: orderFillWriteSchema.exactOptional(),
 });
 
 /**
@@ -96,6 +104,8 @@ export interface IntentCommit {
   readonly event: IntentEventRecord;
   readonly ledgerEntry?: LedgerEntry;
   readonly settled?: AgentInboxMessage;
+  /** The orders a fill's move wrote, after it, in its write's order. */
+  readonly orders?: readonly OrderRecord[];
 }
 
 /** Parses what a create or a move wrote. */
@@ -104,6 +114,7 @@ export const intentCommitSchema: z.ZodType<IntentCommit> = z.strictObject({
   event: intentEventRecordSchema,
   ledgerEntry: ledgerEntrySchema.exactOptional(),
   settled: agentInboxMessageSchema.exactOptional(),
+  orders: z.array(orderRecordSchema).exactOptional(),
 });
 
 /**

@@ -4,6 +4,11 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { FillSize } from "@binference/protocol";
 import { testCoin } from "../intents/test-intents.js";
 import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
+import {
+  recordsSkips,
+  refusesAbortedFills,
+  writesAFillWithItsIntent,
+} from "./order-fill-checks.js";
 import { orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.js";
 import {
   activatesOnTheConfirmedCard,
@@ -156,7 +161,8 @@ async function refusesAborted(subject: OrderStoreSubject): Promise<void> {
  * The checks every {@link OrderStore} adapter passes: orders created once and kept exact past 64
  * bits, a buy's spent asset and size among them, moves all or nothing under their versions, the rules no move may break, an order active
  * only on its card's confirmation and never for a frozen agent, the freeze's own order moves,
- * listing by state, agent, wallet, mode and expiry page by page, and aborted calls.
+ * listing by state, agent, wallet, mode and expiry page by page, fill rows, a fill's moves and row
+ * written with its intent's move, and aborted calls.
  */
 export function orderStoreContract(harness: OrderStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<OrderStoreSubject> => harness.create();
@@ -183,5 +189,8 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     ),
     checkOn("lists orders by state, agent, wallet, mode and expiry", create, listsByQuery),
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
+    checkOn("keeps an order's skips, the newest first", create, recordsSkips),
+    checkOn("writes a fill on its order with its intent's move", create, writesAFillWithItsIntent),
+    checkOn("refuses fill calls on an aborted signal", create, refusesAbortedFills),
   ];
 }

@@ -7,6 +7,7 @@ import {
 } from "@binference/core";
 import type { IntentWrite } from "../confirmations/stored-intent.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
+import type { OrderFillWrite } from "../orders/order-fill.js";
 import { type Sha256Hex, sha256Hex } from "../records/sha256-hex.js";
 import type { CardOpening, CardRecord, CardVersionClosing } from "./card-record.js";
 import type { ConfirmationDraft } from "./confirmation-record.js";
@@ -41,6 +42,8 @@ export interface IntentMove extends IntentWrite {
   readonly fill?: PaperFill;
   /** The trade a live intent records as it moves to `reconciled`. */
   readonly settled?: SettledTrade;
+  /** An auto order fill's write on its order, stored with the move (spec 6, section 5). */
+  readonly order?: OrderFillWrite;
 }
 
 /** What a move is stored against: the intent as read, and where new ids come from. */
@@ -236,5 +239,6 @@ export function changeOf(move: IntentMove, context: MoveContext): IntentChange {
     ...(step.event.hasLedgerEntry ? { ledger: ledgerOf(move, context, cause) } : {}),
     ...cards,
     ...(confirmation === undefined ? {} : { confirmation }),
+    ...(move.order === undefined ? {} : { order: move.order }),
   };
 }

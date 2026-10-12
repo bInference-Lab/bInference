@@ -1,4 +1,5 @@
 import type { Id, Result } from "@binference/core";
+import type { OrderFillQuery, OrderFillRecord } from "./order-fill.js";
 import type {
   OrderDraft,
   OrderMove,
@@ -40,4 +41,13 @@ export interface OrderStore {
     moves: readonly OrderMove[],
     options: StoreCall,
   ): Promise<Result<readonly OrderRecord[], OrderMoveRefusal>>;
+  /**
+   * Stores one fill row of an order (database spec, `order_fills`): a skip, with its reason and
+   * the intent that ended, if one was stored. A fill that filled is stored with its intent's move
+   * instead (`IntentStore.transition`). An id in use, an unknown order or intent, or a row whose
+   * outcome and reason disagree throws `store.constraint`.
+   */
+  recordFill(fill: OrderFillRecord, options: StoreCall): Promise<OrderFillRecord>;
+  /** One order's fill rows, the newest first, then by id from the last. */
+  fills(query: OrderFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
 }

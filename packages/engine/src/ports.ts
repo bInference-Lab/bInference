@@ -202,6 +202,9 @@ export interface IntentStore extends LandedLate {
    * Moves an intent when its stored version is `expectedVersion`, then raises the version by one.
    * Another version is `stale` and writes nothing, so of two racing moves the first wins. A card
    * that is not this intent's open version, or a second confirmation, throws and writes nothing.
+   * A fill's order write lands in the same transaction: each order move under its version, which
+   * the order store's rules check, and the fill's row; an order at another version, or one a move
+   * may not take, is `stale` and writes nothing.
    */
   transition(
     change: IntentChange,

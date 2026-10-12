@@ -136,3 +136,6 @@ export const intentReasons: readonly IntentReason[] = [
  * an `order_fills` row with its reason, and its message is `reason.<code>` like an intent's.
  */
 export const orderSkipReasons = ["copy_daily_cap"] as const;
+
+/** A reason an auto order skipped a fill before any intent was stored. */
+export type OrderSkipReason = (typeof orderSkipReasons)[number];

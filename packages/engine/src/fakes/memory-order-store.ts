@@ -1,5 +1,6 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
+import type { OrderFillWrite } from "../orders/order-fill.js";
 import type {
   OrderDraft,
   OrderMove,
@@ -12,9 +13,10 @@ import type { OrderStore } from "../orders/ports.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
+import { createMemoryOrderFills, type MemoryOrderFills } from "./memory-order-fills.js";
 
 /** An in-memory order store, whose moves another in-memory store's write can make. */
-export interface MemoryOrderStore extends OrderStore {
+export interface MemoryOrderStore extends OrderStore, MemoryOrderFills {
   /**
    * Checks every move inside another in-memory store's write, such as a freeze, and answers the
    * orders after them without writing. An agent in `unfrozen`, which the same write unfreezes,
@@ -26,6 +28,11 @@ export interface MemoryOrderStore extends OrderStore {
   ): Result<readonly OrderRecord[], OrderMoveRefusal>;
   /** Writes orders `checkNow` answered, once the rest of the write has passed its checks. */
   saveNow(orders: readonly OrderRecord[]): void;
+  /**
+   * Checks a fill's write on its order inside an intent's move: its moves as `checkNow` does,
+   * answering a refusal as `stale`, and its row. A broken rule throws.
+   */
+  checkWriteNow(write: OrderFillWrite): Result<readonly OrderRecord[], "stale">;
 }
 
 /** What the in-memory order store reads of the agents, wallets and confirmations beside it. */
@@ -34,10 +41,11 @@ export interface MemoryOrderStoreOptions {
   readonly install: Pick<MemoryInstallStore, "walletNow">;
   /** The confirmation an intent holds, as the intent store beside it keeps it. */
   readonly confirmation: (intent: Id<"int">) => StoredConfirmation | undefined;
+  /** Whether the intent store beside it holds the intent. */
+  readonly hasIntent: (intent: Id<"int">) => boolean;
 }
 
 type Orders = Map<Id<"ord">, OrderRecord>;
-
 function create(
   orders: Orders,
   options: MemoryOrderStoreOptions,
@@ -194,7 +202,20 @@ function matches(order: OrderRecord, query: OrderQuery): boolean {
  */
 export function createMemoryOrderStore(options: MemoryOrderStoreOptions): MemoryOrderStore {
   const orders: Orders = new Map();
+  const fills = createMemoryOrderFills({
+    hasOrder: (id) => orders.has(id),
+    hasIntent: options.hasIntent,
+  });
   return {
+    ...fills,
+    checkWriteNow: (write) => {
+      const checked = checkNow(orders, options, {
+        moves: structuredClone(write.moves),
+        unfrozen: new Set(),
+      });
+      fills.checkFillNow(write.fill);
+      return checked.ok ? checked : err("stale");
+    },
     checkNow: (moves, unfrozen) =>
       checkNow(orders, options, { moves: structuredClone(moves), unfrozen }),
     saveNow: (moved) => {

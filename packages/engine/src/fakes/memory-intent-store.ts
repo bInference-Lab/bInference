@@ -39,6 +39,8 @@ export interface MemoryIntentStoreOptions {
 export interface MemoryIntentStore extends IntentStore {
   /** The confirmation the intent holds now, or `undefined`. */
   confirmationNow(id: Id<"int">): StoredConfirmation | undefined;
+  /** The intent as it stands now, or `undefined`. */
+  intentNow(id: Id<"int">): IntentRecord | undefined;
 }
 
 function appendTo(
@@ -48,11 +50,15 @@ function appendTo(
   return draft === undefined ? undefined : ledger.appendNow(draft);
 }
 
-/** What one write of an intent stored: the intent after it, its event and its ledger entry. */
+/**
+ * What one write of an intent stored: the intent after it, its event and its ledger entry, and
+ * the orders a fill's write moved.
+ */
 interface Written {
   readonly intent: IntentRecord;
   readonly event: IntentEventRecord;
   readonly ledgerEntry: LedgerEntry | undefined;
+  readonly orders?: readonly OrderRecord[];
 }
 
 // The commit of a write, with the settle message the write left in the agent inbox, if any.
@@ -61,13 +67,14 @@ function commitOf(
   options: Pick<MemoryIntentStoreOptions, "agentInbox">,
   written: Written,
 ): IntentCommit {
-  const { intent, event, ledgerEntry } = written;
+  const { intent, event, ledgerEntry, orders } = written;
   const settled = options.agentInbox?.settleNow(intent, tables.events(intent.id)[0]);
   return structuredClone({
     intent,
     event,
     ...(ledgerEntry === undefined ? {} : { ledgerEntry }),
     ...(settled === undefined ? {} : { settled }),
+    ...(orders === undefined ? {} : { orders }),
   });
 }
 
@@ -104,16 +111,17 @@ function checkMove(
   return ok(current);
 }
 
-/** A move checked against the intent as it stands. */
+/** A move checked against the intent as it stands, with the orders a fill's write moves. */
 interface CheckedMove {
   readonly change: IntentChange;
   readonly current: IntentRecord;
+  readonly orders?: readonly OrderRecord[];
 }
 
 function writeMove(
   tables: MemoryIntentTables,
   options: MemoryIntentStoreOptions,
-  { change, current }: CheckedMove,
+  { change, current, orders }: CheckedMove,
 ): IntentCommit {
   const ledgerEntry = appendTo(options.ledger, change.ledger);
   const intent: IntentRecord = {
@@ -132,7 +140,16 @@ function writeMove(
     cause: change.cause,
     atMs: change.atMs,
   });
-  return commitOf(tables, options, { intent, event, ledgerEntry });
+  if (change.order !== undefined && orders !== undefined) {
+    options.orders?.saveNow(orders);
+    options.orders?.saveFillNow(change.order.fill);
+  }
+  return commitOf(tables, options, {
+    intent,
+    event,
+    ledgerEntry,
+    ...(orders === undefined ? {} : { orders }),
+  });
 }
 
 function transition(
@@ -141,7 +158,30 @@ function transition(
   change: IntentChange,
 ): Result<IntentCommit, "not_found" | "stale"> {
   const checked = checkMove(tables, change);
-  return checked.ok ? ok(writeMove(tables, options, { change, current: checked.value })) : checked;
+  if (!checked.ok) {
+    return checked;
+  }
+  const { order } = change;
+  const orders = order === undefined ? ok(undefined) : ordersOf(options).checkWriteNow(order);
+  if (!orders.ok) {
+    return orders;
+  }
+  const move = { change, current: checked.value };
+  return ok(
+    writeMove(
+      tables,
+      options,
+      orders.value === undefined ? move : { ...move, orders: orders.value },
+    ),
+  );
+}
+
+// The order store beside this one, which a write that moves orders needs.
+function ordersOf(options: MemoryIntentStoreOptions): MemoryOrderStore {
+  if (options.orders === undefined) {
+    throw constraintFault("a write moves orders this store holds none of");
+  }
+  return options.orders;
 }
 
 // Every move is checked before the agents are marked, and nothing is written before both pass.
@@ -154,10 +194,7 @@ function checkOrders(
   if (write.orders.length === 0) {
     return ok([]);
   }
-  const store = options.orders;
-  if (store === undefined) {
-    throw constraintFault("a freeze moves orders this store holds none of");
-  }
+  const store = ordersOf(options);
   const unfrozen = new Set(write.isFrozen ? [] : write.agents.map(({ agentId }) => agentId));
   const checked = store.checkNow(write.orders, unfrozen);
   return checked.ok ? checked : err("stale");
@@ -275,6 +312,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
   const landings = new Map<Id<"int">, LateLanding>();
   return {
     confirmationNow: (id) => tables.confirmation(id),
+    intentNow: (id) => tables.intent(id),
     create: async (draft, call) => memoryCall(call, () => create(tables, options, draft)),
     get: async (id, call) => memoryCall(call, () => tables.intent(id)),
     transition: async (change, call) => memoryCall(call, () => transition(tables, options, change)),

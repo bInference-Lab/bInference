@@ -1,4 +1,15 @@
 export {
+  orderFillQuerySchema,
+  orderFillRecordSchema,
+  orderFillWriteSchema,
+} from "./orders/order-fill.js";
+export type {
+  OrderFillQuery,
+  OrderFillReason,
+  OrderFillRecord,
+  OrderFillWrite,
+} from "./orders/order-fill.js";
+export {
   hasPriceTrigger,
   isExitOrder,
   orderDraftSchema,

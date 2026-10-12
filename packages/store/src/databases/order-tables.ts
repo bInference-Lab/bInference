@@ -23,7 +23,18 @@ export interface OrdersTable {
   version: number;
 }
 
+/** `order_fills`: one fill or skip of an auto order (migration 0031). */
+export interface OrderFillsTable {
+  id: string;
+  order_id: string;
+  intent_id: string | null;
+  outcome: string;
+  reason: string | null;
+  at: number;
+}
+
 /** The order store's tables, by name. */
 export interface OrderTables {
   orders: OrdersTable;
+  order_fills: OrderFillsTable;
 }

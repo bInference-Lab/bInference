@@ -3,9 +3,11 @@ import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import {
   createOrderTask,
   getOrderTask,
+  listOrderFillsTask,
   listOrdersTask,
   moveOrdersTask,
   orderByIntentTask,
+  recordOrderFillTask,
 } from "./order-tasks.js";
 
 /**
@@ -19,5 +21,7 @@ export function createSqliteOrderStore(host: StoreHost): OrderStore {
     byIntent: bindTask(host, orderByIntentTask),
     list: bindTask(host, listOrdersTask),
     move: bindTask(host, moveOrdersTask),
+    recordFill: bindTask(host, recordOrderFillTask),
+    fills: bindTask(host, listOrderFillsTask),
   };
 }

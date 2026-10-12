@@ -42,6 +42,7 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     agents,
     install,
     confirmation: (id) => intents.confirmationNow(id),
+    hasIntent: (id) => intents.intentNow(id) !== undefined,
   });
   const intents = createMemoryIntentStore({ ledger, agents, install, agentInbox, orders });
   return {

@@ -2,6 +2,10 @@ import { type Id, idSchema, type Result } from "@binference/core";
 import {
   type OrderDraft,
   orderDraftSchema,
+  type OrderFillQuery,
+  orderFillQuerySchema,
+  type OrderFillRecord,
+  orderFillRecordSchema,
   type OrderMove,
   type OrderMoveRefusal,
   orderMoveSchema,
@@ -15,6 +19,7 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
+import { checkOrderFill, insertOrderFill, listOrderFills } from "./order-fill-writes.js";
 import { toOrderRecord } from "./order-rows.js";
 import { checkOrderMoves, createOrder, readOrder, writeOrderMoves } from "./order-writes.js";
 
@@ -110,6 +115,29 @@ export const listOrdersTask: StoreTask<OrderQuery, readonly OrderRecord[]> = def
   },
 });
 
+/** Stores one fill row of an order, such as a skip. */
+export const recordOrderFillTask: StoreTask<OrderFillRecord, OrderFillRecord> = defineTask({
+  name: "orders.recordFill",
+  access: "write",
+  input: orderFillRecordSchema,
+  output: orderFillRecordSchema,
+  run(database, fill) {
+    checkOrderFill(database, fill);
+    return insertOrderFill(database, fill);
+  },
+});
+
+/** Lists one order's fill rows, the newest first. */
+export const listOrderFillsTask: StoreTask<OrderFillQuery, readonly OrderFillRecord[]> = defineTask(
+  {
+    name: "orders.fills",
+    access: "read",
+    input: orderFillQuerySchema,
+    output: z.array(orderFillRecordSchema),
+    run: (database, query) => listOrderFills(database, query),
+  },
+);
+
 /** Every task of the SQLite order store. */
 export const orderTasks: readonly TaskRunner[] = [
   createOrderTask,
@@ -117,4 +145,6 @@ export const orderTasks: readonly TaskRunner[] = [
   getOrderTask,
   orderByIntentTask,
   listOrdersTask,
+  recordOrderFillTask,
+  listOrderFillsTask,
 ];

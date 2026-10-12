@@ -16,6 +16,8 @@ import { settleIntent } from "../agent-inbox/agent-inbox-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
+import { checkOrderFill, insertOrderFill } from "../orders/order-fill-writes.js";
+import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
 import { writeCardChanges } from "./card-writes.js";
 import { toIntentEvent, toIntentRecord } from "./intent-rows.js";
@@ -149,17 +151,30 @@ export function readMoved(
   return current.version === change.expectedVersion ? ok(current) : err("stale");
 }
 
+// A fill's order write, checked before anything is written: an order a move may not take, or one
+// at another version, is the move's `stale`.
+function checkFillWrite(database: DatabaseSync, change: IntentChange): Result<undefined, "stale"> {
+  const { order } = change;
+  if (order === undefined) {
+    return ok(undefined);
+  }
+  checkOrderFill(database, order.fill);
+  return checkOrderMoves(database, order.moves).ok ? ok(undefined) : err("stale");
+}
+
 /**
  * Moves an intent when its stored version is the one the mover read: its new state and parts,
- * the event, the ledger entry and the card writes, all in the caller's transaction.
+ * the event, the ledger entry and the card writes, and a fill's order moves and row, all in the
+ * caller's transaction.
  */
 export function moveIntent(
   database: DatabaseSync,
   change: IntentChange,
 ): Result<IntentCommit, "not_found" | "stale"> {
   const read = readMoved(database, change);
-  if (!read.ok) {
-    return read;
+  const fill = read.ok ? checkFillWrite(database, change) : ok(undefined);
+  if (!read.ok || !fill.ok) {
+    return read.ok ? err("stale") : read;
   }
   const current = read.value;
   writeCardChanges(database, change);
@@ -186,5 +201,12 @@ export function moveIntent(
     cause: change.cause,
     atMs: change.atMs,
   });
-  return ok(commitOf(database, { intent: moved, event }, ledgerEntry));
+  const committed = commitOf(database, { intent: moved, event }, ledgerEntry);
+  const { order } = change;
+  if (order === undefined) {
+    return ok(committed);
+  }
+  const orders = writeOrderMoves(database, order.moves);
+  insertOrderFill(database, order.fill);
+  return ok({ ...committed, orders });
 }
