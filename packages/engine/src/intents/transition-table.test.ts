@@ -35,6 +35,7 @@ const expected: readonly (readonly [IntentState, string, IntentState])[] = [
   ["confirmed", "fee_wait_lapsed", "awaiting_confirmation"],
   ...beforeSigning.map((from) => [from, "cancel_requested", "cancelled"] as const),
   ["confirmed", "paper_fill_recorded", "paper_filled"],
+  ["confirmed", "paper_holding_short", "failed_check"],
   ["confirmed", "queue_took", "executing"],
   ["executing", "steps_included", "included"],
   ["executing", "step_reverted", "failed_onchain"],

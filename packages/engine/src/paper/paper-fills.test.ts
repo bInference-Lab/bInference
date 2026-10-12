@@ -1,108 +1,24 @@
-import { createIdSource, err, type Id } from "@binference/core";
-import { createManualClock, createSeededRandom } from "@binference/core/testing";
+import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
-import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
-import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
-import {
-  createStoredIntents,
-  type IntentSnapshot,
-  type StoredIntents,
-} from "../intents/create-stored-intents.js";
-import { quoteDocument } from "../intents/intent-documents.schema.js";
+import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { paperFillOf } from "../intents/intent-history.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
-import {
-  testAgentDraft,
-  testCoin,
-  testNewIntent,
-  testNowMs,
-  testToken,
-  testWallet,
-} from "../intents/test-intents.js";
-import type { IntentStore, PositionStore } from "../ports.js";
+import { testCoin, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
+import type { PositionStore } from "../ports.js";
 import { createPositions } from "../positions/create-positions.js";
-import { createPaperFills, type PaperFills } from "./paper-fills.js";
 import { paperRepairWindowMs, repairPaperFills } from "./repair-paper-fills.js";
+import {
+  coinPrice,
+  fillsOn,
+  type Held,
+  holding,
+  paperIntent as intent,
+  paperClock as clock,
+} from "./test-paper-fills.js";
 
 const live = { signal: new AbortController().signal };
-const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
-const clock = createManualClock(testNowMs);
-// $600 a coin: 600 dollars in micro-dollars for 10^18 base units.
-const coinPrice = { numerator: 600_000_000n, denominator: 10n ** 18n };
 const paperQuery = { walletId: testWallet, isPaper: true };
-const quote = quoteDocument.encode({
-  route: [],
-  amountIn: { asset: testCoin, base: 10n ** 17n },
-  expectedOut: { asset: testToken, base: 2_000_000n },
-  minOut: { asset: testToken, base: 1_990_000n },
-  priceImpactBps: 0 as never,
-  gas: { asset: testCoin, base: 0n },
-  quotedAt: testNowMs,
-  expiresAt: testNowMs,
-});
-
-interface Held {
-  readonly intents: IntentStore;
-  readonly stored: StoredIntents;
-  readonly snapshot: IntentSnapshot;
-  readonly positions: PositionStore;
-}
-
-interface Holding {
-  readonly state: "proposed" | "confirmed";
-  readonly isQuoted?: boolean;
-}
-
-// A paper swap stored in `proposed`, then moved straight to `confirmed` when asked, with its quote
-// when quoted, on a paper portfolio of one coin.
-async function holding({ state, isQuoted = true }: Holding): Promise<Held> {
-  const stores = createMemoryEngineStores();
-  const stored = createStoredIntents({
-    intents: stores.intents,
-    agents: stores.agents,
-    ids: createIdSource({ clock, random: createSeededRandom(13) }),
-    publish: () => undefined,
-  });
-  await stores.agents.create(testAgentDraft(), live);
-  const proposed = testNewIntent(intent);
-  await stored.create(proposed, live);
-  const { status } = proposed.step;
-  const event = {
-    from: "proposed",
-    to: state,
-    trigger: "authorization_checked",
-    atMs: testNowMs,
-    hasLedgerEntry: true,
-  } as const;
-  const step = { status: { ...status, state }, event };
-  const fields = isQuoted ? { quote } : {};
-  await stored.move({ intent, version: 0, step, fields }, live);
-  const snapshot = await stored.snapshot(intent, live);
-  if (snapshot === undefined) {
-    throw new Error("Expected the intent to be stored.");
-  }
-  const positions = createMemoryPositionStore();
-  const balances = [{ asset: testCoin, base: 10n ** 18n }];
-  const prices = createFakePriceSource(new Map([[testCoin, coinPrice]]));
-  await createPositions({ store: positions, prices }).resetPaper(
-    { walletId: testWallet, atMs: testNowMs, balances },
-    live,
-  );
-  return { intents: stores.intents, stored, snapshot, positions };
-}
-
-function fillsOn(
-  { stored, positions }: Pick<Held, "stored" | "positions">,
-  prices = createFakePriceSource(new Map([[testCoin, coinPrice]])),
-): PaperFills {
-  return createPaperFills({
-    stored,
-    positions: createPositions({ store: positions, prices }),
-    prices,
-    clock,
-  });
-}
 
 // A position store whose first `losses` executions lose their race to another fill.
 function losing(store: PositionStore, losses: number): PositionStore {
@@ -155,6 +71,38 @@ describe("paper fills", () => {
       [testCoin, 9n * 10n ** 17n, 540_000_000n],
       [testToken, 2_000_000n, 60_000_000n],
     ]);
+  });
+
+  it("end a paper swap whose portfolio holds less than its input as nothing to sell", async () => {
+    const held = await holding({ state: "confirmed", coinBase: 10n ** 17n - 1n });
+    const ended = await fillsOn(held).fillAtQuote(held.snapshot, live);
+    expect([ended.record.state, ended.record.reason]).toStrictEqual([
+      "failed_check",
+      "nothing_to_sell",
+    ]);
+    expect(
+      await held.positions.executions({ after: 0, limit: 5, isPaper: true }, live),
+    ).toHaveLength(0);
+  });
+
+  it("fill a paper swap whose portfolio holds exactly its input", async () => {
+    const held = await holding({ state: "confirmed", coinBase: 10n ** 17n });
+    const filled = await fillsOn(held).fillAtQuote(held.snapshot, live);
+    expect(filled.record.state).toBe("paper_filled");
+    const positions = await held.positions.positions(paperQuery, live);
+    expect(positions).toContainEqual(
+      expect.objectContaining({ asset: testCoin, quantityBase: 0n }),
+    );
+  });
+
+  it("answer with the intent as another write left it when the short end loses its race", async () => {
+    const held = await holding({ state: "confirmed", coinBase: 0n });
+    const losingMove: StoredIntents = {
+      ...held.stored,
+      move: async () => await Promise.resolve(err("stale")),
+    };
+    const fills = fillsOn({ ...held, stored: losingMove });
+    await expect(fills.fillAtQuote(held.snapshot, live)).resolves.toStrictEqual(held.snapshot);
   });
 
   it("value a sold asset the source cannot price at the confirmed quote's price", async () => {

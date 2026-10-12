@@ -94,6 +94,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `confirmed`                  | `awaiting_confirmation` | the fee wait outlasted the confirmation                                              | a tapped intent held while the fee per gas was above the cap, its confirmation run out: card version n+1, and `notice.feeAboveCap` ([decision 0143](../DECISIONS.md#d0143))                            |
 | any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                                             | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099))                                                                                                                |
 | `confirmed`                  | `paper_filled`          | paper mode                                                                           | a paper intent, which a rescue never is ([decision 0100](../DECISIONS.md#d0100))                                                                                                                       |
+| `confirmed`                  | `failed_check`          | paper mode, at the fill                                                              | the paper portfolio holds less of a sale's or a swap's input than its confirmed quote spends; the reason `nothing_to_sell` is stored, and nothing moves                                                |
 | `confirmed`                  | `executing`             | wallet queue takes it                                                                | the agent is live, or the intent is a rescue; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                     |
 | `confirmed`                  | `reconciled`            | the unfreeze is written                                                              | an unfreeze: the agents its card named, and the install for a whole-install unfreeze, are unfrozen in the same write ([decision 0128](../DECISIONS.md#d0128))                                          |
 | `executing`                  | `included`              | every step's receipt seen                                                            | every receipt has status 1                                                                                                                                                                             |
@@ -145,7 +146,8 @@ Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `hig
 
 Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
-token the wallet holds none of, or whose share rounds to zero).
+token the wallet holds none of, or whose share rounds to zero; or a paper sale or swap whose paper
+portfolio holds less of its input at the fill than its confirmed quote spends).
 
 An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
 order's buy that would pass its daily cap for the leader. The skip is an `order_fills` row with its

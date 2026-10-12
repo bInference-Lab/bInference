@@ -228,9 +228,12 @@ function executeOf(
   options: EngineOptions,
   parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
 ): ExecuteConfirmed {
-  const { stored, paper } = parts;
+  const {
+    stored,
+    paper: { positions, portfolio },
+  } = parts;
   const { prices, clock, executor, publish, ids, stores } = options;
-  const fills = createPaperFills({ stored, positions: paper.positions, prices, clock });
+  const fills = createPaperFills({ stored, positions, portfolio, prices, clock });
   const written = { stored, agents: stores.agents, intents: stores.intents, clock, ids, publish };
   return createExecuteConfirmed({
     paper: fills,

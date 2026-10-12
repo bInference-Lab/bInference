@@ -35,6 +35,16 @@ export function fillOnPaper({
   return status.isPaper ? ok({}) : err("live_intent");
 }
 
+/**
+ * `confirmed` to `failed_check` with `nothing_to_sell`: the paper portfolio holds less of a paper
+ * intent's input than its confirmed quote spends, so it never fills.
+ */
+export function shortOnPaper({
+  status,
+}: GuardInput<"paper_holding_short">): Result<IntentChange, TransitionProblem> {
+  return status.isPaper ? ok({ reason: "nothing_to_sell" }) : err("live_intent");
+}
+
 // A tapped intent needs the confirmation of its current card version, unexpired; a fill or an
 // auto-mode intent needs its authorization to still hold.
 function approvalProblem(

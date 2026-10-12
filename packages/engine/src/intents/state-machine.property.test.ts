@@ -139,6 +139,7 @@ const builders: Builders = {
     hasSignedStep: facts.hasSignedStep,
   }),
   paper_fill_recorded: () => ({ type: "paper_fill_recorded" }),
+  paper_holding_short: () => ({ type: "paper_holding_short" }),
   queue_took: (facts, at) => ({ type: "queue_took", ...queueFacts(facts, at) }),
   steps_included: () => ({ type: "steps_included" }),
   step_reverted: () => ({ type: "step_reverted" }),

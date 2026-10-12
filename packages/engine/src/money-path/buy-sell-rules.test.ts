@@ -129,6 +129,19 @@ const cases: readonly Case[] = [
 ];
 
 const optionsOf = (item: Case): TestEngineOptions => item.options ?? {};
+
+// A paper portfolio that holds the token a sale sells, priced as its quote prices it: 0.2 coins,
+// $120, for 0.1 tokens. A paper fill takes nothing the portfolio does not hold.
+const holdingToken: TestEngineOptions = {
+  paper: [
+    { asset: testCoin, base: 10n ** 18n },
+    { asset: testToken, base: 10n ** 18n },
+  ],
+  prices: new Map([
+    [testCoin, { numerator: 600_000_000n, denominator: 10n ** 18n }],
+    [testToken, { numerator: 1_200_000_000n, denominator: 10n ** 18n }],
+  ]),
+};
 const callerOf = (item: Case): EngineCaller => item.caller ?? testCallers.cli;
 
 function asked<T extends IntentRequest>(item: Case, request: T): T {
@@ -152,11 +165,11 @@ async function endOf(
 }
 
 describe.each([
-  ["buy", buying],
-  ["sell", selling],
-] as const)("a %s in the pools", (_kind, pair) => {
+  ["buy", buying, {}],
+  ["sell", selling, holdingToken],
+] as const)("a %s in the pools", (_kind, pair, holding) => {
   it.each(cases)("ends as the swap it matches: $name", async (item) => {
-    const options = optionsOf(item);
+    const options = { ...holding, ...optionsOf(item) };
     const caller = callerOf(item);
     const swap = await endOf(asked(item, pair.swap), options, caller);
     const trade = await endOf(asked(item, pair.trade), options, caller);
@@ -186,11 +199,12 @@ function onCurve(options: TestEngineOptions = {}): TestEngineOptions {
 }
 
 describe.each([
-  ["buy", buying.trade],
-  ["sell", selling.trade],
-] as const)("a %s on a launchpad's curve", (_kind, trade) => {
+  ["buy", buying.trade, {}],
+  ["sell", selling.trade, holdingToken],
+] as const)("a %s on a launchpad's curve", (_kind, trade, holding) => {
   it.each(cases)("ends as a swap does: $name", async (item) => {
-    const ends = await endOf(asked(item, trade), onCurve(optionsOf(item)), callerOf(item));
+    const options = onCurve({ ...holding, ...optionsOf(item) });
+    const ends = await endOf(asked(item, trade), options, callerOf(item));
     expect(ends).toStrictEqual(item.ends);
   });
 });

@@ -233,6 +233,8 @@ describe("the money path", () => {
 
   it("sells a token with no price feed at the price its own quote gives it", async () => {
     const test = await startTestEngine({ agent: { approvalMode: "auto" } });
+    // A paper buy of 0.1 coin, $60, gives the wallet the 0.2 tokens the sale sells half of.
+    await propose(test, testSwap({ amount: { base: 10n ** 17n } }), testCallers.runtime);
     const view = await propose(test, tokenSale(10n ** 17n), testCallers.runtime);
     expect(view.state).toBe("paper_filled");
     expect(await statesOf(test, view.intent)).toStrictEqual([
@@ -246,7 +248,7 @@ describe("the money path", () => {
     ]);
     // The quote gives 0.2 coin, $120 at $600 a coin, for the token.
     const executions = await test.positions.executions({ after: 0, limit: 5, isPaper: true }, live);
-    expect(executions.map((row) => row.valueUsdMicros)).toStrictEqual([120_000_000n]);
+    expect(executions.map((row) => row.valueUsdMicros)).toStrictEqual([60_000_000n, 120_000_000n]);
   });
 
   it("judges a sale at its quote's price and never builds a trade the policy refuses", async () => {

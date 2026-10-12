@@ -30,6 +30,7 @@ export const triggerTypes = [
   "fee_wait_lapsed",
   "cancel_requested",
   "paper_fill_recorded",
+  "paper_holding_short",
   "queue_took",
   "steps_included",
   "step_reverted",
@@ -137,6 +138,11 @@ export interface TriggerFacts {
   };
   /** Paper mode filled the intent at its confirmed quote. */
   readonly paper_fill_recorded: NoFacts;
+  /**
+   * Paper mode found, at the fill, that the paper portfolio holds less of a sale's or a swap's
+   * input than its confirmed quote spends.
+   */
+  readonly paper_holding_short: NoFacts;
   readonly queue_took: QueueFacts;
   /** Every step's receipt has status 1; for a rescue, every step has its last outcome. */
   readonly steps_included: NoFacts;

@@ -119,6 +119,9 @@ function strangerSpenderVenue(): Venue {
   };
 }
 
+const holdingCoin = [{ asset: testCoin, base: 10n ** 18n }];
+const holdingToken = [...holdingCoin, { asset: testToken, base: 10n ** 18n }];
+
 function valueOf(c: Case): bigint {
   return mulDiv(c.amountBase, c.sellsToken ? tokenPrice : coinPrice, "up");
 }
@@ -140,6 +143,8 @@ function optionsOf(c: Case): TestEngineOptions {
     agent: { approvalMode: c.approvalMode, mode: c.isLive ? "live" : "paper", limits },
     facts: { feePerGasNativeBase: feeCap + c.feeOverCap, recentOutflows: spent },
     venues: [c.hasStrangerSpender ? strangerSpenderVenue() : createFakeVenue()],
+    // The paper portfolio holds the token a swap sells: a fill takes nothing it does not hold.
+    paper: c.sellsToken && c.other === undefined ? holdingToken : holdingCoin,
     prices: new Map([
       [testCoin, coinPrice],
       [testToken, tokenPrice],

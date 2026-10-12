@@ -8,6 +8,7 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Positions } from "../positions/create-positions.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
+import type { PaperPortfolio } from "./paper-portfolio.js";
 
 /**
  * Paper mode's fill step: a confirmed paper intent fills at its confirmed quote, and nothing is
@@ -23,7 +24,9 @@ export interface PaperFills {
    * price source cannot price takes its price from that quote, as the policy step priced it. Any
    * other intent comes back as it was; an intent another write moved first comes back as that
    * write left it. A paper intent whose sold asset has no usable price stays `confirmed`, since a
-   * fill is never valued at a guessed price.
+   * fill is never valued at a guessed price. A sale or a swap whose paper portfolio now holds less
+   * of its input than the confirmed quote spends, as when another fill sold it first, ends
+   * `failed_check` with `nothing_to_sell`, and moves nothing.
    */
   fillAtQuote(
     snapshot: IntentSnapshot,
@@ -35,6 +38,8 @@ export interface PaperFills {
 export interface PaperFillsOptions {
   readonly stored: StoredIntents;
   readonly positions: Positions;
+  /** What each wallet holds on paper now, which a sale or a swap must still cover. */
+  readonly portfolio: Pick<PaperPortfolio, "balance">;
   readonly prices: PriceSource;
   readonly clock: Clock;
 }
@@ -104,6 +109,42 @@ export async function recordFill(
   await recordFill(positions, trade, { ...call, attemptsLeft: attemptsLeft - 1 });
 }
 
+// The kinds whose input the paper portfolio must hold at the fill: a sale or a swap of what the
+// wallet holds, by amount or by share, which another fill may have sold since the quote.
+const spendsHolding: ReadonlySet<IntentRecord["kind"]> = new Set(["sell", "swap"]);
+
+// Whether the wallet's paper portfolio still holds the input the confirmed quote spends.
+async function holdsInput(
+  options: PaperFillsOptions,
+  snapshot: IntentSnapshot,
+  call: { readonly quote: QuoteView; readonly signal: AbortSignal },
+): Promise<boolean> {
+  const { record } = snapshot;
+  if (!spendsHolding.has(record.kind)) {
+    return true;
+  }
+  const { amountIn } = call.quote;
+  const held = await options.portfolio.balance(record.walletId, amountIn.asset, call);
+  return held >= amountIn.base;
+}
+
+// A sale whose paper holding fell short ends where the state machine sends it, and moves nothing.
+async function endShort(
+  options: PaperFillsOptions,
+  snapshot: IntentSnapshot,
+  signal: AbortSignal,
+): Promise<IntentSnapshot> {
+  const machine = createIntentStateMachine({ clock: options.clock });
+  const step = machine.apply(snapshot.stored.status, { type: "paper_holding_short" });
+  if (!step.ok) {
+    return snapshot;
+  }
+  const intent = snapshot.record.id;
+  const move = { intent, version: snapshot.stored.version, step: step.value, by: "engine" };
+  const moved = await options.stored.move(move, { signal });
+  return moved.ok ? moved.value : ((await options.stored.snapshot(intent, { signal })) ?? snapshot);
+}
+
 /** Creates the {@link PaperFills} on the state machine, which decides whether an intent fills. */
 export function createPaperFills(options: PaperFillsOptions): PaperFills {
   const machine = createIntentStateMachine({ clock: options.clock });
@@ -115,6 +156,9 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
         return snapshot;
       }
       const quote = confirmedQuote(snapshot);
+      if (!(await holdsInput(options, snapshot, { quote, signal }))) {
+        return endShort(options, snapshot, signal);
+      }
       const prices = withQuotePrice(options.prices, quote);
       const price = await prices.usdPrice(quote.amountIn.asset, { signal });
       if (!price.ok || !isUsablePrice(price.value)) {

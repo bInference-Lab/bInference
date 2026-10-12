@@ -45,7 +45,8 @@ export type RiskReason = (typeof riskReasons)[number];
 /**
  * Why a quote, build, decode or simulation failed: the reason stored with `failed_check`.
  * `nothing_to_sell` is a sale by share of a token the wallet holds none of, or whose share rounds
- * to nothing.
+ * to nothing, or a paper sale or swap whose paper portfolio holds less of its input at the fill
+ * than its confirmed quote spends.
  */
 export const checkReasons = [
   "no_route",
