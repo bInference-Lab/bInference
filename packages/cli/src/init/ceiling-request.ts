@@ -13,6 +13,7 @@ import {
   type ChainCapPlan,
   registryCeilingChain,
 } from "@binference/custody-privy";
+import { flapDeclaration } from "@binference/flap";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { okxDeclaration } from "@binference/okx";
 import type { VenuesConfig } from "../config/schema/chains-venues.schema.js";
@@ -22,9 +23,9 @@ import { type InitStep, refused } from "./init-context.js";
 
 /**
  * The core venues this binference installs, by what each declares: its id and its registry
- * contracts per chain. KyberSwap needs no key; OKX is installed only when `venues.keys.okx` names
- * the owner's key. Each venue is made only to read its declaration; nothing is called and no key
- * is read.
+ * contracts per chain. KyberSwap and the Flap launchpad need no key; OKX is installed only when
+ * `venues.keys.okx` names the owner's key. Each venue is made only to read its declaration;
+ * nothing is called, no chain is read and no key is read.
  */
 export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDeclaration[] {
   const chain = evmChainOf(bsc);
@@ -33,7 +34,10 @@ export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDecl
     clientId: venues.kyberClientId,
     chains: [{ chain: chain.ref, nativeAsset: chain.nativeAsset, allowedHooks: [] }],
   });
-  const keyless = [{ id: kyberswap.id, contracts: kyberswap.contracts }];
+  const keyless = [
+    { id: kyberswap.id, contracts: kyberswap.contracts },
+    flapDeclaration([chain.ref]),
+  ];
   return venues.keys.okx === undefined
     ? keyless
     : [...keyless, okxDeclaration([{ chain: chain.ref, nativeAsset: chain.nativeAsset }])];

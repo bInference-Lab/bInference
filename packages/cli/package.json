@@ -32,6 +32,7 @@
     "@binference/core": "workspace:*",
     "@binference/custody-privy": "workspace:*",
     "@binference/engine": "workspace:*",
+    "@binference/flap": "workspace:*",
     "@binference/goplus": "workspace:*",
     "@binference/honeypot-is": "workspace:*",
     "@binference/i18n": "workspace:*",

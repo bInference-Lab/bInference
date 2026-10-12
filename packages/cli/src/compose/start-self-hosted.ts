@@ -9,6 +9,7 @@ import type { ConfigOutcome } from "../config/validate-config.js";
 import type { CliHost } from "../program/cli-host.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import { openEngineWebPushKey } from "../web-push/web-push-key.js";
+import { composeChainReads } from "./chain-reads.js";
 import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
@@ -75,7 +76,7 @@ async function readSecretParts(
   opening: Opening,
   config: BinferenceConfig,
   log: OpenedLog,
-): Promise<Pick<Opened, "tracers" | "chains" | "venues" | "bot" | "runtime">> {
+): Promise<Pick<Opened, "tracers" | "chains" | "reads" | "venues" | "bot" | "runtime">> {
   const { host, platform, signal } = opening;
   const secrets = createSecretReader({
     env: host.env,
@@ -86,14 +87,17 @@ async function readSecretParts(
   const call = { logger: log.logger, signal };
   const tracers = await readTracers(config.chains, secrets, call);
   const chains = selfHostedChains();
+  const { http, clock } = host;
+  const reads = composeChainReads({ chains, config: config.chains, http, clock });
   const venues = await readVenues({
     ...call,
     venues: config.venues,
     chains: config.chains,
     registry: chains,
+    reads,
     secrets,
-    http: host.http,
-    clock: host.clock,
+    http,
+    clock,
   });
   const source = config.telegram.botToken;
   const logger = log.logger.child("telegram");
@@ -110,7 +114,7 @@ async function readSecretParts(
     logger: log.logger.child("runtime"),
     signal,
   });
-  return { tracers, chains, venues, bot, runtime };
+  return { tracers, chains, reads, venues, bot, runtime };
 }
 
 async function openStoresAndServe(

@@ -12,9 +12,21 @@ const okxKeys = {
 };
 
 describe("core venues", () => {
-  it("installs KyberSwap alone while no OKX key is set", () => {
+  it("installs KyberSwap and the Flap launchpad while no OKX key is set", () => {
     const venues = coreVenues(http, { keys: {}, kyberClientId: "binference" });
-    expect(venues.map((venue) => venue.id)).toStrictEqual(["kyberswap"]);
+    expect(venues.map((venue) => venue.id)).toStrictEqual(["kyberswap", "flap"]);
+  });
+
+  it("installs Flap with the Portal's swap as its one call and the Portal as spender", () => {
+    const [, flap] = coreVenues(http, { keys: {}, kyberClientId: "binference" });
+    expect(flap?.contracts).toMatchObject([
+      {
+        chain: "eip155:56",
+        names: ["portal"],
+        calls: [{ contract: "portal", abi: { name: "swapExactInput" }, walletInputs: [] }],
+        spenders: ["portal"],
+      },
+    ]);
   });
 
   it("installs OKX with its router and TokenApprove once the owner sets its key", () => {
@@ -31,6 +43,7 @@ describe("core venues", () => {
           ["meta-aggregation-router-v2"],
         ],
       ],
+      [["flap", "eip155:56", ["portal"], ["portal"]]],
       [["okx", "eip155:56", ["dex-router", "token-approve"], ["token-approve"]]],
     ]);
   });

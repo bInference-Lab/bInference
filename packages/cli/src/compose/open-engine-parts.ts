@@ -27,6 +27,7 @@ import type { ConfigOutcome } from "../config/validate-config.js";
 import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { WebPushKey } from "../web-push/web-push-key.js";
+import type { ChainReads } from "./chain-reads.js";
 import type { Closers } from "./closers.js";
 import { type BackupSources, backUpBeforeMigration, backupPartsOf } from "./compose-backups.js";
 import type { SetUpInstall } from "./compose-lock.js";
@@ -59,6 +60,11 @@ export interface Opened {
   readonly tracers: ReadonlyMap<ChainRef, string>;
   /** The chains this binference serves. */
   readonly chains: ChainRegistry;
+  /**
+   * Each enabled chain's reads: one RPC failover a chain's prices, wallet facts, simulations,
+   * sends and venues share, so they share its endpoints' health.
+   */
+  readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   /** The venues it quotes on, their keys read. */
   readonly venues: readonly Venue[];
   /** The owner's bot, or `undefined` when its token could not be read. */

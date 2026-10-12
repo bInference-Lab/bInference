@@ -14,7 +14,7 @@ import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
 import { isPublicEndpoint } from "../runtime/public-address.js";
 import { composePrices } from "./chain-prices.js";
-import { type ChainReads, composeChainReads, rpcHealthOf } from "./chain-reads.js";
+import { type ChainReads, rpcHealthOf } from "./chain-reads.js";
 import { type ComposedSimulators, composeSimulators } from "./chain-simulators.js";
 import { createChainWalletFacts } from "./chain-wallet-facts.js";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
@@ -73,9 +73,8 @@ interface TradingParts {
 }
 
 function composeTrading(opening: Opening, opened: Opened): TradingParts {
-  const { clock, http } = opening.host;
-  const { config, stores, chains } = opened;
-  const reads = composeChainReads({ chains, config: config.chains, http, clock });
+  const { clock } = opening.host;
+  const { config, stores, chains, reads } = opened;
   const { install, intents, positions } = stores;
   return {
     reads,
