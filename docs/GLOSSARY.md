@@ -245,8 +245,11 @@ new name here first, in the change that uses it.
 - **model billing**: what pays for an agent's model calls and says what the agent may still spend:
   the model budget, or bInference AI credit.
 - **market data**: the blocks and prices the watchers stream.
-- **market reads**: a token's pools and a chain's trending tokens, read from the data sources for
-  the owner and the agent. They inform; they never price a trade.
+- **market reads**: a token's pools, a chain's trending tokens and a token's chart, read from the
+  data sources for the owner and the agent. They inform; they never price a trade.
+- **chart**: a token's OHLCV candles in USD, one per interval, from its deepest pool.
+- **price scale**: how many whole tokens a market read's prices are for, as a power of ten, so a
+  token below a cent keeps its digits (`priceScale`).
 - **data source**: a `data` plugin that answers market reads, such as `dexscreener`. Defined with
   `defineData`.
 - **boost**: paid promotion of a token on DEX Screener. A trending token carries its active boosts,
@@ -526,6 +529,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | creator (of a token)                               | 创建者                       |                                         |
 | trending (tokens)                                  | 热门                         |                                         |
 | chart, candle                                      | K 线图, K 线                 |                                         |
+| price scale                                        | 价格单位                     | Prices per 10^n tokens                  |
 | leader wallet (of a copy trade)                    | 带单钱包                     |                                         |
 | tracked wallet                                     | 关注的钱包                   |                                         |
 | venue (where the agent trades, lends or stakes)    | 平台                         | PancakeSwap, Venus                      |

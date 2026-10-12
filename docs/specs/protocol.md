@@ -5,8 +5,8 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
-[0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182)
-and [0183](../DECISIONS.md#d0183); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
+[0183](../DECISIONS.md#d0183) and [0184](../DECISIONS.md#d0184); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -332,20 +332,20 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 
 ### 7.3 Market reads
 
-| Operation              | Scope            | Args → result                                                                                                                      |
-| ---------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag; live before paper, each with its own total, never summed |
-| `portfolio/pnl`        | `read`           | `{ agent, from, to }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137))                             |
-| `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                      |
-| `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                     |
-| `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)        |
-| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                                      |
-| `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                      |
-| `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                           |
-| `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                |
-| `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, source }` (below)             |
-| `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }`, newest first (below)            |
-| `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                 |
+| Operation              | Scope            | Args → result                                                                                                                       |
+| ---------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag; live before paper, each with its own total, never summed  |
+| `portfolio/pnl`        | `read`           | `{ agent, from, to }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137))                              |
+| `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                       |
+| `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                      |
+| `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)         |
+| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                                       |
+| `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                       |
+| `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                            |
+| `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                 |
+| `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, priceScale?, source }` (below) |
+| `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }`, newest first (below)             |
+| `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                  |
 
 - `asset/search` reads the chain registry and the positions store, never the web. A query the
   chain's family reads as an address names that token: `items` holds it with the registry's
@@ -360,20 +360,31 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   Live and paper stay apart (`PnlView`, section 8.3), and every wallet the agent had counts,
   archived ones too ([decision 0137](../DECISIONS.md#d0137)).
 - `market/scan` with `source: launches` reads the engine's own launch records (`launch/list`),
-  newest first, from the last 24 hours; with `trending`, the market data source's trending tokens
-  on the chain (DEX Screener's most boosted tokens in v1, each with its active boosts,
+  newest first, from the last 24 hours; while the engine runs no launch feed it fails
+  `market.no_launch_feed`. With `trending`, it reads the market data source's trending tokens on
+  the chain (DEX Screener's most boosted tokens in v1, each with its active boosts,
   [decision 0182](../adr/0182-market-reads-use-dex-screener-s-documented-api-and-mark-paid-rank.md)),
-  in its order. `limit` is 20 by default and at most 50. A
-  `ScanItem` is
-  `{ asset, launchpad?, launchedAt?, priceUsdMicros?, liquidityUsdMicros?, volume24hUsdMicros?, change24hBps?, curveProgressBps?, graduated?, risk?: RiskView }`;
-  fields the source does not give are absent. `risk` is present only when the risk cache holds a
-  fresh answer: a scan never calls a risk source.
+  in its order; `filters` describe launches, so with `trending` they fail `protocol.bad_args`.
+  `limit` is 20 by default and at most 50. A `ScanItem` is
+  `{ asset, launchpad?, launchedAt?, priceUsdMicros?, priceScale?, liquidityUsdMicros?, volume24hUsdMicros?, change24hBps?, curveProgressBps?, graduated?, activeBoosts?, risk?: RiskView }`;
+  fields the source does not give are absent. `activeBoosts` counts the boosts bought for the
+  token that are active now. `risk` is present only when the risk cache holds a fresh answer: a
+  scan never calls a risk source.
 - `market/chart` answers OHLCV candles in USD, oldest first: each
   `{ at, openUsdMicros, highUsdMicros, lowUsdMicros, closeUsdMicros, volumeUsdMicros }`, `at` the
-  candle's start. `limit` is 100 by default and at most 500; `to` defaults to now. `source` names
-  where they came from (`geckoterminal` in v1,
-  [decision 0183](../adr/0183-candles-come-from-a-source-that-publishes-them.md)). A source that answers nothing for the asset fails
-  `market.no_data`; one that is down fails `market.source_down` (retryable).
+  candle's start. They are the `limit` newest candles that start before `to`; `limit` is 100 by
+  default and at most 500, and `to` defaults to now. The chart reads the token's deepest pool, in
+  USD for the token itself, and an interval with no trade repeats the last close with no volume.
+  `source` names where they came from (`geckoterminal` in v1,
+  [decision 0183](../adr/0183-candles-come-from-a-source-that-publishes-them.md)). A source that
+  answers nothing for the asset fails `market.no_data`; one that is down fails
+  `market.source_down` (retryable).
+- **Prices of cheap tokens** ([decision 0184](../adr/0184-market-scans-and-charts-keep-cheap-prices-readable.md)).
+  The four prices of each candle and a `ScanItem`'s `priceUsdMicros` are micro-dollars for
+  10^`priceScale` whole tokens, rounded down. `priceScale` is the smallest of 0 to 18 at which the
+  lowest price above zero, in the chart or in the item, comes to at least one dollar, and is absent
+  when 0. A chart's `priceScale` sits beside its `candles`. Volumes and liquidity stay
+  micro-dollars.
 - `wallet/activity` reads the trades of one account: one of `agent`'s wallets, from its executions,
   or a wallet the agent tracks (a leader of one of its copy orders, or the account of one of its
   wallet alerts), from what the leader watcher recorded since tracking began. Any other account
@@ -803,7 +814,7 @@ later unchanged.
 | `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`                         |
 | `question` | `not_found`, `closed`                                                                           |
 | `alert`    | `not_found`, `too_many`                                                                         |
-| `market`   | `no_data`, `source_down`                                                                        |
+| `market`   | `no_data`, `source_down`, `no_launch_feed`                                                      |
 | `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`                         |
 | `address`  | `not_found`                                                                                     |
 | `rescue`   | `no_address`, `nothing_to_move`                                                                 |
