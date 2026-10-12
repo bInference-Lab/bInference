@@ -1,7 +1,15 @@
-import { assetRefSchema, type TxDraft } from "@binference/plugin-sdk";
+import {
+  assetRefSchema,
+  type LaunchpadVenue,
+  type PriceRead,
+  type PriceReader,
+  type Result,
+  type TxDraft,
+} from "@binference/plugin-sdk";
 import {
   curveReaderContract,
   hostBuildRequest,
+  priceReaderContract,
   quoterContract,
   txBuilderContract,
   txDecoderContract,
@@ -9,7 +17,7 @@ import {
 import { parseEther } from "viem";
 import { describe, expect, it } from "vitest";
 import { createFlapVenue, flapDeclaration } from "./flap-venue.js";
-import { swapFunctionJson } from "./portal/portal-calls.js";
+import { stateCallData, swapFunctionJson } from "./portal/portal-calls.js";
 import {
   bnb,
   bscChain,
@@ -24,6 +32,7 @@ import {
   usdtToken,
   venueOver,
 } from "./testing/portal-fixtures.js";
+import { graduatedState, taxTokenState, usdtTokenState } from "./testing/recorded-portal.js";
 
 const live = (): AbortSignal => new AbortController().signal;
 const buyRequest = requestOf({ asset: bnb, base: parseEther("0.1") }, taxToken);
@@ -42,6 +51,21 @@ const [approval] = await venueOver(scriptedPortal()).build(
   hostBuildRequest(usdtBuy, usdtQuoted.value, { deadlineMs: 1_800_000_060_000 }),
   { signal: live() },
 );
+
+function priceReaderOf(venue: LaunchpadVenue): PriceReader {
+  const read = venue.priceRead?.bind(venue);
+  if (read === undefined) {
+    throw new Error("The venue declares no price read.");
+  }
+  return { priceRead: read };
+}
+
+function readValue(result: Result<PriceRead, "no_price_read">): PriceRead {
+  if (!result.ok) {
+    throw new Error("The venue gave no price read.");
+  }
+  return result.value;
+}
 
 function draftOf(draft: TxDraft | undefined): TxDraft {
   if (draft === undefined) {
@@ -81,8 +105,67 @@ describe("the flap venue", () => {
         offCurve: { token: graduatedToken, contracts: portalContracts },
       }),
     }),
+    ...priceReaderContract({
+      create: () => ({
+        reader: priceReaderOf(venueOver(scriptedPortal())),
+        priced: { token: taxToken, contracts: portalContracts },
+        answers: [taxTokenState],
+        unpriced: { token: graduatedToken, contracts: portalContracts },
+      }),
+    }),
   ])("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("prices a curve token by the Portal's own curve price, one read a block", async () => {
+    const reader = priceReaderOf(venueOver(scriptedPortal()));
+    const read = await reader.priceRead(
+      { token: taxToken, contracts: portalContracts },
+      { signal: live() },
+    );
+    expect(read).toMatchObject({
+      ok: true,
+      value: {
+        quoteAsset: bnb,
+        calls: [
+          { target: portalContracts["portal"], input: stateCallData(taxToken.slice(-42) as never) },
+        ],
+      },
+    });
+    const { price } = readValue(read);
+    // 10,895,640,606 wei of BNB for one whole token, as the Portal's state says.
+    expect(price([taxTokenState])).toStrictEqual({
+      ok: true,
+      value: { numerator: 10_895_640_606n, denominator: 10n ** 18n },
+    });
+    const unpriced = { ok: false, error: "unpriced" };
+    expect(price([graduatedState])).toStrictEqual(unpriced);
+    expect(price([usdtTokenState])).toStrictEqual(unpriced);
+    expect(price(["0x1234"])).toStrictEqual(unpriced);
+    expect(price([taxTokenState, taxTokenState])).toStrictEqual(unpriced);
+  });
+
+  it("prices a token on a USDT curve in USDT, and nothing Flap does not hold", async () => {
+    const reader = priceReaderOf(venueOver(scriptedPortal()));
+    const signal = live();
+    const read = await reader.priceRead(
+      { token: usdtToken, contracts: portalContracts },
+      { signal },
+    );
+    expect(readValue(read).quoteAsset).toBe(usdt);
+    const refusals = await Promise.all(
+      [
+        usdt,
+        bnb,
+        assetRefSchema.parse("eip155:1/erc20:0x55d398326f99059fF775485246999027B3197955"),
+      ].map(async (token) => reader.priceRead({ token, contracts: portalContracts }, { signal })),
+    );
+    expect(refusals).toStrictEqual(
+      Array.from({ length: 3 }, () => ({ ok: false, error: "no_price_read" })),
+    );
+    await expect(reader.priceRead({ token: taxToken, contracts: {} }, { signal })).rejects.toThrow(
+      expect.objectContaining({ code: "flap.no_contract" }),
+    );
   });
 
   it("declares the Portal's swap as its one call, the Portal as spender, and no deadline", () => {

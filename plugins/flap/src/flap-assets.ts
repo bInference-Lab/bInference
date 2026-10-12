@@ -47,8 +47,8 @@ function addressOf(account: AccountRef): Address {
   return address.value;
 }
 
-/** The Portal among the contracts the host gave with a request, as an EVM address. */
-export function portalOf(contracts: Readonly<Record<string, AccountRef>>): Address {
+/** The Portal among the contracts the host gave with a request; none is a fault. */
+export function portalAccountOf(contracts: Readonly<Record<string, AccountRef>>): AccountRef {
   const portal = contracts[portalName];
   if (portal === undefined) {
     throw new BinferenceError({
@@ -57,5 +57,10 @@ export function portalOf(contracts: Readonly<Record<string, AccountRef>>): Addre
       details: { name: portalName },
     });
   }
-  return addressOf(portal);
+  return portal;
+}
+
+/** The Portal among the contracts the host gave with a request, as an EVM address. */
+export function portalOf(contracts: Readonly<Record<string, AccountRef>>): Address {
+  return addressOf(portalAccountOf(contracts));
 }

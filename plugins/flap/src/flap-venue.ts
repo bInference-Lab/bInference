@@ -5,6 +5,7 @@ import {
   type VenueDeclaration,
 } from "@binference/plugin-sdk";
 import { chainSetupsOf } from "./chain-setup.js";
+import { readCurvePrice } from "./curve/read-curve-price.js";
 import { readCurve } from "./curve/read-curve.js";
 import { portalName } from "./flap-assets.js";
 import type { FlapOptions } from "./flap-options.js";
@@ -38,7 +39,8 @@ export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
  * the registry's Portal: its trades call the Portal's `swapExactInput` alone, which pays the
  * calling wallet and takes no deadline, so the chain declares `noDeadline`, and an approval names
  * only the Portal. Its curve read says which tokens Flap holds, and its quotes name the tax the
- * Portal takes on the curve. Bad options are a fault (`flap.bad_options`).
+ * Portal takes on the curve. Its price read gives the price watcher the Portal's own curve price
+ * of a token each block. Bad options are a fault (`flap.bad_options`).
  */
 export function createFlapVenue(options: FlapOptions): LaunchpadVenue {
   const parts = { setups: chainSetupsOf(options.chains) };
@@ -48,5 +50,6 @@ export function createFlapVenue(options: FlapOptions): LaunchpadVenue {
     build: async (request, { signal }) => buildSwap(request, parts, signal),
     decode: (draft) => decodeSwap(draft, parts),
     curve: async (request, { signal }) => readCurve(request, parts, signal),
+    priceRead: async (request, { signal }) => readCurvePrice(request, parts, signal),
   });
 }

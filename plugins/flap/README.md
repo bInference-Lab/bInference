@@ -16,6 +16,10 @@ sell of a curve token goes to Flap and nowhere else.
   out. BNB travels as the call's value; a token input first gets an exact approval of the Portal.
 - **Decode.** The Portal pays the caller, so the recipient is the draft's sender. The call carries
   no deadline, and the venue declares so on each chain.
+- **Price read.** For the price watcher, one `getTokenV8Safe(token)` read of the Portal each block:
+  its `price` is the curve's price in base units of the quote asset for one whole token. Only a
+  token tradable on its curve gets a read; once it leaves its curve, or trades against another
+  asset, its answers price nothing.
 
 ## API
 
