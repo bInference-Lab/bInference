@@ -88,13 +88,19 @@ Rules for this package:
   other exit orders of a position it emptied with its own move (`fill-on-paper.ts`). While the
   engine's `liveOrderFills` stays off, `order/create` refuses a live price order
   (`order.live_fills_off`, decision 0197), and a live order made before skips; every order skips
-  while the engine is locked, before any intent. A change to a bound changes `fill-bounds.property.test.ts`, and a change to
-  the fill path `fill-orders.property.test.ts`.
+  while the engine is locked, before any intent. A fill has 30 seconds; one that throws or runs
+  past them is a skip, `fill_failed` (`fill-faults.ts`). A skip's row and its notices land with
+  the move that ends its intent: the one writer of intents adds them (`fill-ends.ts`), and the
+  start repairs what a stop left (`repair-order-fills.ts`). A change to a bound changes
+  `fill-bounds.property.test.ts`, and a change to the fill path `fill-orders.property.test.ts` and
+  `fill-sequences.property.test.ts`.
 - The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of
   a watched token against its active price orders in `price-triggers.ts`, a pure judgment of
   levels, never of crossings, and hand a triggered order to its fill at once. A trailing stop's
-  highest price lives in its order's `trigger_state`, written by `trigger_kept`. A change to a
-  condition changes `price-triggers.property.test.ts`.
+  highest price lives in its order's `trigger_state`, written by `trigger_kept`. One token's
+  prices are judged one at a time, in block order, and an order with fills left re-arms only once
+  its condition stops holding (decision 0197). A change to a condition changes
+  `price-triggers.property.test.ts` and `order-rearm.property.test.ts`.
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
   reports each outcome to the state machine as a trigger. Only the venues' quotes run before the
   policy, which prices a token without a feed from the first venue's quote; no venue builds until

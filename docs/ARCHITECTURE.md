@@ -525,7 +525,10 @@ interface Signer {
   - A price order fires on its level, at or beyond its price, as each confirmed price comes, and
     hands its fill to the money path in the same block's processing; a trailing stop keeps its
     highest price in its order ([decision 0196](DECISIONS.md#d0196)). A fill runs on paper only
-    until the crash suite on fills passes ([decision 0195](DECISIONS.md#d0195)).
+    until the crash suite on fills passes ([decision 0195](DECISIONS.md#d0195)); until then no live
+    price order is taken. An order fills once unless it names more, re-arms only after its
+    condition stops holding, holds a limit's level at its own quote, and one token's prices are
+    judged in block order ([decision 0197](DECISIONS.md#d0197)).
   - Leader wallets and launches are watched through new-block logs.
 - **After downtime ([decision 0066](DECISIONS.md#d0066)).** When the engine resumes after sleep, a
   reboot or a crash, each auto order checks the price now. It fills only if its trigger still holds
