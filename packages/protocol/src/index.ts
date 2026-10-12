@@ -81,6 +81,7 @@ export { parseCall } from "./operations/parse-call.js";
 export type { CallOf, CallProblem, OperationCall } from "./operations/parse-call.js";
 export {
   orderRequestSchema,
+  orderTermsSchema,
   readOrderRequestSchema,
   readWebhookRuleRequestSchema,
   webhookRuleRequestSchema,
@@ -91,20 +92,25 @@ export type {
   FillBounds,
   LimitOrderRequest,
   OrderRequest,
+  OrderTerms,
   StopLossOrderRequest,
   TakeProfitOrderRequest,
   TrailingOrderRequest,
   WebhookRuleRequest,
 } from "./requests/fill-rule-request.schema.js";
 export {
+  buyTermsSchema,
   intentRequestSchema,
   readIntentRequestSchema,
+  sellTermsSchema,
   swapRequestSchema,
+  swapTermsSchema,
 } from "./requests/intent-request.schema.js";
 export type {
   BridgeRequest,
   BridgeTarget,
   BuyRequest,
+  BuyTerms,
   CexOrderRequest,
   IntentRequest,
   LaunchTokenRequest,
@@ -113,10 +119,12 @@ export type {
   RequestBase,
   RevokeApprovalRequest,
   SellRequest,
+  SellTerms,
   SendRequest,
   SendTarget,
   StakeRequest,
   SwapRequest,
+  SwapTerms,
   TokenLinks,
 } from "./requests/intent-request.schema.js";
 export type { AgentArgs } from "./values/agent-args.schema.js";

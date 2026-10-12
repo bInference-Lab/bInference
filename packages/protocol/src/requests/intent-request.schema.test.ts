@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ids, nativeAmount, refs, swapRequest } from "../examples/wire-values.js";
-import { intentRequestSchema, readIntentRequestSchema } from "./intent-request.schema.js";
+import {
+  buyTermsSchema,
+  intentRequestSchema,
+  readIntentRequestSchema,
+  sellTermsSchema,
+  swapTermsSchema,
+} from "./intent-request.schema.js";
 
 const base = { agent: ids.agent, wallet: ids.wallet, reason: "Owner asked for it." };
 
@@ -130,5 +136,35 @@ describe("intentRequestSchema", () => {
     expect(readIntentRequestSchema.parse({ ...swapRequest, deadline: 60 })).not.toHaveProperty(
       "deadline",
     );
+  });
+});
+
+const termsSchemas = { swap: swapTermsSchema, buy: buyTermsSchema, sell: sellTermsSchema };
+
+// A request's terms: everything but the agent and wallet that act, and its kind.
+function termsOf(kind: keyof typeof termsSchemas): Readonly<Record<string, unknown>> {
+  const request = requests.find(([name]) => name === kind)?.[1] ?? {};
+  const actors = new Set(["agent", "wallet", "kind"]);
+  return Object.fromEntries(
+    Object.entries(request).filter(([key]: readonly [string, unknown]) => !actors.has(key)),
+  );
+}
+
+describe.each(["swap", "buy", "sell"] as const)("the terms of a %s", (kind) => {
+  const schema = termsSchemas[kind];
+  const terms = termsOf(kind);
+
+  it("are the request without who acts, and make the request back with them", () => {
+    expect(z.encode(schema, z.decode(schema, terms))).toStrictEqual(terms);
+    const filled = { agent: ids.agent, kind, ...terms };
+    expect(intentRequestSchema.safeParse(filled).success).toBe(true);
+  });
+
+  it.each([
+    ["a wallet", { wallet: ids.wallet }],
+    ["an agent", { agent: ids.agent }],
+    ["a kind", { kind }],
+  ] as const)("refuse %s", (_name, extra) => {
+    expect(schema.safeParse({ ...terms, ...extra }).success).toBe(false);
   });
 });

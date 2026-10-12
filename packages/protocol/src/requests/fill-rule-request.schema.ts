@@ -84,15 +84,19 @@ export type OrderRequest =
   | DcaOrderRequest
   | CopyOrderRequest;
 
+/** One kind of order's terms, without the agent and wallet that act. */
+type TermsOf<Request> = Request extends unknown ? Omit<Request, "agent" | "wallet"> : never;
+
+/** An auto order's terms: what the agent names, without who acts, which its runtime fills. */
+export type OrderTerms = TermsOf<OrderRequest>;
+
 /** What `webhookRule/create` asks for: a named rule whose alerts fill inside its bounds. */
 export interface WebhookRuleRequest extends FillBounds {
   /** The alert's name, which the sender's webhook carries. */
   readonly name: string;
 }
 
-const fillBounds = {
-  agent: protocolIdSchema("agent"),
-  wallet: protocolIdSchema("wallet").exactOptional(),
+const boundsFields = {
   token: assetRefSchema,
   side: z.enum(["buy", "sell"]),
   size: fillSizeSchema,
@@ -101,31 +105,25 @@ const fillBounds = {
   expiresAt: epochMsSchema.exactOptional(),
   maxFills: z.int().min(1).exactOptional(),
 };
+const fillBounds = {
+  agent: protocolIdSchema("agent"),
+  wallet: protocolIdSchema("wallet").exactOptional(),
+  ...boundsFields,
+};
 
 const price = decimalStringSchema;
 
-const limitShape = {
-  ...fillBounds,
+const limitFields = {
   kind: z.literal("limit"),
   trigger: z.strictObject({ price, direction: z.enum(["above", "below"]) }),
 };
-const takeProfitShape = {
-  ...fillBounds,
-  kind: z.literal("takeProfit"),
-  trigger: z.strictObject({ price }),
-};
-const stopLossShape = {
-  ...fillBounds,
-  kind: z.literal("stopLoss"),
-  trigger: z.strictObject({ price }),
-};
-const trailingShape = {
-  ...fillBounds,
+const takeProfitFields = { kind: z.literal("takeProfit"), trigger: z.strictObject({ price }) };
+const stopLossFields = { kind: z.literal("stopLoss"), trigger: z.strictObject({ price }) };
+const trailingFields = {
   kind: z.literal("trailing"),
   trigger: z.strictObject({ distanceBps: bpsSchema }),
 };
-const dcaShape = {
-  ...fillBounds,
+const dcaFields = {
   kind: z.literal("dca"),
   trigger: z.strictObject({
     cron: z.string().min(1).max(100),
@@ -133,8 +131,7 @@ const dcaShape = {
     count: z.int().min(1).exactOptional(),
   }),
 };
-const copyShape = {
-  ...fillBounds,
+const copyFields = {
   kind: z.literal("copy"),
   trigger: z.strictObject({
     leader: accountRefSchema,
@@ -142,6 +139,12 @@ const copyShape = {
     dailyUsdMicros: decimalStringSchema,
   }),
 };
+const limitShape = { ...fillBounds, ...limitFields };
+const takeProfitShape = { ...fillBounds, ...takeProfitFields };
+const stopLossShape = { ...fillBounds, ...stopLossFields };
+const trailingShape = { ...fillBounds, ...trailingFields };
+const dcaShape = { ...fillBounds, ...dcaFields };
+const copyShape = { ...fillBounds, ...copyFields };
 const webhookRuleShape = { ...fillBounds, name: z.string().min(1).max(64) };
 
 /** Parses the args of `order/create`. Unknown fields are refused. */
@@ -152,6 +155,19 @@ export const orderRequestSchema: z.ZodType<OrderRequest> = z.discriminatedUnion(
   z.strictObject(trailingShape),
   z.strictObject(dcaShape),
   z.strictObject(copyShape),
+]);
+
+/**
+ * Parses an auto order's terms: the request without the agent and wallet that act, which the agent
+ * runtime fills for its agent. Unknown fields, a wallet among them, are refused.
+ */
+export const orderTermsSchema: z.ZodType<OrderTerms> = z.discriminatedUnion("kind", [
+  z.strictObject({ ...boundsFields, ...limitFields }),
+  z.strictObject({ ...boundsFields, ...takeProfitFields }),
+  z.strictObject({ ...boundsFields, ...stopLossFields }),
+  z.strictObject({ ...boundsFields, ...trailingFields }),
+  z.strictObject({ ...boundsFields, ...dcaFields }),
+  z.strictObject({ ...boundsFields, ...copyFields }),
 ]);
 
 /** Parses an order request as an order view carries it, dropping fields a newer engine adds. */

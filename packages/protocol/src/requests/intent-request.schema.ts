@@ -140,6 +140,18 @@ export interface LaunchTokenRequest extends RequestBase {
   readonly venueOptions?: Readonly<Record<string, unknown>>;
 }
 
+/** Who acts in a request, and its kind: what an agent's terms leave out. */
+type ActorFields = "agent" | "wallet" | "kind";
+
+/** A swap's terms: what the agent names, without who acts, which its runtime fills. */
+export type SwapTerms = Omit<SwapRequest, ActorFields>;
+
+/** A buy's terms: what the agent names, without who acts, which its runtime fills. */
+export type BuyTerms = Omit<BuyRequest, ActorFields>;
+
+/** A sell's terms: what the agent names, without who acts, which its runtime fills. */
+export type SellTerms = Omit<SellRequest, ActorFields>;
+
 /** What `intent/propose` asks for: one action, by `kind`. */
 export type IntentRequest =
   | SwapRequest
@@ -154,40 +166,34 @@ export type IntentRequest =
   | RegisterIdentityRequest
   | LaunchTokenRequest;
 
+const reason = z.string().min(1);
 const requestBase = {
   agent: protocolIdSchema("agent"),
   wallet: protocolIdSchema("wallet").exactOptional(),
-  reason: z.string().min(1),
+  reason,
 };
 const maxSlippageBps = bpsSchema.exactOptional();
 const exchangeDecimal = z.string().regex(/^(?:0|[1-9]\d{0,30})(?:\.\d{1,18})?$/);
 const link = z.url({ protocol: /^https$/ }).max(512);
 
-const swapShape = {
-  ...requestBase,
-  kind: z.literal("swap"),
+const swapFields = {
   from: assetRefSchema,
   to: assetRefSchema,
   amount: tokenAmountSchema,
   maxSlippageBps,
 };
+const swapShape = { ...requestBase, kind: z.literal("swap"), ...swapFields };
 
-const buyShape = {
-  ...requestBase,
-  kind: z.literal("buy"),
-  token: assetRefSchema,
-  spend: amountSchema,
-  maxSlippageBps,
-};
+const buyFields = { token: assetRefSchema, spend: amountSchema, maxSlippageBps };
+const buyShape = { ...requestBase, kind: z.literal("buy"), ...buyFields };
 
-const sellShape = {
-  ...requestBase,
-  kind: z.literal("sell"),
+const sellFields = {
   token: assetRefSchema,
   amount: tokenAmountSchema,
   receive: assetRefSchema.exactOptional(),
   maxSlippageBps,
 };
+const sellShape = { ...requestBase, kind: z.literal("sell"), ...sellFields };
 
 const sendShape = {
   ...requestBase,
@@ -269,6 +275,18 @@ const launchTokenShape = {
   firstBuy: amountSchema.exactOptional(),
   venueOptions: z.record(z.string(), z.unknown()).exactOptional(),
 };
+
+/**
+ * Parses a swap's terms: the request without the agent and wallet that act or its kind, which the
+ * agent runtime fills for its agent. Unknown fields, a wallet among them, are refused.
+ */
+export const swapTermsSchema: z.ZodType<SwapTerms> = z.strictObject({ ...swapFields, reason });
+
+/** Parses a buy's terms, as {@link swapTermsSchema} does a swap's. */
+export const buyTermsSchema: z.ZodType<BuyTerms> = z.strictObject({ ...buyFields, reason });
+
+/** Parses a sell's terms, as {@link swapTermsSchema} does a swap's. */
+export const sellTermsSchema: z.ZodType<SellTerms> = z.strictObject({ ...sellFields, reason });
 
 /** Parses a swap request, the args of `quote/get`. */
 export const swapRequestSchema: z.ZodType<SwapRequest> = z.strictObject(swapShape);

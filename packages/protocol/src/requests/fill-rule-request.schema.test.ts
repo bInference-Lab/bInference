@@ -3,6 +3,7 @@ import { z } from "zod";
 import { at, ids, refs } from "../examples/wire-values.js";
 import {
   orderRequestSchema,
+  orderTermsSchema,
   readOrderRequestSchema,
   webhookRuleRequestSchema,
 } from "./fill-rule-request.schema.js";
@@ -68,5 +69,22 @@ describe("webhookRuleRequestSchema", () => {
 
   it("refuses a rule without a name", () => {
     expect(webhookRuleRequestSchema.safeParse(bounds).success).toBe(false);
+  });
+});
+
+describe("orderTermsSchema", () => {
+  it.each(orders)("takes a %s order without who acts, and makes it back", (_name, order) => {
+    const { agent: _agent, ...terms } = order;
+    expect(z.encode(orderTermsSchema, z.decode(orderTermsSchema, terms))).toStrictEqual(terms);
+    const filled = { agent: ids.agent, ...terms };
+    expect(orderRequestSchema.safeParse(filled).success).toBe(true);
+  });
+
+  it.each([
+    ["a wallet", { wallet: ids.wallet }],
+    ["an agent", { agent: ids.agent }],
+  ] as const)("refuses an order naming %s", (_name, extra) => {
+    const { agent: _agent, ...terms } = orders[0][1];
+    expect(orderTermsSchema.safeParse({ ...terms, ...extra }).success).toBe(false);
   });
 });
