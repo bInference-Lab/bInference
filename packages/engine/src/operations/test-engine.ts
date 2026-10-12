@@ -48,6 +48,7 @@ import {
 import type { MarketReads } from "../market/ports.js";
 import { createSourceMarketReads } from "../market/source-market-reads.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
+import type { OrderStore } from "../orders/ports.js";
 import type {
   AgentStore,
   Executor,
@@ -106,6 +107,8 @@ export interface TestEngineOptions {
   readonly intents?: (store: IntentStore) => IntentStore;
   /** Wraps the agent store the engine writes through, as `intents` does. */
   readonly agents?: (store: AgentStore) => AgentStore;
+  /** Wraps the order store the engine reads and writes through, as `intents` does. */
+  readonly orders?: (store: OrderStore) => OrderStore;
   /** What the paper portfolio opens with: 1 coin when absent, nothing when empty. */
   readonly paper?: readonly Amount[];
   /** Takes the confirmed live intents; a fake that keeps them when absent. */
@@ -199,6 +202,7 @@ function wrapped(stores: MemoryEngineStores, options: TestEngineOptions): Engine
     ...stores,
     intents: options.intents?.(stores.intents) ?? stores.intents,
     agents: options.agents?.(stores.agents) ?? stores.agents,
+    orders: options.orders?.(stores.orders) ?? stores.orders,
   };
 }
 

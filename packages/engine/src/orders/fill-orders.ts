@@ -5,7 +5,7 @@ import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-int
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { AgentStore, PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { endEmptyExit, wasEmptiedSince } from "./end-exit-orders.js";
+import { endEmptyExit, endLateExits, wasEmptiedSince } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
 import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
 import { unfinishedFills, withinDeadline } from "./fill-faults.js";
@@ -138,6 +138,7 @@ async function settle(
   const rows = await announceOrder(parts, order.id, signal);
   if (snapshot.record.state === "paper_filled") {
     state.told.delete(order.agentId);
+    await endLateExits(parts, { filled: order, signal });
     return "filled";
   }
   // A skip wrote its row with its intent's end; a stop's cancel, or one the fill made, wrote none.

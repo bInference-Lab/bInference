@@ -328,7 +328,8 @@ and `step_unsent` (a step never signed after an earlier one landed,
   - When an exit order's fill settles (`reconciled` or `paper_filled`) and the position holds none
     of the token, every other active exit order on it moves to `ended` with the end reason
     `position_closed`, in the transaction that records the fill. The owner gets one
-    `notice.ordersEnded` for them.
+    `notice.ordersEnded` for them. One that became active after the fill read them ends right after
+    the fill, with a `notice.ordersEnded` of its own ([decision 0197](../DECISIONS.md#d0197)).
   - A fill that leaves part of the position ends nothing. The other exit orders stay active, and a
     share-sized one sells its share of what is left.
   - An exit order whose trigger fires on a position that holds none of the token, because a sale

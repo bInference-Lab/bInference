@@ -48,7 +48,7 @@ export interface OrderTriggersParts {
 
 // The active orders are read again at most this often; each move a trigger makes updates them.
 const activeEveryMs = 1_000;
-// How many active orders one read takes: more than an install holds.
+// How many active orders one page of the read takes.
 const activeLimit = 1_000;
 
 /** The active orders as last read, which the triggers judge prices against. */
@@ -61,6 +61,25 @@ interface ActiveOrders {
   forget(): void;
 }
 
+// Every active order, page after page until a page comes back empty, so a store that answers
+// fewer than asked still hands over all of them (decision 0197).
+async function allActive(
+  parts: OrderTriggersParts,
+  signal: AbortSignal,
+  after?: { readonly createdAtMs: number; readonly id: Id<"ord"> },
+): Promise<readonly OrderRecord[]> {
+  const query = { states: ["active" as const], limit: activeLimit };
+  const page = await parts.orders.list(after === undefined ? query : { ...query, after }, {
+    signal,
+  });
+  const last = page.at(-1);
+  if (last === undefined) {
+    return page;
+  }
+  const cursor = { createdAtMs: last.createdAtMs, id: last.id };
+  return [...page, ...(await allActive(parts, signal, cursor))];
+}
+
 function createActiveOrders(parts: OrderTriggersParts): ActiveOrders {
   const byId = new Map<Id<"ord">, OrderRecord>();
   const read: { atMs?: number } = {};
@@ -68,8 +87,7 @@ function createActiveOrders(parts: OrderTriggersParts): ActiveOrders {
     async on(token, signal) {
       const nowMs = parts.clock.now();
       if (read.atMs === undefined || nowMs - read.atMs >= activeEveryMs) {
-        const query = { states: ["active" as const], limit: activeLimit };
-        const listed = await parts.orders.list(query, { signal });
+        const listed = await allActive(parts, signal);
         byId.clear();
         listed.forEach((order) => byId.set(order.id, order));
         read.atMs = nowMs;

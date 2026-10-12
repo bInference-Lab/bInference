@@ -143,3 +143,40 @@ export async function wasEmptiedSince(
     position.changedAtMs >= order.createdAtMs
   );
 }
+
+/**
+ * Ends, after an exit order's fill emptied its position, each other exit order on it that became
+ * active after the fill read them (decision 0197), with one `notice.ordersEnded`. A position that
+ * still holds the token ends nothing; a move another write beat is left to the next price.
+ */
+export async function endLateExits(
+  parts: ExitParts & {
+    readonly positions: Pick<PositionStore, "positions">;
+    readonly clock: { readonly now: () => number };
+  },
+  call: { readonly filled: OrderRecord; readonly signal: AbortSignal },
+): Promise<void> {
+  const { filled, signal } = call;
+  if (!isExitOrder(filled.request)) {
+    return;
+  }
+  const query = { walletId: filled.walletId, isPaper: filled.isPaper };
+  const held = await parts.positions.positions(query, { signal });
+  const position = held.find(({ asset }) => asset === filled.request.token);
+  if (position?.quantityBase !== 0n) {
+    return;
+  }
+  const nowMs = parts.clock.now();
+  const moves = await exitEndMovesOf(parts, { emptiedBy: filled, nowMs, signal });
+  const written = moves.length === 0 ? undefined : await parts.orders.move(moves, { signal });
+  if (written?.ok !== true) {
+    return;
+  }
+  written.value.forEach((order) => {
+    parts.publish(orderPush(order, "order/changed"));
+  });
+  const notice = endedExitsNotice(parts, { emptiedBy: filled, count: written.value.length });
+  if (notice !== undefined) {
+    parts.publish(noticePush(notice));
+  }
+}
