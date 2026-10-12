@@ -80,6 +80,15 @@ Rules for this package:
   versions and moves an order into `active` only on its `autoOrder` intent's confirmation, for an
   agent that is not frozen. A freeze and an unfreeze carry their order moves in their own write.
   A new trigger adds its rule, a row of `order-machine.test.ts` and a case of the property test.
+- An order's fill (`src/orders/fill-orders.ts`, decision 0195) is a `buy` or `sell` intent the
+  money path runs with `authorizedBy: { order }`, in the order's mode, and no card. `fill-request.ts`
+  sizes it, and `fill-bounds.ts` holds its chosen quote to every bound of the order at `simulated`,
+  in the agent's line of confirmations with the rolling cap; a breach ends it `failed_check` with
+  the bound. A paper fill writes its order's move, its `order_fills` row and the moves that end the
+  other exit orders of a position it emptied with its own move (`fill-on-paper.ts`). A live order,
+  while the engine's `liveOrderFills` stays off, and every order while the engine is locked, skip
+  before any intent. A change to a bound changes `fill-bounds.property.test.ts`, and a change to
+  the fill path `fill-orders.property.test.ts`.
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
   reports each outcome to the state machine as a trigger. Only the venues' quotes run before the
   policy, which prices a token without a feed from the first venue's quote; no venue builds until

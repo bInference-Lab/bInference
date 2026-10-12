@@ -55,7 +55,7 @@ function tokenText(chains: ChainRegistry, token: AssetRef): string {
 }
 
 async function runningOn(
-  parts: ExitParts,
+  parts: Pick<ExitParts, "orders">,
   position: OrderPosition,
   signal: AbortSignal,
 ): Promise<readonly OrderRecord[]> {
@@ -65,31 +65,37 @@ async function runningOn(
 }
 
 /**
- * Ends the other exit orders of the position an exit order's fill emptied (spec 6, section 5):
- * each moves to `ended` with `position_closed` in one write, and the owner gets one
- * `notice.ordersEnded` for them. A write another write beat leaves them to the next fill. Answers
- * the orders it ended.
+ * The moves that end the other exit orders of the position an exit order's fill empties (spec 6,
+ * section 5): each active or paused exit order of its wallet, token and mode but the order itself
+ * moves to `ended` with `position_closed`. The fill writes them in its own transaction.
  */
-export async function endOtherExits(
-  parts: ExitParts,
+export async function exitEndMovesOf(
+  parts: Pick<ExitParts, "orders">,
   call: { readonly emptiedBy: OrderRecord; readonly nowMs: number; readonly signal: AbortSignal },
-): Promise<readonly OrderRecord[]> {
+): Promise<readonly OrderMove[]> {
   const { emptiedBy, nowMs, signal } = call;
   const position = positionOf(emptiedBy);
   const running = await runningOn(parts, position, signal);
-  const moves = exitEndMoves(running, position, { except: emptiedBy.id, nowMs });
-  const written = moves.length === 0 ? undefined : await parts.orders.move(moves, { signal });
-  const ended = written?.ok === true ? written.value : [];
-  ended.forEach((order) => {
-    parts.publish(orderPush(order, "order/changed"));
-  });
-  if (ended.length > 0) {
-    const orderKind = { key: "order.kind", values: { kind: emptiedBy.kind } };
-    const values = { token: tokenText(parts.chains, position.token), count: String(ended.length) };
-    const notice = { key: "notice.ordersEnded", agent: emptiedBy.agentId, values };
-    parts.publish(noticePush({ ...notice, parts: { orderKind } }));
+  return exitEndMoves(running, position, { except: emptiedBy.id, nowMs });
+}
+
+/**
+ * Tells the owner, with one `notice.ordersEnded`, of the other exit orders an exit order's fill
+ * ended as it emptied their position; no notice when it ended none.
+ */
+export function announceEndedExits(
+  parts: Pick<ExitParts, "chains" | "publish">,
+  call: { readonly emptiedBy: OrderRecord; readonly count: number },
+): void {
+  const { emptiedBy, count } = call;
+  if (count === 0) {
+    return;
   }
-  return ended;
+  const orderKind = { key: "order.kind", values: { kind: emptiedBy.kind } };
+  const token = tokenText(parts.chains, emptiedBy.request.token);
+  const values = { token, count: String(count) };
+  const notice = { key: "notice.ordersEnded", agent: emptiedBy.agentId, values };
+  parts.publish(noticePush({ ...notice, parts: { orderKind } }));
 }
 
 /**

@@ -14,19 +14,23 @@ const machine = createIntentStateMachine({ clock: createManualClock(1_000) });
 const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
 const live = { signal: new AbortController().signal };
 
-type Route = "paper" | "executor" | "unfreeze" | "autoOrder";
+type Route = "paper" | "executor" | "unfreeze" | "autoOrder" | "orderFill";
 
 interface Case {
   readonly kind: IntentKind;
   readonly isAgentOnPaper: boolean;
   readonly state: IntentState;
+  /** The intent is an auto order's fill, authorized by its order. */
+  readonly isFill: boolean;
 }
 
 const cases: fc.Arbitrary<Case> = fc.record({
   kind: fc.constantFrom(...intentKinds),
   isAgentOnPaper: fc.boolean(),
   state: fc.constantFrom(...intentStates),
+  isFill: fc.boolean(),
 });
+const order = "ord_0190f1c2-3a4b-7c5d-8e6f-000000000002" as Id<"ord">;
 
 // Whether the state machine stores the owner's proposal on paper, as it does for the agent's mode.
 function storedOnPaper({ kind, isAgentOnPaper }: Case): boolean {
@@ -71,15 +75,21 @@ async function routesOf(item: Case): Promise<readonly Route[]> {
     routes.push("autoOrder");
     return await Promise.resolve(snapshot);
   };
+  const orderFill = async (snapshot: IntentSnapshot): Promise<IntentSnapshot> => {
+    routes.push("orderFill");
+    return await Promise.resolve(snapshot);
+  };
   const record = { id: intent, kind: item.kind, state: item.state, isPaper: storedOnPaper(item) };
-  const execute = createExecuteConfirmed({ paper, executor, unfreeze, autoOrder, publish });
-  await execute({ record } as IntentSnapshot, live);
+  const stored = { status: item.isFill ? { authorizedBy: { order } } : {} };
+  const routing = { paper, executor, unfreeze, autoOrder, orderFill, publish };
+  await createExecuteConfirmed(routing)({ record, stored } as IntentSnapshot, live);
   return routes;
 }
 
-// Spec 6, invariant 3 and decisions 0100, 0128 and 0189: an auto order's card, answered in any way,
-// goes to its order; otherwise only a confirmed intent moves on, a paper one to the paper fill, an
-// unfreeze to its write, and any other live one, a rescue in paper mode too, to the executor.
+// Spec 6, invariant 3 and decisions 0100, 0128, 0189 and 0195: an auto order's card, answered in
+// any way, goes to its order; otherwise only a confirmed intent moves on, a paper one to the paper
+// fill, an order's paper fill with its order's write, an unfreeze to its write, and any other live
+// one, a rescue in paper mode too, to the executor.
 function expectedRoutes(item: Case): readonly Route[] {
   if (item.kind === "autoOrder") {
     return ["autoOrder"];
@@ -94,7 +104,10 @@ function routeOf(item: Case): Route {
   if (item.kind === "unfreeze") {
     return "unfreeze";
   }
-  return item.isAgentOnPaper && item.kind !== "rescue" ? "paper" : "executor";
+  if (!item.isAgentOnPaper || item.kind === "rescue") {
+    return "executor";
+  }
+  return item.isFill ? "orderFill" : "paper";
 }
 
 describe("the execute step, for every intent the state machine stores", () => {

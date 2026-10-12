@@ -6,6 +6,7 @@ import type { PaperFill } from "../intents/event-cause.schema.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
+import type { OrderFillWrite } from "../orders/order-fill.js";
 import type { Positions } from "../positions/create-positions.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
 import type { PaperPortfolio } from "./paper-portfolio.js";
@@ -26,11 +27,15 @@ export interface PaperFills {
    * write left it. A paper intent whose sold asset has no usable price stays `confirmed`, since a
    * fill is never valued at a guessed price. A sale or a swap whose paper portfolio now holds less
    * of its input than the confirmed quote spends, as when another fill sold it first, ends
-   * `failed_check` with `nothing_to_sell`, and moves nothing.
+   * `failed_check` with `nothing_to_sell`, and moves nothing. An auto order's fill passes `order`,
+   * which answers the fill's write on its order; it lands with the move, or neither does.
    */
   fillAtQuote(
     snapshot: IntentSnapshot,
-    options: { readonly signal: AbortSignal },
+    options: {
+      readonly signal: AbortSignal;
+      readonly order?: (fill: PaperFill) => Promise<OrderFillWrite | undefined>;
+    },
   ): Promise<IntentSnapshot>;
 }
 
@@ -150,7 +155,7 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
   const machine = createIntentStateMachine({ clock: options.clock });
   const { stored } = options;
   return {
-    async fillAtQuote(snapshot, { signal }) {
+    async fillAtQuote(snapshot, { signal, order }) {
       const step = machine.apply(snapshot.stored.status, { type: "paper_fill_recorded" });
       if (!step.ok) {
         return snapshot;
@@ -172,12 +177,14 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
         soldPrice: price.value,
       };
       const intent = snapshot.record.id;
+      const write = await order?.(fill);
       const move = {
         intent,
         version: snapshot.stored.version,
         step: step.value,
         by: "engine",
         fill,
+        ...(write === undefined ? {} : { order: write }),
       };
       const moved = await stored.move(move, { signal });
       if (!moved.ok) {

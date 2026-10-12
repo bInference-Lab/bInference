@@ -26,7 +26,7 @@ async function mayCancel(
  * on every surface. A card another write answered first is left to that write.
  */
 export async function cancelCard(
-  parts: OrderParts,
+  parts: Pick<OrderParts, "stored" | "clock">,
   intent: Id<"int">,
   signal: AbortSignal,
 ): Promise<void> {

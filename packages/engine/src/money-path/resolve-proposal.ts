@@ -38,6 +38,8 @@ interface Resolving {
   readonly signal: AbortSignal;
   /** The confirmed intent the request is resolved again for, left out of its own outflows. */
   readonly intent?: Id<"int">;
+  /** The intent runs on paper; the agent's mode now when absent. A fill runs in its order's. */
+  readonly isPaper?: boolean;
 }
 
 /** The native coin of a registered chain, as an asset. */
@@ -84,7 +86,7 @@ export async function resolveProposal(
   if (!ask.ok) {
     return err(ask.error === "no_route" ? "quote.no_route" : ask.error);
   }
-  const isPaper = settings.agent.mode === "paper";
+  const isPaper = resolving.isPaper ?? settings.agent.mode === "paper";
   const query = { agent: request.agent, wallet, account: account.value, isPaper };
   const { intent } = resolving;
   const facts = await options.wallets.facts(intent === undefined ? query : { ...query, intent }, {

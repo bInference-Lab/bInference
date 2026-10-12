@@ -37,5 +37,8 @@
   "fill_bounds": "the trade would go past the order's size or slippage",
   "worst_price": "the price is worse than the order's worst price",
   "trigger_unconfirmed": "the trade's own price did not reach the order's trigger price",
-  "copy_daily_cap": "it would pass this leader's daily cap ({used} of {cap} used)"
+  "copy_daily_cap": "it would pass this leader's daily cap ({used} of {cap} used)",
+  "engine_locked": "binference is locked, so nothing fills until you run `binference unlock`",
+  "live_fills_off": "live auto orders do not fill yet; only paper ones do",
+  "nothing_to_spend": "the wallet holds too little of what the order spends"
 }

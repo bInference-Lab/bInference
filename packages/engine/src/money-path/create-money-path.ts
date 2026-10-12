@@ -1,11 +1,12 @@
 import type { ChainRegistry, PriceSource, QuotedTrade, Signer } from "@binference/chain";
-import { BinferenceError, type Clock, err, type IdSource, ok, type Result } from "@binference/core";
+import { type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
 import { planDocument, quoteDocument } from "../intents/intent-documents.schema.js";
+import type { PolicyRejection } from "../intents/intent-reason.js";
 import type { IntentProposerRef } from "../intents/intent-record.js";
 import type { IntentProposer } from "../intents/intent-status.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
@@ -19,8 +20,7 @@ import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { advanceIntent } from "./advance-intent.js";
-import { agentStatusOf } from "./agent-status-of.js";
-import { authorizationCheckOf } from "./authorization-check-of.js";
+import { authorizeSimulated, type FillProposal } from "./authorize-simulated.js";
 import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose-route.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
 import { type PlacedTrade, placeTrade } from "./place-trade.js";
@@ -28,6 +28,7 @@ import { policyFactsOf } from "./policy-facts-of.js";
 import { firstQuoteOf, quoteVenues } from "./quote-venues.js";
 import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
 import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
+import { proposalOf, storeProposed } from "./store-proposed.js";
 import { type SwapTrade, swapSubjectOf } from "./swap-trade.js";
 import type { Holdings } from "./wallet-facts.js";
 
@@ -57,7 +58,7 @@ export interface MoneyPath {
   propose(
     request: IntentRequest,
     proposer: Proposer,
-    options: { readonly signal: AbortSignal },
+    options: { readonly signal: AbortSignal; readonly fill?: FillProposal },
   ): Promise<Result<IntentSnapshot, ProtocolErrorCode>>;
 }
 
@@ -93,6 +94,7 @@ interface Run {
   readonly machine: IntentStateMachine;
   readonly resolved: ResolvedProposal;
   readonly signal: AbortSignal;
+  readonly fill?: FillProposal;
 }
 
 /** A run whose trade has its place and its amount settled. */
@@ -147,6 +149,14 @@ async function policyVerdict(
   return options.policy.check(judged, facts, call);
 }
 
+// A sale of a token on the deny list always asks the owner, and a fill has no card to ask with
+// (decision 0195).
+function fillVerdict(run: Run, verdict: PolicyVerdict): Result<PolicyPass, PolicyRejection> {
+  return verdict.ok && run.fill !== undefined && verdict.value.sellsDeniedToken
+    ? err("token_denied")
+    : verdict;
+}
+
 // The first venue's quote prices the trade's other token; a trade no venue could quote is judged
 // without one, so its policy refusal still comes first.
 async function checkPolicy(
@@ -155,7 +165,7 @@ async function checkPolicy(
   quote: QuoteOutcome,
 ): Promise<Stepped<PolicyPass>> {
   const priced = quote.ok ? { quote: quote.value } : {};
-  const verdict = await policyVerdict(run, snapshot.stored.status, priced);
+  const verdict = fillVerdict(run, await policyVerdict(run, snapshot.stored.status, priced));
   if (!verdict.ok) {
     const refused = { type: "policy_refused", reason: verdict.error } as const;
     return { snapshot: await advance(run, snapshot, { trigger: refused }) };
@@ -271,75 +281,61 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (simulated.record.state !== "simulated") {
     return simulated;
   }
-  const authorized = await authorize(run, simulated, quoted.passed.pass ?? policy.passed);
-  return run.options.execute(authorized, { signal: run.signal });
+  return authorizeAndExecute(run, simulated, quoted.passed.pass ?? policy.passed);
 }
 
-// The auto test reads the agent as the move to `simulated` read it back, so a switch to manual
-// during the run asks at once, and reads what the agent spent in its turn at the gate, as every
-// earlier confirmation of the agent left it (decision 0136).
-async function authorize(
+// Step 6, then the execute step for an intent it confirmed.
+async function authorizeAndExecute(
   run: Run,
   simulated: IntentSnapshot,
   pass: PolicyPass,
 ): Promise<IntentSnapshot> {
-  const { gate } = run.options;
-  return gate.serially(simulated.record.agentId, async () => {
-    const spent = await gate.spent(simulated, { signal: run.signal });
-    const trigger = authorizationCheckOf({
-      settings: simulated.settings,
-      pass:
-        pass.figures === undefined
-          ? pass
-          : { ...pass, figures: { ...pass.figures, rollingDaySpentUsdMicros: spent } },
-      wallet: run.resolved.facts,
-      isLocked: run.options.isLocked() && !simulated.record.isPaper,
-    });
-    return advance(run, simulated, { trigger });
-  });
+  const { stored, gate, isLocked, execute } = run.options;
+  const { machine, signal, fill } = run;
+  const parts = { stored, machine, signal, gate, isLocked, wallet: run.resolved.facts };
+  const authorized = await authorizeSimulated(
+    fill === undefined ? parts : { ...parts, fill },
+    simulated,
+    pass,
+  );
+  return execute(authorized, { signal });
 }
 
 async function propose(
   options: MoneyPathOptions,
-  call: { readonly request: IntentRequest; readonly proposer: Proposer },
+  call: {
+    readonly request: IntentRequest;
+    readonly proposer: Proposer;
+    readonly fill?: FillProposal;
+  },
   signal: AbortSignal,
 ): Promise<Result<IntentSnapshot, ProtocolErrorCode>> {
-  const { request, proposer } = call;
+  const { request, proposer, fill } = call;
   const machine = createIntentStateMachine({ clock: options.clock });
   const settings = await options.agents.get(request.agent, { signal });
-  const step = machine.propose({
-    kind: request.kind,
-    proposer: proposer.role,
-    isPaper: settings?.agent.mode === "paper",
-    hasOutsideContent: proposer.hasOutsideContent,
-    agentStatus: agentStatusOf(settings),
-  });
+  const proposal = proposalOf(call, settings);
+  const step = machine.propose(proposal);
   if (!step.ok || settings === undefined) {
     return err(step.ok ? "agent.not_found" : problemCodes[step.error]);
   }
-  const resolved = await resolveProposal(options, { request, settings, signal });
+  const { isPaper } = proposal;
+  const resolved = await resolveProposal(options, { request, settings, signal, isPaper });
   if (!resolved.ok) {
     return resolved;
   }
-  if (settings.agent.mode === "live") {
+  if (!isPaper) {
     options.lowGas.check(gasReadingOf(resolved.value));
   }
-  const { wallet } = resolved.value;
-  const intent = { id: options.ids.next("int"), agentId: request.agent, walletId: wallet };
-  const created = await options.stored.create(
-    { ...intent, request, proposerRef: proposer.ref, step: step.value },
-    { signal },
-  );
-  if (!created.ok) {
-    throw new BinferenceError({ code: "engine.id_taken", message: "A new intent id was taken." });
-  }
-  return ok(await runSteps({ options, machine, resolved: resolved.value, signal }, created.value));
+  const intent = { request, proposer, step: step.value, wallet: resolved.value.wallet };
+  const created = await storeProposed(options, intent, signal);
+  const run = { options, machine, resolved: resolved.value, signal };
+  return ok(await runSteps(fill === undefined ? run : { ...run, fill }, created));
 }
 
 /** Creates the {@link MoneyPath} over its ports. */
 export function createMoneyPath(options: MoneyPathOptions): MoneyPath {
   return {
-    propose: async (request, proposer, { signal }) =>
-      propose(options, { request, proposer }, signal),
+    propose: async (request, proposer, { signal, fill }) =>
+      propose(options, { request, proposer, ...(fill === undefined ? {} : { fill }) }, signal),
   };
 }

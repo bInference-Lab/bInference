@@ -1,3 +1,4 @@
+import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { Executor } from "../ports.js";
@@ -11,8 +12,8 @@ import { rescueNotice } from "../safety/rescue-notice.js";
  * which a rescue always is (decision 0100), goes to the executor, which takes it onto its wallet's
  * queue; a confirmed rescue is first announced on every surface with `notice.rescue`. A confirmed
  * unfreeze has no step: it is written at once (decision 0128). An auto order's card, answered in
- * any way, goes to its order, which follows it (decision 0189). Any other intent comes back as it
- * was.
+ * any way, goes to its order, which follows it (decision 0189). An auto order's paper fill fills
+ * with its order's write (decision 0195). Any other intent comes back as it was.
  */
 export type ExecuteConfirmed = (
   snapshot: IntentSnapshot,
@@ -29,6 +30,8 @@ export interface ExecuteConfirmedOptions {
   readonly unfreeze: ExecuteConfirmed;
   /** Follows an auto order's card, whatever its answer: its order becomes active or ends. */
   readonly autoOrder: ExecuteConfirmed;
+  /** Fills an auto order's confirmed paper fill, with its write on its order. */
+  readonly orderFill: ExecuteConfirmed;
   readonly publish: PublishPush;
 }
 
@@ -43,7 +46,10 @@ export function createExecuteConfirmed(options: ExecuteConfirmedOptions): Execut
       return snapshot;
     }
     if (record.isPaper) {
-      return options.paper.fillAtQuote(snapshot, call);
+      const { authorizedBy } = snapshot.stored.status;
+      return authorizedBy !== undefined && isFillAuthorization(authorizedBy)
+        ? options.orderFill(snapshot, call)
+        : options.paper.fillAtQuote(snapshot, call);
     }
     if (record.kind === "unfreeze") {
       return options.unfreeze(snapshot, call);

@@ -6,7 +6,7 @@ import type {
   UnfreezeRequest,
 } from "@binference/protocol";
 import { autoOrderRequestDocument } from "../orders/auto-order-quote.js";
-import { requestDocument } from "./intent-documents.schema.js";
+import { authorizationDocument, requestDocument } from "./intent-documents.schema.js";
 import type { IntentDraft, IntentProposerRef } from "./intent-record.js";
 import type { IntentStep } from "./state-machine.js";
 import { unfreezeRequestDocument } from "./unfreeze-quote.js";
@@ -37,7 +37,8 @@ function requestOf(
 
 /**
  * The draft the intent store writes for a new intent. Its first event's cause names who proposed
- * it, which the state machine reads back with every later move.
+ * it, which the state machine reads back with every later move; a fill keeps the order or rule
+ * that authorizes it from the start.
  */
 export function draftOf(intent: NewIntent, ids: IdSource): IntentDraft {
   const { id, agentId, proposerRef } = intent;
@@ -61,6 +62,9 @@ export function draftOf(intent: NewIntent, ids: IdSource): IntentDraft {
     hasOutsideContent: status.hasOutsideContent,
     isPaper: status.isPaper,
     proposer: proposerRef,
+    ...(status.authorizedBy === undefined
+      ? {}
+      : { authorizedBy: authorizationDocument.encode(status.authorizedBy) }),
     atMs: event.atMs,
     cause,
     ...(event.hasLedgerEntry ? { ledger } : {}),

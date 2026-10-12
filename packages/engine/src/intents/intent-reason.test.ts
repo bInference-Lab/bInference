@@ -79,7 +79,12 @@ describe("intent reasons", () => {
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {
-    expect(orderSkipReasons).toStrictEqual(["copy_daily_cap"]);
+    expect(orderSkipReasons).toStrictEqual([
+      "copy_daily_cap",
+      "engine_locked",
+      "live_fills_off",
+      "nothing_to_spend",
+    ]);
     expect(intentReasons.filter((code) => new Set<string>(orderSkipReasons).has(code))).toEqual([]);
   });
 

@@ -34,6 +34,8 @@ import {
   type VenueQuoteSourceOptions,
 } from "../money-path/venue-quote-source.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
+import { createFillOnPaper } from "../orders/fill-on-paper.js";
+import type { OrderFills } from "../orders/fill-orders.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
 import { tickOrders } from "../orders/tick-orders.js";
@@ -58,7 +60,7 @@ import {
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
-import { followCardOf, orderPartsOf } from "./engine-orders.js";
+import { followCardOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
 import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
@@ -123,6 +125,12 @@ export interface Engine {
    * that time, locked or not: it signs nothing.
    */
   readonly expireCards: (options: { readonly signal: AbortSignal }) => Promise<number | undefined>;
+  /**
+   * Fills an active auto order at the price its trigger fired at (decision 0195): the money path
+   * runs with no card, held to the order's bounds, or the fill is skipped and reported. The price
+   * triggers call it as each price comes.
+   */
+  readonly fillOrder: OrderFills["fill"];
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -180,6 +188,11 @@ export interface EngineOptions extends MarketParts {
    * that starts the runtime keeps; an engine with no runtime has none started.
    */
   readonly turns?: RunningTurns;
+  /**
+   * Whether a live auto order may fill. Off when absent, and no config sets it: live fills wait
+   * for the crash suite on fills (decision 0195), so a live order skips with `live_fills_off`.
+   */
+  readonly liveOrderFills?: boolean;
 }
 
 // A re-quote at a tap weighs every venue as the money path does, on the paper balances.
@@ -211,12 +224,14 @@ function executeOf(
   const fills = createPaperFills({ stored, positions, portfolio, prices, clock });
   const { agents, intents, orders } = stores;
   const written = { stored, agents, intents, orders, clock, ids, publish };
+  const { chains } = options;
   return createExecuteConfirmed({
     paper: fills,
     executor,
     publish,
     unfreeze: async (snapshot, call) => writeUnfreeze(written, snapshot, call.signal),
     autoOrder: followCardOf(parts.orders),
+    orderFill: createFillOnPaper({ paper: fills, orders, portfolio, chains, ids, publish }),
   });
 }
 
@@ -254,6 +269,7 @@ interface IntentParts {
   readonly answer: AnswerCard;
   readonly stored: StoredIntents;
   readonly orders: OrderParts;
+  readonly fills: OrderFills;
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
   readonly cardTimer: CardTimerParts;
@@ -302,7 +318,8 @@ function intentParts(
     ...createOrderHandlers(orders),
   };
   const cardTimer = cardTimerOf(options, { confirmations, orders });
-  return { answer, stored, orders, handlers, lowGas, cardTimer };
+  const fills = orderFillsOf(options, { stored, moneyPath, gate, holdings: paper.holdings });
+  return { answer, stored, orders, fills, handlers, lowGas, cardTimer };
 }
 
 // The startup's repair of paper fills a crash left without positions.
@@ -376,5 +393,6 @@ export function createEngine(given: EngineOptions): Engine {
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
     tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
+    fillOrder: async (request, call) => intents.fills.fill(request, call),
   };
 }

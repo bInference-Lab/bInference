@@ -37,5 +37,8 @@
   "fill_bounds": "该交易将超出订单的数量或滑点上限",
   "worst_price": "价格差于订单的最差价格",
   "trigger_unconfirmed": "该交易自身的价格未达到订单的触发价格",
-  "copy_daily_cap": "将超过该带单钱包的每日上限（已用 {used}，上限 {cap}）"
+  "copy_daily_cap": "将超过该带单钱包的每日上限（已用 {used}，上限 {cap}）",
+  "engine_locked": "binference 已锁定，运行 `binference unlock` 之前不会成交任何订单",
+  "live_fills_off": "实盘自动订单暂时不会成交，目前只有模拟订单会成交",
+  "nothing_to_spend": "钱包中订单要花费的资产不足"
 }
