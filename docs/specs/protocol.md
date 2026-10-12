@@ -5,8 +5,8 @@ Status: accepted on 2026-10-06 ([decision 0090](../DECISIONS.md#d0090)), with
 operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by decisions
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
-[0177](../DECISIONS.md#d0177) and [0178](../DECISIONS.md#d0178);
-the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182)
+and [0183](../DECISIONS.md#d0183); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -361,7 +361,9 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   archived ones too ([decision 0137](../DECISIONS.md#d0137)).
 - `market/scan` with `source: launches` reads the engine's own launch records (`launch/list`),
   newest first, from the last 24 hours; with `trending`, the market data source's trending tokens
-  on the chain (DEX Screener in v1), in its order. `limit` is 20 by default and at most 50. A
+  on the chain (DEX Screener's most boosted tokens in v1, each with its active boosts,
+  [decision 0182](../adr/0182-market-reads-use-dex-screener-s-documented-api-and-mark-paid-rank.md)),
+  in its order. `limit` is 20 by default and at most 50. A
   `ScanItem` is
   `{ asset, launchpad?, launchedAt?, priceUsdMicros?, liquidityUsdMicros?, volume24hUsdMicros?, change24hBps?, curveProgressBps?, graduated?, risk?: RiskView }`;
   fields the source does not give are absent. `risk` is present only when the risk cache holds a
@@ -369,7 +371,8 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 - `market/chart` answers OHLCV candles in USD, oldest first: each
   `{ at, openUsdMicros, highUsdMicros, lowUsdMicros, closeUsdMicros, volumeUsdMicros }`, `at` the
   candle's start. `limit` is 100 by default and at most 500; `to` defaults to now. `source` names
-  where they came from (`dexscreener` in v1). A source that answers nothing for the asset fails
+  where they came from (`geckoterminal` in v1,
+  [decision 0183](../adr/0183-candles-come-from-a-source-that-publishes-them.md)). A source that answers nothing for the asset fails
   `market.no_data`; one that is down fails `market.source_down` (retryable).
 - `wallet/activity` reads the trades of one account: one of `agent`'s wallets, from its executions,
   or a wallet the agent tracks (a leader of one of its copy orders, or the account of one of its

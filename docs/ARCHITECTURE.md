@@ -733,6 +733,8 @@ interface Venue extends Quoter, TxBuilder, TxDecoder {
 }
 ```
 
+A data source is defined with `defineData` and reads a token's pools and a chain's trending
+tokens ([decision 0182](adr/0182-market-reads-use-dex-screener-s-documented-api-and-mark-paid-rank.md)).
 A venue is defined with `defineVenue` from `@binference/plugin-sdk`. The engine's venue host gives
 it its contracts' addresses from the registry and sets each trade's terms. The venue returns
 `TxDraft`s, transactions before their nonce and fees. The chain family reads each draft's target,

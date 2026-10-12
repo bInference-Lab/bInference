@@ -245,6 +245,12 @@ new name here first, in the change that uses it.
 - **model billing**: what pays for an agent's model calls and says what the agent may still spend:
   the model budget, or bInference AI credit.
 - **market data**: the blocks and prices the watchers stream.
+- **market reads**: a token's pools and a chain's trending tokens, read from the data sources for
+  the owner and the agent. They inform; they never price a trade.
+- **data source**: a `data` plugin that answers market reads, such as `dexscreener`. Defined with
+  `defineData`.
+- **boost**: paid promotion of a token on DEX Screener. A trending token carries its active boosts,
+  so a reader knows its place was bought.
 - **plugin**: an installable integration of one kind: venue, data, surface, skills or provider.
 - **surface plugin**: a plugin that adds a chat surface.
 - **plugin tiers**: **Core** (bundled and reviewed), **Verified** (a reviewed, signed publisher) and
