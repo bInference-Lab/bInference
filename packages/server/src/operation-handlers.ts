@@ -44,6 +44,11 @@ export interface HandlerCall<N extends OperationName> {
    * its result.
    */
   readonly signal: AbortSignal;
+  /**
+   * A write's idempotency key as its client sent it, which the server has already checked: a
+   * handler that keeps a record per key, such as one model call attempt's usage, reads it here.
+   */
+  readonly key?: string;
 }
 
 /**

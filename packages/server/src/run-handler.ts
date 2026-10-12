@@ -64,7 +64,8 @@ async function invoke<N extends OperationName>(
   if (handler === undefined) {
     return err("protocol.unknown_op");
   }
-  const answered = await handler({ args: call.args, caller, signal: context.signal });
+  const key = call.key === undefined ? {} : { key: call.key };
+  const answered = await handler({ args: call.args, caller, signal: context.signal, ...key });
   return answered.ok ? ok(encodeResult(operations[call.op], answered.value)) : answered;
 }
 

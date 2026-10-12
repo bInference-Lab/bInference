@@ -265,12 +265,12 @@ describe("createCallDispatch", () => {
     expect(answers[0]).toMatchObject([{ error: { code: "engine.starting", retryable: true } }]);
   });
 
-  it("decodes args and encodes the result with the operation's schemas", async () => {
-    const seen: bigint[] = [];
+  it("decodes args, hands the write's key over and encodes the result with the operation's schemas", async () => {
+    const seen: (bigint | string | undefined)[] = [];
     const { dispatch } = setup({
       handlers: {
-        "usage/record": async ({ args }) => {
-          seen.push(args.usdMicros);
+        "usage/record": async ({ args, key }) => {
+          seen.push(args.usdMicros, key);
           return ok({ budgetLeftMicros: 2n ** 64n });
         },
       },
@@ -285,7 +285,7 @@ describe("createCallDispatch", () => {
       usdMicros: "1500",
     };
     const frames = await framesOf(dispatch(call("usage/record", args, "k"), session(["agent"])));
-    expect(seen).toStrictEqual([1500n]);
+    expect(seen).toStrictEqual([1500n, "k"]);
     expect(frames).toStrictEqual([
       { t: "reply", id: "c1", result: { budgetLeftMicros: "18446744073709551616" } },
     ]);

@@ -55,6 +55,11 @@ export interface EngineCall<N extends OperationName> {
   readonly args: ArgsOf<N>;
   readonly caller: EngineCaller;
   readonly signal: AbortSignal;
+  /**
+   * A write's idempotency key as its client sent it, for a handler that keeps a record per key;
+   * a surface the engine serves itself sends none.
+   */
+  readonly key?: string;
 }
 
 /**
