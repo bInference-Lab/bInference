@@ -112,10 +112,13 @@ export type {
 export type { BuildRequest } from "./venues/build-request.js";
 export { decodedEffectSchema } from "./venues/decoded-effect.js";
 export type { DecodedEffect, DecodedEffectWire } from "./venues/decoded-effect.js";
-export type { Quoter, TxBuilder, TxDecoder } from "./venues/ports.js";
+export type { CurveReader, Quoter, TxBuilder, TxDecoder } from "./venues/ports.js";
+export { curveHoldingSchema } from "./venues/curve-holding.js";
+export type { CurveHolding, CurveHoldingWire, CurveRequest } from "./venues/curve-holding.js";
 export { declaredAddress, declaredContracts } from "./venues/declared-contracts.js";
 export { venueDeclarationSchema } from "./venues/venue.js";
 export type {
+  LaunchpadVenue,
   Venue,
   VenueCall,
   VenueContracts,

@@ -1,6 +1,7 @@
 import type { Result } from "@binference/core";
 import type { TxDraft } from "../transaction.js";
 import type { BuildRequest } from "./build-request.js";
+import type { CurveHolding, CurveRequest } from "./curve-holding.js";
 import type { DecodedEffect } from "./decoded-effect.js";
 import type { QuoteRequest, VenueQuote } from "./venue-quote.js";
 
@@ -36,4 +37,15 @@ export interface TxDecoder {
    * that is not one of the venue's trade calls is `unknown_call`, never a guess.
    */
   decode(draft: TxDraft): Result<DecodedEffect, "unknown_call">;
+}
+
+/** Tells whether a launchpad holds a token on its bonding curve. */
+export interface CurveReader {
+  /**
+   * Whether the token is on the launchpad's curve now, read from the launchpad's own contracts at
+   * the latest block, and the asset the curve trades it against. A token the launchpad never
+   * launched, or one that graduated to the pools, is `{ onCurve: false }`. A launchpad that cannot
+   * read its contracts throws. Rejects with the signal's reason once the signal aborts.
+   */
+  curve(request: CurveRequest, options: { readonly signal: AbortSignal }): Promise<CurveHolding>;
 }

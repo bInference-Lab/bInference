@@ -2,7 +2,7 @@ import type { JsonValue } from "@binference/core";
 import { z } from "zod";
 import { type ChainRef, chainRefSchema } from "../caip/chain-ref.js";
 import { kebabCaseSchema } from "../registry/chain-definition.js";
-import type { Quoter, TxBuilder, TxDecoder } from "./ports.js";
+import type { CurveReader, Quoter, TxBuilder, TxDecoder } from "./ports.js";
 
 /** A function a venue's transactions call on one of its contracts. */
 export interface VenueCall {
@@ -101,6 +101,11 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
 /**
  * A venue: a protocol the agent trades on, such as a DEX router. It declares the contracts it
  * touches, quotes, builds the transactions of a trade, and decodes them. Only reviewed venues run
- * in the engine, and the venue host checks every transaction they build.
+ * in the engine, and the venue host checks every transaction they build. A launchpad also reads
+ * its curve, so the engine sends a token still on it there and nowhere else.
  */
-export interface Venue extends VenueDeclaration, Quoter, TxBuilder, TxDecoder {}
+export interface Venue
+  extends VenueDeclaration, Quoter, TxBuilder, TxDecoder, Partial<CurveReader> {}
+
+/** A launchpad: a venue that trades the tokens on its bonding curve, and says which those are. */
+export interface LaunchpadVenue extends Omit<Venue, "curve">, CurveReader {}
