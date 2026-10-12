@@ -3,7 +3,6 @@ import { createFakeVenue } from "@binference/chain/testing";
 import { bpsSchema, type Ratio } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testToken } from "../intents/test-intents.js";
-import { firstFillWaitMs } from "./fill-pacing.js";
 import type { WatchedOrderPrice } from "./order-triggers.js";
 import { triggerStateDocument } from "./price-triggers.js";
 import { activeOrder, fillIntentsOf, startFillEngine, wholeToken } from "./test-fills.js";
@@ -125,16 +124,18 @@ describe("price triggers", () => {
     const stop = await activeOrder(test, testStopLoss());
 
     const thin = await test.engine.seePrice(at(800_000n, true), live);
-    await test.clock.advance(firstFillWaitMs);
     const deep = await test.engine.seePrice(at(800_000n), live);
 
     expect([thin, deep]).toStrictEqual([
       [{ order: stop.id, outcome: "skipped" }],
       [{ order: stop.id, outcome: "filled" }],
     ]);
-    expect(await fillIntentsOf(test)).toMatchObject([
-      { state: "failed_check", reason: "trigger_unconfirmed" },
-      { state: "paper_filled" },
+    const ended = (await fillIntentsOf(test)).map(
+      ({ state, reason }) => `${state} ${String(reason)}`,
+    );
+    expect(ended.toSorted()).toStrictEqual([
+      "failed_check trigger_unconfirmed",
+      "paper_filled undefined",
     ]);
   });
 });

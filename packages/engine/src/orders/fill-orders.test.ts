@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { testAgent, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
-import { firstFillWaitMs } from "./fill-pacing.js";
 import {
   activeOrder,
   eightyCents,
@@ -86,20 +85,19 @@ describe("an auto order's fill", () => {
     expect(orderStatesOf(test).at(-1)).toBe("filled");
   });
 
-  it("skips a live order while live fills are off, keeps it active and says so once a reason", async () => {
+  it("skips a live order while live fills are off, keeps it active and says so once", async () => {
     const test = await startFillEngine({ agent: { mode: "live" } });
     const order = await activeOrder(test, testStopLoss());
     const fill = async () => test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
 
-    const first = await fill();
-    const early = await fill();
-    await test.clock.advance(firstFillWaitMs);
-    const second = await fill();
+    // An exit order tries again at the next price, and the owner hears the reason once.
+    const outcomes = [await fill(), await fill(), await fill()];
 
-    expect([first, early, second]).toStrictEqual(["skipped", "waiting", "skipped"]);
+    expect(outcomes).toStrictEqual(["skipped", "skipped", "skipped"]);
     expect((await storedOrder(test, order.id)).state).toBe("active");
     expect(await fillIntentsOf(test)).toStrictEqual([]);
     expect((await fillRowsOf(test, order.id)).map(({ reason }) => reason)).toStrictEqual([
+      "live_fills_off",
       "live_fills_off",
       "live_fills_off",
     ]);

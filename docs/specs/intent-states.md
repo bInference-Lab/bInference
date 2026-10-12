@@ -187,8 +187,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
     `failed_check` with the fill reason (section 4).
   - A live order's fill is skipped with `live_fills_off` until the crash suite on fills passes, and
     a locked engine skips every fill with `engine_locked`.
-  - One agent's fills run one at a time. After a skip, an order may fill again 15 seconds later,
-    the wait doubling up to 5 minutes; the owner hears a skip once per reason in a row.
+  - One agent's fills run one at a time. After a skip, an exit order tries again at the next
+    confirmed price; a buy waits 15 seconds, the wait doubling up to 5 minutes, read from its fill
+    rows. The owner hears a skip once per reason in a row, and `engine_locked` or `live_fills_off`
+    once per agent until one of its orders fills ([decision 0197](../DECISIONS.md#d0197)).
   - A paper fill moves its intent to `paper_filled`, records the fill on its order and in
     `order_fills`, and ends the other exit orders of a position it emptied, in one write.
   - An order fills once unless it names more fills. One with a fill left waits after each fill

@@ -13,9 +13,9 @@ import { cancelCard } from "./cancel-order.js";
 import { endEmptyExit } from "./end-exit-orders.js";
 import { checkFill } from "./fill-bounds.js";
 import { fillNotice, skippedNotice } from "./fill-notices.js";
-import { createFillPacing, type FillPacing } from "./fill-pacing.js";
+import { agentWideReasons, isNewReason, isWaiting, paceRows } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
-import type { OrderFillReason } from "./order-fill.js";
+import type { OrderFillReason, OrderFillRecord } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
@@ -65,13 +65,16 @@ export interface OrderFillsParts extends FillSizeParts {
 }
 
 interface FillState {
-  readonly pacing: FillPacing;
   readonly running: Set<Id<"ord">>;
   readonly lines: Map<Id<"agt">, Promise<void>>;
+  /** The agent-wide reasons each agent heard since its last fill or the engine's start. */
+  readonly told: Map<Id<"agt">, Set<OrderFillReason>>;
 }
 
 interface Skip {
   readonly order: OrderRecord;
+  /** The order's newest fill rows before this skip. */
+  readonly rows: readonly OrderFillRecord[];
   readonly reason: OrderFillReason;
   readonly intent?: IntentSnapshot;
   readonly signal: AbortSignal;
@@ -87,6 +90,19 @@ async function capOf(parts: OrderFillsParts, skipped: Skip) {
   return { usedUsdMicros, capUsdMicros: intent.settings.limits.rollingDayUsdMicros };
 }
 
+// The owner hears a skip once per reason in a row for its order, and an agent-wide reason once per
+// agent until one of its orders fills (decision 0197).
+function shouldTell(state: FillState, skipped: Skip): boolean {
+  const { order, reason, rows } = skipped;
+  const heard = state.told.get(order.agentId) ?? new Set<OrderFillReason>();
+  if (!agentWideReasons.has(reason)) {
+    return isNewReason(rows, reason);
+  }
+  const isNew = !heard.has(reason);
+  state.told.set(order.agentId, heard.add(reason));
+  return isNew;
+}
+
 // Stores the skip's row and tells the owner of a new reason in a row; the order stays as it is.
 async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Promise<FillOutcome> {
   const { order, reason, intent, signal } = skipped;
@@ -100,7 +116,7 @@ async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Pr
     atMs,
   };
   await parts.orders.recordFill(row, { signal });
-  if (state.pacing.skipped(order.id, reason, atMs)) {
+  if (shouldTell(state, skipped)) {
     const cap = await capOf(parts, skipped);
     parts.publish(
       noticePush(skippedNotice(order, cap === undefined ? { reason } : { reason, cap })),
@@ -161,15 +177,16 @@ async function settle(
   state: FillState,
   run: {
     readonly order: OrderRecord;
+    readonly rows: readonly OrderFillRecord[];
     readonly price: FillPrice;
     readonly snapshot: IntentSnapshot;
     readonly signal: AbortSignal;
   },
 ): Promise<FillOutcome> {
-  const { order, price, snapshot, signal } = run;
+  const { order, rows, price, snapshot, signal } = run;
   const fill = paperFillOf(snapshot.history);
   if (snapshot.record.state === "paper_filled" && fill?.soldPrice !== undefined) {
-    state.pacing.settled(order.id);
+    state.told.delete(order.agentId);
     parts.publish(
       noticePush(fillNotice(order, { ...fill, soldPrice: fill.soldPrice }, price.decimals)),
     );
@@ -182,7 +199,7 @@ async function settle(
   const reason = endReasonOf(snapshot);
   return reason === undefined
     ? "inactive"
-    : skip(parts, state, { order, reason, intent: snapshot, signal });
+    : skip(parts, state, { order, rows, reason, intent: snapshot, signal });
 }
 
 // A gate a fill meets before any intent: a live order while live fills are off, a locked engine.
@@ -196,12 +213,17 @@ function gateOf(parts: OrderFillsParts, order: OrderRecord): OrderFillReason | u
 async function fillNow(
   parts: OrderFillsParts,
   state: FillState,
-  request: { readonly order: OrderRecord; readonly price: FillPrice; readonly signal: AbortSignal },
+  request: {
+    readonly order: OrderRecord;
+    readonly rows: readonly OrderFillRecord[];
+    readonly price: FillPrice;
+    readonly signal: AbortSignal;
+  },
 ): Promise<FillOutcome> {
-  const { order, price, signal } = request;
+  const { order, rows, price, signal } = request;
   const gated = gateOf(parts, order);
   if (gated !== undefined) {
-    return skip(parts, state, { order, reason: gated, signal });
+    return skip(parts, state, { order, rows, reason: gated, signal });
   }
   const settings = await parts.agents.get(order.agentId, { signal });
   if (settings === undefined) {
@@ -210,12 +232,11 @@ async function fillNow(
   const sizing = { order, settings, tokenUsd: price.usdPerBaseUnit, signal };
   const sized = await sizeFill(parts, sizing);
   if (sized.kind === "empty") {
-    state.pacing.settled(order.id);
     await endEmptyExit(parts, { order, nowMs: parts.clock.now(), signal });
     return "ended";
   }
   if (sized.kind === "skip") {
-    return skip(parts, state, { order, reason: sized.reason, signal });
+    return skip(parts, state, { order, rows, reason: sized.reason, signal });
   }
   const proposer = {
     role: "engine",
@@ -229,9 +250,9 @@ async function fillNow(
   };
   const proposed = await parts.moneyPath.propose(sized.request, proposer, { signal, fill });
   if (!proposed.ok) {
-    return skip(parts, state, { order, reason: "no_route", signal });
+    return skip(parts, state, { order, rows, reason: "no_route", signal });
   }
-  return settle(parts, state, { order, price, snapshot: proposed.value, signal });
+  return settle(parts, state, { order, rows, price, snapshot: proposed.value, signal });
 }
 
 // Runs `work` once every earlier fill of the agent has ended.
@@ -259,14 +280,15 @@ async function inLine<T>(state: FillState, agent: Id<"agt">, work: () => Promise
  * `engine_locked`, the order staying active either way (decision 0195).
  */
 export function createOrderFills(parts: OrderFillsParts): OrderFills {
-  const state: FillState = { pacing: createFillPacing(), running: new Set(), lines: new Map() };
+  const state: FillState = { running: new Set(), lines: new Map(), told: new Map() };
   return {
     async run({ order: id, price }, { signal }) {
       const read = await parts.orders.get(id, { signal });
       if (read?.state !== "active" || state.running.has(id)) {
         return "inactive";
       }
-      if (state.pacing.isWaiting(id, parts.clock.now())) {
+      const rows = await parts.orders.fills({ orderId: id, limit: paceRows }, { signal });
+      if (isWaiting(read, rows, parts.clock.now())) {
         return "waiting";
       }
       state.running.add(id);
@@ -274,7 +296,7 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
         return await inLine(state, read.agentId, async () => {
           const order = await parts.orders.get(id, { signal });
           return order?.state === "active" && parts.clock.now() < order.expiresAtMs
-            ? fillNow(parts, state, { order, price, signal })
+            ? fillNow(parts, state, { order, rows, price, signal })
             : "inactive";
         });
       } finally {

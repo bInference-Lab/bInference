@@ -2,7 +2,8 @@ import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { fillNotice, priceText, skippedNotice } from "./fill-notices.js";
-import { createFillPacing, firstFillWaitMs, longestFillWaitMs } from "./fill-pacing.js";
+import { firstFillWaitMs, isNewReason, isWaiting, longestFillWaitMs } from "./fill-pacing.js";
+import type { OrderFillReason, OrderFillRecord } from "./order-fill.js";
 import { testStopLoss } from "./test-orders.js";
 
 const order = {
@@ -67,28 +68,45 @@ describe("a fill's notices", () => {
   });
 });
 
-describe("the pace of an order's fills", () => {
-  it("waits 15 seconds after a skip, doubling to 5 minutes, and tells each reason once in a row", () => {
-    const pacing = createFillPacing();
-    const heard = [
-      pacing.skipped(ord, "engine_locked", 0),
-      pacing.skipped(ord, "engine_locked", firstFillWaitMs),
-      pacing.skipped(ord, "no_route", 10 * firstFillWaitMs),
-    ];
-    const waits = [
-      pacing.isWaiting(ord, 10 * firstFillWaitMs + 59_999),
-      pacing.isWaiting(ord, 10 * firstFillWaitMs + 60_000),
-    ];
-    Array.from({ length: 8 }, (_, step) => pacing.skipped(ord, "no_route", step));
-    const capped = pacing.isWaiting(ord, 7 + longestFillWaitMs);
-    pacing.settled(ord);
+// A row of the test order: a skip for a reason, or a fill, at a time.
+function rowAt(atMs: number, reason?: OrderFillReason): OrderFillRecord {
+  const id = idSchema("fil").parse(`fil_0190f1c2-3a4b-7c5d-8e6f-${String(atMs).padStart(12, "0")}`);
+  return reason === undefined
+    ? { id, orderId: ord, outcome: "filled", atMs }
+    : { id, orderId: ord, outcome: "skipped", reason, atMs };
+}
 
-    expect(heard).toStrictEqual([true, false, true]);
-    expect(waits).toStrictEqual([true, false]);
-    expect(capped).toBe(false);
-    expect([pacing.isWaiting(ord, 0), pacing.skipped(ord, "no_route", 0)]).toStrictEqual([
-      false,
-      true,
-    ]);
+describe("the pace of an order's fills", () => {
+  it("lets a buy wait 15 seconds after a skip, doubling to 5 minutes, and an exit never", () => {
+    const buy = {
+      request: {
+        ...testStopLoss(),
+        kind: "limit",
+        side: "buy",
+        trigger: { price: 1n, direction: "below" },
+      },
+    } as const;
+    const skips = [3, 2, 1].map((n) => rowAt(n * 1_000, "no_route"));
+    expect([
+      isWaiting(buy, skips.slice(2), 1_000 + firstFillWaitMs - 1),
+      isWaiting(buy, skips.slice(2), 1_000 + firstFillWaitMs),
+    ]).toStrictEqual([true, false]);
+    expect(isWaiting(buy, skips, 3_000 + 4 * firstFillWaitMs - 1)).toBe(true);
+    const many = Array.from({ length: 9 }, () => rowAt(1_000, "no_route"));
+    expect([
+      isWaiting(buy, many, 1_000 + longestFillWaitMs - 1),
+      isWaiting(buy, many, 1_000 + longestFillWaitMs),
+    ]).toStrictEqual([true, false]);
+    expect(isWaiting(buy, [rowAt(5), ...skips], 6)).toBe(false);
+    expect(isWaiting({ request: testStopLoss() }, skips, 3_001)).toBe(false);
+  });
+
+  it("tells a skip's reason once in a row", () => {
+    expect([
+      isNewReason([], "no_route"),
+      isNewReason([rowAt(1, "no_route")], "no_route"),
+      isNewReason([rowAt(1, "venue_down")], "no_route"),
+      isNewReason([rowAt(2), rowAt(1, "no_route")], "no_route"),
+    ]).toStrictEqual([true, false, true, true]);
   });
 });
