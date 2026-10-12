@@ -28,7 +28,8 @@ export interface PaperFills {
    * fill is never valued at a guessed price. A sale or a swap whose paper portfolio now holds less
    * of its input than the confirmed quote spends, as when another fill sold it first, ends
    * `failed_check` with `nothing_to_sell`, and moves nothing. An auto order's fill passes `order`,
-   * which answers the fill's write on its order; it lands with the move, or neither does.
+   * which answers the fill's write on its order; it lands with the move, or neither does, and an
+   * answer of none leaves the intent `confirmed`.
    */
   fillAtQuote(
     snapshot: IntentSnapshot,
@@ -150,6 +151,19 @@ async function endShort(
   return moved.ok ? moved.value : ((await options.stored.snapshot(intent, { signal })) ?? snapshot);
 }
 
+// The move's write on its order: none for a fill of no order, and `undefined` for an order fill
+// whose order can no longer record it, which fills nothing (decision 0197).
+async function orderPartOf(
+  order: ((fill: PaperFill) => Promise<OrderFillWrite | undefined>) | undefined,
+  fill: PaperFill,
+): Promise<{ readonly order?: OrderFillWrite } | undefined> {
+  if (order === undefined) {
+    return {};
+  }
+  const write = await order(fill);
+  return write === undefined ? undefined : { order: write };
+}
+
 /** Creates the {@link PaperFills} on the state machine, which decides whether an intent fills. */
 export function createPaperFills(options: PaperFillsOptions): PaperFills {
   const machine = createIntentStateMachine({ clock: options.clock });
@@ -177,14 +191,17 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
         soldPrice: price.value,
       };
       const intent = snapshot.record.id;
-      const write = await order?.(fill);
+      const written = await orderPartOf(order, fill);
+      if (written === undefined) {
+        return snapshot;
+      }
       const move = {
         intent,
         version: snapshot.stored.version,
         step: step.value,
         by: "engine",
         fill,
-        ...(write === undefined ? {} : { order: write }),
+        ...written,
       };
       const moved = await stored.move(move, { signal });
       if (!moved.ok) {

@@ -2,6 +2,7 @@ export {
   orderFillQuerySchema,
   orderFillRecordSchema,
   orderFillWriteSchema,
+  recordsOwnFill,
 } from "./orders/order-fill.js";
 export type {
   OrderFillQuery,

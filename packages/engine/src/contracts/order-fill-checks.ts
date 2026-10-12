@@ -5,7 +5,11 @@ import { confirmedCard, orderDraft, orderMove, type OrderStoreSubject } from "./
 import { assertRefusesAborted, fixtureId, live } from "./store-fixtures.js";
 
 /** Fill row `n` of order `order`: a skip with the policy's reason at `1000 * n`, or a fill. */
-function fillRow(order: number, n: number, outcome: OrderFillRecord["outcome"]): OrderFillRecord {
+export function fillRow(
+  order: number,
+  n: number,
+  outcome: OrderFillRecord["outcome"],
+): OrderFillRecord {
   return {
     id: fixtureId("fil", n),
     orderId: fixtureId("ord", order),
@@ -16,7 +20,7 @@ function fillRow(order: number, n: number, outcome: OrderFillRecord["outcome"]):
 }
 
 /** Order `n`, created and moved to `active` on its confirmed card. */
-async function activeOrder(subject: OrderStoreSubject, n: number): Promise<void> {
+export async function activeOrder(subject: OrderStoreSubject, n: number): Promise<void> {
   const { store } = subject;
   const card = await confirmedCard(subject, n);
   assert.ok((await store.create(orderDraft(subject, n), live())).ok);
@@ -82,6 +86,29 @@ export async function writesAFillWithItsIntent(subject: OrderStoreSubject): Prom
   );
   assert.equal(moved.value.intent.state, "checked");
   assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), [fill]);
+}
+
+/**
+ * Checks that a `filled` row lands only with its own order's move to one fill more (decision
+ * 0197): a write that only ends other orders, or counts the fill wrong, is refused and leaves the
+ * intent, the orders and the rows as they were.
+ */
+export async function refusesAFillWithoutItsOrderMove(subject: OrderStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  await activeOrder(subject, 1);
+  await activeOrder(subject, 2);
+  assert.ok((await intents.create(intentDraft(subject, 3), live())).ok);
+  const ended = { ...orderMove(2, 1, "ended"), endReason: "position_closed" } as const;
+  const fill = { ...fillRow(1, 8, "filled"), intentId: fixtureId("int", 3) };
+  const move = intentMove(3, 0, "checked");
+  const withoutOwn = { ...move, order: { moves: [ended], fill } };
+  const counted = { ...move, order: { moves: [{ ...orderMove(1, 1, "filled"), fills: 2 }], fill } };
+  await assert.rejects(intents.transition(withoutOwn, live()), { code: "store.constraint" });
+  await assert.rejects(intents.transition(counted, live()), { code: "store.constraint" });
+  assert.equal((await intents.get(fixtureId("int", 3), live()))?.version, 0);
+  assert.equal((await store.get(fixtureId("ord", 2), live()))?.state, "active");
+  assert.equal((await store.get(fixtureId("ord", 1), live()))?.fills, 0);
+  assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), []);
 }
 
 /** Checks that the fill calls refuse an aborted signal and write nothing. */

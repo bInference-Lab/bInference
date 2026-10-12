@@ -195,7 +195,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
     rows. The owner hears a skip once per reason in a row, and `engine_locked` or `live_fills_off`
     once per agent until one of its orders fills ([decision 0197](../DECISIONS.md#d0197)).
   - A paper fill moves its intent to `paper_filled`, records the fill on its order and in
-    `order_fills`, and ends the other exit orders of a position it emptied, in one write.
+    `order_fills`, and ends the other exit orders of a position it emptied, in one write. The
+    store refuses a `filled` row without its order's own move to one fill more, and a fill whose
+    order cannot take it at the fill's own time fills nothing and is cancelled
+    ([decision 0197](../DECISIONS.md#d0197)).
   - An order fills once unless it names more fills. One with a fill left waits after each fill
     until its condition stops holding at a confirmed price, and a trailing stop's highest price
     starts again; an exit order whose fill emptied its position ends with `position_closed`

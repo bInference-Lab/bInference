@@ -59,6 +59,18 @@ export interface OrderFillWrite {
   readonly fill: OrderFillRecord;
 }
 
+/**
+ * Whether a fill write records its fill on its own order (decision 0197): a `filled` row lands
+ * only with its order's move to one fill more than the `fillsBefore` it had; a skip needs none.
+ */
+export function recordsOwnFill(write: OrderFillWrite, fillsBefore: number): boolean {
+  const { fill, moves } = write;
+  return (
+    fill.outcome !== "filled" ||
+    moves.some(({ id, fills }) => id === fill.orderId && fills === fillsBefore + 1)
+  );
+}
+
 /** Parses an order fill write. */
 export const orderFillWriteSchema: z.ZodType<OrderFillWrite> = z.strictObject({
   moves: z.array(orderMoveSchema),

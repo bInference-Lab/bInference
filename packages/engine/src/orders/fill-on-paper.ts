@@ -44,22 +44,29 @@ async function empties(
   return held <= fill.amountIn.base;
 }
 
-/** A fill's write on its order, and the other exit orders it ends with it. */
+/**
+ * A fill's write on its order, and the other exit orders it ends with it. The order's own move
+ * comes first; without it there is no write (decision 0197).
+ */
 interface FillWrite {
   readonly write: OrderFillWrite;
   readonly ended: readonly OrderMove[];
 }
 
-// The order records the fill, unless it ended meanwhile; a sale that empties its position ends
-// the position's other exit orders; the fill's row is `filled`.
+// The order records the fill at the fill's own time; an order that cannot, as one that expired
+// since the check, takes no write. A sale that empties its position ends the position's other
+// exit orders; the fill's row is `filled`.
 async function fillWriteOf(
   parts: FillOnPaperParts,
   snapshot: IntentSnapshot,
   call: { readonly order: OrderRecord; readonly fill: PaperFill; readonly signal: AbortSignal },
-): Promise<FillWrite> {
+): Promise<FillWrite | undefined> {
   const { order, fill, signal } = call;
   const emptiesPosition = await empties(parts, order, { fill, signal });
   const recorded = moveOrder(order, { type: "fill_recorded", emptiesPosition }, fill.atMs);
+  if (!recorded.ok) {
+    return undefined;
+  }
   const ended = emptiesPosition
     ? await exitEndMovesOf(parts, { emptiedBy: order, nowMs: fill.atMs, signal })
     : [];
@@ -70,8 +77,7 @@ async function fillWriteOf(
     outcome: "filled" as const,
     atMs: fill.atMs,
   };
-  const moves = recorded.ok ? [recorded.value, ...ended] : ended;
-  return { write: { moves, fill: row }, ended };
+  return { write: { moves: [recorded.value, ...ended], fill: row }, ended };
 }
 
 // One try at the paper fill with its order's write; answers the intent after it.
@@ -81,12 +87,12 @@ async function tryFill(
   call: { readonly order: OrderRecord; readonly signal: AbortSignal },
 ): Promise<IntentSnapshot> {
   const { order, signal } = call;
-  const written: { value?: FillWrite } = {};
+  const written: { value?: FillWrite | undefined } = {};
   const filled = await parts.paper.fillAtQuote(snapshot, {
     signal,
     order: async (fill) => {
       written.value = await fillWriteOf(parts, snapshot, { order, fill, signal });
-      return written.value.write;
+      return written.value?.write;
     },
   });
   if (filled.record.state === "paper_filled" && written.value !== undefined) {
@@ -112,8 +118,8 @@ async function orderOf(
  * confirmed quote, and in the same write its order records the fill, the fill's `order_fills` row
  * is added, and a sale that empties its position ends the position's other exit orders, which the
  * owner hears of in one `notice.ordersEnded`. A fill whose order can no longer record it, as one
- * that expired or ended since the fill's authorization, is cancelled unsigned and fills nothing.
- * A fill still `confirmed` after a try, because its
+ * that expired or ended since the fill's authorization, or at the fill's own time, is cancelled
+ * unsigned and fills nothing (decision 0197). A fill still `confirmed` after a try, because its
  * write lost a race to another write of its order or its sold asset had no usable price, is tried
  * again on what it reads then, up to three tries in all. Any other intent comes back as it was.
  */
@@ -131,10 +137,14 @@ export function createFillOnPaper(parts: FillOnPaperParts): ExecuteConfirmed {
       await cancelCard(parts, snapshot.record.id, signal);
       return (await parts.stored.snapshot(snapshot.record.id, { signal })) ?? snapshot;
     }
+    // After the last try, only the check above runs: a fill its order could not take is cancelled.
+    if (left <= 0) {
+      return snapshot;
+    }
     const filled = await tryFill(parts, snapshot, { order, signal });
-    return filled.record.state !== "confirmed" || left <= 1
-      ? filled
-      : attempt(filled, { signal, left: left - 1 });
+    return filled.record.state === "confirmed"
+      ? attempt(filled, { signal, left: left - 1 })
+      : filled;
   };
   return async (snapshot, { signal }) => attempt(snapshot, { signal, left: fillAttempts });
 }

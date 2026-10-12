@@ -1,6 +1,6 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
-import type { OrderFillWrite } from "../orders/order-fill.js";
+import { type OrderFillWrite, recordsOwnFill } from "../orders/order-fill.js";
 import type {
   OrderDraft,
   OrderMove,
@@ -214,6 +214,9 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
         unfrozen: new Set(),
       });
       fills.checkFillNow(write.fill);
+      if (!recordsOwnFill(write, orders.get(write.fill.orderId)?.fills ?? 0)) {
+        throw constraintFault(`fill ${write.fill.id} lands without its order's own move`);
+      }
       return checked.ok ? checked : err("stale");
     },
     checkNow: (moves, unfrozen) =>

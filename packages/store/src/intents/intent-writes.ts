@@ -16,7 +16,7 @@ import { settleIntent } from "../agent-inbox/agent-inbox-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
-import { checkOrderFill, insertOrderFill } from "../orders/order-fill-writes.js";
+import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
 import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
 import { writeCardChanges } from "./card-writes.js";
@@ -159,6 +159,7 @@ function checkFillWrite(database: DatabaseSync, change: IntentChange): Result<un
     return ok(undefined);
   }
   checkOrderFill(database, order.fill);
+  checkOwnFill(database, order);
   return checkOrderMoves(database, order.moves).ok ? ok(undefined) : err("stale");
 }
 

@@ -4,7 +4,9 @@ import { BinferenceError } from "@binference/core";
 import {
   type OrderFillQuery,
   type OrderFillRecord,
+  type OrderFillWrite,
   orderFillRecordSchema,
+  recordsOwnFill,
 } from "@binference/engine/orders";
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
@@ -42,6 +44,24 @@ export function checkOrderFill(database: DatabaseSync, fill: OrderFillRecord): v
       code: "store.constraint",
       message: "A fill row takes a new id and names a stored order and intent.",
       details: { fill: fill.id },
+    });
+  }
+}
+
+/**
+ * Checks that a `filled` row comes with its own order's move to one fill more than the order has
+ * stored (decision 0197); one without it throws `store.constraint`, which rolls the write back.
+ */
+export function checkOwnFill(database: DatabaseSync, write: OrderFillWrite): void {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const stored = takeFirst(
+    kysely.selectFrom("orders").select("fills").where("id", "=", write.fill.orderId),
+  );
+  if (!recordsOwnFill(write, stored?.fills ?? 0)) {
+    throw new BinferenceError({
+      code: "store.constraint",
+      message: "A fill lands only with its order's own move to one fill more.",
+      details: { fill: write.fill.id },
     });
   }
 }
