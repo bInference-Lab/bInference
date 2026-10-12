@@ -129,9 +129,29 @@ function compareOptions(pair: Pair, key: string): SchemaChange[] {
   ];
 }
 
+// Named schemas a recursive schema refers to, compared by name: a new one is an addition.
+function compareDefs(pair: Pair): SchemaChange[] {
+  const before = objectAt(pair.before, "$defs");
+  const after = objectAt(pair.after, "$defs");
+  return [
+    ...Object.keys(before).flatMap((name) => {
+      const where = `${pair.where}.$defs.${name}`;
+      return name in after
+        ? compareSchema(before[name], after[name], where)
+        : [change("removed", where, "the schema was removed")];
+    }),
+    ...Object.keys(after)
+      .filter((name) => !(name in before))
+      .map((name) => change("added", `${pair.where}.$defs.${name}`, "a new schema")),
+  ];
+}
+
 function compareKeyword(pair: Pair, key: string): SchemaChange[] {
   if (key === "properties") {
     return compareProperties(pair);
+  }
+  if (key === "$defs") {
+    return compareDefs(pair);
   }
   if (key === "required") {
     return "properties" in pair.before || "properties" in pair.after ? [] : compareLeaf(pair, key);
