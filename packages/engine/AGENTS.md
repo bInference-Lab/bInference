@@ -32,7 +32,9 @@ Rules for this package:
 - The venue host (`src/venues/`) is the only caller of venue code. It sets every trade's terms,
   copies what a venue returns, and refuses what it cannot read: a throw or a timeout is
   `venue_down`, a failed check `decode_mismatch` with the check named. A new check is a
-  `BuildMismatch` code, a case in `build-checks.test.ts` and a property case.
+  `BuildMismatch` code, a case in `build-checks.test.ts` and a property case. A venue's price
+  read reaches the watchers only through the host's copy, whose pricing step can neither throw nor
+  answer a price at or below zero (decision 0192).
 - Ports live in `src/ports.ts`, and custody's ceiling editor and wallet maker in
   `src/install/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.

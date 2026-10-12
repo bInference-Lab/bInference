@@ -27,6 +27,7 @@ import {
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { type HostedVenue, hostVenues } from "./hosted-venue.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
+import { type HostedPriceRead, readPrices } from "./read-prices.js";
 import { readSteps } from "./read-steps.js";
 
 /** A resolved trade the host quotes and builds on one venue. */
@@ -108,6 +109,17 @@ export interface VenueHost {
     token: AssetRef,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<readonly CurveClaim[], "venue_down">>;
+  /**
+   * How to price a token each block, for the price watcher: the reads of the launchpad that holds
+   * it on its curve, else of the first other venue that declares one for it, checked and copied
+   * (ARCHITECTURE.md section 9). A token no venue prices is `no_price_read`; a venue that throws,
+   * times out or answers outside its types, when no other one priced the token, is `venue_down`.
+   * Rejects with the signal's reason once it aborts.
+   */
+  priceRead(
+    token: AssetRef,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<HostedPriceRead, "no_price_read" | "venue_down">>;
   /** Whether the venue is a launchpad the host holds: one that reads its curve. */
   isLaunchpad(venue: string): boolean;
   /**
@@ -291,6 +303,10 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
     async curves(token, { signal }) {
       signal.throwIfAborted();
       return readCurves(token, venues, callOf(signal));
+    },
+    async priceRead(token, { signal }) {
+      signal.throwIfAborted();
+      return readPrices(token, venues, callOf(signal));
     },
     isLaunchpad(venue) {
       const hosted = venues.get(venue);
