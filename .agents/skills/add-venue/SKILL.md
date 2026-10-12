@@ -55,6 +55,13 @@ Keep the folders that the existing venues use:
 - `src/<venue>-venue.ts`: `defineVenue` with the id and, per chain, the registry contract names,
   the calls the venue makes (contract and ABI) and the spenders it approves. The Privy ceiling
   allows only declared calls and spenders, so declare exactly what the venue calls.
+- A venue that holds the state a token's price comes from declares its price reads: `priceRead`
+  answers the read calls that price a token (a pool's state, a curve's reserves or price), at
+  most four, and a pure `price` step over their answers that answers `unpriced`, never a throw.
+  The price watcher asks every watched token's calls in one Multicall3 call each block, so the
+  calls take no block of their own. A launchpad prices the tokens on its curve; an aggregator that
+  owns no pools declares none, and the chain family's pool reads price its tokens (decision
+  0192). The venue's test runs `priceReaderContract`.
 - Errors are `BinferenceError` with codes under the venue's id (`<venue>.bad_options`).
 
 ## 4. Tests
