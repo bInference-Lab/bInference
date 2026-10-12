@@ -17,7 +17,10 @@ export interface WatchEntry {
   /** Blocks in a row whose answers priced nothing with the plan in hand. */
   readonly misses: number;
   readonly isPlanning: boolean;
-  /** Whether a plan, or a new one beside the one in hand, is wanted from `nextPlanAtMs`. */
+  /**
+   * Whether a plan, or a new one beside the one in hand, is wanted from `nextPlanAtMs`: always,
+   * once a plan came, as the pools are found again every 10 minutes.
+   */
   readonly wantsPlan: boolean;
   readonly nextPlanAtMs: number;
   /** Set once the token has no plan after one was looked for, until one comes. */
@@ -28,6 +31,17 @@ export interface WatchEntry {
 const maxMisses = 3;
 // A plan that says it no longer holds this soon after it came waits this long for the next.
 const replanGuardMs = 2_000;
+// Each token's pools are found again this often, the pool in use pricing meanwhile, each token a
+// little before at a time of its own so a watch list planned at once is not found again at once
+// (decision 0194).
+const rediscoverMs = 600_000;
+const staggerStepMs = 7_919;
+const staggerSpanMs = 60_000;
+
+// The time after a plan came that the token's pools are found again.
+function rediscoverAfterMs(life: number): number {
+  return rediscoverMs - ((life * staggerStepMs) % staggerSpanMs);
+}
 
 /** A token first watched, which wants a plan at once. */
 export function newEntry(life: number): WatchEntry {
@@ -48,7 +62,7 @@ export function isPlanDue(entry: WatchEntry, nowMs: number): boolean {
   return entry.wantsPlan && !entry.isPlanning && entry.nextPlanAtMs <= nowMs;
 }
 
-/** A new plan replaces the one in hand. */
+/** A new plan replaces the one in hand; the token's pools are found again 10 minutes later. */
 export function planFound(entry: WatchEntry, plan: PlannedToken, nowMs: number): WatchEntry {
   return {
     ...entry,
@@ -56,21 +70,27 @@ export function planFound(entry: WatchEntry, plan: PlannedToken, nowMs: number):
     plannedAtMs: nowMs,
     misses: 0,
     isPlanning: false,
-    wantsPlan: false,
+    wantsPlan: true,
+    nextPlanAtMs: nowMs + rediscoverAfterMs(entry.life),
     isUnpriced: false,
   };
 }
 
-/** No plan came: the plan in hand, if any, prices on, and the next look is `waitMs` away. */
+/**
+ * No plan came. A plan in hand that prices goes on until the next time the pools are found again;
+ * else the next look is `waitMs` away.
+ */
 export function planMissing(
   entry: WatchEntry,
   at: { readonly nowMs: number; readonly waitMs: number },
 ): WatchEntry {
+  const isPricing = entry.plan !== undefined && entry.misses === 0;
+  const waitMs = isPricing ? rediscoverAfterMs(entry.life) : at.waitMs;
   return {
     ...entry,
     isPlanning: false,
     wantsPlan: true,
-    nextPlanAtMs: at.nowMs + at.waitMs,
+    nextPlanAtMs: at.nowMs + waitMs,
     isUnpriced: entry.plan === undefined,
   };
 }
@@ -108,9 +128,13 @@ export function reported(
     return { ...withoutPlan(entry), misses: 0, wantsPlan: true, nextPlanAtMs, isUnpriced: true };
   }
   const misses = entry.misses + 1;
-  const isDueAgain = misses >= maxMisses && !entry.wantsPlan;
-  return isDueAgain
-    ? { ...entry, misses, wantsPlan: true, nextPlanAtMs: outcome.nowMs }
+  return misses === maxMisses
+    ? {
+        ...entry,
+        misses,
+        wantsPlan: true,
+        nextPlanAtMs: Math.min(entry.nextPlanAtMs, outcome.nowMs),
+      }
     : { ...entry, misses };
 }
 

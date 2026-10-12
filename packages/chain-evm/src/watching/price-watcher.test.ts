@@ -437,6 +437,21 @@ describe("price watcher", () => {
     ]);
   });
 
+  it("finds each token's pools again every 10 minutes, each at a time of its own, pricing meanwhile", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(1));
+    subject.watcher.watch(tokenOf(2));
+    await subject.clock.advance(0);
+    const timesPlanned = (index: number): number =>
+      subject.planned.filter((token) => token === tokenOf(index)).length;
+    await subject.clock.advance(588_000);
+    expect([timesPlanned(1), timesPlanned(2)]).toStrictEqual([1, 2]);
+    await subject.clock.advance(12_000);
+    expect([timesPlanned(1), timesPlanned(2)]).toStrictEqual([2, 2]);
+    await nextBlock(subject, 101n);
+    expect(subject.prices.map(({ token }) => token)).toStrictEqual([tokenOf(1), tokenOf(2)]);
+  });
+
   it("finds another plan at once when the answers say the plan no longer holds", async () => {
     const subject = rig();
     subject.watcher.watch(tokenOf(994));

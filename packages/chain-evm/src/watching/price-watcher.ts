@@ -221,10 +221,11 @@ async function runWatcher(parts: RunParts, signal: AbortSignal): Promise<void> {
  * N, and 200 tokens cost one call a block as one does. A token is read once however many watch it.
  * Behind, it reads the blocks up to the head at once, each its own call sent together, and hands
  * their prices on in block order; behind by more than four, it reads the newest four and counts
- * the rest as skipped. A token
- * whose answers price nothing, such as one that left its curve, is planned again; one no reader
- * prices is asked about again 30 seconds later. A batch that fails is read again a block time
- * later; the watcher never stops for the chain. A fault of its own ends the block source and the
+ * the rest as skipped. A token's plan is kept through two blocks whose answers price nothing and
+ * replaced after the third, or at once when its answers say it no longer holds, such as a token
+ * that left its curve or a pool gone thin; its pools are found again every 10 minutes while it
+ * prices. A token no reader prices is asked about again 30 seconds later. A batch that fails is
+ * read again a block time later; the watcher never stops for the chain. A fault of its own ends the block source and the
  * reads together, and `run` rejects with it.
  */
 export function createPriceWatcher(options: PriceWatcherOptions): PriceWatcher {
