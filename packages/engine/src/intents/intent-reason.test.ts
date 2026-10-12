@@ -4,6 +4,7 @@ import {
   checkReasons,
   failureReasons,
   intentReasons,
+  orderSkipReasons,
   policyReasons,
   riskReasons,
 } from "./intent-reason.js";
@@ -64,8 +65,15 @@ describe("intent reasons", () => {
     expect(intentReasons).toHaveLength(34);
   });
 
-  it("has a reason message in English and Chinese for every reason code", () => {
-    const wanted = intentReasons.map((code) => `reason.${code}`).toSorted();
+  it("keeps an order's skip reasons apart from the reasons an intent stores", () => {
+    expect(orderSkipReasons).toStrictEqual(["copy_daily_cap"]);
+    expect(intentReasons.filter((code) => new Set<string>(orderSkipReasons).has(code))).toEqual([]);
+  });
+
+  it("has a reason message in English and Chinese for every intent and skip reason", () => {
+    const wanted = [...intentReasons, ...orderSkipReasons]
+      .map((code) => `reason.${code}`)
+      .toSorted();
     const found = messageLocales.map((locale) =>
       Object.keys(messages[locale])
         .filter((key) => key.startsWith("reason."))

@@ -95,3 +95,10 @@ export type IntentReason = PolicyReason | RiskReason | CheckReason | FailureReas
 export const intentReasons: readonly IntentReason[] = [
   ...new Set<IntentReason>([...policyReasons, ...riskReasons, ...checkReasons, ...failureReasons]),
 ];
+
+/**
+ * Why an auto order skipped a fill before any intent was stored (spec 6, section 4):
+ * `copy_daily_cap`, a copy order's buy that would pass its daily cap for the leader. The skip is
+ * an `order_fills` row with its reason, and its message is `reason.<code>` like an intent's.
+ */
+export const orderSkipReasons = ["copy_daily_cap"] as const;
