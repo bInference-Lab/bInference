@@ -3,9 +3,10 @@ import { BinferenceError } from "@binference/core";
 import type { Address } from "viem";
 import type { FeedAsset } from "../prices/price-from-round.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
-import type { BlockRead, ReadQuarantine } from "./price-batch.js";
+import type { BlockRead } from "./price-batch.js";
 import { quoteFeedReads } from "./quote-feeds.js";
 import { type AggregateCall, readAggregate } from "./read-aggregate.js";
+import { batchGasOf, readIsolated } from "./read-isolated.js";
 import type { PlannedToken } from "./watch-list.js";
 
 /** What a watcher reads its blocks' batches with. */
@@ -42,12 +43,6 @@ function splitAnswers(
   return { tokens, rest: answers.slice(offset) };
 }
 
-// Multicall3 hands every call all the gas left and takes no limit per call, so the batch is bounded
-// as a whole: 1,000,000 a call, at most the 50,000,000 that geth and its forks allow a call by
-// default (decision 0194).
-const gasPerCall = 1_000_000n;
-const maxBatchGas = 50_000_000n;
-
 // Faults a node answers about the batch itself, which a call in it may have caused.
 const batchFaults: ReadonlySet<string> = new Set(["chain.rpc_error", "chain.multicall_mismatch"]);
 
@@ -56,57 +51,16 @@ async function ask(
   calls: readonly AggregateCall[],
   block: bigint,
 ): Promise<readonly ReadAnswer[]> {
-  const gas = BigInt(calls.length + 1) * gasPerCall;
   return readAggregate(reader.rpc, {
     multicall: reader.multicall,
     calls,
     block,
     signal: reader.signal,
     atHead: true,
-    gas: gas < maxBatchGas ? gas : maxBatchGas,
+    gas: batchGasOf(calls.length),
     ...(reader.timeoutMs === undefined ? {} : { timeoutMs: reader.timeoutMs }),
     ...(reader.preferEndpoint === undefined ? {} : { preferEndpoint: reader.preferEndpoint }),
   });
-}
-
-/** Tokens read apart: each with its answers, and the ones whose calls fail any batch. */
-interface Isolated {
-  readonly tokens: BlockRead["tokens"];
-  readonly quarantined: readonly ReadQuarantine[];
-}
-
-// Reads a group of tokens at one block, and, when the node refuses the group's batch, each half
-// apart at the same block, down to the single tokens whose calls the node refuses.
-async function isolate(
-  reader: BlockReader,
-  group: readonly PlannedToken[],
-  block: bigint,
-): Promise<Isolated> {
-  try {
-    const answers = await ask(
-      reader,
-      group.flatMap(({ calls }) => calls),
-      block,
-    );
-    return { tokens: splitAnswers(group, answers).tokens, quarantined: [] };
-  } catch (error) {
-    if (!(error instanceof BinferenceError) || !batchFaults.has(error.code)) {
-      throw error;
-    }
-    const [only] = group;
-    if (group.length === 1 && only !== undefined) {
-      return { tokens: [], quarantined: [{ token: only.token, block, code: error.code }] };
-    }
-    const middle = Math.ceil(group.length / 2);
-    const halves = await Promise.all([
-      isolate(reader, group.slice(0, middle), block),
-      isolate(reader, group.slice(middle), block),
-    ]);
-    return {
-      tokens: halves.flatMap(({ tokens }) => tokens),
-      quarantined: halves.flatMap(({ quarantined }) => quarantined),
-    };
-  }
 }
 
 // One batch for every planned token and the feeds of their quote assets, at one block. A batch the
@@ -134,8 +88,14 @@ async function readWhole(
       throw error;
     }
     const feedAnswers = await ask(reader, feeds.calls, block);
-    const { tokens, quarantined } = await isolate(reader, planned, block);
-    return { block, tokens, feeds, feedAnswers, quarantined };
+    const isolated = await readIsolated(async (calls) => ask(reader, calls, block), planned);
+    return {
+      block,
+      tokens: isolated.answered.map(({ group, answers }) => ({ planned: group, answers })),
+      feeds,
+      feedAnswers,
+      quarantined: isolated.refused.map(({ group, code }) => ({ token: group.token, block, code })),
+    };
   }
 }
 

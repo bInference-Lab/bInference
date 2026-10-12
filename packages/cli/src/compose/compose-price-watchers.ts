@@ -17,6 +17,7 @@ import {
 import type { OrderStore } from "@binference/engine/orders";
 import type { ChainWatch, LatestPrice } from "./chain-watch.js";
 import type { Closers } from "./closers.js";
+import { type DecimalsBook, decimalsBookOf } from "./decimals-book.js";
 import type { HealthSignal } from "./health-signals.js";
 import { isConfirmed, isUrgent } from "./price-confirmation.js";
 import { startRepeatingTimer } from "./repeating-timer.js";
@@ -71,27 +72,6 @@ const crossCheckEveryMs = 15_000;
 const gapLimitBps = 1_000;
 // A round of the cross-check gives up past this, each source's wait for its turn included.
 const crossCheckTimeoutMs = 30_000;
-
-/** The decimals of the watched tokens, each read once. */
-interface DecimalsBook {
-  readonly known: Map<AssetRef, number>;
-  read(tokens: readonly AssetRef[], signal: AbortSignal): Promise<void>;
-}
-
-function decimalsBookOf(readDecimals: ReadDecimals): DecimalsBook {
-  const known = new Map<AssetRef, number>();
-  return {
-    known,
-    async read(tokens, signal) {
-      const unknown = tokens.filter((token) => !known.has(token));
-      if (unknown.length > 0) {
-        for (const [token, value] of await readDecimals(unknown, signal)) {
-          known.set(token, value);
-        }
-      }
-    },
-  };
-}
 
 function latestOf(watches: ReadonlyMap<ChainRef, ChainWatch>): readonly LatestPrice[] {
   return [...watches.values()].flatMap((watch) => watch.latest());
@@ -151,7 +131,7 @@ function crossCheckOf(
  * logging `watcher.price_gap` for a price 10% or more away from a source's.
  */
 export function composePriceWatchers(options: PriceWatchersOptions): ComposedPriceWatchers {
-  const decimals = decimalsBookOf(options.decimals);
+  const decimals = decimalsBookOf(options.decimals, options.clock);
   const orders: WatchedOrders = createWatchedOrders(options);
   const parts: { check?: PriceCrossCheck } = {};
   const watching: WatcherChecks = {

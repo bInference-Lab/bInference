@@ -3,6 +3,7 @@ import { type Address, decodeFunctionResult, encodeFunctionData, erc20Abi, type 
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { numberAnswer } from "../watching/pool-state.js";
 import { readAggregate } from "../watching/read-aggregate.js";
+import { batchGasOf, readIsolated } from "../watching/read-isolated.js";
 
 const decimalsCall = encodeFunctionData({ abi: erc20Abi, functionName: "decimals" });
 // ERC-20 writes decimals as a `uint8`; a token that answers more is not read.
@@ -19,9 +20,11 @@ function decimalsOf(answer: ReadAnswer): number | undefined {
 }
 
 /**
- * The decimals of each ERC-20 token, all read in one Multicall3 call at the latest block. A token
- * whose `decimals()` reverts, or answers anything but one `uint8` word, is left out. Rejects when
- * no endpoint answers, and with the signal's reason once it aborts.
+ * The decimals of each ERC-20 token, all read in one Multicall3 call at the latest block, bounded
+ * in gas. A token whose `decimals()` reverts, answers anything but one `uint8` word, or fails the
+ * whole batch, as one that burns its gas does, is left out: a batch the node refuses is read again
+ * in halves (decision 0194). Rejects when no endpoint answers, and with the signal's reason once it
+ * aborts.
  */
 export async function readTokenDecimals(
   rpc: RpcFailover,
@@ -35,12 +38,20 @@ export async function readTokenDecimals(
   if (request.tokens.length === 0) {
     return new Map();
   }
-  const calls = request.tokens.map((target) => ({ target, callData: decimalsCall }));
-  const answers = await readAggregate(rpc, { ...request, calls });
+  const groups = request.tokens.map((target) => ({
+    token: target,
+    calls: [{ target, callData: decimalsCall }],
+  }));
+  const { multicall, signal } = request;
+  const isolated = await readIsolated(
+    async (calls) =>
+      readAggregate(rpc, { multicall, calls, signal, gas: batchGasOf(calls.length) }),
+    groups,
+  );
   return new Map(
-    request.tokens.flatMap((token, index) => {
-      const decimals = decimalsOf(answers[index]);
-      return decimals === undefined ? [] : [[token, decimals] as const];
+    isolated.answered.flatMap(({ group, answers }) => {
+      const decimals = decimalsOf(answers[0]);
+      return decimals === undefined ? [] : [[group.token, decimals] as const];
     }),
   );
 }
