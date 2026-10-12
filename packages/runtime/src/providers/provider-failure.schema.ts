@@ -29,6 +29,8 @@ export interface FailureFacts {
   /** The provider's words, read only to tell a request over the context window. */
   readonly words?: string | undefined;
   readonly headers?: Headers | undefined;
+  /** The class the error's own details decide, before its code and status. */
+  readonly failure?: ModelFailure | undefined;
 }
 
 /** What an SDK's error answer carries: its status, the answer's headers and its body. */
@@ -128,7 +130,7 @@ function failureOfFacts(
   const status = facts.status ?? statusIn(facts.code);
   const byStatus = status === undefined ? "transient" : failureOfStatus(status);
   const byCode = facts.code === undefined ? undefined : failureOfCode(facts.code);
-  const failure = byCode ?? withContextWords(byStatus, facts.words);
+  const failure = facts.failure ?? byCode ?? withContextWords(byStatus, facts.words);
   const retryAfterMs =
     failure === "transient" ? retryAfterMsOf(facts.headers, context.nowMs) : undefined;
   return {
