@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184) and [0185](../DECISIONS.md#d0185); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185) and [0189](../DECISIONS.md#d0189); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -451,6 +451,30 @@ that is not active fails `alert.not_found`.
 An order that ends because another exit order emptied its position (spec 6, section 5) moves to
 `ended` with `endReason: "position_closed"`, and pushes `order/changed`.
 
+Auto orders follow [decision 0189](../DECISIONS.md#d0189):
+
+- `order/create` stores the order `awaiting_confirmation` and an `autoOrder` intent whose one card
+  (`card.order.action`) shows its terms with every default filled; it answers the order with
+  `intent`. The order becomes `active` only on the Confirm of that card; Cancel, a cancel of the
+  intent or a freeze makes it `cancelled`, the card's timer `expired`. Every change pushes
+  `order/changed`.
+- It refuses, storing nothing: an agent that is unknown (`agent.not_found`), archived
+  (`agent.archived`) or frozen (`agent.frozen`); a wallet that is not the agent's
+  (`wallet.not_found`); `dca` and `copy`, until their watchers run (`order.kind_unavailable`); and
+  with `protocol.bad_args` a token on no chain of the registry or the chain's coin, an expiry not in
+  the future, a price, worst price or size of zero, a trailing distance of 0 or `10000`, a share above
+  `10000`, a `takeProfit`, `stopLoss` or `trailing` order that does not sell, and a buy whose size is
+  not `{ usdMicros }`.
+- An order keeps its agent's mode when it was created (`paper`), and the outside-content mark of the
+  turn that proposed it (`outsideContent`), which its card shows.
+- A freeze moves the agent's `active` orders to `paused` and cancels those awaiting their card; an
+  unfreeze moves them back to `active`, or to `expired` past their expiry. A paused order never
+  fills.
+- `order/cancel` ends an order awaiting its card, active or paused, and cancels its intent's card.
+  The owner's clients and the agent runtime cancel any order; a client with `propose` alone only
+  the orders it proposed (`auth.scope`). An order that has ended fails `order.wrong_state`.
+- `notice.orderExpiring` goes once, 24 hours before an active or paused order expires.
+
 <a id="section-7-6"></a>
 
 ### 7.6 Limits, send levels and the address book
@@ -658,8 +682,9 @@ to the curve's quote token on a curve, and to the chain's coin in the pools. A `
 paper mode ends `rejected_policy` with `paper_only` (spec 6, section 4).
 
 `rescue` intents are created only by `safety/rescue`, `unfreeze` intents only by `safety/unfreeze`
-(`{ kind: "unfreeze", agent? }`), and fill intents only by the engine for an auto order or webhook
-rule.
+(`{ kind: "unfreeze", agent? }`), `autoOrder` intents only by `order/create`
+(`{ kind: "autoOrder", order }`, [decision 0189](../DECISIONS.md#d0189)), and fill intents only by
+the engine for an auto order or webhook rule.
 
 <a id="section-8-2"></a>
 
@@ -724,7 +749,9 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   read; `insiders` the wallets the launchpad or the risk step names as exempt or first holders;
   `creatorLaunches30d` the launches the engine recorded for the same creator in the 30 days before.
 - `OrderView.endReason?` says why an `ended` order ended: `position_closed` for an exit order whose
-  position another exit emptied. `AlertView` carries `wake`, `fires` and `expiresAt?` (section 8.4).
+  position another exit emptied. `OrderView.intent?` is the `autoOrder` intent that carries its
+  card, `paper?` its mode and `outsideContent?` the proposing turn's mark; `state` may be `paused`
+  while its agent is frozen ([decision 0189](../DECISIONS.md#d0189)). `AlertView` carries `wake`, `fires` and `expiresAt?` (section 8.4).
 - `OrderView`, `AlertView`, `ScheduleView`, `WalletView`, `AgentView`, `LimitsView`: the stored
   fields of spec 3 with ids and times as section 1 sets. `agent/list` adds each agent's
   `defaultWallet` to its `AgentView`.
@@ -822,7 +849,7 @@ later unchanged.
 | `rescue`   | `no_address`, `nothing_to_move`                                                                 |
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                           |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                              |
-| `order`    | `not_found`, `wrong_state`                                                                      |
+| `order`    | `not_found`, `wrong_state`, `kind_unavailable`                                                  |
 | `asset`    | `not_found`, `bad_address`                                                                      |
 | `name`     | `not_found`, `resolver_down`                                                                    |
 | `quote`    | `no_route`, `venue_down`                                                                        |

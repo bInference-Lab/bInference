@@ -5,8 +5,8 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115),
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
 [0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134),
-[0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0185](../DECISIONS.md#d0185) and
-[0186](../DECISIONS.md#d0186).
+[0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0185](../DECISIONS.md#d0185),
+[0186](../DECISIONS.md#d0186) and [0189](../DECISIONS.md#d0189).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
@@ -329,6 +329,12 @@ above {price}" or "at or below {price}" / 「价格达到或高于 {price}」 or
 
 - `{leader}` is the leader wallet's address book label, else its short address
   (`0x12ab…cd34`).
+- The card's header confirms an "auto order" / 「自动订单」, and `{maxFills}` counts the fills its
+  terms allow: an order with no limit says "no fill limit" / 「不限成交次数」 in place of "up to
+  {maxFills} fills" ([decision 0189](../DECISIONS.md#d0189)).
+- `{condition}` is `card.order.condition`: "at or above {price}" / 「价格达到或高于 {price}」 for
+  `direction: above`, "at or below {price}" / 「价格达到或低于 {price}」 for `below`.
+- `{spend}` is the buy's size in dollars, the only size a buy order takes today.
 - An auto order's card carries the "Agent says" line (`card.reason`) when its request has a
   `reason` (spec 1, section 8.2), in the same place as an intent's card.
 - An exit order's card carries `card.order.exitsLinked` when its position already has another

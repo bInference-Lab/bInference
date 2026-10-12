@@ -60,7 +60,8 @@ new name here first, in the change that uses it.
 - **card showing**: a card version as a button surface shows it, drawn from the stored intent with
   its callback reference and the assets it names.
 - **auto order**: a limit, take-profit, stop-loss, trailing, DCA or copy-trade order, confirmed
-  once. Each fill runs inside its bounds without a card.
+  once, on the card of its `autoOrder` intent. Each fill runs inside its bounds without a card.
+  While its agent is frozen it is **paused** and fills nothing.
 - **exit order**: a take-profit, stop-loss, trailing stop or limit sell on a position. When one
   exit order sells the whole position, the position's other exit orders end.
 - **place**: where a buy or sell runs: the token's launchpad curve while it is on one, else the DEX
