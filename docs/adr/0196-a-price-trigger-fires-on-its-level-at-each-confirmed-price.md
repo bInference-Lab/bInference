@@ -1,6 +1,6 @@
 # 0196. A price trigger fires on its level at each confirmed price
 
-Status: Accepted
+Status: Amended by 0197
 
 Accepted by the owner on 2026-10-12.
 

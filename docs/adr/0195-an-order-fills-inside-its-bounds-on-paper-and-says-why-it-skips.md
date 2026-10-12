@@ -1,6 +1,6 @@
 # 0195. An order fills inside its bounds, on paper, and says why it skips
 
-Status: Accepted
+Status: Amended by 0197
 
 Accepted by the owner on 2026-10-12.
 
