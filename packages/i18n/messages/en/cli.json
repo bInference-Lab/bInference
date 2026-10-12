@@ -203,6 +203,8 @@
   "check.unchecked": "This system does not tell binference who can open {count, plural, one {# file or folder} other {# files and folders}} of the state folder. Run `binference check --fix` to make them yours alone.",
   "check.configInvalid": "{file} has {count, plural, one {# problem} other {# problems}}:",
   "check.unlockFile": "The agent key and the Privy app secret are in files in {folder} (unlock mode `file`): a copy of this disk lets someone sign inside the ceiling until you remove the agent key. Set `engine.unlock.mode` to `keychain` or `command` where you can.",
+  "check.modelsUnpriced": "{count, plural, one {A model in the config has no price} other {# models in the config have no price}}, so {count, plural, one {its calls count} other {their calls count}} $0 against the daily model budget. Add {count, plural, one {it} other {them}} under `models.prices` in config.json5:",
+  "check.modelUnpriced": "{model}: its provider reports no cost, and neither `models.prices` nor the built-in table prices it",
   "error.homeNotAbsolute": "BINFERENCE_HOME is not an absolute path. Set it to a full path, or unset it to use the state folder in your home folder.",
   "error.pathTooLong": "The state folder's path is too long for a local socket. Set BINFERENCE_HOME to a shorter folder.",
   "error.unexpected": "binference stopped on an error ({code}). Run `binference logs` to see what happened.",

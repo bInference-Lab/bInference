@@ -47,8 +47,19 @@ function clientOver(engine: MemoryEngineChat, topics: Map<string, TopicHandlers>
     }
   };
   return {
-    call: async (op: string, args: Record<string, unknown>, options: { signal: AbortSignal }) =>
-      answer(op, args, options.signal),
+    call: async (
+      op: string,
+      args: Record<string, unknown>,
+      options: { signal: AbortSignal; key?: string },
+    ) =>
+      op === "usage/record"
+        ? {
+            budgetLeftMicros: await engine.recordUsage(
+              { ...args, key: options.key } as never,
+              options.signal,
+            ),
+          }
+        : answer(op, args, options.signal),
     subscribe(topic, handlers) {
       topics.set(topic, handlers);
       return () => topics.delete(topic);

@@ -74,13 +74,15 @@ function endEvents(end: StreamEnd): Step {
   if (finish === undefined) {
     return [malformed("it ended before the model finished")];
   }
+  // An answer the provider ended itself was still billed: its usage goes with the failure.
+  const billed = end.usage === undefined ? {} : { usage: end.usage };
   if (finish === "content_filter") {
     const message = "The provider's content filter stopped the answer.";
-    return [{ type: "error", failure: "refused", message }];
+    return [{ type: "error", failure: "refused", message, ...billed }];
   }
   if (finish === "error") {
     const message = "The model provider ended the answer with an error.";
-    return [{ type: "error", failure: "transient", message }];
+    return [{ type: "error", failure: "transient", message, ...billed }];
   }
   const ends = [...end.calls].toSorted((left, right) => left - right);
   return [

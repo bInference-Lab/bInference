@@ -1,7 +1,8 @@
 # Spec 8: the agent runtime
 
 Status: accepted by the owner on 2026-10-11, with the recommendations of its open questions. Its
-proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10.
+proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10. Amended by
+[decision 0191](../DECISIONS.md#d0191) (usage records and the loop notice).
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -537,10 +538,16 @@ The engine holds each agent's daily model budget ([ARCHITECTURE.md section 26](.
   pushes the paused status line. Owner messages, settle messages and the resume report wait, and
   the runtime starts their turn at `resumesAt`; scheduled and alert turns are skipped.
 - **After each call.** `usage/record` `{ agent, turn, model, inputTokens, outputTokens,
-cachedTokens, usdMicros }` is sent after each model call of every role, before the runtime acts
-  on the response, and answers `budgetLeftMicros`. The cost is the provider's own when it reports
-  one (the gateway's `usage.cost`), else `models.prices`, else the built-in table, else 0, and
-  `binference check` names a configured model with no price.
+cachedTokens, usdMicros }` is sent after each attempt of a model call of every role, answered or
+  failed, before the runtime acts on it or tries again, under the key `<turn>.usage.<n>` (`n`
+  counts the turn's attempts from 1), and answers `budgetLeftMicros`. The cost is the provider's
+  own when it reports one (the gateway's `usage.cost`), else `models.prices`, else the built-in
+  table, else 0, and `binference check` names a configured model with no price (`models.priced`).
+  A price charges the cached price for tokens read from the cache, 1.25 times the input price for
+  tokens written to it, and the input price for the rest, rounded up to the micro-dollar; a model
+  with a long-prompt price charges it once the whole input passes its threshold. A failed attempt
+  counts what its provider reported before it failed, else nothing
+  ([decision 0191](../DECISIONS.md#d0191)).
 - **Spent mid-turn.** When `budgetLeftMicros` is 0 or below, the batch of that response still runs,
   and no model call follows. The turn ends `budget`, or `ok` if it committed. The engine sends
   `notice.budget`.

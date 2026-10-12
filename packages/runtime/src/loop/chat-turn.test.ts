@@ -2,9 +2,17 @@ import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { RecordedStep, TurnRecorder } from "../testing/turn-recorder.js";
 import type { ModelEvent, ResponseReplay } from "./model-event.js";
-import { createTestTurn, ownerMessage, type TestTool } from "./test-turns.js";
+import { createTestTurn, ownerMessage, type TestTool, testTurnId } from "./test-turns.js";
 
 const usage = { inputTokens: 1, outputTokens: 1, cachedTokens: 0 };
+
+// The usage record of the turn's attempt `n` of an unpriced test model: it counts $0.
+const usageStep = (n: number): RecordedStep => ({
+  kind: "usage",
+  model: "test/model",
+  usdMicros: 0n,
+  key: `${testTurnId}.usage.${String(n)}`,
+});
 const portfolio: TestTool = { name: "portfolio", kind: "read" };
 const alert: TestTool = { name: "alert_create", kind: "control" };
 
@@ -21,6 +29,7 @@ describe("createChatTurn", () => {
     });
     expect(recorder.steps).toStrictEqual([
       { kind: "start", messages: ["msg_1"], outside: false },
+      usageStep(1),
       { kind: "response", text: "Hi." },
       { kind: "say", text: "Hi." },
       { kind: "journalEnd", outcome: "ok", heldBack: 0 },
@@ -77,12 +86,14 @@ describe("createChatTurn", () => {
       tools: [portfolio, alert],
     });
     await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", toolCalls: 2, modelCalls: 2 });
-    expect(recorder.steps.slice(1, 7)).toStrictEqual([
+    expect(recorder.steps.slice(1, 9)).toStrictEqual([
+      usageStep(1),
       { kind: "response", text: "Hm." },
       { kind: "call", id: "portfolio", name: "portfolio" },
       { kind: "result", id: "portfolio", text: "ran portfolio", ran: true, outside: false },
       { kind: "call", id: "alert_create", name: "alert_create" },
       { kind: "result", id: "alert_create", text: "ran alert_create", ran: true, outside: false },
+      usageStep(2),
       { kind: "response", text: "Done." },
     ]);
     expect(transport.requests[1]?.messages.slice(1)).toStrictEqual([
@@ -136,6 +147,7 @@ describe("createChatTurn", () => {
     });
     await expect(turn.run()).resolves.toMatchObject({ outcome: "failed" });
     expect(recorder.steps.slice(1)).toStrictEqual([
+      usageStep(1),
       { kind: "status", line: { line: "failed", failure: "auth" } },
       { kind: "journalEnd", outcome: "failed", heldBack: 0 },
       { kind: "end", outcome: "failed" },
@@ -279,6 +291,7 @@ describe("a response cut off at its output limit", () => {
     const reads = Array.from({ length: 24 }, (_unused, index) => ({
       id: `r${String(index)}`,
       name: "portfolio",
+      args: { page: index },
     }));
     const { turn, recorder, transport } = createTestTurn({
       replies: [callsReply(reads), cutOffCalls(3), textReply("never")],

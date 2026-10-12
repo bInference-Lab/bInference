@@ -100,6 +100,11 @@ async function runsATurn(harness: EngineChatHarness): Promise<void> {
   const started = await chat.startTurn(start, live());
   assert.equal(started.started && typeof started.budgetLeftMicros, "bigint");
   await chat.markTurn(at, live());
+  const usage = { model: "p/m", inputTokens: 10, outputTokens: 2, cachedTokens: 4 };
+  const before = started.started ? started.budgetLeftMicros : 0n;
+  const left = await chat.recordUsage({ ...at, ...usage, usdMicros: 7n, key: "u.1" }, live());
+  const again = await chat.recordUsage({ ...at, ...usage, usdMicros: 7n, key: "u.1" }, live());
+  assert.ok(left <= before && again === left);
   await chat.sayTurn({ ...at, session: posted.session, text: "Done.", final: true }, live());
   await chat.turnStatus({ ...at, statusKey: "turn.stopped" }, live());
   await chat.endTurn({ ...at, outcome: "ok" }, live());
@@ -142,8 +147,9 @@ async function listsStopAndClear(harness: EngineChatHarness): Promise<void> {
 
 /**
  * The contract every {@link EngineChat} keeps (runtime spec, sections 3.2 and 4.3): the owner's
- * messages wait in the inbox until taken and reach a watcher, a turn starts, takes its mark, text
- * and status, and ends on the agent's chat topic, an unknown agent's turn is refused, and stops
+ * messages wait in the inbox until taken and reach a watcher, a turn starts, takes its mark, its
+ * usage (a record sent again counted once, the budget left never rising), its text and status, and
+ * ends on the agent's chat topic, an unknown agent's turn is refused, and stops
  * and clears reach the runtime.
  */
 export function engineChatContract(harness: EngineChatHarness): readonly ContractCheck[] {
@@ -157,7 +163,7 @@ export function engineChatContract(harness: EngineChatHarness): readonly Contrac
       run: async () => pushesToWatcher(harness),
     },
     {
-      name: "starts, marks, says, sets the status of and ends a turn on the chat topic",
+      name: "starts, marks, records the usage of, says, sets the status of and ends a turn",
       run: async () => runsATurn(harness),
     },
     {

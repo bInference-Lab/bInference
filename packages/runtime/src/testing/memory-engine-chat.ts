@@ -1,6 +1,11 @@
 import type { Id } from "@binference/core";
 import type { InboxMessageView } from "@binference/protocol";
-import type { EngineTurnStart, InboxWatch, TurnStartAnswer } from "../relay/engine-chat-records.js";
+import type {
+  EngineTurnStart,
+  EngineUsage,
+  InboxWatch,
+  TurnStartAnswer,
+} from "../relay/engine-chat-records.js";
 import type { EngineChat } from "../relay/ports.js";
 import { nthTestId } from "./memory-agent-stores.js";
 
@@ -43,6 +48,8 @@ export interface MemoryEngineChat extends EngineChat {
   link(state: "up" | "down"): void;
   running(agent: Id<"agt">): Running | undefined;
   readonly pushes: readonly ChatPush[];
+  /** Each `usage/record` the engine took, once per key, in order. */
+  readonly usage: readonly EngineUsage[];
   /** Settles with the first push `match` accepts, made already or to come. */
   waitForPush(match: (push: ChatPush) => boolean): Promise<ChatPush>;
   /** The ids of the messages the runtime has not taken. */
@@ -61,7 +68,11 @@ interface FakeState {
   readonly waiters: Set<(push: ChatPush) => void>;
   readonly ids: () => number;
   readonly down: Set<"link">;
+  readonly usage: EngineUsage[];
 }
+
+/** Each agent's model budget in the fake engine: $1 a day. */
+const dailyBudgetMicros = 1_000_000n;
 
 const pageSize = 50;
 
@@ -133,7 +144,25 @@ function startTurn(state: FakeState, start: EngineTurnStart): TurnStartAnswer {
   const { agent, turn, messages, outsideContent } = start;
   state.running.set(agent, { turn, messages, marked: outsideContent });
   pushChat(state, { kind: "chat/turnStarted", agent, turn });
-  return { started: true, budgetLeftMicros: 1_000_000n };
+  return { started: true, budgetLeftMicros: budgetLeft(state, agent) };
+}
+
+function budgetLeft(state: FakeState, agent: Id<"agt">): bigint {
+  const spent = state.usage
+    .filter((record) => record.agent === agent)
+    .reduce((sum, record) => sum + record.usdMicros, 0n);
+  return dailyBudgetMicros - spent;
+}
+
+// A record sent again under its key is counted once, as the engine keeps a write's key.
+function recordUsage(state: FakeState, usage: EngineUsage): bigint {
+  if (!state.agents.has(usage.agent)) {
+    throw new Error("The agent is unknown.");
+  }
+  if (!state.usage.some((record) => record.key === usage.key)) {
+    state.usage.push(usage);
+  }
+  return budgetLeft(state, usage.agent);
 }
 
 function engineSide(state: FakeState): EngineChat {
@@ -166,8 +195,12 @@ function engineSide(state: FakeState): EngineChat {
 
 function turnCalls(
   state: FakeState,
-): Pick<EngineChat, "markTurn" | "sayTurn" | "turnStatus" | "endTurn"> {
+): Pick<EngineChat, "markTurn" | "sayTurn" | "turnStatus" | "recordUsage" | "endTurn"> {
   return {
+    async recordUsage(usage, signal) {
+      reach(state, signal);
+      return Promise.resolve(recordUsage(state, usage));
+    },
     async markTurn({ agent, turn }, signal) {
       reach(state, signal);
       const running = state.running.get(agent);
@@ -237,6 +270,7 @@ export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngi
     waiters: new Set(),
     ids: counterFrom(1_000),
     down: new Set(),
+    usage: [],
   };
   return {
     ...engineSide(state),
@@ -257,6 +291,7 @@ export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngi
     },
     running: (agent) => state.running.get(agent),
     pushes: state.pushes,
+    usage: state.usage,
     waitForPush: async (match) => waitForPush(state, match),
     untaken: () =>
       state.inbox.filter((view) => !state.taken.has(view.message)).map((view) => view.message),

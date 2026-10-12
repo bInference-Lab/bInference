@@ -244,7 +244,7 @@ describe("a committed turn", () => {
       committed: true,
       modelCalls: 1,
     });
-    expect(recorder.steps.slice(4, 9)).toStrictEqual([
+    expect(recorder.steps.slice(5, 10)).toStrictEqual([
       { kind: "proposal", id: "swap", key: `${testTurnId}.2` },
       { kind: "tool", name: "swap", key: `${testTurnId}.2` },
       {

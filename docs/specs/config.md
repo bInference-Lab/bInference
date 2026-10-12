@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185) and [0186](../DECISIONS.md#d0186);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186) and [0191](../DECISIONS.md#d0191);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -153,7 +153,7 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 | `models.cooldownMs`               | integer                                                   | `60000`                                      | live    | A failing provider rests this long                                       |
 | `models.maxToolCallsPerTurn`      | integer                                                   | `25`                                         | live    | [decision 0049](../DECISIONS.md#d0049)                                   |
 | `models.loopDetection`            | boolean                                                   | `true`                                       | live    | [decision 0049](../DECISIONS.md#d0049)                                   |
-| `models.prices.<provider/model>`  | `{ inputPerMTokUsd, outputPerMTokUsd, cachedPerMTokUsd }` | built-in table                               | live    | For usage views and the budget                                           |
+| `models.prices.<provider/model>`  | `{ inputPerMTokUsd, outputPerMTokUsd, cachedPerMTokUsd }` | built-in table                               | live    | For usage views and the budget; a cache write costs 1.25x the input      |
 
 <a id="section-6-4"></a>
 

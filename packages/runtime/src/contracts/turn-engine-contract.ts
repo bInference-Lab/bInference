@@ -37,6 +37,9 @@ async function runsATurn(harness: TurnEngineHarness): Promise<void> {
   assert.equal(started.ok && typeof started.value.budgetLeftMicros, "bigint");
   assert.deepEqual((await read()).started, { messages, outside: false });
   assert.equal((await read()).running, true);
+  const usage = { model: "p/m", inputTokens: 10, outputTokens: 2, cachedTokens: 4, usdMicros: 7n };
+  const recorded = await engine.recordUsage({ ...usage, key: "u.1" }, live());
+  assert.equal(typeof recorded.budgetLeftMicros, "bigint");
   await engine.say("Done.", live());
   await engine.status({ line: "moreProposals", count: 2 }, live());
   await engine.status({ line: "proposalRefused" }, live());
@@ -83,9 +86,9 @@ async function refusesAborted(harness: TurnEngineHarness): Promise<void> {
 
 /**
  * The contract every {@link TurnEngine} keeps (runtime spec, section 4.3): the engine starts the
- * turn and holds it as running until its end, takes its mark, carries its text and its status
- * lines as spec 4's keys, refuses a turn of an archived or unknown agent, and an aborted signal
- * rejects the call.
+ * turn and holds it as running until its end, takes its mark and each model call's usage, carries
+ * its text and its status lines as spec 4's keys, refuses a turn of an archived or unknown agent,
+ * and an aborted signal rejects the call.
  */
 export function turnEngineContract(harness: TurnEngineHarness): readonly ContractCheck[] {
   return [

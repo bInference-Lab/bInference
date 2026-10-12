@@ -2,6 +2,7 @@ import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
 import {
   createScriptedTransport,
+  createTestChain,
   oneModelChain,
   type ScriptedReply,
   type ScriptedTransport,
@@ -11,6 +12,7 @@ import {
   type TurnRecorder,
   type TurnRecorderOptions,
 } from "../testing/turn-recorder.js";
+import type { ModelPrice } from "../usage/model-price.js";
 import { type ChatTurn, createChatTurn } from "./chat-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
 import type { ModelChain, ToolBox, TurnEngine } from "./ports.js";
@@ -90,6 +92,8 @@ export interface TestTurnOptions {
   readonly turnId?: string;
   /** The turn's models in place of one model answering `replies`, made on the turn's clock. */
   readonly models?: (clock: ManualClock) => ModelChain;
+  /** The one model answering `replies`: its name, `test/model` when absent, and its price. */
+  readonly model?: { readonly name: string; readonly price?: ModelPrice };
   /** The turn's clock in place of a new one, such as one a chain's rests already use. */
   readonly clock?: ManualClock;
 }
@@ -114,7 +118,11 @@ function testParts(
   const { transport, recorder, clock } = made;
   const tools = typeof options.tools === "function" ? options.tools(recorder) : options.tools;
   return {
-    models: options.models?.(clock) ?? oneModelChain(transport, clock),
+    models:
+      options.models?.(clock) ??
+      (options.model === undefined
+        ? oneModelChain(transport, clock)
+        : createTestChain([{ ...options.model, transport }], { clock })),
     tools: options.box ?? testToolBox(tools ?? []),
     journal: recorder.journal,
     engine: options.engine ?? recorder.engine,

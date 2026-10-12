@@ -134,4 +134,32 @@ describe("binference check", () => {
     const warning = String(messages.zh["cli.check.unlockFile"]).replace("{folder}", keys);
     expect(chinese.stdout).toContain(`  ${warning}\n`);
   });
+
+  it(
+    "names each configured model with no price, which counts $0 against the budget",
+    slow,
+    async () => {
+      const machine = await machines.create(nowMs);
+      const models = [
+        "  models: {",
+        '    providers: { claude: { kind: "anthropic" }, local: { kind: "openai" } },',
+        '    main: "claude/claude-sonnet-4-6",',
+        '    fast: "local/llama-4",',
+        '    fallbacks: { main: ["local/qwen-9", "local/llama-4"] },',
+        '    prices: { "local/llama-4": { inputPerMTokUsd: "0.1", outputPerMTokUsd: "0.2", cachedPerMTokUsd: "0" } },',
+        "  },\n",
+      ].join("\n");
+      await writeTestConfig(machine.folder, models);
+      const checked = await findings(machine);
+      const english = await runOn(machine, ["check"]);
+
+      expect(checked.byCheck.get("models.priced")).toStrictEqual({
+        check: "models.priced",
+        level: "warn",
+        models: ["local/qwen-9"],
+      });
+      expect(checked.code).toBe(0);
+      expect(english.stdout).toContain("  local/qwen-9: its provider reports no cost");
+    },
+  );
 });

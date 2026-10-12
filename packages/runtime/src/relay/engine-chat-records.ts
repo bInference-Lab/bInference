@@ -57,6 +57,16 @@ export interface EngineStatus extends EngineTurn {
   readonly values?: Readonly<Record<string, number>>;
 }
 
+/** `usage/record`: one model call attempt's tokens and cost, under the record's own key. */
+export interface EngineUsage extends EngineTurn {
+  readonly model: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cachedTokens: number;
+  readonly usdMicros: bigint;
+  readonly key: string;
+}
+
 /** `turn/end`: how the turn ended. */
 export interface EngineTurnEnd extends EngineTurn {
   readonly outcome: TurnOutcome;

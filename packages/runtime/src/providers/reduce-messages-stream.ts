@@ -188,7 +188,8 @@ function endEvents(end: StreamEnd): Step {
     const named = end.refusal !== undefined && /^[\w.-]{1,64}$/.test(end.refusal);
     const category = named ? ` (${end.refusal ?? ""})` : "";
     const message = `The provider stopped the answer for its safety rules${category}.`;
-    return [{ type: "error", failure: "refused", message }];
+    // A refused answer was still billed: its usage goes with the failure.
+    return [{ type: "error", failure: "refused", message, usage: messagesUsageOf(end.usage) }];
   }
   const replay = replayOf(end.blocks);
   return [

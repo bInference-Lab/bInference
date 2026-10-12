@@ -2,6 +2,7 @@ import { type AttemptStep, stepAfter } from "./attempt-policy.js";
 import type { ModelEvent } from "./model-event.js";
 import type { ModelChain } from "./ports.js";
 import { type ModelFault, type ModelResponse, readModelResponse } from "./read-model-response.js";
+import { recordAttempt } from "./record-usage.js";
 import type { ModelRequest } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
@@ -112,7 +113,8 @@ async function attemptFrom(
   state: CallState,
 ): Promise<ModelResponse> {
   const response = await attempt(run, state.at, request);
-  if (response.ok) {
+  await recordAttempt(run, state.at, response);
+  if (response.ok || run.tally.now().budgetSpent) {
     return response;
   }
   const committed = run.tally.now().committed;
@@ -137,7 +139,8 @@ async function attemptFrom(
  * One model call of the turn (runtime spec, section 8.2): the turn's current model of its chain,
  * or the first after it whose provider does not rest, tried again on a passing fault, then swapped
  * for the next model of the chain, until it answers or no step is left. A fallback lasts for the
- * turn. Only the attempt that answers, or the last one, is the call's response: what a failed
+ * turn. Each attempt's usage is recorded with the engine before the next step; once the budget is
+ * spent, no attempt follows. Only the attempt that answers, or the last one, is the call's response: what a failed
  * attempt wrote before it failed goes nowhere.
  */
 export async function callModel(run: TurnRun, request: ModelRequest): Promise<ModelResponse> {

@@ -72,7 +72,7 @@ describe("createMessagesTransport", () => {
       {
         type: "done",
         stop: "end",
-        usage: { inputTokens: 812, outputTokens: 9, cachedTokens: 800 },
+        usage: { inputTokens: 812, outputTokens: 9, cachedTokens: 800, cacheWriteTokens: 0 },
       },
     ]);
   });
@@ -89,7 +89,7 @@ describe("createMessagesTransport", () => {
       {
         type: "done",
         stop: "tool_calls",
-        usage: { inputTokens: 3248, outputTokens: 41, cachedTokens: 0 },
+        usage: { inputTokens: 3248, outputTokens: 41, cachedTokens: 0, cacheWriteTokens: 2048 },
       },
     ]);
   });
@@ -104,7 +104,7 @@ describe("createMessagesTransport", () => {
       {
         type: "done",
         stop: "tool_calls",
-        usage: { inputTokens: 300, outputTokens: 120, cachedTokens: 0 },
+        usage: { inputTokens: 300, outputTokens: 120, cachedTokens: 0, cacheWriteTokens: 0 },
         replay: {
           format: "messages",
           content: [
@@ -129,7 +129,7 @@ describe("createMessagesTransport", () => {
       {
         type: "done",
         stop: "tool_calls",
-        usage: { inputTokens: 20, outputTokens: 12, cachedTokens: 0 },
+        usage: { inputTokens: 20, outputTokens: 12, cachedTokens: 0, cacheWriteTokens: 0 },
       },
     ]);
   });
@@ -159,6 +159,8 @@ describe("createMessagesTransport", () => {
         type: "error",
         failure: "refused",
         message: "The provider stopped the answer for its safety rules (cyber).",
+        // A refused answer was billed, so its usage goes with the failure.
+        usage: { inputTokens: 40, outputTokens: 3, cachedTokens: 0, cacheWriteTokens: 0 },
       },
     ]);
   });

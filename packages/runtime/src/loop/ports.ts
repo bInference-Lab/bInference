@@ -13,6 +13,7 @@ import type {
   TurnRefusal,
   TurnStartRequest,
   TurnStatusLine,
+  UsageRecord,
 } from "./turn-records.js";
 
 // What one turn of the loop works with. The composition binds each to a turn: the transport to
@@ -78,6 +79,14 @@ export interface TurnEngine {
   mark(signal: AbortSignal): Promise<void>;
   say(text: string, signal: AbortSignal): Promise<void>;
   status(line: TurnStatusLine, signal: AbortSignal): Promise<void>;
+  /**
+   * `usage/record`: one attempt's usage, and what is left of the agent's budget after it, 0 or
+   * below once it is spent. Throws when the engine did not take the record.
+   */
+  recordUsage(
+    usage: UsageRecord,
+    signal: AbortSignal,
+  ): Promise<{ readonly budgetLeftMicros: bigint }>;
   end(outcome: TurnOutcome, signal: AbortSignal): Promise<void>;
 }
 

@@ -21,6 +21,9 @@ export type StepEnd = LoopEnd | "next";
 
 const ok: LoopEnd = { outcome: "ok" };
 
+// The budget ran out on a usage record: no model call follows (runtime spec, section 8.3).
+const budgetEnd: LoopEnd = { outcome: "budget" };
+
 /** Adds messages that joined at a merge point after every result before it (invariant 10). */
 async function join(run: TurnRun, messages: readonly OwnerMessage[]): Promise<void> {
   if (messages.length === 0) {
@@ -76,6 +79,9 @@ function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
   if (fault.failure === "refused") {
     return ok;
   }
+  if (run.tally.now().budgetSpent) {
+    return budgetEnd;
+  }
   return { outcome: "failed", status: { line: "failed", failure: fault.failure } };
 }
 
@@ -104,6 +110,9 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
   if (batch.reachedLimit) {
     return { outcome: "loop", status: { line: "toolCallLimit" } };
   }
+  if (run.tally.now().budgetSpent) {
+    return budgetEnd;
+  }
   if (batch.joined.length === 0 && canMerge(run)) {
     await join(run, await run.parts.merge.take(run.writes));
   }
@@ -114,6 +123,9 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
 async function afterAnswer(run: TurnRun): Promise<StepEnd> {
   if (run.halted.aborted) {
     return haltedEnd(run);
+  }
+  if (run.tally.now().budgetSpent) {
+    return budgetEnd;
   }
   if (!canMerge(run)) {
     return ok;
@@ -136,8 +148,9 @@ async function onAnswer(run: TurnRun, answer: ModelAnswer): Promise<StepEnd> {
 
 /**
  * One step of the turn (runtime spec, section 4.2): a model call, then its tool batch. A halt, a
- * failure with no next step, a committed batch, a question to the owner, or an answer with no
- * call and no waiting message ends the loop; anything else asks for the next model call.
+ * failure with no next step, a committed batch, a question to the owner, a spent budget, or an
+ * answer with no call and no waiting message ends the loop; anything else asks for the next model
+ * call.
  */
 export async function takeStep(run: TurnRun): Promise<StepEnd> {
   if (run.halted.aborted) {

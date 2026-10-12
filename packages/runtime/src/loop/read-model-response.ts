@@ -28,6 +28,8 @@ export interface ModelFault {
   readonly reasoning: string;
   /** The wait the provider asked for before another try. */
   readonly retryAfterMs?: number;
+  /** What the provider reported the call used before it failed, when it reported anything. */
+  readonly usage?: ModelUsage;
 }
 
 /** A model call's outcome. */
@@ -102,6 +104,7 @@ function fault(
     readonly failure: ModelFailure;
     readonly message: string;
     readonly retryAfterMs?: number;
+    readonly usage?: ModelUsage;
   },
 ): ModelFault {
   return {
@@ -146,11 +149,12 @@ function apply(draft: ResponseDraft, event: ModelEvent): Step {
   if (event.type === "done") {
     return finish(draft, event);
   }
-  const { failure, message, retryAfterMs } = event;
+  const { failure, message, retryAfterMs, usage } = event;
   return fault(draft, {
     failure,
     message,
     ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+    ...(usage === undefined ? {} : { usage }),
   });
 }
 

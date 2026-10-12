@@ -176,7 +176,8 @@ export function messagesEventOf(raw: unknown): MessagesEvent | undefined {
 /**
  * A Messages answer's usage as the turn loop counts it: the input in all, cached or not
  * (`input_tokens` holds only what follows the last cache mark), the tokens read from the cache,
- * and the output. Later counts replace earlier ones, since `message_delta` carries running totals.
+ * the tokens written to it, which cost more than plain input, and the output. Later counts replace
+ * earlier ones, since `message_delta` carries running totals.
  */
 export function messagesUsageOf(counts: MessagesUsage): ModelUsage {
   const created = counts.cache_creation_input_tokens ?? 0;
@@ -185,6 +186,7 @@ export function messagesUsageOf(counts: MessagesUsage): ModelUsage {
     inputTokens: (counts.input_tokens ?? 0) + created + read,
     outputTokens: counts.output_tokens ?? 0,
     cachedTokens: read,
+    cacheWriteTokens: created,
   };
 }
 

@@ -1,6 +1,7 @@
 import type { Clock } from "@binference/core";
 import type { RuntimeModels, RuntimeProvider } from "../control/runtime-settings.schema.js";
 import type { ModelChain, ModelTransport } from "../loop/ports.js";
+import { modelPriceOf } from "../usage/model-price.js";
 import { createChatCompletionsTransport } from "./chat-completions-transport.js";
 import { createMessagesTransport } from "./messages-transport.js";
 import { createModelChain } from "./model-chain.js";
@@ -114,7 +115,7 @@ export interface ChainParts extends ProviderParts {
 /**
  * The chain of a role under the settings in force (config spec, section 6.3; runtime spec,
  * section 8.2): the role's model, then `models.fallbacks.<role>` in order, each with its own
- * transport, resting its provider for `models.cooldownMs`. A model the owner picked for the agent
+ * transport and its price (section 8.3), resting its provider for `models.cooldownMs`. A model the owner picked for the agent
  * stands alone and is never swapped for another.
  */
 export function modelChainFor(
@@ -133,10 +134,14 @@ export function modelChainFor(
       ? models.fallbacks[role].map((ref) => ({ ref, place: places.fallback }))
       : [];
   const transportParts = { http: parts.http, clock: parts.clock };
-  const chainModel = (model: { readonly ref: string | undefined; readonly place: ModelPlace }) => ({
-    name: model.ref ?? `${role}/none`,
-    transport: transportOf(models, model, transportParts),
-  });
+  const chainModel = (model: { readonly ref: string | undefined; readonly place: ModelPlace }) => {
+    const priced = model.ref === undefined ? undefined : modelPriceOf(model.ref, models);
+    return {
+      name: model.ref ?? `${role}/none`,
+      transport: transportOf(models, model, transportParts),
+      ...(priced === undefined ? {} : { price: priced.price }),
+    };
+  };
   return createModelChain([chainModel(own), ...fallbacks.map(chainModel)], {
     clock: parts.clock,
     cooldownMs: models.cooldownMs,

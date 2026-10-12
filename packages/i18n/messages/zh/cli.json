@@ -203,6 +203,8 @@
   "check.unchecked": "此系统无法让 binference 读取谁可以打开状态文件夹中的 {count, plural, other {# 个文件和文件夹}}。请运行 `binference check --fix`，让它们只归你所有。",
   "check.configInvalid": "{file} 有 {count, plural, other {# 个问题}}：",
   "check.unlockFile": "Agent 密钥和 Privy 应用密钥保存在 {folder} 的文件中（解锁方式 `file`）：拿到这块磁盘副本的人可以在上限之内签名，直到你移除 Agent 密钥。条件允许时，请把 `engine.unlock.mode` 设为 `keychain` 或 `command`。",
+  "check.modelsUnpriced": "配置中有 {count, plural, other {# 个模型}}没有价格，因此其调用按 $0 计入每日模型预算。请在 config.json5 的 `models.prices` 中为其添加价格：",
+  "check.modelUnpriced": "{model}：其服务商不报告费用，`models.prices` 和内置价格表中也都没有它的价格",
   "error.homeNotAbsolute": "BINFERENCE_HOME 不是绝对路径。请把它设为完整路径，或取消设置以使用你主文件夹中的状态文件夹。",
   "error.pathTooLong": "状态文件夹的路径太长，无法用于本地套接字。请把 BINFERENCE_HOME 设为更短的文件夹。",
   "error.unexpected": "binference 因错误而停止（{code}）。请运行 `binference logs` 查看发生了什么。",

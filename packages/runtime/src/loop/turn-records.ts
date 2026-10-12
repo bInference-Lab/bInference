@@ -1,4 +1,5 @@
 import type { TurnOutcome } from "@binference/store";
+import type { ModelPrice } from "../usage/model-price.js";
 import type { ModelFailure, ResponseReplay } from "./model-event.js";
 import type { ModelMessage, ToolCall, ToolDeclaration } from "./model-message.js";
 import type { ModelTransport } from "./ports.js";
@@ -16,6 +17,11 @@ export interface ModelRequest {
 export interface ChainModel {
   readonly name: string;
   readonly transport: ModelTransport;
+  /**
+   * What the model charges, from `models.prices` or the built-in table, for a call whose provider
+   * reports no cost of its own; absent when neither has a price, and such a call counts $0.
+   */
+  readonly price?: ModelPrice;
 }
 
 /** What a tool does, which decides how the loop runs it (runtime spec, section 5.1). */
@@ -128,3 +134,17 @@ export type TurnStatusLine =
   | { readonly line: "failed"; readonly failure: TurnFailure }
   | { readonly line: "toolCallLimit" }
   | { readonly line: "modelCallLimit" };
+
+/**
+ * One attempt of a model call as `usage/record` takes it (runtime spec, section 8.3): the model
+ * that answered or failed, its tokens and its cost. `key` names the record, so one sent twice is
+ * counted once.
+ */
+export interface UsageRecord {
+  readonly model: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cachedTokens: number;
+  readonly usdMicros: bigint;
+  readonly key: string;
+}

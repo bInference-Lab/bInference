@@ -18,6 +18,11 @@ function writesDuring(name: string, options: Partial<TestTool> = {}) {
   });
 }
 
+// The steps of the turn but its usage records, which come before each response.
+function withoutUsage(steps: readonly RecordedStep[]): readonly RecordedStep[] {
+  return steps.filter((step) => step.kind !== "usage");
+}
+
 function brief(step: RecordedStep): string {
   if (step.kind === "result") {
     return `result ${step.id}: ${step.text}`;
@@ -41,7 +46,7 @@ describe("merge points", () => {
       ],
     });
     await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", modelCalls: 2 });
-    expect(recorder.steps.slice(2, 7).map(brief)).toStrictEqual([
+    expect(withoutUsage(recorder.steps).slice(2, 7).map(brief)).toStrictEqual([
       "call portfolio",
       "result portfolio: ran portfolio",
       "call alert_create",
@@ -76,7 +81,7 @@ describe("merge points", () => {
       ],
     });
     await turn.run();
-    expect(recorder.steps.slice(2, 7).map(brief)).toStrictEqual([
+    expect(withoutUsage(recorder.steps).slice(2, 7).map(brief)).toStrictEqual([
       "call quote",
       "call chart",
       "result quote: ran quote",
@@ -91,7 +96,7 @@ describe("merge points", () => {
       tools: (notes) => [writesDuring("portfolio")(notes)],
     });
     await turn.run();
-    expect(recorder.steps.slice(3, 6).map(brief)).toStrictEqual([
+    expect(withoutUsage(recorder.steps).slice(3, 6).map(brief)).toStrictEqual([
       "result portfolio: ran portfolio",
       "joined msg_2",
       "response",
@@ -121,7 +126,7 @@ describe("merge points", () => {
     });
     recorder.queue(ownerMessage(2, "see this chart", true));
     await turn.run();
-    expect(recorder.steps.slice(2, 5).map(brief)).toStrictEqual([
+    expect(withoutUsage(recorder.steps).slice(2, 5).map(brief)).toStrictEqual([
       "joined msg_2",
       "engineMark",
       "journalMark",

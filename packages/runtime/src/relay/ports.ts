@@ -5,6 +5,7 @@ import type {
   EngineTurn,
   EngineTurnEnd,
   EngineTurnStart,
+  EngineUsage,
   InboxPage,
   InboxWatch,
   TurnStartAnswer,
@@ -30,6 +31,8 @@ export interface EngineChat {
   sayTurn(say: EngineSay, signal: AbortSignal): Promise<void>;
   /** `turn/status`. */
   turnStatus(status: EngineStatus, signal: AbortSignal): Promise<void>;
+  /** `usage/record`: answers what is left of the agent's model budget after the record. */
+  recordUsage(usage: EngineUsage, signal: AbortSignal): Promise<bigint>;
   /** `turn/end`: the engine's running turn for the agent clears. */
   endTurn(end: EngineTurnEnd, signal: AbortSignal): Promise<void>;
 }

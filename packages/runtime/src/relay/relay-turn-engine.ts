@@ -62,7 +62,8 @@ async function recordStart(
 /**
  * The engine's side of one turn over the runtime's link to the engine (runtime spec, section 4.3):
  * `turn/start`, then the turn's row in `agent.sqlite`; `turn/mark`; `turn/say` with the final text;
- * `turn/status` with the line's keys of spec 4; `turn/end`. A start the engine refuses answers the
+ * `turn/status` with the line's keys of spec 4; `usage/record` after each model call attempt;
+ * `turn/end`. A start the engine refuses answers the
  * refusal; one it cannot answer, or whose row is not written, rejects.
  */
 export function createRelayTurnEngine(options: RelayTurnOptions): TurnEngine {
@@ -95,6 +96,9 @@ export function createRelayTurnEngine(options: RelayTurnOptions): TurnEngine {
         await chat.turnStatus(status, signal);
       }
     },
+    recordUsage: async (usage, signal) => ({
+      budgetLeftMicros: await chat.recordUsage({ ...at, ...usage }, signal),
+    }),
     end: async (outcome, signal) => chat.endTurn({ ...at, outcome }, signal),
   };
 }

@@ -20,6 +20,10 @@ interface TurnMarks {
   /** Tool calls the model made in this turn, run or not. */
   readonly toolCalls: number;
   readonly modelCalls: number;
+  /** Attempts of the turn's model calls, retries and fallbacks included, each one recorded. */
+  readonly attempts: number;
+  /** The engine answered a usage record with nothing left of the budget: no model call follows. */
+  readonly budgetSpent: boolean;
   /** The text of the last model response: the turn's final text. */
   readonly lastText: string;
   /** How the engine answered the turn's proposal: it waits for the owner, or was refused. */
@@ -38,6 +42,9 @@ export interface TurnTally {
   commit(): void;
   holdBack(): void;
   countToolCalls(count: number): void;
+  /** Counts one attempt of a model call and answers its number in the turn, from 1. */
+  countAttempt(): number;
+  spendBudget(): void;
   keepText(text: string): void;
   answerProposal(answer: ProposalAnswer): void;
 }
@@ -60,6 +67,8 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     heldBack: 0,
     toolCalls: 0,
     modelCalls: 0,
+    attempts: 0,
+    budgetSpent: false,
     lastText: "",
   };
   return {
@@ -78,6 +87,13 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     },
     countToolCalls(count) {
       marks = { ...marks, toolCalls: marks.toolCalls + count };
+    },
+    countAttempt() {
+      marks = { ...marks, attempts: marks.attempts + 1 };
+      return marks.attempts;
+    },
+    spendBudget() {
+      marks = { ...marks, budgetSpent: true };
     },
     keepText(lastText) {
       marks = { ...marks, lastText };

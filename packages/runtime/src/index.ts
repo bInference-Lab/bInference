@@ -28,4 +28,5 @@ export type {
   RuntimeSettingsWire,
 } from "./control/runtime-settings.schema.js";
 export { runtimeNodeArguments } from "./process/runtime-node-arguments.js";
+export { isModelPriced } from "./usage/model-price.js";
 export type { RuntimeFiles } from "./process/runtime-node-arguments.js";

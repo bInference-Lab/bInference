@@ -27,11 +27,16 @@ export interface ResponseReplay {
   readonly content: JsonValue;
 }
 
-/** The tokens one model call used, and its cost when the provider reports one. */
+/**
+ * The tokens one model call used, and its cost when the provider reports one. `inputTokens` counts
+ * the whole input; `cachedTokens` of it were read from the provider's cache and
+ * `cacheWriteTokens` written to it, which a provider prices apart.
+ */
 export interface ModelUsage {
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly cachedTokens: number;
+  readonly cacheWriteTokens?: number;
   readonly usdMicros?: bigint;
 }
 
@@ -83,6 +88,8 @@ interface ErrorEvent {
   readonly message: string;
   /** How long the provider asked to wait before another try (`Retry-After`), when it did. */
   readonly retryAfterMs?: number;
+  /** What the provider reported the call used before it failed, when it reported anything. */
+  readonly usage?: ModelUsage;
 }
 
 /**

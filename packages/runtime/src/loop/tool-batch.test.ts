@@ -200,7 +200,7 @@ describe("runToolBatch", () => {
       ],
     });
     await turn.run();
-    expect(recorder.steps.slice(2, 8).map((step) => step.kind)).toStrictEqual([
+    expect(recorder.steps.slice(3, 9).map((step) => step.kind)).toStrictEqual([
       "call",
       "result",
       "engineMark",

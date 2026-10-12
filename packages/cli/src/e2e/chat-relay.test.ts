@@ -95,6 +95,9 @@ function engineOver(runtime: ProtocolClient, place: TurnPlace): TurnEngine {
     async status(line, signal) {
       await runtime.call("turn/status", { ...at, statusKey: statusKeyOf(line) }, { signal });
     },
+    async recordUsage({ key, ...usage }, signal) {
+      return runtime.call("usage/record", { ...at, ...usage }, { signal, key });
+    },
     async end(outcome, signal) {
       await runtime.call("turn/end", { ...at, outcome }, { signal });
     },

@@ -22,6 +22,12 @@ export type RecordedStep =
   | { readonly kind: "engineMark" }
   | { readonly kind: "say"; readonly text: string }
   | { readonly kind: "status"; readonly line: TurnStatusLine }
+  | {
+      readonly kind: "usage";
+      readonly model: string;
+      readonly usdMicros: bigint;
+      readonly key: string;
+    }
   | { readonly kind: "journalEnd"; readonly outcome: TurnOutcome; readonly heldBack: number }
   | { readonly kind: "end"; readonly outcome: TurnOutcome }
   | { readonly kind: "tool"; readonly name: string; readonly key: string };
@@ -36,6 +42,10 @@ export interface TurnRecorderOptions {
   readonly failTake?: boolean;
   /** `turn/start` throws, as when the engine cannot be reached. */
   readonly failStart?: boolean;
+  /** The agent's budget `usage/record` counts down from; $1 when absent. */
+  readonly budgetMicros?: bigint;
+  /** `usage/record` fails. */
+  readonly failUsage?: boolean;
   /** Runs before each step is recorded, and the write waits for it: a test stops a turn here. */
   readonly beforeStep?: (step: RecordedStep) => void | Promise<void>;
 }
@@ -71,6 +81,7 @@ function createJournal(note: Write): TurnJournal {
 }
 
 function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
+  const budget = { leftMicros: options.budgetMicros ?? 1_000_000n };
   return {
     start: async ({ messages, outsideContent }, signal) => {
       if (options.failStart === true) {
@@ -89,6 +100,14 @@ function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
     },
     say: async (text, signal) => note({ kind: "say", text }, signal),
     status: async (line, signal) => note({ kind: "status", line }, signal),
+    recordUsage: async ({ model, usdMicros, key }, signal) => {
+      if (options.failUsage === true) {
+        throw new Error("The engine did not take the record.");
+      }
+      await note({ kind: "usage", model, usdMicros, key }, signal);
+      budget.leftMicros -= usdMicros;
+      return { budgetLeftMicros: budget.leftMicros };
+    },
     end: async (outcome, signal) => note({ kind: "end", outcome }, signal),
   };
 }
