@@ -72,6 +72,24 @@ describe("the read tools", () => {
     expect(outcome.text).toContain('"FAKE"');
   });
 
+  it("find a listed token for the turn's agent and keep the answer clean", async () => {
+    const answers = { "asset/search": { items: [{ asset: coin, ...coinInfo }] } };
+    const outcome = await outcomeOf(
+      callTool(answers, { name: "token_search", args: { chain: "fake:1", query: "fake" } }),
+    );
+    expect(outcome).toMatchObject({ isError: false });
+    expect(outcome).not.toHaveProperty("outside");
+    expect(JSON.parse(outcome.text)).toMatchObject({ items: [{ asset: coin, verified: true }] });
+  });
+
+  it("mark a search that matched a token the registry does not vouch for", async () => {
+    const answers = { "asset/search": { items: [{ asset: token, ...tokenInfo }] } };
+    const outcome = await outcomeOf(
+      callTool(answers, { name: "token_search", args: { chain: "fake:1", query: "IGNORE" } }),
+    );
+    expect(outcome).toMatchObject({ isError: false, outside: true });
+  });
+
   it("answer an intent of another agent as one this agent does not have", async () => {
     const answers = { "intent/get": intentWire("awaiting_confirmation", otherAgent) };
     const outcome = await outcomeOf(callTool(answers, { name: "tx_status", args: { intent } }));

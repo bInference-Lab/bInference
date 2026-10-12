@@ -311,6 +311,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 
 | Tool                                  | What it does                                                                               |
 | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `token_search`                        | Finds a token's id by symbol, name or address in the token list and the wallets' holdings  |
 | `portfolio`                           | Balances, USD values, positions and P&L across the agent's wallets                         |
 | `token_info`                          | Metadata, price, liquidity, holders, and where it trades (curve or pool)                   |
 | `token_risk`                          | GoPlus, honeypot.is, our round-trip simulation, launchpad mode and tax decode              |

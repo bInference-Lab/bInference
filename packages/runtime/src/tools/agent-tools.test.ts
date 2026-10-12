@@ -23,6 +23,7 @@ import { callsReply, textReply } from "../testing/scripted-transport.js";
 import { agentToolBox, agentTools } from "./agent-tools.js";
 
 const answers: Readonly<Record<string, FakeAnswer>> = {
+  "asset/search": { items: [{ asset: coin, ...coinInfo }] },
   "portfolio/get": { balances: [], positions: [], totalUsdMicros: "0", assets: {} },
   "asset/get": { asset: coin, ...coinInfo },
   "risk/check": { verdict: "pass", flags: [], onCurve: false, checkedAt: 1 },
@@ -50,6 +51,11 @@ const sellTerms = { token, amount: { percentBps: 5_000 }, reason: "Take half off
 
 // Each tool, the arguments a model writes, and the calls it makes of the engine.
 const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
+  [
+    "token_search",
+    { chain: "fake:1", query: "FAKE" },
+    [{ op: "asset/search", args: { chain: "fake:1", query: "FAKE", agent } }],
+  ],
   ["portfolio", {}, [{ op: "portfolio/get", args: { agent } }]],
   ["token_info", { asset: coin }, [{ op: "asset/get", args: { asset: coin } }]],
   ["token_risk", { asset: token }, [{ op: "risk/check", args: { asset: token } }]],
@@ -116,6 +122,7 @@ describe("the agent's tools", () => {
     ["sell", { ...sellTerms, wallet }],
     ["order_create", { order: { ...stopLoss, wallet } }],
     ["portfolio", { wallet }],
+    ["token_search", { chain: "fake:1", query: "FAKE", agent }],
   ] as const)("refuse a %s call naming a wallet or an agent before the engine", (name, args) => {
     const run = callTool(answers, { name, args });
     expect(run.refused).toMatch(/^not run: the arguments do not match/);

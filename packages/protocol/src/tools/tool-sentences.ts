@@ -13,6 +13,8 @@ export interface ToolSentences {
   readonly ids: string;
   /** That a proposal waits for the owner's tap. */
   readonly waits: string;
+  /** What the token search finds, and what to do with an ambiguous or unlisted match. */
+  readonly search: string;
 }
 
 /** The shared sentences of tool texts. */
@@ -22,6 +24,8 @@ export const toolSentences: ToolSentences = {
   ids: "Tokens are CAIP-19 asset ids and addresses are CAIP-10 account ids.",
   waits:
     "Nothing moves until the owner confirms the card in Telegram or the console; no tool can confirm.",
+  search:
+    "Finds a token's asset id on one chain by its symbol, its name or its contract address, in binference's own token list and the tokens the wallets hold; it never searches the web. Use it for every asset before a quote or a proposal, and never write an id yourself. chain is a CAIP-2 chain id, the part of an asset id before its slash. With ambiguous: true several tokens match: ask which one is meant, and never pick one yourself. An address the list does not hold comes back in unlisted, with held saying whether a wallet holds some.",
 };
 
 // The states before the owner's tap: the engine still checks the intent, or its card is open.

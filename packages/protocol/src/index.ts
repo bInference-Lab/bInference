@@ -98,6 +98,8 @@ export type {
   TrailingOrderRequest,
   WebhookRuleRequest,
 } from "./requests/fill-rule-request.schema.js";
+export { assetSearchTermsSchema } from "./operations/market-operations.schema.js";
+export type { AssetSearchTerms } from "./operations/market-operations.schema.js";
 export {
   buyTermsSchema,
   intentRequestSchema,

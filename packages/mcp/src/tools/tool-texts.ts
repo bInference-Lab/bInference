@@ -6,7 +6,7 @@ export interface ToolText {
   readonly description: string;
 }
 
-const { units, ids, waits } = toolSentences;
+const { units, ids, waits, search } = toolSentences;
 
 /** What the model reads about the `requestId` a propose tool takes. */
 export const requestIdText =
@@ -24,7 +24,7 @@ export const toolTexts: Readonly<Record<string, ToolText>> = {
   },
   binference_token_search: {
     title: "Find a token",
-    description: `Finds a token's asset id on one chain by its symbol, its name or its contract address, in binference's own token list and the tokens the wallets hold; it never searches the web. Use it for every asset before a quote or a proposal, and never write an id yourself. chain is a CAIP-2 chain id, such as eip155:56 for BNB Smart Chain. With ambiguous: true several tokens match: ask the user which one they mean, and never pick one yourself. An address the list does not hold comes back in unlisted, with held saying whether a wallet holds some; check such a token with binference_token_risk before you use it. ${ids}`,
+    description: `${search} Check an unlisted token with binference_token_risk before you use it. For BNB Smart Chain, chain is eip155:56. ${ids}`,
   },
   binference_portfolio: {
     title: "Portfolio",

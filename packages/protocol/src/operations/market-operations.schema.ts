@@ -73,11 +73,15 @@ interface AssetArgs {
   readonly asset: AssetRef;
 }
 
-/** The args of `asset/search`: the text to find on one chain, and whose held tokens count. */
-interface AssetSearchArgs {
+/** What `asset/search` finds: the text to find on one chain. */
+export interface AssetSearchTerms {
   readonly chain: ChainRef;
   /** A symbol, a name or a token's address. */
   readonly query: string;
+}
+
+/** The args of `asset/search`: the text to find on one chain, and whose held tokens count. */
+interface AssetSearchArgs extends AssetSearchTerms {
   /** The agent whose wallets' held tokens count; every agent's when absent. */
   readonly agent?: ProtocolId<"agent">;
 }
@@ -127,6 +131,13 @@ export interface MarketOperationShapes {
 }
 
 const assetArgs = z.strictObject({ asset: assetRefSchema });
+const searchFields = { chain: chainRefSchema, query: z.string().min(1).max(128) };
+
+/**
+ * Parses what `asset/search` finds without the agent whose held tokens count, which the agent
+ * runtime fills for its agent. Unknown fields are refused.
+ */
+export const assetSearchTermsSchema: z.ZodType<AssetSearchTerms> = z.strictObject(searchFields);
 const pnl = signedUsdMicrosSchema;
 const positionPnl = z.object({
   asset: assetRefSchema,
@@ -186,11 +197,7 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
     ...readFlags,
     name: "asset/search",
     scope: "read",
-    args: z.strictObject({
-      chain: chainRefSchema,
-      query: z.string().min(1).max(128),
-      agent: protocolIdSchema("agent").exactOptional(),
-    }),
+    args: z.strictObject({ ...searchFields, agent: protocolIdSchema("agent").exactOptional() }),
     result: z.object({
       items: z.array(assetViewSchema),
       next: z.string().min(1).exactOptional(),

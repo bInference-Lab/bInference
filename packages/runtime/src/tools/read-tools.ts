@@ -1,4 +1,6 @@
 import {
+  type AssetSearchTerms,
+  assetSearchTermsSchema,
   type OrderState,
   operations,
   orderStateSchema,
@@ -19,6 +21,25 @@ const ops = operations;
 
 function answer(text: string): ToolOutcome {
   return { text, isError: false };
+}
+
+// The registry's tokens carry the registry's words; a match the registry does not vouch for is
+// outside content, as token_info of it is.
+function tokenSearchTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool<AssetSearchTerms>({
+    name: "token_search",
+    kind: "read",
+    parallel: true,
+    description: agentToolTexts.token_search,
+    args: assetSearchTermsSchema,
+    run: async (args, { signal }) =>
+      answerOrFailure("token_search", async () => {
+        const view = await client.call("asset/search", { ...args, agent }, { signal });
+        const text = jsonOf(ops["asset/search"].result, view);
+        const isVouched = view.items.every((item) => item.verified);
+        return isVouched ? answer(text) : { ...answer(text), outside: true };
+      }),
+  });
 }
 
 function portfolioTool({ agent, client }: AgentToolParts): AgentTool {
@@ -136,6 +157,7 @@ function txStatusTool({ agent, client }: AgentToolParts): AgentTool {
 /** The agent's read tools, in the order the model sees them. */
 export function readTools(parts: AgentToolParts): readonly AgentTool[] {
   return [
+    tokenSearchTool(parts),
     portfolioTool(parts),
     tokenInfoTool(parts),
     tokenRiskTool(parts),
