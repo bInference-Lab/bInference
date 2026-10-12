@@ -24,10 +24,13 @@ describe("the keyed RPC check", () => {
     });
   });
 
-  it("passes with no live order, or with an RPC of the owner's on every chain", () => {
+  it("passes with no live order, or with an HTTP RPC of the owner's on every chain", () => {
     expect(rpcKeyedOf(publicOnly, 0)).toStrictEqual({ check: "rpc.keyed", level: "ok" });
-    expect(rpcKeyedOf(ownWs, 3)).toStrictEqual({ check: "rpc.keyed", level: "ok" });
     expect(rpcKeyedOf(ownUrl, 3)).toStrictEqual({ check: "rpc.keyed", level: "ok" });
+  });
+
+  it("still warns with only a WebSocket RPC of the owner's, since batches read the public nodes", () => {
+    expect(rpcKeyedOf(ownWs, 3)).toMatchObject({ check: "rpc.keyed", level: "warn" });
   });
 
   it("is skipped without config or an engine to count the orders", () => {

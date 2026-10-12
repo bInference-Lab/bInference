@@ -9,13 +9,13 @@ const check = "rpc.keyed";
 const priceKinds: ReadonlySet<string> = new Set(["limit", "takeProfit", "stopLoss", "trailing"]);
 const pageLimit = 200;
 
-// The enabled chains that read only the chain file's public RPCs: config names no RPC of the
-// owner's for them, neither over HTTP nor over WebSocket.
+// The enabled chains whose reads go only to the chain file's public RPCs: config names no HTTP
+// RPC of the owner's for them. A WebSocket alone announces blocks the public nodes may not hold
+// yet, and every batch still reads them (decision 0194).
 function publicOnlyChains(config: BinferenceConfig): readonly ChainRef[] {
-  return config.chains.enabled.filter((chain) => {
-    const own = config.chains.rpc[chain];
-    return (own?.urls ?? []).length === 0 && own?.ws === undefined;
-  });
+  return config.chains.enabled.filter(
+    (chain) => (config.chains.rpc[chain]?.urls ?? []).length === 0,
+  );
 }
 
 // The live auto orders with a price trigger the running engine holds, counted on its first page;
@@ -42,8 +42,9 @@ async function liveOrders(options: InstallCheck): Promise<number | undefined> {
 /**
  * `rpc.keyed` (decision 0193) from the config and the count of live auto orders with a price
  * trigger the running engine holds: a warning while there is one and an enabled chain reads only
- * its public RPCs, which are rate limited and offer no WebSocket, so its price watcher can fall
- * behind; it recommends a paid RPC under `chains.rpc`, with its `ws` URL. Without config, or with
+ * its public RPCs over HTTP, which are rate limited and offer no WebSocket, so its price watcher
+ * can fall behind; a `ws` URL alone does not count. It recommends a paid RPC under `chains.rpc`,
+ * with its `ws` URL. Without config, or with
  * no engine to count the orders (`undefined`), the check is skipped.
  */
 export function rpcKeyedOf(
