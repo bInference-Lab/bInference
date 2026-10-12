@@ -34,6 +34,7 @@ venue declares or from the token's deepest pool. Chain facts come in as data fro
 | `createPriceWatcher`, `PriceWatcher`, `WatchedPrice`, `WatcherLag`       | Every watched token's price reads and quote feeds in one Multicall3 call per block, and the lag                                                                  |
 | `createPoolPriceReader`, `poolSource`                                    | A `PriceReader` over the deepest Uniswap-style v2 pair or v3 pool against a token with a feed                                                                    |
 | `readTokenDecimals`                                                      | ERC-20 decimals of many tokens in one Multicall3 call                                                                                                            |
+| `readTokenFacts`                                                         | ERC-20 symbol, name and decimals of many tokens in one Multicall3 call                                                                                           |
 | `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                                                                                                 |
 
 ## Example

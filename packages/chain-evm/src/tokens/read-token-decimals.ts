@@ -9,8 +9,8 @@ const decimalsCall = encodeFunctionData({ abi: erc20Abi, functionName: "decimals
 // ERC-20 writes decimals as a `uint8`; a token that answers more is not read.
 const maxDecimals = 255n;
 
-// One `uint8` word as a number; any other answer is none.
-function decimalsOf(answer: ReadAnswer): number | undefined {
+/** One `uint8` word as a number of decimals; any other answer is none. */
+export function decimalsOf(answer: ReadAnswer): number | undefined {
   const word = numberAnswer(answer);
   if (word === undefined || word > maxDecimals || answer === undefined) {
     return undefined;

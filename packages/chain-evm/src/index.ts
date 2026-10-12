@@ -96,3 +96,4 @@ export type {
 } from "./watching/price-watcher.js";
 export type { PlanFailure, PlanPrices, PricePlan, WatchedToken } from "./watching/watch-list.js";
 export { readTokenDecimals } from "./tokens/read-token-decimals.js";
+export { readTokenFacts, type TokenFactsAnswer } from "./tokens/read-token-facts.js";
