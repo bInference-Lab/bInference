@@ -17,6 +17,11 @@ export interface WatcherChecks {
   readonly unpricedSince: Map<ChainRef, ReadonlyMap<AssetRef, number>>;
   /** The cross-check's checks now. */
   readonly checks: () => readonly PriceCheck[];
+  /**
+   * The watched tokens' decimals read so far: a price of a token without them fires no trigger,
+   * so the token counts as unpriced (decision 0197).
+   */
+  readonly decimals: ReadonlyMap<AssetRef, number>;
 }
 
 // A token without a confirmed price this long counts as unpriced (decision 0194).
@@ -34,7 +39,7 @@ function unpricedOn(
   const confirmed = new Set(
     watched.watch
       .latest()
-      .filter((price) => isConfirmed(price, known, nowMs))
+      .filter((price) => checks.decimals.has(price.token) && isConfirmed(price, known, nowMs))
       .map(({ token }) => token),
   );
   const before = checks.unpricedSince.get(watched.chain);

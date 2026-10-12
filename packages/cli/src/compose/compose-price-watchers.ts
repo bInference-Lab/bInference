@@ -148,6 +148,7 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
     unpriced: createWatcherUnpricedAlerts({ publish: options.publish }),
     unpricedSince: new Map(),
     checks: () => parts.check?.checks() ?? [],
+    decimals: decimals.known,
   };
   return {
     health: () => watcherHealthOf(watching, parts.check, options.watches),
@@ -175,7 +176,7 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
         { watches, decimals: known, checks, clock, link: triggers },
         { closers, logger },
       );
-      startWatcherTimers({ options, orders, watching }, { closers, logger });
+      startWatcherTimers({ options, orders, watching, decimals }, { closers, logger });
       startCrossCheck({ options, decimals, check }, { closers, logger });
     },
   };
@@ -187,10 +188,11 @@ function startWatcherTimers(
     readonly options: PriceWatchersOptions;
     readonly orders: WatchedOrders;
     readonly watching: WatcherChecks;
+    readonly decimals: DecimalsBook;
   },
   runOn: { readonly closers: Closers; readonly logger: Logger },
 ): void {
-  const { options, orders, watching } = parts;
+  const { options, orders, watching, decimals } = parts;
   const { clock } = options;
   const timers = { isLocked: () => false, clock, ...runOn };
   startRepeatingTimer({
@@ -219,6 +221,9 @@ function startWatcherTimers(
       const deadline = createDeadline({ clock, signal, timeoutMs: syncTimeoutMs });
       try {
         await orders.sync({ signal: deadline.signal });
+        // A token's decimals are read at the sync that first watches it, so its first confirmed
+        // price can fire a trigger (decision 0197).
+        await decimals.read(watchedTokens(options.watches), deadline.signal);
       } finally {
         deadline.clear();
       }
@@ -247,7 +252,7 @@ function startCrossCheck(
     run: async ({ signal }) => {
       const deadline = createDeadline({ clock, signal, timeoutMs: crossCheckTimeoutMs });
       try {
-        await decimals.read(samplesTokens(options.watches), deadline.signal);
+        await decimals.read(watchedTokens(options.watches), deadline.signal);
         await check.tick({ signal: deadline.signal });
       } finally {
         deadline.clear();
@@ -256,6 +261,7 @@ function startCrossCheck(
   });
 }
 
-function samplesTokens(watches: ReadonlyMap<ChainRef, ChainWatch>): readonly AssetRef[] {
-  return [...watches.values()].flatMap((watch) => watch.latest().map(({ token }) => token));
+// Every token a watcher watches, priced yet or not.
+function watchedTokens(watches: ReadonlyMap<ChainRef, ChainWatch>): readonly AssetRef[] {
+  return [...watches.values()].flatMap((watch) => watch.watcher.tokens().map(({ token }) => token));
 }

@@ -72,15 +72,27 @@ async function hanging(signal: AbortSignal): Promise<never> {
   });
 }
 
-function rig(options: { readonly dexscreenerUsd?: bigint; readonly isStoreStuck?: boolean } = {}) {
+function rig(
+  options: {
+    readonly dexscreenerUsd?: bigint;
+    readonly isStoreStuck?: boolean;
+    readonly isDecimalsUnread?: boolean;
+  } = {},
+) {
   const clock = createManualClock(startMs);
   const fake = fakeWatch();
   const pushes: EnginePush[] = [];
   const logger = createMemoryLogger({ subsystem: "watcher" });
   const prices = new Map([[token, { numerator: options.dexscreenerUsd ?? 2n, denominator: 1n }]]);
+  const decimalReads: (readonly AssetRef[])[] = [];
   const watchers = composePriceWatchers({
     watches: new Map([[bsc, fake.watch]]),
-    decimals: async (tokens) => await Promise.resolve(new Map(tokens.map((each) => [each, 18]))),
+    decimals: async (tokens) => {
+      decimalReads.push(tokens);
+      const read =
+        options.isDecimalsUnread === true ? [] : tokens.map((each) => [each, 18] as const);
+      return await Promise.resolve(new Map(read));
+    },
     orders: {
       list: async (_query, { signal }) =>
         options.isStoreStuck === true
@@ -103,7 +115,7 @@ function rig(options: { readonly dexscreenerUsd?: bigint; readonly isStoreStuck?
   });
   const closers = createClosers();
   watchers.start(closers, logger);
-  return { clock, fake, pushes, logger, watchers, closers };
+  return { clock, fake, pushes, logger, watchers, closers, decimalReads };
 }
 
 describe("the composed price watchers", () => {
@@ -156,6 +168,19 @@ describe("the composed price watchers", () => {
     expect(watchers.confirmedPrices()).toStrictEqual([]);
     await clock.advance(15_000);
     expect(watchers.confirmedPrices()).toStrictEqual([watched]);
+  });
+
+  it("reads a newly watched token's decimals at the sync that watches it, before any cross-check", async () => {
+    const { clock, decimalReads } = rig();
+    await clock.advance(1_000);
+    expect(decimalReads).toStrictEqual([[token]]);
+  });
+
+  it("counts a curve token whose decimals are unread as unpriced, since no trigger can use it", async () => {
+    const { clock, fake, watchers } = rig({ isDecimalsUnread: true });
+    fake.state.latest = [{ ...watched, source: "curve" }];
+    await clock.advance(62_000);
+    expect(watchers.health()).toMatchObject({ state: "warn", unpricedTokens: 1 });
   });
 
   it("counts a watched token without a confirmed price for a minute, warns and tells the owner once", async () => {
