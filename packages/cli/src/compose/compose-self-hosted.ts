@@ -45,6 +45,8 @@ export interface ComposedSelfHosted {
   readonly checkGas: Engine["checkGas"];
   /** Moves the auto orders that wait for no price, such as one whose card ended. */
   readonly tickOrders: Engine["tickOrders"];
+  /** Expires the cards whose time is up and says when the next one's is. */
+  readonly expireCards: Engine["expireCards"];
   /** Records the positions a crash kept from recent paper fills. */
   readonly repairPaperFills: Engine["repairPaperFills"];
   /** Takes the confirmed intents the lock held; logs a failure and never rejects. */
@@ -322,6 +324,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     settle: engine.settle,
     checkGas: engine.checkGas,
     tickOrders: engine.tickOrders,
+    expireCards: engine.expireCards,
     repairPaperFills: engine.repairPaperFills,
     resume,
     stopper,

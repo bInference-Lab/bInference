@@ -14,7 +14,8 @@ import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { ChatHandlers } from "../chat/chat-relay.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
-import { createConfirmations } from "../confirmations/create-confirmations.js";
+import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
+import { type Confirmations, createConfirmations } from "../confirmations/create-confirmations.js";
 import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type {
@@ -33,6 +34,7 @@ import {
   type VenueQuoteSourceOptions,
 } from "../money-path/venue-quote-source.js";
 import type { OrderParts } from "../orders/create-order.js";
+import { followOrderCard } from "../orders/follow-order-card.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
 import { tickOrders } from "../orders/tick-orders.js";
 import { createPaperFills } from "../paper/paper-fills.js";
@@ -114,6 +116,13 @@ export interface Engine {
    * seconds; an answer moves its own order at once.
    */
   readonly tickOrders: (options: { readonly signal: AbortSignal }) => Promise<void>;
+  /**
+   * The card timer (spec 6, section 3): closes as expired every card waiting for the owner whose
+   * time is up, an auto order's card with its order, and answers when the next open card's time
+   * is up, or `undefined` when no card waits. A timer of the composition root calls it again at
+   * that time, locked or not: it signs nothing.
+   */
+  readonly expireCards: (options: { readonly signal: AbortSignal }) => Promise<number | undefined>;
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -216,18 +225,40 @@ function storedIntentsOf(
   return createStoredIntents({ intents, agents, ids, random, publish, settled });
 }
 
-function intentParts(
+// The card timer closes an intent's card through the confirmations, and an auto order's card
+// through its order, which moves with it.
+function cardTimerOf(
   options: EngineOptions,
-  paper: PaperParts,
-  settled: (message: AgentInboxMessage) => void,
-): {
+  parts: { readonly confirmations: Confirmations; readonly orders: OrderParts },
+): CardTimerParts {
+  const { confirmations, orders } = parts;
+  return {
+    intents: options.stores.intents,
+    now: () => options.clock.now(),
+    expire: async (intent, { signal }) => {
+      await (intent.kind === "autoOrder"
+        ? followOrderCard(orders, intent.id, signal)
+        : confirmations.expire(intent.id, { signal }));
+    },
+  };
+}
+
+/** The intent and order parts of the engine. */
+interface IntentParts {
   readonly handlers: IntentHandlers & OrderHandlers;
   readonly answer: AnswerCard;
   readonly stored: StoredIntents;
   readonly orders: OrderParts;
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
-} {
+  readonly cardTimer: CardTimerParts;
+}
+
+function intentParts(
+  options: EngineOptions,
+  paper: PaperParts,
+  settled: (message: AgentInboxMessage) => void,
+): IntentParts {
   const { stores, custody, host, chains, clock, ids, isLocked } = options;
   const stored = storedIntentsOf(options, settled);
   const confirmations = createConfirmations({
@@ -265,7 +296,8 @@ function intentParts(
     ...createIntentHandlers({ stored, moneyPath, answer, chains, showings }),
     ...createOrderHandlers(orders),
   };
-  return { answer, stored, orders, handlers, lowGas };
+  const cardTimer = cardTimerOf(options, { confirmations, orders });
+  return { answer, stored, orders, handlers, lowGas, cardTimer };
 }
 
 // The startup's repair of paper fills a crash left without positions.
@@ -338,5 +370,6 @@ export function createEngine(given: EngineOptions): Engine {
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
     tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
+    expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
   };
 }

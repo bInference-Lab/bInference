@@ -4,6 +4,7 @@ import { privyUnreachableNotice } from "@binference/engine/install";
 import { createShutdown, type ShutdownReport, watchFile } from "@binference/platform";
 import type { LockReason } from "../unlock/unlock-keys.js";
 import { type BotChannel, startBotChannel } from "./bot-channel.js";
+import { startCardTimer } from "./card-timer.js";
 import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { startConfigReload } from "./config-reload.js";
@@ -58,6 +59,7 @@ function startTimers(
   startSettleTimer({ settle: composed.settle, ...timers });
   startGasCheckTimer({ checkGas: composed.checkGas, ...timers });
   startOrderTimer({ tickOrders: composed.tickOrders, clock: host.clock, closers, logger });
+  startCardTimer({ expireCards: composed.expireCards, clock: host.clock, closers, logger });
   const backups = backupPartsOf(opening, opened.stores.backups, logger);
   startNightlyBackups(opening, {
     parts: backups,
