@@ -47,6 +47,7 @@
   "intent.not_yours": "此操作由其他客户端发起，此客户端无法取消。请在控制台或命令行中取消。",
   "order.not_found": "此自动订单不存在。请在控制台查看你的自动订单。",
   "order.wrong_state": "此自动订单已结束或已变化。请刷新查看当前状态。",
+  "order.kind_unavailable": "暂不支持这类自动订单。请使用限价单、止盈、止损或追踪止损。",
   "asset.not_found": "binference 无法识别此代币。请改为粘贴它的合约地址。",
   "asset.bad_address": "这不是有效的地址。请检查后重新粘贴。",
   "name.not_found": "此名称没有登记地址。请检查拼写。",

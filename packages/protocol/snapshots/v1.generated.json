@@ -465,6 +465,7 @@
         "intent.not_yours",
         "order.not_found",
         "order.wrong_state",
+        "order.kind_unavailable",
         "asset.not_found",
         "asset.bad_address",
         "name.not_found",
@@ -17822,7 +17823,8 @@
                 "filled",
                 "cancelled",
                 "expired",
-                "ended"
+                "ended",
+                "paused"
               ]
             },
             "request": {
@@ -18540,6 +18542,22 @@
             "card": {
               "type": "string",
               "pattern": "^crd_"
+            },
+            "intent": {
+              "type": "string",
+              "pattern": "^int_"
+            },
+            "paper": {
+              "type": "boolean"
+            },
+            "outsideContent": {
+              "type": "boolean"
+            },
+            "endReason": {
+              "type": "string",
+              "enum": [
+                "position_closed"
+              ]
             },
             "createdAt": {
               "type": "integer",
@@ -18704,7 +18722,8 @@
                 "filled",
                 "cancelled",
                 "expired",
-                "ended"
+                "ended",
+                "paused"
               ]
             },
             "request": {
@@ -19423,6 +19442,22 @@
               "type": "string",
               "pattern": "^crd_"
             },
+            "intent": {
+              "type": "string",
+              "pattern": "^int_"
+            },
+            "paper": {
+              "type": "boolean"
+            },
+            "outsideContent": {
+              "type": "boolean"
+            },
+            "endReason": {
+              "type": "string",
+              "enum": [
+                "position_closed"
+              ]
+            },
             "createdAt": {
               "type": "integer",
               "minimum": 0,
@@ -19533,7 +19568,8 @@
                 "filled",
                 "cancelled",
                 "expired",
-                "ended"
+                "ended",
+                "paused"
               ]
             }
           },
@@ -19609,7 +19645,8 @@
                       "filled",
                       "cancelled",
                       "expired",
-                      "ended"
+                      "ended",
+                      "paused"
                     ]
                   },
                   "request": {
@@ -20328,6 +20365,22 @@
                     "type": "string",
                     "pattern": "^crd_"
                   },
+                  "intent": {
+                    "type": "string",
+                    "pattern": "^int_"
+                  },
+                  "paper": {
+                    "type": "boolean"
+                  },
+                  "outsideContent": {
+                    "type": "boolean"
+                  },
+                  "endReason": {
+                    "type": "string",
+                    "enum": [
+                      "position_closed"
+                    ]
+                  },
                   "createdAt": {
                     "type": "integer",
                     "minimum": 0,
@@ -20539,7 +20592,8 @@
                 "filled",
                 "cancelled",
                 "expired",
-                "ended"
+                "ended",
+                "paused"
               ]
             },
             "request": {
@@ -21257,6 +21311,22 @@
             "card": {
               "type": "string",
               "pattern": "^crd_"
+            },
+            "intent": {
+              "type": "string",
+              "pattern": "^int_"
+            },
+            "paper": {
+              "type": "boolean"
+            },
+            "outsideContent": {
+              "type": "boolean"
+            },
+            "endReason": {
+              "type": "string",
+              "enum": [
+                "position_closed"
+              ]
             },
             "createdAt": {
               "type": "integer",

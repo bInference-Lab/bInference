@@ -212,7 +212,14 @@ export const intentExamples: { readonly [N in keyof IntentOperationShapes]: Wire
 export const orderExamples: { readonly [N in keyof OrderOperationShapes]: WireExample } = {
   "order/create": {
     args: trailingOrder,
-    result: { ...orderView, state: "awaiting_confirmation", card: ids.card },
+    result: {
+      ...orderView,
+      state: "awaiting_confirmation",
+      card: ids.card,
+      intent: ids.intent,
+      paper: true,
+      outsideContent: false,
+    },
   },
   "order/get": { args: { order: ids.order }, result: orderView },
   "order/list": {

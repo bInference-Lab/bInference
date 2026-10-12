@@ -51,6 +51,7 @@ export const protocolErrorCodes = [
   "intent.not_yours",
   "order.not_found",
   "order.wrong_state",
+  "order.kind_unavailable",
   "asset.not_found",
   "asset.bad_address",
   "name.not_found",

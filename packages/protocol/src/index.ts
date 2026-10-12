@@ -205,8 +205,13 @@ export type {
   LimitsView,
   PendingLimitsView,
 } from "./views/limits-view.schema.js";
-export { orderStateSchema, orderViewSchema } from "./views/order-view.schema.js";
-export type { OrderFillView, OrderState, OrderView } from "./views/order-view.schema.js";
+export { orderStates, orderStateSchema, orderViewSchema } from "./views/order-view.schema.js";
+export type {
+  OrderEndReason,
+  OrderFillView,
+  OrderState,
+  OrderView,
+} from "./views/order-view.schema.js";
 export { portfolioViewSchema } from "./views/portfolio-view.schema.js";
 export type { BalanceView, PortfolioView, PositionView } from "./views/portfolio-view.schema.js";
 export { quoteViewSchema, tradePlaceSchema } from "./views/quote-view.schema.js";

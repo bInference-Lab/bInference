@@ -47,6 +47,7 @@
   "intent.not_yours": "Another client started this action, so this one cannot cancel it. Cancel it in the console or the CLI.",
   "order.not_found": "This auto order does not exist. Check your auto orders in the console.",
   "order.wrong_state": "This auto order already ended or changed. Refresh to see where it stands.",
+  "order.kind_unavailable": "This kind of auto order is not available yet. Use a limit, take-profit, stop-loss or trailing stop order.",
   "asset.not_found": "binference does not know this token. Paste its contract address instead.",
   "asset.bad_address": "This is not a valid address. Check it and paste it again.",
   "name.not_found": "No address is registered for this name. Check the spelling.",
