@@ -36,7 +36,7 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
   const turns = createRunningTurns();
   const ended = { endSessions: (_credential: string): void => undefined };
   const supervisor = createRuntimeSupervisor({
-    start: host.startRuntime ?? builtRuntime(host),
+    start: host.startRuntime ?? builtRuntime(host, { agentDb: platform.stateFolder.agentDatabase }),
     makeToken: async (signal) =>
       makeRuntimeToken(
         { access: opened.stores.access, clock: host.clock, random: host.random },

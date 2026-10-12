@@ -15,14 +15,18 @@ model loop, sessions and tools. It is a client of the engine with the scopes `re
 | `RuntimeSettings`, `runtimeSettingsSchema` | The models with their keys, the chat mode, search and the owner                                      |
 | `isRoutedOperation`                        | Whether the runtime answers an operation through the engine                                          |
 | `readControlLines`                         | Cuts a pipe's bytes into lines, refusing one over `maxControlLineBytes`                              |
-| `runtimeNodeArguments`                     | The Node arguments that start the runtime under the permission model                                 |
+| `runtimeNodeArguments`, `RuntimeFiles`     | The Node arguments that start the runtime under the permission model, granted its agent database     |
 | `@binference/runtime/process`              | The built runtime process, `dist/runtime-process.mjs`; never imported                                |
 | `@binference/runtime/testing`              | The runtime run in the test's process, a start line to send it, a scripted model and a turn recorder |
 
 ## The runtime process
 
-The engine starts `process.execPath` with `runtimeNodeArguments(entry)`, an empty environment and
-pipes for standard input and output, which only the engine holds.
+The engine starts `process.execPath` with `runtimeNodeArguments(entry, files)`, an empty
+environment and pipes for standard input and output, which only the engine holds. Under Node's
+permission model the built runtime may read its own program and the store worker bundled beside
+it, `agent.worker.mjs`, read and write `agent.sqlite` and SQLite's files beside it, start the
+store's worker threads and use the network; nothing else
+([decision 0174](../../docs/DECISIONS.md#d0174)).
 
 1. The engine writes `start`: the token it made for this start alone, its IPC address, the paths
    of `agent.sqlite` and the workspace, and the settings.

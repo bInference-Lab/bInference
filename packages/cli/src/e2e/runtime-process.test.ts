@@ -57,10 +57,10 @@ function watched(program: NodeProgram): Watched {
 // The real runtime for an engine on the machine: each start waits for `hold`, then is watched.
 // `requested(n)` settles once the engine asked for start `n`, with that start's process.
 function realRuntimes(machine: TestMachine) {
-  const start = builtRuntime({
-    env: noisyEnv,
-    workerExecArgv: hostOn(machine, []).workerExecArgv ?? [],
-  });
+  const start = builtRuntime(
+    { env: noisyEnv, workerExecArgv: hostOn(machine, []).workerExecArgv ?? [] },
+    { agentDb: join(machine.folder, "agent.sqlite") },
+  );
   // Each start is held in an object: resolving a promise with a promise would wait for it.
   const starts: { readonly program: Promise<Watched> }[] = [];
   const waiting: ((started: { readonly program: Promise<Watched> }) => void)[] = [];
@@ -168,7 +168,10 @@ describe("the agent runtime as a process of its own", () => {
       { permissions: noPermissions, signal: signal() },
     );
     const loader = ["--conditions=@binference/source", "--import", "tsx"];
-    const start = builtRuntime({ env: noisyEnv, workerExecArgv: ["--import", probe, ...loader] });
+    const start = builtRuntime(
+      { env: noisyEnv, workerExecArgv: ["--import", probe, ...loader] },
+      { agentDb: join(folder.path, "agent.sqlite") },
+    );
     const stop = new AbortController();
     const program = await start(stop.signal);
     try {

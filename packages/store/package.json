@@ -18,6 +18,10 @@
       "@binference/source": "./src/testing.ts",
       "types": "./dist/testing.d.mts",
       "default": "./dist/testing.mjs"
+    },
+    "./agent-worker": {
+      "@binference/source": "./src/databases/agent.worker.ts",
+      "default": "./dist/databases/agent.worker.mjs"
     }
   },
   "scripts": {

@@ -27,6 +27,11 @@
       "project": ["src/**/*.{ts,tsx,css}"],
       "ignore": ["src/components/ui/**"],
     },
+    // The runtime's build bundles the agent database's worker beside its entry.
+    "packages/runtime": {
+      "entry": ["src/**/*.worker.ts"],
+      "project": ["src/**/*.ts"],
+    },
     "packages/telegram": {
       "entry": ["src/**/*.worker.ts"],
       "project": ["src/**/*.ts"],

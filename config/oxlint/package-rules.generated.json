@@ -8800,6 +8800,7 @@
         "packages/runtime/src/testing.ts",
         "packages/server/src/index.ts",
         "packages/signer/src/index.ts",
+        "packages/store/src/databases/agent.worker.ts",
         "packages/store/src/index.ts",
         "packages/store/src/testing.ts",
         "packages/telegram/src/index.ts",

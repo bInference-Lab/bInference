@@ -28,3 +28,4 @@ export type {
   RuntimeSettingsWire,
 } from "./control/runtime-settings.schema.js";
 export { runtimeNodeArguments } from "./process/runtime-node-arguments.js";
+export type { RuntimeFiles } from "./process/runtime-node-arguments.js";
