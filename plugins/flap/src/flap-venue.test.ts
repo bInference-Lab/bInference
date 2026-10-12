@@ -8,7 +8,7 @@ import {
 } from "@binference/plugin-sdk/testing";
 import { parseEther } from "viem";
 import { describe, expect, it } from "vitest";
-import { createFlapVenue } from "./flap-venue.js";
+import { createFlapVenue, flapDeclaration } from "./flap-venue.js";
 import { swapFunctionJson } from "./portal/portal-calls.js";
 import {
   bnb,
@@ -95,6 +95,11 @@ describe("the flap venue", () => {
         noDeadline: true,
       },
     ]);
+  });
+
+  it("declares without reading a chain what the venue it makes declares", () => {
+    const { id, contracts } = venueOver(scriptedPortal());
+    expect(flapDeclaration([bscChain])).toStrictEqual({ id, contracts });
   });
 
   it.each([
