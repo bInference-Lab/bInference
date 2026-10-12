@@ -1,0 +1,3 @@
+{
+  "kind": "{kind, select, limit {Limit order} takeProfit {Take-profit} stopLoss {Stop-loss} trailing {Trailing stop} dca {DCA} copy {Copy trade} other {Auto order}}"
+}

@@ -1,0 +1,4 @@
+{
+  "woke": "{agent} is looking into it.",
+  "wakeSkipped": "{count, plural, one {# more match} other {# more matches}} did not wake {agent}: at most 10 wake-ups an hour."
+}

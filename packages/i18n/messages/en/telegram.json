@@ -10,5 +10,6 @@
   "chat.photoTooLarge": "The agent reads photos of 5 MiB at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send a smaller copy.",
   "chat.forwarded": "A forwarded message does not reach the agent. Write what you want it to read in a message of your own.",
   "chat.edited": "An edit does not reach the agent. Send a new message instead.",
-  "chat.unsupported": "The agent reads text and photos. Send this as text or as a photo."
+  "chat.unsupported": "The agent reads text and photos. Send this as text or as a photo.",
+  "notice.agent": "{agent} · {notice}"
 }

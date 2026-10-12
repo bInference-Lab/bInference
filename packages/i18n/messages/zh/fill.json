@@ -1,0 +1,6 @@
+{
+  "buy": "以 {price} 用 {spent} 买入 {amount}",
+  "sell": "以 {price} 卖出 {amount}，收到 {received}",
+  "copyBuy": "跟单 {leader}：用 {spent} 买入 {amount}",
+  "copySell": "跟单 {leader} 卖出 {share}：卖出 {amount}，收到 {received}"
+}

@@ -1,0 +1,4 @@
+{
+  "woke": "{agent} 正在查看。",
+  "wakeSkipped": "另有 {count, plural, other {# 个匹配}}未唤醒 {agent}：每小时最多唤醒 10 次。"
+}

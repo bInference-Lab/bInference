@@ -32,5 +32,6 @@
   "stuck_cancelled": "the transaction was stuck and was cancelled; only the network fee was spent",
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",
   "step_unsent": "an earlier step landed, but a later one was never signed",
-  "stuck_dropped": "the transaction was stuck and could not be sent any more, so it did not go through"
+  "stuck_dropped": "the transaction was stuck and could not be sent any more, so it did not go through",
+  "copy_daily_cap": "it would pass this leader's daily cap ({used} of {cap} used)"
 }

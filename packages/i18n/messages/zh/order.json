@@ -1,0 +1,3 @@
+{
+  "kind": "{kind, select, limit {限价单} takeProfit {止盈} stopLoss {止损} trailing {追踪止损} dca {定投} copy {跟单} other {自动订单}}"
+}
