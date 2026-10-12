@@ -10,9 +10,10 @@ import type { TurnRun } from "./turn-run.js";
 const unreadable = "not run: the arguments could not be read";
 
 // A tool box that throws, on arguments it did not expect, refuses that call and breaks nothing.
+// Every call of a batch is checked against the conversation before the batch runs.
 function prepared(run: TurnRun, call: ToolCall): PreparedCall {
   try {
-    return run.parts.tools.prepare(call);
+    return run.parts.tools.prepare(call, run.messages);
   } catch {
     return { ready: false, text: unreadable };
   }

@@ -2,7 +2,7 @@ import type { Result } from "@binference/core";
 import type { LiveFactsView } from "@binference/protocol";
 import type { TurnOutcome } from "@binference/store";
 import type { ModelEvent } from "./model-event.js";
-import type { OwnerMessage, ToolCall, ToolDeclaration } from "./model-message.js";
+import type { ModelMessage, OwnerMessage, ToolCall, ToolDeclaration } from "./model-message.js";
 import type {
   ChainModel,
   ModelRequest,
@@ -50,7 +50,11 @@ export interface ModelChain {
 /** The tools of a turn: what the model sees, and each call checked before it runs. */
 export interface ToolBox {
   readonly declarations: readonly ToolDeclaration[];
-  prepare(call: ToolCall): PreparedCall;
+  /**
+   * Checks a call. `seen` is the conversation the model's context holds when it made the call,
+   * which a proposal's addresses are checked against (decision 0206); without it, none is.
+   */
+  prepare(call: ToolCall, seen?: readonly ModelMessage[]): PreparedCall;
 }
 
 /**

@@ -46,6 +46,7 @@ function notesSearchTool({ agent, client }: AgentToolParts): AgentTool {
     name: "notes_search",
     kind: "read",
     parallel: true,
+    addressSource: "note",
     description: agentToolTexts.notes_search,
     args: searchArgs,
     run: async (args, { signal }) =>

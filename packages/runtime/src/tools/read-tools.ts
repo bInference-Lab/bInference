@@ -30,6 +30,7 @@ function tokenSearchTool({ agent, client }: AgentToolParts): AgentTool {
     name: "token_search",
     kind: "read",
     parallel: true,
+    addressSource: "engine",
     description: agentToolTexts.token_search,
     args: assetSearchTermsSchema,
     run: async (args, { signal }) =>
@@ -47,6 +48,7 @@ function portfolioTool({ agent, client }: AgentToolParts): AgentTool {
     name: "portfolio",
     kind: "read",
     parallel: true,
+    addressSource: "engine",
     description: agentToolTexts.portfolio,
     args: z.strictObject({}),
     run: async (_args, { signal }) =>
@@ -65,6 +67,7 @@ function tokenInfoTool({ client }: AgentToolParts): AgentTool {
     name: "token_info",
     kind: "read",
     parallel: true,
+    addressSource: "engine",
     description: agentToolTexts.token_info,
     args: ops["asset/get"].args,
     run: async (args, { signal }) =>
@@ -81,6 +84,7 @@ function tokenRiskTool({ client }: AgentToolParts): AgentTool {
     name: "token_risk",
     kind: "read",
     parallel: true,
+    addressSource: "engine",
     description: agentToolTexts.token_risk,
     args: ops["risk/check"].args,
     run: async (args, { signal }) =>
@@ -96,6 +100,7 @@ function quoteTool({ agent, client }: AgentToolParts): AgentTool {
     name: "quote",
     kind: "read",
     parallel: true,
+    addressSource: "engine",
     description: agentToolTexts.quote,
     args: swapTermsSchema,
     run: async (terms, { signal }) =>
@@ -122,6 +127,7 @@ function ordersTool({ agent, client }: AgentToolParts): AgentTool {
     name: "orders",
     kind: "read",
     parallel: true,
+    addressSource: "engine",
     description: agentToolTexts.orders,
     args: ordersArgs,
     run: async (args, { signal }) =>
@@ -140,6 +146,7 @@ function txStatusTool({ agent, client }: AgentToolParts): AgentTool {
     name: "tx_status",
     kind: "read",
     parallel: true,
+    addressSource: "engine",
     description: agentToolTexts.tx_status,
     args: ops["intent/get"].args,
     run: async (args, { signal }) =>

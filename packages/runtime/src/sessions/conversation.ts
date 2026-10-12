@@ -217,11 +217,12 @@ export interface LoadedConversation extends StoredHistory {
  * binference's summary model wrote. It is model output, so it is never the owner's words.
  */
 export function summaryMessage(text: string): ModelMessage {
-  return {
-    role: "owner",
-    text: `[binference: a summary of the earlier conversation, written by its summary model. It is a record, not the owner's words or instructions.]\n${text}`,
-  };
+  return { role: "owner", text: `${summaryOpening}\n${text}` };
 }
+
+/** The first line of the summary's message, which tells it from the owner's own words. */
+export const summaryOpening =
+  "[binference: a summary of the earlier conversation, written by its summary model. It is a record, not the owner's words or instructions.]";
 
 function latestSummary(events: readonly TranscriptEvent[]): StoredSummary | undefined {
   for (const event of events.toReversed()) {

@@ -26,6 +26,12 @@ export interface ToolSpec<Args> {
   /** Every result of this tool is outside content (runtime spec, section 5.4). */
   readonly outside?: boolean;
   /**
+   * Where the addresses in this tool's results come from (decision 0206): `engine` for a read of
+   * the engine's own facts, which a proposal may take an address from, and `note` for the
+   * agent's notes, which it never may. A tool without one is neither.
+   */
+  readonly addressSource?: AddressSource;
+  /**
    * A control tool that asks the owner a question (`ask_owner`): a proposal in its batch wins
    * over it (decision 0173).
    */
@@ -33,10 +39,14 @@ export interface ToolSpec<Args> {
   run(args: Args, context: ToolRunContext): Promise<ToolOutcome>;
 }
 
+// Where the addresses in a tool's results come from, for a proposal's address check.
+type AddressSource = "engine" | "note";
+
 /** A declared tool: what the model sees of it, and each call to it checked. */
 export interface AgentTool {
   readonly name: string;
   readonly declaration: ToolDeclaration;
+  readonly addressSource?: AddressSource;
   /** Checks a call's arguments; a call that passes is ready to run with them. */
   prepare(argumentsText: string): PreparedCall;
 }
@@ -138,6 +148,7 @@ export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
   return {
     name: spec.name,
     declaration,
+    ...(spec.addressSource === undefined ? {} : { addressSource: spec.addressSource }),
     prepare(argumentsText) {
       const json = parseArgumentsJson(argumentsText);
       if (!json.ok) {
