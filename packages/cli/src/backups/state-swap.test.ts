@@ -100,6 +100,25 @@ describe("putting a restored state in place", () => {
     expect(await textAt(state.engineDatabase)).toBe("old engine.sqlite");
   });
 
+  it("keeps the state each restore of one second replaced, and prunes both in time", async () => {
+    const state = await stateWith(["engine.sqlite", "workspace/agent/notes.md"]);
+    const first = await restoredWith(state, ["engine.sqlite", "workspace/agent/one.md"]);
+    await swapInRestored(state, first, { ...files, atMs });
+    const second = await restoredWith(state, ["engine.sqlite", "workspace/agent/two.md"]);
+
+    const swap = await swapInRestored(state, second, { ...files, atMs });
+
+    expect(swap.aside).toBe(join(state.root, "replaced", "20261012-033015-2"));
+    expect(await listFolderFiles(join(state.root, "replaced"), signal())).toStrictEqual([
+      "20261012-033015-2/engine.sqlite",
+      "20261012-033015-2/workspace/agent/one.md",
+      "20261012-033015/engine.sqlite",
+      "20261012-033015/workspace/agent/notes.md",
+    ]);
+    await pruneReplaced(state, atMs + 7 * dayMs, signal());
+    expect(await listFolderFiles(join(state.root, "replaced"), signal())).toStrictEqual([]);
+  });
+
   it("sets nothing aside on a folder that held no state", async () => {
     const state = await stateWith([]);
     const from = await restoredWith(state, ["engine.sqlite"]);
