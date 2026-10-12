@@ -29,6 +29,8 @@ come in as data from `@binference/chains`; nothing here names a chain.
 | `callAbiJson`                                                            | One function of an ABI as plain JSON, as a venue declares the calls its trades make                                                                              |
 | `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions                                                                                             |
 | `createBlockSource`, `HeadSubscription`, `HeadSocket`                    | Each new block of a chain: `newHeads` over the owner's WebSocket RPC, else polling once a block time                                                             |
+| `createPoolPriceReader`, `poolSource`                                    | A `PriceReader` over the deepest Uniswap-style v2 pair or v3 pool against a token with a feed                                                                    |
+| `readTokenDecimals`                                                      | ERC-20 decimals of many tokens in one Multicall3 call                                                                                                            |
 | `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                                                                                                 |
 
 ## Example

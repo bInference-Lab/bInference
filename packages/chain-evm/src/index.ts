@@ -83,3 +83,6 @@ export type {
   HeadSocketMessage,
   HeadSubscription,
 } from "./watching/head-socket.js";
+export { createPoolPriceReader, poolSource } from "./watching/pool-price-reader.js";
+export type { PoolPriceReaderOptions } from "./watching/pool-price-reader.js";
+export { readTokenDecimals } from "./tokens/read-token-decimals.js";

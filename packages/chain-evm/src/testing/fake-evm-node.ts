@@ -14,7 +14,7 @@ import type { JsonValue } from "../rpc/json-value.schema.js";
 import { type FakeRpcAnswer, fakeRpcNode } from "./fake-rpc-http.js";
 
 /** One read call a fake node answers, and the block it reads. */
-interface FakeRead {
+export interface FakeRead {
   readonly target: Address;
   readonly callData: Hex;
   /** The block the batch named; `latest` when it named none. */
@@ -22,7 +22,7 @@ interface FakeRead {
 }
 
 /** What a fake EVM node answers one read call: return data, or `undefined` for a revert. */
-type FakeReadAnswer = (read: FakeRead) => Hex | undefined;
+export type FakeReadAnswer = (read: FakeRead) => Hex | undefined;
 
 /** A batch of reads a fake node received through Multicall3. */
 interface FakeBatch {
