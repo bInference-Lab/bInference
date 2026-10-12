@@ -13,14 +13,15 @@ export interface TailFacts {
 
 const heading = "Live facts from binference, read for this call. They are not the owner's words.";
 
-// A token by its symbol, followed by its short address when the registry does not list it.
+// A token by its symbol; one the registry does not list by the words "unlisted token" and its
+// short address, since its symbol is its deployer's words (runtime spec, section 5.4).
 function tokenText(asset: AssetRef, assets: AssetInfos): string {
   const info = assets[asset];
   const address = shortAddress(addressPartOf(asset));
   if (info === undefined) {
     return address;
   }
-  return info.verified ? info.symbol : `${info.symbol} (${address})`;
+  return info.verified ? info.symbol : `unlisted token (${address})`;
 }
 
 function amountText(amount: Amount, assets: AssetInfos, formatter: Formatter): string {

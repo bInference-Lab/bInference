@@ -33,7 +33,7 @@ describe("the live facts as the model reads them", () => {
     );
   });
 
-  it("name an order's unlisted token with its short address, and missing balances as missing", () => {
+  it("name an unlisted token by its short address, never its deployer's symbol, and missing balances as missing", () => {
     const base = wireOf(testLiveFacts(agent, at));
     const order = {
       order: "ord_0190f1c2-3a4b-7c5d-8e6f-000000000001",
@@ -63,9 +63,10 @@ describe("the live facts as the model reads them", () => {
     const text = liveFactsText({ facts });
     expect(text).toContain("- Balances: could not be read now.");
     expect(text).toContain(
-      "- Open orders: stopLoss sell XVS (0xcF6B…6C63), active (ord_0190f1c2-3a4b-7c5d-8e6f-000000000001).",
+      "- Open orders: stopLoss sell unlisted token (0xcF6B…6C63), active (ord_0190f1c2-3a4b-7c5d-8e6f-000000000001).",
     );
     expect(text).not.toContain("Model budget");
+    expect(text).not.toContain("XVS");
   });
 
   it("say they could not be read when the engine did not answer", () => {
