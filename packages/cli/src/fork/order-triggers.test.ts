@@ -1,48 +1,10 @@
 import { setTimeout as wait } from "node:timers/promises";
-import { assetRefParts } from "@binference/chain";
-import {
-  createBlockSource,
-  createPoolPriceReader,
-  createPriceWatcher,
-  feedAssetsOf,
-  poolSource,
-  type PriceWatcher,
-  type WatchedPrice,
-} from "@binference/chain-evm";
-import { bscContract, type Fork } from "@binference/chain-evm/fork";
-import { bsc, bscPriceFeeds } from "@binference/chains";
-import { bpsSchema, type Clock, ok, type Ratio } from "@binference/core";
-import type { WatchedOrderPrice } from "@binference/engine/orders";
+import type { PriceWatcher, WatchedPrice } from "@binference/chain-evm";
+import type { Fork } from "@binference/chain-evm/fork";
+import { bpsSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { blockTimeMs, orderPriceOf, watcherOn } from "./fork-price-watch.js";
 import { confirmedOrder, type FillRig, fillAgent, onFillFork, xvs } from "./order-fill-rig.js";
-
-// BNB Smart Chain's block time: a fill sent within it of its trigger's read goes out before the
-// block after.
-const blockTimeMs = 450;
-// BNB at $600, as the rig's price source has it: micro-dollars a base unit of WBNB.
-const bnbUsd: Ratio = { numerator: 600n, denominator: 10n ** 12n };
-
-// The fork mines on the wall clock, so the watcher reads on it too.
-const clock: Clock = {
-  now: () => Date.now(),
-  sleep: async (delayMs, signal) => {
-    await wait(delayMs, undefined, { signal });
-  },
-};
-
-// The token's price at a block, as the price triggers take it: the pool's WBNB price in USD.
-function orderPriceOf(price: WatchedPrice): WatchedOrderPrice {
-  const { quotePrice } = price;
-  return {
-    token: price.token,
-    usdPerBaseUnit: {
-      numerator: quotePrice.numerator * bnbUsd.numerator,
-      denominator: quotePrice.denominator * bnbUsd.denominator,
-    },
-    decimals: 18,
-    isThin: false,
-  };
-}
 
 /** A fill that a price at a block triggered: when the price was read, and when the fill ended. */
 interface Timed {
@@ -50,34 +12,6 @@ interface Timed {
   readonly readAtMs: number;
   readonly endedAtMs: number;
   readonly outcomes: readonly string[];
-}
-
-// The watcher on the fork, reading XVS from its deepest PancakeSwap pool against WBNB.
-function watcherOn(fork: Fork): PriceWatcher {
-  const feeds = feedAssetsOf(bsc, bscPriceFeeds);
-  const multicall = bscContract("multicall3", "multicall3");
-  const pools = createPoolPriceReader({
-    rpc: fork.rpc,
-    chain: fork.chain,
-    clock,
-    multicall,
-    v2Factory: bscContract("pancakeswap", "v2-factory"),
-    v3Fees: [],
-    quotes: feeds.filter(({ asset }) => assetRefParts(asset).assetNamespace === "erc20"),
-    minDepthUsdMicros: 1_000_000_000n,
-  });
-  return createPriceWatcher({
-    rpc: fork.rpc,
-    blocks: createBlockSource({ rpc: fork.rpc, clock, blockTimeMs }),
-    clock,
-    multicall,
-    blockTimeMs,
-    planPrices: async (token, signal) => {
-      const read = await pools.priceRead({ token, contracts: {} }, { signal });
-      return read.ok ? ok({ source: poolSource, read: read.value }) : read;
-    },
-    feeds,
-  });
 }
 
 // Hands each read price to the engine's triggers at once, in the block's own processing, and
