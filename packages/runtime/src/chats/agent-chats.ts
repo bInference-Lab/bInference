@@ -2,7 +2,7 @@ import type { Id } from "@binference/core";
 import type { ChatTurn } from "../loop/chat-turn.js";
 
 /** A turn an agent runs, and the promise that settles once it ended and was handled. */
-export interface RunningTurn {
+interface RunningTurn {
   readonly turn: ChatTurn;
   readonly done: Promise<void>;
 }

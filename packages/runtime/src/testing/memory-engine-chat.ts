@@ -5,7 +5,7 @@ import type { EngineChat } from "../relay/ports.js";
 import { nthTestId } from "./memory-agent-stores.js";
 
 /** One thing the fake engine pushed on an agent's chat topic, as the engine names its kind. */
-export interface ChatPush {
+interface ChatPush {
   readonly kind: "chat/turnStarted" | "chat/message" | "chat/status" | "chat/turnEnded";
   readonly agent: Id<"agt">;
   readonly turn: Id<"trn">;

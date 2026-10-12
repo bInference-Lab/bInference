@@ -4,7 +4,7 @@ import { type ChatRunnerOptions, createSerial, createTracker } from "./chat-cont
 import { receiveMessage, resumeWaiting } from "./chat-intake.js";
 
 /** What the runtime's health line counts. */
-export interface ChatCounts {
+interface ChatCounts {
   readonly runningTurns: number;
   readonly waitingMessages: number;
 }

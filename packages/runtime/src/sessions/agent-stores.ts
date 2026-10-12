@@ -13,7 +13,7 @@ export interface AgentStores {
 }
 
 /** A write `agent.sqlite` refused: a later start raised the fence, or a rule the runtime broke. */
-export function refusedWrite(what: string, refusal: string): BinferenceError {
+function refusedWrite(what: string, refusal: string): BinferenceError {
   return new BinferenceError({
     code: "runtime.store_refused",
     message: `agent.sqlite refused to ${what}: ${refusal}.`,

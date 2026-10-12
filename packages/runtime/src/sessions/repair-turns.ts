@@ -45,7 +45,7 @@ async function turnEvents(
 }
 
 /** The calls of a turn's events with no result, in the order they were written. */
-export function openCallsOf(events: readonly TranscriptEvent[]): readonly OpenCall[] {
+function openCallsOf(events: readonly TranscriptEvent[]): readonly OpenCall[] {
   const answered = new Set(
     events.flatMap((event) => {
       const result =

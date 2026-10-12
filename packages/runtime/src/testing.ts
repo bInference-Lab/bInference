@@ -28,6 +28,8 @@ export type {
   TurnRefusal,
   TurnStatusLine,
 } from "./loop/turn-records.js";
+export { engineChatContract } from "./contracts/engine-chat-contract.js";
+export type { EngineChatHarness, EngineChatSubject } from "./contracts/engine-chat-contract.js";
 export { mergeSourceContract } from "./contracts/merge-source-contract.js";
 export type { MergeSourceHarness, MergeSourceSubject } from "./contracts/merge-source-contract.js";
 export { modelTransportContract } from "./contracts/model-transport-contract.js";

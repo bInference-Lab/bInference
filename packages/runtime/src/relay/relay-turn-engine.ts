@@ -9,7 +9,7 @@ import type { EngineChat } from "./ports.js";
 import { statusKeysOf } from "./status-keys.js";
 
 /** One turn of an agent in one session, under the id the engine reserved. */
-export interface TurnPlace {
+interface TurnPlace {
   readonly agent: Id<"agt">;
   readonly session: Id<"ses">;
   readonly turn: Id<"trn">;
