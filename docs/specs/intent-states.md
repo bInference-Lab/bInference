@@ -182,6 +182,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
   - A fill runs in its order's mode, keeps the order's outside-content mark and runs all the same,
     since the owner confirmed the order's card. The policy refuses a fill that sells a token on the
     deny list as `token_denied`.
+  - A sale sized in dollars is sized at its trigger's price, then again at its own quote's price
+    when that quote values it above its size; the check holds its value at the quote to its size
+    ([decision 0197](../DECISIONS.md#d0197)).
   - At `simulated` it reads its order again and holds the chosen quote to the order's bounds, in
     the agent's line of confirmations with the rolling cap (section 9); a broken bound ends it
     `failed_check` with the fill reason (section 4).

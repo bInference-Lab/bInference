@@ -145,7 +145,7 @@ function requestOf(
  * Sizes an order's fill when its trigger fires (decision 0195): a buy spends its size of the
  * asset it names, by amount, by share of the spendable balance or in dollars at that asset's USD
  * price; a sale sells its size of the token, never more than the wallet holds, in dollars at the
- * trigger's price. A sale of a position that holds none of the token is `empty`; a buy that comes
+ * trigger's price first, then at its own quote's when that quote values it higher (decision 0197). A sale of a position that holds none of the token is `empty`; a buy that comes
  * to nothing skips with `nothing_to_spend`, a sale with `nothing_to_sell`, and a size in dollars
  * nothing prices with `no_price`.
  */

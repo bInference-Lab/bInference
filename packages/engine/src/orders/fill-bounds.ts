@@ -77,6 +77,11 @@ export interface FillFacts {
   readonly tokenDecimals: number;
   /** The level the quote's own expected price must meet, when a thin pool's price fired the fill. */
   readonly confirm?: PriceLevel;
+  /**
+   * A sale sized in dollars: what it may receive at most at its quote's expected output, valued at
+   * `otherUsd` (decision 0197).
+   */
+  readonly saleUsdMicros?: bigint;
 }
 
 /** The parts of an order a fill is held to. */
@@ -94,12 +99,26 @@ function canFill(order: BoundedOrder, nowMs: number): boolean {
   );
 }
 
+// A sale sized in dollars takes no more than its dollars at its own quote; nothing values a quote
+// whose other side has no price, so such a sale breaks its size.
+function isInsideDollars(quote: FillQuote, facts: FillFacts): boolean {
+  const { saleUsdMicros, otherUsd } = facts;
+  if (saleUsdMicros === undefined) {
+    return true;
+  }
+  return (
+    otherUsd !== undefined &&
+    quote.expectedOutBase * otherUsd.numerator <= saleUsdMicros * otherUsd.denominator
+  );
+}
+
 // Inside the size and the slippage the order allows.
 function isInsideSize(order: BoundedOrder, quote: FillQuote, facts: FillFacts): boolean {
   const most = order.request.maxSlippageBps;
   const asked = facts.maxSlippageBps;
   const isSlippageInside = most === undefined || (asked !== undefined && asked <= most);
-  return quote.amountInBase > 0n && quote.amountInBase <= facts.limitBase && isSlippageInside;
+  const isInsideBase = quote.amountInBase > 0n && quote.amountInBase <= facts.limitBase;
+  return isInsideBase && isSlippageInside && isInsideDollars(quote, facts);
 }
 
 /**

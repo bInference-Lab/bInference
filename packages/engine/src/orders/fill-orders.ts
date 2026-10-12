@@ -1,17 +1,14 @@
 import type { Clock, Id, IdSource, Ratio } from "@binference/core";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import { quoteDocument } from "../intents/intent-documents.schema.js";
 import { paperFillOf } from "../intents/intent-history.js";
-import type { FillProposal } from "../money-path/authorize-simulated.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { AgentStore } from "../ports.js";
-import { isUsablePrice } from "../positions/value-execution.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
 import { cancelCard } from "./cancel-order.js";
 import { endEmptyExit } from "./end-exit-orders.js";
-import { checkFill } from "./fill-bounds.js";
+import { checkOf, resizedSaleOf } from "./fill-check.js";
 import { fillNotice, skippedNotice } from "./fill-notices.js";
 import { agentWideReasons, isNewReason, isWaiting, paceRows } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
@@ -125,42 +122,6 @@ async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Pr
   return "skipped";
 }
 
-// The fill's check at `simulated`: its order as it stands now, held to every bound with its quote.
-function checkOf(
-  parts: OrderFillsParts,
-  fill: { readonly order: OrderRecord; readonly sized: SizedFill; readonly price: FillPrice },
-): FillProposal["check"] {
-  return async (simulated, { signal }) => {
-    const { order, sized, price } = fill;
-    const current = await parts.orders.get(order.id, { signal });
-    const { quote } = simulated.record;
-    if (current === undefined || quote === undefined) {
-      return "order_inactive";
-    }
-    const view = quoteDocument.decode(quote);
-    const other = order.request.side === "buy" ? view.amountIn.asset : view.minOut.asset;
-    const usd = await parts.prices.usdPrice(other, { signal });
-    const { maxSlippageBps } = sized.request;
-    const checked = checkFill(
-      current,
-      {
-        amountInBase: view.amountIn.base,
-        expectedOutBase: view.expectedOut.base,
-        minOutBase: view.minOut.base,
-      },
-      {
-        nowMs: parts.clock.now(),
-        limitBase: sized.limitBase,
-        tokenDecimals: price.decimals,
-        ...(maxSlippageBps === undefined ? {} : { maxSlippageBps }),
-        ...(usd.ok && isUsablePrice(usd.value) ? { otherUsd: usd.value } : {}),
-        ...(price.confirm === undefined ? {} : { confirm: price.confirm }),
-      },
-    );
-    return checked.ok ? undefined : checked.error;
-  };
-}
-
 // The reason a fill's intent ended without filling; `undefined` for a stop's cancel, which is no
 // skip, and a fill that went on.
 function endReasonOf(snapshot: IntentSnapshot): OrderFillReason | undefined {
@@ -210,6 +171,30 @@ function gateOf(parts: OrderFillsParts, order: OrderRecord): OrderFillReason | u
   return parts.isLocked() ? "engine_locked" : undefined;
 }
 
+// Proposes a sized fill on the money path, authorized by its order, in its order's mode.
+async function proposeFill(
+  parts: OrderFillsParts,
+  fill: {
+    readonly order: OrderRecord;
+    readonly sized: SizedFill;
+    readonly price: FillPrice;
+    readonly signal: AbortSignal;
+  },
+): ReturnType<MoneyPath["propose"]> {
+  const { order, sized, price, signal } = fill;
+  const proposer = {
+    role: "engine",
+    ref: "engine",
+    hasOutsideContent: order.hasOutsideContent,
+  } as const;
+  const proposal = {
+    authorization: { order: order.id },
+    isPaper: order.isPaper,
+    check: checkOf(parts, { order, sized, price }),
+  };
+  return parts.moneyPath.propose(sized.request, proposer, { signal, fill: proposal });
+}
+
 async function fillNow(
   parts: OrderFillsParts,
   state: FillState,
@@ -238,17 +223,15 @@ async function fillNow(
   if (sized.kind === "skip") {
     return skip(parts, state, { order, rows, reason: sized.reason, signal });
   }
-  const proposer = {
-    role: "engine",
-    ref: "engine",
-    hasOutsideContent: order.hasOutsideContent,
-  } as const;
-  const fill = {
-    authorization: { order: order.id },
-    isPaper: order.isPaper,
-    check: checkOf(parts, { order, sized, price }),
-  };
-  const proposed = await parts.moneyPath.propose(sized.request, proposer, { signal, fill });
+  const first = await proposeFill(parts, { order, sized, price, signal });
+  // A sale in dollars that its quote valued above its size is sized again at that quote's price.
+  const resized = first.ok
+    ? await resizedSaleOf(parts, { order, sized, snapshot: first.value, signal })
+    : undefined;
+  const proposed =
+    resized === undefined
+      ? first
+      : await proposeFill(parts, { order, sized: resized, price, signal });
   if (!proposed.ok) {
     return skip(parts, state, { order, rows, reason: "no_route", signal });
   }

@@ -73,6 +73,7 @@ const factsOf: fc.Arbitrary<FillFacts> = fc.record(
     otherUsd: ratios,
     tokenDecimals: fc.integer({ min: 0, max: 30 }),
     confirm: levels,
+    saleUsdMicros: base,
   },
   { requiredKeys: ["nowMs", "limitBase", "tokenDecimals"] },
 );
@@ -87,7 +88,17 @@ function oracleSize(order: BoundedOrder, quote: FillQuote, facts: FillFacts): bo
   const most = order.request.maxSlippageBps;
   const asked = facts.maxSlippageBps;
   const isSlippageInside = most === undefined || (asked !== undefined && asked <= most);
-  return quote.amountInBase > 0n && quote.amountInBase <= facts.limitBase && isSlippageInside;
+  const { saleUsdMicros, otherUsd } = facts;
+  const isInsideDollars =
+    saleUsdMicros === undefined ||
+    (otherUsd !== undefined &&
+      quote.expectedOutBase * otherUsd.numerator <= saleUsdMicros * otherUsd.denominator);
+  return (
+    quote.amountInBase > 0n &&
+    quote.amountInBase <= facts.limitBase &&
+    isSlippageInside &&
+    isInsideDollars
+  );
 }
 
 // The other side's dollars and the tokens, scaled so that dollars per whole token compare as
