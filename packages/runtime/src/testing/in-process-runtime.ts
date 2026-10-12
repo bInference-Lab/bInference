@@ -10,7 +10,7 @@ import {
   type MemoryAgentDatabase,
 } from "@binference/store/testing";
 import type { StartLine } from "../control/control-line.schema.js";
-import type { RuntimeModelPrice } from "../control/runtime-settings.schema.js";
+import type { RuntimeModelPrice, RuntimeSettings } from "../control/runtime-settings.schema.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
@@ -45,6 +45,8 @@ export interface InProcessRuntime {
   tick(): Promise<void>;
   /** Every start line it signed in with. */
   readonly starts: readonly StartLine[];
+  /** The settings each turn was set up with, by its agent, in order. */
+  readonly setups: readonly { readonly agent: string; readonly settings: RuntimeSettings }[];
   /** The engine's side of chat it signed in to, and the agent database it keeps. */
   readonly engine: MemoryEngineChat;
   readonly database: MemoryAgentDatabase;
@@ -146,6 +148,7 @@ function exitOf(): {
 function chatHost(
   options: InProcessRuntimeOptions,
   database: MemoryAgentDatabase,
+  setups: { readonly agent: string; readonly settings: RuntimeSettings }[],
 ): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "clock"> {
   const transport = createScriptedTransport(options.replies ?? []);
   const tools = testToolBox(options.tools ?? []);
@@ -155,12 +158,15 @@ function chatHost(
   const models = createTestChain([{ name: "test/model", transport, ...price }], { clock });
   return {
     openAgentDatabase: async () => memoryDatabase(database),
-    turnSetup: (agent, _settings, client) => ({
-      models,
-      tools: isLinked ? agentToolBox({ agent, client }) : tools,
-      instructions: "You are a test agent.",
-      limits: turnLimits,
-    }),
+    turnSetup: (agent, settings, client) => {
+      setups.push({ agent, settings });
+      return {
+        models,
+        tools: isLinked ? agentToolBox({ agent, client }) : tools,
+        instructions: "You are a test agent.",
+        limits: turnLimits,
+      };
+    },
     clock,
   };
 }
@@ -169,10 +175,9 @@ function chatHost(
 export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): InProcessRuntime {
   const engine = options.engine ?? createMemoryEngineChat([nthTestId("agt", 1)]);
   const database = options.database ?? createMemoryAgentDatabase();
-  const input = createByteChannel();
-  const output = createByteChannel();
+  const [input, output] = [createByteChannel(), createByteChannel()];
   const timer = { onTick: async (): Promise<void> => Promise.resolve() };
-  const starts: StartLine[] = [];
+  const [starts, setups]: [StartLine[], { agent: string; settings: RuntimeSettings }[]] = [[], []];
   const state = { hasStarted: false };
   const killed = exitOf();
   const running = runRuntime({
@@ -182,7 +187,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
       starts.push(start);
       return signIn({ ...options, engine }, start, signal);
     },
-    ...chatHost(options, database),
+    ...chatHost(options, database, setups),
     everyTenSeconds: (onTick, signal) => {
       timer.onTick = onTick;
       signal.addEventListener("abort", () => (timer.onTick = async () => Promise.resolve()), {
@@ -214,5 +219,6 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
     engine,
     database,
     starts,
+    setups,
   };
 }

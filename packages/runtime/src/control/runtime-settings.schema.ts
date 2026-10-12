@@ -17,6 +17,12 @@ export interface RuntimeModelPrice {
   readonly cachedPerMTokUsd: bigint;
 }
 
+/** The models the owner picked for one agent, by role, each `<provider>/<model>` (decision 0204). */
+export interface AgentModelPicks {
+  readonly main?: string;
+  readonly fast?: string;
+}
+
 /** The models section of the settings (config spec, section 6.3), keys resolved. */
 export interface RuntimeModels {
   readonly providers: Readonly<Record<string, RuntimeProvider>>;
@@ -30,6 +36,8 @@ export interface RuntimeModels {
   readonly loopDetection: boolean;
   /** Keyed by `<provider>/<model>`. */
   readonly prices: Readonly<Record<string, RuntimeModelPrice>>;
+  /** Each agent's picked models, by agent id; a role it picked none for uses the config's. */
+  readonly picked?: Readonly<Record<string, AgentModelPicks>>;
 }
 
 /** The web search provider and the keys the search tools use, resolved. */
@@ -96,6 +104,12 @@ const modelsSchema = z.strictObject({
   maxToolCallsPerTurn: z.int().positive(),
   loopDetection: z.boolean(),
   prices: z.record(nameSchema, priceSchema),
+  picked: z
+    .record(
+      nameSchema,
+      z.strictObject({ main: nameSchema.exactOptional(), fast: nameSchema.exactOptional() }),
+    )
+    .exactOptional(),
 });
 
 /** Decodes {@link RuntimeSettings} from JSON, and encodes them back. */

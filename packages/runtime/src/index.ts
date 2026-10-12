@@ -20,6 +20,7 @@ export type {
 export { maxControlLineBytes, readControlLines } from "./control/read-control-lines.js";
 export { runtimeSettingsSchema } from "./control/runtime-settings.schema.js";
 export type {
+  AgentModelPicks,
   RuntimeModelPrice,
   RuntimeModels,
   RuntimeProvider,

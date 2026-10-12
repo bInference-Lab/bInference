@@ -160,4 +160,24 @@ describe("the runtime's chat", () => {
     await expect(endedTurn(engine, again.turn)).resolves.toBe("ok");
     expect(sends).toStrictEqual([`${posted.turn}.2`]);
   });
+
+  it("sets up the turn after a settings line with the model the owner picked", async () => {
+    const engine = createMemoryEngineChat([agent]);
+    const runtime = await ready({ engine, replies: [textReply("One."), textReply("Two.")] });
+    const first = engine.post(agent, "hi");
+    await expect(endedTurn(engine, first.turn)).resolves.toBe("ok");
+    const { settings } = fixtureStartLine();
+    const picked = {
+      ...settings,
+      models: { ...settings.models, picked: { [agent]: { main: "router/picked" } } },
+    };
+    await runtime.write(
+      `${JSON.stringify(engineLineSchema.encode({ t: "settings", settings: picked }))}\n`,
+    );
+    const second = engine.post(agent, "again");
+    await expect(endedTurn(engine, second.turn)).resolves.toBe("ok");
+    expect(
+      runtime.setups.map((setup) => setup.settings.models.picked?.[agent]?.main),
+    ).toStrictEqual([undefined, "router/picked"]);
+  });
 });
