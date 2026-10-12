@@ -10,6 +10,7 @@ import {
   type MemoryAgentDatabase,
 } from "@binference/store/testing";
 import type { StartLine } from "../control/control-line.schema.js";
+import type { RuntimeModelPrice } from "../control/runtime-settings.schema.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
@@ -22,7 +23,7 @@ import { nthTestId } from "./memory-agent-stores.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
 import {
   createScriptedTransport,
-  oneModelChain,
+  createTestChain,
   type ScriptedReply,
 } from "./scripted-transport.js";
 
@@ -65,6 +66,8 @@ export interface InProcessRuntimeOptions {
   readonly database?: MemoryAgentDatabase;
   /** The model's answers, across every turn; none by default. */
   readonly replies?: readonly ScriptedReply[];
+  /** What each of the model's calls costs, by its tokens; $0 when absent. */
+  readonly price?: RuntimeModelPrice;
   readonly tools?: readonly TestTool[];
   /** A manual clock by default. */
   readonly clock?: Clock;
@@ -133,7 +136,8 @@ function chatHost(
   const tools = testToolBox(options.tools ?? []);
   const isLinked = options.signIn !== undefined;
   const clock = options.clock ?? createManualClock(10_000);
-  const models = oneModelChain(transport, clock);
+  const price = options.price === undefined ? {} : { price: options.price };
+  const models = createTestChain([{ name: "test/model", transport, ...price }], { clock });
   return {
     openAgentDatabase: async () => memoryDatabase(database),
     turnSetup: (agent, _settings, client) => ({
