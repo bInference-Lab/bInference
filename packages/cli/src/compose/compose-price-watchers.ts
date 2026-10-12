@@ -115,8 +115,11 @@ function crossCheckOf(
 function checkLag(options: PriceWatchersOptions, alerts: WatcherLagAlerts): void {
   const atMs = options.clock.now();
   for (const [chain, watch] of options.watches) {
-    if (watch.isRunning()) {
-      const chainName = watch.chain.definition.name;
+    const chainName = watch.chain.definition.name;
+    const downSinceMs = watch.downSinceMs();
+    if (downSinceMs !== undefined) {
+      alerts.check({ chain, chainName, lagBlocks: 0n, atMs, isDown: true });
+    } else if (watch.isRunning()) {
       alerts.check({ chain, chainName, lagBlocks: watch.watcher.lag().lagBlocks, atMs });
     } else {
       alerts.forget(chain);

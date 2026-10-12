@@ -30,7 +30,13 @@ const watched: WatchedPrice = {
 
 /** A chain watch a test steers: its lag, whether it runs, its latest prices and its watches. */
 function fakeWatch() {
-  const state = { lag: 0n, latest: [] as WatchedPrice[], watches: [] as AssetRef[], closed: 0 };
+  const state = {
+    lag: 0n,
+    latest: [] as WatchedPrice[],
+    watches: [] as AssetRef[],
+    closed: 0,
+    downSinceMs: undefined as number | undefined,
+  };
   const watch = {
     chain: { ref: bsc, definition: { name: "BNB Smart Chain" } } as unknown as RegisteredChain,
     watcher: {
@@ -44,7 +50,8 @@ function fakeWatch() {
       state.watches.push(asset);
       return () => undefined;
     },
-    isRunning: () => state.watches.length > 0,
+    isRunning: () => state.watches.length > 0 && state.downSinceMs === undefined,
+    downSinceMs: () => state.downSinceMs,
     latest: () => state.latest,
     close: async () => {
       state.closed += 1;
@@ -129,5 +136,25 @@ describe("the composed price watchers", () => {
     const { fake, closers } = rig();
     await closers.closeAll(new AbortController().signal);
     expect(fake.state.closed).toBe(1);
+  });
+
+  it("fails while a watcher is down and tells the owner at once", async () => {
+    const { clock, fake, watchers, pushes } = rig();
+    await clock.advance(1_000);
+    fake.state.downSinceMs = startMs + 1_500;
+    await clock.advance(1_000);
+    expect(watchers.health()).toStrictEqual({
+      signal: "watcher",
+      state: "fail",
+      since: startMs + 2_000,
+      lagBlocks: 0,
+    });
+    expect(pushes).toStrictEqual([
+      {
+        topic: "notice",
+        kind: "notice/new",
+        data: { key: "notice.watcherStopped", values: { chain: "BNB Smart Chain" } },
+      },
+    ]);
   });
 });

@@ -1,6 +1,7 @@
 import type { AssetRef, RegisteredChain } from "@binference/chain";
 import type { PriceWatcher, WatchedPrice } from "@binference/chain-evm";
-import { BinferenceError, type Logger } from "@binference/core";
+import type { Clock, Logger } from "@binference/core";
+import { createWatcherRunner } from "./watcher-runner.js";
 
 /** One chain's price watcher, run while it watches a token, with its latest price of each. */
 export interface ChainWatch {
@@ -14,72 +15,31 @@ export interface ChainWatch {
   watch(token: AssetRef): () => void;
   /** Whether the watcher runs now. */
   isRunning(): boolean;
+  /** Since when the watcher is down after a fault, until a restart has run 30 seconds. */
+  downSinceMs(): number | undefined;
   /** The latest price of each watched token the watcher read. */
   latest(): readonly WatchedPrice[];
   /** Stops the watcher and waits for its reads to end. */
   close(): Promise<void>;
 }
 
-interface Running {
-  readonly stop: AbortController;
-  readonly done: Promise<void>;
-}
-
-/** Runs a watcher until stopped, and says whether it runs. */
-interface WatcherRunner {
-  /** Starts the watcher unless it runs. */
-  ensure(): void;
-  /** Stops it and waits for its reads to end. */
-  stop(): Promise<void>;
-  isRunning(): boolean;
-}
-
-function runnerOf(options: ChainWatchOptions): WatcherRunner {
-  const { watcher, logger, chain } = options;
-  let running: Running | undefined;
-  const runUntilStopped = async (stop: AbortController): Promise<void> => {
-    try {
-      await watcher.run(stop.signal);
-    } catch (error) {
-      if (!stop.signal.aborted) {
-        const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
-        logger.error("engine.watcher_stopped", { chain: chain.ref, errorCode });
-        running = undefined;
-      }
-    }
-  };
-  return {
-    ensure() {
-      if (running === undefined) {
-        const stop = new AbortController();
-        running = { stop, done: runUntilStopped(stop) };
-      }
-    },
-    async stop() {
-      const current = running;
-      running = undefined;
-      current?.stop.abort();
-      await current?.done;
-    },
-    isRunning: () => running !== undefined,
-  };
-}
-
 /** What a chain watch wraps. */
 interface ChainWatchOptions {
   readonly chain: RegisteredChain;
   readonly watcher: PriceWatcher;
+  readonly clock: Clock;
   readonly logger: Logger;
 }
 
 /**
  * Wraps one chain's price watcher. A watcher that stops for a fault of its own is logged as
- * `engine.watcher_stopped` with its code and runs again at the next watch.
+ * `engine.watcher_stopped` with its code and restarts after 1 s, the wait doubling up to 30 s,
+ * while a token is watched; it counts as down until a restart has run 30 seconds.
  */
 export function createChainWatch(options: ChainWatchOptions): ChainWatch {
   const { watcher, chain } = options;
-  const runner = runnerOf(options);
   const watched = new Map<AssetRef, number>();
+  const runner = createWatcherRunner({ ...options, isWanted: () => watched.size > 0 });
   const latest = new Map<AssetRef, WatchedPrice>();
   watcher.onPrice((price) => {
     if (watched.has(price.token)) {
@@ -115,6 +75,7 @@ export function createChainWatch(options: ChainWatchOptions): ChainWatch {
       };
     },
     isRunning: () => runner.isRunning(),
+    downSinceMs: () => runner.downSinceMs(),
     latest: () => [...latest.values()],
     close: async () => runner.stop(),
   };

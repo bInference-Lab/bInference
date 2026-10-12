@@ -120,7 +120,7 @@ function watchOf(options: ChainWatchesOptions, reads: ChainReads): ChainWatch {
     feeds,
     callTimeoutMs: watchCallTimeoutMs,
   });
-  return createChainWatch({ chain, watcher, logger: options.logger });
+  return createChainWatch({ chain, watcher, clock, logger: options.logger });
 }
 
 /**
