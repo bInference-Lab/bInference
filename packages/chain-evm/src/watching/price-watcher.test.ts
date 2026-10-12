@@ -1,5 +1,5 @@
 import { type AssetRef, accountRefSchema, assetRefSchema } from "@binference/chain";
-import { err, ok, type Result } from "@binference/core";
+import { BinferenceError, err, ok, type Result } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
 import { type Address, encodeAbiParameters, getAddress, type Hex, toHex } from "viem";
 import { afterEach, describe, expect, it } from "vitest";
@@ -108,6 +108,7 @@ function planOf(token: AssetRef): Result<PricePlan, PlanFailure> {
         },
       },
     ],
+    [tokenOf(994), { ...base, read: { ...base.read, price: () => err("replan") } }],
     [
       tokenOf(995),
       {
@@ -173,6 +174,11 @@ function rig(options: { readonly heads?: "socket" } = {}): Rig {
   const planned: AssetRef[] = [];
   const planPrices = async (token: AssetRef): Promise<Result<PricePlan, PlanFailure>> => {
     planned.push(token);
+    // Token 993's first plan fails as one with no RPC to read through does.
+    const isFirst = planned.filter((each) => each === token).length === 1;
+    if (token === tokenOf(993) && isFirst) {
+      throw new BinferenceError({ code: "chain.rpc_down", message: "No node answered." });
+    }
     return await Promise.resolve(planOf(token));
   };
   const socket = manualHeads(clock);
@@ -313,26 +319,54 @@ describe("price watcher", () => {
     expect(subject.watcher.lag().readFault).toBeUndefined();
   });
 
-  it("plans a token again once its answers price nothing, and one no reader prices later", async () => {
+  it("keeps a plan through two blocks that price nothing, and finds another after the third", async () => {
     const subject = rig();
     subject.watcher.watch(tokenOf(1));
-    subject.watcher.watch(tokenOf(999));
     await subject.clock.advance(0);
     subject.pools.isUnpriced = true;
     await nextBlock(subject, 101n);
-    expect(subject.prices).toStrictEqual([]);
-    expect(subject.watcher.tokens()).toStrictEqual([
-      { token: tokenOf(1), state: "unpriced" },
-      { token: tokenOf(999), state: "unpriced" },
-    ]);
+    await nextBlock(subject, 102n);
+    expect(subject.planned).toStrictEqual([tokenOf(1)]);
+    expect(subject.watcher.tokens()).toStrictEqual([{ token: tokenOf(1), state: "unpriced" }]);
+    await nextBlock(subject, 103n);
+    await subject.clock.advance(0);
+    expect(subject.planned).toStrictEqual([tokenOf(1), tokenOf(1)]);
     subject.pools.isUnpriced = false;
-    await subject.clock.advance(30_000);
-    expect(subject.planned).toStrictEqual([tokenOf(1), tokenOf(999), tokenOf(1), tokenOf(999)]);
+    await nextBlock(subject, 104n);
+    expect(subject.prices.map(({ block }) => block)).toStrictEqual([104n]);
+    expect(subject.watcher.tokens()).toStrictEqual([
+      { token: tokenOf(1), state: "priced", source: "test-pools" },
+    ]);
+  });
+
+  it("finds another plan at once when the answers say the plan no longer holds", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(994));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    expect(subject.watcher.tokens()).toStrictEqual([{ token: tokenOf(994), state: "unpriced" }]);
+    await subject.clock.advance(1_000);
+    expect(subject.planned).toStrictEqual([tokenOf(994)]);
+    await subject.clock.advance(1_000);
+    expect(subject.planned).toStrictEqual([tokenOf(994), tokenOf(994)]);
+  });
+
+  it("asks again a block time later when planning failed for want of an RPC, 30 s when no reader prices it", async () => {
+    const subject = rig();
+    subject.watcher.watch(tokenOf(993));
+    subject.watcher.watch(tokenOf(999));
+    await subject.clock.advance(0);
+    await nextBlock(subject, 101n);
+    expect(subject.planned).toStrictEqual([tokenOf(993), tokenOf(999), tokenOf(993)]);
     expect(subject.watcher.tokens()[0]).toStrictEqual({
-      token: tokenOf(1),
+      token: tokenOf(993),
       state: "priced",
       source: "test-pools",
     });
+    await subject.clock.advance(29_000);
+    expect(subject.planned.filter((token) => token === tokenOf(999))).toHaveLength(1);
+    await subject.clock.advance(1_000);
+    expect(subject.planned.filter((token) => token === tokenOf(999))).toHaveLength(2);
   });
 
   it("prices a token in its quote alone when the quote has no feed", async () => {

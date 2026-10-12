@@ -3,6 +3,16 @@ import type { Clock, Result } from "@binference/core";
 import { parseEvmAddress } from "../evm-address.js";
 import { hexSchema } from "../rpc/evm-wire.schema.js";
 import type { AggregateCall } from "./read-aggregate.js";
+import {
+  isPlanDue,
+  newEntry,
+  planFound,
+  planMissing,
+  type ReadOutcome,
+  reported,
+  stateOf,
+  type WatchEntry,
+} from "./watch-entry.js";
 
 /** A token's price read and who declared it: a venue's id, or the pools the chain family reads. */
 export interface PricePlan {
@@ -45,10 +55,10 @@ export interface WatchList {
   add(token: AssetRef): () => void;
   /** The tokens with a plan, in the order they were first watched. */
   planned(): readonly PlannedToken[];
-  /** Starts finding a plan for each watched token without one whose time has come. */
+  /** Starts finding a plan for each watched token that wants one now. */
   planDue(signal: AbortSignal): void;
-  /** Drops a token's plan, since its answers priced nothing, and finds a new one. */
-  replan(token: AssetRef): void;
+  /** Takes what one block's read of a token's plan came to (decision 0194). */
+  report(token: AssetRef, read: ReadOutcome): void;
   /** Every watched token and where it stands. */
   tokens(): readonly WatchedToken[];
 }
@@ -57,24 +67,13 @@ export interface WatchList {
 export interface WatchListOptions {
   readonly planPrices: PlanPrices;
   readonly clock: Clock;
+  /** How long a token waits to be planned again when no reader prices it. */
+  readonly noReaderMs: number;
   /**
-   * How long a token waits to be planned again when no plan came, or when its plan priced nothing
-   * soon after it came.
+   * How long it waits when its reader could not answer, such as for want of an RPC: about a block
+   * time, so a blip costs a block, not a blind window.
    */
-  readonly replanMs: number;
-}
-
-/** One watched token. A token watched again after its last release starts a new life. */
-interface Entry {
-  readonly life: number;
-  readonly watchers: number;
-  readonly plan?: PlannedToken;
-  /** When the plan in hand was found. */
-  readonly plannedAtMs: number;
-  readonly isPlanning: boolean;
-  /** Set once a plan was looked for and none came, until one does. */
-  readonly isUnpriced: boolean;
-  readonly nextPlanAtMs: number;
+  readonly retryMs: number;
 }
 
 function callOf(call: ReadCall): AggregateCall | undefined {
@@ -101,26 +100,14 @@ function plannedOf(token: AssetRef, plan: PricePlan): PlannedToken | undefined {
   };
 }
 
-function stateOf(token: AssetRef, entry: Entry): WatchedToken {
-  if (entry.plan !== undefined) {
-    return { token, state: "priced", source: entry.plan.source };
-  }
-  return { token, state: entry.isUnpriced ? "unpriced" : "planning" };
-}
-
-function withoutPlan(entry: Entry): Omit<Entry, "plan"> {
-  const { plan: _plan, ...rest } = entry;
-  return rest;
-}
-
 /** The changes of a watch list's entries, each landing only on the life it was made for. */
 interface Entries {
-  readonly map: Map<AssetRef, Entry>;
-  change(token: AssetRef, life: number, next: (entry: Entry) => Entry): void;
+  readonly map: Map<AssetRef, WatchEntry>;
+  change(token: AssetRef, life: number, next: (entry: WatchEntry) => WatchEntry): void;
 }
 
 function entriesOf(): Entries {
-  const map = new Map<AssetRef, Entry>();
+  const map = new Map<AssetRef, WatchEntry>();
   return {
     map,
     change(token, life, next) {
@@ -132,41 +119,30 @@ function entriesOf(): Entries {
   };
 }
 
-// Finds a plan for one token in the background; a plan for a token released since is dropped.
+// Finds a plan for one token in the background; a plan for a token released since is dropped. No
+// plan keeps the plan in hand, and looks again after 30 s when no reader prices the token, or
+// after a block time when its reader could not answer.
 function planOne(
   entries: Entries,
   options: WatchListOptions,
   started: { readonly token: AssetRef; readonly life: number; readonly signal: AbortSignal },
 ): void {
   const { token, life } = started;
-  const settle = (plan: PlannedToken | undefined): void => {
+  const settle = (found: PlannedToken | PlanFailure | "fault"): void => {
     const nowMs = options.clock.now();
+    const waitMs = found === "no_price_read" ? options.noReaderMs : options.retryMs;
     entries.change(token, life, (entry) =>
-      plan === undefined
-        ? {
-            ...withoutPlan(entry),
-            isPlanning: false,
-            isUnpriced: true,
-            nextPlanAtMs: nowMs + options.replanMs,
-          }
-        : { ...entry, plan, plannedAtMs: nowMs, isPlanning: false, isUnpriced: false },
+      typeof found === "string"
+        ? planMissing(entry, { nowMs, waitMs })
+        : planFound(entry, found, nowMs),
     );
   };
   entries.change(token, life, (entry) => ({ ...entry, isPlanning: true }));
   options.planPrices(token, started.signal).then(
-    (found) => settle(found.ok ? plannedOf(token, found.value) : undefined),
-    () => settle(undefined),
+    (found) => settle(found.ok ? (plannedOf(token, found.value) ?? "no_price_read") : found.error),
+    () => settle("fault"),
   );
 }
-
-const newEntry = (life: number): Entry => ({
-  life,
-  watchers: 0,
-  plannedAtMs: 0,
-  isPlanning: false,
-  isUnpriced: false,
-  nextPlanAtMs: 0,
-});
 
 /** Creates an empty {@link WatchList}. */
 export function createWatchList(options: WatchListOptions): WatchList {
@@ -194,17 +170,15 @@ export function createWatchList(options: WatchListOptions): WatchList {
     planDue(signal) {
       const nowMs = options.clock.now();
       for (const [token, entry] of entries.map) {
-        if (entry.plan === undefined && !entry.isPlanning && entry.nextPlanAtMs <= nowMs) {
+        if (isPlanDue(entry, nowMs)) {
           planOne(entries, options, { token, life: entry.life, signal });
         }
       }
     },
-    replan(token) {
+    report(token, read) {
       const entry = entries.map.get(token);
-      if (entry?.plan !== undefined) {
-        // A plan that served a while is replaced at once; one newer than that waits its turn.
-        const nextPlanAtMs = Math.max(options.clock.now(), entry.plannedAtMs + options.replanMs);
-        entries.map.set(token, { ...withoutPlan(entry), isUnpriced: true, nextPlanAtMs });
+      if (entry !== undefined) {
+        entries.map.set(token, reported(entry, { read, nowMs: options.clock.now() }));
       }
     },
     tokens: () => [...entries.map.entries()].map(([token, entry]) => stateOf(token, entry)),

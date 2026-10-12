@@ -94,7 +94,7 @@ export interface PriceWatcherOptions {
 // longer tells a trigger anything a newer one does not, and a public node may have dropped it.
 const maxCatchUpBlocks = 4n;
 // A token no reader prices is looked at again after this long.
-const replanMs = 30_000;
+const noReaderMs = 30_000;
 
 interface WatcherRun {
   readonly options: PriceWatcherOptions;
@@ -141,8 +141,8 @@ function priceAll(run: WatcherRun, batch: Batch, answers: readonly ReadAnswer[])
     const own = answers.slice(offset, offset + planned.calls.length);
     offset += planned.calls.length;
     const price = priceOf(planned, own);
+    run.list.report(planned.token, price.ok ? "priced" : price.error);
     if (!price.ok) {
-      run.list.replan(planned.token);
       continue;
     }
     const quoteUsd = usd.get(planned.quoteAsset);
@@ -294,7 +294,12 @@ async function runWatcher(parts: RunParts, signal: AbortSignal): Promise<void> {
  * reads together, and `run` rejects with it.
  */
 export function createPriceWatcher(options: PriceWatcherOptions): PriceWatcher {
-  const list = createWatchList({ planPrices: options.planPrices, clock: options.clock, replanMs });
+  const list = createWatchList({
+    planPrices: options.planPrices,
+    clock: options.clock,
+    noReaderMs,
+    retryMs: options.blockTimeMs,
+  });
   const listeners = new Set<(price: WatchedPrice) => void>();
   const progress = createReadProgress();
   const emit = (price: WatchedPrice): void => {
