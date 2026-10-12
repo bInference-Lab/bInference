@@ -1,16 +1,12 @@
+import { toolSentences } from "@binference/protocol";
+
 /** What an MCP client shows for one tool and what its model reads. MCP tool texts stay English. */
 export interface ToolText {
   readonly title: string;
   readonly description: string;
 }
 
-const units =
-  "Amounts are base units as decimal strings; USD values are micro-dollars as decimal strings.";
-
-const ids = "Tokens are CAIP-19 asset ids and addresses are CAIP-10 account ids.";
-
-const waits =
-  "Nothing moves until the owner confirms the card in Telegram or the console; no tool can confirm.";
+const { units, ids, waits } = toolSentences;
 
 /** What the model reads about the `requestId` a propose tool takes. */
 export const requestIdText =

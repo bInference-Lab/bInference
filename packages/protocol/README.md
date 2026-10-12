@@ -26,6 +26,7 @@ typed client, the server and the MCP server are built from the one operation tab
 | `takesOwnerKey`, `ownerKeyOperations`               | The operations that carry the owner key, taken over IPC only              |
 | `describeOperations`                                | The answer of `engine/describe`, with the JSON Schemas of each operation  |
 | `mcpTools`                                          | The tools of `binference mcp`, the operation each calls, its request id   |
+| `toolSentences`, `proposalAnswer`                   | The sentences the MCP server's and the agent's tool texts share           |
 | `intentRequestSchema`, `IntentView` and the others  | The shared requests and views of every operation                          |
 | `swapTermsSchema` and the other terms               | A request without the agent and wallet that act, for an agent's tools     |
 

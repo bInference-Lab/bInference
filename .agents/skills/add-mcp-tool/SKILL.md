@@ -35,8 +35,9 @@ English: a model reads them.
 
 - Say what the tool returns, when to call it, and what to do with the answer, in a few plain
   sentences.
-- Name the ids it takes and where to get them, and reuse the shared sentences (`units`, `ids`,
-  `waits`) instead of new wording for amounts, ids and confirmations.
+- Name the ids it takes and where to get them, and reuse the protocol's `toolSentences` (`units`,
+  `ids`, `waits`), which the agent's tools share, instead of new wording for amounts, ids and
+  confirmations.
 - Tell the model what never to do: write an id itself, pick for the owner when a match is
   ambiguous, treat a proposal as done.
 - Never ask for a key, a seed phrase or a token, and never tell the model to move funds on its own.
