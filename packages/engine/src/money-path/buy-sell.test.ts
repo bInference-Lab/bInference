@@ -252,6 +252,12 @@ describe("a sale by share", () => {
     ]);
   });
 
+  it("ends a share of a token with no price that the wallet holds none of as nothing to sell", async () => {
+    const test = await engineWith([createFakeVenue()], { agent: { mode: "live" } });
+    const view = await propose(test, testSell({ token: unlisted, amount: share(5_000) }));
+    expect(ending(view)).toStrictEqual(["failed_check", "nothing_to_sell"]);
+  });
+
   it("swaps a share of a token as a sale by share does", async () => {
     const test = await engineWith([createFakeVenue()]);
     const swap: IntentRequest = {

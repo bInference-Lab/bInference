@@ -176,8 +176,11 @@ function windowSpent(outflows: readonly PastOutflow[]): bigint {
     .reduce((sum, outflow) => sum + outflow.valueUsdMicros, 0n);
 }
 
+// An outflow of nothing needs no price: it is worth nothing at any.
 function isPriced(item: Case): boolean {
-  return item.subject.outflows.every((outflow) => item.prices.has(outflow.asset));
+  return item.subject.outflows.every(
+    (outflow) => outflow.base === 0n || item.prices.has(outflow.asset),
+  );
 }
 
 // A pass must hold against the exact value, so no rounding ever opens a cap.

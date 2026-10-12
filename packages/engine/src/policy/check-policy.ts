@@ -103,16 +103,19 @@ async function priceOf(
     : undefined;
 }
 
+// An outflow of nothing is worth nothing at any price, so it needs none: a sale by share of a
+// token the wallet does not hold ends as nothing to sell, not as a token without a price.
 async function valueOf(
   outflows: readonly Amount[],
   prices: PriceSource,
   signal: AbortSignal,
 ): Promise<bigint | undefined> {
-  const assets = [...new Set(outflows.map((outflow) => outflow.asset))];
+  const moving = outflows.filter((outflow) => outflow.base !== 0n);
+  const assets = [...new Set(moving.map((outflow) => outflow.asset))];
   const found = await Promise.all(assets.map(async (asset) => priceOf(asset, prices, signal)));
   const byAsset = new Map(assets.map((asset, index) => [asset, found[index]]));
   let totalUsdMicros = 0n;
-  for (const outflow of outflows) {
+  for (const outflow of moving) {
     const price = byAsset.get(outflow.asset);
     if (price === undefined) {
       return undefined;
