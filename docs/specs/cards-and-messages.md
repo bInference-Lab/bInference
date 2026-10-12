@@ -5,7 +5,8 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0108](../DECISIONS.md#d0108), [0109](../DECISIONS.md#d0109), [0115](../DECISIONS.md#d0115),
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
 [0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134),
-[0177](../DECISIONS.md#d0177) and [0178](../DECISIONS.md#d0178).
+[0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0185](../DECISIONS.md#d0185) and
+[0186](../DECISIONS.md#d0186).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
@@ -399,6 +400,27 @@ notices. The owner set each alert, so its notice is what it is for; the update n
 release notes and the rollback. `defaults.notifications` ([spec 2](config.md#section-6-4)) holds
 the set, and each kind can be turned off per agent.
 
+**Muting** ([decision 0185](../DECISIONS.md#d0185)). An agent may mute `fill`, `skipped`,
+`lowGas`, `orderExpiring`, `daily`, the alert notices (`alertPrice`, `alertWallet`,
+`alertLaunch`), the exit order notices (`ordersEnded`, `exitEnded`) and the update notices
+(`update`, `updateBare`, `updated`, `updatedBare`) with `notice/setSettings`. Every other notice
+always goes: it tells of a security event, of a trade or money that needs a look, or of the engine
+or the agent stopping. A muted notice is still stored and listed by `notice/list`, and no surface
+sends it. A notice that names no agent is muted only when every agent muted its kind.
+
+**In Telegram** ([decision 0186](../DECISIONS.md#d0186)). With `telegram.topicsPerAgent` on and
+the bot's topics in private chats turned on at BotFather, a notice about an agent goes to the
+agent's topic, made the first time with the agent's name. Otherwise, and for a notice whose words do
+not name the agent, the agent's name comes first: `telegram.notice.agent`, "{agent} · {notice}" /
+「{agent} · {notice}」. A notice that names no agent goes to the chat itself.
+
+**Parts.** `{orderKind}` is `order.kind`, the kind's name as `/orders` words it: "{kind, select,
+limit {Limit order} takeProfit {Take-profit} stopLoss {Stop-loss} trailing {Trailing stop} dca
+{DCA} copy {Copy trade} other {Auto order}}" / 「{kind, select, limit {限价单} takeProfit {止盈}
+stopLoss {止损} trailing {追踪止损} dca {定投} copy {跟单} other {自动订单}}」. A notice carries such
+arguments as parts, each a key with its own arguments, which a surface writes in the owner's
+language before the notice (spec 1, section 6).
+
 <a id="section-4-1"></a>
 
 ### 4.1 Browser push
@@ -464,7 +486,7 @@ is never verified, so its short address always follows its symbol.
 | Nothing to sell           | `reason.nothing_to_sell` | the wallet holds too little of this token                                                                                                                                                                       | 钱包中这种代币不足                                                                                                                                              |
 
 - `notice.fill` and `notice.skipped` (section 4) take `{result}` from `fill.*` and `{reason}` from
-  `reason.*`. A paper fill's notice starts with 🧪, as its receipt does.
+  `reason.*`. A paper fill's notice starts with 🧪, as its receipt does: its `mode` is `paper`.
 - An alert's notice is followed by `alert.woke` when it started a turn, and by `alert.wakeSkipped`
   when wake-ups were held back since the last one (spec 1, section 8.4).
 - `{wallet}` and `{leader}` are the address book label, else the short address. `{age}` is the

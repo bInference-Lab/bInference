@@ -1,7 +1,8 @@
 # Spec 2: the config file
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
-[0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108) and [0118](../DECISIONS.md#d0118);
+[0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
+[0185](../DECISIONS.md#d0185) and [0186](../DECISIONS.md#d0186);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -125,14 +126,14 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 
 ### 6.2 `telegram`
 
-| Key                        | Type                       | Default     | Applies | Meaning                                                                                         |
-| -------------------------- | -------------------------- | ----------- | ------- | ----------------------------------------------------------------------------------------------- |
-| `telegram.botToken`        | Secret                     | required    | restart | The owner's BotFather token                                                                     |
-| `telegram.mode`            | `"polling"` \| `"webhook"` | `"polling"` | restart | How updates arrive                                                                              |
-| `telegram.webhookSecret`   | Secret                     | none        | restart | Required with `"webhook"`, or the engine refuses to start                                       |
-| `telegram.confirmBotToken` | Secret                     | none        | restart | A second bot for confirmations only ([ARCHITECTURE.md section 1](../ARCHITECTURE.md#section-1)) |
-| `telegram.groups`          | boolean                    | `false`     | live    | Group chats ([ARCHITECTURE.md section 12](../ARCHITECTURE.md#section-12))                       |
-| `telegram.topicsPerAgent`  | boolean                    | `true`      | live    | One DM topic per agent                                                                          |
+| Key                        | Type                       | Default     | Applies | Meaning                                                                                                      |
+| -------------------------- | -------------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `telegram.botToken`        | Secret                     | required    | restart | The owner's BotFather token                                                                                  |
+| `telegram.mode`            | `"polling"` \| `"webhook"` | `"polling"` | restart | How updates arrive                                                                                           |
+| `telegram.webhookSecret`   | Secret                     | none        | restart | Required with `"webhook"`, or the engine refuses to start                                                    |
+| `telegram.confirmBotToken` | Secret                     | none        | restart | A second bot for confirmations only ([ARCHITECTURE.md section 1](../ARCHITECTURE.md#section-1))              |
+| `telegram.groups`          | boolean                    | `false`     | live    | Group chats ([ARCHITECTURE.md section 12](../ARCHITECTURE.md#section-12))                                    |
+| `telegram.topicsPerAgent`  | boolean                    | `false`     | live    | One DM topic per agent, once the bot has topics in private chats on ([decision 0186](../DECISIONS.md#d0186)) |
 
 <a id="section-6-3"></a>
 
@@ -158,33 +159,34 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 
 ### 6.4 `defaults` (copied into each new agent)
 
-| Key                                    | Default ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28))                                                    |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `defaults.limits.perTradeUsd`          | `"100"`                                                                                                                  |
-| `defaults.limits.rollingDayUsd`        | `"500"`                                                                                                                  |
-| `defaults.limits.slippageBps.registry` | `100`                                                                                                                    |
-| `defaults.limits.slippageBps.other`    | `500`                                                                                                                    |
-| `defaults.limits.priceImpactBps`       | `300`                                                                                                                    |
-| `defaults.limits.taxBps`               | `1000`                                                                                                                   |
-| `defaults.limits.liquidityFloorUsd`    | `"10000"`                                                                                                                |
-| `defaults.limits.minHealthFactor`      | `1.5`                                                                                                                    |
-| `defaults.limits.gasReserve`           | `{ "eip155:56": "0.002" }` (in the native coin)                                                                          |
-| `defaults.limits.venues`               | every installed core venue                                                                                               |
-| `defaults.limits.allowTokens`          | `[]` (empty: all, after risk)                                                                                            |
-| `defaults.limits.denyTokens`           | `[]`                                                                                                                     |
-| `defaults.sendLevel`                   | `0`                                                                                                                      |
-| `defaults.approvalMode`                | `"manual"` ([decision 0088](../DECISIONS.md#d0088))                                                                      |
-| `defaults.ceiling.perTxBnb`            | `"1"`: the Privy policy's per-transaction BNB cap, set by the owner key (spec 5, [decision 0094](../DECISIONS.md#d0094)) |
-| `defaults.cards.tradeExpirySec`        | `60`                                                                                                                     |
-| `defaults.cards.otherExpirySec`        | `600`                                                                                                                    |
-| `defaults.cards.requoteAfterSec`       | `10`                                                                                                                     |
-| `defaults.cards.requoteToleranceBps`   | `50`                                                                                                                     |
-| `defaults.orders.expiryDays`           | `30`                                                                                                                     |
-| `defaults.copy.perBuyUsd`              | `"20"`                                                                                                                   |
-| `defaults.copy.perLeaderDayUsd`        | `"200"`                                                                                                                  |
-| `defaults.paper.balances`              | `{ "BNB": "1", "USDT": "500" }`                                                                                          |
-| `defaults.modelBudgetUsdPerDay`        | `"3"`                                                                                                                    |
-| `defaults.notifications`               | [decision 0057](../DECISIONS.md#d0057)'s set with alerts, exits, updates (spec 4, section 4), summary at `09:00`         |
+| Key                                       | Default ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28))                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `defaults.limits.perTradeUsd`             | `"100"`                                                                                                                                                                         |
+| `defaults.limits.rollingDayUsd`           | `"500"`                                                                                                                                                                         |
+| `defaults.limits.slippageBps.registry`    | `100`                                                                                                                                                                           |
+| `defaults.limits.slippageBps.other`       | `500`                                                                                                                                                                           |
+| `defaults.limits.priceImpactBps`          | `300`                                                                                                                                                                           |
+| `defaults.limits.taxBps`                  | `1000`                                                                                                                                                                          |
+| `defaults.limits.liquidityFloorUsd`       | `"10000"`                                                                                                                                                                       |
+| `defaults.limits.minHealthFactor`         | `1.5`                                                                                                                                                                           |
+| `defaults.limits.gasReserve`              | `{ "eip155:56": "0.002" }` (in the native coin)                                                                                                                                 |
+| `defaults.limits.venues`                  | every installed core venue                                                                                                                                                      |
+| `defaults.limits.allowTokens`             | `[]` (empty: all, after risk)                                                                                                                                                   |
+| `defaults.limits.denyTokens`              | `[]`                                                                                                                                                                            |
+| `defaults.sendLevel`                      | `0`                                                                                                                                                                             |
+| `defaults.approvalMode`                   | `"manual"` ([decision 0088](../DECISIONS.md#d0088))                                                                                                                             |
+| `defaults.ceiling.perTxBnb`               | `"1"`: the Privy policy's per-transaction BNB cap, set by the owner key (spec 5, [decision 0094](../DECISIONS.md#d0094))                                                        |
+| `defaults.cards.tradeExpirySec`           | `60`                                                                                                                                                                            |
+| `defaults.cards.otherExpirySec`           | `600`                                                                                                                                                                           |
+| `defaults.cards.requoteAfterSec`          | `10`                                                                                                                                                                            |
+| `defaults.cards.requoteToleranceBps`      | `50`                                                                                                                                                                            |
+| `defaults.orders.expiryDays`              | `30`                                                                                                                                                                            |
+| `defaults.copy.perBuyUsd`                 | `"20"`                                                                                                                                                                          |
+| `defaults.copy.perLeaderDayUsd`           | `"200"`                                                                                                                                                                         |
+| `defaults.paper.balances`                 | `{ "BNB": "1", "USDT": "500" }`                                                                                                                                                 |
+| `defaults.modelBudgetUsdPerDay`           | `"3"`                                                                                                                                                                           |
+| `defaults.notifications.muted`            | `[]`: [decision 0057](../DECISIONS.md#d0057)'s set with alerts, exits and updates on (spec 4, section 4); only the kinds of [decision 0185](../DECISIONS.md#d0185) may be named |
+| `defaults.notifications.dailySummaryTime` | `"09:00"`, in the owner's timezone                                                                                                                                              |
 
 Dollar values in the file are decimal text, such as `"100"` or `"0.25"`, with at most six
 decimals; the engine reads them as micro-dollars on load, never through a floating-point number.
