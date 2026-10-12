@@ -10,12 +10,13 @@ import {
 import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type CeilingHandlers, createCeilingHandlers } from "./ceiling-handlers.js";
 import type { EngineOptions } from "./create-engine.js";
+import { createLiveFactsHandlers, type LiveFactsHandlers } from "./live-facts-handlers.js";
 import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
 import { createWalletHandlers, type WalletHandlers } from "./wallet-handlers.js";
 
 /**
- * The handlers of an agent's settings: its portfolio, mode, wallets, ceilings, notices and
- * workspace files.
+ * The handlers of an agent's settings: its portfolio, mode, wallets, ceilings, notices, workspace
+ * files and live facts.
  */
 export interface SettingsHandlers
   extends
@@ -24,7 +25,8 @@ export interface SettingsHandlers
     WalletHandlers,
     CeilingHandlers,
     NoticeSettingsHandlers,
-    WorkspaceHandlers {}
+    WorkspaceHandlers,
+    LiveFactsHandlers {}
 
 // The notice settings handlers, which read and journal through the agents and the journal.
 function noticeSettingsOf(options: EngineOptions): NoticeSettingsHandlers {
@@ -49,6 +51,25 @@ function ceilingsOf(options: EngineOptions): CeilingHandlers {
     clock: options.clock,
     publish: options.publish,
   });
+}
+
+// What a turn's context reads: the workspace files, and the live facts, whose balances are what
+// `portfolio/get` answers.
+function contextHandlersOf(
+  options: EngineOptions,
+  portfolio: Pick<PortfolioHandlers, "portfolio/get">,
+): WorkspaceHandlers & LiveFactsHandlers {
+  const { stores } = options;
+  return {
+    ...createWorkspaceHandlers({ agents: stores.agents, workspace: options.workspace }),
+    ...createLiveFactsHandlers({
+      ...options,
+      agents: stores.agents,
+      orders: stores.orders,
+      intents: stores.intents,
+      portfolio: portfolio["portfolio/get"],
+    }),
+  };
 }
 
 /**
@@ -93,16 +114,12 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     publish: options.publish,
   });
   const ceilings = ceilingsOf(options);
-  const workspace = createWorkspaceHandlers({
-    agents: stores.agents,
-    workspace: options.workspace,
-  });
   return {
     ...portfolio,
     ...modes,
     ...wallets,
     ...ceilings,
     ...noticeSettingsOf(options),
-    ...workspace,
+    ...contextHandlersOf(options, portfolio),
   };
 }

@@ -130,6 +130,25 @@ export const agentExamples: { readonly [N in keyof AgentOperationShapes]: WireEx
     args: { agent: ids.agent, file: "RULES.md", text: "Never trade memes.\n" },
     result: { updatedAt: at },
   },
+  "facts/get": {
+    args: { agent: ids.agent },
+    result: {
+      agent: ids.agent,
+      at,
+      timeZone: "Asia/Shanghai",
+      mode: "paper",
+      frozen: false,
+      approvalMode: "manual",
+      sendLevel: 0,
+      balances: [{ wallet: ids.wallet, amount: nativeAmount, usdMicros: "900000000", paper: true }],
+      totalUsdMicros: "900000000",
+      orders: [],
+      spentTodayUsdMicros: "25000000",
+      perTradeUsdMicros: "50000000",
+      rollingDayUsdMicros: "500000000",
+      assets: {},
+    },
+  },
   "identity/get": {
     args: { agent: ids.agent },
     result: {

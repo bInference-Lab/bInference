@@ -42,16 +42,17 @@ export interface PortfolioView {
   readonly assets: AssetInfos;
 }
 
+/** Parses one wallet's balance of one asset. */
+export const balanceViewSchema: z.ZodType<BalanceView> = z.object({
+  wallet: protocolIdSchema("wallet"),
+  amount: amountSchema,
+  usdMicros: decimalStringSchema.exactOptional(),
+  paper: z.boolean(),
+});
+
 /** Parses a portfolio view. */
 export const portfolioViewSchema: z.ZodType<PortfolioView> = z.object({
-  balances: z.array(
-    z.object({
-      wallet: protocolIdSchema("wallet"),
-      amount: amountSchema,
-      usdMicros: decimalStringSchema.exactOptional(),
-      paper: z.boolean(),
-    }),
-  ),
+  balances: z.array(balanceViewSchema),
   positions: z.array(
     z.object({
       wallet: protocolIdSchema("wallet"),

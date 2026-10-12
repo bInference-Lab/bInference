@@ -8,6 +8,7 @@ import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { type Page, type PageArgs, pageArgsSchema, pageSchema } from "../values/page.schema.js";
 import { type AgentView, agentViewSchema } from "../views/agent-view.schema.js";
 import { type IntentView, intentViewSchema } from "../views/intent-view.schema.js";
+import { type LiveFactsView, liveFactsViewSchema } from "../views/live-facts-view.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /**
@@ -72,6 +73,7 @@ export interface AgentOperationShapes {
     readonly args: WriteFileArgs;
     readonly result: { readonly updatedAt: number };
   };
+  readonly "facts/get": { readonly args: AgentArgs; readonly result: LiveFactsView };
   readonly "identity/get": {
     readonly args: AgentArgs;
     readonly result: { readonly registration?: IdentityRegistration };
@@ -147,6 +149,13 @@ export const agentOperations: OperationTable<AgentOperationShapes> = {
     scope: "admin",
     args: z.strictObject({ ...agentFile, text: z.string() }),
     result: z.object({ updatedAt: epochMsSchema }),
+  },
+  "facts/get": {
+    ...readFlags,
+    name: "facts/get",
+    scope: "read",
+    args: agentArgsSchema,
+    result: liveFactsViewSchema,
   },
   "identity/get": {
     ...readFlags,

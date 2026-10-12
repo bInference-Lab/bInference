@@ -101,6 +101,8 @@ export type {
 } from "./requests/fill-rule-request.schema.js";
 export { workspaceFiles } from "./operations/agent-operations.schema.js";
 export type { WorkspaceFile } from "./operations/agent-operations.schema.js";
+export { liveFactsViewSchema } from "./views/live-facts-view.schema.js";
+export type { LiveFactsView } from "./views/live-facts-view.schema.js";
 export { assetSearchTermsSchema } from "./operations/market-operations.schema.js";
 export type { AssetSearchTerms } from "./operations/market-operations.schema.js";
 export {
@@ -215,7 +217,7 @@ export type {
   OrderState,
   OrderView,
 } from "./views/order-view.schema.js";
-export { portfolioViewSchema } from "./views/portfolio-view.schema.js";
+export { balanceViewSchema, portfolioViewSchema } from "./views/portfolio-view.schema.js";
 export type { BalanceView, PortfolioView, PositionView } from "./views/portfolio-view.schema.js";
 export { quoteViewSchema, tradePlaceSchema } from "./views/quote-view.schema.js";
 export type { QuoteView, RouteLeg, TradePlace } from "./views/quote-view.schema.js";

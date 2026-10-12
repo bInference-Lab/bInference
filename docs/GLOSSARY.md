@@ -217,6 +217,8 @@ new name here first, in the change that uses it.
 - **stable prefix, volatile tail**: the parts of a model call's context that stay the same from
   call to call (instructions, workspace files, skills index, tools), and the live facts after the
   history.
+- **live facts**: what an agent stands on now: its mode, freeze, approval mode, send level,
+  balances, open orders and today's spend against its caps (`facts/get`).
 - **compaction**: replacing the oldest part of a session's history, in what the model sees, by a
   summary that keeps every id, hash and address.
 - **loop guard**: the check that ends a turn when one tool returns the same result for the same

@@ -29,6 +29,7 @@ const specTable = [
   ["agent/goPaper", "confirm", "write"],
   ["agent/readFile", "read", ""],
   ["agent/writeFile", "admin", "write"],
+  ["facts/get", "read", ""],
   ["identity/get", "read", ""],
   ["identity/register", "propose", "write"],
   ["wallet/list", "read", ""],
@@ -183,7 +184,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(144);
+    expect(table).toHaveLength(145);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 
