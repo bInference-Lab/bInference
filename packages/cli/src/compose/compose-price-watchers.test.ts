@@ -64,7 +64,14 @@ function fakeWatch() {
   return { watch, state };
 }
 
-function rig(options: { readonly dexscreenerUsd?: bigint } = {}) {
+// An order store that answers only when the signal aborts, as one that hangs.
+async function hanging(signal: AbortSignal): Promise<never> {
+  return await new Promise((_resolve, reject) => {
+    signal.addEventListener("abort", () => reject(signal.reason));
+  });
+}
+
+function rig(options: { readonly dexscreenerUsd?: bigint; readonly isStoreStuck?: boolean } = {}) {
   const clock = createManualClock(startMs);
   const fake = fakeWatch();
   const pushes: EnginePush[] = [];
@@ -74,10 +81,17 @@ function rig(options: { readonly dexscreenerUsd?: bigint } = {}) {
     watches: new Map([[bsc, fake.watch]]),
     decimals: async (tokens) => await Promise.resolve(new Map(tokens.map((each) => [each, 18]))),
     orders: {
-      list: async () =>
-        await Promise.resolve([
-          { id: "ord_1", kind: "stopLoss", createdAtMs: 1, request: { kind: "stopLoss", token } },
-        ] as unknown as readonly OrderRecord[]),
+      list: async (_query, { signal }) =>
+        options.isStoreStuck === true
+          ? await hanging(signal)
+          : await Promise.resolve([
+              {
+                id: "ord_1",
+                kind: "stopLoss",
+                createdAtMs: 1,
+                request: { kind: "stopLoss", token },
+              },
+            ] as unknown as readonly OrderRecord[]),
     },
     sources: {
       dexscreener: createFakeMarketSource({ id: "dexscreener", chains: [bsc], prices }),
@@ -169,6 +183,24 @@ describe("the composed price watchers", () => {
     fake.state.latest = [watched];
     await clock.advance(60_000);
     expect(watchers.health()).toStrictEqual({ signal: "watcher", state: "ok", lagBlocks: 0 });
+  });
+
+  it("checks the watchers each second while the order store hangs, and gives the sync 10 seconds", async () => {
+    const { clock, fake, pushes, logger } = rig({ isStoreStuck: true });
+    fake.state.watches = [token];
+    await clock.advance(1_500);
+    fake.state.downSinceMs = startMs + 1_500;
+    await clock.advance(1_500);
+    expect(pushes.map(({ data }) => (data as { key: string }).key)).toStrictEqual([
+      "notice.watcherStopped",
+    ]);
+    await clock.advance(10_000);
+    expect(logger.records()).toContainEqual(
+      expect.objectContaining({
+        event: "engine.watcher_sync_failed",
+        fields: { errorCode: "core.timeout" },
+      }),
+    );
   });
 
   it("stops every watcher when the engine shuts down", async () => {

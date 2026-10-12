@@ -68,6 +68,8 @@ export interface PriceWatchersOptions {
 // at their own pace, looked at every 15 seconds.
 const lagEveryMs = 1_000;
 const syncEveryMs = 5_000;
+// A sync of the active orders gives up past this, and is tried again at its next turn.
+const syncTimeoutMs = 10_000;
 const crossCheckEveryMs = 15_000;
 const gapLimitBps = 1_000;
 // A round of the cross-check gives up past this, each source's wait for its turn included.
@@ -151,7 +153,6 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
       (await options.watches.get(assetRefParts(token).chain)?.canPrice(token, signal)) ?? false,
     activeOrders: () => orders.activeOrders(),
     start(closers, logger) {
-      const { clock } = options;
       const check = crossCheckOf(options, decimals, logger);
       parts.check = check;
       // Added before the timers, so the shutdown stops the timers first, then the watchers.
@@ -159,26 +160,55 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
         orders.releaseAll();
         await Promise.all([...options.watches.values()].map(async (watch) => watch.close()));
       });
-      const syncs = { nextAtMs: 0 };
-      startRepeatingTimer({
-        name: "watchers",
-        everyMs: lagEveryMs,
-        failedEvent: "engine.watcher_sync_failed",
-        isLocked: () => false,
-        clock,
-        closers,
-        logger,
-        run: async ({ signal }) => {
-          checkWatchers(options.watches, watching, clock.now());
-          if (clock.now() >= syncs.nextAtMs) {
-            syncs.nextAtMs = clock.now() + syncEveryMs;
-            await orders.sync({ signal });
-          }
-        },
-      });
+      startWatcherTimers({ options, orders, watching }, { closers, logger });
       startCrossCheck({ options, decimals, check }, { closers, logger });
     },
   };
+}
+
+// The watchers' checks each second, and the sync of the active orders on a timer of its own.
+function startWatcherTimers(
+  parts: {
+    readonly options: PriceWatchersOptions;
+    readonly orders: WatchedOrders;
+    readonly watching: WatcherChecks;
+  },
+  runOn: { readonly closers: Closers; readonly logger: Logger },
+): void {
+  const { options, orders, watching } = parts;
+  const { clock } = options;
+  const timers = { isLocked: () => false, clock, ...runOn };
+  startRepeatingTimer({
+    ...timers,
+    name: "watchers",
+    everyMs: lagEveryMs,
+    failedEvent: "engine.watcher_check_failed",
+    run: async () => {
+      checkWatchers(options.watches, watching, clock.now());
+      return await Promise.resolve();
+    },
+  });
+  // The sync has its own timer and deadline, so a slow store never holds up the checks above;
+  // it looks each second and syncs every five.
+  const syncs = { nextAtMs: 0 };
+  startRepeatingTimer({
+    ...timers,
+    name: "watcher_sync",
+    everyMs: lagEveryMs,
+    failedEvent: "engine.watcher_sync_failed",
+    run: async ({ signal }) => {
+      if (clock.now() < syncs.nextAtMs) {
+        return;
+      }
+      syncs.nextAtMs = clock.now() + syncEveryMs;
+      const deadline = createDeadline({ clock, signal, timeoutMs: syncTimeoutMs });
+      try {
+        await orders.sync({ signal: deadline.signal });
+      } finally {
+        deadline.clear();
+      }
+    },
+  });
 }
 
 // Each round of the cross-check reads the decimals it lacks, then asks the sources whose time came.
