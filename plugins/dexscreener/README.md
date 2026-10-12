@@ -14,6 +14,9 @@ through DEX Screener's public API, which answers without a key. It serves BNB Sm
   filtered to the chain in its order, then `GET /tokens/v1/bsc/{tokenAddresses}` (30 a request, the
   documented most) for each token's deepest pool. Boosts are bought, so each token carries its
   `activeBoosts`.
+- **Prices.** `GET /tokens/v1/bsc/{tokenAddresses}` (30 a request): each token's USD price from
+  its deepest pair that has it as the base token, for the price watcher's cross-check. A token with
+  no such pair is left out; a price never prices a trade.
 - **Candles.** DEX Screener's API documents none, so this source serves no chart
   ([decision 0183](../../docs/adr/0183-candles-come-from-a-source-that-publishes-them.md)).
 

@@ -11,12 +11,17 @@ import {
   type MarketDataSource,
   type MarketPool,
   ok,
+  type Ratio,
   type TrendingToken,
 } from "@binference/plugin-sdk";
 import { changeBpsOf, ratioOf, usdMicrosOf, wholeOf } from "@binference/plugin-sdk/data";
 import { parseEvmAddress } from "@binference/plugin-sdk/evm";
 import type { DexBoost } from "./api/boost-answer.schema.js";
-import { createDexscreenerApi, tokensPerRequest } from "./api/dexscreener-api.js";
+import {
+  createDexscreenerApi,
+  type DexscreenerApi,
+  tokensPerRequest,
+} from "./api/dexscreener-api.js";
 import type { DexPair } from "./api/pair-answer.schema.js";
 
 /** What the DEX Screener source is made from. */
@@ -147,13 +152,55 @@ function trendingOf(
   };
 }
 
+/** The ERC-20 tokens among the assets on the chain asked about, by their checksummed address. */
+function tokensOn(chain: ChainRef, assets: readonly AssetRef[]): ReadonlyMap<string, AssetRef> {
+  return new Map(
+    assets.flatMap((asset) => {
+      const parts = assetRefParts(asset);
+      const address = parseEvmAddress(parts.assetReference);
+      const isToken = parts.chain === chain && parts.assetNamespace === "erc20" && address.ok;
+      return isToken ? [[address.value, tokenOn(chain, address.value)] as const] : [];
+    }),
+  );
+}
+
+// Each token's USD price from its deepest pool that prices it as the base token.
+async function pricesOf(
+  api: DexscreenerApi,
+  asked: {
+    readonly chain: ChainRef;
+    readonly dexChainId: string;
+    readonly assets: readonly AssetRef[];
+  },
+  signal: AbortSignal,
+): Promise<ReadonlyMap<AssetRef, Ratio>> {
+  const tokens = tokensOn(asked.chain, asked.assets);
+  if (tokens.size === 0) {
+    return new Map();
+  }
+  const pairs = await api.tokens(asked.dexChainId, [...tokens.keys()], signal);
+  const pools = deepestFirst(
+    pairs.flatMap((pair) => marketPoolOf(pair, asked.chain, asked.dexChainId) ?? []),
+  );
+  return new Map(
+    [...tokens.values()].flatMap((token) => {
+      const price = pools.find(
+        (pool) => pool.base === token && pool.priceUsd !== undefined,
+      )?.priceUsd;
+      return price === undefined ? [] : [[token, price] as const];
+    }),
+  );
+}
+
 /**
  * Creates the `dexscreener` data source over DEX Screener's public API, keyless, on BNB Smart
  * Chain. A token's pools come from `/token-pairs/v1`, deepest first. The trending tokens are
  * DEX Screener's tokens with the most active boosts (`/token-boosts/top/v1`) on the chain, in its
  * order, each with its deepest pool from `/tokens/v1` and its active boosts, since that ranking
- * is paid promotion. Another chain is `not_covered`. Figures stay exact: numbers are read from
- * the answer's own text, never through a floating-point number.
+ * is paid promotion. A token's price is its deepest pool's USD price for it as the base token,
+ * from `/tokens/v1`, 30 tokens a request, for the price watcher's cross-check. Another chain is
+ * `not_covered`. Figures stay exact: numbers are read from the answer's own text, never through a
+ * floating-point number.
  */
 export function createDexscreenerSource(options: DexscreenerOptions): MarketDataSource {
   const api = createDexscreenerApi({
@@ -189,6 +236,13 @@ export function createDexscreenerSource(options: DexscreenerOptions): MarketData
         pairs.flatMap((pair) => marketPoolOf(pair, chain, dexChainId) ?? []),
       );
       return ok(ranked.map((entry) => trendingOf(entry, pools)));
+    },
+    async prices(chain, assets, { signal }) {
+      signal.throwIfAborted();
+      const dexChainId = dexChainIds.get(chain);
+      return dexChainId === undefined
+        ? err("not_covered")
+        : ok(await pricesOf(api, { chain, dexChainId, assets }, signal));
     },
   });
 }

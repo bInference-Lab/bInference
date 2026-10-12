@@ -3,6 +3,7 @@ import {
   createManualClock,
   createScriptedHttp,
   marketDataSourceContract,
+  marketPricesContract,
   type ScriptedRoute,
 } from "@binference/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
@@ -21,12 +22,14 @@ const bsc = chainRefSchema.parse("eip155:56");
 const unknownAddress = "0x000000000000000000000000000000000000dEaD";
 const tokenOf = (address: string) => assetRefSchema.parse(`eip155:56/erc20:${address}`);
 const wbnb = tokenOf(wbnbAddress);
-const usdt = tokenOf("0x55d398326f99059fF775485246999027B3197955");
+const usdtAddress = "0x55d398326f99059fF775485246999027B3197955";
+const usdt = tokenOf(usdtAddress);
 const usdc = tokenOf("0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d");
 const [firstBoosted, secondBoosted] = boostedAddresses;
 const pairsUrl = (address: string): string => `${origin}/token-pairs/v1/bsc/${address}`;
 const boostsUrl = `${origin}/token-boosts/top/v1`;
 const boostedUrl = `${origin}/tokens/v1/bsc/${boostedAddresses.join(",")}`;
+const pricesUrl = `${origin}/tokens/v1/bsc/${wbnbAddress},${unknownAddress}`;
 const live = { signal: new AbortController().signal };
 
 function answer(body: string, status = 200): HttpResponse {
@@ -38,6 +41,8 @@ const recorded: readonly ScriptedRoute[] = [
   { method: "GET", url: pairsUrl(unknownAddress), response: answer(noPairsAnswer) },
   { method: "GET", url: boostsUrl, response: answer(topBoostsAnswer) },
   { method: "GET", url: boostedUrl, response: answer(boostedTokensAnswer) },
+  { method: "GET", url: pricesUrl, response: answer(wbnbPairsAnswer) },
+  { method: "GET", url: `${pricesUrl},${usdtAddress}`, response: answer(wbnbPairsAnswer) },
 ];
 
 function sourceOver(routes: readonly ScriptedRoute[] = recorded) {
@@ -50,19 +55,41 @@ function wbnbPairsAs(body: string) {
   return sourceOver([{ method: "GET", url: pairsUrl(wbnbAddress), response: answer(body) }]).source;
 }
 
+const harness = {
+  create: () => ({
+    source: sourceOver().source,
+    known: wbnb,
+    unknown: tokenOf(unknownAddress),
+    uncovered: assetRefSchema.parse(`eip155:1/erc20:${wbnbAddress}`),
+    down: sourceOver([]).source,
+  }),
+};
+
 describe("dexscreener data source", () => {
-  it.each(
-    marketDataSourceContract({
-      create: () => ({
-        source: sourceOver().source,
-        known: wbnb,
-        unknown: tokenOf(unknownAddress),
-        uncovered: assetRefSchema.parse(`eip155:1/erc20:${wbnbAddress}`),
-        down: sourceOver([]).source,
-      }),
-    }),
-  )("follows the contract: $name", async ({ run }) => {
-    await expect(run()).resolves.toBeUndefined();
+  it.each([...marketDataSourceContract(harness), ...marketPricesContract(harness)])(
+    "follows the contract: $name",
+    async ({ run }) => {
+      await expect(run()).resolves.toBeUndefined();
+    },
+  );
+
+  it("prices each token by its deepest pool that has it as the base, in one request", async () => {
+    const { http, source } = sourceOver();
+    const prices = await source.prices?.(bsc, [wbnb, tokenOf(unknownAddress), usdt], live);
+    expect(prices).toStrictEqual({
+      ok: true,
+      value: new Map([[wbnb, { numerator: 75_374n, denominator: 100n }]]),
+    });
+    expect(http.requests().map(({ url }) => url)).toStrictEqual([
+      `${origin}/tokens/v1/bsc/${wbnbAddress},${unknownAddress},${usdtAddress}`,
+    ]);
+  });
+
+  it("asks nothing for prices of no token of the chain", async () => {
+    const { http, source } = sourceOver();
+    const coin = assetRefSchema.parse("eip155:56/slip44:714");
+    expect(await source.prices?.(bsc, [coin], live)).toStrictEqual({ ok: true, value: new Map() });
+    expect(http.requests()).toStrictEqual([]);
   });
 
   it("reads a token's pools deepest first, with every figure exact", async () => {
@@ -165,8 +192,8 @@ describe("dexscreener data source", () => {
   });
 
   it("leaves out a pair whose quote token has no address, as the schema allows", async () => {
-    const usdtAddress = '"address": "0x55d398326f99059fF775485246999027B3197955"';
-    const body = wbnbPairsAnswer.replace(usdtAddress, '"address": null');
+    const usdtField = `"address": "${usdtAddress}"`;
+    const body = wbnbPairsAnswer.replace(usdtField, '"address": null');
     expect(await wbnbPairsAs(body).pools(wbnb, live)).toMatchObject({
       ok: true,
       value: [
