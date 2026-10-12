@@ -162,7 +162,7 @@ confirmation took the rolling cap's room after its policy step).
 An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
 order's buy that would pass its daily cap for the leader; `engine_locked`, the engine is locked;
 `live_fills_off`, a live order while live fills are off; `nothing_to_spend`, a buy whose size comes
-to nothing; `fill_failed`, a fill that threw or ran past its deadline, whose unfinished intent is
+to nothing; `fill_failed`, a fill that threw or ran past its 30-second deadline, whose unfinished intent is
 cancelled unsigned ([decision 0197](../DECISIONS.md#d0197)); and `no_price`, a size in dollars
 whose asset has no USD price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
@@ -192,7 +192,8 @@ and `step_unsent` (a step never signed after an earlier one landed,
     `failed_check` with the fill reason (section 4).
   - A live order's fill is skipped with `live_fills_off` until the crash suite on fills passes, and
     a locked engine skips every fill with `engine_locked`.
-  - One agent's fills run one at a time. After a skip, an exit order tries again at the next
+  - One agent's fills run one at a time. The other side's USD price, which the check reads, is read
+    before the fill enters its agent's line of confirmations. After a skip, an exit order tries again at the next
     confirmed price; a buy waits 15 seconds, the wait doubling up to 5 minutes, read from its fill
     rows. The owner hears a skip once per reason in a row, and `engine_locked` or `live_fills_off`
     once per agent until one of its orders fills ([decision 0197](../DECISIONS.md#d0197)).

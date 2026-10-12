@@ -37,8 +37,8 @@ function idOf(intent: Id<"int"> | undefined): Id<"int"> {
   return intent;
 }
 
-// An intent store whose fill's own confirmation, which carries no card, moves the clock a minute
-// on, past the order's expiry, before the paper fill.
+// An intent store whose fill's own confirmation, which carries no card, moves the clock 20 seconds
+// on, past the order's expiry and inside the fill's deadline, before the paper fill.
 function passingExpiryAtFill(
   store: IntentStore,
   holder: { readonly test?: TestEngine },
@@ -48,7 +48,7 @@ function passingExpiryAtFill(
     transition: async (change, call) => {
       const moved = await store.transition(change, call);
       if (change.state === "confirmed" && change.confirmation === undefined) {
-        await holder.test?.clock.advance(60_000);
+        await holder.test?.clock.advance(20_000);
       }
       return moved;
     },
@@ -242,7 +242,7 @@ describe("an auto order's fill", () => {
     const holder: { test?: TestEngine } = {};
     const test = await startFillEngine({ intents: (store) => passingExpiryAtFill(store, holder) });
     holder.test = test;
-    const order = await activeOrder(test, testStopLoss({ expiresAt: testNowMs + 30_000 }));
+    const order = await activeOrder(test, testStopLoss({ expiresAt: testNowMs + 10_000 }));
 
     const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
 

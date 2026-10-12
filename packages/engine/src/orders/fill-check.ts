@@ -1,6 +1,7 @@
 import type { Ratio } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
+import type { FillBreach } from "../intents/intent-reason.js";
 import type { FillProposal } from "../money-path/authorize-simulated.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import { checkFill } from "./fill-bounds.js";
@@ -28,49 +29,62 @@ async function otherUsdOf(
 }
 
 /**
- * The fill's check at `simulated` (decisions 0195 and 0197): its order as it stands now, held to
- * every bound with its quote; a sale sized in dollars to its dollars at its own quote.
+ * The fill's check at `simulated` (decisions 0195 and 0197): the other side's USD price is read
+ * before the agent's line; in the line, its order as it stands now is held to every bound with
+ * its quote, and a sale sized in dollars to its dollars at its own quote.
  */
 export function checkOf(
   parts: OrderFillsParts,
   fill: { readonly order: OrderRecord; readonly sized: SizedFill; readonly price: FillPrice },
 ): FillProposal["check"] {
-  return async (simulated, { signal }) => {
-    const { order, sized, price } = fill;
-    const current = await parts.orders.get(order.id, { signal });
-    const { quote } = simulated.record;
-    if (current === undefined || quote === undefined) {
-      return "order_inactive";
-    }
-    const view = quoteDocument.decode(quote);
-    const otherUsd = await otherUsdOf(parts, {
-      snapshot: simulated,
-      side: order.request.side,
-      signal,
-    });
-    const { maxSlippageBps } = sized.request;
-    const { size } = order.request;
-    const saleUsd =
-      order.request.side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
-    const checked = checkFill(
-      current,
-      {
-        amountInBase: view.amountIn.base,
-        expectedOutBase: view.expectedOut.base,
-        minOutBase: view.minOut.base,
-      },
-      {
-        nowMs: parts.clock.now(),
-        limitBase: sized.limitBase,
-        tokenDecimals: price.decimals,
-        ...(maxSlippageBps === undefined ? {} : { maxSlippageBps }),
-        ...(otherUsd === undefined ? {} : { otherUsd }),
-        ...(price.confirm === undefined ? {} : { confirm: price.confirm }),
-        ...(saleUsd === undefined ? {} : { saleUsdMicros: saleUsd }),
-      },
-    );
-    return checked.ok ? undefined : checked.error;
+  return async (simulated, outside) => {
+    const { order } = fill;
+    const side = order.request.side;
+    const otherUsd = await otherUsdOf(parts, { snapshot: simulated, side, ...outside });
+    return async ({ signal }) => checkInLine(parts, { ...fill, simulated, otherUsd, signal });
   };
+}
+
+// The check in the agent's line, on the other side's price read before it.
+async function checkInLine(
+  parts: OrderFillsParts,
+  fill: {
+    readonly order: OrderRecord;
+    readonly sized: SizedFill;
+    readonly price: FillPrice;
+    readonly simulated: IntentSnapshot;
+    readonly otherUsd: Ratio | undefined;
+    readonly signal: AbortSignal;
+  },
+): Promise<FillBreach | undefined> {
+  const { order, sized, price, simulated, otherUsd, signal } = fill;
+  const current = await parts.orders.get(order.id, { signal });
+  const { quote } = simulated.record;
+  if (current === undefined || quote === undefined) {
+    return "order_inactive";
+  }
+  const view = quoteDocument.decode(quote);
+  const { maxSlippageBps } = sized.request;
+  const { size } = order.request;
+  const saleUsd = order.request.side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
+  const checked = checkFill(
+    current,
+    {
+      amountInBase: view.amountIn.base,
+      expectedOutBase: view.expectedOut.base,
+      minOutBase: view.minOut.base,
+    },
+    {
+      nowMs: parts.clock.now(),
+      limitBase: sized.limitBase,
+      tokenDecimals: price.decimals,
+      ...(maxSlippageBps === undefined ? {} : { maxSlippageBps }),
+      ...(otherUsd === undefined ? {} : { otherUsd }),
+      ...(price.confirm === undefined ? {} : { confirm: price.confirm }),
+      ...(saleUsd === undefined ? {} : { saleUsdMicros: saleUsd }),
+    },
+  );
+  return checked.ok ? undefined : checked.error;
 }
 
 // The first fill of a sale in dollars that broke its size: the only one sized again.

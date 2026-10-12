@@ -6,6 +6,7 @@ import {
   type ChainRegistry,
   chainRefSchema,
   createChainRegistry,
+  type PriceSource,
   type TxSimulator,
   type Venue,
   type UsdPrice,
@@ -110,6 +111,8 @@ export interface TestEngineOptions {
   readonly executor?: Executor;
   /** The USD prices; the coin alone, at $600, when absent. */
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
+  /** Wraps the price source, so a test can make a read hang. */
+  readonly priceSource?: (source: PriceSource) => PriceSource;
   /** Whether the engine is locked; never when absent. */
   readonly isLocked?: () => boolean;
   /** Whether a live order may fill and so be made; off when absent, as in the product now. */
@@ -256,8 +259,9 @@ function readsOf(
 ): Pick<EngineOptions, "prices" | "marketReads" | "canPrice"> {
   const prices =
     options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]);
+  const source = createFakePriceSource(prices);
   return {
-    prices: createFakePriceSource(prices),
+    prices: options.priceSource?.(source) ?? source,
     marketReads:
       options.marketReads ?? createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     canPrice: async (token) => await Promise.resolve(!(options.unpriceable ?? []).includes(token)),

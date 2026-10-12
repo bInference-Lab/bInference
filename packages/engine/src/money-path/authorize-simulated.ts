@@ -14,15 +14,22 @@ import type { WalletFacts } from "./wallet-facts.js";
  * fill runs in whatever the agent's mode is now, and the check that holds its chosen quote to the
  * order at `simulated`, answering the first bound it breaks.
  */
+/** A fill's check in the agent's line: the first bound it breaks, or none. */
+type FillCheckInLine = (call: { readonly signal: AbortSignal }) => Promise<FillBreach | undefined>;
+
 export interface FillProposal {
   readonly authorization: FillAuthorization;
   readonly isPaper: boolean;
   /** The decimals of the order's token, which the fill's notice prices a whole token by. */
   readonly decimals: number;
+  /**
+   * Reads, before the agent's line of confirmations, what the fill's check needs from outside it,
+   * such as the other side's USD price (decision 0197), and answers the check the line runs.
+   */
   readonly check: (
     simulated: IntentSnapshot,
     call: { readonly signal: AbortSignal },
-  ) => Promise<FillBreach | undefined>;
+  ) => Promise<FillCheckInLine>;
 }
 
 /** What the authorization at `simulated` reads, and moves the intent through. */
@@ -38,11 +45,12 @@ export interface AuthorizeParts extends AdvanceParts {
 
 // A fill is held to its order, then to the rolling cap.
 async function fillTrigger(
-  parts: AuthorizeParts & { readonly fill: FillProposal },
+  parts: AuthorizeParts,
   simulated: IntentSnapshot,
+  inLine: FillCheckInLine,
 ): Promise<IntentTrigger<"authorization_checked">> {
   const { signal } = parts;
-  const bound = await parts.fill.check(simulated, { signal });
+  const bound = await inLine({ signal });
   const fits = bound !== undefined || (await parts.gate.fits(simulated, { signal }));
   const breach = bound ?? (fits ? undefined : "daily_cap");
   const check = breach === undefined ? { by: "fill" as const } : { by: "fill" as const, breach };
@@ -80,11 +88,13 @@ export async function authorizeSimulated(
   pass: PolicyPass,
 ): Promise<IntentSnapshot> {
   const { gate, fill } = parts;
+  const inLine =
+    fill === undefined ? undefined : await fill.check(simulated, { signal: parts.signal });
   return gate.serially(simulated.record.agentId, async () => {
     const trigger =
-      fill === undefined
+      inLine === undefined
         ? await autoTrigger(parts, simulated, pass)
-        : await fillTrigger({ ...parts, fill }, simulated);
+        : await fillTrigger(parts, simulated, inLine);
     return advanceIntent(parts, simulated, { trigger });
   });
 }

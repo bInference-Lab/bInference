@@ -7,7 +7,7 @@ import type { PublishPush } from "../pushes/engine-push.js";
 import { endEmptyExit } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
 import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
-import { unfinishedFills } from "./fill-faults.js";
+import { unfinishedFills, withinDeadline } from "./fill-faults.js";
 import { agentWideReasons, isWaiting, paceRows } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
 import type { OrderFillReason } from "./order-fill.js";
@@ -241,14 +241,18 @@ async function failed(
   return "skipped";
 }
 
-// Runs the fill; a fault in it is a skip. A stop is no fault: it throws on.
+// Runs the fill within its deadline; a fault in it, or a fill past its deadline, is a skip. A stop
+// is no fault: it throws on.
 async function fillOrFail(
   parts: OrderFillsParts,
   state: FillState,
   run: { readonly order: OrderRecord; readonly price: FillPrice; readonly signal: AbortSignal },
 ): Promise<FillOutcome> {
   try {
-    return await fillNow(parts, state, run);
+    const { clock } = parts;
+    return await withinDeadline({ clock, signal: run.signal }, async (signal) =>
+      fillNow(parts, state, { ...run, signal }),
+    );
   } catch (error) {
     if (run.signal.aborted) {
       throw error;

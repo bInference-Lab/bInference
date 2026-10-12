@@ -1,4 +1,4 @@
-import type { Id } from "@binference/core";
+import { type Clock, createDeadline, type Id } from "@binference/core";
 import type { IntentState } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { fillOrderOf } from "./fill-ends.js";
@@ -59,4 +59,36 @@ export async function unfinishedFills(
   }
   const next = { changedAtMs: last.changedAtMs, id: last.id };
   return [...fills, ...(await unfinishedFills(stored, query, { signal, after: next }))];
+}
+
+/** How long a fill has, from its start in its agent's line to its end (decision 0197). */
+const fillDeadlineMs = 30_000;
+
+/**
+ * Runs a fill on a signal that aborts at its deadline, and rejects with the deadline's reason once
+ * it passes, whether or not the fill's step watches its signal: a stuck step never holds the
+ * agent's line. A store call the stuck step makes later fails on the aborted signal.
+ */
+export async function withinDeadline<T>(
+  call: { readonly clock: Clock; readonly signal: AbortSignal },
+  work: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const deadline = createDeadline({ ...call, timeoutMs: fillDeadlineMs });
+  const listening = new AbortController();
+  const passed = new Promise<never>((_resolve, reject) => {
+    deadline.signal.addEventListener(
+      "abort",
+      () => {
+        reject(deadline.signal.reason);
+      },
+      { once: true, signal: listening.signal },
+    );
+  });
+  try {
+    deadline.signal.throwIfAborted();
+    return await Promise.race([work(deadline.signal), passed]);
+  } finally {
+    listening.abort();
+    deadline.clear();
+  }
 }
