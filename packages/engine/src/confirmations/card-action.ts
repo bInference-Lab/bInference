@@ -1,6 +1,7 @@
 import type { AccountRef, Amount, AssetRef, ChainRef } from "@binference/chain";
 import { type Bps, bpsPerWhole, type Ratio } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
+import { type PriceOrderRequest, orderSummaryLine } from "./order-card-lines.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
 export type TradePlace = { readonly curve: string } | { readonly pool: string };
@@ -80,6 +81,15 @@ export interface CardActionFacts {
   readonly unfreeze:
     | { readonly scope: "agent"; readonly agent: string }
     | { readonly scope: "install"; readonly agentCount: number };
+  /**
+   * An auto order's terms with every default filled (decision 0189): what it trades and when, how
+   * many fills it allows, none for no limit, and until when.
+   */
+  readonly autoOrder: {
+    readonly request: PriceOrderRequest;
+    readonly maxFills?: number;
+    readonly expiresAtMs: number;
+  };
 }
 
 /** The kind of a card's action. */
@@ -207,6 +217,21 @@ const actionLines: ActionLines = {
     action.scope === "agent"
       ? { key: "card.unfreeze.agent", values: { agent: text(action.agent) } }
       : { key: "card.unfreeze.all", values: { count: count(action.agentCount) } },
+  autoOrder: (action) => ({
+    key: "card.order.action",
+    values: {
+      orderKind: {
+        type: "line",
+        line: {
+          key: "order.kind",
+          values: { kind: { type: "choice", choice: action.request.kind } },
+        },
+      },
+      summary: { type: "line", line: orderSummaryLine(action.request) },
+      maxFills: count(action.maxFills ?? 0),
+      expiry: { type: "dateTime", atMs: action.expiresAtMs },
+    },
+  }),
 };
 
 /** The action line of a card (spec 4, section 3.3): its kind's message key and values. */
@@ -227,6 +252,7 @@ const verbs: { readonly [K in Exclude<CardActionKind, "lend" | "stake">]: string
   launchToken: "launch",
   rescue: "rescue",
   unfreeze: "unfreeze",
+  autoOrder: "autoOrder",
 };
 
 /** The verb the card's header confirms: the kind, or a lend or stake move such as `supply`. */

@@ -1,5 +1,6 @@
 import type { AssetRef, ChainRegistry } from "@binference/chain";
 import type {
+  AutoOrderRequest,
   CardView,
   IntentOutcome,
   IntentRequest,
@@ -19,9 +20,10 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
 import { assetInfosOf } from "../money-path/asset-infos.js";
+import { autoOrderQuoteDocument, autoOrderRequestDocument } from "../orders/auto-order-quote.js";
 
-/** What an intent was asked: a proposal's request, a rescue's or an unfreeze's. */
-type AnyRequest = IntentRequest | RescueRequest | UnfreezeRequest;
+/** What an intent was asked: a proposal's request, a rescue's, an unfreeze's or an auto order's. */
+type AnyRequest = IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest;
 
 // The assets a trade asks for: a sale's receive, when it leaves it to its place, is its quote's.
 function tradeAssetsOf(request: AnyRequest): readonly AssetRef[] {
@@ -44,6 +46,11 @@ function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[
     const quote = record.quote === undefined ? undefined : rescueQuoteDocument.decode(record.quote);
     return [...new Set(quote?.moves.map(({ amount }) => amount.asset) ?? [])];
   }
+  if (request.kind === "autoOrder") {
+    return record.quote === undefined
+      ? []
+      : [autoOrderQuoteDocument.decode(record.quote).request.token];
+  }
   const asked = tradeAssetsOf(request);
   if (asked.length === 0 || record.quote === undefined) {
     return asked;
@@ -57,11 +64,14 @@ function requestOf(record: IntentRecord): AnyRequest {
   if (record.kind === "unfreeze") {
     return unfreezeRequestDocument.decode(record.request);
   }
+  if (record.kind === "autoOrder") {
+    return autoOrderRequestDocument.decode(record.request);
+  }
   return record.kind === "rescue" ? rescueRequest : requestDocument.decode(record.request);
 }
 
 // Only a trade's quote is a `QuoteView`.
-const ownQuoteKinds: ReadonlySet<string> = new Set(["rescue", "unfreeze"]);
+const ownQuoteKinds: ReadonlySet<string> = new Set(["rescue", "unfreeze", "autoOrder"]);
 
 function cardViewOf(snapshot: IntentSnapshot): CardView | undefined {
   const card = snapshot.history.cards.at(-1);

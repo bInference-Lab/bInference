@@ -61,6 +61,7 @@ const formats: Formats = {
   percent: (value) => display.percent(value.bps),
   ratio: (value) => `${String(value.ratio.numerator)}/${String(value.ratio.denominator)}`,
   time: (value) => display.time(value.atMs),
+  dateTime: (value) => display.dateTime(value.atMs),
   count: (value) => String(value.count),
   choice: (value) => value.choice,
   text: (value) => value.text,

@@ -10,7 +10,8 @@ import { rescueNotice } from "../safety/rescue-notice.js";
  * confirmed quote and never reaches the executor (spec 6, invariant 3). A confirmed live intent,
  * which a rescue always is (decision 0100), goes to the executor, which takes it onto its wallet's
  * queue; a confirmed rescue is first announced on every surface with `notice.rescue`. A confirmed
- * unfreeze has no step: it is written at once (decision 0128). Any other intent comes back as it
+ * unfreeze has no step: it is written at once (decision 0128). An auto order's card, answered in
+ * any way, goes to its order, which follows it (decision 0189). Any other intent comes back as it
  * was.
  */
 export type ExecuteConfirmed = (
@@ -26,6 +27,8 @@ export interface ExecuteConfirmedOptions {
   readonly paper: PaperFills;
   readonly executor: Executor;
   readonly unfreeze: ExecuteConfirmed;
+  /** Follows an auto order's card, whatever its answer: its order becomes active or ends. */
+  readonly autoOrder: ExecuteConfirmed;
   readonly publish: PublishPush;
 }
 
@@ -33,6 +36,9 @@ export interface ExecuteConfirmedOptions {
 export function createExecuteConfirmed(options: ExecuteConfirmedOptions): ExecuteConfirmed {
   return async (snapshot, call) => {
     const { record } = snapshot;
+    if (record.kind === "autoOrder") {
+      return options.autoOrder(snapshot, call);
+    }
     if (record.state !== "confirmed") {
       return snapshot;
     }

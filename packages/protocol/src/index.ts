@@ -181,6 +181,7 @@ export { intentStates, intentStateSchema } from "./views/intent-state.schema.js"
 export type { IntentState } from "./views/intent-state.schema.js";
 export { intentViewSchema } from "./views/intent-view.schema.js";
 export type {
+  AutoOrderRequest,
   ExecutionView,
   IntentOutcome,
   IntentView,

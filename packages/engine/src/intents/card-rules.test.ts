@@ -28,6 +28,7 @@ describe("card expiry", () => {
       launchToken: 601_000,
       rescue: 601_000,
       unfreeze: 601_000,
+      autoOrder: 601_000,
     });
   });
 });

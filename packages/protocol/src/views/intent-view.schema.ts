@@ -25,6 +25,12 @@ export interface UnfreezeRequest {
   readonly agent?: ProtocolId<"agent">;
 }
 
+/** The request of an `autoOrder` intent, which only `order/create` creates: the order it confirms. */
+export interface AutoOrderRequest {
+  readonly kind: "autoOrder";
+  readonly order: ProtocolId<"autoOrder">;
+}
+
 /** The balance changes a simulation saw for the wallet. */
 export interface SimulationView {
   readonly spent: readonly Amount[];
@@ -62,7 +68,7 @@ export interface IntentView {
   readonly wallet: ProtocolId<"wallet">;
   readonly kind: IntentKind;
   readonly state: IntentState;
-  readonly request: IntentRequest | RescueRequest | UnfreezeRequest;
+  readonly request: IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest;
   readonly quote?: QuoteView;
   readonly risk?: RiskView;
   readonly simulation?: SimulationView;
@@ -97,6 +103,7 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
     readIntentRequestSchema,
     z.object({ kind: z.literal("rescue") }),
     z.object({ kind: z.literal("unfreeze"), agent: protocolIdSchema("agent").exactOptional() }),
+    z.object({ kind: z.literal("autoOrder"), order: protocolIdSchema("autoOrder") }),
   ]),
   quote: quoteViewSchema.exactOptional(),
   risk: riskViewSchema.exactOptional(),

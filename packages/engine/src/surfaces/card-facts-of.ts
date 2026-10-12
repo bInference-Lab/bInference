@@ -1,5 +1,5 @@
 import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
-import type { Bps } from "@binference/core";
+import type { Bps, JsonValue } from "@binference/core";
 import type {
   BuyRequest,
   QuoteView,
@@ -18,6 +18,7 @@ import {
   riskDocument,
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
+import type { IntentKind } from "../intents/intent-kind.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { type RescueQuote, rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { isSamePlace } from "../intents/same-place.js";
@@ -25,6 +26,8 @@ import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-q
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { tradeSlippageBps } from "../money-path/swap-trade.js";
+import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
+import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
 
 function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
@@ -212,32 +215,68 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
   };
 }
 
+// An auto order's card: its terms with every default filled, the agent's reason, and the line on
+// linked exits when its position holds another active exit order (decision 0189). DCA and copy
+// orders are refused before any card.
+function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | undefined {
+  const { record, card, settings } = source;
+  const { request, hasLinkedExits, maxFills, expiresAtMs } = quote;
+  if (request.kind === "dca" || request.kind === "copy") {
+    return undefined;
+  }
+  const { reason } = request;
+  const isLinked = hasLinkedExits && isExitOrder(request);
+  return {
+    agentName: settings.agent.name,
+    isPaper: record.isPaper,
+    hasOutsideContent: record.hasOutsideContent,
+    card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
+    action: {
+      kind: "autoOrder",
+      request,
+      ...(maxFills === undefined ? {} : { maxFills }),
+      expiresAtMs,
+    },
+    warnings: {
+      hasUnusualName: false,
+      isNewAddress: false,
+      ...(isLinked ? { exitsLinkedToken: request.token } : {}),
+    },
+    ...(reason === undefined ? {} : { reason }),
+  };
+}
+
+// The kinds whose quote is a document of their own, each with the facts its card draws from it.
+const ownQuoteFacts: ReadonlyMap<
+  IntentKind,
+  (quote: JsonValue, source: CardSource) => CardFacts | undefined
+> = new Map([
+  ["rescue", (quote, source) => rescueFacts(rescueQuoteDocument.decode(quote), source)],
+  ["unfreeze", (quote, source) => unfreezeFacts(unfreezeQuoteDocument.decode(quote), source)],
+  ["autoOrder", (quote, source) => autoOrderFacts(autoOrderQuoteDocument.decode(quote), source)],
+]);
+
 /**
  * The facts a card version is drawn from (spec 4, section 3), read from the stored intent: the
  * quote's amounts and route, a buy's or a sell's place, whether a venue on the route declares no
  * deadline, the simulation's check (or that a paper
  * sale's fill is an estimate), the highest tax the risk step measured and the agent's reason; for
- * a rescue, its address, what it moves and their value; for an unfreeze, what it unfreezes. The
- * money path quotes trades, rescues and unfreezes only, so an intent of another kind, or one
- * without a quote, has none. The fees line waits for a gas estimate in the quote, and no source
- * marks unusual names yet.
+ * a rescue, its address, what it moves and their value; for an unfreeze, what it unfreezes; for an
+ * auto order, its terms. The money path quotes trades, rescues, unfreezes and auto orders only,
+ * so an intent of another kind, or one without a quote, has none. The fees line waits for a gas
+ * estimate in the quote, and no source marks unusual names yet.
  */
 export function cardFactsOf(source: CardSource): CardFacts | undefined {
   const { record } = source;
-  if (record.kind === "rescue") {
-    return record.quote === undefined
-      ? undefined
-      : rescueFacts(rescueQuoteDocument.decode(record.quote), source);
-  }
-  if (record.kind === "unfreeze") {
-    return record.quote === undefined
-      ? undefined
-      : unfreezeFacts(unfreezeQuoteDocument.decode(record.quote), source);
+  const { quote } = record;
+  const own = ownQuoteFacts.get(record.kind);
+  if (own !== undefined) {
+    return quote === undefined ? undefined : own(quote, source);
   }
   const request = requestDocument.decode(record.request);
   const isTrade = request.kind === "swap" || request.kind === "buy" || request.kind === "sell";
-  if (!isTrade || record.quote === undefined) {
+  if (!isTrade || quote === undefined) {
     return undefined;
   }
-  return tradeFacts(request, quoteDocument.decode(record.quote), source);
+  return tradeFacts(request, quoteDocument.decode(quote), source);
 }

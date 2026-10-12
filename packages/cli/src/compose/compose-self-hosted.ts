@@ -43,6 +43,8 @@ export interface ComposedSelfHosted {
   readonly settle: Engine["settle"];
   /** Reads every live wallet's gas and raises the low-gas alert. */
   readonly checkGas: Engine["checkGas"];
+  /** Moves the auto orders that wait for no price, such as one whose card ended. */
+  readonly tickOrders: Engine["tickOrders"];
   /** Records the positions a crash kept from recent paper fills. */
   readonly repairPaperFills: Engine["repairPaperFills"];
   /** Takes the confirmed intents the lock held; logs a failure and never rejects. */
@@ -319,6 +321,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     executor,
     settle: engine.settle,
     checkGas: engine.checkGas,
+    tickOrders: engine.tickOrders,
     repairPaperFills: engine.repairPaperFills,
     resume,
     stopper,

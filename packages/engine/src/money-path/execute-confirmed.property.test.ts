@@ -14,7 +14,7 @@ const machine = createIntentStateMachine({ clock: createManualClock(1_000) });
 const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
 const live = { signal: new AbortController().signal };
 
-type Route = "paper" | "executor" | "unfreeze";
+type Route = "paper" | "executor" | "unfreeze" | "autoOrder";
 
 interface Case {
   readonly kind: IntentKind;
@@ -67,16 +67,23 @@ async function routesOf(item: Case): Promise<readonly Route[]> {
     routes.push("unfreeze");
     return await Promise.resolve(snapshot);
   };
+  const autoOrder = async (snapshot: IntentSnapshot): Promise<IntentSnapshot> => {
+    routes.push("autoOrder");
+    return await Promise.resolve(snapshot);
+  };
   const record = { id: intent, kind: item.kind, state: item.state, isPaper: storedOnPaper(item) };
-  const execute = createExecuteConfirmed({ paper, executor, unfreeze, publish });
+  const execute = createExecuteConfirmed({ paper, executor, unfreeze, autoOrder, publish });
   await execute({ record } as IntentSnapshot, live);
   return routes;
 }
 
-// Spec 6, invariant 3 and decisions 0100 and 0128: only a confirmed intent moves on, a paper one to
-// the paper fill, an unfreeze to its write, and any other live one, a rescue in paper mode too, to
-// the executor.
+// Spec 6, invariant 3 and decisions 0100, 0128 and 0189: an auto order's card, answered in any way,
+// goes to its order; otherwise only a confirmed intent moves on, a paper one to the paper fill, an
+// unfreeze to its write, and any other live one, a rescue in paper mode too, to the executor.
 function expectedRoutes(item: Case): readonly Route[] {
+  if (item.kind === "autoOrder") {
+    return ["autoOrder"];
+  }
   if (item.state !== "confirmed") {
     return [];
   }
@@ -91,7 +98,7 @@ function routeOf(item: Case): Route {
 }
 
 describe("the execute step, for every intent the state machine stores", () => {
-  it("never hands a paper intent to the executor, nor a rescue or an unfreeze to the paper fill", async () => {
+  it("never hands a paper intent to the executor, nor a rescue, an unfreeze or an auto order's card to the paper fill", async () => {
     await fc.assert(
       fc.asyncProperty(cases, async (item) => {
         expect(await routesOf(item)).toStrictEqual(expectedRoutes(item));

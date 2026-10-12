@@ -1,5 +1,11 @@
 import type { Id, IdSource, JsonValue } from "@binference/core";
-import type { IntentRequest, RescueRequest, UnfreezeRequest } from "@binference/protocol";
+import type {
+  AutoOrderRequest,
+  IntentRequest,
+  RescueRequest,
+  UnfreezeRequest,
+} from "@binference/protocol";
+import { autoOrderRequestDocument } from "../orders/auto-order-quote.js";
 import { requestDocument } from "./intent-documents.schema.js";
 import type { IntentDraft, IntentProposerRef } from "./intent-record.js";
 import type { IntentStep } from "./state-machine.js";
@@ -10,16 +16,21 @@ export interface NewIntent {
   readonly id: Id<"int">;
   readonly agentId: Id<"agt">;
   readonly walletId: Id<"wal">;
-  /** What was asked: a proposal's request, the rescue's, or the unfreeze's. */
-  readonly request: IntentRequest | RescueRequest | UnfreezeRequest;
+  /** What was asked: a proposal's request, the rescue's, the unfreeze's or an auto order's. */
+  readonly request: IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest;
   /** Who called, as the intents table keeps it: the token or device, `telegram` or `engine`. */
   readonly proposerRef: IntentProposerRef;
   readonly step: IntentStep;
 }
 
-function requestOf(request: IntentRequest | RescueRequest | UnfreezeRequest): JsonValue {
+function requestOf(
+  request: IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest,
+): JsonValue {
   if (request.kind === "unfreeze") {
     return unfreezeRequestDocument.encode(request);
+  }
+  if (request.kind === "autoOrder") {
+    return autoOrderRequestDocument.encode(request);
   }
   return request.kind === "rescue" ? { kind: request.kind } : requestDocument.encode(request);
 }

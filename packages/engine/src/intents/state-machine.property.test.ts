@@ -156,6 +156,7 @@ const builders: Builders = {
     isDeliveryReported: facts.isDeliveryReported,
   }),
   unfreeze_written: () => ({ type: "unfreeze_written" }),
+  order_written: () => ({ type: "order_written" }),
 };
 
 function mostly<T>(usual: T, rare: T): fc.Arbitrary<T> {
@@ -277,7 +278,7 @@ const forward: Readonly<Partial<Record<IntentState, readonly TriggerType[]>>> = 
   assessed: ["simulation_matched"],
   simulated: ["authorization_checked"],
   awaiting_confirmation: ["confirm_tapped", "confirm_requoted"],
-  confirmed: ["paper_fill_recorded", "queue_took", "unfreeze_written"],
+  confirmed: ["paper_fill_recorded", "queue_took", "unfreeze_written", "order_written"],
   executing: ["steps_included"],
   included: ["finality_reached"],
   finalized: ["fills_reconciled"],
@@ -523,13 +524,12 @@ function ledgerViolations({ events, final }: History): readonly string[] {
   return terminalEntries === wanted ? [] : [`${String(terminalEntries)} terminal ledger entries`];
 }
 
-// Decision 0128: an unfreeze is live and has no step, so no queue ever takes it.
-function unfreezeViolations(
-  final: IntentStatus,
-  states: readonly IntentState[],
-): readonly string[] {
-  const hasRun = final.isPaper || states.includes("executing");
-  return final.kind === "unfreeze" && hasRun ? ["an unfreeze ran on paper or on a chain"] : [];
+// Decisions 0128 and 0189: an unfreeze is live, and neither it nor an auto order's card has a step.
+function unsteppedViolations(final: IntentStatus, states: readonly IntentState[]) {
+  const ran = states.includes("executing") || states.includes("paper_filled");
+  const isUnsteppedRun =
+    final.kind === "unfreeze" ? final.isPaper || ran : final.kind === "autoOrder" && ran;
+  return isUnsteppedRun ? [`an ${final.kind} ran on paper or on a chain`] : [];
 }
 
 function pathViolations({ events, final }: History): readonly string[] {
@@ -541,7 +541,7 @@ function pathViolations({ events, final }: History): readonly string[] {
     final.kind === "rescue" && (final.isPaper || states.includes("paper_filled"))
       ? "a rescue ran on paper"
       : "",
-    ...unfreezeViolations(final, states),
+    ...unsteppedViolations(final, states),
     firstExecuting !== -1 && (firstConfirmed === -1 || firstConfirmed > firstExecuting)
       ? "executing before confirmed"
       : "",

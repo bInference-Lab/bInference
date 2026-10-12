@@ -9,6 +9,7 @@ import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hoste
 import { startConfigReload } from "./config-reload.js";
 import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
+import { startOrderTimer } from "./order-timer.js";
 import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
 import { startUnlockRetry } from "./unlock-retry.js";
@@ -56,6 +57,7 @@ function startTimers(
   const timers = { isLocked: () => lock.isLocked(), clock: host.clock, closers, logger };
   startSettleTimer({ settle: composed.settle, ...timers });
   startGasCheckTimer({ checkGas: composed.checkGas, ...timers });
+  startOrderTimer({ tickOrders: composed.tickOrders, clock: host.clock, closers, logger });
   const backups = backupPartsOf(opening, opened.stores.backups, logger);
   startNightlyBackups(opening, {
     parts: backups,

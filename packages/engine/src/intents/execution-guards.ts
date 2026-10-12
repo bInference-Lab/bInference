@@ -32,6 +32,9 @@ export function cancelIntent({
 export function fillOnPaper({
   status,
 }: GuardInput<"paper_fill_recorded">): Result<IntentChange, TransitionProblem> {
+  if (status.kind === "autoOrder") {
+    return err("no_steps");
+  }
   return status.isPaper ? ok({}) : err("live_intent");
 }
 
@@ -42,6 +45,9 @@ export function fillOnPaper({
 export function shortOnPaper({
   status,
 }: GuardInput<"paper_holding_short">): Result<IntentChange, TransitionProblem> {
+  if (status.kind === "autoOrder") {
+    return err("no_steps");
+  }
   return status.isPaper ? ok({ reason: "nothing_to_sell" }) : err("live_intent");
 }
 
@@ -76,7 +82,7 @@ export function takeIntoQueue({
   if (status.isPaper) {
     return err("paper_intent");
   }
-  if (status.kind === "unfreeze") {
+  if (status.kind === "unfreeze" || status.kind === "autoOrder") {
     return err("no_steps");
   }
   if (!trigger.isAgentLive && status.kind !== "rescue") {
@@ -147,4 +153,14 @@ export function writeUnfreeze({
   status,
 }: GuardInput<"unfreeze_written">): Result<IntentChange, TransitionProblem> {
   return status.kind === "unfreeze" ? ok({}) : err("not_unfreeze");
+}
+
+/**
+ * `confirmed` to `reconciled` once an auto order's card is written (decision 0189): its order
+ * became active on the tap, or had ended before it. It has no step, in paper mode or live.
+ */
+export function writeOrder({
+  status,
+}: GuardInput<"order_written">): Result<IntentChange, TransitionProblem> {
+  return status.kind === "autoOrder" ? ok({}) : err("not_auto_order");
 }

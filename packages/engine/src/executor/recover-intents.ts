@@ -29,7 +29,8 @@ const pageSize = 100;
 
 /**
  * Every live intent in one of `states` that runs on a chain, the least recently changed first,
- * read a page at a time. An unfreeze has no step, so the executor never takes one (decision 0128).
+ * read a page at a time. An unfreeze and an auto order's card have no step, so the executor never takes one
+ * (decisions 0128 and 0189).
  */
 export async function liveIntentsIn(
   parts: Pick<ExecutorParts, "intents">,
@@ -45,7 +46,7 @@ export async function liveIntentsIn(
   };
   const page = await parts.intents.list(query, { signal });
   const last = page.at(-1);
-  const onChain = page.filter(({ kind }) => kind !== "unfreeze");
+  const onChain = page.filter(({ kind }) => kind !== "unfreeze" && kind !== "autoOrder");
   return page.length < pageSize || last === undefined
     ? onChain
     : [...onChain, ...(await liveIntentsIn(parts, states, { signal, after: last }))];

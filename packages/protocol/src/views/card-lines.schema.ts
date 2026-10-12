@@ -19,7 +19,7 @@ import type { RouteLeg } from "./quote-view.schema.js";
 
 /**
  * One argument of a card line, typed so every surface formats it with the one formatter (spec 4,
- * section 3): an amount with its symbol, USD, a time in the owner's timezone. `text` is set by
+ * section 3): an amount with its symbol, USD, a time or a day and time in the owner's timezone. `text` is set by
  * someone else (the agent, a token's deployer, a venue), so a surface escapes it and cuts it.
  * `choice` is the value of an ICU `select`, `count` of an ICU `plural`.
  */
@@ -36,7 +36,9 @@ export type CardValueView =
   | { readonly type: "choice"; readonly choice: string }
   | { readonly type: "text"; readonly text: string }
   | { readonly type: "route"; readonly venue: string; readonly legs: readonly RouteLeg[] }
-  | { readonly type: "line"; readonly line: CardLineView };
+  | { readonly type: "line"; readonly line: CardLineView }
+  /** A day and a time of day in the owner's timezone, such as an auto order's expiry. */
+  | { readonly type: "dateTime"; readonly atMs: number };
 
 /** One line of a card as data: a message key of the `card` areas and its arguments. */
 export interface CardLineView {
@@ -88,6 +90,7 @@ export const cardValueViewSchema: z.ZodType<CardValueView> = z.discriminatedUnio
     legs: z.array(z.object({ venue: venueIdSchema, shareBps: bpsSchema })),
   }),
   z.object({ ...tag("line"), line: cardLineViewSchema }),
+  z.object({ ...tag("dateTime"), atMs: epochMsSchema }),
 ]);
 
 /** Parses a card version as the engine draws it. */

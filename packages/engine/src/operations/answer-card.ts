@@ -4,6 +4,7 @@ import type { CapGate } from "../confirmations/cap-gate.js";
 import type { CardAnswer } from "../confirmations/card-answer.js";
 import type { AnswerOutcome, Confirmations } from "../confirmations/create-confirmations.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
+import type { IntentKind } from "../intents/intent-kind.js";
 import type { QuoteFailure, SimulationFailure } from "../intents/intent-reason.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 
@@ -34,7 +35,8 @@ export interface AnsweredCard {
  * Applies the owner's answer from any surface: Telegram's tap, the console's or the CLI's call.
  * A confirmed intent then goes on to the execute step: a paper intent fills at its confirmed
  * quote, and the executor takes a live one. While the engine is locked, a Confirm of a live
- * intent waiting for its answer is refused as `locked` and changes nothing; an unfreeze's is taken.
+ * intent waiting for its answer is refused as `locked` and changes nothing; an unfreeze's and an
+ * auto order's are taken.
  */
 export type AnswerCard = (
   answer: CardAnswer,
@@ -53,7 +55,10 @@ export interface AnswerCardOptions {
 }
 
 // The lock is read before the answer is stored: a Confirm that could not be signed never lands. An
-// unfreeze signs nothing, so a locked engine takes its tap (decision 0128).
+// unfreeze and an auto order's card sign nothing, so a locked engine takes their tap (decisions
+// 0128 and 0189).
+const unsignedKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(["unfreeze", "autoOrder"]);
+
 async function lockedAnswer(
   options: AnswerCardOptions,
   answer: CardAnswer,
@@ -66,7 +71,7 @@ async function lockedAnswer(
   const isWaitingLive =
     snapshot?.record.state === "awaiting_confirmation" &&
     !snapshot.record.isPaper &&
-    snapshot.record.kind !== "unfreeze";
+    !unsignedKinds.has(snapshot.record.kind);
   return isWaitingLive ? { outcome: { verdict: "locked" }, intent: snapshot } : undefined;
 }
 

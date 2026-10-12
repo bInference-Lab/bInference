@@ -92,6 +92,7 @@ const formats: ValueFormats = {
       ratioDecimals,
     ),
   time: ({ atMs }, { display }) => display.formatter.time(atMs),
+  dateTime: ({ atMs }, { display }) => display.formatter.dateTime(atMs),
   count: ({ count }) => count,
   choice: ({ choice }) => choice,
   text: ({ text }, { argument }) => displayOutsideText(text, textLengths[argument] ?? nameLength),

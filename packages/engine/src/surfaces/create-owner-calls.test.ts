@@ -169,7 +169,7 @@ describe("the owner's calls from Telegram", () => {
 
   it("answers the unknown operation code for an operation the engine does not serve yet", async () => {
     const test = await startTestEngine();
-    const read = { op: "order/list", args: {}, senderId: ownerId } as const;
+    const read = { op: "engine/status", args: {}, senderId: ownerId } as const;
     await expect(callsOf(test.engine.handlers).call(read, live)).resolves.toStrictEqual({
       ok: false,
       error: "protocol.unknown_op",

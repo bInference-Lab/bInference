@@ -35,6 +35,7 @@ export type TransitionProblem =
   | "authorization_lapsed"
   | "delivery_pending"
   | "not_unfreeze"
+  | "not_auto_order"
   | "no_steps";
 
 /** What a transition writes besides the new state. */

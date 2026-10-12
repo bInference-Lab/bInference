@@ -313,13 +313,13 @@ PEPE (0x6982…1933) · main · 🔴 实盘 · 已清仓
 An auto order's card (`card.order.action`, "Approve {orderKind}: {summary} · up to {maxFills} fills
 until {expiry}") takes `{orderKind}` from the kind's name, as `/orders` words it, and `{summary}`
 from this table. `{sell}` is `card.order.sell` for the order's size, and `{condition}` is "at or
-above {price}" or "at or below {price}" / 「价格达到或高于 {price}」 or 「价格达到或低于 {price}」.
+above {price}" or "at or below {price}" / 「达到或高于 {price}」 or 「达到或低于 {price}」.
 
 | Kind           | Key                             | English                                                                                                             | 中文                                                                                                                                         |
 | -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Size of a sale | `card.order.sell`               | sell {size, select, share {{share} of your {token}} usd {{usd} of {token}} all {all your {token}} other {{amount}}} | {size, select, share {卖出你持有的 {token} 的 {share}} usd {卖出价值 {usd} 的 {token}} all {卖出你持有的全部 {token}} other {卖出 {amount}}} |
-| Limit buy      | `card.order.summary.limitBuy`   | buy {token} with {spend} when the price is {condition}                                                              | 当{condition} 时，用 {spend} 买入 {token}                                                                                                    |
-| Limit sell     | `card.order.summary.limitSell`  | {sell} when the price is {condition}                                                                                | 当{condition} 时，{sell}                                                                                                                     |
+| Limit buy      | `card.order.summary.limitBuy`   | buy {token} with {spend} when the price is {condition}                                                              | 当价格{condition} 时，用 {spend} 买入 {token}                                                                                                |
+| Limit sell     | `card.order.summary.limitSell`  | {sell} when the price is {condition}                                                                                | 当价格{condition} 时，{sell}                                                                                                                 |
 | Take-profit    | `card.order.summary.takeProfit` | {sell} when the price reaches {price}                                                                               | 当价格达到 {price} 时，{sell}                                                                                                                |
 | Stop-loss      | `card.order.summary.stopLoss`   | {sell} when the price falls to {price}                                                                              | 当价格跌至 {price} 时，{sell}                                                                                                                |
 | Trailing stop  | `card.order.summary.trailing`   | {sell} when the price falls {distance} below its highest since the order started                                    | 当价格从下单以来的最高点回落 {distance} 时，{sell}                                                                                           |
@@ -332,8 +332,9 @@ above {price}" or "at or below {price}" / 「价格达到或高于 {price}」 or
 - The card's header confirms an "auto order" / 「自动订单」, and `{maxFills}` counts the fills its
   terms allow: an order with no limit says "no fill limit" / 「不限成交次数」 in place of "up to
   {maxFills} fills" ([decision 0189](../DECISIONS.md#d0189)).
-- `{condition}` is `card.order.condition`: "at or above {price}" / 「价格达到或高于 {price}」 for
-  `direction: above`, "at or below {price}" / 「价格达到或低于 {price}」 for `below`.
+- `{condition}` is `card.order.condition`: "at or above {price}" / 「达到或高于 {price}」 for
+  `direction: above`, "at or below {price}" / 「达到或低于 {price}」 for `below`; the Chinese
+  summary names the price (「价格」) before it.
 - `{spend}` is the buy's size in dollars, the only size a buy order takes today.
 - An auto order's card carries the "Agent says" line (`card.reason`) when its request has a
   `reason` (spec 1, section 8.2), in the same place as an intent's card.

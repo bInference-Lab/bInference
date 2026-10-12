@@ -60,6 +60,11 @@ export interface CardWarnings {
    * trade can still fill later, never below its minimum out. Absent shows no warning.
    */
   readonly hasNoDeadline?: boolean;
+  /**
+   * The token of an exit order whose position holds another active exit order: a full sale by one
+   * ends the others (spec 4, section 3.8). Absent shows no line.
+   */
+  readonly exitsLinkedToken?: AssetRef;
 }
 
 /**
@@ -161,6 +166,10 @@ function placeChangedLine(token: AssetRef): CardLine {
   return { key: "card.warn.placeChanged", values: { token: { type: "asset", asset: token } } };
 }
 
+function exitsLinkedLine(token: AssetRef): CardLine {
+  return { key: "card.order.exitsLinked", values: { token: { type: "asset", asset: token } } };
+}
+
 function taxLines(taxBps: Bps | undefined): readonly CardLine[] {
   return taxBps === undefined || taxBps === 0
     ? []
@@ -181,8 +190,9 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
     ...taxLines(warnings.taxBps),
     ...shown([[facts.card.version > 1, "card.warn.requoted"]]),
     ...optional(warnings.placeChangedToken, placeChangedLine),
+    ...shown([[warnings.hasNoDeadline === true, "card.warn.noDeadline"]]),
+    ...optional(warnings.exitsLinkedToken, exitsLinkedLine),
     ...shown([
-      [warnings.hasNoDeadline === true, "card.warn.noDeadline"],
       [facts.isPaper, "card.warn.paper"],
       [warnings.isEstimate === true, "card.warn.paperEstimate"],
       [warnings.isFirstLive === true && !facts.isPaper, "card.warn.firstLive"],

@@ -17,6 +17,7 @@ import {
   shortOnPaper,
   reconcileFills,
   takeIntoQueue,
+  writeOrder,
   writeUnfreeze,
 } from "./execution-guards.js";
 import type { IntentState } from "./intent-state.js";
@@ -129,6 +130,7 @@ export const transitionTable: TransitionTable = {
   ],
   fills_reconciled: [{ from: ["finalized"], to: "reconciled", guard: reconcileFills }],
   unfreeze_written: [{ from: ["confirmed"], to: "reconciled", guard: writeUnfreeze }],
+  order_written: [{ from: ["confirmed"], to: "reconciled", guard: writeOrder }],
 };
 
 function rulesOf(trigger: TriggerType): readonly TransitionRule[] {

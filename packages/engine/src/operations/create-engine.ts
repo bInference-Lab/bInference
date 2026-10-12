@@ -32,6 +32,9 @@ import {
   createVenueQuoteSource,
   type VenueQuoteSourceOptions,
 } from "../money-path/venue-quote-source.js";
+import type { OrderParts } from "../orders/create-order.js";
+import { followWaitingOrders } from "../orders/follow-order-card.js";
+import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
@@ -53,6 +56,7 @@ import {
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
+import { followCardOf, orderPartsOf } from "./engine-orders.js";
 import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
@@ -63,6 +67,7 @@ export interface EngineHandlers
   extends
     ChatHandlers,
     IntentHandlers,
+    OrderHandlers,
     LedgerHandlers,
     ConfigHistoryHandlers,
     SettingsHandlers,
@@ -102,6 +107,12 @@ export interface Engine {
    * it before the engine takes any work; it answers how many fills it repaired.
    */
   readonly repairPaperFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
+  /**
+   * Moves each auto order waiting for its card as the card says (decision 0189): active on a
+   * Confirm a stop cut short, ended once the card ended otherwise. A timer of the composition root
+   * calls it every 10 seconds; an answer moves its own order at once.
+   */
+  readonly tickOrders: (options: { readonly signal: AbortSignal }) => Promise<void>;
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -171,7 +182,11 @@ function requoteOptions(
 // one goes to the executor.
 function executeOf(
   options: EngineOptions,
-  parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
+  parts: {
+    readonly stored: StoredIntents;
+    readonly paper: PaperParts;
+    readonly orders: OrderParts;
+  },
 ): ExecuteConfirmed {
   const {
     stored,
@@ -185,6 +200,7 @@ function executeOf(
     executor,
     publish,
     unfreeze: async (snapshot, call) => writeUnfreeze(written, snapshot, call.signal),
+    autoOrder: followCardOf(parts.orders),
   });
 }
 
@@ -203,21 +219,23 @@ function intentParts(
   paper: PaperParts,
   settled: (message: AgentInboxMessage) => void,
 ): {
-  readonly handlers: IntentHandlers;
+  readonly handlers: IntentHandlers & OrderHandlers;
   readonly answer: AnswerCard;
   readonly stored: StoredIntents;
+  readonly orders: OrderParts;
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
 } {
   const { stores, custody, host, chains, clock, ids, isLocked } = options;
   const stored = storedIntentsOf(options, settled);
-  const execute = executeOf(options, { stored, paper });
   const confirmations = createConfirmations({
     clock,
     store: stored,
     quotes: createVenueQuoteSource(requoteOptions(options, { stored, paper })),
     simulator: paper.simulator,
   });
+  const orders = orderPartsOf(options, { stored, confirmations, wallets: paper.wallets });
+  const execute = executeOf(options, { stored, paper, orders });
   const gate = createCapGate({ intents: stores.intents, clock });
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
@@ -241,8 +259,11 @@ function intentParts(
     clock,
     ids,
   });
-  const handlers = createIntentHandlers({ stored, moneyPath, answer, chains, showings });
-  return { answer, stored, handlers, lowGas };
+  const handlers = {
+    ...createIntentHandlers({ stored, moneyPath, answer, chains, showings }),
+    ...createOrderHandlers(orders),
+  };
+  return { answer, stored, orders, handlers, lowGas };
 }
 
 // The startup's repair of paper fills a crash left without positions.
@@ -314,5 +335,6 @@ export function createEngine(given: EngineOptions): Engine {
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
+    tickOrders: async ({ signal }) => followWaitingOrders(intents.orders, signal),
   };
 }

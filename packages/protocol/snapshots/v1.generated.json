@@ -3663,7 +3663,8 @@
                 "registerIdentity",
                 "launchToken",
                 "rescue",
-                "unfreeze"
+                "unfreeze",
+                "autoOrder"
               ]
             },
             "state": {
@@ -4409,6 +4410,23 @@
                   },
                   "required": [
                     "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "autoOrder"
+                    },
+                    "order": {
+                      "type": "string",
+                      "pattern": "^ord_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "order"
                   ]
                 }
               ]
@@ -8837,7 +8855,8 @@
                 "registerIdentity",
                 "launchToken",
                 "rescue",
-                "unfreeze"
+                "unfreeze",
+                "autoOrder"
               ]
             },
             "state": {
@@ -9583,6 +9602,23 @@
                   },
                   "required": [
                     "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "autoOrder"
+                    },
+                    "order": {
+                      "type": "string",
+                      "pattern": "^ord_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "order"
                   ]
                 }
               ]
@@ -10133,7 +10169,8 @@
                 "registerIdentity",
                 "launchToken",
                 "rescue",
-                "unfreeze"
+                "unfreeze",
+                "autoOrder"
               ]
             },
             "state": {
@@ -10879,6 +10916,23 @@
                   },
                   "required": [
                     "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "autoOrder"
+                    },
+                    "order": {
+                      "type": "string",
+                      "pattern": "^ord_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "order"
                   ]
                 }
               ]
@@ -11753,6 +11807,24 @@
                       "type",
                       "line"
                     ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
                   }
                 ]
               }
@@ -11839,7 +11911,8 @@
                 "registerIdentity",
                 "launchToken",
                 "rescue",
-                "unfreeze"
+                "unfreeze",
+                "autoOrder"
               ]
             }
           },
@@ -11911,7 +11984,8 @@
                       "registerIdentity",
                       "launchToken",
                       "rescue",
-                      "unfreeze"
+                      "unfreeze",
+                      "autoOrder"
                     ]
                   },
                   "state": {
@@ -12658,6 +12732,23 @@
                         "required": [
                           "kind"
                         ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "autoOrder"
+                          },
+                          "order": {
+                            "type": "string",
+                            "pattern": "^ord_"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "order"
+                        ]
                       }
                     ]
                   },
@@ -13229,7 +13320,8 @@
                 "registerIdentity",
                 "launchToken",
                 "rescue",
-                "unfreeze"
+                "unfreeze",
+                "autoOrder"
               ]
             },
             "state": {
@@ -13975,6 +14067,23 @@
                   },
                   "required": [
                     "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "autoOrder"
+                    },
+                    "order": {
+                      "type": "string",
+                      "pattern": "^ord_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "order"
                   ]
                 }
               ]
@@ -14531,7 +14640,8 @@
                 "registerIdentity",
                 "launchToken",
                 "rescue",
-                "unfreeze"
+                "unfreeze",
+                "autoOrder"
               ]
             },
             "state": {
@@ -15277,6 +15387,23 @@
                   },
                   "required": [
                     "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "autoOrder"
+                    },
+                    "order": {
+                      "type": "string",
+                      "pattern": "^ord_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "order"
                   ]
                 }
               ]
@@ -15832,7 +15959,8 @@
                 "registerIdentity",
                 "launchToken",
                 "rescue",
-                "unfreeze"
+                "unfreeze",
+                "autoOrder"
               ]
             },
             "state": {
@@ -16578,6 +16706,23 @@
                   },
                   "required": [
                     "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "autoOrder"
+                    },
+                    "order": {
+                      "type": "string",
+                      "pattern": "^ord_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "order"
                   ]
                 }
               ]
@@ -25711,7 +25856,8 @@
                               "registerIdentity",
                               "launchToken",
                               "rescue",
-                              "unfreeze"
+                              "unfreeze",
+                              "autoOrder"
                             ]
                           },
                           "state": {
@@ -26457,6 +26603,23 @@
                                 },
                                 "required": [
                                   "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "autoOrder"
+                                  },
+                                  "order": {
+                                    "type": "string",
+                                    "pattern": "^ord_"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "order"
                                 ]
                               }
                             ]

@@ -82,6 +82,7 @@ describe("the execute step", () => {
       executor,
       publish,
       unfreeze: async () => Promise.reject(new Error("A rescue is no unfreeze.")),
+      autoOrder: async () => Promise.reject(new Error("A rescue is no auto order.")),
     });
     await expect(execute(rescue, live)).resolves.toBe(rescue);
     expect(executor.taken()).toStrictEqual([intent]);

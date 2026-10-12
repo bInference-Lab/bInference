@@ -44,6 +44,7 @@ export const triggerTypes = [
   "step_unsent",
   "fills_reconciled",
   "unfreeze_written",
+  "order_written",
 ] as const;
 
 /** The type of a trigger. */
@@ -174,6 +175,8 @@ export interface TriggerFacts {
   readonly fills_reconciled: { readonly isDeliveryReported?: boolean };
   /** A confirmed unfreeze is written: its agents, and the install it names, are unfrozen. */
   readonly unfreeze_written: NoFacts;
+  /** A confirmed auto order card is written: its order became active, or had ended. */
+  readonly order_written: NoFacts;
 }
 
 /** Something that happened to an intent, with the facts the state machine's guards read. */

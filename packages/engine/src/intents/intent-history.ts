@@ -1,5 +1,6 @@
 import { BinferenceError } from "@binference/core";
 import type { CardClosing } from "../confirmations/card-closing.js";
+import { autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
 import type { CardRecord } from "./card-record.js";
 import {
   type EventCause,
@@ -24,8 +25,8 @@ function causes(history: IntentHistory): readonly EventCause[] {
   return history.events.map((event) => readEventCause(event.cause));
 }
 
-// A rescue's quote values what it moves and an unfreeze's names its agents: neither has a minimum
-// out (decisions 0044 and 0128).
+// A rescue's quote values what it moves, an unfreeze's names its agents and an auto order's holds
+// its terms: none has a minimum out (decisions 0044, 0128 and 0189).
 function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
   if (record.quote === undefined) {
     return undefined;
@@ -35,6 +36,9 @@ function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
   }
   if (record.kind === "unfreeze") {
     return { quotedAtMs: unfreezeQuoteDocument.decode(record.quote).quotedAtMs };
+  }
+  if (record.kind === "autoOrder") {
+    return { quotedAtMs: autoOrderQuoteDocument.decode(record.quote).quotedAtMs };
   }
   const quote = quoteDocument.decode(record.quote);
   const terms = { quotedAtMs: quote.quotedAt, minOutBase: quote.minOut.base };

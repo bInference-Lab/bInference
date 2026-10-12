@@ -255,7 +255,7 @@ describe("the owner's fast commands on the engine", () => {
     ["/limits", `Limits of ${testAgent} in effect now:`],
     ["/paper", `${String.fromCodePoint(0x1f9ea)} `],
     ["/balance", "No agent wallet holds anything yet."],
-    ["/orders", "This version of binference does not know that request."],
+    ["/orders", "No active auto orders."],
     ["/cancel", "Nothing waits for your confirmation, so there is nothing to cancel."],
   ])("answers %s from the engine with no agent runtime", async (command, start) => {
     const test = await bot();
