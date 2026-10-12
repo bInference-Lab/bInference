@@ -44,6 +44,8 @@ export interface TurnRecorderOptions {
   readonly failStart?: boolean;
   /** The agent's budget `usage/record` counts down from; $1 when absent. */
   readonly budgetMicros?: bigint;
+  /** When a spent budget resumes, as the engine answers it once nothing is left; none when absent. */
+  readonly resumesAt?: number;
   /** `usage/record` fails. */
   readonly failUsage?: boolean;
   /** Runs before each step is recorded, and the write waits for it: a test stops a turn here. */
@@ -106,7 +108,9 @@ function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
       }
       await note({ kind: "usage", model, usdMicros, key }, signal);
       budget.leftMicros -= usdMicros;
-      return { budgetLeftMicros: budget.leftMicros };
+      const { resumesAt } = options;
+      const resumes = budget.leftMicros > 0n || resumesAt === undefined ? {} : { resumesAt };
+      return { budgetLeftMicros: budget.leftMicros, ...resumes };
     },
     end: async (outcome, signal) => note({ kind: "end", outcome }, signal),
   };

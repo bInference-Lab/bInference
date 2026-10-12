@@ -4,6 +4,7 @@ import type {
   EngineTurnStart,
   EngineUsage,
   InboxWatch,
+  RecordedUsage,
   TurnStartAnswer,
 } from "../relay/engine-chat-records.js";
 import type { EngineChat } from "../relay/ports.js";
@@ -16,6 +17,8 @@ interface ChatPush {
   readonly turn: Id<"trn">;
   /** The text of `chat/message`, the key of `chat/status`, the outcome of `chat/turnEnded`. */
   readonly detail?: string;
+  /** The values of `chat/status`, when it has any. */
+  readonly values?: Readonly<Record<string, number>>;
 }
 
 /** A refusal of `turn/start`. */
@@ -155,14 +158,14 @@ function budgetLeft(state: FakeState, agent: Id<"agt">): bigint {
 }
 
 // A record sent again under its key is counted once, as the engine keeps a write's key.
-function recordUsage(state: FakeState, usage: EngineUsage): bigint {
+function recordUsage(state: FakeState, usage: EngineUsage): RecordedUsage {
   if (!state.agents.has(usage.agent)) {
     throw new Error("The agent is unknown.");
   }
   if (!state.usage.some((record) => record.key === usage.key)) {
     state.usage.push(usage);
   }
-  return budgetLeft(state, usage.agent);
+  return { budgetLeftMicros: budgetLeft(state, usage.agent) };
 }
 
 function engineSide(state: FakeState): EngineChat {
@@ -215,9 +218,10 @@ function turnCalls(
       pushChat(state, { kind: "chat/message", agent, turn, detail: text });
       return Promise.resolve();
     },
-    async turnStatus({ agent, turn, statusKey }, signal) {
+    async turnStatus({ agent, turn, statusKey, values }, signal) {
       reach(state, signal);
-      pushChat(state, { kind: "chat/status", agent, turn, detail: statusKey });
+      const shown = values === undefined ? {} : { values };
+      pushChat(state, { kind: "chat/status", agent, turn, detail: statusKey, ...shown });
       return Promise.resolve();
     },
     async endTurn({ agent, turn, outcome }, signal) {

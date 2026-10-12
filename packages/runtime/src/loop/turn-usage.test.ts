@@ -122,6 +122,19 @@ describe("the usage of a turn's model calls", () => {
     expect(recorder.steps.filter((step) => step.kind === "result")).toHaveLength(1);
   });
 
+  it("ends a turn that spent the budget with the line that says when chat resumes", async () => {
+    const resumesAt = 1_800_028_800_000;
+    const { turn, recorder } = createTestTurn({
+      replies: [withUsage(sameCall(1), cachedUsage), textReply("Never asked.")],
+      tools: [tokenInfo],
+      model: { name: sonnet, price: sonnetPrice },
+      recorder: { budgetMicros: 20_000n, resumesAt },
+    });
+
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "budget" });
+    expect(recorder.steps).toContainEqual({ kind: "status", line: { line: "budget", resumesAt } });
+  });
+
   it("makes no further call and runs no tool when the engine does not take a record", async () => {
     const { turn, recorder } = createTestTurn({
       replies: [sameCall(1), textReply("Never asked.")],

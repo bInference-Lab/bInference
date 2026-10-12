@@ -67,6 +67,13 @@ export interface EngineUsage extends EngineTurn {
   readonly key: string;
 }
 
+/** How the engine answered a usage record: what is left, and when a spent budget resumes. */
+export interface RecordedUsage {
+  readonly budgetLeftMicros: bigint;
+  /** The owner's next midnight, once nothing is left, when the engine said. */
+  readonly resumesAt?: number;
+}
+
 /** `turn/end`: how the turn ended. */
 export interface EngineTurnEnd extends EngineTurn {
   readonly outcome: TurnOutcome;

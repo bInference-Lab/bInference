@@ -53,12 +53,7 @@ function clientOver(engine: MemoryEngineChat, topics: Map<string, TopicHandlers>
       options: { signal: AbortSignal; key?: string },
     ) =>
       op === "usage/record"
-        ? {
-            budgetLeftMicros: await engine.recordUsage(
-              { ...args, key: options.key } as never,
-              options.signal,
-            ),
-          }
+        ? engine.recordUsage({ ...args, key: options.key } as never, options.signal)
         : answer(op, args, options.signal),
     subscribe(topic, handlers) {
       topics.set(topic, handlers);

@@ -52,8 +52,11 @@ function turnCalls(
       await client.call("turn/status", args, { signal });
     },
     async recordUsage({ key, ...usage }, signal) {
-      const recorded = await client.call("usage/record", usage, { signal, key });
-      return recorded.budgetLeftMicros;
+      const { budgetLeftMicros, resumesAt } = await client.call("usage/record", usage, {
+        signal,
+        key,
+      });
+      return { budgetLeftMicros, ...(resumesAt === undefined ? {} : { resumesAt }) };
     },
     async endTurn(end, signal) {
       await client.call("turn/end", { ...end }, { signal });

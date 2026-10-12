@@ -104,7 +104,7 @@ async function runsATurn(harness: EngineChatHarness): Promise<void> {
   const before = started.started ? started.budgetLeftMicros : 0n;
   const left = await chat.recordUsage({ ...at, ...usage, usdMicros: 7n, key: "u.1" }, live());
   const again = await chat.recordUsage({ ...at, ...usage, usdMicros: 7n, key: "u.1" }, live());
-  assert.ok(left <= before && again === left);
+  assert.ok(left.budgetLeftMicros <= before && again.budgetLeftMicros === left.budgetLeftMicros);
   await chat.sayTurn({ ...at, session: posted.session, text: "Done.", final: true }, live());
   await chat.turnStatus({ ...at, statusKey: "turn.stopped" }, live());
   await chat.endTurn({ ...at, outcome: "ok" }, live());

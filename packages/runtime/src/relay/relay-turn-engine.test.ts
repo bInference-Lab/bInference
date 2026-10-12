@@ -90,6 +90,36 @@ describe("createRelayTurnEngine", () => {
     ]);
   });
 
+  it("shows when chat resumes as the engine refuses a turn for a spent budget", async () => {
+    const { engine, stores, message } = await subject(undefined);
+    engine.refuse(agent, { started: false, refusal: "budget", resumesAt: 9 });
+    const place = { agent, session: message.session, turn: message.turn };
+    const clock = createManualClock(5);
+    const relay = createRelayTurnEngine({ chat: engine, stores, place, taken: [], clock });
+    await relay.start({ messages: [message.message], outsideContent: false }, live());
+
+    expect(engine.pushes.filter(({ kind }) => kind === "chat/status")).toStrictEqual([
+      {
+        kind: "chat/status",
+        agent,
+        turn: message.turn,
+        detail: "turn.budget",
+        values: { when: 9 },
+      },
+    ]);
+  });
+
+  it("shows no paused line for a refusal that is not the budget", async () => {
+    const { engine, stores, message } = await subject(undefined);
+    engine.refuse(agent, { started: false, refusal: "frozen" });
+    const place = { agent, session: message.session, turn: message.turn };
+    const clock = createManualClock(5);
+    const relay = createRelayTurnEngine({ chat: engine, stores, place, taken: [], clock });
+    await relay.start({ messages: [message.message], outsideContent: false }, live());
+
+    expect(engine.pushes.filter(({ kind }) => kind === "chat/status")).toStrictEqual([]);
+  });
+
   it("writes nothing when the engine refuses the turn, and says why", async () => {
     const { engine, stores, message } = await subject(undefined);
     engine.refuse(agent, { started: false, refusal: "budget", resumesAt: 9 });

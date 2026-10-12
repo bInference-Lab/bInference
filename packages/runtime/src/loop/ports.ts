@@ -81,12 +81,13 @@ export interface TurnEngine {
   status(line: TurnStatusLine, signal: AbortSignal): Promise<void>;
   /**
    * `usage/record`: one attempt's usage, and what is left of the agent's budget after it, 0 or
-   * below once it is spent. Throws when the engine did not take the record.
+   * below once it is spent, with when it resumes when the engine says. Throws when the engine did
+   * not take the record.
    */
   recordUsage(
     usage: UsageRecord,
     signal: AbortSignal,
-  ): Promise<{ readonly budgetLeftMicros: bigint }>;
+  ): Promise<{ readonly budgetLeftMicros: bigint; readonly resumesAt?: number }>;
   end(outcome: TurnOutcome, signal: AbortSignal): Promise<void>;
 }
 

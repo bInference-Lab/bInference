@@ -33,6 +33,6 @@ export async function recordAttempt(
   };
   const recorded = await run.parts.engine.recordUsage(record, run.writes);
   if (recorded.budgetLeftMicros <= 0n) {
-    run.tally.spendBudget();
+    run.tally.spendBudget(recorded.resumesAt);
   }
 }

@@ -135,7 +135,9 @@ export type TurnStatusLine =
   | { readonly line: "toolCallLimit" }
   | { readonly line: "modelCallLimit" }
   /** The loop guard found the same call with the same result three times. */
-  | { readonly line: "loop" };
+  | { readonly line: "loop" }
+  /** The agent's model budget of the day is spent: chat resumes at the owner's next midnight. */
+  | { readonly line: "budget"; readonly resumesAt: number };
 
 /**
  * One attempt of a model call as `usage/record` takes it (runtime spec, section 8.3): the model

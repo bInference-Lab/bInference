@@ -63,12 +63,19 @@ async function recordStart(
  * The engine's side of one turn over the runtime's link to the engine (runtime spec, section 4.3):
  * `turn/start`, then the turn's row in `agent.sqlite`; `turn/mark`; `turn/say` with the final text;
  * `turn/status` with the line's keys of spec 4; `usage/record` after each model call attempt;
- * `turn/end`. A start the engine refuses answers the
- * refusal; one it cannot answer, or whose row is not written, rejects.
+ * `turn/end`. A start the engine refuses answers the refusal, after the paused status line for a
+ * spent budget; one it cannot answer, or whose row is not written, rejects.
  */
 export function createRelayTurnEngine(options: RelayTurnOptions): TurnEngine {
   const { chat, place } = options;
   const at = { agent: place.agent, turn: place.turn };
+  const status: TurnEngine["status"] = async (line, signal) => {
+    for (const { key, values } of statusKeysOf(line)) {
+      const shown = { ...at, statusKey: key, ...(values === undefined ? {} : { values }) };
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the lines go out in their order
+      await chat.turnStatus(shown, signal);
+    }
+  };
   return {
     async start(request, signal) {
       const messages = request.messages.map((id) => messageId.parse(id));
@@ -81,6 +88,13 @@ export function createRelayTurnEngine(options: RelayTurnOptions): TurnEngine {
       const answer = await chat.startTurn(start, signal);
       if (!answer.started) {
         options.onRefused?.(answer);
+        // A spent budget shows the owner when chat resumes; the refusal stands without the line,
+        // and the owner's next message tries the start, and the line, again.
+        if (answer.refusal === "budget" && answer.resumesAt !== undefined) {
+          await status({ line: "budget", resumesAt: answer.resumesAt }, signal).catch(
+            () => undefined,
+          );
+        }
         return err(answer.refusal);
       }
       await recordStart(options, request, signal);
@@ -89,16 +103,8 @@ export function createRelayTurnEngine(options: RelayTurnOptions): TurnEngine {
     mark: async (signal) => chat.markTurn(at, signal),
     say: async (text, signal) =>
       chat.sayTurn({ ...at, session: place.session, text, final: true }, signal),
-    async status(line, signal) {
-      for (const { key, values } of statusKeysOf(line)) {
-        const status = { ...at, statusKey: key, ...(values === undefined ? {} : { values }) };
-        // oxlint-disable-next-line eslint/no-await-in-loop -- the lines go out in their order
-        await chat.turnStatus(status, signal);
-      }
-    },
-    recordUsage: async (usage, signal) => ({
-      budgetLeftMicros: await chat.recordUsage({ ...at, ...usage }, signal),
-    }),
+    status,
+    recordUsage: async (usage, signal) => chat.recordUsage({ ...at, ...usage }, signal),
     end: async (outcome, signal) => chat.endTurn({ ...at, outcome }, signal),
   };
 }

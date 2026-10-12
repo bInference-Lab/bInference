@@ -36,5 +36,8 @@ export function statusKeysOf(line: TurnStatusLine): readonly StatusKey[] {
   if (line.line === "failed") {
     return [{ key: failureKeys[line.failure] }];
   }
+  if (line.line === "budget") {
+    return [{ key: "turn.budget", values: { when: line.resumesAt } }];
+  }
   return line.line === "proposalRefused" ? [] : [{ key: `turn.${line.line}` }];
 }

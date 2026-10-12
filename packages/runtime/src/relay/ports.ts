@@ -8,6 +8,7 @@ import type {
   EngineUsage,
   InboxPage,
   InboxWatch,
+  RecordedUsage,
   TurnStartAnswer,
 } from "./engine-chat-records.js";
 
@@ -31,8 +32,11 @@ export interface EngineChat {
   sayTurn(say: EngineSay, signal: AbortSignal): Promise<void>;
   /** `turn/status`. */
   turnStatus(status: EngineStatus, signal: AbortSignal): Promise<void>;
-  /** `usage/record`: answers what is left of the agent's model budget after the record. */
-  recordUsage(usage: EngineUsage, signal: AbortSignal): Promise<bigint>;
+  /**
+   * `usage/record`: answers what is left of the agent's model budget after the record, and when it
+   * resumes once spent.
+   */
+  recordUsage(usage: EngineUsage, signal: AbortSignal): Promise<RecordedUsage>;
   /** `turn/end`: the engine's running turn for the agent clears. */
   endTurn(end: EngineTurnEnd, signal: AbortSignal): Promise<void>;
 }

@@ -21,8 +21,14 @@ export type StepEnd = LoopEnd | "next";
 
 const ok: LoopEnd = { outcome: "ok" };
 
-// The budget ran out on a usage record: no model call follows (runtime spec, section 8.3).
-const budgetEnd: LoopEnd = { outcome: "budget" };
+// The budget ran out on a usage record: no model call follows, and the status line says when chat
+// resumes, when the engine said (runtime spec, section 8.3).
+function budgetEnd(run: TurnRun): LoopEnd {
+  const { resumesAt } = run.tally.now();
+  return resumesAt === undefined
+    ? { outcome: "budget" }
+    : { outcome: "budget", status: { line: "budget", resumesAt } };
+}
 
 /** Adds messages that joined at a merge point after every result before it (invariant 10). */
 async function join(run: TurnRun, messages: readonly OwnerMessage[]): Promise<void> {
@@ -80,7 +86,7 @@ function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
     return ok;
   }
   if (run.tally.now().budgetSpent) {
-    return budgetEnd;
+    return budgetEnd(run);
   }
   return { outcome: "failed", status: { line: "failed", failure: fault.failure } };
 }
@@ -115,7 +121,7 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
     return { outcome: "loop", status: { line: "toolCallLimit" } };
   }
   if (budgetSpent) {
-    return budgetEnd;
+    return budgetEnd(run);
   }
   if (batch.joined.length === 0 && canMerge(run)) {
     await join(run, await run.parts.merge.take(run.writes));
@@ -129,7 +135,7 @@ async function afterAnswer(run: TurnRun): Promise<StepEnd> {
     return haltedEnd(run);
   }
   if (run.tally.now().budgetSpent) {
-    return budgetEnd;
+    return budgetEnd(run);
   }
   if (!canMerge(run)) {
     return ok;
