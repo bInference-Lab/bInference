@@ -7,6 +7,7 @@ import { accessFindings } from "./access-findings.js";
 import type { CheckFinding } from "./check-finding.js";
 import { configFinding, engineFinding, unlockFinding } from "./install-findings.js";
 import { modelPriceFinding } from "./model-price-finding.js";
+import { rpcKeyedFinding } from "./rpc-keyed-finding.js";
 
 // Reading files and one engine call take moments; past this the check gives up.
 const checkBudgetMs = 15_000;
@@ -54,7 +55,8 @@ function printFindings(output: CliOutput, findings: readonly CheckFinding[]): vo
  * under a stable check id: `config.valid` (config.json5 loads and passes its schema),
  * `permissions.*` (the state folder and the files the specs keep owner-only), `unlock.mode` (a
  * warning in `file` mode, spec 5 section 3), `models.priced` (a warning naming each configured
- * model with no price, runtime spec section 8.3) and `engine.reachable`. `--fix` makes owner-only every
+ * model with no price, runtime spec section 8.3), `engine.reachable` and `rpc.keyed` (a warning
+ * while live auto orders watch prices over public RPCs only). `--fix` makes owner-only every
  * path others can open, the one fix the config spec names for it. It then says what the wallets'
  * ceiling promises against a machine whose keys are stolen (decision 0149). Exits 1 while a
  * problem remains, else 0; warnings do not fail it. With `--json` it prints every finding.
@@ -77,7 +79,8 @@ export async function runCheck(
     const unlock = config.config === undefined ? [] : [unlockFinding(config.config, platform)];
     const prices = config.config === undefined ? [] : [modelPriceFinding(config.config)];
     const engine = await engineFinding({ host, platform, signal });
-    const findings = [config.finding, ...access, ...unlock, ...prices, engine];
+    const rpc = await rpcKeyedFinding({ host, platform, signal }, config.config);
+    const findings = [config.finding, ...access, ...unlock, ...prices, engine, rpc];
     printFindings(output, findings);
     return findings.some((finding) => finding.level === "fail") ? 1 : 0;
   } finally {
