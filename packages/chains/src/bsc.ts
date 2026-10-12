@@ -28,6 +28,17 @@ const tokens = createTokens({
   ],
 });
 
+// USD1, read a few days later, is a proxy under a ProxyAdmin with an owner key. Flap's Portal lists
+// it, as it lists USDT, among the quote tokens of its curves (`getQuoteTokenConfiguration`).
+const laterTokens = createTokens(
+  {
+    "https://www.binance.com/bapi/capital/v1/public/capital/getNetworkCoinAll": [
+      ["USD1", "World Liberty Financial USD", 18, "0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d"],
+    ],
+  },
+  "2026-10-12",
+);
+
 // PancakeSwap's Universal Routers take approvals through PancakeSwap's own Permit2, not Uniswap's.
 const pancakeswap = createContracts("pancakeswap", {
   "https://developer.pancakeswap.finance/contracts/v2/addresses": {
@@ -97,6 +108,8 @@ const fourmeme = createContracts("fourmeme", {
     { "agent-identifier": "0x09B44A633de9F9EBF6FB9Bdd5b5629d3DD2cef13" },
 });
 
+// The Portal is an EIP-1967 proxy under a ProxyAdmin with an owner key, so a curve trade is always
+// simulated before it is signed. Read again on 2026-10-12: its verified code reports v5.24.0.
 const flap = createContracts("flap", {
   "https://docs.flap.sh/flap/developers/deployed-contract-addresses": {
     portal: "0xe2cE6ab80874Fa9Fa2aAE65D277Dd6B8e65C9De0",
@@ -252,7 +265,7 @@ export const bsc: ChainDefinition = {
     { name: "bscscan", url: "https://bscscan.com", source: explorerDocs },
     { name: "bsctrace", url: "https://bsctrace.com", source: explorerDocs },
   ],
-  tokens,
+  tokens: [...tokens, ...laterTokens],
   contracts: [
     ...pancakeswap,
     ...kyberswap,
