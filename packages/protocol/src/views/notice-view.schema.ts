@@ -2,6 +2,7 @@ import { type Amount, amountSchema } from "@binference/chain";
 import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
+import { type AssetInfos, assetInfosSchema } from "./asset-info.schema.js";
 
 /**
  * Where a notice's delivery to one chat surface stands (decision 0133): `queued` waits to be sent,
@@ -34,6 +35,11 @@ export interface NoticePushView extends NoticePartView {
   readonly agent?: ProtocolId<"agent">;
   readonly intent?: ProtocolId<"intent">;
   readonly after?: readonly NoticePartView[];
+  /**
+   * The info of each token its amounts name that the registry does not list, as the intent or the
+   * order's card stored it at the proposal, marked unverified (decision 0199).
+   */
+  readonly assets?: AssetInfos;
 }
 
 /** A stored notice as `notice/list` gives it: the push's fields and each surface's delivery. */
@@ -63,6 +69,7 @@ const pushShape = {
   intent: protocolIdSchema("intent").exactOptional(),
   parts: z.record(z.string(), partSchema).exactOptional(),
   after: z.array(partSchema).exactOptional(),
+  assets: assetInfosSchema.exactOptional(),
 };
 
 /** Parses the data of a `notice/new` push. */

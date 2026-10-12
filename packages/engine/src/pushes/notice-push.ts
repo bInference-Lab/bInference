@@ -1,5 +1,6 @@
 import { type Amount, type AmountWire, amountSchema } from "@binference/chain";
 import { type Id, idSchema, type JsonValue } from "@binference/core";
+import { type AssetInfo, type AssetInfos, assetInfosSchema } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 import type { EnginePush } from "./engine-push.js";
@@ -41,6 +42,11 @@ export interface Notice extends NoticePart {
    * alert that woke the agent (spec 4, section 4.3).
    */
   readonly after?: readonly NoticePart[];
+  /**
+   * The info of each token its amounts name that the registry does not list, as its order's card
+   * stored it at the proposal, marked unverified (decision 0199).
+   */
+  readonly assets?: AssetInfos;
 }
 
 /** A notice's part as JSON carries it: each amount's base units as decimal text. */
@@ -57,6 +63,7 @@ export interface NoticeWire extends NoticePartWire {
   readonly agent?: string;
   readonly intent?: string;
   readonly after?: readonly NoticePartWire[];
+  readonly assets?: Readonly<Record<string, AssetInfo>>;
 }
 
 // How deep parts may nest under a notice: a notice's part, and that part's own parts.
@@ -94,6 +101,7 @@ export const noticeSchema: z.ZodType<Notice, NoticeWire> = z.strictObject({
   intent: idSchema("int").exactOptional(),
   parts: z.record(z.string(), partSchema).exactOptional(),
   after: z.array(partSchema).max(maxAfter).exactOptional(),
+  assets: assetInfosSchema.exactOptional(),
 });
 
 // Each amount as JSON carries it, with its base units as decimal text.
@@ -136,12 +144,22 @@ function partData(part: NoticePart): PartData {
 // The notice as the push carries it, each amount's base units as decimal text. It never throws:
 // the push is sent from the money path, and a surface checks it as it reads it.
 function noticeData(notice: Notice) {
-  const { agent, intent, after } = notice;
+  const { agent, intent, after, assets } = notice;
   return {
     ...partData(notice),
     ...(agent === undefined ? {} : { agent }),
     ...(intent === undefined ? {} : { intent }),
     ...(after === undefined ? {} : { after: after.map(partData) }),
+    ...(assets === undefined
+      ? {}
+      : {
+          assets: Object.fromEntries(
+            Object.entries(assets).map(([ref, info]: readonly [string, AssetInfo]) => [
+              ref,
+              { ...info },
+            ]),
+          ),
+        }),
   };
 }
 

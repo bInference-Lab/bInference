@@ -1,5 +1,5 @@
 import { evmAccountRef, erc20AssetRef, createEvmTxSimulator } from "@binference/chain-evm";
-import { bscToken, type Fork } from "@binference/chain-evm/fork";
+import type { Fork } from "@binference/chain-evm/fork";
 import { createFakeRiskSource } from "@binference/chain/testing";
 import { BinferenceError, type Clock, idSchema, type Id } from "@binference/core";
 import {
@@ -36,6 +36,7 @@ import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
 import { createFeeTokenVenue } from "./fee-token-venue.js";
 import { forkCustody, forkTokenFacts, forkWallet } from "./fork-trading.js";
+import { xvs } from "./order-fill-rig.js";
 
 /** A key made from fixed words: the skeleton's wallet, which holds nothing on BSC. */
 const walletKey: `0x${string}` = keccak256(toHex("binference orders skeleton fork wallet"));
@@ -70,12 +71,12 @@ export interface OrdersMachine extends LoopbackServing {
   readonly logger: MemoryLogger;
 }
 
-// The profile parts on the fork: custody of the one wallet, BNB at $600, ETH clean at the one
-// required risk source, and no market data.
+// The profile parts on the fork: custody of the one wallet, BNB at $600, XVS, a token the registry
+// does not list, clean at the one required risk source, and no market data.
 function partsOn(fork: Fork, stores: MemoryEngineStores): EngineParts {
   const clock = createSystemClock();
   const account = evmAccountRef(fork.chain, forkWallet(walletKey).address);
-  const token = erc20AssetRef(fork.chain, bscToken("ETH"));
+  const token = erc20AssetRef(fork.chain, xvs);
   const clean = { flags: [], liquidityUsdMicros: 10n ** 15n };
   const native = fork.chain.nativeAsset;
   return {

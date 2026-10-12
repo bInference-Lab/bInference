@@ -17,13 +17,15 @@ import {
   watchChat,
 } from "../e2e/runtime-machine.js";
 import { blockTimeMs, orderPriceOf, watcherOn } from "./fork-price-watch.js";
+import { xvs } from "./order-fill-rig.js";
 import { type OrdersMachine, skeletonAgent, startOrdersMachine } from "./orders-skeleton-rig.js";
 
-// The orders skeleton: the owner asks for a stop-loss in Telegram (the synthetic Bot API), the
-// scripted model creates it with the agent's own tool, its card reaches Telegram and the owner's
-// tap makes it active. That one model call costs more than the agent's $3 budget of the day, so
-// chat pauses: the owner is told once, and the next message starts no turn. The runtime stops; the
-// ETH price on the fork falls through the stop-loss, which fills on paper, and its notice reaches
+// The orders skeleton: the owner asks for a stop-loss in Telegram (the synthetic Bot API) on XVS,
+// a token the registry does not list. The scripted model creates it with the agent's own tool, its
+// card reaches Telegram, naming XVS by what its contract answers on the fork, and the owner's tap
+// makes it active. That one model call costs more than the agent's $3 budget of the day, so chat
+// pauses: the owner is told once, and the next message starts no turn. The runtime stops; the XVS
+// price on the fork falls through the stop-loss, which fills on paper, and its notice reaches
 // Telegram.
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(20_000) });
@@ -36,7 +38,7 @@ const pairAbi = parseAbi([
   "function sync()",
 ]);
 const tokenBase = 10n ** 18n;
-const eth = bscToken("ETH");
+const token = xvs;
 const icons = { waiting: String.fromCodePoint(0x1f7e1), paper: String.fromCodePoint(0x1f9ea) };
 const done = String.fromCodePoint(0x2705);
 const paused = /^Chat paused until .+: today's model budget is spent\. Orders keep running\.$/u;
@@ -74,15 +76,15 @@ async function priceUnder(fork: Fork, watch: Watch, level: bigint): Promise<Watc
   return wholeTokenUsd(read) < level ? read : priceUnder(fork, watch, level);
 }
 
-// Takes half the WBNB out of ETH's pair with WBNB, as the pair itself, and syncs it: the price of
-// ETH in BNB halves at the next block, with no trade.
+// Takes half the WBNB out of XVS's pair with WBNB, as the pair itself, and syncs it: the price of
+// XVS in BNB halves at the next block, with no trade.
 async function halvePrice(fork: Fork): Promise<void> {
   const wbnb = bscToken("WBNB");
   const pair: Address = await fork.client.readContract({
     address: bscContract("pancakeswap", "v2-factory"),
     abi: pairAbi,
     functionName: "getPair",
-    args: [eth, wbnb],
+    args: [token, wbnb],
   });
   const held = await fork.client.readContract({
     address: wbnb,
@@ -100,12 +102,12 @@ async function halvePrice(fork: Fork): Promise<void> {
   await fork.send({ from: fork.account, to: pair, data: sync });
 }
 
-// The model's one answer: a stop-loss that sells all the agent's ETH once its price falls to the
-// level, in micro-dollars a whole ETH.
-function stopLossReply(token: AssetRef, levelUsdMicros: bigint) {
+// The model's one answer: a stop-loss that sells all the agent's XVS once its price falls to the
+// level, in micro-dollars a whole XVS.
+function stopLossReply(asset: AssetRef, levelUsdMicros: bigint) {
   const order = {
     kind: "stopLoss",
-    token,
+    token: asset,
     side: "sell",
     size: { percentBps: 10_000 },
     trigger: { price: levelUsdMicros.toString() },
@@ -114,14 +116,13 @@ function stopLossReply(token: AssetRef, levelUsdMicros: bigint) {
   return callsReply([{ name: "order_create", args: { order } }]);
 }
 
-// The paper ETH the stop-loss sells: a limit buy of 0.02 BNB of it at any price, created from the
+// The paper XVS the stop-loss sells: a limit buy of 0.02 BNB of it at any price, created from the
 // owner's CLI and confirmed there, which the watcher's next price fills.
 async function buyOnPaper(machine: OrdersMachine, fork: Fork, watch: Watch): Promise<void> {
-  const token = erc20AssetRef(fork.chain, eth);
   const request = {
     kind: "limit",
     agent: skeletonAgent,
-    token,
+    token: erc20AssetRef(fork.chain, token),
     side: "buy",
     size: { base: 2n * 10n ** 16n },
     trigger: { price: 1n, direction: "above" },
@@ -137,7 +138,7 @@ async function buyOnPaper(machine: OrdersMachine, fork: Fork, watch: Watch): Pro
 }
 
 // The price watcher on the fork, handing each price to the engine's triggers at once.
-function watchEth(machine: OrdersMachine, fork: Fork, signal: AbortSignal) {
+function watchToken(machine: OrdersMachine, fork: Fork, signal: AbortSignal) {
   const seen: WatchedPrice[] = [];
   const fills: Watch["fills"][number][] = [];
   const watcher = watcherOn(fork);
@@ -145,7 +146,7 @@ function watchEth(machine: OrdersMachine, fork: Fork, signal: AbortSignal) {
     seen.push(read);
     fills.push(machine.composed.engine.seePrice(orderPriceOf(read), { signal }));
   });
-  watcher.watch(erc20AssetRef(fork.chain, eth));
+  watcher.watch(erc20AssetRef(fork.chain, token));
   return { watch: { seen, fills }, running: watcher.run(signal).catch(() => undefined) };
 }
 
@@ -157,10 +158,10 @@ interface OwnerChat {
 }
 
 // The owner asks for the stop-loss; the agent's turn ends waiting on its card, which the owner
-// taps: the last card in the chat.
-async function stopLossFromChat(owner: OwnerChat): Promise<void> {
+// taps: the last card in the chat. Answers the card's text as the owner read it.
+async function stopLossFromChat(owner: OwnerChat): Promise<string> {
   const { bot, botApi, chat } = owner;
-  await bot.ingress.receive(ownerText("Set a stop-loss on ETH 10% under the price", 1), live());
+  await bot.ingress.receive(ownerText("Set a stop-loss on XVS 10% under the price", 1), live());
   await chat.turnsEnded(1);
   await bot.idle();
   const card = botApi.messages().findLast((message) => message.buttons.length > 0) ?? never();
@@ -169,6 +170,7 @@ async function stopLossFromChat(owner: OwnerChat): Promise<void> {
     botApi.press({ from: ownerId, data, messageId: card.messageId }),
     live(),
   );
+  return card.text;
 }
 
 // What the owner's chat showed, the agent's chat topic carried, and the engine stored.
@@ -190,7 +192,7 @@ describe("the orders skeleton on a BSC fork", () => {
       const { botApi, telegram } = await ownerBot();
       const machine = await startOrdersMachine(fork, telegram);
       const stop = new AbortController();
-      const { watch, running } = watchEth(machine, fork, AbortSignal.any([signal, stop.signal]));
+      const { watch, running } = watchToken(machine, fork, AbortSignal.any([signal, stop.signal]));
       try {
         const { bot } = machine;
         bot.start();
@@ -198,10 +200,10 @@ describe("the orders skeleton on a BSC fork", () => {
         await buyOnPaper(machine, fork, watch);
         const level = (wholeTokenUsd(await nextPrice(fork, watch, watch.seen.length)) * 9n) / 10n;
         const chat = watchChat(machine.client, skeletonAgent);
-        const script = { replies: [stopLossReply(erc20AssetRef(fork.chain, eth), level)], price };
+        const script = { replies: [stopLossReply(erc20AssetRef(fork.chain, token), level)], price };
         const runtime = superviseRuntime(machine, { turns: machine.turns, script });
         const owner = { bot, botApi, chat };
-        await stopLossFromChat(owner);
+        const card = await stopLossFromChat(owner);
         const active = await reportOf(machine, owner);
         await bot.ingress.receive(ownerText("Anything new?", 2), live());
         await chat.pushed("chat/status", 2);
@@ -221,6 +223,7 @@ describe("the orders skeleton on a BSC fork", () => {
           ["stopLoss", "filled"],
         ]);
         expect(outcomes.filter((outcome) => outcome === "filled")).toHaveLength(2);
+        expect(card).toMatch(/^Approve Stop-loss: sell all your XVS \(0xcF6B…6C63\) when /mu);
         expect(filled.starts).toHaveLength(1);
         expect(filled.spent.map(({ usdMicros }) => usdMicros)).toStrictEqual([6_000_000n]);
         expect(filled.texts).toContain(`${icons.waiting} Waiting for your answer on its card`);
@@ -228,7 +231,7 @@ describe("the orders skeleton on a BSC fork", () => {
         expect(filled.texts.filter((text) => paused.test(text)).length).toBeGreaterThan(0);
         expect(filled.texts.at(-1)).toMatch(
           new RegExp(
-            `^main · ${icons.paper} ${done} Stop-loss filled: sold [\\d.]+ ETH for \\$[\\d.,]+ at \\$[\\d.,]+$`,
+            `^main · ${icons.paper} ${done} Stop-loss filled: sold [\\d.]+ XVS \\(0xcF6B…6C63\\) for \\$[\\d.,]+ at \\$[\\d.,]+$`,
             "u",
           ),
         );

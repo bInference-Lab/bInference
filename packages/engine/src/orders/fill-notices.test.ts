@@ -31,7 +31,7 @@ describe("a fill's notices", () => {
       atMs: 1,
       soldPrice: { numerator: 4n, denominator: 5n },
     };
-    expect(fillNotice(order, fill, 6)).toStrictEqual({
+    expect(fillNotice(order, fill, { decimals: 6, assets: {} })).toStrictEqual({
       key: "notice.fill",
       agent: testAgent,
       values: { mode: "paper" },
@@ -54,7 +54,7 @@ describe("a fill's notices", () => {
       atMs: 1,
       soldPrice: { numerator: 600n, denominator: 10n ** 12n },
     };
-    expect(fillNotice(buy, fill, 6)).toMatchObject({
+    expect(fillNotice(buy, fill, { decimals: 6, assets: {} })).toMatchObject({
       values: { mode: "live" },
       parts: { result: { key: "fill.buy", values: { spent: "$0.60" } } },
     });

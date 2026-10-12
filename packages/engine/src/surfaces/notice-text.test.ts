@@ -53,6 +53,19 @@ describe("a notice as the owner reads it", () => {
     ]);
   });
 
+  it("names an unlisted token by the symbol its notice carries, with its short address", () => {
+    const pepeInfo = { symbol: "PEPE\u202E", name: "Pepe", decimals: 18, verified: false };
+    const push = noticePush({
+      key: "notice.lowGas",
+      values: { wallet: "0x0000000c" },
+      amounts: { balance: { asset: pepe, base: 15n * 10n ** 17n } },
+      assets: { [pepe]: pepeInfo },
+    });
+    expect(noticeText(received(push), display)).toBe(
+      `${String.fromCodePoint(0x26a0, 0xfe0f)} 0x0000000c has 1.5 PEPE\\u{202E} (0x6982…1933) left for network fees. Add BNB.`,
+    );
+  });
+
   it("refuses notice data in another shape", () => {
     expect(noticeSchema.safeParse({ key: "notice.locked" }).success).toBe(false);
     expect(noticeSchema.safeParse({ key: "notice.locked", values: {}, extra: 1 }).success).toBe(

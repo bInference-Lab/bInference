@@ -1,8 +1,10 @@
 import type { ChainRegistry } from "@binference/chain";
 import type { Clock, IdSource, JsonValue } from "@binference/core";
+import type { AssetInfos } from "@binference/protocol";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
+import { assetsDocument } from "../intents/intent-documents.schema.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
@@ -52,15 +54,16 @@ function noticesOf(
     readonly order: OrderRecord;
     readonly fill: PaperFill;
     readonly decimals?: number;
+    readonly assets: AssetInfos;
     readonly ended: number;
   },
 ): readonly JsonValue[] {
-  const { order, fill, decimals, ended } = call;
+  const { order, fill, decimals, assets, ended } = call;
   const { soldPrice } = fill;
   const filled =
     soldPrice === undefined || decimals === undefined
       ? undefined
-      : fillNotice(order, { ...fill, soldPrice }, decimals);
+      : fillNotice(order, { ...fill, soldPrice }, { decimals, assets });
   const exits = endedExitsNotice(parts, { emptiedBy: order, count: ended });
   return [filled, exits]
     .filter((notice) => notice !== undefined)
@@ -77,6 +80,7 @@ async function fillWriteOf(
     readonly order: OrderRecord;
     readonly fill: PaperFill;
     readonly decimals?: number;
+    readonly assets: AssetInfos;
     readonly signal: AbortSignal;
   },
 ): Promise<OrderFillWrite | undefined> {
@@ -106,7 +110,12 @@ async function fillWriteOf(
 async function tryFill(
   parts: FillOnPaperParts,
   snapshot: IntentSnapshot,
-  call: { readonly order: OrderRecord; readonly decimals?: number; readonly signal: AbortSignal },
+  call: {
+    readonly order: OrderRecord;
+    readonly decimals?: number;
+    readonly assets: AssetInfos;
+    readonly signal: AbortSignal;
+  },
 ): Promise<{ readonly filled: IntentSnapshot; readonly wasPriced: boolean }> {
   const { signal } = call;
   // The paper fill asks for the order's write only once it priced the sold asset.
@@ -119,6 +128,17 @@ async function tryFill(
     },
   });
   return { filled, wasPriced: priced.length > 0 };
+}
+
+// What the order's card stored of the tokens the registry does not list, for its fill notice.
+async function cardAssetsOf(
+  parts: FillOnPaperParts,
+  order: OrderRecord,
+  signal: AbortSignal,
+): Promise<AssetInfos> {
+  const card = await parts.stored.snapshot(order.intentId, { signal });
+  const stored = card?.record.assets;
+  return stored === undefined ? {} : assetsDocument.decode(stored);
 }
 
 // The order an order fill's intent fills, as it stands now.
@@ -168,7 +188,8 @@ export function createFillOnPaper(parts: FillOnPaperParts): ExecuteConfirmed {
       return cancelFill(parts, { snapshot, ...skip, signal });
     }
     const decimals = call.decimals === undefined ? {} : { decimals: call.decimals };
-    const tried = await tryFill(parts, snapshot, { order, ...decimals, signal });
+    const assets = await cardAssetsOf(parts, order, signal);
+    const tried = await tryFill(parts, snapshot, { order, ...decimals, assets, signal });
     return tried.filled.record.state === "confirmed"
       ? attempt(tried.filled, { ...call, left: left - 1, wasPriced: tried.wasPriced })
       : tried.filled;

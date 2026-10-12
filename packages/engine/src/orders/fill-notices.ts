@@ -1,5 +1,6 @@
 import { mulDiv, type Ratio } from "@binference/core";
 import { createFormatter } from "@binference/i18n";
+import type { AssetInfos } from "@binference/protocol";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import type { Notice, NoticePart } from "../pushes/notice-push.js";
 import type { OrderFillReason } from "./order-fill.js";
@@ -47,18 +48,19 @@ const orderKindOf = (order: Pick<OrderRecord, "kind">): NoticePart => ({
 
 /**
  * `notice.fill` for an order's paper fill (spec 4, section 4): what it bought or sold, its value in
- * dollars at the fill and its price per whole token, marked as paper for a paper order.
+ * dollars at the fill and its price per whole token, marked as paper for a paper order. A token the
+ * registry does not list is named by `assets`, what the order's card stored of it.
  */
 export function fillNotice(
   order: Pick<OrderRecord, "agentId" | "kind" | "isPaper" | "request">,
   fill: PaperFill & { readonly soldPrice: Ratio },
-  tokenDecimals: number,
+  traded: { readonly decimals: number; readonly assets: AssetInfos },
 ): Notice {
   const isBuy = order.request.side === "buy";
   const valueMicros = mulDiv(fill.amountIn.base, fill.soldPrice, "down");
   const token = isBuy ? fill.amountOut : fill.amountIn;
   const perBaseUnit = { numerator: valueMicros, denominator: token.base === 0n ? 1n : token.base };
-  const price = priceText(wholeTokenPrice(perBaseUnit, tokenDecimals));
+  const price = priceText(wholeTokenPrice(perBaseUnit, traded.decimals));
   const value = dollars.usd(valueMicros);
   const result: NoticePart = {
     key: isBuy ? "fill.buy" : "fill.sell",
@@ -70,6 +72,7 @@ export function fillNotice(
     agent: order.agentId,
     values: { mode: order.isPaper ? "paper" : "live" },
     parts: { orderKind: orderKindOf(order), result },
+    ...(Object.keys(traded.assets).length === 0 ? {} : { assets: traded.assets }),
   };
 }
 

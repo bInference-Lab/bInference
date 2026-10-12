@@ -26,6 +26,7 @@ function viewOf(record: NoticeRecord): NoticeView {
     ...(notice.amounts === undefined ? {} : { amounts: notice.amounts }),
     ...(notice.parts === undefined ? {} : { parts: notice.parts }),
     ...(notice.after === undefined ? {} : { after: notice.after }),
+    ...(notice.assets === undefined ? {} : { assets: notice.assets }),
     delivered: record.delivered,
   };
 }

@@ -36,11 +36,11 @@ const assetInfoShape = {
   logo: z.string().exactOptional(),
 };
 
-/** Parses the `assets` of a response. */
-export const assetInfosSchema: z.ZodType<AssetInfos> = z.record(
-  assetRefSchema,
-  z.object(assetInfoShape),
-);
+/** Parses the `assets` of a response, keyed by each asset's text. */
+export const assetInfosSchema: z.ZodType<
+  AssetInfos,
+  Readonly<Record<string, AssetInfo>>
+> = z.record(assetRefSchema, z.object(assetInfoShape));
 
 /** Parses an asset view. */
 export const assetViewSchema: z.ZodType<AssetView> = z.object({
