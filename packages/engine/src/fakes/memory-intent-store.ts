@@ -11,6 +11,7 @@ import type {
 import type { IntentDraft, IntentRecord } from "../intents/intent-record.js";
 import type { LateLanding } from "../intents/late-landing.js";
 import type { LedgerDraft, LedgerEntry } from "../ledger/ledger-entry.js";
+import { newestStoredAssets } from "../money-path/asset-infos.js";
 import type { OrderRecord } from "../orders/order-record.js";
 import type { IntentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
@@ -325,6 +326,8 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
           .toSorted(byChange)
           .slice(0, query.limit),
       ),
+    storedAssets: async (assets, call) =>
+      memoryCall(call, () => newestStoredAssets(tables.intents(), assets)),
     confirmedSince: async (query, call) =>
       memoryCall(call, () => confirmedSince(tables, landings, query)),
     recordLandedLate: async (landing, call) =>

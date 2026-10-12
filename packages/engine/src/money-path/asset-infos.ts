@@ -1,4 +1,5 @@
 import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
+import type { JsonValue } from "@binference/core";
 import type { AssetInfo, AssetInfos } from "@binference/protocol";
 import { assetsDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -51,5 +52,41 @@ export function intentAssetInfos(
       const info = assetInfoOf(chains, asset) ?? stored[asset];
       return info === undefined ? [] : [[asset, info]];
     }),
+  );
+}
+
+/**
+ * The info of each asset that intents stored at their proposal (decision 0199), from their
+ * `assets` documents, the newest intent's first: the first document that holds an asset gives
+ * its info. An asset no document holds is left out.
+ */
+export function newestAssetInfos(
+  documents: readonly JsonValue[],
+  assets: readonly AssetRef[],
+): AssetInfos {
+  const found = new Map<AssetRef, AssetInfo>();
+  for (const document of documents) {
+    const stored = assetsDocument.decode(document);
+    for (const asset of assets) {
+      const info = stored[asset];
+      if (info !== undefined && !found.has(asset)) {
+        found.set(asset, info);
+      }
+    }
+  }
+  return Object.fromEntries(found);
+}
+
+/** {@link newestAssetInfos} over intents as stored: the newest intent first, by creation then id. */
+export function newestStoredAssets(
+  intents: readonly Pick<IntentRecord, "id" | "createdAtMs" | "assets">[],
+  assets: readonly AssetRef[],
+): AssetInfos {
+  const newestFirst = intents.toSorted(
+    (left, right) => right.createdAtMs - left.createdAtMs || (left.id < right.id ? 1 : -1),
+  );
+  return newestAssetInfos(
+    newestFirst.flatMap(({ assets: stored }) => (stored === undefined ? [] : [stored])),
+    assets,
   );
 }

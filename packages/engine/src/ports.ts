@@ -50,7 +50,7 @@ import type {
   IntentQuery,
 } from "./intents/intent-change.js";
 import type { QuoteFailure, SimulationFailure } from "./intents/intent-reason.js";
-import type { IntentDraft, IntentRecord } from "./intents/intent-record.js";
+import type { IntentDraft, IntentRecord, StoredAssetsRead } from "./intents/intent-record.js";
 import type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 import type { BlockReading, PriceReading } from "./market/market-reading.js";
 import type { BalancesQuery, WalletFacts, WalletFactsQuery } from "./money-path/wallet-facts.js";
@@ -193,7 +193,7 @@ interface StoreCall {
  * It is the one writer of an intent's state: the state machine decides, and this store writes each
  * move all or nothing, together with its ledger entry.
  */
-export interface IntentStore extends LandedLate {
+export interface IntentStore extends LandedLate, StoredAssetsRead {
   /** Writes a new intent with its first event and ledger entry; an id in use is `exists`. */
   create(draft: IntentDraft, options: StoreCall): Promise<Result<IntentCommit, "exists">>;
   /** One intent, or `undefined` when the store has none with that id. */

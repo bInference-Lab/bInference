@@ -1,7 +1,9 @@
 import type { IntentStore } from "@binference/engine";
+import { newestAssetInfos } from "@binference/engine/surfaces";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import { confirmedSinceTask, recordLandedLateTask } from "./confirmed-tasks.js";
 import {
+  assetDocumentsTask,
   cardByRefTask,
   createIntentTask,
   freezeTask,
@@ -19,7 +21,10 @@ import {
  * every move in one.
  */
 export function createSqliteIntentStore(host: StoreHost): IntentStore {
+  const assetDocuments = bindTask(host, assetDocumentsTask);
   return {
+    storedAssets: async (assets, call) =>
+      newestAssetInfos(await assetDocuments(assets, call), assets),
     create: bindTask(host, createIntentTask),
     get: bindTask(host, getIntentTask),
     transition: bindTask(host, moveIntentTask),

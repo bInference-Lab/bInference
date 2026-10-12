@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { assetRefSchema } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
 import type { IntentQuery } from "../intents/intent-change.js";
 import { genesisLedgerHash } from "../ledger/ledger-hash.js";
@@ -79,6 +80,31 @@ async function keepsUnlistedAssets(subject: IntentStoreSubject): Promise<void> {
   const moved = await store.transition(intentMove(1, 0, "checked"), live());
   assert.ok(moved.ok);
   assert.deepEqual((await store.get(fixtureId("int", 1), live()))?.assets, assets);
+}
+
+// The newest intent's info of a token wins; a token no intent stored is left out.
+async function findsStoredAssets(subject: IntentStoreSubject): Promise<void> {
+  const { store } = subject;
+  const xvs = assetRefSchema.parse("fake:1/token:0x0000000f");
+  const cake = assetRefSchema.parse("fake:1/token:0x0000000c");
+  const older = { symbol: "XVS.old", name: "Venus", decimals: 18, verified: false };
+  const newer = { symbol: "XVS", name: "Venus", decimals: 18, verified: false };
+  const cakeInfo = { symbol: "CAKE", name: "Cake", decimals: 18, verified: false };
+  await store.create(
+    { ...intentDraft(subject, 1), assets: { [xvs]: older, [cake]: cakeInfo } },
+    live(),
+  );
+  await store.create({ ...intentDraft(subject, 2), assets: { [xvs]: newer } }, live());
+  await store.create(intentDraft(subject, 3), live());
+  assert.deepEqual(
+    await store.storedAssets([xvs, cake, assetRefSchema.parse("fake:1/token:0x0000000d")], live()),
+    {
+      [xvs]: newer,
+      [cake]: cakeInfo,
+    },
+  );
+  assert.deepEqual(await store.storedAssets([], live()), {});
+  await assert.rejects(store.storedAssets([xvs], { signal: AbortSignal.abort(new Error("stop")) }));
 }
 
 async function movesUnderVersion(subject: IntentStoreSubject): Promise<void> {
@@ -258,6 +284,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     ),
     checkOn("keeps a fill's order from its first write", create, keepsAFillsOrder),
     checkOn("keeps an unlisted token's facts through its moves", create, keepsUnlistedAssets),
+    checkOn("finds the newest facts intents stored of each token", create, findsStoredAssets),
     checkOn("refuses a stale or unknown move and writes nothing", create, refusesStale),
     checkOn("lets exactly one of two racing moves from one version win", create, letsOneRacerWin),
     checkOn(

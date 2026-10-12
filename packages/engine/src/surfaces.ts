@@ -24,7 +24,7 @@ export type {
   OwnerChatOperation,
 } from "./surfaces/create-owner-calls.js";
 export { maxWaitingCards } from "./surfaces/create-card-showings.js";
-export { assetInfosOf } from "./money-path/asset-infos.js";
+export { assetInfosOf, newestAssetInfos } from "./money-path/asset-infos.js";
 export type { EngineHandlerTable } from "./operations/engine-call.js";
 export { noticeText } from "./surfaces/notice-text.js";
 export type { NoticeDisplay } from "./surfaces/notice-text.js";

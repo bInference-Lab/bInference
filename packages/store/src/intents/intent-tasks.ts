@@ -1,4 +1,4 @@
-import { type Id, idSchema, type Result } from "@binference/core";
+import { type Id, idSchema, type JsonValue, jsonValueSchema, type Result } from "@binference/core";
 import {
   type CardRecord,
   cardRecordSchema,
@@ -26,6 +26,7 @@ import {
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { readJson } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
 import { confirmedSinceTask, recordLandedLateTask } from "./confirmed-tasks.js";
@@ -113,6 +114,35 @@ export const listIntentsTask: StoreTask<IntentQuery, readonly IntentRecord[]> = 
   },
 });
 
+/**
+ * Reads the `assets` documents of the intents that may name any of the given assets, the newest
+ * intent first.
+ */
+export const assetDocumentsTask: StoreTask<readonly string[], readonly JsonValue[]> = defineTask({
+  name: "intents.assetDocuments",
+  access: "read",
+  input: z.array(z.string().min(1)).max(1_000),
+  output: z.array(jsonValueSchema),
+  run(database, assets) {
+    if (assets.length === 0) {
+      return [];
+    }
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const select = kysely
+      .selectFrom("intents")
+      .select("assets")
+      .where("assets", "is not", null)
+      .where((row) =>
+        row.or(assets.map((asset) => row("assets", "like", `%${JSON.stringify(asset)}%`))),
+      )
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc");
+    return execute(select).rows.flatMap(({ assets: text }) =>
+      text === null ? [] : [readJson(text)],
+    );
+  },
+});
+
 /** Reads an intent's events, oldest first. */
 export const intentEventsTask: StoreTask<Id<"int">, readonly IntentEventRecord[]> = defineTask({
   name: "intents.events",
@@ -179,6 +209,7 @@ export const intentTasks: readonly TaskRunner[] = [
   freezeTask,
   getIntentTask,
   listIntentsTask,
+  assetDocumentsTask,
   confirmedSinceTask,
   recordLandedLateTask,
   intentEventsTask,

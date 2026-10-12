@@ -1,3 +1,4 @@
+import type { AssetRef } from "@binference/chain";
 import {
   decimalStringSchema,
   type Id,
@@ -5,7 +6,7 @@ import {
   type JsonValue,
   jsonValueSchema,
 } from "@binference/core";
-import { intentKindSchema, intentStateSchema } from "@binference/protocol";
+import { type AssetInfos, intentKindSchema, intentStateSchema } from "@binference/protocol";
 import { z } from "zod";
 import { type LedgerDraft, ledgerDraftSchema } from "../ledger/ledger-entry.js";
 import { epochMsSchema, rowVersionSchema } from "../records/record-fields.js";
@@ -135,3 +136,15 @@ export const intentDraftSchema: z.ZodType<IntentDraft> = z.strictObject({
   cause: jsonValueSchema,
   ledger: ledgerDraftSchema.exactOptional(),
 });
+
+/** The intent store's read of what intents stored of unlisted tokens, which `IntentStore` takes on. */
+export interface StoredAssetsRead {
+  /**
+   * What the newest intent that stored each asset at its proposal stored of it (decision 0199).
+   * An asset no intent stored is left out.
+   */
+  storedAssets(
+    assets: readonly AssetRef[],
+    options: { readonly signal: AbortSignal },
+  ): Promise<AssetInfos>;
+}
