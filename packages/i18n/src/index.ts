@@ -15,6 +15,7 @@ export type {
 export type { Formatter, FormatterOptions } from "./format/create-formatter.js";
 export { decimalText } from "./format/decimal-text.js";
 export { displayOutsideText } from "./format/outside-text.js";
+export { dayStartOf, monthStartOf, nextDayStartOf } from "./format/owner-day.js";
 export { wallClockOf } from "./format/wall-clock.js";
 export type { WallClock } from "./format/wall-clock.js";
 export type { DecimalText } from "./format/decimal-text.js";

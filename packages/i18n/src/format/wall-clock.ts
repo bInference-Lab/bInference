@@ -15,8 +15,20 @@ export interface WallClock {
 }
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// One format per zone: rules on the owner's day read the wall clock many times a call.
+const formats = new Map<string, Intl.DateTimeFormat>();
 
 function formatIn(timeZone: string): Intl.DateTimeFormat {
+  const kept = formats.get(timeZone);
+  if (kept !== undefined) {
+    return kept;
+  }
+  const made = newFormatIn(timeZone);
+  formats.set(timeZone, made);
+  return made;
+}
+
+function newFormatIn(timeZone: string): Intl.DateTimeFormat {
   try {
     return new Intl.DateTimeFormat("en-US", {
       timeZone,
