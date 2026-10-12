@@ -4,7 +4,8 @@ import { modelTransportContract } from "../contracts/model-transport-contract.js
 import type { RuntimeModels, RuntimeProvider } from "../control/runtime-settings.schema.js";
 import type { ModelEvent } from "../loop/model-event.js";
 import { textStream } from "../testing/recorded-chat-streams.js";
-import { createRecordedHttp } from "../testing/recorded-http.js";
+import { createRecordedHttp, type RecordedAnswer } from "../testing/recorded-http.js";
+import { messagesTextStream } from "../testing/recorded-messages-streams.js";
 import { binferenceGatewayUrl, modelTransportFor } from "./model-transport-for.js";
 
 const clock: Clock = { now: () => 0, sleep: async () => Promise.resolve() };
@@ -25,8 +26,8 @@ function modelsWith(
   };
 }
 
-async function eventsOf(models: RuntimeModels) {
-  const http = createRecordedHttp([textStream]);
+async function eventsOf(models: RuntimeModels, answer: RecordedAnswer = textStream) {
+  const http = createRecordedHttp([answer]);
   const transport = modelTransportFor(models, "main", { http, clock });
   const request = { instructions: "", messages: [], tools: [] };
   const events: ModelEvent[] = [];
@@ -80,6 +81,32 @@ describe("modelTransportFor", () => {
     expect(local.http.requests[0]?.headers).not.toHaveProperty("authorization");
   });
 
+  it("calls Anthropic's Messages API for the anthropic kind with its key and version", async () => {
+    const { http, events } = await eventsOf(
+      modelsWith({ an: { kind: "anthropic", apiKey: "sk-ant-test" } }, "an/claude-sonnet-5-5"),
+      messagesTextStream,
+    );
+    expect(events.at(-1)).toMatchObject({ type: "done", stop: "end" });
+    expect(
+      http.requests.map(({ url, headers, body }) => ({
+        url,
+        headers,
+        model: (JSON.parse(String(body)) as { model: string }).model,
+      })),
+    ).toStrictEqual([
+      {
+        url: "https://api.anthropic.com/v1/messages",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          "anthropic-version": "2023-06-01",
+          "x-api-key": "sk-ant-test",
+        },
+        model: "claude-sonnet-5-5",
+      },
+    ]);
+  });
+
   it.each([
     ["no main model", modelsWith({}), "No main model is set as <provider>/<model> in models.main."],
     [
@@ -91,11 +118,6 @@ describe("modelTransportFor", () => {
       "an unknown provider",
       modelsWith({}, "own/gpt-5"),
       "The provider of models.main is not in models.providers.",
-    ],
-    [
-      "the anthropic kind",
-      modelsWith({ an: { kind: "anthropic", apiKey: "sk-ant" } }, "an/claude-sonnet-4-5"),
-      "This runtime has no client for the anthropic provider kind yet.",
     ],
   ])("refuses every call for %s", async (_case, models, message) => {
     const { http, events } = await eventsOf(models);

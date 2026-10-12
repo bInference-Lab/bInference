@@ -45,16 +45,20 @@ store's worker threads and use the network; nothing else
 ## Models
 
 `src/providers/` holds the model transports (spec 8, section 8;
-[decision 0175](../../docs/DECISIONS.md#d0175)). A turn calls the settings' main model,
-`models.main` as `<provider>/<model>`. A provider of the `binference` or `openai` kind is called
-through the official `openai` client's Chat Completions, built there and nowhere else
-(`check:model-clients`): every option is set, so no `OPENAI_*` variable changes a call, it never
-retries or logs, and its `fetch` sends only POST requests under the provider's base URL with
-`accept`, `content-type` and the provider's key. Each answer streams into the loop's events and
-ends with `done` or one classified failure, with the provider's cost when it reports one. A model of
-Anthropic's through the gateway gets cache marks at the end of the stable prefix and of the history.
-Until the Messages transport lands, the `anthropic` kind, like a missing model, ends each call as a
-refused request, and the turn ends `failed` with `turn.failed.request`.
+[decisions 0175](../../docs/DECISIONS.md#d0175) and [0187](../../docs/DECISIONS.md#d0187)). A turn
+calls the settings' main model, `models.main` as `<provider>/<model>`. A provider of the
+`binference` or `openai` kind is called through the official `openai` client's Chat Completions,
+and one of the `anthropic` kind through the official `@anthropic-ai/sdk` client's Messages, each
+built there and nowhere else (`check:model-clients`): every option is set, so no `OPENAI_*` or
+`ANTHROPIC_*` variable and no credential file changes a call, a client never retries or logs, and
+its `fetch` sends only POST requests under the provider's base URL with `accept`, `content-type` and
+the headers the transport sets itself: the provider's key, and Anthropic's API version. Each answer
+streams into the loop's events and ends with `done` or one classified failure, with the provider's
+cost when it reports one. Both transports mark the end of the stable prefix and of the history for
+Anthropic's models, Messages on the last tool too. A Messages response that thought ends with a
+replay of its blocks, which the loop keeps with the response and the next call sends back unchanged.
+A missing model ends each call as a refused request, and the turn ends `failed` with
+`turn.failed.request`.
 
 The transports reach the network through the `StreamingHttp` port, which streams an answer's body
 as it arrives; the runtime process binds it to undici with a pool of its own, which names binference

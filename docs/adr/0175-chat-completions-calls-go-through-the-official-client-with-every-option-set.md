@@ -1,6 +1,6 @@
 # 0175. Chat Completions calls go through the official client with every option set
 
-Status: Accepted
+Status: Amended by 0187
 
 Accepted by the owner on 2026-10-12.
 

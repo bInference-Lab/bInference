@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ModelFailure } from "../loop/model-event.js";
 
 // What every transport's failures have in common: a status, a documented code, the provider's
@@ -30,11 +31,40 @@ export interface FailureFacts {
   readonly headers?: Headers | undefined;
 }
 
+/** What an SDK's error answer carries: its status, the answer's headers and its body. */
+interface ApiErrorParts<T> {
+  /** None for an error event in the middle of a stream. */
+  readonly status?: number | undefined;
+  readonly headers?: Headers | undefined;
+  /** The body, when it has the provider's documented shape. */
+  readonly body?: T | undefined;
+}
+
+const apiErrorSchema = z.object({
+  status: z.int().optional(),
+  headers: z.instanceof(Headers).optional(),
+  error: z.unknown().optional(),
+});
+
+/** Reads an SDK's error answer, its body by the provider's documented error shape. */
+export function apiErrorOf<T>(error: unknown, bodySchema: z.ZodType<T>): ApiErrorParts<T> {
+  const parsed = apiErrorSchema.safeParse(error);
+  if (!parsed.success) {
+    return {};
+  }
+  const body = bodySchema.safeParse(parsed.data.error);
+  return {
+    status: parsed.data.status,
+    headers: parsed.data.headers,
+    body: body.success ? body.data : undefined,
+  };
+}
+
 // Compatible servers that give no code say a request is over the context window in words such
-// as these (OpenAI-compatible servers, Anthropic's models through a gateway, llama.cpp);
+// as these (OpenAI-compatible servers, Anthropic's API and its models through a gateway, llama.cpp);
 // the words only pick the class and are never repeated.
 const contextWords =
-  /maximum context length|context (?:length|window|size)|prompt is too long|input is too long|too many (?:input )?tokens|input token count .* exceeds/i;
+  /maximum context length|context (?:length|window|size|limit)|prompt is too long|input is too long|too many (?:input )?tokens|input token count .* exceeds/i;
 
 const transientStatuses = new Set([408, 409, 429]);
 
@@ -90,7 +120,7 @@ function described(status: number | undefined, code: string | undefined): string
  * `transient`. A `transient` failure carries the wait from `retry-after-ms`, or `retry-after` in
  * seconds or as a date.
  */
-export function failureOfFacts(
+function failureOfFacts(
   facts: FailureFacts,
   failureOfCode: (code: string) => ModelFailure | undefined,
   context: FailureContext,
@@ -108,24 +138,68 @@ export function failureOfFacts(
   };
 }
 
-/** A call the signal stopped. */
-export const stoppedFailure: ProviderFailure = {
+const stoppedFailure: ProviderFailure = {
   failure: "aborted",
   message: "The model call was stopped.",
 };
-
-/** The failures every client throws alike: no answer in time, no answer, an unreadable stream. */
-export const clientFailures: Readonly<
-  Record<"timeout" | "unreachable" | "unreadable" | "refused", ProviderFailure>
-> = {
-  timeout: { failure: "transient", message: "The model provider did not answer in time." },
-  unreachable: { failure: "transient", message: "No answer came from the model provider." },
-  unreadable: {
-    failure: "transient",
-    message: "The model provider sent a stream it could not read.",
-  },
-  refused: {
-    failure: "request",
-    message: "The model client refused the request before sending it.",
-  },
+const timeoutFailure: ProviderFailure = {
+  failure: "transient",
+  message: "The model provider did not answer in time.",
 };
+const unreachableFailure: ProviderFailure = {
+  failure: "transient",
+  message: "No answer came from the model provider.",
+};
+const unreadableFailure: ProviderFailure = {
+  failure: "transient",
+  message: "The model provider sent a stream it could not read.",
+};
+const refusedFailure: ProviderFailure = {
+  failure: "request",
+  message: "The model client refused the request before sending it.",
+};
+
+/** An error class a model SDK throws. */
+type ErrorClass = abstract new (...args: never[]) => object;
+
+/** What one model SDK throws, and how to read its error answers. */
+export interface ClientErrors {
+  /** The call was stopped. */
+  readonly stop: ErrorClass;
+  /** No answer came in time; a kind of `unreachable` in every SDK, so it is checked first. */
+  readonly timeout: ErrorClass;
+  /** No answer came. */
+  readonly unreachable: ErrorClass;
+  /** An error answer, or an error event in the middle of a stream. */
+  readonly answer: ErrorClass;
+  /** What an error answer says. */
+  readonly factsOf: (error: unknown) => FailureFacts;
+  /** The class of a provider's documented code, when the code decides it. */
+  readonly failureOfCode: (code: string) => ModelFailure | undefined;
+}
+
+/**
+ * Classifies what a model call threw into the runtime's failure classes: a stop (`aborted`), no
+ * answer or no answer in time (`transient`), an error answer or a mid-stream error event by
+ * {@link failureOfFacts}, a stream that could not be read (`transient`), and anything the client
+ * refused before sending (`request`).
+ */
+export function thrownFailure(
+  error: unknown,
+  context: FailureContext,
+  client: ClientErrors,
+): ProviderFailure {
+  if (context.signal.aborted || error instanceof client.stop) {
+    return stoppedFailure;
+  }
+  if (error instanceof client.timeout) {
+    return timeoutFailure;
+  }
+  if (error instanceof client.unreachable) {
+    return unreachableFailure;
+  }
+  if (error instanceof client.answer) {
+    return failureOfFacts(client.factsOf(error), client.failureOfCode, context);
+  }
+  return error instanceof SyntaxError ? unreadableFailure : refusedFailure;
+}

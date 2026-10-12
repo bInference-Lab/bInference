@@ -5,6 +5,7 @@ packages:
 # Every version lives here; package.json files write "catalog:".
 catalogMode: strict
 catalog:
+  "@anthropic-ai/sdk": 0.131.0
   "@base-ui/react": 1.8.0
   "@clack/prompts": 1.8.1
   "@commitlint/cli": 21.2.3

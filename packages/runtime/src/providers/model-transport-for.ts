@@ -2,6 +2,7 @@ import type { Clock } from "@binference/core";
 import type { RuntimeModels, RuntimeProvider } from "../control/runtime-settings.schema.js";
 import type { ModelTransport } from "../loop/ports.js";
 import { createChatCompletionsTransport } from "./chat-completions-transport.js";
+import { createMessagesTransport } from "./messages-transport.js";
 import type { StreamingHttp } from "./ports.js";
 
 /** What a model transport reaches the network and the time through. */
@@ -13,8 +14,12 @@ export interface ProviderParts {
 /** The binference AI gateway, which the `binference` kind calls when it names no base URL. */
 export const binferenceGatewayUrl = "https://binference.io/api/v1";
 
-/** OpenAI's API, which the `openai` kind calls when it names no base URL. */
-const openaiApiUrl = "https://api.openai.com/v1";
+/** The API each kind calls when the provider names no base URL. */
+const defaultBaseUrls: Readonly<Record<RuntimeProvider["kind"], string>> = {
+  binference: binferenceGatewayUrl,
+  openai: "https://api.openai.com/v1",
+  anthropic: "https://api.anthropic.com",
+};
 
 /** A transport whose every call ends at once as a refused request, naming why. */
 function refusedTransport(message: string): ModelTransport {
@@ -37,15 +42,15 @@ function splitModel(
 }
 
 function baseUrlOf(provider: RuntimeProvider): string {
-  return provider.baseUrl ?? (provider.kind === "binference" ? binferenceGatewayUrl : openaiApiUrl);
+  return provider.baseUrl ?? defaultBaseUrls[provider.kind];
 }
 
 /**
  * The transport of a role's model under the settings in force (config spec, section 6.3): Chat
- * Completions for the `binference` and `openai` kinds, with the provider's key and base URL, and
- * `models.idleTimeoutMs` as the time the provider may take to start its answer. A role with no
- * model, a model whose provider is not configured, and the `anthropic` kind, whose client is not
- * built yet, get a transport that refuses every call as a `request` failure naming why.
+ * Completions for the `binference` and `openai` kinds and Messages for the `anthropic` kind, with
+ * the provider's key and base URL, and `models.idleTimeoutMs` as the time the provider may take to
+ * start its answer. A role with no model and a model whose provider is not configured get a
+ * transport that refuses every call as a `request` failure naming why.
  */
 export function modelTransportFor(
   models: RuntimeModels,
@@ -61,14 +66,14 @@ export function modelTransportFor(
   if (provider === undefined) {
     return refusedTransport(`The provider of models.${role} is not in models.providers.`);
   }
-  if (provider.kind === "anthropic") {
-    return refusedTransport("This runtime has no client for the anthropic provider kind yet.");
-  }
-  return createChatCompletionsTransport({
+  const options = {
     baseUrl: baseUrlOf(provider),
     ...(provider.apiKey === undefined ? {} : { apiKey: provider.apiKey }),
     model: named.model,
     timeoutMs: models.idleTimeoutMs,
     ...parts,
-  });
+  };
+  return provider.kind === "anthropic"
+    ? createMessagesTransport(options)
+    : createChatCompletionsTransport(options);
 }
