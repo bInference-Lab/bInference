@@ -29,6 +29,7 @@ import {
   type MemoryLogger,
 } from "@binference/core/testing";
 import { type PositionStore, sha256Hex } from "@binference/engine";
+import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import {
   createFakeExecutor,
   createFakePriceSource,
@@ -169,8 +170,8 @@ async function addToken(
   );
 }
 
-// Stores the CLI token, with every scope, and the MCP token, whose secrets the skeleton knows.
-async function addSkeletonTokens(parts: Pick<EngineParts, "stores">): Promise<void> {
+/** Stores the CLI token, with every scope, and the MCP token, whose secrets the skeleton knows. */
+export async function addSkeletonTokens(parts: Pick<EngineParts, "stores">): Promise<void> {
   await addToken(parts, "cli", 1);
   await addToken(parts, "mcp", 2);
 }
@@ -263,6 +264,21 @@ const facts = {
 };
 
 /**
+ * `engine/status` and the operations beside it of an engine that is ready, unlocked and healthy,
+ * release 2026.10.0, whose custody signs with no agent key of this machine.
+ */
+export function readyEngineOperations(agents: EngineParts["stores"]["agents"]): EngineHandlerTable {
+  return createEngineOperations({
+    agents,
+    version: "2026.10.0",
+    state: () => "ready",
+    lock: { unlock: async () => Promise.resolve(ok(undefined)) },
+    health: () => [],
+    stop: () => undefined,
+  });
+}
+
+/**
  * Composes the engine on the profile parts with its agent and tokens stored: the fake chain and
  * venue, a quote simulator, a manual clock and `engine/status` with no health signal. Nothing
  * listens yet.
@@ -296,15 +312,7 @@ export async function composeSkeleton(
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),
-    handlers: createEngineOperations({
-      agents: parts.stores.agents,
-      version: "2026.10.0",
-      state: () => "ready",
-      // The skeleton's custody signs with no agent key of this machine, so nothing is locked.
-      lock: { unlock: async () => Promise.resolve(ok(undefined)) },
-      health: () => [],
-      stop: () => undefined,
-    }),
+    handlers: readyEngineOperations(parts.stores.agents),
     ...surfacesOf(options),
     clock,
     random: createSeededRandom(7),
