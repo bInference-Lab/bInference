@@ -21,6 +21,8 @@ interface HealthSignal {
   readonly state: "ok" | "warn" | "fail";
   /** For a signal that is not `ok`, when it stopped being ok, such as when a process went down. */
   readonly since?: number;
+  /** For the `watcher` signal while it reads: how many blocks its price reads trail the chain. */
+  readonly lagBlocks?: number;
 }
 
 /**
@@ -199,6 +201,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
           signal: z.string(),
           state: z.enum(["ok", "warn", "fail"]),
           since: epochMsSchema.exactOptional(),
+          lagBlocks: z.int().nonnegative().exactOptional(),
         }),
       ),
     }),
