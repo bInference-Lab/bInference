@@ -1,4 +1,4 @@
-import { err, type Id, ok, type Result } from "@binference/core";
+import { err, type Id, type JsonValue, ok, type Result } from "@binference/core";
 import type { OrderState } from "@binference/protocol";
 import { isExitOrder, type OrderMove, type OrderRecord } from "./order-record.js";
 import { isOrderEnded } from "./order-states.js";
@@ -15,7 +15,8 @@ interface OrderConfirmation {
 /**
  * Something that happened to an auto order (decision 0189), with the facts its guard reads: the
  * tap on its card, the card ending otherwise, a cancel, its expiry, a freeze or an unfreeze of its
- * agent, a fill, its position emptied by another exit order, or the expiry notice sent.
+ * agent, a fill, its position emptied by another exit order, the expiry notice sent, or what its
+ * price trigger keeps between prices changed, such as a trailing stop's highest price.
  */
 export type OrderTrigger =
   | {
@@ -31,7 +32,8 @@ export type OrderTrigger =
   | { readonly type: "agent_unfrozen" }
   | { readonly type: "fill_recorded" }
   | { readonly type: "position_closed" }
-  | { readonly type: "expiry_noticed" };
+  | { readonly type: "expiry_noticed" }
+  | { readonly type: "trigger_kept"; readonly triggerState: JsonValue };
 
 /** Why the order state machine refused a trigger. */
 export type OrderProblem =
@@ -157,6 +159,10 @@ const orderRules: OrderRules = {
         : err("not_exit"),
   },
   expiry_noticed: { from: running, guard: noticeExpiry },
+  trigger_kept: {
+    from: ["active"],
+    guard: ({ order, trigger }) => ok({ state: order.state, triggerState: trigger.triggerState }),
+  },
 };
 
 function applyTrigger<T extends TriggerType>(

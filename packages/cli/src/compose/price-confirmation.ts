@@ -7,7 +7,8 @@ import type { LatestPrice } from "./chain-watch.js";
 const thinUsdMicros = 25_000_000_000n;
 const thinFreshMs = 300_000;
 
-function isThin(price: LatestPrice): boolean {
+/** Whether a price came from a thin pool: one under $25,000 deep, or of no depth known. */
+export function isThin(price: LatestPrice): boolean {
   return price.depthUsdMicros === undefined || price.depthUsdMicros < thinUsdMicros;
 }
 
@@ -20,7 +21,8 @@ function checksOf(price: LatestPrice, checks: readonly PriceCheck[]): readonly P
 }
 
 /**
- * Whether a trigger may use a watched price (decision 0194). A launchpad's curve price is
+ * Whether a trigger may use a watched price (decisions 0194 and 0196). A price without a USD
+ * value, as when its quote asset's feed is stale, is no price. A launchpad's curve price is
  * confirmed as read: the curve is the token's market. A pool's price is confirmed once a data
  * source found it within the gap limit after that pool was chosen, and no source's last check
  * since found a gap; a pool under $25,000 deep needs such a check from the last 5 minutes.
@@ -30,6 +32,9 @@ export function isConfirmed(
   checks: readonly PriceCheck[],
   nowMs: number,
 ): boolean {
+  if (price.usdPrice === undefined) {
+    return false;
+  }
   if (price.source !== poolSource) {
     return true;
   }

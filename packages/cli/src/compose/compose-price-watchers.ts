@@ -20,6 +20,7 @@ import type { Closers } from "./closers.js";
 import { type DecimalsBook, decimalsBookOf } from "./decimals-book.js";
 import type { HealthSignal } from "./health-signals.js";
 import { isConfirmed, isUrgent } from "./price-confirmation.js";
+import { type PriceTriggerLink, startPriceTriggers } from "./price-triggers.js";
 import { startRepeatingTimer } from "./repeating-timer.js";
 import type { ReadDecimals } from "./token-decimals.js";
 import { createWatchedOrders, type WatchedOrders } from "./watched-orders.js";
@@ -41,6 +42,11 @@ export interface ComposedPriceWatchers {
   readonly canPrice: (token: AssetRef, call: { readonly signal: AbortSignal }) => Promise<boolean>;
   /** How many active orders with a price trigger the watchers read for, at the last sync. */
   readonly activeOrders: () => number;
+  /**
+   * Where each confirmed price goes as it is read, once the engine exists: its price triggers
+   * (decision 0196). Until it is set, prices go nowhere.
+   */
+  readonly triggers: PriceTriggerLink;
   /** Starts following the active orders, the lag checks and the cross-check. */
   readonly start: (closers: Closers, logger: Logger) => void;
 }
@@ -136,6 +142,7 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
   const decimals = decimalsBookOf(options.decimals, options.clock);
   const orders: WatchedOrders = createWatchedOrders(options);
   const parts: { check?: PriceCrossCheck } = {};
+  const triggers: PriceTriggerLink = {};
   const watching: WatcherChecks = {
     lag: createWatcherLagAlerts({ publish: options.publish }),
     unpriced: createWatcherUnpricedAlerts({ publish: options.publish }),
@@ -152,6 +159,7 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
     canPrice: async (token, { signal }) =>
       (await options.watches.get(assetRefParts(token).chain)?.canPrice(token, signal)) ?? false,
     activeOrders: () => orders.activeOrders(),
+    triggers,
     start(closers, logger) {
       const check = crossCheckOf(options, decimals, logger);
       parts.check = check;
@@ -160,6 +168,13 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
         orders.releaseAll();
         await Promise.all([...options.watches.values()].map(async (watch) => watch.close()));
       });
+      const checks = (): readonly PriceCheck[] => check.checks();
+      const { watches, clock } = options;
+      const known = decimals.known;
+      startPriceTriggers(
+        { watches, decimals: known, checks, clock, link: triggers },
+        { closers, logger },
+      );
       startWatcherTimers({ options, orders, watching }, { closers, logger });
       startCrossCheck({ options, decimals, check }, { closers, logger });
     },

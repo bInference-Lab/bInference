@@ -45,7 +45,7 @@ export interface OrderBase extends FillBounds {
   readonly reason?: string;
 }
 
-/** Fills when the price crosses `price` in `direction`. */
+/** Fills when the price is at or above `price`, or at or below it, as `direction` says. */
 export interface LimitOrderRequest extends OrderBase {
   readonly kind: "limit";
   readonly trigger: { readonly price: bigint; readonly direction: "above" | "below" };

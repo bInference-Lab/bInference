@@ -57,6 +57,8 @@ const table: readonly (readonly [OrderState, OrderTrigger, number, string])[] = 
   ["active", { type: "agent_frozen" }, 5, "paused"],
   ["paused", { type: "agent_frozen" }, 5, "wrong_state"],
   ["paused", { type: "agent_unfrozen" }, 5, "active"],
+  ["active", { type: "trigger_kept", triggerState: { peak: "1" } }, 5, "active"],
+  ["paused", { type: "trigger_kept", triggerState: { peak: "1" } }, 5, "wrong_state"],
   ["paused", { type: "agent_unfrozen" }, expiresAtMs, "expired"],
   ["paused", { type: "fill_recorded" }, 5, "wrong_state"],
   ["paused", { type: "cancel_requested" }, 5, "cancelled"],

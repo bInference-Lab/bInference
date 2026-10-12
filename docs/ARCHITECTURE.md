@@ -522,6 +522,10 @@ interface Signer {
     ([decision 0193](DECISIONS.md#d0193)). A pool is chosen and measured again at every block by
     what it can trade, and its price sets a trigger only once the cross-check proved it; a token
     the watcher cannot price is never silent ([decision 0194](DECISIONS.md#d0194)).
+  - A price order fires on its level, at or beyond its price, as each confirmed price comes, and
+    hands its fill to the money path in the same block's processing; a trailing stop keeps its
+    highest price in its order ([decision 0196](DECISIONS.md#d0196)). A fill runs on paper only
+    until the crash suite on fills passes ([decision 0195](DECISIONS.md#d0195)).
   - Leader wallets and launches are watched through new-block logs.
 - **After downtime ([decision 0066](DECISIONS.md#d0066)).** When the engine resumes after sleep, a
   reboot or a crash, each auto order checks the price now. It fills only if its trigger still holds

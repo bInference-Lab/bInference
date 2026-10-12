@@ -30,3 +30,4 @@ export type {
 } from "./orders/order-record.js";
 export { endedOrderStates, isOrderEnded, openOrderStates } from "./orders/order-states.js";
 export type { OrderStore } from "./orders/ports.js";
+export type { WatchedOrderPrice } from "./orders/order-triggers.js";

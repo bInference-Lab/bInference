@@ -147,6 +147,11 @@ export interface TestEngine {
   readonly walletMaker: FakeWalletMaker;
   /** The runtime's running turns, started with the test runtime's token. */
   readonly turns: RunningTurns;
+  /**
+   * Starts a new engine on the same stores and fakes, as a restart does: nothing it kept in
+   * memory survives, and it opens no paper portfolio again.
+   */
+  readonly restart: () => Engine;
 }
 
 /** What the fake wallet facts say of the test wallet unless a test changes them. */
@@ -241,6 +246,28 @@ function testTurns(): RunningTurns {
   return turns;
 }
 
+// What the engine reads of prices and markets: the coin at $600 and no market data, unless the
+// test gives its own, and a watcher that prices every token but those the test names.
+function readsOf(
+  options: TestEngineOptions,
+  clock: ManualClock,
+): Pick<EngineOptions, "prices" | "marketReads" | "canPrice"> {
+  const prices =
+    options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]);
+  return {
+    prices: createFakePriceSource(prices),
+    marketReads:
+      options.marketReads ?? createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
+    canPrice: async (token) => await Promise.resolve(!(options.unpriceable ?? []).includes(token)),
+  };
+}
+
+// A new engine on the same stores, with ids of its own, as a restart starts one.
+function restartOf(options: EngineOptions): () => Engine {
+  const ids = createIdSource({ clock: options.clock, random: createSeededRandom(5) });
+  return () => createEngine({ ...options, ids });
+}
+
 /** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
 export async function startTestEngine(options: TestEngineOptions = {}): Promise<TestEngine> {
   const clock = createManualClock(testNowMs);
@@ -261,7 +288,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     onMade: (wallet, account) => held.set(wallet, account),
   });
   const turns = testTurns();
-  const engine = createEngine({
+  const engineOptions: EngineOptions = {
     turns,
     stores: wrapped(stores, options),
     positions,
@@ -269,28 +296,24 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     ceilings: options.ceilings ?? ceilings,
     ...custodyParts(options),
     walletMaker,
-    prices: createFakePriceSource(
-      options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
-    ),
+    ...readsOf(options, clock),
     wallets: walletsOf(options),
-    marketReads:
-      options.marketReads ?? createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
     ...stepsOf(options, { chains, clock }),
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
     isLocked: options.isLocked ?? (() => false),
-    canPrice: async (token) => await Promise.resolve(!(options.unpriceable ?? []).includes(token)),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),
     random: createSeededRandom(4),
     publish: (push) => pushes.push(push),
-  });
+  };
+  const engine = createEngine(engineOptions);
   await stores.agents.create(testAgentDraft(options.agent), { signal: AbortSignal.timeout(1_000) });
   await openPaper(engine, options.paper ?? testPaperBalances);
   const fakes = { custody, positions, executor, pushes, ceilings, walletMaker, turns };
-  return { engine, stores, clock, ...fakes };
+  return { engine, stores, clock, ...fakes, restart: restartOf(engineOptions) };
 }
 
 /** One call with its args, from a caller, with a signal that never aborts. */

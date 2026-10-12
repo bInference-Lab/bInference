@@ -48,6 +48,7 @@ function fakeWatch() {
         source: { mode: "polling" },
       }),
       tokens: () => state.watches.map((asset) => ({ token: asset, state: "priced" })),
+      onPrice: () => () => undefined,
     },
     watch(asset: AssetRef) {
       state.watches.push(asset);

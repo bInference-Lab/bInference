@@ -18,6 +18,7 @@ const deep: LatestPrice = {
   depthUsdMicros: 50_000_000_000n,
   quoteAsset: assetRefSchema.parse("eip155:56/slip44:714"),
   quotePrice: { numerator: 1n, denominator: 300n },
+  usdPrice: { numerator: 2_000_000n, denominator: 10n ** 18n },
   planSinceMs: 400_000,
 };
 const thin: LatestPrice = { ...deep, depthUsdMicros: 24_999_999_999n };
@@ -32,6 +33,15 @@ const checkAt = (atMs: number, found: Partial<PriceCheck> = {}): PriceCheck => (
 });
 
 describe("price confirmation", () => {
+  it("confirms no price without a USD value, a curve's or a proven pool's", () => {
+    const { usdPrice: _usd, ...unvalued } = deep;
+    const curve = { ...unvalued, source: "flap" };
+    expect([
+      isConfirmed(curve, [], nowMs),
+      isConfirmed(unvalued, [checkAt(900_000)], nowMs),
+    ]).toStrictEqual([false, false]);
+  });
+
   it("confirms a launchpad's curve price as read", () => {
     const curve = { ...deep, source: "flap" };
     expect([isConfirmed(curve, [], nowMs), isUrgent(curve, [], nowMs)]).toStrictEqual([

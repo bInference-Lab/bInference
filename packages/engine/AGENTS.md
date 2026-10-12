@@ -89,6 +89,11 @@ Rules for this package:
   while the engine's `liveOrderFills` stays off, and every order while the engine is locked, skip
   before any intent. A change to a bound changes `fill-bounds.property.test.ts`, and a change to
   the fill path `fill-orders.property.test.ts`.
+- The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of
+  a watched token against its active price orders in `price-triggers.ts`, a pure judgment of
+  levels, never of crossings, and hand a triggered order to its fill at once. A trailing stop's
+  highest price lives in its order's `trigger_state`, written by `trigger_kept`. A change to a
+  condition changes `price-triggers.property.test.ts`.
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
   reports each outcome to the state machine as a trigger. Only the venues' quotes run before the
   policy, which prices a token without a feed from the first venue's quote; no venue builds until

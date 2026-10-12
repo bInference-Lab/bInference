@@ -29,6 +29,7 @@ type Step =
   | { readonly type: "fill" }
   | { readonly type: "positionClosed" }
   | { readonly type: "notice" }
+  | { readonly type: "keep" }
   | { readonly type: "wait"; readonly ms: number };
 
 const steps: fc.Arbitrary<Step> = fc.oneof(
@@ -49,6 +50,7 @@ const steps: fc.Arbitrary<Step> = fc.oneof(
     { type: "fill" },
     { type: "positionClosed" },
     { type: "notice" },
+    { type: "keep" },
   ),
   fc.record({ type: fc.constant("wait" as const), ms: fc.integer({ min: 1, max: 40_000_000 }) }),
 );
@@ -153,6 +155,7 @@ const triggers: Triggers = {
   fill: () => ({ type: "fill_recorded" }),
   positionClosed: () => ({ type: "position_closed" }),
   notice: () => ({ type: "expiry_noticed" }),
+  keep: () => ({ type: "trigger_kept", triggerState: { peak: "2" } }),
   wait: () => undefined,
 };
 
@@ -180,6 +183,10 @@ interface Moved {
 
 // Each invariant of decision 0189 for one move, named when it breaks.
 const moveChecks: readonly ((moved: Moved) => string)[] = [
+  ({ before, trigger, after }) =>
+    trigger.type === "trigger_kept" && (before.order.state !== "active" || after.state !== "active")
+      ? "a trigger's state moved an order that was not active, or changed its state"
+      : "",
   ({ before, trigger }) =>
     isOrderEnded(before.order.state) ? `a ${trigger.type} moved an order that had ended` : "",
   ({ before, isOwnTap, after }) =>

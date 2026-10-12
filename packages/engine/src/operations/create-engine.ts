@@ -38,6 +38,7 @@ import { createFillOnPaper } from "../orders/fill-on-paper.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
+import { createOrderTriggers, type OrderTriggers } from "../orders/order-triggers.js";
 import { tickOrders } from "../orders/tick-orders.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
@@ -130,7 +131,13 @@ export interface Engine {
    * runs with no card, held to the order's bounds, or the fill is skipped and reported. The price
    * triggers call it as each price comes.
    */
-  readonly fillOrder: OrderFills["fill"];
+  readonly fillOrder: OrderFills["run"];
+  /**
+   * Judges the active limit, take-profit, stop-loss and trailing orders on a confirmed price of
+   * their token, and fills those it triggers in the same block's processing (decision 0196). The
+   * price watchers call it with each price; it answers once the fills it started ended.
+   */
+  readonly seePrice: OrderTriggers["see"];
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -270,6 +277,7 @@ interface IntentParts {
   readonly stored: StoredIntents;
   readonly orders: OrderParts;
   readonly fills: OrderFills;
+  readonly triggers: OrderTriggers;
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
   readonly cardTimer: CardTimerParts;
@@ -319,7 +327,8 @@ function intentParts(
   };
   const cardTimer = cardTimerOf(options, { confirmations, orders });
   const fills = orderFillsOf(options, { stored, moneyPath, gate, holdings: paper.holdings });
-  return { answer, stored, orders, fills, handlers, lowGas, cardTimer };
+  const triggers = createOrderTriggers({ orders: stores.orders, fills, clock });
+  return { answer, stored, orders, fills, triggers, handlers, lowGas, cardTimer };
 }
 
 // The startup's repair of paper fills a crash left without positions.
@@ -393,6 +402,7 @@ export function createEngine(given: EngineOptions): Engine {
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
     tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
-    fillOrder: async (request, call) => intents.fills.fill(request, call),
+    fillOrder: async (request, call) => intents.fills.run(request, call),
+    seePrice: async (price, call) => intents.triggers.see(price, call),
   };
 }

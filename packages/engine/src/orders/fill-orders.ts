@@ -41,7 +41,7 @@ export interface OrderFills {
    * Fills an active order at a trigger's price, one fill of an agent at a time. An order that is
    * not active, already has a fill under way, or still waits after a skip, fills nothing.
    */
-  fill(
+  run(
     request: { readonly order: Id<"ord">; readonly price: FillPrice },
     options: { readonly signal: AbortSignal },
   ): Promise<FillOutcome>;
@@ -261,7 +261,7 @@ async function inLine<T>(state: FillState, agent: Id<"agt">, work: () => Promise
 export function createOrderFills(parts: OrderFillsParts): OrderFills {
   const state: FillState = { pacing: createFillPacing(), running: new Set(), lines: new Map() };
   return {
-    async fill({ order: id, price }, { signal }) {
+    async run({ order: id, price }, { signal }) {
       const read = await parts.orders.get(id, { signal });
       if (read?.state !== "active" || state.running.has(id)) {
         return "inactive";
