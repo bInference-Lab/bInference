@@ -1,6 +1,7 @@
 import { usageCost } from "../usage/usage-amount.js";
 import type { ModelUsage } from "./model-event.js";
 import type { ModelResponse } from "./read-model-response.js";
+import type { ChainModel } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 // An attempt that failed before its provider reported anything used nothing it could count.
@@ -16,10 +17,9 @@ const nothingUsed: ModelUsage = { inputTokens: 0, outputTokens: 0, cachedTokens:
  */
 export async function recordAttempt(
   run: TurnRun,
-  at: number,
+  model: ChainModel | undefined,
   response: ModelResponse,
 ): Promise<void> {
-  const model = run.parts.models.models[at];
   const usage = response.usage ?? nothingUsed;
   const cost = usageCost(usage, model?.price);
   const attempt = run.tally.countAttempt();
