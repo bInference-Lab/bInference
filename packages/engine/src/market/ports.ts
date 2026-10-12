@@ -1,10 +1,17 @@
-import type { AssetRef, ChainRef, MarketPool, TrendingToken } from "@binference/chain";
+import type {
+  AssetRef,
+  CandleRequest,
+  ChainRef,
+  MarketCandle,
+  MarketPool,
+  TrendingToken,
+} from "@binference/chain";
 import type { Result } from "@binference/core";
 import type { MarketAnswer, MarketReadFailure } from "./market-answer.js";
 
 /**
- * The market reads the agent and the owner ask for (spec 1, section 7.3): a token's pools and a
- * chain's trending tokens, from the market data sources. Each answer names its source; none
+ * The market reads the agent and the owner ask for (spec 1, section 7.3): a token's pools, a
+ * chain's trending tokens and a token's candles, from the market data sources. Each answer names its source; none
  * prices a trade. Adapters: the sources asked in order under a timeout, and a market-data service
  * that reads once for every agent.
  */
@@ -19,4 +26,13 @@ export interface MarketReads {
     chain: ChainRef,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<MarketAnswer<TrendingToken>, MarketReadFailure>>;
+  /**
+   * The token's candles in USD, oldest first, from the sources that read candles. Rejects as
+   * `pools` does.
+   */
+  chart(
+    asset: AssetRef,
+    request: CandleRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<MarketAnswer<MarketCandle>, MarketReadFailure>>;
 }

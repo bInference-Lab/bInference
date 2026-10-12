@@ -25,6 +25,7 @@ import type {
 } from "../install/ports.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
+import type { MarketParts } from "../market/market-handlers.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
 import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import {
@@ -110,7 +111,7 @@ export interface Engine {
 }
 
 /** The ports and adapters the composition root builds the engine from. */
-export interface EngineOptions {
+export interface EngineOptions extends MarketParts {
   readonly stores: EngineStores;
   /** Executions, arrivals and positions, live and paper; the paper portfolio lives here. */
   readonly positions: PositionStore;
@@ -167,6 +168,7 @@ function settingsHandlers(
 ): PortfolioHandlers & AgentModeHandlers & WalletHandlers & CeilingHandlers {
   const { stores, chains } = options;
   const portfolio = createPortfolioHandlers({
+    marketReads: options.marketReads,
     agents: stores.agents,
     install: stores.install,
     portfolio: paper.portfolio,

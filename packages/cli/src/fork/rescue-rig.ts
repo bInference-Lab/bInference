@@ -19,6 +19,7 @@ import {
 } from "@binference/engine";
 import { createExecutor } from "@binference/engine/executor";
 import type { WalletRecord } from "@binference/engine/install";
+import { createSourceMarketReads } from "@binference/engine/market";
 import {
   createFakeCeilingEditor,
   createFakeWalletMaker,
@@ -256,6 +257,8 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     walletMaker: createFakeWalletMaker({ clock, chain: fork.chain.ref, family: "evm" }),
     prices: createFakePriceSource(prices),
     wallets: forkWalletFacts(fork),
+    // The rig rescues on a fork; it reads no market data.
+    marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     host: createVenueHost({ venues: [], chains, clock, callTimeoutMs: 5_000 }),
     risk: createFakeRiskCheck({ chains, clock }),
     simulator: createFakeSimulator(new Map()),

@@ -40,6 +40,7 @@ import {
   type WalletFactsSource,
 } from "@binference/engine";
 import { createExecutor, type RunningExecutor } from "@binference/engine/executor";
+import { createSourceMarketReads } from "@binference/engine/market";
 import { createSimulationCheck } from "@binference/engine/simulation";
 import {
   createFakeCeilingEditor,
@@ -225,6 +226,8 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
     }),
     chainSimulator: createEvmTxSimulator({ rpc, chain }),
     executor,
+    // The rig trades on a fork; it reads no market data.
+    marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     isLocked: () => false,
     paperBalances: [],
     random: createSeededRandom(44),

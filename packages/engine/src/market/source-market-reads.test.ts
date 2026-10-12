@@ -20,11 +20,16 @@ const poolOf = (base: AssetRef, liquidityUsdMicros: bigint): MarketPool => ({
   liquidityUsdMicros,
 });
 
+const price = { numerator: 3n, denominator: 2n };
+const candle = { atMs: 0, open: price, high: price, low: price, close: price, volumeUsdMicros: 1n };
+const fourHours = { interval: "4h", limit: 3 } as const;
+
 const first: FakeMarketSourceOptions = {
   id: "first",
   chains: [chain],
   pools: new Map([[known, [poolOf(known, 5n)]]]),
   trending: new Map([[chain, [{ asset: known }]]]),
+  candles: new Map([[known, [candle]]]),
 };
 const second: FakeMarketSourceOptions = {
   id: "second",
@@ -76,6 +81,35 @@ describe("source market reads", () => {
     const { reads } = readsOver([{ ...first, isDown: true }, second]);
     expect(await reads.pools(unknown, live)).toStrictEqual(err("source_down"));
     expect(await reads.trending(chain, live)).toStrictEqual(err("source_down"));
+  });
+
+  it("asks for a chart only the sources that read candles, in order", async () => {
+    const { fakes, reads } = readsOver([second, first]);
+    expect(await reads.chart(known, fourHours, live)).toStrictEqual(
+      ok({ source: "first", items: [candle] }),
+    );
+    expect(fakes.map((fake) => fake.reads())).toStrictEqual([0, 1]);
+  });
+
+  it("asks for a chart the chart sources it is given, and the others for the rest", async () => {
+    const clock = createManualClock(0);
+    const pools = createFakeMarketSource(second);
+    const charts = createFakeMarketSource(first);
+    const reads = createSourceMarketReads({
+      sources: [pools],
+      chartSources: [charts],
+      clock,
+      timeoutMs: 5_000,
+    });
+    expect(await reads.pools(known, live)).toMatchObject(ok({ source: "second" }));
+    expect(await reads.chart(known, fourHours, live)).toMatchObject(ok({ source: "first" }));
+    expect([pools.reads(), charts.reads()]).toStrictEqual([1, 1]);
+  });
+
+  it("answers no_data for a chart when no source reads candles", async () => {
+    const { fakes, reads } = readsOver([second]);
+    expect(await reads.chart(known, fourHours, live)).toStrictEqual(err("no_data"));
+    expect(fakes.map((fake) => fake.reads())).toStrictEqual([0]);
   });
 
   it("counts a source that does not answer within the timeout as down", async () => {

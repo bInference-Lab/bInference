@@ -44,6 +44,8 @@ import {
   testNowMs,
   testWallet,
 } from "../intents/test-intents.js";
+import type { MarketReads } from "../market/ports.js";
+import { createSourceMarketReads } from "../market/source-market-reads.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type {
   AgentStore,
@@ -114,6 +116,8 @@ export interface TestEngineOptions {
   readonly ceilings?: CeilingEditor;
   /** Custody's export of a wallet's key; none when absent. */
   readonly exporter?: WalletExporter;
+  /** The market reads; reads over no data source, which know nothing, when absent. */
+  readonly marketReads?: MarketReads;
   /** Custody's removal of a machine's agent key; none when absent. */
   readonly revoker?: SignerRevoker;
   /** Runs a rescue's sends; one under which every send reverts when absent. */
@@ -267,6 +271,8 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
       options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
     ),
     wallets: walletsOf(options),
+    marketReads:
+      options.marketReads ?? createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
     ...stepsOf(options, { chains, clock }),
     executor: options.executor ?? executor,

@@ -2,6 +2,11 @@ import type { Amount, ChainRegistry } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { ArgsOf, ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
+import {
+  createMarketHandlers,
+  type MarketHandlers,
+  type MarketParts,
+} from "../market/market-handlers.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
 import type { AgentStore, InstallStore } from "../ports.js";
@@ -13,17 +18,17 @@ import { pnlViewOf } from "./pnl-view.js";
 import { paperHoldingsOf, portfolioViewOf } from "./portfolio-view.js";
 
 /**
- * The handlers of `portfolio/get`, `portfolio/pnl`, `portfolio/resetPaper` and `asset/search`
- * (protocol spec, section 7.3).
+ * The handlers of `portfolio/get`, `portfolio/pnl`, `portfolio/resetPaper`, `asset/search`,
+ * `market/scan` and `market/chart` (protocol spec, section 7.3).
  */
-export interface PortfolioHandlers extends AssetSearchHandlers {
+export interface PortfolioHandlers extends AssetSearchHandlers, MarketHandlers {
   readonly "portfolio/get": EngineHandler<"portfolio/get">;
   readonly "portfolio/pnl": EngineHandler<"portfolio/pnl">;
   readonly "portfolio/resetPaper": EngineHandler<"portfolio/resetPaper">;
 }
 
 /** What the portfolio handlers read and reset through. */
-export interface PortfolioHandlersOptions extends LiveHoldingsOptions {
+export interface PortfolioHandlersOptions extends LiveHoldingsOptions, MarketParts {
   readonly agents: AgentStore;
   readonly install: InstallStore;
   readonly portfolio: PaperPortfolio;
@@ -106,11 +111,13 @@ async function pnlOf(
  * `portfolio/resetPaper` starts the agent's paper portfolio again from the balances it names, or
  * from the starting balances, and answers the new paper portfolio with its values now. It never
  * changes the agent's mode or a live position. `asset/search` finds a token's id in the registry
- * and the wallets' positions (see {@link createAssetSearchHandlers}).
+ * and the wallets' positions (see {@link createAssetSearchHandlers}). `market/scan` and
+ * `market/chart` read the market reads (see {@link createMarketHandlers}).
  */
 export function createPortfolioHandlers(options: PortfolioHandlersOptions): PortfolioHandlers {
   return {
     ...createAssetSearchHandlers(options),
+    ...createMarketHandlers({ reads: options.marketReads, chains: options.chains }),
     async "portfolio/get"({ args, signal }) {
       const wallets = await walletsOf(options, args, signal);
       if (!wallets.ok) {

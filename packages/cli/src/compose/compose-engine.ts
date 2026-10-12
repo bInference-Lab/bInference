@@ -42,7 +42,7 @@ import type { ProfileParts } from "./profile-parts.js";
 
 /**
  * The profile parts the engine runs on: custody with its ceilings, wallet maker, exporter and
- * signer revoker, stores, prices and risk sources.
+ * signer revoker, stores, prices, risk sources and market reads.
  */
 export type EngineParts = Pick<
   ProfileParts,
@@ -277,6 +277,7 @@ function engineOf(
     positions: options.positions,
     ...custodyPartsOf(parts),
     prices: parts.prices,
+    marketReads: parts.marketReads,
     wallets: options.wallets,
     host,
     risk,

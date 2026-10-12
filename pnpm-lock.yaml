@@ -491,6 +491,9 @@ importers:
       '@binference/flap':
         specifier: workspace:*
         version: link:../../plugins/flap
+      '@binference/geckoterminal':
+        specifier: workspace:*
+        version: link:../../plugins/geckoterminal
       '@binference/goplus':
         specifier: workspace:*
         version: link:../../plugins/goplus
