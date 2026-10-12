@@ -1,3 +1,4 @@
+import { lookup } from "node:dns";
 import {
   answerHeaders,
   BinferenceError,
@@ -5,11 +6,12 @@ import {
   type HttpRequest,
   type HttpResponse,
   outboundInit,
+  isPublicAddress,
+  publicOnlyLookup,
   throwOutboundFailure,
 } from "@binference/core";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the one outbound Http adapter: every other package reaches the network through the Http port
 import { Agent, request as send } from "undici";
-import { isPublicAddress, publicOnlyLookup } from "./public-address.js";
 
 /** The outbound Http adapter of a CLI process, with the connection pool it holds. */
 export interface SystemHttp extends Http {
@@ -99,7 +101,7 @@ async function exchange(
 export function createSystemHttp(options: SystemHttpOptions): SystemHttp {
   const agents = {
     any: new Agent(),
-    publicOnly: new Agent({ connect: { lookup: publicOnlyLookup() } }),
+    publicOnly: new Agent({ connect: { lookup: publicOnlyLookup(lookup) } }),
   };
   const userAgent = `binference/${options.version}`;
   return {
