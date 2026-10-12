@@ -79,6 +79,29 @@ describe("price triggers", () => {
     expect(dropped).toStrictEqual([{ order: order.id, outcome: "filled" }]);
   });
 
+  it("judge a burst of prices of one token in order, keeping the highest and firing on the drop", async () => {
+    const test = await startFillEngine();
+    const order = await activeOrder(test, {
+      ...trailingStop,
+      trigger: { distanceBps: bpsSchema.parse(1_000) },
+    });
+    await test.engine.seePrice(at(1_000_000n), live);
+
+    const burst = await Promise.all(
+      [1_100_000n, 1_200_000n, 1_150_000n, 1_050_000n].map(async (micros) =>
+        test.engine.seePrice(at(micros), live),
+      ),
+    );
+
+    expect(burst.map((outcomes) => outcomes.map(({ outcome }) => outcome))).toStrictEqual([
+      [],
+      [],
+      [],
+      ["filled"],
+    ]);
+    expect(await storedOrder(test, order.id)).toMatchObject({ state: "filled", fills: 1 });
+  });
+
   it("keep a trailing stop's highest price across a restart", async () => {
     const test = await startFillEngine();
     const order = await activeOrder(test, trailingStop);

@@ -87,63 +87,120 @@ function createActiveOrders(parts: OrderTriggersParts): ActiveOrders {
   };
 }
 
-// Keeps what a trigger keeps between prices, a new peak or the order armed again; a write another
-// write beat is judged again later.
+// A write of what a trigger keeps that loses its race reads the order again this many times.
+const keepAttempts = 2;
+
+// Keeps what a trigger keeps between prices, a new peak or the order armed again, and answers the
+// order as it stands after. A write another write beat reads the order again and judges the same
+// price on what it then keeps, so a higher peak is never lost (decision 0197).
 async function keepState(
   parts: OrderTriggersParts,
   active: ActiveOrders,
-  call: { readonly order: OrderRecord; readonly state: TriggerState; readonly signal: AbortSignal },
-): Promise<void> {
+  call: {
+    readonly order: OrderRecord;
+    readonly state: TriggerState;
+    readonly signal: AbortSignal;
+  },
+): Promise<OrderRecord | undefined> {
   const { order, state, signal } = call;
   const triggerState = triggerStateDocument.encode(state);
   const move = moveOrder(order, { type: "trigger_kept", triggerState }, parts.clock.now());
   const written = move.ok ? await parts.orders.move([move.value], { signal }) : undefined;
   const [kept] = written?.ok === true ? written.value : [];
-  if (kept === undefined) {
-    active.forget();
-    return;
+  if (kept !== undefined) {
+    active.kept(kept);
   }
-  active.kept(kept);
+  return kept;
 }
 
-async function judge(
+// Judges one order on one price; a lost write of its kept state is judged again on the order read
+// back. Answers the fill's price when the order fires.
+async function judgeOrder(
   parts: OrderTriggersParts,
   active: ActiveOrders,
   call: {
     readonly order: OrderRecord;
     readonly price: WatchedOrderPrice;
     readonly signal: AbortSignal;
+    readonly left: number;
   },
-): Promise<TriggerOutcome | undefined> {
-  const { order, price, signal } = call;
+): Promise<FillPrice | undefined> {
+  const { order, price, signal, left } = call;
   const judged = judgeTrigger(order, wholeTokenPrice(price.usdPerBaseUnit, price.decimals));
-  if (judged?.state !== undefined) {
-    await keepState(parts, active, { order, state: judged.state, signal });
+  const kept =
+    judged?.state === undefined
+      ? order
+      : await keepState(parts, active, { order, state: judged.state, signal });
+  if (kept === undefined) {
+    const again = left > 1 ? await parts.orders.get(order.id, { signal }) : undefined;
+    return again?.state === "active"
+      ? judgeOrder(parts, active, { ...call, order: again, left: left - 1 })
+      : undefined;
   }
   if (judged?.fires !== true) {
     return undefined;
   }
   const { usdPerBaseUnit, decimals } = price;
-  const fillPrice: FillPrice = price.isThin
+  return price.isThin
     ? { usdPerBaseUnit, decimals, confirm: judged.level }
     : { usdPerBaseUnit, decimals };
-  const outcome = await parts.fills.run({ order: order.id, price: fillPrice }, { signal });
-  if (outcome === "filled" || outcome === "ended") {
-    active.forget();
-  }
-  return { order: order.id, outcome };
 }
 
-/** Creates the {@link OrderTriggers} over the order store and the order fills. */
+// Judges the active orders on a price's token one after the other, and answers those that fire.
+async function judgeAll(
+  parts: OrderTriggersParts,
+  active: ActiveOrders,
+  call: { readonly price: WatchedOrderPrice; readonly signal: AbortSignal },
+): Promise<readonly { readonly order: Id<"ord">; readonly price: FillPrice }[]> {
+  const { price, signal } = call;
+  const orders = await active.on(price.token, signal);
+  type Fired = readonly { readonly order: Id<"ord">; readonly price: FillPrice }[];
+  // One order after the other: each writes its own kept state under the version it read.
+  return orders.reduce<Promise<Fired>>(async (done, order) => {
+    const fired = await done;
+    const fillPrice = await judgeOrder(parts, active, { order, price, signal, left: keepAttempts });
+    return fillPrice === undefined ? fired : [...fired, { order: order.id, price: fillPrice }];
+  }, Promise.resolve([]));
+}
+
+/**
+ * Creates the {@link OrderTriggers} over the order store and the order fills. One token's prices
+ * are judged one at a time, in the order they came, so a trailing stop sees every peak; the fills
+ * they start run on their own (decision 0197).
+ */
 export function createOrderTriggers(parts: OrderTriggersParts): OrderTriggers {
   const active = createActiveOrders(parts);
+  const lines = new Map<AssetRef, Promise<void>>();
+  const inLine = async <T>(token: AssetRef, work: () => Promise<T>): Promise<T> => {
+    const before = lines.get(token) ?? Promise.resolve();
+    const run = before.then(work, work);
+    const tail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    lines.set(token, tail);
+    try {
+      return await run;
+    } finally {
+      if (lines.get(token) === tail) {
+        lines.delete(token);
+      }
+    }
+  };
   return {
     async see(price, { signal }) {
-      const orders = await active.on(price.token, signal);
-      const outcomes = await Promise.all(
-        orders.map(async (order) => judge(parts, active, { order, price, signal })),
+      const fired = await inLine(price.token, async () =>
+        judgeAll(parts, active, { price, signal }),
       );
-      return outcomes.filter((outcome) => outcome !== undefined);
+      return Promise.all(
+        fired.map(async ({ order, price: fillPrice }) => {
+          const outcome = await parts.fills.run({ order, price: fillPrice }, { signal });
+          if (outcome === "filled" || outcome === "ended") {
+            active.forget();
+          }
+          return { order, outcome };
+        }),
+      );
     },
   };
 }
