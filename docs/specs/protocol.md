@@ -527,7 +527,7 @@ key adds it to the ceiling ([decision 0111](../DECISIONS.md#d0111)).
 | `turn/status`   | `agent`                |       | `{ agent, turn, statusKey, values? }` → `{}`                                                                                                                                                                                                  |
 | `turn/end`      | `agent`                | ✓     | `{ agent, turn, outcome }` → `{}`                                                                                                                                                                                                             |
 | `turn/ask`      | `agent`                | ✓     | `{ agent, session, turn, text, choices }` → `QuestionView`: the agent's question to the owner with 2 to 4 answer buttons (below)                                                                                                              |
-| `chat/answer`   | `chat`                 | ✓     | `{ agent, question, choice }` → `{ session, turn }`: the owner picks a choice of an open question; fails `question.not_found` or `question.closed`                                                                                            |
+| `chat/answer`   | `chat`                 | ✓     | `{ agent, question, choice }` → `{ session, turn }`: the owner picks a choice of an open question by its place, `0` to `3`; fails `question.not_found` or `question.closed`                                                                   |
 | `usage/record`  | `agent`                | ✓     | `{ agent, turn, model, inputTokens, outputTokens, cachedTokens, usdMicros }` → `{ budgetLeftMicros, resumesAt? }`; `resumesAt` once nothing is left                                                                                           |
 | `inbox/list`    | `agent`                |       | paging, `{ agent? }` → the untaken inbox messages, oldest first                                                                                                                                                                               |
 | `inbox/take`    | `agent`                | ✓     | `{ messages }` → `{}`: the runtime holds them in its chat queue                                                                                                                                                                               |
@@ -552,7 +552,8 @@ outside-content mark of its agent's running turn ([spec 8, section 4.3](runtime.
   (`qst_…`) and answers its `QuestionView`:
   `{ question, agent, session, turn, text, choices, state: open | answered | closed, answer?: { choice?, typed?, surface, at }, closeReason?, createdAt, closesAt }`.
 - An agent has one open question. A new one closes the one before with `closeReason: "replaced"`;
-  `chat/clear` closes it with `cleared`, and 24 hours after it was asked it closes with `expired`.
+  `chat/clear` closes it with `cleared`, and once it is 24 hours old the first call that meets it
+  closes it with `expired` ([decision 0204](../DECISIONS.md#d0204)).
 - The engine draws it on every chat surface: in Telegram as a message with one button per choice
   (callback kind `q`, [spec 4, section 2](cards-and-messages.md#section-2)), and as `chat/question`
   on the agent's chat topic for the console and terminal chat; its words are in
@@ -576,18 +577,18 @@ no upload: each is named `tg:<file_id>`, the bot's id of the photo's largest siz
 
 ### 7.8 Models, plugins and skills
 
-| Operation        | Scope     | Write | Local | Args → result                                               |
-| ---------------- | --------- | ----- | ----- | ----------------------------------------------------------- |
-| `model/list`     | `read`    |       |       | → configured models by role, with prices when known         |
-| `model/set`      | `confirm` | ✓     |       | `{ agent, role, model }` → the agent's models (`/ai`)       |
-| `plugin/list`    | `read`    |       |       | → installed plugins, tiers, permissions, state              |
-| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; asks for permission review  |
-| `plugin/enable`  | `admin`   | ✓     |       | `{ plugin }` → plugin                                       |
-| `plugin/disable` | `confirm` | ✓     |       | `{ plugin }` → plugin (braking)                             |
-| `plugin/remove`  | `admin`   | ✓     |       | `{ plugin }` → `{}`                                         |
-| `skill/list`     | `read`    |       |       | `{ agent? }` → skills                                       |
-| `skill/add`      | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; the install lint runs first |
-| `skill/remove`   | `admin`   | ✓     |       | `{ skill }` → `{}`                                          |
+| Operation        | Scope     | Write | Local | Args → result                                                                                                                                                                             |
+| ---------------- | --------- | ----- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model/list`     | `read`    |       |       | `{ agent? }` → configured models by role, with prices when known; with `agent`, `current: true` marks the model its next turn uses for each role ([decision 0204](../DECISIONS.md#d0204)) |
+| `model/set`      | `confirm` | ✓     |       | `{ agent, role, model }` → the agent's models (`/ai`); a model not configured is `protocol.bad_args`, and the role's own configured model clears the pick                                 |
+| `plugin/list`    | `read`    |       |       | → installed plugins, tiers, permissions, state                                                                                                                                            |
+| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; asks for permission review                                                                                                                                |
+| `plugin/enable`  | `admin`   | ✓     |       | `{ plugin }` → plugin                                                                                                                                                                     |
+| `plugin/disable` | `confirm` | ✓     |       | `{ plugin }` → plugin (braking)                                                                                                                                                           |
+| `plugin/remove`  | `admin`   | ✓     |       | `{ plugin }` → `{}`                                                                                                                                                                       |
+| `skill/list`     | `read`    |       |       | `{ agent? }` → skills                                                                                                                                                                     |
+| `skill/add`      | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; the install lint runs first                                                                                                                               |
+| `skill/remove`   | `admin`   | ✓     |       | `{ skill }` → `{}`                                                                                                                                                                        |
 
 <a id="section-7-9"></a>
 

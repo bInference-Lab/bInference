@@ -60,7 +60,9 @@ names the keys and fixes the wording.
 - A `/limits` button carries `bnf1:t:h:<limit>`: it halves the limit its field names
   (`perTradeUsdMicros`, `rollingDayUsdMicros`, `slippageRegistryBps` or `slippageOtherBps`) for the
   only agent. It names no id: a press can only make the owner's own limit stricter. A `/lang`
-  button carries `bnf1:l:s:<en|zh>`: it sets the owner's language.
+  button carries `bnf1:l:s:<en|zh>`: it sets the owner's language. An `/ai` button carries
+  `bnf1:m:s:<digest>`, the first 16 base64url characters of the SHA-256 of a configured model's
+  reference: it sets that model for the agent's `main` role ([decision 0204](../DECISIONS.md#d0204)).
 - A button of the agent's question ([section 8.2](#section-8-2)) carries `bnf1:q:<choice>:<ref>`:
   `choice` is `0` to `3`, the choice's place in the question; `ref` is the question's random
   12-byte base64url reference (spec 3, `questions.ref`). A press answers the question; it confirms
@@ -525,6 +527,7 @@ is never verified, so its short address always follows its symbol.
 | `/rescue`    | `cmd.rescue`    | Opens the rescue card                                           |
 | `/paper`     | `cmd.paper`     | Switches the agent to paper (braking); going live needs the CLI |
 | `/agents`    | `cmd.agents`    | Agents with mode and state; `/use <agent>` picks one            |
+| `/use`       | `cmd.use`       | Picks the agent the chat talks to, by name or id                |
 | `/limits`    | `cmd.limits`    | The agent's limits; a button halves a cap or a slippage limit   |
 | `/status`    | `cmd.status`    | Engine state, mode, frozen or not, health                       |
 | `/spend`     | `cmd.spend`     | Model spend today and this month against the budget             |
@@ -551,6 +554,14 @@ A `/lang` button names its language in that language, the same in every language
 owner's chat changes ([decision 0134](../DECISIONS.md#d0134)), and answers in the new language:
 "binference uses Chinese with you now." / 「binference 现在与你沟通使用中文。」 The live reload journals
 the change and announces it on every surface.
+
+Topics stay off ([decision 0186](../DECISIONS.md#d0186)), so one chat serves every agent. With one
+agent not archived the chat talks to it; `/use <name or id>` picks another, and the pick outlasts a
+restart. While more than one agent is not archived, each answer and status line of an agent starts
+with its name: "{agent} · {text}" ([decision 0204](../DECISIONS.md#d0204)). `/ai` shows the main
+and fast models the agent uses now, with one button per configured model; a tap sets it for the
+`main` role through `model/set`, and the configured `models.main` brings its fallbacks back.
+`/schedules` says when no schedule is set.
 
 `/console` sends one button, "Open the console" / 「打开控制台」, that opens the Mini App at
 `remote.publicUrl` followed by `/mini` ([spec 2, section 6.6](config.md#section-6-6)), with a new
