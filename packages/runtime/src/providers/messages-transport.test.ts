@@ -22,7 +22,7 @@ const baseUrl = "https://models.example.test";
 const withKey = { apiKey: "sk-ant-test" };
 
 const request: ModelRequest = {
-  instructions: "You are a trading agent.",
+  prefix: "You are a trading agent.",
   messages: [{ role: "owner", text: "How is BNB doing?" }],
   tools: [],
 };

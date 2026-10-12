@@ -29,7 +29,7 @@ function transportFor(item: ProviderFailureCase): ModelTransport {
 
 async function lastEventOf(item: ProviderFailureCase): Promise<ModelEvent | undefined> {
   const request = {
-    instructions: "",
+    prefix: "",
     messages: [{ role: "owner", text: "hi" } as const],
     tools: [],
   };

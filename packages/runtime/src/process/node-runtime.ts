@@ -1,5 +1,6 @@
 import process from "node:process";
 import manifest from "@binference/runtime/package.json" with { type: "json" };
+import { agentInstructions } from "../context/agent-instructions.js";
 import { turnLimits } from "../loop/turn-run.js";
 import { type ChainParts, modelChainFor } from "../providers/model-transport-for.js";
 import { agentToolBox } from "../tools/agent-tools.js";
@@ -25,14 +26,14 @@ async function writeLine(line: string): Promise<void> {
   });
 }
 
-// The turns of the built runtime: the main model of the settings in force and its fallbacks, whose
-// providers' rests every turn shares, and the agent's tools over the runtime's connection to the
-// engine.
+// The turns of the built runtime: binference's instructions in the owner's language, the main
+// model of the settings in force and its fallbacks, whose providers' rests every turn shares, and
+// the agent's tools over the runtime's connection to the engine.
 function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
   return (agent, settings, client) => ({
     models: modelChainFor(settings.models, { role: "main" }, parts),
     tools: agentToolBox({ agent, client }),
-    instructions: "",
+    instructions: agentInstructions(settings.owner.locale),
     limits: {
       ...turnLimits,
       maxToolCalls: settings.models.maxToolCallsPerTurn,

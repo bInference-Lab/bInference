@@ -15,11 +15,14 @@ import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
 import { type EngineLink, type RuntimeHost, runRuntime } from "../process/run-runtime.js";
+import type { ContextSource } from "../relay/ports.js";
+import { createProtocolContextSource } from "../relay/protocol-context-source.js";
 import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
 import { agentToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
 import { nthTestId } from "./memory-agent-stores.js";
+import { createMemoryContextSource } from "./memory-context-source.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
 import {
   createScriptedTransport,
@@ -49,6 +52,8 @@ export interface InProcessRuntime {
 
 /** How an in-process runtime differs from one that signs in at once. */
 export interface InProcessRuntimeOptions {
+  /** The workspace files and live facts its turns read; none and a paper agent's when absent. */
+  readonly context?: ContextSource;
   /** Its sign-in fails, as the engine refuses an unknown token. */
   readonly refusesSignIn?: boolean;
   /** Its sign-in never ends, so it never writes `ready`. */
@@ -104,7 +109,12 @@ async function signIn(
 ): Promise<EngineLink> {
   if (options.signIn !== undefined) {
     const client = await options.signIn(start, signal);
-    return { chat: createProtocolEngineChat(client), client, close: () => client.close() };
+    return {
+      chat: createProtocolEngineChat(client),
+      context: createProtocolContextSource(client),
+      client,
+      close: () => client.close(),
+    };
   }
   if (options.hangsAtSignIn === true) {
     await new Promise((_, reject) => signal.addEventListener("abort", reject, { once: true }));
@@ -112,7 +122,12 @@ async function signIn(
   if (options.refusesSignIn === true) {
     throw new Error("The engine refused the token.");
   }
-  return { chat: options.engine, client: unservedClient, close: () => undefined };
+  return {
+    chat: options.engine,
+    context: options.context ?? createMemoryContextSource(),
+    client: unservedClient,
+    close: () => undefined,
+  };
 }
 
 // The runtime's exit code, settled once by whichever comes first: its end or a kill.

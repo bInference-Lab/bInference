@@ -1,4 +1,5 @@
 import type { Result } from "@binference/core";
+import type { LiveFactsView } from "@binference/protocol";
 import type { TurnOutcome } from "@binference/store";
 import type { ModelEvent } from "./model-event.js";
 import type { OwnerMessage, ToolCall, ToolDeclaration } from "./model-message.js";
@@ -98,4 +99,13 @@ export interface MergeSource {
    * loop asks only where a model call can follow to answer them.
    */
   take(signal: AbortSignal): Promise<readonly OwnerMessage[]>;
+}
+
+/**
+ * The agent's live facts as a turn reads them for the tail of its model calls (runtime spec,
+ * section 7.1). A read the engine cannot answer is `undefined`: the turn goes on without them. It
+ * rejects only with an aborted signal's reason.
+ */
+export interface LiveFactsReader {
+  read(signal: AbortSignal): Promise<LiveFactsView | undefined>;
 }

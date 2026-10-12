@@ -47,15 +47,18 @@ describe("createChatTurn", () => {
       taken: [ownerMessage(1, "one"), ownerMessage(2, "two")],
     });
     await turn.run();
-    expect(transport.requests[0]).toStrictEqual({
-      instructions: "You are a test agent.",
+    const [request] = transport.requests;
+    expect({ ...request, tail: undefined }).toStrictEqual({
+      prefix: "You are a test agent.",
       messages: [
         { role: "owner", text: "earlier" },
         { role: "owner", text: "one" },
         { role: "owner", text: "two" },
       ],
+      tail: undefined,
       tools: [{ name: "portfolio", description: "portfolio", parameters: {} }],
     });
+    expect(request?.tail).toMatch(/^Live facts from binference/u);
   });
 
   it("sends a response's replay back with it in the next model call", async () => {

@@ -1,7 +1,7 @@
 import type { Clock, Id } from "@binference/core";
 import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
-import type { EngineChat } from "../relay/ports.js";
+import type { ContextSource, EngineChat } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import type { AgentChats } from "./agent-chats.js";
 import type { NewMessageMode } from "./queue-merge.js";
@@ -10,6 +10,7 @@ import type { NewMessageMode } from "./queue-merge.js";
 export interface TurnSetup {
   readonly models: ModelChain;
   readonly tools: ToolBox;
+  /** binference's instructions, which open the turn's stable prefix (runtime spec, 7.1). */
   readonly instructions: string;
   readonly limits?: TurnLimits;
 }
@@ -18,6 +19,8 @@ export interface TurnSetup {
 export interface ChatRunnerOptions {
   readonly stores: AgentStores;
   readonly engine: EngineChat;
+  /** The workspace files and live facts each turn's context reads (decisions 0200 and 0201). */
+  readonly turnContext: ContextSource;
   /** The setup of an agent's next turn, read as the turn starts. */
   readonly setup: (agent: Id<"agt">) => TurnSetup;
   /** `chats.newMessageMode` now. */

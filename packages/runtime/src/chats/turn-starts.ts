@@ -1,7 +1,9 @@
 import type { Id } from "@binference/core";
 import type { QueuedMessage } from "@binference/store";
+import { readTurnPrefix } from "../context/turn-prefix.js";
 import { createChatTurn, type TurnReport } from "../loop/chat-turn.js";
 import type { TurnStartAnswer } from "../relay/engine-chat-records.js";
+import { createRelayLiveFacts } from "../relay/relay-live-facts.js";
 import { createRelayTurnEngine } from "../relay/relay-turn-engine.js";
 import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
@@ -154,15 +156,43 @@ async function startNext(context: ChatContext, agent: Id<"agt">): Promise<void> 
   await runTurn(context, { agent, session, turn }, taken);
 }
 
+// The turn's stable prefix, its workspace files read now so an edit applies at this turn; none
+// when the engine cannot answer, and the agent's chat waits as for a turn the engine could not
+// start.
+async function prefixOf(
+  context: ChatContext,
+  turn: { readonly agent: Id<"agt">; readonly instructions: string },
+): Promise<string | undefined> {
+  try {
+    return await readTurnPrefix(context.turnContext, turn, context.lifetime);
+  } catch {
+    pause(context, turn.agent, context.clock.now() + (context.retryMs ?? retryMsDefault));
+    return undefined;
+  }
+}
+
+// Where messages that wait join the turn: the session's chat queue, in the mode in force.
+function mergeOf(
+  context: ChatContext,
+  place: { readonly session: Id<"ses">; readonly turn: Id<"trn"> },
+) {
+  const { stores, mode, serial } = context;
+  return createQueueMerge({ stores, session: place.session, turn: place.turn, mode, serial });
+}
+
 async function runTurn(
   context: ChatContext,
   place: { readonly agent: Id<"agt">; readonly session: Id<"ses">; readonly turn: Id<"trn"> },
   taken: readonly Waiting[],
 ): Promise<void> {
   const { stores, clock, lifetime } = context;
+  const setup = context.setup(place.agent);
+  const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
+  if (prefix === undefined) {
+    return;
+  }
   const owners = taken.map(({ view }) => ownerMessageOf(view));
   const history = await loadConversation(stores.transcript, place.session, lifetime);
-  const setup = context.setup(place.agent);
   const refusals: Refused[] = [];
   const engine = createRelayTurnEngine({
     chat: context.engine,
@@ -172,18 +202,13 @@ async function runTurn(
     clock,
     onRefused: (refused) => refusals.push(refused),
   });
-  const merge = createQueueMerge({
-    stores,
-    session: place.session,
-    turn: place.turn,
-    mode: context.mode,
-    serial: context.serial,
-  });
+  const merge = mergeOf(context, place);
   const journal = createSessionJournal(stores, place, clock);
+  const facts = createRelayLiveFacts(context.turnContext, place.agent);
   const turn = createChatTurn({
     turnId: place.turn,
-    parts: { models: setup.models, tools: setup.tools, journal, engine, merge, clock },
-    instructions: setup.instructions,
+    parts: { models: setup.models, tools: setup.tools, journal, engine, merge, facts, clock },
+    prefix,
     history: history.messages,
     taken: owners,
     outsideContent: history.outside,

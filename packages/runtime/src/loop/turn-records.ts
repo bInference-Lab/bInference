@@ -8,8 +8,15 @@ import type { ModelTransport } from "./ports.js";
 
 /** One model call: the conversation so far and the tools the model may call. */
 export interface ModelRequest {
-  readonly instructions: string;
+  /**
+   * The stable prefix (runtime spec, section 7.1): the instructions, the workspace files and the
+   * skills index, the same bytes from call to call while none of them changes.
+   */
+  readonly prefix: string;
+  /** The history: the session's conversation before the call. */
   readonly messages: readonly ModelMessage[];
+  /** The volatile tail: the live facts, sent after the history and never stored. */
+  readonly tail?: string;
   readonly tools: readonly ToolDeclaration[];
 }
 

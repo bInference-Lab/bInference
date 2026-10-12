@@ -15,7 +15,7 @@ const nowMs = 1_760_000_000_000;
 const clock: Clock = { now: () => nowMs, sleep: async () => Promise.resolve() };
 
 const request: ModelRequest = {
-  instructions: "",
+  prefix: "",
   messages: [{ role: "owner", text: "hi" }],
   tools: [],
 };

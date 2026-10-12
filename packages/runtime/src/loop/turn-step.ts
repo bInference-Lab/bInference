@@ -102,6 +102,9 @@ function committedStatus(run: TurnRun): TurnStatusLine {
 
 // Merge point 2, after a batch: waiting messages join before the next model call.
 async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
+  if (batch.wrote) {
+    run.tail.stale();
+  }
   await join(run, batch.joined);
   if (run.halted.aborted) {
     return haltedEnd(run);
@@ -171,8 +174,9 @@ export async function takeStep(run: TurnRun): Promise<StepEnd> {
   }
   run.tally.enter("streaming");
   const request = {
-    instructions: run.instructions,
+    prefix: run.prefix,
     messages: [...run.messages],
+    tail: await run.tail.text(run.writes),
     tools: run.parts.tools.declarations,
   };
   const response = await callModel(run, request);

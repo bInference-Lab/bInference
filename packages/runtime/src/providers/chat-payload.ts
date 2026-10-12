@@ -72,26 +72,32 @@ function toolOf(declaration: ToolDeclaration): ChatCompletionTool {
   };
 }
 
-function messagesOf(request: ModelRequest): ChatCompletionMessageParam[] {
+// The stable prefix as the system message, then the history; the tail comes after the marks.
+function historyOf(request: ModelRequest): ChatCompletionMessageParam[] {
   const system: ChatCompletionMessageParam[] =
-    request.instructions === "" ? [] : [{ role: "system", content: request.instructions }];
+    request.prefix === "" ? [] : [{ role: "system", content: request.prefix }];
   return [...system, ...request.messages.map(messageOf)];
 }
 
+// The live facts as the last user message: after the history, so they never end a cache.
+function tailOf(request: ModelRequest): ChatCompletionMessageParam[] {
+  return request.tail === undefined ? [] : [{ role: "user", content: request.tail }];
+}
+
 /**
- * The Chat Completions request for one model call: the instructions as the system message, the
- * conversation, the tools when there are any, at most 4,096 output tokens, and a
- * streamed answer that ends with its usage. A model of Anthropic's gets cache marks at the end of
- * its stable prefix and of its history (decision 0175).
+ * The Chat Completions request for one model call (runtime spec, section 7.1): the stable prefix
+ * as the system message, the conversation, the live facts as a user message after it, the tools
+ * when there are any, at most 4,096 output tokens, and a streamed answer that ends with its usage.
+ * A model of Anthropic's gets cache marks at the end of its stable prefix and of its history,
+ * never on the live facts (decisions 0175 and 0201).
  */
 export function chatPayloadOf(
   request: ModelRequest,
   options: ChatPayloadOptions,
 ): ChatCompletionCreateParamsStreaming {
-  const messages = messagesOf(request);
   return {
     model: options.model,
-    messages: withCacheMarks(messages, options.model),
+    messages: [...withCacheMarks(historyOf(request), options.model), ...tailOf(request)],
     ...(request.tools.length === 0 ? {} : { tools: request.tools.map(toolOf) }),
     max_completion_tokens: maxOutputTokens,
     stream: true,

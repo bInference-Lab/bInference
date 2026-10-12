@@ -14,6 +14,7 @@ import {
   type TurnRun,
 } from "./turn-run.js";
 import { type LoopEnd, takeStep } from "./turn-step.js";
+import { createTurnTail } from "./turn-tail.js";
 import { createTurnTally, type TurnState } from "./turn-tally.js";
 
 /** What a turn starts from. */
@@ -21,7 +22,8 @@ export interface ChatTurnOptions {
   /** The turn id the engine reserved (`trn_…`). */
   readonly turnId: string;
   readonly parts: TurnParts;
-  readonly instructions: string;
+  /** The stable prefix of the turn's model calls, read as the turn starts (runtime spec, 7.1). */
+  readonly prefix: string;
   /** The session's conversation before this turn, as the context builder kept it. */
   readonly history: readonly ModelMessage[];
   /** The messages this turn takes from the chat queue, oldest first. */
@@ -124,6 +126,7 @@ async function runTurn(run: TurnRun, taken: readonly OwnerMessage[]): Promise<Tu
     run.tally.enter("refused");
     return { state: "refused", refusal: started.error };
   }
+  run.tail.budget(started.value.budgetLeftMicros);
   const clearTimeLimit = startTimeLimit(run);
   try {
     return await endTurn(run, await loopOrFail(run));
@@ -147,7 +150,8 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
     turnId: options.turnId,
     parts: { ...options.parts, journal },
     limits,
-    instructions: options.instructions,
+    prefix: options.prefix,
+    tail: createTurnTail(options.parts.facts),
     messages: [
       ...options.history,
       ...options.taken.map((message) => ({ role: "owner" as const, text: message.text })),

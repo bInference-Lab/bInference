@@ -18,7 +18,7 @@ const portfolio = { name: "portfolio", description: "Reads the wallets.", parame
 
 function payloadOf(messages: readonly ModelMessage[], extra: Partial<ModelRequest> = {}) {
   return messagesPayloadOf(
-    { instructions: "You are a trading agent.", messages, tools: [], ...extra },
+    { prefix: "You are a trading agent.", messages, tools: [], ...extra },
     { model: "claude-sonnet-5-5" },
   );
 }
@@ -72,8 +72,32 @@ describe("messagesPayloadOf", () => {
     });
   });
 
+  it("sends the live facts unmarked after the history's mark, in the last user message", () => {
+    const facts = "Live facts from binference.";
+    const asked = payloadOf([{ role: "owner", text: "price?" }], { tail: facts });
+    const answered = payloadOf([{ role: "owner", text: "price?" }, agent("It is $2.")], {
+      tail: facts,
+    });
+    expect(asked.messages).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "price?", cache_control: mark },
+          { type: "text", text: facts },
+        ],
+      },
+    ]);
+    expect(answered.messages.at(-1)).toStrictEqual({
+      role: "user",
+      content: [{ type: "text", text: facts }],
+    });
+    expect(asked.system).toStrictEqual([
+      { type: "text", text: "You are a trading agent.", cache_control: mark },
+    ]);
+  });
+
   it("sends no system and no tools when there are none", () => {
-    const payload = payloadOf([{ role: "owner", text: "hi" }], { instructions: "" });
+    const payload = payloadOf([{ role: "owner", text: "hi" }], { prefix: "" });
     expect(Object.keys(payload).toSorted()).toStrictEqual([
       "max_tokens",
       "messages",

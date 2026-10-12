@@ -41,7 +41,7 @@ function modelsWith(
 async function eventsOf(models: RuntimeModels, answer: RecordedAnswer = textStream) {
   const http = createRecordedHttp([answer]);
   const transport = firstTransportOf(models, http);
-  const request = { instructions: "", messages: [], tools: [] };
+  const request = { prefix: "", messages: [], tools: [] };
   const events: ModelEvent[] = [];
   for await (const event of transport.stream(request, new AbortController().signal)) {
     events.push(event);
@@ -54,7 +54,7 @@ async function eventsOfTransport(transport: ModelTransport | undefined): Promise
     throw new Error("The chain has no such model.");
   }
   const events: ModelEvent[] = [];
-  const request = { instructions: "", messages: [], tools: [] };
+  const request = { prefix: "", messages: [], tools: [] };
   for await (const event of transport.stream(request, new AbortController().signal)) {
     events.push(event);
   }

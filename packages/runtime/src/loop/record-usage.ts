@@ -32,6 +32,7 @@ export async function recordAttempt(
     key: `${run.turnId}.usage.${String(attempt)}`,
   };
   const recorded = await run.parts.engine.recordUsage(record, run.writes);
+  run.tail.budget(recorded.budgetLeftMicros);
   if (recorded.budgetLeftMicros <= 0n) {
     run.tally.spendBudget(recorded.resumesAt);
   }

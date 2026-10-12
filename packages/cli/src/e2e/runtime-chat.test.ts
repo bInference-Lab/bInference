@@ -109,6 +109,30 @@ const toolsSchema = z.object({
   tools: z.array(z.object({ function: z.object({ name: z.string() }) })),
 });
 
+// The parts of a Chat Completions request a turn's context fills: the stable prefix as the system
+// message, the history, then the live facts.
+const contextSchema = z.object({
+  model: z.string(),
+  max_completion_tokens: z.int(),
+  stream: z.boolean(),
+  messages: z.array(z.object({ role: z.string(), content: z.string() })),
+});
+
+// The first request the stand-in received: its model, output limit and stream flag, each message's
+// role, and the texts of the system message, the owner's message and the live facts.
+function firstCall(server: StandInModelServer) {
+  const [body = "{}"] = server.requests.map((request) => request.body);
+  const call = contextSchema.parse(JSON.parse(body));
+  const [system, owner, facts] = call.messages.map((message) => message.content);
+  return {
+    head: [call.model, call.max_completion_tokens, call.stream],
+    roles: call.messages.map((message) => message.role),
+    system,
+    owner,
+    facts,
+  };
+}
+
 // Points the machine's main model at the stand-in, its key read from the engine's environment.
 async function useProvider(machine: InitMachine, server: StandInModelServer): Promise<void> {
   const text = (await configText(machine)) ?? "";
@@ -200,14 +224,14 @@ describe("the chat relay to the agent runtime process", () => {
           ],
         ],
       ]);
-      expect(server.requests.map(({ body }) => JSON.parse(body) as unknown)).toMatchObject([
-        {
-          model: "stand-in-model",
-          messages: [{ role: "user", content: "hi" }],
-          max_completion_tokens: 4096,
-          stream: true,
-        },
-      ]);
+      const call = firstCall(server);
+      expect(call.head).toStrictEqual(["stand-in-model", 4096, true]);
+      expect(call.roles).toStrictEqual(["system", "user", "user"]);
+      expect(call.system).toMatch(/^You are a binference agent/u);
+      expect(call.system).toContain('<workspace-file name="RULES.md">\n# Rules\n');
+      expect(call.system).toContain('<workspace-file name="FIRST-CHAT.md">');
+      expect(call.owner).toBe("hi");
+      expect(call.facts).toMatch(/^Live facts from binference.+\n- Mode: paper\./su);
       const [sent] = server.requests.map(({ body }) => toolsSchema.parse(JSON.parse(body)));
       expect(sent?.tools.map((tool) => tool.function.name)).toStrictEqual([
         "token_search",

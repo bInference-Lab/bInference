@@ -10,7 +10,7 @@ export interface ModelTransportHarness {
 }
 
 const request: ModelRequest = {
-  instructions: "Answer in one word.",
+  prefix: "Answer in one word.",
   messages: [{ role: "owner", text: "hello" }],
   tools: [],
 };

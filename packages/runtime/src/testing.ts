@@ -41,8 +41,18 @@ export type {
   TurnRefusal,
   TurnStatusLine,
 } from "./loop/turn-records.js";
+export { contextSourceContract } from "./contracts/context-source-contract.js";
+export type {
+  ContextSourceHarness,
+  ContextSourceSubject,
+} from "./contracts/context-source-contract.js";
 export { engineChatContract } from "./contracts/engine-chat-contract.js";
 export type { EngineChatHarness, EngineChatSubject } from "./contracts/engine-chat-contract.js";
+export { liveFactsReaderContract } from "./contracts/live-facts-reader-contract.js";
+export type {
+  LiveFactsReaderHarness,
+  LiveFactsReaderSubject,
+} from "./contracts/live-facts-reader-contract.js";
 export { mergeSourceContract } from "./contracts/merge-source-contract.js";
 export type { MergeSourceHarness, MergeSourceSubject } from "./contracts/merge-source-contract.js";
 export { modelChainContract } from "./contracts/model-chain-contract.js";

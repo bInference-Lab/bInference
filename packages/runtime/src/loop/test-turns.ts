@@ -1,5 +1,8 @@
 import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
+import { createRelayLiveFacts } from "../relay/relay-live-facts.js";
+import { nthTestId } from "../testing/memory-agent-stores.js";
+import { createMemoryContextSource } from "../testing/memory-context-source.js";
 import {
   createScriptedTransport,
   createTestChain,
@@ -15,12 +18,15 @@ import {
 import type { ModelPrice } from "../usage/model-price.js";
 import { type ChatTurn, createChatTurn } from "./chat-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
-import type { ModelChain, ToolBox, TurnEngine } from "./ports.js";
+import type { LiveFactsReader, ModelChain, ToolBox, TurnEngine } from "./ports.js";
 import type { ToolKind, ToolOutcome, ToolRunContext } from "./turn-records.js";
 import { type TurnLimits, turnLimits, type TurnParts } from "./turn-run.js";
 
 /** The turn id every test turn runs under. */
 export const testTurnId = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+
+// The agent every test turn runs for.
+const testAgent = nthTestId("agt", 1);
 
 /** A tool of a test's tool box; it answers `ran <name>` unless it runs its own body. */
 export interface TestTool {
@@ -96,6 +102,10 @@ export interface TestTurnOptions {
   readonly model?: { readonly name: string; readonly price?: ModelPrice };
   /** The turn's clock in place of a new one, such as one a chain's rests already use. */
   readonly clock?: ManualClock;
+  /** The agent's live facts; a paper agent's, read at the turn's clock, when absent. */
+  readonly facts?: LiveFactsReader;
+  /** The stable prefix; one line naming a test agent when absent. */
+  readonly prefix?: string;
 }
 
 /** A test turn with its transport, recorder and clock. */
@@ -127,6 +137,10 @@ function testParts(
     journal: recorder.journal,
     engine: options.engine ?? recorder.engine,
     merge: recorder.merge,
+    // A paper agent's live facts, read at the turn's clock.
+    facts:
+      options.facts ??
+      createRelayLiveFacts(createMemoryContextSource({ now: () => clock.now() }), testAgent),
     clock,
   };
 }
@@ -139,7 +153,7 @@ export function createTestTurn(options: TestTurnOptions): TestTurn {
   const turn = createChatTurn({
     turnId: options.turnId ?? testTurnId,
     parts: testParts(options, { transport, recorder, clock }),
-    instructions: "You are a test agent.",
+    prefix: options.prefix ?? "You are a test agent.",
     history: options.history ?? [],
     taken: options.taken ?? [ownerMessage(1, "hello")],
     outsideContent: options.outsideContent ?? false,

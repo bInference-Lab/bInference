@@ -3,6 +3,7 @@ import { createProtocolClient, type ProtocolClientOptions } from "@binference/cl
 import { operations } from "@binference/protocol";
 import { WebSocket } from "ws";
 import type { StartLine } from "../control/control-line.schema.js";
+import { createProtocolContextSource } from "../relay/protocol-context-source.js";
 import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
 import type { EngineLink } from "./run-runtime.js";
 
@@ -39,5 +40,10 @@ export async function connectEngine(
     logger: context.logger,
   });
   await client.connect(context.signal);
-  return { chat: createProtocolEngineChat(client), client, close: () => client.close() };
+  return {
+    chat: createProtocolEngineChat(client),
+    context: createProtocolContextSource(client),
+    client,
+    close: () => client.close(),
+  };
 }

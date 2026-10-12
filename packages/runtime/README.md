@@ -42,6 +42,23 @@ store's worker threads and use the network; nothing else
    line that is not `start`, a line it cannot read, an agent database it cannot open, or a refused
    sign-in ends it with code 1.
 
+## Context
+
+Each model call sends three parts ([spec 8, section 7.1](../../docs/specs/runtime.md#section-7-1);
+[decisions 0200](../../docs/DECISIONS.md#d0200) and [0201](../../docs/DECISIONS.md#d0201)),
+built in `src/context/`:
+
+1. **The stable prefix**, read once as a turn starts: binference's instructions, fixed per release
+   and naming the owner's language, then each workspace file the agent has, read with
+   `agent/readFile` in spec 8's order inside a delimiter that names it, each cut at 12,000
+   characters and all at 40,000. Two turns with no workspace change send the same bytes; an edit
+   applies at the next turn.
+2. **The history**: the session's conversation.
+3. **The volatile tail**: the live facts of `facts/get` and the model budget left, as the last user
+   message after the history. They are read before the turn's first call and after a batch that
+   ran a propose or control tool, never stored, and never marked for the cache. A read that fails
+   says so, and the turn goes on.
+
 ## Models
 
 `src/providers/` holds the model transports (spec 8, section 8;

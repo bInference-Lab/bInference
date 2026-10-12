@@ -2,8 +2,16 @@ import type { Clock } from "@binference/core";
 import type { LoopGuard } from "./loop-guard.js";
 import type { ModelMessage } from "./model-message.js";
 import type { OpenCall } from "./open-calls.js";
-import type { MergeSource, ModelChain, ToolBox, TurnEngine, TurnJournal } from "./ports.js";
+import type {
+  LiveFactsReader,
+  MergeSource,
+  ModelChain,
+  ToolBox,
+  TurnEngine,
+  TurnJournal,
+} from "./ports.js";
 import type { TurnHalt } from "./turn-halt.js";
+import type { TurnTail } from "./turn-tail.js";
 import type { TurnTally } from "./turn-tally.js";
 
 /** What one turn works with, bound to that turn by the composition. */
@@ -14,6 +22,8 @@ export interface TurnParts {
   readonly journal: TurnJournal;
   readonly engine: TurnEngine;
   readonly merge: MergeSource;
+  /** The agent's live facts, which each model call sends after the history. */
+  readonly facts: LiveFactsReader;
   readonly clock: Clock;
 }
 
@@ -66,7 +76,10 @@ export interface TurnRun {
   readonly turnId: string;
   readonly parts: TurnParts;
   readonly limits: TurnLimits;
-  readonly instructions: string;
+  /** The stable prefix every model call of the turn sends, read as the turn started. */
+  readonly prefix: string;
+  /** The volatile tail each model call sends after the conversation. */
+  readonly tail: TurnTail;
   /** The conversation each model call sends; the loop appends to it. */
   readonly messages: ModelMessage[];
   /** The chain's model the turn calls now: a fallback lasts for the turn. */

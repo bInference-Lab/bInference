@@ -69,7 +69,8 @@ export async function runToolBatch(
     ? await runParallelBatch(run, calls)
     : await runOrderedBatch(run, calls, { overLimit: over.length > 0 });
   await refuseOverLimit(run, over);
-  return { ...end, reachedLimit: over.length > 0 };
+  const wrote = calls.some(({ prepared: call }) => call.ready && call.kind !== "read");
+  return { ...end, reachedLimit: over.length > 0, wrote };
 }
 
 /**

@@ -4,10 +4,13 @@ import type { InboxMessageView } from "@binference/protocol";
 import type { MemoryAgentDatabase } from "@binference/store/testing";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import type { NewMessageMode } from "../chats/queue-merge.js";
+import type { ModelChain } from "../loop/ports.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
+import type { ContextSource } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import { createMemoryAgentStores, nthTestId } from "./memory-agent-stores.js";
+import { createMemoryContextSource } from "./memory-context-source.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
 import {
   createScriptedTransport,
@@ -44,6 +47,10 @@ export interface ChatRigOptions {
   /** The stores of a runtime that started again, on the rows of the one before. */
   readonly restarted?: { readonly stores: AgentStores; readonly database: MemoryAgentDatabase };
   readonly engine?: MemoryEngineChat;
+  /** The workspace files and live facts the turns read; none and a paper agent's when absent. */
+  readonly context?: ContextSource;
+  /** The turns' models in place of one scripted model answering `replies`. */
+  readonly models?: (clock: ManualClock) => ModelChain;
 }
 
 function notStarted(): never {
@@ -75,8 +82,9 @@ export async function startChatRig(options: ChatRigOptions): Promise<ChatRig> {
   const runner = createChatRunner({
     stores,
     engine,
+    turnContext: options.context ?? createMemoryContextSource({ now: () => clock.now() }),
     setup: () => ({
-      models: oneModelChain(transport, clock),
+      models: options.models?.(clock) ?? oneModelChain(transport, clock),
       tools: testToolBox(tools),
       instructions: "You are a test agent.",
       limits: turnLimits,

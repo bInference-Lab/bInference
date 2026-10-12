@@ -15,4 +15,6 @@ export interface BatchEnd {
   readonly joined: readonly OwnerMessage[];
   /** A call went past the turn's tool call limit: the turn ends after the batch. */
   readonly reachedLimit: boolean;
+  /** A propose or control call ran, which may have changed the live facts. */
+  readonly wrote?: boolean;
 }

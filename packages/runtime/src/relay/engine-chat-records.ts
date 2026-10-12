@@ -1,5 +1,5 @@
 import type { Id } from "@binference/core";
-import type { InboxMessageView } from "@binference/protocol";
+import type { InboxMessageView, WorkspaceFile } from "@binference/protocol";
 import type { TurnOutcome } from "@binference/store";
 import type { TurnRefusal } from "../loop/turn-records.js";
 
@@ -77,4 +77,10 @@ export interface RecordedUsage {
 /** `turn/end`: how the turn ended. */
 export interface EngineTurnEnd extends EngineTurn {
   readonly outcome: TurnOutcome;
+}
+
+/** One of an agent's workspace files. */
+export interface WorkspacePlace {
+  readonly agent: Id<"agt">;
+  readonly file: WorkspaceFile;
 }

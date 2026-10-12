@@ -19,7 +19,7 @@ const clock: Clock = { now: () => 1_760_000_000_000, sleep: async () => Promise.
 const baseUrl = "https://models.example.test/v1";
 
 const request: ModelRequest = {
-  instructions: "You are a trading agent.",
+  prefix: "You are a trading agent.",
   messages: [{ role: "owner", text: "How is BNB doing?" }],
   tools: [],
 };

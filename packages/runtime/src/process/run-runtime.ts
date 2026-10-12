@@ -9,7 +9,7 @@ import {
 } from "../control/control-line.schema.js";
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
-import type { EngineChat } from "../relay/ports.js";
+import type { ContextSource, EngineChat } from "../relay/ports.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
 import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
@@ -18,6 +18,8 @@ import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./r
 export interface EngineLink {
   /** The engine's side of chat over this connection. */
   readonly chat: EngineChat;
+  /** The workspace files and live facts each turn's context reads over this connection. */
+  readonly context: ContextSource;
   /** The operations the agents' tools call over this connection. */
   readonly client: ToolClient;
   /** Closes the connection; the runtime holds no other. */
@@ -204,6 +206,7 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
   const chat = await startChat({
     prepared: connected.prepared,
     engine: connected.link.chat,
+    turnContext: connected.link.context,
     settings: () => settings.current,
     setup: (agent, current) => host.turnSetup(agent, current, connected.link.client),
     clock: host.clock,

@@ -22,7 +22,7 @@ async function lastEventOn(http: StreamingHttp): Promise<ModelEvent | undefined>
     clock,
   });
   const request = {
-    instructions: "",
+    prefix: "",
     messages: [{ role: "owner", text: "hi" } as const],
     tools: [],
   };

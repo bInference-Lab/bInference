@@ -3,7 +3,7 @@ import type { ModelRequest } from "../loop/turn-records.js";
 import { chatPayloadOf } from "./chat-payload.js";
 
 const request: ModelRequest = {
-  instructions: "You are a trading agent.",
+  prefix: "You are a trading agent.",
   messages: [
     { role: "owner", text: "Buy CAKE?" },
     {
@@ -78,7 +78,7 @@ describe("chatPayloadOf", () => {
 
   it("sends no system message for no instructions and no tools for none", () => {
     const bare: ModelRequest = {
-      instructions: "",
+      prefix: "",
       messages: [{ role: "agent", text: "Hi.", reasoning: "", toolCalls: [] }],
       tools: [],
     };
@@ -99,6 +99,28 @@ describe("chatPayloadOf", () => {
       "CAKE: $2.10",
       [{ type: "text", text: "No wallet.", cache_control: mark }],
     ]);
+  });
+
+  it("sends the live facts as the last user message, after the history's mark and unmarked", () => {
+    const facts = "Live facts from binference.";
+    const payload = chatPayloadOf(
+      { ...request, tail: facts },
+      { model: "anthropic/claude-sonnet-4.5" },
+    );
+    expect(payload.messages.slice(-2)).toStrictEqual([
+      {
+        role: "tool",
+        tool_call_id: "call_2",
+        content: [{ type: "text", text: "No wallet.", cache_control: { type: "ephemeral" } }],
+      },
+      { role: "user", content: facts },
+    ]);
+    expect(payload.messages[0]).toStrictEqual({
+      role: "system",
+      content: [
+        { type: "text", text: "You are a trading agent.", cache_control: { type: "ephemeral" } },
+      ],
+    });
   });
 
   it("marks the last message with text when the history ends with an empty one", () => {

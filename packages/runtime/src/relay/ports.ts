@@ -1,4 +1,5 @@
 import type { Id } from "@binference/core";
+import type { LiveFactsView } from "@binference/protocol";
 import type {
   EngineSay,
   EngineStatus,
@@ -10,6 +11,7 @@ import type {
   InboxWatch,
   RecordedUsage,
   TurnStartAnswer,
+  WorkspacePlace,
 } from "./engine-chat-records.js";
 
 /**
@@ -39,4 +41,16 @@ export interface EngineChat {
   recordUsage(usage: EngineUsage, signal: AbortSignal): Promise<RecordedUsage>;
   /** `turn/end`: the engine's running turn for the agent clears. */
   endTurn(end: EngineTurnEnd, signal: AbortSignal): Promise<void>;
+}
+
+/**
+ * What a turn's context reads from the engine (runtime spec, section 7.1): each of an agent's
+ * workspace files, and its live facts. Each call rejects when the engine cannot answer, and with
+ * the signal's reason once it aborts.
+ */
+export interface ContextSource {
+  /** `agent/readFile`: the file's text, or `undefined` when the agent has no such file. */
+  workspaceFile(place: WorkspacePlace, signal: AbortSignal): Promise<string | undefined>;
+  /** `facts/get`: what the agent stands on now. */
+  liveFacts(agent: Id<"agt">, signal: AbortSignal): Promise<LiveFactsView>;
 }

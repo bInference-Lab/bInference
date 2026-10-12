@@ -119,28 +119,43 @@ function toolsOf(declarations: readonly ToolDeclaration[]): Tool[] {
   return last === undefined ? [] : tools.with(tools.length - 1, { ...last, cache_control: mark });
 }
 
-function systemOf(instructions: string): TextBlockParam[] {
-  return instructions === "" ? [] : [{ type: "text", text: instructions, cache_control: mark }];
+function systemOf(prefix: string): TextBlockParam[] {
+  return prefix === "" ? [] : [{ type: "text", text: prefix, cache_control: mark }];
+}
+
+// The live facts after the history's mark: a text block of the last user message, or a user
+// message of their own after the model's, so the roles still alternate.
+function withTail(messages: MessageParam[], tail: string | undefined): MessageParam[] {
+  if (tail === undefined) {
+    return messages;
+  }
+  const block: TextBlockParam = { type: "text", text: tail };
+  const last = messages.at(-1);
+  if (last?.role !== "user" || typeof last.content === "string") {
+    return [...messages, { role: "user", content: [block] }];
+  }
+  return messages.with(messages.length - 1, { ...last, content: [...last.content, block] });
 }
 
 /**
- * The Messages request for one model call (decision 0187): the stable instructions as a marked
+ * The Messages request for one model call (decisions 0187 and 0201): the stable prefix as a marked
  * system block, the tools with a mark on the last, the conversation as alternating user and
- * assistant messages with a mark at the end of the history, at most 4,096 output tokens, and a
- * streamed answer. A response the transport kept a replay for goes back exactly as it came.
+ * assistant messages with a mark at the end of the history, then the live facts unmarked, at most
+ * 4,096 output tokens, and a streamed answer. A response the transport kept a replay for goes back
+ * exactly as it came.
  */
 export function messagesPayloadOf(
   request: ModelRequest,
   options: { readonly model: string },
 ): MessageCreateParamsStreaming {
-  const system = systemOf(request.instructions);
+  const system = systemOf(request.prefix);
   const tools = toolsOf(request.tools);
   return {
     model: options.model,
     max_tokens: maxOutputTokens,
     ...(system.length === 0 ? {} : { system }),
     ...(tools.length === 0 ? {} : { tools }),
-    messages: withHistoryMark(messagesOf(request.messages)),
+    messages: withTail(withHistoryMark(messagesOf(request.messages)), request.tail),
     stream: true,
   };
 }
