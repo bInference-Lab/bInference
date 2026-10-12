@@ -8,6 +8,7 @@ import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
 import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
 import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
+import { createSqliteModelUsageStore } from "../model-usage/sqlite-model-usage-store.js";
 import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
 import { createSqliteOrderStore } from "../orders/sqlite-order-store.js";
 import { createSqliteAgentTopicStore } from "../surfaces/sqlite-agent-topic-store.js";
@@ -37,5 +38,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     owners: createSqliteOwnerStore(host),
     cardCopies: createSqliteCardCopyStore(host),
     agentTopics: createSqliteAgentTopicStore(host),
+    modelUsage: createSqliteModelUsageStore(host),
   };
 }

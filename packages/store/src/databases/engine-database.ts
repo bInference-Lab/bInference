@@ -10,6 +10,7 @@ import { installTasks } from "../install/sqlite-install-store.js";
 import { intentTasks } from "../intents/intent-tasks.js";
 import { ledgerTasks } from "../ledger/ledger-tasks.js";
 import { engineMigrations } from "../migrations/engine/engine-migrations.js";
+import { modelUsageTasks } from "../model-usage/sqlite-model-usage-store.js";
 import { noticeTasks } from "../notices/notice-tasks.js";
 import { orderTasks } from "../orders/order-tasks.js";
 import { positionTasks } from "../positions/sqlite-position-store.js";
@@ -45,6 +46,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...ownerTasks,
     ...cardCopyTasks,
     ...agentTopicTasks,
+    ...modelUsageTasks,
   ],
 };
 

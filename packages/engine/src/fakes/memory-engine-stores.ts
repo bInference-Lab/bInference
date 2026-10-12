@@ -10,6 +10,7 @@ import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryInstallStore, type MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentStore, type MemoryIntentStore } from "./memory-intent-store.js";
 import { createMemoryLedgerStore, type MemoryLedgerStore } from "./memory-ledger-store.js";
+import { createMemoryModelUsageStore } from "./memory-model-usage-store.js";
 import { createMemoryNoticeStore } from "./memory-notice-store.js";
 import { createMemoryOrderStore, type MemoryOrderStore } from "./memory-order-store.js";
 import { createMemoryOwnerStore } from "./memory-owner-store.js";
@@ -61,5 +62,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     owners: createMemoryOwnerStore(),
     cardCopies: createMemoryCardCopyStore(),
     agentTopics: createMemoryAgentTopicStore(),
+    modelUsage: createMemoryModelUsageStore({ agents }),
   };
 }

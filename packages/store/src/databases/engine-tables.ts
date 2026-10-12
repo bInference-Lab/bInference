@@ -2,6 +2,7 @@ import type { Generated } from "kysely";
 import type { AccessTables } from "./access-tables.js";
 import type { AgentInboxTables } from "./agent-inbox-tables.js";
 import type { BackupTables } from "./backup-tables.js";
+import type { ModelUsageTables } from "./model-usage-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
 import type { OrderTables } from "./order-tables.js";
 import type { PositionTables } from "./position-tables.js";
@@ -326,7 +327,8 @@ export interface EngineTables
     TelegramTables,
     BackupTables,
     AccessTables,
-    AgentInboxTables {
+    AgentInboxTables,
+    ModelUsageTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;

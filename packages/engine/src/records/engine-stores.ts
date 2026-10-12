@@ -1,3 +1,4 @@
+import type { ModelUsageStore } from "../billing/ports.js";
 import type { AgentInboxStore } from "../chat/ports.js";
 import type { OrderStore } from "../orders/ports.js";
 import type {
@@ -41,4 +42,6 @@ export interface EngineStores {
   readonly agentTopics: AgentTopicStore;
   /** The agent inbox and each agent's open chat session. */
   readonly agentInbox: AgentInboxStore;
+  /** Each model call attempt of the agents' runtime, and the budget notices of each day. */
+  readonly modelUsage: ModelUsageStore;
 }

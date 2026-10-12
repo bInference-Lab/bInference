@@ -35,6 +35,7 @@
     "engine/0029_card_places.ts": "db2876a31c00c2d4717153ae546a4df19d289f6221d903ffb30fee42ffb22ead",
     "engine/0030_telegram_topics.ts": "50c05162821abf261fa34074dc62dd4d286f7aa010d8083e7f009d038802a6f3",
     "engine/0031_order_cards.ts": "988bce01786367f27a8b2e9f9a0ed87166e9f267c669603f9bd60810ba98a67d",
-    "engine/0032_fill_notices.ts": "61d8f0a35a28aa6b8af21ec1bb20050d7d472f5b5cc87849d11fc14035bd5f53"
+    "engine/0032_fill_notices.ts": "61d8f0a35a28aa6b8af21ec1bb20050d7d472f5b5cc87849d11fc14035bd5f53",
+    "engine/0033_model_budget.ts": "bab18b59c59a9b0e2a51825afaa5e7b2e26ebac81de5f04f87cf6a3dcfc54b72"
   }
 }
