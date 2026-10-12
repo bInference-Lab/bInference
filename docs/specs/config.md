@@ -245,7 +245,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 6,
+  version: 7,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

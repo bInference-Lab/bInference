@@ -14,6 +14,11 @@ export interface RpcConfig {
    * since a paid node's URL carries its key (decision 0108).
    */
   readonly tracer?: SecretSource;
+  /**
+   * The `wss:` URL of the owner's RPC that pushes new blocks, read from a secret source since a
+   * paid node's URL carries its key (decision 0192). Without it the price watcher polls.
+   */
+  readonly ws?: SecretSource;
 }
 
 /** The chains the agent trades on, their RPCs, their private relays and their network fee caps. */
@@ -78,6 +83,12 @@ export const chainsSchema: z.ZodType<ChainsConfig> = z
             .describe(
               "The URL of your RPC that answers debug_traceTransaction, such as a paid node's. " +
                 "binference asks it what a trade received once the public RPCs dropped an old block.",
+            ),
+          ws: secretSourceSchema
+            .exactOptional()
+            .describe(
+              "The wss:// URL of your RPC that pushes new blocks, such as a paid node's. The price " +
+                "watcher follows each new block through it, and polls the RPCs while it is down.",
             ),
         }),
       )

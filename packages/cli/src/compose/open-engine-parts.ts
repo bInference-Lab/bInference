@@ -58,6 +58,8 @@ export interface Opened {
   readonly install: SetUpInstall | undefined;
   /** The owner's tracing RPC of each chain config names one for, read from its secret. */
   readonly tracers: ReadonlyMap<ChainRef, string>;
+  /** The owner's WebSocket RPC of each chain config names one for, which pushes new blocks. */
+  readonly headSockets: ReadonlyMap<ChainRef, string>;
   /** The chains this binference serves. */
   readonly chains: ChainRegistry;
   /**

@@ -29,6 +29,12 @@ export const configMigrations: readonly ConfigMigration[] = [
       "at their defaults.",
     edits: () => [],
   },
+  {
+    from: 6,
+    summary:
+      "Adds chains.rpc.<chain>.ws, the owner's WebSocket RPC for new blocks, which no file sets yet.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

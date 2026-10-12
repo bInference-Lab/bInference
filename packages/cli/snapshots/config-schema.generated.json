@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -674,6 +674,10 @@
                 },
                 "tracer": {
                   "description": "The URL of your RPC that answers debug_traceTransaction, such as a paid node's. binference asks it what a trade received once the public RPCs dropped an old block.",
+                  "$ref": "#/$defs/Secret"
+                },
+                "ws": {
+                  "description": "The wss:// URL of your RPC that pushes new blocks, such as a paid node's. The price watcher follows each new block through it, and polls the RPCs while it is down.",
                   "$ref": "#/$defs/Secret"
                 }
               },

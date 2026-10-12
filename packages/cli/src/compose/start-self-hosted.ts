@@ -25,7 +25,7 @@ import {
   type Opening,
   selfHostedChains,
 } from "./open-engine-parts.js";
-import { readTracers } from "./read-tracers.js";
+import { readRpcUrls } from "./read-rpc-urls.js";
 import { readVenues } from "./read-venues.js";
 import { serveEngine } from "./serve-engine.js";
 import type { StartOutcome } from "./start-outcome.js";
@@ -71,12 +71,14 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   }
 }
 
-// The parts that read config's secret sources: the tracing RPCs, the venues and the bot.
+// The parts that read config's secret sources: the owner's own RPCs, the venues and the bot.
 async function readSecretParts(
   opening: Opening,
   config: BinferenceConfig,
   log: OpenedLog,
-): Promise<Pick<Opened, "tracers" | "chains" | "reads" | "venues" | "bot" | "runtime">> {
+): Promise<
+  Pick<Opened, "tracers" | "headSockets" | "chains" | "reads" | "venues" | "bot" | "runtime">
+> {
   const { host, platform, signal } = opening;
   const secrets = createSecretReader({
     env: host.env,
@@ -85,7 +87,8 @@ async function readSecretParts(
     clock: host.clock,
   });
   const call = { logger: log.logger, signal };
-  const tracers = await readTracers(config.chains, secrets, call);
+  const tracers = await readRpcUrls({ chains: config.chains, secrets, kind: "tracer" }, call);
+  const headSockets = await readRpcUrls({ chains: config.chains, secrets, kind: "ws" }, call);
   const chains = selfHostedChains();
   const { http, clock } = host;
   const reads = composeChainReads({ chains, config: config.chains, http, clock });
@@ -114,7 +117,7 @@ async function readSecretParts(
     logger: log.logger.child("runtime"),
     signal,
   });
-  return { tracers, chains, reads, venues, bot, runtime };
+  return { tracers, headSockets, chains, reads, venues, bot, runtime };
 }
 
 async function openStoresAndServe(
