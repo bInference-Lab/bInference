@@ -15,6 +15,7 @@ export type {
   UntakenQuery,
 } from "./chat/agent-inbox-record.js";
 export type { AgentInboxStore, QuestionStore } from "./chat/ports.js";
+export { agentModelsChangeSchema, type AgentModelsChange } from "./agents/agent-record.js";
 export {
   isAnswerable,
   questionAnswerDraftSchema,

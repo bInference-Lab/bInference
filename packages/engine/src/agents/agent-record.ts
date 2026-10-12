@@ -146,6 +146,25 @@ export const agentNotificationsChangeSchema: z.ZodType<AgentNotificationsChange>
   expectedVersion: rowVersionSchema,
 });
 
+/**
+ * The models the owner picked for an agent, by role (decision 0204), under the agent row's version
+ * the changer read. The store keeps them as the document it is given.
+ */
+export interface AgentModelsChange {
+  readonly agentId: Id<"agt">;
+  readonly models: JsonValue;
+  readonly atMs: number;
+  readonly expectedVersion: number;
+}
+
+/** Parses an agent models change. */
+export const agentModelsChangeSchema: z.ZodType<AgentModelsChange> = z.strictObject({
+  agentId: idSchema("agt"),
+  models: jsonValueSchema,
+  atMs: epochMsSchema,
+  expectedVersion: rowVersionSchema,
+});
+
 /** The settings a new agent starts with: its draft's values, all at version 0, and no addresses. */
 export function agentSettingsOf(draft: AgentDraft): AgentSettings {
   const { atMs, limits, approvalMode, sendLevel, bySurface, ...agent } = draft;

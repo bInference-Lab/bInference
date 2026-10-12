@@ -6,6 +6,7 @@ import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { AgentDraft } from "../agents/agent-record.js";
 import type { LimitsValues } from "../agents/limits-record.js";
 import type { AgentStore } from "../ports.js";
+import { agentRowChecks } from "./agent-row-checks.js";
 import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
 
 /** Makes a fresh, empty agent store for each check. */
@@ -179,23 +180,6 @@ async function setsMode(store: AgentStore): Promise<void> {
   assert.equal(stored?.limits.version, 0);
 }
 
-async function setsNotifications(store: AgentStore): Promise<void> {
-  await store.create(draft(1), live());
-  const agentId = draft(1).id;
-  const notifications = { muted: ["fill", "lowGas"], dailySummaryTime: "08:30" };
-  const change = { agentId, notifications, atMs: 4_000, expectedVersion: 0 };
-  const set = await store.setNotifications(change, live());
-  const { id, name, mode, locale, models, atMs } = draft(1);
-  const fields = { id, name, mode, locale, models, notifications };
-  const record = { ...fields, createdAtMs: atMs, changedAtMs: 4_000, version: 1 };
-  assert.deepEqual(set, { ok: true, value: record });
-  assert.deepEqual(await store.setNotifications(change, live()), { ok: false, error: "stale" });
-  const unknown = { ...change, agentId: fixtureId("agt", 9) };
-  const missing = await store.setNotifications(unknown, live());
-  assert.deepEqual(missing, { ok: false, error: "not_found" });
-  assert.deepEqual((await store.get(agentId, live()))?.agent, record);
-}
-
 async function setsSendLevel(store: AgentStore): Promise<void> {
   await store.create(draft(1), live());
   const agentId = draft(1).id;
@@ -285,6 +269,7 @@ async function refusesAborted(store: AgentStore): Promise<void> {
 export function agentStoreContract(harness: AgentStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<AgentStore> => harness.create();
   return [
+    ...agentRowChecks(create, draft(1)),
     checkOn(
       "creates an agent with its limits, approval mode and send level at version 0",
       create,
@@ -299,11 +284,6 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
       keepsPendingLimits,
     ),
     checkOn("sets the mode under the agent row's version the changer read", create, setsMode),
-    checkOn(
-      "sets the notice settings under the agent row's version the changer read",
-      create,
-      setsNotifications,
-    ),
     checkOn(
       "sets the send level and its pending level under the version read",
       create,

@@ -14,6 +14,7 @@ import {
   type LimitsRecord,
   limitsRecordSchema,
 } from "@binference/engine";
+import { type AgentModelsChange, agentModelsChangeSchema } from "@binference/engine/chat";
 import {
   type AgentNotificationsChange,
   agentNotificationsChangeSchema,
@@ -110,8 +111,8 @@ export const setLimitsTask: StoreTask<
 // Writes columns of the agent row under the version the changer read, and raises that version.
 function setAgentRow(
   database: DatabaseSync,
-  change: AgentModeChange | AgentNotificationsChange,
-  columns: { readonly mode?: string; readonly notifications?: string },
+  change: AgentModeChange | AgentNotificationsChange | AgentModelsChange,
+  columns: { readonly mode?: string; readonly notifications?: string; readonly models?: string },
 ): Result<AgentRecord, "not_found" | "stale"> {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const found = versioned(
@@ -154,6 +155,18 @@ export const setNotificationsTask: StoreTask<
   output: resultSchema(agentRecordSchema, ["not_found", "stale"]),
   run: (database, change) =>
     setAgentRow(database, change, { notifications: jsonText(change.notifications) }),
+});
+
+/** Sets the models the owner picked for an agent under the agent row's version the changer read. */
+export const setModelsTask: StoreTask<
+  AgentModelsChange,
+  Result<AgentRecord, "not_found" | "stale">
+> = defineTask({
+  name: "agents.set_models",
+  access: "write",
+  input: agentModelsChangeSchema,
+  output: resultSchema(agentRecordSchema, ["not_found", "stale"]),
+  run: (database, change) => setAgentRow(database, change, { models: jsonText(change.models) }),
 });
 
 /** Writes an agent's send level and any pending level under the version the changer read. */

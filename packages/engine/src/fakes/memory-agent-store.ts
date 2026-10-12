@@ -2,6 +2,7 @@ import { err, type Id, ok, type Result } from "@binference/core";
 import {
   type AgentDraft,
   type AgentModeChange,
+  type AgentModelsChange,
   type AgentNotificationsChange,
   type AgentRecord,
   type AgentSettings,
@@ -51,8 +52,8 @@ function current(
 // Writes fields of the agent row under the version the changer read, and raises that version.
 function setAgentRow(
   agents: Agents,
-  change: AgentModeChange | AgentNotificationsChange,
-  fields: Partial<Pick<AgentRecord, "mode" | "notifications">>,
+  change: AgentModeChange | AgentNotificationsChange | AgentModelsChange,
+  fields: Partial<Pick<AgentRecord, "mode" | "notifications" | "models">>,
 ): Result<AgentRecord, "not_found" | "stale"> {
   const found = current(agents, change, (settings) => settings.agent.version);
   if (!found.ok) {
@@ -223,6 +224,8 @@ export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): M
       memoryCall(call, () => setAgentRow(agents, change, { mode: change.mode })),
     setNotifications: async (change, call) =>
       memoryCall(call, () => setAgentRow(agents, change, { notifications: change.notifications })),
+    setModels: async (change, call) =>
+      memoryCall(call, () => setAgentRow(agents, change, { models: change.models })),
     setSendLevel: async (change, call) => memoryCall(call, () => setSendLevel(agents, change)),
     addAddress: async (entry, call) =>
       memoryCall(call, () => (agents.has(entry.agentId) ? book.add(entry) : err("not_found"))),
