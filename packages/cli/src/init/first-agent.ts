@@ -7,6 +7,7 @@ import {
 import { evmChainOf } from "@binference/chain-evm";
 import { type Id, ok } from "@binference/core";
 import type { AgentDraft, GasReserve, LimitsValues } from "@binference/engine";
+import { noticeSettingsDocument } from "@binference/engine/notices";
 import { sendLevelSchema } from "@binference/engine/sends";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { baseUnitsOf } from "./base-units.js";
@@ -101,7 +102,8 @@ export interface FirstAgentFacts {
  * The first agent, as the config's `defaults` make it (config spec, section 1): in paper mode
  * (decision 0019), with the approval mode of `defaults.approvalMode`, manual unless the owner set
  * another, the send level of `defaults.sendLevel`, and the default limits with coin amounts in
- * base units, each listed token in its family's canonical form. A gas reserve on a chain the
+ * base units, each listed token in its family's canonical form, and the notice settings of
+ * `defaults.notifications`. A gas reserve on a chain the
  * registry lacks, or a listed token with no canonical form on a chain it holds, stops init.
  */
 export function firstAgentDraft(
@@ -127,7 +129,7 @@ export function firstAgentDraft(
     mode: "paper",
     locale: config.owner.locale,
     models: {},
-    notifications: {},
+    notifications: noticeSettingsDocument(config.defaults.notifications),
     atMs: facts.atMs,
     limits: limitsOf(config, facts.venues, {
       gasReserve: gasReserve.value,

@@ -21,6 +21,7 @@ import {
 } from "@binference/engine";
 import { createDevicePairing, createLockoutNotices } from "@binference/engine/access";
 import { createRunningTurns, markRuntimeTurns, type RunningTurns } from "@binference/engine/chat";
+import { isNoticeMutedFor } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
@@ -295,6 +296,20 @@ function engineOf(
   });
 }
 
+// The one write path of the notices: a delivery for the owner's bot when there is one, none for a
+// kind the owner muted (decision 0185).
+function noticeLogOf(parts: EngineParts, options: ComposeEngineOptions, ids: IdSource): NoticeLog {
+  const { agents, notices } = parts.stores;
+  return createNoticeLog({
+    store: notices,
+    surfaces: options.telegram === undefined ? [] : ["telegram"],
+    isMuted: async (notice, call) => isNoticeMutedFor(agents, notice, call),
+    ids,
+    clock: options.clock,
+    logger: options.logger,
+  });
+}
+
 /**
  * Wires the engine and its protocol server on the profile parts both profiles fill: the server
  * signs callers in through the access store, keeps each write's result under its idempotency key
@@ -308,13 +323,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   const { clock, random, logger } = options;
   const ids = createIdSource({ clock, random });
   const webPush = composeWebPush(parts.stores.access, options);
-  const notices = createNoticeLog({
-    store: parts.stores.notices,
-    surfaces: options.telegram === undefined ? [] : ["telegram"],
-    ids,
-    clock,
-    logger,
-  });
+  const notices = noticeLogOf(parts, options, ids);
   const publish = (push: EnginePush): void => {
     const stamped = notices.take(push);
     try {

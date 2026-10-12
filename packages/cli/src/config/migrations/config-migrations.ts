@@ -22,6 +22,13 @@ export const configMigrations: readonly ConfigMigration[] = [
     summary: "Adds remote.publicUrl, the HTTPS address of the Mini App, which no file sets yet.",
     edits: () => [],
   },
+  {
+    from: 5,
+    summary:
+      "Adds defaults.notifications, a new agent's muted notice kinds and daily summary time, " +
+      "at their defaults.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

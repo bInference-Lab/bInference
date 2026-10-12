@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -589,6 +589,44 @@
             "type": "string",
             "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
             "valueFormat": "usd"
+          },
+          "notifications": {
+            "description": "Notices.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "muted": {
+                "description": "Notice kinds muted; security notices cannot be muted.",
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "fill",
+                    "skipped",
+                    "lowGas",
+                    "orderExpiring",
+                    "daily",
+                    "alertPrice",
+                    "alertWallet",
+                    "alertLaunch",
+                    "ordersEnded",
+                    "exitEnded",
+                    "update",
+                    "updateBare",
+                    "updated",
+                    "updatedBare"
+                  ]
+                }
+              },
+              "dailySummaryTime": {
+                "description": "When the daily summary goes, in the owner's time, as HH:mm.",
+                "default": "09:00",
+                "type": "string",
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

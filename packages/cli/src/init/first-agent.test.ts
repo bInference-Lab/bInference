@@ -46,3 +46,31 @@ describe("the first agent's token lists", () => {
     });
   });
 });
+
+// The first agent of a config with these defaults.
+function draftOf(defaults: Readonly<Record<string, unknown>>) {
+  const config = configSchema.parse({
+    version: currentConfigVersion,
+    telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },
+    defaults,
+  });
+  return firstAgentDraft(config, selfHostedChains(), facts);
+}
+
+describe("the first agent's notices", () => {
+  it("starts with every notice on and the daily summary at 09:00", () => {
+    expect(draftOf({})).toMatchObject({
+      ok: true,
+      value: { notifications: { muted: [], dailySummaryTime: "09:00" } },
+    });
+  });
+
+  it("starts with the muted kinds and the summary time the config's defaults name", () => {
+    const notifications = { muted: ["lowGas", "update"], dailySummaryTime: "07:30" };
+    expect(draftOf({ notifications })).toMatchObject({ ok: true, value: { notifications } });
+  });
+
+  it("refuses a config that mutes a security notice", () => {
+    expect(() => draftOf({ notifications: { muted: ["frozen"] } })).toThrow(/"muted"/u);
+  });
+});

@@ -23,6 +23,8 @@ const frozen = {
 } as const;
 const unsettled = (): void => undefined;
 const noAgents = { get: async () => Promise.resolve(undefined) };
+const mutedAlways = async (): Promise<boolean> => Promise.resolve(true);
+const settingsGone = async (): Promise<boolean> => Promise.reject(new Error("The store is gone."));
 
 // A notice store whose agents include the test agent.
 async function storeWithAgent(): Promise<NoticeStore> {
@@ -106,5 +108,39 @@ describe("the notice log", () => {
     ]);
     release();
     await log.idle();
+  });
+
+  it("stores a muted notice with no delivery, and pushes it like any other", async () => {
+    const store = await storeWithAgent();
+    const clock = createManualClock(testNowMs);
+    const logger = createMemoryLogger({ subsystem: "engine" });
+    const ids = createIdSource({ clock, random: createSeededRandom(3) });
+    const isMuted = mutedAlways;
+    const log = createNoticeLog({ store, surfaces: ["telegram"], isMuted, ids, clock, logger });
+    const pushed = log.take(frozen);
+    await log.idle();
+    const [record] = await store.list({ limit: 10 }, live);
+    expect(pushed.data).toMatchObject({ id: record?.id });
+    expect(record?.delivered).toStrictEqual({});
+    await expect(store.queued({ surface: "telegram", limit: 10 }, live)).resolves.toStrictEqual([]);
+  });
+
+  it("delivers a notice whose settings it could not read, and logs the failure", async () => {
+    const store = await storeWithAgent();
+    const clock = createManualClock(testNowMs);
+    const logger = createMemoryLogger({ subsystem: "engine" });
+    const ids = createIdSource({ clock, random: createSeededRandom(3) });
+    const isMuted = settingsGone;
+    const log = createNoticeLog({ store, surfaces: ["telegram"], isMuted, ids, clock, logger });
+    log.take(frozen);
+    await log.idle();
+    const [record] = await store.list({ limit: 10 }, live);
+    expect(record?.delivered).toStrictEqual({ telegram: "queued" });
+    expect(logger.records()).toContainEqual(
+      expect.objectContaining({
+        event: "engine.notice_settings_unread",
+        fields: { agentId: testAgent, errorCode: "unexpected" },
+      }),
+    );
   });
 });

@@ -2,7 +2,7 @@
 
 This file is generated from the config schema by `pnpm check:config-schema --write`. Change the schema in `packages/cli/src/config/schema/`, never this file.
 
-This binference reads `config.json5` version 5. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 6. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -98,6 +98,8 @@ What each new agent starts with; copied into its rows once, at creation.
 - `defaults.copy.perLeaderDayUsd`: The most copies of one leader may spend a day, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"200"`. Variable: `BINFERENCE_DEFAULTS__COPY__PER_LEADER_DAY_USD`.
 - `defaults.paper.balances.<symbol>`: Paper-mode starting balances. Takes a decimal number in quotes, such as "0.002". Default: `{"BNB":"1","USDT":"500"}`. Variable: `BINFERENCE_DEFAULTS__PAPER__BALANCES__<SYMBOL>`. Keys: text.
 - `defaults.modelBudgetUsdPerDay`: The most model calls may cost a day, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"3"`. Variable: `BINFERENCE_DEFAULTS__MODEL_BUDGET_USD_PER_DAY`.
+- `defaults.notifications.muted`: Notice kinds muted; security notices cannot be muted. Takes a list in which each item is one of "fill", "skipped", "lowGas", "orderExpiring", "daily", "alertPrice", "alertWallet", "alertLaunch", "ordersEnded", "exitEnded", "update", "updateBare", "updated", "updatedBare". Default: `[]`. Variable: `BINFERENCE_DEFAULTS__NOTIFICATIONS__MUTED`.
+- `defaults.notifications.dailySummaryTime`: When the daily summary goes, in the owner's time, as HH:mm. Takes text. Default: `"09:00"`. Variable: `BINFERENCE_DEFAULTS__NOTIFICATIONS__DAILY_SUMMARY_TIME`.
 
 ## `chains`
 

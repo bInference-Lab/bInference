@@ -1,6 +1,11 @@
 import type { ChainRef } from "@binference/chain";
 import { bsc } from "@binference/chains";
 import { type Bps, isBps } from "@binference/core";
+import {
+  type MutableNoticeKind,
+  mutableNoticeKindSchema,
+  timeOfDaySchema,
+} from "@binference/engine/notices";
 import { z } from "zod";
 import { chainSchema, decimalSchema, usdSchema } from "./value-formats.schema.js";
 
@@ -35,6 +40,14 @@ export interface CardsConfig {
   readonly requoteToleranceBps: Bps;
 }
 
+/** A new agent's notice settings (decision 0185). */
+interface NotificationsConfig {
+  /** The notice kinds muted; security notices cannot be muted. */
+  readonly muted: readonly MutableNoticeKind[];
+  /** The owner's time of day of the daily summary, `HH:mm`. */
+  readonly dailySummaryTime: string;
+}
+
 /** What `binference` copies into each new agent's rows once, at creation. */
 export interface AgentDefaultsConfig {
   readonly limits: LimitsConfig;
@@ -48,6 +61,7 @@ export interface AgentDefaultsConfig {
   /** Paper-mode starting balances by token symbol, as decimal text. */
   readonly paper: { readonly balances: Readonly<Record<string, string>> };
   readonly modelBudgetUsdPerDay: bigint;
+  readonly notifications: NotificationsConfig;
 }
 
 const bps = (fallback: number, description: string) =>
@@ -147,6 +161,22 @@ export const agentDefaultsSchema: z.ZodType<AgentDefaultsConfig> = z
       .prefault({})
       .describe("Paper mode."),
     modelBudgetUsdPerDay: usd("3", "The most model calls may cost a day, in US dollars."),
+    notifications: z
+      .strictObject({
+        muted: z
+          .array(mutableNoticeKindSchema)
+          .refine(
+            (kinds: readonly string[]) => new Set(kinds).size === kinds.length,
+            "Name each kind once.",
+          )
+          .prefault([])
+          .describe("Notice kinds muted; security notices cannot be muted."),
+        dailySummaryTime: timeOfDaySchema
+          .prefault("09:00")
+          .describe("When the daily summary goes, in the owner's time, as HH:mm."),
+      })
+      .prefault({})
+      .describe("Notices."),
   })
   .prefault({})
   .describe("What each new agent starts with; copied into its rows once, at creation.");
