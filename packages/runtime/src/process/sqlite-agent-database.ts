@@ -1,6 +1,7 @@
 import {
   agentWorker,
   createSqliteChatQueueStore,
+  createSqliteNoteStore,
   createSqliteSessionStore,
   createSqliteTranscriptStore,
   createSqliteWriterFence,
@@ -25,6 +26,7 @@ export async function openSqliteAgentDatabase(
       sessions: createSqliteSessionStore(handle),
       transcript: createSqliteTranscriptStore(handle),
       queue: createSqliteChatQueueStore(handle),
+      notes: createSqliteNoteStore(handle),
       schemaVersion: migrated.to,
       close: async () => handle.close(),
     };

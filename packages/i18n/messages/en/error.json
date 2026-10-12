@@ -53,6 +53,7 @@
   "order.wrong_state": "This auto order already ended or changed. Refresh to see where it stands.",
   "order.kind_unavailable": "This kind of auto order is not available yet. Use a limit, take-profit, stop-loss or trailing stop order.",
   "order.unpriced_token": "The price watcher cannot price this token now, so a limit, take-profit, stop-loss or trailing stop order on it would never fill. It prices a token on its launchpad's bonding curve, or in a PancakeSwap pool that trades at least $1,000 of WBNB or a stablecoin.",
+  "note.not_found": "This note does not exist. List your agent's notes to see the ones it keeps.",
   "order.live_fills_off": "Live auto orders do not fill yet, so binference takes no live limit, take-profit, stop-loss or trailing stop order. Place it while the agent is in paper mode.",
   "asset.not_found": "binference does not know this token. Paste its contract address instead.",
   "asset.bad_address": "This is not a valid address. Check it and paste it again.",

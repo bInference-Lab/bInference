@@ -9,6 +9,7 @@ import {
 } from "../control/control-line.schema.js";
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
+import { answerNoteRoute, isNoteRoute, type NoteRouteParts } from "../notes/note-routes.js";
 import type { ContextSource, EngineChat } from "../relay/ports.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
@@ -73,7 +74,7 @@ function parseLine(text: string): EngineLine | undefined {
   }
 }
 
-// The runtime serves no routed operation yet: each one is refused as one it does not know.
+// A routed operation the runtime does not serve yet is refused as one it does not know.
 function refusedRoute(route: RouteLine): RuntimeLine {
   return {
     t: "routeReply",
@@ -97,11 +98,24 @@ async function writeHealth(
 
 type NextLine = IteratorResult<string, undefined>;
 
+/** What the runtime answers the engine's lines after the start with. */
+interface LineContext {
+  readonly apply: (settings: RuntimeSettings) => void;
+  readonly notes: NoteRouteParts;
+  readonly lifetime: AbortSignal;
+}
+
+async function answerRoute(route: RouteLine, context: LineContext): Promise<RuntimeLine> {
+  return isNoteRoute(route)
+    ? answerNoteRoute(route, context.notes, context.lifetime)
+    : refusedRoute(route);
+}
+
 // Answers one line after the start; answers how the runtime ends when the line ends it.
 async function answer(
   host: RuntimeHost,
   text: string,
-  apply: (settings: RuntimeSettings) => void,
+  context: LineContext,
 ): Promise<RuntimeExit | undefined> {
   const line = parseLine(text);
   if (line === undefined || line.t === "start") {
@@ -111,30 +125,27 @@ async function answer(
     return "stopped";
   }
   if (line.t === "settings") {
-    apply(line.settings);
+    context.apply(line.settings);
   } else {
-    await host.write(encode(refusedRoute(line)));
+    await host.write(encode(await answerRoute(line, context)));
   }
   return undefined;
 }
 
 // Answers each line after the start until `stop` or the end of the input, from the line that was
-// read while the runtime signed in.
-// Answers each line after the start until `stop` or the end of the input, from the line that was
 // read while the runtime signed in. New settings apply from the next turn and merge point on.
 async function serve(
   host: RuntimeHost,
   lines: AsyncIterator<string>,
-  context: { readonly read: NextLine; readonly apply: (settings: RuntimeSettings) => void },
+  context: LineContext & { readonly read: NextLine },
 ): Promise<RuntimeExit> {
-  const { apply } = context;
   const ended =
-    context.read.done === true ? "stopped" : await answer(host, context.read.value, apply);
+    context.read.done === true ? "stopped" : await answer(host, context.read.value, context);
   if (ended !== undefined) {
     return ended;
   }
   for await (const text of { [Symbol.asyncIterator]: () => lines }) {
-    const exit = await answer(host, text, apply);
+    const exit = await answer(host, text, context);
     if (exit !== undefined) {
       return exit;
     }
@@ -219,7 +230,10 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     const apply = (next: RuntimeSettings): void => {
       settings.current = next;
     };
-    return await serve(host, connected.lines, { read: await connected.reading, apply });
+    const { database, prepared } = connected;
+    const notes = { notes: database.notes, fence: prepared.stores.fence, clock: host.clock };
+    const context = { apply, notes, lifetime, read: await connected.reading };
+    return await serve(host, connected.lines, context);
   } finally {
     chat.unwatch();
     await chat.runner.stop();

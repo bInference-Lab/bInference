@@ -25,6 +25,20 @@ afterEach(async () => {
 
 const probeSchema = z.object({ env: z.array(z.string()) });
 
+// "The owner likes stablecoins", "stablecoin" and "stable", from their code points: only zh files
+// spell them out.
+const likesStablecoins = String.fromCodePoint(
+  0x4e3b,
+  0x4eba,
+  0x559c,
+  0x6b22,
+  0x7a33,
+  0x5b9a,
+  0x5e01,
+);
+const stablecoin = String.fromCodePoint(0x7a33, 0x5b9a, 0x5e01);
+const stable = String.fromCodePoint(0x7a33, 0x5b9a);
+
 // An engine's environment full of what a runtime must never see.
 const noisyEnv = {
   PATH: process.env["PATH"] ?? "bin",
@@ -119,9 +133,9 @@ describe("the agent runtime as a process of its own", () => {
         const args = {
           agent: protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
         };
-        // The runtime answers: it serves no routed operation yet.
-        await expect(client.call("notes/list", args, { signal: signal() })).rejects.toMatchObject({
-          code: "protocol.unknown_op",
+        // The runtime answers: it keeps no note yet.
+        await expect(client.call("notes/list", args, { signal: signal() })).resolves.toStrictEqual({
+          items: [],
         });
         runtimes.hold.gate = new Promise((resolve) => {
           release.open = resolve;
@@ -143,6 +157,36 @@ describe("the agent runtime as a process of its own", () => {
       }
     },
   );
+
+  it("keeps the owner's notes in its database and finds them in both languages", slow, async () => {
+    const machine = await engines.setUp();
+    const runtimes = realRuntimes(machine);
+    await engines.start(machine, { parts: { startRuntime: runtimes.startRuntime } });
+    await (
+      await runtimes.nth(0)
+    ).ready;
+    const client = await connectClient(machine);
+    try {
+      const agent = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+      const write = async (text: string, key: string) =>
+        client.call("notes/write", { agent, text }, { signal: signal(), key });
+      await write("The owner likes stablecoins", "note-1");
+      await expect(write(likesStablecoins, "note-2")).resolves.toMatchObject({
+        note: "2",
+        origin: "owner",
+      });
+      const found = async (query: string): Promise<readonly string[]> =>
+        (await client.call("notes/search", { agent, query }, { signal: signal() })).items.map(
+          (note) => note.note,
+        );
+      await expect(found("STABLECOINS")).resolves.toStrictEqual(["1"]);
+      await expect(found(stablecoin)).resolves.toStrictEqual(["2"]);
+      await expect(found(stable)).resolves.toStrictEqual(["2"]);
+      await expect(found("bitcoin")).resolves.toStrictEqual([]);
+    } finally {
+      client.close();
+    }
+  });
 
   it("stops first and cleanly when the engine stops, within its 30 seconds", slow, async () => {
     const machine = await engines.setUp();

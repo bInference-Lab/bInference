@@ -59,7 +59,13 @@ describe("runRuntime", () => {
     const runtime = started();
     await send(runtime, fixtureStartLine());
     await runtime.next();
-    const route = { t: "route", id: "r7", op: "notes/list", args: { agent: "a" }, origin: "owner" };
+    const route = {
+      t: "route",
+      id: "r7",
+      op: "chat/messages",
+      args: { agent: "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001" },
+      origin: "owner",
+    };
     await send(runtime, route);
     await expect(runtime.next()).resolves.toMatchObject({
       t: "routeReply",

@@ -881,6 +881,7 @@ later unchanged.
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                           |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                              |
 | `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`              |
+| `note`     | `not_found`                                                                                     |
 | `asset`    | `not_found`, `bad_address`, `unreadable`                                                        |
 | `name`     | `not_found`, `resolver_down`                                                                    |
 | `quote`    | `no_route`, `venue_down`                                                                        |

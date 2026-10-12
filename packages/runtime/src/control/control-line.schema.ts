@@ -14,8 +14,11 @@ import {
   runtimeSettingsSchema,
 } from "./runtime-settings.schema.js";
 
-/** Who a routed operation runs for, set by the engine from the caller's scopes. */
-export type RouteOrigin = "owner" | "agent" | "system";
+/**
+ * Who a routed operation runs for, set by the engine from its caller: `untrusted` for the
+ * runtime's own call in a turn that holds outside content, and for any other client with `agent`.
+ */
+export type RouteOrigin = "owner" | "agent" | "untrusted" | "system";
 
 /** Where the runtime keeps its files. */
 export interface RuntimePaths {
@@ -116,7 +119,7 @@ export const engineLineSchema: z.ZodType<EngineLine, EngineLineWire> = z.discrim
     id: routeIdSchema,
     op: z.custom<OperationName>((op) => typeof op === "string" && isRoutedOperation(op)),
     args: jsonValueSchema,
-    origin: z.enum(["owner", "agent", "system"]),
+    origin: z.enum(["owner", "agent", "untrusted", "system"]),
   }),
   z.strictObject({ t: z.literal("stop") }),
 ]);

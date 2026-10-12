@@ -98,7 +98,11 @@ function firstOnly(options: InProcessRuntimeOptions): (start: number) => InProce
 function heldAt(held: number, gate: Promise<void>): (start: number) => Promise<void> {
   return async (start) => (start === held ? gate : Promise.resolve());
 }
-const notesList = { op: "notes/list", args: { agent: "agt_x" }, origin: "owner" } as const;
+const notesList = {
+  op: "notes/list",
+  args: { agent: "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001" },
+  origin: "owner",
+} as const;
 
 describe("createRuntimeSupervisor", () => {
   it("is failing from the engine's start until the runtime writes ready", async () => {
@@ -223,8 +227,8 @@ describe("createRuntimeSupervisor", () => {
       await test.nth(0)
     ).ready;
     await expect(test.supervisor.route(notesList, call.signal)).resolves.toStrictEqual({
-      ok: false,
-      error: "protocol.unknown_op",
+      ok: true,
+      value: { items: [] },
     });
   });
 

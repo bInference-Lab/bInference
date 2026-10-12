@@ -58,6 +58,7 @@ export const protocolErrorCodes = [
   "order.kind_unavailable",
   "order.unpriced_token",
   "order.live_fills_off",
+  "note.not_found",
   "asset.not_found",
   "asset.bad_address",
   "asset.unreadable",

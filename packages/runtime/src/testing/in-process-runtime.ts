@@ -4,6 +4,7 @@ import { createManualClock } from "@binference/core/testing";
 import {
   createMemoryAgentDatabase,
   createMemoryChatQueueStore,
+  createMemoryNoteStore,
   createMemorySessionStore,
   createMemoryTranscriptStore,
   createMemoryWriterFence,
@@ -86,6 +87,7 @@ function memoryDatabase(database: MemoryAgentDatabase): AgentDatabase {
     sessions: createMemorySessionStore(database),
     transcript: createMemoryTranscriptStore(database),
     queue: createMemoryChatQueueStore(database),
+    notes: createMemoryNoteStore(database),
     schemaVersion: 0,
     close: async () => Promise.resolve(),
   };
