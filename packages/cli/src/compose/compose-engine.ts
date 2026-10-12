@@ -297,6 +297,7 @@ function engineOf(
     random: options.random,
     publish: given.publish,
     turns: given.turns,
+    ownerTimeZone: () => options.owner().timezone,
   });
 }
 

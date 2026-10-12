@@ -1,6 +1,6 @@
 # 0191. Each model attempt is priced and recorded, and a loop tells the owner
 
-Status: Accepted
+Status: Amended by 0198
 
 Accepted by the owner on 2026-10-12.
 

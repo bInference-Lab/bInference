@@ -533,24 +533,29 @@ nothing after the history carries one.
 
 The engine holds each agent's daily model budget ([ARCHITECTURE.md section 26](../ARCHITECTURE.md#section-26)).
 
+- **The day.** The budget runs from midnight to midnight in `owner.timezone`, 23 or 25 hours across
+  a change of the clocks ([decision 0198](../DECISIONS.md#d0198)).
 - **At the start.** `turn/start` fails `agent.budget` when nothing is left of today's budget, with
-  `details.resumesAt`, the owner's next midnight. The engine sends `notice.budget` once that day and
-  pushes the paused status line. Owner messages, settle messages and the resume report wait, and
-  the runtime starts their turn at `resumesAt`; scheduled and alert turns are skipped.
+  `details.resumesAt`, the owner's next midnight. The engine sends `notice.budget` once that day,
+  and the runtime sends the paused status line, `turn.budget` with `{ when }`, the resume time.
+  Owner messages, settle messages and the resume report wait, and the runtime starts their turn at
+  `resumesAt`; each owner message that comes meanwhile tries a start and gets the line again.
+  Scheduled and alert turns are skipped.
 - **After each call.** `usage/record` `{ agent, turn, model, inputTokens, outputTokens,
 cachedTokens, usdMicros }` is sent after each attempt of a model call of every role, answered or
   failed, before the runtime acts on it or tries again, under the key `<turn>.usage.<n>` (`n`
-  counts the turn's attempts from 1), and answers `budgetLeftMicros`. The cost is the provider's
-  own when it reports one (the gateway's `usage.cost`), else `models.prices`, else the built-in
-  table, else 0, and `binference check` names a configured model with no price (`models.priced`).
-  A price charges the cached price for tokens read from the cache, 1.25 times the input price for
-  tokens written to it, and the input price for the rest, rounded up to the micro-dollar; a model
-  with a long-prompt price charges it once the whole input passes its threshold. A failed attempt
-  counts what its provider reported before it failed, else nothing
+  counts the turn's attempts from 1), and answers `budgetLeftMicros`, with `resumesAt` once it is 0.
+  The engine charges an attempt once by its key, whatever token sends it again. The cost is the
+  provider's own when it reports one (the gateway's `usage.cost`), else `models.prices`, else the
+  built-in table, else 0, and `binference check` names a configured model with no price
+  (`models.priced`). A price charges the cached price for tokens read from the cache, 1.25 times
+  the input price for tokens written to it, and the input price for the rest, rounded up to the
+  micro-dollar; a model with a long-prompt price charges it once the whole input passes its
+  threshold. A failed attempt counts what its provider reported before it failed, else nothing
   ([decision 0191](../DECISIONS.md#d0191)).
 - **Spent mid-turn.** When `budgetLeftMicros` is 0 or below, the batch of that response still runs,
-  and no model call follows. The turn ends `budget`, or `ok` if it committed. The engine sends
-  `notice.budget`.
+  and no model call follows. The turn ends `budget` with the paused status line, or `ok` if it
+  committed. The engine sends `notice.budget`, once that day.
 - **No record, no call.** When `usage/record` fails, the turn makes no further model call and ends
   `failed`.
 

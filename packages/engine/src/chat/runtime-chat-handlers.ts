@@ -59,13 +59,14 @@ function turnHandlers(
       if (!active.ok) {
         return active;
       }
+      const left = await options.budget.open(active.value, call);
       turns.start({ agent, turn, hasOutsideContent: outsideContent });
       publish({
         topic: chatTopic(agent),
         kind: "chat/turnStarted",
         data: { agent, session, turn },
       });
-      return ok({ budgetLeftMicros: active.value.limits.modelBudgetUsdMicros });
+      return ok({ budgetLeftMicros: left });
     },
     async "turn/mark"(call) {
       const { agent, turn } = call.args;
@@ -95,15 +96,22 @@ function turnHandlers(
   };
 }
 
-// Each model call's usage is taken whatever the agent's state now, since it was spent. The daily
-// budget is kept and charged with the model budget's store; until then the answer is the agent's
-// daily model budget (decision 0191).
+// Each model call attempt's usage is taken whatever the agent's state now, since it was spent, and
+// charged once by the key the runtime sent it under (decision 0198).
 function usageHandler(options: ChatRelayOptions): EngineHandler<"usage/record"> {
   return async (call) => {
-    const settings = await options.agents.get(call.args.agent, call);
-    return settings === undefined
-      ? err("agent.not_found")
-      : ok({ budgetLeftMicros: settings.limits.modelBudgetUsdMicros });
+    const { key } = call;
+    const { agent, turn, ...usage } = call.args;
+    const settings = await options.agents.get(agent, call);
+    if (settings === undefined) {
+      return err("agent.not_found");
+    }
+    if (key === undefined) {
+      return err("protocol.key_required");
+    }
+    const charge = { ...usage, agent, turn, key, atMs: options.clock.now() };
+    const { leftMicros, resumesAt } = await options.budget.charge(settings, charge, call);
+    return ok({ budgetLeftMicros: leftMicros, ...(resumesAt === undefined ? {} : { resumesAt }) });
   };
 }
 
@@ -145,8 +153,9 @@ function inboxHandlers(
  * Creates the agent's side of chat, which only the token of the runtime's current start may call
  * (runtime spec, section 4.3): `turn/start` records the agent's running turn with the mark its
  * context holds, `turn/mark` marks it for good, `turn/say`, `turn/status` and `turn/end` reach the
- * agent's chat topic, the loop guard's status line also sends `notice.loop`, `usage/record` takes
- * each model call's usage, and `inbox/list` and `inbox/take` hand the runtime its stored messages.
+ * agent's chat topic, the loop guard's status line also sends `notice.loop`, `turn/start` refuses
+ * a turn once the agent's model budget of the day is spent, `usage/record` charges each model call
+ * attempt once, and `inbox/list` and `inbox/take` hand the runtime its stored messages.
  */
 export function createRuntimeChatHandlers(options: ChatRelayOptions): RuntimeChatHandlers {
   const turn = turnHandlers(options);

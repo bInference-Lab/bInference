@@ -212,6 +212,7 @@ layout of Koinly's universal import, which tax tools read.
 | `autoReceiptLine`, `AutoSettlement` (subpath)                    | The receipt of a trade the auto mode ran, paper fills too       |
 | `BotUpdateSource`, `BotUpdate`                                   | A bot's inbound updates, answered again until acknowledged      |
 | `ModelBilling`, `ModelCharge`                                    | Pays for model calls and says what an agent may still spend     |
+| `ModelUsageStore`, `createDailyModelBudget` (subpath `chat`)     | Each model call attempt once, and the budget of the owner's day |
 | `MarketData`, `BlockReading`, `PriceReading`                     | The blocks and prices the watchers stream                       |
 | `Sha256Hex`, `sha256Hex`                                         | A SHA-256 digest as 64 lowercase hex digits                     |
 | `TransitionProblem`, `ProposalProblem`                           | Why the machine refused a trigger or a proposal                 |
@@ -298,6 +299,7 @@ const engine = createEngine({
   clock,
   ids,
   publish: (push) => server.publish(push),
+  ownerTimeZone: () => config.owner.timezone, // the owner's day each model budget runs over
 });
 const server = createProtocolServer({ handlers: engine.handlers /* , ... */ });
 A step of the execute step runs on its wallet's queue: a nonce, a signature, the save, then sends:

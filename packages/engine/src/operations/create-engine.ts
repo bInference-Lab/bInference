@@ -10,8 +10,8 @@ import {
   type ConfigHistoryHandlers,
   createConfigHistoryHandlers,
 } from "../audit/config-history-handlers.js";
+import type { ModelBudgetParts } from "../billing/model-budget.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
-import type { ChatHandlers } from "../chat/chat-relay.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { type CapGate, createCapGate } from "../confirmations/cap-gate.js";
 import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
@@ -66,7 +66,7 @@ import {
   orderFillsOf,
   orderPartsOf,
 } from "./engine-orders.js";
-import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
+import { type EngineChatHandlers, engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { orderRepairOf, paperRepairOf } from "./engine-repairs.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
@@ -75,7 +75,7 @@ import { type SettingsHandlers, settingsHandlers } from "./settings-handlers.js"
 /** The operation handlers the engine gives the protocol server, by operation name. */
 export interface EngineHandlers
   extends
-    ChatHandlers,
+    EngineChatHandlers,
     IntentHandlers,
     OrderHandlers,
     LedgerHandlers,
@@ -146,7 +146,7 @@ export interface Engine {
 }
 
 /** The ports and adapters the composition root builds the engine from. */
-export interface EngineOptions extends MarketParts {
+export interface EngineOptions extends MarketParts, ModelBudgetParts {
   readonly stores: EngineStores;
   /** Executions, arrivals and positions, live and paper; the paper portfolio lives here. */
   readonly positions: PositionStore;
@@ -398,7 +398,7 @@ export function createEngineWithFills(given: EngineOptions): {
         chains: options.chains,
       }),
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
-      ...chat.relay.handlers,
+      ...chat.handlers,
     },
     answer: intents.answer,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),

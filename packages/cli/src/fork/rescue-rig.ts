@@ -272,6 +272,7 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     ids: createIdSource({ clock, random: createSeededRandom(62) }),
     random: createSeededRandom(63),
     publish: () => undefined,
+    ownerTimeZone: () => "UTC",
   });
   return { engine, stores, wallets: rigWallets, rescue, signatures: custody.signatures };
 }

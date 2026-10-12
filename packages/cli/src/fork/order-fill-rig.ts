@@ -157,6 +157,7 @@ function engineOf(
     ids: createIdSource({ clock, random: createSeededRandom(52) }),
     random: createSeededRandom(54),
     publish: (push) => pushes.push(push),
+    ownerTimeZone: () => "UTC",
   });
   return { engine, stores };
 }

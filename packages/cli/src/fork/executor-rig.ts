@@ -233,6 +233,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
     paperBalances: [],
     random: createSeededRandom(44),
     publish: () => undefined,
+    ownerTimeZone: () => "UTC",
   });
 }
 

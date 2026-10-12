@@ -1,5 +1,6 @@
 import type { Clock, IdSource } from "@binference/core";
 import type { ProtocolId, PushTopic } from "@binference/protocol";
+import type { ModelBudget } from "../billing/model-budget.js";
 import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
@@ -13,6 +14,8 @@ export interface ChatRelayOptions {
   readonly agents: AgentStore;
   /** The runtime's running turns, and the token of its current start. */
   readonly turns: RunningTurns;
+  /** Each agent's daily model budget: a turn starts only while some is left. */
+  readonly budget: ModelBudget;
   readonly intentView: IntentViewOf;
   readonly ids: IdSource;
   readonly clock: Clock;

@@ -92,6 +92,8 @@ export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCalle
 /** How a test engine differs from the default: a paper agent in manual mode on the fake venue. */
 export interface TestEngineOptions {
   readonly agent?: Partial<AgentDraft>;
+  /** The owner's timezone, whose days the model budget runs over; UTC when absent. */
+  readonly timeZone?: string;
   /** The tokens the price watcher cannot price; it prices every other. */
   readonly unpriceable?: readonly AssetRef[];
   readonly venues?: readonly Venue[];
@@ -318,6 +320,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   const turns = testTurns();
   const engineOptions: EngineOptions = {
     turns,
+    ownerTimeZone: () => options.timeZone ?? "UTC",
     stores: wrapped(stores, options),
     positions,
     custody,
