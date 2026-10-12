@@ -93,6 +93,15 @@ interface RecordUsageArgs extends AgentArgs {
   readonly usdMicros: bigint;
 }
 
+/**
+ * The answer of `usage/record`: what is left of today's model budget, 0 once it is spent, and
+ * then when it resumes, the owner's next midnight.
+ */
+interface RecordedUsage {
+  readonly budgetLeftMicros: bigint;
+  readonly resumesAt?: number;
+}
+
 /** The args of `usage/get`: one agent, or every agent when absent, over a time range. */
 interface UsageArgs {
   readonly agent?: ProtocolId<"agent">;
@@ -144,8 +153,7 @@ export interface ChatOperationShapes {
   readonly "turn/end": { readonly args: EndTurnArgs; readonly result: Empty };
   readonly "usage/record": {
     readonly args: RecordUsageArgs;
-    /** What is left of today's model budget; 0 once it is spent. */
-    readonly result: { readonly budgetLeftMicros: bigint };
+    readonly result: RecordedUsage;
   };
   readonly "usage/get": { readonly args: UsageArgs; readonly result: UsageView };
   readonly "inbox/list": {
@@ -269,7 +277,10 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
       cachedTokens: tokens,
       usdMicros: decimalStringSchema,
     }),
-    result: z.object({ budgetLeftMicros: decimalStringSchema }),
+    result: z.object({
+      budgetLeftMicros: decimalStringSchema,
+      resumesAt: epochMsSchema.exactOptional(),
+    }),
   },
   "usage/get": {
     ...readFlags,

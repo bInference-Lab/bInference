@@ -30,6 +30,7 @@ export const protocolErrorCodes = [
   "agent.frozen",
   "agent.paper_only",
   "agent.disclaimer",
+  "agent.budget",
   "market.no_data",
   "market.source_down",
   "market.no_launch_feed",

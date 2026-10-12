@@ -26,6 +26,7 @@
   "agent.frozen": "This agent is frozen. Unfreeze it in the CLI, the console or the Mini App.",
   "agent.paper_only": "This agent is in paper mode, and this action needs live. Go live with `binference live`.",
   "agent.disclaimer": "Accept the disclaimer before going live. Run `binference live` and follow the steps.",
+  "agent.budget": "This agent used today's model budget. Chat resumes at midnight in your timezone; orders keep running.",
   "market.no_data": "No market data source knows this token yet. Check the address, or try again later.",
   "market.source_down": "The market data source is not responding. Try again in a minute.",
   "market.no_launch_feed": "New launches are not available: this binference is not reading launchpads. Ask for trending tokens instead.",
