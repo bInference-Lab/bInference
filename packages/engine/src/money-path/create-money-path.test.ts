@@ -391,7 +391,6 @@ describe("the money path", () => {
       await refusal(test, testSwap({ wallet: otherWallet })),
       await refusal(test, testSwap({ wallet: custodyless })),
       await refusal(test, send),
-      await refusal(test, testSwap({ amount: { percentBps: 5_000 as never } })),
       await refusal(test, testSwap({ from: unknownChain })),
       await refusal(noVenue, testSwap()),
     ];
@@ -399,7 +398,6 @@ describe("the money path", () => {
       "agent.not_found",
       "wallet.not_found",
       "wallet.not_found",
-      "quote.no_route",
       "quote.no_route",
       "quote.no_route",
       "quote.no_route",

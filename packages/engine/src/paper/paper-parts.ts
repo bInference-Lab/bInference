@@ -1,10 +1,11 @@
 import type { Amount, ChainRegistry, PriceSource } from "@binference/chain";
 import type { Clock } from "@binference/core";
+import type { Holdings } from "../money-path/wallet-facts.js";
 import type { IntentStore, PositionStore, Simulator, WalletFactsSource } from "../ports.js";
 import { createPositions, type Positions } from "../positions/create-positions.js";
 import { createPaperPortfolio, type PaperPortfolio } from "./paper-portfolio.js";
 import { withPaperSimulation } from "./paper-simulation.js";
-import { withPaperBalances } from "./paper-wallet-facts.js";
+import { holdingsOf, withPaperBalances } from "./paper-wallet-facts.js";
 
 /** The engine's paper parts: the positions, the paper portfolio, and the steps that read it. */
 export interface PaperParts {
@@ -14,6 +15,8 @@ export interface PaperParts {
   readonly wallets: WalletFactsSource;
   /** The simulate step with a paper intent's balances from the paper portfolio. */
   readonly simulator: Simulator;
+  /** What a wallet holds of an asset: in the paper portfolio for a paper intent, else on chain. */
+  readonly holdings: Holdings;
 }
 
 /** What the paper parts are built from: the engine's own options. */
@@ -51,5 +54,6 @@ export function createPaperParts(options: PaperPartsOptions): PaperParts {
     chains: options.chains,
     clock: options.clock,
   });
-  return { positions, portfolio, wallets, simulator };
+  const holdings = holdingsOf(options.wallets, portfolio);
+  return { positions, portfolio, wallets, simulator, holdings };
 }

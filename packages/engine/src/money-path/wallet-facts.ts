@@ -42,3 +42,19 @@ export interface BalancesQuery {
   readonly account: AccountRef;
   readonly assets: readonly AssetRef[];
 }
+
+/** Which wallet's holding of one asset to read, for an intent in which mode. */
+interface HoldingQuery {
+  readonly wallet: Id<"wal">;
+  /** The wallet's account on the asset's chain. */
+  readonly account: AccountRef;
+  /** The intent runs on paper: the holding is the paper portfolio's. */
+  readonly isPaper: boolean;
+  readonly asset: AssetRef;
+}
+
+/** Reads what a wallet holds of one asset now, in base units, for an intent in its mode. */
+export interface Holdings {
+  /** The paper position's units for a paper intent, the balance on chain for a live one. */
+  held(query: HoldingQuery, options: { readonly signal: AbortSignal }): Promise<bigint>;
+}

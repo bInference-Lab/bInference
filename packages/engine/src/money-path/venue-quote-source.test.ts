@@ -48,6 +48,7 @@ function quoting(
     stored,
     custody: createFakeSigner(wallets),
     wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), testFacts),
+    holdings: { held: async () => await Promise.resolve(0n) },
     host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
     simulator: createQuoteSimulator(() => undefined),
     prices: createFakePriceSource(new Map()),

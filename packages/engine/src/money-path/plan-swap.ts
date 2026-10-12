@@ -25,13 +25,14 @@ const quoteLifetimeMs = 60_000;
 const wholeRouteBps: Bps = bpsSchema.parse(bpsPerWhole);
 
 /**
- * The quote a card and a view show for a plan. The whole route is the venue that quoted. The
- * venue's quote carries no gas estimate, so `gas` is zero until the simulation measures it.
+ * The quote a card and a view show for a plan. The whole route is the venue that quoted, and a buy
+ * or a sell names its place. The venue's quote carries no gas estimate, so `gas` is zero until the
+ * simulation measures it.
  */
 function quoteViewOf(swap: SwapTrade, plan: TradePlan, nativeAsset: AssetRef): QuoteView {
-  const { trade } = swap;
+  const { trade, place } = swap;
   const { quotedAtMs, minOutBase } = plan.terms;
-  return {
+  const quote: QuoteView = {
     route: [{ venue: plan.venue, shareBps: wholeRouteBps }],
     amountIn: trade.amountIn,
     expectedOut: plan.quote.expectedOut,
@@ -41,6 +42,7 @@ function quoteViewOf(swap: SwapTrade, plan: TradePlan, nativeAsset: AssetRef): Q
     quotedAt: quotedAtMs,
     expiresAt: quotedAtMs + quoteLifetimeMs,
   };
+  return place === undefined ? quote : { ...quote, place };
 }
 
 function plannedOf(

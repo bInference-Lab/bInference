@@ -27,6 +27,7 @@
   "decode_mismatch": "the built transaction did not match what you confirmed, so it was not signed",
   "simulation_reverted": "the simulation reverted, so nothing was sent",
   "effects_differ": "the simulation showed other results than the quote, so nothing was sent",
+  "nothing_to_sell": "the wallet holds none of this token",
   "reverted": "the transaction reverted; only the network fee was spent",
   "stuck_cancelled": "the transaction was stuck and was cancelled; only the network fee was spent",
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",

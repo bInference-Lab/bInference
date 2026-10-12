@@ -1,5 +1,6 @@
 import { accountRefParts, type ChainRegistry } from "@binference/chain";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
+import type { Holdings } from "../money-path/wallet-facts.js";
 import type { WalletFactsSource } from "../ports.js";
 import type { PaperPortfolio } from "./paper-portfolio.js";
 
@@ -34,6 +35,25 @@ export function withPaperBalances(
         ? await options.portfolio.balance(query.wallet, nativeAssetOf(chain.value), call)
         : 0n;
       return { ...facts, nativeBalanceBase };
+    },
+  };
+}
+
+/**
+ * The holdings a sale by share reads (spec 6, section 5): what the wallet's paper position holds
+ * for a paper intent, and what its account holds on the chain for a live one.
+ */
+export function holdingsOf(source: WalletFactsSource, portfolio: PaperPortfolio): Holdings {
+  return {
+    async held(query, call) {
+      if (query.isPaper) {
+        return portfolio.balance(query.wallet, query.asset, call);
+      }
+      const [balance] = await source.balances(
+        { account: query.account, assets: [query.asset] },
+        call,
+      );
+      return balance?.base ?? 0n;
     },
   };
 }

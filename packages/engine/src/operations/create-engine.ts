@@ -217,8 +217,9 @@ function requoteOptions(
   parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
 ): VenueQuoteSourceOptions {
   const { custody, host, chains, clock, prices } = options;
-  const { wallets, simulator } = parts.paper;
-  return { stored: parts.stored, custody, wallets, host, simulator, prices, chains, clock };
+  const { stored, paper } = parts;
+  const { wallets, simulator, holdings } = paper;
+  return { stored, custody, wallets, holdings, host, simulator, prices, chains, clock };
 }
 
 // A confirmed paper intent fills in the paper portfolio, an unfreeze is written, and any other live
@@ -278,6 +279,7 @@ function intentParts(
     agents: stores.agents,
     custody,
     wallets: paper.wallets,
+    holdings: paper.holdings,
     policy: createPolicyCheck({ prices: options.prices, clock }),
     prices: options.prices,
     host,

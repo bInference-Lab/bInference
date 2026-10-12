@@ -47,6 +47,7 @@ describe("intent reasons", () => {
       "simulation_reverted",
       "effects_differ",
       "price_impact",
+      "nothing_to_sell",
     ]);
     expect(failureReasons).toStrictEqual([
       "reverted",
@@ -60,7 +61,7 @@ describe("intent reasons", () => {
   it("holds every reason code once in the closed list", () => {
     const all = [...policyReasons, ...riskReasons, ...checkReasons, ...failureReasons];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(33);
+    expect(intentReasons).toHaveLength(34);
   });
 
   it("has a reason message in English and Chinese for every reason code", () => {

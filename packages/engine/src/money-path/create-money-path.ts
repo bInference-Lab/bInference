@@ -5,13 +5,7 @@ import type { CapGate } from "../confirmations/cap-gate.js";
 import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
-import {
-  planDocument,
-  quoteDocument,
-  riskDocument,
-  simulationDocument,
-} from "../intents/intent-documents.schema.js";
-import type { SimulationFailure } from "../intents/intent-reason.js";
+import { planDocument, quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentProposerRef } from "../intents/intent-record.js";
 import type { IntentProposer } from "../intents/intent-status.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
@@ -23,18 +17,19 @@ import {
 import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
-import { type SimulatedSteps, simulationViewOf } from "../simulation/simulated-steps.js";
 import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { advanceIntent } from "./advance-intent.js";
 import { agentStatusOf } from "./agent-status-of.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
 import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose-route.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
-import type { PlannedSwap } from "./plan-swap.js";
+import { type PlacedTrade, placeTrade } from "./place-trade.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import { firstQuoteOf, quoteVenues } from "./quote-venues.js";
 import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
-import { swapSubjectOf } from "./swap-trade.js";
+import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
+import { type SwapTrade, swapSubjectOf } from "./swap-trade.js";
+import type { Holdings } from "./wallet-facts.js";
 
 /** Who proposes: their role for the state machine, and their id for the intents table. */
 export interface Proposer {
@@ -72,6 +67,8 @@ export interface MoneyPathOptions {
   readonly agents: AgentStore;
   readonly custody: Signer;
   readonly wallets: WalletFactsSource;
+  /** What a wallet holds of the asset a sale by share sells, in the intent's mode. */
+  readonly holdings: Holdings;
   readonly policy: PolicyCheck;
   /** The USD prices that value each route's network fee in the asset bought. */
   readonly prices: PriceSource;
@@ -96,6 +93,11 @@ interface Run {
   readonly machine: IntentStateMachine;
   readonly resolved: ResolvedProposal;
   readonly signal: AbortSignal;
+}
+
+/** A run whose trade has its place and its amount settled. */
+interface PlacedRun extends Run {
+  readonly swap: SwapTrade;
 }
 
 /** A step's result: the intent after it, and what later steps read when the step passed. */
@@ -125,12 +127,12 @@ function quotedTradeOf({ trade, quote }: TradeQuote): QuotedTrade {
 
 // What the policy judges: the intent's subject on a venue, and the facts of its wallet.
 async function policyVerdict(
-  run: Run,
+  run: PlacedRun,
   status: Pick<PolicySubject, "kind" | "isPaper" | "hasOutsideContent">,
   priced: { readonly quote?: TradeQuote; readonly venue?: string },
 ): Promise<PolicyVerdict> {
   const { resolved, options, signal } = run;
-  const subject = swapSubjectOf(resolved.swap, status);
+  const subject = swapSubjectOf(run.swap, status);
   const facts = policyFactsOf({
     settings: resolved.settings,
     wallet: resolved.facts,
@@ -148,7 +150,7 @@ async function policyVerdict(
 // The first venue's quote prices the trade's other token; a trade no venue could quote is judged
 // without one, so its policy refusal still comes first.
 async function checkPolicy(
-  run: Run,
+  run: PlacedRun,
   snapshot: IntentSnapshot,
   quote: QuoteOutcome,
 ): Promise<Stepped<PolicyPass>> {
@@ -166,7 +168,7 @@ async function checkPolicy(
 
 // The best quote weighs every venue's quote; the policy judges again a route it did not price.
 function routeChoiceOf(
-  run: Run,
+  run: PlacedRun,
   snapshot: IntentSnapshot,
   quotes: readonly QuoteOutcome[],
 ): RouteChoiceOptions {
@@ -175,7 +177,7 @@ function routeChoiceOf(
   const recheck = async (quoted: TradeQuote): Promise<PolicyVerdict> =>
     policyVerdict(run, snapshot.stored.status, { quote: quoted, venue: quoted.trade.venue });
   return {
-    swap: resolved.swap,
+    swap: run.swap,
     intent: snapshot.record.id,
     host: options.host,
     simulator: options.simulator,
@@ -191,7 +193,7 @@ function routeChoiceOf(
 // The intent stores its quote, its plan and the value the policy judged the chosen route at, which
 // the rolling cap counts once it is confirmed (decision 0136).
 async function build(
-  run: Run,
+  run: PlacedRun,
   snapshot: IntentSnapshot,
   priced: { readonly quotes: readonly QuoteOutcome[]; readonly pass: PolicyPass },
 ): Promise<Stepped<ChosenRoute>> {
@@ -215,65 +217,57 @@ async function build(
     : { snapshot: quoted };
 }
 
-// The risk step weighs the token the chosen route buys at the quote it was built from, against the
-// agent's tax and liquidity limits, and stores its view whether it passes or refuses.
-async function assessRisk(
-  run: Run,
-  snapshot: IntentSnapshot,
-  planned: PlannedSwap,
-): Promise<IntentSnapshot> {
-  const { plan } = planned;
-  const quoted = {
-    trade: { ...run.resolved.swap.trade, venue: plan.venue },
-    quote: plan.quote,
-    quotedAtMs: plan.terms.quotedAtMs,
-  };
-  const { taxBps, liquidityFloorUsdMicros } = run.resolved.settings.limits;
-  const limits = { maxTaxBps: taxBps, liquidityFloorUsdMicros };
-  const assessment = await run.options.risk.assess({ quoted, limits }, { signal: run.signal });
-  const fields = { risk: riskDocument.encode(assessment.view) };
-  const trigger =
-    assessment.refusal === undefined
-      ? ({ type: "risk_passed" } as const)
-      : ({ type: "risk_refused", reason: assessment.refusal } as const);
-  return advance(run, snapshot, { trigger, fields });
+// The trade's place and amount, settled as its quote is built (spec 6, section 5): a sale by
+// share reads what the wallet holds now, in the intent's mode.
+async function placedTradeOf(run: Run, snapshot: IntentSnapshot): Promise<PlacedTrade> {
+  const { resolved, options, signal } = run;
+  const { wallet, account, nativeAsset, settings } = resolved;
+  const { chains, host, holdings } = options;
+  const { isPaper } = snapshot.record;
+  const { limits } = settings;
+  const context = { limits, account, chains, host, nativeAsset, holdings, wallet, isPaper, signal };
+  return placeTrade(resolved.ask, context);
 }
 
-// The chosen route was simulated when the best quote weighed it; this step stores that run.
-async function simulate(
-  run: Run,
-  snapshot: IntentSnapshot,
-  simulation: Result<SimulatedSteps, SimulationFailure>,
-): Promise<IntentSnapshot> {
-  if (!simulation.ok) {
-    return advance(run, snapshot, {
-      trigger: { type: "simulation_failed", reason: simulation.error },
-    });
-  }
-  const fields = { simulation: simulationDocument.encode(simulationViewOf(simulation.value)) };
-  return advance(run, snapshot, { trigger: { type: "simulation_matched" }, fields });
-}
-
+// A trade that cannot be placed is judged by the policy first, and asks no venue: a policy
+// refusal comes first, as for a trade no venue could quote, and else its check reason ends it.
 async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnapshot> {
   const { host, clock } = run.options;
-  const quotes = await quoteVenues(run.resolved.swap, { host, clock, signal: run.signal });
-  const policy = await checkPolicy(run, proposed, firstQuoteOf(quotes));
+  const placed = await placedTradeOf(run, proposed);
+  const priced: PlacedRun = { ...run, swap: placed.swap };
+  const quotes =
+    placed.refusal === undefined
+      ? await quoteVenues(placed.swap, { host, clock, signal: run.signal })
+      : [];
+  const policy = await checkPolicy(priced, proposed, firstQuoteOf(quotes));
   if (policy.passed === undefined) {
     return policy.snapshot;
   }
-  const quoted = await build(run, policy.snapshot, { quotes, pass: policy.passed });
+  if (placed.refusal !== undefined) {
+    const failed = { type: "quote_failed", reason: placed.refusal } as const;
+    return advance(run, policy.snapshot, { trigger: failed });
+  }
+  const quoted = await build(priced, policy.snapshot, { quotes, pass: policy.passed });
   if (quoted.passed === undefined) {
     return quoted.snapshot;
   }
   // A chosen route whose simulation failed ends with that reason; no risk check weighs it.
   const { simulation, planned } = quoted.passed;
+  const parts = { stored: run.options.stored, machine: run.machine, signal: run.signal };
+  const { risk } = run.options;
+  const riskParts = {
+    ...parts,
+    risk,
+    trade: placed.swap.trade,
+    limits: run.resolved.settings.limits,
+  };
   const assessed = simulation.ok
-    ? await assessRisk(run, quoted.snapshot, planned)
+    ? await assessRisk(riskParts, quoted.snapshot, planned)
     : quoted.snapshot;
   if (simulation.ok && assessed.record.state !== "assessed") {
     return assessed;
   }
-  const simulated = await simulate(run, assessed, simulation);
+  const simulated = await storeSimulation(parts, assessed, simulation);
   if (simulated.record.state !== "simulated") {
     return simulated;
   }

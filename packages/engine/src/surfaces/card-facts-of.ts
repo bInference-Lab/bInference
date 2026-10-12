@@ -16,7 +16,7 @@ import { type RescueQuote, rescueQuoteDocument } from "../intents/rescue-quote.j
 import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
-import { swapSlippageBps } from "../money-path/swap-trade.js";
+import { tradeSlippageBps } from "../money-path/swap-trade.js";
 
 function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
   const chain = chains.get(assetRefParts(asset).chain);
@@ -47,8 +47,11 @@ function routeOf(
         legs: quote.route,
         priceImpactBps: quote.priceImpactBps,
         // The limits in effect when the card version opened, as its trade was quoted under them.
-        maxSlippageBps: swapSlippageBps(
-          request,
+        maxSlippageBps: tradeSlippageBps(
+          {
+            pair: [request.from, request.to],
+            ...(request.maxSlippageBps === undefined ? {} : { asked: request.maxSlippageBps }),
+          },
           limitsRecordAt(source.settings.limits, source.card.openedAtMs),
           source.chains,
         ),

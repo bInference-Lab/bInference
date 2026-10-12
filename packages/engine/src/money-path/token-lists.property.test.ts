@@ -7,7 +7,7 @@ import { testAgent, testAgentDraft, testCoin, testSwap } from "../intents/test-i
 import { testAccount, testChains, testFacts } from "../operations/test-engine.js";
 import { policyRefusals, sellsDeniedToken } from "../policy/policy-rules.js";
 import { policyFactsOf } from "./policy-facts-of.js";
-import { swapSubjectOf, swapTradeOf } from "./swap-trade.js";
+import { swapSubjectOf, swapTradeOf, tradeAskOf } from "./swap-trade.js";
 
 const chains = testChains();
 const live = { signal: new AbortController().signal };
@@ -51,10 +51,12 @@ function judged(
 ) {
   const limits = { ...settings.limits, ...lists };
   const agent = { ...settings, limits };
-  const trade = swapTradeOf(testSwap(swap), { limits, account: testAccount, chains });
-  if (!trade.ok) {
-    throw new Error(`Expected a trade, got ${trade.error}.`);
+  const ask = tradeAskOf(testSwap(swap), { limits, chains });
+  if (!ask.ok) {
+    throw new Error(`Expected a trade, got ${ask.error}.`);
   }
+  const terms = { amountInBase: 1_000_000n, assetOut: ask.value.assetOut ?? testCoin, venues: [] };
+  const trade = swapTradeOf(ask.value, terms, { limits, account: testAccount, chains });
   const facts = policyFactsOf({
     settings: agent,
     wallet: testFacts,
@@ -63,7 +65,7 @@ function judged(
     nativeAsset: testCoin,
     nowMs: 0,
   });
-  const input = { subject: swapSubjectOf(trade.value, status), facts, nowMs: 0 };
+  const input = { subject: swapSubjectOf(trade, status), facts, nowMs: 0 };
   return { refusals: policyRefusals(input), sellsDenied: sellsDeniedToken(input) };
 }
 

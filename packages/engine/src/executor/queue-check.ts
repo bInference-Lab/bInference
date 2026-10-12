@@ -16,6 +16,7 @@ import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
 import type { QueueFacts } from "../intents/intent-trigger.js";
+import { quotedTradeOf } from "../money-path/place-trade.js";
 import { policyFactsOf } from "../money-path/policy-facts-of.js";
 import { type ResolveOptions, resolveProposal } from "../money-path/resolve-proposal.js";
 import { swapSubjectOf } from "../money-path/swap-trade.js";
@@ -54,8 +55,9 @@ interface Rechecked {
 }
 
 // The policy runs again on the request and the confirmed quote, with the facts now of the wallet
-// the intent was stored for, the intent's own outflow left out of the agent's (decision 0136). An
-// auto intent that now sells a denied token fails it: only a tap confirms that (decision 0101).
+// the intent was stored for, the intent's own outflow left out of the agent's (decision 0136): the
+// trade the quote runs, its amount and place included, never a new share or place. An auto intent
+// that now sells a denied token fails it: only a tap confirms that (decision 0101).
 async function recheckPolicy(
   snapshot: IntentSnapshot,
   parts: QueueCheckParts,
@@ -68,8 +70,13 @@ async function recheckPolicy(
   if (!resolved.ok || record.quote === undefined) {
     return { hasPassed: false };
   }
-  const { swap, facts, chain, nativeAsset } = resolved.value;
+  const { ask, facts, chain, nativeAsset, account } = resolved.value;
   const quote = quoteDocument.decode(record.quote);
+  const swap = quotedTradeOf(ask, quote, {
+    limits: settings.limits,
+    account,
+    chains: parts.chains,
+  });
   const nowMs = parts.clock.now();
   const policyFacts = policyFactsOf({
     settings,

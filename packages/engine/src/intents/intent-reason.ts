@@ -42,7 +42,11 @@ export const riskReasons = [
 /** A reason token risk refused an intent. */
 export type RiskReason = (typeof riskReasons)[number];
 
-/** Why a quote, build, decode or simulation failed: the reason stored with `failed_check`. */
+/**
+ * Why a quote, build, decode or simulation failed: the reason stored with `failed_check`.
+ * `nothing_to_sell` is a sale by share of a token the wallet holds none of, or whose share rounds
+ * to nothing.
+ */
 export const checkReasons = [
   "no_route",
   "venue_down",
@@ -50,6 +54,7 @@ export const checkReasons = [
   "simulation_reverted",
   "effects_differ",
   "price_impact",
+  "nothing_to_sell",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */
