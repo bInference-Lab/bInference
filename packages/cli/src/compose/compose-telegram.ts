@@ -7,6 +7,7 @@ import {
   createCardPresses,
   createCardShowings,
   createOwnerCalls,
+  createQuestionPresses,
   type EngineHandlerTable,
   type OwnerStore,
 } from "@binference/engine/surfaces";
@@ -20,12 +21,15 @@ import {
   createNoticeOutbox,
   createTelegramCards,
   createTelegramIngress,
+  createTelegramQuestions,
   type FastCommands,
   type NoticeTopics,
   type OwnerCalls,
   type OwnerUpdateSink,
+  type QuestionAnswers,
   type TelegramCards,
   type TelegramIngress,
+  type TelegramQuestions,
 } from "@binference/telegram";
 import type { Api } from "grammy";
 import {
@@ -82,6 +86,10 @@ export interface ComposedTelegram extends TelegramRelay {
   readonly cards: TelegramCards;
   /** The engine's side of each press: the owner's only, stored before Telegram hears back. */
   readonly answers: CardAnswers;
+  /** The agent's questions with their buttons, whose presses the engine answers. */
+  readonly questions: TelegramQuestions;
+  /** The engine's side of each press of a question's button: the owner's only, stored first. */
+  readonly questionAnswers: QuestionAnswers;
   /** The engine's side of the fast commands: each operation runs for the owner alone. */
   readonly calls: OwnerCalls;
   /** The owner's fast commands; whoever starts the bot registers their menu. */
@@ -111,19 +119,36 @@ function launchTicketsOf(wiring: TelegramWiring) {
     issueLaunchTicket({ access: stores.access, clock, random }, request);
 }
 
-// The line to the owner's chat: the cards, the notices from the outbox and the agent's replies.
+// The line to the owner's chat: the cards, the notices from the outbox, the agent's replies and
+// its questions.
 function relayOf(
   parts: TelegramParts,
   wiring: TelegramWiring,
-  chat: Pick<TelegramRelayContext, "showings" | "cards"> & { readonly display: OwnerDisplay },
+  chat: Pick<TelegramRelayContext, "showings" | "cards"> & {
+    readonly display: OwnerDisplay;
+    readonly questions: TelegramQuestions;
+  },
 ): TelegramRelay {
   const { clock, logger, chains } = wiring;
-  const { showings, cards, display } = chat;
+  const { showings, cards, display, questions } = chat;
   const { notices, agents } = wiring.stores;
   const outbox = createNoticeOutbox({ ...parts, notices, agents, chains, display, clock, logger });
   const replies = createChatReplies({ ...parts, clock, logger, display });
+  const shown = {
+    ...replies,
+    show: async (...args: Parameters<typeof replies.show>) => {
+      await replies.show(...args);
+      await questions.show(...args);
+    },
+  };
   const { stored } = wiring;
-  return createTelegramRelay({ showings, cards, outbox, chat: replies, stored, clock, logger });
+  return createTelegramRelay({ showings, cards, outbox, chat: shown, stored, clock, logger });
+}
+
+// Each agent's name, by its id, as the owner named it.
+function agentNamesOf(wiring: TelegramWiring) {
+  return async (call: Call): Promise<ReadonlyMap<string, string>> =>
+    new Map((await wiring.stores.agents.list(call)).map((agent) => [agent.id, agent.name]));
 }
 
 // The owner's language and timezone as config.json5 holds them now.
@@ -138,6 +163,7 @@ function displayOf(wiring: TelegramWiring): OwnerDisplay {
 // message goes to the agent.
 function ownerUpdateSink(to: {
   readonly commands: FastCommands;
+  readonly questions: TelegramQuestions;
   readonly cards: TelegramCards;
   readonly chat: ChatIntake;
 }): OwnerUpdateSink {
@@ -148,10 +174,63 @@ function ownerUpdateSink(to: {
       }
       return;
     }
-    if (!(await to.commands.press(update, call))) {
+    const taken =
+      (await to.commands.press(update, call)) || (await to.questions.press(update, call));
+    if (!taken) {
       await to.cards.press(update, call);
     }
   };
+}
+
+// The owner's fast commands, which run their operations through `calls`.
+function commandsOf(
+  parts: TelegramParts,
+  wiring: TelegramWiring,
+  given: {
+    readonly calls: OwnerCalls;
+    readonly cards: TelegramCards;
+    readonly showings: Pick<ReturnType<typeof createCardShowings>, "waiting">;
+    readonly display: OwnerDisplay;
+  },
+): FastCommands {
+  const { calls, cards, showings, display } = given;
+  return createFastCommands({
+    api: parts.api,
+    calls,
+    cards,
+    waiting: async (call) => showings.waiting(call),
+    chains: wiring.chains,
+    display,
+    ...(parts.miniAppUrl === undefined ? {} : { miniAppUrl: parts.miniAppUrl }),
+    issueLaunchTicket: launchTicketsOf(wiring),
+    clock: wiring.clock,
+    logger: wiring.logger,
+  });
+}
+
+// The agent's questions in the owner's chat, whose presses the engine answers through `calls`.
+function questionsOf(
+  parts: TelegramParts,
+  wiring: TelegramWiring,
+  given: { readonly calls: OwnerCalls; readonly display: OwnerDisplay },
+) {
+  const { stores, logger } = wiring;
+  const { calls, display } = given;
+  const questionAnswers = createQuestionPresses({
+    questions: stores.questions,
+    calls,
+    ownerId: answersOwner(parts),
+  });
+  const questions = createTelegramQuestions({
+    ...parts,
+    questions: stores.questions,
+    answers: questionAnswers,
+    agentNames: agentNamesOf(wiring),
+    clock: wiring.clock,
+    logger,
+    display,
+  });
+  return { questions, questionAnswers };
 }
 
 /**
@@ -173,19 +252,9 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
   const cards = createTelegramCards({ ...parts, answers, clock: wiring.clock, logger, display });
   const showings = createCardShowings({ ...stores, chains, venues: wiring.venues });
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
-  const commands = createFastCommands({
-    api: parts.api,
-    calls,
-    cards,
-    waiting: async (call) => showings.waiting(call),
-    chains,
-    display,
-    ...(parts.miniAppUrl === undefined ? {} : { miniAppUrl: parts.miniAppUrl }),
-    issueLaunchTicket: launchTicketsOf(wiring),
-    clock: wiring.clock,
-    logger,
-  });
-  const relay = relayOf(parts, wiring, { showings, cards, display });
+  const commands = commandsOf(parts, wiring, { calls, cards, showings, display });
+  const { questions, questionAnswers } = questionsOf(parts, wiring, { calls, display });
+  const relay = relayOf(parts, wiring, { showings, cards, display, questions });
   const chat = createChatIntake({ api: parts.api, calls, clock: wiring.clock, logger, display });
   const ingress = createTelegramIngress({
     api: parts.api,
@@ -193,7 +262,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     clock: wiring.clock,
     logger,
     display,
-    onOwnerUpdate: ownerUpdateSink({ commands, cards, chat }),
+    onOwnerUpdate: ownerUpdateSink({ commands, questions, cards, chat }),
     onOwnerPaired: () => relay.paired(),
     // The replaced owner's sessions end before the bot says a word to anyone.
     onOwnerReplaced: (replaced) => wiring.ownerReplaced(replaced.userId),
@@ -201,6 +270,8 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
   return {
     cards,
     answers,
+    questions,
+    questionAnswers,
     calls,
     commands,
     ingress,

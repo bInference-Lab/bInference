@@ -4,6 +4,8 @@ import type {
   CardStanding,
   OwnerCall,
   OwnerChatOperation,
+  QuestionPress,
+  QuestionStanding,
 } from "@binference/engine/surfaces";
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 
@@ -18,6 +20,20 @@ export interface CardAnswers {
    * once it aborts, and answers nothing.
    */
   answer(press: CardPress, options: { readonly signal: AbortSignal }): Promise<CardStanding>;
+}
+
+/**
+ * Takes the owner's presses of the agent's question buttons from Telegram; the engine owns it. It
+ * finds the question by its button reference, checks that the presser is the owner's numeric
+ * Telegram id, and stores the answer with its message for the agent before it resolves. The first
+ * answer wins, so the agent hears it once (spec 4, section 2).
+ */
+export interface QuestionAnswers {
+  /** Answers a question for a press and says how it stands. Rejects once the signal aborts. */
+  answer(
+    press: QuestionPress,
+    options: { readonly signal: AbortSignal },
+  ): Promise<QuestionStanding>;
 }
 
 /**

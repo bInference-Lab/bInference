@@ -1,0 +1,8 @@
+{
+  "header": "{agent} 想问你",
+  "typeHint": "也可以直接输入你的回答。",
+  "answered": "已回答：{choice}",
+  "answeredTyped": "已在对话中回答",
+  "closed": "已关闭：{reason, select, replaced {{agent} 提出了新问题} cleared {对话已清空} other {已等待 24 小时}}",
+  "closedToast": "此问题已关闭。"
+}

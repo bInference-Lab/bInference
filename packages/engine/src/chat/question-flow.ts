@@ -15,7 +15,7 @@ import { isAnswerable, questionOpenMs, type QuestionRecord } from "./question-re
 const refBytes = 12;
 
 /** A question as `turn/ask` answers it and `chat/question` carries it. */
-function questionViewOf(question: QuestionRecord): QuestionView {
+export function questionViewOf(question: QuestionRecord): QuestionView {
   const { answer, closeReason } = question;
   return {
     question: question.id,

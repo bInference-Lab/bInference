@@ -1,0 +1,8 @@
+{
+  "header": "{agent} asks",
+  "typeHint": "Or write your own answer.",
+  "answered": "Answered: {choice}",
+  "answeredTyped": "Answered in the chat",
+  "closed": "Closed: {reason, select, replaced {{agent} asked a newer question} cleared {the chat was cleared} other {it waited 24 hours}}",
+  "closedToast": "This question is closed."
+}

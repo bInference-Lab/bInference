@@ -41,7 +41,12 @@ export { createPollerLeases } from "./polling/poller-leases.js";
 export type { PollerLease, PollerLeases } from "./polling/poller-leases.js";
 export { runPolling } from "./polling/run-polling.js";
 export type { RunPollingOptions } from "./polling/run-polling.js";
-export type { CardAnswers, OwnerCalls } from "./ports.js";
+export type { CardAnswers, OwnerCalls, QuestionAnswers } from "./ports.js";
+export { createTelegramQuestions } from "./questions/create-telegram-questions.js";
+export type {
+  TelegramQuestions,
+  TelegramQuestionsOptions,
+} from "./questions/create-telegram-questions.js";
 export type { BotThrottlerOptions } from "./throttle/create-bot-throttler.js";
 export { createBotThrottlers } from "./throttle/create-bot-throttlers.js";
 export type { BotThrottlers } from "./throttle/create-bot-throttlers.js";
