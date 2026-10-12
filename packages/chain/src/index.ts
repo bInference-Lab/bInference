@@ -149,6 +149,8 @@ export type { BlockRef, ChainHead, TxReceipt, TxReceiptWire } from "./sending/tx
 export type { TxSimulator } from "./simulation/ports.js";
 export type { SimulationOptions } from "./simulation/simulation-options.js";
 export type { AssetApproval, AssetTransfer, SimulatedStep } from "./simulation/simulated-step.js";
+export { candleIntervals } from "./market/market-candle.js";
+export type { CandleInterval, CandleRequest, MarketCandle } from "./market/market-candle.js";
 export type { MarketPool, TrendingToken } from "./market/market-pool.js";
 export type { MarketDataSource } from "./market/ports.js";
 export type { TokenRiskSource } from "./risk/ports.js";

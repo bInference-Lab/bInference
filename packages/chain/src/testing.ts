@@ -72,6 +72,8 @@ export type {
   MarketDataSourceHarness,
   MarketDataSourceSubject,
 } from "./contracts/market-data-source-contract.js";
+export { marketCandlesContract } from "./contracts/market-candles-contract.js";
+export { marketPricesContract } from "./contracts/market-prices-contract.js";
 export { createFakeMarketSource } from "./fakes/fake-market-source.js";
 export type { FakeMarketSource, FakeMarketSourceOptions } from "./fakes/fake-market-source.js";
 export { tokenRiskSourceContract } from "./contracts/token-risk-source-contract.js";

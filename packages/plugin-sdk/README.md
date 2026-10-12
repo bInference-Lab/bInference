@@ -24,12 +24,14 @@ rejects when its service is down. It decides nothing; the engine's risk step doe
 
 A data plugin defines itself with `defineData`: a `MarketDataSource` that reads a token's pools
 (`MarketPool`) and a chain's trending tokens (`TrendingToken`), `not_covered` for a chain it does
-not serve, and rejects when its service is down. Its figures inform the owner and the agent and
-never price a trade. `@binference/plugin-sdk/data` gives it what every data service's client
+not serve, and rejects when its service is down. A source whose service publishes them also reads a
+token's candles (`candles`, `MarketCandle` per `CandleRequest`) and the prices the price watcher
+cross-checks (`prices`); one without them is never asked. Its figures inform the owner and the agent
+and never price a trade. `@binference/plugin-sdk/data` gives it what every data service's client
 needs: `parseJsonText` keeps each number as the text the answer wrote, `ratioOf`, `usdMicrosOf`,
 `changeBpsOf` and `wholeOf` read those texts exactly, and `createPacedReader` sends each documented
-read under the service's published limits, waits out a 429 once and turns every other answer into
-a typed fault.
+read under the service's published limits, waits out a 429 once and turns every other answer into a
+typed fault.
 
 A skills plugin ships `SKILL.md` files. `lintSkill` reads one and names each sentence that tells
 the agent to ask for or collect a secret: a seed or recovery phrase, a private key, an API
@@ -39,25 +41,26 @@ finding, so a skill's author runs it before publishing.
 
 ## API
 
-| Export                                                          | What it does                                                                             |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `defineVenue`                                                   | Checks a venue's declaration and returns the frozen venue                                |
-| `defineLaunchpad`, `LaunchpadVenue`, `CurveReader`              | A venue that also says which tokens are on its bonding curve                             |
-| `CurveRequest`, `CurveHolding`                                  | What the host asks a launchpad, and where it holds the token                             |
-| `Venue`, `VenueDeclaration`, `VenueContracts`, `VenueCall`      | A venue: its contracts, calls and spenders per chain, and its parts                      |
-| `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`   | What the host asks and what the venue answers                                            |
-| `TxDraft`                                                       | A transaction before the wallet queue adds its nonce and fees                            |
-| `ok`, `err`, `Result`, `BinferenceError`, `isBps`, `bpsSchema`  | What a venue needs to answer                                                             |
-| `Http`, `HttpRequest`, `HttpResponse`                           | The port a venue reaches its API through                                                 |
-| `chainRefSchema`, `accountRefSchema`, `assetRefSchema`          | CAIP ids, parsed; `accountRefParts`, `assetRefParts` split them                          |
-| `@binference/plugin-sdk/evm`                                    | `encodeEvmDraft`, `decodeEvmDraft`, `decodeCall`, `callAbiJson`                          |
-| `RpcFailover`, `RpcCall`, `RpcReply` (from `/evm`)              | The port a venue reads its contracts through, by `eth_call`                              |
-| `TokenRiskSource`, `TokenRiskReport`, `RiskFlagCode`            | A risk data source and what it reports about a token                                     |
-| `orderedFlags`                                                  | A report's findings in their fixed order, each once                                      |
-| `defineData`, `MarketDataSource`, `MarketPool`, `TrendingToken` | A market data source, checked and frozen, and what it reads                              |
-| `@binference/plugin-sdk/data`                                   | `createPacedReader`, `pathSegment`, `parseJsonText` and the exact figure readers         |
-| `lintSkill`, `SkillFinding`                                     | The sentences of a skill that ask for a secret, each with its line                       |
-| `@binference/plugin-sdk/testing`                                | The venue, curve, risk and market data contract suites, scripted HTTP and a manual clock |
+| Export                                                               | What it does                                                                             |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `defineVenue`                                                        | Checks a venue's declaration and returns the frozen venue                                |
+| `defineLaunchpad`, `LaunchpadVenue`, `CurveReader`                   | A venue that also says which tokens are on its bonding curve                             |
+| `CurveRequest`, `CurveHolding`                                       | What the host asks a launchpad, and where it holds the token                             |
+| `Venue`, `VenueDeclaration`, `VenueContracts`, `VenueCall`           | A venue: its contracts, calls and spenders per chain, and its parts                      |
+| `QuoteRequest`, `VenueQuote`, `BuildRequest`, `DecodedEffect`        | What the host asks and what the venue answers                                            |
+| `TxDraft`                                                            | A transaction before the wallet queue adds its nonce and fees                            |
+| `ok`, `err`, `Result`, `BinferenceError`, `isBps`, `bpsSchema`       | What a venue needs to answer                                                             |
+| `Http`, `HttpRequest`, `HttpResponse`                                | The port a venue reaches its API through                                                 |
+| `chainRefSchema`, `accountRefSchema`, `assetRefSchema`               | CAIP ids, parsed; `accountRefParts`, `assetRefParts` split them                          |
+| `@binference/plugin-sdk/evm`                                         | `encodeEvmDraft`, `decodeEvmDraft`, `decodeCall`, `callAbiJson`                          |
+| `RpcFailover`, `RpcCall`, `RpcReply` (from `/evm`)                   | The port a venue reads its contracts through, by `eth_call`                              |
+| `TokenRiskSource`, `TokenRiskReport`, `RiskFlagCode`                 | A risk data source and what it reports about a token                                     |
+| `orderedFlags`                                                       | A report's findings in their fixed order, each once                                      |
+| `defineData`, `MarketDataSource`, `MarketPool`, `TrendingToken`      | A market data source, checked and frozen, and what it reads                              |
+| `MarketCandle`, `CandleRequest`, `CandleInterval`, `candleIntervals` | A candle in USD, which candles a chart asks for, and the intervals                       |
+| `@binference/plugin-sdk/data`                                        | `createPacedReader`, `pathSegment`, `parseJsonText` and the exact figure readers         |
+| `lintSkill`, `SkillFinding`                                          | The sentences of a skill that ask for a secret, each with its line                       |
+| `@binference/plugin-sdk/testing`                                     | The venue, curve, risk and market data contract suites, scripted HTTP and a manual clock |
 
 ## Example
 

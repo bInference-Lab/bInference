@@ -1,6 +1,8 @@
 export {
   curveReaderContract,
+  marketCandlesContract,
   marketDataSourceContract,
+  marketPricesContract,
   quoterContract,
   tokenRiskSourceContract,
   txBuilderContract,
