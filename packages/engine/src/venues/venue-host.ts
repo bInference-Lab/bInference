@@ -25,6 +25,7 @@ import {
 } from "./build-checks.js";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { type HostedVenue, hostVenues } from "./hosted-venue.js";
+import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
 import { readSteps } from "./read-steps.js";
 
 /** A resolved trade the host quotes and builds on one venue. */
@@ -95,6 +96,19 @@ export interface VenueHost {
   build(quoted: TradeQuote, options: { readonly signal: AbortSignal }): Promise<VenueOutcome>;
   /** Quotes a trade, then builds it: `quote` and `build` in one call, with their answers. */
   plan(trade: VenueTrade, options: { readonly signal: AbortSignal }): Promise<VenueOutcome>;
+  /**
+   * Asks every launchpad on the token's chain, all at once, whether the token is on its curve
+   * now, and answers those that hold it, each with the asset its curve trades the token against
+   * (spec 6, section 5). A launchpad that throws, times out or answers outside its types makes the
+   * whole answer `venue_down`, since a token on a curve must never go to the pools. Rejects with
+   * the signal's reason once it aborts.
+   */
+  curves(
+    token: AssetRef,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<readonly CurveClaim[], "venue_down">>;
+  /** Whether the venue is a launchpad the host holds: one that reads its curve. */
+  isLaunchpad(venue: string): boolean;
 }
 
 /** What the host is made from. */
@@ -266,6 +280,14 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
     async plan(trade, call) {
       const quoted = await host.quote(trade, call);
       return quoted.ok ? await host.build(quoted.value, call) : quoted;
+    },
+    async curves(token, { signal }) {
+      signal.throwIfAborted();
+      return readCurves(token, venues, callOf(signal));
+    },
+    isLaunchpad(venue) {
+      const hosted = venues.get(venue);
+      return hosted !== undefined && isLaunchpad(hosted.venue);
     },
   };
   return host;
