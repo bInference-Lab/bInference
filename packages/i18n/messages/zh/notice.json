@@ -41,6 +41,7 @@
   "plainSecret": "⚠️ 配置文件中有明文密钥。请运行 `binference check --fix`。",
   "budget": "{agent} 已用完今日模型预算（{budget}）。对话将于 {when} 恢复；自动订单继续运行。",
   "loop": "{agent} 重复执行同一步骤，已停止",
+  "watcherLag": "⚠️ {chain} 的价格读取落后链上 {blocks} 个区块，自动订单可能延迟成交。请在 config.json5 的 `chains.rpc` 中添加付费 RPC，或检查本机网络。",
   "resumed": "引擎停止了 {duration}：已检查 {checked, plural, other {# 个订单}}，成交 {filled} 个，跳过 {skipped} 个",
   "update": "binference {version} 已发布：{summary}。请运行 `binference update`。",
   "updateBare": "binference {version} 已发布。请运行 `binference update`。",

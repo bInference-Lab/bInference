@@ -41,6 +41,7 @@
   "plainSecret": "⚠️ A secret is written as plain text in config. Run `binference check --fix`.",
   "budget": "{agent} used today's model budget ({budget}). Chat resumes {when}; orders keep running.",
   "loop": "{agent} repeated the same step and was stopped",
+  "watcherLag": "⚠️ Prices on {chain} are read {blocks} blocks behind the chain, so auto orders may fill late. Add a paid RPC under `chains.rpc` in config.json5, or check this machine's network.",
   "resumed": "Engine was off {duration}: {checked, plural, one {# order} other {# orders}} checked, {filled} filled, {skipped} skipped",
   "update": "binference {version} is out: {summary}. Run `binference update`.",
   "updateBare": "binference {version} is out. Run `binference update`.",

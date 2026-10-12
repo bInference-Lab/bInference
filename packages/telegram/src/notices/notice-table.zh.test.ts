@@ -36,6 +36,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.budget":
     "main 已用完今日模型预算（$3.00）。对话将于 2026年10月11日 09:30:00 恢复；自动订单继续运行。",
   "notice.loop": "main 重复执行同一步骤，已停止",
+  "notice.watcherLag": `${warning} BNB Smart Chain 的价格读取落后链上 14 个区块，自动订单可能延迟成交。请在 config.json5 的 \`chains.rpc\` 中添加付费 RPC，或检查本机网络。`,
   "notice.resumed": "引擎停止了 2 h：已检查 3 个订单，成交 1 个，跳过 2 个",
   "notice.update":
     "binference 2027.1.0 已发布：Stop-loss orders fill faster。请运行 `binference update`。",

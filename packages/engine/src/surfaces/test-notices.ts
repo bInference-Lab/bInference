@@ -127,6 +127,10 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
     times: at,
   },
   "notice.loop": { key: "notice.loop", agent: testAgent, values: agent },
+  "notice.watcherLag": {
+    key: "notice.watcherLag",
+    values: { chain: "BNB Smart Chain", blocks: "14" },
+  },
   "notice.resumed": {
     key: "notice.resumed",
     values: { duration: "2 h", checked: "3", filled: "1", skipped: "2" },

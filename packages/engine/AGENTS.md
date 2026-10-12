@@ -35,6 +35,10 @@ Rules for this package:
   `BuildMismatch` code, a case in `build-checks.test.ts` and a property case. A venue's price
   read reaches the watchers only through the host's copy, whose pricing step can neither throw nor
   answer a price at or below zero (decision 0192).
+- The watchers' judgments are pure and live in `src/market/`: `watcher-lag.ts` turns a lag in
+  blocks into the `watcher` signal and `notice.watcherLag`, and `price-cross-check.ts` compares the
+  watchers' prices with the data sources' on their schedules (decision 0193). They decide nothing
+  about a fill.
 - Ports live in `src/ports.ts`, and custody's ceiling editor and wallet maker in
   `src/install/ports.ts`; their contract suites and fakes ship from `src/testing.ts`
   (`@binference/engine/testing`), which only tests import.
