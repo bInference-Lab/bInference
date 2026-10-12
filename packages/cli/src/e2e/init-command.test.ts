@@ -13,7 +13,13 @@ import {
   readCeiling,
   registryCeilingChain,
 } from "@binference/custody-privy";
-import { createFileSecretStore, createPlatform } from "@binference/platform";
+import { createFormatter } from "@binference/i18n";
+import {
+  createFileSecretStore,
+  createPlatform,
+  listFolderFiles,
+  readTextFile,
+} from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
 import { openAgentKey } from "@binference/signer";
 import { fakeBotToken, fakeBotUsername } from "@binference/telegram/testing";
@@ -206,6 +212,19 @@ describe("binference init with no person at the terminal", () => {
       },
     ]);
     expect(agents).toMatchObject([{ name: "main", mode: "paper" }]);
+    const workspace = join(machine.folder, "workspace");
+    const made = ["FIRST-CHAT.md", "NOTES.md", "OWNER.md", "PERSONA.md", "RULES.md", "STRATEGY.md"];
+    const signal = new AbortController().signal;
+    expect((await listFolderFiles(workspace, signal)).toSorted()).toStrictEqual(
+      agents.flatMap((agent) => made.map((file) => `${agent.id}/${file}`)),
+    );
+    const rules = await Promise.all(
+      agents.map(async (agent) => readTextFile(join(workspace, agent.id, "RULES.md"), signal)),
+    );
+    const expected = createFormatter({ locale: "en", timeZone: "UTC" }).message("workspace.rules", {
+      agent: "main",
+    });
+    expect(rules).toStrictEqual([{ ok: true, value: expected }]);
   });
 });
 

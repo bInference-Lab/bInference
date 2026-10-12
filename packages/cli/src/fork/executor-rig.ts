@@ -27,6 +27,7 @@ import {
 } from "@binference/core";
 import {
   createMemoryLogger,
+  createMemoryWorkspaceFiles,
   createSeededRandom,
   type MemoryLogger,
 } from "@binference/core/testing";
@@ -231,6 +232,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
     isLocked: () => false,
     canPrice: async () => await Promise.resolve(true),
     readTokenFacts: forkTokenFacts(fork),
+    workspace: createMemoryWorkspaceFiles(clock),
     paperBalances: [],
     random: createSeededRandom(44),
     publish: () => undefined,

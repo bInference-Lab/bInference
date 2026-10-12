@@ -183,7 +183,10 @@ async function make(
   const { answers, owner, built } = prepared;
   const venues = enabledVenues(built.config, coreVenues(context.host.http, built.config.venues));
   const draft = venues.ok ? agentDraftOf(context, built.config, venues.value) : venues;
-  const agent = draft.ok ? await ensureFirstAgent(context, stores, draft.value) : draft;
+  const timeZone = built.config.owner.timezone;
+  const agent = draft.ok
+    ? await ensureFirstAgent(context, stores, { draft: draft.value, timeZone })
+    : draft;
   if (!agent.ok) {
     return agent;
   }

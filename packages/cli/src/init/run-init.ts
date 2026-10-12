@@ -213,7 +213,9 @@ export async function runInit(
   if (!prepared.ok) {
     return prepared;
   }
-  const agent = await ensureFirstAgent(context, stores, prepared.value.agentDraft);
+  const timeZone = prepared.value.built.config.owner.timezone;
+  const first = { draft: prepared.value.agentDraft, timeZone };
+  const agent = await ensureFirstAgent(context, stores, first);
   if (!agent.ok) {
     return agent;
   }

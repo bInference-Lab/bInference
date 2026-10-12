@@ -3,7 +3,7 @@ import { createEvmTxSimulator, erc20AssetRef, evmAccountRef } from "@binference/
 import { type Fork, withFork } from "@binference/chain-evm/fork";
 import { createFakeRiskSource } from "@binference/chain/testing";
 import { createIdSource, type Id, idSchema } from "@binference/core";
-import { createSeededRandom } from "@binference/core/testing";
+import { createMemoryWorkspaceFiles, createSeededRandom } from "@binference/core/testing";
 import {
   createEngine,
   createVenueHost,
@@ -153,6 +153,7 @@ function engineOf(
     isLocked: () => false,
     canPrice: async () => await Promise.resolve(true),
     readTokenFacts: forkTokenFacts(fork),
+    workspace: createMemoryWorkspaceFiles(clock),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(52) }),

@@ -23,6 +23,7 @@ import { BinferenceError, idSchema, ok } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
+  createMemoryWorkspaceFiles,
   createScriptedHttp,
   createSeededRandom,
   type ManualClock,
@@ -237,6 +238,8 @@ export interface SkeletonOptions {
   readonly turns?: ComposeEngineOptions["turns"];
   /** What tokens the registry does not list answer on chain; `UNL`, 18 decimals when left out. */
   readonly tokenFacts?: ComposeEngineOptions["readTokenFacts"];
+  /** The agents' workspace files; in memory when left out. */
+  readonly workspace?: ComposeEngineOptions["workspace"];
 }
 
 // The owner's bot and the handlers it alone runs, the HTTP listener with the console's files,
@@ -313,6 +316,7 @@ export async function composeSkeleton(
     positions,
     canPrice: async () => await Promise.resolve(true),
     readTokenFacts: options.tokenFacts ?? createFakeTokenFacts().read,
+    workspace: options.workspace ?? createMemoryWorkspaceFiles(clock),
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),

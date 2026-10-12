@@ -1,5 +1,5 @@
 import type { Amount, ChainRegistry, PriceSource, Signer, TxSimulator } from "@binference/chain";
-import type { Clock, IdSource, Random } from "@binference/core";
+import type { Clock, IdSource, Random, WorkspaceFiles } from "@binference/core";
 import {
   type AddressBookHandlers,
   createAddressBookHandlers,
@@ -190,6 +190,8 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts {
   readonly canPrice: CanPrice;
   /** What a token the registry does not list answers on chain, for its cards (decision 0199). */
   readonly readTokenFacts: OrderParts["readTokenFacts"];
+  /** Each agent's workspace files, which `agent/readFile` and `agent/writeFile` serve. */
+  readonly workspace: WorkspaceFiles;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly ids: IdSource;

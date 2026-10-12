@@ -1,7 +1,13 @@
 import { createIdSource, type Id, jsonValueSchema, ok } from "@binference/core";
 import type { AccessStore, AgentDraft, AgentStore } from "@binference/engine";
-import type { InstallSetup, InstallStore, WalletDraft } from "@binference/engine/install";
+import {
+  type InstallSetup,
+  type InstallStore,
+  makeAgentWorkspace,
+  type WalletDraft,
+} from "@binference/engine/install";
 import { issueStartCode, type StartCode } from "@binference/telegram";
+import { stateWorkspace } from "../compose/state-workspace.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import type { RescueAddress } from "./rescue-step.js";
 import type { FirstWallet } from "./wallet-step.js";
@@ -31,24 +37,40 @@ export interface InstallRecord {
 /** The first wallet's label in the engine's records. */
 const walletLabel = "main";
 
+/** The first agent to make when the install has none, and the owner's timezone its files name. */
+export interface FirstAgent {
+  readonly draft: AgentDraft;
+  readonly timeZone: string;
+}
+
+// The agent's workspace files from their templates, in the state folder; a file there is kept.
+async function makeWorkspace(context: InitContext, first: FirstAgent): Promise<void> {
+  const { id, name, locale } = first.draft;
+  const workspace = { agent: id, name, locale, timeZone: first.timeZone };
+  await makeAgentWorkspace(stateWorkspace(context.platform), workspace, context.signal);
+}
+
 /**
- * The install's first active agent, or the drafted one made when the install has none, so a run
- * that stopped after making the agent finds it again.
+ * The install's first active agent, or the drafted one made when the install has none, with its
+ * workspace files made from their templates in the owner's language, so a run that stopped after
+ * making the agent finds it again.
  */
 export async function ensureFirstAgent(
   context: InitContext,
   stores: InitStores,
-  draft: AgentDraft,
+  first: FirstAgent,
 ): Promise<InitStep<Id<"agt">>> {
   const call = { signal: context.signal };
   const active = (await stores.agents.list(call)).find((agent) => agent.archivedAtMs === undefined);
   if (active !== undefined) {
     return ok(active.id);
   }
-  const created = await stores.agents.create(draft, call);
-  return created.ok
-    ? ok(created.value.agent.id)
-    : refused("init.agent_name_taken", "refused.agentNameTaken", { name: draft.name });
+  const created = await stores.agents.create(first.draft, call);
+  if (!created.ok) {
+    return refused("init.agent_name_taken", "refused.agentNameTaken", { name: first.draft.name });
+  }
+  await makeWorkspace(context, first);
+  return ok(created.value.agent.id);
 }
 
 /** A wallet Privy holds, as the install store keeps it under an agent. */

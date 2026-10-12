@@ -17,6 +17,7 @@ import enReceipt from "../messages/en/receipt.json" with { type: "json" };
 import enTelegram from "../messages/en/telegram.json" with { type: "json" };
 import enTurn from "../messages/en/turn.json" with { type: "json" };
 import enWebPush from "../messages/en/webPush.json" with { type: "json" };
+import enWorkspace from "../messages/en/workspace.json" with { type: "json" };
 import zhAlert from "../messages/zh/alert.json" with { type: "json" };
 import zhAutoAsks from "../messages/zh/autoAsks.json" with { type: "json" };
 import zhCard from "../messages/zh/card.json" with { type: "json" };
@@ -36,6 +37,7 @@ import zhReceipt from "../messages/zh/receipt.json" with { type: "json" };
 import zhTelegram from "../messages/zh/telegram.json" with { type: "json" };
 import zhTurn from "../messages/zh/turn.json" with { type: "json" };
 import zhWebPush from "../messages/zh/webPush.json" with { type: "json" };
+import zhWorkspace from "../messages/zh/workspace.json" with { type: "json" };
 import type { MessageLocale } from "./locales.js";
 
 /** One language's messages: full keys such as `error.engine.locked`, mapped to ICU texts. */
@@ -76,6 +78,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("limit", enLimit),
     ...inArea("console", enConsole),
     ...inArea("webPush", enWebPush),
+    ...inArea("workspace", enWorkspace),
   },
   zh: {
     ...inArea("error", zhError),
@@ -97,5 +100,6 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("limit", zhLimit),
     ...inArea("console", zhConsole),
     ...inArea("webPush", zhWebPush),
+    ...inArea("workspace", zhWorkspace),
   },
 };

@@ -8,8 +8,8 @@ The agent runtime is the process that runs each agent's model loop: sessions, co
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
 client of the engine like any other, with the scopes `read`, `propose` and `agent`
 ([spec 1, section 4.1](protocol.md#section-4-1)). It holds no key, confirms nothing and writes no
-money state. It owns `agent.sqlite` ([spec 3, section 3](database.md#section-3)) and each agent's
-workspace files.
+money state. It owns `agent.sqlite` ([spec 3, section 3](database.md#section-3)), and reads each
+agent's workspace files from the engine with `agent/readFile` ([decision 0200](../DECISIONS.md#d0200)).
 
 <a id="section-1"></a>
 

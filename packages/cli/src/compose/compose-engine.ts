@@ -101,6 +101,8 @@ export interface ComposeEngineOptions {
   readonly canPrice: EngineOptions["canPrice"];
   /** Reads what a token the registry does not list answers on chain, for its cards. */
   readonly readTokenFacts: EngineOptions["readTokenFacts"];
+  /** Each agent's workspace files. */
+  readonly workspace: EngineOptions["workspace"];
   /** Handlers of operations the composition root answers, such as `engine/status`. */
   readonly handlers?: EngineHandlerTable;
   /**
@@ -294,6 +296,7 @@ function engineOf(
     isLocked: options.isLocked ?? (() => false),
     canPrice: options.canPrice,
     readTokenFacts: options.readTokenFacts,
+    workspace: options.workspace,
     chains: options.chains,
     clock: options.clock,
     ids: given.ids,

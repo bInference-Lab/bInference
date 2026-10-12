@@ -10,7 +10,11 @@ import {
 } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
 import { createIdSource, err, type Id, idSchema } from "@binference/core";
-import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
+import {
+  createMemoryLogger,
+  createMemoryWorkspaceFiles,
+  createSeededRandom,
+} from "@binference/core/testing";
 import {
   createEngine,
   createVenueHost,
@@ -268,6 +272,7 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     isLocked: () => false,
     canPrice: async () => await Promise.resolve(true),
     readTokenFacts: forkTokenFacts(fork),
+    workspace: createMemoryWorkspaceFiles(clock),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(62) }),

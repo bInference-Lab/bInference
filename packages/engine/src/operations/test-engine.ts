@@ -21,7 +21,12 @@ import {
   type FakeSigner,
 } from "@binference/chain/testing";
 import { createIdSource, type Id, idSchema } from "@binference/core";
-import { createManualClock, createSeededRandom, type ManualClock } from "@binference/core/testing";
+import {
+  createManualClock,
+  createMemoryWorkspaceFiles,
+  createSeededRandom,
+  type ManualClock,
+} from "@binference/core/testing";
 import type { AgentDraft, AgentRecord } from "../agents/agent-record.js";
 import { createRunningTurns, type RunningTurns } from "../chat/running-turns.js";
 import { createFakeCeilingEditor, type FakeCeilingEditor } from "../fakes/fake-ceiling-editor.js";
@@ -339,6 +344,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     ...stepsOf(options, { chains, clock }),
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
+    workspace: createMemoryWorkspaceFiles(clock),
     isLocked: options.isLocked ?? (() => false),
     liveOrderFills: options.liveOrderFills === true,
     chains,

@@ -4,6 +4,7 @@ import { createFakeRiskSource } from "@binference/chain/testing";
 import { BinferenceError, type Clock, idSchema, type Id } from "@binference/core";
 import {
   createMemoryLogger,
+  createMemoryWorkspaceFiles,
   createSeededRandom,
   type MemoryLogger,
 } from "@binference/core/testing";
@@ -153,6 +154,7 @@ export async function startOrdersMachine(
     owner: () => ({ locale: "en", timezone: "UTC" }),
     canPrice: async () => await Promise.resolve(true),
     readTokenFacts: forkTokenFacts(fork),
+    workspace: createMemoryWorkspaceFiles(clock),
     handlers: readyEngineOperations(parts.stores.agents),
     turns,
     telegram,

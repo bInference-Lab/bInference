@@ -34,6 +34,7 @@ import { paperBalancesOf } from "./paper-balances.js";
 import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
+import { stateWorkspace } from "./state-workspace.js";
 import { chainTokenFacts } from "./token-facts.js";
 
 /** The self-hosted engine, built and not yet listening. */
@@ -280,6 +281,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       isLocked: () => locked.lock.isLocked(),
       canPrice: wiring.priceWatchers.canPrice,
       readTokenFacts: chainTokenFacts(parts.reads),
+      workspace: stateWorkspace(opening.platform),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
       ...(opened.webPushKey === undefined
         ? {}

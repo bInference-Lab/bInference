@@ -56,3 +56,4 @@ export type { RevokeRefusal, SignerRevocation } from "./install/signer-revocatio
 export type { ExportRefusal, ExportRequest, SealedKey } from "./install/wallet-export.js";
 export type { MadeWallet, WalletRefusal, WalletRequest } from "./install/wallet-request.js";
 export { privyUnreachableNotice } from "./pushes/locked-notice.js";
+export { makeAgentWorkspace, type NewWorkspace } from "./workspace/agent-workspace.js";

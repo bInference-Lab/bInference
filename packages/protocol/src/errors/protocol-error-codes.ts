@@ -31,6 +31,7 @@ export const protocolErrorCodes = [
   "agent.paper_only",
   "agent.disclaimer",
   "agent.budget",
+  "agent.file_missing",
   "market.no_data",
   "market.source_down",
   "market.no_launch_feed",

@@ -10,7 +10,11 @@ import { type AgentView, agentViewSchema } from "../views/agent-view.schema.js";
 import { type IntentView, intentViewSchema } from "../views/intent-view.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
-const workspaceFiles = [
+/**
+ * An agent's workspace files, in the order a turn's context reads them (runtime spec, section 7.1).
+ * `FIRST-CHAT.md` exists only until the first chat ends.
+ */
+export const workspaceFiles = [
   "RULES.md",
   "PERSONA.md",
   "OWNER.md",
@@ -20,7 +24,7 @@ const workspaceFiles = [
 ] as const;
 
 /** One of an agent's workspace files. */
-type WorkspaceFile = (typeof workspaceFiles)[number];
+export type WorkspaceFile = (typeof workspaceFiles)[number];
 
 /** The args of `agent/readFile`. */
 interface FileArgs extends AgentArgs {

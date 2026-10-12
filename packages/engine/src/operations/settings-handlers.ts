@@ -3,20 +3,28 @@ import {
   type NoticeSettingsHandlers,
 } from "../notices/notice-settings-handlers.js";
 import type { PaperParts } from "../paper/paper-parts.js";
+import {
+  createWorkspaceHandlers,
+  type WorkspaceHandlers,
+} from "../workspace/workspace-handlers.js";
 import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
 import { type CeilingHandlers, createCeilingHandlers } from "./ceiling-handlers.js";
 import type { EngineOptions } from "./create-engine.js";
 import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
 import { createWalletHandlers, type WalletHandlers } from "./wallet-handlers.js";
 
-/** The handlers of an agent's settings: its portfolio, mode, wallets, ceilings and notices. */
+/**
+ * The handlers of an agent's settings: its portfolio, mode, wallets, ceilings, notices and
+ * workspace files.
+ */
 export interface SettingsHandlers
   extends
     PortfolioHandlers,
     AgentModeHandlers,
     WalletHandlers,
     CeilingHandlers,
-    NoticeSettingsHandlers {}
+    NoticeSettingsHandlers,
+    WorkspaceHandlers {}
 
 // The notice settings handlers, which read and journal through the agents and the journal.
 function noticeSettingsOf(options: EngineOptions): NoticeSettingsHandlers {
@@ -29,9 +37,24 @@ function noticeSettingsOf(options: EngineOptions): NoticeSettingsHandlers {
   });
 }
 
+// The ceiling handlers, which change custody's ceilings and journal each change.
+function ceilingsOf(options: EngineOptions): CeilingHandlers {
+  const { stores, chains } = options;
+  return createCeilingHandlers({
+    agents: stores.agents,
+    install: stores.install,
+    ceilings: options.ceilings,
+    journal: stores.configJournal,
+    chains,
+    clock: options.clock,
+    publish: options.publish,
+  });
+}
+
 /**
  * Creates the settings handlers on the engine's options and its paper parts: the portfolio, the
- * agent's mode, its wallets and ceilings, and its notice settings (decision 0185).
+ * agent's mode, its wallets and ceilings, its notice settings (decision 0185) and its workspace
+ * files.
  */
 export function settingsHandlers(options: EngineOptions, paper: PaperParts): SettingsHandlers {
   const { stores, chains } = options;
@@ -69,14 +92,17 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     ids: options.ids,
     publish: options.publish,
   });
-  const ceilings = createCeilingHandlers({
+  const ceilings = ceilingsOf(options);
+  const workspace = createWorkspaceHandlers({
     agents: stores.agents,
-    install: stores.install,
-    ceilings: options.ceilings,
-    journal: stores.configJournal,
-    chains,
-    clock: options.clock,
-    publish: options.publish,
+    workspace: options.workspace,
   });
-  return { ...portfolio, ...modes, ...wallets, ...ceilings, ...noticeSettingsOf(options) };
+  return {
+    ...portfolio,
+    ...modes,
+    ...wallets,
+    ...ceilings,
+    ...noticeSettingsOf(options),
+    ...workspace,
+  };
 }
