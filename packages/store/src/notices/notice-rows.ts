@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { AmountWire } from "@binference/chain";
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, jsonValueSchema } from "@binference/core";
 import {
   type NoticeDelivery,
   noticeDeliverySchema,
@@ -33,11 +33,11 @@ export function noticeIdOf(row: { readonly payload: string }): string {
 }
 
 /**
- * A notice's message arguments as its `values` column keeps them: the plain values, the times and
- * the amounts, each amount's base units as decimal text.
+ * A notice's message arguments as its `values` column keeps them: the plain values, the times, the
+ * amounts with each one's base units as decimal text, the parts, and the messages that follow it.
  */
 export function argumentsText(record: NoticeRecord): string {
-  const { values, times, amounts } = z.encode(noticeSchema, record.notice);
+  const { values, times, amounts, parts, after } = z.encode(noticeSchema, record.notice);
   const amountTexts = Object.entries(amounts ?? {}).map(
     ([name, { asset, base }]: readonly [string, AmountWire]) => [name, { asset, base }] as const,
   );
@@ -45,6 +45,8 @@ export function argumentsText(record: NoticeRecord): string {
     values,
     ...(times === undefined ? {} : { times }),
     ...(amounts === undefined ? {} : { amounts: Object.fromEntries(amountTexts) }),
+    ...(parts === undefined ? {} : { parts: jsonValueSchema.parse(parts) }),
+    ...(after === undefined ? {} : { after: jsonValueSchema.parse(after) }),
   });
 }
 

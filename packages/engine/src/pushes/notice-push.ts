@@ -1,20 +1,16 @@
 import { type Amount, type AmountWire, amountSchema } from "@binference/chain";
-import { type Id, idSchema } from "@binference/core";
+import { type Id, idSchema, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 import type { EnginePush } from "./engine-push.js";
 
 /**
- * One owner notice (ARCHITECTURE.md section 27) as the `notice/new` push carries it: the message
- * key, the agent it is about, and the message's arguments that are plain text or the value of an
- * ICU `select`. A notice about the whole install, such as the locked engine, names no agent. A
- * notice about an intent, such as a receipt, names the intent instead of carrying amounts: the
- * surface draws those from the stored intent, as it draws a card.
+ * A message a notice's message takes as an argument, such as the fill's `{result}` from `fill.*`
+ * or the order's `{orderKind}` (spec 4, section 4.3): its key and its own arguments, written in the
+ * owner's language when the notice is. A part may take parts of its own, two levels at most.
  */
-export interface Notice {
+export interface NoticePart {
   readonly key: string;
-  readonly agent?: Id<"agt">;
-  readonly intent?: Id<"int">;
   readonly values: Readonly<Record<string, string>>;
   /**
    * The message's arguments that are moments, in epoch milliseconds. A surface formats each with
@@ -26,29 +22,78 @@ export interface Notice {
    * decimal text; a surface formats each with the formatter's `tokenAmount` and the asset's symbol.
    */
   readonly amounts?: Readonly<Record<string, Amount>>;
+  /** The message's arguments that are messages themselves, each written before the message. */
+  readonly parts?: Readonly<Record<string, NoticePart>>;
 }
 
-/** A notice as the `notice/new` push carries it as JSON: each amount's base units as decimal text. */
-export interface NoticeWire {
+/**
+ * One owner notice (ARCHITECTURE.md section 27) as the `notice/new` push carries it: the message
+ * key, the agent it is about, and the message's arguments that are plain text or the value of an
+ * ICU `select`. A notice about the whole install, such as the locked engine, names no agent. A
+ * notice about an intent, such as a receipt, names the intent instead of carrying amounts: the
+ * surface draws those from the stored intent, as it draws a card.
+ */
+export interface Notice extends NoticePart {
+  readonly agent?: Id<"agt">;
+  readonly intent?: Id<"int">;
+  /**
+   * The messages that follow the notice, each on a line of its own, such as `alert.woke` after an
+   * alert that woke the agent (spec 4, section 4.3).
+   */
+  readonly after?: readonly NoticePart[];
+}
+
+/** A notice's part as JSON carries it: each amount's base units as decimal text. */
+interface NoticePartWire {
   readonly key: string;
-  readonly agent?: string;
-  readonly intent?: string;
   readonly values: Readonly<Record<string, string>>;
   readonly times?: Readonly<Record<string, number>>;
   readonly amounts?: Readonly<Record<string, AmountWire>>;
+  readonly parts?: Readonly<Record<string, NoticePartWire>>;
 }
+
+/** A notice as the `notice/new` push carries it as JSON: each amount's base units as decimal text. */
+export interface NoticeWire extends NoticePartWire {
+  readonly agent?: string;
+  readonly intent?: string;
+  readonly after?: readonly NoticePartWire[];
+}
+
+// How deep parts may nest under a notice: a notice's part, and that part's own parts.
+const partLevels = 2;
+// The most messages that follow one notice.
+const maxAfter = 4;
+
+const messageShape = {
+  key: z.string().min(1),
+  values: z.record(z.string(), z.string()),
+  times: z.record(z.string(), epochMsSchema).exactOptional(),
+  amounts: z.record(z.string(), amountSchema).exactOptional(),
+};
+
+// A part that may hold parts `levels` deep below it.
+function partSchemaOf(levels: number): z.ZodType<NoticePart, NoticePartWire> {
+  if (levels === 0) {
+    return z.strictObject(messageShape);
+  }
+  return z.strictObject({
+    ...messageShape,
+    parts: z.record(z.string(), partSchemaOf(levels - 1)).exactOptional(),
+  });
+}
+
+const partSchema = partSchemaOf(partLevels - 1);
 
 /**
  * Parses the data of a `notice/new` push back into its {@link Notice}, each amount's base units a
  * `bigint` again. A surface that formats a notice reads it through this schema.
  */
 export const noticeSchema: z.ZodType<Notice, NoticeWire> = z.strictObject({
-  key: z.string().min(1),
+  ...messageShape,
   agent: idSchema("agt").exactOptional(),
   intent: idSchema("int").exactOptional(),
-  values: z.record(z.string(), z.string()),
-  times: z.record(z.string(), epochMsSchema).exactOptional(),
-  amounts: z.record(z.string(), amountSchema).exactOptional(),
+  parts: z.record(z.string(), partSchema).exactOptional(),
+  after: z.array(partSchema).max(maxAfter).exactOptional(),
 });
 
 // Each amount as JSON carries it, with its base units as decimal text.
@@ -63,16 +108,40 @@ function amountWires(
   );
 }
 
-// The notice as the push carries it, each amount's base units as decimal text.
-function noticeData(notice: Notice) {
-  const { agent, intent, key, values, times, amounts } = notice;
+interface PartData {
+  readonly [name: string]: JsonValue;
+}
+
+// A part as JSON carries it, its own parts too.
+function partData(part: NoticePart): PartData {
+  const { key, values, times, amounts, parts } = part;
   return {
     key,
-    ...(agent === undefined ? {} : { agent }),
     values: { ...values },
     ...(times === undefined ? {} : { times: { ...times } }),
     ...(amounts === undefined ? {} : { amounts: amountWires(amounts) }),
+    ...(parts === undefined
+      ? {}
+      : {
+          parts: Object.fromEntries(
+            Object.entries(parts).map(([name, inner]: readonly [string, NoticePart]) => [
+              name,
+              partData(inner),
+            ]),
+          ),
+        }),
+  };
+}
+
+// The notice as the push carries it, each amount's base units as decimal text. It never throws:
+// the push is sent from the money path, and a surface checks it as it reads it.
+function noticeData(notice: Notice) {
+  const { agent, intent, after } = notice;
+  return {
+    ...partData(notice),
+    ...(agent === undefined ? {} : { agent }),
     ...(intent === undefined ? {} : { intent }),
+    ...(after === undefined ? {} : { after: after.map(partData) }),
   };
 }
 

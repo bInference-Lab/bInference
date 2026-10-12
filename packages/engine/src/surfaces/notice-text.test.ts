@@ -59,4 +59,73 @@ describe("a notice as the owner reads it", () => {
       false,
     );
   });
+
+  it("writes each part as its own message first, a part's parts too", () => {
+    const curve = { key: "launch.curve", values: { graduated: "no", progress: "42%" } };
+    const launch = {
+      key: "launch.line",
+      values: {
+        token: "PEPE 0x6982…1933",
+        launchpad: "Flap",
+        age: "3 min",
+        tax: "1%",
+        insiders: "2",
+        creatorLaunches: "0",
+      },
+      parts: { curve },
+    };
+    const push = noticePush({ key: "notice.alertLaunch", values: {}, parts: { launch } });
+    expect(noticeText(received(push), display)).toBe(
+      "New launch passed your filters: PEPE 0x6982…1933 · Flap · 3 min ago · curve 42% · tax 1% · " +
+        "2 insider wallets · creator's other launches in 30 days: 0",
+    );
+  });
+
+  it("writes the amounts of a part in their token's units, and a paper fill with its mark", () => {
+    const push = noticePush({
+      key: "notice.fill",
+      values: { mode: "paper" },
+      parts: {
+        orderKind: { key: "order.kind", values: { kind: "takeProfit" } },
+        result: {
+          key: "fill.sell",
+          values: { received: "$12.40", price: "$0.0000075" },
+          amounts: { amount: { asset: coin, base: 2n * 10n ** 18n } },
+        },
+      },
+    });
+    expect(noticeText(received(push), display)).toBe(
+      `${String.fromCodePoint(0x1f9ea)} ${String.fromCodePoint(0x2705)} Take-profit filled: ` +
+        "sold 2 FAKE for $12.40 at $0.0000075",
+    );
+  });
+
+  it("writes each message that follows a notice on a line of its own", () => {
+    const push = noticePush({
+      key: "notice.alertPrice",
+      values: { token: "PEPE", direction: "above", price: "$0.00001", now: "$0.000011" },
+      after: [
+        { key: "alert.woke", values: { agent: "main" } },
+        { key: "alert.wakeSkipped", values: { agent: "main", count: "3" } },
+      ],
+    });
+    expect(noticeText(received(push), display).split("\n")).toStrictEqual([
+      "PEPE is at or above $0.00001: now $0.000011",
+      "main is looking into it.",
+      "3 more matches did not wake main: at most 10 wake-ups an hour.",
+    ]);
+  });
+
+  it("refuses parts nested deeper than two levels below the notice", () => {
+    const leaf = { key: "launch.curve", values: {} };
+    const deep = {
+      key: "launch.line",
+      values: {},
+      parts: { curve: { ...leaf, parts: { x: leaf } } },
+    };
+    expect(
+      noticeSchema.safeParse({ key: "notice.alertLaunch", values: {}, parts: { launch: deep } })
+        .success,
+    ).toBe(false);
+  });
 });

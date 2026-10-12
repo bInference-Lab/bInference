@@ -84,4 +84,27 @@ describe("the notice list", () => {
       },
     });
   });
+
+  it("keeps a notice's parts and the messages that follow it in its view", async () => {
+    const orderKind = { key: "order.kind", values: { kind: "stopLoss" } };
+    const woke = { key: "alert.woke", values: { agent: "main" } };
+    const fill: Notice = { key: "notice.fill", values: {}, parts: { orderKind }, after: [woke] };
+    const list = await handlerOf([1], fill);
+    await expect(list(testCall({}))).resolves.toStrictEqual({
+      ok: true,
+      value: {
+        items: [
+          {
+            id: fixtureId("ntc", 1),
+            at: 1_001,
+            key: "notice.fill",
+            values: {},
+            parts: { orderKind },
+            after: [woke],
+            delivered: { telegram: "queued" },
+          },
+        ],
+      },
+    });
+  });
 });

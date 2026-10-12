@@ -11,19 +11,29 @@ import { epochMsSchema } from "../values/epoch-ms.schema.js";
 export type NoticeDeliveryState = "queued" | "sent" | "unknown_after_send" | "failed";
 
 /**
- * One owner notice as the `notice/new` push and `notice/list` carry it: its id and time, the
- * message key and its arguments, the plain values, the times in epoch milliseconds and the amounts
- * in base units, for each surface to format, and the agent and intent it is about.
+ * A message a notice's message takes as an argument (spec 4, section 4.3): its key and its own
+ * plain values, times and amounts, and its own parts, two levels below the notice at most.
  */
-export interface NoticePushView {
+export interface NoticePartView {
+  readonly key: string;
+  readonly parts?: Readonly<Record<string, NoticePartView>>;
+  readonly values: Readonly<Record<string, string>>;
+  readonly amounts?: Readonly<Record<string, Amount>>;
+  readonly times?: Readonly<Record<string, number>>;
+}
+
+/**
+ * One owner notice as the `notice/new` push and `notice/list` carry it: its id and time, the
+ * message key and its arguments, the plain values, the times in epoch milliseconds, the amounts
+ * in base units and the parts, for each surface to format, the messages that follow it on lines
+ * of their own, and the agent and intent it is about.
+ */
+export interface NoticePushView extends NoticePartView {
   readonly id: ProtocolId<"notice">;
   readonly at: number;
-  readonly key: string;
   readonly agent?: ProtocolId<"agent">;
   readonly intent?: ProtocolId<"intent">;
-  readonly values: Readonly<Record<string, string>>;
-  readonly times?: Readonly<Record<string, number>>;
-  readonly amounts?: Readonly<Record<string, Amount>>;
+  readonly after?: readonly NoticePartView[];
 }
 
 /** A stored notice as `notice/list` gives it: the push's fields and each surface's delivery. */
@@ -31,15 +41,28 @@ export interface NoticeView extends NoticePushView {
   readonly delivered: Readonly<Record<string, NoticeDeliveryState>>;
 }
 
+const messageShape = {
+  key: z.string().min(1),
+  amounts: z.record(z.string(), amountSchema).exactOptional(),
+  times: z.record(z.string(), epochMsSchema).exactOptional(),
+  values: z.record(z.string(), z.string()),
+};
+
+// A part with parts of its own one level below it, whose parts take none.
+const leafPartSchema: z.ZodType<NoticePartView> = z.object(messageShape);
+const partSchema: z.ZodType<NoticePartView> = z.object({
+  ...messageShape,
+  parts: z.record(z.string(), leafPartSchema).exactOptional(),
+});
+
 const pushShape = {
   id: protocolIdSchema("notice"),
   at: epochMsSchema,
-  key: z.string().min(1),
+  ...messageShape,
   agent: protocolIdSchema("agent").exactOptional(),
   intent: protocolIdSchema("intent").exactOptional(),
-  values: z.record(z.string(), z.string()),
-  times: z.record(z.string(), epochMsSchema).exactOptional(),
-  amounts: z.record(z.string(), amountSchema).exactOptional(),
+  parts: z.record(z.string(), partSchema).exactOptional(),
+  after: z.array(partSchema).exactOptional(),
 };
 
 /** Parses the data of a `notice/new` push. */

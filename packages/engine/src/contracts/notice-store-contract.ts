@@ -51,6 +51,35 @@ function locked(n: number): NoticeRecord {
   };
 }
 
+// A paper fill with its parts, an amount inside a part, and a message that follows it.
+function paperFill(n: number, agent: Id<"agt">): NoticeRecord {
+  const result = {
+    key: "fill.sell",
+    values: { received: "$12.40", price: "$0.0000075" },
+    amounts: { amount: { asset: coin, base: beyond64Bits } },
+  };
+  return {
+    id: fixtureId("ntc", n),
+    atMs: 1_000 + n,
+    notice: {
+      key: "notice.fill",
+      agent,
+      values: { mode: "paper" },
+      parts: { orderKind: { key: "order.kind", values: { kind: "takeProfit" } }, result },
+      after: [{ key: "alert.woke", values: { agent: "main" } }],
+    },
+    kind: "fill",
+    level: "info",
+    delivered: { telegram: "queued" },
+  };
+}
+
+async function keepsParts(subject: NoticeStoreSubject): Promise<void> {
+  const { notices, agent } = subject;
+  await notices.record(paperFill(1, agent), live());
+  assert.deepEqual(await notices.list({ limit: 10 }, live()), [paperFill(1, agent)]);
+}
+
 async function recordAll(subject: NoticeStoreSubject, numbers: readonly number[]): Promise<void> {
   await inOrder(numbers, async (n) => subject.notices.record(lowGas(n, subject.agent), live()));
 }
@@ -182,6 +211,7 @@ export function noticeStoreContract(harness: NoticeStoreHarness): readonly Contr
       create,
       storesAndLists,
     ),
+    checkOn("keeps a notice's parts and the messages that follow it", create, keepsParts),
     checkOn(
       "lists notices after a cursor in id order and deliveries in the order recorded",
       create,

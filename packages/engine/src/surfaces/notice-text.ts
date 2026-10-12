@@ -1,7 +1,7 @@
 import type { Amount, ChainRegistry } from "@binference/chain";
 import { addressPartOf, type Formatter, shortAddress } from "@binference/i18n";
 import { assetInfoOf } from "../money-path/asset-infos.js";
-import type { Notice } from "../pushes/notice-push.js";
+import type { Notice, NoticePart } from "../pushes/notice-push.js";
 
 /** What a notice is written with: the owner's formatter, and the chains its amounts name. */
 export interface NoticeDisplay {
@@ -18,19 +18,30 @@ function amountText(amount: Amount, display: NoticeDisplay): string {
     : `${display.formatter.tokenAmount(amount.base, info.decimals)} ${info.symbol}`;
 }
 
-/**
- * A notice as the owner reads it (spec 4, section 4): its message in the owner's language, with
- * each time as the day and time in the owner's timezone, and each amount in its token's units and
- * symbol. A surface sends it as plain text, or escapes it for its own markup.
- */
-export function noticeText(notice: Notice, display: NoticeDisplay): string {
+// A message with its arguments filled in: each time as the day and time in the owner's timezone,
+// each amount in its token's units and symbol, and each part as its own message, written first.
+function messageText(part: NoticePart, display: NoticeDisplay): string {
   const { formatter } = display;
-  const times = Object.entries(notice.times ?? {}).map(
+  const times = Object.entries(part.times ?? {}).map(
     ([name, atMs]: readonly [string, number]) => [name, formatter.dateTime(atMs)] as const,
   );
-  const amounts = Object.entries(notice.amounts ?? {}).map(
+  const amounts = Object.entries(part.amounts ?? {}).map(
     ([name, amount]: readonly [string, Amount]) => [name, amountText(amount, display)] as const,
   );
-  const values = { ...notice.values, ...Object.fromEntries([...times, ...amounts]) };
-  return formatter.message(notice.key, values);
+  const parts = Object.entries(part.parts ?? {}).map(
+    ([name, inner]: readonly [string, NoticePart]) => [name, messageText(inner, display)] as const,
+  );
+  const values = { ...part.values, ...Object.fromEntries([...times, ...amounts, ...parts]) };
+  return formatter.message(part.key, values);
+}
+
+/**
+ * A notice as the owner reads it (spec 4, section 4): its message in the owner's language, with
+ * each time as the day and time in the owner's timezone, each amount in its token's units and
+ * symbol, each part as its own message, and each message that follows it on a line of its own. A
+ * surface sends it as plain text, or escapes it for its own markup.
+ */
+export function noticeText(notice: Notice, display: NoticeDisplay): string {
+  const after = (notice.after ?? []).map((part) => messageText(part, display));
+  return [messageText(notice, display), ...after].join("\n");
 }

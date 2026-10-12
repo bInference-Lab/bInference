@@ -194,6 +194,7 @@ export type { JobDonePush, JobFailedPush } from "./views/job-push.schema.js";
 export { noticePushViewSchema, noticeViewSchema } from "./views/notice-view.schema.js";
 export type {
   NoticeDeliveryState,
+  NoticePartView,
   NoticePushView,
   NoticeView,
 } from "./views/notice-view.schema.js";
