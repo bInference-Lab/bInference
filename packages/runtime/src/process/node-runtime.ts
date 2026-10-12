@@ -33,7 +33,11 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
     models: modelChainFor(settings.models, { role: "main" }, parts),
     tools: agentToolBox({ agent, client }),
     instructions: "",
-    limits: { ...turnLimits, maxToolCalls: settings.models.maxToolCallsPerTurn },
+    limits: {
+      ...turnLimits,
+      maxToolCalls: settings.models.maxToolCallsPerTurn,
+      modelIdleMs: settings.models.idleTimeoutMs,
+    },
   });
 }
 

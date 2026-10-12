@@ -1,4 +1,4 @@
-import type { ManualClock } from "@binference/core/testing";
+import { createManualClock, type ManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import {
   callsReply,
@@ -198,6 +198,73 @@ describe("retries and fallbacks of a model call", () => {
     await clock.advance(1_000);
     turn.stop("owner");
     await expect(running).resolves.toMatchObject({ outcome: "stopped" });
+    expect(transport.requests).toHaveLength(1);
+  });
+});
+
+// A stream that says `said`, then sends nothing until its call is stopped.
+function stalling(said: readonly ModelEvent[]): ScriptedReply {
+  return async function* stall(signal) {
+    yield* said;
+    await new Promise((resolve) => {
+      signal.addEventListener("abort", resolve, { once: true });
+    });
+    yield { type: "error", failure: "aborted", message: "Stopped." };
+  };
+}
+
+describe("the idle timeout of a model call", () => {
+  it("cuts a stream that goes silent halfway at the idle time, then tries again", async () => {
+    const { turn, transport, clock, recorder } = createTestTurn({
+      replies: [stalling([{ type: "text", delta: "The pri" }]), textReply("The price is up.")],
+      limits: { modelIdleMs: 10_000 },
+    });
+    const running = turn.run();
+    await clock.advance(9_999);
+    expect(transport.requests).toHaveLength(1);
+    await clock.advance(1);
+    await clock.advance(1_000);
+    await expect(running).resolves.toMatchObject({ outcome: "ok" });
+    expect(transport.requests).toHaveLength(2);
+    expect(recorder.steps).toContainEqual({ kind: "say", text: "The price is up." });
+  });
+
+  it("counts the silence from the call's start when no event comes at all", async () => {
+    const { turn, clock, recorder } = createTestTurn({
+      replies: [stalling([]), stalling([]), stalling([])],
+      limits: { modelIdleMs: 10_000 },
+    });
+    const running = turn.run();
+    await clock.advance(10_000 + 1_000 + 10_000 + 4_000 + 10_000);
+    await expect(running).resolves.toMatchObject({ outcome: "failed" });
+    expect(recorder.steps).toContainEqual({
+      kind: "status",
+      line: { line: "failed", failure: "transient" },
+    });
+  });
+
+  it("lets a stream run past the idle time while each event comes within it", async () => {
+    const clock = createManualClock(1_000);
+    const slow: ScriptedReply = async function* slowly(signal) {
+      for (const piece of ["Slow", " but", " sure."]) {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- each piece follows the one before
+        await clock.sleep(6_000, signal);
+        yield { type: "text", delta: piece };
+      }
+      yield {
+        type: "done",
+        stop: "end",
+        usage: { inputTokens: 1, outputTokens: 3, cachedTokens: 0 },
+      };
+    };
+    const { turn, transport } = createTestTurn({
+      replies: [slow],
+      limits: { modelIdleMs: 10_000 },
+      clock,
+    });
+    const running = turn.run();
+    await clock.advance(18_000);
+    await expect(running).resolves.toMatchObject({ outcome: "ok" });
     expect(transport.requests).toHaveLength(1);
   });
 });

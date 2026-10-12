@@ -66,7 +66,9 @@ order, or only a model the owner picked ([decision 0188](../../docs/DECISIONS.md
 model twice more; then the provider rests for `models.cooldownMs` in every turn, and the next model
 takes over. `auth`, `billing` and `request` take the next model at once; `context`, `refused`, a
 stop and a committed turn end the call. One call makes at most 4 attempts, a fallback lasts for the
-turn, and only the attempt that answered reaches the transcript.
+turn, and only the attempt that answered reaches the transcript. An attempt that goes
+`models.idleTimeoutMs` without an event, from its start or between two events, is cut as a
+`transient` failure.
 
 The transports reach the network through the `StreamingHttp` port, which streams an answer's body
 as it arrives; the runtime process binds it to undici with a pool of its own, which names binference

@@ -1,4 +1,5 @@
 import { type AttemptStep, stepAfter } from "./attempt-policy.js";
+import type { ModelEvent } from "./model-event.js";
 import type { ModelChain } from "./ports.js";
 import { type ModelFault, type ModelResponse, readModelResponse } from "./read-model-response.js";
 import type { ModelRequest } from "./turn-records.js";
@@ -26,6 +27,44 @@ function firstAwake(chain: ModelChain, from: number): number | undefined {
   return index === -1 ? undefined : index;
 }
 
+/** A timer that runs out after a quiet spell, started again by each event. */
+interface IdleTimer {
+  readonly restart: () => void;
+  readonly stop: () => void;
+}
+
+function idleTimer(run: TurnRun, onIdle: () => void): IdleTimer {
+  const holder = { armed: new AbortController() };
+  const restart = (): void => {
+    holder.armed.abort();
+    holder.armed = new AbortController();
+    run.parts.clock
+      .sleep(run.limits.modelIdleMs, holder.armed.signal)
+      .then(onIdle, () => undefined);
+  };
+  restart();
+  return { restart, stop: () => holder.armed.abort() };
+}
+
+async function* restartingOn(
+  events: AsyncIterable<ModelEvent>,
+  timer: IdleTimer,
+): AsyncGenerator<ModelEvent, void, undefined> {
+  for await (const event of events) {
+    timer.restart();
+    yield event;
+  }
+}
+
+// A call cut for its silence failed for a passing cause, whatever the transport said of the cut.
+function silent(run: TurnRun, fault: ModelFault): ModelFault {
+  const seconds = String(Math.round(run.limits.modelIdleMs / 1_000));
+  const { retryAfterMs: _asked, ...said } = fault;
+  return { ...said, failure: "transient", message: `The model sent nothing for ${seconds} s.` };
+}
+
+// One attempt, cut when no event comes for the idle time: from the call's start, and from each
+// event to the next, so a stream that stalls halfway is cut like one that never starts.
 async function attempt(run: TurnRun, at: number, request: ModelRequest): Promise<ModelResponse> {
   const model = run.parts.models.models[at];
   if (model === undefined) {
@@ -37,8 +76,17 @@ async function attempt(run: TurnRun, at: number, request: ModelRequest): Promise
       reasoning: "",
     };
   }
-  const events = model.transport.stream(request, run.halted);
-  return readModelResponse(events, { signal: run.halted, clock: run.parts.clock });
+  const idle = new AbortController();
+  const signal = AbortSignal.any([run.halted, idle.signal]);
+  const timer = idleTimer(run, () => idle.abort());
+  try {
+    const events = restartingOn(model.transport.stream(request, signal), timer);
+    const response = await readModelResponse(events, { signal, clock: run.parts.clock });
+    const wasSilent = !response.ok && idle.signal.aborted && !run.halted.aborted;
+    return wasSilent ? silent(run, response) : response;
+  } finally {
+    timer.stop();
+  }
 }
 
 // Waits before the same model is tried again; a halt ends the wait, and the call with it.

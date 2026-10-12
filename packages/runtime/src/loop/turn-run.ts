@@ -28,11 +28,16 @@ export interface TurnLimits {
   readonly stopGraceMs: number;
   /** The turn's time from `turn/start`. */
   readonly turnTimeMs: number;
+  /** How long a model call may go without an event before it is cut (`models.idleTimeoutMs`). */
+  readonly modelIdleMs: number;
   /** How long each write of a turn's end may take before the turn ends without it. */
   readonly endWriteTimeoutMs: number;
 }
 
-/** The runtime spec's limits: 25 tool calls and 40 model calls a turn, 10 minutes. */
+/**
+ * The runtime spec's limits: 25 tool calls and 40 model calls a turn, 10 minutes, and 2 minutes
+ * without a model's event.
+ */
 export const turnLimits: TurnLimits = {
   maxToolCalls: 25,
   maxModelCalls: 40,
@@ -40,6 +45,7 @@ export const turnLimits: TurnLimits = {
   proposeTimeoutMs: 30_000,
   stopGraceMs: 5_000,
   turnTimeMs: 600_000,
+  modelIdleMs: 120_000,
   endWriteTimeoutMs: 10_000,
 };
 
