@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { ModelEvent } from "./model-event.js";
 import { createTestTurn, type TestTool, testTurnId } from "./test-turns.js";
-import type { ToolOutcome, ToolRunContext } from "./turn-ports.js";
+import type { ToolOutcome, ToolRunContext } from "./turn-records.js";
 
 // Tools and models that ignore their signal: the loop itself settles each call at its deadline.
 

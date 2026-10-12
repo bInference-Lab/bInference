@@ -54,10 +54,11 @@ waiting message joins only where a model call can answer it; otherwise it starts
 port that throws ends the turn `failed`, and the turn still writes its end
 ([decision 0172](../../docs/DECISIONS.md#d0172)).
 
-The loop reaches the outside only through the ports in `src/loop/turn-ports.ts`: the model
-transport, the tool box, the turn's journal in `agent.sqlite`, the engine's side of the turn, and
-the chat queue's merge source. `@binference/runtime/testing` has a scripted transport and a
-recorder that stands in for the journal, the engine and the queue.
+The loop reaches the outside only through the ports in `src/loop/ports.ts`: the model transport,
+the tool box, the turn's journal in `agent.sqlite`, the engine's side of the turn, and the chat
+queue's merge source. Each has a contract suite in `src/contracts/`, which every binding and fake
+runs. `@binference/runtime/testing` has the suites, a scripted transport and a recorder that stands
+in for the journal, the engine and the queue.
 
 ## Tools
 

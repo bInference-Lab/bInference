@@ -1,6 +1,6 @@
 import type { OwnerMessage } from "./model-message.js";
 import type { NumberedCall } from "./run-tool-call.js";
-import type { PreparedCall } from "./turn-ports.js";
+import type { PreparedCall } from "./turn-records.js";
 
 /** A call of a batch, numbered in its turn, after the tool box checked it. */
 export interface BatchCall extends NumberedCall {

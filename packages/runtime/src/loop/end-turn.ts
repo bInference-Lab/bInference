@@ -3,7 +3,7 @@ import type { TurnReport } from "./chat-turn.js";
 import { notRunText } from "./not-run.js";
 import { unknownProposal } from "./run-tool-call.js";
 import { settleBy } from "./settle-by.js";
-import type { TurnStatusLine } from "./turn-ports.js";
+import type { TurnStatusLine } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 import type { LoopEnd } from "./turn-step.js";
 

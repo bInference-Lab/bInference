@@ -1,7 +1,7 @@
 import { BinferenceError, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import type { ToolDeclaration } from "../loop/model-message.js";
-import type { PreparedCall, ToolKind, ToolOutcome, ToolRunContext } from "../loop/turn-ports.js";
+import type { PreparedCall, ToolKind, ToolOutcome, ToolRunContext } from "../loop/turn-records.js";
 import {
   type ArgumentsProblem,
   maxArgumentsChars,

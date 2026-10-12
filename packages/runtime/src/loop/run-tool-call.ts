@@ -5,7 +5,7 @@ import { type CallResult, recordResult } from "./record-call.js";
 import { settleBy } from "./settle-by.js";
 import { createStopGrace } from "./stop-grace.js";
 import { haltOf } from "./turn-halt.js";
-import type { ReadyCall, ToolOutcome } from "./turn-ports.js";
+import type { ReadyCall, ToolOutcome } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 /** A call of a batch with its number in the turn, from 1, which names its proposal's key. */

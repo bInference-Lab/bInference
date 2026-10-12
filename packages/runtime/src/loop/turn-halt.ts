@@ -1,5 +1,5 @@
 import type { TurnOutcome } from "@binference/store";
-import type { TurnStatusLine } from "./turn-ports.js";
+import type { TurnStatusLine } from "./turn-records.js";
 
 /**
  * Why a running turn is told to stop: the owner's `chat/stop`, a freeze, a `chat/clear`, or the

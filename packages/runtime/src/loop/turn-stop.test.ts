@@ -4,7 +4,7 @@ import type { RecordedStep } from "../testing/turn-recorder.js";
 import type { ChatTurn } from "./chat-turn.js";
 import type { ModelEvent } from "./model-event.js";
 import { createGate, createTestTurn, type Gate, type TestTool, testTurnId } from "./test-turns.js";
-import type { ToolOutcome, ToolRunContext } from "./turn-ports.js";
+import type { ToolOutcome, ToolRunContext } from "./turn-records.js";
 
 // A tool body that waits until its signal aborts, then fails as a stopped tool does.
 async function untilAborted({ signal }: ToolRunContext): Promise<ToolOutcome> {

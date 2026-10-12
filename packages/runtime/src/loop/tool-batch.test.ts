@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { TurnRecorder } from "../testing/turn-recorder.js";
+import type { ToolBox } from "./ports.js";
 import { createTestTurn, ownerMessage, type TestTool, testToolBox } from "./test-turns.js";
-import type { ToolBox } from "./turn-ports.js";
 
 // A tool that notes when its body starts and ends, a few turns of the event loop apart.
 function traced(

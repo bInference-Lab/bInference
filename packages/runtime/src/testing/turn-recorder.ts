@@ -1,13 +1,8 @@
 import { err, ok } from "@binference/core";
 import type { TurnOutcome } from "@binference/store";
 import type { OwnerMessage } from "../loop/model-message.js";
-import type {
-  MergeSource,
-  TurnEngine,
-  TurnJournal,
-  TurnRefusal,
-  TurnStatusLine,
-} from "../loop/turn-ports.js";
+import type { MergeSource, TurnEngine, TurnJournal } from "../loop/ports.js";
+import type { TurnRefusal, TurnStatusLine } from "../loop/turn-records.js";
 
 /** One thing a turn wrote to its journal or told the engine, in the order it happened. */
 export type RecordedStep =
@@ -57,43 +52,44 @@ export interface TurnRecorder {
   note(step: RecordedStep): void;
 }
 
-type Write = (step: RecordedStep) => Promise<void>;
+type Write = (step: RecordedStep, signal: AbortSignal) => Promise<void>;
 
 function createJournal(note: Write): TurnJournal {
   return {
-    response: async ({ text }) => note({ kind: "response", text }),
-    toolCall: async ({ id, name }) => note({ kind: "call", id, name }),
-    proposal: async ({ call, idempotencyKey }) =>
-      note({ kind: "proposal", id: call.id, key: idempotencyKey }),
-    toolResult: async ({ callId, text, ran, outside }) =>
-      note({ kind: "result", id: callId, text, ran, outside }),
-    joined: async (messages) =>
-      note({ kind: "joined", ids: messages.map((message) => message.id) }),
-    markOutside: async () => note({ kind: "journalMark" }),
-    end: async ({ outcome, heldBack }) => note({ kind: "journalEnd", outcome, heldBack }),
+    response: async ({ text }, signal) => note({ kind: "response", text }, signal),
+    toolCall: async ({ id, name }, signal) => note({ kind: "call", id, name }, signal),
+    proposal: async ({ call, idempotencyKey }, signal) =>
+      note({ kind: "proposal", id: call.id, key: idempotencyKey }, signal),
+    toolResult: async ({ callId, text, ran, outside }, signal) =>
+      note({ kind: "result", id: callId, text, ran, outside }, signal),
+    joined: async (messages, signal) =>
+      note({ kind: "joined", ids: messages.map((message) => message.id) }, signal),
+    markOutside: async (signal) => note({ kind: "journalMark" }, signal),
+    end: async ({ outcome, heldBack }, signal) =>
+      note({ kind: "journalEnd", outcome, heldBack }, signal),
   };
 }
 
 function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
   return {
-    start: async ({ messages, outsideContent }) => {
+    start: async ({ messages, outsideContent }, signal) => {
       if (options.failStart === true) {
         throw new Error("The engine cannot be reached.");
       }
-      await note({ kind: "start", messages, outside: outsideContent });
+      await note({ kind: "start", messages, outside: outsideContent }, signal);
       return options.refuse === undefined
         ? ok({ budgetLeftMicros: 1_000_000n })
         : err(options.refuse);
     },
-    mark: async () => {
+    mark: async (signal) => {
       if (options.failMark === true) {
         throw new Error("The engine did not take the mark.");
       }
-      await note({ kind: "engineMark" });
+      await note({ kind: "engineMark" }, signal);
     },
-    say: async (text) => note({ kind: "say", text }),
-    status: async (line) => note({ kind: "status", line }),
-    end: async (outcome) => note({ kind: "end", outcome }),
+    say: async (text, signal) => note({ kind: "say", text }, signal),
+    status: async (line, signal) => note({ kind: "status", line }, signal),
+    end: async (outcome, signal) => note({ kind: "end", outcome }, signal),
   };
 }
 
@@ -104,7 +100,9 @@ export function createTurnRecorder(options: TurnRecorderOptions = {}): TurnRecor
   const note = (step: RecordedStep): void => {
     steps.push(step);
   };
-  const write = async (step: RecordedStep): Promise<void> => {
+  // A write on an aborted signal rejects and records nothing, as a store's write does.
+  const write = async (step: RecordedStep, signal: AbortSignal): Promise<void> => {
+    signal.throwIfAborted();
     await options.beforeStep?.(step);
     note(step);
   };

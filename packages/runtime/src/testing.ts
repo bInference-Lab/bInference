@@ -15,9 +15,34 @@ export { createTestTurn } from "./loop/test-turns.js";
 export type { TestTool, TestTurn, TestTurnOptions } from "./loop/test-turns.js";
 export type { OwnerMessage } from "./loop/model-message.js";
 export type {
+  MergeSource,
+  ModelTransport,
+  ToolBox,
+  TurnEngine,
+  TurnJournal,
+} from "./loop/ports.js";
+export type {
   ToolOutcome,
   ToolRunContext,
-  TurnEngine,
   TurnRefusal,
   TurnStatusLine,
-} from "./loop/turn-ports.js";
+} from "./loop/turn-records.js";
+export { mergeSourceContract } from "./contracts/merge-source-contract.js";
+export type { MergeSourceHarness, MergeSourceSubject } from "./contracts/merge-source-contract.js";
+export { modelTransportContract } from "./contracts/model-transport-contract.js";
+export type { ModelTransportHarness } from "./contracts/model-transport-contract.js";
+export { toolBoxContract } from "./contracts/tool-box-contract.js";
+export type { ToolBoxHarness, ToolBoxSubject } from "./contracts/tool-box-contract.js";
+export { turnEngineContract } from "./contracts/turn-engine-contract.js";
+export type {
+  EngineView,
+  TurnEngineHarness,
+  TurnEngineSubject,
+} from "./contracts/turn-engine-contract.js";
+export { turnJournalContract } from "./contracts/turn-journal-contract.js";
+export type {
+  JournalEntry,
+  JournalView,
+  TurnJournalHarness,
+  TurnJournalSubject,
+} from "./contracts/turn-journal-contract.js";

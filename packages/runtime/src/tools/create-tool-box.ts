@@ -1,5 +1,5 @@
 import { BinferenceError } from "@binference/core";
-import type { ToolBox } from "../loop/turn-ports.js";
+import type { ToolBox } from "../loop/ports.js";
 import type { AgentTool } from "./define-tool.js";
 
 // A name the model made up reaches the model again, so only a short, plain one is repeated.

@@ -4,7 +4,7 @@ import { answerOpenCalls, endTurn, portFailure } from "./end-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
 import { trackOpenCalls } from "./open-calls.js";
 import { type TurnHalt, type TurnStop } from "./turn-halt.js";
-import type { TurnRefusal } from "./turn-ports.js";
+import type { TurnRefusal } from "./turn-records.js";
 import { type TurnLimits, turnLimits, type TurnParts, type TurnRun } from "./turn-run.js";
 import { type LoopEnd, takeStep } from "./turn-step.js";
 import { createTurnTally, type TurnState } from "./turn-tally.js";

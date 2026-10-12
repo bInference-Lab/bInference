@@ -1,6 +1,7 @@
 import { decimalStringSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { toolBoxContract } from "../contracts/tool-box-contract.js";
 import { createTestTurn } from "../loop/test-turns.js";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import { createToolBox } from "./create-tool-box.js";
@@ -28,6 +29,17 @@ const portfolio = defineTool({
 });
 
 describe("createToolBox", () => {
+  it.each(
+    toolBoxContract({
+      create: async () => ({
+        box: createToolBox([portfolio, buy]),
+        call: { id: "c1", name: "buy", argumentsText: '{"amountBase":"5"}' },
+      }),
+    }),
+  )("follows the contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
   it("declares its tools in order and checks each call by its tool", () => {
     const box = createToolBox([portfolio, buy]);
     expect(box.declarations.map((declaration) => declaration.name)).toStrictEqual([

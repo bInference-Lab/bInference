@@ -5,7 +5,7 @@ import type { NotRunReason } from "./not-run.js";
 import { recordNotRun, recordRefused } from "./record-call.js";
 import { runProposal, runToolCall } from "./run-tool-call.js";
 import { haltOf } from "./turn-halt.js";
-import type { ReadyCall } from "./turn-ports.js";
+import type { ReadyCall } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 /** Where an ordered batch is: what joined, and whether a model call can follow it at all. */

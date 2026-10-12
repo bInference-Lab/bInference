@@ -6,7 +6,7 @@ import { type ModelAnswer, type ModelFault, readModelResponse } from "./read-mod
 import { markTurn } from "./record-call.js";
 import { runCutOffBatch, runToolBatch } from "./tool-batch.js";
 import { endOfHalt, haltOf } from "./turn-halt.js";
-import type { TurnStatusLine } from "./turn-ports.js";
+import type { TurnStatusLine } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 /** How a turn's loop ended, and the status line it ends with, if any. */

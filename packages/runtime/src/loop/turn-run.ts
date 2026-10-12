@@ -1,14 +1,8 @@
 import type { Clock } from "@binference/core";
 import type { ModelMessage } from "./model-message.js";
 import type { OpenCall } from "./open-calls.js";
+import type { MergeSource, ModelTransport, ToolBox, TurnEngine, TurnJournal } from "./ports.js";
 import type { TurnHalt } from "./turn-halt.js";
-import type {
-  MergeSource,
-  ModelTransport,
-  ToolBox,
-  TurnEngine,
-  TurnJournal,
-} from "./turn-ports.js";
 import type { TurnTally } from "./turn-tally.js";
 
 /** What one turn works with, bound to that turn by the composition. */

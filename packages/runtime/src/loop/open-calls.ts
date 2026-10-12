@@ -1,5 +1,5 @@
 import type { ToolCall } from "./model-message.js";
-import type { TurnJournal } from "./turn-ports.js";
+import type { TurnJournal } from "./ports.js";
 
 /** A call the journal holds with no result yet, and whether it is the turn's proposal. */
 export interface OpenCall {

@@ -12,7 +12,8 @@ import {
 } from "../testing/turn-recorder.js";
 import { type ChatTurn, createChatTurn } from "./chat-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
-import type { ToolBox, ToolKind, ToolOutcome, ToolRunContext, TurnEngine } from "./turn-ports.js";
+import type { ToolBox, TurnEngine } from "./ports.js";
+import type { ToolKind, ToolOutcome, ToolRunContext } from "./turn-records.js";
 import { type TurnLimits, turnLimits } from "./turn-run.js";
 
 /** The turn id every test turn runs under. */

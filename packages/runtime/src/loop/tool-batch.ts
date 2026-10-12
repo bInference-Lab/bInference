@@ -4,7 +4,7 @@ import { recordNotRun } from "./record-call.js";
 import { runOrderedBatch } from "./run-ordered-batch.js";
 import { runParallelBatch } from "./run-parallel-batch.js";
 import { haltOf } from "./turn-halt.js";
-import type { PreparedCall } from "./turn-ports.js";
+import type { PreparedCall } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 const unreadable = "not run: the arguments could not be read";

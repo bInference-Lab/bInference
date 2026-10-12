@@ -1,7 +1,7 @@
 import { decimalStringSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import type { PreparedCall, ToolRunContext } from "../loop/turn-ports.js";
+import type { PreparedCall, ToolRunContext } from "../loop/turn-records.js";
 import { cutResult, defineTool, maxResultChars, type ToolSpec } from "./define-tool.js";
 
 const context: ToolRunContext = { signal: new AbortController().signal, idempotencyKey: "k" };

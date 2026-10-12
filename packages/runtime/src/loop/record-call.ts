@@ -1,7 +1,7 @@
 import type { ToolCall } from "./model-message.js";
 import type { NotRunReason } from "./not-run.js";
 import { notRunText } from "./not-run.js";
-import type { ToolResultRecord } from "./turn-ports.js";
+import type { ToolResultRecord } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 /** A result for the transcript and the model, without the call it answers. */

@@ -1,6 +1,7 @@
 import type { JsonValue } from "@binference/core";
 import type { ModelEvent } from "../loop/model-event.js";
-import type { ModelRequest, ModelTransport } from "../loop/turn-ports.js";
+import type { ModelTransport } from "../loop/ports.js";
+import type { ModelRequest } from "../loop/turn-records.js";
 
 /**
  * One scripted model response: its events, or a stream the test drives itself, such as one that
