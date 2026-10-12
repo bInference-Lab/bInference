@@ -199,12 +199,13 @@ export async function announceRows(
   return due.length;
 }
 
-/** Announces an order's newest rows whose notices were not announced yet. */
+/** Announces an order's newest rows whose notices were not announced yet, and answers the rows. */
 export async function announceOrder(
   parts: AnnounceParts,
   order: Id<"ord">,
   signal: AbortSignal,
-): Promise<number> {
+): Promise<readonly OrderFillRecord[]> {
   const rows = await parts.orders.fills({ orderId: order, limit: paceRows }, { signal });
-  return announceRows(parts, rows.toReversed(), signal);
+  await announceRows(parts, rows.toReversed(), signal);
+  return rows;
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { FreezeWrite } from "../intents/freeze-write.js";
+import { intentDraft, intentMove } from "./intent-fixtures.js";
 import {
   agentVersion,
   confirmedCard,
@@ -105,4 +106,31 @@ export async function freezesAndUnfreezesOrders(subject: OrderStoreSubject): Pro
   );
   const agents = await subject.agents.list(live());
   assert.equal(agents.find(({ id }) => id === subject.agentId)?.frozenAtMs, undefined);
+}
+
+/**
+ * Checks that a freeze writes the skip row of a fill it cancels with the cancel itself (decision
+ * 0197), beside the pause of the fill's order.
+ */
+export async function writesAFrozenFillsRow(subject: OrderStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  await activeOrder(subject);
+  assert.ok((await intents.create(intentDraft(subject, 3), live())).ok);
+  const row = {
+    id: fixtureId("fil", 4),
+    orderId: fixtureId("ord", 1),
+    intentId: fixtureId("int", 3),
+    outcome: "skipped" as const,
+    reason: "frozen" as const,
+    atMs: 2_000,
+  };
+  const cancelled = { ...intentMove(3, 0, "cancelled"), order: { moves: [], fill: row } };
+  const paused = await freezeOf(subject, {
+    atMs: 2_000,
+    isFrozen: true,
+    orders: [orderMove(1, 1, "paused")],
+  });
+  assert.ok((await intents.freeze({ ...paused, moves: [cancelled] }, live())).ok);
+  assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), [row]);
+  assert.equal((await store.get(fixtureId("ord", 1), live()))?.state, "paused");
 }

@@ -157,23 +157,8 @@ function transition(
   options: MemoryIntentStoreOptions,
   change: IntentChange,
 ): Result<IntentCommit, "not_found" | "stale"> {
-  const checked = checkMove(tables, change);
-  if (!checked.ok) {
-    return checked;
-  }
-  const { order } = change;
-  const orders = order === undefined ? ok(undefined) : ordersOf(options).checkWriteNow(order);
-  if (!orders.ok) {
-    return orders;
-  }
-  const move = { change, current: checked.value };
-  return ok(
-    writeMove(
-      tables,
-      options,
-      orders.value === undefined ? move : { ...move, orders: orders.value },
-    ),
-  );
+  const checked = checkedMove(tables, options, change);
+  return checked.ok ? ok(writeMove(tables, options, checked.value)) : checked;
 }
 
 // The order store beside this one, which a write that moves orders needs.
@@ -182,6 +167,21 @@ function ordersOf(options: MemoryIntentStoreOptions): MemoryOrderStore {
     throw constraintFault("a write moves orders this store holds none of");
   }
   return options.orders;
+}
+
+// A move checked as it stands, with a fill's skip row, which lands with the freeze's cancel of its
+// intent (decision 0197).
+function checkedMove(
+  tables: MemoryIntentTables,
+  options: MemoryIntentStoreOptions,
+  change: IntentChange,
+): Result<CheckedMove, "not_found" | "stale"> {
+  const current = checkMove(tables, change);
+  if (!current.ok || change.order === undefined) {
+    return current.ok ? ok({ change, current: current.value }) : current;
+  }
+  const fill = ordersOf(options).checkWriteNow(change.order);
+  return fill.ok ? ok({ change, current: current.value, orders: fill.value }) : fill;
 }
 
 // Every move is checked before the agents are marked, and nothing is written before both pass.
@@ -207,11 +207,11 @@ function freeze(
 ): Result<FreezeCommit, "not_found" | "stale"> {
   const checked: CheckedMove[] = [];
   for (const change of write.moves) {
-    const current = checkMove(tables, change);
-    if (!current.ok) {
-      return current;
+    const move = checkedMove(tables, options, change);
+    if (!move.ok) {
+      return move;
     }
-    checked.push({ change, current: current.value });
+    checked.push(move.value);
   }
   const orders = checkOrders(options, write);
   if (!orders.ok) {

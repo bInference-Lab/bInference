@@ -1,4 +1,5 @@
 import type { Clock, Id, IdSource, Ratio } from "@binference/core";
+import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
@@ -108,14 +109,14 @@ async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Pr
   return "skipped";
 }
 
-// Whether a fill's intent ended as a skip: a refusal, or a freeze's cancel. A stop's cancel, or
-// one the fill made itself, is no skip.
-function isSkipEnd(snapshot: IntentSnapshot): boolean {
-  const { record, settings } = snapshot;
-  if (record.state === "cancelled") {
-    return settings.agent.frozenAtMs !== undefined;
+// The skip of a proposal the money path refused before storing an intent: a route or venue it
+// could not find, by its own name; anything else, such as an agent archived meanwhile, a fault of
+// the fill, told once and paced.
+function proposalSkipOf(code: ProtocolErrorCode): OrderFillReason {
+  if (code === "quote.no_route") {
+    return "no_route";
   }
-  return record.reason !== undefined;
+  return code === "quote.venue_down" ? "venue_down" : "fill_failed";
 }
 
 // What the fill's intent came to. Its row and notices were written with its end; they are told
@@ -134,12 +135,14 @@ async function settle(
     run.snapshot.record.state === "confirmed"
       ? await cancelFill(rowParts(parts), { snapshot: run.snapshot, signal })
       : run.snapshot;
-  await announceOrder(parts, order.id, signal);
+  const rows = await announceOrder(parts, order.id, signal);
   if (snapshot.record.state === "paper_filled") {
     state.told.delete(order.agentId);
     return "filled";
   }
-  return isSkipEnd(snapshot) ? "skipped" : "inactive";
+  // A skip wrote its row with its intent's end; a stop's cancel, or one the fill made, wrote none.
+  const intent = snapshot.record.id;
+  return rows.some(({ intentId }) => intentId === intent) ? "skipped" : "inactive";
 }
 
 // A gate a fill meets before any intent: a live order while live fills are off, a locked engine.
@@ -211,7 +214,7 @@ async function fillNow(
       ? first
       : await proposeFill(parts, { order, sized: resized, price, signal });
   if (!proposed.ok) {
-    return skip(parts, state, { order, reason: "no_route", signal });
+    return skip(parts, state, { order, reason: proposalSkipOf(proposed.error), signal });
   }
   return settle(parts, state, { order, snapshot: proposed.value, signal });
 }

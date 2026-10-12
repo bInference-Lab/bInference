@@ -15,6 +15,7 @@ import { orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.
 import {
   activatesOnTheConfirmedCard,
   freezesAndUnfreezesOrders,
+  writesAFrozenFillsRow,
   refusesAnActiveOrderOfAFrozenAgent,
 } from "./order-freeze-checks.js";
 import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
@@ -194,6 +195,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     checkOn("keeps an order's skips, the newest first", create, recordsSkips),
     checkOn("writes a fill on its order with its intent's move", create, writesAFillWithItsIntent),
     checkOn("refuses fill calls on an aborted signal", create, refusesAbortedFills),
+    checkOn("writes a frozen fill's row with the freeze's cancel", create, writesAFrozenFillsRow),
     checkOn("keeps a row's notices until they are announced", create, announcesFillNotices),
     checkOn(
       "refuses a fill row without its order's own move",
