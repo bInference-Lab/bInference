@@ -83,6 +83,11 @@ export interface PriceWatcherOptions {
   readonly planPrices: PlanPrices;
   /** The quote assets' Chainlink feeds, which turn a price in a quote asset into USD. */
   readonly feeds: readonly FeedAsset[];
+  /**
+   * How long one endpoint may take to answer a block's batch before the next is asked; the
+   * failover's own timeout when absent.
+   */
+  readonly callTimeoutMs?: number;
 }
 
 // A watcher this far behind reads the newest blocks and leaves the older ones: a price that old no
@@ -168,7 +173,15 @@ async function readBlock(
   );
   const calls = [...planned.flatMap((token) => token.calls), ...feeds.calls];
   try {
-    const answers = await readAggregate(rpc, { multicall, calls, block, signal: run.signal });
+    const timeout =
+      run.options.callTimeoutMs === undefined ? {} : { timeoutMs: run.options.callTimeoutMs };
+    const answers = await readAggregate(rpc, {
+      multicall,
+      calls,
+      block,
+      signal: run.signal,
+      ...timeout,
+    });
     run.progress.markRead(block);
     priceAll(run, { planned, feeds, block }, answers);
     return true;

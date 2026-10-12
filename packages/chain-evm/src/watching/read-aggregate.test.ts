@@ -62,4 +62,23 @@ describe("aggregate read", () => {
       }),
     ).rejects.toMatchObject({ code: "chain.multicall_mismatch" });
   });
+
+  it("moves to the next endpoint within the read's own timeout", async () => {
+    const node = createFakeEvmNode({ multicall, head: 1n, answer: firstOnly });
+    const clock = createManualClock();
+    const rpc = createRpcFailover({
+      endpoints: [
+        { name: "slow", url: "https://slow.test" },
+        { name: "node", url: "https://node.test" },
+      ],
+      http: createFakeRpcHttp({ "https://slow.test": "hang", "https://node.test": node.endpoint }),
+      clock,
+      timeoutMs: 5_000,
+      restMs: 1,
+    });
+    const answers = readAggregate(rpc, { multicall, calls, signal, timeoutMs: 300 });
+    await clock.advance(300);
+    await expect(answers).resolves.toStrictEqual(["0xbeef", undefined]);
+    expect(clock.now()).toBe(300);
+  });
 });

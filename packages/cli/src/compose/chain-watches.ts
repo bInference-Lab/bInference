@@ -40,6 +40,9 @@ export interface ChainWatchesOptions {
 // after 30 seconds of polling.
 const headTimeoutMs = 3_000;
 const socketRestMs = 30_000;
+// A read of every block gives one endpoint this long, about three blocks on BNB Smart Chain, before
+// the next is asked (decision 0194).
+const watchCallTimeoutMs = 1_500;
 // PancakeSwap v3's fee tiers, in hundredths of a basis point.
 const v3Fees = [100, 500, 2_500, 10_000];
 // A pool must hold at least $1,000 of its quote token to price a token.
@@ -86,7 +89,13 @@ function watchOf(options: ChainWatchesOptions, reads: ChainReads): ChainWatch {
     url === undefined
       ? {}
       : { subscription: { url, open: options.openSocket, headTimeoutMs, restMs: socketRestMs } };
-  const blocks = createBlockSource({ rpc, clock, blockTimeMs, ...subscription });
+  const blocks = createBlockSource({
+    rpc,
+    clock,
+    blockTimeMs,
+    callTimeoutMs: watchCallTimeoutMs,
+    ...subscription,
+  });
   const v2Factory = factoryOf(chain, "v2-factory");
   const v3Factory = factoryOf(chain, "v3-factory");
   const pools = createPoolPriceReader({
@@ -109,6 +118,7 @@ function watchOf(options: ChainWatchesOptions, reads: ChainReads): ChainWatch {
     blockTimeMs,
     planPrices,
     feeds,
+    callTimeoutMs: watchCallTimeoutMs,
   });
   return createChainWatch({ chain, watcher, logger: options.logger });
 }

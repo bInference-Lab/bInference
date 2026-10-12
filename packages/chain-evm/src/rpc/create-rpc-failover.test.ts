@@ -86,6 +86,22 @@ describe("rpc failover", () => {
     expect(asked()).toStrictEqual([primary, secondary]);
   });
 
+  it("gives each endpoint the call's own timeout when the call names one", async () => {
+    const { clock, rpc, asked } = setup({ [primary]: "hang", [secondary]: chainIdNode });
+    const signal = new AbortController().signal;
+    const reply = rpc.request({
+      method: "eth_chainId",
+      params: [],
+      result: quantitySchema,
+      signal,
+      timeoutMs: 500,
+    });
+    await clock.advance(500);
+    await expect(reply).resolves.toStrictEqual(fromSecondary);
+    expect(clock.now()).toBe(500);
+    expect(asked()).toStrictEqual([primary, secondary]);
+  });
+
   it("moves to the next endpoint at once when a connection is refused", async () => {
     const { clock, chainId } = setup({ [primary]: "refuse", [secondary]: chainIdNode });
     await expect(chainId()).resolves.toStrictEqual(fromSecondary);

@@ -46,6 +46,11 @@ export interface BlockSourceOptions {
   readonly clock: Clock;
   /** The chain's block time: a poll every block time. */
   readonly blockTimeMs: number;
+  /**
+   * How long one endpoint may take to answer a poll before the next is asked; the failover's own
+   * timeout when absent. A reader of every block wants one well under the failover's.
+   */
+  readonly callTimeoutMs?: number;
   /** The WebSocket endpoint that pushes new heads, when the chain's config names one. */
   readonly subscription?: HeadSubscription;
 }
@@ -70,6 +75,7 @@ async function pollOnce(run: SourceRun): Promise<void> {
       params: [],
       result: quantitySchema,
       signal,
+      ...(options.callTimeoutMs === undefined ? {} : { timeoutMs: options.callTimeoutMs }),
     });
     run.see(number, "polling");
   } catch (error) {
@@ -109,9 +115,10 @@ async function step(run: SourceRun): Promise<void> {
  * Creates the block source of one chain (ARCHITECTURE.md section 9). With a WebSocket endpoint it
  * subscribes to `newHeads` and polls only while the socket is dead, for the subscription's rest,
  * before it opens a new one. A socket that brings no head above every head seen within its
- * timeout, such as one whose node repeats a head or trails the chain, counts as dead. Without one, it polls `eth_blockNumber` once a block time through the
- * chain's failover, which moves to the next endpoint within its timeout. A head that is not above
- * the newest seen, such as a node behind the others or a reorganised height, is not handed on.
+ * timeout, such as one whose node repeats a head or trails the chain, counts as dead. Without one,
+ * it polls `eth_blockNumber` once a block time through the chain's failover, which moves to the
+ * next endpoint within the call timeout. A head that is not above the newest seen, such as a node
+ * behind the others or a reorganised height, is not handed on.
  */
 export function createBlockSource(options: BlockSourceOptions): BlockSource {
   let current: BlockSourceState = {

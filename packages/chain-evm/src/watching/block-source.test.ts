@@ -83,6 +83,7 @@ function start(
     readonly second?: FakeEndpoint;
     readonly subscribe?: boolean;
     readonly open?: HeadSocketFactory;
+    readonly callTimeoutMs?: number;
   } = {},
 ): Running {
   const clock = createManualClock(1_000);
@@ -113,7 +114,9 @@ function start(
           },
         }
       : {};
-  const source = createBlockSource({ rpc, clock, blockTimeMs, ...subscription });
+  const callTimeout =
+    options.callTimeoutMs === undefined ? {} : { callTimeoutMs: options.callTimeoutMs };
+  const source = createBlockSource({ rpc, clock, blockTimeMs, ...subscription, ...callTimeout });
   const heads: bigint[] = [];
   const controller = new AbortController();
   controllers.push(controller);
@@ -143,6 +146,14 @@ describe("block source", () => {
     await clock.advance(1);
     expect(heads).toStrictEqual([100n]);
     expect(source.state().headAtMs).toBe(1_000 + timeoutMs);
+  });
+
+  it("fails over within the watcher's own call timeout when it is shorter", async () => {
+    const { clock, heads } = start({ first: "hang", callTimeoutMs: 300 });
+    await clock.advance(299);
+    expect(heads).toStrictEqual([]);
+    await clock.advance(1);
+    expect(heads).toStrictEqual([100n]);
   });
 
   it("keeps polling when no endpoint answers, and says why until a head comes", async () => {

@@ -96,7 +96,7 @@ export async function askEndpoint<T>(
   const deadline = createDeadline({
     clock: transport.clock,
     signal: call.signal,
-    timeoutMs: transport.timeoutMs,
+    timeoutMs: call.timeoutMs ?? transport.timeoutMs,
   });
   try {
     const response = await transport.http.request({

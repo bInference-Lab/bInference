@@ -17,6 +17,12 @@ export interface RpcCall<T> {
   /** Checks the result. A result that fails it counts against the endpoint that sent it. */
   readonly result: z.ZodType<T>;
   readonly signal: AbortSignal;
+  /**
+   * How long one endpoint may take to answer this call before the next is asked, for a caller on
+   * a budget shorter than the failover's, such as a reader of every block; the failover's own
+   * timeout when absent.
+   */
+  readonly timeoutMs?: number;
 }
 
 /** A result the node answered, checked by the call's schema. */

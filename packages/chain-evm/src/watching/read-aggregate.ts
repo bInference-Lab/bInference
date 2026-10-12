@@ -25,6 +25,8 @@ export interface AggregateRead {
   /** The block every call reads; `latest` when absent. */
   readonly block?: bigint;
   readonly signal: AbortSignal;
+  /** How long one endpoint may take; the failover's own timeout when absent. */
+  readonly timeoutMs?: number;
 }
 
 // The answer's results, or none for an answer outside `aggregate3`'s shape.
@@ -60,6 +62,7 @@ export async function readAggregate(
     params: [{ to: read.multicall, data }, read.block === undefined ? "latest" : toHex(read.block)],
     result: hexSchema,
     signal: read.signal,
+    ...(read.timeoutMs === undefined ? {} : { timeoutMs: read.timeoutMs }),
   });
   const results = resultsOf(answer);
   if (results?.length !== read.calls.length) {
