@@ -1,0 +1,133 @@
+import {
+  type AssetRef,
+  assetRefSchema,
+  type ChainRef,
+  type RegisteredChain,
+} from "@binference/chain";
+import type { WatchedPrice, WatcherLag } from "@binference/chain-evm";
+import { createFakeMarketSource } from "@binference/chain/testing";
+import { createManualClock, createMemoryLogger } from "@binference/core/testing";
+import type { EnginePush } from "@binference/engine";
+import type { OrderRecord } from "@binference/engine/orders";
+import { describe, expect, it } from "vitest";
+import type { ChainWatch } from "./chain-watch.js";
+import { createClosers } from "./closers.js";
+import { composePriceWatchers } from "./compose-price-watchers.js";
+
+const bsc = "eip155:56" as ChainRef;
+const token = assetRefSchema.parse("eip155:56/erc20:0x0000000000000000000000000000000000000001");
+const startMs = 1_800_000_000_000;
+// $2 a whole token of 18 decimals, as the watcher read it.
+const watched: WatchedPrice = {
+  token,
+  block: 100n,
+  atMs: startMs,
+  source: "pools",
+  quoteAsset: assetRefSchema.parse("eip155:56/slip44:714"),
+  quotePrice: { numerator: 1n, denominator: 300n },
+  usdPrice: { numerator: 2_000_000n, denominator: 10n ** 18n },
+};
+
+/** A chain watch a test steers: its lag, whether it runs, its latest prices and its watches. */
+function fakeWatch() {
+  const state = { lag: 0n, latest: [] as WatchedPrice[], watches: [] as AssetRef[], closed: 0 };
+  const watch = {
+    chain: { ref: bsc, definition: { name: "BNB Smart Chain" } } as unknown as RegisteredChain,
+    watcher: {
+      lag: (): WatcherLag => ({
+        lagBlocks: state.lag,
+        skippedBlocks: 0n,
+        source: { mode: "polling" },
+      }),
+    },
+    watch(asset: AssetRef) {
+      state.watches.push(asset);
+      return () => undefined;
+    },
+    isRunning: () => state.watches.length > 0,
+    latest: () => state.latest,
+    close: async () => {
+      state.closed += 1;
+      return await Promise.resolve();
+    },
+  } as unknown as ChainWatch;
+  return { watch, state };
+}
+
+function rig(options: { readonly dexscreenerUsd?: bigint } = {}) {
+  const clock = createManualClock(startMs);
+  const fake = fakeWatch();
+  const pushes: EnginePush[] = [];
+  const logger = createMemoryLogger({ subsystem: "watcher" });
+  const prices = new Map([[token, { numerator: options.dexscreenerUsd ?? 2n, denominator: 1n }]]);
+  const watchers = composePriceWatchers({
+    watches: new Map([[bsc, fake.watch]]),
+    decimals: async (tokens) => await Promise.resolve(new Map(tokens.map((each) => [each, 18]))),
+    orders: {
+      list: async () =>
+        await Promise.resolve([
+          { id: "ord_1", kind: "stopLoss", createdAtMs: 1, request: { kind: "stopLoss", token } },
+        ] as unknown as readonly OrderRecord[]),
+    },
+    sources: {
+      dexscreener: createFakeMarketSource({ id: "dexscreener", chains: [bsc], prices }),
+      geckoterminal: createFakeMarketSource({ id: "geckoterminal", chains: [bsc] }),
+    },
+    clock,
+    publish: (push) => pushes.push(push),
+  });
+  const closers = createClosers();
+  watchers.start(closers, logger);
+  return { clock, fake, pushes, logger, watchers, closers };
+}
+
+describe("the composed price watchers", () => {
+  it("gives an ok signal with no lag while no watcher reads", () => {
+    const { watchers } = rig();
+    expect(watchers.health()).toStrictEqual({ signal: "watcher", state: "ok" });
+  });
+
+  it("watches the active orders' tokens, and shows the lag and tells the owner when it stays", async () => {
+    const { clock, fake, watchers, pushes } = rig();
+    await clock.advance(1_000);
+    expect(fake.state.watches).toStrictEqual([token]);
+    expect(watchers.activeOrders()).toBe(1);
+    await clock.advance(1_000);
+    expect(watchers.health()).toStrictEqual({ signal: "watcher", state: "ok", lagBlocks: 0 });
+    fake.state.lag = 25n;
+    await clock.advance(1_000);
+    expect(watchers.health()).toStrictEqual({
+      signal: "watcher",
+      state: "fail",
+      since: startMs + 3_000,
+      lagBlocks: 25,
+    });
+    await clock.advance(30_000);
+    expect(pushes).toStrictEqual([
+      {
+        topic: "notice",
+        kind: "notice/new",
+        data: { key: "notice.watcherLag", values: { chain: "BNB Smart Chain", blocks: "25" } },
+      },
+    ]);
+  });
+
+  it("flags a price 10% or more from a source's as a warning, and logs it", async () => {
+    const { clock, fake, watchers, logger } = rig({ dexscreenerUsd: 3n });
+    fake.state.latest = [watched];
+    await clock.advance(15_000);
+    expect(watchers.health()).toStrictEqual({ signal: "watcher", state: "warn", lagBlocks: 0 });
+    expect(logger.records()).toContainEqual(
+      expect.objectContaining({
+        event: "watcher.price_gap",
+        fields: { assetId: token, sourceId: "dexscreener", gapBps: 3_333 },
+      }),
+    );
+  });
+
+  it("stops every watcher when the engine shuts down", async () => {
+    const { fake, closers } = rig();
+    await closers.closeAll(new AbortController().signal);
+    expect(fake.state.closed).toBe(1);
+  });
+});

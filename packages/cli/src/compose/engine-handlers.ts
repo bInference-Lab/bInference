@@ -26,6 +26,8 @@ interface EngineWiring {
   readonly backupKey: () => HealthSignal["state"];
   /** The agent runtime's signal: failing, since it went down, while it is down or starting. */
   readonly runtime: () => RuntimeHealth;
+  /** The price watchers' signal, with their lag in blocks while one reads. */
+  readonly watcher: () => HealthSignal;
 }
 
 /**
@@ -49,6 +51,7 @@ export function engineHandlers(
         since: () => wiring.runtime().since,
       },
     ],
+    signals: [wiring.watcher],
     logFailed: opened.log.hasFailed,
   });
   opening.closers.add("health", async () => probe.stop());

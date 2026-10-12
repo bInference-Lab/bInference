@@ -17,6 +17,7 @@ const namedSignals: ReadonlySet<string> = new Set([
   "executor",
   "backup_key",
   "runtime",
+  "watcher",
 ]);
 
 /** The name of a health signal in the owner's language, or the signal itself when it has none. */
@@ -58,6 +59,10 @@ function printStatus(output: CliOutput, status: EngineStatus, words: StatusWords
     } else {
       output.item("status.signalSince", { ...values, when: words.dateTime(signal.since) });
     }
+    // The price watchers say how many blocks their reads trail the chain.
+    if (signal.lagBlocks !== undefined) {
+      output.item("status.signalLag", { name: values.name, blocks: signal.lagBlocks });
+    }
   }
   // The backup key warns until the owner key is entered once since the sealing key came.
   if (status.health.some((signal) => signal.signal === "backup_key" && signal.state === "warn")) {
@@ -67,8 +72,9 @@ function printStatus(output: CliOutput, status: EngineStatus, words: StatusWords
 
 /**
  * `binference status`: asks the running engine for `engine/status` over IPC and prints its state,
- * release, protocol version, agents and health signals, each one that is not ok with since when,
- * or the answer as JSON. Exits 1 when the engine cannot be reached.
+ * release, protocol version, agents and health signals, each one that is not ok with since when
+ * and the price watchers' with how many blocks they trail the chain, or the answer as JSON. Exits 1
+ * when the engine cannot be reached.
  */
 export async function runStatus(
   host: CliHost,

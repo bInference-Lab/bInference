@@ -8,8 +8,14 @@ export interface LogFields {
   readonly orderId?: string;
   readonly traceId?: string;
   readonly chain?: string;
+  /** An asset's CAIP-19 id, such as the token a price watcher flags. */
+  readonly assetId?: string;
+  /** A data source's or venue's id, such as `dexscreener`. */
+  readonly sourceId?: string;
   readonly errorCode?: string;
   readonly durationMs?: number;
+  /** A gap between two prices, in basis points. */
+  readonly gapBps?: number;
 }
 
 /** One record as a logger writes it. */

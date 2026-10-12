@@ -130,6 +130,8 @@
   "signal.executor": "Live sending",
   "signal.backup_key": "Backup key",
   "signal.runtime": "Agent runtime",
+  "signal.watcher": "Price watching",
+  "status.signalLag": "{name}: {blocks, plural, one {# block} other {# blocks}} behind the chain",
   "status.backupKeyOld": "Backups are still sealed to the owner key itself. Enter the owner key code once, in any command that asks for it, and the next backups are sealed to a key of their own.",
   "health.ready": "binference is running and ready.",
   "health.starting": "binference is still starting. Try again in a few seconds.",

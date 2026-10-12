@@ -106,7 +106,9 @@ describe("binference start, status, health and logs end to end", () => {
         "rpc",
         "backup_key",
         "runtime",
+        "watcher",
       ]);
+      expect(answer.health.at(-1)).toStrictEqual({ signal: "watcher", state: "ok" });
       expect(answer.health.slice(2, 7)).toStrictEqual([
         { signal: "logs", state: "ok" },
         { signal: "executor", state: "ok" },

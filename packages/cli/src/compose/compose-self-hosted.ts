@@ -21,10 +21,12 @@ import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
+import type { ComposedPriceWatchers } from "./compose-price-watchers.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
+import { composeWatching } from "./compose-watching.js";
 import { engineHandlers } from "./engine-handlers.js";
-import { selfHostedMarketReads } from "./market-reads.js";
+import { type SelfHostedSources, selfHostedMarketReads } from "./market-reads.js";
 import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
@@ -60,6 +62,8 @@ export interface ComposedSelfHosted {
   readonly telegram?: ComposedTelegram;
   /** The agent runtime, which starts once the engine serves. */
   readonly runtime: ComposedRuntime;
+  /** The price watchers, whose timers start once the engine serves. */
+  readonly priceWatchers: ComposedPriceWatchers;
 }
 
 /** What the self-hosted engine trades on, each part over the chains' one set of reads. */
@@ -162,6 +166,11 @@ interface Wiring {
   readonly sealKey: SealKeyKeeper;
   /** The agent runtime, its routed operations and its health signal. */
   readonly runtime: ComposedRuntime;
+  /** The market data sources, one of each, which the market reads and the watchers share. */
+  readonly sources: SelfHostedSources;
+  /** The price watchers; their notices reach the engine's publish once it exists. */
+  readonly priceWatchers: ComposedPriceWatchers;
+  readonly watcherPushes: { publish: (push: EnginePush) => void };
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -192,6 +201,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   const stopper = { stop: (): void => undefined };
   const jobs = { publish: (_push: EnginePush): void => undefined };
   return {
+    ...composeWatching(opening, opened, parts.reads),
     jobs,
     state,
     parts,
@@ -228,6 +238,7 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
       locked,
       jobs: wiring.jobs,
       runtime: runtime.health,
+      watcher: wiring.priceWatchers.health,
     }),
   };
 }
@@ -246,7 +257,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       stores,
       prices: parts.prices,
       riskSources: selfHostedRiskSources(host.http),
-      marketReads: selfHostedMarketReads({ http: host.http, clock: host.clock }),
+      marketReads: selfHostedMarketReads(wiring.sources, host.clock),
     },
     {
       chains: wiring.chains,
@@ -306,6 +317,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   sending.pushes.publish = publish;
   locked.announce.publish = publish;
   wiring.jobs.publish = publish;
+  wiring.watcherPushes.publish = publish;
   wiring.signerRefused.run = ({ intent, refused }) => {
     publish(signerRefusedNotice({ intent, refused }));
   };
@@ -331,6 +343,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     state,
     locked,
     runtime: wiring.runtime,
+    priceWatchers: wiring.priceWatchers,
     ...bot,
   };
 }

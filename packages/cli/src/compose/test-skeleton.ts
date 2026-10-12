@@ -64,7 +64,7 @@ import {
 } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
 import { createEngineOperations } from "./engine-operations.js";
-import { selfHostedMarketReads } from "./market-reads.js";
+import { selfHostedMarketReads, selfHostedSources } from "./market-reads.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 
 /** The secrets of the CLI token, with every scope, and of the MCP token, with read and propose. */
@@ -137,7 +137,10 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
         prices: createFakePriceSource(new Map([[testCoin, coinPrice]])),
         // The self-hosted sources, over outbound HTTP that reaches no host.
         riskSources: selfHostedRiskSources(createScriptedHttp([])),
-        marketReads: selfHostedMarketReads({ http: createScriptedHttp([]), clock }),
+        marketReads: selfHostedMarketReads(
+          selfHostedSources({ http: createScriptedHttp([]), clock }),
+          clock,
+        ),
       };
     },
   },

@@ -1,3 +1,4 @@
+import type { MarketDataSource } from "@binference/chain";
 import type { Clock, Http } from "@binference/core";
 import { createDexscreenerSource } from "@binference/dexscreener";
 import { createSourceMarketReads, type MarketReads } from "@binference/engine/market";
@@ -9,20 +10,35 @@ const readTimeoutMs = 15_000;
 const maxWaitMs = 10_000;
 
 /**
- * The market reads of a self-hosted engine over the engine's outbound HTTP, each source paced
- * under its published limits for this machine alone: pools and trending tokens from DEX
- * Screener's keyless public API, candles from GeckoTerminal's (decision 0184).
+ * The market data sources of a self-hosted engine, one of each. Every reader shares them, the
+ * market reads and the price watchers' cross-check alike, so each source paces every request of
+ * this machine under its published limit: GeckoTerminal's about 10 calls a minute in all.
  */
-export function selfHostedMarketReads(options: {
+export interface SelfHostedSources {
+  readonly dexscreener: MarketDataSource;
+  readonly geckoterminal: MarketDataSource;
+}
+
+/** Makes the self-hosted engine's one DEX Screener source and one GeckoTerminal source. */
+export function selfHostedSources(options: {
   readonly http: Http;
   readonly clock: Clock;
-}): MarketReads {
-  const dexscreener = createDexscreenerSource({ ...options, maxWaitMs });
-  const geckoterminal = createGeckoterminalSource({ ...options, maxWaitMs });
+}): SelfHostedSources {
+  return {
+    dexscreener: createDexscreenerSource({ ...options, maxWaitMs }),
+    geckoterminal: createGeckoterminalSource({ ...options, maxWaitMs }),
+  };
+}
+
+/**
+ * The market reads of a self-hosted engine over its shared sources: pools and trending tokens from
+ * DEX Screener's keyless public API, candles from GeckoTerminal's (decision 0184).
+ */
+export function selfHostedMarketReads(sources: SelfHostedSources, clock: Clock): MarketReads {
   return createSourceMarketReads({
-    sources: [dexscreener],
-    chartSources: [geckoterminal],
-    clock: options.clock,
+    sources: [sources.dexscreener],
+    chartSources: [sources.geckoterminal],
+    clock,
     timeoutMs: readTimeoutMs,
   });
 }

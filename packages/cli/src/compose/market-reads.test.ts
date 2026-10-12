@@ -17,7 +17,7 @@ import {
   wbnbPoolsAnswer,
 } from "@binference/geckoterminal/testing";
 import { describe, expect, it } from "vitest";
-import { selfHostedMarketReads } from "./market-reads.js";
+import { selfHostedMarketReads, selfHostedSources } from "./market-reads.js";
 
 const live = { signal: new AbortController().signal };
 const origin = "https://api.dexscreener.com";
@@ -63,7 +63,10 @@ const recorded = createScriptedHttp([
   },
 ]);
 
-const readsOver = (http = recorded) => selfHostedMarketReads({ http, clock: createManualClock(0) });
+function readsOver(http = recorded) {
+  const clock = createManualClock(0);
+  return selfHostedMarketReads(selfHostedSources({ http, clock }), clock);
+}
 
 describe("self-hosted market reads", () => {
   it.each(

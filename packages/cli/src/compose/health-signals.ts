@@ -19,6 +19,8 @@ export interface HealthProbeOptions {
    * ok may say since when, such as the agent runtime that went down.
    */
   readonly parts: readonly HealthPart[];
+  /** Parts that give their whole signal, such as the price watchers with their lag in blocks. */
+  readonly signals?: readonly (() => HealthSignal)[];
   /** Whether the log file lost lines since the engine started. */
   readonly logFailed: () => boolean;
 }
@@ -79,6 +81,7 @@ export function startHealthProbe(options: HealthProbeOptions): HealthProbe {
         { signal: "memory", state: memoryState(process.memoryUsage().rss) },
         { signal: "logs", state: options.logFailed() ? "warn" : "ok" },
         ...options.parts.map(signalOf),
+        ...(options.signals ?? []).map((read) => read()),
       ];
     },
     stop: () => delay.disable(),

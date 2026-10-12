@@ -69,4 +69,15 @@ describe("the health signals", () => {
     expect(down).toStrictEqual({ signal: "runtime", state: "fail", since: 5_000 });
     expect(back).toStrictEqual({ signal: "runtime", state: "ok" });
   });
+
+  it("ends with each part that gives its whole signal, such as the watchers' lag", () => {
+    const probe = startHealthProbe({
+      parts: [],
+      signals: [() => ({ signal: "watcher", state: "warn", since: 7_000, lagBlocks: 4 })],
+      logFailed: () => false,
+    });
+    const last = probe.read().at(-1);
+    probe.stop();
+    expect(last).toStrictEqual({ signal: "watcher", state: "warn", since: 7_000, lagBlocks: 4 });
+  });
 });

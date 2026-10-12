@@ -21,8 +21,11 @@ export const logFieldsSchema: z.ZodType<LogFields> = z.strictObject({
   orderId: z.string().exactOptional(),
   traceId: z.string().exactOptional(),
   chain: z.string().exactOptional(),
+  assetId: z.string().exactOptional(),
+  sourceId: z.string().exactOptional(),
   errorCode: z.string().exactOptional(),
   durationMs: z.number().exactOptional(),
+  gapBps: z.number().exactOptional(),
 });
 
 /** Parses one line of the engine log. */
