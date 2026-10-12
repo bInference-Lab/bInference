@@ -15,6 +15,7 @@ import {
   type CardAnswers,
   type ChatIntake,
   createChatIntake,
+  createChatReplies,
   createFastCommands,
   createNoticeOutbox,
   createTelegramCards,
@@ -102,7 +103,7 @@ function launchTicketsOf(wiring: TelegramWiring) {
     issueLaunchTicket({ access: stores.access, clock, random }, request);
 }
 
-// The line to the owner's chat: the cards, and the notices from the outbox.
+// The line to the owner's chat: the cards, the notices from the outbox and the agent's replies.
 function relayOf(
   parts: TelegramParts,
   wiring: TelegramWiring,
@@ -112,7 +113,9 @@ function relayOf(
   const { showings, cards, display } = chat;
   const notices = wiring.stores.notices;
   const outbox = createNoticeOutbox({ ...parts, notices, chains, display, clock, logger });
-  return createTelegramRelay({ showings, cards, outbox, stored: wiring.stored, clock, logger });
+  const replies = createChatReplies({ ...parts, clock, logger, display });
+  const { stored } = wiring;
+  return createTelegramRelay({ showings, cards, outbox, chat: replies, stored, clock, logger });
 }
 
 // The owner's language and timezone as config.json5 holds them now.
@@ -146,9 +149,9 @@ function ownerUpdateSink(to: {
 /**
  * Joins the owner's bot to the engine: cards whose presses the engine answers (the owner's
  * numeric Telegram id only, stored before Telegram hears back), the ingress that hands the
- * owner's presses to them, and the relay that shows each new card version in the owner's chat and
- * sends the notices from the outbox once started (decision 0133). The owner's messages that are
- * not fast commands go to the agent with `chat/post`.
+ * owner's presses to them, and the relay that shows each new card version in the owner's chat,
+ * sends the notices from the outbox once started (decision 0133) and shows the agent's replies.
+ * The owner's messages that are not fast commands go to the agent with `chat/post`.
  */
 export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): ComposedTelegram {
   const { stores, chains, logger } = wiring;

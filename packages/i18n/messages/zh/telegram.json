@@ -5,6 +5,7 @@
   "secretDeleted": "⚠️ 消息已删除：内容看起来像助记词、私钥或所有者密钥。切勿在对话中粘贴这些内容。如果内容属实，请视为已泄露。如需分享交易，请改为粘贴该交易的区块浏览器链接，因为交易哈希和私钥看起来一样。",
   "button.confirm": "✅ 确认",
   "button.cancel": "❌ 取消",
+  "chat.working": "处理中 · {seconds} 秒",
   "chat.photosLeftOut": "Agent 每条消息最多读取 4 张图片，因此有 {count, plural, other {# 张图片}}未发送。请在另一条消息中发送。",
   "chat.photoTooLarge": "Agent 只读取不超过 5 MiB 的图片，因此有 {count, plural, other {# 张图片}}未发送。请发送更小的图片。",
   "chat.forwarded": "转发的消息不会发送给 Agent。请把你想让它读取的内容写在你自己的消息中。",

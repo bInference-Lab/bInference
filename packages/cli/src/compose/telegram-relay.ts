@@ -1,7 +1,7 @@
 import { BinferenceError, type Clock, type Id, idSchema, type Logger } from "@binference/core";
 import type { EnginePush } from "@binference/engine";
 import type { CardSettling, CardShowings, CardVersionRef } from "@binference/engine/surfaces";
-import type { NoticeOutbox, OutboxPass, TelegramCards } from "@binference/telegram";
+import type { ChatReplies, NoticeOutbox, OutboxPass, TelegramCards } from "@binference/telegram";
 import { z } from "zod";
 
 /** The line that carries the engine's pushes to the owner's chat, in the order they came. */
@@ -10,8 +10,9 @@ export interface TelegramRelay {
    * Takes one engine push. A card version that opens is shown in the owner's chat, and one that
    * closes on another surface or by its timer becomes its receipt there, with the paper fill once
    * a paper intent records it. A stored notice sends the outbox's deliveries up to it, oldest
-   * first, once the relay started. A failure is logged and never reaches the engine; past 1,000
-   * pushes waiting, a push is dropped and logged.
+   * first, once the relay started. A push of an agent's chat topic shows the agent's reply. A
+   * failure is logged and never reaches the engine; past 1,000 pushes waiting, a push is dropped
+   * and logged.
    */
   relay(push: EnginePush): void;
   /**
@@ -32,6 +33,8 @@ export interface TelegramRelayContext {
   readonly showings: CardShowings;
   readonly cards: TelegramCards;
   readonly outbox: NoticeOutbox;
+  /** The agent's replies: its status messages, answers and status lines. */
+  readonly chat: ChatReplies;
   /** Resolves once every notice published so far is stored. */
   readonly stored: () => Promise<void>;
   readonly clock: Clock;
@@ -45,7 +48,8 @@ export interface TelegramRelayContext {
 type RelayWork =
   | { readonly kind: "show"; readonly ref: CardVersionRef }
   | { readonly kind: "settle"; readonly intent: Id<"int"> }
-  | { readonly kind: "deliver"; readonly through?: Id<"ntc"> };
+  | { readonly kind: "deliver"; readonly through?: Id<"ntc"> }
+  | { readonly kind: "chat"; readonly push: EnginePush };
 
 interface Call {
   readonly signal: AbortSignal;
@@ -68,9 +72,14 @@ const deliverAll: RelayWork = { kind: "deliver" };
 // the card stays on the other surfaces and the notice in the outbox.
 const maxWaiting = 1_000;
 
+// A push of an agent's chat topic shows the agent's reply; any other is a card's or a notice's.
+function workOf(push: EnginePush): RelayWork | undefined {
+  return push.topic.startsWith("chat:") ? { kind: "chat", push } : cardWorkOf(push);
+}
+
 // A card version that opens is shown. One that closes is settled, and so is a paper intent's card
 // once the intent records its fill, which the receipt shows. A stored notice is delivered.
-function workOf(push: EnginePush): RelayWork | undefined {
+function cardWorkOf(push: EnginePush): RelayWork | undefined {
   if (push.kind === "notice/new") {
     const notice = storedNoticeSchema.safeParse(push.data);
     return notice.success ? { kind: "deliver", through: notice.data.id } : undefined;
@@ -117,6 +126,9 @@ async function settle(context: TelegramRelayContext, intent: Id<"int">, call: Ca
 function errorEvent(work: RelayWork) {
   if (work.kind === "deliver") {
     return { event: "telegram.notice_relay_failed", fields: {} };
+  }
+  if (work.kind === "chat") {
+    return { event: "telegram.chat_relay_failed", fields: {} };
   }
   const intentId = work.kind === "show" ? work.ref.intent : work.intent;
   return { event: "telegram.card_relay_failed", fields: { intentId } };
@@ -169,11 +181,16 @@ async function perform(
   deliver: (work: Extract<RelayWork, { kind: "deliver" }>) => Promise<void>,
 ): Promise<void> {
   const call = { signal: context.stop };
-  if (work.kind === "deliver") {
-    await deliver(work);
-    return;
+  switch (work.kind) {
+    case "deliver":
+      return deliver(work);
+    case "chat":
+      return context.chat.show(work.push, call);
+    case "show":
+      return show(context, work.ref, call);
+    case "settle":
+      return settle(context, work.intent, call);
   }
-  await (work.kind === "show" ? show(context, work.ref, call) : settle(context, work.intent, call));
 }
 
 /**
@@ -219,9 +236,13 @@ export function createTelegramRelay(given: TelegramRelayContext): TelegramRelay 
       line.enqueue(deliverAll);
     },
     paired: () => line.enqueue(deliverAll),
-    idle: async () => line.idle(),
+    async idle() {
+      await line.idle();
+      await context.chat.idle();
+    },
     async close() {
       stop.abort();
+      context.chat.close();
       await line.idle();
     },
   };

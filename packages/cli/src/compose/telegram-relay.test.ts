@@ -1,7 +1,7 @@
 import { ok } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import type { CardShowings, CardVersionRef } from "@binference/engine/surfaces";
-import type { NoticeOutbox, OutboxPass, TelegramCards } from "@binference/telegram";
+import type { ChatReplies, NoticeOutbox, OutboxPass, TelegramCards } from "@binference/telegram";
 import { describe, expect, it } from "vitest";
 import { createTelegramRelay } from "./telegram-relay.js";
 
@@ -23,7 +23,14 @@ const noticed = (n: number) =>
     data: { id: notice(n), at: nowMs, key: "notice.locked", values: {} },
   }) as const;
 
-// A relay whose cards and outbox write what they were asked into `events`.
+const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+const answered = {
+  topic: `chat:${agent}`,
+  kind: "chat/message",
+  data: { agent, turn: "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001", text: "Done.", final: true },
+} as const;
+
+// A relay whose cards, outbox and chat replies write what they were asked into `events`.
 function setUp(passes: OutboxPass[] = []) {
   const events: string[] = [];
   const clock = createManualClock(nowMs);
@@ -42,10 +49,21 @@ function setUp(passes: OutboxPass[] = []) {
       return Promise.resolve(passes.shift() ?? { kind: "done" });
     },
   };
+  const chat: ChatReplies = {
+    show: async (push) => {
+      events.push(`chat ${push.kind}`);
+      return Promise.resolve();
+    },
+    idle: async () => Promise.resolve(),
+    close: () => {
+      events.push("chat closed");
+    },
+  };
   const relay = createTelegramRelay({
     showings,
     cards,
     outbox,
+    chat,
     stored: async () => Promise.resolve(),
     clock,
     logger: createMemoryLogger({ subsystem: "telegram" }),
@@ -68,6 +86,15 @@ describe("the relay to the owner's chat", () => {
       `show ${card(2)}`,
     ]);
     await test.relay.close();
+  });
+
+  it("shows the agent's answer after the card its turn opened", async () => {
+    const test = setUp();
+    test.relay.relay(opened(1));
+    test.relay.relay(answered);
+    await test.relay.idle();
+    await test.relay.close();
+    expect(test.events).toStrictEqual([`show ${card(1)}`, "chat chat/message", "chat closed"]);
   });
 
   it("sends no notice before it starts, then all that waited", async () => {

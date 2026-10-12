@@ -26,6 +26,10 @@ packages/i18n/messages/zh/notice.json emoji
 packages/i18n/messages/en/cmd.json emoji
 packages/i18n/messages/zh/cmd.json emoji
 
+# The status lines of the agent's turns carry the waiting and warning icons the card spec names.
+packages/i18n/messages/en/turn.json emoji
+packages/i18n/messages/zh/turn.json emoji
+
 # Each language's name is written in that language, the same in every language, so the owner finds
 # theirs on the /lang buttons whatever binference speaks now.
 packages/i18n/messages/en/language.json cjk

@@ -1,0 +1,21 @@
+{
+  "proposalWaits": "🟡 Waiting for your answer on its card",
+  "moreProposals": "{count, plural, one {One more proposal follows} other {# more proposals follow}} once you answer this card",
+  "budget": "Chat paused until {when}: today's model budget is spent. Orders keep running.",
+  "stopped": "Stopped. Anything you already confirmed still goes through.",
+  "stoppedCardOpen": "🟡 Stopped. The card of its proposal is still open: answer it there.",
+  "toolCallLimit": "Stopped: this answer reached its limit of 25 tool calls. Ask again to go on.",
+  "modelCallLimit": "Stopped: this answer reached its limit of 40 model calls. Ask again to go on.",
+  "loop": "Stopped: the agent repeated the same step three times.",
+  "failed.transient": "The model provider did not answer, even after retries. Try again in a minute.",
+  "failed.context": "This chat is too long to go on. Send /clear to start a new one; your notes and strategy stay.",
+  "failed.auth": "The model provider refused the key. Run `binference check` on the machine.",
+  "failed.billing": "The model key reached its spending limit. Raise it with the provider, or pick another model with /ai.",
+  "failed.request": "The model provider refused the request. Pick another model with /ai, or run `binference check`.",
+  "failed.refused": "The model stopped under its provider's own safety rules.",
+  "failed.aborted": "Stopped before the answer was complete.",
+  "failed.timeLimit": "Stopped: this answer ran for 10 minutes. Ask again to go on.",
+  "failed.proposalUnknown": "⚠️ binference did not hear back about a proposal, so it was not sent again. Check your open cards.",
+  "failed.engine": "Stopped: the agent lost its link to the engine. It starts again by itself.",
+  "firstChatDone": "Saved your answers to STRATEGY.md and PERSONA.md. Ask the agent to change them any time."
+}

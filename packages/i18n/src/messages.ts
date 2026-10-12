@@ -11,6 +11,7 @@ import enNotice from "../messages/en/notice.json" with { type: "json" };
 import enReason from "../messages/en/reason.json" with { type: "json" };
 import enReceipt from "../messages/en/receipt.json" with { type: "json" };
 import enTelegram from "../messages/en/telegram.json" with { type: "json" };
+import enTurn from "../messages/en/turn.json" with { type: "json" };
 import enWebPush from "../messages/en/webPush.json" with { type: "json" };
 import zhAutoAsks from "../messages/zh/autoAsks.json" with { type: "json" };
 import zhCard from "../messages/zh/card.json" with { type: "json" };
@@ -25,6 +26,7 @@ import zhNotice from "../messages/zh/notice.json" with { type: "json" };
 import zhReason from "../messages/zh/reason.json" with { type: "json" };
 import zhReceipt from "../messages/zh/receipt.json" with { type: "json" };
 import zhTelegram from "../messages/zh/telegram.json" with { type: "json" };
+import zhTurn from "../messages/zh/turn.json" with { type: "json" };
 import zhWebPush from "../messages/zh/webPush.json" with { type: "json" };
 import type { MessageLocale } from "./locales.js";
 
@@ -54,6 +56,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("receipt", enReceipt),
     ...inArea("notice", enNotice),
     ...inArea("telegram", enTelegram),
+    ...inArea("turn", enTurn),
     ...inArea("cmd", enCmd),
     ...inArea("cli", enCli),
     ...inArea("init", enInit),
@@ -70,6 +73,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("receipt", zhReceipt),
     ...inArea("notice", zhNotice),
     ...inArea("telegram", zhTelegram),
+    ...inArea("turn", zhTurn),
     ...inArea("cmd", zhCmd),
     ...inArea("cli", zhCli),
     ...inArea("init", zhInit),

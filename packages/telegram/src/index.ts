@@ -12,6 +12,8 @@ export type {
 } from "./cards/create-telegram-cards.js";
 export { createChatIntake } from "./chat/chat-intake.js";
 export type { ChatIntake, ChatIntakeOptions } from "./chat/chat-intake.js";
+export { createChatReplies } from "./chat/chat-replies.js";
+export type { ChatReplies, ChatRepliesOptions } from "./chat/chat-replies.js";
 export { createFastCommands } from "./commands/create-fast-commands.js";
 export type { FastCommands, FastCommandsOptions } from "./commands/create-fast-commands.js";
 export type { IngressWords, OwnerUpdateSink } from "./ingress/act-on-update.js";

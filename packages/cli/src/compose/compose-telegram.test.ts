@@ -114,6 +114,31 @@ async function answerInCli(test: Bot, intent: Id<"int">, verb: "confirm" | "deny
   expect(answered.ok).toBe(true);
 }
 
+// The owner writes to the bot, and the message's batch closes.
+async function ownerWrites(test: Bot): Promise<void> {
+  const message = {
+    update_id: 1,
+    message: {
+      message_id: 7,
+      date: 1_760_000_000,
+      chat: { id: ownerId, type: "private" },
+      from: { id: ownerId, is_bot: false, first_name: "Owner" },
+      text: "How is the market today?",
+    },
+  };
+  await test.telegram.ingress.receive(message, live);
+  await test.clock.advance(300);
+  await test.telegram.chat.idle();
+}
+
+// The owner's message the runtime finds in the agent's inbox.
+async function takenMessage(test: Bot) {
+  const { handlers } = test.composed.engine;
+  const listed = await handlers["inbox/list"]({ args: { agent }, caller: runtime, ...live });
+  const [taken] = listed.ok ? listed.value.items : never();
+  return taken?.kind === "inbox/message" ? taken : never();
+}
+
 describe("the bot joined to the engine", () => {
   it.each(
     cardAnswersContract({
@@ -235,19 +260,7 @@ describe("the bot joined to the engine", () => {
   it("posts the owner's message to the agent as one written in Telegram", async () => {
     const turns = createRunningTurns();
     const test = await bot({ turns });
-    const message = {
-      update_id: 1,
-      message: {
-        message_id: 7,
-        date: 1_760_000_000,
-        chat: { id: ownerId, type: "private" },
-        from: { id: ownerId, is_bot: false, first_name: "Owner" },
-        text: "How is the market today?",
-      },
-    };
-    await test.telegram.ingress.receive(message, live);
-    await test.clock.advance(300);
-    await test.telegram.chat.idle();
+    await ownerWrites(test);
     turns.startRuntime(runtimeToken);
     const { handlers } = test.composed.engine;
     const listed = await handlers["inbox/list"]({ args: { agent }, caller: runtime, ...live });
@@ -258,5 +271,33 @@ describe("the bot joined to the engine", () => {
       },
     });
     expect(test.botApi.calls()).toStrictEqual([]);
+  });
+
+  it("shows the agent's reply as one edited status message, then the answer", async () => {
+    const turns = createRunningTurns();
+    const test = await bot({ turns });
+    const { handlers } = test.composed.engine;
+    await ownerWrites(test);
+    turns.startRuntime(runtimeToken);
+    const taken = await takenMessage(test);
+    const turn = { agent, session: taken.session, turn: taken.turn };
+    const start = { ...turn, messages: [taken.message], outsideContent: false };
+    await handlers["turn/start"]({ args: start, caller: runtime, ...live });
+    await test.telegram.idle();
+    await test.clock.advance(1_000);
+    await test.telegram.idle();
+    const say = { ...turn, text: "Calm: <b>no</b> big moves.", final: true };
+    await handlers["turn/say"]({ args: say, caller: runtime, ...live });
+    const end = { agent, turn: taken.turn, outcome: "ok" } as const;
+    await handlers["turn/end"]({ args: end, caller: runtime, ...live });
+    await test.telegram.idle();
+    expect(test.botApi.sent().map(({ text }) => text)).toStrictEqual([
+      "Working on it · 0 s",
+      "Calm: <b>no</b> big moves.",
+    ]);
+    expect(test.botApi.edits()).toHaveLength(1);
+    expect(test.botApi.messages().map(({ text }) => text)).toStrictEqual([
+      "Calm: <b>no</b> big moves.",
+    ]);
   });
 });
