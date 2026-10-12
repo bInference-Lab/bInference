@@ -53,6 +53,7 @@ export const protocolErrorCodes = [
   "order.wrong_state",
   "order.kind_unavailable",
   "order.unpriced_token",
+  "order.live_fills_off",
   "asset.not_found",
   "asset.bad_address",
   "name.not_found",

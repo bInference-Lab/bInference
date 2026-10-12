@@ -85,9 +85,10 @@ Rules for this package:
   sizes it, and `fill-bounds.ts` holds its chosen quote to every bound of the order at `simulated`,
   in the agent's line of confirmations with the rolling cap; a breach ends it `failed_check` with
   the bound. A paper fill writes its order's move, its `order_fills` row and the moves that end the
-  other exit orders of a position it emptied with its own move (`fill-on-paper.ts`). A live order,
-  while the engine's `liveOrderFills` stays off, and every order while the engine is locked, skip
-  before any intent. A change to a bound changes `fill-bounds.property.test.ts`, and a change to
+  other exit orders of a position it emptied with its own move (`fill-on-paper.ts`). While the
+  engine's `liveOrderFills` stays off, `order/create` refuses a live price order
+  (`order.live_fills_off`, decision 0197), and a live order made before skips; every order skips
+  while the engine is locked, before any intent. A change to a bound changes `fill-bounds.property.test.ts`, and a change to
   the fill path `fill-orders.property.test.ts`.
 - The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of
   a watched token against its active price orders in `price-triggers.ts`, a pure judgment of

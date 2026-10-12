@@ -160,6 +160,7 @@ async function engineFor(item: Case): Promise<TestEngine> {
     tokens: item.tokens,
     venues: [createFakeVenue({ rate: item.rate })],
     agent: { limits, mode: item.isLive ? "live" : "paper" },
+    liveOrderFills: item.isLive,
     prices: fillPrices,
   });
 }
@@ -168,11 +169,13 @@ async function engineFor(item: Case): Promise<TestEngine> {
 async function runViolations(item: Case): Promise<readonly string[]> {
   const test = await engineFor(item);
   const order = await activeOrder(test, item.request);
+  // A live order is made while live fills are on; it fills after a start with them off.
+  const engine = item.isLive ? test.restart({ liveOrderFills: false }) : test.engine;
   await Promise.all(
-    [1, 2].map(async () => test.engine.fillOrder({ order: order.id, price: eightyCents }, live)),
+    [1, 2].map(async () => engine.fillOrder({ order: order.id, price: eightyCents }, live)),
   );
   await test.clock.advance(3_600_000);
-  await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+  await engine.fillOrder({ order: order.id, price: eightyCents }, live);
   const after = await storedOrder(test, order.id);
   const filled = (await fillIntentsOf(test)).filter(({ state }) => state === "paper_filled");
   const cards = await Promise.all(

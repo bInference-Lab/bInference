@@ -47,6 +47,8 @@ export interface OrderParts {
   readonly expireCard: (intent: Id<"int">, call: { readonly signal: AbortSignal }) => Promise<void>;
   /** Whether the price watcher can price a token now (decision 0194). */
   readonly canPrice: CanPrice;
+  /** Whether a live order may fill; while it may not, no live price order is taken (decision 0197). */
+  readonly liveFills: boolean;
 }
 
 /**
@@ -73,6 +75,17 @@ function agentRefusal(settings: AgentSettings | undefined): ProtocolErrorCode | 
     return "agent.archived";
   }
   return settings.agent.frozenAtMs === undefined ? undefined : "agent.frozen";
+}
+
+// A live price order would never fill while live fills are off, so none is taken (decision 0197).
+function liveRefusal(
+  parts: Pick<OrderParts, "liveFills">,
+  call: { readonly settings: AgentSettings; readonly request: OrderRequest },
+): ProtocolErrorCode | undefined {
+  const isLive = call.settings.agent.mode === "live";
+  return isLive && hasPriceTrigger(call.request.kind) && !parts.liveFills
+    ? "order.live_fills_off"
+    : undefined;
 }
 
 // The request's wallet, or the agent's default one, with an account in custody on the token's
@@ -226,6 +239,10 @@ export async function createOrder(
   const refusal = agentRefusal(settings);
   if (refusal !== undefined || settings === undefined) {
     return err(refusal ?? "agent.not_found");
+  }
+  const offLive = liveRefusal(parts, { settings, request });
+  if (offLive !== undefined) {
+    return err(offLive);
   }
   const held = await holderOf(parts, checked.value, signal);
   if (!held.ok) {

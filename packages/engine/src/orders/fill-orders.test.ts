@@ -86,9 +86,11 @@ describe("an auto order's fill", () => {
   });
 
   it("skips a live order while live fills are off, keeps it active and says so once", async () => {
-    const test = await startFillEngine({ agent: { mode: "live" } });
+    // Made while live fills were on, then the engine starts again with them off.
+    const test = await startFillEngine({ agent: { mode: "live" }, liveOrderFills: true });
     const order = await activeOrder(test, testStopLoss());
-    const fill = async () => test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+    const engine = test.restart({ liveOrderFills: false });
+    const fill = async () => engine.fillOrder({ order: order.id, price: eightyCents }, live);
 
     // An exit order tries again at the next price, and the owner hears the reason once.
     const outcomes = [await fill(), await fill(), await fill()];

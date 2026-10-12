@@ -38,6 +38,7 @@ export function orderPartsOf(
     isLocked,
     expireCard,
     canPrice,
+    liveFills: options.liveOrderFills === true,
   };
 }
 

@@ -112,6 +112,8 @@ export interface TestEngineOptions {
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
   /** Whether the engine is locked; never when absent. */
   readonly isLocked?: () => boolean;
+  /** Whether a live order may fill and so be made; off when absent, as in the product now. */
+  readonly liveOrderFills?: boolean;
   /** The risk step; one that passes registry tokens and refuses others as `sources_down` when absent. */
   readonly risk?: RiskCheck;
   /** The ceilings the owner key changes; a fake holding none when absent. */
@@ -149,9 +151,9 @@ export interface TestEngine {
   readonly turns: RunningTurns;
   /**
    * Starts a new engine on the same stores and fakes, as a restart does: nothing it kept in
-   * memory survives, and it opens no paper portfolio again.
+   * memory survives, and it opens no paper portfolio again; with live fills turned as told.
    */
-  readonly restart: () => Engine;
+  readonly restart: (changed?: Pick<EngineOptions, "liveOrderFills">) => Engine;
 }
 
 /** What the fake wallet facts say of the test wallet unless a test changes them. */
@@ -263,9 +265,11 @@ function readsOf(
 }
 
 // A new engine on the same stores, with ids of its own, as a restart starts one.
-function restartOf(options: EngineOptions): () => Engine {
+function restartOf(
+  options: EngineOptions,
+): (changed?: Pick<EngineOptions, "liveOrderFills">) => Engine {
   const ids = createIdSource({ clock: options.clock, random: createSeededRandom(5) });
-  return () => createEngine({ ...options, ids });
+  return (changed = {}) => createEngine({ ...options, ...changed, ids });
 }
 
 /** Starts an engine with its agent stored, on memory stores and the fake chain and venue. */
@@ -303,6 +307,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
     isLocked: options.isLocked ?? (() => false),
+    liveOrderFills: options.liveOrderFills === true,
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),

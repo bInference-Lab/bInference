@@ -73,7 +73,11 @@ describe("an auto order's card", () => {
   });
 
   it("takes the tap on an order's card while the engine is locked: it signs nothing", async () => {
-    const test = await startOrderEngine({ agent: { mode: "live" }, isLocked: () => true });
+    const test = await startOrderEngine({
+      agent: { mode: "live" },
+      isLocked: () => true,
+      liveOrderFills: true,
+    });
     const view = await createdOrder(test);
 
     await tapCard(test, view.intent, "confirm");
@@ -123,6 +127,19 @@ describe("the rules of a new auto order", () => {
     ]);
     expect([limit.maxFills, limit.expiresAt]).toStrictEqual([3, testNowMs + 60_000]);
     expect(trailing.request).toMatchObject({ wallet: testWallet, token: testToken });
+  });
+
+  it("refuses a live price order while live fills are off, and takes a paper one", async () => {
+    const liveEngine = await startOrderEngine({ agent: { mode: "live" } });
+    const paperEngine = await startOrderEngine();
+
+    const refused = await liveEngine.engine.handlers["order/create"](testCall(testStopLoss()));
+    const taken = await paperEngine.engine.handlers["order/create"](testCall(testStopLoss()));
+
+    expect(refused).toStrictEqual(err("order.live_fills_off"));
+    const waiting = { states: ["awaiting_confirmation" as const], limit: 5 };
+    expect(await liveEngine.stores.orders.list(waiting, live)).toStrictEqual([]);
+    expect(taken.ok).toBe(true);
   });
 
   it("refuses an order it cannot run, storing nothing", async () => {
