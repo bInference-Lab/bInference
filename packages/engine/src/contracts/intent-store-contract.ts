@@ -58,6 +58,16 @@ async function createsIntents(subject: IntentStoreSubject): Promise<void> {
   assert.equal(await store.get(fixtureId("int", 9), live()), undefined);
 }
 
+// A fill is stored with the order that authorizes it from its first write.
+async function keepsAFillsOrder(subject: IntentStoreSubject): Promise<void> {
+  const { store } = subject;
+  const authorizedBy = { order: fixtureId("ord", 1) };
+  const draft = { ...intentDraft(subject, 1), proposer: "engine" as const, authorizedBy };
+  const created = await store.create(draft, live());
+  assert.ok(created.ok);
+  assert.deepEqual((await store.get(draft.id, live()))?.authorizedBy, authorizedBy);
+}
+
 async function movesUnderVersion(subject: IntentStoreSubject): Promise<void> {
   const { store, ledger } = subject;
   await store.create(intentDraft(subject, 1), live());
@@ -233,6 +243,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
       create,
       movesUnderVersion,
     ),
+    checkOn("keeps a fill's order from its first write", create, keepsAFillsOrder),
     checkOn("refuses a stale or unknown move and writes nothing", create, refusesStale),
     checkOn("lets exactly one of two racing moves from one version win", create, letsOneRacerWin),
     checkOn(
