@@ -1,23 +1,29 @@
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ProtocolClient } from "@binference/client";
-import { startNodeProgram } from "@binference/platform";
+import { realFilePath, startNodeProgram, writePrivateFile } from "@binference/platform";
 import type { AgentView, PushFrame } from "@binference/protocol";
+import { type StandInModelServer, startStandInModelServer } from "@binference/runtime/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
-import { connectClient } from "./test-host.js";
+import { configText, type InitMachine, secretEnv } from "./init-fixtures.js";
+import { connectClient, noPermissions } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
 
 // The chat relay end to end: an owner's chat/post through the engine `binference start` runs, to
-// the agent runtime as a process of its own from source, with its agent.sqlite and a scripted
-// model, and the turn's text and end back on the agent's chat topic.
+// the agent runtime as a process of its own from source, with its agent.sqlite and a model, and
+// the turn's text and end back on the agent's chat topic. The model is a scripted one, or the
+// runtime's own Chat Completions client against a stand-in provider on the loopback.
 const slow = { timeout: 60_000 };
 const engines = createRunningEngines();
+const servers: StandInModelServer[] = [];
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(20_000) });
 const entry = fileURLToPath(new URL("scripted-runtime.entry.ts", import.meta.url));
 const loader = ["--conditions=@binference/source", "--import", "tsx"];
 
 afterEach(async () => {
   await engines.stopAll();
+  await Promise.all(servers.splice(0).map(async (server) => server.close()));
 });
 
 // The agent `binference init` made.
@@ -49,6 +55,68 @@ function watchChat(client: ProtocolClient, agent: AgentView["agent"]) {
 const scriptedRuntime: StartRuntime = async (signal) =>
   startNodeProgram({ args: [...loader, entry], parentEnv: {}, signal });
 
+// Every variable the official client would read, pointing somewhere else: none may change a call.
+const strayEnv = {
+  OPENAI_BASE_URL: "http://127.0.0.1:9/v1",
+  OPENAI_API_KEY: "sk-stray",
+  OPENAI_ADMIN_KEY: "sk-admin-stray",
+  OPENAI_ORG_ID: "org-stray",
+  OPENAI_PROJECT_ID: "proj_stray",
+  OPENAI_WEBHOOK_SECRET: "whsec_stray",
+  OPENAI_LOG: "debug",
+  OPENAI_CUSTOM_HEADERS: "x-stray: 1",
+};
+
+// The runtime binference ships, from its source, started with the stray variables above.
+const realRuntime: StartRuntime = async (signal) => {
+  const linked = fileURLToPath(import.meta.resolve("@binference/runtime/process"));
+  const program = await realFilePath(linked, signal);
+  return startNodeProgram({ args: [...loader, program], parentEnv: {}, env: strayEnv, signal });
+};
+
+const sse = (chunk: object): string => `data: ${JSON.stringify(chunk)}\n\n`;
+const chunk = (delta: object, finish: string | null = null) => ({
+  id: "chatcmpl-E2E",
+  object: "chat.completion.chunk",
+  created: 1_760_000_000,
+  model: "stand-in-model",
+  choices: [{ index: 0, delta, finish_reason: finish }],
+});
+
+// A provider that answers one streamed text, its usage last.
+async function standInProvider(): Promise<StandInModelServer> {
+  const usage = { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 };
+  const server = await startStandInModelServer([
+    {
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      chunks: [
+        sse(chunk({ role: "assistant", content: "" })),
+        sse(chunk({ content: "Hello from the model." })),
+        sse(chunk({}, "stop")),
+        sse({ ...chunk({}), choices: [], usage }),
+        "data: [DONE]\n\n",
+      ],
+    },
+  ]);
+  servers.push(server);
+  return server;
+}
+
+// Points the machine's main model at the stand-in, its key read from the engine's environment.
+async function useProvider(machine: InitMachine, server: StandInModelServer): Promise<void> {
+  const text = (await configText(machine)) ?? "";
+  const open = text.indexOf("{");
+  const models =
+    `\n  models: { providers: { local: { kind: "openai", baseUrl: "${server.origin}/v1", ` +
+    `apiKey: { fromEnv: "LOCAL_MODEL_KEY" } } }, main: "local/stand-in-model" },`;
+  await writePrivateFile(
+    join(machine.folder, "config.json5"),
+    `${text.slice(0, open + 1)}${models}${text.slice(open + 1)}`,
+    { permissions: noPermissions, signal: AbortSignal.timeout(5_000) },
+  );
+}
+
 describe("the chat relay to the agent runtime process", () => {
   it("takes an owner's message from chat/post to the turn's end", slow, async () => {
     const machine = await engines.setUp();
@@ -73,4 +141,67 @@ describe("the chat relay to the agent runtime process", () => {
       ["chat/turnEnded", { agent: id, turn: posted.turn, outcome: "ok" }],
     ]);
   });
+
+  it(
+    "runs the turn on the runtime's own model client against a stand-in provider",
+    slow,
+    async () => {
+      const machine = await engines.setUp();
+      const server = await standInProvider();
+      await useProvider(machine, server);
+      const env = { ...secretEnv(machine), LOCAL_MODEL_KEY: "sk-stand-in" };
+      await engines.start(machine, { env, parts: { startRuntime: realRuntime } });
+      const client = await connectClient(machine);
+      const id = firstAgent((await client.call("agent/list", {}, live())).items);
+      const { pushes, ended } = watchChat(client, id);
+      const posted = await client.call("chat/post", { agent: id, text: "hi" }, live());
+      await ended;
+      expect(pushes.map(({ kind, data }) => [kind, data]).slice(1)).toStrictEqual([
+        [
+          "chat/message",
+          {
+            agent: id,
+            session: posted.session,
+            turn: posted.turn,
+            text: "Hello from the model.",
+            final: true,
+          },
+        ],
+        ["chat/turnEnded", { agent: id, turn: posted.turn, outcome: "ok" }],
+      ]);
+      expect(
+        server.requests.map(({ method, path, headers }) => [
+          method,
+          path,
+          headers["authorization"],
+          headers["user-agent"],
+          Object.keys(headers).toSorted(),
+        ]),
+      ).toStrictEqual([
+        [
+          "POST",
+          "/v1/chat/completions",
+          "Bearer sk-stand-in",
+          expect.stringMatching(/^binference\//),
+          [
+            "accept",
+            "authorization",
+            "connection",
+            "content-length",
+            "content-type",
+            "host",
+            "user-agent",
+          ],
+        ],
+      ]);
+      expect(server.requests.map(({ body }) => JSON.parse(body) as unknown)).toMatchObject([
+        {
+          model: "stand-in-model",
+          messages: [{ role: "user", content: "hi" }],
+          max_completion_tokens: 4096,
+          stream: true,
+        },
+      ]);
+    },
+  );
 });

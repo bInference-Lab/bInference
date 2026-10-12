@@ -8,16 +8,16 @@ model loop, sessions and tools. It is a client of the engine with the scopes `re
 
 ## API
 
-| Export                                     | What it does                                                                                         |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `EngineLine`, `engineLineSchema`           | The lines the engine writes: `start`, `settings`, `route`, `stop`                                    |
-| `RuntimeLine`, `runtimeLineSchema`         | The lines the runtime writes: `ready`, `routeReply`, `health`                                        |
-| `RuntimeSettings`, `runtimeSettingsSchema` | The models with their keys, the chat mode, search and the owner                                      |
-| `isRoutedOperation`                        | Whether the runtime answers an operation through the engine                                          |
-| `readControlLines`                         | Cuts a pipe's bytes into lines, refusing one over `maxControlLineBytes`                              |
-| `runtimeNodeArguments`, `RuntimeFiles`     | The Node arguments that start the runtime under the permission model, granted its agent database     |
-| `@binference/runtime/process`              | The built runtime process, `dist/runtime-process.mjs`; never imported                                |
-| `@binference/runtime/testing`              | The runtime run in the test's process, a start line to send it, a scripted model and a turn recorder |
+| Export                                     | What it does                                                                                                                                                |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EngineLine`, `engineLineSchema`           | The lines the engine writes: `start`, `settings`, `route`, `stop`                                                                                           |
+| `RuntimeLine`, `runtimeLineSchema`         | The lines the runtime writes: `ready`, `routeReply`, `health`                                                                                               |
+| `RuntimeSettings`, `runtimeSettingsSchema` | The models with their keys, the chat mode, search and the owner                                                                                             |
+| `isRoutedOperation`                        | Whether the runtime answers an operation through the engine                                                                                                 |
+| `readControlLines`                         | Cuts a pipe's bytes into lines, refusing one over `maxControlLineBytes`                                                                                     |
+| `runtimeNodeArguments`, `RuntimeFiles`     | The Node arguments that start the runtime under the permission model, granted its agent database                                                            |
+| `@binference/runtime/process`              | The built runtime process, `dist/runtime-process.mjs`; never imported                                                                                       |
+| `@binference/runtime/testing`              | The runtime run in the test's process, a start line to send it, a scripted model, a turn recorder, a stand-in model provider and the ports' contract suites |
 
 ## The runtime process
 
@@ -42,8 +42,23 @@ store's worker threads and use the network; nothing else
    line that is not `start`, a line it cannot read, an agent database it cannot open, or a refused
    sign-in ends it with code 1.
 
-The runtime has no model client yet: until the transports land in `src/providers/`, each model call
-ends as a refused request, and the turn ends `failed` with `turn.failed.request`.
+## Models
+
+`src/providers/` holds the model transports (spec 8, section 8;
+[decision 0175](../../docs/DECISIONS.md#d0175)). A turn calls the settings' main model,
+`models.main` as `<provider>/<model>`. A provider of the `binference` or `openai` kind is called
+through the official `openai` client's Chat Completions, built there and nowhere else
+(`check:model-clients`): every option is set, so no `OPENAI_*` variable changes a call, it never
+retries or logs, and its `fetch` sends only POST requests under the provider's base URL with
+`accept`, `content-type` and the provider's key. Each answer streams into the loop's events and
+ends with `done` or one classified failure, with the provider's cost when it reports one. A model of
+Anthropic's through the gateway gets cache marks at the end of the stable prefix and of the history.
+Until the Messages transport lands, the `anthropic` kind, like a missing model, ends each call as a
+refused request, and the turn ends `failed` with `turn.failed.request`.
+
+The transports reach the network through the `StreamingHttp` port, which streams an answer's body
+as it arrives; the runtime process binds it to undici with a pool of its own, which names binference
+in the user agent and follows no redirect.
 
 ## The turn loop
 
