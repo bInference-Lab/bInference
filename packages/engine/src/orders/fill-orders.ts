@@ -2,9 +2,9 @@ import type { Clock, Id, IdSource, Ratio } from "@binference/core";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
-import type { AgentStore } from "../ports.js";
+import type { AgentStore, PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { endEmptyExit } from "./end-exit-orders.js";
+import { endEmptyExit, wasEmptiedSince } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
 import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
 import { unfinishedFills, withinDeadline } from "./fill-faults.js";
@@ -54,6 +54,8 @@ export interface OrderFillsParts extends FillSizeParts {
   readonly isLocked: () => boolean;
   /** Whether a live order may fill; off until the crash suite on fills passes. */
   readonly liveFills: boolean;
+  /** The positions, which tell whether a sale emptied an exit order's position. */
+  readonly positions: Pick<PositionStore, "positions">;
   readonly clock: Clock;
   readonly ids: IdSource;
   readonly publish: PublishPush;
@@ -194,8 +196,7 @@ async function fillNow(
   const sizing = { order, settings, tokenUsd: price.usdPerBaseUnit, signal };
   const sized = await sizeFill(parts, sizing);
   if (sized.kind === "empty") {
-    await endEmptyExit(parts, { order, nowMs: parts.clock.now(), signal });
-    return "ended";
+    return emptyExit(parts, state, { order, signal });
   }
   if (sized.kind === "skip") {
     return skip(parts, state, { order, reason: sized.reason, signal });
@@ -259,6 +260,22 @@ async function fillOrFail(
     }
     return failed(parts, state, run);
   }
+}
+
+// An exit order whose position holds none of the token ends when a sale emptied it after the order
+// was made; one whose position was never held, as before its buy settles, waits as a skip,
+// `nothing_to_sell` (decision 0197).
+async function emptyExit(
+  parts: OrderFillsParts,
+  state: FillState,
+  run: { readonly order: OrderRecord; readonly signal: AbortSignal },
+): Promise<FillOutcome> {
+  const { order, signal } = run;
+  if (!(await wasEmptiedSince(parts.positions, run))) {
+    return skip(parts, state, { order, reason: "nothing_to_sell", signal });
+  }
+  await endEmptyExit(parts, { order, nowMs: parts.clock.now(), signal });
+  return "ended";
 }
 
 // Runs `work` once every earlier fill of the agent has ended.

@@ -143,6 +143,7 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   decode_mismatch: "quote.no_route",
   price_impact: "quote.no_route",
   nothing_to_sell: "quote.no_route",
+  balance_unread: "chain.rpc_down",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

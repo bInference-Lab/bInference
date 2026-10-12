@@ -39,7 +39,10 @@ export type FillSizing =
   | SizedFill
   | {
       readonly kind: "skip";
-      readonly reason: OrderSkipReason | Extract<QuoteFailure, "nothing_to_sell"> | "no_price";
+      readonly reason:
+        | OrderSkipReason
+        | Extract<QuoteFailure, "nothing_to_sell" | "balance_unread">
+        | "no_price";
     }
   | { readonly kind: "empty" };
 
@@ -100,16 +103,20 @@ function coinOf(parts: FillSizeParts, order: OrderRecord): AssetRef {
 
 // What the wallet holds of what the fill spends, the coin a buy of the coin keeps for network
 // fees, and the price a size in dollars is counted at: a buy's asset's, a sale's trigger price.
+// `undefined` when the balance read had no entry for what the fill spends, which is no data.
 async function sizeFacts(
   parts: FillSizeParts,
   sizing: Sizing,
   spent: { readonly asset: AssetRef; readonly coin: AssetRef; readonly account: AccountRef },
-): Promise<SizeFacts> {
+): Promise<SizeFacts | undefined> {
   const { order, settings, signal } = sizing;
   const { asset, coin, account } = spent;
   const { side, size } = order.request;
   const query = { wallet: order.walletId, account, isPaper: order.isPaper, asset };
   const heldBase = await parts.holdings.held(query, { signal });
+  if (heldBase === undefined) {
+    return undefined;
+  }
   const chain = assetRefParts(coin).chain;
   const reserve = settings.limits.gasReserve.find((entry) => entry.chain === chain);
   const keptBase = side === "buy" && asset === coin ? (reserve?.reserveBase ?? 0n) : 0n;
@@ -145,9 +152,10 @@ function requestOf(
  * Sizes an order's fill when its trigger fires (decision 0195): a buy spends its size of the
  * asset it names, by amount, by share of the spendable balance or in dollars at that asset's USD
  * price; a sale sells its size of the token, never more than the wallet holds, in dollars at the
- * trigger's price first, then at its own quote's when that quote values it higher (decision 0197). A sale of a position that holds none of the token is `empty`; a buy that comes
- * to nothing skips with `nothing_to_spend`, a sale with `nothing_to_sell`, and a size in dollars
- * nothing prices with `no_price`.
+ * trigger's price first, then at its own quote's when that quote values it higher (decision 0197).
+ * A sale of a position that holds none of the token is `empty`; a buy that comes to nothing skips
+ * with `nothing_to_spend`, a sale with `nothing_to_sell`, a size in dollars nothing prices with
+ * `no_price`, and a balance the read had no entry for with `balance_unread`.
  */
 export async function sizeFill(parts: FillSizeParts, sizing: Sizing): Promise<FillSizing> {
   const { order } = sizing;
@@ -156,6 +164,9 @@ export async function sizeFill(parts: FillSizeParts, sizing: Sizing): Promise<Fi
   const asset = isBuy ? (order.request.spend ?? coin) : order.request.token;
   const account = await accountOf(parts, sizing);
   const facts = await sizeFacts(parts, sizing, { asset, coin, account });
+  if (facts === undefined) {
+    return { kind: "skip", reason: "balance_unread" };
+  }
   if (!isBuy && facts.heldBase === 0n) {
     return { kind: "empty" };
   }

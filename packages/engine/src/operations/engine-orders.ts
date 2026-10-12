@@ -64,9 +64,10 @@ export function orderFillsOf(
     readonly holdings: Holdings;
   },
 ): OrderFills {
-  const { stores, custody, prices, chains, isLocked, clock, ids, publish } = options;
+  const { stores, custody, prices, chains, isLocked, clock, ids, publish, positions } = options;
   return createOrderFills({
     ...parts,
+    positions,
     orders: stores.orders,
     agents: stores.agents,
     custody,

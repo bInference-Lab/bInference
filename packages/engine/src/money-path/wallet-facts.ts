@@ -55,6 +55,10 @@ interface HoldingQuery {
 
 /** Reads what a wallet holds of one asset now, in base units, for an intent in its mode. */
 export interface Holdings {
-  /** The paper position's units for a paper intent, the balance on chain for a live one. */
-  held(query: HoldingQuery, options: { readonly signal: AbortSignal }): Promise<bigint>;
+  /**
+   * The paper position's units for a paper intent, the balance on chain for a live one;
+   * `undefined` when the chain's answer has no entry for the asset, which is no data, never zero
+   * (decision 0197).
+   */
+  held(query: HoldingQuery, options: { readonly signal: AbortSignal }): Promise<bigint | undefined>;
 }

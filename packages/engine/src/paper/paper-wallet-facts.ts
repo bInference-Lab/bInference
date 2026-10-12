@@ -41,7 +41,8 @@ export function withPaperBalances(
 
 /**
  * The holdings a sale by share reads (spec 6, section 5): what the wallet's paper position holds
- * for a paper intent, and what its account holds on the chain for a live one.
+ * for a paper intent, and what its account holds on the chain for a live one, or `undefined` when
+ * the chain's answer has no entry for the asset (decision 0197).
  */
 export function holdingsOf(source: WalletFactsSource, portfolio: PaperPortfolio): Holdings {
   return {
@@ -53,7 +54,7 @@ export function holdingsOf(source: WalletFactsSource, portfolio: PaperPortfolio)
         { account: query.account, assets: [query.asset] },
         call,
       );
-      return balance?.base ?? 0n;
+      return balance?.base;
     },
   };
 }

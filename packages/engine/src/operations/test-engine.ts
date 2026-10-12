@@ -55,6 +55,7 @@ import type {
   PositionStore,
   RiskCheck,
   Simulator,
+  WalletFactsSource,
 } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
@@ -111,6 +112,8 @@ export interface TestEngineOptions {
   readonly executor?: Executor;
   /** The USD prices; the coin alone, at $600, when absent. */
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
+  /** Wraps the wallet facts source, so a test can make a balance read answer partly. */
+  readonly walletFacts?: (source: WalletFactsSource) => WalletFactsSource;
   /** Wraps the price source, so a test can make a read hang. */
   readonly priceSource?: (source: PriceSource) => PriceSource;
   /** Whether the engine is locked; never when absent. */
@@ -224,11 +227,12 @@ function stepsOf(
 
 // The wallet facts of the test agent's wallets, and what each account holds live.
 function walletsOf(options: TestEngineOptions) {
-  return createFakeWalletFacts(
+  const source = createFakeWalletFacts(
     new Map([[testAgent, options.wallets ?? [testWallet]]]),
     { ...testFacts, ...options.facts },
     options.held,
   );
+  return options.walletFacts?.(source) ?? source;
 }
 
 function custodyOf(options: TestEngineOptions): readonly (readonly [Id<"wal">, AccountRef])[] {

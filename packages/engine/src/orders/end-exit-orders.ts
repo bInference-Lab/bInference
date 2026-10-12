@@ -1,6 +1,7 @@
 import { assetRefParts, type AssetRef, type ChainRegistry } from "@binference/chain";
 import type { Id } from "@binference/core";
 import { assetInfoOf } from "../money-path/asset-infos.js";
+import type { PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { type Notice, noticePush } from "../pushes/notice-push.js";
 import { moveOrder } from "./order-machine.js";
@@ -120,4 +121,25 @@ export async function endEmptyExit(
     );
   }
   return ended;
+}
+
+/**
+ * Whether a sale emptied an exit order's position after the order was made (decision 0197): its
+ * position holds none of the token now and last changed at or after the order's creation, so it
+ * held some since. A position never held while the order lived, as one whose buy has not settled,
+ * was not emptied, and its exit order waits.
+ */
+export async function wasEmptiedSince(
+  positions: Pick<PositionStore, "positions">,
+  call: { readonly order: OrderRecord; readonly signal: AbortSignal },
+): Promise<boolean> {
+  const { order, signal } = call;
+  const query = { walletId: order.walletId, isPaper: order.isPaper };
+  const held = await positions.positions(query, { signal });
+  const position = held.find(({ asset }) => asset === order.request.token);
+  return (
+    position !== undefined &&
+    position.quantityBase === 0n &&
+    position.changedAtMs >= order.createdAtMs
+  );
 }

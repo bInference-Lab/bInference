@@ -81,11 +81,28 @@ async function placementOf(ask: TradeAsk, context: PlaceContext): Promise<Placem
   return pools.venues.length === 0 ? { ...pools, refusal: "no_route" } : pools;
 }
 
-// What the wallet holds of the asset a sale by share sells, now, in the intent's mode.
-async function heldOf(ask: TradeAsk, context: PlaceContext): Promise<bigint> {
+// What the wallet holds of the asset a sale by share sells, now, in the intent's mode; `undefined`
+// when the balance read has no entry for it.
+async function heldOf(ask: TradeAsk, context: PlaceContext): Promise<bigint | undefined> {
   const { wallet, account, isPaper, signal } = context;
   const query = { wallet, account, isPaper, asset: ask.assetIn };
   return context.holdings.held(query, { signal });
+}
+
+// A sale by share of a balance the read had no entry for is `balance_unread`; a share of nothing,
+// or one that rounds to nothing, `nothing_to_sell`.
+function shareRefusal(share: {
+  readonly held: bigint | undefined;
+  readonly amountInBase: bigint;
+  readonly isShare: boolean;
+}): QuoteFailure | undefined {
+  if (!share.isShare) {
+    return undefined;
+  }
+  if (share.held === undefined) {
+    return "balance_unread";
+  }
+  return share.amountInBase === 0n ? "nothing_to_sell" : undefined;
 }
 
 /**
@@ -93,18 +110,19 @@ async function heldOf(ask: TradeAsk, context: PlaceContext): Promise<bigint> {
  * goes to the curve of the one launchpad that holds its token, or else to the pools; two
  * launchpads that claim one token, or a launchpad whose claim cannot be read, refuse it. A sale by
  * share sells that share of what the wallet holds now, rounded down, so never more than it holds;
- * a share of nothing, or one that rounds to nothing, is `nothing_to_sell`.
+ * a share of nothing, or one that rounds to nothing, is `nothing_to_sell`, and a share of a balance
+ * the chain's answer had no entry for is `balance_unread` (decision 0197).
  */
 export async function placeTrade(ask: TradeAsk, context: PlaceContext): Promise<PlacedTrade> {
   const placement = await placementOf(ask, context);
   const { amount } = ask;
+  const held = "base" in amount ? amount.base : await heldOf(ask, context);
   const amountInBase =
-    "base" in amount ? amount.base : shareAmountBase(await heldOf(ask, context), amount.percentBps);
+    "base" in amount ? amount.base : shareAmountBase(held ?? 0n, amount.percentBps);
   const terms = { ...placement, amountInBase };
   const swap = swapTradeOf(ask, terms, context);
   const refusal =
-    placement.refusal ??
-    (amountInBase === 0n && "percentBps" in amount ? "nothing_to_sell" : undefined);
+    placement.refusal ?? shareRefusal({ held, amountInBase, isShare: !("base" in amount) });
   return refusal === undefined ? { swap } : { swap, refusal };
 }
 

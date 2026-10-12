@@ -57,6 +57,7 @@ export const checkReasons = [
   "effects_differ",
   "price_impact",
   "nothing_to_sell",
+  "balance_unread",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

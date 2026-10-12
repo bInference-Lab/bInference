@@ -252,6 +252,15 @@ describe("a sale by share", () => {
     ]);
   });
 
+  it("ends a share of a live balance the chain's answer has no entry for as balance unread", async () => {
+    const test = await engineWith([createFakeVenue()], {
+      agent: { mode: "live" },
+      walletFacts: (source) => ({ ...source, balances: async () => Promise.resolve([]) }),
+    });
+    const view = await propose(test, testSell({ amount: share(10_000) }));
+    expect(ending(view)).toStrictEqual(["failed_check", "balance_unread"]);
+  });
+
   it("ends a share of a token with no price that the wallet holds none of as nothing to sell", async () => {
     const test = await engineWith([createFakeVenue()], { agent: { mode: "live" } });
     const view = await propose(test, testSell({ token: unlisted, amount: share(5_000) }));

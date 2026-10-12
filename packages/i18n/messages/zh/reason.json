@@ -28,6 +28,7 @@
   "simulation_reverted": "模拟时交易回滚，因此未发送任何内容",
   "effects_differ": "模拟结果与报价不符，因此未发送任何内容",
   "nothing_to_sell": "钱包中这种代币不足",
+  "balance_unread": "无法读取钱包余额；系统会再次尝试",
   "reverted": "交易已回滚，只扣除了网络费",
   "stuck_cancelled": "交易长时间未上链，已被取消；只扣除了网络费",
   "nonce_taken": "另一笔交易占用了此钱包的随机数，这笔交易未能上链",

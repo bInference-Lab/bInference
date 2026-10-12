@@ -183,20 +183,6 @@ describe("an auto order's fill", () => {
     ]);
   });
 
-  it("ends an exit order whose position holds none of the token, instead of skipping it", async () => {
-    const test = await startFillEngine({ tokens: 0n });
-    const order = await activeOrder(test, testStopLoss());
-
-    const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
-
-    expect(outcome).toBe("ended");
-    expect(await storedOrder(test, order.id)).toMatchObject({
-      state: "ended",
-      endReason: "position_closed",
-    });
-    expect(noticesOf(test)).toMatchObject([{ key: "notice.exitEnded" }]);
-  });
-
   it("ends the position's other exit orders in the fill's own write when it sells all", async () => {
     // A venue that pays $1.20 a token, so the take-profit's own quote meets its $0.70 level.
     const dollarTwenty = createFakeVenue({ rate: { numerator: 2n * 10n ** 9n, denominator: 1n } });

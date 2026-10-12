@@ -149,7 +149,9 @@ Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `hig
 Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
 token the wallet holds none of, or whose share rounds to zero; or a paper sale or swap whose paper
-portfolio holds less of its input at the fill than its confirmed quote spends).
+portfolio holds less of its input at the fill than its confirmed quote spends), `balance_unread` (a
+sale by share, or an order's fill, whose balance read had no entry for the asset: no data, never
+zero; [decision 0197](../DECISIONS.md#d0197)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or
@@ -329,8 +331,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
   - A fill that leaves part of the position ends nothing. The other exit orders stay active, and a
     share-sized one sells its share of what is left.
   - An exit order whose trigger fires on a position that holds none of the token, because a sale
-    outside the exit orders emptied it, ends the same way, with `position_closed`, instead of
-    being skipped at each new price; the owner gets `notice.exitEnded`.
+    outside the exit orders emptied it after the order was made, ends the same way, with
+    `position_closed`, instead of being skipped at each new price; the owner gets
+    `notice.exitEnded`. A position never held while the order lived is not emptied: the order
+    skips as `nothing_to_sell` and stays active ([decision 0197](../DECISIONS.md#d0197)).
 - **Auto order cards** ([decision 0189](../DECISIONS.md#d0189)): `order/create` stores an
   `autoOrder` intent in the agent's mode, with the proposal's outside-content mark. Its quote is the
   order's terms; it passes policy, quote, risk and simulation with nothing to check, never passes
