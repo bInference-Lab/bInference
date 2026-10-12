@@ -26,8 +26,11 @@ async function runOnce(options: CardTimerOptions, stop: AbortSignal): Promise<nu
     const untilNext = next === undefined ? lookEveryMs : next - options.clock.now();
     return Math.min(lookEveryMs, Math.max(soonestMs, untilNext));
   } catch (error) {
-    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
-    options.logger.warn("engine.card_timer_failed", { errorCode });
+    // A run the shutdown stopped part way ended as asked, not in a failure.
+    if (!stop.aborted) {
+      const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+      options.logger.warn("engine.card_timer_failed", { errorCode });
+    }
     return lookEveryMs;
   }
 }
@@ -50,7 +53,8 @@ async function runThenWait(
  * Runs the engine's card timer while it serves, locked or not: it signs nothing. It runs at once,
  * which expires every card whose time ran out while the engine was stopped, then again when the
  * next card's time is up, and at least every 5 seconds to see new cards. A failure is logged as
- * `engine.card_timer_failed` and tried again 5 seconds later. Its closer stops it.
+ * `engine.card_timer_failed` and tried again 5 seconds later. Its closer stops it, and a run the
+ * closer stops part way is no failure.
  */
 export function startCardTimer(options: CardTimerOptions): void {
   const stop = new AbortController();

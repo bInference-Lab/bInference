@@ -60,4 +60,24 @@ describe("the card timer", () => {
     expect(runs).toStrictEqual([0, 5_000]);
     expect(logger.records().map(({ event }) => event)).toContain("engine.card_timer_failed");
   });
+
+  it("stops quietly when the shutdown aborts a run under way", async () => {
+    const clock = createManualClock(0);
+    const closers = createClosers();
+    const logger = createMemoryLogger({ subsystem: "engine" });
+    startCardTimer({
+      expireCards: async ({ signal }) =>
+        await new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () =>
+            reject(new BinferenceError({ code: "store.aborted", message: "Aborted." })),
+          );
+        }),
+      clock,
+      closers,
+      logger,
+    });
+    await clock.advance(0);
+    await closers.closeAll(new AbortController().signal);
+    expect(logger.records()).toStrictEqual([]);
+  });
 });

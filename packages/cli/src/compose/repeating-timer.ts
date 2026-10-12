@@ -33,8 +33,11 @@ async function runOnce(
       await options.run({ signal: stop });
     }
   } catch (error) {
-    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
-    options.logger.warn(options.failedEvent, { errorCode });
+    // A run the shutdown stopped part way ended as asked, not in a failure.
+    if (!stop.aborted) {
+      const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+      options.logger.warn(options.failedEvent, { errorCode });
+    }
   }
   if (!stop.aborted) {
     run.next();
@@ -44,7 +47,7 @@ async function runOnce(
 /**
  * Runs the work every `everyMs` while the engine serves, in the startup order's place for orders
  * and watchers. A locked engine skips a run; a run that fails is logged and the next one comes
- * at its time. Its closer stops it and waits for a run under way.
+ * at its time. Its closer stops it and waits for a run under way, which it does not log as failed.
  */
 export function startRepeatingTimer(options: RepeatingTimerOptions): void {
   const stop = new AbortController();
