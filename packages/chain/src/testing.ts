@@ -23,6 +23,8 @@ export type {
   SigningSchemeSubject,
 } from "./contracts/signing-scheme-contract.js";
 export { curveReaderContract } from "./contracts/curve-reader-contract.js";
+export { priceReaderContract } from "./contracts/price-reader-contract.js";
+export type { PriceReaderHarness, PriceReaderSubject } from "./contracts/price-reader-contract.js";
 export type { CurveReaderHarness, CurveReaderSubject } from "./contracts/curve-reader-contract.js";
 export { quoterContract } from "./contracts/quoter-contract.js";
 export type { QuoterHarness, QuoterSubject } from "./contracts/quoter-contract.js";
@@ -37,7 +39,7 @@ export { createFakeSigner } from "./fakes/fake-signer.js";
 export type { FakeSigner } from "./fakes/fake-signer.js";
 export { createFakeSigningScheme, signFake } from "./fakes/fake-signing-scheme.js";
 export { createFakeChainDefinition } from "./fakes/fake-chain.js";
-export { createFakeLaunchpad } from "./fakes/fake-launchpad.js";
+export { createFakeLaunchpad, fakePriceAnswer } from "./fakes/fake-launchpad.js";
 export type { FakeLaunchpad, FakeLaunchpadOptions } from "./fakes/fake-launchpad.js";
 export { createFakeVenue, fakeSwapData } from "./fakes/fake-venue.js";
 export type { FakeVenueOptions } from "./fakes/fake-venue.js";

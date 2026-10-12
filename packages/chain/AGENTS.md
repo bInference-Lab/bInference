@@ -27,9 +27,11 @@ Rules for this package:
   them; the engine's fake stays in `@binference/engine/testing`. A price is an exact ratio, and only
   its caller rounds. `withQuotePrice` gives a trade's other token the price of its own quote, for
   the engine step that holds the quote.
-- Venues are ports here so `engine` and `plugin-sdk` share them: `Quoter`, `TxBuilder` and
-  `TxDecoder` in `src/venues/ports.ts`, each with a contract suite. A venue names its contracts by
-  their registry names, never by address, and returns `TxDraft`s that only its family reads.
+- Venues are ports here so `engine` and `plugin-sdk` share them: `Quoter`, `TxBuilder`,
+  `TxDecoder` and `PriceReader` in `src/venues/ports.ts`, each with a contract suite. A price read's
+  calls carry their input in their family's encoding, so the family batches them; its `price` step
+  is pure and answers `unpriced`, never a throw. A venue names its contracts by their registry
+  names, never by address, and returns `TxDraft`s that only its family reads.
 - `TxSimulator` (`src/simulation/ports.ts`) is the I/O half of a family: it runs drafts unsent on
   the chain's latest state and reports each step's transfers and approvals as CAIP ids and amounts,
   never the fee, so the engine checks them without importing a family package. Balances it is

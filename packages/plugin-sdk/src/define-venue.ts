@@ -1,5 +1,6 @@
 import {
   type LaunchpadVenue,
+  type PriceReader,
   type Venue,
   type VenueCall,
   type VenueContracts,
@@ -27,6 +28,17 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
   );
 }
 
+function hasPriceRead(venue: Venue): venue is Venue & PriceReader {
+  return venue.priceRead !== undefined;
+}
+
+// A venue that declares its price reads keeps them, called on the definition.
+function priceReadOf(definition: Venue): Pick<Venue, "priceRead"> {
+  return hasPriceRead(definition)
+    ? { priceRead: async (request, options) => definition.priceRead(request, options) }
+    : {};
+}
+
 /**
  * Defines a venue plugin: a protocol the agent trades on. The definition declares the venue's id
  * and, for each chain it serves, the names of its contracts in that chain's registry entry; the
@@ -37,7 +49,10 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
  * The venue quotes, builds and decodes. `build` must spend exactly the request's input, pay its
  * output to the request's wallet, revert below `minOut` and after `deadlineMs`; `decode` reads
  * those terms back from the bytes alone. A chain whose trade calls have no deadline says so with
- * `noDeadline`, and its decoder then leaves the deadline out. The engine decodes every transaction
+ * `noDeadline`, and its decoder then leaves the deadline out. A venue that holds the state a
+ * token's price comes from, such as a launchpad's curve, may declare `priceRead`: the calls that
+ * read that state and the pure step that prices their answers, which the price watcher asks every
+ * block. The engine decodes every transaction
  * the venue builds and refuses one whose terms differ.
  *
  * The declaration is checked at once: a bad one is a fault (`plugin.bad_venue`), so the plugin
@@ -58,6 +73,7 @@ export function defineVenue(definition: Venue): Venue {
     quote: async (request, options) => definition.quote(request, options),
     build: async (request, options) => definition.build(request, options),
     decode: (draft) => definition.decode(draft),
+    ...priceReadOf(definition),
   };
   return Object.freeze(venue);
 }

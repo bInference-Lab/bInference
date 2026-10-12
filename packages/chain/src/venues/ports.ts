@@ -3,6 +3,7 @@ import type { TxDraft } from "../transaction.js";
 import type { BuildRequest } from "./build-request.js";
 import type { CurveHolding, CurveRequest } from "./curve-holding.js";
 import type { DecodedEffect } from "./decoded-effect.js";
+import type { PriceRead, PriceReadRequest } from "./price-read.js";
 import type { QuoteRequest, VenueQuote } from "./venue-quote.js";
 
 /** Quotes a trade on one venue. */
@@ -48,4 +49,18 @@ export interface CurveReader {
    * read its contracts throws. Rejects with the signal's reason once the signal aborts.
    */
   curve(request: CurveRequest, options: { readonly signal: AbortSignal }): Promise<CurveHolding>;
+}
+
+/** Tells the price watcher how to price a token from the venue's own contracts or pools. */
+export interface PriceReader {
+  /**
+   * The reads that price the token each block, and the step that turns their answers into its
+   * price. A token the venue cannot price, such as one it never launched or one off its curve, is
+   * `no_price_read`. A venue that cannot answer throws. Rejects with the signal's reason once the
+   * signal aborts.
+   */
+  priceRead(
+    request: PriceReadRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<PriceRead, "no_price_read">>;
 }

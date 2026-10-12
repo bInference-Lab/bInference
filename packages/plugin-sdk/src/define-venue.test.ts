@@ -3,12 +3,14 @@ import {
   assetRefSchema,
   type ChainRef,
   chainRefSchema,
+  type PriceReader,
   type Venue,
 } from "@binference/chain";
 import {
   createFakeLaunchpad,
   createFakeVenue,
   fakeDraft,
+  fakePriceAnswer,
   fakeSwapData,
 } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
@@ -16,6 +18,7 @@ import { defineLaunchpad, defineVenue } from "./define-venue.js";
 import type { BuildRequest, Bps, DecodedEffect } from "./index.js";
 import {
   curveReaderContract,
+  priceReaderContract,
   quoterContract,
   txBuilderContract,
   txDecoderContract,
@@ -41,6 +44,15 @@ const effect: DecodedEffect = {
   deadlineMs: request.deadlineMs,
 };
 const swap = fakeDraft(wallet, { to: "0x0000000b", value: 1_000n, data: fakeSwapData(effect) });
+
+// The price reads a defined venue keeps, which the suite reads through the venue.
+function readerOf(venue: Venue): PriceReader {
+  const read = venue.priceRead?.bind(venue);
+  if (read === undefined) {
+    throw new Error("The defined venue dropped its price reads.");
+  }
+  return { priceRead: read };
+}
 
 describe("defineVenue", () => {
   it.each([
@@ -108,6 +120,23 @@ describe("defineVenue", () => {
     }),
   )("gives a launchpad that follows the curve reader contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it.each(
+    priceReaderContract({
+      create: () => ({
+        reader: readerOf(defineLaunchpad(createFakeLaunchpad({ onCurve: [token] }))),
+        priced: { token, contracts: { router } },
+        answers: [fakePriceAnswer({ numerator: 1n, denominator: 3n })],
+        unpriced: { token: coin, contracts: { router } },
+      }),
+    }),
+  )("gives a venue that keeps its price reads: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("gives a venue that declares no price reads none", () => {
+    expect(defineVenue(createFakeVenue()).priceRead).toBeUndefined();
   });
 
   it("gives a frozen launchpad that reads its curve through the definition", async () => {

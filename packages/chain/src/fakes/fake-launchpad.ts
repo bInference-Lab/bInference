@@ -1,5 +1,7 @@
-import { err, type Ratio } from "@binference/core";
+import { err, ok, type Ratio, type Result } from "@binference/core";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
+import type { PriceReader } from "../venues/ports.js";
+import type { PriceRead, ReadAnswer } from "../venues/price-read.js";
 import type { LaunchpadVenue } from "../venues/venue.js";
 import { createFakeVenue } from "./fake-venue.js";
 
@@ -18,17 +20,37 @@ export interface FakeLaunchpadOptions {
 }
 
 /** A fake launchpad, whose tokens can graduate during a test. */
-export interface FakeLaunchpad extends LaunchpadVenue {
+export interface FakeLaunchpad extends Omit<LaunchpadVenue, "priceRead">, PriceReader {
   /** Moves a token off the curve, as its graduation to the pools does. */
   graduate(token: AssetRef): void;
 }
 
 const fakeCoin = assetRefSchema.parse("fake:1/slip44:1");
+const fakePricePattern = /^price:([1-9]\d*)\/([1-9]\d*)$/;
+
+/**
+ * What a fake launchpad's price read answers at a block for a curve price, in base units of the
+ * quote asset for one base unit of the token: `price:<numerator>/<denominator>`.
+ */
+export function fakePriceAnswer(price: Ratio): string {
+  return `price:${price.numerator.toString()}/${price.denominator.toString()}`;
+}
+
+// One answer in the fake's own shape, both sides above zero; anything else prices nothing.
+function fakePriceOf(answers: readonly ReadAnswer[]): Result<Ratio, "unpriced"> {
+  const [answer, ...rest] = answers;
+  const found = answer === undefined || rest.length > 0 ? null : fakePricePattern.exec(answer);
+  const [, numerator, denominator] = found ?? [];
+  return numerator === undefined || denominator === undefined
+    ? err("unpriced")
+    : ok({ numerator: BigInt(numerator), denominator: BigInt(denominator) });
+}
 
 /**
  * Creates a launchpad of the fake chain, for tests. It holds its tokens on its curve until they
  * graduate, quotes and builds only trades between such a token and its quote asset, through its
- * `router` as the fake venue does, and answers any other pair as `no_route`.
+ * `router` as the fake venue does, and answers any other pair as `no_route`. It prices a token on
+ * its curve with one read of its `router`, which {@link fakePriceAnswer} answers.
  */
 export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpad {
   const venue = createFakeVenue({
@@ -53,6 +75,19 @@ export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpa
       return await Promise.resolve(
         held.has(request.token) ? { onCurve: true, quoteAsset } : { onCurve: false },
       );
+    },
+    async priceRead(request, { signal }) {
+      signal.throwIfAborted();
+      const router = request.contracts["router"];
+      if (!held.has(request.token) || router === undefined) {
+        return await Promise.resolve(err("no_price_read"));
+      }
+      const read: PriceRead = {
+        quoteAsset,
+        calls: [{ target: router, input: `price:${request.token}` }],
+        price: fakePriceOf,
+      };
+      return ok(read);
     },
     graduate(token) {
       held.delete(token);
