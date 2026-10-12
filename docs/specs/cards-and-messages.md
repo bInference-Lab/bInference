@@ -630,6 +630,9 @@ than the agent's words (italics in Telegram).
 - The loop guard also sends `notice.loop` (section 4); the status line says it in the chat.
 - A turn stopped after the engine took its proposal ends with `turn.stoppedCardOpen` in place of
   `turn.stopped` ([decision 0173](../DECISIONS.md#d0173)).
+- A turn the runtime repairs after a restart with no proposal in doubt gets `turn.failed.engine`,
+  and a committed turn whose proposal the engine refused gets no line: its settle message starts
+  the turn that reports it ([decision 0174](../DECISIONS.md#d0174)).
 
 <a id="section-8-2"></a>
 

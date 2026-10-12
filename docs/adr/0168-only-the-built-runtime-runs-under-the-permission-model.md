@@ -1,6 +1,6 @@
 # 0168. Only the built runtime runs under the permission model
 
-Status: Accepted
+Status: Amended by 0174
 
 Accepted by the owner on 2026-10-11.
 
