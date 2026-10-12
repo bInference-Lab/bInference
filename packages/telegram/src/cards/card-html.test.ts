@@ -214,6 +214,19 @@ describe("a card in Telegram HTML", () => {
     expect(actionLineOf(action)).toBe(line);
   });
 
+  it("says a curve trade on a venue without deadlines has no time limit", () => {
+    const facts: CardFacts = {
+      ...swapFacts,
+      action: pepeSale,
+      warnings: { ...swapFacts.warnings, hasNoDeadline: true },
+    };
+    const warning = `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}`;
+    expect(linesOf(facts)).toContain(
+      `${warning} This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received`,
+    );
+    expect(linesOf(swapFacts).join("\n")).not.toContain("no time limit");
+  });
+
   it("names why auto mode asks, with the MCP client's name shown as outside text", () => {
     const facts: CardFacts = {
       ...swapFacts,

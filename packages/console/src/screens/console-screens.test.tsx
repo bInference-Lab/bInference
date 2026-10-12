@@ -138,6 +138,21 @@ describe("the confirmations screen", () => {
     expect(screen.getAllByText("Paper")).toHaveLength(1);
   });
 
+  it("says a trade has no time limit, its warning icon drawn as a line icon", async () => {
+    const [header, action, expiry] = lines.lines;
+    const untimed = {
+      ...lines,
+      lines: [header, action, { key: "card.warn.noDeadline", values: {} }, expiry],
+    };
+    const { client } = fakeClient({ ...answers, "intent/card": () => untimed });
+    renderSignedIn(<ConfirmationsScreen />, { client });
+    await settle();
+    const warning = screen.getByText(
+      "This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received",
+    );
+    expect(warning.parentElement?.textContent).toMatch(/^Warning This trade has no time limit/u);
+  });
+
   it("confirms the card version it shows", async () => {
     const { client, calls } = fakeClient(answers);
     renderSignedIn(<ConfirmationsScreen />, { client });

@@ -455,6 +455,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | slippage limit                                     | 滑点上限                     |                                         |
 | route, minimum received                            | 路由, 至少收到               |                                         |
 | quote (a price quote)                              | 报价                         |                                         |
+| time limit (of a trade)                            | 时限                         | A trade call's deadline                 |
 | tax (a token's tax)                                | 交易税                       | tax rate = 税率                         |
 | network fee, gas                                   | 网络费                       | "Gas" only where the English says gas   |
 | fee (a trading fee)                                | 手续费                       |                                         |

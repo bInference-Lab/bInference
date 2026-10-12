@@ -16,6 +16,7 @@ const icons = {
   waiting: String.fromCodePoint(0x1f7e1),
   done: String.fromCodePoint(0x2705),
   live: String.fromCodePoint(0x1f534),
+  warning: `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}`,
 };
 // 14:32:05 UTC on the day of the example card.
 const expiresAtMs = Date.UTC(2026, 9, 6, 14, 32, 5);
@@ -220,6 +221,24 @@ describe("drawing a card", () => {
       ),
     );
     expect(warnings(flagged)).not.toContain("card.warn.placeChanged");
+  });
+
+  it("says a trade has no time limit, after the place line and before the paper line", () => {
+    const untimed: CardFacts = {
+      ...flagged,
+      warnings: { ...flagged.warnings, placeChangedToken: usdt, hasNoDeadline: true },
+    };
+    const keys = warnings(untimed);
+    expect(keys.slice(keys.indexOf("card.warn.placeChanged"))).toStrictEqual([
+      "card.warn.placeChanged",
+      "card.warn.noDeadline",
+      "card.warn.paper",
+      "card.warn.autoAsks",
+    ]);
+    expect(rendered(untimed)).toContain(
+      `${icons.warning} This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received`,
+    );
+    expect(warnings(flagged)).not.toContain("card.warn.noDeadline");
   });
 
   it("says so on the agent's first live card, after the other warnings, never on paper", () => {

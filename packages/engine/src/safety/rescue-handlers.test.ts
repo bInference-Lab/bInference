@@ -76,6 +76,7 @@ async function drawnCard(test: TestEngine, intent: Id<"int">) {
     intents: test.stores.intents,
     agents: test.stores.agents,
     chains: testChains(),
+    venues: { hasNoDeadline: () => false },
   });
   return (await showings.opened({ intent, card: card.id }, live))?.card;
 }

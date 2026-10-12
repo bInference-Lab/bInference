@@ -149,6 +149,7 @@ function joinTelegram(
   options: ComposeEngineOptions,
   engine: {
     readonly answer: Engine["answer"];
+    readonly venues: VenueHost;
     readonly handlers: EngineHandlerTable;
     readonly notices: NoticeLog;
     readonly server: () => ProtocolServer;
@@ -162,6 +163,7 @@ function joinTelegram(
         answer: engine.answer,
         handlers: { ...engine.handlers, ...options.ownerChat },
         chains,
+        venues: engine.venues,
         owner,
         stored: async () => engine.notices.idle(),
         // The replaced owner's Mini App connections end at once, as a revoked device's do.
@@ -265,9 +267,10 @@ function engineOf(
     readonly ids: IdSource;
     readonly publish: (push: EnginePush) => void;
     readonly turns: RunningTurns;
+    readonly trading: { readonly host: VenueHost; readonly risk: RiskCheck };
   },
 ): Engine {
-  const { host, risk } = tradingOf(parts, options);
+  const { host, risk } = given.trading;
   return createEngine({
     stores: parts.stores,
     positions: options.positions,
@@ -323,7 +326,8 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   };
   // One record of running turns: the relay starts and ends them, and proposals take their marks.
   const turns = options.turns ?? createRunningTurns();
-  const engine = engineOf(parts, options, { ids, publish, turns });
+  const trading = tradingOf(parts, options);
+  const engine = engineOf(parts, options, { ids, publish, turns, trading });
   const origin = consoleOriginCell();
   const table: EngineHandlerTable = {
     ...engine.handlers,
@@ -334,6 +338,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   const handlers = markRuntimeTurns(table, turns);
   const telegram = joinTelegram(parts, options, {
     answer: engine.answer,
+    venues: trading.host,
     handlers,
     notices,
     server: () => server,

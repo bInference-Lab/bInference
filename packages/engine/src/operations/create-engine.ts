@@ -276,7 +276,7 @@ function intentParts(
   const gate = createCapGate({ intents: stores.intents, clock });
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
-  const showings = createCardShowings({ intents: stores.intents, agents: stores.agents, chains });
+  const showings = createCardShowings({ ...stores, chains, venues: host });
   const moneyPath = createMoneyPath({
     stored,
     agents: stores.agents,

@@ -33,6 +33,7 @@
   "warn.highTax": "⚠️ This token takes {tax} tax on every trade",
   "warn.requoted": "⚠️ The price moved: this is a new quote",
   "warn.placeChanged": "⚠️ {token} graduated since the last quote: this trade now runs in the pools",
+  "warn.noDeadline": "⚠️ This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received",
   "warn.paper": "🧪 Paper mode: nothing is sent on chain",
   "warn.paperEstimate": "⚠️ Estimate: binference cannot simulate a sale of this token, so the paper fill uses the quote",
   "warn.firstLive": "🔴 First live trade: this one uses real money",

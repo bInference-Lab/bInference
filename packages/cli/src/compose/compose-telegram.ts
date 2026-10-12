@@ -1,6 +1,6 @@
 import type { ChainRegistry } from "@binference/chain";
 import type { Clock, Logger, Random, Secret } from "@binference/core";
-import type { AnswerCard, EngineStores } from "@binference/engine";
+import type { AnswerCard, EngineStores, VenueHost } from "@binference/engine";
 import { issueLaunchTicket } from "@binference/engine/access";
 import {
   type CardCopyStore,
@@ -57,6 +57,8 @@ export interface TelegramWiring {
   /** The engine's handlers and the composition root's, such as `engine/status`. */
   readonly handlers: EngineHandlerTable;
   readonly chains: ChainRegistry;
+  /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
+  readonly venues: Pick<VenueHost, "hasNoDeadline">;
   /** The owner's language and timezone now, read for each message the bot sends. */
   readonly owner: () => OwnerInfo;
   /** Resolves once every notice published so far is stored, so the outbox holds it. */
@@ -163,7 +165,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     chains,
   });
   const cards = createTelegramCards({ ...parts, answers, clock: wiring.clock, logger, display });
-  const showings = createCardShowings({ intents: stores.intents, agents: stores.agents, chains });
+  const showings = createCardShowings({ ...stores, chains, venues: wiring.venues });
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
   const commands = createFastCommands({
     api: parts.api,

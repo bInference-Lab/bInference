@@ -11,6 +11,7 @@ import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { assetInfosOf } from "../money-path/asset-infos.js";
 import type { AgentStore, IntentStore } from "../ports.js";
+import type { VenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { type PaperReceipt, paperReceiptOf } from "./paper-receipt.js";
 
@@ -96,6 +97,8 @@ export interface CardShowingsOptions {
   readonly intents: IntentStore;
   readonly agents: AgentStore;
   readonly chains: ChainRegistry;
+  /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
+  readonly venues: Pick<VenueHost, "hasNoDeadline">;
 }
 
 interface Call {
@@ -149,13 +152,13 @@ async function drawOpen(
   stored: { readonly record: IntentRecord; readonly card: CardRecord },
   call: Call,
 ): Promise<Pick<CardShowing, "card" | "assets"> | undefined> {
-  const { intents, chains } = options;
+  const { intents, chains, venues } = options;
   const { record, card } = stored;
   const settings = await settingsOf(options, record, call);
   const isFirstLive = await isFirstLiveCard(intents, record, call);
   const cards = card.version > 1 ? await intents.cards(record.id, call) : [];
   const previous = cards.find((each) => each.version === card.version - 1);
-  const source = { record, card, settings, isFirstLive, chains };
+  const source = { record, card, settings, isFirstLive, chains, venues };
   const facts = cardFactsOf(previous === undefined ? source : { ...source, previous });
   if (facts === undefined) {
     return undefined;

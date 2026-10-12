@@ -4,6 +4,7 @@ import {
   type Amount,
   type AssetRef,
   assetRefParts,
+  type ChainRef,
   type ChainRegistry,
   assetRefSchema,
   type QuoteRequest,
@@ -109,6 +110,11 @@ export interface VenueHost {
   ): Promise<Result<readonly CurveClaim[], "venue_down">>;
   /** Whether the venue is a launchpad the host holds: one that reads its curve. */
   isLaunchpad(venue: string): boolean;
+  /**
+   * Whether the venue declares that its trade calls on the chain carry no deadline (decision
+   * 0180). A venue the host does not hold, or a chain it does not serve, has none of its own.
+   */
+  hasNoDeadline(venue: string, chain: ChainRef): boolean;
 }
 
 /** What the host is made from. */
@@ -289,6 +295,9 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
     isLaunchpad(venue) {
       const hosted = venues.get(venue);
       return hosted !== undefined && isLaunchpad(hosted.venue);
+    },
+    hasNoDeadline(venue, chain) {
+      return venues.get(venue)?.noDeadline.has(chain) === true;
     },
   };
   return host;

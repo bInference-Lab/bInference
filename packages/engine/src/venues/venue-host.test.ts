@@ -3,6 +3,7 @@ import {
   assetRefSchema,
   type BuildRequest,
   type ChainDefinition,
+  chainRefSchema,
   createChainRegistry,
   type DecodedEffect,
   type TxDraft,
@@ -152,6 +153,17 @@ describe("venue host", () => {
       error: "decode_mismatch",
       mismatch: "late_deadline",
     });
+  });
+
+  it("says which venue declares no deadline on a chain, and no other venue or chain", () => {
+    const untimed = hostOf(createFakeVenue({ noDeadline: true }));
+    const served = chainRefSchema.parse(fakeChain.id);
+    expect([
+      untimed.hasNoDeadline("fake-swap", served),
+      untimed.hasNoDeadline("fake-swap", chainRefSchema.parse("fake:2")),
+      untimed.hasNoDeadline("other-swap", served),
+      hostOf().hasNoDeadline("fake-swap", served),
+    ]).toStrictEqual([true, false, false, false]);
   });
 
   it("quotes a trade without building it, then builds that quote with its own time", async () => {

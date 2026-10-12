@@ -1,3 +1,5 @@
+import type { Venue } from "@binference/chain";
+import { createFakeVenue } from "@binference/chain/testing";
 import { BinferenceError, type Bps, bpsSchema, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { CardRecord } from "../intents/card-record.js";
@@ -21,6 +23,7 @@ import {
 } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { AgentStore, IntentStore, RiskCheck } from "../ports.js";
+import { createVenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { createCardShowings, maxWaitingCards } from "./create-card-showings.js";
 import { present, worseAfterFirstQuote } from "./test-venues.js";
@@ -45,13 +48,17 @@ async function proposed(options: TestEngineOptions = {}): Promise<Shown> {
 interface StoresSeen {
   readonly intents?: IntentStore;
   readonly agents?: AgentStore;
+  readonly venues?: readonly Venue[];
 }
 
 function showingsOf(test: TestEngine, stores: StoresSeen = {}) {
+  const chains = testChains();
+  const venues = stores.venues ?? [createFakeVenue()];
   return createCardShowings({
     intents: stores.intents ?? test.stores.intents,
     agents: stores.agents ?? test.stores.agents,
-    chains: testChains(),
+    chains,
+    venues: createVenueHost({ venues, chains, clock: test.clock, callTimeoutMs: 5_000 }),
   });
 }
 
@@ -99,6 +106,27 @@ describe("the card showings", () => {
       verified: { type: "choice", choice: "yes" },
     });
     expect(Object.keys(showing.assets)).toStrictEqual([testCoin, testToken]);
+  });
+
+  it("say a trade has no time limit when a venue on its route declares no deadline", async () => {
+    const venues = [createFakeVenue({ noDeadline: true })];
+    const shown = await proposed({ venues });
+    const ref = { intent: shown.intent, card: shown.card.id };
+    const keysOf = async (seen: StoresSeen) =>
+      present(await showingsOf(shown.test, seen).opened(ref, live)).card.lines.map(
+        (line) => line.key,
+      );
+    expect(await keysOf({ venues })).toStrictEqual([
+      "card.header",
+      "card.swap.action",
+      "card.route",
+      "card.check",
+      "card.warn.noDeadline",
+      "card.warn.paper",
+      "card.reason",
+      "card.expiry",
+    ]);
+    expect(await keysOf({})).not.toContain("card.warn.noDeadline");
   });
 
   it("say what tax the risk step measured, the highest of the buy and the sale", async () => {
@@ -308,7 +336,13 @@ describe("the card showings", () => {
     const shown = await proposed();
     const record = await recordOf(shown);
     const settings = present(await shown.test.stores.agents.get(record.agentId, live));
-    const source = { card: shown.card, settings, isFirstLive: false, chains: testChains() };
+    const source = {
+      card: shown.card,
+      settings,
+      isFirstLive: false,
+      chains: testChains(),
+      venues: { hasNoDeadline: () => false },
+    };
     const { quote: _quote, ...unquoted } = record;
     expect(cardFactsOf({ ...source, record: unquoted })).toBe(undefined);
     const send = requestDocument.encode({
@@ -332,7 +366,13 @@ describe("the card showings", () => {
     const shown = await proposed();
     const { risk: _risk, ...unassessed } = await recordOf(shown);
     const settings = present(await shown.test.stores.agents.get(unassessed.agentId, live));
-    const source = { card: shown.card, settings, isFirstLive: false, chains: testChains() };
+    const source = {
+      card: shown.card,
+      settings,
+      isFirstLive: false,
+      chains: testChains(),
+      venues: { hasNoDeadline: () => false },
+    };
     const facts = present(cardFactsOf({ ...source, record: unassessed }));
     expect(facts.warnings.taxBps).toBe(undefined);
   });

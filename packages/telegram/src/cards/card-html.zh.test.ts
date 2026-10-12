@@ -42,6 +42,13 @@ describe("a card in Telegram HTML, in Chinese", () => {
     ]);
   });
 
+  it("says in Chinese that a trade has no time limit", () => {
+    const facts = { ...swapFacts, warnings: { ...swapFacts.warnings, hasNoDeadline: true } };
+    expect(textOf(cardHtml(drawCard(facts), display)).split("\n")).toContain(
+      `${String.fromCodePoint(0x26a0, 0xfe0f)} 此交易没有时限：如有延迟，之后仍可能成交，但绝不会低于至少收到的数量`,
+    );
+  });
+
   it("follows an unverified token's symbol with its short address in full-width brackets", () => {
     const lines = textOf(cardHtml(drawCard(pepeBuyFacts), display)).split("\n");
     expect(lines[1]).toBe("卖出 0.1 BNB → 至少收到 1,000,000 PEPE（0x6982…1933）");

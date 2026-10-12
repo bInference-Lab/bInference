@@ -25,6 +25,7 @@ import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-q
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { tradeSlippageBps } from "../money-path/swap-trade.js";
+import type { VenueHost } from "../venues/venue-host.js";
 
 function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
   const chain = chains.get(assetRefParts(asset).chain);
@@ -41,6 +42,8 @@ export interface CardSource {
   /** Whether the card is the agent's first live card (`isFirstLiveCard`). */
   readonly isFirstLive: boolean;
   readonly chains: ChainRegistry;
+  /** Which venues declare that their trade calls on a chain carry no deadline. */
+  readonly venues: Pick<VenueHost, "hasNoDeadline">;
 }
 
 /** A request the money path quotes: a swap, a buy or a sell. */
@@ -130,6 +133,12 @@ function placeChangedToken(action: CardAction, source: CardSource): AssetRef | u
   return action.kind === "sell" ? action.amount.asset : undefined;
 }
 
+// Whether a venue on the trade's route declares no deadline on its chain (decision 0180).
+function hasNoDeadline(quote: QuoteView, source: CardSource): boolean {
+  const { chain } = assetRefParts(quote.amountIn.asset);
+  return quote.route.some((leg) => source.venues.hasNoDeadline(leg.venue, chain));
+}
+
 function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource): CardFacts {
   const { record, card, settings, isFirstLive, chains } = source;
   const action = actionOf(request, quote);
@@ -154,6 +163,7 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
       ...(taxBps === undefined ? {} : { taxBps }),
       ...(simulation?.estimated === true ? { isEstimate: true } : {}),
       ...(changedToken === undefined ? {} : { placeChangedToken: changedToken }),
+      ...(hasNoDeadline(quote, source) ? { hasNoDeadline: true } : {}),
     },
     reason: request.reason,
   };
@@ -204,7 +214,8 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
 
 /**
  * The facts a card version is drawn from (spec 4, section 3), read from the stored intent: the
- * quote's amounts and route, a buy's or a sell's place, the simulation's check (or that a paper
+ * quote's amounts and route, a buy's or a sell's place, whether a venue on the route declares no
+ * deadline, the simulation's check (or that a paper
  * sale's fill is an estimate), the highest tax the risk step measured and the agent's reason; for
  * a rescue, its address, what it moves and their value; for an unfreeze, what it unfreezes. The
  * money path quotes trades, rescues and unfreezes only, so an intent of another kind, or one

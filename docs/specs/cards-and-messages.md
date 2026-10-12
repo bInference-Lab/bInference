@@ -155,17 +155,23 @@ Agent 说明  “按你的要求在 $625 止盈”
 
 ### 3.4 Warning lines
 
-| Key                        | English                                                                                        | 中文                                                       |
-| -------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `card.warn.outsideContent` | ⚠️ This came after reading outside content (web, X or token data)                              | ⚠️ 此请求发生在读取外部内容（网页、X 或代币信息）之后      |
-| `card.warn.newAddress`     | ⚠️ You have never sent to this address                                                         | ⚠️ 你从未向此地址转账                                      |
-| `card.warn.unusualName`    | ⚠️ Unusual characters in this token's name                                                     | ⚠️ 此代币名称含有不常见字符                                |
-| `card.warn.unverified`     | ⚠️ Not a verified token: risk checks passed, but check the address                             | ⚠️ 非已验证代币：风险检查已通过，但请核对地址              |
-| `card.warn.highTax`        | ⚠️ This token takes {tax} tax on every trade                                                   | ⚠️ 此代币每笔交易收取 {tax} 交易税                         |
-| `card.warn.requoted`       | ⚠️ The price moved: this is a new quote                                                        | ⚠️ 价格已变动：这是新的报价                                |
-| `card.warn.paper`          | 🧪 Paper mode: nothing is sent on chain                                                        | 🧪 模拟模式：不会发送链上交易                              |
-| `card.warn.paperEstimate`  | ⚠️ Estimate: binference cannot simulate a sale of this token, so the paper fill uses the quote | ⚠️ 估算：binference 无法模拟卖出此代币，模拟成交按报价计算 |
-| `card.warn.autoAsks`       | Auto mode asks you here: {why}                                                                 | 自动模式在此需要你确认：{why}                              |
+| Key                        | English                                                                                                      | 中文                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `card.warn.outsideContent` | ⚠️ This came after reading outside content (web, X or token data)                                            | ⚠️ 此请求发生在读取外部内容（网页、X 或代币信息）之后                   |
+| `card.warn.newAddress`     | ⚠️ You have never sent to this address                                                                       | ⚠️ 你从未向此地址转账                                                   |
+| `card.warn.unusualName`    | ⚠️ Unusual characters in this token's name                                                                   | ⚠️ 此代币名称含有不常见字符                                             |
+| `card.warn.unverified`     | ⚠️ Not a verified token: risk checks passed, but check the address                                           | ⚠️ 非已验证代币：风险检查已通过，但请核对地址                           |
+| `card.warn.highTax`        | ⚠️ This token takes {tax} tax on every trade                                                                 | ⚠️ 此代币每笔交易收取 {tax} 交易税                                      |
+| `card.warn.requoted`       | ⚠️ The price moved: this is a new quote                                                                      | ⚠️ 价格已变动：这是新的报价                                             |
+| `card.warn.noDeadline`     | ⚠️ This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received | ⚠️ 此交易没有时限：如有延迟，之后仍可能成交，但绝不会低于至少收到的数量 |
+| `card.warn.paper`          | 🧪 Paper mode: nothing is sent on chain                                                                      | 🧪 模拟模式：不会发送链上交易                                           |
+| `card.warn.paperEstimate`  | ⚠️ Estimate: binference cannot simulate a sale of this token, so the paper fill uses the quote               | ⚠️ 估算：binference 无法模拟卖出此代币，模拟成交按报价计算              |
+| `card.warn.autoAsks`       | Auto mode asks you here: {why}                                                                               | 自动模式在此需要你确认：{why}                                           |
+
+A `swap`, `buy` or `sell` whose route uses a venue that declares no deadline on the trade's chain
+shows `card.warn.noDeadline` ([decision 0180](../adr/0180-a-curve-call-with-no-deadline-is-bound-by-its-minimum-out.md)):
+its trade call has no time limit, so a delayed send can still fill later, at no less than its
+minimum out. It follows `card.warn.placeChanged` when both show.
 
 A paper sale of a token whose balance no simulation can set, such as a reflection or rebasing
 token, shows `card.warn.paperEstimate` instead of the check line: nothing was simulated, and the

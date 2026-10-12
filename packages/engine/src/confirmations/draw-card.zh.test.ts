@@ -103,6 +103,15 @@ describe("drawing a card in Chinese", () => {
     );
   });
 
+  it("says in Chinese that a trade has no time limit", () => {
+    const untimed = { ...swap, warnings: { ...swap.warnings, hasNoDeadline: true } };
+    expect(rendered(untimed)).toContainEqual(
+      expect.stringContaining(
+        "此交易没有时限：如有延迟，之后仍可能成交，但绝不会低于至少收到的数量",
+      ),
+    );
+  });
+
   it("draws the example swap card of spec 4", () => {
     const lines = rendered(swap);
     expect(lines).toStrictEqual([

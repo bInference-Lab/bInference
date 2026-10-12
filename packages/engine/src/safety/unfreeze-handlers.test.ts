@@ -81,6 +81,7 @@ async function actionOf(test: TestEngine, intent: Id<"int">) {
     intents: test.stores.intents,
     agents: test.stores.agents,
     chains: testChains(),
+    venues: { hasNoDeadline: () => false },
   });
   const shown = await showings.opened({ intent, card: card.id }, live);
   return shown?.card.lines.find(({ key }) => key.startsWith("card.unfreeze."));

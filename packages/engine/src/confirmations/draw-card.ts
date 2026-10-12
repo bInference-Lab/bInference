@@ -55,6 +55,11 @@ export interface CardWarnings {
    * graduated since, so the trade now runs in the pools. Absent shows no warning.
    */
   readonly placeChangedToken?: AssetRef;
+  /**
+   * The route trades through a venue whose calls carry no deadline (decision 0180): a delayed
+   * trade can still fill later, never below its minimum out. Absent shows no warning.
+   */
+  readonly hasNoDeadline?: boolean;
 }
 
 /**
@@ -177,6 +182,7 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
     ...shown([[facts.card.version > 1, "card.warn.requoted"]]),
     ...optional(warnings.placeChangedToken, placeChangedLine),
     ...shown([
+      [warnings.hasNoDeadline === true, "card.warn.noDeadline"],
       [facts.isPaper, "card.warn.paper"],
       [warnings.isEstimate === true, "card.warn.paperEstimate"],
       [warnings.isFirstLive === true && !facts.isPaper, "card.warn.firstLive"],
