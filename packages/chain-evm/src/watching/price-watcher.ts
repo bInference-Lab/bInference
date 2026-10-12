@@ -3,7 +3,7 @@ import type { Clock } from "@binference/core";
 import type { Address } from "viem";
 import type { FeedAsset } from "../prices/price-from-round.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
-import type { BlockSource, BlockSourceState } from "./block-source.js";
+import type { BlockSource, BlockSourceState, SeenHead } from "./block-source.js";
 import { pricesOf, type ReadQuarantine, type WatchedPrice } from "./price-batch.js";
 import { type BlockOutcome, type BlockReader, readBlocks } from "./read-blocks.js";
 import { createReadProgress, type ReadProgress } from "./read-progress.js";
@@ -193,8 +193,11 @@ async function runWatcher(parts: RunParts, signal: AbortSignal): Promise<void> {
   const wake = createWakeUp(options.clock);
   const feeds = new Map(options.feeds.map((feed) => [feed.asset, feed]));
   const run: WatcherRun = { ...parts, feeds, wake, signal: both.signal };
-  const onHead = (number: bigint, endpoint?: string): void => {
-    progress.seeHead(number, endpoint);
+  const onHead = (number: bigint, seen?: SeenHead): void => {
+    progress.seeHead(number, seen?.endpoint);
+    if (seen?.isReorg === true) {
+      progress.rewind(number);
+    }
     wake.wake();
   };
   const endingBoth = async (work: Promise<void>): Promise<void> => {

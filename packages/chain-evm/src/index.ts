@@ -74,6 +74,7 @@ export type {
   BlockSourceFault,
   BlockSourceOptions,
   BlockSourceState,
+  SeenHead,
 } from "./watching/block-source.js";
 export type { HeadsEnded } from "./watching/follow-heads.js";
 export type {

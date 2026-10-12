@@ -1,5 +1,6 @@
+import type { Hex } from "viem";
 import { z } from "zod";
-import { quantitySchema } from "../rpc/evm-wire.schema.js";
+import { hexSchema, quantitySchema } from "../rpc/evm-wire.schema.js";
 
 /**
  * What a node sent over a `newHeads` subscription, as the execution APIs' `eth_subscribe` writes
@@ -8,7 +9,13 @@ import { quantitySchema } from "../rpc/evm-wire.schema.js";
 export type HeadMessage =
   | { readonly kind: "subscribed"; readonly subscription: string }
   | { readonly kind: "refused" }
-  | { readonly kind: "head"; readonly subscription: string; readonly number: bigint };
+  | {
+      readonly kind: "head";
+      readonly subscription: string;
+      readonly number: bigint;
+      /** The block's hash, which tells a block reorganised at the same height apart. */
+      readonly hash?: Hex;
+    };
 
 /** The JSON-RPC id of the one request a head socket sends: its `eth_subscribe`. */
 const subscribeId = 1;
@@ -25,7 +32,7 @@ const headSchema = z.looseObject({
   method: z.literal("eth_subscription"),
   params: z.looseObject({
     subscription: z.string().min(1),
-    result: z.looseObject({ number: quantitySchema }),
+    result: z.looseObject({ number: quantitySchema, hash: hexSchema.optional() }),
   }),
 });
 
@@ -43,7 +50,8 @@ export function readHeadMessage(text: string): HeadMessage | undefined {
   const head = headSchema.safeParse(json);
   if (head.success) {
     const { subscription, result } = head.data.params;
-    return { kind: "head", subscription, number: result.number };
+    const { number, hash } = result;
+    return { kind: "head", subscription, number, ...(hash === undefined ? {} : { hash }) };
   }
   const subscribed = subscribedSchema.safeParse(json);
   if (subscribed.success) {

@@ -5,7 +5,7 @@ import { createRpcFailover } from "../rpc/create-rpc-failover.js";
 import { createFakeEvmNode, type FakeEvmNode } from "../testing/fake-evm-node.js";
 import { createFakeHeadSockets, type FakeHeadSockets } from "../testing/fake-head-socket.js";
 import { createFakeRpcHttp, type FakeEndpoint } from "../testing/fake-rpc-http.js";
-import { type BlockSource, createBlockSource } from "./block-source.js";
+import { type BlockSource, createBlockSource, type SeenHead } from "./block-source.js";
 import type { HeadSocketFactory } from "./head-socket.js";
 
 const multicall = getAddress("0xca11bde05977b3631167028862be2a173976ca11");
@@ -14,11 +14,11 @@ const timeoutMs = 1_000;
 const wsUrl = "wss://heads.test/key-123";
 const subscribed = JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0xsub" });
 
-const headMessage = (number: bigint, subscription = "0xsub"): string =>
+const headMessage = (number: bigint, subscription = "0xsub", hash = "0x01"): string =>
   JSON.stringify({
     jsonrpc: "2.0",
     method: "eth_subscription",
-    params: { subscription, result: { number: toHex(number), hash: "0x01" } },
+    params: { subscription, result: { number: toHex(number), hash } },
   });
 
 interface Running {
@@ -28,6 +28,8 @@ interface Running {
   readonly heads: bigint[];
   readonly endpoints: (string | undefined)[];
   readonly sockets: FakeHeadSockets;
+  /** The heads handed on again because a socket sent another block at their height. */
+  readonly reorgs: bigint[];
 }
 
 const controllers: AbortController[] = [];
@@ -122,12 +124,14 @@ function start(
   const controller = new AbortController();
   controllers.push(controller);
   const endpoints: (string | undefined)[] = [];
-  const onHead = (number: bigint, endpoint?: string): void => {
+  const reorgs: bigint[] = [];
+  const onHead = (number: bigint, seen?: SeenHead): void => {
     heads.push(number);
-    endpoints.push(endpoint);
+    endpoints.push(seen?.endpoint);
+    reorgs.push(...(seen?.isReorg === true ? [number] : []));
   };
   source.run(onHead, controller.signal).catch(() => undefined);
-  return { clock, node, source, heads, endpoints, sockets };
+  return { clock, node, source, heads, endpoints, sockets, reorgs };
 }
 
 describe("block source", () => {
@@ -205,6 +209,20 @@ describe("block source", () => {
     await clock.advance(0);
     expect(heads).toStrictEqual([200n, 202n]);
     expect(source.state()).toMatchObject({ mode: "subscription", head: 202n });
+  });
+
+  it("hands on a socket's head again when another block replaces it at the newest height", async () => {
+    const { clock, heads, reorgs, sockets } = start({ subscribe: true });
+    await clock.advance(0);
+    const [socket] = sockets.opened();
+    socket?.accept();
+    socket?.receive(subscribed);
+    socket?.receive(headMessage(200n, "0xsub", "0xaa"));
+    socket?.receive(headMessage(200n, "0xsub", "0xaa"));
+    socket?.receive(headMessage(200n, "0xsub", "0xbb"));
+    socket?.receive(headMessage(199n, "0xsub", "0xcc"));
+    await settle(clock, 4);
+    expect([heads, reorgs]).toStrictEqual([[200n, 200n], [200n]]);
   });
 
   it("polls at once when the socket drops, and subscribes again after the rest", async () => {

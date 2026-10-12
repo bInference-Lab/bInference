@@ -1,4 +1,5 @@
 import type { Clock } from "@binference/core";
+import type { Hex } from "viem";
 import { readHeadMessage, subscribeRequest } from "./head-message.schema.js";
 import type { HeadSocket, HeadSubscription } from "./head-socket.js";
 import { repeatSteps } from "./repeat-steps.js";
@@ -20,10 +21,11 @@ export interface FollowParts {
   readonly subscription: HeadSubscription;
   readonly clock: Clock;
   /**
-   * Called with each head's number, in the order the node sent them; answers whether it is above
-   * every head seen. Only such a head counts as progress against the subscription's timeout.
+   * Called with each head's number and hash, in the order the node sent them; answers whether it
+   * is above every head seen. Only such a head counts as progress against the subscription's
+   * timeout.
    */
-  readonly onHead: (number: bigint) => boolean;
+  readonly onHead: (number: bigint, hash?: Hex) => boolean;
 }
 
 // A node that floods the socket faster than heads are read loses the oldest messages first.
@@ -103,14 +105,18 @@ function onEvent(
   if (message?.kind === "subscribed") {
     state.subscribed(message.subscription);
   } else if (message?.kind === "head" && message.subscription === state.subscription()) {
-    onHeadMessage(message.number, state, context.parts);
+    onHeadMessage(message, state, context.parts);
   }
   return undefined;
 }
 
 // A node that repeats a head, or trails the chain, makes no progress: it times out.
-function onHeadMessage(number: bigint, state: Following, parts: FollowParts): void {
-  if (parts.onHead(number)) {
+function onHeadMessage(
+  head: { readonly number: bigint; readonly hash?: Hex },
+  state: Following,
+  parts: FollowParts,
+): void {
+  if (parts.onHead(head.number, head.hash)) {
     state.sawHead(parts.clock.now());
   }
 }

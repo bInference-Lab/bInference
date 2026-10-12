@@ -12,7 +12,12 @@ import {
   type FakeEndpoint,
   readFakeRpcRequest,
 } from "../testing/fake-rpc-http.js";
-import { type BlockSource, type BlockSourceState, createBlockSource } from "./block-source.js";
+import {
+  type BlockSource,
+  type BlockSourceState,
+  createBlockSource,
+  type SeenHead,
+} from "./block-source.js";
 import { poolPrice, reservesCall } from "./pool-state.js";
 import {
   createPriceWatcher,
@@ -142,11 +147,13 @@ function planOf(token: AssetRef): Result<PricePlan, PlanFailure> {
   return token === tokenOf(999) ? err("no_price_read") : ok(edges.get(token) ?? base);
 }
 
-const ignoreHead = (_number: bigint): void => undefined;
+const ignoreHead = (_number: bigint, _seen?: SeenHead): void => undefined;
 
 /** A block source a test drives, as a socket ahead of the HTTP nodes would. */
-function manualHeads(clock: ManualClock): BlockSource & { announce(number: bigint): void } {
-  let onHead: (number: bigint) => void = ignoreHead;
+function manualHeads(
+  clock: ManualClock,
+): BlockSource & { announce(number: bigint, seen?: SeenHead): void } {
+  let onHead: (number: bigint, seen?: SeenHead) => void = ignoreHead;
   let state: BlockSourceState = { mode: "subscription" };
   return {
     async run(listener, signal) {
@@ -156,9 +163,9 @@ function manualHeads(clock: ManualClock): BlockSource & { announce(number: bigin
       });
     },
     state: () => state,
-    announce(number) {
+    announce(number, seen) {
       state = { mode: "subscription", head: number, headAtMs: clock.now() };
-      onHead(number);
+      onHead(number, seen);
     },
   };
 }
@@ -230,6 +237,10 @@ function rig(options: { readonly heads?: "socket" } = {}): Rig {
   watcher.run(controller.signal).catch(() => undefined);
   return { clock, node, watcher, prices, planned, pools, rpc, socket, quarantines };
 }
+
+// The blocks the node was asked to read a batch at, oldest first.
+const blocksAsked = (subject: Rig): readonly (bigint | "latest")[] =>
+  subject.node.batches().map(({ block }) => block);
 
 // Moves the chain one block and lets the watcher read it.
 async function nextBlock(subject: Rig, head: bigint): Promise<void> {
@@ -306,15 +317,7 @@ describe("price watcher", () => {
     await nextBlock(subject, 101n);
     await nextBlock(subject, 103n);
     await nextBlock(subject, 112n);
-    expect(subject.node.batches().map(({ block }) => block)).toStrictEqual([
-      101n,
-      102n,
-      103n,
-      109n,
-      110n,
-      111n,
-      112n,
-    ]);
+    expect(blocksAsked(subject)).toStrictEqual([101n, 102n, 103n, 109n, 110n, 111n, 112n]);
     expect(subject.watcher.lag()).toMatchObject({
       head: 112n,
       read: 112n,
@@ -375,7 +378,7 @@ describe("price watcher", () => {
     });
     subject.pools.isCallDown = false;
     await subject.clock.advance(blockTimeMs * 2);
-    expect(subject.node.batches().map(({ block }) => block)).toStrictEqual([101n]);
+    expect(blocksAsked(subject)).toStrictEqual([101n]);
     expect(subject.watcher.lag().readFault).toBeUndefined();
   });
 
@@ -546,6 +549,20 @@ describe("price watcher", () => {
     ]);
     expect(subject.rpc.health()).toStrictEqual([{ name: "node" }]);
     expect(subject.watcher.lag().readFault).toBeUndefined();
+  });
+
+  it("reads a block again when another block replaces it at its height", async () => {
+    const subject = rig({ heads: "socket" });
+    subject.watcher.watch(tokenOf(1));
+    subject.socket.announce(100n);
+    await subject.clock.advance(0);
+    subject.node.setHead(101n);
+    subject.socket.announce(101n);
+    await subject.clock.advance(0);
+    subject.socket.announce(101n, { isReorg: true });
+    await subject.clock.advance(0);
+    expect(blocksAsked(subject)).toStrictEqual([101n, 101n]);
+    expect(subject.prices.map(({ block }) => block)).toStrictEqual([101n, 101n]);
   });
 
   it("reads nothing while it watches no token", async () => {

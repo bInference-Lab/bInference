@@ -1,4 +1,5 @@
 import { BinferenceError, type Clock } from "@binference/core";
+import type { Hex } from "viem";
 import { quantitySchema } from "../rpc/evm-wire.schema.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { followHeads, type HeadsEnded } from "./follow-heads.js";
@@ -25,16 +26,24 @@ export interface BlockSourceState {
   readonly fault?: BlockSourceFault;
 }
 
+/** How a head was seen: the failover endpoint whose poll saw it, or a reorganisation. */
+export interface SeenHead {
+  /** The endpoint that answered the poll that saw it; none for a socket's head. */
+  readonly endpoint?: string;
+  /** The socket sent another block at the newest height: the block there was replaced. */
+  readonly isReorg?: boolean;
+}
+
 /** Hands on each new block of one chain, by subscription where it can, else by polling. */
 export interface BlockSource {
   /**
-   * Calls `onHead` with each block number above every one before, as soon as it is seen, and the
-   * failover endpoint that answered the poll that saw it (none for a socket's head), until
-   * the signal aborts. It never fails for the chain: a dead socket gives way to polling, and a
+   * Calls `onHead` with each block number above every one before, as soon as it is seen, and how
+   * it was seen, until the signal aborts; a socket's head at the newest height with another hash
+   * is handed on again as a reorganisation. It never fails for the chain: a dead socket gives way to polling, and a
    * poll no endpoint answers is tried again a block time later. Rejects with the signal's reason
    * once it aborts.
    */
-  run(onHead: (number: bigint, endpoint?: string) => void, signal: AbortSignal): Promise<void>;
+  run(onHead: (number: bigint, seen?: SeenHead) => void, signal: AbortSignal): Promise<void>;
   /** How the source reads now. */
   state(): BlockSourceState;
 }
@@ -58,7 +67,14 @@ export interface BlockSourceOptions {
 interface SourceRun {
   readonly options: BlockSourceOptions;
   /** Records a head; answers whether it is above every head seen. */
-  readonly see: (number: bigint, mode: BlockSourceState["mode"], endpoint?: string) => boolean;
+  readonly see: (
+    number: bigint,
+    from: {
+      readonly mode: BlockSourceState["mode"];
+      readonly endpoint?: string;
+      readonly hash?: Hex;
+    },
+  ) => boolean;
   readonly fail: (fault: BlockSourceFault) => void;
   readonly signal: AbortSignal;
   /** When the subscription may be tried again. */
@@ -78,7 +94,7 @@ async function pollOnce(run: SourceRun): Promise<void> {
       ...(options.callTimeoutMs === undefined ? {} : { timeoutMs: options.callTimeoutMs }),
     });
     if (reply.kind === "result") {
-      run.see(reply.value, "polling", reply.endpoint);
+      run.see(reply.value, { mode: "polling", endpoint: reply.endpoint });
     } else {
       run.fail("rpc_down");
     }
@@ -95,7 +111,12 @@ async function pollOnce(run: SourceRun): Promise<void> {
 async function follow(run: SourceRun, subscription: HeadSubscription): Promise<void> {
   const { clock } = run.options;
   const ended = await followHeads(
-    { subscription, clock, onHead: (number) => run.see(number, "subscription") },
+    {
+      subscription,
+      clock,
+      onHead: (number, hash) =>
+        run.see(number, { mode: "subscription", ...(hash === undefined ? {} : { hash }) }),
+    },
     run.signal,
   );
   run.fail(ended);
@@ -115,6 +136,32 @@ async function step(run: SourceRun): Promise<void> {
   await clock.sleep(Math.max(0, startedMs + blockTimeMs - clock.now()), run.signal);
 }
 
+// The source's state once it saw a head. A head by polling ends a poll's fault; the socket's stays
+// until a socket gives heads.
+function stateAfter(
+  current: BlockSourceState,
+  seen: {
+    readonly number: bigint;
+    readonly mode: BlockSourceState["mode"];
+    readonly nowMs: number;
+  },
+): BlockSourceState {
+  const isFaultCleared = seen.mode === "subscription" || current.fault === "rpc_down";
+  const fault = isFaultCleared ? undefined : current.fault;
+  const isNew = current.head === undefined || seen.number > current.head;
+  const { head = seen.number, headAtMs = seen.nowMs } = isNew ? {} : current;
+  return { mode: seen.mode, head, headAtMs, ...(fault === undefined ? {} : { fault }) };
+}
+
+function endpointOf(from: { readonly endpoint?: string }): SeenHead | undefined {
+  return from.endpoint === undefined ? undefined : { endpoint: from.endpoint };
+}
+
+// Whether a socket's head at the newest height carries another hash than the head before.
+function isReplaced(hashes: { readonly last?: Hex | undefined }, hash: Hex | undefined): boolean {
+  return hash !== undefined && hashes.last !== undefined && hash !== hashes.last;
+}
+
 /**
  * Creates the block source of one chain (ARCHITECTURE.md section 9). With a WebSocket endpoint it
  * subscribes to `newHeads` and polls only while the socket is dead, for the subscription's rest,
@@ -122,7 +169,8 @@ async function step(run: SourceRun): Promise<void> {
  * timeout, such as one whose node repeats a head or trails the chain, counts as dead. Without one,
  * it polls `eth_blockNumber` once a block time through the chain's failover, which moves to the
  * next endpoint within the call timeout. A head that is not above the newest seen, such as a node
- * behind the others or a reorganised height, is not handed on.
+ * behind the others, is not handed on, but a socket's head at the newest height with another hash
+ * is, as a reorganisation, so the watcher reads that block again.
  */
 export function createBlockSource(options: BlockSourceOptions): BlockSource {
   let current: BlockSourceState = {
@@ -132,6 +180,7 @@ export function createBlockSource(options: BlockSourceOptions): BlockSource {
     async run(onHead, signal) {
       signal.throwIfAborted();
       let retryAtMs = options.clock.now();
+      const hashes: { last?: Hex | undefined } = {};
       const sourceRun: SourceRun = {
         options,
         signal,
@@ -139,16 +188,13 @@ export function createBlockSource(options: BlockSourceOptions): BlockSource {
         restUntil: (atMs) => {
           retryAtMs = atMs;
         },
-        see: (number, mode, endpoint) => {
-          // A head by polling ends a poll's fault; the socket's stays until a socket gives heads.
-          const fault =
-            mode === "subscription" || current.fault === "rpc_down" ? undefined : current.fault;
-          const kept = fault === undefined ? {} : { fault };
+        see: (number, from) => {
           const isNew = current.head === undefined || number > current.head;
-          const { head = number, headAtMs = options.clock.now() } = isNew ? {} : current;
-          current = { mode, head, headAtMs, ...kept };
-          if (isNew) {
-            onHead(number, endpoint);
+          const isReorg = !isNew && number === current.head && isReplaced(hashes, from.hash);
+          current = stateAfter(current, { number, mode: from.mode, nowMs: options.clock.now() });
+          if (isNew || isReorg) {
+            hashes.last = from.hash;
+            onHead(number, isReorg ? { isReorg } : endpointOf(from));
           }
           return isNew;
         },

@@ -20,6 +20,8 @@ export interface ReadProgress {
   markRead(block: bigint): void;
   /** Marks the last batch as failed with its code. */
   markFailed(code: string): void;
+  /** Reads a block again that was replaced at its height, and every block after it. */
+  rewind(block: bigint): void;
 }
 
 /** Creates the {@link ReadProgress} of a watcher that has seen and read nothing. */
@@ -54,6 +56,9 @@ export function createReadProgress(): ReadProgress {
     },
     markFailed: (code) => {
       fault = code;
+    },
+    rewind: (block) => {
+      read = read !== undefined && read >= block ? block - 1n : read;
     },
   };
 }
