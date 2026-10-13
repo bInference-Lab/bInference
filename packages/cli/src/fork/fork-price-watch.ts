@@ -6,6 +6,7 @@ import {
   createPriceWatcher,
   feedAssetsOf,
   poolSource,
+  type BlockSource,
   type PriceWatcher,
   type WatchedPrice,
 } from "@binference/chain-evm";
@@ -22,8 +23,8 @@ export const blockTimeMs = 450;
 // BNB at $600, as the rigs' price sources have it: micro-dollars a base unit of WBNB.
 const bnbUsd: Ratio = { numerator: 600n, denominator: 10n ** 12n };
 
-// The wall clock: the fork mines on it, so the watcher reads on it too.
-const wallClock: Clock = {
+/** The wall clock: the fork mines on it, so the watcher reads on it too. */
+export const wallClock: Clock = {
   now: () => Date.now(),
   sleep: async (delayMs, signal) => {
     await wait(delayMs, undefined, { signal });
@@ -44,8 +45,17 @@ export function orderPriceOf(price: WatchedPrice): WatchedOrderPrice {
   };
 }
 
-/** The price watcher on the fork, reading each token from its deepest PancakeSwap v2 pool. */
-export function watcherOn(fork: Fork): PriceWatcher {
+// The block source the watcher reads by when a test names none: `eth_blockNumber` polled once a
+// block time.
+function pollingBlocks(fork: Fork): BlockSource {
+  return createBlockSource({ rpc: fork.rpc, clock: wallClock, blockTimeMs });
+}
+
+/**
+ * The price watcher on the fork, reading each token from its deepest PancakeSwap v2 pool at each
+ * block `blocks` hands on: polled once a block time when absent.
+ */
+export function watcherOn(fork: Fork, blocks: BlockSource = pollingBlocks(fork)): PriceWatcher {
   const feeds = feedAssetsOf(bsc, bscPriceFeeds);
   const multicall = bscContract("multicall3", "multicall3");
   const clock = wallClock;
@@ -61,7 +71,7 @@ export function watcherOn(fork: Fork): PriceWatcher {
   });
   return createPriceWatcher({
     rpc: fork.rpc,
-    blocks: createBlockSource({ rpc: fork.rpc, clock, blockTimeMs }),
+    blocks,
     clock,
     multicall,
     blockTimeMs,

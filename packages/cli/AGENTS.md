@@ -50,6 +50,9 @@ Rules for this package:
   through `@binference/chain-evm/fork`. `self-hosted-start.test.ts` runs `binference start
 --foreground` itself there, with the fake Privy, the test signer and KyberSwap's public API.
   They run in `pnpm test:fork`, never in `pnpm check`.
+- `src/fork/exit-orders.replay.test.ts` replays the recorded day with exit orders on three tokens
+  and no runtime, and measures each fill in blocks from its trigger (decision 0209). It runs in
+  `pnpm test:replay`, never in `pnpm test:fork`.
 - Crash tests in `src/crash/` run `src/crash/crash-engine.ts` as a process of its own:
   `binference start --foreground` through `runCli`, as `src/main.ts` runs it, on a state folder
   `binference init` set up (decision 0135). They kill it at each kill point and start it again.

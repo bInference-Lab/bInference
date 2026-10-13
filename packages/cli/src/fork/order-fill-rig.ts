@@ -75,20 +75,30 @@ export interface FillRig {
   readonly engine: Engine;
   readonly stores: MemoryEngineStores;
   readonly pushes: readonly EnginePush[];
+  /** The first fixture's token. */
   readonly token: AssetRef;
+  /** Every fixture's token, in the fixtures' order. */
+  readonly tokens: readonly AssetRef[];
 }
 
-// The risk step on the fork: one required source that reports the fixture's flags, and the test
+// The risk step on the fork: one required source that reports each fixture's flags, and the test
 // trades simulated on the fork.
-function riskOf(fork: Fork, parts: { readonly host: VenueHost; readonly fixture: FillFixture }) {
+function riskOf(
+  fork: Fork,
+  parts: { readonly host: VenueHost; readonly fixtures: readonly FillFixture[] },
+) {
   const chains = selfHostedChains();
   const clock = createSystemClock();
-  const token = erc20AssetRef(fork.chain, parts.fixture.token);
-  const deep = { flags: parts.fixture.flags, liquidityUsdMicros: 10n ** 15n };
+  const reports = new Map(
+    parts.fixtures.map((fixture) => [
+      erc20AssetRef(fork.chain, fixture.token),
+      { flags: fixture.flags, liquidityUsdMicros: 10n ** 15n },
+    ]),
+  );
   return createRiskCheck({
     sources: [
       {
-        source: createFakeRiskSource({ id: "goplus", reports: new Map([[token, deep]]) }),
+        source: createFakeRiskSource({ id: "goplus", reports }),
         isRequired: true,
       },
     ],
@@ -112,21 +122,30 @@ const walletFacts = {
   recentOutflows: [],
 };
 
+// The venue host over the fork venue, which routes each fixture's token through its own pair.
+function hostOf(fork: Fork, fixtures: readonly FillFixture[]): VenueHost {
+  const via = new Map(
+    fixtures.flatMap(({ token, via: middle }) =>
+      middle === undefined ? [] : [[erc20AssetRef(fork.chain, token), middle] as const],
+    ),
+  );
+  const venue = createFeeTokenVenue({ fork, nativeAsset: fork.chain.nativeAsset, via });
+  const chains = selfHostedChains();
+  const clock = createSystemClock();
+  return createVenueHost({ venues: [venue], chains, clock, callTimeoutMs: 15_000 });
+}
+
 function engineOf(
   fork: Fork,
-  parts: { readonly pushes: EnginePush[]; readonly fixture: FillFixture },
+  parts: { readonly pushes: EnginePush[]; readonly fixtures: readonly FillFixture[] },
 ): { readonly engine: Engine; readonly stores: MemoryEngineStores } {
-  const { pushes, fixture } = parts;
+  const { pushes, fixtures } = parts;
   const clock = createSystemClock();
   const chains = selfHostedChains();
   const native = fork.chain.nativeAsset;
   const { rpc, chain } = fork;
   const stores = createMemoryEngineStores();
-  const routes =
-    fixture.via === undefined ? [] : [[erc20AssetRef(chain, fixture.token), fixture.via] as const];
-  const via = new Map(routes);
-  const venue = createFeeTokenVenue({ fork, nativeAsset: native, via });
-  const host = createVenueHost({ venues: [venue], chains, clock, callTimeoutMs: 15_000 });
+  const host = hostOf(fork, fixtures);
   const account = evmAccountRef(chain, forkWallet(walletKey).address);
   const engine = createEngine({
     stores,
@@ -139,7 +158,7 @@ function engineOf(
     ),
     wallets: createFakeWalletFacts(new Map([[fillAgent, [fillWallet]]]), walletFacts),
     host,
-    risk: riskOf(fork, { host, fixture }),
+    risk: riskOf(fork, { host, fixtures }),
     simulator: createSimulationCheck({
       simulator: createEvmTxSimulator({ rpc, chain }),
       chains,
@@ -196,18 +215,27 @@ async function seed(fork: Fork, rig: Pick<FillRig, "engine" | "stores">): Promis
 }
 
 /**
- * Runs `test` with a paper engine on the suite's fork that trades the fixture's token, whose
+ * Runs `test` with a paper engine on the suite's fork that trades the fixtures' tokens, whose
  * changes the fork undoes after.
  */
 export async function onFillFork(
   signal: AbortSignal,
-  fixture: FillFixture,
+  fixture: FillFixture | readonly [FillFixture, ...FillFixture[]],
   test: (rig: FillRig, fork: Fork) => Promise<void>,
 ): Promise<void> {
+  const fixtures: readonly [FillFixture, ...FillFixture[]] =
+    "token" in fixture ? [fixture] : fixture;
   await withFork(signal, async (fork) => {
     const pushes: EnginePush[] = [];
-    const { engine, stores } = engineOf(fork, { pushes, fixture });
-    const rig = { engine, stores, pushes, token: erc20AssetRef(fork.chain, fixture.token) };
+    const { engine, stores } = engineOf(fork, { pushes, fixtures });
+    const tokens = fixtures.map(({ token }) => erc20AssetRef(fork.chain, token));
+    const rig = {
+      engine,
+      stores,
+      pushes,
+      token: erc20AssetRef(fork.chain, fixtures[0].token),
+      tokens,
+    };
     await seed(fork, rig);
     await test(rig, fork);
   });
