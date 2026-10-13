@@ -151,29 +151,40 @@ async function useProvider(machine: InitMachine, server: StandInModelServer): Pr
 }
 
 describe("the chat relay to the agent runtime process", () => {
-  it("takes an owner's message from chat/post to the turn's end", slow, async () => {
-    const machine = await engines.setUp();
-    await engines.start(machine, { parts: { startRuntime: scriptedRuntime } });
-    const client = await connectClient(machine);
-    const id = firstAgent((await client.call("agent/list", {}, live())).items);
-    const { pushes, ended } = watchChat(client, id);
-    const posted = await client.call("chat/post", { agent: id, text: "hi" }, live());
-    await ended;
-    expect(pushes.map(({ kind, data }) => [kind, data])).toStrictEqual([
-      ["chat/turnStarted", { agent: id, session: posted.session, turn: posted.turn }],
-      [
-        "chat/message",
-        {
-          agent: id,
-          session: posted.session,
-          turn: posted.turn,
-          text: "Hello from the agent.",
-          final: true,
-        },
-      ],
-      ["chat/turnEnded", { agent: id, turn: posted.turn, outcome: "ok" }],
-    ]);
-  });
+  it(
+    "takes an owner's message from chat/post to the turn's end, and keeps the transcript",
+    slow,
+    async () => {
+      const machine = await engines.setUp();
+      await engines.start(machine, { parts: { startRuntime: scriptedRuntime } });
+      const client = await connectClient(machine);
+      const id = firstAgent((await client.call("agent/list", {}, live())).items);
+      const { pushes, ended } = watchChat(client, id);
+      const posted = await client.call("chat/post", { agent: id, text: "hi" }, live());
+      await ended;
+      expect(pushes.map(({ kind, data }) => [kind, data])).toStrictEqual([
+        ["chat/turnStarted", { agent: id, session: posted.session, turn: posted.turn }],
+        [
+          "chat/message",
+          {
+            agent: id,
+            session: posted.session,
+            turn: posted.turn,
+            text: "Hello from the agent.",
+            final: true,
+          },
+        ],
+        ["chat/turnEnded", { agent: id, turn: posted.turn, outcome: "ok" }],
+      ]);
+      const kept = await client.call("chat/messages", { agent: id }, live());
+      expect(
+        kept.items.map(({ session, role, kind, text }) => [session, role, kind, text]),
+      ).toStrictEqual([
+        [posted.session, "owner", "text", "hi"],
+        [posted.session, "agent", "text", "Hello from the agent."],
+      ]);
+    },
+  );
 
   it(
     "runs the turn on the runtime's own model client against a stand-in provider",

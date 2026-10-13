@@ -1,6 +1,11 @@
 import { BinferenceError, type Clock, type Id } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import {
+  answerMessagesRoute,
+  isMessagesRoute,
+  type MessageRouteParts,
+} from "../chats/message-routes.js";
+import {
   type EngineLine,
   engineLineSchema,
   type RouteLine,
@@ -102,10 +107,14 @@ type NextLine = IteratorResult<string, undefined>;
 interface LineContext {
   readonly apply: (settings: RuntimeSettings) => void;
   readonly notes: NoteRouteParts;
+  readonly messages: MessageRouteParts;
   readonly lifetime: AbortSignal;
 }
 
 async function answerRoute(route: RouteLine, context: LineContext): Promise<RuntimeLine> {
+  if (isMessagesRoute(route)) {
+    return answerMessagesRoute(route, context.messages, context.lifetime);
+  }
   return isNoteRoute(route)
     ? answerNoteRoute(route, context.notes, context.lifetime)
     : refusedRoute(route);
@@ -232,7 +241,8 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     };
     const { database, prepared } = connected;
     const notes = { notes: database.notes, fence: prepared.stores.fence, clock: host.clock };
-    const context = { apply, notes, lifetime, read: await connected.reading };
+    const messages = { sessions: prepared.stores.sessions, transcript: prepared.stores.transcript };
+    const context = { apply, notes, messages, lifetime, read: await connected.reading };
     return await serve(host, connected.lines, context);
   } finally {
     chat.unwatch();

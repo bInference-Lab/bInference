@@ -62,7 +62,7 @@ async function startRelay(
 ): Promise<Relay> {
   const turns = createRunningTurns();
   const notes = runtimeNotes();
-  const handlers = createRoutedHandlers(notes.route, turns);
+  const handlers = createRoutedHandlers(notes.route, turns, async () => undefined);
   const skeleton = await startSkeleton(composition.parts(), { turns, handlers });
   skeletons.push(skeleton);
   await skeleton.client.call("approval/set", { agent: testAgent, mode: approval }, live());

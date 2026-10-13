@@ -1,4 +1,4 @@
-import { BinferenceError, type Id } from "@binference/core";
+import { BinferenceError, type Id, idSchema } from "@binference/core";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { AgentModelPicks, RuntimeSettings } from "@binference/runtime";
@@ -123,6 +123,8 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
     handlers: createRoutedHandlers(
       async (request, signal) => supervisor.route(request, signal),
       turns,
+      async (agent, signal) =>
+        opened.stores.agentInbox.openSession(idSchema("agt").parse(agent), { signal }),
     ),
     health: () => supervisor.health(),
     pick: picks.pick,

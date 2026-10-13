@@ -20,6 +20,9 @@ const runtimeCaller = {
   client: { kind: "runtime", version: "test" },
   scopes: ["read", "propose", "agent"],
 } as const;
+const session = protocolIdSchema("chatSession").parse("ses_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+// An engine that holds no open session for any agent.
+const noSession = async () => Promise.resolve(undefined);
 const noteView = {
   note: "1",
   agent,
@@ -65,10 +68,14 @@ describe("createRoutedHandlers", () => {
   it("writes the runtime's note from a marked turn as untrusted", async () => {
     const sent: RouteRequest[] = [];
     const turns = runningTurn({ hasOutsideContent: false });
-    const handlers = createRoutedHandlers(async (request) => {
-      sent.push(request);
-      return { ok: true, value: noteView };
-    }, turns);
+    const handlers = createRoutedHandlers(
+      async (request) => {
+        sent.push(request);
+        return { ok: true, value: noteView };
+      },
+      turns,
+      noSession,
+    );
     const call = { args: { agent, text: "Remember the token" }, caller: runtimeCaller, signal };
     await handlers["notes/write"]?.(call);
     turns.mark(agent, turn);
@@ -78,10 +85,14 @@ describe("createRoutedHandlers", () => {
 
   it("sends the encoded args and answers the result as the operation reads it", async () => {
     const sent: RouteRequest[] = [];
-    const handlers = createRoutedHandlers(async (request) => {
-      sent.push(request);
-      return { ok: true, value: { items: [] } };
-    }, createRunningTurns());
+    const handlers = createRoutedHandlers(
+      async (request) => {
+        sent.push(request);
+        return { ok: true, value: { items: [] } };
+      },
+      createRunningTurns(),
+      noSession,
+    );
     const list = handlers["notes/list"];
     const answer = await list?.({ args: { agent }, caller, signal });
     expect(sent).toStrictEqual([{ op: "notes/list", args: { agent }, origin: "owner" }]);
@@ -92,10 +103,12 @@ describe("createRoutedHandlers", () => {
     const refused = createRoutedHandlers(
       async () => ({ ok: false, error: "runtime.unavailable" }),
       createRunningTurns(),
+      noSession,
     );
     const broken = createRoutedHandlers(
       async () => ({ ok: true, value: { items: "none" } }),
       createRunningTurns(),
+      noSession,
     );
     const call = { args: { agent }, caller, signal };
     await expect(refused["notes/list"]?.(call)).resolves.toStrictEqual({
@@ -106,5 +119,36 @@ describe("createRoutedHandlers", () => {
       ok: false,
       error: "internal.error",
     });
+  });
+
+  it("reads the agent's open session when chat/messages names none", async () => {
+    const sent: RouteRequest[] = [];
+    const handlers = createRoutedHandlers(
+      async (request) => {
+        sent.push(request);
+        return { ok: true, value: { items: [] } };
+      },
+      createRunningTurns(),
+      async () => Promise.resolve(session),
+    );
+    await handlers["chat/messages"]?.({ args: { agent, limit: 5 }, caller, signal });
+    expect(sent).toStrictEqual([
+      { op: "chat/messages", args: { agent, limit: 5, session }, origin: "owner" },
+    ]);
+  });
+
+  it("answers no message for an agent with no session, and asks the runtime nothing", async () => {
+    const sent: RouteRequest[] = [];
+    const handlers = createRoutedHandlers(
+      async (request) => {
+        sent.push(request);
+        return { ok: true, value: { items: [] } };
+      },
+      createRunningTurns(),
+      noSession,
+    );
+    const answer = await handlers["chat/messages"]?.({ args: { agent }, caller, signal });
+    expect(answer).toStrictEqual({ ok: true, value: { items: [] } });
+    expect(sent).toStrictEqual([]);
   });
 });

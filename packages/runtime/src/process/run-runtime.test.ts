@@ -55,7 +55,7 @@ describe("runRuntime", () => {
     });
   });
 
-  it("refuses a routed operation it does not serve yet, by its id", async () => {
+  it("answers the routed chat messages from the agent database, by its id", async () => {
     const runtime = started();
     await send(runtime, fixtureStartLine());
     await runtime.next();
@@ -63,14 +63,17 @@ describe("runRuntime", () => {
       t: "route",
       id: "r7",
       op: "chat/messages",
-      args: { agent: "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001" },
+      args: {
+        agent: "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+        session: "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+      },
       origin: "owner",
     };
     await send(runtime, route);
-    await expect(runtime.next()).resolves.toMatchObject({
+    await expect(runtime.next()).resolves.toStrictEqual({
       t: "routeReply",
       id: "r7",
-      error: { code: "protocol.unknown_op", retryable: false },
+      result: { items: [] },
     });
   });
 

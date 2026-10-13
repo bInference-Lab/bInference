@@ -36,7 +36,9 @@ store's worker threads and use the network; nothing else
    untaken message with `inbox/list`, watches the `inbox` topic, then writes `ready`, and its
    `health` every 10 seconds: its running turns and waiting messages.
 3. The engine writes `route` for a routed operation (`chat/messages`, `notes/*`); the runtime
-   answers `routeReply` with the same id.
+   answers `routeReply` with the same id: `chat/messages` as a page of the session's transcript,
+   each event with its role, kind and text, and the engine names the agent's open session when
+   the call names none.
 4. On `stop`, or when its input ends, the runtime ends each running turn as a stop does, keeping
    the waiting messages, closes its connection and `agent.sqlite`, and exits with code 0. A first
    line that is not `start`, a line it cannot read, an agent database it cannot open, or a refused

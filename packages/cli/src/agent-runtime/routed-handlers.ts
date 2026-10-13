@@ -28,6 +28,12 @@ type RoutedName = (typeof routedOperations)[number];
 /** Sends one routed call to the runtime. */
 type Route = (request: RouteRequest, signal: AbortSignal) => Promise<RouteOutcome>;
 
+/** The agent's open chat session, which the engine keeps (`agents.chat_session_id`). */
+type OpenSession = (
+  agent: ProtocolId<"agent">,
+  signal: AbortSignal,
+) => Promise<ProtocolId<"chatSession"> | undefined>;
+
 /**
  * Who a routed call runs for (runtime spec, section 10; decision 0206): `owner` for a client with
  * `confirm` or `admin`; `agent` for the runtime the engine runs now, in a turn of the agent the
@@ -73,15 +79,38 @@ function routed<N extends RoutedName>(
   };
 }
 
+// `chat/messages` names the agent's open session when the call names none; an agent with no session
+// yet has no message.
+function messagesOf(
+  parts: { readonly route: Route; readonly turns: RunningTurns },
+  openSession: OpenSession,
+): EngineHandler<"chat/messages"> {
+  const route = routed("chat/messages", parts);
+  return async (call) => {
+    if (call.args.session !== undefined) {
+      return route(call);
+    }
+    const session = await openSession(call.args.agent, call.signal);
+    return session === undefined
+      ? ok({ items: [] })
+      : route({ ...call, args: { ...call.args, session } });
+  };
+}
+
 /**
  * The engine's handlers of the routed operations: each passes its call to the runtime with the
  * origin its caller and the runtime's running turns set, and answers the runtime's result as the
  * operation's schema reads it. A result that breaks the schema fails `internal.error`.
+ * `chat/messages` with no session reads the agent's open one.
  */
-export function createRoutedHandlers(route: Route, turns: RunningTurns): EngineHandlerTable {
+export function createRoutedHandlers(
+  route: Route,
+  turns: RunningTurns,
+  openSession: OpenSession,
+): EngineHandlerTable {
   const parts = { route, turns };
   return {
-    "chat/messages": routed("chat/messages", parts),
+    "chat/messages": messagesOf(parts, openSession),
     "notes/search": routed("notes/search", parts),
     "notes/list": routed("notes/list", parts),
     "notes/write": routed("notes/write", parts),
