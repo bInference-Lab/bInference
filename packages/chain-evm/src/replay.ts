@@ -1,6 +1,10 @@
+export { pairAmountOut, swapToPrice } from "./replay/pair-swap.js";
+export type { PairReserves, PairSwap } from "./replay/pair-swap.js";
 export { writePricePath } from "./replay/price-path.js";
-export type { PathBlock, PoolPath, PricePath } from "./replay/price-path.js";
 export { readPricePath } from "./replay/price-path.schema.js";
-export { recordedDay } from "./replay/recorded-days.js";
+export type { PathBlock, PoolPath, PricePath } from "./replay/price-path.js";
 export { pathPrice, recordedBlocks, syncReserves, syncTopic } from "./replay/record-path.js";
 export type { PairSync, PathShape } from "./replay/record-path.js";
+export { replaySteps } from "./replay/replay-steps.js";
+export type { ReplayMove, ReplayStep } from "./replay/replay-steps.js";
+export { recordedDay } from "./replay/recorded-days.js";

@@ -66,7 +66,7 @@ export function pathPrice(
  * Whether a pair's price, quote per token, moved at least `bps` from `before` to `now`, compared
  * exactly on the reserves.
  */
-function movedFrom(
+export function movedFrom(
   before: Pick<PathBlock, "reserveToken" | "reserveQuote">,
   now: Pick<PathBlock, "reserveToken" | "reserveQuote">,
   bps: number,

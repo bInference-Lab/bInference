@@ -46,6 +46,7 @@
     "test:console": "pnpm --filter @binference/console build && pnpm --filter @binference/console test:smoke",
     "test:crash": "vitest run --config vitest.crash.config.ts",
     "test:fork": "vitest run --config vitest.fork.config.ts",
+    "test:replay": "vitest run --config vitest.replay.config.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p packages/console/tsconfig.json"
   },
   "devDependencies": {
