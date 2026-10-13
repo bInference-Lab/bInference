@@ -16,6 +16,9 @@
     },
     "./fork": {
       "@binference/source": "./src/fork.ts"
+    },
+    "./replay": {
+      "@binference/source": "./src/replay.ts"
     }
   },
   "scripts": {

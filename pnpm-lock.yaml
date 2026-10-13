@@ -355,6 +355,12 @@ importers:
 
   .:
     devDependencies:
+      '@binference/chain-evm':
+        specifier: workspace:*
+        version: link:packages/chain-evm
+      '@binference/chains':
+        specifier: workspace:*
+        version: link:packages/chains
       '@binference/i18n':
         specifier: workspace:*
         version: link:packages/i18n

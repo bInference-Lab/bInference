@@ -36,6 +36,7 @@
     "lint:docs": "markdownlint-cli2",
     "mutation": "stryker run",
     "mutation:summary": "node --import tsx scripts/mutation-summary.mts",
+    "replay:record": "node --conditions=@binference/source --import tsx scripts/record-replay-day.mts",
     "security:audit": "pnpm audit --audit-level=high",
     "security:opengrep": "node --import tsx scripts/scan-opengrep.mts",
     "service:smoke": "node --conditions=@binference/source --import tsx scripts/service-smoke.mts",
@@ -48,6 +49,8 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p packages/console/tsconfig.json"
   },
   "devDependencies": {
+    "@binference/chain-evm": "workspace:*",
+    "@binference/chains": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@commitlint/cli": "catalog:",
