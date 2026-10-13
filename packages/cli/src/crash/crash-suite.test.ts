@@ -4,9 +4,11 @@ import { bsc } from "@binference/chains";
 import type { Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import { createFakePrivy } from "@binference/custody-privy/testing";
+import type { EngineStores } from "@binference/engine";
 import { readLogLines } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
-import { createSqliteTransactionStore, engineWorker, openDatabase } from "@binference/store";
+import type { ProtocolId } from "@binference/protocol";
+import { createSqliteEngineStores, engineWorker, openDatabase } from "@binference/store";
 import type { Address, Hex } from "viem";
 import { afterAll, afterEach, beforeAll, describe, expect, inject, it, onTestFailed } from "vitest";
 import { z } from "zod";
@@ -24,7 +26,10 @@ import {
   type CrashInstall,
   type CrashWorld,
   goLiveAndBuy,
+  goLiveAndOrder,
+  type SettledOrder,
   settleAndStop,
+  settleOrderAndStop,
   setUpCrashInstall,
   startCrashEngine,
 } from "./crash-runs.js";
@@ -76,8 +81,9 @@ function worldOf(): CrashWorld {
   return held.world;
 }
 
-async function startEngine(install: CrashInstall): Promise<SourceProgram> {
-  const engine = await startCrashEngine(worldOf(), install, AbortSignal.timeout(engineBudgetMs));
+async function startEngine(install: CrashInstall, fills = false): Promise<SourceProgram> {
+  const signal = AbortSignal.timeout(engineBudgetMs);
+  const engine = await startCrashEngine(worldOf(), install, { signal, fills });
   programs.push(engine);
   return engine;
 }
@@ -115,10 +121,27 @@ async function killOnChain(
   });
 }
 
-// Arms the kill at the point: `signed` once the test's Privy has signed and holds its answer,
-// every other point once the test's chain sees the engine reach it. Resolves once the engine is
-// dead; an engine that ends by itself first fails the run.
-async function armKill(world: CrashWorld, engine: SourceProgram, point: KillPoint): Promise<void> {
+/** Where a run kills the engine: a point of the chain's, or `asked`, as custody is asked to sign. */
+type RunKillPoint = KillPoint | "asked";
+
+function isChainPoint(point: RunKillPoint): point is Exclude<KillPoint, "signed"> {
+  return point !== "asked" && point !== "signed";
+}
+
+// Settles once custody is asked to sign, before it signs (`asked`), or once it signed and holds
+// its answer (`signed`).
+async function custodyKill(world: CrashWorld, point: "asked" | "signed"): Promise<void> {
+  return point === "asked" ? world.services.holdNextRequest() : world.services.holdNextSignature();
+}
+
+// Arms the kill at the point: `asked` or `signed` at the test's Privy, every other point once the
+// test's chain sees the engine reach it. Resolves once the engine is dead; an engine that ends by
+// itself first fails the run.
+async function armKill(
+  world: CrashWorld,
+  engine: SourceProgram,
+  point: RunKillPoint,
+): Promise<void> {
   const { state, kill } = killerOf(engine);
   const ended = (async () => {
     await engine.program.exited;
@@ -126,10 +149,9 @@ async function armKill(world: CrashWorld, engine: SourceProgram, point: KillPoin
       throw new Error(`The engine ended before ${point}:\n${engine.lines().join("\n")}`);
     }
   })();
-  const killed =
-    point === "signed"
-      ? world.services.holdNextSignature().then(kill)
-      : killOnChain(world.chain, point, kill);
+  const killed = isChainPoint(point)
+    ? killOnChain(world.chain, point, kill)
+    : custodyKill(world, point).then(kill);
   await Promise.all([killed, ended]);
 }
 
@@ -142,10 +164,14 @@ interface Restarted {
 // Starts the engine again with blocks mined, as BSC moves on, waits until it has recovered the
 // intent to its end, and stops it. A run whose transaction should still be unmined when recovery
 // reads the chain mines only once the relays get the recovering engine's send.
-async function restart(
+async function restartWith<T>(
   install: CrashInstall,
-  run: { readonly intent: Id<"int">; readonly isMinedAfterResend: boolean },
-): Promise<Restarted> {
+  run: {
+    readonly isMinedAfterResend: boolean;
+    readonly fills: boolean;
+    readonly settle: () => Promise<T>;
+  },
+): Promise<{ readonly engine: SourceProgram; readonly settled: T }> {
   const { chain } = worldOf();
   const miner = new AbortController();
   const stopped = new Promise<void>((resolve) => {
@@ -155,14 +181,28 @@ async function restart(
   const start = run.isMinedAfterResend ? resent : Promise.resolve();
   const mining = start.then(async () => chain.mine(miner.signal));
   try {
-    const engine = await startEngine(install);
-    const state = await settleAndStop(install, run.intent);
+    const engine = await startEngine(install, run.fills);
+    const settled = await run.settle();
     await engine.program.exited;
-    return { engine, state };
+    return { engine, settled };
   } finally {
     miner.abort();
     await mining;
   }
+}
+
+async function restart(
+  install: CrashInstall,
+  run: { readonly intent: Id<"int">; readonly isMinedAfterResend: boolean },
+): Promise<Restarted> {
+  const { isMinedAfterResend } = run;
+  const settle = async () => settleAndStop(install, run.intent);
+  const { engine, settled } = await restartWith(install, {
+    isMinedAfterResend,
+    fills: false,
+    settle,
+  });
+  return { engine, state: settled };
 }
 
 const countSchema = z.string().regex(/^0x[0-9a-f]+$/);
@@ -191,10 +231,10 @@ async function minedOf(chain: CrashChain, from: Address): Promise<number> {
 }
 
 // What the engine's store holds, read as the next engine reads it: the wallet's transactions,
-// and those of one intent.
+// those of one intent, and an order's fill rows.
 async function withStore<T>(
   folder: string,
-  read: (store: ReturnType<typeof createSqliteTransactionStore>, signal: AbortSignal) => Promise<T>,
+  read: (stores: EngineStores, signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
   const signal = AbortSignal.timeout(30_000);
   const database = await openDatabase({
@@ -204,7 +244,7 @@ async function withStore<T>(
     signal,
   });
   try {
-    return await read(createSqliteTransactionStore(database), signal);
+    return await read(createSqliteEngineStores(database), signal);
   } finally {
     await database.close();
   }
@@ -213,13 +253,15 @@ async function withStore<T>(
 async function storedOf(folder: string, from: Address): Promise<readonly string[]> {
   const account = evmAccountRef(evmChainOf(bsc), from);
   const query = { account, fromNonce: 0, limit: 10 };
-  const stored = await withStore(folder, async (store, signal) => store.list(query, { signal }));
+  const stored = await withStore(folder, async ({ transactions }, signal) =>
+    transactions.list(query, { signal }),
+  );
   return stored.map(({ state }) => state);
 }
 
 async function hashesOf(folder: string, intent: Id<"int">): Promise<readonly string[]> {
-  const stored = await withStore(folder, async (store, signal) =>
-    store.ofIntent(intent, { signal }),
+  const stored = await withStore(folder, async ({ transactions }, signal) =>
+    transactions.ofIntent(intent, { signal }),
   );
   return stored.flatMap(({ hash }) => (hash === undefined ? [] : [hash]));
 }
@@ -398,5 +440,152 @@ describe.each(killCases)("an engine killed at $point and started again", (killCa
     expect(outcome.signatures).toStrictEqual({ beforeKill: 1, afterRestart: 0 });
     expect(outcome.restartExit).toBe(0);
     expect(outcome.settled).toStrictEqual({ state: killCase.state, hashes });
+  });
+});
+
+/** What a run at one kill point during a live order fill does and must show. */
+interface FillKillCase {
+  readonly point: RunKillPoint;
+  readonly atKill: AtKill;
+  /** Whether the relays get the wallet's bytes after the restart: the stored ones, or a new fill. */
+  readonly isResent: boolean;
+  readonly signatures: { readonly beforeKill: number; readonly afterRestart: number };
+  /** The skips the order records before its one fill: a fill the stop left unsigned. */
+  readonly skips: readonly string[];
+}
+
+/** What reached the chain from one fill run's wallet, and where its order ended. */
+interface FillOutcome {
+  readonly atKill: AtKill;
+  readonly sends: readonly RelayedSend[];
+  readonly isResent: boolean;
+  readonly mined: number;
+  readonly unmined: number;
+  readonly landed: readonly Hex[];
+  readonly signatures: { readonly beforeKill: number; readonly afterRestart: number };
+  readonly restartExit: number | undefined;
+  readonly order: SettledOrder;
+  /** The order's fill rows, the oldest first: each outcome, with a skip's reason. */
+  readonly rows: readonly { readonly outcome: string; readonly reason?: string }[];
+  /** The transactions the engine stored for the intent of the order's `filled` rows. */
+  readonly filledHashes: readonly string[];
+  readonly story: string;
+}
+
+// The order's fill rows as the engine stored them, the oldest first, and the transactions it
+// stored for the intents its `filled` rows name.
+async function fillsOf(folder: string, order: ProtocolId<"autoOrder">) {
+  const rows = await withStore(folder, async ({ orders }, signal) =>
+    orders.fills({ orderId: order, limit: 20 }, { signal }),
+  );
+  const filled = rows.filter(({ outcome }) => outcome === "filled");
+  const hashes = await Promise.all(
+    filled.map(async ({ intentId }) => (intentId === undefined ? [] : hashesOf(folder, intentId))),
+  );
+  const oldestFirst = rows
+    .toReversed()
+    .map(({ outcome, reason }) => (reason === undefined ? { outcome } : { outcome, reason }));
+  return { rows: oldestFirst, filledHashes: hashes.flat() };
+}
+
+async function crashFillOnce(killCase: FillKillCase): Promise<FillOutcome> {
+  const world = worldOf();
+  const { chain, services } = world;
+  const install = await setUpCrashInstall(world, folders);
+  const { from, machine } = install;
+  const before = services.signatures();
+  const first = await startEngine(install, true);
+  const killed = armKill(world, first, killCase.point);
+  const order = await goLiveAndOrder(install);
+  await killed;
+  const atKill = await atKillOf(chain, from, machine.folder);
+  const sendsAtKill = chain.sends().filter((send) => send.from === from).length;
+  const signedAtKill = services.signatures();
+  const isMinedAfterResend = killCase.point !== "included";
+  const settle = async () => settleOrderAndStop(install, order);
+  const second = await restartWith(install, { isMinedAfterResend, fills: true, settle });
+  const sends = chain.sends().filter((send) => send.from === from);
+  return {
+    atKill,
+    sends,
+    isResent: sends.length > sendsAtKill,
+    mined: await minedOf(chain, from),
+    unmined: await unminedOf(chain, from),
+    landed: await landedOf(chain, sends),
+    signatures: {
+      beforeKill: signedAtKill - before,
+      afterRestart: services.signatures() - signedAtKill,
+    },
+    restartExit: await second.engine.program.exited,
+    order: second.settled,
+    ...(await fillsOf(machine.folder, order)),
+    story: await storyOf(machine.folder, [first, second.engine]),
+  };
+}
+
+const notSigned = { isRelayed: false, isOnChain: false, mined: 0, stored: [] };
+
+// A stop before the fill's bytes are stored leaves nothing to send: recovery ends the fill
+// unsigned, the order records the skip, and the next price fills it once. A stop anywhere after
+// leaves one transaction, which recovery follows to its end and records on the order; the prices
+// that fire meanwhile wait behind it. Either way one transaction reaches the chain, and the order
+// records one fill.
+const fillKillCases: readonly FillKillCase[] = [
+  {
+    point: "asked",
+    atKill: notSigned,
+    isResent: true,
+    signatures: { beforeKill: 0, afterRestart: 1 },
+    skips: ["fill_failed"],
+  },
+  {
+    point: "signed",
+    atKill: notSigned,
+    isResent: true,
+    signatures: { beforeKill: 1, afterRestart: 1 },
+    skips: ["fill_failed"],
+  },
+  {
+    point: "stored",
+    atKill: { ...unrelayed, isRelayed: true, stored: ["signed"] },
+    isResent: true,
+    signatures: { beforeKill: 1, afterRestart: 0 },
+    skips: [],
+  },
+  {
+    point: "sent",
+    atKill: { ...unmined, stored: ["sent"] },
+    isResent: true,
+    signatures: { beforeKill: 1, afterRestart: 0 },
+    skips: [],
+  },
+  {
+    point: "included",
+    atKill: { ...unmined, mined: 1, stored: ["sent"] },
+    isResent: false,
+    signatures: { beforeKill: 1, afterRestart: 0 },
+    skips: [],
+  },
+];
+
+describe.each(fillKillCases)("an engine killed at $point during a live order fill", (killCase) => {
+  it.each(runs)("sends one transaction and records one fill, run %i", async () => {
+    const outcome = await crashFillOnce(killCase);
+    onTestFailed(() => {
+      process.stderr.write(`${outcome.story}\n`);
+    });
+    const hashes = [...new Set(outcome.sends.map(({ hash }) => hash))];
+    const { order } = outcome;
+    expect(outcome.atKill).toStrictEqual(killCase.atKill);
+    expect(hashes).toHaveLength(1);
+    expect(outcome.landed).toStrictEqual(hashes);
+    expect([outcome.mined, outcome.unmined]).toStrictEqual([1, 0]);
+    expect(outcome.isResent).toBe(killCase.isResent);
+    expect(outcome.signatures).toStrictEqual(killCase.signatures);
+    expect(outcome.restartExit).toBe(0);
+    expect([order.state, order.fills]).toStrictEqual(["filled", 1]);
+    const skips = killCase.skips.map((reason) => ({ outcome: "skipped", reason }));
+    expect(outcome.rows).toStrictEqual([...skips, { outcome: "filled" }]);
+    expect(outcome.filledHashes).toStrictEqual(hashes);
   });
 });

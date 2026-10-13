@@ -4,10 +4,12 @@ import { setTimeout as wait } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { assetRefSchema, chainRefSchema } from "@binference/chain";
 import { bsc } from "@binference/chains";
+import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, type Id } from "@binference/core";
 import type { FakePrivy } from "@binference/custody-privy/testing";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import type { ProtocolId } from "@binference/protocol";
 import { type Address, getAddress, toHex } from "viem";
 import {
   type InitMachine,
@@ -23,6 +25,7 @@ import { createSystemClock } from "../runtime/system-clock.js";
 import type { CrashChain } from "./crash-chain.js";
 import { crashRelays } from "./crash-http.js";
 import { crashUsdt, freshCrashFeeds } from "./crash-market.js";
+import { crashUsdtAsset } from "./crash-orders.js";
 import type { CrashServices } from "./crash-services.js";
 
 /** What every crash run shares: the chain with its relays, Privy and KyberSwap's API. */
@@ -101,8 +104,9 @@ export async function setUpCrashInstall(
 export async function startCrashEngine(
   world: CrashWorld,
   install: CrashInstall,
-  signal: AbortSignal,
+  run: { readonly signal: AbortSignal; readonly fills?: boolean },
 ): Promise<SourceProgram> {
+  const { signal } = run;
   const engine = startSourceProgram({
     file: engineFile,
     args: [],
@@ -113,12 +117,23 @@ export async function startCrashEngine(
       CRASH_RELAYS: world.chain.relays,
       CRASH_SERVICES: world.services.origin,
       CRASH_PORT: String(await freePort()),
+      ...(run.fills === true ? { CRASH_FILLS: "1" } : {}),
       ...secretEnv(install.machine),
     },
     signal,
   });
   await engine.lineWith('"state":');
   return engine;
+}
+
+// The install's one agent, gone live as `binference live` does.
+async function goneLive(client: ProtocolClient, call: { readonly signal: AbortSignal }) {
+  const [agent] = (await client.call("engine/status", {}, call)).agents;
+  if (agent === undefined) {
+    throw new BinferenceError({ code: "crash.no_agent", message: "init made no agent." });
+  }
+  await client.call("agent/goLive", { agent: agent.id }, call);
+  return agent;
 }
 
 /**
@@ -130,11 +145,7 @@ export async function goLiveAndBuy(install: CrashInstall): Promise<Id<"int">> {
   const client = await connectClient(install.machine);
   const call = { signal: AbortSignal.timeout(60_000) };
   try {
-    const [agent] = (await client.call("engine/status", {}, call)).agents;
-    if (agent === undefined) {
-      throw new BinferenceError({ code: "crash.no_agent", message: "init made no agent." });
-    }
-    await client.call("agent/goLive", { agent: agent.id }, call);
+    const agent = await goneLive(client, call);
     const request = {
       kind: "swap",
       agent: agent.id,
@@ -153,6 +164,79 @@ export async function goLiveAndBuy(install: CrashInstall): Promise<Id<"int">> {
     // A kill right after the signature can cut the confirmation's answer off; the intent is known.
     await client.call("intent/confirm", tap, call).catch(() => undefined);
     return proposed.intent;
+  } finally {
+    client.close();
+  }
+}
+
+/**
+ * Goes live as `binference live` does and makes a live limit order to buy USDT with 0.01 BNB once
+ * while it is at or below $2, then taps Confirm on its card; answers the order. The crash engine's
+ * prices hold USDT at $1, so the order fires at the next block, and at every block after while it
+ * is active.
+ */
+export async function goLiveAndOrder(install: CrashInstall): Promise<ProtocolId<"autoOrder">> {
+  const client = await connectClient(install.machine);
+  const call = { signal: AbortSignal.timeout(60_000) };
+  try {
+    const agent = await goneLive(client, call);
+    const request = {
+      kind: "limit",
+      agent: agent.id,
+      reason: "Buy USDT on the crash chain once it is at or below $2",
+      token: crashUsdtAsset,
+      side: "buy",
+      spend: assetRefSchema.parse(`${bscRef}/slip44:714`),
+      size: { base: spend },
+      trigger: { price: 2_000_000n, direction: "below" },
+      maxFills: 1,
+    } as const;
+    const created = await client.call("order/create", request, call);
+    const { card, intent } = created;
+    if (card === undefined || intent === undefined) {
+      throw new BinferenceError({ code: "crash.no_card", message: `No card: ${created.state}.` });
+    }
+    await client.call("intent/confirm", { intent, card, cardVersion: 1 }, call);
+    return created.order;
+  } finally {
+    client.close();
+  }
+}
+
+/** Where a run's order stands once the restarted engine settled it. */
+export interface SettledOrder {
+  readonly state: string;
+  readonly fills: number;
+}
+
+const settledOrders = new Set(["filled", "cancelled", "expired", "ended"]);
+
+/**
+ * Waits on the running engine until the order has ended, as its one fill settled, then stops the
+ * engine through `engine/stop`; answers where the order stands.
+ */
+export async function settleOrderAndStop(
+  install: CrashInstall,
+  order: ProtocolId<"autoOrder">,
+): Promise<SettledOrder> {
+  const client = await connectClient(install.machine);
+  const deadline = Date.now() + 120_000;
+  try {
+    const poll = async (): Promise<SettledOrder> => {
+      const view = await client.call(
+        "order/get",
+        { order },
+        { signal: AbortSignal.timeout(10_000) },
+      );
+      if (settledOrders.has(view.state) || Date.now() > deadline) {
+        return { state: view.state, fills: view.fills };
+      }
+      await wait(200);
+      return poll();
+    };
+    const settled = await poll();
+    await client.call("engine/stop", {}, { signal: AbortSignal.timeout(10_000) }).catch(() => ({}));
+    return settled;
   } finally {
     client.close();
   }

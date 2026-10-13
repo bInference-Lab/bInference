@@ -29,6 +29,7 @@ import { engineHandlers } from "./engine-handlers.js";
 import { type SelfHostedSources, selfHostedMarketReads } from "./market-reads.js";
 import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
+import { pricingOf } from "./order-pricing.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
 import { paperBalancesOf } from "./paper-balances.js";
 import { publishedParts } from "./published-parts.js";
@@ -280,7 +281,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ...(opened.consoleFiles === undefined ? {} : { consoleFiles: opened.consoleFiles }),
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
-      canPrice: wiring.priceWatchers.canPrice,
+      ...pricingOf(host, wiring.priceWatchers.canPrice),
       readTokenFacts: chainTokenFacts(parts.reads),
       workspace: stateWorkspace(opening.platform),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),

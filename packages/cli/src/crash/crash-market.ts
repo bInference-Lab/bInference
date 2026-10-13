@@ -41,6 +41,13 @@ export const crashUsdt: Address = addressIn(
 export const crashRouter: Address = contract("kyberswap", "meta-aggregation-router-v2");
 /** KyberSwap's executor, which the router's calls name. */
 export const crashExecutor: Address = contract("kyberswap", "aggregation-executor-proxy");
+/** Flap's Portal, which a buy or sale asks whether Flap holds its token on its curve. */
+const crashPortal: Address = contract("flap", "portal");
+/** Genius.fun's stack factories, which a buy or sale asks whether they launched its token. */
+const crashGeniusFactories: readonly Address[] = [
+  contract("geniusfun", "factory-m4-2"),
+  contract("geniusfun", "factory-m4-1"),
+];
 
 // A small assembler: opcodes as bytes, pushes of a fixed width, jump targets and their labels.
 type Item =
@@ -221,13 +228,53 @@ const crashRouterCode: Hex = assemble([
   ...fail,
 ]);
 
+// The selector of Flap's `TokenNotFound(address)`, the Portal's revert for a token it never made.
+const tokenNotFound = BigInt(keccak256(toHex("TokenNotFound(address)")).slice(0, 10));
+
 /**
- * Sets up the market a crash run trades in on a bare chain: USDT and KyberSwap's router at their
- * BSC addresses, the router holding USDT to pay out, and fresh rounds of the BNB and USDT feeds.
+ * The runtime code of the crash chain's Flap Portal: every call reverts with `TokenNotFound` and
+ * the address its first argument names, as the Portal answers for a token Flap never launched, so
+ * a buy of USDT goes to the pools.
+ */
+const crashPortalCode: Hex = assemble([
+  p(4, tokenNotFound),
+  p(1, 0xe0n),
+  op.shl,
+  p(1, 0n),
+  op.mstore,
+  p(1, 4n),
+  op.callDataLoad,
+  p(1, 4n),
+  op.mstore,
+  p(1, 0x24n),
+  p(1, 0n),
+  op.revert,
+]);
+
+// The length of `getLaunchedToken`'s answer: its record's 15 fields, one word each.
+const launchRecordBytes = 15n * 32n;
+
+/**
+ * The runtime code of the crash chain's Genius.fun factories: every call returns a record of
+ * zeros, `exists` false among them, as a factory answers for a token it never launched, so a buy
+ * of USDT goes to the pools.
+ */
+const crashGeniusFactoryCode: Hex = assemble([p(2, launchRecordBytes), p(1, 0n), op.return]);
+
+/**
+ * Sets up the market a crash run trades in on a bare chain: USDT, KyberSwap's router, a Portal
+ * of Flap's and Genius.fun's factories that hold no token, at their BSC addresses, the router holding USDT to pay out, and
+ * fresh rounds of the BNB and USDT feeds.
  */
 export async function installCrashMarket(call: AnvilCall): Promise<void> {
   await call("anvil_setCode", [crashUsdt, crashTokenCode]);
   await call("anvil_setCode", [crashRouter, crashRouterCode]);
+  await call("anvil_setCode", [crashPortal, crashPortalCode]);
+  await Promise.all(
+    crashGeniusFactories.map(async (factory) =>
+      call("anvil_setCode", [factory, crashGeniusFactoryCode]),
+    ),
+  );
   const held = pad(toHex(10n ** 30n), { size: 32 });
   await call("anvil_setStorageAt", [crashUsdt, pad(crashRouter, { size: 32 }), held]);
   await freshCrashFeeds(call);

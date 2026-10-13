@@ -10,6 +10,8 @@ export interface CrashEnv {
   readonly CRASH_SERVICES: string;
   /** The port the engine's HTTP listener takes. */
   readonly CRASH_PORT: string;
+  /** `1` when the run's prices fire live auto orders, which then fill live. */
+  readonly CRASH_FILLS?: "1";
 }
 
 const loopback = z.url({ protocol: /^http$/, hostname: /^127\.0\.0\.1$/ });
@@ -20,4 +22,5 @@ export const crashEnvSchema: z.ZodType<CrashEnv> = z.object({
   CRASH_RELAYS: loopback,
   CRASH_SERVICES: loopback,
   CRASH_PORT: z.string().regex(/^[1-9]\d{0,4}$/),
+  CRASH_FILLS: z.literal("1").exactOptional(),
 });

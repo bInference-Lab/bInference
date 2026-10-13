@@ -1,4 +1,6 @@
+import type { AssetRef } from "@binference/chain";
 import type { Clock, Http, Random } from "@binference/core";
+import type { Engine } from "@binference/engine";
 import type { ServiceManager, SignalEvents } from "@binference/platform";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
@@ -13,6 +15,20 @@ interface BinferenceEntry {
   readonly nodeOptions: readonly string[];
   /** The absolute path of the entry script, `main.mjs` once built. */
   readonly script: string;
+}
+
+/**
+ * Prices a test hands the engine's price triggers in place of the chains' price watchers, with
+ * live auto order fills on, so a test drives live fills on a bare test chain.
+ */
+export interface TestOrders {
+  /** Whether a price order on the token may be made, as the price watchers would answer. */
+  readonly canPrice: (token: AssetRef) => boolean;
+  /**
+   * Starts handing prices to `see`, the engine's price triggers, as the price watchers start with
+   * the engine's timers; answers how to stop.
+   */
+  readonly start: (see: Engine["seePrice"]) => () => void;
 }
 
 /**
@@ -60,4 +76,10 @@ export interface CliHost {
   readonly consoleFolder?: string;
   /** The streams `binference mcp` serves over: the process's stdin and stdout. */
   readonly mcpStdio?: McpStdio;
+  /**
+   * Only the crash suite's engine sets it, to drive live fills through a forced stop (decision
+   * 0210). Left out, as the entry file leaves it, the price watchers price tokens and live auto
+   * orders never fill: no config key or variable turns them on.
+   */
+  readonly testOrders?: TestOrders;
 }

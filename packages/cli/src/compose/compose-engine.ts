@@ -99,6 +99,8 @@ export interface ComposeEngineOptions {
   readonly isLocked?: () => boolean;
   /** Whether the price watchers can price a token now, which a price order needs (decision 0194). */
   readonly canPrice: EngineOptions["canPrice"];
+  /** Whether live auto orders fill; off when absent (decision 0195). */
+  readonly liveOrderFills?: boolean;
   /** Reads what a token the registry does not list answers on chain, for its cards. */
   readonly readTokenFacts: EngineOptions["readTokenFacts"];
   /** Each agent's workspace files. */
@@ -296,6 +298,7 @@ function engineOf(
     paperBalances: options.paperBalances,
     isLocked: options.isLocked ?? (() => false),
     canPrice: options.canPrice,
+    ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     readTokenFacts: options.readTokenFacts,
     workspace: options.workspace,
     chains: options.chains,

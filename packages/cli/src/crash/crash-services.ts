@@ -36,6 +36,11 @@ export interface CrashServices {
    * that signed and then held until the engine was killed. Resolves once it signed.
    */
   readonly holdNextSignature: () => Promise<void>;
+  /**
+   * Arms a hold before signing: the next signing request reaches Privy's door and is never
+   * signed nor answered, as custody that hung until the engine was killed. Resolves once it came.
+   */
+  readonly holdNextRequest: () => Promise<void>;
   readonly close: () => Promise<void>;
 }
 
@@ -140,9 +145,12 @@ function headersOf(incoming: IncomingMessage): Readonly<Record<string, string>> 
   );
 }
 
+function isSigningRequest(path: string, body: string): boolean {
+  return /^\/v1\/wallets\/[^/]+\/rpc$/.test(path) && body.includes("eth_signTransaction");
+}
+
 function isSignature(path: string, body: string, answer: HttpResponse): boolean {
-  const isRpc = /^\/v1\/wallets\/[^/]+\/rpc$/.test(path);
-  return isRpc && body.includes("eth_signTransaction") && answer.status === 200;
+  return isSigningRequest(path, body) && answer.status === 200;
 }
 
 async function privyOf(
@@ -165,6 +173,9 @@ async function privyOf(
 interface SignatureBook {
   readonly count: () => number;
   readonly arm: () => Promise<void>;
+  readonly armRequest: () => Promise<void>;
+  /** Answers whether a signing request is held before Privy signs it, and so never answered. */
+  readonly asked: (outgoing: ServerResponse) => boolean;
   /** Counts a signature; answers whether its answer is held, and so never sent. */
   readonly signed: (outgoing: ServerResponse) => boolean;
   /** Ends every held answer's connection. */
@@ -172,10 +183,11 @@ interface SignatureBook {
 }
 
 function createSignatureBook(): SignatureBook {
-  const state: { signatures: number; hold: (() => void) | undefined } = {
-    signatures: 0,
-    hold: undefined,
-  };
+  const state: {
+    signatures: number;
+    hold: (() => void) | undefined;
+    holdRequest: (() => void) | undefined;
+  } = { signatures: 0, hold: undefined, holdRequest: undefined };
   const held: ServerResponse[] = [];
   return {
     count: () => state.signatures,
@@ -183,6 +195,20 @@ function createSignatureBook(): SignatureBook {
       new Promise<void>((resolve) => {
         state.hold = resolve;
       }),
+    armRequest: async () =>
+      new Promise<void>((resolve) => {
+        state.holdRequest = resolve;
+      }),
+    asked(outgoing) {
+      const { holdRequest } = state;
+      if (holdRequest === undefined) {
+        return false;
+      }
+      state.holdRequest = undefined;
+      held.push(outgoing);
+      holdRequest();
+      return true;
+    },
     signed(outgoing) {
       state.signatures += 1;
       const { hold } = state;
@@ -216,6 +242,9 @@ function responderOf(served: () => FakePrivy | undefined, book: SignatureBook) {
       return;
     }
     const privyPath = path.slice("/privy".length);
+    if (isSigningRequest(privyPath, body) && book.asked(outgoing)) {
+      return;
+    }
     const answer = await privyOf(privy, incoming, { path: privyPath, body });
     if (isSignature(privyPath, body, answer) && book.signed(outgoing)) {
       return;
@@ -256,6 +285,7 @@ export async function serveCrashServices(): Promise<CrashServices> {
     },
     signatures: book.count,
     holdNextSignature: book.arm,
+    holdNextRequest: book.armRequest,
     async close() {
       book.release();
       server.closeAllConnections();
