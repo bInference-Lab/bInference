@@ -1,7 +1,7 @@
 import { err, type Id, type JsonValue, ok, type Result } from "@binference/core";
 import type { OrderState } from "@binference/protocol";
 import { isExitOrder, type OrderMove, type OrderRecord } from "./order-record.js";
-import { isOrderEnded } from "./order-states.js";
+import { endedOrderStates, isOrderEnded } from "./order-states.js";
 import { disarmedAfterFill } from "./price-triggers.js";
 
 /** How long before an order expires `notice.orderExpiring` goes: 24 hours (decision 0189). */
@@ -16,8 +16,9 @@ interface OrderConfirmation {
 /**
  * Something that happened to an auto order (decision 0189), with the facts its guard reads: the
  * tap on its card, the card ending otherwise, a cancel, its expiry, a freeze or an unfreeze of its
- * agent, a fill, its position emptied by another exit order, the expiry notice sent, or what its
- * price trigger keeps between prices changed, such as a trailing stop's highest price.
+ * agent, a paper fill, a live fill that landed, its position emptied by another exit order, the
+ * expiry notice sent, or what its price trigger keeps between prices changed, such as a trailing
+ * stop's highest price.
  */
 export type OrderTrigger =
   | {
@@ -33,6 +34,11 @@ export type OrderTrigger =
   | { readonly type: "agent_unfrozen" }
   | {
       readonly type: "fill_recorded";
+      /** The fill sold everything its position held (spec 6, section 5). */
+      readonly emptiesPosition?: boolean;
+    }
+  | {
+      readonly type: "fill_landed";
       /** The fill sold everything its position held (spec 6, section 5). */
       readonly emptiesPosition?: boolean;
     }
@@ -121,6 +127,23 @@ function recordFill({
     : ok({ state: "active", fills, triggerState: disarmedAfterFill });
 }
 
+// A live fill that landed counts whatever its order became while it was under way (decision
+// 0210): its transaction moved the funds. An order that ended since keeps its state and counts it;
+// otherwise the fill counts as a recorded one does, at any time, and a paused order stays paused.
+function landFill({ order, trigger }: GuardInput<"fill_landed">): Result<Change, OrderProblem> {
+  const fills = order.fills + 1;
+  const { maxFills } = order;
+  if (isOrderEnded(order.state)) {
+    return ok({ state: order.state, fills });
+  }
+  if (maxFills !== undefined && fills >= maxFills) {
+    return ok({ state: "filled", fills });
+  }
+  return trigger.emptiesPosition === true && isExitOrder(order.request)
+    ? ok({ state: "ended", fills, endReason: "position_closed" })
+    : ok({ state: order.state, fills, triggerState: disarmedAfterFill });
+}
+
 function resume({ order, nowMs }: GuardInput<"agent_unfrozen">): Result<Change, OrderProblem> {
   if (order.cardId === undefined) {
     return err("not_confirmed");
@@ -168,6 +191,7 @@ const orderRules: OrderRules = {
   },
   agent_unfrozen: { from: ["paused"], guard: resume },
   fill_recorded: { from: ["active"], guard: recordFill },
+  fill_landed: { from: [...running, ...endedOrderStates], guard: landFill },
   position_closed: {
     from: running,
     guard: ({ order }) =>
@@ -186,7 +210,8 @@ function applyTrigger<T extends TriggerType>(
   input: GuardInput<T>,
 ): Result<OrderMove, OrderProblem> {
   const { order, trigger, nowMs } = input;
-  if (isOrderEnded(order.state)) {
+  // Only a landed live fill still counts on an order that ended (decision 0210).
+  if (isOrderEnded(order.state) && trigger.type !== "fill_landed") {
     return err("ended");
   }
   const rule = orderRules[trigger.type];
@@ -209,4 +234,27 @@ export function moveOrder(
   nowMs: number,
 ): Result<OrderMove, OrderProblem> {
   return applyTrigger({ order, trigger, nowMs });
+}
+
+/**
+ * Whether a move of an order that ended only counts a live fill that landed after it ended
+ * (decision 0210): it keeps the order's state and raises its fills by one, and changes nothing
+ * else. The order stores move an ended order only so.
+ */
+export function countsLandedFill(
+  order: Pick<OrderRecord, "state" | "fills">,
+  move: OrderMove,
+): boolean {
+  const { cardId, endReason, triggerState, expiryNoticedAtMs } = move;
+  const changesOnlyFills =
+    cardId === undefined &&
+    endReason === undefined &&
+    triggerState === undefined &&
+    expiryNoticedAtMs === undefined;
+  return (
+    isOrderEnded(order.state) &&
+    move.state === order.state &&
+    move.fills === order.fills + 1 &&
+    changesOnlyFills
+  );
 }

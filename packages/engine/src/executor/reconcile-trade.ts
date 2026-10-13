@@ -4,6 +4,8 @@ import type { QuoteView } from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { SettledTrade } from "../intents/event-cause.schema.js";
 import { quoteDocument, simulationDocument } from "../intents/intent-documents.schema.js";
+import { endLateExits } from "../orders/end-exit-orders.js";
+import { announceOrder, fillOrderOf } from "../orders/fill-ends.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
 import { noticePush } from "../pushes/notice-push.js";
 import { inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
@@ -244,9 +246,27 @@ export async function bookTrade(
   return { trade, steps };
 }
 
+// After an order's live fill reconciled with its write on the order (decision 0210): the owner
+// hears the fill's notices, and a sale that emptied its position ends the exit orders on it that
+// became active after the write read them.
+async function announceFill(run: ExecutionRun, reconciled: IntentSnapshot): Promise<void> {
+  const orderId = fillOrderOf(reconciled);
+  if (orderId === undefined) {
+    return;
+  }
+  const { parts, signal } = run;
+  const { orders, clock, publish, chains } = parts;
+  await announceOrder({ orders, clock, publish }, orderId, signal);
+  const filled = await orders.get(orderId, { signal });
+  if (filled !== undefined) {
+    const exits = { orders, chains, publish, positions: parts.positions, clock };
+    await endLateExits(exits, { filled, signal });
+  }
+}
+
 // One try: the trade booked in the positions, then the move. A read, a price or the position
 // write that fails waits for the next block; a trade no node can say the native coin of any more
-// stops until a restart.
+// stops until a restart. A move that lost a race, as to a write of its order's fill, waits too.
 async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<SettleOutcome> {
   const booked = await bookTrade(run, snapshot, snapshot.record.changedAtMs);
   if (typeof booked === "string") {
@@ -254,11 +274,14 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
   }
   const settling = { trigger: { type: "fills_reconciled" }, settled: booked.trade } as const;
   const reconciled = await moveIntent(run, snapshot, settling);
-  if (reconciled !== undefined) {
-    run.parts.log.info("executor.reconciled", { intentId: snapshot.record.id });
-    warnDifference(run, snapshot, booked.trade);
-    await warnSharedBlock(run, snapshot, booked.steps);
+  if (reconciled === undefined) {
+    const now = await run.parts.stored.snapshot(snapshot.record.id, { signal: run.signal });
+    return now?.record.state === "finalized" ? "waiting" : "settled";
   }
+  run.parts.log.info("executor.reconciled", { intentId: snapshot.record.id });
+  warnDifference(run, snapshot, booked.trade);
+  await warnSharedBlock(run, snapshot, booked.steps);
+  await announceFill(run, reconciled);
   return "settled";
 }
 

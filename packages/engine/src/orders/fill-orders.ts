@@ -2,19 +2,21 @@ import type { Clock, Id, IdSource, Ratio } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
+import { isTerminalState } from "../intents/intent-state.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { AgentStore, PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { endEmptyExit, endLateExits, wasEmptiedSince } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
 import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
-import { unfinishedFills, withinDeadline } from "./fill-faults.js";
+import { hasUnsettledLiveFill, unfinishedFills, withinDeadline } from "./fill-faults.js";
 import { agentWideReasons, isWaiting, paceRows } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
 import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
+import { isTriggerDisarmed } from "./price-triggers.js";
 
 /** The price a trigger fired an order's fill at, as the price watcher read it. */
 export interface FillPrice {
@@ -25,8 +27,12 @@ export interface FillPrice {
   readonly confirm?: PriceLevel;
 }
 
-/** What a fill came to: filled, skipped, its exit order ended, waiting after a skip, or no fill. */
-type FillOutcome = "filled" | "skipped" | "ended" | "waiting" | "inactive";
+/**
+ * What a fill came to: filled, skipped, its exit order ended, waiting after a skip or behind its
+ * agent's live fill, a live fill handed to the executor, which records it as it settles, or no
+ * fill.
+ */
+type FillOutcome = "filled" | "skipped" | "ended" | "waiting" | "sent" | "inactive";
 
 /**
  * Auto order fills (decision 0195): a trigger hands an order and the price it fired at, and the
@@ -120,7 +126,9 @@ function proposalSkipOf(code: ProtocolErrorCode): OrderFillReason {
 }
 
 // What the fill's intent came to. Its row and notices were written with its end; they are told
-// now. A fill still `confirmed`, which no paper fill took, is cancelled unsigned.
+// now. A paper fill still `confirmed`, which no paper fill took, is cancelled unsigned. A live
+// fill the executor took is never cancelled here: it may be signing already, and the executor
+// records it on its order as it settles (decision 0210).
 async function settle(
   parts: OrderFillsParts,
   state: FillState,
@@ -131,8 +139,12 @@ async function settle(
   },
 ): Promise<FillOutcome> {
   const { order, signal } = run;
+  const { record } = run.snapshot;
+  if (!record.isPaper && !isTerminalState(record.state)) {
+    return "sent";
+  }
   const snapshot =
-    run.snapshot.record.state === "confirmed"
+    record.state === "confirmed"
       ? await cancelFill(rowParts(parts), { snapshot: run.snapshot, signal })
       : run.snapshot;
   const rows = await announceOrder(parts, order.id, signal);
@@ -300,9 +312,23 @@ async function inLine<T>(state: FillState, agent: Id<"agt">, work: () => Promise
   }
 }
 
+// An order fires a fill while it is active, before its expiry, and armed as stored: a trigger
+// that judged an older copy, before a fill disarmed it, fires nothing (decision 0197).
+function canFire(
+  parts: Pick<OrderFillsParts, "clock">,
+  order: OrderRecord | undefined,
+): order is OrderRecord {
+  return (
+    order?.state === "active" &&
+    parts.clock.now() < order.expiresAtMs &&
+    !isTriggerDisarmed(order.triggerState)
+  );
+}
+
 /**
  * Creates the {@link OrderFills}. One agent's fills run one at a time, oldest trigger first, so one
- * position's exit fills never run at once; an order has one fill under way at most. A live order
+ * position's exit fills never run at once; an order has one fill under way at most, and a live
+ * fill holds the agent's line until it settles (decision 0210). A live order
  * skips with `live_fills_off` while live fills are off, and a locked engine skips every fill with
  * `engine_locked`, the order staying active either way (decision 0195).
  */
@@ -322,9 +348,13 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
       try {
         return await inLine(state, read.agentId, async () => {
           const order = await parts.orders.get(id, { signal });
-          return order?.state === "active" && parts.clock.now() < order.expiresAtMs
-            ? fillOrFail(parts, state, { order, price, signal })
-            : "inactive";
+          if (!canFire(parts, order)) {
+            return "inactive";
+          }
+          // The line holds until the agent's live fill settles, across a restart too.
+          return (await hasUnsettledLiveFill(parts.stored, order.agentId, { signal }))
+            ? "waiting"
+            : fillOrFail(parts, state, { order, price, signal });
         });
       } finally {
         state.running.delete(id);

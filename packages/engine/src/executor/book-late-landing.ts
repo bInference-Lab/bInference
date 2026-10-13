@@ -1,5 +1,8 @@
 import type { TxReceipt } from "@binference/chain";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
+import { fillOrderOf } from "../orders/fill-ends.js";
+import { moveOrder } from "../orders/order-machine.js";
+import { orderPush } from "../orders/order-view-of.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
 import { type BookedTrade, bookTrade } from "./reconcile-trade.js";
@@ -74,8 +77,9 @@ async function bookAgain(
  * Books a dropped step that landed after all (decision 0147). Its receipt is recorded, and a late
  * landing linked to the intent, which stays `failed_onchain`, makes the rolling 24-hour cap count
  * the intent again at once. Once every step of the plan is in a block and those blocks are final,
- * the trade goes into the positions and realized P&L as a reconciliation books it; a trade whose
- * steps did not all land, or whose block a reorg moved, is logged and left out of the positions.
+ * the trade goes into the positions and realized P&L as a reconciliation books it, and an order's
+ * fill counts on its order; a trade whose steps did not all land, or whose block a reorg moved, is
+ * logged and left out of the positions.
  */
 export async function bookLateLanding(
   run: ExecutionRun,
@@ -97,8 +101,42 @@ export async function bookLateLanding(
     parts.log.warn("executor.landed_late_unbooked", { intentId });
     return;
   }
+  await countLateFill(run, { dropped, atMs, left: countAttempts });
   const booked = await bookAgain(run, { snapshot: dropped, atMs });
   if (typeof booked !== "string") {
     parts.log.info("executor.landed_late_booked", { intentId });
   }
+}
+
+// A move of the order that lost its race is tried again on a fresh read, this many times in all.
+const countAttempts = 3;
+
+// An order's live fill that landed after its intent ended still counts on its order (decision
+// 0210), so the order never fills past its fills; its intent stays `failed_onchain`.
+async function countLateFill(
+  run: ExecutionRun,
+  late: { readonly dropped: IntentSnapshot; readonly atMs: number; readonly left: number },
+): Promise<void> {
+  const { parts, signal } = run;
+  const { dropped, atMs, left } = late;
+  const orderId = fillOrderOf(dropped);
+  const order = orderId === undefined ? undefined : await parts.orders.get(orderId, { signal });
+  const move = order === undefined ? undefined : moveOrder(order, { type: "fill_landed" }, atMs);
+  if (move?.ok !== true) {
+    return;
+  }
+  const moved = await parts.orders.move([move.value], { signal });
+  const intentId = dropped.record.id;
+  if (moved.ok) {
+    parts.log.info("executor.landed_late_counted", { intentId });
+    moved.value.forEach((counted) => {
+      parts.publish(orderPush(counted, "order/changed"));
+    });
+    return;
+  }
+  if (left <= 1) {
+    parts.log.error("executor.landed_late_uncounted", { intentId, errorCode: moved.error });
+    return;
+  }
+  await countLateFill(run, { ...late, left: left - 1 });
 }

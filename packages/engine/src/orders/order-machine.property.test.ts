@@ -3,7 +3,7 @@ import type { OrderRequest } from "@binference/protocol";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { testAgent, testToken, testWallet } from "../intents/test-intents.js";
-import { moveOrder, type OrderTrigger } from "./order-machine.js";
+import { countsLandedFill, moveOrder, type OrderTrigger } from "./order-machine.js";
 import type { OrderMove, OrderRecord } from "./order-record.js";
 import { isOrderEnded } from "./order-states.js";
 
@@ -27,6 +27,10 @@ type Step =
   | { readonly type: "freezeMissed" }
   | { readonly type: "unfreeze" }
   | { readonly type: "fill" }
+  /** A live fill signed under its grant: its order was active with a fill left, none pending. */
+  | { readonly type: "sign" }
+  /** The signed live fill landed and settles. */
+  | { readonly type: "land" }
   | { readonly type: "positionClosed" }
   | { readonly type: "notice" }
   | { readonly type: "keep" }
@@ -48,6 +52,8 @@ const steps: fc.Arbitrary<Step> = fc.oneof(
     { type: "freezeMissed" },
     { type: "unfreeze" },
     { type: "fill" },
+    { type: "sign" },
+    { type: "land" },
     { type: "positionClosed" },
     { type: "notice" },
     { type: "keep" },
@@ -123,6 +129,8 @@ interface World {
   readonly isFrozen: boolean;
   /** A tap on the order's own card was taken. */
   readonly wasConfirmed: boolean;
+  /** The fills the order had when a live fill now under way was signed; none while none is. */
+  readonly signedAt?: number;
   readonly violations: readonly string[];
 }
 
@@ -152,7 +160,10 @@ const triggers: Triggers = {
   freezeMissed: (_step, world) =>
     world.order.state === "awaiting_confirmation" ? undefined : { type: "agent_frozen" },
   unfreeze: () => ({ type: "agent_unfrozen" }),
-  fill: () => ({ type: "fill_recorded" }),
+  // An agent's fills wait while its live fill is under way (decision 0210).
+  fill: (_step, world) => (world.signedAt === undefined ? { type: "fill_recorded" } : undefined),
+  sign: () => undefined,
+  land: (_step, world) => (world.signedAt === undefined ? undefined : { type: "fill_landed" }),
   positionClosed: () => ({ type: "position_closed" }),
   notice: () => ({ type: "expiry_noticed" }),
   keep: () => ({ type: "trigger_kept", triggerState: { peak: "2" } }),
@@ -177,6 +188,7 @@ function applied(order: OrderRecord, move: OrderMove): OrderRecord {
 interface Moved {
   readonly before: World;
   readonly trigger: OrderTrigger;
+  readonly move: OrderMove;
   readonly isOwnTap: boolean;
   readonly after: OrderRecord;
 }
@@ -187,8 +199,15 @@ const moveChecks: readonly ((moved: Moved) => string)[] = [
     trigger.type === "trigger_kept" && (before.order.state !== "active" || after.state !== "active")
       ? "a trigger's state moved an order that was not active, or changed its state"
       : "",
-  ({ before, trigger }) =>
-    isOrderEnded(before.order.state) ? `a ${trigger.type} moved an order that had ended` : "",
+  ({ before, trigger, move }) =>
+    isOrderEnded(before.order.state) &&
+    !(trigger.type === "fill_landed" && countsLandedFill(before.order, move))
+      ? `a ${trigger.type} moved an order that had ended`
+      : "",
+  ({ before, trigger, after }) =>
+    trigger.type === "fill_landed" && after.fills !== before.order.fills + 1
+      ? "a landed fill did not count once"
+      : "",
   ({ before, isOwnTap, after }) =>
     after.state === "active" && before.order.state !== "active" && !before.wasConfirmed && !isOwnTap
       ? "an order became active without its card's confirmation"
@@ -240,17 +259,32 @@ function movedBy(step: Step, world: World): Moved | undefined {
     return undefined;
   }
   const isOwnTap = step.type === "tap" && step.confirmation === "own";
-  return { before: world, trigger, isOwnTap, after: applied(world.order, moved.value) };
+  const move = moved.value;
+  return { before: world, trigger, move, isOwnTap, after: applied(world.order, move) };
+}
+
+// The fills the order had when its live fill under way was signed: the signer signs one only for
+// an active order before its expiry with a fill left (decision 0210), and it clears as it lands.
+function signedAfter(step: Step, world: World): number | undefined {
+  const { order, nowMs, signedAt } = world;
+  if (step.type === "land") {
+    return undefined;
+  }
+  const hasFillLeft = order.maxFills === undefined || order.fills < order.maxFills;
+  const canSign = order.state === "active" && nowMs < order.expiresAtMs && hasFillLeft;
+  return step.type === "sign" && signedAt === undefined && canSign ? order.fills : signedAt;
 }
 
 function stepped(world: World, step: Step): World {
   const nowMs = step.type === "wait" ? world.nowMs + step.ms : world.nowMs;
   const moved = movedBy(step, { ...world, nowMs });
+  const signedAt = signedAfter(step, { ...world, nowMs });
   const next: World = {
     order: moved?.after ?? world.order,
     nowMs,
     isFrozen: frozenAfter(step, world),
     wasConfirmed: world.wasConfirmed || moved?.isOwnTap === true,
+    ...(signedAt === undefined ? {} : { signedAt }),
     violations: [
       ...world.violations,
       ...(moved === undefined ? [] : named(moveChecks.map((check) => check(moved)))),
@@ -268,7 +302,7 @@ const start = (order: OrderRecord): World => ({
   violations: [],
 });
 
-describe("the order state machine, for every history of taps, freezes, expiries and cancels", () => {
+describe("the order state machine, for every history of taps, freezes, expiries, cancels and fills", () => {
   it("never makes an order active without its card's confirmation, nor for a frozen agent", () => {
     fc.assert(
       fc.property(orders, fc.array(steps, { maxLength: 30 }), (order, history: readonly Step[]) => {

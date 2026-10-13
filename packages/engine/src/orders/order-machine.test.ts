@@ -2,7 +2,12 @@ import { idSchema } from "@binference/core";
 import type { OrderState } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { testAgent, testToken, testWallet } from "../intents/test-intents.js";
-import { moveOrder, orderExpiryNoticeMs, type OrderTrigger } from "./order-machine.js";
+import {
+  countsLandedFill,
+  moveOrder,
+  orderExpiryNoticeMs,
+  type OrderTrigger,
+} from "./order-machine.js";
 import type { OrderRecord } from "./order-record.js";
 
 const intentId = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000001");
@@ -72,6 +77,13 @@ const table: readonly (readonly [OrderState, OrderTrigger, number, string])[] = 
   ["expired", { type: "agent_unfrozen" }, 5, "ended"],
   ["active", { type: "expiry_noticed" }, expiresAtMs - orderExpiryNoticeMs - 1, "not_due"],
   ["active", { type: "expiry_noticed" }, expiresAtMs - orderExpiryNoticeMs, "active"],
+  ["active", { type: "fill_landed" }, 5, "active"],
+  ["active", { type: "fill_landed" }, expiresAtMs, "active"],
+  ["active", { type: "fill_landed", emptiesPosition: true }, 5, "ended"],
+  ["paused", { type: "fill_landed" }, 5, "paused"],
+  ["cancelled", { type: "fill_landed" }, 5, "cancelled"],
+  ["expired", { type: "fill_landed" }, 5, "expired"],
+  ["awaiting_confirmation", { type: "fill_landed" }, 5, "wrong_state"],
 ];
 
 /** One row of the table, named for its trigger. */
@@ -127,5 +139,35 @@ describe("the order state machine", () => {
     });
     const ended = moveOrder(orderIn("paused"), { type: "position_closed" }, 5);
     expect(ended).toMatchObject({ ok: true, value: { endReason: "position_closed" } });
+  });
+
+  it("counts a live fill that landed whatever its order became, and only counts it on an ended one", () => {
+    const landed = { type: "fill_landed" } as const;
+    const last = moveOrder(orderIn("paused", { fills: 1 }), landed, expiresAtMs + 1);
+    const cancelled = orderIn("cancelled", { fills: 1 });
+    const counted = moveOrder(cancelled, landed, 5);
+    const disarmed = moveOrder(orderIn("active"), landed, 5);
+
+    expect(last).toMatchObject({ ok: true, value: { state: "filled", fills: 2 } });
+    expect(counted).toMatchObject({ ok: true, value: { state: "cancelled", fills: 2 } });
+    expect(disarmed).toMatchObject({
+      ok: true,
+      value: { fills: 1, triggerState: { disarmed: true } },
+    });
+    const ended = { ...cancelled, state: "ended" as const };
+    const move = {
+      id: cancelled.id,
+      expectedVersion: 3,
+      atMs: 5,
+      state: "ended" as const,
+      fills: 2,
+    };
+    expect(countsLandedFill(cancelled, { ...move, state: "cancelled" })).toBe(true);
+    expect(countsLandedFill(cancelled, move)).toBe(false);
+    expect(countsLandedFill(ended, { ...move, fills: 3 })).toBe(false);
+    expect(countsLandedFill(ended, { ...move, endReason: "position_closed" })).toBe(false);
+    expect(countsLandedFill(orderIn("active", { fills: 1 }), { ...move, state: "active" })).toBe(
+      false,
+    );
   });
 });

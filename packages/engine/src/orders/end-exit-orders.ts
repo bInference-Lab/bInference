@@ -1,9 +1,12 @@
 import { assetRefParts, type AssetRef, type ChainRegistry } from "@binference/chain";
-import type { Id } from "@binference/core";
+import type { Id, JsonValue } from "@binference/core";
+import type { AssetInfos } from "@binference/protocol";
+import type { PaperFill } from "../intents/event-cause.schema.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { type Notice, noticePush } from "../pushes/notice-push.js";
+import { fillNotice } from "./fill-notices.js";
 import { moveOrder } from "./order-machine.js";
 import {
   isExitOrder,
@@ -179,4 +182,31 @@ export async function endLateExits(
   if (notice !== undefined) {
     parts.publish(noticePush(notice));
   }
+}
+
+/**
+ * What the owner hears of an order's fill, written on its row: `notice.fill`, at a whole token's
+ * price, when the token's decimals and the sold asset's price are known, and the one
+ * `notice.ordersEnded` of the other exit orders it ended.
+ */
+export function fillRowNotices(
+  parts: Pick<ExitParts, "chains">,
+  call: {
+    readonly order: OrderRecord;
+    readonly fill: PaperFill;
+    readonly decimals?: number;
+    readonly assets: AssetInfos;
+    readonly ended: number;
+  },
+): readonly JsonValue[] {
+  const { order, fill, decimals, assets, ended } = call;
+  const { soldPrice } = fill;
+  const filled =
+    soldPrice === undefined || decimals === undefined
+      ? undefined
+      : fillNotice(order, { ...fill, soldPrice }, { decimals, assets });
+  const exits = endedExitsNotice(parts, { emptiedBy: order, count: ended });
+  return [filled, exits]
+    .filter((notice) => notice !== undefined)
+    .map((notice) => noticePush(notice).data);
 }

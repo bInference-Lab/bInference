@@ -1,5 +1,5 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { Clock, IdSource, JsonValue } from "@binference/core";
+import type { Clock, IdSource } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -8,10 +8,8 @@ import { assetsDocument } from "../intents/intent-documents.schema.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
-import { noticePush } from "../pushes/notice-push.js";
-import { endedExitsNotice, exitEndMovesOf } from "./end-exit-orders.js";
+import { exitEndMovesOf, fillRowNotices } from "./end-exit-orders.js";
 import { cancelFill } from "./fill-ends.js";
-import { fillNotice } from "./fill-notices.js";
 import type { OrderFillWrite } from "./order-fill.js";
 import { moveOrder } from "./order-machine.js";
 import { isExitOrder, type OrderRecord } from "./order-record.js";
@@ -46,30 +44,6 @@ async function empties(
   return held <= fill.amountIn.base;
 }
 
-// What the owner hears of the fill, written on its row: the fill, at a whole token's price when the
-// token's decimals are known, and the other exit orders it ended.
-function noticesOf(
-  parts: FillOnPaperParts,
-  call: {
-    readonly order: OrderRecord;
-    readonly fill: PaperFill;
-    readonly decimals?: number;
-    readonly assets: AssetInfos;
-    readonly ended: number;
-  },
-): readonly JsonValue[] {
-  const { order, fill, decimals, assets, ended } = call;
-  const { soldPrice } = fill;
-  const filled =
-    soldPrice === undefined || decimals === undefined
-      ? undefined
-      : fillNotice(order, { ...fill, soldPrice }, { decimals, assets });
-  const exits = endedExitsNotice(parts, { emptiedBy: order, count: ended });
-  return [filled, exits]
-    .filter((notice) => notice !== undefined)
-    .map((notice) => noticePush(notice).data);
-}
-
 // The order records the fill at the fill's own time; an order that cannot, as one that expired
 // since the check, takes no write (decision 0197). A sale that empties its position ends the
 // position's other exit orders; the fill's row is `filled` and carries what the owner hears.
@@ -93,7 +67,7 @@ async function fillWriteOf(
   const ended = emptiesPosition
     ? await exitEndMovesOf(parts, { emptiedBy: order, nowMs: fill.atMs, signal })
     : [];
-  const notices = noticesOf(parts, { ...call, ended: ended.length });
+  const notices = fillRowNotices(parts, { ...call, ended: ended.length });
   const row = {
     id: parts.ids.next("fil"),
     orderId: order.id,

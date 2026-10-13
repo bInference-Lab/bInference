@@ -4,6 +4,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError, err, type Id, ok, type Result } from "@binference/core";
 import {
+  countsLandedFill,
   isOrderEnded,
   type OrderDraft,
   type OrderMove,
@@ -125,7 +126,9 @@ function activeRefusal(
 }
 
 function checkRules(row: Selectable<OrdersTable>, move: OrderMove): void {
-  if (isOrderEnded(toOrderRecord(row).state)) {
+  const order = toOrderRecord(row);
+  // Only a live fill that landed after its order ended still counts on it (decision 0210).
+  if (isOrderEnded(order.state) && !countsLandedFill(order, move)) {
     throw refused("An order that ended never moves again.", { order: row.id });
   }
   if (move.endReason !== undefined && move.state !== "ended") {

@@ -54,6 +54,14 @@ function stateOf(kept: JsonValue | undefined): TriggerState {
   return parsed.success ? parsed.data : {};
 }
 
+/**
+ * Whether an order's kept trigger state is disarmed: a fill disarmed it, and no price where its
+ * condition stopped holding armed it again since (decision 0197).
+ */
+export function isTriggerDisarmed(kept: JsonValue | undefined): boolean {
+  return stateOf(kept).disarmed === true;
+}
+
 // A trailing stop's level now and the peak it keeps, this price included.
 function trailingLevel(
   distanceBps: number,

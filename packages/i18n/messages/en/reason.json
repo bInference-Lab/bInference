@@ -48,5 +48,6 @@
   "engine_locked": "binference is locked, so nothing fills until you run `binference unlock`",
   "live_fills_off": "live auto orders do not fill yet; only paper ones do",
   "nothing_to_spend": "the wallet holds too little of what the order spends",
-  "fill_failed": "the fill failed partway and nothing was traded; it tries again"
+  "fill_failed": "the fill failed partway and nothing was traded; it tries again",
+  "fill_lapsed": "the fill's approval ran out before it could be sent; nothing was traded, and it tries again"
 }

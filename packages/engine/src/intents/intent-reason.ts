@@ -152,7 +152,8 @@ export const intentReasons: readonly IntentReason[] = [
  * `copy_daily_cap`, a copy order's buy that would pass its daily cap for the leader;
  * `engine_locked`, the engine is locked; `live_fills_off`, a live order while live fills are off;
  * `nothing_to_spend`, a buy whose size comes to nothing (decision 0195); `fill_failed`, a fill that
- * threw or ran past its deadline (decision 0197). A size in dollars with no
+ * threw or ran past its deadline (decision 0197), or a live one never signed; `fill_lapsed`, a live
+ * fill whose grant ran out before its wallet's queue took it (decision 0210). A size in dollars with no
  * USD price skips with the policy's `no_price`. The skip is an `order_fills` row with its reason,
  * and its message is `reason.<code>` like an intent's.
  */
@@ -162,6 +163,7 @@ export const orderSkipReasons = [
   "live_fills_off",
   "nothing_to_spend",
   "fill_failed",
+  "fill_lapsed",
 ] as const;
 
 /** A reason an auto order skipped a fill before any intent was stored. */

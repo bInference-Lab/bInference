@@ -2,10 +2,12 @@ import type { Clock, Id, IdSource, JsonValue } from "@binference/core";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
+import type { SettledTrade } from "../intents/event-cause.schema.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
 import { createIntentStateMachine, type IntentStep } from "../intents/state-machine.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { type LandedFillParts, landedFillWrite } from "./fill-landed.js";
 import { skippedNotice } from "./fill-notices.js";
 import { isNewReason, paceRows } from "./fill-pacing.js";
 import type { OrderFillReason, OrderFillRecord, OrderFillWrite } from "./order-fill.js";
@@ -81,15 +83,42 @@ export function fillOrderOf(snapshot: IntentSnapshot): Id<"ord"> | undefined {
     : undefined;
 }
 
-// Why a step ends a fill without filling: its refusal's reason, or `frozen` for a freeze's cancel.
-// Any other end, such as a cancel the fill made itself, is no skip.
-function skipReasonOf(step: IntentStep): OrderFillReason | undefined {
+/** Why a step ended a fill without filling, and whether the owner hears it on the row. */
+interface SkipEnd {
+  readonly reason: OrderFillReason;
+  /** False when the executor tells the owner of the end itself; once per reason in a row else. */
+  readonly tells?: false;
+}
+
+// How a live fill's executor ends it without a fill (decision 0210): its authorization ran out in
+// the queue, it was never signed, or it failed on chain. The executor's own notice tells the owner.
+function liveEndOf(step: IntentStep): SkipEnd | undefined {
   const { status, event } = step;
-  if (status.state === "cancelled") {
-    return event.cancelCause === "freeze" ? "frozen" : undefined;
+  if (status.state === "expired") {
+    return { reason: "fill_lapsed", tells: false };
+  }
+  if (status.state === "failed_onchain") {
+    return { reason: status.reason ?? "fill_failed", tells: false };
+  }
+  const isUnsigned = event.cancelCause === "step_unsent" || event.cancelCause === "engine_stopping";
+  return status.state === "cancelled" && isUnsigned
+    ? { reason: "fill_failed", tells: false }
+    : undefined;
+}
+
+// Why a step ends a fill without filling: its refusal's reason, `frozen` for a freeze's cancel, or
+// the end of a live fill the executor ran. Any other end, such as a cancel the fill made itself,
+// is no skip.
+function skipEndOf(before: IntentSnapshot, step: IntentStep): SkipEnd | undefined {
+  const { status, event } = step;
+  if (status.state === "cancelled" && event.cancelCause === "freeze") {
+    return { reason: "frozen" };
   }
   const isRefusal = ["rejected_policy", "risk_blocked", "failed_check"].includes(status.state);
-  return isRefusal ? status.reason : undefined;
+  if (isRefusal) {
+    return status.reason === undefined ? undefined : { reason: status.reason };
+  }
+  return before.record.isPaper ? undefined : liveEndOf(step);
 }
 
 /**
@@ -103,12 +132,31 @@ export type FillEnd = (
   options: { readonly signal: AbortSignal },
 ) => Promise<OrderFillWrite | undefined>;
 
-/** Creates the {@link FillEnd} the one writer of intents adds to each move. */
-export function createFillEnd(parts: SkipRowParts): FillEnd {
+/** What the write that ends a fill reads, and a landed live fill's write with it. */
+export interface FillEndParts extends SkipRowParts {
+  /**
+   * What a live fill that landed writes on its order with, in the move that reconciles it
+   * (decision 0210); the executor's writer has it, and a writer without it records none.
+   */
+  readonly landed?: Omit<LandedFillParts, "orders" | "ids">;
+}
+
+// The live fill a move reconciles: the trade it settled; `undefined` for any other move.
+function landedOf(move: IntentMove): SettledTrade | undefined {
+  return move.step.status.state === "reconciled" ? move.settled : undefined;
+}
+
+/**
+ * Creates the {@link FillEnd} the one writer of intents adds to each move: a skip's row, or, with
+ * `landed`, a live fill's write on its order as it reconciles.
+ */
+export function createFillEnd(parts: FillEndParts): FillEnd {
   return async (before, move, { signal }) => {
     const orderId = fillOrderOf(before);
-    const reason = skipReasonOf(move.step);
-    if (move.order !== undefined || orderId === undefined || reason === undefined) {
+    const settled = landedOf(move);
+    const ended = skipEndOf(before, move.step);
+    const isNone = settled === undefined || parts.landed === undefined;
+    if (move.order !== undefined || orderId === undefined || (isNone && ended === undefined)) {
       return undefined;
     }
     const order = await parts.orders.get(orderId, { signal });
@@ -116,8 +164,15 @@ export function createFillEnd(parts: SkipRowParts): FillEnd {
       return undefined;
     }
     const atMs = move.step.event.atMs;
-    const fill = await skipRowOf(parts, { order, reason, intent: before, atMs, signal });
-    return { moves: [], fill };
+    if (settled !== undefined && parts.landed !== undefined) {
+      const landing = { ...parts.landed, orders: parts.orders, ids: parts.ids };
+      return landedFillWrite(landing, { order, snapshot: before, settled, atMs, signal });
+    }
+    if (ended === undefined) {
+      return undefined;
+    }
+    const skip = { order, ...ended, intent: before, atMs, signal };
+    return { moves: [], fill: await skipRowOf(parts, skip) };
   };
 }
 

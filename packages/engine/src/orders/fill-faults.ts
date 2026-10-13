@@ -61,6 +61,34 @@ export async function unfinishedFills(
   return [...fills, ...(await unfinishedFills(stored, query, { signal, after: next }))];
 }
 
+// The states of a live fill the executor holds: confirmed, then signing, sending and settling.
+const unsettledLive: readonly IntentState[] = [
+  "confirmed",
+  "executing",
+  "included",
+  "finalized",
+  "unknown_after_send",
+];
+
+/**
+ * Whether an agent has a live order fill the executor has not settled (decision 0210): one
+ * confirmed and waiting for its wallet's queue, signing, sent or settling. The agent's fills wait
+ * behind it, after a restart too, so two exit fills of one position never run at once (spec 6,
+ * invariant 11) and an order never fills again before its fill is recorded.
+ */
+export async function hasUnsettledLiveFill(
+  stored: StoredIntents,
+  agentId: Id<"agt">,
+  call: { readonly signal: AbortSignal },
+): Promise<boolean> {
+  const { signal } = call;
+  const query = { states: unsettledLive, isPaper: false, agentId, limit: pageSize };
+  const listed = await stored.list(query, { signal });
+  const engines = listed.filter(({ proposer }) => proposer === "engine");
+  const read = await Promise.all(engines.map(async ({ id }) => stored.snapshot(id, { signal })));
+  return read.some((snapshot) => snapshot !== undefined && fillOrderOf(snapshot) !== undefined);
+}
+
 /** How long a fill has, from its start in its agent's line to its end (decision 0197). */
 const fillDeadlineMs = 30_000;
 

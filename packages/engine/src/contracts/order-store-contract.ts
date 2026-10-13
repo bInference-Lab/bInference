@@ -124,6 +124,27 @@ async function refusesBrokenRules(subject: OrderStoreSubject): Promise<void> {
   assert.equal(moved.value[0]?.endReason, "position_closed");
 }
 
+// A live fill that landed after its order ended still counts on it, and that alone moves an ended
+// order (decision 0210).
+async function countsALandedFillOnAnEndedOrder(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  await store.create(orderDraft(subject, 1), live());
+  assert.ok((await store.move([orderMove(1, 0, "cancelled")], live())).ok);
+  const count = { ...orderMove(1, 1, "cancelled"), fills: 1 };
+  await assert.rejects(store.move([{ ...count, fills: 2 }], live()), { code: "store.constraint" });
+  await assert.rejects(store.move([{ ...count, state: "expired" }], live()), {
+    code: "store.constraint",
+  });
+  const kept = { ...count, triggerState: { disarmed: true } };
+  await assert.rejects(store.move([kept], live()), { code: "store.constraint" });
+  const counted = await store.move([count], live());
+  assert.ok(counted.ok);
+  assert.deepEqual(
+    counted.value.map(({ state, fills, version }) => ({ state, fills, version })),
+    [{ state: "cancelled", fills: 1, version: 2 }],
+  );
+}
+
 async function listsByQuery(subject: OrderStoreSubject): Promise<void> {
   const { store } = subject;
   await inOrder([3, 1, 2], async (n) =>
@@ -178,6 +199,11 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
       "refuses a move that breaks an order rule and writes nothing",
       create,
       refusesBrokenRules,
+    ),
+    checkOn(
+      "counts a landed fill on an order that ended, and moves it no other way",
+      create,
+      countsALandedFillOnAnEndedOrder,
     ),
     checkOn(
       "activates an order only on its card's confirmation",

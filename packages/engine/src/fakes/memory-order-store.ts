@@ -1,6 +1,7 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
 import { type OrderFillWrite, recordsOwnFill } from "../orders/order-fill.js";
+import { countsLandedFill } from "../orders/order-machine.js";
 import type {
   OrderDraft,
   OrderMove,
@@ -77,7 +78,7 @@ function create(
 }
 
 function checkRules(order: OrderRecord, move: OrderMove): void {
-  if (isOrderEnded(order.state)) {
+  if (isOrderEnded(order.state) && !countsLandedFill(order, move)) {
     throw constraintFault(`order ${order.id} has ended and never moves again`);
   }
   if (move.endReason !== undefined && move.state !== "ended") {

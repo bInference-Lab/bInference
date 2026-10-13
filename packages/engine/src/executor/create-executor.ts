@@ -4,6 +4,7 @@ import { createStoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
+import { createFillEnd } from "../orders/fill-ends.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor } from "../ports.js";
 import { createPositions } from "../positions/create-positions.js";
@@ -64,13 +65,28 @@ interface Taken {
   readonly account: AccountRef;
 }
 
+// The executor's writer of intents adds to each move of an order's live fill its write on the
+// order: the fill as it reconciles, or the skip as it ends otherwise (decision 0210).
+function storedOf(options: ExecutorOptions) {
+  const { stores, ids, publish, positions, prices, chains } = options;
+  const landed = { intents: stores.intents, positions, prices, chains };
+  const fillEnd = createFillEnd({ orders: stores.orders, ids, landed });
+  return createStoredIntents({
+    intents: stores.intents,
+    agents: stores.agents,
+    ids,
+    publish,
+    fillEnd,
+  });
+}
+
 function partsOf(options: ExecutorOptions): ExecutorParts {
-  const { stores, ids, publish, clock } = options;
+  const { stores, clock } = options;
   return {
     ...options,
     intents: stores.intents,
     orders: stores.orders,
-    stored: createStoredIntents({ intents: stores.intents, agents: stores.agents, ids, publish }),
+    stored: storedOf(options),
     machine: createIntentStateMachine({ clock }),
     policy: createPolicyCheck({ prices: options.prices, clock }),
     valuedPositions: createPositions({ store: options.positions, prices: options.prices }),
