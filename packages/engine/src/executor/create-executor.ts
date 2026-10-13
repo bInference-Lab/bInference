@@ -69,6 +69,7 @@ function partsOf(options: ExecutorOptions): ExecutorParts {
   return {
     ...options,
     intents: stores.intents,
+    orders: stores.orders,
     stored: createStoredIntents({ intents: stores.intents, agents: stores.agents, ids, publish }),
     machine: createIntentStateMachine({ clock }),
     policy: createPolicyCheck({ prices: options.prices, clock }),

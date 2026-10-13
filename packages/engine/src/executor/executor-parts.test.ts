@@ -64,6 +64,7 @@ function checkPartsOf(
     }),
     chains,
     intents: bench.test.stores.intents,
+    orders: bench.test.stores.orders,
     policy: createPolicyCheck({
       prices: createFakePriceSource(
         new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
@@ -163,7 +164,7 @@ describe("an intent's plan", () => {
 });
 
 describe("the queue check", () => {
-  it("authorizes no fill, whose order the executor cannot read yet", async () => {
+  it("authorizes no fill whose order is not stored", async () => {
     const bench = await startExecutorBench({ hold: true });
     const snapshot = withStatus(await tappedSnapshot(bench), { order: fixtureId("ord", 1) });
     const check = await checkForQueue(

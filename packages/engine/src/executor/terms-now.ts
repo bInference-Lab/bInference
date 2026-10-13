@@ -3,6 +3,7 @@ import { err, ok, type Result } from "@binference/core";
 import type { LaunchReadFailure } from "../intents/intent-reason.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { ExecutionRun } from "./executor-run.js";
+import { fillGrantHolds, orderNowFor } from "./fill-terms.js";
 import { launchTargetsOf } from "./launch-targets.js";
 import type { SigningTerms } from "./queue-check.js";
 import { isRescueAddressInEffect } from "./rescue-queue-check.js";
@@ -34,6 +35,25 @@ async function autoTermsNow(
   return held.ok ? { ...terms, authorization: { ...authorization, current } } : undefined;
 }
 
+// A fill grant holds while its order, read now, is still active as the owner confirmed it and
+// recorded no fill since the grant (decision 0210).
+async function fillTermsNow(
+  run: ExecutionRun,
+  terms: SigningTerms,
+): Promise<SigningTerms | undefined> {
+  const { authorization } = terms;
+  if (authorization.kind !== "order") {
+    return terms;
+  }
+  const { parts, signal } = run;
+  const current = await orderNowFor(parts, authorization.grant, signal);
+  const held =
+    current === undefined
+      ? undefined
+      : fillGrantHolds(authorization.grant, current, parts.clock.now());
+  return held === undefined ? undefined : { ...terms, authorization: held };
+}
+
 async function rescueHolds(run: ExecutionRun, record: IntentRecord): Promise<boolean> {
   const { parts, signal } = run;
   return isRescueAddressInEffect(
@@ -46,8 +66,10 @@ async function rescueHolds(run: ExecutionRun, record: IntentRecord): Promise<boo
 /**
  * The terms one more signature of a taken intent carries, read again right before it: a later
  * step, a speed-up or a cancel. An auto grant carries the agent's approval mode as it stands now
- * and holds only while that mode keeps the version that authorized the intent. Nothing but a
- * cancel signs once the owner's confirmation expired; the signer decides whether a cancel is still
+ * and holds only while that mode keeps the version that authorized the intent. An order fill's
+ * grant carries its order as it stands now and holds only while the order is active as the owner
+ * confirmed it, with no fill recorded since (decision 0210). Nothing but a cancel signs once the
+ * owner's confirmation or the fill's grant expired; the signer decides whether a cancel is still
  * in its grace (decision 0116). A rescue's send signs only while the address its card confirmed
  * is still the rescue address in effect (decision 0110); a cancel moves nothing, so it still may.
  * `undefined` when nothing authorizes the signature now.
@@ -59,7 +81,9 @@ export async function termsNow(
 ): Promise<SigningTerms | undefined> {
   const { authorization } = terms;
   if (signing.kind === "cancel") {
-    return authorization.kind === "confirmation" ? terms : autoTermsNow(run, terms, signing.record);
+    return authorization.kind === "confirmation" || authorization.kind === "order"
+      ? terms
+      : autoTermsNow(run, terms, signing.record);
   }
   if (signing.record.kind === "rescue" && !(await rescueHolds(run, signing.record))) {
     return undefined;
@@ -67,7 +91,9 @@ export async function termsNow(
   if (authorization.kind === "confirmation") {
     return run.parts.clock.now() < authorization.expiresAtMs ? terms : undefined;
   }
-  return autoTermsNow(run, terms, signing.record);
+  return authorization.kind === "order"
+    ? fillTermsNow(run, terms)
+    : autoTermsNow(run, terms, signing.record);
 }
 
 /**

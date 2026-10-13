@@ -67,6 +67,17 @@ function holdsShape(
   return isOrders && isTokens && view.expectedOut.asset === view.minOut.asset;
 }
 
+// The order as it stands now, while it has the fills the fill was sized for: a fill it recorded
+// since leaves the fill nothing to fill.
+async function sameFillOf(
+  parts: Pick<OrderFillsParts, "orders">,
+  order: OrderRecord,
+  signal: AbortSignal,
+): Promise<OrderRecord | undefined> {
+  const current = await parts.orders.get(order.id, { signal });
+  return current?.fills === order.fills ? current : undefined;
+}
+
 // The check in the agent's line, on the other side's price read before it.
 async function checkInLine(
   parts: OrderFillsParts,
@@ -80,7 +91,7 @@ async function checkInLine(
   },
 ): Promise<FillBreach | undefined> {
   const { order, sized, price, simulated, otherUsd, signal } = fill;
-  const current = await parts.orders.get(order.id, { signal });
+  const current = await sameFillOf(parts, order, signal);
   const { quote } = simulated.record;
   if (current === undefined || quote === undefined) {
     return "order_inactive";

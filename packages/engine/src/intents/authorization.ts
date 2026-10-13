@@ -3,6 +3,11 @@ import type { Id } from "@binference/core";
 /** An auto order that authorized a fill when the engine proposed it. */
 export interface OrderAuthorization {
   readonly order: Id<"ord">;
+  /**
+   * The fills the order had recorded when the engine proposed the fill: a live fill's grant
+   * holds only while the order still has them (decision 0210). Absent on fills stored before it.
+   */
+  readonly fillsBefore?: number;
 }
 
 /** A webhook rule that authorized a fill, with the alert id the webhook sent. */

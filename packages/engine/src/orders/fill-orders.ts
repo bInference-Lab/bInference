@@ -171,7 +171,7 @@ async function proposeFill(
     hasOutsideContent: order.hasOutsideContent,
   } as const;
   const proposal = {
-    authorization: { order: order.id },
+    authorization: { order: order.id, fillsBefore: order.fills },
     isPaper: order.isPaper,
     decimals: price.decimals,
     check: checkOf(parts, { order, sized, price }),

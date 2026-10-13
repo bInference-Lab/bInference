@@ -21,8 +21,10 @@ import { quotedTradeOf } from "../money-path/place-trade.js";
 import { policyFactsOf } from "../money-path/policy-facts-of.js";
 import { type ResolveOptions, resolveProposal } from "../money-path/resolve-proposal.js";
 import { swapSubjectOf } from "../money-path/swap-trade.js";
+import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
+import { fillGrantHolds, fillGrantOf } from "./fill-terms.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
@@ -50,6 +52,8 @@ export interface QueueCheck {
 /** The ports and steps the check reads. */
 export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
   readonly intents: IntentStore;
+  /** The auto orders, whose fill grants a live fill signs under (decision 0210). */
+  readonly orders: Pick<OrderStore, "get">;
   readonly policy: PolicyCheck;
   readonly clock: Clock;
   /** The venues' declarations, which name the contracts a trade's steps may reach. */
@@ -182,8 +186,28 @@ function autoTerms(
     : undefined;
 }
 
-// A tapped intent signs with the owner's confirmation, an auto one with its grant. A fill's order
-// or webhook rule has no store yet, so nothing authorizes a fill here.
+// A live order fill signs under its fill grant while its order, read now, still holds it
+// (decision 0210). A webhook rule's fill has no store yet, so nothing authorizes it here.
+async function fillTerms(
+  snapshot: IntentSnapshot,
+  rechecked: Rechecked,
+  context: { readonly parts: QueueCheckParts; readonly signal: AbortSignal },
+): Promise<Omit<SigningTerms, "allowed"> | undefined> {
+  const cap = rechecked.networkFeeCapNativeBase;
+  const { parts, signal } = context;
+  const made =
+    cap === undefined
+      ? undefined
+      : await fillGrantOf(parts, snapshot, { networkFeeCapNativeBase: cap, signal });
+  const authorization =
+    made === undefined ? undefined : fillGrantHolds(made.grant, made.current, parts.clock.now());
+  return made === undefined || authorization === undefined
+    ? undefined
+    : { authorization, termsHash: made.grant.termsHash };
+}
+
+// A tapped intent signs with the owner's confirmation, an auto one with its grant, an order's
+// live fill with its fill grant.
 async function termsOf(
   snapshot: IntentSnapshot,
   rechecked: Rechecked,
@@ -194,16 +218,16 @@ async function termsOf(
     return confirmationTerms(snapshot, context.parts, context.signal);
   }
   return isFillAuthorization(authorizedBy)
-    ? undefined
+    ? fillTerms(snapshot, rechecked, context)
     : autoTerms(snapshot, rechecked, context.parts.clock.now());
 }
 
 /**
  * Reads what the wallet queue checks as it takes a confirmed intent (spec 6, `queue_took`): the
- * agent is live, the policy still passes, and the owner's confirmation or the auto grant still
- * holds; with it, what the signer checks for every step, a launch wallet's launch contracts read
- * again among them (decision 0217), and why a launch wallet's curve trade cannot sign when its
- * launch cannot be read now (decision 0218).
+ * agent is live, the policy still passes, and the owner's confirmation, the auto grant or an
+ * order fill's grant still holds; with it, what the signer checks for every step, a launch
+ * wallet's launch contracts read again among them (decision 0217), and why a launch wallet's
+ * curve trade cannot sign when its launch cannot be read now (decision 0218).
  */
 export async function checkForQueue(
   snapshot: IntentSnapshot,

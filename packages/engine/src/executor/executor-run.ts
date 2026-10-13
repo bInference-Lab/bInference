@@ -3,6 +3,7 @@ import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-int
 import type { SettledTrade } from "../intents/event-cause.schema.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
 import type { IntentStateMachine } from "../intents/state-machine.js";
+import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
 import type { Positions } from "../positions/create-positions.js";
@@ -13,6 +14,8 @@ import type { IntentPlan } from "./intent-plan.js";
 export interface ExecutorParts extends ExecutorOptions {
   /** The intent store, which the queue check reads confirmations from. */
   readonly intents: IntentStore;
+  /** The auto orders, whose live fills the executor signs under their grants and records. */
+  readonly orders: OrderStore;
   readonly stored: StoredIntents;
   readonly machine: IntentStateMachine;
   readonly policy: PolicyCheck;
