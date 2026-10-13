@@ -9,6 +9,7 @@ import { runBackupRestore } from "../commands/backup-restore-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runCeiling, runCeilingSet } from "../commands/ceiling-command.js";
 import { runCheck } from "../commands/check-command.js";
+import { runConfigGet, runConfigSet } from "../commands/config-command.js";
 import { runConsole } from "../commands/console-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runInitCommand } from "../commands/init-command.js";
@@ -137,6 +138,8 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   limitSet: runLimitSet,
   limitCancel: runLimitCancel,
   check: runCheck,
+  configGet: runConfigGet,
+  configSet: runConfigSet,
   mcp: async (context, chosen) => runMcp(context, chosen.options),
   mcpSetup: async (context, chosen) => runMcpSetup(context, chosen.options),
   mcpSession: async (context, chosen) => runMcpSession(context, chosen.options),

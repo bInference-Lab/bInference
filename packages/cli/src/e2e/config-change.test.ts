@@ -1,5 +1,6 @@
+import { createFormatter } from "@binference/i18n";
 import { afterEach, describe, expect, it } from "vitest";
-import { configText } from "./init-fixtures.js";
+import { configText, runOn } from "./init-fixtures.js";
 import { connectClient } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
 
@@ -9,6 +10,9 @@ import { createRunningEngines } from "./unlock-fixtures.js";
 const slow = { timeout: 60_000 };
 const engines = createRunningEngines();
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(20_000) });
+const english = createFormatter({ locale: "en", timeZone: "UTC" });
+const en = (key: string, values: Readonly<Record<string, string>> = {}): string =>
+  english.message(`cli.${key}`, values);
 
 afterEach(async () => {
   await engines.stopAll();
@@ -70,4 +74,65 @@ describe("config/change on a running engine", () => {
     ).rejects.toMatchObject({ code: "config.secret_inline" });
     expect(await configText(machine)).toBe(before);
   });
+});
+
+describe("binference config set and get", () => {
+  it(
+    "sets a value through the engine, says when a restart applies it, and reads it back",
+    slow,
+    async () => {
+      const machine = await engines.setUp();
+      await engines.start(machine);
+      const set = await runOn(machine, [
+        "config",
+        "set",
+        "engine.shutdownBudgetMs",
+        "20000",
+        "--reason",
+        "Slow disk.",
+      ]);
+      expect([set.code, set.stdout, set.stderr]).toStrictEqual([
+        0,
+        `${en("configSet.done", { key: "engine.shutdownBudgetMs" })}\n${en("configSet.restart")}\n`,
+        "",
+      ]);
+      expect(await fileText(machine)).toContain("shutdownBudgetMs: 20000");
+      const got = await runOn(machine, ["config", "get", "engine.shutdownBudgetMs"]);
+      expect([got.code, got.stdout]).toStrictEqual([
+        0,
+        `${en("configGet.value", { key: "engine.shutdownBudgetMs", value: "20000" })}\n`,
+      ]);
+      const json = await runOn(machine, ["config", "get", "telegram.botToken", "--json"]);
+      expect(JSON.parse(json.stdout)).toBe("fromEnv");
+    },
+  );
+
+  it(
+    "writes a secret as its source, and refuses one typed as text before it leaves the CLI",
+    slow,
+    async () => {
+      const machine = await engines.setUp();
+      await engines.start(machine);
+      const before = await fileText(machine);
+      const typed = await runOn(machine, [
+        "config",
+        "set",
+        "telegram.botToken",
+        "123456:AAAA-secret",
+      ]);
+      expect(typed.code).toBe(1);
+      expect(typed.stderr).toContain(en("configSet.secretSource", { key: "telegram.botToken" }));
+      expect(await fileText(machine)).toBe(before);
+      const sourced = await runOn(machine, [
+        "config",
+        "set",
+        "telegram.botToken",
+        "--from-keychain",
+        "telegram-bot",
+      ]);
+      expect(sourced.code).toBe(0);
+      expect(await fileText(machine)).toContain('botToken: { fromKeychain: "telegram-bot" }');
+      expect(await fileText(machine)).not.toContain("123456:AAAA-secret");
+    },
+  );
 });

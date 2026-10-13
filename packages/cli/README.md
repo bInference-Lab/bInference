@@ -230,6 +230,8 @@ The reference of every key, generated from the schema, is
 | `binference limit set <key=value>`       | Stricter limits apply now, looser ones in 24 hours                  |
 | `binference limit cancel`                | Drops the looser limits that wait                                   |
 | `binference check [--fix]`               | Checks the config, file access, unlock mode and the engine          |
+| `binference config get [key]`            | The config as it loads, or one key, every secret shown by its kind  |
+| `binference config set <key> <value>`    | Changes one key in config.json5 through the engine, comments kept   |
 
 In development, run the source: `node --conditions=@binference/source --import tsx
 packages/cli/src/main.ts status`. The store workers get the same Node options.

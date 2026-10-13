@@ -175,3 +175,21 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     isStartOver: startOver,
     isAttach: attach,
   }));
+
+/** What `config set` takes: a secret source in place of a value, and the reason. */
+export interface ConfigSetFlags extends CommonOptions {
+  /** The value is the secret source `{ fromEnv: <variable> }`. */
+  readonly fromEnv?: string;
+  /** The value is the secret source `{ fromKeychain: <name> }`. */
+  readonly fromKeychain?: string;
+  /** Why, for the config journal. */
+  readonly reason?: string;
+}
+
+/** Parses the options commander read for `config set`. */
+export const configSetFlagsSchema: z.ZodType<ConfigSetFlags> = z.object({
+  ...commonShape,
+  fromEnv: z.string().min(1).exactOptional(),
+  fromKeychain: z.string().min(1).exactOptional(),
+  reason: z.string().min(1).max(1_000).exactOptional(),
+});

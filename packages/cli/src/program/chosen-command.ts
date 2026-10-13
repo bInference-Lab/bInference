@@ -5,6 +5,7 @@ import type {
   CeilingSetFlags,
   CheckFlags,
   CommonOptions,
+  ConfigSetFlags,
   InitFlags,
   LogsFlags,
   StartFlags,
@@ -60,6 +61,14 @@ export type ChosenCommand =
       readonly entry: ProtocolId<"addressBook">;
     }
   | { readonly name: "check"; readonly options: CheckFlags }
+  | { readonly name: "configGet"; readonly options: CommonOptions; readonly key?: string }
+  | {
+      readonly name: "configSet";
+      readonly options: ConfigSetFlags;
+      readonly key: string;
+      /** The value as typed; a secret source flag stands in for it. */
+      readonly value?: string;
+    }
   | { readonly name: "mcp"; readonly options: McpFlags }
   | { readonly name: "mcpSetup"; readonly options: McpSetupFlags }
   | { readonly name: "mcpSession"; readonly options: McpSessionFlags };

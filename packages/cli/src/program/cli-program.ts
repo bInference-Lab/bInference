@@ -16,6 +16,7 @@ import {
   walletAddressFlagsSchema,
 } from "./cli-flags.schema.js";
 import { addSet, agentOption, idOf, withCommon } from "./command-options.js";
+import { addConfigCommands } from "./config-commands.js";
 import { addLimitCommands } from "./limit-commands.js";
 import { addMcpCommands } from "./mcp-commands.js";
 import { addOwnerKeyCommands } from "./owner-key-commands.js";
@@ -164,6 +165,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addServiceCommands(program, options);
   addAddressCommands(program, options);
   addLimitCommands(program, options);
+  addConfigCommands(program, options);
   addMcpCommands(program, options);
   withCommon(program.command("check").description(message("command.check")), message)
     .option("--fix", message("option.fix"))

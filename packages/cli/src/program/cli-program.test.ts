@@ -78,6 +78,8 @@ describe("the binference command tree", () => {
       "remove",
       "set",
       "cancel",
+      "get",
+      "set",
       "setup",
       "session",
       "check",
