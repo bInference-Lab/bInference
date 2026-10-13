@@ -491,6 +491,12 @@
         "plugin.not_found",
         "plugin.hash_mismatch",
         "plugin.review_needed",
+        "skill.not_found",
+        "skill.hash_mismatch",
+        "skill.refused",
+        "skill.invalid",
+        "skill.name_taken",
+        "skill.fetch_failed",
         "job.not_found",
         "backup.no_owner_key",
         "backup.snapshot_failed",
@@ -30159,6 +30165,20 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "place": {
+                    "type": "string",
+                    "enum": [
+                      "bundled",
+                      "installed",
+                      "workspace"
+                    ]
+                  },
+                  "location": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -30177,6 +30197,117 @@
           },
           "required": [
             "items"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/skill/read": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "skill/read"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "skill": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "agent",
+            "skill"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/skill/read": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "skill": {
+              "type": "string"
+            },
+            "place": {
+              "type": "string",
+              "enum": [
+                "bundled",
+                "installed",
+                "workspace"
+              ]
+            },
+            "location": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "skill",
+            "place",
+            "location",
+            "file",
+            "text"
           ]
         }
       },

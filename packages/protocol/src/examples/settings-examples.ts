@@ -52,7 +52,25 @@ export const pluginExamples: { readonly [N in keyof PluginOperationShapes]: Wire
   "plugin/remove": { args: { plugin: ids.plugin }, result: empty },
   "skill/list": {
     args: { agent: ids.agent },
-    result: pageOf({ skill: "skill-1", name: "dip-buyer", ...install, installedAt: at }),
+    result: pageOf({
+      skill: "dip-buyer",
+      name: "dip-buyer",
+      ...install,
+      installedAt: at,
+      description: "Buys a listed token after a fall, in small steps.",
+      place: "installed",
+      location: "installed/dip-buyer/SKILL.md",
+    }),
+  },
+  "skill/read": {
+    args: { agent: ids.agent, skill: "dip-buyer" },
+    result: {
+      skill: "dip-buyer",
+      place: "installed",
+      location: "installed/dip-buyer/SKILL.md",
+      file: "SKILL.md",
+      text: "---\nname: dip-buyer\ndescription: Buys a listed token after a fall.\n---\n",
+    },
   },
   "skill/add": { args: install, result: job },
   "skill/remove": { args: { skill: "skill-1" }, result: empty },

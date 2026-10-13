@@ -60,7 +60,13 @@ interface InstallArgs {
   readonly hash: string;
 }
 
-/** An installed skill. */
+/** Where a skill lives: shipped with binference, installed for every agent, or one agent's own. */
+type SkillPlace = "bundled" | "installed" | "workspace";
+
+/**
+ * A skill (decision 0207): its id, its name, where it came from and its pinned hash, and for one
+ * agent's list the description and location its index shows.
+ */
 interface SkillView {
   readonly skill: string;
   readonly agent?: ProtocolId<"agent">;
@@ -68,6 +74,28 @@ interface SkillView {
   readonly source: string;
   readonly hash: string;
   readonly installedAt: number;
+  readonly description?: string;
+  readonly place?: SkillPlace;
+  /** `<place>/<name>/SKILL.md`: what the agent's index names the skill by. */
+  readonly location?: string;
+}
+
+/** The args of `skill/read`: one file of a skill the agent's index holds. */
+interface ReadSkillArgs {
+  readonly agent: ProtocolId<"agent">;
+  /** The skill's name. */
+  readonly skill: string;
+  /** A path inside the skill's folder; `SKILL.md` when absent. */
+  readonly file?: string;
+}
+
+/** One file of a skill, as `skill/read` answers it. */
+interface SkillText {
+  readonly skill: string;
+  readonly place: SkillPlace;
+  readonly location: string;
+  readonly file: string;
+  readonly text: string;
 }
 
 /** The args of an operation on one plugin. */
@@ -88,6 +116,7 @@ export interface PluginOperationShapes {
     readonly args: { readonly agent?: ProtocolId<"agent"> };
     readonly result: Page<SkillView>;
   };
+  readonly "skill/read": { readonly args: ReadSkillArgs; readonly result: SkillText };
   readonly "skill/add": { readonly args: InstallArgs; readonly result: JobRef };
   readonly "skill/remove": { readonly args: { readonly skill: string }; readonly result: Empty };
 }
@@ -120,6 +149,14 @@ const pluginView = z.object({
   installedAt: epochMsSchema,
 });
 const pluginArgs = z.strictObject({ plugin: protocolIdSchema("installedPlugin") });
+const skillPlace = z.enum(["bundled", "installed", "workspace"]);
+// A skill's name in the Agent Skills format: lowercase letters, digits and single hyphens.
+const skillName = z
+  .string()
+  .max(64)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+// A path inside a skill's folder; the engine checks each of its parts.
+const skillFile = z.string().min(1).max(256);
 const installArgs = z.strictObject({
   source: z.string().min(1).max(2048),
   hash: z.string().min(1).max(256),
@@ -189,8 +226,28 @@ export const pluginOperations: OperationTable<PluginOperationShapes> = {
         source: z.string(),
         hash: z.string(),
         installedAt: epochMsSchema,
+        description: z.string().exactOptional(),
+        place: skillPlace.exactOptional(),
+        location: z.string().exactOptional(),
       }),
     ),
+  },
+  "skill/read": {
+    ...readFlags,
+    name: "skill/read",
+    scope: "read",
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      skill: skillName,
+      file: skillFile.exactOptional(),
+    }),
+    result: z.object({
+      skill: z.string(),
+      place: skillPlace,
+      location: z.string(),
+      file: z.string(),
+      text: z.string(),
+    }),
   },
   "skill/add": {
     ...localWriteFlags,
