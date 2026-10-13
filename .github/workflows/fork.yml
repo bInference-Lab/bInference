@@ -1,7 +1,7 @@
 name: Fork suite
 
-# The fork tests against an anvil fork of BSC near the head, every night and on demand. They read
-# public nodes only, so the job holds no key; anvil runs on Linux alone here.
+# The fork tests and the replays against an anvil fork of BSC near the head, every night and on
+# demand. They read public nodes only, so the job holds no key; anvil runs on Linux alone here.
 on:
   schedule:
     - cron: "41 3 * * *"
@@ -60,3 +60,9 @@ jobs:
       # Vitest writes the results to the job summary.
       - name: Fork suite
         run: pnpm test:fork
+
+      # A recorded day replayed at the chain's pace with exit orders, about four minutes; it runs
+      # even when a fork test failed.
+      - name: Replay suite
+        if: ${{ !cancelled() }}
+        run: pnpm test:replay
