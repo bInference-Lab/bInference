@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189) and [0190](../DECISIONS.md#d0190); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190) and [0207](../DECISIONS.md#d0207); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -577,18 +577,19 @@ no upload: each is named `tg:<file_id>`, the bot's id of the photo's largest siz
 
 ### 7.8 Models, plugins and skills
 
-| Operation        | Scope     | Write | Local | Args → result                                                                                                                                                                             |
-| ---------------- | --------- | ----- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `model/list`     | `read`    |       |       | `{ agent? }` → configured models by role, with prices when known; with `agent`, `current: true` marks the model its next turn uses for each role ([decision 0204](../DECISIONS.md#d0204)) |
-| `model/set`      | `confirm` | ✓     |       | `{ agent, role, model }` → the agent's models (`/ai`); a model not configured is `protocol.bad_args`, and the role's own configured model clears the pick                                 |
-| `plugin/list`    | `read`    |       |       | → installed plugins, tiers, permissions, state                                                                                                                                            |
-| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; asks for permission review                                                                                                                                |
-| `plugin/enable`  | `admin`   | ✓     |       | `{ plugin }` → plugin                                                                                                                                                                     |
-| `plugin/disable` | `confirm` | ✓     |       | `{ plugin }` → plugin (braking)                                                                                                                                                           |
-| `plugin/remove`  | `admin`   | ✓     |       | `{ plugin }` → `{}`                                                                                                                                                                       |
-| `skill/list`     | `read`    |       |       | `{ agent? }` → skills                                                                                                                                                                     |
-| `skill/add`      | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; the install lint runs first                                                                                                                               |
-| `skill/remove`   | `admin`   | ✓     |       | `{ skill }` → `{}`                                                                                                                                                                        |
+| Operation        | Scope     | Write | Local | Args → result                                                                                                                                                                                                                             |
+| ---------------- | --------- | ----- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model/list`     | `read`    |       |       | `{ agent? }` → configured models by role, with prices when known; with `agent`, `current: true` marks the model its next turn uses for each role ([decision 0204](../DECISIONS.md#d0204))                                                 |
+| `model/set`      | `confirm` | ✓     |       | `{ agent, role, model }` → the agent's models (`/ai`); a model not configured is `protocol.bad_args`, and the role's own configured model clears the pick                                                                                 |
+| `plugin/list`    | `read`    |       |       | → installed plugins, tiers, permissions, state                                                                                                                                                                                            |
+| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; asks for permission review                                                                                                                                                                                |
+| `plugin/enable`  | `admin`   | ✓     |       | `{ plugin }` → plugin                                                                                                                                                                                                                     |
+| `plugin/disable` | `confirm` | ✓     |       | `{ plugin }` → plugin (braking)                                                                                                                                                                                                           |
+| `plugin/remove`  | `admin`   | ✓     |       | `{ plugin }` → `{}`                                                                                                                                                                                                                       |
+| `skill/list`     | `read`    |       |       | `{ agent? }` → skills: with `agent`, each its index holds, with `description`, `location` and `place` ([decision 0207](../DECISIONS.md#d0207))                                                                                            |
+| `skill/read`     | `read`    |       |       | `{ agent, skill, file? }` → `{ skill, place, location, file, text }`: one file of a skill `skill/list` gives the agent, `SKILL.md` unless `file` names another; fails `skill.not_found`, and a path outside the skill `protocol.bad_args` |
+| `skill/add`      | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; the install lint runs first                                                                                                                                                                               |
+| `skill/remove`   | `admin`   | ✓     |       | `{ skill }` → `{}`                                                                                                                                                                                                                        |
 
 <a id="section-7-9"></a>
 
@@ -889,6 +890,7 @@ later unchanged.
 | `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`                                                      |
 | `config`   | `invalid`, `secret_inline`                                                                      |
 | `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                   |
+| `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                |
 | `job`      | `not_found`                                                                                     |
 | `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                |
 | `telegram` | `not_running`, `unreachable`                                                                    |

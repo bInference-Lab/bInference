@@ -290,7 +290,8 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
   full-text search (FTS5; vectors later). Memory is never a source of contract addresses
   ([rule 10](#rule-10)).
 - **Skills.** `SKILL.md` files in the Agent Skills format: `name`, `description`, and optional
-  `metadata`. binference reads its own fields under `metadata.binference`.
+  `metadata`. binference reads its own fields from `metadata` keys that start with `binference-`
+  ([decision 0207](DECISIONS.md#d0207)).
   - The prompt carries only an index (name, description, location); the model reads the full file
     when a task matches.
   - Skills are text: they cannot add tools or widen policy.

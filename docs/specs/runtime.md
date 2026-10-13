@@ -2,7 +2,8 @@
 
 Status: accepted by the owner on 2026-10-11, with the recommendations of its open questions. Its
 proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10. Amended by
-[decision 0191](../DECISIONS.md#d0191) (usage records and the loop notice).
+[decision 0191](../DECISIONS.md#d0191) (usage records and the loop notice) and
+[decision 0207](../DECISIONS.md#d0207) (where skills live, how they are read and installed).
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -348,10 +349,11 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 ### 5.4 Outside content
 
 - **What is outside content:** text a third party controls. Web pages and search results, X
-  posts, images, launch data, a note labelled `untrusted`, and the name, symbol or description of a
-  token the registry does not list.
+  posts, images, launch data, a note labelled `untrusted`, the text of an installed third-party
+  skill, and the name, symbol or description of a token the registry does not list.
 - **Which results hold it:** `search_web`, `search_x`, `read_page`, `market_scan` and `token_info`
-  for an unlisted token always do; `notes_search` does when it returns an `untrusted` note. Every
+  for an unlisted token always do; `notes_search` does when it returns an `untrusted` note, and
+  `open_skill` when it reads an installed skill. Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
   stays clean.
 - **The turn's mark** is set when the model's context holds outside content: at `turn/start`, when
@@ -432,7 +434,8 @@ The context of a model call is data with three parts, never one string with a ma
    1. binference's instructions for the agent, fixed per version, with the owner's language;
    2. the workspace files in this order: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`,
       `NOTES.md`, and `FIRST-CHAT.md` while it exists;
-   3. the skills index: each installed skill's name, description and location, by name;
+   3. the skills index: each installed skill's name, description and location, by name, read
+      from the engine with `skill/list` ([decision 0207](../DECISIONS.md#d0207));
    4. the tool declarations, by name.
 2. **The history**: the session's latest summary, then every transcript event after it, in order.
 3. **The volatile tail**: one context message after the history, built for each model call and
