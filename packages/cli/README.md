@@ -148,8 +148,9 @@ engine over its IPC endpoint alone, and the server takes `agent/goLive` over IPC
 `binference check` works with or without a running engine. Each finding has a stable check id:
 `config.valid`, `permissions.*` (the state folder, config.json5, the CLI token, the IPC sockets'
 folder and the agent's keys, read through the platform's `FileAccess`), `unlock.mode` (a warning in
-`file` mode), `engine.reachable` and `rpc.keyed` (a warning while live auto orders watch prices
-over public RPCs only). `--fix` makes owner-only each of those paths others can open;
+`file` mode), `engine.reachable`, `rpc.keyed` (a warning while live auto orders watch prices
+over public RPCs only) and `rpc.pushed` (a warning while they wait on blocks polled over HTTP: a
+`wss:` URL under `chains.rpc` lets a live fill land one block after its trigger, not two). `--fix` makes owner-only each of those paths others can open;
 on Windows, where the access list is not read, it restricts them all the same.
 
 It also loads `config.json5`: one strict schema, four layers (defaults, the file, `BINFERENCE_*`

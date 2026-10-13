@@ -74,6 +74,10 @@ describe("binference check", () => {
         code: "engine.not_running",
       });
       expect(stopped.byCheck.get("rpc.keyed")).toStrictEqual({ check: "rpc.keyed", level: "skip" });
+      expect(stopped.byCheck.get("rpc.pushed")).toStrictEqual({
+        check: "rpc.pushed",
+        level: "skip",
+      });
       await start(machine);
       const running = await findings(machine);
       expect(running.byCheck.get("engine.reachable")).toStrictEqual({
@@ -82,6 +86,7 @@ describe("binference check", () => {
         version: "2026.10.0-test",
       });
       expect(running.byCheck.get("rpc.keyed")).toStrictEqual({ check: "rpc.keyed", level: "ok" });
+      expect(running.byCheck.get("rpc.pushed")).toStrictEqual({ check: "rpc.pushed", level: "ok" });
     },
   );
 

@@ -3,6 +3,7 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { CheckFinding } from "./check-finding.js";
 import { connectEngine } from "./connect-engine.js";
 import type { InstallCheck } from "./install-findings.js";
+import { hasPolledChain, rpcPushedOf } from "./rpc-pushed-finding.js";
 
 const check = "rpc.keyed";
 // The kinds the price watchers read for; a DCA or copy order waits on no price.
@@ -67,14 +68,16 @@ export function rpcKeyedOf(
 }
 
 /**
- * `rpc.keyed`: counts the live auto orders with a price trigger on the running engine's first page
- * of active orders, when config leaves a chain on its public RPCs, and judges them with
- * {@link rpcKeyedOf}.
+ * `rpc.keyed` and `rpc.pushed`: counts the live auto orders with a price trigger on the running
+ * engine's first page of active orders, once, when config leaves a chain on its public RPCs or
+ * without a `wss:` URL, and judges them with {@link rpcKeyedOf} and {@link rpcPushedOf}.
  */
-export async function rpcKeyedFinding(
+export async function rpcFindings(
   options: InstallCheck,
   config: BinferenceConfig | undefined,
-): Promise<CheckFinding> {
-  const needsCount = config !== undefined && publicOnlyChains(config).length > 0;
-  return rpcKeyedOf(config, needsCount ? await liveOrders(options) : 0);
+): Promise<readonly CheckFinding[]> {
+  const isPublicOnly = config !== undefined && publicOnlyChains(config).length > 0;
+  const needsCount = isPublicOnly || hasPolledChain(config);
+  const count = needsCount ? await liveOrders(options) : 0;
+  return [rpcKeyedOf(config, isPublicOnly ? count : 0), rpcPushedOf(config, count)];
 }
