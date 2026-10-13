@@ -45,6 +45,8 @@ export interface AuthorizeParts extends AdvanceParts {
   readonly wallet: WalletFacts;
   /** The family of the wallet's chain, which reads the spenders of the plan's approvals. */
   readonly family: ChainFamily;
+  /** Whether an auto order's live fill may be confirmed (decision 0210). */
+  readonly liveFills: boolean;
   readonly fill?: FillProposal;
 }
 
@@ -54,14 +56,16 @@ export interface ChosenPlan {
   readonly plan: TradePlan;
 }
 
-// A fill is held to its order, then to the rolling cap.
+// A fill is held to its order, then to the rolling cap. A live fill while live fills are off
+// breaks the first bound: the money path refuses it whatever proposed it (decision 0210).
 async function fillTrigger(
   parts: AuthorizeParts,
   simulated: IntentSnapshot,
   inLine: FillCheckInLine,
 ): Promise<IntentTrigger<"authorization_checked">> {
   const { signal } = parts;
-  const bound = await inLine({ signal });
+  const isOff = !simulated.record.isPaper && !parts.liveFills;
+  const bound = isOff ? "live_fills_off" : await inLine({ signal });
   const fits = bound !== undefined || (await parts.gate.fits(simulated, { signal }));
   const breach = bound ?? (fits ? undefined : "daily_cap");
   const check = breach === undefined ? { by: "fill" as const } : { by: "fill" as const, breach };

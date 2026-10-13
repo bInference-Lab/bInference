@@ -40,6 +40,7 @@ export function moneyPathOf(
     isLocked,
     lowGas,
     gate,
+    liveFills: options.liveOrderFills === true,
     clock,
     ids,
   });

@@ -82,6 +82,8 @@ export interface MoneyPathOptions extends ResolveOptions {
   readonly lowGas: LowGasAlerts;
   /** The rolling cap each confirmation is checked against, one agent's at a time. */
   readonly gate: CapGate;
+  /** Whether a live order fill may be confirmed; off when absent (decision 0210). */
+  readonly liveFills?: boolean;
   readonly clock: Clock;
   readonly ids: IdSource;
 }
@@ -283,10 +285,11 @@ async function authorizeAndExecute(
   simulated: IntentSnapshot,
   chosen: { readonly pass: PolicyPass; readonly plan: TradePlan },
 ): Promise<IntentSnapshot> {
-  const { stored, gate, isLocked, execute } = run.options;
+  const { stored, gate, isLocked, execute, liveFills = false } = run.options;
   const { machine, signal, fill } = run;
   const { facts: wallet, chain } = run.resolved;
-  const parts = { stored, machine, signal, gate, isLocked, wallet, family: chain.family };
+  const family = chain.family;
+  const parts = { stored, machine, signal, gate, isLocked, liveFills, wallet, family };
   const authorized = await authorizeSimulated(
     fill === undefined ? parts : { ...parts, fill },
     simulated,

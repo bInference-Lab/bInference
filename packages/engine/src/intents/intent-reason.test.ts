@@ -70,6 +70,7 @@ describe("intent reasons", () => {
       "fill_bounds",
       "worst_price",
       "trigger_unconfirmed",
+      "live_fills_off",
     ]);
   });
 
@@ -89,7 +90,6 @@ describe("intent reasons", () => {
     expect(orderSkipReasons).toStrictEqual([
       "copy_daily_cap",
       "engine_locked",
-      "live_fills_off",
       "nothing_to_spend",
       "fill_failed",
       "fill_lapsed",
