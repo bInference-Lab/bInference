@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runCommand, runCommandToExit } from "./run-command.js";
+import { runCommand, runCommandToExit, runCommandWithin } from "./run-command.js";
 
 describe("run command", () => {
   it("returns what the program wrote to standard output", async () => {
@@ -48,5 +48,27 @@ describe("run command to its exit", () => {
     await expect(
       runCommandToExit(process.execPath, ["-e", ""], AbortSignal.abort(new Error("stopped"))),
     ).rejects.toMatchObject(failed);
+  });
+});
+
+describe("run command within a time", () => {
+  it("passes the variables it adds and returns how the program ended", async () => {
+    const signal = new AbortController().signal;
+    const exit = await runCommandWithin(
+      process.execPath,
+      ["-e", "process.stdout.write(process.env.BNF_PROBE ?? ''); process.exit(2)"],
+      { signal, timeoutMs: 20_000, env: { BNF_PROBE: "set" } },
+    );
+    expect(exit).toStrictEqual({ exitCode: 2, stdout: "set", stderr: "" });
+  });
+
+  it("fails with a code for a program that runs past its time", async () => {
+    const signal = new AbortController().signal;
+    await expect(
+      runCommandWithin(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+        signal,
+        timeoutMs: 200,
+      }),
+    ).rejects.toMatchObject({ code: "platform.command_failed" });
   });
 });

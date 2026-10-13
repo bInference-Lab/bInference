@@ -80,23 +80,31 @@ export async function runCommand(
   }
 }
 
+/** How long {@link runCommandWithin} lets a program run, and what it adds to its environment. */
+export interface RunWithinOptions {
+  readonly signal: AbortSignal;
+  /** The most the program may run, in milliseconds. */
+  readonly timeoutMs: number;
+  /** Variables set for the program on top of this process's environment. */
+  readonly env?: Readonly<Record<string, string>>;
+}
+
 /**
- * Runs an OS program as {@link runCommand} does, but returns its exit code with its output, so a
- * caller reads an answer such as "not found" from the code. Throws `platform.command_failed` only
- * when the program cannot start, times out or the signal aborts.
+ * Runs an OS program as {@link runCommandToExit} does, for as long as `timeoutMs` allows and with
+ * the variables `env` adds, such as a fetch that may take minutes and must never prompt.
  */
-export async function runCommandToExit(
+export async function runCommandWithin(
   file: string,
   args: readonly string[],
-  signal: AbortSignal,
+  options: RunWithinOptions,
 ): Promise<ProgramExit> {
   const path = await located(file);
   const result = await execa(path, args, {
-    cancelSignal: signal,
-    timeout: commandTimeoutMs,
+    cancelSignal: options.signal,
+    timeout: options.timeoutMs,
     stdin: "ignore",
     windowsHide: true,
-    env: environmentFor(file),
+    env: { ...environmentFor(file), ...options.env },
     reject: false,
   });
   // The program never ran to its end: it did not start, timed out or was stopped by the signal.
@@ -114,4 +122,17 @@ export async function runCommandToExit(
     });
   }
   return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+}
+
+/**
+ * Runs an OS program as {@link runCommand} does, but returns its exit code with its output, so a
+ * caller reads an answer such as "not found" from the code. Throws `platform.command_failed` only
+ * when the program cannot start, times out or the signal aborts.
+ */
+export async function runCommandToExit(
+  file: string,
+  args: readonly string[],
+  signal: AbortSignal,
+): Promise<ProgramExit> {
+  return runCommandWithin(file, args, { signal, timeoutMs: commandTimeoutMs });
 }
