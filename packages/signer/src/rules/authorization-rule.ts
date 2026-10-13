@@ -3,6 +3,9 @@ import {
   type ApprovalModeNow,
   type AutoModeGrant,
   checkAutoModeGrant,
+  checkFillGrant,
+  type FillGrant,
+  type OrderNow,
   type SignAuthorization,
 } from "@binference/chain";
 import type { RuleView } from "./hard-rule.js";
@@ -62,16 +65,41 @@ function isFeeUnderCap(view: RuleView): boolean {
   return cap !== undefined && fee !== undefined && fee <= cap.feePerGasBase;
 }
 
-const termsHashOf = (authorization: SignAuthorization): string =>
-  authorization.kind === "approvalMode" ? authorization.grant.termsHash : authorization.termsHash;
+// The fill grant holds as `checkFillGrant` of `@binference/chain` reads it, against the order as
+// the engine read it right before signing: one fill of an active order the owner confirmed, which
+// recorded no fill since, spending at most the fill's size (decision 0210).
+function fillHolds(view: RuleView, grant: FillGrant, current: OrderNow): boolean {
+  const { intent, termsHash, step } = view.input;
+  const isCancel = step.replaces?.kind === "cancel";
+  const fee = view.transaction.feePerGas;
+  const check = {
+    intent,
+    termsHash,
+    order: current,
+    action: step.action,
+    isCancel,
+    nowMs: view.nowMs,
+    ...(isCancel || fee === undefined ? {} : { feePerGasNativeBase: fee }),
+  };
+  return (isCancel || fee !== undefined) && checkFillGrant(grant, check).ok;
+}
+
+function termsHashOf(authorization: SignAuthorization): string {
+  if (authorization.kind === "approvalMode" || authorization.kind === "order") {
+    return authorization.grant.termsHash;
+  }
+  return authorization.termsHash;
+}
 
 /**
  * Rule 5: the transaction pays at most the chain's network fee cap per gas (decision 0143),
  * `termsHash` is the authorization's, and the authorization holds now: a confirmation of this
  * intent that has not expired, or expired less than a minute ago for a cancel (decision 0116); an
- * active auto order or webhook rule within its expiry and its fills; or the agent's auto grant for
- * this intent, unexpired, with the agent's mode still auto at the grant's version, for a
- * transaction that passes the auto test's checks.
+ * auto order's fill grant for this intent, its order still active as the owner confirmed it, with
+ * no fill recorded since, for a transaction that spends at most the fill's size; an active
+ * webhook rule within its expiry and its fills; or the agent's auto grant for this intent,
+ * unexpired, with the agent's mode still auto at the grant's version, for a transaction that
+ * passes the auto test's checks.
  */
 export function authorizationHolds(view: RuleView): boolean {
   const { authorization, intent } = view.input;
@@ -85,6 +113,9 @@ export function authorizationHolds(view: RuleView): boolean {
   }
   if (authorization.kind === "approvalMode") {
     return autoHolds(view, authorization.grant, authorization.current);
+  }
+  if (authorization.kind === "order") {
+    return fillHolds(view, authorization.grant, authorization.current);
   }
   return advanceHolds(authorization, view.nowMs);
 }

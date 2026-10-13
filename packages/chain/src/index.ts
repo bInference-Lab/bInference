@@ -80,6 +80,15 @@ export type {
   AutoModeGrantWire,
   AutoModeKind,
 } from "./signing/auto-mode-grant.js";
+export { checkFillGrant, fillGrantSchema, orderNowSchema } from "./signing/fill-grant.js";
+export type {
+  FillGrant,
+  FillGrantCheck,
+  FillGrantProblem,
+  FillGrantWire,
+  OrderNow,
+  OrderNowWire,
+} from "./signing/fill-grant.js";
 export type { SignerProcess } from "./signing/ports.js";
 export { privyRequestSchema } from "./signing/privy-request.js";
 export type { PrivyHeaders, PrivyRequest } from "./signing/privy-request.js";

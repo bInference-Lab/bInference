@@ -4,6 +4,8 @@ import {
   type AuthorizeInput,
   type ApprovalModeNow,
   type AutoModeGrant,
+  type FillGrant,
+  type OrderNow,
   type SignStep,
   type SignAuthorization,
 } from "@binference/chain";
@@ -76,22 +78,52 @@ const speedUp = withStep(withTransaction(call, { nonce: 3, max_fee_per_gas: "0x3
     original: { to: accountOn(router), value: 10n ** 16n, data: "0x7ff36ab5" },
   },
 });
-const orderAuthorization: SignAuthorization = {
+const agent = idSchema("agt").parse("agt_0192f3a4-5b6c-7d8e-9f00-112233445566");
+const orderId = idSchema("ord").parse("ord_0192f3a4-5b6c-7d8e-9f00-112233445566");
+const orderTermsHash = "ef".repeat(32);
+const fillGrant: FillGrant = {
+  order: orderId,
+  agent,
+  intent: call.intent,
+  orderTermsHash,
+  fillsBefore: 2,
+  termsHash: fixtureTermsHash,
+  grantedAtMs: fixtureNowMs - 1,
+  expiresAtMs: fixtureNowMs + 2,
+  networkFeeCapNativeBase: gwei,
+  spend: { maxBase: 10n ** 16n },
+};
+const orderNow: OrderNow = {
+  id: orderId,
+  state: "active",
+  termsHash: orderTermsHash,
+  expiresAtMs: fixtureNowMs + 1,
+  fills: 2,
+  maxFills: 3,
+};
+const fillWith = (change: {
+  readonly grant?: Partial<FillGrant>;
+  readonly current?: Partial<OrderNow>;
+}): SignAuthorization => ({
   kind: "order",
-  id: idSchema("ord").parse("ord_0192f3a4-5b6c-7d8e-9f00-112233445566"),
+  grant: { ...fillGrant, ...change.grant },
+  current: { ...orderNow, ...change.current },
+});
+const order = withAuthorization(call, fillWith({}));
+const tokenFill = withAuthorization(
+  approve,
+  fillWith({ grant: { spend: { token: accountOn(token), maxBase: 1000n } } }),
+);
+const fillCancel = withAuthorization(cancel, fillWith({}));
+const webhookRule = withAuthorization(call, {
+  kind: "webhookRule",
+  id: idSchema("whr").parse("whr_0192f3a4-5b6c-7d8e-9f00-112233445566"),
   state: "active",
   termsHash: fixtureTermsHash,
   expiresAtMs: fixtureNowMs + 1,
   fills: 2,
   maxFills: 3,
-};
-const order = withAuthorization(call, orderAuthorization);
-const webhookRule = withAuthorization(call, {
-  ...orderAuthorization,
-  kind: "webhookRule",
-  id: idSchema("whr").parse("whr_0192f3a4-5b6c-7d8e-9f00-112233445566"),
 });
-const agent = idSchema("agt").parse("agt_0192f3a4-5b6c-7d8e-9f00-112233445566");
 const grant: AutoModeGrant = {
   approvalMode: "auto",
   agent,
@@ -130,6 +162,12 @@ const bases: readonly (readonly [string, AuthorizeInput])[] = [
   ["a cancel", cancel],
   ["a speed-up", speedUp],
   ["an auto order fill", order],
+  ["an auto order fill that approves the token it sells", tokenFill],
+  ["a cancel of an auto order fill", fillCancel],
+  [
+    "a cancel of an auto order fill whose order filled since",
+    withAuthorization(cancel, fillWith({ current: { state: "filled", fills: 3 } })),
+  ],
   ["a webhook rule fill", webhookRule],
   ["an auto mode trade", auto],
   ["a cancel in auto mode", autoCancel],
@@ -343,10 +381,74 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
   [
     5,
     "an order that is no longer active",
-    withAuthorization(call, { ...orderAuthorization, state: "filled" }),
+    withAuthorization(call, fillWith({ current: { state: "paused" } })),
   ],
   [5, "an expired order", order, { ...context, nowMs: fixtureNowMs + 1 }],
-  [5, "an order at its last fill", withAuthorization(call, { ...orderAuthorization, fills: 3 })],
+  [5, "an order at its last fill", withAuthorization(call, fillWith({ current: { fills: 3 } }))],
+  [
+    5,
+    "an order that recorded a fill since the grant",
+    withAuthorization(call, fillWith({ current: { fills: 3, maxFills: 5 } })),
+  ],
+  [
+    5,
+    "a fill grant for another intent",
+    withAuthorization(call, fillWith({ grant: { intent: otherIntent } })),
+  ],
+  [
+    5,
+    "a fill grant of another order",
+    withAuthorization(
+      call,
+      fillWith({
+        grant: { order: idSchema("ord").parse("ord_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff") },
+      }),
+    ),
+  ],
+  [
+    5,
+    "an order whose confirmed terms changed",
+    withAuthorization(call, fillWith({ current: { termsHash: "cd".repeat(32) } })),
+  ],
+  [
+    5,
+    "a fill over other terms",
+    withAuthorization(call, fillWith({ grant: { termsHash: "cd".repeat(32) } })),
+  ],
+  [
+    5,
+    "a fill that spends more than its size",
+    withAuthorization(call, fillWith({ grant: { spend: { maxBase: 10n ** 16n - 1n } } })),
+  ],
+  [
+    5,
+    "a fill that sends coin while it sells a token",
+    withAuthorization(
+      call,
+      fillWith({ grant: { spend: { token: accountOn(token), maxBase: 10n ** 18n } } }),
+    ),
+  ],
+  [
+    5,
+    "a fill that approves more of its token than its size",
+    withAuthorization(
+      approve,
+      fillWith({ grant: { spend: { token: accountOn(token), maxBase: 999n } } }),
+    ),
+  ],
+  [5, "a fill that sends funds", withAuthorization(nativeSend, fillWith({}))],
+  [
+    5,
+    "a fill above its grant's fee cap",
+    withAuthorization(call, fillWith({ grant: { networkFeeCapNativeBase: gwei - 1n } })),
+  ],
+  [
+    5,
+    "an expired fill grant",
+    withAuthorization(call, fillWith({ current: { expiresAtMs: fixtureNowMs + 9 } })),
+    { ...context, nowMs: fixtureNowMs + 2 },
+  ],
+  [5, "a cancel of a fill a minute after its grant expired", fillCancel, afterExpiry(2)],
   [5, "an expired webhook rule", webhookRule, { ...context, nowMs: fixtureNowMs + 2 }],
   [5, "auto mode switched to manual", autoWith({ current: { mode: "manual", version: 5 } })],
   [5, "auto mode at another version", autoWith({ current: { version: 5 } })],

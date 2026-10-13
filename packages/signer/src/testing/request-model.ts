@@ -56,7 +56,26 @@ export type Authorization =
       readonly expiresAtMs: number;
     }
   | {
-      readonly kind: "order" | "webhookRule";
+      readonly kind: "fill";
+      readonly intent: string;
+      readonly termsHash: string;
+      readonly grantOrder: string;
+      readonly grantOrderTerms: string;
+      readonly fillsBefore: number;
+      readonly expiresAtMs: number;
+      readonly cap: bigint;
+      /** The token the fill spends; none for the native coin. */
+      readonly spendToken?: Account;
+      readonly maxBase: bigint;
+      readonly order: string;
+      readonly orderTerms: string;
+      readonly state: string;
+      readonly orderExpiresAtMs: number;
+      readonly fills: number;
+      readonly maxFills?: number;
+    }
+  | {
+      readonly kind: "webhookRule";
       readonly state: string;
       readonly termsHash: string;
       readonly expiresAtMs?: number;
@@ -122,6 +141,10 @@ export const agents: readonly string[] = [
   "agt_0192f3a4-5b6c-7d8e-9f00-112233445566",
   "agt_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff",
 ];
+export const orders: readonly string[] = [
+  "ord_0192f3a4-5b6c-7d8e-9f00-112233445566",
+  "ord_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff",
+];
 export const nowMs = 1_800_000_000_000;
 export const gwei: bigint = 10n ** 9n;
 export const unlimited: bigint = 2n ** 256n - 1n;
@@ -171,10 +194,36 @@ function authorizationOf(a: Authorization): SignAuthorization {
       current: { agent: idSchema("agt").parse(a.agent), mode, version },
     };
   }
+  if (a.kind === "fill") {
+    return fillAuthorizationOf(a);
+  }
   const { kind, ...advance } = a;
-  return kind === "order"
-    ? { kind, id: id("ord"), ...advance }
-    : { kind, id: id("whr"), ...advance };
+  return { kind, id: id("whr"), ...advance };
+}
+
+function fillAuthorizationOf(a: Extract<Authorization, { kind: "fill" }>): SignAuthorization {
+  const { spendToken, maxBase, maxFills } = a;
+  const grant = {
+    order: idSchema("ord").parse(a.grantOrder),
+    agent: id("agt"),
+    intent: idSchema("int").parse(a.intent),
+    orderTermsHash: a.grantOrderTerms,
+    fillsBefore: a.fillsBefore,
+    termsHash: a.termsHash,
+    grantedAtMs: nowMs - 1,
+    expiresAtMs: a.expiresAtMs,
+    networkFeeCapNativeBase: a.cap,
+    spend: spendToken === undefined ? { maxBase } : { token: account(spendToken), maxBase },
+  };
+  const current = {
+    id: idSchema("ord").parse(a.order),
+    state: a.state,
+    termsHash: a.orderTerms,
+    expiresAtMs: a.orderExpiresAtMs,
+    fills: a.fills,
+    ...(maxFills === undefined ? {} : { maxFills }),
+  };
+  return { kind: "order", grant, current };
 }
 
 function transactionOf(m: Model): JsonValue {
