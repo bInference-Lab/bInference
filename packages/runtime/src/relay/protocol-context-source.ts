@@ -4,8 +4,8 @@ import type { ContextSource } from "./ports.js";
 
 /**
  * The {@link ContextSource} over the runtime's protocol client: `agent/readFile`, whose
- * `agent.file_missing` is a file the agent does not have, and `facts/get`. Any other failure
- * rejects.
+ * `agent.file_missing` is a file the agent does not have; `skill/list` for the agent, where an
+ * engine that does not serve it lists no skill; and `facts/get`. Any other failure rejects.
  */
 export function createProtocolContextSource(client: Pick<ProtocolClient, "call">): ContextSource {
   return {
@@ -16,6 +16,21 @@ export function createProtocolContextSource(client: Pick<ProtocolClient, "call">
       } catch (error) {
         if (error instanceof BinferenceError && error.code === "agent.file_missing") {
           return undefined;
+        }
+        throw error;
+      }
+    },
+    async skills(agent, signal) {
+      try {
+        const page = await client.call("skill/list", { agent }, { signal });
+        return page.items.flatMap(({ name, description, location }) =>
+          description === undefined || location === undefined
+            ? []
+            : [{ name, description, location }],
+        );
+      } catch (error) {
+        if (error instanceof BinferenceError && error.code === "protocol.unknown_op") {
+          return [];
         }
         throw error;
       }

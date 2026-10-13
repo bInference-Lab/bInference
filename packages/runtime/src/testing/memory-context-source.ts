@@ -1,11 +1,14 @@
 import type { Id } from "@binference/core";
 import { type LiveFactsView, liveFactsViewSchema, type WorkspaceFile } from "@binference/protocol";
 import type { ContextSource } from "../relay/ports.js";
+import type { SkillIndexEntry } from "../relay/skill-index-entry.js";
 
 /** A {@link ContextSource} held in memory, which a test edits as the owner would. */
 export interface MemoryContextSource extends ContextSource {
   /** Writes one of an agent's workspace files, or removes it with `undefined`. */
   write(agent: Id<"agt">, file: WorkspaceFile, text: string | undefined): void;
+  /** Sets the skills an agent's index holds, in place of those before. */
+  setSkills(agent: Id<"agt">, skills: readonly SkillIndexEntry[]): void;
   /** Makes every read reject from now on, as an engine out of reach does, or answer again. */
   link(state: "up" | "down"): void;
   /** How many times the live facts were read. */
@@ -49,7 +52,7 @@ export interface MemoryContextSourceOptions {
 }
 
 /**
- * Creates a {@link MemoryContextSource} with no workspace file, whose live facts are
+ * Creates a {@link MemoryContextSource} with no workspace file and no skill, whose live facts are
  * {@link testLiveFacts} read at the time `now` gives. An agent it does not hold rejects.
  */
 export function createMemoryContextSource(
@@ -57,6 +60,7 @@ export function createMemoryContextSource(
 ): MemoryContextSource {
   const { agents, now = () => 1_767_261_610_000 } = options;
   const files = new Map<string, string>();
+  const skills = new Map<Id<"agt">, readonly SkillIndexEntry[]>();
   const state = { down: false, reads: 0 };
   const reach = (agent: Id<"agt">, signal: AbortSignal): void => {
     signal.throwIfAborted();
@@ -68,6 +72,10 @@ export function createMemoryContextSource(
     async workspaceFile(place, signal) {
       reach(place.agent, signal);
       return await Promise.resolve(files.get(`${place.agent}/${place.file}`));
+    },
+    async skills(agent, signal) {
+      reach(agent, signal);
+      return await Promise.resolve(skills.get(agent) ?? []);
     },
     async liveFacts(agent, signal) {
       reach(agent, signal);
@@ -81,6 +89,9 @@ export function createMemoryContextSource(
       } else {
         files.set(key, text);
       }
+    },
+    setSkills(agent, entries) {
+      skills.set(agent, entries);
     },
     link: (link) => {
       state.down = link === "down";

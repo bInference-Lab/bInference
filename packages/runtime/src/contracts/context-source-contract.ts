@@ -2,13 +2,18 @@ import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { ContextSource } from "../relay/ports.js";
+import type { SkillIndexEntry } from "../relay/skill-index-entry.js";
 
-/** An engine with one agent whose `RULES.md` holds `rules` and that has no `NOTES.md`. */
+/**
+ * An engine with one agent whose `RULES.md` holds `rules`, that has no `NOTES.md`, and whose
+ * index holds `skills`, by name.
+ */
 export interface ContextSourceSubject {
   readonly source: ContextSource;
   readonly agent: Id<"agt">;
   readonly unknownAgent: Id<"agt">;
   readonly rules: string;
+  readonly skills: readonly SkillIndexEntry[];
 }
 
 /** Makes a fresh subject for each check. */
@@ -27,6 +32,12 @@ const checks: readonly {
     run: async ({ source, agent, rules }) => {
       assert.equal(await source.workspaceFile({ agent, file: "RULES.md" }, live()), rules);
       assert.equal(await source.workspaceFile({ agent, file: "NOTES.md" }, live()), undefined);
+    },
+  },
+  {
+    name: "lists the skills the agent's index holds",
+    run: async ({ source, agent, skills }) => {
+      assert.deepEqual(await source.skills(agent, live()), skills);
     },
   },
   {
@@ -50,8 +61,8 @@ const checks: readonly {
 
 /**
  * The contract every {@link ContextSource} keeps: a workspace file reads back as its text, a
- * missing one as none, the live facts are the agent's, and an unknown agent or an aborted signal
- * rejects.
+ * missing one as none, the agent's skills list as its index holds them, the live facts are the
+ * agent's, and an unknown agent or an aborted signal rejects.
  */
 export function contextSourceContract(harness: ContextSourceHarness): readonly ContractCheck[] {
   return checks.map((check) => ({

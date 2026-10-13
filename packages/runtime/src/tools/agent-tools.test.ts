@@ -44,6 +44,13 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "order/get": orderWire("active"),
   "order/cancel": orderWire("cancelled"),
   "notes/search": { items: [] },
+  "skill/read": {
+    skill: "safe-swap",
+    place: "bundled",
+    location: "bundled/safe-swap/SKILL.md",
+    file: "SKILL.md",
+    text: "# Safe swap",
+  },
   "notes/write": {
     note: "1",
     agent,
@@ -79,6 +86,11 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     "notes_search",
     { query: "stable" },
     [{ op: "notes/search", args: { agent, query: "stable", limit: 10 } }],
+  ],
+  [
+    "open_skill",
+    { skill: "safe-swap" },
+    [{ op: "skill/read", args: { agent, skill: "safe-swap" } }],
   ],
   ["swap", swapTerms, [{ op: "intent/propose", args: { ...swapTerms, agent, kind: "swap" }, key }]],
   ["buy", buyTerms, [{ op: "intent/propose", args: { ...buyTerms, agent, kind: "buy" }, key }]],

@@ -5,6 +5,10 @@ import { createMemoryContextSource } from "./memory-context-source.js";
 
 const agent = nthTestId("agt", 1);
 const rules = "# Rules\nNever buy a token with a tax above 10%.\n";
+const skills = [
+  { name: "dca-plan", description: "Plans a DCA.", location: "bundled/dca-plan/SKILL.md" },
+  { name: "safe-swap", description: "Checks a swap.", location: "bundled/safe-swap/SKILL.md" },
+];
 
 describe("createMemoryContextSource", () => {
   it.each(
@@ -12,7 +16,9 @@ describe("createMemoryContextSource", () => {
       create: async () => {
         const source = createMemoryContextSource({ agents: [agent] });
         source.write(agent, "RULES.md", rules);
-        return await Promise.resolve({ source, agent, unknownAgent: nthTestId("agt", 9), rules });
+        source.setSkills(agent, skills);
+        const unknownAgent = nthTestId("agt", 9);
+        return await Promise.resolve({ source, agent, unknownAgent, rules, skills });
       },
     }),
   )("follows the contract: $name", async ({ run }) => {

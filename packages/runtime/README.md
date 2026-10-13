@@ -51,8 +51,10 @@ built in `src/context/`:
 1. **The stable prefix**, read once as a turn starts: binference's instructions, fixed per release
    and naming the owner's language, then each workspace file the agent has, read with
    `agent/readFile` in spec 8's order inside a delimiter that names it, each cut at 12,000
-   characters and all at 40,000. Two turns with no workspace change send the same bytes; an edit
-   applies at the next turn.
+   characters and all at 40,000, then the skills index: each skill `skill/list` gives the agent,
+   by name, with its location and description, at most 100, and never a skill's own text
+   ([decision 0207](../../docs/DECISIONS.md#d0207)). Two turns with no workspace or skill change
+   send the same bytes; an edit applies at the next turn.
 2. **The history**: the session's latest summary, then every event after the range it covers.
 3. **The volatile tail**: the live facts of `facts/get` and the model budget left, as the last user
    message after the history. They are read before the turn's first call and after a batch that
@@ -182,7 +184,9 @@ cancels only its own agent's intents and orders, and shows a token the registry 
 "unlisted token", except in `token_info`, whose result is then outside content. A proposal sends
 the call's key as its idempotency key and answers the intent's or order's id and that it waits for
 the owner; a refusal the engine answered is an error result, and any other failure leaves the
-outcome unknown, so it is never sent again. The built runtime gives every turn these tools.
+outcome unknown, so it is never sent again. `open_skill` (`skill/read`) reads one file of a skill
+the index lists, by the skill's name and a path inside its folder; the engine refuses any other,
+and an installed skill's text is outside content. The built runtime gives every turn these tools.
 
 ## Example
 

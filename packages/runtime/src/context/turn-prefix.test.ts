@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryContextSource } from "../testing/memory-context-source.js";
-import { fileMaxChars, prefixText, readTurnPrefix, workspaceMaxChars } from "./turn-prefix.js";
+import {
+  fileMaxChars,
+  indexMaxSkills,
+  prefixText,
+  readTurnPrefix,
+  workspaceMaxChars,
+} from "./turn-prefix.js";
 
 const agent = nthTestId("agt", 1);
 const signal = new AbortController().signal;
@@ -64,5 +70,56 @@ describe("the stable prefix", () => {
     await expect(readTurnPrefix(source, turn, signal)).rejects.toThrow(
       "The engine cannot answer for this agent.",
     );
+  });
+});
+
+describe("the skills index in the stable prefix", () => {
+  const skills = [
+    {
+      name: "safe-swap",
+      description: "Checks a swap\nbefore it goes.",
+      location: "bundled/safe-swap/SKILL.md",
+    },
+    { name: "dca-plan", description: "Plans a DCA.", location: "installed/dca-plan/SKILL.md" },
+  ];
+
+  it("follows the workspace files and lists each skill by name, location and description", async () => {
+    const source = createMemoryContextSource();
+    source.write(agent, "RULES.md", "rules");
+    source.setSkills(agent, skills);
+    const prefix = await readTurnPrefix(source, turn, signal);
+    const workspaceEnd = prefix.indexOf("</workspace-file>");
+    expect(prefix.indexOf("# Skills")).toBeGreaterThan(workspaceEnd);
+    expect(prefix.split("\n\n").at(-1)).toBe(
+      [
+        "- dca-plan (installed/dca-plan/SKILL.md): Plans a DCA.",
+        "- safe-swap (bundled/safe-swap/SKILL.md): Checks a swap before it goes.",
+      ].join("\n"),
+    );
+    expect(prefix).toContain("open it with open_skill by its name");
+  });
+
+  it("holds the index alone, never a skill's own text", () => {
+    const prefix = prefixText("Instructions.", [], skills);
+    expect(prefix).not.toContain("# Safe swap");
+    expect(prefix.split("\n").filter((line) => line.startsWith("- "))).toHaveLength(2);
+  });
+
+  it("is the same bytes whatever order the engine lists the skills in", () => {
+    expect(prefixText("Instructions.", [], skills.toReversed())).toBe(
+      prefixText("Instructions.", [], skills),
+    );
+  });
+
+  it("lists 100 skills, then a line with the number left out", () => {
+    const many = Array.from({ length: 103 }, (_unused, index) => ({
+      name: `skill-${String(index).padStart(3, "0")}`,
+      description: "A skill.",
+      location: `installed/skill-${String(index).padStart(3, "0")}/SKILL.md`,
+    }));
+    const lines = prefixText("Instructions.", [], many).split("\n");
+    expect(lines.filter((line) => line.startsWith("- "))).toHaveLength(indexMaxSkills);
+    expect(lines.at(-1)).toBe("[3 more skills are left out of this list.]");
+    expect(lines).not.toContain("- skill-100 (installed/skill-100/SKILL.md): A skill.");
   });
 });

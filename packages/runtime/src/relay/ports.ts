@@ -13,6 +13,7 @@ import type {
   TurnStartAnswer,
   WorkspacePlace,
 } from "./engine-chat-records.js";
+import type { SkillIndexEntry } from "./skill-index-entry.js";
 
 /**
  * The engine's side of chat, as the runtime reaches it with the token of its current start
@@ -45,12 +46,14 @@ export interface EngineChat {
 
 /**
  * What a turn's context reads from the engine (runtime spec, section 7.1): each of an agent's
- * workspace files, and its live facts. Each call rejects when the engine cannot answer, and with
- * the signal's reason once it aborts.
+ * workspace files, its skills, and its live facts. Each call rejects when the engine cannot
+ * answer, and with the signal's reason once it aborts.
  */
 export interface ContextSource {
   /** `agent/readFile`: the file's text, or `undefined` when the agent has no such file. */
   workspaceFile(place: WorkspacePlace, signal: AbortSignal): Promise<string | undefined>;
+  /** `skill/list`: the skills the agent's index holds, by name; none from an engine that serves none. */
+  skills(agent: Id<"agt">, signal: AbortSignal): Promise<readonly SkillIndexEntry[]>;
   /** `facts/get`: what the agent stands on now. */
   liveFacts(agent: Id<"agt">, signal: AbortSignal): Promise<LiveFactsView>;
 }

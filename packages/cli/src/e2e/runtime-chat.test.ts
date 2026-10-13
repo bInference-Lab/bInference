@@ -7,6 +7,7 @@ import { type StandInModelServer, startStandInModelServer } from "@binference/ru
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
+import { skillText, writeFiles } from "../skills/skill-fixtures.js";
 import { configText, type InitMachine, secretEnv } from "./init-fixtures.js";
 import { connectClient, noPermissions } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
@@ -185,6 +186,13 @@ describe("the chat relay to the agent runtime process", () => {
       await engines.start(machine, { env, parts: { startRuntime: realRuntime } });
       const client = await connectClient(machine);
       const id = firstAgent((await client.call("agent/list", {}, live())).items);
+      const skillBody = "Sell a quarter at each doubling.";
+      await writeFiles(join(machine.folder, "workspace", id, "skills"), {
+        "take-profit/SKILL.md": skillText("take-profit", {
+          description: "Takes profit in steps.",
+          body: skillBody,
+        }),
+      });
       const { pushes, ended } = watchChat(client, id);
       const posted = await client.call("chat/post", { agent: id, text: "hi" }, live());
       await ended;
@@ -232,6 +240,11 @@ describe("the chat relay to the agent runtime process", () => {
       expect(call.system).toMatch(/^You are a binference agent/u);
       expect(call.system).toContain('<workspace-file name="RULES.md">\n# Rules\n');
       expect(call.system).toContain('<workspace-file name="FIRST-CHAT.md">');
+      expect(call.system).toContain(
+        "- take-profit (workspace/take-profit/SKILL.md): Takes profit in steps.",
+      );
+      expect(call.system).not.toContain(skillBody);
+      expect(call.system).not.toContain("binference-tools");
       expect(call.owner).toBe("hi");
       expect(call.facts).toMatch(/^Live facts from binference.+\n- Mode: paper\./su);
       const [sent] = server.requests.map(({ body }) => toolsSchema.parse(JSON.parse(body)));
@@ -243,11 +256,16 @@ describe("the chat relay to the agent runtime process", () => {
         "quote",
         "orders",
         "tx_status",
+        "search_web",
+        "read_page",
+        "notes_search",
+        "open_skill",
         "swap",
         "buy",
         "sell",
         "order_create",
         "order_cancel",
+        "notes_write",
       ]);
     },
   );
