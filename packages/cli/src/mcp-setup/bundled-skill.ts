@@ -1,6 +1,6 @@
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { listFolderFiles, readTextFile } from "@binference/platform";
+import { bundledSkillRoots } from "../skills/bundled-roots.js";
 import { skillName } from "./client-places.js";
 
 /** One file of the bundled skill, by its path inside the skill's folder. */
@@ -15,11 +15,7 @@ export interface BundledSkill {
   readonly files: readonly SkillFile[];
 }
 
-// The package's own copy once packed (`skills/` beside `dist/`), the repo's from a build in the
-// repo, and the repo's from the TypeScript source.
-const places = ["../skills", "../../../skills", "../../../../skills"].map((folder) =>
-  join(fileURLToPath(new URL(folder, import.meta.url)), skillName),
-);
+const places = bundledSkillRoots.map((root) => join(root, skillName));
 
 async function skillAt(folder: string, signal: AbortSignal): Promise<BundledSkill | undefined> {
   const skillMd = await readTextFile(join(folder, "SKILL.md"), signal);

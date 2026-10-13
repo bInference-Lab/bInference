@@ -8,6 +8,7 @@ import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createModelOperations } from "./model-operations.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
+import { composeSkillOperations } from "./skill-operations.js";
 import { createTelegramPair } from "./telegram-pair.js";
 
 /** What the engine's own operations answer from besides the stores. */
@@ -36,7 +37,7 @@ interface EngineWiring {
 
 /**
  * The engine's own operations: its status with the health signals, its stop, its unlock, a new
- * pairing link for the owner's bot, the backups, and the models each agent uses.
+ * pairing link for the owner's bot, the backups, the skills, and the models each agent uses.
  */
 export function engineHandlers(
   opening: Opening,
@@ -71,6 +72,7 @@ export function engineHandlers(
     }),
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
     ...composeBackupOperations(opening, opened, (push) => wiring.jobs.publish(push)),
+    ...composeSkillOperations(opening, opened, (push) => wiring.jobs.publish(push)),
     ...createModelOperations({
       models: () => opened.runtime.models,
       agents: opened.stores.agents,
