@@ -12,6 +12,7 @@ import type { ConfigIssue } from "../config/config-issue.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { Closers } from "./closers.js";
 import type { ConfigCell } from "./config-cell.js";
+import type { ConfigReloadLink, ReloadAuthor } from "./config-reload-link.js";
 import type { Opened } from "./open-engine-parts.js";
 
 /** What reloads the settings when `config.json5` changes. */
@@ -33,7 +34,7 @@ export interface ConfigReloadOptions {
 
 // One save can fire several changes; the reload waits for them to settle (decision 0118).
 const settleMs = 500;
-const author = { by: "engine", surface: "config.json5" };
+const byEngine: ReloadAuthor = { author: { by: "engine", surface: "config.json5" } };
 
 function refuse(options: ConfigReloadOptions, issues: readonly ConfigIssue[]): void {
   const [issue] = issues;
@@ -49,18 +50,23 @@ function refuse(options: ConfigReloadOptions, issues: readonly ConfigIssue[]): v
 // Each changed key is journaled before the new config is put in place.
 async function apply(
   options: ConfigReloadOptions,
-  read: { readonly config: BinferenceConfig; readonly changes: readonly ConfigChangeFound[] },
+  read: {
+    readonly config: BinferenceConfig;
+    readonly changes: readonly ConfigChangeFound[];
+    readonly by: ReloadAuthor;
+  },
   signal: AbortSignal,
 ): Promise<void> {
-  const { changes } = read;
+  const { changes, by } = read;
   await changes.reduce<Promise<void>>(async (earlier, { path, before, after }) => {
     await earlier;
     const change = {
-      author,
+      author: by.author,
       atMs: options.clock.now(),
       path,
       ...(before === undefined ? {} : { before }),
       ...(after === undefined ? {} : { after }),
+      ...(by.reason === undefined ? {} : { reason: by.reason }),
     };
     await journalConfigChange(options.journal, change, { signal });
   }, Promise.resolve());
@@ -71,7 +77,11 @@ async function apply(
   options.logger.info("config.reloaded");
 }
 
-async function reload(options: ConfigReloadOptions, signal: AbortSignal): Promise<void> {
+async function reload(
+  options: ConfigReloadOptions,
+  by: ReloadAuthor,
+  signal: AbortSignal,
+): Promise<void> {
   const loaded = await options.readConfig(signal);
   if (!loaded.ok) {
     refuse(options, loaded.issues);
@@ -79,7 +89,7 @@ async function reload(options: ConfigReloadOptions, signal: AbortSignal): Promis
   }
   const changes = configChanges(options.settings.current(), loaded.config);
   if (changes.length > 0) {
-    await apply(options, { config: loaded.config, changes }, signal);
+    await apply(options, { config: loaded.config, changes, by }, signal);
   }
 }
 
@@ -88,14 +98,16 @@ async function reload(options: ConfigReloadOptions, signal: AbortSignal): Promis
  * file with problems keeps the running config, is logged and is named in `notice.configInvalid`;
  * otherwise each changed key is journaled by `engine` on the surface `config.json5`, the config
  * cell takes the new config, and `notice.configChanged` lists the changes and those that apply
- * only after a restart. Reloads run one at a time. Its closer stops the watch first.
+ * only after a restart. Reloads run one at a time. A writer such as `config/change` reloads at
+ * once through the answer's `applyNow`, journaled as its own, so the watch that follows finds no
+ * change and nothing is journaled twice. Its closer stops the watch first.
  */
-export function startConfigReload(options: ConfigReloadOptions): void {
+export function startConfigReload(options: ConfigReloadOptions): ConfigReloadLink {
   const stop = new AbortController();
   const state = { pending: new AbortController(), turn: Promise.resolve() };
-  const runReload = async (): Promise<void> => {
+  const runReload = async (by: ReloadAuthor): Promise<void> => {
     try {
-      await reload(options, stop.signal);
+      await reload(options, by, stop.signal);
     } catch (error) {
       const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
       options.logger.warn("config.reload_failed", { errorCode });
@@ -112,7 +124,7 @@ export function startConfigReload(options: ConfigReloadOptions): void {
       } catch {
         return;
       }
-      state.turn = state.turn.then(runReload);
+      state.turn = state.turn.then(async () => runReload(byEngine));
     })();
   };
   const onError = (error: BinferenceError): void => {
@@ -124,4 +136,11 @@ export function startConfigReload(options: ConfigReloadOptions): void {
     stop.abort();
     await state.turn;
   });
+  return {
+    applyNow: async (by, signal) => {
+      signal.throwIfAborted();
+      state.turn = state.turn.then(async () => runReload(by));
+      await state.turn;
+    },
+  };
 }

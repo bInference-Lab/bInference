@@ -32,6 +32,7 @@ import type { Closers } from "./closers.js";
 import { type BackupSources, backUpBeforeMigration, backupPartsOf } from "./compose-backups.js";
 import type { SetUpInstall } from "./compose-lock.js";
 import type { ConfigCell } from "./config-cell.js";
+import type { ConfigReloadLink } from "./config-reload-link.js";
 import { engineEndpoint, engineLogFile } from "./engine-locations.js";
 import type { OpenedBot } from "./open-bot.js";
 
@@ -52,6 +53,10 @@ export interface Opened {
   readonly settings: ConfigCell;
   /** Reads the config again in the same layers, as a reload does. */
   readonly readConfig: (signal: AbortSignal) => Promise<ConfigOutcome>;
+  /** Reads the config in the same layers with the file's text given, as a change checks it. */
+  readonly readConfigFrom: (text: string, signal: AbortSignal) => Promise<ConfigOutcome>;
+  /** The reload path a change of `config.json5` goes through, once the reload starts. */
+  readonly configReload: ConfigReloadLink;
   readonly log: OpenedLog;
   readonly stores: OpenedStores;
   /** The install, or `undefined` before `binference init` set it up. */

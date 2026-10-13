@@ -68,7 +68,8 @@ function startTimers(
     settings: opened.settings,
     publish: composed.publish,
   });
-  startConfigReload({
+  const { configReload } = opened;
+  configReload.applyNow = startConfigReload({
     file: opening.platform.stateFolder.configFile,
     readConfig: opened.readConfig,
     settings: opened.settings,
@@ -77,7 +78,7 @@ function startTimers(
     clock: host.clock,
     closers,
     logger,
-  });
+  }).applyNow;
   if (started.isPrivyUnreachable) {
     const { clock, random } = host;
     const onGiveUp = (): void => composed.publish(privyUnreachableNotice());

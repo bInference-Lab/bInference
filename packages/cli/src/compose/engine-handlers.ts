@@ -4,6 +4,7 @@ import type { RuntimeHealth } from "../agent-runtime/runtime-supervisor.js";
 import { composeBackupOperations } from "./backup-operations.js";
 import type { ComposedLock } from "./compose-lock.js";
 import type { ComposedRuntime } from "./compose-runtime.js";
+import { composeConfigChange } from "./config-change.js";
 import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createModelOperations } from "./model-operations.js";
@@ -37,7 +38,8 @@ interface EngineWiring {
 
 /**
  * The engine's own operations: its status with the health signals, its stop, its unlock, a new
- * pairing link for the owner's bot, the backups, the skills, and the models each agent uses.
+ * pairing link for the owner's bot, the backups, the skills, the change of `config.json5`, and the
+ * models each agent uses.
  */
 export function engineHandlers(
   opening: Opening,
@@ -73,6 +75,11 @@ export function engineHandlers(
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
     ...composeBackupOperations(opening, opened, (push) => wiring.jobs.publish(push)),
     ...composeSkillOperations(opening, opened, (push) => wiring.jobs.publish(push)),
+    ...composeConfigChange(opening.platform, {
+      settings: opened.settings,
+      validate: opened.readConfigFrom,
+      reload: opened.configReload,
+    }),
     ...createModelOperations({
       models: () => opened.runtime.models,
       agents: opened.stores.agents,

@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { BinferenceError, createDeadline } from "@binference/core";
+import { BinferenceError, createDeadline, ok } from "@binference/core";
 import { acquireFileLock, ensurePrivateFolder } from "@binference/platform";
 import { runtimeSettingsOf } from "../agent-runtime/runtime-settings-of.js";
 import { loadConfig } from "../config/load-config.js";
@@ -14,6 +14,7 @@ import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
 import { createConfigCell } from "./config-cell.js";
+import { createConfigReloadLink } from "./config-reload-link.js";
 import { openConsoleFiles } from "./console-files.js";
 import { platformOf } from "./engine-locations.js";
 import { openBot } from "./open-bot.js";
@@ -41,15 +42,18 @@ const startBudgetMs = 60_000;
 
 async function openAndServe(opening: Opening, sets: readonly string[]): Promise<StartOutcome> {
   const { host, platform, signal } = opening;
-  // A reload reads the same layers again: the file, the variables and this run's flags.
+  // A reload reads the same layers again: the file, the variables and this run's flags; a change
+  // checks a file's new text in them before it is written.
+  const layers = {
+    file: platform.stateFolder.configFile,
+    env: host.env,
+    sets,
+    system: systemDefaults(host.env, platform),
+  };
   const readConfig = async (reading: AbortSignal): Promise<ConfigOutcome> =>
-    loadConfig({
-      file: platform.stateFolder.configFile,
-      env: host.env,
-      sets,
-      system: systemDefaults(host.env, platform),
-      signal: reading,
-    });
+    loadConfig({ ...layers, signal: reading });
+  const readConfigFrom = async (text: string, reading: AbortSignal): Promise<ConfigOutcome> =>
+    loadConfig({ ...layers, signal: reading, readFile: async () => Promise.resolve(ok(text)) });
   const loaded = await readConfig(signal);
   if (!loaded.ok) {
     return { ok: false, refusal: "config_invalid", issues: loaded.issues };
@@ -61,7 +65,8 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
     const consoleFiles = await openConsoleFiles(host.consoleFolder, { logger: log.logger, signal });
     const webPushKey = await openEngineWebPushKey(platform, { logger: log.logger, signal });
     const config = loaded.config;
-    const opened = { config, settings, readConfig, log, consoleFiles, webPushKey, ...parts };
+    const read = { readConfig, readConfigFrom, configReload: createConfigReloadLink() };
+    const opened = { config, settings, ...read, log, consoleFiles, webPushKey, ...parts };
     return await openStoresAndServe(opening, opened);
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.
