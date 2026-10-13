@@ -39,3 +39,8 @@ Rules for this package:
 - Unit tests use no network: fakes, or servers on 127.0.0.1. Fork tests live in `src/fork/` and
   run in the fork suite (`pnpm test:fork`, see the README), never in `pnpm check`. They run inside
   `withFork` and reach only the suite's loopback endpoints.
+- `src/replay/` holds the pure parts of the replay (decision 0209): a recorded day's price path
+  and its fixtures in `days/`, the recorder's reduction of `Sync` logs, the compression of quiet
+  stretches and the swap that moves a v2 pair to a price; their unit tests run in `pnpm check`.
+  `src/fork/day-replay.ts` drives them on the fork; replay tests (`*.replay.test.ts`) run in
+  `pnpm test:replay` only. `pnpm replay:record` writes a new day from 48 Club's public node.

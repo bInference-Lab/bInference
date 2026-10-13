@@ -685,6 +685,13 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   after an explicit mine, reads history logs from a node that serves `eth_getLogs`, and has its
   changes reverted. Enforcer: `vitest.fork.config.ts` with its global setup, `withFork` in
   `chain-evm`, and the `src/fork/` exclusion in `vitest.config.ts`.
+- **Rule:** replay tests are `*.replay.test.ts` files in a package's `src/fork/` and run in the
+  replay suite (`pnpm test:replay`, nightly in CI after the fork suite), never in `pnpm check` or
+  `pnpm test:fork`. A replay moves today's pools on the fork along a recorded day's prices
+  (`chain-evm`'s `src/replay/days/`, written by `pnpm replay:record`), one block a block time,
+  and every replay test pins the fork again first ([decision 0209](adr/0209-a-recorded-day-replays-on-today-s-pools-to-time-exit-fills-by-block.md)).
+  Enforcer: `vitest.replay.config.ts`, the replay exclusion in `vitest.fork.config.ts`, and
+  `prepareDayReplay` in `chain-evm`.
 - **Rule:** crash tests live in a package's `src/crash/` and run in the crash suite
   (`pnpm test:crash`, nightly in CI on Linux, macOS and Windows, 100 runs on each), never in
   `pnpm check`. Each run kills an engine process outright at a kill point (`SIGKILL`, or

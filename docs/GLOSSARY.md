@@ -340,6 +340,11 @@ new name here first, in the change that uses it.
   CI against an anvil fork of BSC at a block pinned 20 behind the head. Its **test account** is
   anvil's first default account with its EIP-7702 code cleared; its **logs node** is a loopback
   endpoint that reads history from a public node serving `eth_getLogs`.
+- **replay suite**: the `*.replay.test.ts` files in each package's `src/fork/`, run by
+  `pnpm test:replay` and nightly in CI. A **replay** moves today's pools on the fork along a
+  **recorded day**, a committed price path of three PancakeSwap v2 pairs block by block, one block a
+  block time, and measures each fill's **trigger-to-fill** blocks: from the block whose price fired
+  it to the first block mined after it was sent.
 - **crash suite**: the tests in each package's `src/crash/`, run by `pnpm test:crash` and nightly
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was
