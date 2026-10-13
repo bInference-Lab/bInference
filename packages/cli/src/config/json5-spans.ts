@@ -1,9 +1,8 @@
-import { stableJson } from "@binference/core";
-import type { Locale } from "@binference/protocol";
 import JSON5 from "json5";
 import { z } from "zod";
-import { readConfigText } from "./config-text.js";
-import { applyEdits } from "./migrations/config-edit.js";
+
+// A JSON5 text read as spans: where each object, member and value starts and ends, comments and
+// whitespace left out, so an edit can change one value and keep every other byte.
 
 /** One token of a JSON5 text: where it starts and ends, and what it is. */
 interface Token {
@@ -13,16 +12,27 @@ interface Token {
   readonly end: number;
 }
 
-/** A member of an object: its key and its value's tokens. */
-interface Member {
+/** A member of an object: its key, its value, and the comma after it, if any. */
+interface Json5Member {
   readonly key: string;
   readonly keyStart: number;
-  readonly value: Value;
+  readonly value: Json5Value;
+  /** Where the comma after the value ends; absent for a last member written without one. */
+  readonly commaEnd?: number;
 }
 
-/** A parsed value: an object with its members, or anything else as its span of tokens. */
-type Value =
-  | { readonly kind: "object"; readonly openEnd: number; readonly members: readonly Member[] }
+/**
+ * A parsed value: an object with its members, or anything else, an array or a scalar, as its span
+ * of tokens. Every span runs from its first token's start to its last token's end.
+ */
+export type Json5Value =
+  | {
+      readonly kind: "object";
+      readonly start: number;
+      readonly openEnd: number;
+      readonly end: number;
+      readonly members: readonly Json5Member[];
+    }
   | { readonly kind: "other"; readonly start: number; readonly end: number };
 
 const puncts = new Set(["{", "}", "[", "]", ":", ","]);
@@ -128,19 +138,25 @@ function keyOf(token: Token): string | undefined {
   return token.kind === "word" && /^[$A-Z_a-z][$\w]*$/.test(token.text) ? token.text : undefined;
 }
 
-function parseMember(tokens: readonly Token[], at: number): Parsed<Member> | undefined {
+function parseMember(tokens: readonly Token[], at: number): Parsed<Json5Member> | undefined {
   const keyToken = tokens[at];
   const key = keyToken === undefined ? undefined : keyOf(keyToken);
   const value = tokens[at + 1]?.text === ":" ? parseValue(tokens, at + 2) : undefined;
   if (keyToken === undefined || key === undefined || value === undefined) {
     return undefined;
   }
-  const next = tokens[value.next]?.text === "," ? value.next + 1 : value.next;
-  return { value: { key, keyStart: keyToken.start, value: value.value }, next };
+  const comma = tokens[value.next];
+  const member = { key, keyStart: keyToken.start, value: value.value };
+  return comma?.text === ","
+    ? { value: { ...member, commaEnd: comma.end }, next: value.next + 1 }
+    : { value: member, next: value.next };
 }
 
 // The members of an object, up to its closing brace, and the token after that brace.
-function parseMembers(tokens: readonly Token[], at: number): Parsed<readonly Member[]> | undefined {
+function parseMembers(
+  tokens: readonly Token[],
+  at: number,
+): Parsed<readonly Json5Member[]> | undefined {
   if (tokens[at]?.text === "}") {
     return { value: [], next: at + 1 };
   }
@@ -164,15 +180,22 @@ function arrayEnd(tokens: readonly Token[], at: number): number | undefined {
   return arrayEnd(tokens, tokens[item.next]?.text === "," ? item.next + 1 : item.next);
 }
 
-function parseObject(tokens: readonly Token[], open: Token, at: number): Parsed<Value> | undefined {
+function parseObject(
+  tokens: readonly Token[],
+  open: Token,
+  at: number,
+): Parsed<Json5Value> | undefined {
   const members = parseMembers(tokens, at + 1);
-  return members === undefined
-    ? undefined
-    : { value: { kind: "object", openEnd: open.end, members: members.value }, next: members.next };
+  const close = members === undefined ? undefined : tokens[members.next - 1];
+  if (members === undefined || close === undefined) {
+    return undefined;
+  }
+  const object = { start: open.start, openEnd: open.end, end: close.end, members: members.value };
+  return { value: { kind: "object", ...object }, next: members.next };
 }
 
 // An array or a scalar: the span of the tokens it covers.
-function parseOther(tokens: readonly Token[], at: number): Parsed<Value> | undefined {
+function parseOther(tokens: readonly Token[], at: number): Parsed<Json5Value> | undefined {
   const first = tokens[at];
   const next = first?.kind === "punct" ? arrayEnd(tokens, at + 1) : at + 1;
   const last = next === undefined ? undefined : tokens[next - 1];
@@ -182,7 +205,7 @@ function parseOther(tokens: readonly Token[], at: number): Parsed<Value> | undef
 }
 
 // A value's span: an object with its members; an array or a scalar as the tokens it covers.
-function parseValue(tokens: readonly Token[], at: number): Parsed<Value> | undefined {
+function parseValue(tokens: readonly Token[], at: number): Parsed<Json5Value> | undefined {
   const first = tokens[at];
   if (first === undefined || (first.kind === "punct" && first.text !== "{" && first.text !== "[")) {
     return undefined;
@@ -192,65 +215,13 @@ function parseValue(tokens: readonly Token[], at: number): Parsed<Value> | undef
     : parseOther(tokens, at);
 }
 
-// What goes in after an object's opening brace: on a line of its own, indented as the first
-// member, when the members start on a new line; else on the brace's line.
-function insertion(text: string, object: Extract<Value, { kind: "object" }>, member: string) {
-  const [first] = object.members;
-  if (first === undefined) {
-    return ` ${member} `;
-  }
-  const between = text.slice(object.openEnd, first.keyStart);
-  const newline = text.includes("\r\n") ? "\r\n" : "\n";
-  const indent = /[^\S\r\n]*$/.exec(between)?.[0] ?? "";
-  return lineBreak.test(between) ? `${newline}${indent}${member},` : ` ${member},`;
-}
-
-function spliced(text: string, at: { readonly start: number; readonly end: number }, by: string) {
-  return `${text.slice(0, at.start)}${by}${text.slice(at.end)}`;
-}
-
-// The edit that sets `owner.locale`: the value in place, or a new member at the top of `owner`,
-// or a new `owner` at the top of the file.
-function editOf(text: string, root: Value, locale: Locale): string | undefined {
-  if (root.kind !== "object") {
-    return undefined;
-  }
-  const quoted = JSON.stringify(locale);
-  const owner = root.members.findLast((member) => member.key === "owner")?.value;
-  if (owner === undefined) {
-    const at = { start: root.openEnd, end: root.openEnd };
-    return spliced(text, at, insertion(text, root, `owner: { locale: ${quoted} }`));
-  }
-  if (owner.kind !== "object") {
-    return undefined;
-  }
-  const current = owner.members.findLast((member) => member.key === "locale")?.value;
-  if (current === undefined) {
-    const at = { start: owner.openEnd, end: owner.openEnd };
-    return spliced(text, at, insertion(text, owner, `locale: ${quoted}`));
-  }
-  return current.kind === "other" ? spliced(text, current, quoted) : undefined;
-}
-
 /**
- * The text of `config.json5` with `owner.locale` set, and every other byte as it was: comments,
- * order and formatting stay (decision 0134). `undefined` when the text is no config file this
- * edit can read, or when the result would read as anything but the same file with that one value
- * set, so nothing is written then.
+ * Reads a JSON5 text into the spans of its top value, or `undefined` for a text with an unclosed
+ * string or comment, or one that does not hold one value. Only the structure is read: whether the
+ * text is valid JSON5 is the parser's to say.
  */
-export function withOwnerLocale(text: string, locale: Locale): string | undefined {
-  const before = readConfigText(text);
+export function readJson5Spans(text: string): Json5Value | undefined {
   const tokens = tokensOf(text);
-  if (!before.ok || tokens === undefined) {
-    return undefined;
-  }
-  const root = parseValue(tokens, 0);
-  const edited = root === undefined ? undefined : editOf(text, root.value, locale);
-  const after = edited === undefined ? undefined : readConfigText(edited);
-  const expected = applyEdits(before.value, [
-    { kind: "set", path: ["owner", "locale"], value: locale },
-  ]);
-  return after?.ok === true && stableJson(after.value) === stableJson(expected)
-    ? edited
-    : undefined;
+  const root = tokens === undefined ? undefined : parseValue(tokens, 0);
+  return root === undefined || root.next !== tokens?.length ? undefined : root.value;
 }

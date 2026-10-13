@@ -8,8 +8,8 @@ import {
 } from "@binference/platform";
 import { localeSchema } from "@binference/protocol";
 import { z } from "zod";
+import { editJson5Text } from "../config/json5-edit.js";
 import type { ReadTextFile } from "../config/load-config.js";
-import { withOwnerLocale } from "../config/owner-locale-text.js";
 import { shownConfig } from "../config/shown-config.js";
 import type { ConfigCell } from "./config-cell.js";
 
@@ -51,7 +51,8 @@ export function createOwnerLocaleChange(
     }
     const { locale } = patch.data.owner;
     const text = await read(options.file, signal);
-    const edited = text.ok ? withOwnerLocale(text.value, locale) : undefined;
+    const edit = { kind: "set", path: ["owner", "locale"], value: locale } as const;
+    const edited = text.ok ? editJson5Text(text.value, [edit]) : undefined;
     if (edited === undefined) {
       return err("config.invalid");
     }
