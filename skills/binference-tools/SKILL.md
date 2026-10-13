@@ -2,6 +2,8 @@
 name: binference-tools
 description: Reads the owner's binference portfolio, tokens, quotes, auto orders and ledger, and proposes swaps, buys, sells, sends, auto orders and alerts through the binference_* MCP tools; the owner confirms every proposal on a card. Use when the user asks to trade, swap, buy, sell or send crypto, or to check balances, orders or a trade, through binference.
 license: MIT
+metadata:
+  binference-audience: mcp
 ---
 
 # binference tools

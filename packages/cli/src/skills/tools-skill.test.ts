@@ -4,6 +4,7 @@ import { readTextFile } from "@binference/platform";
 import { lintSkill } from "@binference/plugin-sdk";
 import { mcpTools } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { readSkillFile } from "./skill-file.js";
 
 // The skill MCP clients get, in the repo's bundled skills.
 const skillFile = fileURLToPath(
@@ -50,5 +51,12 @@ describe("the binference-tools skill", () => {
     expect(frontmatter.get("name")).toBe("binference-tools");
     expect([...frontmatter.keys()].filter((key) => !allowedKeys.has(key))).toStrictEqual([]);
     expect(frontmatter.get("description")).toMatch(/^.{1,1024}$/);
+  });
+
+  it("is for MCP clients alone, so no agent's index lists it", async () => {
+    expect(readSkillFile(await skillText())).toMatchObject({
+      ok: true,
+      value: { name: "binference-tools", audience: "mcp" },
+    });
   });
 });
