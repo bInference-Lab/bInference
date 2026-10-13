@@ -53,4 +53,21 @@ describe("journaling a config change", () => {
     );
     expect(entry).not.toHaveProperty("after");
   });
+
+  it("records the reason the author gave", async () => {
+    const journal = createMemoryConfigJournal();
+    const entry = await journalConfigChange(
+      { journal, publish: () => undefined },
+      {
+        author: authorOf(testCallers.cli),
+        atMs: 7,
+        path: "engine.port",
+        before: 7456,
+        after: 7460,
+        reason: "Another program took 7456.",
+      },
+      live(),
+    );
+    expect(entry).toMatchObject({ path: "engine.port", reason: "Another program took 7456." });
+  });
 });

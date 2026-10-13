@@ -32,6 +32,8 @@ export interface ConfigChangeMade {
   readonly path: string;
   readonly before?: JsonValue;
   readonly after?: JsonValue;
+  /** Why, in the author's words, when they gave a reason. */
+  readonly reason?: string;
   readonly notices?: readonly EnginePush[];
 }
 
@@ -45,7 +47,7 @@ export async function journalConfigChange(
   change: ConfigChangeMade,
   options: { readonly signal: AbortSignal },
 ): Promise<ConfigJournalEntry> {
-  const { author, atMs, path, before, after, notices = [] } = change;
+  const { author, atMs, path, before, after, reason, notices = [] } = change;
   const entry = await parts.journal.record(
     {
       atMs,
@@ -54,6 +56,7 @@ export async function journalConfigChange(
       path,
       ...(before === undefined ? {} : { before }),
       ...(after === undefined ? {} : { after }),
+      ...(reason === undefined ? {} : { reason }),
     },
     options,
   );
