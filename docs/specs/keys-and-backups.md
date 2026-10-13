@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by decisions
 [0103](../DECISIONS.md#d0103), [0116](../DECISIONS.md#d0116), [0117](../DECISIONS.md#d0117),
-[0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148), [0149](../DECISIONS.md#d0149) and [0217](../DECISIONS.md#d0217). It follows Privy custody (decisions
+[0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148), [0149](../DECISIONS.md#d0149), [0210](../DECISIONS.md#d0210) and [0217](../DECISIONS.md#d0217). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
@@ -275,11 +275,18 @@ says without checking it:
 5. The fee per gas is at most the chain's network fee cap from the signer's settings, whatever
    authorized the transaction, and a chain with no cap there signs nothing ([decision
    0143](../DECISIONS.md#d0143)). `termsHash`, the hash of the request, quote and plan that run
-   (spec 6, section 1), matches the authorization's: a confirmation that has not expired, an active
-   order or webhook rule whose bounds hold, or the agent's current auto-mode grant for an intent
-   that passes the auto test (spec 6, section 5). One exception: a cancel (rule 6) of the confirmed
-   intent signs for 60 seconds after its confirmation expired ([decision
-   0116](../DECISIONS.md#d0116)).
+   (spec 6, section 1), matches the authorization's: a confirmation that has not expired, an auto
+   order's fill grant, an active webhook rule whose bounds hold, or the agent's current auto-mode
+   grant for an intent that passes the auto test (spec 6, section 5). A fill grant holds for the
+   intent it names while the order the engine read right before the signature holds the card
+   terms the owner confirmed, is `active`, before its expiry, with a fill left and with the fills
+   it had when the fill was proposed; the transaction pays at most the grant's fee cap per gas and
+   spends at most the grant's most of what the fill spends, a call's native value for the coin or
+   an approval's amount for a token, and sends no coin with a call while the fill spends a token;
+   a send never fills an order; and the grant lasts 60 seconds from the fill's confirmation
+   ([decision 0210](../DECISIONS.md#d0210)). One exception: a cancel (rule 6) of the confirmed
+   intent, or of an order's fill whatever the order became, signs for 60 seconds after its
+   confirmation or grant expired ([decision 0116](../DECISIONS.md#d0116)).
 6. For a speed-up or a cancel at an already used nonce: the calldata is identical (speed-up) or the
    transaction is a 0-value transfer to the wallet itself (cancel).
 

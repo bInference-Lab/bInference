@@ -9,7 +9,7 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), [0157](../DECISIONS.md#d0157)
-[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190) and [0195](../DECISIONS.md#d0195). Accepted by the owner on 2026-10-12: a token launch refused in
+[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195) and [0210](../DECISIONS.md#d0210). Accepted by the owner on 2026-10-12: a token launch refused in
 paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
 whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
 to 13.
@@ -91,7 +91,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                                                        | the card version tapped is the current one; the card has not expired; the rolling cap still holds ([decision 0136](../DECISIONS.md#d0136))                                                                                                                                   |
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                                                            |                                                                                                                                                                                                                                                                              |
 | `awaiting_confirmation`      | `expired`               | card timer                                                                                           | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, unfreezes, auto orders, identity, token launches and approval revokes                                                                                                                               |
-| `confirmed`                  | `expired`               | the executor finds its authorization ran out                                                         | the confirmation or the auto grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                                                                                                |
+| `confirmed`                  | `expired`               | the executor finds its authorization ran out                                                         | the confirmation, the auto grant or a fill's grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                                                                                |
 | `confirmed`                  | `awaiting_confirmation` | the fee wait outlasted the confirmation                                                              | a tapped intent held while the fee per gas was above the cap, its confirmation run out: card version n+1, and `notice.feeAboveCap` ([decision 0143](../DECISIONS.md#d0143))                                                                                                  |
 | any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                                                             | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099))                                                                                                                                                                                      |
 | `confirmed`                  | `paper_filled`          | paper mode                                                                                           | a paper intent, which a rescue never is ([decision 0100](../DECISIONS.md#d0100))                                                                                                                                                                                             |
@@ -174,15 +174,18 @@ used its last fill), `fill_bounds` (it spends nothing, more than its size allows
 token, wallet, mode or side than its order, or its quote's minimum gives up more of its expected
 output than the order's maximum slippage, else the agent's for the pair), `worst_price` (its quote's price at its minimum out is worse than the order's worst
 price, or nothing values it), `trigger_unconfirmed` (a thin pool's price fired it, and the quote's
-own expected price does not meet the trigger), and `daily_cap` (another confirmation took the
-rolling cap's room after its policy step).
+own expected price does not meet the trigger), `daily_cap` (another confirmation took the
+rolling cap's room after its policy step), and `live_fills_off` (a live fill while live fills are
+off, which the money path refuses on its own; [decision 0210](../DECISIONS.md#d0210)).
 
 An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
 order's buy that would pass its daily cap for the leader; `engine_locked`, the engine is locked;
 `live_fills_off`, a live order while live fills are off; `nothing_to_spend`, a buy whose size comes
 to nothing; `fill_failed`, a fill that threw or ran past its 30-second deadline, whose unfinished intent is
-cancelled unsigned ([decision 0197](../DECISIONS.md#d0197)); and `no_price`, a size in dollars
-whose asset has no USD price. The skip is an
+cancelled unsigned ([decision 0197](../DECISIONS.md#d0197)), or a live fill never signed; `fill_lapsed`,
+a live fill whose grant ran out before its wallet's queue took it
+([decision 0210](../DECISIONS.md#d0210)); and `no_price`, a size in dollars whose asset has no USD
+price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
 refused.
 
@@ -228,6 +231,18 @@ and `step_unsent` (a step never signed after an earlier one landed,
     until its condition stops holding at a confirmed price, and a trailing stop's highest price
     starts again; an exit order whose fill emptied its position ends with `position_closed`
     ([decision 0197](../DECISIONS.md#d0197)).
+  - A live fill ([decision 0210](../DECISIONS.md#d0210)) signs under its fill grant (spec 5,
+    rule 5), which binds the fill's terms to its order's confirmed card terms and to the fills its
+    order had when the fill was proposed, stored with its authorization; the grant lasts 60
+    seconds from the fill's confirmation. No fill of the agent starts while one of its live fills
+    is `confirmed`, `executing`, `included`, `finalized` or `unknown_after_send`, after a restart
+    too, and the fill runner never cancels a live fill the executor took. The move to
+    `reconciled` writes the order's `fill_landed` move, the fill's `filled` row and the end of the
+    other exit orders of a position it emptied, in one write: a fill that landed counts on its
+    order whatever the order became meanwhile, and an order that ended keeps its state and counts
+    it. A dropped step that lands later counts on its order the same way. A live fill that ends
+    otherwise records a skip with its intent's end: its failure reason on chain, `fill_failed`
+    when never signed, `fill_lapsed` when its grant ran out in the queue.
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when
@@ -448,8 +463,8 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    landed ([decision 0126](../DECISIONS.md#d0126)). A step whose transactions were dropped ends
    `failed_onchain` with `stuck_dropped`, unless a block holds one of them after all
    ([decision 0115](../DECISIONS.md#d0115)).
-5. A `confirmed` live intent whose confirmation or auto grant ran out while the engine was stopped
-   or locked moves to `expired`, with `notice.confirmationLapsed`; nothing is signed. One that
+5. A `confirmed` live intent whose confirmation, auto grant or fill grant ran out while the engine
+   was stopped or locked moves to `expired`, with `notice.confirmationLapsed`; nothing is signed. One that
    still holds waits for the queue until the engine holds its keys
    ([decision 0120](../DECISIONS.md#d0120)). A running engine does the same for an intent its
    queue refused or left `confirmed` ([decision 0146](../DECISIONS.md#d0146)): one whose authorization ran out while it waited behind the
@@ -457,6 +472,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    again each block until then, and an auto intent whose fee per gas stayed above the cap. A
    tapped intent that waited for the fee gets a new card version instead
    ([decision 0143](../DECISIONS.md#d0143)).
+6. A live order fill a stop left before its confirmation is cancelled unsigned, and its order
+   records `fill_failed`; a confirmed one is the executor's, as any live intent
+   ([decision 0210](../DECISIONS.md#d0210)).
 
 <a id="section-8"></a>
 
@@ -536,3 +554,6 @@ Property tests (fast-check) hold these for every generated history:
 15. A buy order's fill by `percentBps` never spends more than the wallet's spendable balance of
     what it spends when its quote was built, and never the gas reserve
     ([decision 0190](../DECISIONS.md#d0190)).
+16. A live fill signs only while its order holds the fills it had when the fill was proposed, and
+    each live fill that lands counts on its order once, so an order never fills past its fills
+    ([decision 0210](../DECISIONS.md#d0210)).
