@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186) and [0191](../DECISIONS.md#d0191);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191) and [0208](../DECISIONS.md#d0208);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -33,7 +33,9 @@ the owner on 2026-10-12.
   fixes looser ones.
 - `binference init` writes it with comments for every key it sets.
 - The engine reads it at startup and on `config/change`; it never rewrites keys the owner did not
-  change, and it keeps comments.
+  change, and it keeps comments. `config/change` takes a JSON merge patch, edits the file's text in
+  place, checks the whole config before one atomic write, and journals the change once through the
+  reload, as the caller's ([decision 0208](../DECISIONS.md#d0208)).
 - The engine also reloads it 500 ms after the file last changed, through a watch on its folder
   ([decision 0118](../DECISIONS.md#d0118)). A file with problems keeps the running config, and
   `notice.configInvalid` names the first problem by its line or its key. Otherwise each changed key
