@@ -2,6 +2,8 @@ import { accountRefSchema } from "@binference/chain";
 import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testLimits, testNowMs, testSwap } from "../intents/test-intents.js";
 import type { AgentStore } from "../ports.js";
 import {
@@ -72,6 +74,28 @@ describe("the live switch", () => {
       test.engine.handlers["agent/goLive"](testCall({ agent: testAgent })),
     ).resolves.toStrictEqual(err("limit.needs_launch_wallet"));
     await expect(modeOf(test)).resolves.toBe("paper");
+  });
+
+  it("goes live with a venue on a launch's own contracts once it has a launch wallet", async () => {
+    const launchCurve = accountRefSchema.parse("fake:1:0x000000c1");
+    const test = await startTestEngine({
+      chains: testChains(["fake-curve"]),
+      venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })],
+      agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-curve"] } },
+    });
+    test.stores.install.addWallet(
+      testWalletRecord({
+        id: fixtureId("wal", 77),
+        agentId: testAgent,
+        label: "curves",
+        createdAtMs: testNowMs,
+        role: "launch",
+      }),
+    );
+    const view = expectOk(
+      await test.engine.handlers["agent/goLive"](testCall({ agent: testAgent })),
+    );
+    expect([view.mode, await modeOf(test)]).toStrictEqual(["live", "live"]);
   });
 
   it("refuses to go live before the default wallet holds funds, and stays on paper", async () => {

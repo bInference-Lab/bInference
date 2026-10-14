@@ -3,6 +3,7 @@ import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing"
 import { bpsSchema, err, idSchema } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import type { WalletRecord } from "../install/install-record.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import {
@@ -350,6 +351,21 @@ describe("a venue added to the limits", () => {
     expect(await setLimits(test, { venues: ["fake-swap"] })).toStrictEqual(
       err("limit.over_ceiling"),
     );
+  });
+
+  it("lets a live agent with a launch wallet add a launchpad, after the 24-hour wait", async () => {
+    const test = await besideLaunchCurves("live");
+    test.stores.install.addWallet({
+      ...wallet,
+      id: fixtureId("wal", 77),
+      custodyWalletId: "privy-wallet-launch",
+      address: "0x000000d7",
+      role: "launch",
+    });
+
+    const set = expectOk(await setLimits(test, { venues: ["fake-curve"] }));
+
+    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-curve"] }, effectiveAt });
   });
 
   it("is malformed when the registry holds no contract of it, as is an unknown chain", async () => {

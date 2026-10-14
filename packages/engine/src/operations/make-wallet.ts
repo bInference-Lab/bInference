@@ -11,6 +11,7 @@ import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { WalletDraft } from "../install/install-record.js";
+import { launchWalletOf } from "../install/launch-wallet.js";
 import type { WalletMaker } from "../install/ports.js";
 import type { WalletRefusal } from "../install/wallet-request.js";
 import { rescueAt } from "../policy/rescue-change.js";
@@ -28,19 +29,6 @@ export interface MakeWalletOptions extends RescueCeilingsOptions {
   readonly maker: WalletMaker;
   readonly journal: ConfigJournal;
   readonly ids: IdSource;
-}
-
-// Whether the agent holds a live launch wallet already: it holds one at most (decision 0217).
-async function hasLaunchWallet(
-  options: MakeWalletOptions,
-  agent: AgentSettings["agent"]["id"],
-  signal: AbortSignal,
-): Promise<boolean> {
-  const { wallets } = await options.install.read({ signal });
-  return wallets.some(
-    (wallet) =>
-      wallet.agentId === agent && wallet.role === "launch" && wallet.archivedAtMs === undefined,
-  );
 }
 
 const refusalCodes: Readonly<Record<WalletRefusal, ProtocolErrorCode>> = {
@@ -105,7 +93,7 @@ export async function makeWallet(
     return found;
   }
   const isLaunch = args.launch === true;
-  if (isLaunch && (await hasLaunchWallet(options, args.agent, signal))) {
+  if (isLaunch && (await launchWalletOf(options.install, args.agent, { signal })) !== undefined) {
     return err("wallet.launch_exists");
   }
   await settleRescueCeilings(options, signal);

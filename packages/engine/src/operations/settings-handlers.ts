@@ -98,6 +98,7 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     custody: options.custody,
     chains,
     host: options.host,
+    install: options.stores.install,
     clock: options.clock,
     publish: options.publish,
   });

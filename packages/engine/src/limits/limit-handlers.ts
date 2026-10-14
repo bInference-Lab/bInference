@@ -17,6 +17,7 @@ import { z } from "zod";
 import type { AgentMode, AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import { launchWalletIn } from "../install/launch-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
 import {
@@ -159,9 +160,10 @@ async function move(
 }
 
 // A venue or chain the registry lacks is malformed. A venue that trades on a launch's own
-// contracts needs a launch wallet to trade live, which no ceiling gives: a live agent cannot add
-// it, and a paper agent adds it with no ceiling to check. Any other venue a live wallet's ceiling
-// leaves out waits for the owner key, which alone adds it to the ceiling.
+// contracts needs a launch wallet to trade live, whose ceiling allows the calls of every launchpad
+// the install runs (decision 0217): a live agent without one cannot add it, and a paper agent, or
+// one with a launch wallet, adds it with no other ceiling to check. Any other venue a live
+// wallet's ceiling leaves out waits for the owner key, which alone adds it to the ceiling.
 async function refusalOf(
   options: LimitHandlersOptions,
   call: EngineCall<"limit/set">,
@@ -174,14 +176,15 @@ async function refusalOf(
     return "protocol.bad_args";
   }
   const launched = added.filter((venue) => options.host.hasLaunchContracts(venue));
-  if (launched.length > 0 && agent.mode === "live") {
+  const { wallets } = await options.install.read({ signal: call.signal });
+  const hasLaunchWallet = launchWalletIn(wallets, call.args.agent) !== undefined;
+  if (launched.length > 0 && agent.mode === "live" && !hasLaunchWallet) {
     return "limit.needs_launch_wallet";
   }
   const ceilinged = added.filter((venue) => !launched.includes(venue));
   if (ceilinged.length === 0) {
     return undefined;
   }
-  const { wallets } = await options.install.read({ signal: call.signal });
   const check = { agent: call.args.agent, venues: ceilinged, wallets, chains: options.chains };
   return venuesOutsideCeiling(check).length > 0 ? "limit.over_ceiling" : undefined;
 }
@@ -239,8 +242,9 @@ function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set"
  * scope, each change that is clearly stricter or back to the value in effect, and drops any looser
  * value of that limit that waits; every other change needs the `loosen` scope and waits 24 hours
  * (decision 0111). A venue that trades on a launch's own contracts is `limit.needs_launch_wallet`
- * for a live agent, and needs no ceiling for a paper one (decision 0212); any other venue a live
- * wallet's ceiling leaves out is `limit.over_ceiling`. The token
+ * for a live agent without a launch wallet, and needs no ceiling for a paper one or one with a
+ * launch wallet (decisions 0212 and 0217); any other venue a live wallet's ceiling leaves out is
+ * `limit.over_ceiling`. The token
  * lists keep each token in its family's canonical form; a token without one is
  * `protocol.bad_args`.
  * `limit/cancelPending` drops the looser limits that wait. Each move is journaled, pushed as
