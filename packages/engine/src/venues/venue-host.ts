@@ -54,6 +54,11 @@ export interface TradePlan {
   readonly terms: QuoteTerms;
   /** The steps in order: at most one exact approval, then the trade call. */
   readonly steps: readonly PlanStep[];
+  /**
+   * The contracts of the traded token's launch the trade was quoted and built with, which the
+   * risk step's test legs are built with too (decision 0212). Left out, registry contracts alone.
+   */
+  readonly launch?: LaunchContracts;
 }
 
 /** A trade the host quoted on its venue and has not built yet. */
@@ -296,7 +301,8 @@ async function buildPlan(
     return refuse("decode_mismatch", checked.error);
   }
   const terms = { quotedAtMs, minOutBase: checked.value.minOut.base };
-  return ok({ venue: trade.venue, quote, terms, steps: steps.value });
+  const launch = quoted.launch === undefined ? {} : { launch: quoted.launch };
+  return ok({ venue: trade.venue, quote, terms, steps: steps.value, ...launch });
 }
 
 /** What the host's quote and build share: its venues, its chains and its call options. */

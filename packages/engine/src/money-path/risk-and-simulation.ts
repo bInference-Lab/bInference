@@ -18,8 +18,8 @@ export interface RiskStepParts extends AdvanceParts {
 
 /**
  * Step 4 of the money path: weighs the token the chosen route buys at the quote it was built
- * from, against the agent's tax and liquidity limits, and stores its view whether it passes or
- * refuses.
+ * from, with the launch contracts it was built with, against the agent's tax and liquidity limits,
+ * and stores its view whether it passes or refuses.
  */
 export async function assessRisk(
   parts: RiskStepParts,
@@ -27,10 +27,12 @@ export async function assessRisk(
   planned: PlannedSwap,
 ): Promise<IntentSnapshot> {
   const { plan } = planned;
+  // The launch the plan was built with, so the round trip's test buy builds as the trade did.
   const quoted = {
     trade: { ...parts.trade, venue: plan.venue },
     quote: plan.quote,
     quotedAtMs: plan.terms.quotedAtMs,
+    ...(plan.launch === undefined ? {} : { launch: plan.launch }),
   };
   const { taxBps, liquidityFloorUsdMicros } = parts.limits;
   const limits = { maxTaxBps: taxBps, liquidityFloorUsdMicros };
