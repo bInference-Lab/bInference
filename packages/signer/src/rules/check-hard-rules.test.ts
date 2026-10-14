@@ -464,6 +464,26 @@ describe("a launch wallet's steps on a launch's own contracts", () => {
     const unnamed = { ...curveCall, allowed: { ...call.allowed, contracts: [] } };
     expect(brokenHardRules(fromLaunchWallet(unnamed), context)).toStrictEqual([2]);
   });
+
+  it("refuses a launch wallet's approval naming a spender no launch of the step holds", () => {
+    const other = {
+      ...withStep(
+        withTransaction(approve, { to: token, value: "0x0", data: approveCalldata(saved, 1000n) }),
+        {
+          action: {
+            kind: "approve",
+            token: accountOn(token),
+            spender: accountOn(saved),
+            amount: 1000n,
+          },
+        },
+      ),
+      allowed: curveApproval.allowed,
+    };
+    expect(brokenHardRules(fromLaunchWallet(other), context)).toStrictEqual([2]);
+    const unlaunched = { ...curveApproval, allowed: { ...curveApproval.allowed, launch: [] } };
+    expect(brokenHardRules(fromLaunchWallet(unlaunched), context)).toStrictEqual([2]);
+  });
 });
 
 describe("the hard rules", () => {
