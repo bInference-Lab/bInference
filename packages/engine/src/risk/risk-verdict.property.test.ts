@@ -21,6 +21,7 @@ function findingsOf(snipe: number, max: number, flags: readonly RiskFlagCode[] =
     roundTrip: {
       kind: "measured",
       buyTaxBps: bps(snipe),
+      hookFeeBps: bps(0),
       transferTaxBps: bps(0),
       sellTaxBps: bps(0),
     },

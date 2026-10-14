@@ -81,6 +81,7 @@ describe("round trip", () => {
     await expect(probeRoundTrip(unknownTokenQuote(nowMs), options, live)).resolves.toStrictEqual({
       kind: "measured",
       buyTaxBps: 300,
+      hookFeeBps: 0,
       transferTaxBps: 100,
       sellTaxBps: 4_000,
     });
@@ -94,6 +95,7 @@ describe("round trip", () => {
     await expect(probeRoundTrip(taxed, options, live)).resolves.toStrictEqual({
       kind: "measured",
       buyTaxBps: 300,
+      hookFeeBps: 0,
       transferTaxBps: 0,
       sellTaxBps: 500,
     });
@@ -111,11 +113,26 @@ describe("round trip", () => {
     });
   });
 
+  it("measures what the route's pool hook takes of the token apart from the token's tax", async () => {
+    // The model's buy sends 2% of what the pool pays out to an account the quote names as a hook.
+    const options = optionsOf({ buyTaxBps: 200 });
+    const quoted = unknownTokenQuote(nowMs);
+    const hook = accountRefSchema.parse("fake:1:0x000000fe");
+    const hookFees = [{ maker: "Fake", feeBps: bpsSchema.parse(200), hooks: [hook] }];
+    const hooked = { ...quoted, quote: { ...quoted.quote, hookFees } };
+    await expect(probeRoundTrip(hooked, options, live)).resolves.toMatchObject({
+      kind: "measured",
+      buyTaxBps: 0,
+      hookFeeBps: 200,
+    });
+  });
+
   it("measures no tax for a token that takes none", async () => {
     const options = optionsOf({});
     await expect(probeRoundTrip(unknownTokenQuote(nowMs), options, live)).resolves.toStrictEqual({
       kind: "measured",
       buyTaxBps: 0,
+      hookFeeBps: 0,
       transferTaxBps: 0,
       sellTaxBps: 0,
     });

@@ -23,6 +23,8 @@ export interface RiskFindings {
   readonly checkedAtMs: number;
   /** The launch-window tax the trade's own quote names for its wallet now (decision 0213). */
   readonly snipeTaxBps?: Bps;
+  /** What the trade's quote says its route's pool hooks keep of it (decisions 0214 and 0215). */
+  readonly hookFeeBps?: Bps;
   /** The wallets the token's launchpad favors, which the view records (decision 0213). */
   readonly insiders?: readonly AccountRef[];
 }
@@ -42,6 +44,16 @@ function highestTaxBps(roundTrip: RoundTrip): Bps | undefined {
         tax > max ? tax : max,
       )
     : undefined;
+}
+
+// The highest tax a leg pays, the buy counting the fee its route's pool hooks keep once: the
+// quote's or the share measured going to them, the higher (decision 0215).
+function countedTaxBps(roundTrip: RoundTrip, hookFeeBps: Bps | undefined): number {
+  if (roundTrip.kind !== "measured") {
+    return 0;
+  }
+  const hooks = Math.max(hookFeeBps ?? 0, roundTrip.hookFeeBps);
+  return Math.max(roundTrip.buyTaxBps + hooks, roundTrip.transferTaxBps, roundTrip.sellTaxBps);
 }
 
 // Each source counts only the pools it knows, so the largest figure is the best floor. With no
@@ -71,7 +83,10 @@ const checks: readonly (readonly [RiskReason, Check])[] = [
     (_findings, flags) => flags.has("hidden_owner") && flags.has("owner_changes_balances"),
   ],
   ["snipe_tax", ({ snipeTaxBps, limits }) => (snipeTaxBps ?? 0) > limits.maxTaxBps],
-  ["high_tax", ({ roundTrip, limits }) => (highestTaxBps(roundTrip) ?? 0) > limits.maxTaxBps],
+  [
+    "high_tax",
+    ({ roundTrip, limits, hookFeeBps }) => countedTaxBps(roundTrip, hookFeeBps) > limits.maxTaxBps,
+  ],
   [
     "low_liquidity",
     ({ answers, limits }) =>
@@ -143,9 +158,9 @@ function viewOf(findings: RiskFindings, refusal: RiskReason | undefined): RiskVi
  * Weighs what the risk sources and the round trip found for a token the registry does not list
  * (ARCHITECTURE.md section 7, risk tiers). A hard finding blocks: a honeypot, a sale that fails, a
  * hidden owner who can change balances, a launch-window tax the quote names above the agent's
- * maximum tax, a measured tax above that maximum, liquidity below its floor, a required source or
- * the round trip that could not answer, or a blacklist. The
- * reason stored is the first of spec 6's risk reasons that holds. A token that passes with any
+ * maximum tax, a measured tax above that maximum (a buy's with the fee its route's pool hooks
+ * keep, counted once), liquidity below its floor, a required source or the round trip that could
+ * not answer, or a blacklist. The reason stored is the first of spec 6's risk reasons that holds. A token that passes with any
  * finding or tax is a warning. The tax is the highest the round trip measured on any leg: the
  * sources' own tax figures never decide it. The view records the wallets the token's launchpad
  * favors as its insiders.

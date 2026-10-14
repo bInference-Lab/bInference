@@ -9,6 +9,7 @@ const bps = (value: number) => bpsSchema.parse(value);
 const clean: RoundTrip = {
   kind: "measured",
   buyTaxBps: bps(0),
+  hookFeeBps: bps(0),
   transferTaxBps: bps(0),
   sellTaxBps: bps(0),
 };
@@ -49,6 +50,37 @@ describe("the launch window in the risk verdict", () => {
     const insider = accountRefSchema.parse("eip155:56:0x000000000000000000000000000000000000dEaD");
     expect(riskVerdict(findingsOf({ insiders: [insider] })).view.insiders).toStrictEqual([insider]);
     expect(riskVerdict(findingsOf({ insiders: [] })).view).not.toHaveProperty("insiders");
+  });
+});
+
+// A measured round trip with a buy tax, and the share the route's pool hooks took.
+const withBuyTax = (buy: number, hook = 0): RoundTrip => ({
+  ...clean,
+  buyTaxBps: bps(buy),
+  hookFeeBps: bps(hook),
+});
+
+describe("a route's pool hook fee in the risk verdict", () => {
+  it("counts the fee the quote names with the buy tax against the maximum", () => {
+    const over = riskVerdict(findingsOf({ roundTrip: withBuyTax(900), hookFeeBps: bps(200) }));
+    const under = riskVerdict(findingsOf({ roundTrip: withBuyTax(700), hookFeeBps: bps(200) }));
+    expect(over).toMatchObject({ refusal: "high_tax", view: { buyTaxBps: 900 } });
+    expect(under).toMatchObject({ view: { verdict: "warn", buyTaxBps: 700 } });
+    expect(under).not.toHaveProperty("refusal");
+  });
+
+  it("counts the fee once, the quote's or the share measured going to the hooks, the higher", () => {
+    const named = { hookFeeBps: bps(200) };
+    const once = riskVerdict(findingsOf({ ...named, roundTrip: withBuyTax(750, 200) }));
+    const measured = riskVerdict(findingsOf({ ...named, roundTrip: withBuyTax(750, 300) }));
+    expect(once).not.toHaveProperty("refusal");
+    expect(measured).toMatchObject({ refusal: "high_tax" });
+  });
+
+  it("passes a token with no tax of its own whose route keeps a fee under the maximum", () => {
+    expect(
+      riskVerdict(findingsOf({ roundTrip: withBuyTax(0, 200), hookFeeBps: bps(200) })),
+    ).toMatchObject({ view: { verdict: "pass", buyTaxBps: 0 } });
   });
 });
 

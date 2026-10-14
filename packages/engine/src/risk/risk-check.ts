@@ -10,6 +10,7 @@ import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { RiskCacheStore, RiskCheck } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { cachedRiskSource } from "./cached-risk-source.js";
+import { routeHookFeeBps } from "./hook-fees.js";
 import type { RiskAssessment, RiskSubject } from "./risk-assessment.js";
 import { riskVerdict, type SourceAnswer } from "./risk-verdict.js";
 import { probeRoundTrip, type RoundTrip } from "./round-trip.js";
@@ -104,14 +105,15 @@ async function assess(options: RiskCheckOptions, call: Call): Promise<RiskAssess
     insidersOf(options, call),
   ]);
   const { snipeTaxBps } = quoted.quote;
-  const snipe = snipeTaxBps === undefined ? {} : { snipeTaxBps };
+  const hookFeeBps = routeHookFeeBps(quoted.quote);
   return riskVerdict({
     answers,
     roundTrip,
     limits,
     checkedAtMs: options.clock.now(),
     insiders,
-    ...snipe,
+    ...(snipeTaxBps === undefined ? {} : { snipeTaxBps }),
+    ...(hookFeeBps === undefined ? {} : { hookFeeBps }),
   });
 }
 
@@ -120,7 +122,7 @@ async function assess(options: RiskCheckOptions, call: Call): Promise<RiskAssess
  * the native coin, passes without asking anyone. For any other token it asks every source, each
  * through the risk cache and under its own timeout, while it runs the round trip from fresh
  * accounts and asks the trade's venue for the token's insiders, then weighs them with the snipe
- * tax the trade's quote names (see `riskVerdict`). A source that fails, times out or has no answer
+ * tax and the pool hooks' fee the trade's quote names (see `riskVerdict`). A source that fails, times out or has no answer
  * counts as such, never as a throw; only an abort of the caller's signal rejects.
  */
 export function createRiskCheck(options: RiskCheckOptions): RiskCheck {

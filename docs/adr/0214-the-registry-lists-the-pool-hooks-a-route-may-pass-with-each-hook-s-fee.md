@@ -33,8 +33,8 @@ graduated m4.2 tokens only through other pools: it does not index the m4.2 hook'
   their pools, the sum of their fees along the maker's costliest path, a pool counting the dearest
   of the candidates nested in it, and the maker's hooks it passes (`hookFees`); its expected
   output already holds the fee back.
-- **Nothing else reads it yet.** Whether the card shows the fee on a line of its own, or a limit
-  bounds it, is left to the owner.
+- **The card and the maximum tax read it.** The card shows it on a line of its own, and it counts
+  toward the agent's maximum tax ([decision 0215](0215-a-pool-hook-s-fee-shows-on-the-card-and-counts-toward-the-maximum-tax.md)).
 
 ## Consequences
 
@@ -46,8 +46,8 @@ graduated m4.2 tokens only through other pools: it does not index the m4.2 hook'
 
 - **Keep the list empty.** Graduated Genius.fun tokens would trade only through pools other people
   made, often thin. Rejected.
-- **Count the hook's fee as the token's tax.** The pool keeps it, as any pool keeps its fee, and it
-  would refuse the token at a 2% maximum tax. Rejected.
+- **Count the hook's fee as the token's tax.** The pool keeps it, as any pool keeps its fee, and the
+  card would call it a tax of the token. Rejected.
 - **Read each pool's fee on chain at each quote.** An aggregator's answer names the hook, not the
   pool's registration; a read per quote adds a call to every route for a fee fixed per hook so far.
   Rejected while the registry's fee matches every pool read.

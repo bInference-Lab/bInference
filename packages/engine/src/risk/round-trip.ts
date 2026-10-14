@@ -12,7 +12,8 @@ import {
 } from "@binference/chain";
 import { type Bps, bpsPerWhole, bpsSchema, type Random } from "@binference/core";
 import type { TradeQuote, VenueHost } from "../venues/venue-host.js";
-import { buyTaxBps, type LegToken, lostBps, netIn } from "./leg-taxes.js";
+import { routeHooksOf } from "./hook-fees.js";
+import { buyLegOf, type LegToken, lostBps, netIn } from "./leg-taxes.js";
 import { sellTaxBps } from "./sale-tax.js";
 
 /**
@@ -23,7 +24,10 @@ import { sellTaxBps } from "./sale-tax.js";
 export type RoundTrip =
   | {
       readonly kind: "measured";
+      /** The token's own tax on the buy, apart from what the route's pool hooks took. */
       readonly buyTaxBps: Bps;
+      /** The share of the buy the route's pool hooks took as transfers of the token. */
+      readonly hookFeeBps: Bps;
       readonly transferTaxBps: Bps;
       readonly sellTaxBps: Bps;
     }
@@ -181,9 +185,12 @@ async function roundTrip(probe: Probe): Promise<RoundTrip> {
   }
   const bought = transfersOf(steps.slice(0, legs.buy.length));
   const soldTax = sellTaxBps(sold, probe.holder, { sold: legs.held, token: probe.token });
+  const { quote } = probe.quoted;
+  const buy = buyLegOf(bought, probe.buyer, { ...probe.token, hooks: routeHooksOf(quote) });
   return {
     kind: "measured",
-    buyTaxBps: higher(buyTaxBps(bought, probe.buyer, probe.token), venueTaxOf(probe.quoted.quote)),
+    buyTaxBps: higher(buy.taxBps, venueTaxOf(quote)),
+    hookFeeBps: buy.hookFeeBps,
     transferTaxBps: lostBps(legs.bought, legs.held),
     sellTaxBps: higher(soldTax, sale.venueTaxBps),
   };
@@ -195,8 +202,9 @@ async function roundTrip(probe: Probe): Promise<RoundTrip> {
  * with the trade's own input on the trade's own venue, sends all it bought to the second, and the
  * second sells it all back into that input. Each leg runs unsent on the chain's latest state,
  * accepting any output, and each leg's tax is read from the transfers it made, or is the tax the
- * leg's venue quoted as its own contract's when that is higher. A transfer that
- * reverts or delivers nothing is a refused transfer; a sale with no route, that reverts or pays
+ * leg's venue quoted as its own contract's when that is higher. What the buy route's pool hooks
+ * take as transfers of the token is their pools' fee, measured apart from the token's tax
+ * (decision 0215). A transfer that reverts or delivers nothing is a refused transfer; a sale with no route, that reverts or pays
  * nothing, a refused sale. A buy the venue will not build, that reverts or buys nothing is
  * `unavailable`, since the trade's own simulation decides whether the wallet can buy. When the
  * chain cannot simulate, it rejects.

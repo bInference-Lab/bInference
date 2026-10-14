@@ -76,20 +76,45 @@ function swapAccounts(
   );
 }
 
+/** A buy leg's shares of what the swap's pools paid out: the token's tax, and the hooks' fee. */
+export interface BuyLeg {
+  readonly taxBps: Bps;
+  /** The share the route's pool hooks took as transfers of the token, as their pools' own fee. */
+  readonly hookFeeBps: Bps;
+}
+
 /**
- * The buy tax of a swap's transfers, in basis points: of the token the swap's pools paid out net
- * (the accounts that took another asset in), the share that never reached the buyer. A tax taken
- * at each hop of a route counts in full.
+ * A buy leg's taxes from a swap's transfers, in basis points: of the token the swap's pools paid
+ * out net (the accounts that took another asset in), the share a hook of the route took, which is
+ * its pool's fee (decision 0215), and of the rest, the share that never reached the buyer, which
+ * is the token's tax. A tax taken at each hop of a route counts in full.
  */
-export function buyTaxBps(
+export function buyLegOf(
   transfers: readonly AssetTransfer[],
   buyer: AccountRef,
-  token: LegToken,
-): Bps {
+  token: LegToken & { readonly hooks: readonly AccountRef[] },
+): BuyLeg {
   const pools = swapAccounts(transfers, { trader: buyer, token, side: "to" });
   const paidOut = pools.reduce((sum, pool) => {
     const net = -netIn(transfers, pool, token);
     return net > 0n ? sum + net : sum;
   }, 0n);
-  return lostBps(paidOut, netIn(transfers, buyer, token));
+  const taken = token.hooks.reduce((sum, hook) => {
+    const net = netIn(transfers, hook, token);
+    return net > 0n ? sum + net : sum;
+  }, 0n);
+  const kept = taken < paidOut ? paidOut - taken : 0n;
+  return {
+    taxBps: lostBps(kept, netIn(transfers, buyer, token)),
+    hookFeeBps: lostBps(paidOut, kept),
+  };
+}
+
+/** The buy tax of a swap's transfers through no pool hook: {@link buyLegOf}'s token tax. */
+export function buyTaxBps(
+  transfers: readonly AssetTransfer[],
+  buyer: AccountRef,
+  token: LegToken,
+): Bps {
+  return buyLegOf(transfers, buyer, { ...token, hooks: [] }).taxBps;
 }
