@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { txDraftSchema } from "../transaction.js";
+import { curveHoldingSchema } from "./curve-holding.js";
 import { decodedEffectSchema } from "./decoded-effect.js";
 import { venueQuoteSchema } from "./venue-quote.js";
 import { type VenueDeclarationWire, venueDeclarationSchema } from "./venue.js";
@@ -77,7 +78,46 @@ describe("venue schemas", () => {
     expect(parsed?.spenders).toStrictEqual(["router"]);
   });
 
+  it("accepts a launch's own contracts, and calls and spenders on them", () => {
+    const abi = { type: "function", name: "buy", inputs: [] };
+    const wire: VenueDeclarationWire = {
+      ...declaration,
+      contracts: [
+        {
+          chain: "fake:1",
+          names: ["factory"],
+          launchContracts: ["curve"],
+          calls: [{ contract: "curve", abi, walletInputs: [] }],
+          spenders: ["curve"],
+        },
+      ],
+    };
+    expect(venueDeclarationSchema.parse(wire)).toStrictEqual(wire);
+  });
+
+  it("decodes a curve read that names its launch's contracts, and encodes it back", () => {
+    const holding = {
+      onCurve: true,
+      quoteAsset: coin,
+      launch: { curve: "fake:1:0x0000000f" },
+    } as const;
+    const parsed = curveHoldingSchema.parse(holding);
+    expect(parsed).toStrictEqual(holding);
+    expect(curveHoldingSchema.encode(parsed)).toStrictEqual(holding);
+    expect(
+      curveHoldingSchema.safeParse({ ...holding, launch: { Curve: "fake:1:0x0000000f" } }).success,
+    ).toBe(false);
+  });
+
   it.each<[string, VenueDeclarationWire["contracts"][number]]>([
+    [
+      "a launch's contract named as a registry one",
+      { chain: "fake:1", names: ["router"], launchContracts: ["router"] },
+    ],
+    [
+      "a launch's contract named twice",
+      { chain: "fake:1", names: ["router"], launchContracts: ["curve", "curve"] },
+    ],
     [
       "a call to no declared contract",
       { chain: "fake:1", names: ["router"], calls: [{ contract: "pool", abi: {} }] },

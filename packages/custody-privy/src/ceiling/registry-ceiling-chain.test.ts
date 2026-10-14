@@ -101,6 +101,30 @@ describe("registryCeilingChain", () => {
     expect(chain).toMatchObject({ ok: true, value: { calls: [], spenders: [] } });
   });
 
+  it("leaves out the calls and spenders on a launch's own contracts, which no list can hold", () => {
+    const launchpad = declaredVenue("swapper", {
+      names: ["router"],
+      launchContracts: ["curve"],
+      calls: [
+        { contract: "curve", abi: swapToJson, walletInputs: ["receiver"] },
+        { contract: "router", abi: swapJson, walletInputs: [] },
+      ],
+      spenders: ["curve"],
+    });
+    const chain = registryCeilingChain({
+      definition,
+      venues: [launchpad],
+      perTxNativeCapBase: oneBnbWei,
+    });
+    expect(chain).toMatchObject({
+      ok: true,
+      value: {
+        calls: [{ contract: testAddresses.router, abi: testRouterAbi.swap, walletInputs: [] }],
+        spenders: [],
+      },
+    });
+  });
+
   it("lists a spender two venues share once", () => {
     const chain = registryCeilingChain({
       definition: {

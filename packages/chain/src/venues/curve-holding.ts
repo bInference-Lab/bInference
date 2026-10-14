@@ -1,6 +1,7 @@
 import { z } from "zod";
-import type { AccountRef } from "../caip/account-ref.js";
+import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
+import { kebabCaseSchema } from "../registry/chain-definition.js";
 
 /**
  * What the venue host asks a launchpad: whether a token is on its bonding curve now. The
@@ -21,18 +22,35 @@ export interface CurveRequest {
  */
 export type CurveHolding =
   | { readonly onCurve: false }
-  | { readonly onCurve: true; readonly quoteAsset: AssetRef };
+  | {
+      readonly onCurve: true;
+      readonly quoteAsset: AssetRef;
+      /**
+       * The contracts of the token's own launch, such as its curve, by the names the launchpad
+       * declares as `launchContracts`, each found through the launchpad's registry contracts.
+       * Left out, the token's trades call registry contracts alone.
+       */
+      readonly launch?: Readonly<Record<string, AccountRef>>;
+    };
 
 /** A {@link CurveHolding} as JSON carries it. */
 export type CurveHoldingWire =
   | { readonly onCurve: false }
-  | { readonly onCurve: true; readonly quoteAsset: string };
+  | {
+      readonly onCurve: true;
+      readonly quoteAsset: string;
+      readonly launch?: Readonly<Record<string, string>>;
+    };
 
 /** Decodes a launchpad's answer, and encodes it back with `z.encode`. */
 export const curveHoldingSchema: z.ZodType<CurveHolding, CurveHoldingWire> = z.discriminatedUnion(
   "onCurve",
   [
     z.strictObject({ onCurve: z.literal(false) }),
-    z.strictObject({ onCurve: z.literal(true), quoteAsset: assetRefSchema }),
+    z.strictObject({
+      onCurve: z.literal(true),
+      quoteAsset: assetRefSchema,
+      launch: z.record(kebabCaseSchema, accountRefSchema).exactOptional(),
+    }),
   ],
 );

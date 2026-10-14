@@ -26,6 +26,7 @@ import {
 } from "./build-checks.js";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { type HostedVenue, hostVenues } from "./hosted-venue.js";
+import { contractsWithLaunch, type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
 import { type HostedPriceRead, readPrices } from "./read-prices.js";
 import { readSteps } from "./read-steps.js";
@@ -61,6 +62,11 @@ export interface TradeQuote {
   readonly quote: VenueQuote;
   /** When the venue quoted: the trade call's deadline counts from here. */
   readonly quotedAtMs: number;
+  /**
+   * The contracts of the traded token's launch that the venue's curve read named when it quoted,
+   * which the build may call too (decision 0212). Left out, registry contracts alone.
+   */
+  readonly launch?: LaunchContracts;
 }
 
 /** Why the host refused a trade: a check reason of spec 6 that `quote_failed` carries. */
@@ -203,6 +209,30 @@ function contextOf(
   return ok({ trade, hosted, chain: chain.value, request });
 }
 
+// The trade with a launch's contracts in its request, or `undefined` when the launch names a
+// contract the venue does not declare as a launch's on the trade's chain.
+function withLaunch(
+  context: TradeContext,
+  launch: LaunchContracts | undefined,
+): TradeContext | undefined {
+  const names = context.hosted.launchNames.get(context.chain.ref);
+  const contracts = contractsWithLaunch(context.request.contracts, launch, names);
+  return contracts === undefined
+    ? undefined
+    : { ...context, request: Object.freeze({ ...context.request, contracts }) };
+}
+
+// The trade's launch, asked about the token bought, then the token sold, never the chain's coin.
+async function launchOf(
+  context: TradeContext,
+  call: VenueCallOptions,
+): Promise<Result<LaunchContracts | undefined, "venue_down">> {
+  const { hosted, chain, trade } = context;
+  const native = nativeAssetOf(chain);
+  const tokens = [trade.assetOut, trade.amountIn.asset].filter((asset) => asset !== native);
+  return tradeLaunchOf(hosted, { chain: chain.ref, tokens }, call);
+}
+
 async function quoteOf(
   { hosted, request }: TradeContext,
   call: VenueCallOptions,
@@ -268,6 +298,55 @@ async function buildPlan(
   return ok({ venue: trade.venue, quote, terms, steps: steps.value });
 }
 
+/** What the host's quote and build share: its venues, its chains and its call options. */
+interface HostParts {
+  readonly venues: ReadonlyMap<string, HostedVenue>;
+  readonly chains: ChainRegistry;
+  readonly clock: Clock;
+  readonly callOf: (signal: AbortSignal) => VenueCallOptions;
+}
+
+// The quote of a trade, with its token's launch contracts when its venue declares such.
+async function quoteTrade(
+  parts: HostParts,
+  trade: VenueTrade,
+  signal: AbortSignal,
+): Promise<QuoteOutcome> {
+  const context = contextOf(trade, parts.venues, parts.chains);
+  if (!context.ok) {
+    return refuse(context.error);
+  }
+  const call = parts.callOf(signal);
+  const launch = await launchOf(context.value, call);
+  const launched = launch.ok ? withLaunch(context.value, launch.value) : undefined;
+  if (!launch.ok || launched === undefined) {
+    return refuse("venue_down");
+  }
+  const quote = await quoteOf(launched, call);
+  if (!quote.ok) {
+    return quote;
+  }
+  const quotedAtMs = parts.clock.now();
+  const named = launch.value === undefined ? {} : { launch: launch.value };
+  return ok(Object.freeze({ trade, quote: quote.value, quotedAtMs, ...named }));
+}
+
+// The build of a quoted trade, with the launch contracts it was quoted with.
+async function buildTrade(
+  parts: HostParts,
+  quoted: TradeQuote,
+  signal: AbortSignal,
+): Promise<VenueOutcome> {
+  const context = contextOf(quoted.trade, parts.venues, parts.chains);
+  if (!context.ok) {
+    return refuse(context.error);
+  }
+  const launched = withLaunch(context.value, quoted.launch);
+  return launched === undefined
+    ? refuse("venue_down")
+    : await buildPlan(launched, quoted, parts.callOf(signal));
+}
+
 /**
  * Creates the {@link VenueHost}. Every venue's declaration is checked against the chain registry
  * now: a venue that declares a chain or a contract the registry does not hold is a fault.
@@ -279,25 +358,15 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
     signal,
     timeoutMs: options.callTimeoutMs,
   });
+  const parts: HostParts = { venues, chains: options.chains, clock: options.clock, callOf };
   const host: VenueHost = {
     async quote(trade, { signal }) {
       signal.throwIfAborted();
-      const context = contextOf(trade, venues, options.chains);
-      if (!context.ok) {
-        return refuse(context.error);
-      }
-      const quote = await quoteOf(context.value, callOf(signal));
-      if (!quote.ok) {
-        return quote;
-      }
-      return ok(Object.freeze({ trade, quote: quote.value, quotedAtMs: options.clock.now() }));
+      return quoteTrade(parts, trade, signal);
     },
     async build(quoted, { signal }) {
       signal.throwIfAborted();
-      const context = contextOf(quoted.trade, venues, options.chains);
-      return context.ok
-        ? await buildPlan(context.value, quoted, callOf(signal))
-        : refuse(context.error);
+      return buildTrade(parts, quoted, signal);
     },
     async plan(trade, call) {
       const quoted = await host.quote(trade, call);

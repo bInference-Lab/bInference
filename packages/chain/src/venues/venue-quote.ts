@@ -13,8 +13,9 @@ export interface QuoteRequest {
   /** The asset the trade buys. */
   readonly assetOut: AssetRef;
   /**
-   * The venue's declared contracts on the wallet's chain, by their names in the chain registry.
-   * A venue calls only these; the host refuses a transaction to any other contract.
+   * The venue's declared contracts on the wallet's chain, by their names in the chain registry,
+   * and, for a token a launchpad holds, the contracts of its launch by their declared names. A
+   * venue calls only these; the host refuses a transaction to any other contract.
    */
   readonly contracts: Readonly<Record<string, AccountRef>>;
 }

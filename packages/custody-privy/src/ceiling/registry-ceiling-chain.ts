@@ -32,12 +32,21 @@ interface Declared {
   readonly contracts: VenueContracts;
 }
 
+// A launch's contracts are made per launch, so no list can hold them: they add nothing here
+// (decision 0212).
+function isRegistryName(declared: Declared, name: string): boolean {
+  return declared.contracts.launchContracts?.includes(name) !== true;
+}
+
 function callsOf(
   declared: Declared,
   definition: ChainDefinition,
 ): Result<readonly CeilingCall[], RegistryCeilingProblem> {
   const calls: CeilingCall[] = [];
-  for (const call of declared.contracts.calls ?? []) {
+  const listed = (declared.contracts.calls ?? []).filter((call) =>
+    isRegistryName(declared, call.contract),
+  );
+  for (const call of listed) {
     const contract = declaredAddress(declared.venue, { definition }, call.contract);
     const abi = abiFunctionSchema.safeParse(call.abi);
     if (!contract.ok) {
@@ -56,7 +65,10 @@ function spendersOf(
   definition: ChainDefinition,
 ): Result<readonly string[], "unknown_contract"> {
   const spenders: string[] = [];
-  for (const name of declared.contracts.spenders ?? []) {
+  const listed = (declared.contracts.spenders ?? []).filter((name) =>
+    isRegistryName(declared, name),
+  );
+  for (const name of listed) {
     const address = declaredAddress(declared.venue, { definition }, name);
     if (!address.ok) {
       return address;
@@ -71,7 +83,9 @@ function spendersOf(
  * the functions each enabled venue declares its trades call, on the contracts it names, and the
  * contracts it names as spenders, each read from the chain definition by name. A venue that declares nothing on the
  * chain adds nothing. A name the definition does not hold, or a call that is no JSON ABI entry,
- * is an expected failure, so a ceiling never allows less, or more, than the venues use.
+ * is an expected failure, so a ceiling never allows less, or more, than the venues use. A call
+ * or a spender on a contract each launch makes, such as a launchpad's curve, adds nothing: no
+ * address list can hold one, so such trades stay outside every ceiling (decision 0212).
  */
 export function registryCeilingChain(
   request: RegistryCeilingRequest,

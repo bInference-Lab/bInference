@@ -17,6 +17,11 @@ export interface HostedVenue {
   readonly contracts: ReadonlyMap<ChainRef, Readonly<Record<string, AccountRef>>>;
   /** The chains on which the venue declares that its trade calls carry no deadline. */
   readonly noDeadline: ReadonlySet<ChainRef>;
+  /**
+   * The names of the contracts each launch of the venue has on each chain it declares them on: a
+   * curve read may name their addresses for a token it holds, and under no other name.
+   */
+  readonly launchNames: ReadonlyMap<ChainRef, ReadonlySet<string>>;
 }
 
 function refuse(id: string, problem: string): BinferenceError {
@@ -65,7 +70,18 @@ function host(venue: Venue, chains: ChainRegistry): HostedVenue {
   const noDeadline = declaration.data.contracts
     .filter((declared) => declared.noDeadline === true)
     .map((declared) => declared.chain);
-  return { venue, contracts: new Map(contracts), noDeadline: new Set(noDeadline) };
+  const launchNames = declaration.data.contracts.flatMap(
+    (declared): [ChainRef, ReadonlySet<string>][] =>
+      declared.launchContracts === undefined
+        ? []
+        : [[declared.chain, new Set(declared.launchContracts)]],
+  );
+  return {
+    venue,
+    contracts: new Map(contracts),
+    noDeadline: new Set(noDeadline),
+    launchNames: new Map(launchNames),
+  };
 }
 
 /**

@@ -51,7 +51,9 @@ Keep the folders that the existing venues use:
   shape is `unknown_call`, never a guess.
 - A launchpad uses `defineLaunchpad` instead and adds `src/curve/`: the curve read from its own
   contracts, which passes `curveReaderContract`. A tax its contract takes on the curve goes in the
-  quote's `taxBps` (decision 0181).
+  quote's `taxBps` (decision 0181). A contract each launch makes, such as a token's own curve, is
+  declared by name in `launchContracts`, and the curve read names its address for a token it holds,
+  found through the launchpad's registry contracts (decision 0212). No ceiling lists it.
 - `src/<venue>-venue.ts`: `defineVenue` with the id and, per chain, the registry contract names,
   the calls the venue makes (contract and ABI) and the spenders it approves. The Privy ceiling
   allows only declared calls and spenders, so declare exactly what the venue calls.

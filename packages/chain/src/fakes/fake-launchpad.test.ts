@@ -1,4 +1,4 @@
-import type { Result } from "@binference/core";
+import { bpsSchema, type Result } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { accountRefSchema } from "../caip/account-ref.js";
 import { assetRefSchema } from "../caip/asset-ref.js";
@@ -6,10 +6,12 @@ import { curveReaderContract } from "../contracts/curve-reader-contract.js";
 import { priceReaderContract } from "../contracts/price-reader-contract.js";
 import { quoterContract } from "../contracts/quoter-contract.js";
 import type { PriceRead } from "../venues/price-read.js";
+import { fakeCallOf } from "./fake-draft.js";
 import { createFakeLaunchpad, fakePriceAnswer } from "./fake-launchpad.js";
 
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
 const router = accountRefSchema.parse("fake:1:0x0000000d");
+const curve = accountRefSchema.parse("fake:1:0x0000000f");
 const coin = assetRefSchema.parse("fake:1/slip44:1");
 const token = assetRefSchema.parse("fake:1/token:0x0000000a");
 const other = assetRefSchema.parse("fake:1/token:0x0000000e");
@@ -35,6 +37,46 @@ describe("fake launchpad", () => {
     }),
   )("follows the curve reader contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it.each(
+    curveReaderContract({
+      create: () => ({
+        reader: createFakeLaunchpad({ onCurve: [token], launchCurve: curve }),
+        onCurve: { token, contracts },
+        offCurve: { token: other, contracts },
+      }),
+    }),
+  )("follows the curve reader contract with a launch curve: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("names its launch's curve for a held token, and trades and prices through it", async () => {
+    const launchpad = createFakeLaunchpad({ onCurve: [token], launchCurve: curve });
+    expect(launchpad.contracts).toStrictEqual([
+      { chain: "fake:1", names: ["router"], launchContracts: ["curve"] },
+    ]);
+    await expect(launchpad.curve({ token, contracts }, live)).resolves.toStrictEqual({
+      onCurve: true,
+      quoteAsset: coin,
+      launch: { curve },
+    });
+    const read = readOf(await launchpad.priceRead({ token, contracts: { curve } }, live));
+    expect(read.calls).toStrictEqual([{ target: curve, input: `price:${token}` }]);
+    const request = {
+      wallet,
+      amountIn: { asset: coin, base: 10n },
+      assetOut: token,
+      contracts: { router, curve },
+      quote: { expectedOut: { asset: token, base: 20n }, priceImpactBps: bpsSchema.parse(10) },
+      minOut: { asset: token, base: 19n },
+      deadlineMs: 1_800_000_060_000,
+    };
+    const drafts = await launchpad.build(request, live);
+    expect(drafts.map(fakeCallOf)).toMatchObject([{ to: "0x0000000f" }]);
+    await expect(
+      launchpad.build({ ...request, contracts: { router } }, live),
+    ).rejects.toMatchObject({ code: "venue.no_contract" });
   });
 
   it.each(

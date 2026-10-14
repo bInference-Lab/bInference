@@ -13,6 +13,7 @@ import { err, ok, type Ratio, type Result } from "@binference/core";
 import { z } from "zod";
 import { callVenue, type VenueCallOptions } from "./call-venue.js";
 import type { HostedVenue } from "./hosted-venue.js";
+import { contractsWithLaunch, type LaunchContracts } from "./launch-contracts.js";
 import { isLaunchpad, readCurves } from "./read-curves.js";
 
 /** A venue's price read as the host hands it on: checked, copied, with the venue that declared it. */
@@ -120,13 +121,29 @@ const priceAnswerSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(false), error: z.literal("no_price_read") }),
 ]);
 
+/** A venue to ask for a token's price read, with the contracts of the token's launch on it. */
+interface Candidate {
+  readonly hosted: HostedVenue;
+  readonly launch?: LaunchContracts;
+}
+
+// The venue's registry contracts on the token's chain, with the launch's when it holds the token.
+function contractsOf(candidate: Candidate, token: AssetRef) {
+  const { hosted, launch } = candidate;
+  const { chain } = assetRefParts(token);
+  const registry = hosted.contracts.get(chain);
+  return registry === undefined
+    ? undefined
+    : contractsWithLaunch(registry, launch, hosted.launchNames.get(chain));
+}
+
 async function askVenue(
-  hosted: HostedVenue,
+  candidate: Candidate,
   token: AssetRef,
   call: VenueCallOptions,
 ): Promise<Result<HostedPriceRead, "no_price_read" | "venue_down">> {
-  const { venue } = hosted;
-  const contracts = hosted.contracts.get(assetRefParts(token).chain);
+  const { venue } = candidate.hosted;
+  const contracts = contractsOf(candidate, token);
   if (venue.priceRead === undefined || contracts === undefined) {
     return err("no_price_read");
   }
@@ -149,7 +166,7 @@ async function askVenue(
 
 /** The venues still to ask, and why the ones asked so far priced nothing. */
 interface PriceAsk {
-  readonly candidates: readonly HostedVenue[];
+  readonly candidates: readonly Candidate[];
   readonly failure: "no_price_read" | "venue_down";
 }
 
@@ -160,11 +177,11 @@ async function firstPriced(
   token: AssetRef,
   call: VenueCallOptions,
 ): Promise<Result<HostedPriceRead, "no_price_read" | "venue_down">> {
-  const [hosted, ...candidates] = ask.candidates;
-  if (hosted === undefined) {
+  const [candidate, ...candidates] = ask.candidates;
+  if (candidate === undefined) {
     return err(ask.failure);
   }
-  const read = await askVenue(hosted, token, call);
+  const read = await askVenue(candidate, token, call);
   if (read.ok) {
     return read;
   }
@@ -177,7 +194,8 @@ async function firstPriced(
  * launchpad holds on its curve is priced by that launchpad alone, since its curve sets its price;
  * any other token by the first other venue, in the host's order, that declares a read for it. The
  * host copies each read: at most four calls, each to a contract the venue declares on the token's
- * chain, quoted in another asset of that chain, and a pricing step that can neither throw nor give
+ * chain or to one of the token's launch on the launchpad that holds it (decision 0212), quoted in
+ * another asset of that chain, and a pricing step that can neither throw nor give
  * a price at or below zero. A token
  * no venue prices is `no_price_read`; a venue that throws, times out or answers outside its types,
  * when no other venue priced the token, is `venue_down`. Rejects with the signal's reason once it
@@ -192,15 +210,17 @@ export async function readPrices(
   if (!curves.ok) {
     return curves;
   }
-  const holders = curves.value.flatMap(({ launchpad }) => {
+  const holders = curves.value.flatMap(({ launchpad, launch }): Candidate[] => {
     const hosted = venues.get(launchpad);
-    return hosted === undefined ? [] : [hosted];
+    return hosted === undefined ? [] : [launch === undefined ? { hosted } : { hosted, launch }];
   });
   if (holders.length > 0) {
     const read = await firstPriced({ candidates: holders, failure: "no_price_read" }, token, call);
     // A curve token's price is its curve's: a launchpad that holds it and cannot price it is down.
     return read.ok ? read : err("venue_down");
   }
-  const pools = [...venues.values()].filter(({ venue }) => !isLaunchpad(venue));
+  const pools = [...venues.values()]
+    .filter(({ venue }) => !isLaunchpad(venue))
+    .map((hosted): Candidate => ({ hosted }));
   return firstPriced({ candidates: pools, failure: "no_price_read" }, token, call);
 }

@@ -1,8 +1,10 @@
-import { err, ok, type Ratio, type Result } from "@binference/core";
+import { BinferenceError, err, ok, type Ratio, type Result } from "@binference/core";
+import type { AccountRef } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
+import type { CurveHolding } from "../venues/curve-holding.js";
 import type { PriceReader } from "../venues/ports.js";
 import type { PriceRead, ReadAnswer } from "../venues/price-read.js";
-import type { LaunchpadVenue } from "../venues/venue.js";
+import type { LaunchpadVenue, Venue, VenueContracts } from "../venues/venue.js";
 import { createFakeVenue } from "./fake-venue.js";
 
 /** What a fake launchpad holds on its curve, and what it trades those tokens against. */
@@ -17,6 +19,12 @@ export interface FakeLaunchpadOptions {
   readonly rate?: Ratio;
   /** Its trade calls carry no deadline, as a curve's may not; when absent, each carries one. */
   readonly noDeadline?: boolean;
+  /**
+   * The curve each held token's launch has of its own, as one launch contract `curve` that its
+   * curve read names: it then trades and prices through that curve, never its `router`. When
+   * absent, it declares no launch contract.
+   */
+  readonly launchCurve?: AccountRef;
 }
 
 /** A fake launchpad, whose tokens can graduate during a test. */
@@ -46,23 +54,92 @@ function fakePriceOf(answers: readonly ReadAnswer[]): Result<Ratio, "unpriced"> 
     : ok({ numerator: BigInt(numerator), denominator: BigInt(denominator) });
 }
 
+// The launch's curve the host gave with a request; a request without one cannot be built.
+function curveOf(contracts: Readonly<Record<string, AccountRef>>): AccountRef {
+  const curve = contracts["curve"];
+  if (curve === undefined) {
+    throw new BinferenceError({
+      code: "venue.no_contract",
+      message: "The fake launchpad builds a held token's trade only through its launch's curve.",
+    });
+  }
+  return curve;
+}
+
+/** What a fake launchpad holds: its tokens on the curve, their quote asset and launch curve. */
+interface FakeCurve {
+  readonly held: Set<AssetRef>;
+  readonly quoteAsset: AssetRef;
+  readonly launchCurve: AccountRef | undefined;
+}
+
+function holdingOf(curve: FakeCurve, token: AssetRef): CurveHolding {
+  const { quoteAsset, launchCurve } = curve;
+  if (!curve.held.has(token)) {
+    return { onCurve: false };
+  }
+  return launchCurve === undefined
+    ? { onCurve: true, quoteAsset }
+    : { onCurve: true, quoteAsset, launch: { curve: launchCurve } };
+}
+
+// One read of the router, or of the launch's curve when the launchpad has one.
+function priceReadOf(
+  curve: FakeCurve,
+  request: Parameters<PriceReader["priceRead"]>[0],
+): Result<PriceRead, "no_price_read"> {
+  const target = request.contracts[curve.launchCurve === undefined ? "router" : "curve"];
+  if (!curve.held.has(request.token) || target === undefined) {
+    return err("no_price_read");
+  }
+  const calls = [{ target, input: `price:${request.token}` }];
+  return ok({ quoteAsset: curve.quoteAsset, calls, price: fakePriceOf });
+}
+
+// The fake venue's declaration and build, through the launch's curve when the launchpad has one.
+function launchPartsOf(
+  venue: Venue,
+  launchCurve: AccountRef | undefined,
+): Pick<Venue, "contracts" | "build"> {
+  if (launchCurve === undefined) {
+    return {
+      contracts: venue.contracts,
+      build: async (request, call) => venue.build(request, call),
+    };
+  }
+  return {
+    contracts: venue.contracts.map((item): VenueContracts => ({
+      ...item,
+      launchContracts: ["curve"],
+    })),
+    build: async (request, call) =>
+      venue.build({ ...request, contracts: { router: curveOf(request.contracts) } }, call),
+  };
+}
+
 /**
  * Creates a launchpad of the fake chain, for tests. It holds its tokens on its curve until they
  * graduate, quotes and builds only trades between such a token and its quote asset, through its
  * `router` as the fake venue does, and answers any other pair as `no_route`. It prices a token on
- * its curve with one read of its `router`, which {@link fakePriceAnswer} answers.
+ * its curve with one read of its `router`, which {@link fakePriceAnswer} answers. With a
+ * `launchCurve`, each held token's launch has that curve, which its curve read names and which
+ * its trades and price reads use in place of the `router`.
  */
 export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpad {
   const venue = createFakeVenue({
     ...(options.rate === undefined ? {} : { rate: options.rate }),
     ...(options.noDeadline === undefined ? {} : { noDeadline: options.noDeadline }),
   });
-  const held = new Set(options.onCurve);
-  const quoteAsset = options.quoteAsset ?? fakeCoin;
+  const curve: FakeCurve = {
+    held: new Set(options.onCurve),
+    quoteAsset: options.quoteAsset ?? fakeCoin,
+    launchCurve: options.launchCurve,
+  };
   const isCurvePair = (assets: readonly AssetRef[]): boolean =>
-    assets.includes(quoteAsset) && assets.some((asset) => held.has(asset));
+    assets.includes(curve.quoteAsset) && assets.some((asset) => curve.held.has(asset));
   return {
     ...venue,
+    ...launchPartsOf(venue, options.launchCurve),
     id: options.id ?? "fake-curve",
     async quote(request, call) {
       call.signal.throwIfAborted();
@@ -72,25 +149,14 @@ export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpa
     },
     async curve(request, { signal }) {
       signal.throwIfAborted();
-      return await Promise.resolve(
-        held.has(request.token) ? { onCurve: true, quoteAsset } : { onCurve: false },
-      );
+      return await Promise.resolve(holdingOf(curve, request.token));
     },
     async priceRead(request, { signal }) {
       signal.throwIfAborted();
-      const router = request.contracts["router"];
-      if (!held.has(request.token) || router === undefined) {
-        return await Promise.resolve(err("no_price_read"));
-      }
-      const read: PriceRead = {
-        quoteAsset,
-        calls: [{ target: router, input: `price:${request.token}` }],
-        price: fakePriceOf,
-      };
-      return ok(read);
+      return await Promise.resolve(priceReadOf(curve, request));
     },
     graduate(token) {
-      held.delete(token);
+      curve.held.delete(token);
     },
   };
 }

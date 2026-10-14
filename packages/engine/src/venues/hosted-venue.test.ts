@@ -1,4 +1,5 @@
 import {
+  accountRefSchema,
   type ChainDefinition,
   chainRefSchema,
   createChainRegistry,
@@ -7,6 +8,7 @@ import {
 import {
   createFakeChainDefinition,
   createFakeFamily,
+  createFakeLaunchpad,
   createFakeSigningScheme,
   createFakeVenue,
 } from "@binference/chain/testing";
@@ -20,6 +22,11 @@ const chains = createChainRegistry({
   signingSchemes: [createFakeSigningScheme()],
 });
 const fakeOne = chainRefSchema.parse("fake:1");
+const verification = {
+  source: "https://example.invalid/launchpads",
+  checkedOn: "2026-01-01",
+  control: "read",
+} as const;
 
 describe("hosted venues", () => {
   it("reads each declared contract's address from the chain registry", () => {
@@ -29,8 +36,35 @@ describe("hosted venues", () => {
     );
   });
 
+  it("keeps the names of the contracts each launch has, by chain", () => {
+    const launchpad = createFakeLaunchpad({
+      onCurve: [],
+      launchCurve: accountRefSchema.parse("fake:1:0x00000010"),
+    });
+    const registry = createChainRegistry({
+      chains: [
+        {
+          ...fakeChain,
+          contracts: [{ venue: "fake-curve", name: "router", address: "0x0000000d", verification }],
+        },
+      ],
+      families: [createFakeFamily()],
+      signingSchemes: [createFakeSigningScheme()],
+    });
+    expect(hostVenues([launchpad], registry).get("fake-curve")?.launchNames).toStrictEqual(
+      new Map([[fakeOne, new Set(["curve"])]]),
+    );
+    expect(hostVenues([createFakeVenue()], chains).get("fake-swap")?.launchNames).toStrictEqual(
+      new Map(),
+    );
+  });
+
   it.each<[string, Partial<Venue>]>([
     ["a declaration that breaks its schema", { id: "Fake Swap" }],
+    [
+      "a launch contract named as a registry one",
+      { contracts: [{ chain: fakeOne, names: ["router"], launchContracts: ["router"] }] },
+    ],
     [
       "a chain the registry does not hold",
       { contracts: [{ chain: chainRefSchema.parse("fake:2"), names: ["router"] }] },

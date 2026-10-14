@@ -6,7 +6,7 @@ import type { CurveReader, PriceReader, Quoter, TxBuilder, TxDecoder } from "./p
 
 /** A function a venue's transactions call on one of its contracts. */
 export interface VenueCall {
-  /** The contract's name, one of the chain's `names`. */
+  /** The contract's name, one of the chain's `names` or `launchContracts`. */
   readonly contract: string;
   /** The function as its chain family describes it: for an EVM venue, its JSON ABI entry. */
   readonly abi: JsonValue;
@@ -24,8 +24,19 @@ export interface VenueContracts {
    * these and no other function of the venue; left out, none.
    */
   readonly calls?: readonly VenueCall[];
-  /** The names among `names` a token approval may name as its spender; left out, none. */
+  /**
+   * The names among `names` and `launchContracts` a token approval may name as its spender; left
+   * out, none.
+   */
   readonly spenders?: readonly string[];
+  /**
+   * The contracts each launch of the venue has of its own on this chain, by name, such as a
+   * launchpad's curve for each token, which no registry can list. The launchpad's curve read
+   * names their addresses for a token it holds (`CurveHolding.launch`), found through its own
+   * registry contracts; the host lets that token's trades and price reads call them, and nothing
+   * else. Each name differs from every one of `names`. Left out, none.
+   */
+  readonly launchContracts?: readonly string[];
   /**
    * The venue's trade calls on this chain carry no deadline, as a launchpad's curve call may not.
    * The host then accepts a decoded effect without one; its minimum out still binds it. Left out,
@@ -56,6 +67,7 @@ export interface VenueDeclarationWire {
     readonly names: readonly string[];
     readonly calls?: readonly VenueCallWire[];
     readonly spenders?: readonly string[];
+    readonly launchContracts?: readonly string[];
     readonly noDeadline?: boolean;
   }[];
 }
@@ -73,18 +85,27 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z.strictObject({
     .default([]),
 });
 
-// Every call and every spender names one of the chain's declared contracts, and a spender once.
+// Every call and every spender names one of the chain's declared contracts, registry or launch,
+// and a spender once; a launch's contract shares no name with a registry one.
 function namesDeclared(item: Omit<VenueContracts, "chain">): boolean {
-  const named = (name: string) => item.names.includes(name);
+  const launch = item.launchContracts ?? [];
+  const named = (name: string) => item.names.includes(name) || launch.includes(name);
   const spenders = item.spenders ?? [];
   const calls = item.calls ?? [];
-  return isUnique(spenders) && spenders.every(named) && calls.every((call) => named(call.contract));
+  const isApart = launch.every((name) => !item.names.includes(name));
+  return (
+    isApart &&
+    isUnique(spenders) &&
+    spenders.every(named) &&
+    calls.every((call) => named(call.contract))
+  );
 }
 
 /**
  * Checks a venue's declaration: a kebab-case id of at most 32 characters, at least one chain, each
- * chain once, and at least one contract name on each, each name once. A call or a spender names
- * one of the chain's contracts, each spender once.
+ * chain once, and at least one contract name on each, each name once. A launch's contracts have
+ * names of their own, each once. A call or a spender names one of the chain's contracts, registry
+ * or launch, each spender once.
  */
 export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclarationWire> = z.object({
   id: kebabCaseSchema.max(32),
@@ -96,6 +117,11 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
           names: z.array(kebabCaseSchema).min(1).refine(isUnique, { message: "A name repeats." }),
           calls: z.array(callSchema).exactOptional(),
           spenders: z.array(kebabCaseSchema).exactOptional(),
+          launchContracts: z
+            .array(kebabCaseSchema)
+            .min(1)
+            .refine(isUnique, { message: "A launch's contract name repeats." })
+            .exactOptional(),
           noDeadline: z.boolean().exactOptional(),
         })
         .refine(namesDeclared, { message: "A call or a spender names no declared contract." }),

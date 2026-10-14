@@ -115,6 +115,10 @@ The deadline check of `checked → quoted` passes a trade call that carries no d
 venue that declares its calls on the chain carry none, such as a launchpad's curve call; its
 minimum out still binds it ([decision 0180](../DECISIONS.md#d0180)).
 
+The same step's declared-contract check also passes a call or an approval to a contract of the
+token's own launch, such as its curve, when its launchpad declares such contracts and its curve read
+named that one for the token ([decision 0212](../DECISIONS.md#d0212)).
+
 Nothing leaves a terminal state. A freeze never interrupts `executing`: a running transaction is
 finished, never cut in half. A freeze never cancels a rescue either (section 5).
 

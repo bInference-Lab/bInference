@@ -22,6 +22,9 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
         names: Object.freeze([...item.names]),
         ...(item.calls === undefined ? {} : { calls: Object.freeze(item.calls.map(frozenCall)) }),
         ...(item.spenders === undefined ? {} : { spenders: Object.freeze([...item.spenders]) }),
+        ...(item.launchContracts === undefined
+          ? {}
+          : { launchContracts: Object.freeze([...item.launchContracts]) }),
         ...(item.noDeadline === undefined ? {} : { noDeadline: item.noDeadline }),
       }),
     ),
@@ -45,6 +48,10 @@ function priceReadOf(definition: Venue): Pick<Venue, "priceRead"> {
  * engine gives the venue those contracts' addresses with every request and refuses a transaction
  * to any other contract. It also names the functions its transactions call and the contracts an
  * approval may name as spender: a wallet's ceiling allows those and nothing else of the venue.
+ *
+ * A launchpad whose every launch has contracts of its own, such as a curve per token, names them
+ * as `launchContracts`; its curve read gives their addresses for a token it holds, and the engine
+ * lets that token's trades and price reads call them.
  *
  * The venue quotes, builds and decodes. `build` must spend exactly the request's input, pay its
  * output to the request's wallet, revert below `minOut` and after `deadlineMs`; `decode` reads

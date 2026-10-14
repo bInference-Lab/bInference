@@ -10,7 +10,10 @@ import type { AssetRef } from "../caip/asset-ref.js";
 export interface PriceReadRequest {
   /** The token to price, on one of the venue's chains. */
   readonly token: AssetRef;
-  /** The venue's declared contracts on the token's chain, by their names in the registry. */
+  /**
+   * The venue's declared contracts on the token's chain, by their names in the registry, and the
+   * contracts of the token's launch on a launchpad that holds it, by their declared names.
+   */
   readonly contracts: Readonly<Record<string, AccountRef>>;
 }
 

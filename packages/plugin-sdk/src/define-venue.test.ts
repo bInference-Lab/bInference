@@ -110,6 +110,16 @@ describe("defineVenue", () => {
     ]);
   });
 
+  it("keeps the contracts a chain declares each launch has, frozen", () => {
+    const curve = accountRefSchema.parse("fake:1:0x00000010");
+    const launchpad = defineLaunchpad(
+      createFakeLaunchpad({ onCurve: [token], launchCurve: curve }),
+    );
+    const [declared] = launchpad.contracts;
+    expect(declared?.launchContracts).toStrictEqual(["curve"]);
+    expect(Object.isFrozen(declared?.launchContracts)).toBe(true);
+  });
+
   it.each(
     curveReaderContract({
       create: () => ({

@@ -16,7 +16,10 @@ A launchpad defines itself with `defineLaunchpad`: a venue that also reads its c
 token, `curve` answers from the launchpad's own contracts whether the token is on its bonding curve
 now and what the curve trades it against. The engine sends a buy or a sell of a curve token to its
 launchpad and nowhere else. A launchpad that reads a chain takes that chain's `RpcFailover` from
-`@binference/plugin-sdk/evm`, given by the composition root.
+`@binference/plugin-sdk/evm`, given by the composition root. A launchpad whose every launch has a
+contract of its own, such as a curve per token, names it in `launchContracts`; its curve read gives
+the address for a token it holds (`launch`), and the host lets that token's trades and price reads
+call it, and no ceiling lists it (decision 0212).
 
 A venue that holds the state a token's price comes from, such as a launchpad's curve, declares
 `priceRead` (`PriceReader`): given a token, the read calls (`ReadCall`) that price it and a pure

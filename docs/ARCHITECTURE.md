@@ -52,7 +52,9 @@ Every part of binference follows these rules. A rule changes only through a new 
 10. <a id="rule-10"></a>**Contract addresses come only from the registry.** Routers, pools, lending
     markets and bridges are read from `@binference/chain`'s registry, and each was checked on chain
     before it was added. A token address the owner pastes is allowed, and goes through the risk
-    check.
+    check. A contract each launch makes, such as a token's own curve, comes from its launchpad's
+    curve read of its registry contracts, for that token alone
+    ([decision 0212](DECISIONS.md#d0212)).
 11. <a id="rule-11"></a>**Braking is instant; loosening is not.**
     - `/freeze`, cancel and tighter limits work at once from any surface.
     - Loosening a send level takes 24 hours and is announced on every surface.
@@ -368,7 +370,8 @@ client (agent runtime, MCP): swap(tokenIn, tokenOut, amount, maxSlippage, reason
   │                outside-content mark
   │                                                                        → rejected_policy
   ├─3 quote/build  venue adapter: quote → unsigned txs (exact approve + action)
-  │                decode and assert: `to` in the adapter's declared contracts, recipient = own wallet,
+  │                decode and assert: `to` in the adapter's declared contracts (or the token's
+  │                launch contracts its curve read named, decision 0212), recipient = own wallet,
   │                amounts = intent, minOut ≥ policy, deadline ≤ 60 s (none only where the
   │                venue declares its calls carry none, decision 0180)
   ├─4 risk         unknown tokens: GoPlus + honeypot.is + our buy → transfer → sell simulation from

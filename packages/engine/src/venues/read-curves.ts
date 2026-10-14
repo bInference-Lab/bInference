@@ -1,4 +1,6 @@
 import {
+  type AccountRef,
+  accountRefParts,
   type AssetRef,
   assetRefParts,
   type CurveHolding,
@@ -14,6 +16,16 @@ import type { HostedVenue } from "./hosted-venue.js";
 export interface CurveClaim {
   readonly launchpad: string;
   readonly quoteAsset: AssetRef;
+  /**
+   * The contracts of the token's own launch, by the names the launchpad declares, which the
+   * token's trades and price reads on that launchpad may call (decision 0212).
+   */
+  readonly launch?: Readonly<Record<string, AccountRef>>;
+}
+
+/** A hosted venue that is a launchpad. */
+export interface HostedLaunchpad extends HostedVenue {
+  readonly venue: LaunchpadVenue;
 }
 
 /** Whether a venue is a launchpad: it reads its curve. */
@@ -21,9 +33,22 @@ export function isLaunchpad(venue: Venue): venue is LaunchpadVenue {
   return venue.curve !== undefined;
 }
 
-// A launchpad's answer the host trusts: of its types, and naming another asset of the token's chain.
+// A launch's contracts the host trusts: each under a name the launchpad declares on the token's
+// chain, and on that chain.
+function isDeclaredLaunch(
+  launch: Readonly<Record<string, AccountRef>>,
+  token: AssetRef,
+  names: ReadonlySet<string> | undefined,
+): boolean {
+  const { chain } = assetRefParts(token);
+  const isNamed = Object.keys(launch).every((name) => names?.has(name) === true);
+  return isNamed && Object.values(launch).every((item) => accountRefParts(item).chain === chain);
+}
+
+// A launchpad's answer the host trusts: of its types, naming another asset of the token's chain,
+// and any launch contract under a name the launchpad declares there.
 function claimOf(
-  launchpad: string,
+  hosted: HostedVenue,
   token: AssetRef,
   holding: CurveHolding | undefined,
 ): Result<CurveClaim | undefined, "venue_down"> {
@@ -33,36 +58,51 @@ function claimOf(
   if (!holding.onCurve) {
     return ok(undefined);
   }
-  const { quoteAsset } = holding;
-  const isSameChain = assetRefParts(quoteAsset).chain === assetRefParts(token).chain;
-  return isSameChain && quoteAsset !== token ? ok({ launchpad, quoteAsset }) : err("venue_down");
+  const { quoteAsset, launch } = holding;
+  const { chain } = assetRefParts(token);
+  const isSameChain = assetRefParts(quoteAsset).chain === chain;
+  const names = hosted.launchNames.get(chain);
+  if (!isSameChain || quoteAsset === token) {
+    return err("venue_down");
+  }
+  if (launch === undefined) {
+    return ok({ launchpad: hosted.venue.id, quoteAsset });
+  }
+  return isDeclaredLaunch(launch, token, names)
+    ? ok({ launchpad: hosted.venue.id, quoteAsset, launch })
+    : err("venue_down");
 }
 
-async function askLaunchpad(
-  launchpad: LaunchpadVenue,
-  request: { readonly token: AssetRef; readonly contracts: HostedVenue["contracts"] },
+/**
+ * Asks one hosted launchpad whether it holds a token on its curve now, with its registry contracts
+ * on the token's chain. A launchpad that does not trade there holds nothing. A launchpad that
+ * throws, times out, answers outside its types, names a quote asset off the token's chain, or names
+ * a launch contract it does not declare there, is `venue_down`.
+ */
+export async function askLaunchpad(
+  hosted: HostedLaunchpad,
+  token: AssetRef,
   call: VenueCallOptions,
 ): Promise<Result<CurveClaim | undefined, "venue_down">> {
-  const { token } = request;
-  const contracts = request.contracts.get(assetRefParts(token).chain);
+  const contracts = hosted.contracts.get(assetRefParts(token).chain);
   if (contracts === undefined) {
     return ok(undefined);
   }
   const asked = Object.freeze({ token, contracts });
-  const answer = await callVenue(async (signal) => launchpad.curve(asked, { signal }), call);
-  return claimOf(
-    launchpad.id,
-    token,
-    answer.ok ? ownCopy(curveHoldingSchema, answer.value) : undefined,
-  );
+  const answer = await callVenue(async (signal) => hosted.venue.curve(asked, { signal }), call);
+  return claimOf(hosted, token, answer.ok ? ownCopy(curveHoldingSchema, answer.value) : undefined);
+}
+
+function isHostedLaunchpad(hosted: HostedVenue): hosted is HostedLaunchpad {
+  return isLaunchpad(hosted.venue);
 }
 
 /**
  * Asks every hosted launchpad on the token's chain, all at once, whether the token is on its curve
  * now (spec 6, section 5), and answers those that hold it. A launchpad that throws, times out,
- * answers outside its types, or names a quote asset off the token's chain is `venue_down`, and so
- * is the whole read: a token whose place is in doubt never goes to the pools. Rejects with the
- * signal's reason once it aborts.
+ * answers outside its types, names a quote asset off the token's chain or a launch contract it
+ * does not declare, is `venue_down`, and so is the whole read: a token whose place is in doubt
+ * never goes to the pools. Rejects with the signal's reason once it aborts.
  */
 export async function readCurves(
   token: AssetRef,
@@ -70,8 +110,8 @@ export async function readCurves(
   call: VenueCallOptions,
 ): Promise<Result<readonly CurveClaim[], "venue_down">> {
   const answers = await Promise.all(
-    [...venues.values()].map(async ({ venue, contracts }) =>
-      isLaunchpad(venue) ? askLaunchpad(venue, { token, contracts }, call) : ok(undefined),
+    [...venues.values()].map(async (hosted) =>
+      isHostedLaunchpad(hosted) ? askLaunchpad(hosted, token, call) : ok(undefined),
     ),
   );
   const claims: CurveClaim[] = [];
