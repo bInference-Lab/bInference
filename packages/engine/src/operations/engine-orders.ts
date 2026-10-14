@@ -76,6 +76,7 @@ export function orderFillsOf(
     ...parts,
     positions,
     orders: stores.orders,
+    intents: stores.intents,
     agents: stores.agents,
     custody,
     prices,

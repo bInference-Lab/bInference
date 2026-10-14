@@ -8,6 +8,11 @@ export interface OrderAuthorization {
    * holds only while the order still has them (decision 0210). Absent on fills stored before it.
    */
   readonly fillsBefore?: number;
+  /**
+   * The fill's terms hash, stored as the fill is confirmed (decision 0211); absent before then and
+   * on fills stored before it.
+   */
+  readonly termsHash?: string;
 }
 
 /** A webhook rule that authorized a fill, with the alert id the webhook sent. */

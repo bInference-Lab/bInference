@@ -93,6 +93,7 @@ describe("intent reasons", () => {
       "nothing_to_spend",
       "fill_failed",
       "fill_lapsed",
+      "owner_cancelled",
     ]);
     expect(intentReasons.filter((code) => new Set<string>(orderSkipReasons).has(code))).toEqual([]);
   });

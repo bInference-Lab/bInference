@@ -67,6 +67,8 @@ export interface FillCheck {
   readonly by: "fill";
   /** Absent: the fill holds. */
   readonly breach?: FillBreach;
+  /** The fill's terms hash, stored with its authorization as it is confirmed (decision 0211). */
+  readonly termsHash?: string;
 }
 
 /** At `simulated`: the facts the auto test reads, for an intent that is not a fill. */

@@ -65,6 +65,7 @@ function checkPartsOf(
     chains,
     intents: bench.test.stores.intents,
     orders: bench.test.stores.orders,
+    liveFills: false,
     policy: createPolicyCheck({
       prices: createFakePriceSource(
         new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),

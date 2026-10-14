@@ -176,6 +176,36 @@ function moveAll(
   return checked;
 }
 
+// A landed live fill counted apart from its intent's move: once per intent, all or nothing.
+function landFill(
+  store: {
+    readonly orders: Orders;
+    readonly options: MemoryOrderStoreOptions;
+    readonly fills: MemoryOrderFills;
+  },
+  write: OrderFillWrite,
+): Result<readonly OrderRecord[], "counted" | "stale"> {
+  const { orders, options, fills } = store;
+  const { fill } = write;
+  if (fill.outcome !== "filled" || fill.intentId === undefined) {
+    throw constraintFault(`fill ${fill.id} is no filled row naming its intent`);
+  }
+  if (fills.isCountedNow(fill.intentId)) {
+    return err("counted");
+  }
+  fills.checkFillNow(fill);
+  if (!recordsOwnFill(write, orders.get(fill.orderId)?.fills ?? 0)) {
+    throw constraintFault(`fill ${fill.id} lands without its order's own move`);
+  }
+  const checked = checkNow(orders, options, { moves: write.moves, unfrozen: new Set() });
+  if (!checked.ok) {
+    return err("stale");
+  }
+  saveNow(orders, checked.value);
+  fills.saveFillNow(fill);
+  return ok(structuredClone(checked.value));
+}
+
 function isAfter(order: OrderRecord, after: OrderQuery["after"]): boolean {
   return (
     after === undefined ||
@@ -243,5 +273,7 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
       ),
     move: async (moves, call) =>
       memoryCall(call, () => moveAll(orders, options, structuredClone(moves))),
+    recordLandedFill: async (write, call) =>
+      memoryCall(call, () => landFill({ orders, options, fills }, structuredClone(write))),
   };
 }

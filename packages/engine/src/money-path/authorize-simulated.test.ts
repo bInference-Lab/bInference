@@ -5,6 +5,7 @@ import { testSnapshot } from "../approval/test-snapshot.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { flush, startExecutorBench } from "../executor/test-executor.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
+import type { Authorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
@@ -74,10 +75,24 @@ async function authorized(simulated: IntentSnapshot, switches: { readonly liveFi
           checks.push(true);
           return Promise.resolve(undefined);
         }),
+      termsHash: async () => Promise.resolve(fillTerms),
     },
   } as unknown as AuthorizeParts;
   await authorizeSimulated(parts, simulated, {} as never);
-  return { states: moves.map(({ step }) => [step.status.state, step.status.reason]), checks };
+  return {
+    states: moves.map(({ step }) => [step.status.state, step.status.reason]),
+    checks,
+    bound: moves.map(({ step }) => termsHashOf(step.status.authorizedBy)),
+  };
+}
+
+const fillTerms = "f".repeat(64);
+
+// The fill terms hash an authorization stored; none on any other authorization.
+function termsHashOf(authorization: Authorization | undefined): string | undefined {
+  return authorization !== undefined && "termsHash" in authorization
+    ? authorization.termsHash
+    : undefined;
 }
 
 describe("the authorization of an auto order's fill", () => {
@@ -87,8 +102,16 @@ describe("the authorization of an auto order's fill", () => {
     const off = await authorized(simulated, { liveFills: false });
     const on = await authorized(simulated, { liveFills: true });
 
-    expect(off).toStrictEqual({ states: [["failed_check", "live_fills_off"]], checks: [] });
-    expect(on).toStrictEqual({ states: [["confirmed", undefined]], checks: [true] });
+    expect(off).toStrictEqual({
+      states: [["failed_check", "live_fills_off"]],
+      checks: [],
+      bound: [termsHashOf(simulated.stored.status.authorizedBy)],
+    });
+    expect(on).toStrictEqual({
+      states: [["confirmed", undefined]],
+      checks: [true],
+      bound: [fillTerms],
+    });
   });
 
   it("confirms a paper fill whether live fills are on or off", async () => {

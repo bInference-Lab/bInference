@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
+import type { OrderFillWrite } from "@binference/engine/orders";
 import {
   type ConfirmedIntent,
   confirmedIntentSchema,
@@ -11,6 +12,8 @@ import {
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
+import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -102,18 +105,26 @@ export const confirmedSinceTask: StoreTask<ConfirmedQuery, readonly ConfirmedInt
   },
 );
 
+// An order write a late landing carries, checked before anything is written: its row and its
+// order's own move, which throw on a broken rule, and its moves, `false` when one is stale.
+function checkLandedOrder(database: DatabaseSync, order: OrderFillWrite): boolean {
+  checkOrderFill(database, order.fill);
+  checkOwnFill(database, order);
+  return checkOrderMoves(database, order.moves).ok;
+}
+
 /**
  * Links a late landing to its intent (decision 0147), leaving the intent as it is: an intent with
  * one already is `exists`, an unknown intent `not_found`.
  */
 export const recordLandedLateTask: StoreTask<
   LateLanding,
-  Result<LateLanding, "exists" | "not_found">
+  Result<LateLanding, "exists" | "not_found" | "stale">
 > = defineTask({
   name: "intents.record_landed_late",
   access: "write",
   input: lateLandingSchema,
-  output: resultSchema(lateLandingSchema, ["exists", "not_found"]),
+  output: resultSchema(lateLandingSchema, ["exists", "not_found", "stale"]),
   run(database, landing) {
     const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
     const intent = takeFirst(
@@ -130,6 +141,14 @@ export const recordLandedLateTask: StoreTask<
     );
     if (earlier !== undefined) {
       return err("exists");
+    }
+    const { order } = landing;
+    if (order !== undefined && !checkLandedOrder(database, order)) {
+      return err("stale");
+    }
+    if (order !== undefined) {
+      writeOrderMoves(database, order.moves);
+      insertOrderFill(database, order.fill);
     }
     execute(
       kysely

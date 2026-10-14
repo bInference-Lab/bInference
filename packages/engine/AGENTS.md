@@ -87,8 +87,10 @@ Rules for this package:
   the bound. A paper fill writes its order's move, its `order_fills` row and the moves that end the
   other exit orders of a position it emptied with its own move (`fill-on-paper.ts`). A live fill
   signs under its fill grant (`executor/fill-terms.ts`, decision 0210), holds its agent's line in
-  the store until it settles, and is counted on its order by the executor's writer as it
-  reconciles (`fill-landed.ts`, the order move `fill_landed`). While the engine's
+  the store until it settles, or while a dropped one is watched (`fillsInFlight`, decision 0211),
+  and is counted on its order by the executor's writer as it reconciles or lands late
+  (`fill-landed.ts`, the order move `fill_landed`). Its terms hash (`fill-terms-hash.ts`) is stored
+  as it is confirmed; a sale that cannot finish resets its approval (`executor/reset-approval.ts`). While the engine's
   `liveOrderFills` stays off, `order/create` refuses a live price order (`order.live_fills_off`,
   decision 0197), a live order made before skips, and the money path ends a live fill
   `failed_check` with `live_fills_off`; every order skips while the engine is locked, before any

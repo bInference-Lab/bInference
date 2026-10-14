@@ -1,3 +1,4 @@
+import { failureReasons } from "../intents/intent-reason.js";
 import type { OrderFillReason, OrderFillRecord } from "./order-fill.js";
 import { isExitOrder, type OrderRecord } from "./order-record.js";
 
@@ -6,7 +7,29 @@ export const firstFillWaitMs = 15_000;
 /** The longest a buy waits after a skip: the wait doubles up to it. */
 export const longestFillWaitMs = 300_000;
 /** How many of an order's newest fill rows its pace reads: enough skips to reach the longest wait. */
-export const paceRows = 6;
+export const paceRows = 12;
+/** On-chain failures since its last fill after which an exit order waits as a buy does. */
+const backOffAfterFailures = 2;
+/** On-chain failures since its last fill after which an order stops (decision 0211). */
+export const stopAfterFailures = 5;
+
+const chainFailures: ReadonlySet<string> = new Set<string>(failureReasons);
+
+/**
+ * How many of an order's fills failed on chain since its last fill, from its rows, newest first:
+ * reverted, cancelled or dropped while stuck, its nonce taken, or a step never sent after an
+ * earlier one landed.
+ */
+export function chainFailuresInRow(rows: readonly OrderFillRecord[]): number {
+  const filled = rows.findIndex(({ outcome }) => outcome === "filled");
+  const since = filled === -1 ? rows : rows.slice(0, filled);
+  return since.filter(({ reason }) => reason !== undefined && chainFailures.has(reason)).length;
+}
+
+// How long after its last row an order waits after `skips` skips: 15 s, doubling up to 5 min.
+function waitAfter(skips: number): number {
+  return Math.min(firstFillWaitMs * 2 ** (skips - 1), longestFillWaitMs);
+}
 
 // The skips at the head of the rows, newest first, up to the last fill.
 function skipsInRow(rows: readonly OrderFillRecord[]): number {
@@ -16,22 +39,20 @@ function skipsInRow(rows: readonly OrderFillRecord[]): number {
 
 /**
  * Whether an order still waits after its skips in a row (decision 0197), read from its fill rows,
- * newest first, so a restart keeps the wait. An exit order never waits: it tries again at the next
- * price. A buy waits 15 seconds after its last skip, the wait doubling with each skip in a row up
- * to 5 minutes; a fill starts it over.
+ * newest first, so a restart keeps the wait. An exit order tries again at the next price, until
+ * its second fill since its last fill failed on chain: then it waits 15 seconds, doubling with each
+ * failure up to 5 minutes (decision 0211). A buy waits 15 seconds after its last skip, the wait
+ * doubling with each skip in a row up to 5 minutes; a fill starts it over.
  */
 export function isWaiting(
   order: Pick<OrderRecord, "request">,
   rows: readonly OrderFillRecord[],
   nowMs: number,
 ): boolean {
-  const skips = skipsInRow(rows);
   const [last] = rows;
-  if (isExitOrder(order.request) || skips === 0 || last === undefined) {
-    return false;
-  }
-  const waitMs = Math.min(firstFillWaitMs * 2 ** (skips - 1), longestFillWaitMs);
-  return nowMs < last.atMs + waitMs;
+  const failures = chainFailuresInRow(rows);
+  const skips = isExitOrder(order.request) ? failures - backOffAfterFailures + 1 : skipsInRow(rows);
+  return last !== undefined && skips > 0 && nowMs < last.atMs + waitAfter(skips);
 }
 
 /**

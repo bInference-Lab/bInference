@@ -14,16 +14,28 @@ export interface DroppedStep {
 // The owner's alarm when a step the executor dropped lands after all.
 const droppedLandedNoticeKey = "notice.droppedLanded";
 
-/** A dropped step under watch: the step, its transactions at its nonce, and the blocks waited. */
+/** A dropped step under watch: the step, its transactions at its nonce, and when it ends. */
 interface Watch {
   readonly step: DroppedStep;
   readonly at: NonceTransactions;
-  readonly waits: number;
+  readonly endsAtMs: number;
+}
+
+/**
+ * When the watch of a dropped step ends: `finalAfterBlocks` blocks of its chain after its intent
+ * ended, by the clock, so a restart resumes it for the time left and an agent's fill line holds
+ * as long (decision 0211).
+ */
+export function droppedWatchEndsAt(
+  run: Pick<ExecutionRun, "parts" | "plan">,
+  droppedAtMs: number,
+): number {
+  return droppedAtMs + run.parts.limits.finalAfterBlocks * run.plan.chain.definition.blockTimeMs;
 }
 
 async function watchFrom(run: ExecutionRun, watch: Watch): Promise<void> {
-  const { step, at, waits } = watch;
-  if (waits >= run.parts.limits.finalAfterBlocks) {
+  const { step, at, endsAtMs } = watch;
+  if (run.parts.clock.now() >= endsAtMs) {
     return;
   }
   const read = await readFate(run, at);
@@ -44,12 +56,12 @@ async function watchFrom(run: ExecutionRun, watch: Watch): Promise<void> {
     return;
   }
   await nextBlock(run);
-  await watchFrom(run, { ...watch, waits: waits + 1 });
+  await watchFrom(run, watch);
 }
 
 /**
- * Watches a dropped step's transactions each block for `finalAfterBlocks` blocks, off the wallet's
- * queue: a relay or a node the drop rule could not see may still put one in a block. One that
+ * Watches a dropped step's transactions each block for `finalAfterBlocks` blocks of its chain from
+ * the drop, by the clock, off the wallet's queue: a relay or a node the drop rule could not see may still put one in a block. One that
  * lands is logged as `executor.dropped_landed`, raises `notice.droppedLanded`, and is booked as a
  * late landing linked to its intent, which stays `failed_onchain` (decision 0147). The watch ends
  * early once a final block holds the step's nonce without any of them. It signs and sends nothing.
@@ -59,5 +71,6 @@ export async function watchDropped(run: ExecutionRun, step: DroppedStep): Promis
     signal: run.signal,
   });
   const at = { transaction: step.dropped, rivals: rivalsOf(stored, step.dropped) };
-  await watchFrom(run, { step, at, waits: 0 });
+  const endsAtMs = droppedWatchEndsAt(run, step.intent.changedAtMs);
+  await watchFrom(run, { step, at, endsAtMs });
 }

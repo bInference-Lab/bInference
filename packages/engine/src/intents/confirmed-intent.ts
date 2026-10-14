@@ -2,6 +2,8 @@ import { decimalStringSchema, type Id, idSchema, type Result } from "@binference
 import { intentStateSchema } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
+import type { FillsInFlightQuery } from "./fills-in-flight.js";
+import type { IntentRecord } from "./intent-record.js";
 import type { IntentState } from "./intent-state.js";
 import type { LateLanding } from "./late-landing.js";
 
@@ -42,15 +44,29 @@ export const confirmedIntentSchema: z.ZodType<ConfirmedIntent> = z.strictObject(
   landedLateAtMs: epochMsSchema.exactOptional(),
 });
 
-/** The intent store's write of a late landing, which `IntentStore` takes on (decision 0147). */
+/**
+ * The intent store's late landings, which `IntentStore` takes on: the write of one (decision
+ * 0147), and the live fills that hold their agent's line until they land or their watch ends
+ * (decision 0211).
+ */
 export interface LandedLate {
   /**
+   * Every live order fill of an agent that holds its line, the least recently changed first, with
+   * no page limit (decision 0211).
+   */
+  fillsInFlight(
+    query: FillsInFlightQuery,
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly IntentRecord[]>;
+  /**
    * Links a late landing to its intent: the intent stays as it is, and `confirmedSince` gives the
-   * landing's time with it. An intent that has one already is `exists`, and an unknown intent
-   * `not_found`; either writes nothing.
+   * landing's time with it. With an order write, the landing's order moves and `filled` row land in
+   * the same write, all or nothing (decision 0211). An intent that has a landing already is
+   * `exists`, an unknown intent `not_found`, and an order at another version `stale`; each writes
+   * nothing. An order write that breaks the fill rules throws `store.constraint`.
    */
   recordLandedLate(
     landing: LateLanding,
     options: { readonly signal: AbortSignal },
-  ): Promise<Result<LateLanding, "exists" | "not_found">>;
+  ): Promise<Result<LateLanding, "exists" | "not_found" | "stale">>;
 }

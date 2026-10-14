@@ -1,4 +1,4 @@
-import { type Id, idSchema, type Result } from "@binference/core";
+import { BinferenceError, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type FillAnnouncement,
   fillAnnouncementSchema,
@@ -8,6 +8,8 @@ import {
   orderFillQuerySchema,
   type OrderFillRecord,
   orderFillRecordSchema,
+  type OrderFillWrite,
+  orderFillWriteSchema,
   type OrderMove,
   type OrderMoveRefusal,
   orderMoveSchema,
@@ -25,7 +27,10 @@ import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
 import {
   checkOrderFill,
+  checkOwnFill,
   insertOrderFill,
+  countedFillOf,
+  isCounted,
   listOrderFills,
   listUnannounced,
   markAnnounced,
@@ -137,6 +142,50 @@ export const recordOrderFillTask: StoreTask<OrderFillRecord, OrderFillRecord> = 
   },
 });
 
+/**
+ * Counts a landed live fill on its order apart from its intent's move: its moves and its `filled`
+ * row in one transaction, once per intent (decision 0211).
+ */
+export const recordLandedFillTask: StoreTask<
+  OrderFillWrite,
+  Result<readonly OrderRecord[], "counted" | "stale">
+> = defineTask({
+  name: "orders.recordLandedFill",
+  access: "write",
+  input: orderFillWriteSchema,
+  output: resultSchema(z.array(orderRecordSchema), ["counted", "stale"]),
+  run(database, write) {
+    const { fill } = write;
+    if (fill.outcome !== "filled" || fill.intentId === undefined) {
+      throw new BinferenceError({
+        code: "store.constraint",
+        message: "A landed fill is a filled row that names its intent.",
+        details: { fill: fill.id },
+      });
+    }
+    if (isCounted(database, fill.intentId)) {
+      return err("counted");
+    }
+    checkOrderFill(database, fill);
+    checkOwnFill(database, write);
+    if (!checkOrderMoves(database, write.moves).ok) {
+      return err("stale");
+    }
+    const orders = writeOrderMoves(database, write.moves);
+    insertOrderFill(database, fill);
+    return ok(orders);
+  },
+});
+
+/** Reads the `filled` row that counts an intent's fill. */
+export const countedFillTask: StoreTask<Id<"int">, OrderFillRecord | undefined> = defineTask({
+  name: "orders.countedFill",
+  access: "read",
+  input: idSchema("int"),
+  output: orderFillRecordSchema.optional(),
+  run: (database, intent) => countedFillOf(database, intent),
+});
+
 /** Lists one order's fill rows, the newest first. */
 export const listOrderFillsTask: StoreTask<OrderFillQuery, readonly OrderFillRecord[]> = defineTask(
   {
@@ -177,6 +226,8 @@ export const orderTasks: readonly TaskRunner[] = [
   orderByIntentTask,
   listOrdersTask,
   recordOrderFillTask,
+  recordLandedFillTask,
+  countedFillTask,
   listOrderFillsTask,
   unannouncedFillsTask,
   markAnnouncedTask,

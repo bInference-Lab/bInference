@@ -29,10 +29,28 @@ function toOrderFillRecord(row: Selectable<OrderFillsTable>): OrderFillRecord {
   });
 }
 
+/** The `filled` row that counts an intent's fill, if any: a fill counts once (decision 0211). */
+export function countedFillOf(database: DatabaseSync, intent: string): OrderFillRecord | undefined {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const row = takeFirst(
+    kysely
+      .selectFrom("order_fills")
+      .selectAll()
+      .where("intent_id", "=", intent)
+      .where("outcome", "=", "filled"),
+  );
+  return row === undefined ? undefined : toOrderFillRecord(row);
+}
+
+/** Whether an intent has a `filled` row already. */
+export function isCounted(database: DatabaseSync, intent: string): boolean {
+  return countedFillOf(database, intent) !== undefined;
+}
+
 /**
  * Checks a fill row before anything of its write is written: a new id, a stored order and, when
- * it names one, a stored intent. A broken rule throws `store.constraint`, which rolls the write
- * back.
+ * it names one, a stored intent, and no second `filled` row for one intent. A broken rule throws
+ * `store.constraint`, which rolls the write back.
  */
 export function checkOrderFill(database: DatabaseSync, fill: OrderFillRecord): void {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -43,10 +61,12 @@ export function checkOrderFill(database: DatabaseSync, fill: OrderFillRecord): v
     intentId === undefined
       ? { id: intentId }
       : takeFirst(kysely.selectFrom("intents").select("id").where("id", "=", intentId));
-  if (taken !== undefined || order === undefined || intent === undefined) {
+  const isTwice =
+    fill.outcome === "filled" && intentId !== undefined && isCounted(database, intentId);
+  if (taken !== undefined || order === undefined || intent === undefined || isTwice) {
     throw new BinferenceError({
       code: "store.constraint",
-      message: "A fill row takes a new id and names a stored order and intent.",
+      message: "A fill row takes a new id, names a stored order and intent, and counts once.",
       details: { fill: fill.id },
     });
   }

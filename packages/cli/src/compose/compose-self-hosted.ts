@@ -128,10 +128,9 @@ function composeSending(
     http: host.http,
     clock: host.clock,
     random: host.random,
-    publish: (push) => {
-      pushes.publish(push);
-    },
+    publish: (push) => pushes.publish(push),
     logger: log.logger,
+    ...(host.testOrders === undefined ? {} : { liveOrderFills: true }),
   });
   // The executor finishes a signature or a send under way within the shutdown's budget.
   closers.add("executor", async (signal) => composed.executor.close({ signal }));

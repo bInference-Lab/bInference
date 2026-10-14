@@ -56,7 +56,14 @@ const simulationViewSchema: z.ZodType<SimulationView> = z.strictObject({
 });
 
 const authorizationSchema: z.ZodType<Authorization> = z.union([
-  z.strictObject({ order: idSchema("ord"), fillsBefore: z.int().nonnegative().exactOptional() }),
+  z.strictObject({
+    order: idSchema("ord"),
+    fillsBefore: z.int().nonnegative().exactOptional(),
+    termsHash: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .exactOptional(),
+  }),
   z.strictObject({ webhookRule: idSchema("whr"), alertId: z.string().min(1) }),
   z.strictObject({ approvalMode: z.literal("auto"), modeVersion: z.int().nonnegative() }),
 ]);

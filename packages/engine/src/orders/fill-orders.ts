@@ -4,19 +4,27 @@ import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { isTerminalState } from "../intents/intent-state.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
-import type { AgentStore, PositionStore } from "../ports.js";
+import type { AgentStore, IntentStore, PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { endEmptyExit, endLateExits, wasEmptiedSince } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
 import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
-import { hasUnsettledLiveFill, unfinishedFills, withinDeadline } from "./fill-faults.js";
-import { agentWideReasons, isWaiting, paceRows } from "./fill-pacing.js";
+import { isLineHeld, unfinishedFills, withinDeadline } from "./fill-faults.js";
+import {
+  agentWideReasons,
+  chainFailuresInRow,
+  isWaiting,
+  paceRows,
+  stopAfterFailures,
+} from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
+import { proposedTermsHash } from "./fill-terms-hash.js";
 import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
 import { isTriggerDisarmed } from "./price-triggers.js";
+import { stopFailing } from "./stop-failing.js";
 
 /** The price a trigger fired an order's fill at, as the price watcher read it. */
 export interface FillPrice {
@@ -52,6 +60,11 @@ export interface OrderFills {
 /** What the fills read, run and write through, and where their notices go. */
 export interface OrderFillsParts extends FillSizeParts {
   readonly orders: OrderStore;
+  /**
+   * The intents, whose live fills in flight hold an agent's line and whose order cards' terms a
+   * fill's terms hash binds (decision 0211).
+   */
+  readonly intents: Pick<IntentStore, "fillsInFlight" | "confirmation">;
   readonly agents: AgentStore;
   readonly stored: StoredIntents;
   readonly moneyPath: MoneyPath;
@@ -187,6 +200,8 @@ async function proposeFill(
     isPaper: order.isPaper,
     decimals: price.decimals,
     check: checkOf(parts, { order, sized, price }),
+    termsHash: async (simulated: IntentSnapshot, call: { readonly signal: AbortSignal }) =>
+      proposedTermsHash(parts.intents, { order, simulated, signal: call.signal }),
   };
   return parts.moneyPath.propose(sized.request, proposer, { signal, fill: proposal });
 }
@@ -341,6 +356,9 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
         return "inactive";
       }
       const rows = await parts.orders.fills({ orderId: id, limit: paceRows }, { signal });
+      if (chainFailuresInRow(rows) >= stopAfterFailures) {
+        return stopFailing(parts, { order: read, signal });
+      }
       if (isWaiting(read, rows, parts.clock.now())) {
         return "waiting";
       }
@@ -351,8 +369,8 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
           if (!canFire(parts, order)) {
             return "inactive";
           }
-          // The line holds until the agent's live fill settles, across a restart too.
-          return (await hasUnsettledLiveFill(parts.stored, order.agentId, { signal }))
+          // A live order's line holds until the agent's live fill is counted, across a restart too.
+          return (await isLineHeld(parts, order, signal))
             ? "waiting"
             : fillOrFail(parts, state, { order, price, signal });
         });

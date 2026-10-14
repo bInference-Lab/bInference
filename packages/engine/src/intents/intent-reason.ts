@@ -166,6 +166,7 @@ export const orderSkipReasons = [
   "nothing_to_spend",
   "fill_failed",
   "fill_lapsed",
+  "owner_cancelled",
 ] as const;
 
 /** A reason an auto order skipped a fill before any intent was stored. */

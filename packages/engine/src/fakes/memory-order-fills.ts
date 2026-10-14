@@ -33,6 +33,12 @@ export interface MemoryOrderFills {
   checkFillNow(fill: OrderFillRecord): void;
   /** Writes a fill row `checkFillNow` passed, once the rest of the write has passed its checks. */
   saveFillNow(fill: OrderFillRecord): void;
+  /** Whether an intent has a `filled` row already. */
+  isCountedNow(intent: Id<"int">): boolean;
+  countedFill(
+    intent: Id<"int">,
+    options: { readonly signal: AbortSignal },
+  ): Promise<OrderFillRecord | undefined>;
 }
 
 /** What the fill rows read of the orders and intents beside them. */
@@ -43,13 +49,20 @@ export interface MemoryOrderFillsOptions {
 
 type Fills = Map<Id<"fil">, OrderFillRecord>;
 
+function isCounted(fills: Fills, intent: Id<"int">): boolean {
+  return [...fills.values()].some((row) => row.intentId === intent && row.outcome === "filled");
+}
+
 // A fill row names a stored order and, when it names one, a stored intent, under a new id, with a
-// reason exactly when it is a skip.
+// reason exactly when it is a skip; one intent has one `filled` row at most.
 function checkFill(fills: Fills, options: MemoryOrderFillsOptions, fill: OrderFillRecord): void {
+  const { intentId } = fill;
+  const isTwice = fill.outcome === "filled" && intentId !== undefined && isCounted(fills, intentId);
   const isKnown =
     options.hasOrder(fill.orderId) &&
-    (fill.intentId === undefined || options.hasIntent(fill.intentId)) &&
-    !fills.has(fill.id);
+    (intentId === undefined || options.hasIntent(intentId)) &&
+    !fills.has(fill.id) &&
+    !isTwice;
   if (!isKnown || !orderFillRecordSchema.safeParse(fill).success) {
     throw constraintFault(`fill ${fill.id} names an unknown order or intent, or breaks its rules`);
   }
@@ -97,6 +110,13 @@ export function createMemoryOrderFills(options: MemoryOrderFillsOptions): Memory
     saveFillNow: (fill) => {
       save(fill);
     },
+    isCountedNow: (intent) => isCounted(fills, intent),
+    countedFill: async (intent, call) =>
+      memoryCall(call, () =>
+        structuredClone(
+          [...fills.values()].find((row) => row.intentId === intent && row.outcome === "filled"),
+        ),
+      ),
     recordFill: async (fill, call) =>
       memoryCall(call, () => {
         checkFill(fills, options, fill);

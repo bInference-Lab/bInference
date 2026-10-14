@@ -11,6 +11,7 @@ import { type LandedFillParts, landedFillWrite } from "./fill-landed.js";
 import { skippedNotice } from "./fill-notices.js";
 import { isNewReason, paceRows } from "./fill-pacing.js";
 import type { OrderFillReason, OrderFillRecord, OrderFillWrite } from "./order-fill.js";
+import { moveOrder } from "./order-machine.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 
@@ -90,6 +91,19 @@ interface SkipEnd {
   readonly tells?: false;
 }
 
+// Whether the owner withdrew the fill: a cancel an `intent/cancel` call made, not the engine. The
+// fill's order ends with it, or its trigger, still met, would fire the same fill again (decision
+// 0211).
+function isOwnerCancel(move: IntentMove): boolean {
+  const { status, event } = move.step;
+  return (
+    status.state === "cancelled" &&
+    event.cancelCause === "request" &&
+    move.by !== undefined &&
+    move.by !== "engine"
+  );
+}
+
 // How a live fill's executor ends it without a fill (decision 0210): its authorization ran out in
 // the queue, it was never signed, or it failed on chain. The executor's own notice tells the owner.
 function liveEndOf(step: IntentStep): SkipEnd | undefined {
@@ -109,8 +123,11 @@ function liveEndOf(step: IntentStep): SkipEnd | undefined {
 // Why a step ends a fill without filling: its refusal's reason, `frozen` for a freeze's cancel, or
 // the end of a live fill the executor ran. Any other end, such as a cancel the fill made itself,
 // is no skip.
-function skipEndOf(before: IntentSnapshot, step: IntentStep): SkipEnd | undefined {
-  const { status, event } = step;
+function skipEndOf(before: IntentSnapshot, move: IntentMove): SkipEnd | undefined {
+  const { status, event } = move.step;
+  if (isOwnerCancel(move)) {
+    return { reason: "owner_cancelled" };
+  }
   if (status.state === "cancelled" && event.cancelCause === "freeze") {
     return { reason: "frozen" };
   }
@@ -118,7 +135,7 @@ function skipEndOf(before: IntentSnapshot, step: IntentStep): SkipEnd | undefine
   if (isRefusal) {
     return status.reason === undefined ? undefined : { reason: status.reason };
   }
-  return before.record.isPaper ? undefined : liveEndOf(step);
+  return before.record.isPaper ? undefined : liveEndOf(move.step);
 }
 
 /**
@@ -150,29 +167,66 @@ function landedOf(move: IntentMove): SettledTrade | undefined {
  * Creates the {@link FillEnd} the one writer of intents adds to each move: a skip's row, or, with
  * `landed`, a live fill's write on its order as it reconciles.
  */
+// A landed live fill's write on its order, once: none when its fill was counted already.
+async function landedWrite(
+  parts: FillEndParts & { readonly landed: NonNullable<FillEndParts["landed"]> },
+  call: {
+    readonly order: OrderRecord;
+    readonly before: IntentSnapshot;
+    readonly settled: SettledTrade;
+    readonly atMs: number;
+    readonly signal: AbortSignal;
+  },
+): Promise<OrderFillWrite | undefined> {
+  const { order, before, settled, atMs, signal } = call;
+  const landing = { ...parts.landed, orders: parts.orders, ids: parts.ids };
+  const counted = await parts.orders.countedFill(before.record.id, { signal });
+  if (counted !== undefined) {
+    return undefined;
+  }
+  const write = { order, snapshot: before, settled, isBooked: true, atMs, signal };
+  return landedFillWrite(landing, write);
+}
+
+// A skip's row with its notice; an owner's cancel ends the order with it (decision 0211).
+async function skipWrite(
+  parts: FillEndParts,
+  call: SkipOf & { readonly ended: SkipEnd },
+): Promise<OrderFillWrite> {
+  const { ended, order, atMs } = call;
+  const fill = await skipRowOf(parts, { ...call, ...ended });
+  const ends =
+    ended.reason === "owner_cancelled"
+      ? moveOrder(order, { type: "cancel_requested" }, atMs)
+      : undefined;
+  return { moves: ends?.ok === true ? [ends.value] : [], fill };
+}
+
+/**
+ * Creates the {@link FillEnd} the one writer of intents adds to each move: a skip's row, or, with
+ * `landed`, a live fill's write on its order as it reconciles.
+ */
 export function createFillEnd(parts: FillEndParts): FillEnd {
   return async (before, move, { signal }) => {
     const orderId = fillOrderOf(before);
     const settled = landedOf(move);
-    const ended = skipEndOf(before, move.step);
-    const isNone = settled === undefined || parts.landed === undefined;
-    if (move.order !== undefined || orderId === undefined || (isNone && ended === undefined)) {
+    const ended = skipEndOf(before, move);
+    const { landed } = parts;
+    const lands = settled !== undefined && landed !== undefined;
+    if (move.order !== undefined || orderId === undefined || (!lands && ended === undefined)) {
       return undefined;
     }
     const order = await parts.orders.get(orderId, { signal });
+    const atMs = move.step.event.atMs;
     if (order === undefined) {
       return undefined;
     }
-    const atMs = move.step.event.atMs;
-    if (settled !== undefined && parts.landed !== undefined) {
-      const landing = { ...parts.landed, orders: parts.orders, ids: parts.ids };
-      return landedFillWrite(landing, { order, snapshot: before, settled, atMs, signal });
+    if (settled !== undefined && landed !== undefined) {
+      return landedWrite({ ...parts, landed }, { order, before, settled, atMs, signal });
     }
-    if (ended === undefined) {
-      return undefined;
-    }
-    const skip = { order, ...ended, intent: before, atMs, signal };
-    return { moves: [], fill: await skipRowOf(parts, skip) };
+    return ended === undefined
+      ? undefined
+      : skipWrite(parts, { order, ended, reason: ended.reason, intent: before, atMs, signal });
   };
 }
 

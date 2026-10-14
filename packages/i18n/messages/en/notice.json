@@ -57,5 +57,9 @@
   "alertWallet": "{wallet} {side, select, buy {bought {amount} for {value}} other {sold {amount}, {share} of its holding, for {value}}}",
   "alertLaunch": "New launch passed your filters: {launch}",
   "ordersEnded": "{orderKind} sold all your {token}, so {count, plural, one {your other exit order on it ended} other {your # other exit orders on it ended}}",
-  "exitEnded": "{orderKind} on {token} ended: the wallet holds none of it any more"
+  "exitEnded": "{orderKind} on {token} ended: the wallet holds none of it any more",
+  "orderOverfilled": "🔴 {orderKind} filled more often than it allows: {fills} fills of {maxFills}. Check the wallet and the order.",
+  "fillUnvalued": "⚠️ {orderKind} filled on chain, but its trade cannot be valued yet. binference counted the fill on the order and keeps trying to value it.",
+  "fillsFailing": "⚠️ {orderKind} stopped: its last {count} fills failed on chain. Check the token, and make a new order if you still want one.",
+  "approvalReset": "⚠️ A trade could not finish its last steps, so binference set the approval it had given for {token} back to zero."
 }

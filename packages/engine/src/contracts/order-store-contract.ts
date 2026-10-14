@@ -6,6 +6,9 @@ import { testCoin } from "../intents/test-intents.js";
 import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
 import {
   announcesFillNotices,
+  countsALandedFillOnce,
+  linksALateLandingWithItsFill,
+  listsTheFillsInFlight,
   recordsSkips,
   refusesAbortedFills,
   refusesAFillWithoutItsOrderMove,
@@ -181,6 +184,24 @@ async function refusesAborted(subject: OrderStoreSubject): Promise<void> {
   assert.equal(await store.get(draft.id, live()), undefined);
 }
 
+// A live fill counted once, a late landing linked with its fill, and the fills that hold a line
+// (decision 0211).
+function liveFillChecks(create: () => Promise<OrderStoreSubject>): readonly ContractCheck[] {
+  return [
+    checkOn(
+      "counts a landed fill once, apart from its intent's move",
+      create,
+      countsALandedFillOnce,
+    ),
+    checkOn(
+      "links a late landing with its fill on its order",
+      create,
+      linksALateLandingWithItsFill,
+    ),
+    checkOn("lists every live fill that holds its agent's line", create, listsTheFillsInFlight),
+  ];
+}
+
 /**
  * The checks every {@link OrderStore} adapter passes: orders created once and kept exact past 64
  * bits, a buy's spent asset and size among them, moves all or nothing under their versions, the rules no move may break, an order active
@@ -220,6 +241,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
     checkOn("keeps an order's skips, the newest first", create, recordsSkips),
     checkOn("writes a fill on its order with its intent's move", create, writesAFillWithItsIntent),
+    ...liveFillChecks(create),
     checkOn("refuses fill calls on an aborted signal", create, refusesAbortedFills),
     checkOn("writes a frozen fill's row with the freeze's cancel", create, writesAFrozenFillsRow),
     checkOn("keeps a row's notices until they are announced", create, announcesFillNotices),

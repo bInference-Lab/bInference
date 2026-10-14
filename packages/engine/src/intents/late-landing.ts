@@ -1,5 +1,6 @@
 import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
+import { type OrderFillWrite, orderFillWriteSchema } from "../orders/order-fill.js";
 import { epochMsSchema } from "../records/record-fields.js";
 
 /**
@@ -12,6 +13,11 @@ export interface LateLanding {
   readonly txId: Id<"tx">;
   /** When the executor found the transaction in a block. */
   readonly atMs: number;
+  /**
+   * An order's live fill that landed late counts on its order in the same write: its moves and
+   * its `filled` row (decision 0211). Absent for any other intent.
+   */
+  readonly order?: OrderFillWrite;
 }
 
 /** Parses a late landing. */
@@ -19,4 +25,5 @@ export const lateLandingSchema: z.ZodType<LateLanding> = z.strictObject({
   intentId: idSchema("int"),
   txId: idSchema("tx"),
   atMs: epochMsSchema,
+  order: orderFillWriteSchema.exactOptional(),
 });

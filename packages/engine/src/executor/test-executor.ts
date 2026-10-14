@@ -101,6 +101,8 @@ export interface BenchOptions {
   readonly prices?: ReadonlyMap<AssetRef, UsdPrice>;
   /** The seed of the executor's ids; an executor started again needs another one. */
   readonly idSeed?: number;
+  /** Whether the executor signs live order fills; off when absent, as in the shipped engine. */
+  readonly liveOrderFills?: boolean;
   /** How the bench's test engine differs from the default, beside its agent and executor. */
   readonly engine?: Omit<TestEngineOptions, "agent" | "executor">;
   /**
@@ -231,6 +233,7 @@ export function executorOf(
     publish: notes.pushed,
     logger,
     ...(options.limits === undefined ? {} : { limits: options.limits }),
+    ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
   });
 }
 

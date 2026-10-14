@@ -76,6 +76,8 @@ export interface ComposeExecutorOptions {
   readonly random: Random;
   readonly publish: (push: EnginePush) => void;
   readonly logger: Logger;
+  /** Whether live order fills may sign: only a test host turns them on (decision 0211). */
+  readonly liveOrderFills?: boolean;
 }
 
 // A node rests 30 s after a failure; a relay gets 3 s, several BSC blocks, to take a transaction.
@@ -226,6 +228,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     ids: createIdSource({ clock, random }),
     publish: options.publish,
     logger: options.logger,
+    ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
   });
   return { executor, health: () => health.state() };
 }

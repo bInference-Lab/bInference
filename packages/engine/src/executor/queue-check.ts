@@ -21,10 +21,11 @@ import { quotedTradeOf } from "../money-path/place-trade.js";
 import { policyFactsOf } from "../money-path/policy-facts-of.js";
 import { type ResolveOptions, resolveProposal } from "../money-path/resolve-proposal.js";
 import { swapSubjectOf } from "../money-path/swap-trade.js";
+import type { OrderFillReason } from "../orders/order-fill.js";
 import type { OrderStore } from "../orders/ports.js";
-import type { PolicyCheck } from "../policy/check-policy.js";
+import type { PolicyCheck, PolicyVerdict } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
-import { fillGrantHolds, fillGrantOf } from "./fill-terms.js";
+import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
@@ -47,6 +48,8 @@ export interface QueueCheck {
    * (decision 0218). The intent ends with this reason, and nothing is signed.
    */
   readonly launchFailure?: LaunchReadFailure;
+  /** Why an order's live fill ends at once, unsigned (decision 0211). */
+  readonly refusal?: OrderFillReason;
 }
 
 /** The ports and steps the check reads. */
@@ -54,6 +57,8 @@ export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
   readonly intents: IntentStore;
   /** The auto orders, whose fill grants a live fill signs under (decision 0210). */
   readonly orders: Pick<OrderStore, "get">;
+  /** Whether live order fills may sign; off, the queue ends each one (decision 0211). */
+  readonly liveFills: boolean;
   readonly policy: PolicyCheck;
   readonly clock: Clock;
   /** The venues' declarations, which name the contracts a trade's steps may reach. */
@@ -62,6 +67,8 @@ export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
 
 interface Rechecked {
   readonly hasPassed: boolean;
+  /** Why the policy refuses the intent now, when it gives a reason. */
+  readonly reason?: OrderFillReason;
   readonly networkFeeCapNativeBase?: bigint;
 }
 
@@ -79,7 +86,7 @@ async function recheckPolicy(
   const resolving = { request, settings, signal, intent: record.id };
   const resolved = await resolveProposal(parts, resolving);
   if (!resolved.ok || record.quote === undefined) {
-    return { hasPassed: false };
+    return { hasPassed: false, reason: "fill_failed" };
   }
   const { ask, facts, chain, nativeAsset, account } = resolved.value;
   const quote = quoteDocument.decode(record.quote);
@@ -102,9 +109,26 @@ async function recheckPolicy(
     quote: { amountIn: quote.amountIn, expectedOut: quote.expectedOut },
   });
   const isAuto = stored.status.authorizedBy !== undefined;
-  const hasPassed =
-    verdict.ok && !(isAuto && verdict.value.sellsDeniedToken) && quoteHolds(quote, settings.limits);
-  return { hasPassed, networkFeeCapNativeBase: facts.networkFeeCapNativeBase };
+  const reason = refusalOf({ verdict, isAuto, holds: quoteHolds(quote, settings.limits) });
+  const cap = { networkFeeCapNativeBase: facts.networkFeeCapNativeBase };
+  return reason === undefined ? { hasPassed: true, ...cap } : { hasPassed: false, reason, ...cap };
+}
+
+// Why the policy refuses an intent now: its own reason, a denied token an auto intent sells, or a
+// quote that no longer fits the agent's limits.
+function refusalOf(check: {
+  readonly verdict: PolicyVerdict;
+  readonly isAuto: boolean;
+  readonly holds: boolean;
+}): OrderFillReason | undefined {
+  const { verdict, isAuto, holds } = check;
+  if (!verdict.ok) {
+    return verdict.error;
+  }
+  if (isAuto && verdict.value.sellsDeniedToken) {
+    return "token_denied";
+  }
+  return holds ? undefined : "price_impact";
 }
 
 // The confirmed quote must still fit the agent's limits now: each venue of its route allowed and
@@ -186,40 +210,54 @@ function autoTerms(
     : undefined;
 }
 
-// A live order fill signs under its fill grant while its order, read now, still holds it
-// (decision 0210). A webhook rule's fill has no store yet, so nothing authorizes it here.
-async function fillTerms(
-  snapshot: IntentSnapshot,
-  rechecked: Rechecked,
-  context: { readonly parts: QueueCheckParts; readonly signal: AbortSignal },
-): Promise<Omit<SigningTerms, "allowed"> | undefined> {
-  const cap = rechecked.networkFeeCapNativeBase;
-  const { parts, signal } = context;
-  const made =
-    cap === undefined
-      ? undefined
-      : await fillGrantOf(parts, snapshot, { networkFeeCapNativeBase: cap, signal });
-  const authorization =
-    made === undefined ? undefined : fillGrantHolds(made.grant, made.current, parts.clock.now());
-  return made === undefined || authorization === undefined
-    ? undefined
-    : { authorization, termsHash: made.grant.termsHash };
-}
-
 // A tapped intent signs with the owner's confirmation, an auto one with its grant, an order's
-// live fill with its fill grant.
+// live fill with its fill grant, or ends at once with the reason it cannot (decision 0211).
 async function termsOf(
   snapshot: IntentSnapshot,
   rechecked: Rechecked,
   context: { readonly parts: QueueCheckParts; readonly signal: AbortSignal },
-): Promise<Omit<SigningTerms, "allowed"> | undefined> {
+): Promise<FillQueueCheck> {
+  const { parts, signal } = context;
   const { authorizedBy } = snapshot.stored.status;
   if (authorizedBy === undefined) {
-    return confirmationTerms(snapshot, context.parts, context.signal);
+    const terms = await confirmationTerms(snapshot, parts, signal);
+    return terms === undefined ? {} : { terms };
   }
-  return isFillAuthorization(authorizedBy)
-    ? fillTerms(snapshot, rechecked, context)
-    : autoTerms(snapshot, rechecked, context.parts.clock.now());
+  if (!isFillAuthorization(authorizedBy)) {
+    const terms = autoTerms(snapshot, rechecked, parts.clock.now());
+    return terms === undefined ? {} : { terms };
+  }
+  const isAgentLive = snapshot.settings.agent.mode === "live";
+  const { reason, networkFeeCapNativeBase } = rechecked;
+  return checkFillForQueue(parts, snapshot, {
+    liveFills: parts.liveFills,
+    isAgentLive,
+    ...(reason === undefined ? {} : { policyReason: reason }),
+    ...(networkFeeCapNativeBase === undefined ? {} : { networkFeeCapNativeBase }),
+    signal,
+  });
+}
+
+/**
+ * What a live fill's later steps sign with after a restart (decision 0211): its fill grant as the
+ * queue made it, whatever its order became, which each step checks again before it is signed;
+ * `undefined` when the fill's stored terms no longer bind it.
+ */
+export async function recoveredFillTerms(
+  snapshot: IntentSnapshot,
+  context: { readonly parts: QueueCheckParts; readonly chain: RegisteredChain },
+  signal: AbortSignal,
+): Promise<SigningTerms | undefined> {
+  const { parts, chain } = context;
+  const rechecked = await recheckPolicy(snapshot, parts, signal);
+  const networkFeeCapNativeBase = rechecked.networkFeeCapNativeBase ?? 0n;
+  const granted = await fillGrantOf(parts, snapshot, { networkFeeCapNativeBase, signal });
+  if (granted === undefined) {
+    return undefined;
+  }
+  const { grant, current } = granted;
+  const allowed = allowedTargetsOf(snapshot, { chain, venues: parts.venues });
+  return { authorization: { kind: "order", grant, current }, termsHash: grant.termsHash, allowed };
 }
 
 /**
@@ -238,7 +276,7 @@ export async function checkForQueue(
   const { authorizedBy } = snapshot.stored.status;
   const { confirmation } = snapshot.stored;
   const rechecked = await recheckPolicy(snapshot, parts, signal);
-  const terms = await termsOf(snapshot, rechecked, { parts, signal });
+  const { terms, refusal } = await termsOf(snapshot, rechecked, { parts, signal });
   const facts: QueueFacts = {
     isAgentLive: snapshot.settings.agent.mode === "live",
     hasPolicyPassed: rechecked.hasPassed,
@@ -251,5 +289,6 @@ export async function checkForQueue(
   const failure = launch.kind === "failed" ? { launchFailure: launch.reason } : {};
   const allowed = launch.kind === "read" ? { ...registry, launch: launch.launch } : registry;
   const signing = terms === undefined ? {} : { terms: { ...terms, allowed } };
-  return { facts, isAuto, ...failure, ...signing };
+  const refused = refusal === undefined ? {} : { refusal };
+  return { facts, isAuto, ...failure, ...signing, ...refused };
 }

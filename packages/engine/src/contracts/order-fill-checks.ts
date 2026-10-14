@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { IntentDraft } from "../intents/intent-record.js";
 import type { OrderFillRecord } from "../orders/order-fill.js";
 import { intentDraft, intentMove } from "./intent-fixtures.js";
 import { confirmedCard, orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.js";
@@ -109,6 +110,128 @@ export async function refusesAFillWithoutItsOrderMove(subject: OrderStoreSubject
   assert.equal((await store.get(fixtureId("ord", 2), live()))?.state, "active");
   assert.equal((await store.get(fixtureId("ord", 1), live()))?.fills, 0);
   assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), []);
+}
+
+/**
+ * Checks that a landed live fill counts on its order apart from its intent's move, once per intent
+ * (decision 0211): an order at another version, or an intent counted already, writes nothing, and
+ * no second `filled` row of one intent lands by any write.
+ */
+export async function countsALandedFillOnce(subject: OrderStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  await activeOrder(subject, 1);
+  assert.ok((await intents.create(intentDraft(subject, 3), live())).ok);
+  const counted = { ...orderMove(1, 1, "active"), fills: 1 };
+  const fill = { ...fillRow(1, 8, "filled"), intentId: fixtureId("int", 3) };
+  const behind = { moves: [{ ...counted, expectedVersion: 0 }], fill };
+  assert.deepEqual(await store.recordLandedFill(behind, live()), { ok: false, error: "stale" });
+  const landed = await store.recordLandedFill({ moves: [counted], fill }, live());
+  assert.ok(landed.ok);
+  assert.deepEqual(
+    landed.value.map(({ fills, version }) => ({ fills, version })),
+    [{ fills: 1, version: 2 }],
+  );
+  const again = {
+    moves: [{ ...counted, expectedVersion: 2, fills: 2 }],
+    fill: { ...fill, id: fixtureId("fil", 9) },
+  };
+  assert.deepEqual(await store.recordLandedFill(again, live()), { ok: false, error: "counted" });
+  await assert.rejects(store.recordFill(again.fill, live()), { code: "store.constraint" });
+  assert.deepEqual(await store.countedFill(fixtureId("int", 3), live()), fill);
+  assert.equal(await store.countedFill(fixtureId("int", 4), live()), undefined);
+  const skip = { ...fillRow(1, 10, "skipped"), intentId: fixtureId("int", 3) };
+  await assert.rejects(store.recordLandedFill({ moves: [], fill: skip }, live()), {
+    code: "store.constraint",
+  });
+  assert.equal((await store.get(fixtureId("ord", 1), live()))?.fills, 1);
+  assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), [fill]);
+  await assertRefusesAborted(async (options) => store.recordLandedFill(again, options));
+}
+
+/**
+ * Checks that a late landing carries its fill on its order in the same write (decision 0211): an
+ * order at another version links nothing and counts nothing, and a second landing of one intent
+ * counts nothing more.
+ */
+export async function linksALateLandingWithItsFill(subject: OrderStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  await activeOrder(subject, 1);
+  assert.ok((await intents.create(intentDraft(subject, 3), live())).ok);
+  const counted = { ...orderMove(1, 1, "filled"), fills: 1 };
+  const fill = { ...fillRow(1, 8, "filled"), intentId: fixtureId("int", 3) };
+  const landing = { intentId: fixtureId("int", 3), txId: fixtureId("tx", 1), atMs: 9_000 };
+  const behind = { ...landing, order: { moves: [{ ...counted, expectedVersion: 0 }], fill } };
+  assert.deepEqual(await intents.recordLandedLate(behind, live()), { ok: false, error: "stale" });
+  assert.equal((await store.get(fixtureId("ord", 1), live()))?.fills, 0);
+  const linked = { ...landing, order: { moves: [counted], fill } };
+  assert.deepEqual(await intents.recordLandedLate(linked, live()), { ok: true, value: linked });
+  const again = {
+    ...linked,
+    order: { moves: [{ ...counted, expectedVersion: 2, fills: 2 }], fill },
+  };
+  assert.deepEqual(await intents.recordLandedLate(again, live()), { ok: false, error: "exists" });
+  assert.deepEqual(
+    await store.get(fixtureId("ord", 1), live()).then((order) => [order?.state, order?.fills]),
+    ["filled", 1],
+  );
+  assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), [fill]);
+}
+
+// Intent `n`: a live fill the engine proposed under order 1, stored in `state` at `1000 * n`.
+function liveFill(
+  subject: OrderStoreSubject,
+  n: number,
+  changes: Partial<IntentDraft> = {},
+): IntentDraft {
+  return {
+    ...intentDraft(subject, n),
+    isPaper: false,
+    proposer: "engine",
+    authorizedBy: { order: fixtureId("ord", 1), fillsBefore: 0 },
+    state: "executing",
+    ...changes,
+  };
+}
+
+/**
+ * Checks that every live order fill holding its agent's line is listed, past any page size
+ * (decision 0211): one the executor holds and its order has not counted, and one ended
+ * `stuck_dropped` since the query's time with no late landing; no paper, tapped, auto-mode,
+ * counted, settled, earlier dropped or late-landed intent.
+ */
+export async function listsTheFillsInFlight(subject: OrderStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  await activeOrder(subject, 1);
+  const dropped = { state: "failed_onchain", reason: "stuck_dropped" } as const;
+  const drafts = [
+    liveFill(subject, 3),
+    liveFill(subject, 4, { state: "confirmed" }),
+    liveFill(subject, 5, dropped),
+    liveFill(subject, 6, { ...dropped, atMs: 3_000 }),
+    liveFill(subject, 7, dropped),
+    liveFill(subject, 8, { isPaper: true }),
+    liveFill(subject, 9, { proposer: fixtureId("tok", 1) }),
+    liveFill(subject, 10, { authorizedBy: { approvalMode: "auto", modeVersion: 1 } }),
+    liveFill(subject, 11, { state: "reconciled" }),
+    ...Array.from({ length: 120 }, (_, index) => liveFill(subject, 100 + index)),
+  ];
+  // One at a time, so each draft is stored in order.
+  await drafts.reduce(async (before, draft) => {
+    await before;
+    assert.ok((await intents.create(draft, live())).ok);
+  }, Promise.resolve());
+  const counted = { ...fillRow(1, 2, "filled"), intentId: fixtureId("int", 4) };
+  await store.recordFill(counted, live());
+  const landing = { intentId: fixtureId("int", 7), txId: fixtureId("tx", 1), atMs: 7_500 };
+  assert.ok((await intents.recordLandedLate(landing, live())).ok);
+  const query = { agentId: subject.agentId, droppedSinceMs: 4_000 };
+  const listed = await intents.fillsInFlight(query, live());
+  const extra = drafts.slice(9).map(({ id }) => id);
+  assert.deepEqual(
+    listed.map(({ id }) => id),
+    [fixtureId("int", 3), fixtureId("int", 5), ...extra],
+  );
+  await assertRefusesAborted(async (options) => intents.fillsInFlight(query, options));
 }
 
 /**

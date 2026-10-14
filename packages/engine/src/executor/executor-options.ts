@@ -78,6 +78,11 @@ export interface ExecutorOptions {
   readonly publish: PublishPush;
   readonly logger: Logger;
   readonly limits?: Partial<ExecutorLimits>;
+  /**
+   * Whether live order fills may sign; off when absent, so the queue ends each one unsigned while
+   * live fills are off (decision 0211).
+   */
+  readonly liveOrderFills?: boolean;
 }
 
 /** The limits the executor runs with when its options leave them out. */

@@ -8,6 +8,8 @@ import {
   markAnnouncedTask,
   moveOrdersTask,
   orderByIntentTask,
+  countedFillTask,
+  recordLandedFillTask,
   recordOrderFillTask,
   unannouncedFillsTask,
 } from "./order-tasks.js";
@@ -24,6 +26,8 @@ export function createSqliteOrderStore(host: StoreHost): OrderStore {
     list: bindTask(host, listOrdersTask),
     move: bindTask(host, moveOrdersTask),
     recordFill: bindTask(host, recordOrderFillTask),
+    recordLandedFill: bindTask(host, recordLandedFillTask),
+    countedFill: bindTask(host, countedFillTask),
     fills: bindTask(host, listOrderFillsTask),
     unannounced: bindTask(host, unannouncedFillsTask),
     markAnnounced: bindTask(host, markAnnouncedTask),

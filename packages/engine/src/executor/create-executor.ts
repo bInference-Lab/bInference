@@ -15,6 +15,7 @@ import { type ExecutionRun, type ExecutorParts, nextBlock } from "./executor-run
 import { expireIfLapsed, expireLapsed, reopenIfFeeLapsed } from "./expire-lapsed.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
 import {
+  droppedUnderWatch,
   liveIntentsIn,
   recoverIntent,
   type Unsettled,
@@ -86,6 +87,7 @@ function partsOf(options: ExecutorOptions): ExecutorParts {
     ...options,
     intents: stores.intents,
     orders: stores.orders,
+    liveFills: options.liveOrderFills === true,
     stored: storedOf(options),
     machine: createIntentStateMachine({ clock }),
     policy: createPolicyCheck({ prices: options.prices, clock }),
@@ -329,6 +331,11 @@ export function createExecutor(options: ExecutorOptions): RunningExecutor {
       unsettled.forEach((found) => {
         parts.log.info("executor.recovering", { intentId: found.snapshot.record.id });
         works.track(recoveryWork(found));
+      });
+      const watched = await droppedUnderWatch(parts, signal);
+      watched.forEach(({ plan, step }) => {
+        parts.log.info("executor.rewatching", { intentId: step.intent.id });
+        works.track({ intent: step.intent.id, plan, go: async (run) => watchDropped(run, step) });
       });
       return unsettled.length;
     },

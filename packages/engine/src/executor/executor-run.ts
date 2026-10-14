@@ -16,6 +16,8 @@ export interface ExecutorParts extends ExecutorOptions {
   readonly intents: IntentStore;
   /** The auto orders, whose live fills the executor signs under their grants and records. */
   readonly orders: OrderStore;
+  /** Whether live order fills may sign (decision 0211). */
+  readonly liveFills: boolean;
   readonly stored: StoredIntents;
   readonly machine: IntentStateMachine;
   readonly policy: PolicyCheck;

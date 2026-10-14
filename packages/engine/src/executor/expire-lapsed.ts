@@ -1,4 +1,6 @@
+import { fillGrantLifetimeMs } from "@binference/chain";
 import type { Id } from "@binference/core";
+import { isFillAuthorization } from "../intents/authorization.js";
 import { cardExpiresAt } from "../intents/card-rules.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -8,8 +10,9 @@ import { type ExecutorParts, moveIntent } from "./executor-run.js";
 /** The owner's notice of a trade whose confirmation ran out before it was sent (decision 0120). */
 const lapsedNoticeKey = "notice.confirmationLapsed";
 
-// When what authorized a confirmed intent runs out: the owner's confirmation, or the auto grant or
-// an order fill's grant, which last the card lifetime its kind would have had (decision 0210).
+// When what authorized a confirmed intent runs out: the owner's confirmation, the auto grant, which
+// lasts the card lifetime its kind would have had, or an order fill's grant, a trade card's 60
+// seconds whatever the card settings say (decisions 0210 and 0211).
 function expiryOf(snapshot: IntentSnapshot): number | undefined {
   const { record, history, stored } = snapshot;
   const { authorizedBy } = stored.status;
@@ -17,8 +20,11 @@ function expiryOf(snapshot: IntentSnapshot): number | undefined {
     return stored.confirmation?.expiresAtMs;
   }
   const confirmed = history.events.find((event) => event.toState === "confirmed");
-  return confirmed === undefined
-    ? undefined
+  if (confirmed === undefined) {
+    return undefined;
+  }
+  return isFillAuthorization(authorizedBy)
+    ? confirmed.atMs + fillGrantLifetimeMs
     : cardExpiresAt(record.kind, confirmed.atMs, stored.cards);
 }
 

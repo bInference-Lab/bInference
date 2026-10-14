@@ -1,7 +1,11 @@
 import type { TxReceipt } from "@binference/chain";
+import type { Id } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
-import { fillOrderOf } from "../orders/fill-ends.js";
-import { moveOrder } from "../orders/order-machine.js";
+import { quoteDocument } from "../intents/intent-documents.schema.js";
+import type { LateLanding } from "../intents/late-landing.js";
+import { announceOrder, fillOrderOf } from "../orders/fill-ends.js";
+import { landedFillWrite } from "../orders/fill-landed.js";
+import type { OrderFillWrite } from "../orders/order-fill.js";
 import { orderPush } from "../orders/order-view-of.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
@@ -73,13 +77,88 @@ async function bookAgain(
   return bookAgain(run, landed, tries + 1);
 }
 
+// A move of the order that lost its race is tried again on a fresh read, this many times in all.
+const linkAttempts = 3;
+
+// The order write of an order's live fill whose dropped step landed after all, the whole trade in
+// blocks: its count on its order, as its confirmed quote said it would trade, the trade not yet in
+// the positions (decision 0211). `undefined` for any other intent, or an order gone.
+async function lateFillWrite(
+  run: ExecutionRun,
+  late: { readonly dropped: IntentSnapshot; readonly atMs: number },
+): Promise<OrderFillWrite | undefined> {
+  const { parts, signal } = run;
+  const { dropped, atMs } = late;
+  const orderId = fillOrderOf(dropped);
+  const order = orderId === undefined ? undefined : await parts.orders.get(orderId, { signal });
+  const quote = dropped.record.quote;
+  if (order === undefined || quote === undefined) {
+    return undefined;
+  }
+  const { amountIn, minOut } = quoteDocument.decode(quote);
+  const settled = { amountIn, amountOut: minOut };
+  const call = { order, snapshot: dropped, settled, isBooked: false, atMs, signal };
+  return landedFillWrite(parts, call);
+}
+
+// Links the late landing, with an order's fill counted in the same write when the whole trade
+// landed; a write that lost a race to another of its order is tried again on a fresh read. A
+// second landing of one intent links and counts nothing more.
+async function linkLanding(
+  run: ExecutionRun,
+  late: {
+    readonly dropped: IntentSnapshot;
+    readonly landing: LateLanding;
+    readonly isWhole: boolean;
+    readonly left: number;
+  },
+): Promise<void> {
+  const { parts, signal } = run;
+  const { dropped, landing, isWhole, left } = late;
+  const order = isWhole ? await lateFillWrite(run, { dropped, atMs: landing.atMs }) : undefined;
+  const write = order === undefined ? landing : { ...landing, order };
+  const linked = await parts.stores.intents.recordLandedLate(write, { signal });
+  const intentId = landing.intentId;
+  if (linked.ok) {
+    await announceCount(run, order === undefined ? { intentId } : { intentId, order });
+    return;
+  }
+  if (linked.error === "stale" && left > 1) {
+    await linkLanding(run, { ...late, left: left - 1 });
+    return;
+  }
+  parts.log.warn("executor.landed_late_linked", { intentId, errorCode: linked.error });
+}
+
+// The owner hears a late fill counted on its order; a count past the order's most fills is an
+// error the owner's alarm on the row names too.
+async function announceCount(
+  run: ExecutionRun,
+  counted: { readonly intentId: Id<"int">; readonly order?: OrderFillWrite },
+): Promise<void> {
+  const { order, intentId } = counted;
+  if (order === undefined) {
+    return;
+  }
+  const { parts, signal } = run;
+  const { orders, clock, publish } = parts;
+  const stored = await orders.get(order.fill.orderId, { signal });
+  if (stored !== undefined) {
+    publish(orderPush(stored, "order/changed"));
+  }
+  const isOver = stored?.maxFills !== undefined && stored.fills > stored.maxFills;
+  parts.log[isOver ? "error" : "info"]("executor.landed_late_counted", { intentId });
+  await announceOrder({ orders, clock, publish }, order.fill.orderId, signal);
+}
+
 /**
  * Books a dropped step that landed after all (decision 0147). Its receipt is recorded, and a late
  * landing linked to the intent, which stays `failed_onchain`, makes the rolling 24-hour cap count
- * the intent again at once. Once every step of the plan is in a block and those blocks are final,
- * the trade goes into the positions and realized P&L as a reconciliation books it, and an order's
- * fill counts on its order; a trade whose steps did not all land, or whose block a reorg moved, is
- * logged and left out of the positions.
+ * the intent again at once. An order's fill whose whole trade is in blocks counts on its order in
+ * that same write, once (decision 0211). Once every step of the plan is in a block and those
+ * blocks are final, the trade goes into the positions and realized P&L as a reconciliation books
+ * it; a trade whose steps did not all land, or whose block a reorg moved, is logged and left out
+ * of the positions.
  */
 export async function bookLateLanding(
   run: ExecutionRun,
@@ -90,53 +169,17 @@ export async function bookLateLanding(
   const intentId = dropped.record.id;
   const atMs = parts.clock.now();
   const transaction = await recordReceipt(run, landed.transaction, landed.receipt);
-  const landing = { intentId, txId: transaction.id, atMs };
-  const linked = await parts.stores.intents.recordLandedLate(landing, { signal });
-  if (!linked.ok) {
-    parts.log.warn("executor.landed_late_linked", { intentId, errorCode: linked.error });
-  }
   const stored = await parts.stores.transactions.ofIntent(intentId, { signal });
   const steps = [...currentSteps(stored).values()];
-  if (!isWholeTrade(run, steps) || !(await finalizeSteps(run, steps))) {
+  const isWhole = isWholeTrade(run, steps);
+  const landing = { intentId, txId: transaction.id, atMs };
+  await linkLanding(run, { dropped, landing, isWhole, left: linkAttempts });
+  if (!isWhole || !(await finalizeSteps(run, steps))) {
     parts.log.warn("executor.landed_late_unbooked", { intentId });
     return;
   }
-  await countLateFill(run, { dropped, atMs, left: countAttempts });
   const booked = await bookAgain(run, { snapshot: dropped, atMs });
   if (typeof booked !== "string") {
     parts.log.info("executor.landed_late_booked", { intentId });
   }
-}
-
-// A move of the order that lost its race is tried again on a fresh read, this many times in all.
-const countAttempts = 3;
-
-// An order's live fill that landed after its intent ended still counts on its order (decision
-// 0210), so the order never fills past its fills; its intent stays `failed_onchain`.
-async function countLateFill(
-  run: ExecutionRun,
-  late: { readonly dropped: IntentSnapshot; readonly atMs: number; readonly left: number },
-): Promise<void> {
-  const { parts, signal } = run;
-  const { dropped, atMs, left } = late;
-  const orderId = fillOrderOf(dropped);
-  const order = orderId === undefined ? undefined : await parts.orders.get(orderId, { signal });
-  const move = order === undefined ? undefined : moveOrder(order, { type: "fill_landed" }, atMs);
-  if (move?.ok !== true) {
-    return;
-  }
-  const moved = await parts.orders.move([move.value], { signal });
-  const intentId = dropped.record.id;
-  if (moved.ok) {
-    parts.log.info("executor.landed_late_counted", { intentId });
-    moved.value.forEach((counted) => {
-      parts.publish(orderPush(counted, "order/changed"));
-    });
-    return;
-  }
-  if (left <= 1) {
-    parts.log.error("executor.landed_late_uncounted", { intentId, errorCode: moved.error });
-    return;
-  }
-  await countLateFill(run, { ...late, left: left - 1 });
 }

@@ -1,7 +1,10 @@
+import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
 import { type Clock, createDeadline, type Id } from "@binference/core";
 import type { IntentState } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
+import type { IntentStore } from "../ports.js";
 import { fillOrderOf } from "./fill-ends.js";
+import type { OrderRecord } from "./order-record.js";
 
 // The states a fill passes through before its authorization confirms it.
 const beforeConfirmed: readonly IntentState[] = [
@@ -61,32 +64,33 @@ export async function unfinishedFills(
   return [...fills, ...(await unfinishedFills(stored, query, { signal, after: next }))];
 }
 
-// The states of a live fill the executor holds: confirmed, then signing, sending and settling.
-const unsettledLive: readonly IntentState[] = [
-  "confirmed",
-  "executing",
-  "included",
-  "finalized",
-  "unknown_after_send",
-];
+/** How many blocks the executor watches a dropped step's transactions (spec 6, section 6). */
+const droppedWatchBlocks = 600;
 
 /**
- * Whether an agent has a live order fill the executor has not settled (decision 0210): one
- * confirmed and waiting for its wallet's queue, signing, sent or settling. The agent's fills wait
- * behind it, after a restart too, so two exit fills of one position never run at once (spec 6,
- * invariant 11) and an order never fills again before its fill is recorded.
+ * How long a dropped live fill's transactions stay watched, so its agent's line stays held: 600
+ * blocks of its chain from the drop (decision 0211). A chain the registry does not list holds
+ * for a day.
  */
-export async function hasUnsettledLiveFill(
-  stored: StoredIntents,
+function droppedWatchMs(chains: ChainRegistry, token: AssetRef): number {
+  const chain = chains.get(assetRefParts(token).chain);
+  return chain.ok ? droppedWatchBlocks * chain.value.definition.blockTimeMs : 86_400_000;
+}
+
+/**
+ * Whether an agent has a live order fill that holds its line (decisions 0210 and 0211): one the
+ * executor holds whose order has not counted it, or one whose dropped step is still watched. The
+ * store answers every such fill, with no page limit, so it holds after a stop too, and two exit
+ * fills of one position never run at once (spec 6, invariant 11).
+ */
+async function hasUnsettledLiveFill(
+  intents: Pick<IntentStore, "fillsInFlight">,
   agentId: Id<"agt">,
-  call: { readonly signal: AbortSignal },
+  call: { readonly nowMs: number; readonly watchMs: number; readonly signal: AbortSignal },
 ): Promise<boolean> {
-  const { signal } = call;
-  const query = { states: unsettledLive, isPaper: false, agentId, limit: pageSize };
-  const listed = await stored.list(query, { signal });
-  const engines = listed.filter(({ proposer }) => proposer === "engine");
-  const read = await Promise.all(engines.map(async ({ id }) => stored.snapshot(id, { signal })));
-  return read.some((snapshot) => snapshot !== undefined && fillOrderOf(snapshot) !== undefined);
+  const droppedSinceMs = Math.max(0, call.nowMs - call.watchMs);
+  const held = await intents.fillsInFlight({ agentId, droppedSinceMs }, { signal: call.signal });
+  return held.length > 0;
 }
 
 /** How long a fill has, from its start in its agent's line to its end (decision 0197). */
@@ -119,4 +123,25 @@ export async function withinDeadline<T>(
     listening.abort();
     deadline.clear();
   }
+}
+
+/**
+ * Whether a live order's agent has a live fill that holds the line (decision 0211): one in flight,
+ * or one dropped and still watched. A paper order never waits behind one.
+ */
+export async function isLineHeld(
+  parts: {
+    readonly intents: Pick<IntentStore, "fillsInFlight">;
+    readonly chains: ChainRegistry;
+    readonly clock: Clock;
+  },
+  order: OrderRecord,
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (order.isPaper) {
+    return false;
+  }
+  const watchMs = droppedWatchMs(parts.chains, order.request.token);
+  const call = { nowMs: parts.clock.now(), watchMs, signal };
+  return hasUnsettledLiveFill(parts.intents, order.agentId, call);
 }

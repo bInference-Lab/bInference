@@ -30,6 +30,7 @@ import { readJson } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
 import { confirmedSinceTask, recordLandedLateTask } from "./confirmed-tasks.js";
+import { fillsInFlightTask } from "./fills-in-flight-task.js";
 import { writeFreeze } from "./freeze-writes.js";
 import { toCardRecord, toConfirmation, toIntentEvent, toIntentRecord } from "./intent-rows.js";
 import { createIntent, moveIntent } from "./intent-writes.js";
@@ -212,6 +213,7 @@ export const intentTasks: readonly TaskRunner[] = [
   assetDocumentsTask,
   confirmedSinceTask,
   recordLandedLateTask,
+  fillsInFlightTask,
   intentEventsTask,
   intentCardsTask,
   intentConfirmationTask,

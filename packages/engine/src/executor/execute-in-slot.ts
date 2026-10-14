@@ -6,9 +6,11 @@ import { noticePush } from "../pushes/notice-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import { endDropped } from "./end-dropped.js";
+import { endRefusedFill } from "./end-refused-fill.js";
 import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
 import { checkForQueue, type QueueCheck, type SigningTerms } from "./queue-check.js";
+import { resetApproval } from "./reset-approval.js";
 import { type PreparedStep, prepareStep, type SignStop, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
 import { stuckRulesOf } from "./stuck-rules.js";
@@ -25,7 +27,8 @@ export interface IncludedSteps {
 interface Taken {
   readonly snapshot: IntentSnapshot;
   readonly terms: SigningTerms;
-  readonly first: PreparedStep;
+  /** Its first step as the queue prepared it; absent when it goes on from a later step. */
+  readonly first?: PreparedStep;
 }
 
 /**
@@ -66,18 +69,29 @@ async function endUnread(
   return undefined;
 }
 
-// What signs the intent's steps, once the check found its authorization and, for a launch wallet's
-// curve trade, its launch's contracts; an intent whose launch cannot be read ends here.
-async function termsTaken(
+// The queue's check of a confirmed intent with what signs it; `undefined` when nothing does. A
+// fill it refuses ends at once (decision 0211), and a launch wallet's curve trade whose launch
+// cannot be read ends with its own reason before anything signs (decision 0218).
+async function checkedForQueue(
   run: ExecutionRun,
   snapshot: IntentSnapshot,
-  check: QueueCheck,
-): Promise<SigningTerms | undefined> {
-  if (check.terms === undefined) {
-    return notTaken(run, snapshot.record.id, "no_authorization");
+): Promise<(QueueCheck & { readonly terms: SigningTerms }) | undefined> {
+  const intent = snapshot.record.id;
+  const check = await checkForQueue(
+    snapshot,
+    { parts: run.parts, chain: run.plan.chain },
+    run.signal,
+  );
+  if (check.refusal !== undefined) {
+    await endRefusedFill(run, { snapshot, reason: check.refusal });
+    return notTaken(run, intent, check.refusal);
+  }
+  const { terms } = check;
+  if (terms === undefined) {
+    return notTaken(run, intent, "no_authorization");
   }
   return check.launchFailure === undefined
-    ? check.terms
+    ? { ...check, terms }
     : endUnread(run, snapshot, check.launchFailure);
 }
 
@@ -94,12 +108,11 @@ async function takeIn(
   if (snapshot?.record.state !== "confirmed") {
     return notTaken(run, intent, "not_confirmed");
   }
-  const check = await checkForQueue(snapshot, { parts, chain: plan.chain }, signal);
-  const first = await prepareStep(run, slot, { index: 0, draft: plan.steps[0] });
-  const terms = await termsTaken(run, snapshot, check);
-  if (terms === undefined) {
+  const check = await checkedForQueue(run, snapshot);
+  if (check === undefined) {
     return undefined;
   }
+  const first = await prepareStep(run, slot, { index: 0, draft: plan.steps[0] });
   if (!first.ok || first.value.prepared.isAboveFeeCap) {
     const problem = first.ok ? "over_fee_cap" : first.error;
     notTaken(run, intent, problem);
@@ -114,7 +127,7 @@ async function takeIn(
     return undefined;
   }
   parts.log.info("executor.took", { intentId: intent });
-  return { snapshot: executing, terms, first: first.value };
+  return { snapshot: executing, terms: check.terms, first: first.value };
 }
 
 // A step no stuck rule can move leaves the intent `executing`, handed over at this seam.
@@ -163,11 +176,13 @@ async function readyStep(
   if (run.stopping.aborted) {
     return err("stopping");
   }
-  return step.index === 0 ? ok(step.taken.first) : prepareStep(run, slot, step);
+  const { first } = step.taken;
+  return step.index === 0 && first !== undefined ? ok(first) : prepareStep(run, slot, step);
 }
 
 // The terms read again right before a step signs: what authorizes it now and, past the first
 // step, a launch wallet's launch contracts read again (decision 0218); then the signature, stored.
+// A fill whose authorization ran out resets the approval its landed steps left (decision 0211).
 async function signStep(
   run: ExecutionRun,
   slot: WalletSlot,
@@ -175,8 +190,10 @@ async function signStep(
 ): Promise<Result<TransactionRecord, SignStop | LaunchReadFailure | "authorization_lapsed">> {
   const { taken, index, ready } = step;
   const { record } = taken.snapshot;
-  const terms = await termsNow(run, taken.terms, { record, kind: "step" });
+  const terms = await termsNow(run, taken.terms, { record, kind: "step", index });
   if (terms === undefined) {
+    // A fill's trade that cannot finish takes back the approval its landed steps left.
+    await resetApproval(run, slot, { snapshot: taken.snapshot, terms: taken.terms, index });
     return err("authorization_lapsed");
   }
   const launched = index === 0 ? ok(terms) : await launchTermsNow(run, terms, record);
@@ -219,6 +236,25 @@ async function runFrom(
     return endLanded(run, taken, { outcome: watched.outcome, transaction: watched.transaction });
   }
   return runFrom(run, slot, { taken, index: index + 1, done: [...done, watched.transaction] });
+}
+
+/**
+ * Goes on with a live fill's steps from `index` after a restart (decision 0211), on its wallet's
+ * slot, as its first run would have: each step signed under the fill grant while it still holds,
+ * and the approval its landed steps left reset to 0 once it does not.
+ */
+export async function finishFill(
+  run: ExecutionRun,
+  slot: WalletSlot,
+  from: {
+    readonly snapshot: IntentSnapshot;
+    readonly terms: SigningTerms;
+    readonly index: number;
+    readonly done: readonly TransactionRecord[];
+  },
+): Promise<IncludedSteps | DroppedStep | undefined> {
+  const { snapshot, terms, index, done } = from;
+  return runFrom(run, slot, { taken: { snapshot, terms }, index, done });
 }
 
 /**

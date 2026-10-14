@@ -33,6 +33,11 @@ export interface FillProposal {
     simulated: IntentSnapshot,
     call: { readonly signal: AbortSignal },
   ) => Promise<FillCheckInLine>;
+  /** The fill's terms hash, stored as it is confirmed (decision 0211); none when unreadable. */
+  readonly termsHash: (
+    simulated: IntentSnapshot,
+    call: { readonly signal: AbortSignal },
+  ) => Promise<string | undefined>;
 }
 
 /** What the authorization at `simulated` reads, and moves the intent through. */
@@ -61,14 +66,17 @@ export interface ChosenPlan {
 async function fillTrigger(
   parts: AuthorizeParts,
   simulated: IntentSnapshot,
-  inLine: FillCheckInLine,
+  checks: { readonly inLine: FillCheckInLine; readonly termsHash: string | undefined },
 ): Promise<IntentTrigger<"authorization_checked">> {
   const { signal } = parts;
+  const { inLine, termsHash } = checks;
   const isOff = !simulated.record.isPaper && !parts.liveFills;
   const bound = isOff ? "live_fills_off" : await inLine({ signal });
   const fits = bound !== undefined || (await parts.gate.fits(simulated, { signal }));
   const breach = bound ?? (fits ? undefined : "daily_cap");
-  const check = breach === undefined ? { by: "fill" as const } : { by: "fill" as const, breach };
+  const terms = termsHash === undefined ? {} : { termsHash };
+  const check =
+    breach === undefined ? { by: "fill" as const, ...terms } : { by: "fill" as const, breach };
   return { type: "authorization_checked", check, cards: cardRulesOf(simulated.settings.limits) };
 }
 
@@ -107,11 +115,13 @@ export async function authorizeSimulated(
   const { gate, fill } = parts;
   const inLine =
     fill === undefined ? undefined : await fill.check(simulated, { signal: parts.signal });
+  const termsHash =
+    fill === undefined ? undefined : await fill.termsHash(simulated, { signal: parts.signal });
   return gate.serially(simulated.record.agentId, async () => {
     const trigger =
       inLine === undefined
         ? await autoTrigger(parts, simulated, chosen)
-        : await fillTrigger(parts, simulated, inLine);
+        : await fillTrigger(parts, simulated, { inLine, termsHash });
     return advanceIntent(parts, simulated, { trigger });
   });
 }

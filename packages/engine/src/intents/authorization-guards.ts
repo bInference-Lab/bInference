@@ -27,7 +27,14 @@ function confirmFill(input: Input): Result<IntentChange, TransitionProblem> {
   if (check === undefined) {
     return err("authorization_mismatch");
   }
-  return check.breach === undefined ? ok({}) : err("fill_invalid");
+  if (check.breach !== undefined) {
+    return err("fill_invalid");
+  }
+  const { status } = input;
+  const { termsHash } = check;
+  return termsHash === undefined || status.authorizedBy === undefined
+    ? ok({})
+    : ok({ authorizedBy: { ...status.authorizedBy, termsHash } });
 }
 
 /**

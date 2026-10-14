@@ -65,8 +65,9 @@ async function replacementTerms(
   signing: StuckSigning,
   move: StuckStep & { readonly kind: StepReplacement["kind"] },
 ): Promise<SigningTerms | StuckMove> {
-  const { intent } = move.at;
-  const authorized = await termsNow(run, signing.terms, { record: intent, kind: move.kind });
+  const { intent, transaction } = move.at;
+  const index = transaction.step;
+  const authorized = await termsNow(run, signing.terms, { record: intent, kind: move.kind, index });
   if (authorized === undefined) {
     return stopped("authorization_lapsed");
   }

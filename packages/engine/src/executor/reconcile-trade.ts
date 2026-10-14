@@ -10,6 +10,7 @@ import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.
 import { noticePush } from "../pushes/notice-push.js";
 import { inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { countUnsettledFill } from "./count-unsettled-fill.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import { differsFromSimulation, type SettledStep, settledTradeOf } from "./settled-trade-of.js";
 
@@ -293,22 +294,41 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
  * so does one whose block holds another intent's transaction of the wallet, with
  * `notice.blockShared`: the native coin read for that block may count for both.
  * While a read or a price fails it tries again each block, up to `settleAfterBlocks`; then it
- * leaves the intent `finalized`, and recovery reconciles it after a restart. When no node, nor the
- * owner's tracing RPC, can say the native coin the trade received any more (decision 0108), the
- * owner gets an alarm notice and the intent stays `finalized`, with nothing recorded.
+ * leaves the intent `finalized`, and recovery reconciles it after a restart. An order's live fill
+ * is counted on its order then, its line freed with the owner's notice, and keeps trying every
+ * `settleAfterBlocks` blocks while the engine runs (decision 0211). When no node, nor the owner's
+ * tracing RPC, can say the native coin the trade received any more (decision 0108), the owner
+ * gets an alarm notice and the intent stays `finalized`, with nothing recorded but a fill's count.
  */
 export async function reconcileTrade(
   run: ExecutionRun,
   finalized: IntentSnapshot,
   attempt = 0,
 ): Promise<void> {
-  if (attempt >= run.parts.limits.settleAfterBlocks) {
+  const { settleAfterBlocks } = run.parts.limits;
+  const isFill = fillOrderOf(finalized) !== undefined;
+  if (attempt === settleAfterBlocks) {
     run.parts.log.warn("executor.settle_late", { intentId: finalized.record.id });
+    await countUnsettledFill(run, finalized);
+  }
+  if (attempt >= settleAfterBlocks && !isFill) {
     return;
   }
-  if ((await settleOnce(run, finalized)) !== "waiting") {
+  const outcome = await settleOnce(run, finalized);
+  if (outcome === "stopped") {
+    await countUnsettledFill(run, finalized);
+  }
+  if (outcome !== "waiting") {
     return;
   }
-  await nextBlock(run);
+  await nextBlocks(run, attempt < settleAfterBlocks ? 1 : settleAfterBlocks);
   await reconcileTrade(run, finalized, attempt + 1);
+}
+
+// Waits `blocks` blocks of the run's chain.
+async function nextBlocks(run: ExecutionRun, blocks: number): Promise<void> {
+  await nextBlock(run);
+  if (blocks > 1) {
+    await nextBlocks(run, blocks - 1);
+  }
 }

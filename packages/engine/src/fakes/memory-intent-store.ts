@@ -17,6 +17,7 @@ import type { IntentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { constraintFault, memoryCall } from "./memory-call.js";
+import { fillsInFlightOf, recordLandedLate } from "./memory-fill-landings.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentTables, type MemoryIntentTables } from "./memory-intent-tables.js";
 import type { MemoryLedgerStore } from "./memory-ledger-store.js";
@@ -288,22 +289,6 @@ function confirmedSince(
     );
 }
 
-// One late landing per known intent (decision 0147).
-function recordLandedLate(
-  tables: MemoryIntentTables,
-  landings: Map<Id<"int">, LateLanding>,
-  landing: LateLanding,
-): Result<LateLanding, "exists" | "not_found"> {
-  if (tables.intent(landing.intentId) === undefined) {
-    return err("not_found");
-  }
-  if (landings.has(landing.intentId)) {
-    return err("exists");
-  }
-  landings.set(landing.intentId, structuredClone(landing));
-  return ok(landing);
-}
-
 /**
  * Creates an empty in-memory {@link IntentStore} for tests. Each write checks everything first and
  * changes nothing when a check fails, as the SQLite store's transaction does.
@@ -326,12 +311,18 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
           .toSorted(byChange)
           .slice(0, query.limit),
       ),
+    fillsInFlight: async (query, call) =>
+      memoryCall(call, () =>
+        fillsInFlightOf({ tables, landings, orders: options.orders }, query).toSorted(byChange),
+      ),
     storedAssets: async (assets, call) =>
       memoryCall(call, () => newestStoredAssets(tables.intents(), assets)),
     confirmedSince: async (query, call) =>
       memoryCall(call, () => confirmedSince(tables, landings, query)),
     recordLandedLate: async (landing, call) =>
-      memoryCall(call, () => recordLandedLate(tables, landings, landing)),
+      memoryCall(call, () =>
+        recordLandedLate({ tables, landings, orders: options.orders }, structuredClone(landing)),
+      ),
     events: async (id, call) => memoryCall(call, () => tables.events(id)),
     cards: async (id, call) =>
       memoryCall(call, () =>

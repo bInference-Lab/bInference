@@ -3,6 +3,7 @@ import type {
   FillAnnouncement,
   OrderFillQuery,
   OrderFillRecord,
+  OrderFillWrite,
   UnannouncedFillQuery,
 } from "./order-fill.js";
 import type {
@@ -53,6 +54,19 @@ export interface OrderStore {
    * outcome and reason disagree throws `store.constraint`.
    */
   recordFill(fill: OrderFillRecord, options: StoreCall): Promise<OrderFillRecord>;
+  /**
+   * Counts a live fill that landed on its order apart from its intent's move (decision 0211): the
+   * write's order moves and its `filled` row, which names the intent, all or nothing. An intent
+   * that has a `filled` row already is `counted`, and an order at another version `stale`; either
+   * writes nothing. A row that is no `filled` row naming its intent, or one without its order's
+   * own move to one fill more, throws `store.constraint`.
+   */
+  recordLandedFill(
+    write: OrderFillWrite,
+    options: StoreCall,
+  ): Promise<Result<readonly OrderRecord[], "counted" | "stale">>;
+  /** The `filled` row that counts an intent's fill, or `undefined` while none does. */
+  countedFill(intent: Id<"int">, options: StoreCall): Promise<OrderFillRecord | undefined>;
   /** One order's fill rows, the newest first, then by id from the last. */
   fills(query: OrderFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
   /**

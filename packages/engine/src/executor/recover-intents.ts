@@ -7,7 +7,7 @@ import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
 import { reconcileTrade } from "./reconcile-trade.js";
 import { currentSteps, recoverSteps } from "./recover-steps.js";
 import { settleIncluded } from "./settle-included.js";
-import { watchDropped } from "./watch-dropped.js";
+import { type DroppedStep, droppedWatchEndsAt, watchDropped } from "./watch-dropped.js";
 
 // The states a stop can leave a live intent in before it reconciles.
 const unsettledStates: readonly IntentState[] = [
@@ -88,7 +88,7 @@ export async function unsettledIntents(
  * runs on its wallet's queue first, and takes its place in the queue as this call starts, so a
  * later intent of the wallet waits for it; then, as one whose steps all are in blocks, it waits
  * for finality off the queue and reconciles. A finalized intent reconciles at once. Nothing is
- * signed.
+ * signed, but a live fill's later steps (decision 0211).
  */
 export async function recoverIntent(run: ExecutionRun, unsettled: Unsettled): Promise<void> {
   const { snapshot, account } = unsettled;
@@ -105,9 +105,9 @@ export async function recoverIntent(run: ExecutionRun, unsettled: Unsettled): Pr
   }
   const included = await parts.queue.run(
     account,
-    async () => {
+    async (slot) => {
       const stored = await parts.stores.transactions.ofIntent(intent, { signal });
-      return recoverSteps(run, snapshot, stored);
+      return recoverSteps(run, slot, { snapshot, stored });
     },
     { signal: run.stopping },
   );
@@ -115,4 +115,39 @@ export async function recoverIntent(run: ExecutionRun, unsettled: Unsettled): Pr
     return undefined;
   }
   return "dropped" in included ? watchDropped(run, included) : settleIncluded(run, included);
+}
+
+/**
+ * Every live intent a drop ended whose dropped step a stop left under watch (decision 0211): ended
+ * `failed_onchain` with `stuck_dropped` no longer ago than the watch lasts, with the step's
+ * transaction recorded `dropped`, so a restart watches it again for the time left.
+ */
+export async function droppedUnderWatch(
+  parts: ExecutorParts,
+  signal: AbortSignal,
+): Promise<readonly { readonly plan: IntentPlan; readonly step: DroppedStep }[]> {
+  const records = await liveIntentsIn(parts, ["failed_onchain"], { signal });
+  const dropped = records.filter(({ reason }) => reason === "stuck_dropped");
+  const found = await Promise.all(dropped.map(async (record) => droppedOf(parts, record, signal)));
+  return found.filter((watch) => watch !== undefined);
+}
+
+async function droppedOf(
+  parts: ExecutorParts,
+  record: IntentRecord,
+  signal: AbortSignal,
+): Promise<{ readonly plan: IntentPlan; readonly step: DroppedStep } | undefined> {
+  const planned = intentPlanOf(record, parts);
+  if ("problem" in planned) {
+    return undefined;
+  }
+  const { plan } = planned;
+  if (parts.clock.now() >= droppedWatchEndsAt({ parts, plan }, record.changedAtMs)) {
+    return undefined;
+  }
+  const stored = await parts.stores.transactions.ofIntent(record.id, { signal });
+  const transaction = stored.findLast(({ state }) => state === "dropped");
+  return transaction === undefined
+    ? undefined
+    : { plan, step: { intent: record, dropped: transaction } };
 }
