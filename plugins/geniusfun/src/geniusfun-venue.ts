@@ -26,7 +26,8 @@ const keptLaunches = 512;
  * `sell`, the calls its trades make, each paying the `recipient` it names, which must be the
  * wallet; the curve as the one spender; and no deadline. It reads no chain, so the composition
  * root can list the venue's contracts, such as for a wallet's ceiling, before it opens any RPC.
- * No ceiling lists a launch's curve, so a live wallet cannot sign these calls yet.
+ * No ceiling lists a launch's curve: only a launch wallet's ceiling allows these calls, on any
+ * contract, paying the wallet itself (decision 0217).
  */
 export function geniusfunDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
   return {

@@ -12,17 +12,18 @@ another account, spends another amount, accepts less than the policy's minimum o
 60 seconds. A chain whose trade calls carry no deadline, such as a launchpad's curve, says so with
 `noDeadline`, and only there does the host pass a call without one.
 
-A launchpad defines itself with `defineLaunchpad`: a venue that also reads its curve. Given a
-token, `curve` answers from the launchpad's own contracts whether the token is on its bonding curve
-now and what the curve trades it against. The engine sends a buy or a sell of a curve token to its
-launchpad and nowhere else. A launchpad that reads a chain takes that chain's `RpcFailover` from
+A launchpad defines itself with `defineLaunchpad`: a venue that also reads its curve. Given a token,
+`curve` answers from the launchpad's own contracts whether the token is on its bonding curve now and
+what the curve trades it against. The engine sends a buy or a sell of a curve token to its launchpad
+and nowhere else. A launchpad that reads a chain takes that chain's `RpcFailover` from
 `@binference/plugin-sdk/evm`, given by the composition root. A launchpad whose every launch has a
 contract of its own, such as a curve per token, names it in `launchContracts`; its curve read gives
 the address for a token it holds (`launch`), and the host lets that token's trades and price reads
-call it, and no ceiling lists it (decision 0212). A quote names the tax a launch takes in its first
-seconds as `snipeTaxBps`, a part of its `taxBps`, and a launchpad that reads the wallets its launch
-favors declares `insiders` (`InsiderReader`); the risk step refuses the one and records the other
-(decision 0213).
+call it, and no ceiling lists it (decision 0212): only a launch wallet's ceiling allows the calls
+declared on it, on any contract, paying the wallet itself (decision 0217). A quote names the tax a
+launch takes in its first seconds as `snipeTaxBps`, a part of its `taxBps`, and a launchpad that
+reads the wallets its launch favors declares `insiders` (`InsiderReader`); the risk step refuses the
+one and records the other (decision 0213).
 
 A venue that holds the state a token's price comes from, such as a launchpad's curve, declares
 `priceRead` (`PriceReader`): given a token, the read calls (`ReadCall`) that price it and a pure
