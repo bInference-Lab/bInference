@@ -1,5 +1,6 @@
+import type { QuotedTrade } from "@binference/chain";
 import { type Clock, createDeadline } from "@binference/core";
-import type { QuoteOutcome, VenueHost } from "../venues/venue-host.js";
+import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import type { SwapTrade } from "./swap-trade.js";
 
 /** What every venue is asked with. */
@@ -7,6 +8,11 @@ export interface QuoteVenuesOptions {
   readonly host: VenueHost;
   readonly clock: Clock;
   readonly signal: AbortSignal;
+}
+
+/** What a venue's quote of a trade spends and gets, as the policy prices it. */
+export function quotedTradeOf({ trade, quote }: TradeQuote): QuotedTrade {
+  return { amountIn: trade.amountIn, expectedOut: quote.expectedOut };
 }
 
 /** A venue that has not quoted within this long is skipped for the trade (decision 0107). */

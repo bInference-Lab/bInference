@@ -1,5 +1,12 @@
-import type { AccountRef, AssetRef, ChainRef } from "@binference/chain";
+import {
+  type AccountRef,
+  type AssetRef,
+  type ChainFamily,
+  type ChainRef,
+  isSameAccount,
+} from "@binference/chain";
 import { ok, type Result } from "@binference/core";
+import type { PlanStep } from "./build-checks.js";
 import type { VenueCallOptions } from "./call-venue.js";
 import type { HostedVenue } from "./hosted-venue.js";
 import { askLaunchpad, type CurveClaim, type HostedLaunchpad, isLaunchpad } from "./read-curves.js";
@@ -22,6 +29,23 @@ export function contractsWithLaunch(
   }
   const isDeclared = Object.keys(launch).every((name) => names?.has(name) === true);
   return isDeclared ? Object.freeze({ ...contracts, ...launch }) : undefined;
+}
+
+/**
+ * Whether a plan approves one of its launch's own contracts as a spender. The host takes an
+ * approval only to a contract the venue declared, so such a spender is the one kind no chain
+ * registry lists (decision 0212), and the auto test asks for it (spec 6, section 5).
+ */
+export function approvesLaunchContract(
+  plan: { readonly steps: readonly PlanStep[]; readonly launch?: LaunchContracts },
+  family: ChainFamily,
+): boolean {
+  const launch = Object.values(plan.launch ?? {});
+  return plan.steps.some(
+    (step) =>
+      step.kind === "approval" &&
+      launch.some((contract) => isSameAccount(contract, step.approval.spender, family)),
+  );
 }
 
 // The first token, in order, the launchpad holds on its curve; a read that fails stops the search.

@@ -13,7 +13,14 @@ import { createManualClock, createSeededRandom } from "@binference/core/testing"
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { createMemoryRiskCacheStore } from "../fakes/memory-risk-cache-store.js";
-import { testAgent, testCoin, testLimits, testNowMs, testWallet } from "../intents/test-intents.js";
+import {
+  testAgent,
+  testCoin,
+  testLimits,
+  testNowMs,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
@@ -23,6 +30,7 @@ import {
   type TestEngine,
   type TestEngineOptions,
 } from "../operations/test-engine.js";
+import type { RiskCheck } from "../ports.js";
 import { createRiskCheck } from "../risk/risk-check.js";
 import { createTokenModelSimulator } from "../risk/test-round-trip.js";
 import { createVenueHost } from "../venues/venue-host.js";
@@ -34,8 +42,11 @@ const launchCurve = accountRefSchema.parse("fake:1:0x000000c1");
 // A token the registry does not list, so the risk step runs its round trip on it.
 const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
 const deep: TokenRiskReport = { flags: [], liquidityUsdMicros: 50_000_000_000n };
-// The coin at $600, as the gas reserve reads it.
-const prices = new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]);
+// The coin at $600 and the registry's token at $1, as the policy and the gas reserve read them.
+const prices = new Map([
+  [testCoin, { numerator: 600n, denominator: 10n ** 12n }],
+  [testToken, { numerator: 1n, denominator: 1n }],
+]);
 
 function venuesOf(): readonly Venue[] {
   return [createFakeVenue(), createFakeLaunchpad({ onCurve: [unlisted], launchCurve })];
@@ -85,7 +96,7 @@ async function propose(
   return proposed.value;
 }
 
-const buy: IntentRequest = {
+const buy: Extract<IntentRequest, { kind: "buy" }> = {
   kind: "buy",
   agent: testAgent,
   wallet: testWallet,
@@ -102,5 +113,42 @@ describe("a trade on a launch's own curve", () => {
       quote: { place: { kind: "curve", launchpad: curve } },
       risk: { verdict: "warn", buyTaxBps: 300, sellTaxBps: 0 },
     });
+  });
+});
+
+// A risk step that passes every token, so the auto test alone decides.
+const passing: RiskCheck = {
+  assess: async () =>
+    await Promise.resolve({
+      view: { verdict: "pass", flags: [], onCurve: false, checkedAt: testNowMs },
+    }),
+};
+
+// An auto agent buys the token with the registry's token on a curve against it, from a clean turn
+// under its caps: the plan approves the curve, a launch's own or the launchpad's router, then buys.
+// The auto test passes it unless the spender is one no registry lists.
+async function autoBuy(launch: { readonly launchCurve?: typeof launchCurve }) {
+  const pad = createFakeLaunchpad({ onCurve: [unlisted], quoteAsset: testToken, ...launch });
+  const test = await engineOver({
+    venues: [createFakeVenue(), pad],
+    risk: passing,
+    paper: [
+      { asset: testCoin, base: 10n ** 18n },
+      { asset: testToken, base: 10n ** 18n },
+    ],
+    agent: { approvalMode: "auto" },
+  });
+  const spend = { asset: testToken, base: 1_000n };
+  const view = await propose(test, { ...buy, spend }, testCallers.runtime);
+  return view.state;
+}
+
+describe("the auto test of a trade on a launch's own curve", () => {
+  it("asks for an approval of the launch's curve, which no registry lists", async () => {
+    await expect(autoBuy({ launchCurve })).resolves.toBe("awaiting_confirmation");
+  });
+
+  it("fills an approval of the launchpad's registry contract with no card", async () => {
+    await expect(autoBuy({})).resolves.toBe("paper_filled");
   });
 });

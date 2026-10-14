@@ -230,6 +230,7 @@ async function runRescue(
     pass: { sellsDeniedToken: false },
     wallet: run.wallet,
     isLocked: parts.isLocked(),
+    hasUnlistedSpender: false,
   });
   return advanceIntent(run.advance, simulated, { trigger });
 }

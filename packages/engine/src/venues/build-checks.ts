@@ -61,7 +61,10 @@ export interface TradeBounds {
   readonly assetOut: AssetRef;
   /** The native coin of the wallet's chain, the only input a trade call sends as value. */
   readonly nativeAsset: AssetRef;
-  /** The venue's declared contracts on the wallet's chain, read from the registry. */
+  /**
+   * The venue's declared contracts on the wallet's chain: its registry contracts, and the
+   * contracts of the traded token's launch the trade was quoted with (decision 0212).
+   */
   readonly contracts: readonly AccountRef[];
   /** The policy's minimum output: the quote less the slippage the policy allowed. */
   readonly minOutBase: bigint;

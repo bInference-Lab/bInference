@@ -1,3 +1,4 @@
+import type { ChainFamily } from "@binference/chain";
 import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { FillAuthorization } from "../intents/authorization.js";
@@ -5,6 +6,8 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { FillBreach } from "../intents/intent-reason.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
 import type { PolicyPass } from "../policy/check-policy.js";
+import { approvesLaunchContract } from "../venues/launch-contracts.js";
+import type { TradePlan } from "../venues/venue-host.js";
 import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
 import type { WalletFacts } from "./wallet-facts.js";
@@ -40,7 +43,15 @@ export interface AuthorizeParts extends AdvanceParts {
   readonly isLocked: () => boolean;
   /** The wallet's facts as the proposal read them. */
   readonly wallet: WalletFacts;
+  /** The family of the wallet's chain, which reads the spenders of the plan's approvals. */
+  readonly family: ChainFamily;
   readonly fill?: FillProposal;
+}
+
+/** The route the best quote chose: the policy's pass on it, and its plan. */
+export interface ChosenPlan {
+  readonly pass: PolicyPass;
+  readonly plan: TradePlan;
 }
 
 // A fill is held to its order, then to the rolling cap.
@@ -63,8 +74,9 @@ async function fillTrigger(
 async function autoTrigger(
   parts: AuthorizeParts,
   simulated: IntentSnapshot,
-  pass: PolicyPass,
+  chosen: ChosenPlan,
 ): Promise<IntentTrigger<"authorization_checked">> {
+  const { pass } = chosen;
   const spent = await parts.gate.spent(simulated, { signal: parts.signal });
   return authorizationCheckOf({
     settings: simulated.settings,
@@ -74,6 +86,7 @@ async function autoTrigger(
         : { ...pass, figures: { ...pass.figures, rollingDaySpentUsdMicros: spent } },
     wallet: parts.wallet,
     isLocked: parts.isLocked() && !simulated.record.isPaper,
+    hasUnlistedSpender: approvesLaunchContract(chosen.plan, parts.family),
   });
 }
 
@@ -85,7 +98,7 @@ async function autoTrigger(
 export async function authorizeSimulated(
   parts: AuthorizeParts,
   simulated: IntentSnapshot,
-  pass: PolicyPass,
+  chosen: ChosenPlan,
 ): Promise<IntentSnapshot> {
   const { gate, fill } = parts;
   const inLine =
@@ -93,7 +106,7 @@ export async function authorizeSimulated(
   return gate.serially(simulated.record.agentId, async () => {
     const trigger =
       inLine === undefined
-        ? await autoTrigger(parts, simulated, pass)
+        ? await autoTrigger(parts, simulated, chosen)
         : await fillTrigger(parts, simulated, inLine);
     return advanceIntent(parts, simulated, { trigger });
   });

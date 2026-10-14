@@ -1,4 +1,4 @@
-import type { ChainRegistry, PriceSource, QuotedTrade, Signer } from "@binference/chain";
+import type { ChainRegistry, PriceSource, Signer } from "@binference/chain";
 import { type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { AssetInfos, IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
@@ -18,14 +18,14 @@ import {
 import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
-import type { QuoteOutcome, TradeQuote, VenueHost } from "../venues/venue-host.js";
+import type { QuoteOutcome, TradePlan, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { advanceIntent } from "./advance-intent.js";
 import { authorizeSimulated, type FillProposal } from "./authorize-simulated.js";
 import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose-route.js";
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
 import { type PlacedTrade, placeTrade } from "./place-trade.js";
 import { policyFactsOf } from "./policy-facts-of.js";
-import { firstQuoteOf, quoteVenues } from "./quote-venues.js";
+import { firstQuoteOf, quotedTradeOf, quoteVenues } from "./quote-venues.js";
 import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
 import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
 import { proposalOf, storeProposed } from "./store-proposed.js";
@@ -124,10 +124,6 @@ async function advance(
 ): Promise<IntentSnapshot> {
   const parts = { stored: run.options.stored, machine: run.machine, signal: run.signal };
   return advanceIntent(parts, snapshot, move);
-}
-
-function quotedTradeOf({ trade, quote }: TradeQuote): QuotedTrade {
-  return { amountIn: trade.amountIn, expectedOut: quote.expectedOut };
 }
 
 // What the policy judges: the intent's subject on a venue, and the facts of its wallet.
@@ -284,22 +280,24 @@ async function runSteps(run: Run, proposed: IntentSnapshot): Promise<IntentSnaps
   if (simulated.record.state !== "simulated") {
     return simulated;
   }
-  return authorizeAndExecute(run, simulated, quoted.passed.pass ?? policy.passed);
+  const pass = quoted.passed.pass ?? policy.passed;
+  return authorizeAndExecute(run, simulated, { pass, plan: planned.plan });
 }
 
 // Step 6, then the execute step for an intent it confirmed.
 async function authorizeAndExecute(
   run: Run,
   simulated: IntentSnapshot,
-  pass: PolicyPass,
+  chosen: { readonly pass: PolicyPass; readonly plan: TradePlan },
 ): Promise<IntentSnapshot> {
   const { stored, gate, isLocked, execute } = run.options;
   const { machine, signal, fill } = run;
-  const parts = { stored, machine, signal, gate, isLocked, wallet: run.resolved.facts };
+  const { facts: wallet, chain } = run.resolved;
+  const parts = { stored, machine, signal, gate, isLocked, wallet, family: chain.family };
   const authorized = await authorizeSimulated(
     fill === undefined ? parts : { ...parts, fill },
     simulated,
-    pass,
+    chosen,
   );
   return execute(authorized, fill === undefined ? { signal } : { signal, fill });
 }

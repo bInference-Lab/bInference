@@ -18,18 +18,23 @@ export interface AuthorizationInput {
   readonly wallet: WalletFacts;
   /** The engine is locked and the swap is live, so nothing could sign it now. */
   readonly isLocked: boolean;
+  /**
+   * An approval of the swap's plan names a spender the chain registry does not list for the
+   * venue, such as a launch's own contract (decision 0212), so the auto test asks.
+   */
+  readonly hasUnlistedSpender: boolean;
 }
 
 /**
  * The trigger that decides at `simulated` whether a swap skips its card: the auto test's facts and
- * the agent's card rules. A swap stays inside the agent's own wallet, and the venue host refuses an
- * approval to a contract the venue did not declare, so neither mark is set here. Without the
- * policy's figures the value counts as over the per-trade cap, so a doubt asks.
+ * the agent's card rules. A swap stays inside the agent's own wallet, so it is never inside its
+ * positions. Without the policy's figures the value counts as over the per-trade cap, so a doubt
+ * asks.
  */
 export function authorizationCheckOf(
   input: AuthorizationInput,
 ): IntentTrigger<"authorization_checked"> {
-  const { settings, pass, wallet, isLocked } = input;
+  const { settings, pass, wallet, isLocked, hasUnlistedSpender } = input;
   const { limits, approvalMode } = settings;
   const facts: AutoModeFacts = {
     approvalMode: approvalMode.mode,
@@ -43,7 +48,7 @@ export function authorizationCheckOf(
     rollingDaySpentUsdMicros: pass.figures?.rollingDaySpentUsdMicros ?? 0n,
     feePerGasNativeBase: wallet.feePerGasNativeBase,
     networkFeeCapNativeBase: wallet.networkFeeCapNativeBase,
-    hasUnlistedSpender: false,
+    hasUnlistedSpender,
   };
   return {
     type: "authorization_checked",
