@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by decisions
 [0103](../DECISIONS.md#d0103), [0116](../DECISIONS.md#d0116), [0117](../DECISIONS.md#d0117),
-[0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148), [0149](../DECISIONS.md#d0149), [0210](../DECISIONS.md#d0210) and [0217](../DECISIONS.md#d0217). It follows Privy custody (decisions
+[0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148), [0149](../DECISIONS.md#d0149), [0210](../DECISIONS.md#d0210), [0211](../DECISIONS.md#d0211) and [0217](../DECISIONS.md#d0217). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
@@ -284,7 +284,12 @@ says without checking it:
    spends at most the grant's most of what the fill spends, a call's native value for the coin or
    an approval's amount for a token, and sends no coin with a call while the fill spends a token;
    a send never fills an order; and the grant lasts 60 seconds from the fill's confirmation
-   ([decision 0210](../DECISIONS.md#d0210)). One exception: a cancel (rule 6) of the confirmed
+   ([decision 0210](../DECISIONS.md#d0210)). A grant longer than 60 seconds, or granted after now,
+   holds nothing. A step after the fill's first also signs while a freeze pauses its order, so a
+   sale under way finishes. While the signer runs, it signs one fill intent per order and fills
+   before: a step of another intent under the same count breaks rule 5. An approval of the fill's
+   token for 0, which resets one its earlier step set, signs whatever the order became, until 60
+   seconds after the grant expired ([decision 0211](../DECISIONS.md#d0211)). One exception: a cancel (rule 6) of the confirmed
    intent, or of an order's fill whatever the order became, signs for 60 seconds after its
    confirmation or grant expired ([decision 0116](../DECISIONS.md#d0116)).
 6. For a speed-up or a cancel at an already used nonce: the calldata is identical (speed-up) or the

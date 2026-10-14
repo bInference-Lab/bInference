@@ -9,7 +9,7 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), [0157](../DECISIONS.md#d0157)
-[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195) and [0210](../DECISIONS.md#d0210). Accepted by the owner on 2026-10-12: a token launch refused in
+[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195), [0210](../DECISIONS.md#d0210) and [0211](../DECISIONS.md#d0211). Accepted by the owner on 2026-10-12: a token launch refused in
 paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
 whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
 to 13.
@@ -121,7 +121,10 @@ token's own launch, such as its curve, when its launchpad declares such contract
 named that one for the token ([decision 0212](../DECISIONS.md#d0212)).
 
 Nothing leaves a terminal state. A freeze never interrupts `executing`: a running transaction is
-finished, never cut in half. A freeze never cancels a rescue either (section 5).
+finished, never cut in half. A live order fill whose first step landed signs and sends its later
+steps under a freeze, so a sale's swap follows its approval; one whose later step can no longer be
+signed, as its grant ran out or its order ended, resets the approval it left to 0 instead
+([decision 0211](../DECISIONS.md#d0211)). A freeze never cancels a rescue either (section 5).
 
 <a id="section-4"></a>
 
@@ -184,7 +187,8 @@ order's buy that would pass its daily cap for the leader; `engine_locked`, the e
 to nothing; `fill_failed`, a fill that threw or ran past its 30-second deadline, whose unfinished intent is
 cancelled unsigned ([decision 0197](../DECISIONS.md#d0197)), or a live fill never signed; `fill_lapsed`,
 a live fill whose grant ran out before its wallet's queue took it
-([decision 0210](../DECISIONS.md#d0210)); and `no_price`, a size in dollars whose asset has no USD
+([decision 0210](../DECISIONS.md#d0210)); `owner_cancelled`, a fill the owner cancelled before it
+was signed, which ends its order ([decision 0211](../DECISIONS.md#d0211)); and `no_price`, a size in dollars whose asset has no USD
 price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
 refused.
@@ -243,6 +247,14 @@ and `step_unsent` (a step never signed after an earlier one landed,
     it. A dropped step that lands later counts on its order the same way. A live fill that ends
     otherwise records a skip with its intent's end: its failure reason on chain, `fill_failed`
     when never signed, `fill_lapsed` when its grant ran out in the queue.
+  - A live fill dropped on its way holds its agent's line for 600 blocks from the drop, watched
+    again after a restart, and its late landing counts with its own `filled` row in one write; a
+    landing past the order's most fills still counts, with `notice.orderOverfilled`. A landed fill
+    that cannot be valued counts after `settleAfterBlocks` with `notice.fillUnvalued`. After 2
+    fills of an order failed on chain its next one waits 15 seconds, doubling to 5 minutes, and
+    after 5 the order is cancelled with `notice.fillsFailing`. A fill the wallet queue refuses
+    ends at once, cancelled, its row naming the cause; its terms hash, stored as it is confirmed,
+    must hash again for the queue to sign it ([decision 0211](../DECISIONS.md#d0211)).
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when
@@ -452,7 +464,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    and reconciliation reads that nonce's transaction. It is ours (same hash after all): continue. It
    is not ours: the intent ends `failed_onchain` with reason `nonce_taken` and an alarm notice.
 3. Nothing is ever signed again for a step until its earlier transaction's fate is known.
-4. Recovery never signs, except a rescue's unsent steps. A step with no stored transaction ends the
+4. Recovery never signs, except a rescue's unsent steps and a live order fill's later steps: a
+   fill whose first step landed goes on under its fill grant while it holds, and resets the
+   approval it left to 0 once it does not ([decision 0211](../DECISIONS.md#d0211)). A step with no stored transaction ends the
    intent: `cancelled` when no step was signed, `failed_onchain` with `step_unsent` once an earlier
    step landed, each with an owner notice ([decision 0109](../DECISIONS.md#d0109)). The executor
    ends an intent the same way when a step cannot be signed or stored, custody or the signer fails

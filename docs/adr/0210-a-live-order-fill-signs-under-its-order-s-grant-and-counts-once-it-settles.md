@@ -1,6 +1,6 @@
 # 0210. A live order fill signs under its order's grant and counts once it settles
 
-Status: Accepted
+Status: Amended by 0211
 
 Accepted by the owner on 2026-10-13.
 
