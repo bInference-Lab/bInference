@@ -1,5 +1,5 @@
-import { assetRefParts, type CurveHolding, type CurveRequest } from "@binference/plugin-sdk";
-import { curveAssetOf, curveTokenOf } from "@binference/plugin-sdk/evm";
+import type { CurveHolding, CurveRequest } from "@binference/plugin-sdk";
+import { curveAssetOf, curveTokenOn } from "@binference/plugin-sdk/evm";
 import { portalOf } from "../flap-assets.js";
 import { readTokenState } from "../portal/read-portal.js";
 import { tokenStatus } from "../portal/token-state.js";
@@ -20,11 +20,11 @@ export async function readCurve(
   signal: AbortSignal,
 ): Promise<CurveHolding> {
   signal.throwIfAborted();
-  const setup = parts.setups.get(assetRefParts(request.token).chain);
-  const token = setup === undefined ? undefined : curveTokenOf(request.token, setup);
-  if (setup === undefined || token === undefined || request.token === setup.nativeAsset) {
+  const held = curveTokenOn(request.token, parts.setups);
+  if (held === undefined) {
     return offCurve;
   }
+  const { setup, token } = held;
   const read = { rpc: setup.rpc, portal: portalOf(request.contracts), signal };
   const state = await readTokenState(read, token);
   if (state === undefined || state.status === tokenStatus.invalid) {

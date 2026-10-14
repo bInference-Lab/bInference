@@ -5,8 +5,10 @@ import {
   type CurveChain,
   curveAssetOf,
   curveChainSetupsOf,
+  curveLossBps,
   curveSideOf,
   curveTokenOf,
+  curveTokenOn,
 } from "./curve-chain.js";
 
 const chain = chainRefSchema.parse("eip155:56");
@@ -75,5 +77,24 @@ describe("a launchpad's curve chains", () => {
     });
     expect(curveSideOf({ amountIn: amount(bnb), assetOut: usdt }, on)).toBeUndefined();
     expect(curveSideOf({ amountIn: amount(token), assetOut: token }, on)).toBeUndefined();
+  });
+
+  it("finds a token's chain setup and address, and none for the coin or another chain's token", () => {
+    const setups = curveChainSetupsOf([item], venue);
+    expect(curveTokenOn(token, setups)).toStrictEqual({ setup: setup(), token: tokenAddress });
+    expect(curveTokenOn(bnb, setups)).toBeUndefined();
+    expect(curveTokenOn(assetRefSchema.parse(`eip155:1/erc20:${tokenAddress}`), setups)).toBe(
+      undefined,
+    );
+  });
+
+  it.each([
+    { name: "a loss", lost: 1n, value: 10_001n, bps: 1 },
+    { name: "no loss", lost: 0n, value: 10_000n, bps: 0 },
+    { name: "a gain", lost: -5n, value: 10_000n, bps: 0 },
+    { name: "a loss of the whole value or more", lost: 20_000n, value: 10_000n, bps: 10_000 },
+    { name: "no value", lost: 1n, value: 0n, bps: 10_000 },
+  ])("reads $name as its share of the value, rounded up", ({ lost, value, bps }) => {
+    expect(curveLossBps(lost, value)).toBe(bps);
   });
 });

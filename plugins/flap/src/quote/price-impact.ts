@@ -1,4 +1,5 @@
 import { type Bps, bpsSchema } from "@binference/plugin-sdk";
+import { curveLossBps } from "@binference/plugin-sdk/evm";
 
 const whole = 10_000n;
 const wad = 10n ** 18n;
@@ -15,14 +16,6 @@ export interface CurveTrade {
   readonly taxBps: bigint;
 }
 
-function ceilBps(lost: bigint, value: bigint): Bps {
-  if (lost <= 0n) {
-    return bpsSchema.parse(0);
-  }
-  const bps = (lost * whole + value - 1n) / value;
-  return bpsSchema.parse(Number(bps > whole ? whole : bps));
-}
-
 /**
  * The share of the input's value a curve trade loses at the curve's price now, rounded up: the
  * curve's fee and the price the trade moves, leaving out the tax the quote names apart, which the
@@ -37,9 +30,9 @@ export function curveImpactBps(trade: CurveTrade): Bps {
   }
   if (side === "buy") {
     const valueOut = (amountOut * price) / wad;
-    return ceilBps(amountIn - valueOut - (amountIn * taxBps) / whole, amountIn);
+    return curveLossBps(amountIn - valueOut - (amountIn * taxBps) / whole, amountIn);
   }
   const valueIn = (amountIn * price + wad - 1n) / wad;
   const taxFloor = (amountOut * taxBps) / (whole - taxBps);
-  return valueIn === 0n ? impactUnknown : ceilBps(valueIn - amountOut - taxFloor, valueIn);
+  return valueIn === 0n ? impactUnknown : curveLossBps(valueIn - amountOut - taxFloor, valueIn);
 }

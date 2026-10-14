@@ -1,5 +1,4 @@
 import {
-  assetRefParts,
   err,
   ok,
   type PriceMiss,
@@ -9,7 +8,7 @@ import {
   type ReadAnswer,
   type Result,
 } from "@binference/plugin-sdk";
-import { curveAssetOf, curveTokenOf } from "@binference/plugin-sdk/evm";
+import { curveAssetOf, curveTokenOn } from "@binference/plugin-sdk/evm";
 import type { Address } from "viem";
 import { portalAccountOf, portalOf } from "../flap-assets.js";
 import { stateCallData, stateOf } from "../portal/portal-calls.js";
@@ -56,11 +55,11 @@ export async function readCurvePrice(
   signal: AbortSignal,
 ): Promise<Result<PriceRead, "no_price_read">> {
   signal.throwIfAborted();
-  const setup = parts.setups.get(assetRefParts(request.token).chain);
-  const token = setup === undefined ? undefined : curveTokenOf(request.token, setup);
-  if (setup === undefined || token === undefined || request.token === setup.nativeAsset) {
+  const held = curveTokenOn(request.token, parts.setups);
+  if (held === undefined) {
     return err("no_price_read");
   }
+  const { setup, token } = held;
   const portal = portalAccountOf(request.contracts);
   const read = { rpc: setup.rpc, portal: portalOf(request.contracts), signal };
   const state = await readTokenState(read, token);

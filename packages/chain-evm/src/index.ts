@@ -60,10 +60,18 @@ export type { AggregatorChain } from "./tokens/aggregator-token.js";
 export {
   curveAssetOf,
   curveChainSetupsOf,
+  curveLossBps,
   curveSideOf,
   curveTokenOf,
+  curveTokenOn,
 } from "./tokens/curve-chain.js";
-export type { CurveChain, CurveChainSetup, CurveSide, CurveVenue } from "./tokens/curve-chain.js";
+export type {
+  CurveChain,
+  CurveChainSetup,
+  CurveSide,
+  CurveToken,
+  CurveVenue,
+} from "./tokens/curve-chain.js";
 export { createEvmTxSimulator } from "./simulation/create-evm-tx-simulator.js";
 export type { EvmTxSimulatorOptions } from "./simulation/create-evm-tx-simulator.js";
 export { simulate } from "./simulation/simulate.js";

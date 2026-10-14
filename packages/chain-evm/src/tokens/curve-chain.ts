@@ -5,8 +5,9 @@ import {
   assetRefSchema,
   type ChainRef,
 } from "@binference/chain";
-import { BinferenceError } from "@binference/core";
+import { type Bps, BinferenceError, bpsPerWhole, bpsSchema } from "@binference/core";
 import { type Address, zeroAddress } from "viem";
+import { z } from "zod";
 import { parseEvmAddress } from "../evm-address.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 
@@ -37,6 +38,13 @@ export interface CurveChainSetup {
 export interface CurveVenue {
   readonly id: string;
   readonly name: string;
+}
+
+/** A token a launchpad may hold on a chain it trades on, with that chain's setup. */
+export interface CurveToken {
+  readonly setup: CurveChainSetup;
+  /** The token's address, in checksum form. */
+  readonly token: Address;
 }
 
 /**
@@ -148,4 +156,39 @@ export function curveSideOf(
   return isQuote(outputToken) && !isQuote(inputToken)
     ? { side: "sell", token: inputToken, quote: outputToken, ...pair }
     : undefined;
+}
+
+/**
+ * A token a launchpad may hold on its curve, with the setup of its chain: undefined for an asset of
+ * a chain the launchpad does not trade on, for the chain's coin, and for an asset that is no ERC-20
+ * token.
+ */
+export function curveTokenOn(
+  asset: AssetRef,
+  setups: ReadonlyMap<ChainRef, CurveChainSetup>,
+): CurveToken | undefined {
+  const setup = setups.get(assetRefParts(asset).chain);
+  const token = setup === undefined ? undefined : curveTokenOf(asset, setup);
+  return setup === undefined || token === undefined || token === zeroAddress
+    ? undefined
+    : { setup, token };
+}
+
+const whole = BigInt(bpsPerWhole);
+const bpsFromBase = z.bigint().pipe(z.coerce.number()).pipe(bpsSchema);
+
+/**
+ * The share of `value` a curve trade loses, in basis points rounded up so a loss is never read
+ * lower than it is: none for no loss, and the whole for a loss of all of the value or more, or for
+ * a trade with no value to lose.
+ */
+export function curveLossBps(lost: bigint, value: bigint): Bps {
+  if (value <= 0n) {
+    return bpsFromBase.parse(whole);
+  }
+  if (lost <= 0n) {
+    return bpsFromBase.parse(0n);
+  }
+  const bps = (lost * whole + value - 1n) / value;
+  return bpsFromBase.parse(bps > whole ? whole : bps);
 }
