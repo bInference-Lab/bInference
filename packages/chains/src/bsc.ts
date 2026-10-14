@@ -1,6 +1,7 @@
 import type {
   CeilingCapsDefinition,
   ChainDefinition,
+  PoolHookDefinition,
   PriceFeedDefinition,
 } from "@binference/chain";
 import { registryEntryMakers } from "./entries/registry-entry-makers.js";
@@ -120,6 +121,24 @@ const flap = createContracts("flap", {
     "standard-token-implementation": "0x8B4329947e34B6d56D71A3385caC122BaDe7d78D",
   },
 });
+
+// Genius.fun's two live stacks, as genius.fun's own contract list names them: m4.2 launches now and
+// m4.1 still takes launches. Each launch gets a curve of its own, which only its stack's factory
+// names (`getLaunchedToken`). Neither factory nor hook is a proxy; a 2-of-3 Safe owns them all.
+// Each factory's `memeHook()` is its stack's hook, each hook's `factory()` its stack's factory, and
+// the code of each matches the code hash the list gives. Read a week after the others.
+const geniusfun = createContracts(
+  "geniusfun",
+  {
+    "https://genius.fun/api/launchpad/v1/contracts": {
+      "factory-m4-2": "0x37eE8AeE29C5efd3C1A7edA6dF3F510779928a37",
+      "hook-m4-2": "0x8E6f8eBbD62B60085B703C40B460daE802eDC51b",
+      "factory-m4-1": "0x78EAE9537C0ef90DFe9B7ae964682Fe8138afe31",
+      "hook-m4-1": "0xFf17F41c5Efd6CCe944Af0912F300097D62df5c9",
+    },
+  },
+  "2026-10-14",
+);
 
 const venus = createContracts("venus", {
   "https://github.com/VenusProtocol/venus-protocol/blob/main/deployments/bscmainnet_addresses.json":
@@ -272,6 +291,7 @@ export const bsc: ChainDefinition = {
     ...okx,
     ...fourmeme,
     ...flap,
+    ...geniusfun,
     ...venus,
     ...lista,
     ...aave,
@@ -298,6 +318,17 @@ export const bscCeilingCaps: CeilingCapsDefinition = {
     { symbol: "USDC", floorUsd: 1_000_000n },
   ],
 };
+
+/**
+ * The pool hooks a route on BSC may pass through: the PancakeSwap Infinity hooks of Genius.fun's
+ * graduated pools, one per stack. Each keeps 2% of the unspecified side of every swap
+ * (`hookFeeBps()`, read on 2026-10-14), a share each pool fixes when it is made. A route through a
+ * hooked pool whose hook is not here is dropped.
+ */
+export const bscPoolHooks: readonly PoolHookDefinition[] = [
+  { venue: "geniusfun", contract: "hook-m4-2", feeBps: 200 },
+  { venue: "geniusfun", contract: "hook-m4-1", feeBps: 200 },
+];
 
 /**
  * BSC's standard Chainlink USD feeds, 8 decimals each, with the heartbeat Chainlink publishes.
