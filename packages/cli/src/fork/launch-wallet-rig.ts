@@ -1,0 +1,188 @@
+import { accountRefParts } from "@binference/chain";
+import { erc20AssetRef, evmAccountRef } from "@binference/chain-evm";
+import type { Fork } from "@binference/chain-evm/fork";
+import { BinferenceError, createSecret, type Id, idSchema } from "@binference/core";
+import { createVenueHost, type Engine, type PositionStore } from "@binference/engine";
+import type { WalletMaker } from "@binference/engine/install";
+import {
+  createMemoryEngineStores,
+  createMemoryPositionStore,
+  type MemoryEngineStores,
+} from "@binference/engine/testing";
+import type { SignerRefusalNotice } from "@binference/signer";
+import { type Address, getAddress, keccak256, toHex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { selfHostedChains } from "../compose/open-engine-parts.js";
+import { createSystemClock } from "../runtime/system-clock.js";
+import { forkLimits } from "./executor-rig.js";
+import {
+  custodyOn,
+  engineOf,
+  geniusfunOn,
+  type RigCustody,
+  signerOver,
+  walletFactsOn,
+  walletMakerOf,
+} from "./launch-wallet-parts.js";
+
+/** A wallet of the rig's agent: its engine id and its address on the fork. */
+interface LaunchRigWallet {
+  readonly wallet: Id<"wal">;
+  readonly address: Address;
+}
+
+/**
+ * The launch wallet rig on a fork: the engine and its executor, custody on the Privy fake under
+ * the ceilings binference builds, signed for by the real signer process, one live agent trading
+ * on Genius.fun with the main wallet init made and the launch wallet the owner key made with
+ * `wallet/create`, and the owner's rescue address in effect.
+ */
+export interface LaunchRig {
+  readonly engine: Engine;
+  readonly stores: MemoryEngineStores;
+  readonly positions: PositionStore;
+  readonly agent: Id<"agt">;
+  readonly main: LaunchRigWallet;
+  readonly launch: LaunchRigWallet;
+  readonly rescue: Address;
+  /** Each step the signer refused, as it reported it. */
+  readonly refusals: readonly SignerRefusalNotice[];
+  /** Stops the signer process. */
+  stop(): Promise<void>;
+}
+
+/** The owner as the rig's CLI calls the engine: over IPC, with every scope. */
+export const rigOwner = {
+  credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000217",
+  client: { kind: "cli", version: "fork" },
+  scopes: ["read", "propose", "confirm", "loosen", "admin"],
+  transport: "ipc",
+} as const;
+
+const agent = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000217");
+const mainWallet = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-000000000217");
+const rescue = privateKeyToAccount(
+  keccak256(toHex("binference launch wallet fork rescue")),
+).address;
+/** What each of the agent's wallets holds of BNB when the rig starts: 0.05 BNB. */
+export const rigFunding: bigint = 5n * 10n ** 16n;
+
+// The rig's one agent: live, trading on Genius.fun under the fork limits, asking for each trade.
+async function storeAgent(stores: MemoryEngineStores, fork: Fork, signal: AbortSignal) {
+  const limits = { ...forkLimits(fork), venues: ["geniusfun"] };
+  const draft = { locale: "en", models: {}, notifications: {}, limits, sendLevel: 0 } as const;
+  await stores.agents.create(
+    {
+      ...draft,
+      id: agent,
+      name: "curves",
+      mode: "live",
+      atMs: createSystemClock().now(),
+      approvalMode: "manual",
+      bySurface: "cli",
+    },
+    { signal },
+  );
+}
+
+function refused(code: `fork.${string}`, problem: string): BinferenceError {
+  return new BinferenceError({
+    code,
+    message: "The rig could not be set up.",
+    details: { problem },
+  });
+}
+
+// The install as init leaves it: custody, the rescue address in effect, and the agent's main
+// wallet, which the maker made under the ceiling init plans.
+async function setUpInstall(
+  parts: { readonly fork: Fork; readonly stores: MemoryEngineStores; readonly maker: WalletMaker },
+  custody: RigCustody,
+  signal: AbortSignal,
+): Promise<LaunchRigWallet> {
+  const rescueAddress = evmAccountRef(parts.fork.chain, rescue);
+  const request = {
+    wallet: mainWallet,
+    ownerKey: createSecret(custody.ownerKey),
+    venues: ["geniusfun"],
+    recipients: [rescueAddress],
+    isLaunch: false,
+  };
+  const made = await parts.maker.make(request, { signal });
+  if (!made.ok) {
+    throw refused("fork.no_wallet", made.error);
+  }
+  const atMs = createSystemClock().now();
+  const wallet = { ...made.value.record, id: mainWallet, agentId: agent, label: "main" };
+  const setup = { atMs, custody: custody.record, rescueAddress, isStartOver: false };
+  const set = await parts.stores.install.setUp(
+    { ...setup, wallet: { ...wallet, createdAtMs: atMs } },
+    { signal },
+  );
+  if (!set.ok) {
+    throw refused("fork.no_install", set.error);
+  }
+  return { wallet: mainWallet, address: getAddress(made.value.record.address) };
+}
+
+// The agent's launch wallet, made as `binference wallet create --launch` makes it.
+async function createLaunchWallet(engine: Engine, custody: RigCustody, signal: AbortSignal) {
+  const args = { agent, label: "curves", ownerKey: custody.ownerKey, launch: true } as const;
+  const created = await engine.handlers["wallet/create"]({ args, caller: rigOwner, signal });
+  if (!created.ok) {
+    throw refused("fork.no_launch_wallet", created.error);
+  }
+  const { wallet, address } = created.value;
+  return { wallet, address: getAddress(accountRefParts(address).address) };
+}
+
+// Each wallet starts with the rig's BNB and no code; the rescue address with nothing.
+async function fund(fork: Fork, wallets: readonly LaunchRigWallet[]): Promise<void> {
+  const addresses = wallets.map(({ address }) => address);
+  await Promise.all(
+    [...addresses, rescue].map(async (address) => fork.call("anvil_setCode", [address, "0x"])),
+  );
+  await Promise.all([
+    ...addresses.map(async (address) =>
+      fork.call("anvil_setBalance", [address, toHex(rigFunding)]),
+    ),
+    fork.call("anvil_setBalance", [rescue, "0x0"]),
+  ]);
+}
+
+/**
+ * The launch wallet rig on `fork`, its signer run from the bundle at `entry`, its risk source
+ * reporting on `token` alone. A rig that fails to set up stops its signer; a test stops it with
+ * {@link LaunchRig.stop} once done.
+ */
+export async function launchRigOf(
+  fork: Fork,
+  run: { readonly entry: string; readonly token: Address },
+  signal: AbortSignal,
+): Promise<LaunchRig> {
+  const stores = createMemoryEngineStores();
+  const positions = createMemoryPositionStore();
+  const custody = await custodyOn(fork, run.entry, signal);
+  const venue = geniusfunOn(fork);
+  const clock = createSystemClock();
+  const chains = selfHostedChains();
+  const host = createVenueHost({ venues: [venue], chains, clock, callTimeoutMs: 15_000 });
+  const maker = walletMakerOf(custody, { stores, venues: [venue] });
+  const wallets = walletFactsOn(fork, stores);
+  const covered = [erc20AssetRef(fork.chain, run.token)];
+  const signer = signerOver(custody);
+  const parts = { fork, stores, positions, custody: signer, wallets, venue, host, covered };
+  const engine = engineOf(parts, maker);
+  try {
+    await storeAgent(stores, fork, signal);
+    const main = await setUpInstall({ fork, stores, maker }, custody, signal);
+    const launch = await createLaunchWallet(engine, custody, signal);
+    await fund(fork, [main, launch]);
+    const { refusals } = custody;
+    const stop = async () => custody.signer.stop(AbortSignal.timeout(5_000));
+    return { engine, stores, positions, agent, main, launch, rescue, refusals, stop };
+  } catch (error) {
+    await custody.signer.stop(AbortSignal.abort());
+    throw error;
+  }
+}
