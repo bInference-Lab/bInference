@@ -7,7 +7,7 @@ import {
   type PriceSource,
   type RegisteredChain,
   type Signer,
-  type VenueDeclaration,
+  type Venue,
 } from "@binference/chain";
 import {
   createEvmNonceSource,
@@ -25,11 +25,12 @@ import {
   type Logger,
   type Random,
 } from "@binference/core";
-import type {
-  EnginePush,
-  EngineStores,
-  PositionStore,
-  WalletFactsSource,
+import {
+  createVenueHost,
+  type EnginePush,
+  type EngineStores,
+  type PositionStore,
+  type WalletFactsSource,
 } from "@binference/engine";
 import {
   type ChainSending,
@@ -58,8 +59,11 @@ export interface ComposeExecutorOptions {
   readonly wallets: WalletFactsSource;
   readonly prices: PriceSource;
   readonly chains: ChainRegistry;
-  /** The venues' declarations, whose contracts the signer lets a trade's steps reach. */
-  readonly venues: readonly VenueDeclaration[];
+  /**
+   * The venues: their declarations name the contracts the signer lets a trade's steps reach, and
+   * the launchpads' curve reads name a launch wallet's launch contracts again (decision 0217).
+   */
+  readonly venues: readonly Venue[];
   /** Each enabled chain's RPC failover and network fee cap. */
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   /** The relays config names for each chain; every relay the chain lists when it names none. */
@@ -75,6 +79,8 @@ export interface ComposeExecutorOptions {
 }
 
 // A node rests 30 s after a failure; a relay gets 3 s, several BSC blocks, to take a transaction.
+// A launchpad's curve read before a signature gets as long as any venue call.
+const curveReadTimeoutMs = 5_000;
 const rpcRestMs = 30_000;
 const relayTimeoutMs = 3_000;
 // A tracer replays a whole transaction, so it gets longer than a read.
@@ -209,6 +215,12 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     prices: options.prices,
     chains: options.chains,
     venues: options.venues,
+    curves: createVenueHost({
+      venues: options.venues,
+      chains: options.chains,
+      clock,
+      callTimeoutMs: curveReadTimeoutMs,
+    }),
     sending: new Map([...parts].map(([chain, part]) => [chain, part.sending])),
     clock,
     ids: createIdSource({ clock, random }),

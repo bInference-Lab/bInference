@@ -40,13 +40,17 @@ const listed = (list: readonly Account[], chain: string, address: Address | unde
 type Send = Extract<Action, { kind: "send" }>;
 type Approve = Extract<Action, { kind: "approve" }>;
 
+// Decision 0217: a launch's own contracts count as targets only for a launch wallet.
+const launchTargets = (m: Model): readonly Account[] =>
+  m.isLaunchWallet === true ? (m.launch ?? []) : [];
+
 function approvalTargetOk(m: Model, action: Approve): boolean {
   const { data, stepChain: chain } = m;
   return (
     sameAccount(action.token, chain, m.to) &&
     data.kind === "approve" &&
     sameAccount(action.spender, chain, data.account) &&
-    listed(m.spenders, chain, data.account)
+    listed([...m.spenders, ...launchTargets(m)], chain, data.account)
   );
 }
 
@@ -70,7 +74,7 @@ function sendTargetOk(m: Model, action: Send): boolean {
 function targetOk(m: Model): boolean {
   const { action } = m;
   if (action.kind === "call") {
-    return listed(m.contracts, m.stepChain, m.to);
+    return listed([...m.contracts, ...launchTargets(m)], m.stepChain, m.to);
   }
   return action.kind === "approve" ? approvalTargetOk(m, action) : sendTargetOk(m, action);
 }
@@ -213,6 +217,8 @@ const routerCall: Model = {
 };
 const valid: readonly Model[] = [
   routerCall,
+  // A launch wallet's call to the launch's curve, which no registry list holds (decision 0217).
+  { ...routerCall, to: stranger, contracts: [], launch: [on(stranger)], isLaunchWallet: true },
   {
     ...routerCall,
     to: token,
@@ -359,6 +365,8 @@ const change: fc.Arbitrary<Change> = fc.oneof(
   ...autoChanges,
   ...speedUpChanges,
   fc.subarray([c56, c97]).map((enabled): Change => (m) => ({ ...m, enabled })),
+  fc.boolean().map((isLaunchWallet): Change => (m) => ({ ...m, isLaunchWallet })),
+  accounts.map((launch): Change => (m) => ({ ...m, launch })),
   chain.map((stepChain): Change => (m) => ({ ...m, stepChain })),
   chain.map((walletChain): Change => (m) => ({ ...m, walletChain })),
   fc.constantFrom("POST", "PUT").map((httpMethod): Change => (m) => ({ ...m, httpMethod })),

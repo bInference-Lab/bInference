@@ -87,6 +87,11 @@ export interface CardFacts {
   readonly check?: CardCheck;
   readonly warnings: CardWarnings;
   /**
+   * The label of the launch wallet the intent runs from (decision 0217), which the card names
+   * under its action; absent for any other wallet.
+   */
+  readonly launchWallet?: string;
+  /**
    * The agent's reason from the request, the only model words on a card. Each surface escapes it
    * and cuts it to 200 characters (spec 4, section 1).
    */
@@ -219,14 +224,18 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
 }
 
 /**
- * Draws one card version from its facts (spec 4, section 3): the header, the action, the route,
- * the fees, the check, the warnings, what the agent says and the expiry, in that order. Lines
- * without facts are left out.
+ * Draws one card version from its facts (spec 4, section 3): the header, the action, the launch
+ * wallet it runs from, the route, the fees, the check, the warnings, what the agent says and the
+ * expiry, in that order. Lines without facts are left out.
  */
 export function drawCard(facts: CardFacts): Card {
   const lines: readonly CardLine[] = [
     headerLine(facts),
     actionLine(facts.action),
+    ...optional(facts.launchWallet, (label) => ({
+      key: "card.launchWallet",
+      values: { wallet: { type: "text", text: label } },
+    })),
     ...optional(facts.route, routeLine),
     ...optional(facts.fees, feesLine),
     ...optional(facts.check, checkLine),

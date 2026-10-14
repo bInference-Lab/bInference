@@ -1,4 +1,4 @@
-import type { ChainRegistry, PriceSource, Signer } from "@binference/chain";
+import type { PriceSource } from "@binference/chain";
 import { type Clock, err, type IdSource, ok, type Result } from "@binference/core";
 import type { AssetInfos, IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
@@ -17,7 +17,7 @@ import {
 } from "../intents/state-machine.js";
 import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { PolicySubject } from "../policy/policy-rules.js";
-import type { AgentStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
+import type { AgentStore, RiskCheck, Simulator } from "../ports.js";
 import type { QuoteOutcome, TradePlan, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { advanceIntent } from "./advance-intent.js";
 import { authorizeSimulated, type FillProposal } from "./authorize-simulated.js";
@@ -26,7 +26,7 @@ import type { ExecuteConfirmed } from "./execute-confirmed.js";
 import { type PlacedTrade, placeTrade } from "./place-trade.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import { firstQuoteOf, quotedTradeOf, quoteVenues } from "./quote-venues.js";
-import { type ResolvedProposal, resolveProposal } from "./resolve-proposal.js";
+import { type ResolvedProposal, type ResolveOptions, resolveProposal } from "./resolve-proposal.js";
 import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
 import { proposalOf, storeProposed } from "./store-proposed.js";
 import { type SwapTrade, swapSubjectOf } from "./swap-trade.js";
@@ -64,11 +64,9 @@ export interface MoneyPath {
 }
 
 /** The ports and steps the money path runs on. */
-export interface MoneyPathOptions {
+export interface MoneyPathOptions extends ResolveOptions {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
-  readonly custody: Signer;
-  readonly wallets: WalletFactsSource;
   /** What a wallet holds of the asset a sale by share sells, in the intent's mode. */
   readonly holdings: Holdings;
   readonly policy: PolicyCheck;
@@ -78,7 +76,6 @@ export interface MoneyPathOptions {
   /** Weighs the token a quoted trade buys, before the simulation. */
   readonly risk: RiskCheck;
   readonly simulator: Simulator;
-  readonly chains: ChainRegistry;
   /** Reads what a token the registry does not list answers on chain, for its card. */
   readonly readTokenFacts: ReadTokenFacts;
   readonly execute: ExecuteConfirmed;

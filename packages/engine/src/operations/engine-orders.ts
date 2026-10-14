@@ -4,6 +4,7 @@ import type { Confirmations } from "../confirmations/create-confirmations.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
+import type { LaunchRouting } from "../money-path/launch-routing.js";
 import type { Holdings } from "../money-path/wallet-facts.js";
 import type { OrderParts } from "../orders/create-order.js";
 import { createFillEnd, type FillEnd } from "../orders/fill-ends.js";
@@ -19,6 +20,7 @@ export function orderPartsOf(
     readonly stored: StoredIntents;
     readonly confirmations: Confirmations;
     readonly wallets: OrderParts["wallets"];
+    readonly launches: LaunchRouting;
   },
 ): OrderParts {
   const { stores, chains, clock, ids, publish, isLocked, custody, canPrice, readTokenFacts } =
@@ -44,6 +46,7 @@ export function orderPartsOf(
     canPrice,
     readTokenFacts,
     liveFills: options.liveOrderFills === true,
+    launches: parts.launches,
   };
 }
 

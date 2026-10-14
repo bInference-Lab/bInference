@@ -52,12 +52,14 @@ Privy's policy docs, read on 2026-10-15 ("Overview", "Template variables", "Stat
 - **The 24-hour caps stay as decisions 0149 and 0151 set them.** The launch rules name the same
   aggregations as every ceiling of the install, so the launch wallet's calls count toward the same
   sums. No new number: the owner's funding bounds the wallet.
-- **The engine routes a curve trade there and nowhere else.** A buy or a sale of a token a
+- **The engine routes a curve trade there and nowhere else.** A live buy or sale of a token a
   launchpad holds on a curve with launch contracts runs from the agent's live launch wallet, as
-  does a sale or a swap of a token that wallet holds a position in, through the pools after the
-  token graduated too. A request that names its wallet keeps it. The signer is told the wallet's
-  role and each step's launch contracts, read again from the launchpad right before signing, and
-  allows a call to a launch contract, or an approval naming one, only from a launch wallet.
+  does a live sale or swap of a token the registry does not list that the wallet holds, through
+  the pools after the token graduated too; an auto order on such a token is held by the launch
+  wallet the same way. A request that names its wallet keeps it, and a paper intent, which signs
+  nothing, runs from the default wallet. The signer is told the wallet's role and each step's
+  launch contracts, read again from the launchpad right before signing, and allows a call to a
+  launch contract, or an approval naming one, only from a launch wallet.
 - **Going live.** A live agent may add a launchpad with launch contracts to its venues once it has
   a live launch wallet, and an agent whose venues hold one goes live only then; otherwise both
   stay `limit.needs_launch_wallet`.

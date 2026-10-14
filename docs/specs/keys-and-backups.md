@@ -253,7 +253,11 @@ says without checking it:
 
 1. The chain is enabled and is the transaction's chain.
 2. `to` is in `allowed`: the venue's declared contracts, a token for an exact approval to a registry
-   spender, or the confirmed recipient of a send, bridge or rescue.
+   spender, or the confirmed recipient of a send, bridge or rescue. From a launch wallet
+   (`wallet.role` is `launch`), a call may also go to, and an approval name, a contract of the
+   launch the step trades on (`allowed.launch`), which the engine reads again from the launchpad
+   right before signing; from any other wallet such a call or approval breaks this rule
+   ([decision 0217](../DECISIONS.md#d0217)).
 3. Value and amounts equal the plan's amounts for that step; an approval is never above the step's
    amount, and never unlimited.
 4. The method is `eth_signTransaction`; no EIP-7702 authorization, no `personal_sign`, and typed

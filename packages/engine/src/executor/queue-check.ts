@@ -22,6 +22,7 @@ import { type ResolveOptions, resolveProposal } from "../money-path/resolve-prop
 import { swapSubjectOf } from "../money-path/swap-trade.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
+import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
 export interface SigningTerms {
@@ -41,7 +42,7 @@ export interface QueueCheck {
 }
 
 /** The ports and steps the check reads. */
-export interface QueueCheckParts extends ResolveOptions {
+export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
   readonly intents: IntentStore;
   readonly policy: PolicyCheck;
   readonly clock: Clock;
@@ -194,7 +195,8 @@ async function termsOf(
 /**
  * Reads what the wallet queue checks as it takes a confirmed intent (spec 6, `queue_took`): the
  * agent is live, the policy still passes, and the owner's confirmation or the auto grant still
- * holds; with it, what the signer checks for every step.
+ * holds; with it, what the signer checks for every step, a launch wallet's launch contracts read
+ * again among them (decision 0217).
  */
 export async function checkForQueue(
   snapshot: IntentSnapshot,
@@ -213,6 +215,8 @@ export async function checkForQueue(
     ...(authorizedBy === undefined ? {} : { isAuthorizationValid: terms !== undefined }),
   };
   const isAuto = authorizedBy !== undefined && !isFillAuthorization(authorizedBy);
-  const allowed = allowedTargetsOf(snapshot, { chain, venues: parts.venues });
+  const registry = allowedTargetsOf(snapshot, { chain, venues: parts.venues });
+  const launch = await launchTargetsOf(snapshot, parts, signal);
+  const allowed = launch.length === 0 ? registry : { ...registry, launch };
   return { facts, isAuto, ...(terms === undefined ? {} : { terms: { ...terms, allowed } }) };
 }

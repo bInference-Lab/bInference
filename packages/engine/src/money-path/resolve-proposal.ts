@@ -10,6 +10,7 @@ import { err, type Id, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { WalletFactsSource } from "../ports.js";
+import { type LaunchRouting, routedWalletOf } from "./launch-routing.js";
 import { type TradeAsk, tradeAskOf, tradeChainOf } from "./swap-trade.js";
 import type { WalletFacts } from "./wallet-facts.js";
 
@@ -30,6 +31,11 @@ export interface ResolveOptions {
   readonly custody: Signer;
   readonly wallets: WalletFactsSource;
   readonly chains: ChainRegistry;
+  /**
+   * What sends a trade on a launch's own contracts to the agent's launch wallet (decision 0217);
+   * without it, a request that names no wallet runs from the agent's oldest wallet.
+   */
+  readonly launches?: LaunchRouting;
 }
 
 interface Resolving {
@@ -48,20 +54,29 @@ export function nativeAssetOf(chain: RegisteredChain): AssetRef {
   return assetRefSchema.parse(`${chain.ref}/${assetNamespace}:${assetReference}`);
 }
 
-// The request's wallet must be one of the agent's; without one, the agent's default acts.
+// The request's wallet must be one of the agent's; without one, the trade routes to the agent's
+// launch wallet or its default wallet (decision 0217).
 async function walletOf(
   options: ResolveOptions,
-  resolving: Resolving,
+  resolving: Resolving & { readonly ask: TradeAsk; readonly chain: RegisteredChain },
 ): Promise<Id<"wal"> | undefined> {
-  const { request, signal } = resolving;
+  const { request, signal, ask, chain } = resolving;
   const owned = await options.wallets.wallets(request.agent, { signal });
-  const wallet = request.wallet ?? owned[0];
-  return wallet !== undefined && owned.includes(wallet) ? wallet : undefined;
+  if (request.wallet !== undefined) {
+    return owned.includes(request.wallet) ? request.wallet : undefined;
+  }
+  const isPaper = resolving.isPaper ?? resolving.settings.agent.mode === "paper";
+  const trade = { agent: request.agent, chain, isPaper, owned };
+  const placed = ask.placed === undefined ? {} : { placed: ask.placed };
+  const sold = ask.kind === "buy" ? {} : { sold: ask.assetIn };
+  return routedWalletOf(options.launches, { ...trade, ...placed, ...sold }, signal);
 }
 
 /**
  * Resolves a request for the money path: the agent's wallet and its account on the trade's
- * chain, the trade asked for and the wallet's facts. A wallet that is not the agent's, or that the
+ * chain, the trade asked for and the wallet's facts. A request that names no wallet runs from the
+ * agent's launch wallet when its trade calls a launch's own contracts or sells what that wallet
+ * holds, and from its default wallet otherwise (decision 0217). A wallet that is not the agent's, or that the
  * custodian does not hold, is `wallet.not_found`; an asset with no canonical form on a chain the
  * registry holds, or a buy that spends neither the chain's coin nor a registry token, is
  * `protocol.bad_args`; a request the money path cannot route yet is `quote.no_route`. None stores
@@ -76,15 +91,15 @@ export async function resolveProposal(
   if (chain === undefined) {
     return err("quote.no_route");
   }
-  const wallet = await walletOf(options, resolving);
+  const ask = tradeAskOf(request, { limits: settings.limits, chains: options.chains });
+  if (!ask.ok) {
+    return err(ask.error === "no_route" ? "quote.no_route" : ask.error);
+  }
+  const wallet = await walletOf(options, { ...resolving, ask: ask.value, chain });
   const account =
     wallet === undefined ? undefined : await options.custody.account(wallet, chain.ref, { signal });
   if (wallet === undefined || account?.ok !== true) {
     return err("wallet.not_found");
-  }
-  const ask = tradeAskOf(request, { limits: settings.limits, chains: options.chains });
-  if (!ask.ok) {
-    return err(ask.error === "no_route" ? "quote.no_route" : ask.error);
   }
   const isPaper = resolving.isPaper ?? settings.agent.mode === "paper";
   const query = { agent: request.agent, wallet, account: account.value, isPaper };

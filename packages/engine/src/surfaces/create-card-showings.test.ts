@@ -59,6 +59,7 @@ function showingsOf(test: TestEngine, stores: StoresSeen = {}) {
     intents: stores.intents ?? test.stores.intents,
     agents: stores.agents ?? test.stores.agents,
     access: test.stores.access,
+    install: test.stores.install,
     chains,
     venues: createVenueHost({ venues, chains, clock: test.clock, callTimeoutMs: 5_000 }),
   });

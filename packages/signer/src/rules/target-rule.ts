@@ -1,4 +1,4 @@
-import type { StepAction } from "@binference/chain";
+import type { AccountRef, AuthorizeInput, StepAction } from "@binference/chain";
 import { isAccount, listsAccount, type RuleView } from "./hard-rule.js";
 import { readTokenCall } from "./token-call.js";
 
@@ -21,24 +21,33 @@ function sendReaches(view: RuleView, action: Extract<StepAction, { kind: "send" 
   );
 }
 
+// The contracts of the launch the step trades on, which only a launch wallet may call or approve
+// (decision 0217); none for any other wallet.
+function launchTargets(input: AuthorizeInput): readonly AccountRef[] {
+  return input.wallet.role === "launch" ? (input.allowed.launch ?? []) : [];
+}
+
 function approvalReaches(
   view: RuleView,
   action: Extract<StepAction, { kind: "approve" }>,
 ): boolean {
   const { allowed, step } = view.input;
   const call = readTokenCall(view.transaction.data);
+  const spenders = [...allowed.spenders, ...launchTargets(view.input)];
   return (
     isAccount(action.token, step.chain, view.transaction.to) &&
     call.kind === "approve" &&
     isAccount(action.spender, step.chain, call.spender) &&
-    listsAccount(allowed.spenders, step.chain, call.spender)
+    listsAccount(spenders, step.chain, call.spender)
   );
 }
 
 /**
  * Rule 2: `to` is in `allowed`. A call goes to one of the venue's declared contracts; an approval
- * goes to the step's token and names a registry spender; a send pays the confirmed recipient, in
- * the native coin with no calldata or by the token's `transfer`. A cancel is rule 6's.
+ * goes to the step's token and names a registry spender; from a launch wallet, a call may also go
+ * to, and an approval name, a contract of the launch the step trades on (decision 0217); a send
+ * pays the confirmed recipient, in the native coin with no calldata or by the token's `transfer`.
+ * A cancel is rule 6's.
  */
 export function targetHolds(view: RuleView): boolean {
   const { step, allowed } = view.input;
@@ -47,7 +56,8 @@ export function targetHolds(view: RuleView): boolean {
   }
   const { action } = step;
   if (action.kind === "call") {
-    return listsAccount(allowed.contracts, step.chain, view.transaction.to);
+    const contracts = [...allowed.contracts, ...launchTargets(view.input)];
+    return listsAccount(contracts, step.chain, view.transaction.to);
   }
   return action.kind === "approve" ? approvalReaches(view, action) : sendReaches(view, action);
 }

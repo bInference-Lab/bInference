@@ -29,6 +29,7 @@ import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handler
 import type { MarketParts } from "../market/market-handlers.js";
 import { createMoneyPath } from "../money-path/create-money-path.js";
 import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
+import type { LaunchRouting } from "../money-path/launch-routing.js";
 import {
   createVenueQuoteSource,
   type VenueQuoteSourceOptions,
@@ -276,6 +277,12 @@ interface IntentParts {
   readonly cardTimer: CardTimerParts;
 }
 
+// What sends a live trade on a launch's own contracts to the agent's launch wallet (decision 0217).
+function launchRoutingOf(options: EngineOptions, paper: PaperParts): LaunchRouting {
+  const { stores, host, custody, chains } = options;
+  return { install: stores.install, host, custody, holdings: paper.holdings, chains };
+}
+
 function intentParts(
   options: EngineOptions,
   paper: PaperParts,
@@ -290,7 +297,8 @@ function intentParts(
     quotes: createVenueQuoteSource(requoteOptions(options, { stored, paper })),
     simulator: paper.simulator,
   });
-  const orders = orderPartsOf(options, { stored, confirmations, wallets: paper.wallets });
+  const launches = launchRoutingOf(options, paper);
+  const orders = orderPartsOf(options, { stored, confirmations, wallets: paper.wallets, launches });
   const execute = executeOf(options, { stored, paper, orders });
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
@@ -301,6 +309,7 @@ function intentParts(
     custody,
     wallets: paper.wallets,
     holdings: paper.holdings,
+    launches,
     policy: createPolicyCheck({ prices: options.prices, clock }),
     prices: options.prices,
     host,

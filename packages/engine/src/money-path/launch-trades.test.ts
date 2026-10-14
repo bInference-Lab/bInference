@@ -12,8 +12,11 @@ import {
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { createMemoryRiskCacheStore } from "../fakes/memory-risk-cache-store.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
 import {
+  expectOk,
   testAgent,
   testCoin,
   testLimits,
@@ -150,5 +153,87 @@ describe("the auto test of a trade on a launch's own curve", () => {
 
   it("fills an approval of the launchpad's registry contract with no card", async () => {
     await expect(autoBuy({})).resolves.toBe("paper_filled");
+  });
+});
+
+// The agent's launch wallet beside its test wallet (decision 0217), held by custody on the chain;
+// the agent is live, as only a live trade signs from the launch wallet.
+const launchWallet = fixtureId("wal", 217);
+const launchAccount = accountRefSchema.parse("fake:1:0x000000d9");
+
+async function withLaunchWallet(options: TestEngineOptions = {}): Promise<TestEngine> {
+  const test = await engineOver({
+    risk: passing,
+    ...options,
+    agent: { mode: "live", limits: { ...testLimits, venues: ["fake-swap", curve] } },
+    wallets: [testWallet, launchWallet],
+    custodyWallets: new Map([[launchWallet, launchAccount]]),
+  });
+  test.stores.install.addWallet(
+    testWalletRecord({
+      id: launchWallet,
+      agentId: testAgent,
+      label: "curves",
+      createdAtMs: testNowMs,
+      role: "launch",
+    }),
+  );
+  return test;
+}
+
+const { wallet: _named, ...unnamedBuy } = buy;
+const swapOut: IntentRequest = {
+  kind: "swap",
+  agent: testAgent,
+  reason: "Take the profit",
+  from: unlisted,
+  to: testCoin,
+  amount: { base: 1n },
+};
+
+describe("a trade routed to the agent's launch wallet", () => {
+  it("runs a live buy of a launch's token from the launch wallet, and names it on the card", async () => {
+    const test = await withLaunchWallet();
+
+    const view = await propose(test, unnamedBuy);
+
+    expect(view.wallet).toBe(launchWallet);
+    const card = await test.engine.handlers["intent/card"](testCall({ intent: view.intent }));
+    expect(expectOk(card).lines[2]).toStrictEqual({
+      key: "card.launchWallet",
+      values: { wallet: { type: "text", text: "curves" } },
+    });
+  });
+
+  it("runs any other trade from the default wallet, and a named wallet as named", async () => {
+    const test = await withLaunchWallet();
+
+    const registry = await propose(test, { ...unnamedBuy, token: testToken });
+    const named = await propose(test, buy);
+    const unheld = await propose(test, swapOut);
+
+    expect([registry.wallet, named.wallet, unheld.wallet]).toStrictEqual([
+      testWallet,
+      testWallet,
+      testWallet,
+    ]);
+  });
+
+  it("sells a token the launch wallet holds from it, off the curve too", async () => {
+    const held = new Map([[launchAccount, [{ asset: unlisted, base: 10n ** 18n }]]]);
+    const test = await withLaunchWallet({ held });
+
+    const sold = await propose(test, swapOut);
+
+    expect(sold.wallet).toBe(launchWallet);
+  });
+
+  it("keeps a paper trade on the default wallet, which signs nothing", async () => {
+    const test = await withLaunchWallet();
+    await test.engine.handlers["agent/goPaper"](testCall({ agent: testAgent }));
+
+    const view = await propose(test, unnamedBuy);
+
+    expect(view.wallet).toBe(testWallet);
   });
 });

@@ -151,6 +151,10 @@ Agent 说明  “按你的要求在 $625 止盈”
 | auto order         | `card.order.action`                        | Approve {orderKind}: {summary} · up to {maxFills} fills until {expiry}                                                                        | 批准{orderKind}：{summary} · 最多成交 {maxFills} 次，截至 {expiry}                                                             |
 | webhook rule       | `card.webhookRule.action`                  | Approve alert rule "{name}": {summary} · at most {rate} a minute                                                                              | 批准提醒规则“{name}”：{summary} · 每分钟最多 {rate} 次                                                                         |
 
+A trade that runs from the agent's launch wallet shows `card.launchWallet` right after its action
+line: "From your launch wallet {wallet}" / 「从你的发射钱包 {wallet} 发起」, `{wallet}` the label the
+owner gave it ([decision 0217](../DECISIONS.md#d0217)).
+
 `{place}` is "the Flap curve" / 「Flap 联合曲线」, "the four.meme curve" / 「four.meme 联合曲线」,
 "the Genius.fun curve" / 「Genius.fun 联合曲线」, or the venue's name for a pool.
 

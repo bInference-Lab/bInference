@@ -6,11 +6,12 @@ import type { CardClosing } from "../confirmations/card-closing.js";
 import type { CardLine, CardValue } from "../confirmations/card-line.js";
 import { type Card, drawCard } from "../confirmations/draw-card.js";
 import { isFirstLiveCard } from "../confirmations/first-live-card.js";
+import { launchWalletOf } from "../install/launch-wallet.js";
 import type { CardCloseReason, CardRecord } from "../intents/card-record.js";
 import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
-import type { AccessStore, AgentStore, IntentStore } from "../ports.js";
+import type { AccessStore, AgentStore, InstallStore, IntentStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { type PaperReceipt, paperReceiptOf } from "./paper-receipt.js";
@@ -98,6 +99,8 @@ export interface CardShowingsOptions {
   readonly agents: AgentStore;
   /** The client tokens and console devices, whose labels name who proposed an intent. */
   readonly access: Pick<AccessStore, "listTokens" | "findDevice">;
+  /** The install's wallets, whose launch wallets a card names (decision 0217). */
+  readonly install: Pick<InstallStore, "read">;
   readonly chains: ChainRegistry;
   /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
@@ -180,7 +183,9 @@ async function drawOpen(
   const cards = card.version > 1 ? await intents.cards(record.id, call) : [];
   const previous = cards.find((each) => each.version === card.version - 1);
   const client = card.autoAsk === "mcp" ? await clientOf(options, record, call) : "";
-  const source = { record, card, settings, isFirstLive, chains, venues, client };
+  const launch = await launchWalletOf(options.install, record.agentId, call);
+  const named = launch?.id === record.walletId ? { launchWallet: launch.label } : {};
+  const source = { record, card, settings, isFirstLive, chains, venues, client, ...named };
   const facts = cardFactsOf(previous === undefined ? source : { ...source, previous });
   if (facts === undefined) {
     return undefined;

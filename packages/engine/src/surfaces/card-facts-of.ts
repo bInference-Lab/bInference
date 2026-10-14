@@ -55,6 +55,8 @@ export interface CardSource {
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
   /** Who proposed the intent, as an auto mode line names an MCP proposal's client. */
   readonly client: string;
+  /** The label of the launch wallet the intent runs from; absent for any other wallet. */
+  readonly launchWallet?: string;
 }
 
 /** A request the money path quotes: a swap, a buy or a sell. */
@@ -182,12 +184,14 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
     record.simulation === undefined ? undefined : simulationDocument.decode(record.simulation);
   const check = checkOf(simulation, quote.minOut.asset, chains);
   const taxBps = taxOf(record);
+  const { launchWallet } = source;
   return {
     agentName: settings.agent.name,
     isPaper: record.isPaper,
     hasOutsideContent: record.hasOutsideContent,
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
     action,
+    ...(launchWallet === undefined ? {} : { launchWallet }),
     ...(route === undefined ? {} : { route }),
     ...(check === undefined ? {} : { check }),
     warnings: {

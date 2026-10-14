@@ -423,6 +423,49 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
   ],
 ];
 
+// A step on a launch's own curve: a call to it, and an approval naming it, with the launch's
+// contracts read for the step (decision 0217), from the launch wallet or from another.
+const curve = fixtureAddresses.stranger;
+const launchAllowed = { ...call.allowed, contracts: [], launch: [accountOn(curve)] };
+const curveCall = { ...withTransaction(call, { to: curve }), allowed: launchAllowed };
+const curveApproval = {
+  ...withStep(
+    withTransaction(approve, { to: token, value: "0x0", data: approveCalldata(curve, 1000n) }),
+    {
+      action: {
+        kind: "approve",
+        token: accountOn(token),
+        spender: accountOn(curve),
+        amount: 1000n,
+      },
+    },
+  ),
+  allowed: { ...approve.allowed, spenders: [], launch: [accountOn(curve)] },
+};
+const fromLaunchWallet = (input: AuthorizeInput): AuthorizeInput => ({
+  ...input,
+  wallet: { ...input.wallet, role: "launch" },
+});
+
+describe("a launch wallet's steps on a launch's own contracts", () => {
+  it("signs a call to the launch's curve and an approval naming it, from a launch wallet", () => {
+    expect(checkHardRules(fromLaunchWallet(curveCall), context)).toBeUndefined();
+    expect(checkHardRules(fromLaunchWallet(curveApproval), context)).toBeUndefined();
+  });
+
+  it("refuses the same call and approval from any other wallet, as rule 2", () => {
+    expect(brokenHardRules(curveCall, context)).toStrictEqual([2]);
+    expect(brokenHardRules(curveApproval, context)).toStrictEqual([2]);
+  });
+
+  it("refuses a launch wallet's call to a contract of no launch the step names", () => {
+    const elsewhere = { ...curveCall, allowed: { ...launchAllowed, launch: [accountOn(saved)] } };
+    expect(brokenHardRules(fromLaunchWallet(elsewhere), context)).toStrictEqual([2]);
+    const unnamed = { ...curveCall, allowed: { ...call.allowed, contracts: [] } };
+    expect(brokenHardRules(fromLaunchWallet(unnamed), context)).toStrictEqual([2]);
+  });
+});
+
 describe("the hard rules", () => {
   it.each(bases)("pass %s that keeps every rule", (_case, input) => {
     expect(brokenHardRules(input, context)).toStrictEqual([]);

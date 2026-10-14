@@ -99,6 +99,10 @@ export interface Model {
   readonly contracts: readonly Account[];
   readonly spenders: readonly Account[];
   readonly recipients: readonly Account[];
+  /** The contracts of the launch the step trades on, which a launch wallet alone may reach. */
+  readonly launch?: readonly Account[];
+  /** Whether the wallet is a launch wallet (decision 0217). */
+  readonly isLaunchWallet?: boolean;
   readonly authorization: Authorization;
   readonly termsHash: string;
   readonly nowMs: number;
@@ -224,7 +228,12 @@ const bodyOf = (m: Model): JsonValue =>
 
 export function render(m: Model): AuthorizeInput {
   return {
-    wallet: { id: id("wal"), custodyId, account: account(on(wallet, m.walletChain)) },
+    wallet: {
+      id: id("wal"),
+      custodyId,
+      account: account(on(wallet, m.walletChain)),
+      ...(m.isLaunchWallet === true ? { role: "launch" as const } : {}),
+    },
     request: {
       method: m.httpMethod,
       url: `${m.urlOrigin}/v1/wallets/${m.urlWallet}/rpc`,
@@ -247,6 +256,7 @@ export function render(m: Model): AuthorizeInput {
       contracts: m.contracts.map(account),
       spenders: m.spenders.map(account),
       recipients: m.recipients.map(account),
+      ...(m.launch === undefined ? {} : { launch: m.launch.map(account) }),
     },
   };
 }

@@ -76,6 +76,7 @@ async function drawnCard(test: TestEngine, intent: Id<"int">) {
     intents: test.stores.intents,
     agents: test.stores.agents,
     access: test.stores.access,
+    install: test.stores.install,
     chains: testChains(),
     venues: { hasNoDeadline: () => false },
   });

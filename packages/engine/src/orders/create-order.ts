@@ -1,4 +1,4 @@
-import type { AssetRef, ChainRegistry, RegisteredChain, Signer } from "@binference/chain";
+import type { AssetRef, ChainRegistry, Signer } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -13,6 +13,7 @@ import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Proposer } from "../money-path/create-money-path.js";
+import { type LaunchRouting, routedWalletOf } from "../money-path/launch-routing.js";
 import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { AgentStore, IntentStore, WalletFactsSource } from "../ports.js";
@@ -54,6 +55,8 @@ export interface OrderParts {
   readonly readTokenFacts: ReadTokenFacts;
   /** Whether a live order may fill; while it may not, no live price order is taken (decision 0197). */
   readonly liveFills: boolean;
+  /** What sends an order on a launch's token to the agent's launch wallet (decision 0217). */
+  readonly launches?: LaunchRouting;
 }
 
 /**
@@ -93,16 +96,26 @@ function liveRefusal(
     : undefined;
 }
 
-// The request's wallet, or the agent's default one, with an account in custody on the token's
-// chain.
+// The request's wallet, or the one its trades route to: the agent's launch wallet for a token on
+// a launch's curve or one it holds, else its default wallet (decision 0217); with an account in
+// custody on the token's chain.
 async function walletOf(
-  parts: Pick<OrderParts, "wallets" | "custody">,
-  asked: { readonly request: OrderRequest; readonly chain: RegisteredChain },
+  parts: Pick<OrderParts, "wallets" | "custody" | "launches">,
+  asked: CheckedOrder & { readonly isPaper: boolean },
   signal: AbortSignal,
 ): Promise<Id<"wal"> | undefined> {
   const { request, chain } = asked;
   const owned = await parts.wallets.wallets(request.agent, { signal });
-  const wallet = request.wallet ?? owned[0];
+  const sold = request.side === "sell" ? { sold: request.token } : {};
+  const trade = {
+    agent: request.agent,
+    chain,
+    isPaper: asked.isPaper,
+    owned,
+    placed: request.token,
+  };
+  const wallet =
+    request.wallet ?? (await routedWalletOf(parts.launches, { ...trade, ...sold }, signal));
   if (wallet === undefined || !owned.includes(wallet)) {
     return undefined;
   }
@@ -119,8 +132,11 @@ interface Holder {
 // The wallet that holds the order; a price order also needs a token the price watcher can price,
 // and a token the registry does not list must answer its symbol and decimals for the card.
 async function holderOf(
-  parts: Pick<OrderParts, "wallets" | "custody" | "canPrice" | "chains" | "readTokenFacts">,
-  checked: CheckedOrder,
+  parts: Pick<
+    OrderParts,
+    "wallets" | "custody" | "canPrice" | "chains" | "readTokenFacts" | "launches"
+  >,
+  checked: CheckedOrder & { readonly isPaper: boolean },
   signal: AbortSignal,
 ): Promise<Result<Holder, ProtocolErrorCode>> {
   const wallet = await walletOf(parts, checked, signal);
@@ -263,7 +279,8 @@ export async function createOrder(
   if (offLive !== undefined) {
     return err(offLive);
   }
-  const held = await holderOf(parts, checked.value, signal);
+  const isPaper = settings.agent.mode === "paper";
+  const held = await holderOf(parts, { ...checked.value, isPaper }, signal);
   if (!held.ok) {
     return held;
   }

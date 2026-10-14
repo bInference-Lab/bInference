@@ -12,6 +12,7 @@ import type { Clock, IdSource, Logger } from "@binference/core";
 import type { PositionStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
+import type { VenueHost } from "../venues/venue-host.js";
 import type { WalletQueue } from "../wallet-queue/wallet-queue.js";
 
 /** The parts one chain's transactions go through: its preparer, its relays and its receipts. */
@@ -62,6 +63,11 @@ export interface ExecutorOptions {
   readonly chains: ChainRegistry;
   /** The venues' declarations: the contracts the signer lets a trade's steps reach. */
   readonly venues: readonly VenueDeclaration[];
+  /**
+   * The launchpads' curve reads: the contracts of a launch a launch wallet's step may reach, read
+   * again right before signing (decision 0217). Without them, no step reaches a launch contract.
+   */
+  readonly curves?: Pick<VenueHost, "curves">;
   readonly sending: ReadonlyMap<ChainRef, ChainSending>;
   readonly clock: Clock;
   readonly ids: IdSource;

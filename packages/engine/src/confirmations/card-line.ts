@@ -42,6 +42,7 @@ export const cardKeys = [
   "card.order.worstPrice",
   "order.kind",
   "card.place.curve",
+  "card.launchWallet",
   "card.route",
   "card.fees",
   "card.check",

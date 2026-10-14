@@ -34,6 +34,7 @@
   "order.exitsLinked": "当一个平仓订单卖出你持有的全部 {token} 时，该持仓的其他平仓订单随之结束",
   "order.worstPrice": "每次成交都以不差于 {price} 的价格交易",
   "place.curve": "{launchpad} 联合曲线",
+  "launchWallet": "从你的发射钱包 {wallet} 发起",
   "route": "路由  {route} · 价格影响 {impact} · 滑点上限 {slippage}",
   "fees": "费用  网络费约 {fee}{privateSend, select, yes { · 私密发送} other {}}",
   "check": "检查  ✅ 模拟：你将收到 {received} · {verified, select, yes {✅ {token} 已验证} other {✅ {token} 已通过风险检查}}",
