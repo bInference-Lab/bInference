@@ -10,7 +10,8 @@ MetaAggregationRouterV2, the router the registry lists for it.
   tokens and amount through the registry's router, with no fee. A route through a pool whose hook
   is off the chain's allowlist is dropped, and the venue asks once more without those pools' DEX
   ids; a second route through an unlisted hook is no route. A route through allowed hooks names
-  the largest fee they keep (`hookFeeBps`), which its output already holds back.
+  what they keep by maker, along its costliest path (`hookFees`), which its output already holds
+  back.
 - **Build.** `POST /{chain}/api/v1/route/build` with the quoted route, the agent's wallet as sender
   and recipient, and the host's deadline. The call must go to the registry's router and hand the
   input to the registry's AggregationExecutorProxy. When the API's minimum return is below the

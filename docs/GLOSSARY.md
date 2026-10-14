@@ -201,7 +201,7 @@ new name here first, in the change that uses it.
   launch's contracts. Live trades on a launch's own curve need one; the agent wallets' ceilings
   list only registry contracts, so until it exists only a paper agent uses such a venue.
 - **hook allowlist**: per chain, the pool hooks a route may pass through, each with the fee it
-  keeps. A route through a PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped,
+  keeps and who made its pools. A route through a PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped,
   aggregator routes too.
 
 ### Chat and the agent

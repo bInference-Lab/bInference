@@ -326,8 +326,8 @@ export const bscCeilingCaps: CeilingCapsDefinition = {
  * hooked pool whose hook is not here is dropped.
  */
 export const bscPoolHooks: readonly PoolHookDefinition[] = [
-  { venue: "geniusfun", contract: "hook-m4-2", feeBps: 200 },
-  { venue: "geniusfun", contract: "hook-m4-1", feeBps: 200 },
+  { venue: "geniusfun", contract: "hook-m4-2", feeBps: 200, maker: "Genius.fun" },
+  { venue: "geniusfun", contract: "hook-m4-1", feeBps: 200, maker: "Genius.fun" },
 ];
 
 /**

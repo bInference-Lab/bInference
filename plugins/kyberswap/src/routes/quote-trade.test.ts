@@ -5,7 +5,9 @@ import {
   type HttpResponse,
 } from "@binference/plugin-sdk";
 import { successOf } from "@binference/plugin-sdk/testing";
+import { getAddress } from "viem";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import type { KyberswapHook } from "../kyberswap-options.js";
 import { buyRoute } from "../testing/recorded-buy.js";
 import { hookedRoute, hooklessRoute, noRouteAnswer } from "../testing/recorded-routes.js";
@@ -25,6 +27,35 @@ const live = (): AbortSignal => new AbortController().signal;
 const fairflowHook = "0x44428C6ce391915D51F963C0Dd395Cd0f95fdFD2";
 const withoutFairflow = `${buyRoutesUrl}&excludedSources=pancake-infinity-cl-fairflow`;
 const recordedSummary = /"routeSummary": (\{[\s\S]*\}),\s*"routerAddress": "0x6131B5fa/;
+const bps = (value: number) => bpsSchema.parse(value);
+const onBsc = (address: string) => accountRefSchema.parse(`eip155:56:${address}`);
+// A hook address of the test's own, the nth.
+const hookAt = (n: number): string => getAddress(`0x${n.toString(16).padStart(40, "a")}`);
+
+interface PoolShape {
+  readonly exchange: string;
+  readonly poolType: string;
+  readonly poolExtra: { readonly hookAddress: string; readonly candidates?: readonly PoolShape[] };
+}
+
+// A PancakeSwap Infinity pool behind the nth hook, with candidate pools nested in it.
+function pool(n: number, candidates?: readonly PoolShape[]): PoolShape {
+  const poolExtra = { hookAddress: hookAt(n), ...(candidates === undefined ? {} : { candidates }) };
+  return {
+    exchange: `pancake-infinity-cl-hook${String(n)}`,
+    poolType: "pancake-infinity-cl",
+    poolExtra,
+  };
+}
+
+// The recorded hooked answer with its route's paths replaced.
+function routeThrough(paths: readonly (readonly PoolShape[])[]): string {
+  const recorded = z
+    .looseObject({ data: z.looseObject({ routeSummary: z.looseObject({}) }) })
+    .parse(JSON.parse(hookedRoute));
+  const routeSummary = { ...recorded.data.routeSummary, route: paths };
+  return JSON.stringify({ ...recorded, data: { ...recorded.data, routeSummary } });
+}
 
 // The route summary as the recorded answer writes it, compacted as the venue keeps it.
 function summaryIn(route: string): string {
@@ -77,21 +108,43 @@ describe("quotes on kyberswap", () => {
 
   it("keeps a route through a hook on the allowlist, in any letter case", async () => {
     const answers = { [buyRoutesUrl]: answer(hookedRoute) };
-    const hooks = [{ address: fairflowHook.toLowerCase(), feeBps: bpsSchema.parse(0) }];
+    const hooks = [{ address: fairflowHook.toLowerCase(), feeBps: bps(0), maker: "FairFlow" }];
     const { quote, urls } = await quoteWith(answers, hooks);
     expect(urls).toStrictEqual([buyRoutesUrl]);
     expect(successOf(quote).expectedOut.base).toBe(73_330_472_622_321_619_266n);
-    expect(successOf(quote)).not.toHaveProperty("hookFeeBps");
+    expect(successOf(quote)).not.toHaveProperty("hookFees");
   });
 
-  it("names the fee the allowed hooks on its route keep, the largest of them", async () => {
+  it("names what the allowed hooks on its route keep, and only the hooks it passes", async () => {
     const answers = { [buyRoutesUrl]: answer(hookedRoute) };
     const hooks = [
-      { address: fairflowHook, feeBps: bpsSchema.parse(200) },
-      { address: "0x8E6f8eBbD62B60085B703C40B460daE802eDC51b", feeBps: bpsSchema.parse(300) },
+      { address: fairflowHook, feeBps: bps(200), maker: "FairFlow" },
+      { address: hookAt(2), feeBps: bps(300), maker: "Genius.fun" },
     ];
     const { quote } = await quoteWith(answers, hooks);
-    expect(successOf(quote).hookFeeBps).toBe(200);
+    expect(successOf(quote).hookFees).toStrictEqual([
+      { maker: "FairFlow", feeBps: 200, hooks: [onBsc(fairflowHook)] },
+    ]);
+  });
+
+  it("sums a maker's fees along a path, keeps its costliest path, and counts a pool's candidates", async () => {
+    // Path one passes two of Genius.fun's pools; path two passes one, with a candidate pool behind
+    // a dearer hook nested in it, and a pool of another maker.
+    const route = routeThrough([
+      [pool(1), pool(2)],
+      [pool(1, [pool(3)]), pool(4)],
+    ]);
+    const hooks = [
+      { address: hookAt(1), feeBps: bps(200), maker: "Genius.fun" },
+      { address: hookAt(2), feeBps: bps(200), maker: "Genius.fun" },
+      { address: hookAt(3), feeBps: bps(450), maker: "Genius.fun" },
+      { address: hookAt(4), feeBps: bps(50), maker: "Other" },
+    ];
+    const { quote } = await quoteWith({ [buyRoutesUrl]: answer(route) }, hooks);
+    expect(successOf(quote).hookFees).toStrictEqual([
+      { maker: "Genius.fun", feeBps: 450, hooks: [1, 2, 3].map((n) => onBsc(hookAt(n))) },
+      { maker: "Other", feeBps: 50, hooks: [onBsc(hookAt(4))] },
+    ]);
   });
 
   it.each([

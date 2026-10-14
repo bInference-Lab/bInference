@@ -17,8 +17,14 @@ export interface ChainSetup {
   readonly nativeAsset: AssetRef;
   /** The allowed hooks, in checksum form. */
   readonly allowedHooks: ReadonlySet<Address>;
-  /** The fee each allowed hook keeps, by its address in checksum form. */
-  readonly hookFees: ReadonlyMap<Address, Bps>;
+  /** The fee each allowed hook keeps, and who made its pools, by its address in checksum form. */
+  readonly hookFees: ReadonlyMap<Address, HookFee>;
+}
+
+/** What one allowed hook keeps of each swap through its pools, and who made them. */
+export interface HookFee {
+  readonly feeBps: Bps;
+  readonly maker: string;
 }
 
 // KyberSwap's API names each chain in its path; its API reference lists the names by chain id.
@@ -33,14 +39,14 @@ function refuse(chain: string, problem: string): BinferenceError {
   });
 }
 
-function hookFeesOf(item: KyberswapChain): ReadonlyMap<Address, Bps> {
+function hookFeesOf(item: KyberswapChain): ReadonlyMap<Address, HookFee> {
   const fees = new Map(
-    item.allowedHooks.map((hook): [Address, Bps] => {
+    item.allowedHooks.map((hook): [Address, HookFee] => {
       const parsed = parseEvmAddress(hook.address);
       if (!parsed.ok) {
         throw refuse(item.chain, "an allowed hook is no EVM address.");
       }
-      return [parsed.value, hook.feeBps];
+      return [parsed.value, { feeBps: hook.feeBps, maker: hook.maker }];
     }),
   );
   if (fees.size !== item.allowedHooks.length) {

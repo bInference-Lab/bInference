@@ -12,6 +12,9 @@ const declaration: VenueDeclarationWire = {
   contracts: [{ chain: "fake:1", names: ["router", "quoter"] }],
 };
 
+const hookFee = { maker: "Genius.fun", feeBps: 200, hooks: ["fake:1:0x000000a1"] } as const;
+const hookedQuote = { expectedOut: { asset: token, base: "2" }, priceImpactBps: 230 };
+
 describe("venue schemas", () => {
   it("decodes a draft, a quote and an effect from JSON and encodes them back", () => {
     const draft = { chain: "fake:1", from: "fake:1:0x0000000c", payload: "0x0000000b|1|swap" };
@@ -49,14 +52,21 @@ describe("venue schemas", () => {
     expect(venueQuoteSchema.safeParse(untaxed).success).toBe(false);
   });
 
-  it("reads the fee a route's pool hooks keep in its quote", () => {
-    const quote = {
-      expectedOut: { asset: token, base: "2" },
-      priceImpactBps: 230,
-      hookFeeBps: 200,
-    };
+  it("reads what a route's pool hooks keep in its quote, by maker", () => {
+    const quote = { ...hookedQuote, hookFees: [hookFee] };
     expect(venueQuoteSchema.encode(venueQuoteSchema.parse(quote))).toStrictEqual(quote);
-    expect(venueQuoteSchema.safeParse({ ...quote, hookFeeBps: 10_001 }).success).toBe(false);
+  });
+
+  it.each([
+    ["a fee above the whole trade", [{ ...hookFee, feeBps: 10_001 }]],
+    ["no hook", [{ ...hookFee, hooks: [] }]],
+    ["a hook named twice", [{ ...hookFee, hooks: [...hookFee.hooks, ...hookFee.hooks] }]],
+    ["a maker's name with markup", [{ ...hookFee, maker: "<b>Genius</b>" }]],
+    ["an empty maker's name", [{ ...hookFee, maker: "" }]],
+    ["a maker named twice", [hookFee, hookFee]],
+    ["no maker", []],
+  ] as const)("refuses hook fees with %s", (_case, hookFees) => {
+    expect(venueQuoteSchema.safeParse({ ...hookedQuote, hookFees }).success).toBe(false);
   });
 
   it("reads an effect with no deadline as a call that carries none", () => {

@@ -117,7 +117,7 @@ function allowedHooksOf(
         details: { chain: chain.ref },
       });
     }
-    return { address: listed.address, feeBps: bpsSchema.parse(hook.feeBps) };
+    return { address: listed.address, feeBps: bpsSchema.parse(hook.feeBps), maker: hook.maker };
   });
 }
 

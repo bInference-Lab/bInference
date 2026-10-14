@@ -6,6 +6,8 @@ export interface KyberswapHook {
   readonly address: string;
   /** The share it keeps, as the chain's hook allowlist states it. */
   readonly feeBps: Bps;
+  /** Who made its pools, as a card names them, such as Genius.fun. */
+  readonly maker: string;
 }
 
 /** One chain the KyberSwap venue trades on, as the composition root reads it from the registry. */
@@ -16,7 +18,7 @@ export interface KyberswapChain {
   /**
    * The pool hooks a route may pass through on this chain, each with the fee it keeps. A route
    * through a PancakeSwap Infinity or Uniswap v4 pool whose hook is not listed here is dropped; a
-   * pool with no hook always passes. A quote names the largest fee of the hooks its route passes.
+   * pool with no hook always passes. A quote names what the hooks its route passes keep, by maker.
    */
   readonly allowedHooks: readonly KyberswapHook[];
 }

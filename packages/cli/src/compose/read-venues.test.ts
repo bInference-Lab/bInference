@@ -147,7 +147,17 @@ describe("the self-hosted venues", () => {
       host.quote(trade, { signal: new AbortController().signal }),
     ).resolves.toMatchObject({
       ok: true,
-      value: { quote: { hookFeeBps: 200 } },
+      value: {
+        quote: {
+          hookFees: [
+            {
+              maker: "Genius.fun",
+              feeBps: 200,
+              hooks: ["eip155:56:0x8E6f8eBbD62B60085B703C40B460daE802eDC51b"],
+            },
+          ],
+        },
+      },
     });
   });
 
@@ -159,7 +169,9 @@ describe("the self-hosted venues", () => {
       venues: venuesWith(),
       chains,
       registry: selfHostedChains(),
-      poolHooks: new Map([[bsc, [{ venue: "geniusfun", contract: "hook-m9", feeBps: 200 }]]]),
+      poolHooks: new Map([
+        [bsc, [{ venue: "geniusfun", contract: "hook-m9", feeBps: 200, maker: "Genius.fun" }]],
+      ]),
       reads: composeChainReads({ chains: selfHostedChains(), config: chains, http, clock }),
       secrets,
       http,

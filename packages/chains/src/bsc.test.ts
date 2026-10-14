@@ -155,6 +155,10 @@ describe("bsc pool hooks", () => {
     expect(feeBps).toBeLessThan(10_000);
   });
 
+  it.each(bscPoolHooks)("names who made $contract's pools as a card can show it", ({ maker }) => {
+    expect(maker).toMatch(/^[A-Za-z0-9][A-Za-z0-9 .-]{0,39}$/u);
+  });
+
   it("lists each hook once", () => {
     expect(new Set(hooks).size).toBe(hooks.length);
   });

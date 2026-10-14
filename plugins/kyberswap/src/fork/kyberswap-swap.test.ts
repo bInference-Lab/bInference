@@ -219,6 +219,7 @@ const geniusHooks = {
 const allowedGeniusHooks: readonly KyberswapHook[] = Object.values(geniusHooks).map((address) => ({
   address,
   feeBps: bpsSchema.parse(200),
+  maker: "Genius.fun",
 }));
 // Tokens whose launch graduated into its Genius.fun pool: one of each stack, read on 2026-10-14.
 const graduated = {
@@ -335,7 +336,9 @@ describe("kyberswap on a BSC fork", () => {
       const request = graduatedBuy(fork, trading, graduated.m41);
       const quote = valueOf(await trading.venue.quote(request, { signal }));
       expect(hooksIn(quote)).toContain(geniusHooks.m41);
-      expect(quote.hookFeeBps).toBe(200);
+      expect(quote.hookFees).toStrictEqual([
+        { maker: "Genius.fun", feeBps: 200, hooks: [accountOn(fork, geniusHooks.m41)] },
+      ]);
       const terms = termsOf(request, quote);
       const drafts = await trading.venue.build(terms, { signal });
       const effect = tradeEffect(trading, terms, drafts);

@@ -141,7 +141,13 @@ export type {
   VenueDeclarationWire,
 } from "./venues/venue.js";
 export { venueQuoteSchema } from "./venues/venue-quote.js";
-export type { QuoteRequest, VenueQuote, VenueQuoteWire } from "./venues/venue-quote.js";
+export type {
+  PoolHookFee,
+  PoolHookFeeWire,
+  QuoteRequest,
+  VenueQuote,
+  VenueQuoteWire,
+} from "./venues/venue-quote.js";
 export { isSameAccount } from "./same-account.js";
 export { relayAnswerSchema, relayNameSchema, relayRefusals } from "./sending/relay-answer.js";
 export type {

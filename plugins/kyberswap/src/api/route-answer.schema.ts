@@ -32,6 +32,11 @@ export interface FoundRoute {
   readonly chargesFee: boolean;
   /** Every pool of every path, and every candidate pool the answer nests beside them. */
   readonly hops: readonly RouteHop[];
+  /**
+   * The route's paths, which split the input between them: each path's pools in order, each pool
+   * with the candidate pools the answer nests in it.
+   */
+  readonly paths: readonly (readonly (readonly RouteHop[])[])[];
   /** The route summary as JSON text, which the build sends back unchanged. */
   readonly summary: string;
 }
@@ -111,7 +116,8 @@ export function readRouteAnswer(body: string): FoundRoute | undefined {
     return undefined;
   }
   const hops = hopsWithin(summary.data.route, 0);
-  if (hops === undefined) {
+  const paths = summary.data.route.map((path) => path.map((hop) => hopsWithin(hop, 2)));
+  if (hops === undefined || paths.some((path) => path.some((pools) => pools === undefined))) {
     return undefined;
   }
   const { tokenIn, tokenOut, amountIn, amountOut, amountInUsd, amountOutUsd } = summary.data;
@@ -125,6 +131,7 @@ export function readRouteAnswer(body: string): FoundRoute | undefined {
     amountOutUsd,
     chargesFee: (summary.data.extraFee?.feeAmount ?? "") !== "",
     hops,
+    paths: paths.map((path) => path.map((pools) => pools ?? [])),
     summary: JSON.stringify(answer.data.data.routeSummary),
   };
 }

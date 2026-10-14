@@ -27,6 +27,7 @@ import {
 } from "./testing/venue-fixtures.js";
 
 const live = (): AbortSignal => new AbortController().signal;
+const none = bpsSchema.parse(0);
 const deadToken = assetRefSchema.parse(
   "eip155:56/erc20:0x000000000000000000000000000000000000dEaD",
 );
@@ -132,14 +133,22 @@ describe("the kyberswap venue", () => {
     ["a token as the native asset", { nativeAsset: usdt }],
     [
       "a hook that is no EVM address",
-      { allowedHooks: [{ address: "0x44428c6c", feeBps: bpsSchema.parse(0) }] },
+      { allowedHooks: [{ address: "0x44428c6c", feeBps: none, maker: "FairFlow" }] },
     ],
     [
       "a hook named twice",
       {
         allowedHooks: [
-          { address: "0x44428C6ce391915D51F963C0Dd395Cd0f95fdFD2", feeBps: bpsSchema.parse(0) },
-          { address: "0x44428c6ce391915d51f963c0dd395cd0f95fdfd2", feeBps: bpsSchema.parse(0) },
+          {
+            address: "0x44428C6ce391915D51F963C0Dd395Cd0f95fdFD2",
+            feeBps: none,
+            maker: "FairFlow",
+          },
+          {
+            address: "0x44428c6ce391915d51f963c0dd395cd0f95fdfd2",
+            feeBps: none,
+            maker: "FairFlow",
+          },
         ],
       },
     ],

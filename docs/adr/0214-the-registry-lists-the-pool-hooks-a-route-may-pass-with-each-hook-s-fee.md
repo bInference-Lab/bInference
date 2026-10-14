@@ -25,11 +25,14 @@ graduated m4.2 tokens only through other pools: it does not index the m4.2 hook'
 
 - **The registry holds the allowlist.** Beside each chain, a list of pool hooks routes on the chain
   may pass (`bscPoolHooks`): each a registry contract, by its venue and name, with the fee it keeps,
-  read on chain. BNB Smart Chain lists Genius.fun's two hooks at 200 bp.
+  read on chain, and who made its pools, as a card names them. BNB Smart Chain lists Genius.fun's
+  two hooks at 200 bp.
 - **The composition root gives it to the aggregators.** KyberSwap takes each allowed hook with its
-  fee.
-- **A quote names the fee.** A quote whose route passes allowed hooks names the largest fee among
-  them (`hookFeeBps`); its expected output already holds the fee back.
+  fee and maker.
+- **A quote names the fee.** A quote whose route passes allowed hooks names, for each maker of
+  their pools, the sum of their fees along the maker's costliest path, a pool counting the dearest
+  of the candidates nested in it, and the maker's hooks it passes (`hookFees`); its expected
+  output already holds the fee back.
 - **Nothing else reads it yet.** Whether the card shows the fee on a line of its own, or a limit
   bounds it, is left to the owner.
 
@@ -37,7 +40,7 @@ graduated m4.2 tokens only through other pools: it does not index the m4.2 hook'
 
 - A graduated Genius.fun token routes through its own pool wherever an aggregator indexes it.
 - A new hook is a registry entry, read on chain, and its fee; no code changes.
-- `VenueQuote` gains `hookFeeBps`, and `KyberswapChain.allowedHooks` takes each hook's fee.
+- `VenueQuote` gains `hookFees`, and `KyberswapChain.allowedHooks` takes each hook's fee and maker.
 
 ## Alternatives
 

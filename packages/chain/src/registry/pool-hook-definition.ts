@@ -12,4 +12,6 @@ export interface PoolHookDefinition {
    * on chain on the day its registry entry was read.
    */
   readonly feeBps: number;
+  /** Who made the hooked pools, as a card names them, such as Genius.fun (decision 0215). */
+  readonly maker: string;
 }
