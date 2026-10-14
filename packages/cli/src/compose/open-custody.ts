@@ -15,9 +15,7 @@ import {
   checkPrivyApp,
   createPrivyApi,
   createPrivyOwnerSigner,
-  type HeldCaps,
   privyApiOrigin,
-  readCeiling,
   registryCeilingChain,
 } from "@binference/custody-privy";
 import type {
@@ -30,15 +28,8 @@ import type {
   WalletMaker,
 } from "@binference/engine/install";
 import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
-import { z } from "zod";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
-import {
-  type CeilingDraft,
-  capAssetsOn,
-  capPlanOf,
-  ceilingRequestOf,
-  initialDayCapUsd,
-} from "../init/ceiling-request.js";
+import { capAssetsOn, capPlanOf, initialDayCapUsd } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
 import { checkAttached } from "./check-attached.js";
@@ -53,6 +44,7 @@ import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
 import { signedWalletsOf } from "./signed-wallets.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
+import { ceilingChainsOf, heldCapsOf } from "./wallet-ceilings.js";
 
 /**
  * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker, its
@@ -157,44 +149,6 @@ async function startCheckedSigner(
   }
   await signer?.stop(AbortSignal.abort());
   return err("signer_failed");
-}
-
-// A new wallet's ceiling on each enabled chain, as init builds the first one, for the venues named
-// that this install runs; a launch wallet's with the launch rules too. A config init would refuse
-// is a fault here.
-function ceilingChainsOf(
-  options: OpenCustodyOptions,
-  wallet: { readonly venues: readonly string[]; readonly isLaunch: boolean },
-): Pick<CeilingDraft, "chains" | "capPlans"> {
-  const named = options.venues.filter((venue) => wallet.venues.includes(venue.id));
-  const request = ceilingRequestOf(options.chains, options.config, { venues: named, rescue: "" });
-  if (!request.ok) {
-    throw new BinferenceError({
-      code: "cli.ceiling_unbuilt",
-      message: "The config gives no ceiling a wallet can have.",
-      details: { problem: request.refusal.code },
-    });
-  }
-  const { chains, capPlans } = request.value;
-  return { chains: wallet.isLaunch ? launchPlansOf(chains, options.venues) : chains, capPlans };
-}
-
-const storedPolicy = z.object({ rules: z.array(z.json()) });
-
-// The 24-hour caps the live wallets' ceilings name, as the store mirrors them: those of the first
-// ceiling that names any, which every ceiling of the install shares.
-async function heldCapsOf(
-  install: OpenCustodyOptions["install"],
-  signal: AbortSignal,
-): Promise<readonly HeldCaps[]> {
-  const { wallets } = await install.read({ signal });
-  const held = wallets
-    .filter((wallet) => wallet.archivedAtMs === undefined)
-    .map((wallet) => {
-      const policy = storedPolicy.safeParse(wallet.ceiling.policy);
-      return policy.success ? (readCeiling(policy.data.rules)?.caps ?? []) : [];
-    });
-  return held.find((caps) => caps.length > 0) ?? [];
 }
 
 // What a contract call may do on a chain a ceiling enables, for the venues named that this install

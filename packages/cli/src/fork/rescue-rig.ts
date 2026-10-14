@@ -10,11 +10,7 @@ import {
 } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
 import { createIdSource, err, type Id, idSchema } from "@binference/core";
-import {
-  createMemoryLogger,
-  createMemoryWorkspaceFiles,
-  createSeededRandom,
-} from "@binference/core/testing";
+import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import {
   createEngine,
   createVenueHost,
@@ -50,7 +46,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
-import { forkCustody, forkTokenFacts } from "./fork-trading.js";
+import { forkEngineBasics } from "./fork-engine-basics.js";
+import { forkCustody } from "./fork-trading.js";
 
 /** One agent wallet of the rescue rig: its ids, its key made from fixed words, its address. */
 interface RescueRigWallet {
@@ -268,17 +265,7 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     simulator: createFakeSimulator(new Map()),
     chainSimulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),
     executor: executorOn(fork, { stores, custody }),
-    paperBalances: [],
-    isLocked: () => false,
-    canPrice: async () => await Promise.resolve(true),
-    readTokenFacts: forkTokenFacts(fork),
-    workspace: createMemoryWorkspaceFiles(clock),
-    chains,
-    clock,
-    ids: createIdSource({ clock, random: createSeededRandom(62) }),
-    random: createSeededRandom(63),
-    publish: () => undefined,
-    ownerTimeZone: () => "UTC",
+    ...forkEngineBasics(fork, 62),
   });
   return { engine, stores, wallets: rigWallets, rescue, signatures: custody.signatures };
 }
