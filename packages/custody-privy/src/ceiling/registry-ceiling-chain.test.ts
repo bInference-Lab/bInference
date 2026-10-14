@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { oneBnbWei, testAddresses, testChain, testRouterAbi } from "../testing/custody-fixtures.js";
 import { abiFunctionJson } from "./policy-rule.js";
-import { registryCeilingChain } from "./registry-ceiling-chain.js";
+import { launchCeilingOf, registryCeilingChain } from "./registry-ceiling-chain.js";
 
 const verification = {
   source: "https://example.org/docs",
@@ -158,5 +158,43 @@ describe("registryCeilingChain", () => {
       perTxNativeCapBase: oneBnbWei,
     });
     expect(chain).toStrictEqual({ ok: false, error: "bad_call" });
+  });
+});
+
+describe("launchCeilingOf", () => {
+  const bsc = chainRefSchema.parse("eip155:56");
+  const launchpad = declaredVenue("swapper", {
+    names: ["router"],
+    launchContracts: ["curve"],
+    calls: [
+      { contract: "curve", abi: swapToJson, walletInputs: ["receiver"] },
+      { contract: "router", abi: swapJson, walletInputs: [] },
+    ],
+    spenders: ["curve"],
+  });
+
+  it("takes each call a venue declares on its launch contracts, and approves any spender", () => {
+    expect(launchCeilingOf(bsc, [swapper, launchpad])).toStrictEqual({
+      ok: true,
+      value: {
+        calls: [{ abi: testRouterAbi.swapTo, walletInputs: ["receiver"] }],
+        approvesAnySpender: true,
+      },
+    });
+  });
+
+  it("adds nothing for venues with no launch contract, or on another chain", () => {
+    expect(launchCeilingOf(bsc, [swapper])).toStrictEqual({ ok: true, value: undefined });
+    const opbnb = chainRefSchema.parse("eip155:204");
+    expect(launchCeilingOf(opbnb, [launchpad])).toStrictEqual({ ok: true, value: undefined });
+  });
+
+  it("refuses a launch call whose function is no JSON ABI entry", () => {
+    const broken = declaredVenue("swapper", {
+      names: ["router"],
+      launchContracts: ["curve"],
+      calls: [{ contract: "curve", abi: { name: "buy" }, walletInputs: ["recipient"] }],
+    });
+    expect(launchCeilingOf(bsc, [broken])).toStrictEqual({ ok: false, error: "bad_call" });
   });
 });

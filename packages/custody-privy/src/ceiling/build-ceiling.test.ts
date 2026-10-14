@@ -8,12 +8,15 @@ import {
   testCaps,
   testCeilingRequest,
   testChain,
+  testCurveAbi,
+  testLaunch,
+  testLaunchCeilingRequest,
   testRouterAbi,
 } from "../testing/custody-fixtures.js";
 import { evaluatePolicy } from "../testing/fake-policy-engine.js";
 import { fakePolicyBodySchema } from "../testing/fake-privy-request.schema.js";
 import { buildCeiling } from "./build-ceiling.js";
-import type { Ceiling, CeilingChain, CeilingRequest } from "./ceiling.js";
+import type { Ceiling, CeilingChain, CeilingRequest, LaunchCeiling } from "./ceiling.js";
 import { abiFunctionJson, policyRuleJson } from "./policy-rule.js";
 
 const { router, rescue, saved } = testAddresses;
@@ -378,5 +381,118 @@ describe("buildCeiling", () => {
     );
     expect(built({ ...testCeilingRequest(), saved: saved99 }).ok).toBe(true);
     expect(oneBnbWei).toBe(1_000_000_000_000_000_000n);
+  });
+});
+
+// A launch call rule as written out by hand from decision 0217: the function on any contract, at
+// most the cap in native coin, paying the wallet itself, under the native 24-hour cap.
+function launchCallRule(side: "buy" | "sell") {
+  const abi = [abiFunctionJson(testCurveAbi[side])];
+  return {
+    name: `Launch call ${side}, chain 56`,
+    method: "eth_signTransaction",
+    action: "ALLOW",
+    conditions: [
+      onChain,
+      oneBnbCap,
+      {
+        field_source: "ethereum_calldata",
+        field: "function_name",
+        abi,
+        operator: "eq",
+        value: side,
+      },
+      {
+        field_source: "ethereum_calldata",
+        field: `${side}.recipient`,
+        abi,
+        operator: "eq",
+        value: "{{wallet.address}}",
+      },
+      nativeDayCap,
+    ],
+  };
+}
+
+const launchApprovals = {
+  name: "Launch approvals, chain 56",
+  method: "eth_signTransaction",
+  action: "ALLOW",
+  conditions: [
+    onChain,
+    noCoin,
+    {
+      field_source: "ethereum_calldata",
+      field: "function_name",
+      abi: [approve],
+      operator: "eq",
+      value: "approve",
+    },
+    {
+      field_source: "reference",
+      field: "aggregation.testcaptoken0000000000000",
+      operator: "lte",
+      value: "0x3e8",
+    },
+  ],
+};
+
+// The test request's one chain with other launch rules.
+function withLaunch(launch: LaunchCeiling): CeilingRequest {
+  const [chain] = testLaunchCeilingRequest().chains;
+  if (chain === undefined) {
+    throw new Error("The test request has a chain.");
+  }
+  return { ...testLaunchCeilingRequest(), chains: [{ ...chain, launch }] };
+}
+
+describe("a launch wallet's ceiling", () => {
+  it("adds to the agent's rules a rule per launch call on any contract and any approval", () => {
+    const rules = rulesOf(testLaunchCeilingRequest());
+    expect(rules).toStrictEqual([
+      ...expectedRules.slice(0, 3),
+      launchCallRule("buy"),
+      launchCallRule("sell"),
+      launchApprovals,
+      ...expectedRules.slice(3),
+    ]);
+    const body = { version: "1.0", name: "binference ceiling", chain_type: "ethereum", rules };
+    expect(fakePolicyBodySchema.safeParse(body).success).toBe(true);
+  });
+
+  it("names no contract in a launch rule, and approves any spender only when one is declared", () => {
+    const named = rulesOf(withLaunch({ ...testLaunch, approvesAnySpender: false }));
+    expect(named).toStrictEqual(rulesOf(testLaunchCeilingRequest()).toSpliced(5, 1));
+    expect(JSON.stringify(named.slice(3, 5))).not.toContain('"field":"to"');
+  });
+
+  it("takes a launch call declared twice once", () => {
+    const twice = { ...testLaunch, calls: [...testLaunch.calls, ...testLaunch.calls] };
+    expect(rulesOf(withLaunch(twice))).toStrictEqual(rulesOf(testLaunchCeilingRequest()));
+  });
+
+  it.each([
+    ["bad_call", { calls: [{ abi: testCurveAbi.buy, walletInputs: [] }] }],
+    ["bad_call", { calls: [{ abi: testCurveAbi.buy, walletInputs: ["amountIn"] }] }],
+    [
+      "bad_call",
+      {
+        calls: [
+          { abi: { ...testCurveAbi.buy, name: "b".repeat(32) }, walletInputs: ["recipient"] },
+        ],
+      },
+    ],
+    [
+      "clashing_calls",
+      {
+        calls: [
+          { abi: testCurveAbi.buy, walletInputs: ["recipient"] },
+          { abi: { ...testCurveAbi.sell, name: "buy" }, walletInputs: ["recipient"] },
+        ],
+      },
+    ],
+  ] as const)("refuses launch calls with %s", (problem, launch) => {
+    const request = withLaunch({ ...launch, approvesAnySpender: true });
+    expect(built(request)).toStrictEqual({ ok: false, error: problem });
   });
 });

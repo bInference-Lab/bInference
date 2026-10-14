@@ -1,5 +1,6 @@
 import {
   type ChainDefinition,
+  type ChainRef,
   declaredAddress,
   declaredContracts,
   type VenueContracts,
@@ -8,7 +9,7 @@ import {
 import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 import { abiFunctionSchema } from "./abi-function.schema.js";
-import type { CeilingCall, CeilingChainPlan } from "./ceiling.js";
+import type { CeilingCall, CeilingChainPlan, LaunchCall, LaunchCeiling } from "./ceiling.js";
 
 /** What the ceiling takes from the registry for one chain. */
 export interface RegistryCeilingRequest {
@@ -114,4 +115,48 @@ export function registryCeilingChain(
   }
   const { perTxNativeCapBase } = request;
   return ok({ chain, calls, spenders: [...new Set(spenders)], perTxNativeCapBase });
+}
+
+// The calls one venue declares on its launch contracts on a chain, and whether it names one as a
+// spender; a call that is no JSON ABI entry is `bad_call`.
+function launchPartsOf(
+  contracts: VenueContracts,
+): Result<{ readonly calls: readonly LaunchCall[]; readonly approves: boolean }, "bad_call"> {
+  const launched = new Set(contracts.launchContracts ?? []);
+  const calls: LaunchCall[] = [];
+  for (const call of (contracts.calls ?? []).filter((item) => launched.has(item.contract))) {
+    const abi = abiFunctionSchema.safeParse(call.abi);
+    if (!abi.success) {
+      return err("bad_call");
+    }
+    calls.push({ abi: abi.data, walletInputs: call.walletInputs });
+  }
+  const approves = (contracts.spenders ?? []).some((name) => launched.has(name));
+  return ok({ calls, approves });
+}
+
+/**
+ * What a launch wallet's ceiling adds on one chain (decision 0217): each call the venues given
+ * declare on the contracts each of their launches makes, with its JSON ABI and the inputs it pins
+ * to the wallet, and whether one names such a contract as a spender. No launch contract declared on
+ * the chain adds nothing. A call that is no JSON ABI entry is `bad_call`; one that pins no input is
+ * refused when the ceiling is built.
+ */
+export function launchCeilingOf(
+  chain: ChainRef,
+  venues: readonly VenueDeclaration[],
+): Result<LaunchCeiling | undefined, "bad_call"> {
+  const calls: LaunchCall[] = [];
+  let approvesAnySpender = false;
+  for (const venue of venues) {
+    const contracts = venue.contracts.find((item) => item.chain === chain);
+    const parts =
+      contracts === undefined ? ok({ calls: [], approves: false }) : launchPartsOf(contracts);
+    if (!parts.ok) {
+      return parts;
+    }
+    calls.push(...parts.value.calls);
+    approvesAnySpender ||= parts.value.approves;
+  }
+  return ok(calls.length === 0 && !approvesAnySpender ? undefined : { calls, approvesAnySpender });
 }

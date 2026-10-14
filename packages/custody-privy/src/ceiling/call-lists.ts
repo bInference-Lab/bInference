@@ -1,6 +1,6 @@
 import { parseEvmAddress } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
-import type { CeilingCall, CeilingProblem } from "./ceiling.js";
+import type { CeilingCall, CeilingProblem, LaunchCall } from "./ceiling.js";
 import { type AbiFunction, abiFunctionJson } from "./policy-rule.js";
 
 /**
@@ -22,19 +22,50 @@ export function callRuleName(functionName: string, chainId: string): string {
   return `Call ${functionName}, chain ${chainId}`;
 }
 
+/** The name of the rule that allows a launch wallet's calls of one function on any contract. */
+export function launchCallRuleName(functionName: string, chainId: string): string {
+  return `Launch call ${functionName}, chain ${chainId}`;
+}
+
 // What decides whether two calls of one name fit one rule: the function and its pinned inputs.
-function shapeOf(call: Pick<CeilingCall, "abi" | "walletInputs">): string {
+function shapeOf(call: LaunchCall): string {
   return JSON.stringify([abiFunctionJson(call.abi), [...call.walletInputs].toSorted()]);
 }
 
-// Each pinned input is a top-level address input of the function, named once.
-function isWellFormed(call: CeilingCall, chainId: string): boolean {
+// Each pinned input is a top-level address input of the function, named once, and the rule's name
+// fits Privy's 50 characters.
+function isWellFormed(call: LaunchCall, ruleName: string): boolean {
   const { abi, walletInputs } = call;
   const pinned = walletInputs.every((input) =>
     abi.inputs.some((item) => item.name === input && item.type === "address"),
   );
-  const fits = callRuleName(abi.name, chainId).length <= maxRuleName;
+  const fits = ruleName.length <= maxRuleName;
   return pinned && fits && new Set(walletInputs).size === walletInputs.length;
+}
+
+/**
+ * The launch call rules of one chain (decision 0217), one per function name in the order first
+ * given: a function, and the wallet inputs it pins to the signing wallet, on no fixed contract. A
+ * call that pins no input, whose pinned input is no address input or whose rule name passes 50
+ * characters, or two calls of one name that differ, is refused.
+ */
+export function launchListsOf(
+  calls: readonly LaunchCall[],
+  chainId: string,
+): Result<readonly LaunchCall[], CeilingProblem> {
+  const grouped = new Map<string, LaunchCall>();
+  for (const call of calls) {
+    const ruleName = launchCallRuleName(call.abi.name, chainId);
+    if (call.walletInputs.length === 0 || !isWellFormed(call, ruleName)) {
+      return err("bad_call");
+    }
+    const held = grouped.get(call.abi.name);
+    if (held !== undefined && shapeOf(held) !== shapeOf(call)) {
+      return err("clashing_calls");
+    }
+    grouped.set(call.abi.name, held ?? { abi: call.abi, walletInputs: call.walletInputs });
+  }
+  return ok([...grouped.values()]);
 }
 
 /**
@@ -56,7 +87,7 @@ export function callListsOf(
     if (!contract.ok) {
       return contract;
     }
-    if (!isWellFormed(call, chainId)) {
+    if (!isWellFormed(call, callRuleName(call.abi.name, chainId))) {
       return err("bad_call");
     }
     const held = grouped.get(call.abi.name);

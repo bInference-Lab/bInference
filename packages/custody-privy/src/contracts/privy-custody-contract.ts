@@ -3,9 +3,6 @@ import { chainRefSchema } from "@binference/chain";
 import { createEvmSigningScheme, type EvmChain } from "@binference/chain-evm";
 import type { ContractCheck } from "@binference/core/testing";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
-import type { ChainCaps } from "../ceiling/ceiling.js";
-import { policyRuleJson } from "../ceiling/policy-rule.js";
-import { readCeiling } from "../ceiling/read-ceiling.js";
 import {
   approvalForAllData,
   approveData,
@@ -21,10 +18,12 @@ import {
 } from "../testing/custody-fixtures.js";
 import { readBackWallet, type WalletExpectation } from "../wallets/read-back.js";
 import { recipientChecks } from "./ceiling-recipients-checks.js";
+import { launchWalletChecks } from "./launch-wallet-checks.js";
 import {
   askPrivy,
   check,
   type CustodySetup,
+  heldCapsOf,
   live,
   type PrivyCustodyHarness,
   signRequest,
@@ -51,13 +50,6 @@ async function privyRefuses(setup: CustodySetup, call: TestCall, chain?: EvmChai
     await askPrivy(setup, chain === undefined ? { call } : { call, chain }),
     refused,
   );
-}
-
-// The caps the suite's wallet was made with, read from its ceiling.
-function capsOf(setup: CustodySetup): ChainCaps {
-  const [held] = readCeiling(setup.expected.ceiling.rules.map(policyRuleJson))?.caps ?? [];
-  assert.ok(held !== undefined);
-  return held.caps;
 }
 
 async function readsBackAs(
@@ -99,7 +91,7 @@ const readBackChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] 
     harness,
     "fails the read-back of a wallet whose policy is not the ceiling asked for",
     async (setup) => {
-      const caps = capsOf(setup);
+      const caps = heldCapsOf(setup);
       const wider = buildCeiling({ ...testCeilingRequest(caps), saved: [saved, unsaved] });
       assert.ok(wider.ok);
       await readsBackAs(setup, { ...setup.expected, ceiling: wider.value }, "policy");
@@ -218,7 +210,8 @@ const venueChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] => 
 /**
  * The contract the Privy fake and the Privy test app both pass: a wallet made and read back, the
  * calls the ceiling allows signed as the wallet, the ones it does not refused by Privy itself, even
- * with a valid agent key, functions, receivers and approvals past a cap among them, and the recipients and the signer only the owner key changes.
+ * with a valid agent key, functions, receivers and approvals past a cap among them, the recipients
+ * and the signer only the owner key changes, and a launch wallet's own calls (decision 0217).
  */
 export function privyCustodyContract(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [
@@ -228,5 +221,6 @@ export function privyCustodyContract(harness: PrivyCustodyHarness): readonly Con
     ...venueChecks(harness),
     ...recipientChecks(harness),
     ...signerChecks(harness),
+    ...launchWalletChecks(harness),
   ];
 }

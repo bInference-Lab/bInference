@@ -12,6 +12,23 @@ export interface CeilingCall {
   readonly walletInputs: readonly string[];
 }
 
+/**
+ * One function a launch wallet may call on any contract (decision 0217): a call a launchpad
+ * declares on the contracts each launch makes, which no list of addresses can hold. Its pinned
+ * inputs must be the signing wallet itself, and it pins one at least.
+ */
+export type LaunchCall = Omit<CeilingCall, "contract">;
+
+/**
+ * What a launch wallet's ceiling allows on one chain beyond an agent wallet's (decision 0217): the
+ * launch calls, each on any contract, and, when a launchpad names a launch contract as a spender,
+ * an `approve` naming any spender. Every launch rule holds the chain's 24-hour caps.
+ */
+export interface LaunchCeiling {
+  readonly calls: readonly LaunchCall[];
+  readonly approvesAnySpender: boolean;
+}
+
 /** One rolling 24-hour cap: the Privy aggregation that sums it, and the most the sum may reach. */
 export interface DayCap {
   /** The aggregation's id on Privy. */
@@ -44,6 +61,8 @@ export interface CeilingChain {
    */
   readonly perTxNativeCapBase: bigint;
   readonly caps: ChainCaps;
+  /** What a launch wallet's ceiling adds on the chain; absent on every agent wallet's. */
+  readonly launch?: LaunchCeiling;
 }
 
 /** A chain's ceiling before its 24-hour caps are attached, as the registry gives it. */
@@ -72,8 +91,9 @@ export interface Ceiling {
 /**
  * Why a ceiling cannot be built from a request: no or a repeated chain; a malformed address or
  * more than Privy lists; a negative cap; a call whose function name is too long for a rule name
- * or whose wallet input is no address input; two calls of one name that differ; a cap whose
- * aggregation is no Privy id; more aggregations than Privy keeps for an app.
+ * or whose wallet input is no address input, or a launch call that pins none; two calls of one
+ * name that differ; a cap whose aggregation is no Privy id; more aggregations than Privy keeps for
+ * an app.
  */
 export type CeilingProblem =
   | "no_chain"

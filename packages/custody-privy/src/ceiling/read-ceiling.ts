@@ -1,7 +1,7 @@
 import type { JsonValue } from "@binference/core";
 import { ruleTexts } from "../wallets/policy-rules.schema.js";
 import { addressList, type CeilingChainLists, ceilingRules } from "./build-ceiling.js";
-import type { CallRuleLists } from "./call-lists.js";
+import { type CallRuleLists, launchListsOf } from "./call-lists.js";
 import type { ChainCaps } from "./ceiling.js";
 import {
   callIn,
@@ -35,14 +35,25 @@ export interface CeilingHeld {
   readonly recipients: readonly string[];
   /** The caps of each chain whose rules allow calls, in the order the rules name the chains. */
   readonly caps: readonly HeldCaps[];
+  /** Whether it is a launch wallet's ceiling: one of its rules is a launch rule (decision 0217). */
+  readonly isLaunch: boolean;
 }
 
 const onChain = /, chain (\d{1,10})$/;
+const callPrefix = "Call ";
+const launchCallPrefix = "Launch call ";
 
-function isCallRule(rule: HeldRule, chainId?: string): boolean {
+function isCallRule(rule: HeldRule, chainId?: string, prefix = callPrefix): boolean {
   const suffix =
     chainId === undefined ? onChain.test(rule.name) : rule.name.endsWith(`, chain ${chainId}`);
-  return rule.name.startsWith("Call ") && suffix;
+  return rule.name.startsWith(prefix) && suffix;
+}
+
+// A rule only a launch wallet's ceiling holds: a launch call, or the approval of any spender.
+function isLaunchRule(rule: HeldRule): boolean {
+  return (
+    isCallRule(rule, undefined, launchCallPrefix) || rule.name.startsWith("Launch approvals, ")
+  );
 }
 
 function namedRule(read: readonly HeldRule[], kind: string, chainId: string): HeldRule | undefined {
@@ -82,6 +93,40 @@ function checkedCall(rule: HeldRule): CallRuleLists | undefined {
     : undefined;
 }
 
+// A chain's rules that let a call reach a contract: its call rules, then a launch wallet's launch
+// call rules. Each carries the cap per call and the native 24-hour cap.
+function anyCallRules(read: readonly HeldRule[], chainId?: string): readonly HeldRule[] {
+  return [
+    ...read.filter((rule) => isCallRule(rule, chainId)),
+    ...read.filter((rule) => isCallRule(rule, chainId, launchCallPrefix)),
+  ];
+}
+
+// A launch wallet's launch rules on one chain, as it names them, each launch call pinning an input
+// as a built one does; none for an agent wallet's chain.
+function heldLaunchOf(
+  read: readonly HeldRule[],
+  chainId: string,
+): Pick<CeilingChainLists, "launch"> | undefined {
+  const rules = read.filter((rule) => isCallRule(rule, chainId, launchCallPrefix));
+  const approvals = namedRule(read, "Launch approvals", chainId);
+  const calls = rules.map(callIn);
+  const parsed = calls.flatMap((call) => (call === undefined ? [] : [call]));
+  if (parsed.length !== calls.length) {
+    return undefined;
+  }
+  if (rules.length === 0 && approvals === undefined) {
+    return {};
+  }
+  const checked = launchListsOf(
+    parsed.map(({ abi, walletInputs }) => ({ abi, walletInputs })),
+    chainId,
+  );
+  return checked.ok
+    ? { launch: { calls: checked.value, approvesAnySpender: approvals !== undefined } }
+    : undefined;
+}
+
 // The lists of one chain as its rules name them, checksummed; undefined when one cannot be read.
 function listsOf(read: readonly HeldRule[], chainId: string): CeilingChainLists | undefined {
   const callRules = read.filter((rule) => isCallRule(rule, chainId));
@@ -90,22 +135,26 @@ function listsOf(read: readonly HeldRule[], chainId: string): CeilingChainLists 
   const spenders = addressList(
     approvals === undefined ? [] : valuesOf(approvals, "approve.spender", "in"),
   );
-  const cap = capOf(callRules);
-  const caps = capsOf(callRules, approvals);
+  const capped = anyCallRules(read, chainId);
+  const cap = capOf(capped);
+  const caps = capsOf(capped, approvals ?? namedRule(read, "Launch approvals", chainId));
+  const launch = heldLaunchOf(read, chainId);
   const parsed = calls.flatMap((call) => (call === undefined ? [] : [call]));
   if (!spenders.ok || cap === undefined || caps === undefined || parsed.length !== calls.length) {
     return undefined;
   }
-  if (parsed.length > 0 && caps.native === undefined) {
+  if (launch === undefined || (capped.length > 0 && caps.native === undefined)) {
     return undefined;
   }
-  return { chainId, calls: parsed, spenders: spenders.value, perTxNativeCapBase: cap, caps };
+  const lists = { chainId, calls: parsed, spenders: spenders.value, perTxNativeCapBase: cap, caps };
+  return { ...lists, ...launch };
 }
 
 /**
  * Reads a ceiling `buildCeiling` built back from the rules Privy holds: the chains its rules name,
- * the contracts its call rules let a call reach and the cap of the first, the addresses its
- * native send rules let a send pay, and the 24-hour caps of each chain whose rules allow calls.
+ * the contracts its call rules let a call reach and the cap of the first call or launch call rule,
+ * the addresses its native send rules let a send pay, the 24-hour caps of each chain whose rules
+ * allow calls, and whether it is a launch wallet's.
  * Rules this does not know count only for their chain. A rule it cannot read, or a cap that is no
  * quantity, makes the answer `undefined`.
  */
@@ -116,15 +165,16 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
   }
   const calls = read.filter((rule) => isCallRule(rule));
   const sends = read.filter((rule) => rule.name.startsWith("Native sends, chain "));
-  const perTxNativeCapBase = capOf(calls);
+  const perTxNativeCapBase = capOf(anyCallRules(read));
   if (perTxNativeCapBase === undefined) {
     return undefined;
   }
   const chainIds = chainIdsOf(read);
   const caps = chainIds.flatMap((chainId): readonly HeldCaps[] => {
+    const approvals = namedRule(read, "Approvals", chainId);
     const held = capsOf(
-      read.filter((rule) => isCallRule(rule, chainId)),
-      namedRule(read, "Approvals", chainId),
+      anyCallRules(read, chainId),
+      approvals ?? namedRule(read, "Launch approvals", chainId),
     );
     return held?.native === undefined
       ? []
@@ -136,12 +186,14 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
     perTxNativeCapBase,
     recipients: [...new Set(sends.flatMap((rule) => valuesOf(rule, "to", "in")))],
     caps,
+    isLaunch: read.some(isLaunchRule),
   };
 }
 
 /**
  * Whether rules Privy holds are exactly a ceiling `buildCeiling` builds: the ceiling rebuilt
- * from the chains, calls, spenders, caps and native-send recipients they name has the same rules,
+ * from the chains, calls, spenders, caps, launch rules and native-send recipients they name has the
+ * same rules,
  * compared as the read-back compares them. A token send to a recipient the native sends do not
  * list, a call rule without its 24-hour cap, a rule of no ceiling or a lowercase address fails it.
  */

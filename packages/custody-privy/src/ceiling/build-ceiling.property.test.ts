@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   approvalForAllData,
   approveData,
+  curveData,
   oneBnbWei,
   swapData,
   swapToData,
@@ -10,15 +11,19 @@ import {
   testAddresses,
   testCaps,
   testCeilingRequest,
+  testLaunchCeilingRequest,
   transferData,
 } from "../testing/custody-fixtures.js";
 import { evaluatePolicy, type FakeReferences } from "../testing/fake-policy-engine.js";
 import { fakePolicyBodySchema, type FakeRule } from "../testing/fake-privy-request.schema.js";
 import { buildCeiling } from "./build-ceiling.js";
+import type { CeilingRequest } from "./ceiling.js";
 import { policyRuleJson } from "./policy-rule.js";
 
-const { router, permit2, rescue, saved, unsaved, token, unlisted } = testAddresses;
+const { router, permit2, rescue, saved, unsaved, token, unlisted, curve } = testAddresses;
 const wallet = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+// The agent's main wallet beside its launch wallet `wallet`, which neither saved.
+const mainWallet = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 const recipients: ReadonlySet<string> = new Set([rescue, saved]);
 const nativeCap = testCaps.native.limitBase;
 const [tokenCap] = testCaps.approvals;
@@ -152,8 +157,8 @@ function isCappedCall(tx: Tx): boolean {
   return capped && !recipients.has(tx.to) && tx.to !== wallet;
 }
 
-function ceilingRules(): readonly FakeRule[] {
-  const ceiling = buildCeiling(testCeilingRequest());
+function ceilingRules(request: CeilingRequest = testCeilingRequest()): readonly FakeRule[] {
+  const ceiling = buildCeiling(request);
   if (!ceiling.ok) {
     throw new Error(ceiling.error);
   }
@@ -228,6 +233,221 @@ describe("the ceiling under Privy's policy semantics", () => {
           expect(verdict).toBe("DENY");
         },
       ),
+    );
+  });
+});
+
+/** A launch call or an approval a launch wallet's ceiling may allow, or anything else. */
+type LaunchData =
+  | { readonly kind: "curve"; readonly side: "buy" | "sell"; readonly recipient: string }
+  | { readonly kind: "approve"; readonly spender: string; readonly amount: bigint }
+  | { readonly kind: "approvalForAll"; readonly operator: string }
+  | { readonly kind: "transfer"; readonly to: string }
+  | { readonly kind: "other"; readonly hex: `0x${string}` };
+
+interface LaunchTx {
+  readonly chainId: bigint;
+  readonly to: string;
+  readonly valueWei: bigint;
+  readonly data: LaunchData;
+  /** The wallet that signs: the launch wallet, or the agent's main wallet. */
+  readonly signer: string;
+}
+
+const launchDataOf: {
+  readonly [K in LaunchData["kind"]]: (item: Extract<LaunchData, { kind: K }>) => `0x${string}`;
+} = {
+  curve: (item) => curveData(item.side, item.recipient),
+  approve: (item) => approveData(item.spender, item.amount),
+  approvalForAll: (item) => approvalForAllData(item.operator),
+  transfer: (item) => transferData(item.to, 5n),
+  other: (item) => item.hex,
+};
+
+function launchHexOf(item: LaunchData): `0x${string}` {
+  return (launchDataOf[item.kind] as (each: LaunchData) => `0x${string}`)(item);
+}
+
+// The 24-hour sums after a launch transaction, as the test's two aggregations count it.
+function launchSums(tx: LaunchTx, held: Held): Held {
+  const onChain = tx.chainId === 56n;
+  const approved = tx.data.kind === "approve" && tx.to === token ? tx.data.amount : 0n;
+  return {
+    native: held.native + (onChain ? tx.valueWei : 0n),
+    token: held.token + (onChain ? approved : 0n),
+  };
+}
+
+// A curve's call paying the launch wallet, within the cap per call and the native day cap.
+function isAllowedCurveCall(tx: LaunchTx, after: Held): boolean {
+  const { data: call } = tx;
+  const paysWallet = call.kind === "curve" && call.recipient === wallet;
+  return paysWallet && tx.valueWei <= oneBnbWei && after.native <= nativeCap;
+}
+
+// An approval with no coin, naming any spender, within the token's day cap.
+function isAllowedApproval(tx: LaunchTx, after: Held): boolean {
+  const capped = after.token <= (tokenCap?.limitBase ?? 0n);
+  return tx.data.kind === "approve" && tx.valueWei === 0n && capped;
+}
+
+// A send, a token send or the self-cancel, as every ceiling allows them.
+function isAllowedSend(tx: LaunchTx): boolean {
+  const { data: call } = tx;
+  const isTransfer = call.kind === "transfer" && tx.valueWei === 0n && recipients.has(call.to);
+  return recipients.has(tx.to) || (tx.to === wallet && tx.valueWei === 0n) || isTransfer;
+}
+
+// Decision 0217, read directly: on the launch wallet a curve's `buy` or `sell` on any contract
+// paying the wallet itself, and an `approve` naming any spender, each under the caps; a send only
+// to the rescue address or a saved address, and the self-cancel. The main wallet's ceiling holds
+// no launch rule.
+function launchSpecAllows(tx: LaunchTx, held: Held): boolean {
+  if (tx.chainId !== 56n || tx.signer !== wallet) {
+    return false;
+  }
+  const after = launchSums(tx, held);
+  return isAllowedSend(tx) || isAllowedCurveCall(tx, after) || isAllowedApproval(tx, after);
+}
+
+const launchAccounts = fc.constantFrom(
+  curve,
+  router,
+  unlisted,
+  token,
+  rescue,
+  saved,
+  unsaved,
+  wallet,
+  mainWallet,
+);
+const launchData: fc.Arbitrary<LaunchData> = fc.oneof(
+  fc.record({
+    kind: fc.constant("curve" as const),
+    side: fc.constantFrom("buy" as const, "sell" as const),
+    recipient: launchAccounts,
+  }),
+  fc.record({ kind: fc.constant("approve" as const), spender: launchAccounts, amount: amounts }),
+  launchAccounts.map((operator) => ({ kind: "approvalForAll" as const, operator })),
+  launchAccounts.map((to) => ({ kind: "transfer" as const, to })),
+  fc.uint8Array({ minLength: 4, maxLength: 100 }).map((bytes) => ({
+    kind: "other" as const,
+    hex: `0x${Buffer.from(bytes).toString("hex")}` as const,
+  })),
+);
+
+// Whether a transaction is one only a launch rule could allow: a curve call, or an approval of a
+// spender the agent's venues do not declare, to no address a send or a cancel may pay.
+function isLaunchOnly(tx: LaunchTx): boolean {
+  const { data: call } = tx;
+  const reachesSend = recipients.has(tx.to) || tx.to === tx.signer;
+  const isLaunchApproval = call.kind === "approve" && call.spender !== router;
+  return !reachesSend && tx.to !== router && (call.kind === "curve" || isLaunchApproval);
+}
+
+const launchTransactions = (signer: string): fc.Arbitrary<LaunchTx> =>
+  fc
+    .record({
+      chainId: fc.constantFrom(56n, 1n),
+      to: launchAccounts,
+      valueWei: values,
+      data: launchData,
+      signer: fc.constant(signer),
+    })
+    .filter(isLaunchOnly);
+
+// The rules that bind the signing wallet: the launch wallet's ceiling, or the main wallet's.
+const launchRules = ceilingRules(testLaunchCeilingRequest());
+const mainRules = ceilingRules();
+
+function verdictOf(tx: LaunchTx, held: Held): string {
+  const after = launchSums(tx, held);
+  const references: FakeReferences = (aggregation) => {
+    if (aggregation === testCaps.native.aggregation) {
+      return after.native;
+    }
+    return aggregation === tokenCap?.aggregation ? after.token : undefined;
+  };
+  const input = {
+    method: "eth_signTransaction",
+    to: tx.to,
+    valueWei: tx.valueWei,
+    chainId: tx.chainId,
+    data: launchHexOf(tx.data),
+    walletAddress: tx.signer,
+  };
+  return evaluatePolicy(tx.signer === wallet ? launchRules : mainRules, input, references);
+}
+
+const noneHeld: Held = { native: 0n, token: 0n };
+
+// A curve's call from the signer, with one wei, paying the recipient.
+function curveCallVerdict(side: "buy" | "sell", recipient: string, signer = wallet): string {
+  const call = { kind: "curve", side, recipient } as const;
+  return verdictOf({ chainId: 56n, to: curve, valueWei: 1n, data: call, signer }, noneHeld);
+}
+
+// A plain send of the coin from the launch wallet; what pays it decides.
+function sendVerdict(to: string, valueWei: bigint, held: Held): string {
+  const call = { kind: "other", hex: "0x00000000" } as const;
+  return verdictOf({ chainId: 56n, to, valueWei, data: call, signer: wallet }, held);
+}
+
+// Whether a send from the launch wallet pays an address its ceiling lets it pay.
+const isPayee = (to: string, valueWei: bigint): boolean =>
+  recipients.has(to) || (to === wallet && valueWei === 0n);
+
+// Whether an account is one a send from the launch wallet may pay with no coin.
+const isZeroValuePayee = (to: string): boolean => isPayee(to, 0n);
+
+describe("a launch wallet's ceiling under Privy's policy semantics", () => {
+  it("allows a curve call or an approval exactly as decision 0217 does, on the launch wallet", () => {
+    fc.assert(
+      fc.property(launchTransactions(wallet), helds, (tx, held) => {
+        expect(verdictOf(tx, held) === "ALLOW").toBe(launchSpecAllows(tx, held));
+      }),
+      { numRuns: 2_000 },
+    );
+  });
+
+  it("allows a curve buy and sell paying the launch wallet, and the same paying another", () => {
+    expect([curveCallVerdict("buy", wallet), curveCallVerdict("sell", wallet)]).toStrictEqual([
+      "ALLOW",
+      "ALLOW",
+    ]);
+    expect([curveCallVerdict("buy", unsaved), curveCallVerdict("sell", mainWallet)]).toStrictEqual([
+      "DENY",
+      "DENY",
+    ]);
+    expect([
+      curveCallVerdict("buy", mainWallet, mainWallet),
+      curveCallVerdict("sell", mainWallet, mainWallet),
+    ]).toStrictEqual(["DENY", "DENY"]);
+  });
+
+  it("refuses the main wallet every curve call and approval only a launch rule allows", () => {
+    fc.assert(
+      fc.property(launchTransactions(mainWallet), helds, (tx, held) => {
+        expect(verdictOf(tx, held)).toBe("DENY");
+      }),
+    );
+  });
+
+  it("sends from the launch wallet only to the rescue address or a saved address", () => {
+    fc.assert(
+      fc.property(launchAccounts, values, helds, (to, valueWei, held) => {
+        expect(sendVerdict(to, valueWei, held) === "ALLOW").toBe(isPayee(to, valueWei));
+      }),
+    );
+  });
+
+  it("refuses an approval through any function but the declared approve", () => {
+    fc.assert(
+      fc.property(launchAccounts, launchAccounts, helds, (to, operator, held) => {
+        const approval = { kind: "approvalForAll", operator } as const;
+        const tx = { chainId: 56n, to, valueWei: 0n, data: approval, signer: wallet };
+        expect(verdictOf(tx, held) === "ALLOW").toBe(isZeroValuePayee(to));
+      }),
     );
   });
 });

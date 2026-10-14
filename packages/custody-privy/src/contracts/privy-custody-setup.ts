@@ -16,6 +16,8 @@ import { type Clock, err, type Id, idSchema, ok, type Result } from "@binference
 import type { ContractCheck } from "@binference/core/testing";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import type { Ceiling, ChainCaps } from "../ceiling/ceiling.js";
+import { policyRuleJson } from "../ceiling/policy-rule.js";
+import { readCeiling } from "../ceiling/read-ceiling.js";
 import type { PrivyApi } from "../privy/privy-api.js";
 import { isPrivyId } from "../privy/privy-records.js";
 import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
@@ -25,6 +27,7 @@ import {
   testCaps,
   testCeilingRequest,
   testChain,
+  testLaunchCeilingRequest,
 } from "../testing/custody-fixtures.js";
 import { createAgentWallet } from "../wallets/create-agent-wallet.js";
 import { createDayCaps } from "../wallets/create-day-caps.js";
@@ -78,6 +81,7 @@ export const live = (): { readonly signal: AbortSignal } => ({
 
 const uuid = "0190f1c2-3b4c-7d5e-8f60-718293a4b5c6";
 const agentWallet = idSchema("wal").parse(`wal_${uuid}`);
+const launchWallet = idSchema("wal").parse("wal_0190f1c2-3b4c-7d5e-8f60-718293a4b5c7");
 
 /** The test ceiling, built with the caps given: by default ones no Privy app holds. */
 export function testCeiling(caps: ChainCaps = testCaps): Ceiling {
@@ -86,7 +90,23 @@ export function testCeiling(caps: ChainCaps = testCaps): Ceiling {
   return ceiling.value;
 }
 
-async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
+/** The caps a setup's wallet was made with, read from its ceiling. */
+export function heldCapsOf(setup: CustodySetup): ChainCaps {
+  const [held] = readCeiling(setup.expected.ceiling.rules.map(policyRuleJson))?.caps ?? [];
+  assert.ok(held !== undefined);
+  return held.caps;
+}
+
+// A wallet under the ceiling given, owned by the owner key with the agent key as its one signer,
+// read back, and the `privy-owner` adapter over it as the engine's wallet given.
+async function walletUnder(
+  subject: PrivyCustodySubject,
+  made: {
+    readonly ceiling: (caps: ChainCaps) => Ceiling;
+    readonly caps: ChainCaps;
+    readonly id: Id<"wal">;
+  },
+): Promise<CustodySetup> {
   const { api, signerProcess, ownerKey } = subject;
   const agentKey = await signerProcess.publicKey(live());
   const ownerQuorum = await api.createKeyQuorum(
@@ -97,13 +117,7 @@ async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
     { publicKey: agentKey, displayName: "binference test agent" },
     live(),
   );
-  const caps = await createDayCaps(api, { plans: [testCapPlan], owner: ownerQuorum.id }, live());
-  assert.ok(caps.ok && caps.value[0] !== undefined, "Privy made no aggregations for the caps.");
-  madeCaps.set(
-    subject,
-    caps.value.flatMap((chain) => [chain.native, ...chain.approvals].map((cap) => cap.aggregation)),
-  );
-  const expected = { ownerKey, agentKey, ceiling: testCeiling(caps.value[0]) };
+  const expected = { ownerKey, agentKey, ceiling: made.ceiling(made.caps) };
   const created = await createAgentWallet(
     api,
     { ownerQuorum: ownerQuorum.id, signerQuorum: signerQuorum.id, expected },
@@ -114,9 +128,38 @@ async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
   const signer = createPrivyOwnerSigner({
     api,
     signerProcess,
-    walletOf: (id) => (id === agentWallet ? wallet : undefined),
+    walletOf: (id) => (id === made.id ? wallet : undefined),
   });
-  return { subject, wallet, expected, agentWallet, signer };
+  return { subject, wallet, expected, agentWallet: made.id, signer };
+}
+
+async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
+  const { api, ownerKey } = subject;
+  const owner = await api.createKeyQuorum(
+    { publicKey: ownerKey, displayName: "binference test owner" },
+    live(),
+  );
+  const caps = await createDayCaps(api, { plans: [testCapPlan], owner: owner.id }, live());
+  assert.ok(caps.ok && caps.value[0] !== undefined, "Privy made no aggregations for the caps.");
+  madeCaps.set(
+    subject,
+    caps.value.flatMap((chain) => [chain.native, ...chain.approvals].map((cap) => cap.aggregation)),
+  );
+  return walletUnder(subject, { ceiling: testCeiling, caps: caps.value[0], id: agentWallet });
+}
+
+// The test ceiling of a launch wallet (decision 0217), with the caps given.
+function testLaunchCeiling(caps: ChainCaps): Ceiling {
+  const built = buildCeiling(testLaunchCeilingRequest(caps));
+  assert.ok(built.ok);
+  return built.value;
+}
+
+// A launch wallet beside the suite's wallet: the test ceiling with the launch rules, under the
+// same 24-hour caps, so the suite makes no more aggregations.
+async function makeLaunchWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
+  const caps = heldCapsOf(await setUp(subject));
+  return walletUnder(subject, { ceiling: testLaunchCeiling, caps, id: launchWallet });
 }
 
 const setups = new WeakMap<PrivyCustodySubject, Promise<CustodySetup>>();
@@ -157,6 +200,19 @@ export async function setUp(subject: PrivyCustodySubject): Promise<CustodySetup>
   }
   const made = makeWallet(subject);
   setups.set(subject, made);
+  return made;
+}
+
+const launchSetups = new WeakMap<PrivyCustodySubject, Promise<CustodySetup>>();
+
+/** The suite's launch wallet for a subject, beside its wallet, made on first use. */
+export async function setUpLaunch(subject: PrivyCustodySubject): Promise<CustodySetup> {
+  const known = launchSetups.get(subject);
+  if (known !== undefined) {
+    return known;
+  }
+  const made = makeLaunchWallet(subject);
+  launchSetups.set(subject, made);
   return made;
 }
 

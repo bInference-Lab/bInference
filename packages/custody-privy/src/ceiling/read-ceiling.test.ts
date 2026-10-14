@@ -9,6 +9,8 @@ import {
   testCaps,
   testCeilingRequest,
   testChain,
+  testLaunch,
+  testLaunchCeilingRequest,
 } from "../testing/custody-fixtures.js";
 import { buildCeiling } from "./build-ceiling.js";
 import type { CeilingRequest } from "./ceiling.js";
@@ -55,6 +57,26 @@ describe("readCeiling", () => {
       perTxNativeCapBase: oneBnbWei,
       recipients: [testAddresses.rescue, testAddresses.saved],
       caps: [{ chainId: "56", caps: testCaps }],
+      isLaunch: false,
+    });
+  });
+
+  it("reads a launch wallet's ceiling as one, its cap and caps from its launch rules alone", () => {
+    const launchOnly = {
+      ...testLaunchCeilingRequest(),
+      chains: [{ ...testChainLists, calls: [], spenders: [], launch: testLaunch }],
+    };
+    expect(readCeiling(rulesOf(launchOnly))).toStrictEqual({
+      chainIds: ["56"],
+      contracts: [],
+      perTxNativeCapBase: oneBnbWei,
+      recipients: [testAddresses.rescue, testAddresses.saved],
+      caps: [{ chainId: "56", caps: testCaps }],
+      isLaunch: true,
+    });
+    expect(readCeiling(rulesOf(testLaunchCeilingRequest()))).toMatchObject({
+      contracts: [testAddresses.router],
+      isLaunch: true,
     });
   });
 
@@ -111,6 +133,41 @@ function withValue(change: {
       policyRuleJson(rule.name === change.rule ? ruleWithValue(rule, change) : rule),
     ),
   );
+}
+
+// A rule as JSON, as far as the launch tests change it.
+const ruleJson = z.looseObject({
+  name: z.string(),
+  conditions: z.array(z.looseObject({ field: z.string() })),
+});
+
+type RuleJson = z.infer<typeof ruleJson>;
+
+// The rules with each one changed as given.
+function changed(rules: readonly JsonValue[], change: (rule: RuleJson) => RuleJson) {
+  return rules.map((json) => jsonValueSchema.parse(change(ruleJson.parse(json))));
+}
+
+// The launch buy rule named for another chain; any other rule as it is.
+function movedToChain97(rule: RuleJson): RuleJson {
+  return rule.name === "Launch call buy, chain 56"
+    ? { ...rule, name: "Launch call buy, chain 97" }
+    : rule;
+}
+
+// The launch sale paying the rescue address instead of the wallet itself.
+function payingRescue(rule: RuleJson): RuleJson {
+  const pinned = (condition: RuleJson["conditions"][number]) =>
+    condition.field === "sell.recipient"
+      ? Object.assign({}, condition, { value: testAddresses.rescue })
+      : condition;
+  return { ...rule, conditions: rule.conditions.map(pinned) };
+}
+
+// The launch buy without the pin of its recipient.
+function pinless(rule: RuleJson): RuleJson {
+  const kept = rule.conditions.filter((condition) => condition.field !== "buy.recipient");
+  return { ...rule, conditions: kept };
 }
 
 describe("isBuiltCeiling", () => {
@@ -172,6 +229,16 @@ describe("isBuiltCeiling", () => {
     expect(isBuiltCeiling(uncapped)).toBe(false);
     expect(isBuiltCeiling(unpinned)).toBe(false);
     expect(isBuiltCeiling(renamed)).toBe(false);
+  });
+
+  it("holds for a launch wallet's ceiling, and fails a launch rule it does not build", () => {
+    const launch = rulesOf(testLaunchCeilingRequest());
+
+    expect(isBuiltCeiling(launch)).toBe(true);
+    expect(isBuiltCeiling(launch.toReversed())).toBe(true);
+    expect(isBuiltCeiling(changed(launch, movedToChain97))).toBe(false);
+    expect(isBuiltCeiling(changed(launch, payingRescue))).toBe(false);
+    expect(isBuiltCeiling(changed(launch, pinless))).toBe(false);
   });
 
   it("fails a ceiling that names no chain or no recipient", () => {

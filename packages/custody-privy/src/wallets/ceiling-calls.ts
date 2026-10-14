@@ -20,10 +20,13 @@ export type CallsRefusal =
   /** The owner key did not sign, or Privy did not take its signature as the policy owner's. */
   | "refused";
 
-// The rules of a chain that name what a call may do: its call rules and its approval rule.
+// The rules of a chain that name what a call may do: its call rules and its approval rule, and a
+// launch wallet's launch call rules and approval of any spender (decision 0217).
 function isCallsRule(name: string, chainId: string): boolean {
   const onChain = name.endsWith(`, chain ${chainId}`);
-  return onChain && (name.startsWith("Call ") || name === `Approvals, chain ${chainId}`);
+  const isCall = name.startsWith("Call ") || name.startsWith("Launch call ");
+  const isApprovals = name === `Approvals, chain ${chainId}`;
+  return onChain && (isCall || isApprovals || name === `Launch approvals, chain ${chainId}`);
 }
 
 // One chain's call and approval rules, rebuilt: written over, added or taken out by name. A chain
@@ -74,7 +77,8 @@ function editsOf(
 /**
  * Sets what a contract call may do under a ceiling now, signed by the owner key (decision 0149):
  * on each chain given, one rule per function its venues call, on their contracts, with the cap in
- * native coin and the chain's 24-hour caps, and the approval rule for their spenders. A rule that
+ * native coin and the chain's 24-hour caps, and the approval rule for their spenders; on a launch
+ * wallet's chain, its launch rules too, and on any other chain none (decision 0217). A rule that
  * holds its body already is left alone, so setting the same calls twice is safe; a rule a new
  * function needs is added, and one no function needs any more is taken out, after the others. A
  * chain the policy does not enable is `not_found`. Each request expires at `expiresAtMs`.

@@ -4,7 +4,13 @@ import type { CeilingChain } from "../ceiling/ceiling.js";
 import { readCeiling } from "../ceiling/read-ceiling.js";
 import { setUp } from "../contracts/privy-custody-setup.js";
 import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
-import { oneBnbWei, testAddresses, testCalls, testChain } from "../testing/custody-fixtures.js";
+import {
+  oneBnbWei,
+  testAddresses,
+  testCalls,
+  testChain,
+  testLaunch,
+} from "../testing/custody-fixtures.js";
 import {
   createFakeCustodySubject,
   type FakeCustodySubject,
@@ -98,6 +104,24 @@ describe("the contract calls of a ceiling", () => {
     const both = chainWith(testCalls, oneBnbWei);
     await setCeilingCalls(subject.api, { policy, chains: [both] }, call(subject));
     expect(namesSwapTo(await namesOf(subject, policy))).toBe(true);
+  });
+
+  it("add a launch wallet's launch rules with its calls, and take them out of any other", async () => {
+    const { subject, policy, chainWith } = await made();
+    const launch = { ...chainWith(testCalls, oneBnbWei), launch: testLaunch };
+
+    await setCeilingCalls(subject.api, { policy, chains: [launch] }, call(subject));
+    expect(await heldOf(subject, policy)).toMatchObject({ isLaunch: true });
+    await setCeilingCalls(subject.api, { policy, chains: [launch] }, call(subject));
+    const named = await namesOf(subject, policy);
+    expect(named.filter((rule) => rule.includes('"name":"Launch '))).toHaveLength(3);
+
+    await setCeilingCalls(
+      subject.api,
+      { policy, chains: [chainWith(testCalls, oneBnbWei)] },
+      call(subject),
+    );
+    expect(await heldOf(subject, policy)).toMatchObject({ isLaunch: false });
   });
 
   it("change nothing for another key, an unknown policy or a chain it does not enable", async () => {

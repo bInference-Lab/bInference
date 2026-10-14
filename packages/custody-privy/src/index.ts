@@ -9,6 +9,8 @@ export type {
   CeilingRequest,
   ChainCaps,
   DayCap,
+  LaunchCall,
+  LaunchCeiling,
 } from "./ceiling/ceiling.js";
 export { dayCapWindowSeconds } from "./ceiling/day-caps.js";
 export type { AggregationDefinition, ChainCapPlan, TokenCapPlan } from "./ceiling/day-caps.js";
@@ -25,7 +27,7 @@ export type {
 } from "./ceiling/policy-rule.js";
 export { readCeiling } from "./ceiling/read-ceiling.js";
 export type { CeilingHeld, HeldCaps } from "./ceiling/read-ceiling.js";
-export { registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
+export { launchCeilingOf, registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
 export type {
   RegistryCeilingProblem,
   RegistryCeilingRequest,
