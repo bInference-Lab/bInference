@@ -503,6 +503,9 @@ importers:
       '@binference/geckoterminal':
         specifier: workspace:*
         version: link:../../plugins/geckoterminal
+      '@binference/geniusfun':
+        specifier: workspace:*
+        version: link:../../plugins/geniusfun
       '@binference/goplus':
         specifier: workspace:*
         version: link:../../plugins/goplus

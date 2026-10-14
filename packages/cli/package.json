@@ -35,6 +35,7 @@
     "@binference/engine": "workspace:*",
     "@binference/flap": "workspace:*",
     "@binference/geckoterminal": "workspace:*",
+    "@binference/geniusfun": "workspace:*",
     "@binference/goplus": "workspace:*",
     "@binference/honeypot-is": "workspace:*",
     "@binference/i18n": "workspace:*",

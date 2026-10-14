@@ -94,21 +94,21 @@ describe("the self-hosted venues", () => {
     expect(flap?.contracts).toMatchObject([{ chain: bsc, names: ["portal"], noDeadline: true }]);
   });
 
-  it("quote through KyberSwap and the Flap launchpad when config names no OKX key", async () => {
+  it("quote through KyberSwap and the flap and geniusfun launchpads when config names no OKX key", async () => {
     const { ids, logger } = await read(venuesWith());
-    expect(ids).toStrictEqual(["kyberswap", "flap"]);
+    expect(ids).toStrictEqual(["kyberswap", "flap", "geniusfun"]);
     expect(logger.records()).toStrictEqual([]);
   });
 
   it("add OKX when config names the owner's OKX key", async () => {
     await expect(read(venuesWith("OKX"))).resolves.toMatchObject({
-      ids: ["kyberswap", "flap", "okx"],
+      ids: ["kyberswap", "flap", "geniusfun", "okx"],
     });
   });
 
   it("leave OKX out, and say so, when its key cannot be read", async () => {
     const { ids, logger } = await read(venuesWith("MISSING"));
-    expect(ids).toStrictEqual(["kyberswap", "flap"]);
+    expect(ids).toStrictEqual(["kyberswap", "flap", "geniusfun"]);
     expect(logger.records().map((record) => record.event)).toStrictEqual(["engine.venue_skipped"]);
   });
 

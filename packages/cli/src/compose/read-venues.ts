@@ -16,6 +16,7 @@ import {
 } from "@binference/chain-evm";
 import { BinferenceError, bpsSchema, type Clock, type Http, type Logger } from "@binference/core";
 import { createFlapVenue } from "@binference/flap";
+import { createGeniusfunVenue } from "@binference/geniusfun";
 import { createKyberswapVenue, type KyberswapHook } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
 import type { ChainsConfig, VenuesConfig } from "../config/schema/chains-venues.schema.js";
@@ -64,26 +65,36 @@ async function okxKeysOf(options: ReadVenuesOptions): Promise<OkxKeys | undefine
 // read on BNB Smart Chain on 2026-10-12. A chain whose registry lists none of them gives none.
 const flapQuoteSymbols: ReadonlySet<string> = new Set(["USDT", "USD1"]);
 
-function flapQuoteTokens(chain: RegisteredChain, evm: EvmChain): readonly AssetRef[] {
+// The tokens besides the coin Genius.fun's deployment manifest lists as quote tokens of its curves,
+// read on BNB Smart Chain on 2026-10-14.
+const geniusfunQuoteSymbols: ReadonlySet<string> = new Set(["USDT", "USDC"]);
+
+function quoteTokensOf(
+  chain: RegisteredChain,
+  evm: EvmChain,
+  symbols: ReadonlySet<string>,
+): readonly AssetRef[] {
   return chain.definition.tokens
-    .filter((token) => flapQuoteSymbols.has(token.symbol))
+    .filter((token) => symbols.has(token.symbol))
     .flatMap((token) => {
       const address = parseEvmAddress(token.address);
       return address.ok ? [erc20AssetRef(evm, address.value)] : [];
     });
 }
 
-// Flap on each chain the engine reads, through that chain's one RPC failover.
-function flapChains(
+// A launchpad on each chain the engine reads, through that chain's one RPC failover, against the
+// quote tokens of the given symbols the chain's registry lists.
+function curveChainsOf(
   chains: readonly RegisteredChain[],
   reads: ReadonlyMap<ChainRef, ChainReads>,
+  symbols: ReadonlySet<string>,
 ): readonly CurveChain[] {
   return chains.flatMap((chain) => {
     const read = reads.get(chain.ref);
     if (read === undefined) {
       return [];
     }
-    const quoteTokens = flapQuoteTokens(chain, read.evm);
+    const quoteTokens = quoteTokensOf(chain, read.evm, symbols);
     return [{ chain: chain.ref, nativeAsset: read.evm.nativeAsset, quoteTokens, rpc: read.rpc }];
   });
 }
@@ -112,10 +123,10 @@ function allowedHooksOf(
 
 /**
  * The venues the self-hosted engine quotes on, on each enabled chain of the EVM family: KyberSwap,
- * keyless, always; the Flap launchpad, over each chain's RPC failover, always; OKX's DEX
- * aggregator only when `venues.keys.okx` names the owner's key (decision 0105). The money path
- * asks every venue an agent allows and keeps the best plan (decision 0107), and sends a token on
- * Flap's curve to Flap alone (decision 0179). An OKX key that cannot be read is logged and OKX
+ * keyless, always; the Flap and Genius.fun launchpads, over each chain's RPC failover, always;
+ * OKX's DEX aggregator only when `venues.keys.okx` names the owner's key (decision 0105). The
+ * money path asks every venue an agent allows and keeps the best plan (decision 0107), and sends a
+ * token on a launchpad's curve to that launchpad alone (decision 0179). An OKX key that cannot be read is logged and OKX
  * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
  * names, with their fees, and drops routes through any other hooked pool (decision 0214).
  */
@@ -138,9 +149,13 @@ export async function readVenues(options: ReadVenuesOptions): Promise<readonly V
       allowedHooks: allowedHooksOf(chain, options.poolHooks.get(chain.ref) ?? []),
     })),
   });
-  const flap = createFlapVenue({ chains: flapChains(enabled, options.reads) });
+  const { reads } = options;
+  const flap = createFlapVenue({ chains: curveChainsOf(enabled, reads, flapQuoteSymbols) });
+  const geniusfun = createGeniusfunVenue({
+    chains: curveChainsOf(enabled, reads, geniusfunQuoteSymbols),
+  });
   const keys = await okxKeysOf(options);
   return keys === undefined
-    ? [kyberswap, flap]
-    : [kyberswap, flap, createOkxVenue({ http, clock, keys, chains })];
+    ? [kyberswap, flap, geniusfun]
+    : [kyberswap, flap, geniusfun, createOkxVenue({ http, clock, keys, chains })];
 }
