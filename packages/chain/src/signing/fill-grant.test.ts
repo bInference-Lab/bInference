@@ -50,6 +50,7 @@ const signing: FillGrantCheck = {
   order: current,
   action: { kind: "call", nativeValue: 10n ** 16n },
   isCancel: false,
+  stepIndex: 0,
   feePerGasNativeBase: 1_000_000_000n,
   nowMs: nowMs + 59_999,
 };
@@ -120,6 +121,29 @@ describe("the fill grant", () => {
     expect(problemOf(cancel, { state: "filled", fills: 2 })).toBe("holds");
     expect(problemOf({ ...cancel, nowMs: nowMs + 120_000 })).toBe("expired");
     expect(problemOf({ ...cancel, intent: otherIntent })).toBe("intent_mismatch");
+  });
+
+  it("lets a later step finish its trade while a freeze pauses the order, never a first step", () => {
+    expect(problemOf({ stepIndex: 1 }, { state: "paused" })).toBe("holds");
+    expect(problemOf({ stepIndex: 0 }, { state: "paused" })).toBe("order_inactive");
+    expect(problemOf({ stepIndex: 1 }, { state: "cancelled" })).toBe("order_inactive");
+    expect(problemOf({ stepIndex: 1, nowMs: nowMs + 60_000 }, { state: "paused" })).toBe("expired");
+  });
+
+  it("resets its token's approval to 0 whatever the order became, a minute past its expiry", () => {
+    const sale = { spend: { token, maxBase: 1_000n } };
+    const reset = { kind: "approve", token, spender, amount: 0n } as const;
+    const late = { action: reset, nowMs: nowMs + 119_999 };
+    expect(problemOf(late, { state: "cancelled" }, sale)).toBe("holds");
+    expect(problemOf({ ...late, nowMs: nowMs + 120_000 }, {}, sale)).toBe("expired");
+    const other = { ...reset, token: spender };
+    expect(problemOf({ action: other }, { state: "cancelled" }, sale)).toBe("order_inactive");
+  });
+
+  it("signs nothing under a grant from the future or one that outlasts a trade card", () => {
+    expect(problemOf({ nowMs: nowMs - 1 })).toBe("lifetime");
+    expect(problemOf({}, {}, { expiresAtMs: nowMs + 60_001 })).toBe("lifetime");
+    expect(problemOf({ isCancel: true }, {}, { expiresAtMs: nowMs + 60_001 })).toBe("lifetime");
   });
 
   it("travels as JSON and back", () => {

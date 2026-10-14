@@ -5,7 +5,7 @@ import type { ChainRef } from "./caip/chain-ref.js";
 import type { DraftCall } from "./draft-call.js";
 import type { RegisteredChain } from "./registry/registered-chain.js";
 import type { SignRequest } from "./sign-request.js";
-import type { TokenTransfer } from "./token-transfer.js";
+import type { TokenApprovalRequest, TokenTransfer } from "./token-transfer.js";
 import type { SignatureProblem, SignedTx, TxDraft, TxHash, UnsignedTx } from "./transaction.js";
 
 /**
@@ -46,6 +46,13 @@ export interface ChainFamily {
    * `unknown_asset`.
    */
   transferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset">;
+  /**
+   * A draft that sets what `spender` may take of a token from `from`, on `from`'s chain, with the
+   * family's standard approval call, which `readDraft` reads back as that approval; an approval of
+   * 0 resets one left standing (decision 0211). A token of another chain or that the family cannot
+   * call is `unknown_asset`.
+   */
+  approvalDraft(approval: TokenApprovalRequest): Result<TxDraft, "unknown_asset">;
 }
 
 /**

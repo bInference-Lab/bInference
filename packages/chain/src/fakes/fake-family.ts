@@ -4,7 +4,7 @@ import { assetRefParts, assetRefSchema } from "../caip/asset-ref.js";
 import { type ChainRef, chainRefParts } from "../caip/chain-ref.js";
 import type { DraftCall, TokenApproval } from "../draft-call.js";
 import type { ChainFamily } from "../ports.js";
-import type { TokenTransfer } from "../token-transfer.js";
+import type { TokenApprovalRequest, TokenTransfer } from "../token-transfer.js";
 import type { TxDraft } from "../transaction.js";
 import { fakeCallOf, fakeDraft, isFakeAddress, isFakeUnsigned } from "./fake-draft.js";
 
@@ -79,6 +79,24 @@ function transferDraft(transfer: TokenTransfer): Result<TxDraft, "unknown_asset"
   return ok(fakeDraft(from, { to: asset.assetReference, value: 0n, data }));
 }
 
+// `approve,<spender>,<amount>` to a token of `from`'s chain is the fake family's approval.
+function approvalDraft(approval: TokenApprovalRequest): Result<TxDraft, "unknown_asset"> {
+  const { from, token, spender, amountBase } = approval;
+  const [owner, contract, taker] = [from, token, spender].map(accountRefParts);
+  const isFake =
+    owner !== undefined &&
+    contract !== undefined &&
+    taker !== undefined &&
+    contract.chain === owner.chain &&
+    isFakeAddress(contract.address) &&
+    isFakeAddress(taker.address);
+  if (!isFake) {
+    return err("unknown_asset");
+  }
+  const data = ["approve", taker.address, amountBase.toString()].join(",");
+  return ok(fakeDraft(from, { to: contract.address, value: 0n, data }));
+}
+
 /**
  * Creates a chain family for tests: namespace `fake`, addresses of 8 hex digits after `0x`,
  * canonical in lowercase. Its drafts are `<to>|<value>|<data>` (see `fakeDraft`), and data that
@@ -95,5 +113,6 @@ export function createFakeFamily(): ChainFamily {
     readDraft,
     freshAccount,
     transferDraft,
+    approvalDraft,
   };
 }

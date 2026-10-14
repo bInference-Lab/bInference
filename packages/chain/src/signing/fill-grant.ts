@@ -111,6 +111,12 @@ export interface FillGrantCheck {
   /** Whether the transaction is a cancel at a used nonce, which moves nothing. */
   readonly isCancel: boolean;
   /**
+   * The step's place in the fill's plan, from 0; the first step when absent. A later step runs
+   * only once the steps before it landed, and finishes its trade while a freeze pauses the order
+   * (decision 0211).
+   */
+  readonly stepIndex?: number;
+  /**
    * The most fee per gas the transaction pays, in base units of the native coin; absent for a
    * cancel, whose fee needs no cap of the grant's.
    */
@@ -119,12 +125,14 @@ export interface FillGrantCheck {
 }
 
 /**
- * Why a fill grant authorizes no signature: it names another intent or another order, the order's
+ * Why a fill grant authorizes no signature: it was granted later than now or lasts longer than a
+ * trade card's 60 seconds, it names another intent or another order, the order's
  * confirmed terms changed, the order no longer may fill, it recorded a fill since the grant, the
  * request carries other terms, the transaction pays more fee per gas than the cap, it spends what
  * the fill does not or more than its size, or the grant expired.
  */
 export type FillGrantProblem =
+  | "lifetime"
   | "intent_mismatch"
   | "order_mismatch"
   | "order_changed"
@@ -137,6 +145,16 @@ export type FillGrantProblem =
 
 /** How long after its grant expired a cancel of the fill still signs: one trade card's lifetime. */
 const cancelGraceMs = 60_000;
+
+/** The longest a fill grant lasts, from the fill's confirmation: one trade card's lifetime. */
+export const fillGrantLifetimeMs = 60_000;
+
+// A grant from a confirmation not yet made, or one that outlasts a trade card, signs nothing.
+function lifetimeProblem(grant: FillGrant, nowMs: number): FillGrantProblem | undefined {
+  const isWithin =
+    grant.grantedAtMs <= nowMs && grant.expiresAtMs - grant.grantedAtMs <= fillGrantLifetimeMs;
+  return isWithin ? undefined : "lifetime";
+}
 
 // Whether the grant is this intent's, under the order the owner confirmed.
 function bindingProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProblem | undefined {
@@ -153,11 +171,17 @@ function bindingProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProbl
   return grant.termsHash === check.termsHash ? undefined : "terms_mismatch";
 }
 
+// The states an order lets a step of its fill sign in: active, or paused by a freeze for a later
+// step, which finishes a trade whose first step landed (decision 0211).
+function signsIn(state: string, stepIndex: number): boolean {
+  return state === "active" || (state === "paused" && stepIndex > 0);
+}
+
 // Whether the order may still fill, and has recorded no fill since the grant.
 function orderProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProblem | undefined {
   const { order, nowMs } = check;
   const hasFillLeft = order.maxFills === undefined || order.fills < order.maxFills;
-  if (order.state !== "active" || nowMs >= order.expiresAtMs || !hasFillLeft) {
+  if (!signsIn(order.state, check.stepIndex ?? 0) || nowMs >= order.expiresAtMs || !hasFillLeft) {
     return "order_inactive";
   }
   return order.fills === grant.fillsBefore ? undefined : "order_filled_since";
@@ -201,21 +225,35 @@ function cancelProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProble
   return check.nowMs < grant.expiresAtMs + cancelGraceMs ? undefined : "expired";
 }
 
+// A reset to 0 of the fill's token approval moves nothing either: it takes back what a trade that
+// could not finish left approved (decision 0211).
+function isRevoke(grant: FillGrant, action: StepAction): boolean {
+  const { token } = grant.spend;
+  return (
+    action.kind === "approve" &&
+    action.amount === 0n &&
+    token !== undefined &&
+    isSameAccount(action.token, token)
+  );
+}
+
 /**
  * Checks a fill grant against a signing request and the order as it stands, in the order of
  * {@link FillGrantProblem}, and names the first problem. A grant binds one fill of one order:
- * once the order recorded a fill, ended, paused, expired or used its last fill, every grant made
- * before signs nothing more but a cancel. The signer's rule 5 runs this check, and the engine's
+ * once the order recorded a fill, ended, expired or used its last fill, every grant made before
+ * signs nothing more but a cancel or a reset of its approval to 0, and a pause by a freeze lets
+ * only a later step of a trade whose first step landed finish it (decision 0211). The signer's rule 5 runs this check, and the engine's
  * tests hold the grants it makes to it.
  */
 export function checkFillGrant(
   grant: FillGrant,
   check: FillGrantCheck,
 ): Result<FillGrant, FillGrantProblem> {
-  const bound = bindingProblem(grant, check);
+  const bound = lifetimeProblem(grant, check.nowMs) ?? bindingProblem(grant, check);
+  const movesNothing = check.isCancel || isRevoke(grant, check.action);
   const problem =
     bound ??
-    (check.isCancel
+    (movesNothing
       ? cancelProblem(grant, check)
       : (orderProblem(grant, check) ?? signingProblem(grant, check)));
   return problem === undefined ? ok(grant) : err(problem);

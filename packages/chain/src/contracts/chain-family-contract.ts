@@ -5,6 +5,7 @@ import { assetRefParts } from "../caip/asset-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { DraftCall } from "../draft-call.js";
 import type { ChainFamily } from "../ports.js";
+import { isSameAccount } from "../same-account.js";
 import type { TokenTransfer } from "../token-transfer.js";
 import type { TxDraft } from "../transaction.js";
 
@@ -74,6 +75,30 @@ function draftChecks(harness: ChainFamilyHarness): readonly ContractCheck[] {
 
 function seedOf(fill: number): Uint8Array {
   return new Uint8Array(32).fill(fill);
+}
+
+// A token approval a family drafts, 0 included, reads back as that approval.
+function approvalChecks(harness: ChainFamilyHarness): readonly ContractCheck[] {
+  return [
+    {
+      name: "drafts an approval of a token, 0 too, that it reads back as that approval",
+      run: async () => {
+        const { family, transfer } = harness.create();
+        const { from, to } = transfer.transfer;
+        const token = transfer.call.target;
+        const draft = family.approvalDraft({ from, token, spender: to, amountBase: 0n });
+        assert.ok(draft.ok);
+        const read = family.readDraft(draft.value);
+        assert.ok(read.ok);
+        assert.equal(read.value.nativeValue, 0n);
+        assert.ok(isSameAccount(read.value.target, token, family));
+        assert.equal(read.value.approval?.amountBase, 0n);
+        const spender = read.value.approval?.spender;
+        assert.ok(spender !== undefined && isSameAccount(spender, to, family));
+        await Promise.resolve();
+      },
+    },
+  ];
 }
 
 function simulationChecks(harness: ChainFamilyHarness): readonly ContractCheck[] {
@@ -173,6 +198,7 @@ export function chainFamilyContract(harness: ChainFamilyHarness): readonly Contr
     },
     ...draftChecks(harness),
     ...simulationChecks(harness),
+    ...approvalChecks(harness),
     ...nativeChecks(harness),
   ];
 }

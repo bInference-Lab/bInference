@@ -25,7 +25,7 @@ export {
 } from "./caip/chain-ref.js";
 export type { ChainRef, ChainRefParts } from "./caip/chain-ref.js";
 export type { DraftCall, TokenApproval } from "./draft-call.js";
-export type { TokenTransfer } from "./token-transfer.js";
+export type { TokenApprovalRequest, TokenTransfer } from "./token-transfer.js";
 export type {
   ChainFamily,
   ChainRegistry,
@@ -80,7 +80,12 @@ export type {
   AutoModeGrantWire,
   AutoModeKind,
 } from "./signing/auto-mode-grant.js";
-export { checkFillGrant, fillGrantSchema, orderNowSchema } from "./signing/fill-grant.js";
+export {
+  checkFillGrant,
+  fillGrantLifetimeMs,
+  fillGrantSchema,
+  orderNowSchema,
+} from "./signing/fill-grant.js";
 export type {
   FillGrant,
   FillGrantCheck,

@@ -121,10 +121,12 @@ function fillSpent(m: Model, a: Fill): bigint | undefined {
   return isToken ? action.amount : undefined;
 }
 
-// The order as it stands: active, before its expiry, with a fill left, and no fill since the grant.
+// The order as it stands: active, or paused by a freeze for a later step, before its expiry,
+// with a fill left, and no fill since the grant.
 function fillOrderOk(m: Model, a: Fill): boolean {
   const fillsLeft = a.maxFills === undefined || a.fills < a.maxFills;
-  const isActive = a.state === "active" && m.nowMs < a.orderExpiresAtMs;
+  const signsIn = a.state === "active" || (a.state === "paused" && m.stepIndex > 0);
+  const isActive = signsIn && m.nowMs < a.orderExpiresAtMs;
   return isActive && fillsLeft && a.fills === a.fillsBefore;
 }
 
@@ -137,10 +139,25 @@ function fillSpendOk(m: Model, a: Fill): boolean {
 
 // Decision 0210: one fill of the order the owner confirmed, while it is active and recorded no
 // fill since the grant, at most the fill's size and fee cap; a cancel within a minute of expiry.
+// Decision 0211: a reset to 0 of the fill's token approval moves nothing, like a cancel.
+function isRevoke(m: Model, a: Fill): boolean {
+  const { action } = m;
+  return (
+    action.kind === "approve" &&
+    action.amount === 0n &&
+    a.spendToken !== undefined &&
+    sameAccount(action.token, a.spendToken.chain, a.spendToken.address)
+  );
+}
+
 function fillOk(m: Model, a: Fill): boolean {
+  const lives = a.grantedAtMs <= m.nowMs && a.expiresAtMs - a.grantedAtMs <= 60_000;
   const bound =
-    a.intent === intents[0] && a.grantOrder === a.order && a.grantOrderTerms === a.orderTerms;
-  if (m.replaces.kind === "cancel") {
+    lives &&
+    a.intent === intents[0] &&
+    a.grantOrder === a.order &&
+    a.grantOrderTerms === a.orderTerms;
+  if (m.replaces.kind === "cancel" || isRevoke(m, a)) {
     return bound && m.nowMs < a.expiresAtMs + 60_000;
   }
   return bound && fillOrderOk(m, a) && fillSpendOk(m, a);
@@ -255,6 +272,7 @@ const routerCall: Model = {
   },
   termsHash: hashes[0] ?? "",
   nowMs,
+  stepIndex: 0,
 };
 const fillAuthorization: Fill = {
   kind: "fill",
@@ -263,6 +281,7 @@ const fillAuthorization: Fill = {
   grantOrder: orders[0] ?? "",
   grantOrderTerms: hashes[1] ?? "",
   fillsBefore: 1,
+  grantedAtMs: nowMs,
   expiresAtMs: nowMs + 60_000,
   cap: gwei,
   maxBase: 10n ** 16n,
@@ -406,6 +425,7 @@ const fillChanges: readonly fc.Arbitrary<Change>[] = [
   fillChange(fc.record({ maxFills: fc.nat(3) })),
   fillChange(fc.record({ state: fc.constantFrom("active", "paused", "filled", "ended") })),
   fillChange(fc.record({ expiresAtMs: time })),
+  fillChange(fc.record({ grantedAtMs: time })),
   fillChange(fc.record({ orderExpiresAtMs: time })),
   fillChange(fc.record({ cap: fc.constantFrom(gwei - 1n, gwei, gwei + 1n) })),
   fillChange(fc.record({ maxBase: amount })),
@@ -523,6 +543,7 @@ const change: fc.Arbitrary<Change> = fc.oneof(
   accounts.map((recipients): Change => (m) => ({ ...m, recipients })),
   fc.constantFrom(...hashes).map((termsHash): Change => (m) => ({ ...m, termsHash })),
   time.map((now): Change => (m) => ({ ...m, nowMs: now })),
+  fc.constantFrom(0, 1).map((stepIndex): Change => (m) => ({ ...m, stepIndex })),
   fc
     .record({
       intent: fc.constantFrom(...intents),

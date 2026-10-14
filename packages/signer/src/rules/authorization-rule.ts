@@ -78,6 +78,7 @@ function fillHolds(view: RuleView, grant: FillGrant, current: OrderNow): boolean
     order: current,
     action: step.action,
     isCancel,
+    stepIndex: step.index,
     nowMs: view.nowMs,
     ...(isCancel || fee === undefined ? {} : { feePerGasNativeBase: fee }),
   };

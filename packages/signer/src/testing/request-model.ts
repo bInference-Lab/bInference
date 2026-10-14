@@ -62,6 +62,7 @@ export type Authorization =
       readonly grantOrder: string;
       readonly grantOrderTerms: string;
       readonly fillsBefore: number;
+      readonly grantedAtMs: number;
       readonly expiresAtMs: number;
       readonly cap: bigint;
       /** The token the fill spends; none for the native coin. */
@@ -125,6 +126,8 @@ export interface Model {
   readonly authorization: Authorization;
   readonly termsHash: string;
   readonly nowMs: number;
+  /** The step's place in its intent's plan. */
+  readonly stepIndex: number;
 }
 
 export const c56 = "eip155:56";
@@ -210,7 +213,7 @@ function fillAuthorizationOf(a: Extract<Authorization, { kind: "fill" }>): SignA
     orderTermsHash: a.grantOrderTerms,
     fillsBefore: a.fillsBefore,
     termsHash: a.termsHash,
-    grantedAtMs: nowMs - 1,
+    grantedAtMs: a.grantedAtMs,
     expiresAtMs: a.expiresAtMs,
     networkFeeCapNativeBase: a.cap,
     spend: spendToken === undefined ? { maxBase } : { token: account(spendToken), maxBase },
@@ -294,7 +297,7 @@ export function render(m: Model): AuthorizeInput {
     },
     intent: idSchema("int").parse(intents[0]),
     step: {
-      index: 0,
+      index: m.stepIndex,
       chain: chainRefSchema.parse(m.stepChain),
       action: actionOf(m.action),
       ...replacesOf(m.replaces),
