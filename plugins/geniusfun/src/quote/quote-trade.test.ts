@@ -1,6 +1,7 @@
 import { type AssetRef, assetRefSchema, type QuoteRequest } from "@binference/plugin-sdk";
 import { type Address, parseEther, zeroAddress } from "viem";
 import { describe, expect, it } from "vitest";
+import { launchPhase } from "../contracts/genius-calls.js";
 import type { RecordedCall } from "../testing/recorded-answers.js";
 import { scriptedChain } from "../testing/recorded-chain.js";
 import {
@@ -28,9 +29,20 @@ import { curveQuote } from "./quote-trade.js";
 
 const live = (): AbortSignal => new AbortController().signal;
 const tenthBnb = { asset: bnb, base: parseEther("0.1") };
+const factoryM42: Address = "0x37eE8AeE29C5efd3C1A7edA6dF3F510779928a37";
 const factoryM41: Address = "0x78EAE9537C0ef90DFe9B7ae964682Fe8138afe31";
-const factories: readonly Address[] = ["0x37eE8AeE29C5efd3C1A7edA6dF3F510779928a37", factoryM41];
+const factories: readonly Address[] = [factoryM42, factoryM41];
 const stackAddress: Address = "0x7D227534c39C41033Af86DBC8aDE1BF8D68b0157";
+// The m4.2 factory's record of the recorded token, in another phase.
+function phaseAnswer(phase: number): readonly [string, RecordedCall] {
+  return launchAnswer(factoryM42, {
+    token: stackAddress,
+    curve: stackCurve,
+    pairToken: zeroAddress,
+    phase,
+  });
+}
+
 // A token no recording holds, which the tests give the answers they need.
 const unlisted: Address = "0x00000000000000000000000000000000000Ba5E5";
 const unlistedToken: AssetRef = assetRefSchema.parse(`eip155:56/erc20:${unlisted}`);
@@ -119,11 +131,13 @@ describe("geniusfun quotes", () => {
     await expect(quoteWith([], request)).resolves.toStrictEqual({ ok: false, error: reason });
   });
 
-  it("gives no route for a curve that is ready to graduate", async () => {
-    await expect(quoteWith([sellableAnswer(stackCurve, 0n)])).resolves.toStrictEqual({
-      ok: false,
-      error: "not_on_curve",
-    });
+  it.each([
+    ["a curve that is ready to graduate", sellableAnswer(stackCurve, 0n), "graduating"],
+    ["a launch swept before its pool", phaseAnswer(launchPhase.swept), "graduating"],
+    ["a launch with its pool", phaseAnswer(launchPhase.poolCreated), "not_on_curve"],
+    ["a rescued launch", phaseAnswer(launchPhase.rescued), "not_on_curve"],
+  ] as const)("gives no route for %s", async (_case, change, reason) => {
+    await expect(quoteWith([change])).resolves.toStrictEqual({ ok: false, error: reason });
   });
 
   it("gives no route, as not launched, for a token no stack made and no factory claims", async () => {

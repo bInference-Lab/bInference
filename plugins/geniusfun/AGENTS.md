@@ -20,7 +20,9 @@ apply here. Rules for this plugin:
 - The venue quotes only a token on its curve against the coin, USDT or USDC, with that asset. A
   token whose curve trades against another asset, a graduated token, one whose curve is ready to
   graduate, and a buy that would take the curve's last tokens are `no_route`, each with its reason
-  (`QuoteMiss`). Once a curve is ready to graduate, its curve read lets the token go to the pools.
+  (`QuoteMiss`). A launch whose curve is ready to graduate, or swept, stays held with no contract
+  until its pool exists (decision 0179): its trades go nowhere, never to pools anyone else made.
+  Only a launch with its pool, or one the stack's owner rescued, lets the token go to the pools.
 - Quotes are the curve's own arithmetic to the wei: the fee, the creator tax and the snipe tax off
   a buy's input, each rounded down, the fee and the creator tax off a sale's proceeds. A quote names
   the creator tax and the snipe tax as its tax, and the snipe tax apart (decision 0213). The curve

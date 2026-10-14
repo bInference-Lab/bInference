@@ -11,7 +11,9 @@ token goes to its curve and nowhere else.
   (`getLaunchedToken`), its curve among it.
 - **Curve read.** A token on its launch's curve, not graduated and still selling tokens, is held
   against what its curve trades it for, and names that curve as the launch's own contract. A token
-  graduated, ready to graduate, or never launched is off its curve, so the pools take over.
+  whose curve is ready to graduate, or swept, is held with no contract until its pool exists, so
+  it trades nowhere. A token with its pool, rescued, or never launched is off its curve, so the
+  pools take over.
 - **Quote.** The curve's reserves, fee and sellable tokens, the launch's creator tax, and the snipe
   tax the wallet would pay now (`currentSnipeTaxBps`), priced as the curve's verified code prices
   them, to the wei. Only against BNB, USDT or USDC. The quote names the taxes, and the snipe tax

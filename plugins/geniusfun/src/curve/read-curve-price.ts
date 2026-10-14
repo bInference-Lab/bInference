@@ -27,9 +27,10 @@ const hexData = /^0x(?:[0-9a-fA-F]{2})+$/;
  * `getReserves()`, whose quote reserve over its token reserve is the curve's price, and its
  * `sellableTokens()`, whose zero means the curve is ready to graduate and the read must change,
  * `replan`. The read is planned from the token's launch now, on the curve the host gave from the
- * venue's curve read (decision 0212): a token no listed stack launched, one off its curve, or an
- * asset that is no ERC-20 token of a chain the venue trades on is `no_price_read`. A curve that
- * is not the token's own, or a contract that cannot be read, throws.
+ * venue's curve read (decision 0212): a token no listed stack launched, a graduating launch, one
+ * off its curve, or an asset that is no ERC-20 token of a chain the venue trades on is
+ * `no_price_read`, so a graduating token waits for its pool unpriced. A curve that is not the
+ * token's own, or a contract that cannot be read, throws.
  */
 export async function readCurvePrice(
   request: PriceReadRequest,
@@ -67,7 +68,8 @@ function curvePrice(answers: readonly ReadAnswer[]): Result<Ratio, PriceMiss> {
   }
   try {
     const { quoteReserve, tokenReserve } = reservesOf(`0x${reserves.slice(2)}`);
-    // A curve that sells no more tokens is ready to graduate: the pools price the token next.
+    // A curve that sells no more tokens is ready to graduate: the read is planned again, and the
+    // token waits for its pool unpriced (decision 0179).
     if (numberOf(`0x${sellable.slice(2)}`) === 0n) {
       return err("replan");
     }

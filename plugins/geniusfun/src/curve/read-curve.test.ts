@@ -1,6 +1,7 @@
 import { accountRefSchema, assetRefSchema } from "@binference/plugin-sdk";
 import { type Address, zeroAddress } from "viem";
 import { describe, expect, it } from "vitest";
+import { launchPhase } from "../contracts/genius-calls.js";
 import type { RecordedCall } from "../testing/recorded-answers.js";
 import { scriptedChain } from "../testing/recorded-chain.js";
 import {
@@ -23,6 +24,18 @@ import { readCurve } from "./read-curve.js";
 
 const live = (): AbortSignal => new AbortController().signal;
 const curveOf = (address: Address) => accountRefSchema.parse(`eip155:56:${address}`);
+const stackFactory: Address = "0x37eE8AeE29C5efd3C1A7edA6dF3F510779928a37";
+const stackAddress: Address = "0x7D227534c39C41033Af86DBC8aDE1BF8D68b0157";
+
+// The m4.2 factory's record of the recorded token, in another phase.
+function phaseAnswer(phase: number): readonly [string, RecordedCall] {
+  return launchAnswer(stackFactory, {
+    token: stackAddress,
+    curve: stackCurve,
+    pairToken: zeroAddress,
+    phase,
+  });
+}
 
 async function curveWith(
   token: typeof bnb,
@@ -63,8 +76,21 @@ describe("geniusfun curve read", () => {
     await expect(curveWith(token)).resolves.toStrictEqual({ onCurve: false });
   });
 
-  it("lets go of a token whose curve is ready to graduate, so the pools take over", async () => {
-    await expect(curveWith(stackToken, [sellableAnswer(stackCurve, 0n)])).resolves.toStrictEqual({
+  it.each([
+    ["whose curve is ready to graduate", [sellableAnswer(stackCurve, 0n)]],
+    ["whose launch was swept before its pool", [phaseAnswer(launchPhase.swept)]],
+  ])("holds a token %s with no curve, so it goes nowhere", async (_case, changes) => {
+    await expect(curveWith(stackToken, changes)).resolves.toStrictEqual({
+      onCurve: true,
+      quoteAsset: bnb,
+    });
+  });
+
+  it.each([
+    ["with its pool", launchPhase.poolCreated],
+    ["whose reserves the stack's owner rescued", launchPhase.rescued],
+  ])("lets go of a token %s, so the pools take over", async (_case, phase) => {
+    await expect(curveWith(stackToken, [phaseAnswer(phase)])).resolves.toStrictEqual({
       onCurve: false,
     });
   });

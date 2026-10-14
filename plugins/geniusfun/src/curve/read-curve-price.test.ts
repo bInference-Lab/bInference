@@ -77,6 +77,15 @@ describe("geniusfun price read", () => {
     expect(read.price(answers)).toStrictEqual({ ok: false, error: "unpriced" });
   });
 
+  it("gives no read for a launch ready to graduate, so its token waits for its pool unpriced", async () => {
+    const rpc = scriptedChain({ calls: new Map([sellableAnswer(stackCurve, 0n)]) });
+    const request = { token: stackToken, contracts: contractsWith(stackCurve) };
+    await expect(readCurvePrice(request, partsOver(rpc), live())).resolves.toStrictEqual({
+      ok: false,
+      error: "no_price_read",
+    });
+  });
+
   it("gives no read for a graduated token", async () => {
     await expect(priceReadOf(graduatedToken, registryContracts)).resolves.toStrictEqual({
       ok: false,

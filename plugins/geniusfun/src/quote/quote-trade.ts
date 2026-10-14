@@ -22,13 +22,15 @@ import { curveImpactBps } from "./price-impact.js";
 /**
  * Why the venue quotes no route: not a buy or sale between a token and a quote asset it serves; a
  * token no listed stack launched, or one a stack the registry does not list says it launched; a
- * token off its curve (graduated, or ready to); a curve that trades against another asset than
- * the trade's; a buy that would take the curve's last tokens; or a trade that would get nothing.
+ * launch graduating (its curve ready to graduate, or swept, before its pool exists); a token off
+ * its curve (with its pool, or rescued); a curve that trades against another asset than the
+ * trade's; a buy that would take the curve's last tokens; or a trade that would get nothing.
  */
 export type QuoteMiss =
   | "no_curve_trade"
   | "not_launched"
   | "unknown_stack"
+  | "graduating"
   | "not_on_curve"
   | "other_pair"
   | "fills_curve"
@@ -112,8 +114,11 @@ async function curveTradeOf(
   if (launch.curve !== curve) {
     throw unreadable("the curve the host gave is not the token's own.");
   }
-  if (launch.phase !== launchPhase.notGraduated || state.sellable === 0n) {
+  if (launch.phase === launchPhase.poolCreated || launch.phase === launchPhase.rescued) {
     return err("not_on_curve");
+  }
+  if (launch.phase !== launchPhase.notGraduated || state.sellable === 0n) {
+    return err("graduating");
   }
   return launch.pairToken === side.quote ? ok({ side, launch, state }) : err("other_pair");
 }
