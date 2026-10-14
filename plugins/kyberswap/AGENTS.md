@@ -13,7 +13,9 @@ apply here. Rules for this plugin:
   a `*.schema.ts` file and leaves the folder as the venue's own types; nothing else holds an
   `unknown`. The API takes no key; the client id names binference.
 - A route through a PancakeSwap Infinity or Uniswap v4 pool whose hook is not on the chain's
-  allowlist is never quoted. Candidate pools nested in a route count as its pools.
+  allowlist is never quoted. Candidate pools nested in a route count as its pools. Each allowed
+  hook comes with the fee it keeps, and a quote names the largest fee of the hooks on its route
+  (decision 0214); KyberSwap's output already holds it back.
 - The decoder reads every term the host checks from the router call's bytes: the recipient, the
   exact input, the minimum return and the executor's deadline. A call in any other shape is
   `unknown_call`, never a guess.

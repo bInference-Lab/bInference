@@ -1,12 +1,13 @@
 import {
   BinferenceError,
+  type Bps,
   err,
   ok,
   type QuoteRequest,
   type Result,
   type VenueQuote,
 } from "@binference/plugin-sdk";
-import { aggregatorPairOf } from "@binference/plugin-sdk/evm";
+import { aggregatorPairOf, parseEvmAddress } from "@binference/plugin-sdk/evm";
 import type { Address } from "viem";
 import type { RouteQuery } from "../api/kyberswap-api.js";
 import type { FoundRoute } from "../api/route-answer.schema.js";
@@ -18,6 +19,7 @@ import { priceImpactOf } from "./price-impact.js";
 interface TradeQuery {
   readonly query: RouteQuery;
   readonly allowedHooks: ReadonlySet<Address>;
+  readonly hookFees: ReadonlyMap<Address, Bps>;
 }
 
 interface CheckedQuery {
@@ -56,10 +58,21 @@ async function findRoute(
   return found;
 }
 
-function quoteOf(route: FoundRoute, request: QuoteRequest): VenueQuote {
+// The largest fee an allowed hook on the route keeps; none for a route that passes no such hook.
+function hookFeeOf(route: FoundRoute, hookFees: ReadonlyMap<Address, Bps>): Bps | undefined {
+  return route.hops.reduce<Bps | undefined>((largest, hop) => {
+    const hook = hop.hookAddress === undefined ? undefined : parseEvmAddress(hop.hookAddress);
+    const fee = hook?.ok === true ? hookFees.get(hook.value) : undefined;
+    return fee !== undefined && fee > (largest ?? 0) ? fee : largest;
+  }, undefined);
+}
+
+function quoteOf(route: FoundRoute, request: QuoteRequest, trade: TradeQuery): VenueQuote {
+  const hookFeeBps = hookFeeOf(route, trade.hookFees);
   return {
     expectedOut: { asset: request.assetOut, base: route.amountOut },
     priceImpactBps: priceImpactOf(route.amountInUsd, route.amountOutUsd),
+    ...(hookFeeBps === undefined ? {} : { hookFeeBps }),
     route: route.summary,
   };
 }
@@ -72,13 +85,15 @@ function queryOf(request: QuoteRequest, parts: VenueParts): TradeQuery | undefin
   }
   const { on, tokenIn, tokenOut } = pair;
   const query = { slug: on.slug, tokenIn, tokenOut, amountIn: request.amountIn.base };
-  return { query: { ...query, excludedSources: [] }, allowedHooks: on.allowedHooks };
+  const { allowedHooks, hookFees } = on;
+  return { query: { ...query, excludedSources: [] }, allowedHooks, hookFees };
 }
 
 /**
  * Quotes a trade on KyberSwap. A route through a pool whose hook is not on the chain's allowlist is
  * dropped, and KyberSwap is asked once more without those pools' DEX ids; a second route with an
  * unlisted hook, an asset KyberSwap does not trade here or a pair it cannot route is `no_route`.
+ * A quote names the largest fee of the allowed hooks its route passes.
  * An answer for another trade, router or fee throws `kyberswap.bad_route`.
  */
 export async function quoteTrade(
@@ -96,11 +111,11 @@ export async function quoteTrade(
     unlistedHookSources(route.hops, trade.allowedHooks);
   const first = await findRoute({ ...checked, query: trade.query }, signal);
   if (!first.ok || unlisted(first.value).length === 0) {
-    return first.ok ? ok(quoteOf(first.value, request)) : first;
+    return first.ok ? ok(quoteOf(first.value, request, trade)) : first;
   }
   const query = { ...trade.query, excludedSources: unlisted(first.value) };
   const second = await findRoute({ ...checked, query }, signal);
   return second.ok && unlisted(second.value).length === 0
-    ? ok(quoteOf(second.value, request))
+    ? ok(quoteOf(second.value, request, trade))
     : err("no_route");
 }

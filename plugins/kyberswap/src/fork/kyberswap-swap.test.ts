@@ -5,6 +5,7 @@ import {
   accountRefSchema,
   assetRefSchema,
   BinferenceError,
+  bpsSchema,
   type BuildRequest,
   type DecodedEffect,
   type Http,
@@ -26,6 +27,7 @@ import {
   zeroAddress,
 } from "viem";
 import { describe, expect, it } from "vitest";
+import type { KyberswapHook } from "../kyberswap-options.js";
 import { createKyberswapVenue } from "../kyberswap-venue.js";
 import { recordedWallet } from "../testing/recorded-terms.js";
 
@@ -82,7 +84,10 @@ function accountOn(fork: Fork, address: Address): AccountRef {
 
 // KyberSwap refuses anvil's public test accounts, so the trades come from the recorded wallet,
 // impersonated on the fork with 10 BNB.
-async function tradingOn(fork: Fork): Promise<Trading> {
+async function tradingOn(
+  fork: Fork,
+  allowedHooks: readonly KyberswapHook[] = [],
+): Promise<Trading> {
   await fork.call("anvil_impersonateAccount", [wallet]);
   await fork.call("anvil_setCode", [wallet, "0x"]);
   await fork.call("anvil_setBalance", [wallet, toHex(10n * 10n ** 18n)]);
@@ -90,7 +95,7 @@ async function tradingOn(fork: Fork): Promise<Trading> {
   const venue = createKyberswapVenue({
     http: kyberswapHttp(asked),
     clientId: "binference",
-    chains: [{ chain: fork.chain.ref, nativeAsset: fork.chain.nativeAsset, allowedHooks: [] }],
+    chains: [{ chain: fork.chain.ref, nativeAsset: fork.chain.nativeAsset, allowedHooks }],
   });
   const contracts = {
     "meta-aggregation-router-v2": accountOn(fork, router),
@@ -206,6 +211,45 @@ async function holdUsdt(fork: Fork, amount: bigint): Promise<void> {
   await fork.send({ from: wallet, to: pancakeRouter, value: 10n ** 18n, data });
 }
 
+// Genius.fun's pool hooks, one per stack, each keeping 2% of a swap, as BSC's allowlist names them.
+const geniusHooks = {
+  m41: bscContract("geniusfun", "hook-m4-1"),
+  m42: bscContract("geniusfun", "hook-m4-2"),
+};
+const allowedGeniusHooks: readonly KyberswapHook[] = Object.values(geniusHooks).map((address) => ({
+  address,
+  feeBps: bpsSchema.parse(200),
+}));
+// Tokens whose launch graduated into its Genius.fun pool: one of each stack, read on 2026-10-14.
+const graduated = {
+  m41: getAddress("0xc458f88CB2618dC66C959e3e3f56383A1bfBEE74"),
+  m42: getAddress("0x5C9Ff301Ec2d882B635813739cC07330788d7322"),
+};
+
+// A buy of a graduated token with 0.01 BNB.
+function graduatedBuy(fork: Fork, trading: Trading, token: Address): QuoteRequest {
+  return {
+    wallet: recordedWallet,
+    amountIn: { asset: fork.chain.nativeAsset, base: 10n ** 16n },
+    assetOut: assetRefSchema.parse(`${fork.chain.ref}/erc20:${token}`),
+    contracts: trading.contracts,
+  };
+}
+
+// The hooks a quote's route passes, or none for a pair it cannot route.
+function routedHooks(quote: Result<VenueQuote, "no_route">): readonly string[] {
+  return quote.ok ? hooksIn(quote.value) : [];
+}
+
+async function tokenBalanceOf(fork: Fork, token: Address): Promise<bigint> {
+  return fork.client.readContract({
+    address: token,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: [wallet],
+  });
+}
+
 describe("kyberswap on a BSC fork", () => {
   it("buys USDT with BNB through KyberSwap's router at the pinned block", async ({
     signal,
@@ -280,5 +324,33 @@ describe("kyberswap on a BSC fork", () => {
       expect(usdtBefore - (await usdtOf(fork))).toBe(amountIn);
       expect(received).toBeGreaterThanOrEqual(effect.minOut.base);
       await annotate(outcomeText({ trading, quote, received, receipts }));
+    }));
+
+  it("buys a graduated launchpad token through its hooked pool once the hook is allowed", async ({
+    signal,
+    annotate,
+  }) =>
+    withFork(signal, async (fork) => {
+      const trading = await tradingOn(fork, allowedGeniusHooks);
+      const request = graduatedBuy(fork, trading, graduated.m41);
+      const quote = valueOf(await trading.venue.quote(request, { signal }));
+      expect(hooksIn(quote)).toContain(geniusHooks.m41);
+      expect(quote.hookFeeBps).toBe(200);
+      const terms = termsOf(request, quote);
+      const drafts = await trading.venue.build(terms, { signal });
+      const effect = tradeEffect(trading, terms, drafts);
+      const receipts = await sendAll(fork, drafts);
+      const received = await tokenBalanceOf(fork, graduated.m41);
+      expect(receipts.map((receipt) => receipt.status)).toStrictEqual(["success"]);
+      expect(received).toBeGreaterThanOrEqual(effect.minOut.base);
+      const unhooked = await tradingOn(fork);
+      const withoutHook = await unhooked.venue.quote(graduatedBuy(fork, unhooked, graduated.m41), {
+        signal,
+      });
+      expect(routedHooks(withoutHook)).not.toContain(geniusHooks.m41);
+      const m42 = await trading.venue.quote(graduatedBuy(fork, trading, graduated.m42), { signal });
+      await annotate(
+        `${outcomeText({ trading, quote, received, receipts })}; without the hook allowed: ${JSON.stringify(routedHooks(withoutHook))}; an m4.2 graduated token ${graduated.m42} routes through hooks ${JSON.stringify(routedHooks(m42))}`,
+      );
     }));
 });

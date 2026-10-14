@@ -1,6 +1,12 @@
-import { accountRefSchema, assetRefSchema, type HttpResponse } from "@binference/plugin-sdk";
+import {
+  accountRefSchema,
+  assetRefSchema,
+  bpsSchema,
+  type HttpResponse,
+} from "@binference/plugin-sdk";
 import { successOf } from "@binference/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
+import type { KyberswapHook } from "../kyberswap-options.js";
 import { buyRoute } from "../testing/recorded-buy.js";
 import { hookedRoute, hooklessRoute, noRouteAnswer } from "../testing/recorded-routes.js";
 import { sellRoute } from "../testing/recorded-sell.js";
@@ -29,7 +35,10 @@ function summaryIn(route: string): string {
   return JSON.stringify(JSON.parse(match[1]));
 }
 
-async function quoteWith(answers: Readonly<Record<string, HttpResponse>>, hooks: string[] = []) {
+async function quoteWith(
+  answers: Readonly<Record<string, HttpResponse>>,
+  hooks: readonly KyberswapHook[] = [],
+) {
   const http = scriptedApi(answers);
   const quote = await venueOver(http, hooks).quote(buyRequest, { signal: live() });
   return { quote, urls: http.requests().map((request) => request.url) };
@@ -68,9 +77,21 @@ describe("quotes on kyberswap", () => {
 
   it("keeps a route through a hook on the allowlist, in any letter case", async () => {
     const answers = { [buyRoutesUrl]: answer(hookedRoute) };
-    const { quote, urls } = await quoteWith(answers, [fairflowHook.toLowerCase()]);
+    const hooks = [{ address: fairflowHook.toLowerCase(), feeBps: bpsSchema.parse(0) }];
+    const { quote, urls } = await quoteWith(answers, hooks);
     expect(urls).toStrictEqual([buyRoutesUrl]);
     expect(successOf(quote).expectedOut.base).toBe(73_330_472_622_321_619_266n);
+    expect(successOf(quote)).not.toHaveProperty("hookFeeBps");
+  });
+
+  it("names the fee the allowed hooks on its route keep, the largest of them", async () => {
+    const answers = { [buyRoutesUrl]: answer(hookedRoute) };
+    const hooks = [
+      { address: fairflowHook, feeBps: bpsSchema.parse(200) },
+      { address: "0x8E6f8eBbD62B60085B703C40B460daE802eDC51b", feeBps: bpsSchema.parse(300) },
+    ];
+    const { quote } = await quoteWith(answers, hooks);
+    expect(successOf(quote).hookFeeBps).toBe(200);
   });
 
   it.each([

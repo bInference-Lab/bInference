@@ -1,4 +1,11 @@
-import type { AssetRef, ChainRef, ChainRegistry, RegisteredChain, Venue } from "@binference/chain";
+import type {
+  AssetRef,
+  ChainRef,
+  ChainRegistry,
+  PoolHookDefinition,
+  RegisteredChain,
+  Venue,
+} from "@binference/chain";
 import {
   type CurveChain,
   erc20AssetRef,
@@ -7,9 +14,9 @@ import {
   evmFamilyId,
   parseEvmAddress,
 } from "@binference/chain-evm";
-import { BinferenceError, type Clock, type Http, type Logger } from "@binference/core";
+import { BinferenceError, bpsSchema, type Clock, type Http, type Logger } from "@binference/core";
 import { createFlapVenue } from "@binference/flap";
-import { createKyberswapVenue } from "@binference/kyberswap";
+import { createKyberswapVenue, type KyberswapHook } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
 import type { ChainsConfig, VenuesConfig } from "../config/schema/chains-venues.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
@@ -20,6 +27,8 @@ export interface ReadVenuesOptions {
   readonly venues: VenuesConfig;
   readonly chains: Pick<ChainsConfig, "enabled">;
   readonly registry: ChainRegistry;
+  /** The pool hooks routes may pass on each chain, as registry contracts with their fees. */
+  readonly poolHooks: ReadonlyMap<ChainRef, readonly PoolHookDefinition[]>;
   /** Each enabled chain's reads, whose RPC failover a launchpad reads its contracts through. */
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   readonly secrets: SecretReader;
@@ -79,14 +88,36 @@ function flapChains(
   });
 }
 
+// The chain's allowed pool hooks, each at its registry address with its fee (decision 0214). A hook
+// the registry does not list is a fault of this build.
+function allowedHooksOf(
+  chain: RegisteredChain,
+  hooks: readonly PoolHookDefinition[],
+): readonly KyberswapHook[] {
+  return hooks.map((hook) => {
+    const { contracts } = chain.definition;
+    const listed = contracts.find(
+      (item) => item.venue === hook.venue && item.name === hook.contract,
+    );
+    if (listed === undefined) {
+      throw new BinferenceError({
+        code: "cli.hook_missing",
+        message: `The registry of ${chain.ref} lists no hook ${hook.venue}/${hook.contract}.`,
+        details: { chain: chain.ref },
+      });
+    }
+    return { address: listed.address, feeBps: bpsSchema.parse(hook.feeBps) };
+  });
+}
+
 /**
  * The venues the self-hosted engine quotes on, on each enabled chain of the EVM family: KyberSwap,
  * keyless, always; the Flap launchpad, over each chain's RPC failover, always; OKX's DEX
  * aggregator only when `venues.keys.okx` names the owner's key (decision 0105). The money path
  * asks every venue an agent allows and keeps the best plan (decision 0107), and sends a token on
  * Flap's curve to Flap alone (decision 0179). An OKX key that cannot be read is logged and OKX
- * left out: KyberSwap still routes. No pool hook is on the allowlist yet, so routes through hooked
- * pools are dropped.
+ * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
+ * names, with their fees, and drops routes through any other hooked pool (decision 0214).
  */
 export async function readVenues(options: ReadVenuesOptions): Promise<readonly Venue[]> {
   const enabled = options.registry
@@ -101,7 +132,11 @@ export async function readVenues(options: ReadVenuesOptions): Promise<readonly V
   const kyberswap = createKyberswapVenue({
     http,
     clientId: options.venues.kyberClientId,
-    chains: chains.map((chain) => ({ ...chain, allowedHooks: [] })),
+    chains: enabled.map((chain) => ({
+      chain: chain.ref,
+      nativeAsset: evmChainOf(chain.definition).nativeAsset,
+      allowedHooks: allowedHooksOf(chain, options.poolHooks.get(chain.ref) ?? []),
+    })),
   });
   const flap = createFlapVenue({ chains: flapChains(enabled, options.reads) });
   const keys = await okxKeysOf(options);

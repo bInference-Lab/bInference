@@ -44,6 +44,12 @@ export interface VenueQuote {
    */
   readonly snipeTaxBps?: Bps;
   /**
+   * The largest share a pool hook on the route keeps of a swap through its pool, as the chain's
+   * hook allowlist states it, such as a launchpad's hook on its graduated pools. The expected
+   * output already holds it back. Left out, the route passes no hook that keeps a share.
+   */
+  readonly hookFeeBps?: Bps;
+  /**
    * The venue's own record of the route it quoted, given back to its builder. The host stores it
    * and never reads it.
    */
@@ -56,6 +62,7 @@ export interface VenueQuoteWire {
   readonly priceImpactBps: number;
   readonly taxBps?: number;
   readonly snipeTaxBps?: number;
+  readonly hookFeeBps?: number;
   readonly route?: string;
 }
 
@@ -74,6 +81,7 @@ export const venueQuoteSchema: z.ZodType<VenueQuote, VenueQuoteWire> = z
     priceImpactBps: bpsSchema,
     taxBps: bpsSchema.exactOptional(),
     snipeTaxBps: bpsSchema.exactOptional(),
+    hookFeeBps: bpsSchema.exactOptional(),
     route: z.string().exactOptional(),
   })
   .refine(isPartOfTax, { message: "A snipe tax is part of the quote's tax." });

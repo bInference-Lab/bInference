@@ -1,2 +1,2 @@
-export type { KyberswapChain, KyberswapOptions } from "./kyberswap-options.js";
+export type { KyberswapChain, KyberswapHook, KyberswapOptions } from "./kyberswap-options.js";
 export { createKyberswapVenue } from "./kyberswap-venue.js";

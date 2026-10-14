@@ -9,7 +9,8 @@ MetaAggregationRouterV2, the router the registry lists for it.
 - **Quote.** `GET /{chain}/api/v1/routes` with the exact input. The answer must trade the asked
   tokens and amount through the registry's router, with no fee. A route through a pool whose hook
   is off the chain's allowlist is dropped, and the venue asks once more without those pools' DEX
-  ids; a second route through an unlisted hook is no route.
+  ids; a second route through an unlisted hook is no route. A route through allowed hooks names
+  the largest fee they keep (`hookFeeBps`), which its output already holds back.
 - **Build.** `POST /{chain}/api/v1/route/build` with the quoted route, the agent's wallet as sender
   and recipient, and the host's deadline. The call must go to the registry's router and hand the
   input to the registry's AggregationExecutorProxy. When the API's minimum return is below the
@@ -26,6 +27,7 @@ MetaAggregationRouterV2, the router the registry lists for it.
 | `createKyberswapVenue`          | The `kyberswap` venue over an `Http` port, for the chains it is given |
 | `KyberswapOptions`              | The `Http` port, the client id and the chains                         |
 | `KyberswapChain`                | One chain: its id, its coin and the pool hooks routes may pass        |
+| `KyberswapHook`                 | An allowed pool hook and the fee it keeps                             |
 | `@binference/kyberswap/testing` | Recorded API answers and a venue over them, for tests                 |
 
 ## Example

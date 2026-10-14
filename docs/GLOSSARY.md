@@ -197,8 +197,9 @@ new name here first, in the change that uses it.
 - **launch contract**: a contract a launchpad makes with each launch, such as a token's own curve.
   No registry lists one: the launchpad's curve read names it for a token it holds, and only that
   token's trades and price reads call it.
-- **hook allowlist**: per chain, the pool hooks a route may pass through. A route through a
-  PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped, aggregator routes too.
+- **hook allowlist**: per chain, the pool hooks a route may pass through, each with the fee it
+  keeps. A route through a PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped,
+  aggregator routes too.
 
 ### Chat and the agent
 

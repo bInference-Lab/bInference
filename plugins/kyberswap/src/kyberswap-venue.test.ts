@@ -1,4 +1,4 @@
-import { assetRefSchema, chainRefSchema, type TxDraft } from "@binference/plugin-sdk";
+import { assetRefSchema, bpsSchema, chainRefSchema, type TxDraft } from "@binference/plugin-sdk";
 import {
   quoterContract,
   txBuilderContract,
@@ -130,7 +130,19 @@ describe("the kyberswap venue", () => {
     ["a chain KyberSwap's API has no name for here", { chain: chainRefSchema.parse("eip155:1") }],
     ["the coin of another chain", { nativeAsset: assetRefSchema.parse("eip155:1/slip44:60") }],
     ["a token as the native asset", { nativeAsset: usdt }],
-    ["a hook that is no EVM address", { allowedHooks: ["0x44428c6c"] }],
+    [
+      "a hook that is no EVM address",
+      { allowedHooks: [{ address: "0x44428c6c", feeBps: bpsSchema.parse(0) }] },
+    ],
+    [
+      "a hook named twice",
+      {
+        allowedHooks: [
+          { address: "0x44428C6ce391915D51F963C0Dd395Cd0f95fdFD2", feeBps: bpsSchema.parse(0) },
+          { address: "0x44428c6ce391915d51f963c0dd395cd0f95fdfd2", feeBps: bpsSchema.parse(0) },
+        ],
+      },
+    ],
   ])("refuses to trade on %s", (_case, change) => {
     const options = { http: scriptedApi({}), clientId: "binference", chains: [chainWith(change)] };
     expect(() => createKyberswapVenue(options)).toThrow(

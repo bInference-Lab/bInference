@@ -16,6 +16,7 @@ import {
   hostBuildRequest,
   type ScriptedHttp,
 } from "@binference/plugin-sdk/testing";
+import type { KyberswapHook } from "../kyberswap-options.js";
 import { createKyberswapVenue } from "../kyberswap-venue.js";
 import { recordedDeadlineSec, recordedWallet } from "./recorded-terms.js";
 
@@ -84,7 +85,7 @@ export function scriptedApi(answers: Readonly<Record<string, HttpResponse>>): Sc
 }
 
 /** The KyberSwap venue on BSC over a scripted API, with the hooks it may route through. */
-export function venueOver(http: ScriptedHttp, allowedHooks: readonly string[] = []): Venue {
+export function venueOver(http: ScriptedHttp, allowedHooks: readonly KyberswapHook[] = []): Venue {
   return createKyberswapVenue({
     http,
     clientId: "binference",

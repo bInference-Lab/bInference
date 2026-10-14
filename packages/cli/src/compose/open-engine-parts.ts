@@ -3,11 +3,12 @@ import {
   type ChainRegistry,
   chainRefSchema,
   createChainRegistry,
+  type PoolHookDefinition,
   type PriceFeedDefinition,
   type Venue,
 } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
-import { bsc, bscPriceFeeds } from "@binference/chains";
+import { bsc, bscPoolHooks, bscPriceFeeds } from "@binference/chains";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
 import type { BackupFailure } from "@binference/engine/backups";
@@ -198,6 +199,11 @@ export function selfHostedChains(): ChainRegistry {
     families: [createEvmFamily()],
     signingSchemes: [createEvmSigningScheme()],
   });
+}
+
+/** The pool hooks routes may pass on each chain this binference serves (decision 0214). */
+export function selfHostedPoolHooks(): ReadonlyMap<ChainRef, readonly PoolHookDefinition[]> {
+  return new Map([[chainRefSchema.parse(bsc.id), bscPoolHooks]]);
 }
 
 /** The Chainlink feeds of each chain this binference serves, as the registry names them. */

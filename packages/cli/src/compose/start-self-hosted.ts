@@ -25,6 +25,7 @@ import {
   openEngineStores,
   type Opening,
   selfHostedChains,
+  selfHostedPoolHooks,
 } from "./open-engine-parts.js";
 import { readRpcUrls } from "./read-rpc-urls.js";
 import { readVenues } from "./read-venues.js";
@@ -102,6 +103,7 @@ async function readSecretParts(
     venues: config.venues,
     chains: config.chains,
     registry: chains,
+    poolHooks: selfHostedPoolHooks(),
     reads,
     secrets,
     http,

@@ -422,7 +422,9 @@ hash and nonce and never signed again, and the intent goes on to `executing` or 
   Every allowed venue quotes at once; one silent after 3 s is skipped.
 - One Infinity hook allowlist covers every route, aggregators included: a route through a pool whose
   hook is not on the list is dropped and the next quote is used. An aggregator whose answer names no
-  hooks, such as OKX, routes through no hooked pool at all.
+  hooks, such as OKX, routes through no hooked pool at all. The list is the registry's, each hook
+  with the fee it keeps, and a quote through allowed hooks names the largest
+  ([decision 0214](DECISIONS.md#d0214)).
 - 1inch and 0x join when the owner adds their keys.
 - Launchpad tokens still on their curve trade directly on Flap's Portal, four.meme's TokenManager,
   or the curve of their own Genius.fun launch ([decision 0212](DECISIONS.md#d0212)).

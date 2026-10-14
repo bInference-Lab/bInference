@@ -2,6 +2,7 @@ import {
   type AssetRef,
   assetRefParts,
   BinferenceError,
+  type Bps,
   type ChainRef,
 } from "@binference/plugin-sdk";
 import { parseEvmAddress } from "@binference/plugin-sdk/evm";
@@ -16,6 +17,8 @@ export interface ChainSetup {
   readonly nativeAsset: AssetRef;
   /** The allowed hooks, in checksum form. */
   readonly allowedHooks: ReadonlySet<Address>;
+  /** The fee each allowed hook keeps, by its address in checksum form. */
+  readonly hookFees: ReadonlyMap<Address, Bps>;
 }
 
 // KyberSwap's API names each chain in its path; its API reference lists the names by chain id.
@@ -30,16 +33,20 @@ function refuse(chain: string, problem: string): BinferenceError {
   });
 }
 
-function hooksOf(item: KyberswapChain): ReadonlySet<Address> {
-  return new Set(
-    item.allowedHooks.map((hook) => {
-      const parsed = parseEvmAddress(hook);
+function hookFeesOf(item: KyberswapChain): ReadonlyMap<Address, Bps> {
+  const fees = new Map(
+    item.allowedHooks.map((hook): [Address, Bps] => {
+      const parsed = parseEvmAddress(hook.address);
       if (!parsed.ok) {
         throw refuse(item.chain, "an allowed hook is no EVM address.");
       }
-      return parsed.value;
+      return [parsed.value, hook.feeBps];
     }),
   );
+  if (fees.size !== item.allowedHooks.length) {
+    throw refuse(item.chain, "an allowed hook is named twice.");
+  }
+  return fees;
 }
 
 function setupOf(item: KyberswapChain): ChainSetup {
@@ -51,13 +58,15 @@ function setupOf(item: KyberswapChain): ChainSetup {
   if (native.chain !== item.chain || native.assetNamespace !== "slip44") {
     throw refuse(item.chain, "its native asset is not the chain's own coin.");
   }
-  return { chain: item.chain, slug, nativeAsset: item.nativeAsset, allowedHooks: hooksOf(item) };
+  const hookFees = hookFeesOf(item);
+  const allowedHooks = new Set(hookFees.keys());
+  return { chain: item.chain, slug, nativeAsset: item.nativeAsset, allowedHooks, hookFees };
 }
 
 /**
  * Reads the chains the venue trades on, keyed by chain. No chain, a chain KyberSwap's API has no
- * name for, a native asset that is not the chain's coin, a hook that is no EVM address or a chain
- * named twice is a fault, so the venue fails when it is made, never when it trades.
+ * name for, a native asset that is not the chain's coin, a hook that is no EVM address, a hook or
+ * a chain named twice is a fault, so the venue fails when it is made, never when it trades.
  */
 export function chainSetupsOf(
   chains: readonly KyberswapChain[],

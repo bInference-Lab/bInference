@@ -49,6 +49,16 @@ describe("venue schemas", () => {
     expect(venueQuoteSchema.safeParse(untaxed).success).toBe(false);
   });
 
+  it("reads the fee a route's pool hooks keep in its quote", () => {
+    const quote = {
+      expectedOut: { asset: token, base: "2" },
+      priceImpactBps: 230,
+      hookFeeBps: 200,
+    };
+    expect(venueQuoteSchema.encode(venueQuoteSchema.parse(quote))).toStrictEqual(quote);
+    expect(venueQuoteSchema.safeParse({ ...quote, hookFeeBps: 10_001 }).success).toBe(false);
+  });
+
   it("reads an effect with no deadline as a call that carries none", () => {
     const effect = {
       recipient: "fake:1:0x0000000c",
