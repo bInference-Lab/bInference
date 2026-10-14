@@ -5,9 +5,9 @@ import {
   type BuildRequest,
   type TxDraft,
 } from "@binference/plugin-sdk";
-import { encodeEvmApproval, encodeEvmDraft } from "@binference/plugin-sdk/evm";
+import { curveTokenOf, encodeEvmApproval, encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { zeroAddress } from "viem";
-import { flapTokenOf, portalOf } from "../flap-assets.js";
+import { portalOf } from "../flap-assets.js";
 import type { VenueParts } from "../venue-parts.js";
 import { encodeSwap } from "./swap-call.js";
 
@@ -29,8 +29,8 @@ export async function buildSwap(
 ): Promise<readonly TxDraft[]> {
   signal.throwIfAborted();
   const setup = parts.setups.get(accountRefParts(request.wallet).chain);
-  const inputToken = setup === undefined ? undefined : flapTokenOf(request.amountIn.asset, setup);
-  const outputToken = setup === undefined ? undefined : flapTokenOf(request.assetOut, setup);
+  const inputToken = setup === undefined ? undefined : curveTokenOf(request.amountIn.asset, setup);
+  const outputToken = setup === undefined ? undefined : curveTokenOf(request.assetOut, setup);
   if (setup === undefined || inputToken === undefined || outputToken === undefined) {
     throw refuse("Flap does not trade this pair on the wallet's chain here.");
   }

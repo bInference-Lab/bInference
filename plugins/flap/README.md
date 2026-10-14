@@ -27,8 +27,7 @@ sell of a curve token goes to Flap and nowhere else.
 | -------------------------- | -------------------------------------------------------------------- |
 | `createFlapVenue`          | The `flap` launchpad over each chain's RPC failover                  |
 | `flapDeclaration`          | What the venue declares on given chains, without reading any         |
-| `FlapOptions`              | The chains the venue trades on                                       |
-| `FlapChain`                | One chain: its id, its coin, its quote tokens and its RPC failover   |
+| `FlapOptions`              | The chains the venue trades on, each a `CurveChain`                  |
 | `@binference/flap/testing` | The Portal's recorded answers, a scripted Portal and a venue over it |
 
 ## Example

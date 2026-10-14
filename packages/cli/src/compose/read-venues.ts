@@ -1,5 +1,6 @@
 import type { AssetRef, ChainRef, ChainRegistry, RegisteredChain, Venue } from "@binference/chain";
 import {
+  type CurveChain,
   erc20AssetRef,
   type EvmChain,
   evmChainOf,
@@ -7,7 +8,7 @@ import {
   parseEvmAddress,
 } from "@binference/chain-evm";
 import { BinferenceError, type Clock, type Http, type Logger } from "@binference/core";
-import { createFlapVenue, type FlapChain } from "@binference/flap";
+import { createFlapVenue } from "@binference/flap";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
 import type { ChainsConfig, VenuesConfig } from "../config/schema/chains-venues.schema.js";
@@ -67,7 +68,7 @@ function flapQuoteTokens(chain: RegisteredChain, evm: EvmChain): readonly AssetR
 function flapChains(
   chains: readonly RegisteredChain[],
   reads: ReadonlyMap<ChainRef, ChainReads>,
-): readonly FlapChain[] {
+): readonly CurveChain[] {
   return chains.flatMap((chain) => {
     const read = reads.get(chain.ref);
     if (read === undefined) {

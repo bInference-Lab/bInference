@@ -6,8 +6,7 @@ import {
   type Result,
   type TxDraft,
 } from "@binference/plugin-sdk";
-import { decodeEvmDraft } from "@binference/plugin-sdk/evm";
-import { assetOfFlapToken } from "../flap-assets.js";
+import { curveAssetOf, decodeEvmDraft } from "@binference/plugin-sdk/evm";
 import type { VenueParts } from "../venue-parts.js";
 import { readSwapCall } from "./swap-call.js";
 
@@ -29,7 +28,7 @@ export function decodeSwap(
   }
   return ok({
     recipient: accountRefSchema.parse(`${setup.chain}:${call.value.from}`),
-    amountIn: { asset: assetOfFlapToken(swap.inputToken, setup), base: swap.inputAmount },
-    minOut: { asset: assetOfFlapToken(swap.outputToken, setup), base: swap.minOutputAmount },
+    amountIn: { asset: curveAssetOf(swap.inputToken, setup), base: swap.inputAmount },
+    minOut: { asset: curveAssetOf(swap.outputToken, setup), base: swap.minOutputAmount },
   });
 }

@@ -4,7 +4,7 @@ import {
   type LaunchpadVenue,
   type VenueDeclaration,
 } from "@binference/plugin-sdk";
-import { chainSetupsOf } from "./chain-setup.js";
+import { curveChainSetupsOf } from "@binference/plugin-sdk/evm";
 import { readCurvePrice } from "./curve/read-curve-price.js";
 import { readCurve } from "./curve/read-curve.js";
 import { portalName } from "./flap-assets.js";
@@ -43,7 +43,7 @@ export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
  * of a token each block. Bad options are a fault (`flap.bad_options`).
  */
 export function createFlapVenue(options: FlapOptions): LaunchpadVenue {
-  const parts = { setups: chainSetupsOf(options.chains) };
+  const parts = { setups: curveChainSetupsOf(options.chains, { id: "flap", name: "Flap" }) };
   return defineLaunchpad({
     ...flapDeclaration([...parts.setups.keys()]),
     quote: async (request, { signal }) => quoteTrade(request, parts, signal),

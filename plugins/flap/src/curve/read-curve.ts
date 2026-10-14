@@ -1,5 +1,6 @@
 import { assetRefParts, type CurveHolding, type CurveRequest } from "@binference/plugin-sdk";
-import { assetOfFlapToken, flapTokenOf, portalOf } from "../flap-assets.js";
+import { curveAssetOf, curveTokenOf } from "@binference/plugin-sdk/evm";
+import { portalOf } from "../flap-assets.js";
 import { readTokenState } from "../portal/read-portal.js";
 import { tokenStatus } from "../portal/token-state.js";
 import type { VenueParts } from "../venue-parts.js";
@@ -20,7 +21,7 @@ export async function readCurve(
 ): Promise<CurveHolding> {
   signal.throwIfAborted();
   const setup = parts.setups.get(assetRefParts(request.token).chain);
-  const token = setup === undefined ? undefined : flapTokenOf(request.token, setup);
+  const token = setup === undefined ? undefined : curveTokenOf(request.token, setup);
   if (setup === undefined || token === undefined || request.token === setup.nativeAsset) {
     return offCurve;
   }
@@ -31,5 +32,5 @@ export async function readCurve(
   }
   return state.status === tokenStatus.dex
     ? offCurve
-    : { onCurve: true, quoteAsset: assetOfFlapToken(state.quoteToken, setup) };
+    : { onCurve: true, quoteAsset: curveAssetOf(state.quoteToken, setup) };
 }

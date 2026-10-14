@@ -9,44 +9,14 @@ import {
   type Result,
   type VenueQuote,
 } from "@binference/plugin-sdk";
-import { type Address, zeroAddress } from "viem";
-import type { ChainSetup } from "../chain-setup.js";
-import { flapTokenOf, portalOf } from "../flap-assets.js";
+import { type CurveSide, curveSideOf } from "@binference/plugin-sdk/evm";
+import { portalOf } from "../flap-assets.js";
 import { type PortalRead, quoteOnPortal, readTokenState } from "../portal/read-portal.js";
 import { type TokenState, tokenStatus } from "../portal/token-state.js";
 import type { VenueParts } from "../venue-parts.js";
 import { curveImpactBps } from "./price-impact.js";
 
-/** A curve trade: the token on the curve, which side it is, and the two addresses it trades. */
-interface CurveSide {
-  readonly side: "buy" | "sell";
-  /** The token on the curve. */
-  readonly token: Address;
-  /** What the trade pays with or receives: the chain's coin or a quote token the venue serves. */
-  readonly quote: Address;
-  readonly inputToken: Address;
-  readonly outputToken: Address;
-}
-
 const noRoute = err("no_route");
-
-// A buy spends the coin or a served quote token on another token; a sale is the reverse. Two
-// quote assets, or two tokens neither of which is one, are no curve trade.
-function sideOf(request: QuoteRequest, setup: ChainSetup): CurveSide | undefined {
-  const inputToken = flapTokenOf(request.amountIn.asset, setup);
-  const outputToken = flapTokenOf(request.assetOut, setup);
-  if (inputToken === undefined || outputToken === undefined || inputToken === outputToken) {
-    return undefined;
-  }
-  const isQuote = (token: Address) => token === zeroAddress || setup.quoteTokens.has(token);
-  const pair = { inputToken, outputToken };
-  if (isQuote(inputToken) && !isQuote(outputToken)) {
-    return { side: "buy", token: outputToken, quote: inputToken, ...pair };
-  }
-  return isQuote(outputToken) && !isQuote(inputToken)
-    ? { side: "sell", token: inputToken, quote: outputToken, ...pair }
-    : undefined;
-}
 
 function taxOf(state: TokenState, side: CurveSide["side"]): Bps {
   const tax = side === "buy" ? state.buyTaxBps : state.sellTaxBps;
@@ -103,7 +73,7 @@ export async function quoteTrade(
 ): Promise<Result<VenueQuote, "no_route">> {
   signal.throwIfAborted();
   const setup = parts.setups.get(accountRefParts(request.wallet).chain);
-  const curve = setup === undefined ? undefined : sideOf(request, setup);
+  const curve = setup === undefined ? undefined : curveSideOf(request, setup);
   if (setup === undefined || curve === undefined) {
     return noRoute;
   }
