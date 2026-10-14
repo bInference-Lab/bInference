@@ -16,7 +16,8 @@ apply here. Rules for this plugin:
   reverts or answers outside its shape throws, so a token whose place is in doubt never counts as
   off its curve. Only `launchFactory()` on a token, a view most tokens lack, may fail quietly.
 - A token a stack the registry does not list says it launched is held on a curve with no contract:
-  its quotes answer `no_route` (`unknown_stack`), and it never goes to the pools.
+  its quotes answer `no_route` (`unknown_stack`), and it goes to the pools only once that stack
+  says its pool exists or it was rescued.
 - The venue quotes only a token on its curve against the coin, USDT or USDC, with that asset. A
   token whose curve trades against another asset, a graduated token, one whose curve is ready to
   graduate, and a buy that would take the curve's last tokens are `no_route`, each with its reason

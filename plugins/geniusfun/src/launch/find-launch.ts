@@ -26,6 +26,8 @@ export type LaunchFinding =
       readonly factory: Address;
       /** What that factory says the token's curve trades against; the zero address for the coin. */
       readonly pairToken: Address;
+      /** The phase that factory says the launch is in, one of `launchPhase`. */
+      readonly phase: number;
     }
   | { readonly kind: "not_launched" };
 
@@ -53,7 +55,7 @@ async function unknownStackOf(
     launchRecordOf,
   );
   return launch?.exists === true && launch.token === token
-    ? { kind: "unknown_stack", factory, pairToken: launch.pairToken }
+    ? { kind: "unknown_stack", factory, pairToken: launch.pairToken, phase: launch.phase }
     : notLaunched;
 }
 

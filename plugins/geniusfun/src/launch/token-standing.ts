@@ -45,11 +45,13 @@ const settledPhases: ReadonlySet<number> = new Set([launchPhase.poolCreated, lau
 /**
  * Reads where a token stands at the latest block: its launch from every live stack's factory, and,
  * for a launch not graduated, whether its curve still sells tokens. A launch whose curve is ready
- * to graduate, or swept before its pool is made, is `held` as graduating, so its trades go
- * nowhere until the pool exists (decision 0179); one with its pool, or rescued, is `off_curve`, as
- * are an asset that is no ERC-20 token of a chain the venue trades on and a token never launched.
- * A launch on its curve is kept for the decoder. A contract that cannot be read throws, and an
- * aborted signal rejects with its reason.
+ * to graduate, or swept before its pool is made, is `held` as graduating, so its trades go nowhere
+ * until the pool exists (decision 0179); one with its pool, or rescued, is `off_curve`. A token a
+ * stack the registry does not list says it launched is `held` until that stack says its pool
+ * exists or it was rescued, and then `off_curve`, so its pool takes it. An asset that is no ERC-20
+ * token of a chain the venue trades on, and a token never launched, are `off_curve`. A launch on
+ * its curve is kept for the decoder. A contract that cannot be read throws, and an aborted signal
+ * rejects with its reason.
  */
 export async function standingOf(
   asked: { readonly token: AssetRef; readonly contracts: Readonly<Record<string, AccountRef>> },
@@ -65,7 +67,7 @@ export async function standingOf(
   const read = { rpc: setup.rpc, signal };
   const finding = await findLaunch(read, factoriesOf(asked.contracts), token);
   if (finding.kind !== "launched") {
-    return finding.kind === "unknown_stack"
+    return finding.kind === "unknown_stack" && !settledPhases.has(finding.phase)
       ? { kind: "held", why: "unknown_stack", setup, pairToken: finding.pairToken }
       : offCurve;
   }

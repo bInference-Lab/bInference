@@ -27,6 +27,20 @@ const curveOf = (address: Address) => accountRefSchema.parse(`eip155:56:${addres
 const stackFactory: Address = "0x37eE8AeE29C5efd3C1A7edA6dF3F510779928a37";
 const stackAddress: Address = "0x7D227534c39C41033Af86DBC8aDE1BF8D68b0157";
 
+// A token no recording holds, of a factory the registry does not list; neither listed stack made it.
+const unlisted: Address = "0x00000000000000000000000000000000000Ba5E5";
+const unlistedAsset = assetRefSchema.parse(`eip155:56/erc20:${unlisted}`);
+const unknownFactory: Address = "0x000000000000000000000000000000000000dEaD";
+const unmade = [stackFactory, "0x78EAE9537C0ef90DFe9B7ae964682Fe8138afe31" as const].map(
+  (factory) =>
+    launchAnswer(factory, {
+      token: unlisted,
+      curve: zeroAddress,
+      pairToken: zeroAddress,
+      exists: false,
+    }),
+);
+
 // The m4.2 factory's record of the recorded token, in another phase.
 function phaseAnswer(phase: number): readonly [string, RecordedCall] {
   return launchAnswer(stackFactory, {
@@ -95,31 +109,27 @@ describe("geniusfun curve read", () => {
     });
   });
 
-  it("holds a token a stack the registry does not list made, against its pair and with no curve", async () => {
-    const token: Address = "0x00000000000000000000000000000000000Ba5E5";
-    const unknown: Address = "0x000000000000000000000000000000000000dEaD";
-    const unmade = [
-      "0x37eE8AeE29C5efd3C1A7edA6dF3F510779928a37",
-      "0x78EAE9537C0ef90DFe9B7ae964682Fe8138afe31",
-    ].map((factory) =>
-      launchAnswer(factory as Address, {
-        token,
-        curve: zeroAddress,
-        pairToken: zeroAddress,
-        exists: false,
-      }),
-    );
-    const changes = [
-      ...unmade,
-      launchFactoryAnswer(token, unknown),
-      launchAnswer(unknown, { token, curve: stackCurve, pairToken: zeroAddress }),
-    ];
-    const asset = assetRefSchema.parse(`eip155:56/erc20:${token}`);
-    await expect(curveWith(asset, changes)).resolves.toStrictEqual({
-      onCurve: true,
-      quoteAsset: bnb,
-    });
-  });
+  it.each([
+    ["on its curve", launchPhase.notGraduated, { onCurve: true, quoteAsset: bnb }],
+    ["swept before its pool", launchPhase.swept, { onCurve: true, quoteAsset: bnb }],
+    ["with its pool", launchPhase.poolCreated, { onCurve: false }],
+    ["rescued", launchPhase.rescued, { onCurve: false }],
+  ])(
+    "holds a token a stack the registry does not list made %s with no curve until its pool exists",
+    async (_case, phase, holding) => {
+      const changes = [
+        ...unmade,
+        launchFactoryAnswer(unlisted, unknownFactory),
+        launchAnswer(unknownFactory, {
+          token: unlisted,
+          curve: stackCurve,
+          pairToken: zeroAddress,
+          phase,
+        }),
+      ];
+      await expect(curveWith(unlistedAsset, changes)).resolves.toStrictEqual(holding);
+    },
+  );
 
   it("throws when a stack's record cannot be read", async () => {
     const broken = [
