@@ -211,6 +211,12 @@ async function holdUsdt(fork: Fork, amount: bigint): Promise<void> {
   await fork.send({ from: wallet, to: pancakeRouter, value: 10n ** 18n, data });
 }
 
+// How far a quote's output lies from what arrived, in whole basis points of what arrived.
+function gapBps(quoted: bigint, received: bigint): bigint {
+  const gap = quoted > received ? quoted - received : received - quoted;
+  return (gap * 10_000n) / received;
+}
+
 // Genius.fun's pool hooks, one per stack, each keeping 2% of a swap, as BSC's allowlist names them.
 const geniusHooks = {
   m41: bscContract("geniusfun", "hook-m4-1"),
@@ -346,6 +352,9 @@ describe("kyberswap on a BSC fork", () => {
       const received = await tokenBalanceOf(fork, graduated.m41);
       expect(receipts.map((receipt) => receipt.status)).toStrictEqual(["success"]);
       expect(received).toBeGreaterThanOrEqual(effect.minOut.base);
+      // The quote already holds the hook's 2% back: it stays within 0.5% of what arrived, which the
+      // pool's vault paid after the hook took its share.
+      expect(gapBps(quote.expectedOut.base, received)).toBeLessThan(50n);
       const unhooked = await tradingOn(fork);
       const withoutHook = await unhooked.venue.quote(graduatedBuy(fork, unhooked, graduated.m41), {
         signal,
