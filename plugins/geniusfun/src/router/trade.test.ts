@@ -2,17 +2,20 @@ import {
   accountRefSchema,
   assetRefSchema,
   bpsSchema,
+  chainRefSchema,
   type QuoteRequest,
 } from "@binference/plugin-sdk";
-import { decodeEvmDraft, encodeEvmDraft } from "@binference/plugin-sdk/evm";
+import { curveChainSetupsOf, decodeEvmDraft, encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { draftAt, hostBuildRequest, successOf } from "@binference/plugin-sdk/testing";
 import { type Address, encodeFunctionData, erc20Abi, parseEther, zeroAddress } from "viem";
 import { describe, expect, it } from "vitest";
 import { tradeCallData } from "../contracts/genius-calls.js";
+import { createBoundedMemo } from "../launch/bounded-memo.js";
 import type { RecordedCall } from "../testing/recorded-answers.js";
 import { scriptedChain } from "../testing/recorded-chain.js";
 import {
   bnb,
+  bscChain,
   contractsWith,
   launchAnswer,
   olderCurve,
@@ -139,6 +142,33 @@ describe("geniusfun trades", () => {
     ["two quote assets", requestOf({ asset: bnb, base: 1n }, usdt)],
   ])("refuses to build for %s", async (_case, request) => {
     await expect(built(request)).rejects.toMatchObject({ code: "geniusfun.no_route" });
+  });
+
+  it("reads no call to a curve read on another chain, though its address is the same", async () => {
+    const rpc = scriptedChain();
+    const other = { chain: chainRefSchema.parse("eip155:97"), quoteTokens: [], rpc };
+    const parts: VenueParts = {
+      setups: curveChainSetupsOf(
+        [
+          { chain: bscChain, nativeAsset: bnb, quoteTokens: [usdt], rpc },
+          { ...other, nativeAsset: assetRefSchema.parse("eip155:97/slip44:714") },
+        ],
+        { id: "geniusfun", name: "Genius.fun" },
+      ),
+      launches: createBoundedMemo(16),
+      insiders: createBoundedMemo(16),
+    };
+    const request = requestOf({ asset: bnb, base: parseEther("0.1") }, stackToken);
+    const { drafts } = await built(request, parts);
+    const { to, value, data } = successOf(decodeEvmDraft(draftAt(drafts, 0)));
+    const elsewhere = encodeEvmDraft({
+      from: accountRefSchema.parse(`eip155:97:${wallet}`),
+      to: accountRefSchema.parse(`eip155:97:${to}`),
+      value,
+      data,
+    });
+    expect(decodeTrade(draftAt(drafts, 0), parts)).toMatchObject({ ok: true });
+    expect(decodeTrade(elsewhere, parts)).toStrictEqual({ ok: false, error: "unknown_call" });
   });
 
   it("reads no call to a curve it never read, nor one that sends other coin", async () => {

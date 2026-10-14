@@ -5,7 +5,7 @@ import { launchedAtCallData, numberOf, snipeTaxExemptedTopic } from "../contract
 import { type GeniusRead, readCall, unreadable } from "../contracts/read-genius.js";
 import { factoriesOf } from "../geniusfun-contracts.js";
 import { findLaunch } from "../launch/find-launch.js";
-import type { VenueParts } from "../venue-parts.js";
+import { curveKeyOf, type VenueParts } from "../venue-parts.js";
 import { blockLogsSchema, type ReceiptLog } from "./block-answers.schema.js";
 import { blocksOfSecond } from "./launch-blocks.js";
 
@@ -62,7 +62,8 @@ export async function readInsiders(
     return [];
   }
   const { curve } = finding.launch;
-  const kept = parts.insiders.get(curve);
+  const key = curveKeyOf(setup.chain, curve);
+  const kept = parts.insiders.get(key);
   if (kept !== undefined) {
     return kept;
   }
@@ -72,6 +73,6 @@ export async function readInsiders(
   const insiders = exemptedBy(logs.flat(), curve).map((address) =>
     accountRefSchema.parse(`${setup.chain}:${address}`),
   );
-  parts.insiders.set(curve, insiders);
+  parts.insiders.set(key, insiders);
   return insiders;
 }

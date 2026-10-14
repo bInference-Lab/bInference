@@ -9,7 +9,7 @@ import {
 } from "../contracts/genius-calls.js";
 import { type GeniusRead, readCall } from "../contracts/read-genius.js";
 import { factoriesOf } from "../geniusfun-contracts.js";
-import type { VenueParts } from "../venue-parts.js";
+import { curveKeyOf, type VenueParts } from "../venue-parts.js";
 import { findLaunch } from "./find-launch.js";
 
 /**
@@ -82,6 +82,6 @@ export async function standingOf(
   ) {
     return { kind: "held", why: "graduating", setup, pairToken: launch.pairToken };
   }
-  parts.launches.set(launch.curve, { token, pairToken: launch.pairToken });
+  parts.launches.set(curveKeyOf(setup.chain, launch.curve), { token, pairToken: launch.pairToken });
   return { kind: "on_curve", setup, read, launch };
 }

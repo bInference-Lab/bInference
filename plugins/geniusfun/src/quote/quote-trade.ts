@@ -16,7 +16,7 @@ import { buyOut, sellOut } from "../curve/curve-math.js";
 import { type BuyState, readBuyState } from "../curve/curve-state.js";
 import { addressOf, curveName, factoriesOf } from "../geniusfun-contracts.js";
 import { findLaunch } from "../launch/find-launch.js";
-import type { VenueParts } from "../venue-parts.js";
+import { curveKeyOf, type VenueParts } from "../venue-parts.js";
 import { curveImpactBps } from "./price-impact.js";
 
 /**
@@ -152,7 +152,8 @@ export async function curveQuote(
   if (!trade.ok) {
     return trade;
   }
-  parts.launches.set(trade.value.launch.curve, { token: side.token, pairToken: side.quote });
+  const key = curveKeyOf(setup.chain, trade.value.launch.curve);
+  parts.launches.set(key, { token: side.token, pairToken: side.quote });
   return quoteOf(trade.value, request);
 }
 

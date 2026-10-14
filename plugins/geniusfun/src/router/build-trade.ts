@@ -9,7 +9,7 @@ import { zeroAddress } from "viem";
 import { tradeCallData } from "../contracts/genius-calls.js";
 import { addressOf, curveAccountOf, factoriesOf } from "../geniusfun-contracts.js";
 import { findLaunch } from "../launch/find-launch.js";
-import type { VenueParts } from "../venue-parts.js";
+import { curveKeyOf, type VenueParts } from "../venue-parts.js";
 
 function refuse(message: string): BinferenceError {
   return new BinferenceError({ code: "geniusfun.no_route", message });
@@ -43,7 +43,7 @@ export async function buildTrade(
   if (launch === undefined || launch.curve !== curve || launch.pairToken !== side.quote) {
     throw refuse("the token's own curve does not trade this pair.");
   }
-  parts.launches.set(curve, { token: side.token, pairToken: side.quote });
+  parts.launches.set(curveKeyOf(setup.chain, curve), { token: side.token, pairToken: side.quote });
   const amountIn = request.amountIn.base;
   const call = {
     side: side.side,

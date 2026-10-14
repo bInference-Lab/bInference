@@ -9,7 +9,7 @@ import {
 import { curveAssetOf, decodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { zeroAddress } from "viem";
 import { type CurveTradeCall, tradeCallOf } from "../contracts/genius-calls.js";
-import type { LaunchFacts, VenueParts } from "../venue-parts.js";
+import { curveKeyOf, type LaunchFacts, type VenueParts } from "../venue-parts.js";
 
 // The coin a curve call must send: a buy's whole input on a curve that trades against the coin,
 // else none.
@@ -32,7 +32,7 @@ export function decodeTrade(
 ): Result<DecodedEffect, "unknown_call"> {
   const setup = parts.setups.get(draft.chain);
   const call = decodeEvmDraft(draft);
-  const launch = call.ok ? parts.launches.get(call.value.to) : undefined;
+  const launch = call.ok ? parts.launches.get(curveKeyOf(draft.chain, call.value.to)) : undefined;
   const trade = call.ok ? tradeCallOf(call.value.data) : undefined;
   if (setup === undefined || !call.ok || launch === undefined || trade === undefined) {
     return err("unknown_call");
