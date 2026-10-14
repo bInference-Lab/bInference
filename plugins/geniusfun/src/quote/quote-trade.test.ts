@@ -110,6 +110,13 @@ describe("geniusfun quotes", () => {
     expect(late).toMatchObject({ ok: true, value: { taxBps: 300, snipeTaxBps: 300 } });
   });
 
+  it("names no tax for a wallet the launch exempted from its snipe tax", async () => {
+    const exempt = await quoteWith([snipeTaxAnswer(stackCurve, 0n)]);
+    expect(exempt).toMatchObject({ ok: true });
+    expect(exempt).not.toHaveProperty("value.taxBps");
+    expect(exempt).not.toHaveProperty("value.snipeTaxBps");
+  });
+
   it.each<[string, QuoteRequest, string]>([
     ["a pair of two quote assets", requestOf(tenthBnb, usdt), "no_curve_trade"],
     [

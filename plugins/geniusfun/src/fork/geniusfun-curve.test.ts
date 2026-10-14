@@ -55,6 +55,7 @@ const curveAbi = parseAbi([
   "function sell(uint256 tokensIn, uint256 minQuoteOut, address recipient) returns (uint256 quoteOut)",
   "function currentSnipeTaxBps(address recipient) view returns (uint256)",
   "function getReserves() view returns (uint256 quoteReserve, uint256 tokenReserve)",
+  "function sellableTokens() view returns (uint256)",
 ]);
 // The launch call the fork's own launches use, with the terms the stack's factory quotes.
 const factoryAbi = parseAbi([
@@ -63,6 +64,9 @@ const factoryAbi = parseAbi([
   "function launchToken(TokenParams params, uint256 configId, address pairToken, bool toFoundation, address[] snipeTaxExemptions) payable returns (address token, address curve)",
   "function previewLaunchEconomics(uint256 launchConfigId, address pairToken) view returns (bytes32)",
   "function launchFee() view returns (uint256)",
+  "struct LaunchedToken { address token; address curve; address deployer; address creatorFeeRecipient; address pairToken; uint256 graduationThreshold; uint24 poolFee; int24 tickSpacing; uint16 creatorTaxBps; bool buybackEnabled; uint8 phase; uint256 sweptQuote; uint256 sweptTokens; uint256 sweptAt; bool exists; }",
+  "function getLaunchedToken(address token) view returns (LaunchedToken launch)",
+  "function createGraduatedPool(address token)",
   "event TokenLaunched(address indexed token, address indexed curve, address indexed deployer, address pairToken, uint256 launchConfigId, uint256 graduationThreshold)",
 ]);
 const pancakeAbi = parseAbi([
@@ -183,12 +187,31 @@ async function curveAnswer(fork: Fork, draft: TxDraft, side: "buy" | "sell"): Pr
   return decodeFunctionResult({ abi: curveAbi, functionName: side, data: answer.data ?? "0x" });
 }
 
-/** A trade on the fork: its quote, what the curve's own call answered, and what it paid. */
+/**
+ * A trade on the fork: its quote, what the curve's own call answered, what it paid, and what the
+ * curve may still spend of the trade's input token afterwards (none for the coin).
+ */
 interface Traded {
   readonly quote: VenueQuote;
   readonly curveOut: bigint;
   readonly received: bigint;
   readonly steps: readonly TransactionReceipt[];
+  readonly leftApproved: bigint;
+}
+
+// What the curve may still spend of the wallet's `asset`; the coin needs no approval.
+async function approvedOf(fork: Fork, asset: Address, curve: AccountRef): Promise<bigint> {
+  if (asset === zeroAddress) {
+    return 0n;
+  }
+  const spender = getAddress(String(curve).slice(-42));
+  const args = [fork.account, spender] as const;
+  return fork.client.readContract({
+    address: asset,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args,
+  });
 }
 
 interface Trade {
@@ -231,7 +254,9 @@ async function trade(trading: Trading, held: Held, asked: Trade): Promise<Traded
   const steps = [...approvals, await fork.send(callOf(lastOf(drafts)))];
   const gas = asked.output === zeroAddress ? gasPaid(steps) : 0n;
   const received = (await balanceOf(fork, asked.output, fork.account)) - before + gas;
-  return { quote, curveOut, received, steps };
+  const curve = held.contracts["curve"] ?? accountOf(fork, zeroAddress);
+  const leftApproved = await approvedOf(fork, asked.input, curve);
+  return { quote, curveOut, received, steps, leftApproved };
 }
 
 /** A buy of a token on its curve with an amount of its quote asset, and the sale back. */
@@ -395,6 +420,7 @@ describe("geniusfun on a BSC fork", () => {
         expect(paidOf(buy)).toStrictEqual(Array(3).fill(buy.quote.expectedOut.base));
         expect(paidOf(sale)).toStrictEqual(Array(3).fill(sale.quote.expectedOut.base));
         expect(await balanceOf(fork, token, fork.account)).toBe(0n);
+        expect(sale.leftApproved).toBe(0n);
         await annotate(report(fork, token, [buy, sale]));
       }),
   );
@@ -414,6 +440,15 @@ describe("geniusfun on a BSC fork", () => {
       // fee: the quote names that bound.
       expect(snipeTax).toBe(9_900n);
       expect(quote).toMatchObject({ taxBps: 9_700, snipeTaxBps: 9_700 });
+      // The wallet the launch exempted buys in the same second untaxed.
+      const exempt = await quoteOf(trading, {
+        wallet: accountOf(fork, insider),
+        amountIn: { asset: fork.chain.nativeAsset, base: parseEther("0.01") },
+        assetOut: assetOf(fork, token),
+        contracts: held.contracts,
+      });
+      expect(exempt).not.toHaveProperty("taxBps");
+      expect(exempt).not.toHaveProperty("snipeTaxBps");
       const launched = { token: assetOf(fork, token), contracts: registryOf(fork) };
       const insiders = await trading.venue.insiders?.(launched, { signal });
       expect(insiders).toStrictEqual([accountOf(fork, fork.account), accountOf(fork, insider)]);
@@ -440,6 +475,70 @@ describe("geniusfun on a BSC fork", () => {
       expect(statuses).toStrictEqual(Array(4).fill("success"));
       expect(paidOf(buy)).toStrictEqual(Array(3).fill(buy.quote.expectedOut.base));
       expect(paidOf(sale)).toStrictEqual(Array(3).fill(sale.quote.expectedOut.base));
+      expect([buy.leftApproved, sale.leftApproved]).toStrictEqual([0n, 0n]);
       await annotate(report(fork, token, [buy, sale]));
+    }));
+
+  it("quotes no buy past a curve's end, holds the swept launch with no curve, and lets go at its pool", async ({
+    signal,
+    annotate,
+  }) =>
+    withFork(signal, async (fork) => {
+      // A fresh launch's curve sells its tokens for about 15 BNB: 30 BNB takes the rest. The venue
+      // quotes no such buy; one sent straight to the curve sweeps it, and the pool comes after.
+      const trading = tradingOn(fork, signal);
+      const { token, curve } = await launch(fork, zeroAddress, []);
+      await fork.call("evm_increaseTime", [16]);
+      await fork.call("evm_mine", []);
+      const held = await mustHold(trading, token);
+      const crossing = parseEther("30");
+      const request = {
+        wallet: accountOf(fork, fork.account),
+        amountIn: { asset: fork.chain.nativeAsset, base: crossing },
+        assetOut: assetOf(fork, token),
+        contracts: held.contracts,
+      };
+      await expect(trading.venue.quote(request, { signal })).resolves.toStrictEqual({
+        ok: false,
+        error: "no_route",
+      });
+      const data = encodeFunctionData({
+        abi: curveAbi,
+        functionName: "buy",
+        args: [crossing, 0n, fork.account],
+      });
+      await fork.call("anvil_setBalance", [fork.account, toHex(parseEther("100"))]);
+      const receipt = await fork.send({ from: fork.account, to: curve, value: crossing, data });
+      const [record, sellable] = await Promise.all([
+        fork.client.readContract({
+          address: factoryM42,
+          abi: factoryAbi,
+          functionName: "getLaunchedToken",
+          args: [token],
+        }),
+        fork.client.readContract({ address: curve, abi: curveAbi, functionName: "sellableTokens" }),
+      ]);
+      const asked = { token: assetOf(fork, token), contracts: registryOf(fork) };
+      const holding = await trading.venue.curve(asked, { signal });
+      const pool = encodeFunctionData({
+        abi: factoryAbi,
+        functionName: "createGraduatedPool",
+        args: [token],
+      });
+      const made = await fork.send({ from: fork.account, to: factoryM42, data: pool });
+      const after = await fork.client.readContract({
+        address: factoryM42,
+        abi: factoryAbi,
+        functionName: "getLaunchedToken",
+        args: [token],
+      });
+      const graduated = await trading.venue.curve(asked, { signal });
+      await annotate(
+        `block ${String(fork.block)}, launched ${token} on curve ${curve}: a 30 BNB buy ${receipt.status}, phase ${String(record.phase)}, sellable ${String(sellable)}; curve read ${JSON.stringify(holding)}; createGraduatedPool ${made.status}, phase ${String(after.phase)}, curve read ${JSON.stringify(graduated)}`,
+      );
+      expect([receipt.status, record.phase, sellable]).toStrictEqual(["success", 1, 0n]);
+      expect(holding).toStrictEqual({ onCurve: true, quoteAsset: fork.chain.nativeAsset });
+      expect([made.status, after.phase]).toStrictEqual(["success", 2]);
+      expect(graduated).toStrictEqual({ onCurve: false });
     }));
 });
