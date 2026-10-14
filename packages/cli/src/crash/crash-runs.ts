@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { assetRefSchema, chainRefSchema } from "@binference/chain";
 import { bsc } from "@binference/chains";
 import type { ProtocolClient } from "@binference/client";
-import { BinferenceError, type Id } from "@binference/core";
+import { BinferenceError, bpsSchema, type Id } from "@binference/core";
 import type { FakePrivy } from "@binference/custody-privy/testing";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
@@ -24,7 +24,7 @@ import { connectClient, freePort, noPermissions } from "../e2e/test-host.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import type { CrashChain } from "./crash-chain.js";
 import { crashRelays } from "./crash-http.js";
-import { crashUsdt, freshCrashFeeds } from "./crash-market.js";
+import { crashUsdt, freshCrashFeeds, fundCrashUsdt } from "./crash-market.js";
 import { crashUsdtAsset } from "./crash-orders.js";
 import type { CrashServices } from "./crash-services.js";
 
@@ -169,28 +169,61 @@ export async function goLiveAndBuy(install: CrashInstall): Promise<Id<"int">> {
   }
 }
 
+/** The live order a fill run makes: a one-fill buy of USDT, or a sale of all of it. */
+export type CrashOrderKind = "buy" | "sale";
+
+/** The USDT a sale run's wallet holds before its order: six dollars of it. */
+const crashSaleUsdt: bigint = 6n * 10n ** 18n;
+
+// The order of a run's kind: a limit buy of USDT with 0.01 BNB while it is at or below $2, or a
+// stop-loss that sells all the wallet's USDT once it falls to $2.
+function orderRequestOf(kind: CrashOrderKind, agent: ProtocolId<"agent">) {
+  return kind === "buy"
+    ? ({
+        kind: "limit",
+        agent,
+        reason: "Buy USDT on the crash chain once it is at or below $2",
+        token: crashUsdtAsset,
+        side: "buy",
+        spend: assetRefSchema.parse(`${bscRef}/slip44:714`),
+        size: { base: spend },
+        trigger: { price: 2_000_000n, direction: "below" },
+        maxFills: 1,
+      } as const)
+    : ({
+        kind: "stopLoss",
+        agent,
+        reason: "Sell the USDT on the crash chain once it falls to $2",
+        token: crashUsdtAsset,
+        side: "sell",
+        size: { percentBps: bpsSchema.parse(10_000) },
+        trigger: { price: 2_000_000n },
+      } as const);
+}
+
 /**
- * Goes live as `binference live` does and makes a live limit order to buy USDT with 0.01 BNB once
- * while it is at or below $2, then taps Confirm on its card; answers the order. The crash engine's
+ * Goes live as `binference live` does and makes a live order of `kind`, then taps Confirm on its
+ * card; answers the order. A sale's wallet holds six dollars of USDT first. The crash engine's
  * prices hold USDT at $1, so the order fires at the next block, and at every block after while it
  * is active.
  */
-export async function goLiveAndOrder(install: CrashInstall): Promise<ProtocolId<"autoOrder">> {
+export async function goLiveAndOrder(
+  world: CrashWorld,
+  install: CrashInstall,
+  kind: CrashOrderKind = "buy",
+): Promise<ProtocolId<"autoOrder">> {
+  if (kind === "sale") {
+    await fundCrashUsdt(
+      async (method, params) => world.chain.call(method, params),
+      install.from,
+      crashSaleUsdt,
+    );
+  }
   const client = await connectClient(install.machine);
   const call = { signal: AbortSignal.timeout(60_000) };
   try {
     const agent = await goneLive(client, call);
-    const request = {
-      kind: "limit",
-      agent: agent.id,
-      reason: "Buy USDT on the crash chain once it is at or below $2",
-      token: crashUsdtAsset,
-      side: "buy",
-      spend: assetRefSchema.parse(`${bscRef}/slip44:714`),
-      size: { base: spend },
-      trigger: { price: 2_000_000n, direction: "below" },
-      maxFills: 1,
-    } as const;
+    const request = orderRequestOf(kind, agent.id);
     const created = await client.call("order/create", request, call);
     const { card, intent } = created;
     if (card === undefined || intent === undefined) {
@@ -267,6 +300,36 @@ export async function settleAndStop(install: CrashInstall, intent: Id<"int">): P
     const state = await poll();
     await client.call("engine/stop", {}, { signal: AbortSignal.timeout(10_000) }).catch(() => ({}));
     return state;
+  } finally {
+    client.close();
+  }
+}
+
+/**
+ * Waits on the running engine until a live fill ended `failed_onchain`, as the drop rule ends one
+ * every relay refused; answers it. A minute without one fails the run.
+ */
+export async function droppedFillOf(install: CrashInstall): Promise<Id<"int">> {
+  const client = await connectClient(install.machine);
+  const deadline = Date.now() + 60_000;
+  try {
+    const poll = async (): Promise<Id<"int">> => {
+      const page = await client.call(
+        "intent/list",
+        { state: "failed_onchain", limit: 5 },
+        { signal: AbortSignal.timeout(10_000) },
+      );
+      const [dropped] = page.items;
+      if (dropped !== undefined) {
+        return dropped.intent;
+      }
+      if (Date.now() > deadline) {
+        throw new BinferenceError({ code: "crash.no_drop", message: "No fill was dropped." });
+      }
+      await wait(200);
+      return poll();
+    };
+    return await poll();
   } finally {
     client.close();
   }

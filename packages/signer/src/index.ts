@@ -15,6 +15,8 @@ export {
 } from "./keys/p256-key-pair.js";
 export type { P256KeyPair } from "./keys/p256-key-pair.js";
 export { signAuthorization } from "./privy/authorization-signature.js";
+export { serveSigner } from "./process/serve-signer.js";
+export type { SignerChannel } from "./process/serve-signer.js";
 export { signerNodeArguments } from "./process/signer-node-arguments.js";
 export { signerSettingsSchema } from "./process/signer-settings.schema.js";
 export type { SignerSettings, SignerSettingsWire } from "./process/signer-settings.schema.js";

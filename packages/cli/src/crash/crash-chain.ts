@@ -4,17 +4,19 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { text as readBody } from "node:stream/consumers";
 import { setTimeout as wait } from "node:timers/promises";
 import { BinferenceError, type JsonValue } from "@binference/core";
-import {
-  type Address,
-  type Hex,
-  keccak256,
-  parseTransaction,
-  recoverTransactionAddress,
-  type TransactionSerialized,
-} from "viem";
+import { type Address, type Hex, parseTransaction, type TransactionSerialized } from "viem";
 import { z } from "zod";
 import { createSystemHttp } from "../runtime/system-http.js";
+import {
+  type Armed,
+  type ChainBook,
+  createChainBook,
+  type KillOptions,
+  type ReceivedSend,
+} from "./crash-chain-book.js";
 import { readChainReply, readChainRequest, signedBytesSchema } from "./crash-chain.schema.js";
+import { multicallAnswer } from "./crash-multicall.js";
+import { asBscAnswer, refusalOf } from "./crash-relay-answers.js";
 
 /**
  * Where a run kills the engine: after custody signed, before the bytes are stored (`signed`);
@@ -49,7 +51,18 @@ export interface CrashChain {
    * Runs `kill` once the engine reaches `point` on the chain's side, and answers nothing more of
    * what the killed engine asked; then lets every request through again.
    */
-  killAt(point: Exclude<KillPoint, "signed">, kill: () => Promise<void>): void;
+  killAt(
+    point: Exclude<KillPoint, "signed">,
+    kill: () => Promise<void>,
+    options?: KillOptions,
+  ): void;
+  /**
+   * Turns the relays away from every send from now on, as BSC's nodes answer a wallet they read as
+   * unable to pay: they note it and never pass it on.
+   */
+  refuseSends(): void;
+  /** Lets the relays pass sends on again. */
+  acceptSends(): void;
   /** Drops a kill the engine never reached, so it cannot fire in a later run. */
   stopKilling(): void;
   /** Calls anvil itself, past the counting and the kills. */
@@ -59,119 +72,14 @@ export interface CrashChain {
   close(): Promise<void>;
 }
 
-/** A kill the chain waits to run, and how far the engine got towards it. */
-interface Armed {
-  readonly point: Exclude<KillPoint, "signed">;
-  /** Settles once the kill ran: what the killed engine asked meanwhile is never answered. */
-  readonly done: Promise<void>;
-  /** Whether the engine reached the point, so the kill runs or ran. */
-  readonly isTaken: () => boolean;
-  /** Takes the kill; answers whether this call took it first. */
-  readonly take: () => boolean;
-  /** Whether a relay passed the bytes on, so the next receipt read is the engine waiting. */
-  readonly hasRelayed: () => boolean;
-  readonly markRelayed: () => void;
-  /** Runs `before`, then the kill; then every request goes through again. */
-  readonly fire: (before?: () => Promise<JsonValue>) => Promise<void>;
-}
-
-/** One send of signed bytes as a relay received it. */
-interface ReceivedSend {
-  readonly relay: string;
-  readonly raw: TransactionSerialized;
-  readonly isOnChain: boolean;
-}
-
-/** What the chain keeps: every send, who waits for the next one, and the kill that waits. */
-interface ChainBook {
-  readonly sends: () => readonly RelayedSend[];
-  readonly note: (send: ReceivedSend) => Promise<void>;
-  readonly nextSend: (from: Address) => Promise<void>;
-  readonly armed: () => Armed | undefined;
-  readonly arm: (point: Armed["point"], kill: () => Promise<void>) => void;
-  readonly disarm: () => void;
-}
-
 const callTimeoutMs = 30_000;
 const boundSchema = z.object({ port: z.int().positive() });
-
-function armedFor(point: Armed["point"], kill: () => Promise<void>, onFired: () => void): Armed {
-  const progress = { isTaken: false, hasRelayed: false };
-  const finishing = { finish: (): void => undefined };
-  const done = new Promise<void>((resolve) => {
-    finishing.finish = resolve;
-  });
-  return {
-    point,
-    done,
-    isTaken: () => progress.isTaken,
-    take: () => {
-      const isFirst = !progress.isTaken;
-      progress.isTaken = true;
-      return isFirst;
-    },
-    hasRelayed: () => progress.hasRelayed,
-    markRelayed: () => {
-      progress.hasRelayed = true;
-    },
-    fire: async (before) => {
-      await before?.();
-      await kill();
-      onFired();
-      finishing.finish();
-    },
-  };
-}
-
-function createChainBook(): ChainBook {
-  const sends: RelayedSend[] = [];
-  const waiters = new Set<{ readonly from: Address; readonly resolve: () => void }>();
-  const current: { armed?: Armed } = {};
-  const disarm = (): void => {
-    delete current.armed;
-  };
-  return {
-    sends: () => [...sends],
-    note: async ({ relay, raw, isOnChain }) => {
-      const from = await recoverTransactionAddress({ serializedTransaction: raw });
-      const nonce = parseTransaction(raw).nonce ?? 0;
-      sends.push({ relay, hash: keccak256(raw), from, nonce, isOnChain });
-      [...waiters]
-        .filter((waiter) => waiter.from === from)
-        .forEach((waiter) => {
-          waiters.delete(waiter);
-          waiter.resolve();
-        });
-    },
-    nextSend: async (from) =>
-      new Promise((resolve) => {
-        waiters.add({ from, resolve });
-      }),
-    armed: () => current.armed,
-    arm: (point, kill) => {
-      current.armed = armedFor(point, kill, disarm);
-    },
-    disarm,
-  };
-}
 
 // The signed bytes of an `eth_sendRawTransaction`; `undefined` for any other request.
 function rawOf(text: string): TransactionSerialized | undefined {
   const request = readChainRequest(text);
   const raw = signedBytesSchema.safeParse(request?.params[0]);
   return request?.method === "eth_sendRawTransaction" && raw.success ? raw.data : undefined;
-}
-
-// BSC's nodes answer a send of bytes their pool holds already with geth's "already known", which
-// the relay sender reads as taken; anvil words it "transaction already imported". The test's
-// relays answer as BSC's do.
-function asBscAnswer(request: string, answer: string): string {
-  const reply = readChainReply(answer);
-  if (!("error" in reply) || !/already imported/i.test(reply.error.message)) {
-    return answer;
-  }
-  const id = readChainRequest(request)?.id ?? null;
-  return JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32_000, message: "already known" } });
 }
 
 /** What answers each request: anvil's answer, or `undefined` for none, as to a killed engine. */
@@ -194,14 +102,35 @@ async function holdSend(book: ChainBook, armed: Armed, send: Omit<ReceivedSend, 
   return undefined;
 }
 
+// The kill that waits for this send: none for a send below the nonce the kill waits for. A kill
+// that waits for a later step's send keeps that send out of any block until it fires.
+async function armedFor(book: ChainBook, raw: TransactionSerialized): Promise<Armed | undefined> {
+  const armed = armedAt(book, raw);
+  if (armed !== undefined && armed.fromNonce > 0) {
+    await book.mining.pause();
+  }
+  return armed;
+}
+
+function armedAt(book: ChainBook, raw: TransactionSerialized): Armed | undefined {
+  const armed = book.armed();
+  const nonce = parseTransaction(raw).nonce ?? 0;
+  return armed !== undefined && !armed.isTaken() && nonce < armed.fromNonce ? undefined : armed;
+}
+
 // A relay counts every send. At `stored` it passes none on and kills; at `relayed` it passes the
 // first on, then kills before it answers; any later send while a kill runs never reaches anvil.
+// While the relays refuse, each send is noted and turned away.
 async function sendOf(book: ChainBook, upstream: Upstream, at: { relay: string; text: string }) {
   const raw = rawOf(at.text);
   if (raw === undefined) {
     return upstream.forward(at.text);
   }
-  const armed = book.armed();
+  if (book.isRefusing()) {
+    await book.note({ relay: at.relay, raw, isOnChain: false });
+    return refusalOf(at.text);
+  }
+  const armed = await armedFor(book, raw);
   if (armed !== undefined && (armed.isTaken() || armed.point === "stored")) {
     return holdSend(book, armed, { relay: at.relay, raw });
   }
@@ -230,7 +159,7 @@ async function readOf(book: ChainBook, upstream: Upstream, text: string) {
   }
   const isReceiptRead = readChainRequest(text)?.method === "eth_getTransactionReceipt";
   if (armed === undefined || !armed.hasRelayed() || !isReceiptRead) {
-    return upstream.forward(text);
+    return (await multicallAnswer(text, upstream.call)) ?? upstream.forward(text);
   }
   armed.take();
   const mine = async () => upstream.call("evm_mine", []);
@@ -283,13 +212,13 @@ function upstreamOf(anvilUrl: string, http: ReturnType<typeof createSystemHttp>)
   return { forward, call };
 }
 
-async function mineUntil(upstream: Upstream, signal: AbortSignal): Promise<void> {
+async function mineUntil(book: ChainBook, upstream: Upstream, signal: AbortSignal): Promise<void> {
   if (signal.aborted) {
     return;
   }
-  await upstream.call("anvil_mine", ["0x10"]);
+  await book.mining.round(async () => upstream.call("anvil_mine", ["0x10"]));
   await wait(150, undefined, { signal }).catch(() => undefined);
-  await mineUntil(upstream, signal);
+  await mineUntil(book, upstream, signal);
 }
 
 async function listen(server: Server): Promise<string> {
@@ -321,8 +250,10 @@ export async function serveCrashChain(anvilUrl: string): Promise<CrashChain> {
     nextSend: book.nextSend,
     killAt: book.arm,
     stopKilling: book.disarm,
+    refuseSends: book.refuse,
+    acceptSends: book.accept,
     call: upstream.call,
-    mine: async (signal) => mineUntil(upstream, signal),
+    mine: async (signal) => mineUntil(book, upstream, signal),
     close: async () => {
       server.closeAllConnections();
       await new Promise<void>((resolve) => {

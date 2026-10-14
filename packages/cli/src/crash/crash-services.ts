@@ -69,15 +69,25 @@ function json(status: number, value: JsonValue): HttpResponse {
   return { status, headers: { "content-type": "application/json" }, body: JSON.stringify(value) };
 }
 
-// A route that pays `usdtPerWei` units of the token bought for each unit sold, through one pool.
+// KyberSwap's address for the chain's own coin.
+const nativeToken = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+function isNative(token: string | null): boolean {
+  return token?.toLowerCase() === nativeToken;
+}
+
+// A route through one pool at `usdtPerWei`: a buy gets that many USDT units for each wei, a sale
+// a wei for each that many units.
 function routeOf(query: URLSearchParams): HttpResponse {
   const amountIn = BigInt(query.get("amountIn") ?? "0");
+  const tokenIn = query.get("tokenIn");
+  const amountOut = isNative(tokenIn) ? amountIn * usdtPerWei : amountIn / usdtPerWei;
   const routeSummary = {
-    tokenIn: query.get("tokenIn"),
+    tokenIn,
     amountIn: amountIn.toString(),
     amountInUsd: "6",
     tokenOut: query.get("tokenOut"),
-    amountOut: (amountIn * usdtPerWei).toString(),
+    amountOut: amountOut.toString(),
     amountOutUsd: "6",
     route: [[{ pool: zeroAddress, exchange: "pancake", poolType: "uniswap-v2" }]],
   };
@@ -102,11 +112,13 @@ function buildOf(body: string): HttpResponse {
   const recipient = getAddress(order.recipient);
   const amount = BigInt(summary.amountIn);
   const amountOut = BigInt(summary.amountOut);
+  const isBuy = isNative(summary.tokenIn);
+  // A token input names where its units go, all to the executor, as KyberSwap's API encodes it.
   const desc = {
     srcToken: getAddress(summary.tokenIn),
     dstToken: getAddress(summary.tokenOut),
-    srcReceivers: [],
-    srcAmounts: [],
+    srcReceivers: isBuy ? [] : [crashExecutor],
+    srcAmounts: isBuy ? [] : [amount],
     feeReceivers: [],
     feeAmounts: [],
     dstReceiver: recipient,
@@ -123,7 +135,8 @@ function buildOf(body: string): HttpResponse {
     clientData: "0x",
   } as const;
   const data = encodeFunctionData({ abi: routerAbi, functionName: "swap", args: [execution] });
-  const answer = { routerAddress: crashRouter, data, transactionValue: amount.toString() };
+  const value = isBuy ? amount : 0n;
+  const answer = { routerAddress: crashRouter, data, transactionValue: value.toString() };
   return json(200, { code: 0, data: answer });
 }
 
@@ -264,9 +277,9 @@ async function listen(server: Server): Promise<string> {
 /**
  * Serves a fake Privy app and a KyberSwap API on loopback for the crash engines, which reach them
  * through their Http as they would reach the real services. Privy answers 503 until an app is
- * served. The KyberSwap API routes every trade through one pool at {@link usdtPerWei} and encodes
- * the router's plain `swap` for the recipient and deadline asked; the crash chain's router pays it
- * out.
+ * served. The KyberSwap API routes every buy and sale through one pool at {@link usdtPerWei} and
+ * encodes the router's plain `swap` for the recipient and deadline asked; the crash chain's router
+ * pays it out.
  */
 export async function serveCrashServices(): Promise<CrashServices> {
   const book = createSignatureBook();

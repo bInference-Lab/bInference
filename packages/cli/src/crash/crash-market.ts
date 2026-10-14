@@ -1,17 +1,9 @@
 import { encodeFixtureRound } from "@binference/chain-evm/fork";
 import { bsc } from "@binference/chains";
 import { BinferenceError, type JsonValue } from "@binference/core";
-import {
-  type Address,
-  concat,
-  getAddress,
-  type Hex,
-  keccak256,
-  numberToHex,
-  pad,
-  size,
-  toHex,
-} from "viem";
+import { type Address, getAddress, type Hex, keccak256, pad, toHex } from "viem";
+import { assemble, fail, type Item, op, p } from "./crash-assembler.js";
+import { crashTokenCode } from "./crash-token.js";
 
 /** Calls anvil itself, past the test's counting and kills. */
 type AnvilCall = (method: string, params: readonly JsonValue[]) => Promise<JsonValue>;
@@ -49,157 +41,75 @@ const crashGeniusFactories: readonly Address[] = [
   contract("geniusfun", "factory-m4-1"),
 ];
 
-// A small assembler: opcodes as bytes, pushes of a fixed width, jump targets and their labels.
-type Item =
-  | Hex
-  | { readonly push: number; readonly value: bigint }
-  | { readonly mark: string }
-  | { readonly to: string };
-
-const p = (bytes: number, value: bigint): Item => ({ push: bytes, value });
-
-function sizeOf(item: Item): number {
-  if (typeof item === "string") {
-    return size(item);
-  }
-  if ("push" in item) {
-    return 1 + item.push;
-  }
-  return "mark" in item ? 1 : 3;
-}
-
-function pushed(bytes: number, value: bigint): Hex {
-  return concat([numberToHex(0x5f + bytes, { size: 1 }), numberToHex(value, { size: bytes })]);
-}
-
-function assemble(items: readonly Item[]): Hex {
-  const marks = new Map<string, number>();
-  items.reduce((offset, item) => {
-    if (typeof item !== "string" && "mark" in item) {
-      marks.set(item.mark, offset);
-    }
-    return offset + sizeOf(item);
-  }, 0);
-  return concat(
-    items.map((item): Hex => {
-      if (typeof item === "string") {
-        return item;
-      }
-      if ("push" in item) {
-        return pushed(item.push, item.value);
-      }
-      return "mark" in item ? "0x5b" : pushed(2, BigInt(marks.get(item.to) ?? 0));
-    }),
-  );
-}
-
-const op = {
-  add: "0x01",
-  mul: "0x02",
-  sub: "0x03",
-  lt: "0x10",
-  eq: "0x14",
-  isZero: "0x15",
-  shl: "0x1b",
-  shr: "0x1c",
-  caller: "0x33",
-  callValue: "0x34",
-  callDataLoad: "0x35",
-  mstore: "0x52",
-  sload: "0x54",
-  sstore: "0x55",
-  jumpI: "0x57",
-  gas: "0x5a",
-  dup1: "0x80",
-  dup2: "0x81",
-  dup3: "0x82",
-  swap1: "0x90",
-  log3: "0xa3",
-  call: "0xf1",
-  stop: "0x00",
-  return: "0xf3",
-  revert: "0xfd",
-} as const satisfies Record<string, Hex>;
-
-const transferTopic = BigInt(keccak256(toHex("Transfer(address,address,uint256)")));
-const returnWord: readonly Item[] = [p(1, 0n), op.mstore, p(1, 32n), p(1, 0n), op.return];
-const fail: readonly Item[] = [{ mark: "fail" }, p(1, 0n), op.dup1, op.revert];
-
-// transfer(to, amount): moves the caller's units, logs Transfer, answers true.
-const transfer: readonly Item[] = [
-  { mark: "transfer" },
-  p(1, 0x24n),
-  op.callDataLoad,
-  op.caller,
-  op.sload,
-  op.dup2,
-  op.dup2,
-  op.lt,
-  { to: "fail" },
-  op.jumpI,
-  op.dup2,
-  op.swap1,
-  op.sub,
-  op.caller,
-  op.sstore,
+// A sale: the router takes the `amount` of the call's `SwapDescriptionV2` from its caller's USDT
+// through the allowance the caller left it, then pays the caller a wei for each
+// {@link usdtPerWei} units, and reverts when either fails.
+const sale: readonly Item[] = [
+  { mark: "sale" },
   p(1, 4n),
   op.callDataLoad,
-  op.dup1,
-  op.sload,
-  op.dup3,
+  p(1, 4n),
   op.add,
-  op.swap1,
-  op.sstore,
+  op.dup1,
+  p(1, 0x60n),
+  op.add,
+  op.callDataLoad,
+  op.add,
+  p(1, 0xe0n),
+  op.add,
+  op.callDataLoad,
+  p(4, 0x23b872ddn),
+  p(1, 0xe0n),
+  op.shl,
   p(1, 0n),
   op.mstore,
-  p(1, 4n),
-  op.callDataLoad,
   op.caller,
-  p(32, transferTopic),
-  p(1, 32n),
+  p(1, 4n),
+  op.mstore,
+  op.address,
+  p(1, 0x24n),
+  op.mstore,
+  op.dup1,
+  p(1, 0x44n),
+  op.mstore,
+  p(1, 0x20n),
   p(1, 0n),
-  op.log3,
-  p(1, 1n),
-  ...returnWord,
+  p(1, 0x64n),
+  p(1, 0n),
+  p(1, 0n),
+  p(20, BigInt(crashUsdt)),
+  op.gas,
+  op.call,
+  op.isZero,
+  { to: "fail" },
+  op.jumpI,
+  p(2, usdtPerWei),
+  op.swap1,
+  op.div,
+  p(1, 0n),
+  p(1, 0n),
+  p(1, 0n),
+  p(1, 0n),
+  op.dup5,
+  op.caller,
+  op.gas,
+  op.call,
+  op.isZero,
+  { to: "fail" },
+  op.jumpI,
+  op.stop,
 ];
 
 /**
- * The runtime code of the crash chain's USDT: an ERC-20 with only `balanceOf` and `transfer`,
- * each holder's units in the storage slot of its own address, and a Transfer log per transfer, as
- * the simulator's transfer traces read them.
- */
-const crashTokenCode: Hex = assemble([
-  p(1, 0n),
-  op.callDataLoad,
-  p(1, 0xe0n),
-  op.shr,
-  op.dup1,
-  p(4, 0x70a08231n),
-  op.eq,
-  { to: "balanceOf" },
-  op.jumpI,
-  p(4, 0xa9059cbbn),
-  op.eq,
-  { to: "transfer" },
-  op.jumpI,
-  p(1, 0n),
-  op.dup1,
-  op.revert,
-  { mark: "balanceOf" },
-  p(1, 4n),
-  op.callDataLoad,
-  op.sload,
-  ...returnWord,
-  ...transfer,
-  ...fail,
-]);
-
-/**
- * The runtime code of the crash chain's swap router: any call pays its caller {@link usdtPerWei}
- * USDT units for each wei it sent, from the router's own USDT, and reverts when that transfer
- * fails.
+ * The runtime code of the crash chain's swap router: a call that sends BNB is paid
+ * {@link usdtPerWei} USDT units for each wei, from the router's own USDT; a call that sends none
+ * sells USDT for BNB. Either reverts when its transfer fails.
  */
 const crashRouterCode: Hex = assemble([
+  op.callValue,
+  op.isZero,
+  { to: "sale" },
+  op.jumpI,
   p(4, 0xa9059cbbn),
   p(1, 0xe0n),
   op.shl,
@@ -225,6 +135,7 @@ const crashRouterCode: Hex = assemble([
   { to: "fail" },
   op.jumpI,
   op.stop,
+  ...sale,
   ...fail,
 ]);
 
@@ -263,8 +174,8 @@ const crashGeniusFactoryCode: Hex = assemble([p(2, launchRecordBytes), p(1, 0n),
 
 /**
  * Sets up the market a crash run trades in on a bare chain: USDT, KyberSwap's router, a Portal
- * of Flap's and Genius.fun's factories that hold no token, at their BSC addresses, the router holding USDT to pay out, and
- * fresh rounds of the BNB and USDT feeds.
+ * of Flap's and Genius.fun's factories that hold no token, at their BSC addresses, the router
+ * holding USDT and BNB to pay out, and fresh rounds of the BNB and USDT feeds.
  */
 export async function installCrashMarket(call: AnvilCall): Promise<void> {
   await call("anvil_setCode", [crashUsdt, crashTokenCode]);
@@ -277,6 +188,7 @@ export async function installCrashMarket(call: AnvilCall): Promise<void> {
   );
   const held = pad(toHex(10n ** 30n), { size: 32 });
   await call("anvil_setStorageAt", [crashUsdt, pad(crashRouter, { size: 32 }), held]);
+  await call("anvil_setBalance", [crashRouter, toHex(10n ** 24n)]);
   await freshCrashFeeds(call);
 }
 
@@ -298,4 +210,10 @@ export async function freshCrashFeeds(call: AnvilCall): Promise<void> {
       ]),
     ),
   );
+}
+
+/** Gives `holder` `base` units of the crash chain's USDT, as a wallet that bought it earlier. */
+export async function fundCrashUsdt(call: AnvilCall, holder: Address, base: bigint): Promise<void> {
+  const units = pad(toHex(base), { size: 32 });
+  await call("anvil_setStorageAt", [crashUsdt, pad(holder, { size: 32 }), units]);
 }
