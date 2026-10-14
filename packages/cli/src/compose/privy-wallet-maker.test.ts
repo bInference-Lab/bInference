@@ -13,6 +13,7 @@ import {
   testAddresses,
   testCapPlan,
   testCeilingRequest,
+  testLaunchCeilingRequest,
 } from "@binference/custody-privy/testing";
 import type { CustodyRecord } from "@binference/engine/install";
 import { walletMakerContract } from "@binference/engine/testing";
@@ -37,9 +38,14 @@ function listedIn(rule: RuleJson | undefined): readonly string[] {
   return typeof value === "string" ? [value] : value;
 }
 
-// The test ceiling's chains as the composition root plans them, before Privy holds their caps.
+// The test ceiling's chains as the composition root plans them, before Privy holds their caps,
+// and a launch wallet's, with the launch rules.
 const draft = {
   chains: testCeilingRequest().chains.map(({ caps: _caps, ...plan }) => plan),
+  capPlans: [testCapPlan],
+};
+const launchDraft = {
+  chains: testLaunchCeilingRequest().chains.map(({ caps: _caps, ...plan }) => plan),
   capPlans: [testCapPlan],
 };
 
@@ -109,7 +115,8 @@ async function subject() {
     api,
     clock,
     custody: async () => Promise.resolve(custody),
-    ceilingChains: () => draft,
+    ceilingChains: (wallet: { readonly isLaunch: boolean }) =>
+      wallet.isLaunch ? launchDraft : draft,
     heldCaps: counted.heldCaps,
     onMade: (wallet, made) => signedFor.set(wallet, made),
   });
@@ -128,6 +135,11 @@ async function subject() {
       const rules = (held?.ok === true ? held.value.rules : []) as unknown as readonly RuleJson[];
       const sends = rules.find((rule) => rule.name === "Native sends, chain 56");
       return listedIn(sends).map(accountOf).toSorted();
+    },
+    isLaunchCeiling: async (made: { readonly record: { readonly policyId: string } }) => {
+      const { policyId } = made.record;
+      const held = isPrivyId(policyId) ? await api.policy(policyId, live) : undefined;
+      return held?.ok === true && readCeiling(held.value.rules)?.isLaunch === true;
     },
     made: counted.made,
     aggregations: counted.aggregations,
@@ -148,7 +160,7 @@ describe("the Privy wallet maker", () => {
     const wallet = made.nextWallet();
 
     const answer = await made.maker.make(
-      { wallet, ownerKey: made.ownerKey, venues: made.venues, recipients },
+      { wallet, ownerKey: made.ownerKey, venues: made.venues, recipients, isLaunch: false },
       live,
     );
 
@@ -158,7 +170,7 @@ describe("the Privy wallet maker", () => {
 
   it("makes the caps' aggregations once, and names them in every later ceiling", async () => {
     const made = await subject();
-    const request = { ownerKey: made.ownerKey, venues: made.venues, recipients };
+    const request = { ownerKey: made.ownerKey, venues: made.venues, recipients, isLaunch: false };
 
     const first = await made.maker.make({ ...request, wallet: made.nextWallet() }, live);
     const second = await made.maker.make({ ...request, wallet: made.nextWallet() }, live);
@@ -182,7 +194,13 @@ describe("the Privy wallet maker", () => {
       heldCaps: async () => Promise.resolve([]),
       onMade: () => undefined,
     });
-    const request = { wallet: made.nextWallet(), ownerKey: made.ownerKey, venues: [], recipients };
+    const request = {
+      wallet: made.nextWallet(),
+      ownerKey: made.ownerKey,
+      venues: [],
+      recipients,
+      isLaunch: false,
+    };
 
     expect(await bare.make(request, live)).toStrictEqual({ ok: false, error: "bad_owner_key" });
   });

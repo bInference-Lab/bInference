@@ -71,6 +71,9 @@ function printStatus(output: CliOutput, status: EngineStatus, words: StatusWords
       mode: agent.mode,
       frozen: agent.frozen ? "yes" : "no",
     });
+    if (agent.launchWallet !== undefined) {
+      output.item("status.launchWallet", { id: agent.id, wallet: agent.launchWallet });
+    }
   }
   output.say("status.signals");
   for (const signal of status.health) {

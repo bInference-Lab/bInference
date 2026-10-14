@@ -80,6 +80,37 @@ describe.each(skeletonCompositions)("binference wallet create ($name)", ({ name 
   });
 });
 
+describe("binference wallet create --launch", () => {
+  it(
+    "makes the agent's launch wallet, lists it and shows it in the status, once",
+    slow,
+    async () => {
+      const machine = await servedMachine("self-hosted");
+
+      const made = await create(machine, ["--label", "curves", "--launch"], [fakeOwnerKeyCode]);
+      const again = await create(machine, ["--label", "more", "--launch"], [fakeOwnerKeyCode]);
+
+      const wallet = walletIn(made.stdout);
+      const values = { label: "curves", wallet, agent: testAgent, chain: "fake:1" };
+      expect([made.code, made.stderr]).toStrictEqual([0, ""]);
+      expect(made.stdout).toBe(
+        `${en("wallet.createdLaunch", values)}\n${secondLine(made.stdout)}\n`,
+      );
+      expect([again.code, again.stderr]).toStrictEqual([
+        2,
+        `${String(messages.en["error.wallet.launch_exists"])}\n`,
+      ]);
+      const listed = await runOn(machine, ["wallet", "list"]);
+      const address = secondLine(made.stdout);
+      const item = en("wallet.item", { ...values, address, role: "launch", archived: "no" });
+      expect(listed.stdout).toContain(item);
+      expect(item).toContain(", launch wallet");
+      const status = await runOn(machine, ["status"]);
+      expect(status.stdout).toContain(en("status.launchWallet", { id: testAgent, wallet }));
+    },
+  );
+});
+
 describe("binference wallet create", () => {
   it("makes nothing with no rescue address or a wrong owner key", slow, async () => {
     const machine = await servedMachine("self-hosted");

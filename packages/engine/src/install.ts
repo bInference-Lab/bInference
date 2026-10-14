@@ -21,6 +21,7 @@ export type {
   SealKeyRecord,
   WalletDraft,
   WalletRecord,
+  WalletRole,
 } from "./install/install-record.js";
 export type { InstallStore } from "./ports.js";
 export { cancelRescue, changeRescue, rescueAt } from "./policy/rescue-change.js";

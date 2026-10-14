@@ -9,7 +9,7 @@ export type AgentMode = "paper" | "live";
 
 /**
  * An agent: its name, mode, language, whether it is frozen or archived, and, in `agent/list`, its
- * default wallet.
+ * default wallet and its launch wallet.
  */
 export interface AgentView {
   readonly agent: ProtocolId<"agent">;
@@ -21,10 +21,16 @@ export interface AgentView {
   readonly createdAt: number;
   readonly changedAt: number;
   /**
-   * The wallet a proposal uses when it names none: the agent's oldest wallet not archived. Only
-   * `agent/list` sets it; absent when the agent has none or custody holds it on no chain.
+   * The wallet a proposal uses when it names none: the agent's oldest wallet not archived that is
+   * no launch wallet. Only `agent/list` sets it; absent when the agent has none or custody holds
+   * it on no chain.
    */
   readonly defaultWallet?: WalletView;
+  /**
+   * The agent's live launch wallet, which a trade on a launch's own contracts runs from
+   * (decision 0217). Only `agent/list` sets it; absent when the agent has none.
+   */
+  readonly launchWallet?: WalletView;
 }
 
 /** Parses an agent mode. */
@@ -41,4 +47,5 @@ export const agentViewSchema: z.ZodType<AgentView> = z.object({
   createdAt: epochMsSchema,
   changedAt: epochMsSchema,
   defaultWallet: walletViewSchema.exactOptional(),
+  launchWallet: walletViewSchema.exactOptional(),
 });

@@ -92,6 +92,7 @@ function insertWallet(database: DatabaseSync, wallet: WalletDraft): void {
       label: wallet.label,
       created_at: wallet.createdAtMs,
       archived_at: null,
+      role: wallet.role ?? "agent",
     }),
   );
   execute(
@@ -258,7 +259,10 @@ export const keepRescueCeilingTask: StoreTask<RescueCeiling, null> = defineTask(
   },
 });
 
-/** Stores a new live wallet with its ceiling; a held id, Privy id or address rolls it back. */
+/**
+ * Stores a new live wallet with its ceiling; a held id, Privy id or address, or a second live
+ * launch wallet of one agent, rolls it back.
+ */
 export const createWalletTask: StoreTask<WalletDraft, null> = defineTask({
   name: "install.create_wallet",
   access: "write",

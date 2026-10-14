@@ -3,7 +3,11 @@ import { jsonValueSchema } from "@binference/core";
 import { displayOutsideText } from "@binference/i18n";
 import { operations, type WalletView } from "@binference/protocol";
 import { z } from "zod";
-import type { AgentFlags, LabelFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
+import type {
+  AgentFlags,
+  WalletAddressFlags,
+  WalletCreateFlags,
+} from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { chooseAgentFirst } from "./agent-choice.js";
@@ -23,13 +27,15 @@ function walletValues(wallet: WalletView) {
     agent: wallet.agent,
     chain: chainName(chain),
     address,
+    role: wallet.role ?? "agent",
   };
 }
 
 /**
  * `binference wallet list [--agent <id>]`: the agent wallets through `wallet/list`, every agent's
- * when `--agent` is left out, oldest first, each with its label, its address and its chain, and
- * archived ones marked. With `--json` it prints the list as the operation answers it.
+ * when `--agent` is left out, oldest first, each with its label, its address and its chain, a
+ * launch wallet and archived ones marked. With `--json` it prints the list as the operation
+ * answers it.
  */
 export async function runWalletList(
   run: CommandRun,
@@ -70,15 +76,16 @@ export async function runWalletAddress(
 }
 
 /**
- * `binference wallet create --label <label> [--agent <id>]`: makes a new agent wallet through
- * `wallet/create` over IPC, with the owner key the person types unseen (decision 0130). Custody
- * makes it under a ceiling of its own, which lets it trade on the agent's venues and send only to
- * the rescue address and the saved addresses; the command shows the address to fund it at, on its
- * own line. With `--json` it prints the wallet as the operation answers it.
+ * `binference wallet create --label <label> [--launch] [--agent <id>]`: makes a new agent wallet
+ * through `wallet/create` over IPC, with the owner key the person types unseen (decision 0130).
+ * Custody makes it under a ceiling of its own, which lets it trade on the agent's venues and send
+ * only to the rescue address and the saved addresses; with `--launch`, the agent's launch wallet,
+ * whose ceiling also lets it trade on launch curves (decision 0217). The command shows the address
+ * to fund it at, on its own line. With `--json` it prints the wallet as the operation answers it.
  */
 export async function runWalletCreate(
   run: CommandRun,
-  request: { readonly options: LabelFlags },
+  request: { readonly options: WalletCreateFlags },
 ): Promise<ExitCode> {
   const { options } = request;
   const chosen = await chooseAgentFirst(run, options.agent);
@@ -88,15 +95,19 @@ export async function runWalletCreate(
   const { agent } = chosen.value;
   const made = await withOwnerKey(run, options, {
     command: "wallet create",
-    call: async (client, ownerKey, signal) =>
-      client.call("wallet/create", { agent, label: options.label, ownerKey }, { signal }),
+    call: async (client, ownerKey, signal) => {
+      const args = { agent, label: options.label, ownerKey };
+      return client.call("wallet/create", options.launch ? { ...args, launch: true } : args, {
+        signal,
+      });
+    },
   });
   if (!made.ok) {
     return made.code;
   }
   run.output.json(jsonValueSchema.parse(z.encode(operations["wallet/create"].result, made.value)));
   const values = walletValues(made.value);
-  run.output.say("wallet.created", values);
+  run.output.say(options.launch ? "wallet.createdLaunch" : "wallet.created", values);
   run.output.line(values.address);
   return 0;
 }

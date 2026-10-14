@@ -130,7 +130,8 @@ function firstOf(owned: OwnedWallet, agentQuorum: PrivyId): FirstWallet {
 }
 
 // Records the custody, the rescue address and every wallet with its ceiling, in the order Privy
-// listed them: the first as init's first wallet, the others beside it.
+// listed them, agent wallets first: the first as init's first wallet, the others beside it, a
+// launch wallet with its role (decision 0217).
 async function record(
   context: InitContext,
   stores: InitStores,
@@ -142,10 +143,16 @@ async function record(
   },
 ): Promise<InitStep<undefined>> {
   const { prepared, agent, agentKey, moved } = made;
-  const [first, ...others] = prepared.owner.owned.map((owned) => ({
-    first: firstOf(owned, moved.signer),
-    perTxNativeBase: owned.ceiling.perTxNativeCapBase,
-  }));
+  // Agent wallets first, as Privy listed them, so the main wallet is never a launch wallet.
+  const listed = prepared.owner.owned.toSorted(
+    (left, right) => Number(left.ceiling.isLaunch) - Number(right.ceiling.isLaunch),
+  );
+  const [first, ...others] = listed.map((owned) =>
+    Object.assign(
+      { first: firstOf(owned, moved.signer), perTxNativeBase: owned.ceiling.perTxNativeCapBase },
+      owned.ceiling.isLaunch ? { role: "launch" as const } : {},
+    ),
+  );
   if (first === undefined) {
     return refused("init.rebuild_no_wallets", "refused.rebuildNoWallets");
   }

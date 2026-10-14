@@ -54,6 +54,8 @@ interface EngineStatus {
     readonly id: ProtocolId<"agent">;
     readonly mode: AgentMode;
     readonly frozen: boolean;
+    /** The agent's live launch wallet (decision 0217); absent when it has none. */
+    readonly launchWallet?: ProtocolId<"wallet">;
   }[];
   readonly health: readonly HealthSignal[];
 }
@@ -196,7 +198,12 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
       protocol: z.int().positive(),
       frozen: z.boolean(),
       agents: z.array(
-        z.object({ id: protocolIdSchema("agent"), mode: agentModeSchema, frozen: z.boolean() }),
+        z.object({
+          id: protocolIdSchema("agent"),
+          mode: agentModeSchema,
+          frozen: z.boolean(),
+          launchWallet: protocolIdSchema("wallet").exactOptional(),
+        }),
       ),
       health: z.array(
         z.object({

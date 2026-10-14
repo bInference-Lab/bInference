@@ -31,18 +31,27 @@ async function listedView(
   signal: AbortSignal,
 ): Promise<AgentView> {
   const view = agentViewOf(agent);
-  const first = wallets.find(
+  const live = wallets.filter(
     (wallet) => wallet.agentId === agent.id && wallet.archivedAtMs === undefined,
   );
-  const defaultWallet =
-    first === undefined ? undefined : await walletViewOf(options, first, signal);
-  return defaultWallet === undefined ? view : { ...view, defaultWallet };
+  const first = live.find((wallet) => wallet.role === undefined);
+  const launch = live.find((wallet) => wallet.role === "launch");
+  const [defaultWallet, launchWallet] = await Promise.all(
+    [first, launch].map(async (wallet) =>
+      wallet === undefined ? undefined : walletViewOf(options, wallet, signal),
+    ),
+  );
+  return {
+    ...view,
+    ...(defaultWallet === undefined ? {} : { defaultWallet }),
+    ...(launchWallet === undefined ? {} : { launchWallet }),
+  };
 }
 
 /**
  * Creates the agent list. `agent/list` pages through every agent, archived ones too, oldest
- * first, each with its default wallet: its oldest wallet not archived, which a proposal uses when
- * it names none. The cursor is the last agent's id of the page before; an unknown one is
+ * first, each with its default wallet: its oldest wallet not archived that is no launch wallet,
+ * which a proposal uses when it names none; and its live launch wallet (decision 0217). The cursor is the last agent's id of the page before; an unknown one is
  * `protocol.bad_args`.
  */
 export function createAgentListHandlers(options: AgentListOptions): AgentListHandlers {

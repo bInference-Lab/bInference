@@ -440,6 +440,28 @@ describe("the limits screen", () => {
     expect(screen.getByText(/^Looser limits that apply at/u)).toBeDefined();
   });
 
+  it("names the agent's launch wallet beside its limits", async () => {
+    const launchWallet = {
+      wallet: "wal_0190f1c2-3a4b-7c5d-8e6f-0000000000d2",
+      agent,
+      address: "eip155:56:0x6B175474E89094C44Da98b954EedeAC495271d0F",
+      label: "curves",
+      createdAt: 1_800_000_000_000,
+      role: "launch",
+    };
+    const { client } = fakeClient({
+      "agent/list": () => ({ items: [{ agent, name: "main", mode: "live", launchWallet }] }),
+      "limit/get": () => limits,
+    });
+    renderSignedIn(<LimitsScreen />, { client });
+    await settle();
+    expect(
+      screen.getByText(
+        "Launch wallet curves, at 0x6B175474E89094C44Da98b954EedeAC495271d0F: trades on a launch's own curve run from it alone.",
+      ),
+    ).toBeDefined();
+  });
+
   it("tells the owner to make an agent when there is none", async () => {
     const { client } = fakeClient({ "agent/list": () => ({ items: [] }) });
     renderSignedIn(<LimitsScreen />, { client });

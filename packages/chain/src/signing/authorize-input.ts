@@ -17,17 +17,25 @@ export interface SignerWallet {
   readonly custodyId: string;
   /** The wallet's own account on the step's chain. */
   readonly account: AccountRef;
+  /**
+   * `launch` for the agent's launch wallet, the one wallet a call to a launch contract or an
+   * approval naming one may come from (decision 0217); absent for an agent wallet.
+   */
+  readonly role?: "launch";
 }
 
 /**
  * The registry's set for one step (keys spec, section 5.2, rule 2): the venue's declared
- * contracts a call may go to, the registry spenders an approval may name, and the confirmed
- * recipient of a send, a bridge or a rescue.
+ * contracts a call may go to, the registry spenders an approval may name, the confirmed
+ * recipient of a send, a bridge or a rescue, and the contracts of the launch the step trades on,
+ * which a launch wallet alone may call and approve (decision 0217).
  */
 export interface AllowedTargets {
   readonly contracts: readonly AccountRef[];
   readonly spenders: readonly AccountRef[];
   readonly recipients: readonly AccountRef[];
+  /** The launch's own contracts, read from its launchpad right before signing; none when absent. */
+  readonly launch?: readonly AccountRef[];
 }
 
 /**
@@ -48,7 +56,12 @@ export interface AuthorizeInput {
 
 /** An {@link AuthorizeInput} as JSON carries it. */
 export interface AuthorizeInputWire {
-  readonly wallet: { readonly id: string; readonly custodyId: string; readonly account: string };
+  readonly wallet: {
+    readonly id: string;
+    readonly custodyId: string;
+    readonly account: string;
+    readonly role?: "launch";
+  };
   readonly request: PrivyRequest;
   readonly intent: string;
   readonly step: SignStepWire;
@@ -58,6 +71,7 @@ export interface AuthorizeInputWire {
     readonly contracts: readonly string[];
     readonly spenders: readonly string[];
     readonly recipients: readonly string[];
+    readonly launch?: readonly string[];
   };
 }
 
@@ -70,6 +84,7 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
     id: idSchema("wal"),
     custodyId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
     account: accountRefSchema,
+    role: z.literal("launch").exactOptional(),
   }),
   request: privyRequestSchema,
   intent: idSchema("int"),
@@ -80,5 +95,6 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
     contracts: targetsSchema,
     spenders: targetsSchema,
     recipients: targetsSchema,
+    launch: targetsSchema.exactOptional(),
   }),
 });

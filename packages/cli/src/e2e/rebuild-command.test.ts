@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import type { WalletRecord } from "@binference/engine/install";
 import { createFormatter } from "@binference/i18n";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -35,14 +36,23 @@ async function emptyMachine(old: InitMachine): Promise<InitMachine> {
   return machineOf({ ...old, folder: folder.path, signals: new EventEmitter() });
 }
 
-// `binference wallet create` on the old machine's running engine, signed with the owner key.
-async function createWallet(machine: InitMachine, ownerKey: string): Promise<void> {
+// `binference wallet create` on the old machine's running engine, signed with the owner key; with
+// `--launch` when asked.
+async function createWallet(machine: InitMachine, ownerKey: string, flags: readonly string[] = []) {
   const prompter = createScriptedPrompter({ ownerKey: [ownerKey] });
-  const host = hostWith(machine, ["wallet", "create", "--label", "spare"], {
+  const host = hostWith(machine, ["wallet", "create", "--label", "spare", ...flags], {
     env: secretEnv(machine),
     parts: { http: machine.world, prompter },
   });
   expect(await runCli(host)).toBe(0);
+}
+
+// Each live wallet's Privy id and role, the agent wallets first.
+function rolesOf(facts: { readonly wallets: readonly WalletRecord[] }): readonly string[] {
+  return facts.wallets
+    .filter((wallet) => wallet.archivedAtMs === undefined)
+    .map((wallet) => `${wallet.custodyWalletId} ${wallet.role ?? "agent"}`)
+    .toSorted((left, right) => Number(left.endsWith("launch")) - Number(right.endsWith("launch")));
 }
 
 // `binference init --attach` on a folder with no install: the app and the bot from flags, the
@@ -109,6 +119,23 @@ describe("binference init --attach on a folder with no install", () => {
       expect(await engines.start(fresh)).toMatchObject({ state: "ready" });
     },
   );
+
+  it("adopts the agent's launch wallet as one, after its agent wallets", slow, async () => {
+    const { machine: old, ownerKey } = await setUpWithOwnerKey(folders);
+    expect(await engines.start(old)).toMatchObject({ state: "ready" });
+    await createWallet(old, ownerKey, ["--launch"]);
+    const before = await storedInstall(old);
+    const fresh = await emptyMachine(old);
+
+    const rebuilt = await rebuild(fresh, { ownerKeys: [ownerKey], count: "2" });
+
+    expect([rebuilt.code, rebuilt.stderr]).toStrictEqual([0, ""]);
+    expect(rolesOf((await storedInstall(fresh)).facts)).toStrictEqual(rolesOf(before.facts));
+    expect(rolesOf(before.facts).map((entry) => entry.split(" ")[1])).toStrictEqual([
+      "agent",
+      "launch",
+    ]);
+  });
 
   it("changes nothing for a key that owns no wallet, typed three times", slow, async () => {
     const { machine: old } = await setUpWithOwnerKey(folders);

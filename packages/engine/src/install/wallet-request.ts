@@ -12,6 +12,11 @@ export interface WalletRequest {
   readonly venues: readonly string[];
   /** Every account a send from the wallet may pay: the rescue address and the saved addresses. */
   readonly recipients: readonly AccountRef[];
+  /**
+   * The wallet is the agent's launch wallet: its ceiling also allows the calls the install's
+   * launchpads declare on each launch's own contracts (decision 0217).
+   */
+  readonly isLaunch: boolean;
 }
 
 /** A wallet custody made and read back. */

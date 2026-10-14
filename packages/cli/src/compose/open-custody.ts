@@ -4,7 +4,6 @@ import {
   type Clock,
   err,
   type Http,
-  type Id,
   type Logger,
   ok,
   type Result,
@@ -17,9 +16,7 @@ import {
   createPrivyApi,
   createPrivyOwnerSigner,
   type HeldCaps,
-  isPrivyId,
   privyApiOrigin,
-  type PrivyWallet,
   readCeiling,
   registryCeilingChain,
 } from "@binference/custody-privy";
@@ -31,7 +28,6 @@ import type {
   SignerRevoker,
   WalletExporter,
   WalletMaker,
-  WalletRecord,
 } from "@binference/engine/install";
 import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
 import { z } from "zod";
@@ -46,6 +42,7 @@ import {
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { gweiToWei } from "./chain-reads.js";
 import { checkAttached } from "./check-attached.js";
+import { launchPlansOf } from "./launch-plans.js";
 import { installOwnerKey } from "./owner-authorize.js";
 import {
   createPrivyCeilingEditor,
@@ -54,6 +51,7 @@ import {
 import { createPrivySignerRevoker } from "./privy-signer-revoker.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
+import { signedWalletsOf } from "./signed-wallets.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
 
 /**
@@ -162,12 +160,13 @@ async function startCheckedSigner(
 }
 
 // A new wallet's ceiling on each enabled chain, as init builds the first one, for the venues named
-// that this install runs. A config init would refuse is a fault here.
+// that this install runs; a launch wallet's with the launch rules too. A config init would refuse
+// is a fault here.
 function ceilingChainsOf(
   options: OpenCustodyOptions,
-  venues: readonly string[],
+  wallet: { readonly venues: readonly string[]; readonly isLaunch: boolean },
 ): Pick<CeilingDraft, "chains" | "capPlans"> {
-  const named = options.venues.filter((venue) => venues.includes(venue.id));
+  const named = options.venues.filter((venue) => wallet.venues.includes(venue.id));
   const request = ceilingRequestOf(options.chains, options.config, { venues: named, rescue: "" });
   if (!request.ok) {
     throw new BinferenceError({
@@ -176,7 +175,8 @@ function ceilingChainsOf(
       details: { problem: request.refusal.code },
     });
   }
-  return request.value;
+  const { chains, capPlans } = request.value;
+  return { chains: wallet.isLaunch ? launchPlansOf(chains, options.venues) : chains, capPlans };
 }
 
 const storedPolicy = z.object({ rules: z.array(z.json()) });
@@ -198,7 +198,8 @@ async function heldCapsOf(
 }
 
 // What a contract call may do on a chain a ceiling enables, for the venues named that this install
-// runs, under the cap given. A chain the registry lacks is a fault here.
+// runs, under the cap given, and on a launch wallet's what its launch rules allow. A chain the
+// registry lacks is a fault here.
 function callsOn(
   options: OpenCustodyOptions,
   chain: ChainRef,
@@ -221,7 +222,8 @@ function callsOn(
       details: { chain },
     });
   }
-  return built.value;
+  const [plan] = calls.isLaunch === true ? launchPlansOf([built.value], options.venues) : [];
+  return plan ?? built.value;
 }
 
 // The plan of a chain's 24-hour caps, at the size given or as init sizes them; a chain the
@@ -240,31 +242,6 @@ function capPlanOn(
     });
   }
   return capPlanOf(registered.definition, dayUsdMicros);
-}
-
-// The chains a wallet signs on: those config enables of its family.
-function chainsOf(record: WalletRecord, options: OpenCustodyOptions): readonly ChainRef[] {
-  return options.chains
-    .list()
-    .filter((chain) => chain.definition.family === record.family)
-    .map((chain) => chain.ref)
-    .filter((chain) => options.config.chains.enabled.includes(chain));
-}
-
-function walletsOf(
-  records: readonly WalletRecord[],
-  options: OpenCustodyOptions,
-): Map<Id<"wal">, PrivyWallet> {
-  return new Map(
-    records
-      .filter((record) => record.archivedAtMs === undefined)
-      .flatMap((record) => {
-        const { custodyWalletId: id, address } = record;
-        return isPrivyId(id)
-          ? [[record.id, { id, address, chains: chainsOf(record, options) }]]
-          : [];
-      }),
-  );
 }
 
 // The install's wallets; a store that fails stops the signer first, so nothing is left running.
@@ -327,14 +304,14 @@ export async function openCustody(
   const signer = started.value;
   const facts = await readInstall(install, signer, signal);
   // A wallet made after the unlock joins the wallets the adapter signs for.
-  const wallets = walletsOf(facts.wallets, options);
+  const wallets = signedWalletsOf(facts.wallets, options);
   const holder = installOwnerKey(install, options.onOwnerKey);
   return ok({
     walletMaker: createPrivyWalletMaker({
       api,
       clock,
       custody: async (read) => (await install.read({ signal: read })).custody,
-      ceilingChains: (venues) => ceilingChainsOf(options, venues),
+      ceilingChains: (wallet) => ceilingChainsOf(options, wallet),
       heldCaps: async (read) => heldCapsOf(install, read),
       onMade: (wallet, made) => wallets.set(wallet, made),
     }),

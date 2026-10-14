@@ -42,9 +42,12 @@ export interface PrivyWalletMakerOptions {
   /**
    * The ceiling of each enabled chain, first chain first, for the venues named: their declared
    * calls and spenders, the per-transaction cap of `defaults.ceiling.perTxBnb`, and the plan of
-   * each chain's 24-hour caps.
+   * each chain's 24-hour caps; for a launch wallet, with the launch rules of every launchpad the
+   * install runs (decision 0217).
    */
-  readonly ceilingChains: (venues: readonly string[]) => Pick<CeilingDraft, "chains" | "capPlans">;
+  readonly ceilingChains: (
+    wallet: Pick<WalletRequest, "venues" | "isLaunch">,
+  ) => Pick<CeilingDraft, "chains" | "capPlans">;
   /** The 24-hour caps the install's live ceilings name now, which a new ceiling names too. */
   readonly heldCaps: (signal: AbortSignal) => Promise<readonly HeldCaps[]>;
   /** Signs for each wallet made from then on, under the engine's id. */
@@ -164,7 +167,7 @@ async function make(
   if (!quorums.ok) {
     return quorums;
   }
-  const draft = options.ceilingChains(request.venues);
+  const draft = options.ceilingChains(request);
   const chains = await capsOf(options, draft, { owner: quorums.value.owner, signal });
   const [first] = chains;
   const ceiling = ceilingOf(chains, request);
@@ -187,7 +190,7 @@ async function make(
     });
   }
   const policy = await walletPolicyOf(options.api, made.value, signal);
-  options.onMade(request.wallet, made.value);
+  options.onMade(request.wallet, request.isLaunch ? { ...made.value, role: "launch" } : made.value);
   return ok(madeOf(options, { wallet: made.value, policy, agent }, first));
 }
 

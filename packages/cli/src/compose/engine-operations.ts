@@ -1,5 +1,6 @@
 import { BinferenceError, createSecret, ok } from "@binference/core";
 import type { AgentStore } from "@binference/engine";
+import type { InstallStore } from "@binference/engine/install";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { type EngineState, protocolVersion, type ResultOf } from "@binference/protocol";
 import type { EngineLock } from "../unlock/engine-lock.js";
@@ -9,6 +10,8 @@ import type { HealthSignal } from "./health-signals.js";
 /** What the engine's own operations read and do. */
 export interface EngineOperationsOptions {
   readonly agents: Pick<AgentStore, "list">;
+  /** The install's wallets, whose launch wallets the status names. */
+  readonly install: Pick<InstallStore, "read">;
   /** The engine's release. */
   readonly version: string;
   readonly state: () => EngineState;
@@ -43,19 +46,31 @@ function lockedFault(reason: LockReason): BinferenceError {
   });
 }
 
-function agentsOf(records: Awaited<ReturnType<AgentStore["list"]>>): EngineStatus["agents"] {
+type Wallets = Awaited<ReturnType<InstallStore["read"]>>["wallets"];
+
+// Each agent that is not archived, with its live launch wallet (decision 0217) when it has one.
+function agentsOf(
+  records: Awaited<ReturnType<AgentStore["list"]>>,
+  wallets: Wallets,
+): EngineStatus["agents"] {
   return records
     .filter((record) => record.archivedAtMs === undefined)
-    .map((record) => ({
-      id: record.id,
-      mode: record.mode,
-      frozen: record.frozenAtMs !== undefined,
-    }));
+    .map((record) => {
+      const launch = wallets.find(
+        (wallet) =>
+          wallet.agentId === record.id &&
+          wallet.role === "launch" &&
+          wallet.archivedAtMs === undefined,
+      );
+      const agent = { id: record.id, mode: record.mode, frozen: record.frozenAtMs !== undefined };
+      return Object.assign(agent, launch === undefined ? {} : { launchWallet: launch.id });
+    });
 }
 
 /**
  * The handlers of `engine/status`, `engine/stop` and `engine/unlock`. Status answers the state, the
- * release, the protocol version, the agents that are not archived, and the health signals; the
+ * release, the protocol version, the agents that are not archived with their launch wallets, and
+ * the health signals; the
  * engine counts as frozen when it has agents and every one of them is frozen. Stop starts the
  * shutdown sequence and answers at once. Unlock opens the agent key, with the passphrase in the
  * `manual` mode, and fails with `engine.locked` and the reason in `details.reason` while it stays
@@ -64,7 +79,11 @@ function agentsOf(records: Awaited<ReturnType<AgentStore["list"]>>): EngineStatu
 export function createEngineOperations(options: EngineOperationsOptions): EngineHandlerTable {
   return {
     "engine/status": async ({ signal }) => {
-      const agents = agentsOf(await options.agents.list({ signal }));
+      const [records, install] = await Promise.all([
+        options.agents.list({ signal }),
+        options.install.read({ signal }),
+      ]);
+      const agents = agentsOf(records, install.wallets);
       return ok({
         state: options.state(),
         version: options.version,

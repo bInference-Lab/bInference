@@ -1,5 +1,5 @@
 import type { Id } from "@binference/core";
-import type { WalletRecord } from "./install-record.js";
+import type { WalletRecord, WalletRole } from "./install-record.js";
 
 /** What a test names of a wallet; the rest of the record follows from its id. */
 export interface TestWallet {
@@ -8,6 +8,7 @@ export interface TestWallet {
   readonly label: string;
   readonly createdAtMs: number;
   readonly archivedAtMs?: number;
+  readonly role?: WalletRole;
 }
 
 /**

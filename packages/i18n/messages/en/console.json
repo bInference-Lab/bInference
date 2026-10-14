@@ -45,6 +45,7 @@
   "ledger.wholeInstall": "Every agent",
   "limits.title": "Limits",
   "limits.agent": "{name} · {mode, select, paper {Paper} other {Live}}",
+  "limits.launchWallet": "Launch wallet {label}, at {address}: trades on a launch's own curve run from it alone.",
   "limits.limit": "Limit",
   "limits.value": "In effect",
   "limits.pending": "Looser limits that apply at {when} unless you cancel them in the CLI:",

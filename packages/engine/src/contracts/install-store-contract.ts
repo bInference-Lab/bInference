@@ -145,6 +145,17 @@ async function storesANewWallet(subject: InstallStoreSubject): Promise<void> {
   assert.deepEqual((await store.read(live())).wallets, [made, first.wallet]);
 }
 
+async function storesOneLaunchWallet(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  const first = setup(subject, 2);
+  await store.setUp(first, live());
+  const launch = { ...wallet(subject, 1), role: "launch" } as const;
+  await store.createWallet(launch, live());
+  assert.deepEqual((await store.read(live())).wallets, [launch, first.wallet]);
+  await assert.rejects(store.createWallet({ ...wallet(subject, 3), role: "launch" }, live()));
+  assert.deepEqual((await store.read(live())).wallets, [launch, first.wallet]);
+}
+
 async function replacesKeptCeilingChanges(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   await store.setUp(setup(subject, 1), live());
@@ -199,6 +210,28 @@ async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> 
   assert.deepEqual(await store.read(live()), { wallets: [] });
 }
 
+// What the store does with the wallets made after the setup and their ceilings.
+function walletChecks(create: () => Promise<InstallStoreSubject>): readonly ContractCheck[] {
+  return [
+    checkOn("stores a new wallet beside the ones it holds", create, storesANewWallet),
+    checkOn(
+      "stores an agent's launch wallet with its role, and refuses a second live one",
+      create,
+      storesOneLaunchWallet,
+    ),
+    checkOn(
+      "replaces the ceiling changes kept while a new rescue address waits",
+      create,
+      replacesKeptCeilingChanges,
+    ),
+    checkOn(
+      "replaces a live wallet's copy of its ceiling, and no other wallet's",
+      create,
+      updatesALiveCeiling,
+    ),
+  ];
+}
+
 /** The contract every `InstallStore` adapter passes. */
 export function installStoreContract(harness: InstallStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<InstallStoreSubject> => harness.create();
@@ -235,17 +268,7 @@ export function installStoreContract(harness: InstallStoreHarness): readonly Con
       create,
       keepsCeilingChanges,
     ),
-    checkOn("stores a new wallet beside the ones it holds", create, storesANewWallet),
-    checkOn(
-      "replaces the ceiling changes kept while a new rescue address waits",
-      create,
-      replacesKeptCeilingChanges,
-    ),
-    checkOn(
-      "replaces a live wallet's copy of its ceiling, and no other wallet's",
-      create,
-      updatesALiveCeiling,
-    ),
+    ...walletChecks(create),
     ...attachChecks(create),
     checkOn("refuses every call on an aborted signal", create, refusesAbortedCalls),
   ];

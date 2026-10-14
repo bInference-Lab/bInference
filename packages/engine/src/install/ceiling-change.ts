@@ -58,6 +58,11 @@ export interface CeilingCalls {
    * price; the caps stay as they are when absent. The sums they cap stay (decision 0151).
    */
   readonly dayCapUsdMicros?: bigint;
+  /**
+   * The ceiling is a launch wallet's: it also allows the calls the install's launchpads declare
+   * on each launch's own contracts (decision 0217), written again with the rest.
+   */
+  readonly isLaunch?: true;
 }
 
 /** What contract calls may do under each ceiling, with the owner key that owns every ceiling. */

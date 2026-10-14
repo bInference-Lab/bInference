@@ -45,6 +45,7 @@
   "ledger.wholeInstall": "全部 Agent",
   "limits.title": "交易限额",
   "limits.agent": "{name} · {mode, select, paper {模拟} other {实盘}}",
+  "limits.launchWallet": "发射钱包 {label}，地址 {address}：在发射项目自身的联合曲线上的交易只从它发起。",
   "limits.limit": "限额",
   "limits.value": "当前生效",
   "limits.pending": "以下更宽松的限额将在 {when} 生效，除非你在命令行中取消：",

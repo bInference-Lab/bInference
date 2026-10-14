@@ -25,12 +25,19 @@ interface InstallState extends InstallFacts {
   readonly installId?: Id<"ins">;
 }
 
+// A wallet's id, Privy id or address held already, or a second live launch wallet of its agent.
 function isHeld(wallets: readonly WalletRecord[], wallet: WalletDraft): boolean {
+  const isLaunchHeld = (item: WalletRecord) =>
+    wallet.role === "launch" &&
+    item.role === "launch" &&
+    item.agentId === wallet.agentId &&
+    item.archivedAtMs === undefined;
   return wallets.some(
     (item) =>
       item.id === wallet.id ||
       item.custodyWalletId === wallet.custodyWalletId ||
-      item.address === wallet.address,
+      item.address === wallet.address ||
+      isLaunchHeld(item),
   );
 }
 

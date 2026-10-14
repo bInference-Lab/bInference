@@ -155,7 +155,7 @@ export async function startOrdersMachine(
     canPrice: async () => await Promise.resolve(true),
     readTokenFacts: forkTokenFacts(fork),
     workspace: createMemoryWorkspaceFiles(clock),
-    handlers: readyEngineOperations(parts.stores.agents),
+    handlers: readyEngineOperations(parts.stores),
     turns,
     telegram,
     clock,

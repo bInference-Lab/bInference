@@ -19,6 +19,13 @@ export interface RebuildOwner {
   readonly owned: readonly OwnedWallet[];
 }
 
+// A rebuild makes one agent, which holds one launch wallet at most (decision 0217): the oldest
+// launch wallet is adopted, and any later one stays on Privy with its owner key, never moved.
+function withOneLaunchWallet(owned: readonly OwnedWallet[]): readonly OwnedWallet[] {
+  const launch = owned.find((item) => item.ceiling.isLaunch);
+  return owned.filter((item) => !item.ceiling.isLaunch || item === launch);
+}
+
 // How many owner key codes a person may type before the rebuild stops.
 const maxTries = 3;
 
@@ -40,7 +47,9 @@ async function ownedBy(
     appSecret: app.secret.value,
   });
   const { publicKey } = pair.value;
-  const owned = await findOwnedWallets(api, { ownerKey: publicKey }, { signal });
+  const owned = withOneLaunchWallet(
+    await findOwnedWallets(api, { ownerKey: publicKey }, { signal }),
+  );
   const holder = { ownerKeyPublic: async () => Promise.resolve(publicKey) };
   const authorize = await ownerAuthorize(holder, code, signal);
   if (owned.length === 0 || !authorize.ok) {
@@ -74,8 +83,8 @@ async function askOwner(
 
 /**
  * The owner key step of a rebuild (decision 0142): asks for the owner key code with hidden input,
- * up to 3 tries, and finds the wallets its key owns on Privy. A code that is none, or one whose
- * key owns no wallet of the app, asks again. No flag takes the code.
+ * up to 3 tries, and finds the wallets its key owns on Privy, one launch wallet at most. A code
+ * that is none, or one whose key owns no wallet of the app, asks again. No flag takes the code.
  */
 export async function takeRebuildOwner(
   context: InitContext,

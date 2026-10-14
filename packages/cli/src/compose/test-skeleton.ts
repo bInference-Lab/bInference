@@ -275,9 +275,12 @@ const facts = {
  * `engine/status` and the operations beside it of an engine that is ready, unlocked and healthy,
  * release 2026.10.0, whose custody signs with no agent key of this machine.
  */
-export function readyEngineOperations(agents: EngineParts["stores"]["agents"]): EngineHandlerTable {
+export function readyEngineOperations(
+  stores: Pick<EngineParts["stores"], "agents" | "install">,
+): EngineHandlerTable {
   return createEngineOperations({
-    agents,
+    agents: stores.agents,
+    install: stores.install,
     version: "2026.10.0",
     state: () => "ready",
     lock: { unlock: async () => Promise.resolve(ok(undefined)) },
@@ -322,7 +325,7 @@ export async function composeSkeleton(
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),
-    handlers: { ...readyEngineOperations(parts.stores.agents), ...options.handlers },
+    handlers: { ...readyEngineOperations(parts.stores), ...options.handlers },
     ...surfacesOf(options),
     clock,
     random: createSeededRandom(7),

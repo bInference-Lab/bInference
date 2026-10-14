@@ -7,6 +7,7 @@ import type { NoticeTables } from "./notice-tables.js";
 import type { OrderTables } from "./order-tables.js";
 import type { PositionTables } from "./position-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
+import type { WalletTables } from "./wallet-tables.js";
 
 // The engine tables the store adapters query, as SQLite returns them: TEXT is a string, INTEGER a
 // number, and a nullable column may be null. The migrations in src/migrations/engine/ define them.
@@ -123,31 +124,6 @@ export interface CustodyTable {
   /** The sealing key's public half (migration 0027); NULL until the owner key derived it. */
   seal_key_public: string | null;
   version: number;
-}
-
-/** `ceilings`: the policy mirror as JSON text, the cap as decimal text. */
-export interface CeilingsTable {
-  wallet_id: string;
-  policy_id: string;
-  policy: string;
-  per_tx_native: string;
-  read_at: number;
-  version: number;
-}
-
-/** `wallets`. */
-export interface WalletsTable {
-  id: string;
-  agent_id: string;
-  family: string;
-  custody: string;
-  custody_wallet_id: string;
-  policy_id: string;
-  signer_id: string;
-  address: string;
-  label: string;
-  created_at: number;
-  archived_at: number | null;
 }
 
 /** `intents`: JSON documents as text, flags as 0 or 1. */
@@ -332,17 +308,16 @@ export interface EngineTables
     BackupTables,
     AccessTables,
     AgentInboxTables,
-    ModelUsageTables {
+    ModelUsageTables,
+    WalletTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;
-  ceilings: CeilingsTable;
   agents: AgentsTable;
   limits: LimitsTable;
   approval_modes: ApprovalModesTable;
   send_levels: SendLevelsTable;
   address_book: AddressBookTable;
-  wallets: WalletsTable;
   intents: IntentsTable;
   intent_events: IntentEventsTable;
   cards: CardsTable;

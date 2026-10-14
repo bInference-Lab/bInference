@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended by decisions
 [0103](../DECISIONS.md#d0103), [0116](../DECISIONS.md#d0116), [0117](../DECISIONS.md#d0117),
-[0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148) and [0149](../DECISIONS.md#d0149). It follows Privy custody (decisions
+[0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148), [0149](../DECISIONS.md#d0149) and [0217](../DECISIONS.md#d0217). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
 <a id="section-1"></a>
@@ -50,8 +50,9 @@ any signature outside the policy, whatever the machine asks.
 5. Init reads the wallet back from Privy and refuses to finish unless the owner, the signer and the
    policy are exactly what it asked for.
 
-More wallets (`binference wallet create`) and policy changes need the owner key again: the CLI asks
-for the code, uses it for that one request, and forgets it.
+More wallets (`binference wallet create`, and `--launch` for the agent's launch wallet, section 4)
+and policy changes need the owner key again: the CLI asks for the code, uses it for that one
+request, and forgets it.
 
 **Cloud** does the same through binference.io: the user signs in, Privy's own window asks their
 consent, the wallet is made in their Privy account with our signer service under the policy
@@ -150,6 +151,19 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    refuses a ceiling that gained an allow rule).
 
 Everything else is refused by Privy.
+
+**A launch wallet's ceiling** ([decision 0217](../DECISIONS.md#d0217)). An agent may hold one
+launch wallet, made with the owner key by `binference wallet create --launch`. Its ceiling holds
+every rule above, and on each chain, for every launchpad the install runs, one rule per call the
+launchpad declares on the contracts each launch makes (`Launch call <function>, chain <id>`): the
+function by `function_name` with its JSON ABI and no `to` condition, each input the launchpad pins
+equal to `{{wallet.address}}`, at most the per-transaction cap and under the chain's 24-hour native
+cap; and, when a launchpad names a launch contract as its spender, `Launch approvals, chain <id>`:
+an `approve` with no native coin naming any spender, under each capped token's 24-hour cap. No
+agent wallet's ceiling holds a launch rule, and no ceiling lists a launch wallet as a recipient:
+the owner funds it from outside. A thief with this machine's keys can take what the launch wallet
+holds, within the 24-hour caps for the coin, WBNB, USDT and USDC, and nothing more from the
+agent's other wallets than the promise below allows.
 
 **What it promises** ([decision 0149](../DECISIONS.md#d0149)). A machine whose keys are stolen
 cannot send BNB or a token to an address the owner did not save, cannot call a contract or a

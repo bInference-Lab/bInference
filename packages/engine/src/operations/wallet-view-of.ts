@@ -15,8 +15,8 @@ function isHeld(account: Result<AccountRef, "unknown_wallet">): account is Ok<Ac
 
 /**
  * A stored wallet as the protocol shows it, with its account on the first registered chain where
- * custody holds it; `undefined` when custody holds it on none, so no wallet is ever shown without
- * the address custody signs for.
+ * custody holds it and its role when it is a launch wallet; `undefined` when custody holds it on
+ * none, so no wallet is ever shown without the address custody signs for.
  */
 export async function walletViewOf(
   parts: WalletViewParts,
@@ -38,5 +38,6 @@ export async function walletViewOf(
         label: wallet.label,
         createdAt: wallet.createdAtMs,
         ...(wallet.archivedAtMs === undefined ? {} : { archivedAt: wallet.archivedAtMs }),
+        ...(wallet.role === undefined ? {} : { role: wallet.role }),
       };
 }

@@ -27,10 +27,14 @@ interface WalletArgs {
   readonly wallet: ProtocolId<"wallet">;
 }
 
-/** The args of `wallet/create`: a new Privy wallet, owned by the owner key. */
+/**
+ * The args of `wallet/create`: a new Privy wallet, owned by the owner key; with `launch`, the
+ * agent's launch wallet (decision 0217).
+ */
 interface CreateWalletArgs extends AgentArgs {
   readonly label: string;
   readonly ownerKey: string;
+  readonly launch?: true;
 }
 
 /** The args of `wallet/rename`. */
@@ -153,7 +157,12 @@ export const walletOperations: OperationTable<WalletOperationShapes> = {
     ...localWriteFlags,
     name: "wallet/create",
     scope: "admin",
-    args: z.strictObject({ agent, label: labelSchema, ownerKey: ownerKeyCodeSchema }),
+    args: z.strictObject({
+      agent,
+      label: labelSchema,
+      ownerKey: ownerKeyCodeSchema,
+      launch: z.literal(true).exactOptional(),
+    }),
     result: walletViewSchema,
   },
   "wallet/rename": {

@@ -20,6 +20,8 @@ export interface WalletMakerSubject {
   nextWallet(): Id<"wal">;
   /** The accounts the ceiling of a made wallet lets a send pay, sorted, as custody holds it. */
   recipientsOf(made: MadeWallet): Promise<readonly AccountRef[]>;
+  /** Whether custody holds a made wallet's ceiling as a launch wallet's (decision 0217). */
+  isLaunchCeiling(made: MadeWallet): Promise<boolean>;
   /** How many wallets custody was asked to make so far. */
   made(): number;
 }
@@ -31,7 +33,16 @@ export interface WalletMakerHarness {
 
 function requestOf(subject: WalletMakerSubject, ownerKey: Secret = subject.ownerKey) {
   const { venues, recipients } = subject;
-  return { wallet: subject.nextWallet(), ownerKey, venues, recipients };
+  return { wallet: subject.nextWallet(), ownerKey, venues, recipients, isLaunch: false };
+}
+
+async function makesALaunchWallet(subject: WalletMakerSubject): Promise<void> {
+  const launch = await subject.maker.make({ ...requestOf(subject), isLaunch: true }, live());
+  const agentWallet = await subject.maker.make(requestOf(subject), live());
+  assert.ok(launch.ok && agentWallet.ok);
+  assert.equal(await subject.isLaunchCeiling(launch.value), true);
+  assert.equal(await subject.isLaunchCeiling(agentWallet.value), false);
+  assert.deepEqual(await subject.recipientsOf(launch.value), subject.recipients.toSorted());
 }
 
 async function makesAWallet(subject: WalletMakerSubject): Promise<void> {
@@ -71,6 +82,11 @@ export function walletMakerContract(harness: WalletMakerHarness): readonly Contr
   return [
     checkOn("makes a wallet whose ceiling sends only to the recipients", create, makesAWallet),
     checkOn("makes each wallet with its own ceiling and address", create, makesWalletsApart),
+    checkOn(
+      "makes a launch wallet whose ceiling holds the launch rules, and no other",
+      create,
+      makesALaunchWallet,
+    ),
     checkOn("refuses another owner key and makes nothing", create, refusesAnotherKey),
     checkOn("refuses an aborted call and makes nothing", create, refusesAborted),
   ];

@@ -29,6 +29,8 @@ export interface PrivyWallet {
   readonly address: string;
   /** The chains its ceiling enables. */
   readonly chains: readonly ChainRef[];
+  /** `launch` for the agent's launch wallet (decision 0217); absent for an agent wallet. */
+  readonly role?: "launch";
 }
 
 /** What the `privy-owner` adapter is built from. */
@@ -98,7 +100,12 @@ async function authorize(
   const { request, wallet, account } = signing;
   const answer = await signing.options.signerProcess.authorize(
     {
-      wallet: { id: request.wallet, custodyId: wallet.id, account },
+      wallet: {
+        id: request.wallet,
+        custodyId: wallet.id,
+        account,
+        ...(wallet.role === undefined ? {} : { role: wallet.role }),
+      },
       request: privyRequest,
       intent: request.intent,
       step: request.step,

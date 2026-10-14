@@ -36,6 +36,7 @@ import { migration as intentAssets } from "./0034_intent_assets.js";
 import { migration as questions } from "./0035_questions.js";
 import { migration as ownerAgent } from "./0036_owner_agent.js";
 import { migration as cardAutoAsks } from "./0037_card_auto_asks.js";
+import { migration as walletRoles } from "./0038_wallet_roles.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -76,4 +77,5 @@ export const engineMigrations: readonly Migration[] = [
   questions,
   ownerAgent,
   cardAutoAsks,
+  walletRoles,
 ];

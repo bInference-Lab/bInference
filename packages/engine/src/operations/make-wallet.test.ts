@@ -32,11 +32,13 @@ const unsaved: AddressEntryRecord = {
 
 function create(
   test: TestEngine,
-  args: { readonly ownerKey?: string; readonly agent?: string } = {},
+  args: { readonly ownerKey?: string; readonly agent?: string; readonly launch?: true } = {},
 ) {
-  const { ownerKey = fakeOwnerKeyCode, agent = testAgent } = args;
+  const { ownerKey = fakeOwnerKeyCode, agent = testAgent, launch } = args;
   const call = { agent: idSchema("agt").parse(agent), label: "spare", ownerKey };
-  return test.engine.handlers["wallet/create"](testCall(call));
+  return test.engine.handlers["wallet/create"](
+    testCall(launch === undefined ? call : { ...call, launch }),
+  );
 }
 
 // The test engine with the owner's rescue address in effect and one live wallet listing it.
@@ -121,6 +123,22 @@ describe("making a wallet with the owner key", () => {
     expect(await create(bare)).toStrictEqual(err("rescue.no_address"));
     expect([test.walletMaker.count(), bare.walletMaker.count()]).toStrictEqual([0, 0]);
     expect(await labels(test)).toStrictEqual(["main"]);
+  });
+
+  it("makes the agent's launch wallet with its role, and refuses a second", async () => {
+    const test = await withRescue();
+
+    const view = expectOk(await create(test, { launch: true }));
+
+    const stored = await newWallet(test);
+    expect([view.role, stored.role]).toStrictEqual(["launch", "launch"]);
+    expect(JSON.stringify(stored.ceiling.policy)).toContain('"isLaunch":true');
+    expect(await create(test, { launch: true })).toStrictEqual(err("wallet.launch_exists"));
+    expect(test.walletMaker.count()).toBe(1);
+    const listed = expectOk(await test.engine.handlers["agent/list"](testCall({})));
+    expect(
+      listed.items.map((agent) => [agent.defaultWallet?.label, agent.launchWallet?.label]),
+    ).toStrictEqual([["main", "spare"]]);
   });
 
   it("takes the new wallet into a rescue address change that waits", async () => {

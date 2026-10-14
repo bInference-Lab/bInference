@@ -66,6 +66,7 @@ export function engineHandlers(
   return {
     ...createEngineOperations({
       agents: opened.stores.agents,
+      install: opened.stores.install,
       version: opening.host.version,
       state: wiring.locked.state,
       lock: wiring.locked.lock,

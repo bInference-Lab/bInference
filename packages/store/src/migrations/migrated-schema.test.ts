@@ -95,7 +95,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   wallets: names(
     "id agent_id family custody custody_wallet_id policy_id signer_id address label created_at " +
-      "archived_at",
+      "archived_at role",
   ),
   ceilings: names("wallet_id policy_id policy per_tx_native read_at version"),
   nonces: names("account next_nonce changed_at"),
@@ -207,7 +207,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
 const indexes: Readonly<Record<string, readonly string[]>> = {
   agents: ["unique|name"],
   address_book: ["unique|agent_id,chain,address|partial"],
-  wallets: ["unique|address", "unique|custody_wallet_id"],
+  wallets: ["unique|address", "unique|agent_id|partial", "unique|custody_wallet_id"],
   intents: ["index|agent_id,state", "index|state,changed_at"],
   intent_events: ["index|intent_id,at", "index|to_state,at"],
   carried_outflows: ["index|agent_id,paper,confirmed_at"],

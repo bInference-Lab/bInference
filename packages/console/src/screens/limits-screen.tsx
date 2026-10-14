@@ -1,5 +1,5 @@
-import { limitLines } from "@binference/i18n";
-import type { AgentView } from "@binference/protocol";
+import { addressPartOf, displayOutsideText, limitLines } from "@binference/i18n";
+import type { AgentView, WalletView } from "@binference/protocol";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import {
@@ -37,6 +37,21 @@ function LimitTable(props: { readonly lines: ReturnType<typeof limitLines> }): R
   );
 }
 
+// The agent's launch wallet, which alone trades on a launch's own curve (decision 0217).
+function LaunchWallet(props: { readonly wallet: WalletView }): React.JSX.Element {
+  const text = useText();
+  const { label, address } = props.wallet;
+  const values = {
+    label: displayOutsideText(label, 64),
+    address: addressPartOf(address),
+  };
+  return (
+    <p className="text-sm">
+      <MessageText text={text("console.limits.launchWallet", values)} />
+    </p>
+  );
+}
+
 function AgentLimits(props: { readonly agent: AgentView }): React.JSX.Element {
   const { agent } = props;
   const { client } = useEngine();
@@ -55,6 +70,7 @@ function AgentLimits(props: { readonly agent: AgentView }): React.JSX.Element {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {agent.launchWallet === undefined ? null : <LaunchWallet wallet={agent.launchWallet} />}
         {view === undefined ? (
           <ScreenState error={limits.error} />
         ) : (

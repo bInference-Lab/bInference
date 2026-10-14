@@ -5,6 +5,7 @@ import {
   type InstallStore,
   makeAgentWorkspace,
   type WalletDraft,
+  type WalletRole,
 } from "@binference/engine/install";
 import { issueStartCode, type StartCode } from "@binference/telegram";
 import { stateWorkspace } from "../compose/state-workspace.js";
@@ -32,6 +33,8 @@ export interface InstallRecord {
   readonly first: FirstWallet;
   /** The ceiling's cap per contract call on the first chain, in native base units. */
   readonly perTxNativeBase: bigint;
+  /** `launch` when the first wallet is a launch wallet a rebuild found (decision 0217). */
+  readonly role?: WalletRole;
 }
 
 /** The first wallet's label in the engine's records. */
@@ -80,6 +83,8 @@ export interface WalletEntry {
   /** The ceiling's cap per contract call on the first chain, in native base units. */
   readonly perTxNativeBase: bigint;
   readonly label: string;
+  /** `launch` for a launch wallet (decision 0217); absent for an agent wallet. */
+  readonly role?: WalletRole;
 }
 
 /** The store's draft of a wallet Privy holds, with a new id and its ceiling as read now. */
@@ -104,6 +109,7 @@ export function walletDraftOf(context: InitContext, entry: WalletEntry): WalletD
       perTxNativeBase: entry.perTxNativeBase,
       readAtMs: atMs,
     },
+    ...(entry.role === undefined ? {} : { role: entry.role }),
   };
 }
 

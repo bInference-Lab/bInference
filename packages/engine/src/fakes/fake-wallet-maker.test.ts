@@ -35,6 +35,8 @@ describe("the fake wallet maker", () => {
           nextWallet: () => fixtureId("wal", (next.n += 1)),
           recipientsOf: async (made) =>
             Promise.resolve(listed(maker.recipients(made.record.policyId))),
+          isLaunchCeiling: async (made) =>
+            Promise.resolve(JSON.stringify(made.record.ceiling.policy).includes('"isLaunch":true')),
           made: () => maker.count(),
         });
       },

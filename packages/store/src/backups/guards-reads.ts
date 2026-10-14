@@ -13,7 +13,8 @@ import {
 import { isCounted } from "@binference/engine/outflows";
 import type { Selectable } from "kysely";
 import { readSettings } from "../agents/agent-rows.js";
-import type { EngineTables, WalletsTable } from "../databases/engine-tables.js";
+import type { EngineTables } from "../databases/engine-tables.js";
+import type { WalletsTable } from "../databases/wallet-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { confirmedSince } from "../intents/confirmed-tasks.js";
 import { field } from "../rows/column-values.js";

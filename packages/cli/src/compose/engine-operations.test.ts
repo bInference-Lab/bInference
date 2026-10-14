@@ -1,5 +1,7 @@
 import { err, idSchema, type Id, ok } from "@binference/core";
 import type { AgentRecord } from "@binference/engine";
+import type { WalletRecord } from "@binference/engine/install";
+import { testWalletRecord } from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
 import { createEngineOperations, type EngineOperationsOptions } from "./engine-operations.js";
 
@@ -41,11 +43,16 @@ function passphraseLock() {
   return { lock, typed };
 }
 
-function operationsWith(records: readonly AgentRecord[], lock = passphraseLock().lock) {
+function operationsWith(
+  records: readonly AgentRecord[],
+  lock = passphraseLock().lock,
+  wallets: readonly WalletRecord[] = [],
+) {
   const stops = { count: 0 };
   const handlers = createEngineOperations({
     lock,
     agents: { list: async () => Promise.resolve(records) },
+    install: { read: async () => Promise.resolve({ wallets }) },
     version: "2026.10.0",
     state: () => "ready",
     health: () => [{ signal: "memory", state: "ok" }],
@@ -56,7 +63,29 @@ function operationsWith(records: readonly AgentRecord[], lock = passphraseLock()
   return { handlers, stops };
 }
 
+const launchId = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000d2");
+
 describe("the engine's own operations", () => {
+  it("names each agent's live launch wallet in engine/status", async () => {
+    const launch = testWalletRecord({
+      id: launchId,
+      agentId: agentId(2),
+      label: "curves",
+      createdAtMs: 1,
+      role: "launch",
+    });
+    const { handlers } = operationsWith([agent(1), agent(2)], passphraseLock().lock, [launch]);
+    const status = await handlers["engine/status"]?.({ ...call, args: {} });
+    expect(status).toMatchObject({
+      value: {
+        agents: [
+          { id: agentId(1), mode: "paper", frozen: false },
+          { id: agentId(2), mode: "paper", frozen: false, launchWallet: launchId },
+        ],
+      },
+    });
+  });
+
   it("answers engine/status with the agents that are not archived", async () => {
     const { handlers } = operationsWith([
       agent(1),

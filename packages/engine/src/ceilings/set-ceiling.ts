@@ -118,7 +118,8 @@ function refusalOf(
   return removed.some((venue) => named.has(venue)) ? "limit.venue_in_use" : undefined;
 }
 
-// What each ceiling's calls become: the venues, cap and 24-hour caps asked, else the ones it holds.
+// What each ceiling's calls become: the venues, cap and 24-hour caps asked, else the ones it holds;
+// a launch wallet's keeps its launch rules (decision 0217).
 function callsOf(
   options: SetCeilingOptions,
   changes: CeilingChanges,
@@ -137,6 +138,7 @@ function callsOf(
         perTxNativeBase: changes.perTxNative ?? read.perTxNativeBase,
       },
       resize,
+      wallet.role === "launch" ? { isLaunch: true as const } : {},
     ),
   );
 }

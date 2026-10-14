@@ -127,7 +127,16 @@ export interface WalletDraft {
   readonly label: string;
   readonly createdAtMs: number;
   readonly ceiling: CeilingMirror;
+  /**
+   * `launch` for the agent's launch wallet, whose ceiling also allows the calls launchpads declare
+   * on the contracts each launch makes (decision 0217); absent for an agent wallet. An agent holds
+   * one live launch wallet at most.
+   */
+  readonly role?: WalletRole;
 }
+
+/** What a wallet is for beyond an agent wallet's trades: `launch`, a launch wallet. */
+export type WalletRole = "launch";
 
 /** A wallet as the store keeps it; an archived wallet is one the install no longer uses. */
 export interface WalletRecord extends WalletDraft {
@@ -153,6 +162,7 @@ const walletShape = {
   label: shortTextSchema,
   createdAtMs: epochMsSchema,
   ceiling: ceilingMirrorSchema,
+  role: z.literal("launch").exactOptional(),
 };
 
 /** Parses a ceiling update. */

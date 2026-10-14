@@ -455,6 +455,7 @@
         "wallet.unfunded",
         "wallet.bad_owner_key",
         "wallet.custody_down",
+        "wallet.launch_exists",
         "address.not_found",
         "rescue.no_address",
         "rescue.nothing_to_move",
@@ -633,6 +634,10 @@
                   },
                   "frozen": {
                     "type": "boolean"
+                  },
+                  "launchWallet": {
+                    "type": "string",
+                    "pattern": "^wal_"
                   }
                 },
                 "required": [
@@ -2422,6 +2427,50 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 9007199254740991
+                      },
+                      "role": {
+                        "type": "string",
+                        "const": "launch"
+                      }
+                    },
+                    "required": [
+                      "wallet",
+                      "agent",
+                      "address",
+                      "label",
+                      "createdAt"
+                    ]
+                  },
+                  "launchWallet": {
+                    "type": "object",
+                    "properties": {
+                      "wallet": {
+                        "type": "string",
+                        "pattern": "^wal_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "address": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "archivedAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "role": {
+                        "type": "string",
+                        "const": "launch"
                       }
                     },
                     "required": [
@@ -2590,6 +2639,50 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
+            },
+            "launchWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
                 }
               },
               "required": [
@@ -2757,6 +2850,50 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
+            },
+            "launchWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
                 }
               },
               "required": [
@@ -2922,6 +3059,50 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
+            },
+            "launchWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
                 }
               },
               "required": [
@@ -3154,6 +3335,50 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
+            },
+            "launchWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
                 }
               },
               "required": [
@@ -3313,6 +3538,50 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
+                }
+              },
+              "required": [
+                "wallet",
+                "agent",
+                "address",
+                "label",
+                "createdAt"
+              ]
+            },
+            "launchWallet": {
+              "type": "object",
+              "properties": {
+                "wallet": {
+                  "type": "string",
+                  "pattern": "^wal_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "role": {
+                  "type": "string",
+                  "const": "launch"
                 }
               },
               "required": [
@@ -6134,6 +6403,10 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "role": {
+                    "type": "string",
+                    "const": "launch"
                   }
                 },
                 "required": [
@@ -6193,6 +6466,10 @@
             "ownerKey": {
               "type": "string",
               "pattern": "^bnok1[A-Za-z2-7][A-Za-z2-7 -]{20,200}$"
+            },
+            "launch": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [
@@ -6260,6 +6537,10 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "role": {
+              "type": "string",
+              "const": "launch"
             }
           },
           "required": [
@@ -6371,6 +6652,10 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "role": {
+              "type": "string",
+              "const": "launch"
             }
           },
           "required": [

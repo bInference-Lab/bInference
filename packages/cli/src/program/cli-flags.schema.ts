@@ -48,6 +48,11 @@ export interface LabelFlags extends AgentFlags {
   readonly label: string;
 }
 
+/** What `wallet create` takes: `--launch` makes the agent's launch wallet (decision 0217). */
+export interface WalletCreateFlags extends LabelFlags {
+  readonly launch: boolean;
+}
+
 /** What `check` takes: `--fix` repairs what the check may repair. */
 export interface CheckFlags extends CommonOptions {
   readonly fix: boolean;
@@ -138,6 +143,14 @@ export const labelFlagsSchema: z.ZodType<LabelFlags> = z.object({
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
   label: z.string().min(1).max(64),
+});
+
+/** Parses the options commander read for `wallet create`; an agent wallet unless `--launch`. */
+export const walletCreateFlagsSchema: z.ZodType<WalletCreateFlags> = z.object({
+  ...commonShape,
+  agent: protocolIdSchema("agent").exactOptional(),
+  label: z.string().min(1).max(64),
+  launch: z.boolean().default(false),
 });
 
 /** Parses the options commander read for `check`. */

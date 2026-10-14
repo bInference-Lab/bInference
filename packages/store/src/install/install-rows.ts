@@ -11,12 +11,9 @@ import {
   type WalletRecord,
   walletRecordSchema,
 } from "@binference/engine/install";
-import type {
-  CeilingsTable,
-  CustodyTable,
-  EngineTables,
-  WalletsTable,
-} from "../databases/engine-tables.js";
+import type { Selectable } from "kysely";
+import type { CustodyTable, EngineTables } from "../databases/engine-tables.js";
+import type { CeilingsTable, WalletsTable } from "../databases/wallet-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, readDecimal, readJson } from "../rows/column-values.js";
 
@@ -33,7 +30,7 @@ function toCustody(row: CustodyTable): CustodyRecord {
   });
 }
 
-function toWallet(row: WalletsTable, ceiling: CeilingsTable): WalletRecord {
+function toWallet(row: Selectable<WalletsTable>, ceiling: CeilingsTable): WalletRecord {
   return walletRecordSchema.parse({
     id: row.id,
     agentId: row.agent_id,
@@ -46,6 +43,7 @@ function toWallet(row: WalletsTable, ceiling: CeilingsTable): WalletRecord {
     label: row.label,
     createdAtMs: row.created_at,
     ...field("archivedAtMs", row.archived_at),
+    ...(row.role === "launch" ? { role: row.role } : {}),
     ceiling: {
       policyId: ceiling.policy_id,
       policy: readJson(ceiling.policy),
