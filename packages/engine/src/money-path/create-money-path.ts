@@ -10,11 +10,7 @@ import type { PolicyRejection } from "../intents/intent-reason.js";
 import type { IntentProposerRef } from "../intents/intent-record.js";
 import type { IntentProposer } from "../intents/intent-status.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
-import {
-  createIntentStateMachine,
-  type IntentStateMachine,
-  type ProposalProblem,
-} from "../intents/state-machine.js";
+import { createIntentStateMachine, type IntentStateMachine } from "../intents/state-machine.js";
 import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, RiskCheck, Simulator } from "../ports.js";
@@ -25,6 +21,7 @@ import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
 import { type PlacedTrade, placeTrade } from "./place-trade.js";
 import { policyFactsOf } from "./policy-facts-of.js";
+import { proposalProblemCode } from "./proposal-problem-code.js";
 import { firstQuoteOf, quotedTradeOf, quoteVenues } from "./quote-venues.js";
 import { type ResolvedProposal, type ResolveOptions, resolveProposal } from "./resolve-proposal.js";
 import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
@@ -107,12 +104,6 @@ interface Stepped<T> {
   readonly snapshot: IntentSnapshot;
   readonly passed?: T;
 }
-
-const problemCodes: Readonly<Record<ProposalProblem, ProtocolErrorCode>> = {
-  agent_missing: "agent.not_found",
-  agent_archived: "agent.archived",
-  wrong_proposer: "auth.scope",
-};
 
 async function advance(
   run: Run,
@@ -334,7 +325,7 @@ async function propose(
   const proposal = proposalOf(call, settings);
   const step = machine.propose(proposal);
   if (!step.ok || settings === undefined) {
-    return err(step.ok ? "agent.not_found" : problemCodes[step.error]);
+    return err(step.ok ? "agent.not_found" : proposalProblemCode(step.error));
   }
   const { isPaper } = proposal;
   const resolved = await resolveProposal(options, { request, settings, signal, isPaper });
