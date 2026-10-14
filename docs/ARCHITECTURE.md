@@ -424,7 +424,8 @@ hash and nonce and never signed again, and the intent goes on to `executing` or 
   hook is not on the list is dropped and the next quote is used. An aggregator whose answer names no
   hooks, such as OKX, routes through no hooked pool at all.
 - 1inch and 0x join when the owner adds their keys.
-- Launchpad tokens still on their curve trade directly on Flap's Portal or four.meme's TokenManager.
+- Launchpad tokens still on their curve trade directly on Flap's Portal, four.meme's TokenManager,
+  or the curve of their own Genius.fun launch ([decision 0212](DECISIONS.md#d0212)).
 
 **Risk tiers:**
 
