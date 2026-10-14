@@ -6,7 +6,6 @@ import {
   assetRefParts,
   type ChainRef,
   type ChainRegistry,
-  assetRefSchema,
   type QuoteRequest,
   type RegisteredChain,
   type Venue,
@@ -25,6 +24,7 @@ import {
   type TradeBounds,
 } from "./build-checks.js";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
+import { frozenAmount, frozenQuote, nativeAssetOf } from "./host-terms.js";
 import { type HostedVenue, hostVenues } from "./hosted-venue.js";
 import { contractsWithLaunch, type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
@@ -175,20 +175,6 @@ const quoteAnswerSchema = z.discriminatedUnion("ok", [
 
 function refuse(error: VenueFailure, mismatch?: BuildMismatch): VenueRefused {
   return mismatch === undefined ? { ok: false, error } : { ok: false, error, mismatch };
-}
-
-function nativeAssetOf(chain: RegisteredChain): AssetRef {
-  const { assetNamespace, assetReference } = chain.definition.nativeAsset;
-  return assetRefSchema.parse(`${chain.ref}/${assetNamespace}:${assetReference}`);
-}
-
-function frozenAmount(amount: Amount): Amount {
-  return Object.freeze({ asset: amount.asset, base: amount.base });
-}
-
-// What the host hands a venue is frozen, so venue code cannot move the terms it is checked by.
-function frozenQuote(quote: VenueQuote): VenueQuote {
-  return Object.freeze({ ...quote, expectedOut: frozenAmount(quote.expectedOut) });
 }
 
 /** The trade's venue, chain and contracts, and the request the venue quotes. */
