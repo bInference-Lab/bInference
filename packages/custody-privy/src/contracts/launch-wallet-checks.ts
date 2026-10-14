@@ -19,7 +19,7 @@ import {
   type TestCall,
 } from "./privy-custody-setup.js";
 
-const { curve, token, rescue, unsaved } = testAddresses;
+const { curve, token, rescue, unsaved, unlisted } = testAddresses;
 const refused = { ok: false, error: "refused" };
 
 // The suite's wallet and its launch wallet, made on first use.
@@ -91,6 +91,16 @@ export function launchWalletChecks(harness: PrivyCustodyHarness): readonly Contr
     launchCheck(harness, "refuses an approval through any function but approve", async (w) => {
       await privyRefuses(w.launch, { to: token, valueWei: 0n, data: approvalForAllData(curve) });
       await privyRefuses(w.launch, { to: token, valueWei: 1n, data: approveData(curve, 7n) });
+    }),
+    launchCheck(harness, "signs an approval of a token no cap names, of any size", async (w) => {
+      await privySigns(w.launch, {
+        to: unlisted,
+        valueWei: 0n,
+        data: approveData(curve, 10n ** 30n),
+      });
+    }),
+    launchCheck(harness, "refuses an approval of a capped token above its cap", async (w) => {
+      await privyRefuses(w.launch, { to: token, valueWei: 0n, data: approveData(curve, 1_001n) });
     }),
     launchCheck(harness, "refuses a curve call above the cap in native coin", async (w) => {
       const buy = curveCall("buy", w.launch.wallet.address);
