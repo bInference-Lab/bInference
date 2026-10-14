@@ -10,7 +10,13 @@ import type {
 import type { AgentSettings } from "../agents/agent-record.js";
 import { limitsRecordAt } from "../agents/limits-in-effect.js";
 import type { CardAction, TradePlace } from "../confirmations/card-action.js";
-import type { CardCheck, CardFacts, CardRoute, CardWarnings } from "../confirmations/draw-card.js";
+import type {
+  AutoAsk,
+  CardCheck,
+  CardFacts,
+  CardRoute,
+  CardWarnings,
+} from "../confirmations/draw-card.js";
 import type { CardRecord } from "../intents/card-record.js";
 import {
   quoteDocument,
@@ -47,6 +53,8 @@ export interface CardSource {
   readonly chains: ChainRegistry;
   /** Which venues declare that their trade calls on a chain carry no deadline. */
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
+  /** Who proposed the intent, as an auto mode line names an MCP proposal's client. */
+  readonly client: string;
 }
 
 /** A request the money path quotes: a swap, a buy or a sell. */
@@ -150,6 +158,21 @@ function routeWarnings(
   };
 }
 
+// Why auto mode opened the card, as the card version keeps it; an MCP proposal names its client.
+function autoAskOf(source: CardSource): Pick<CardWarnings, "autoAsk"> {
+  const code = source.card.autoAsk;
+  if (code === undefined) {
+    return {};
+  }
+  const autoAsk: AutoAsk = code === "mcp" ? { code, client: source.client } : { code };
+  return { autoAsk };
+}
+
+// The warnings every card draws from its intent and version alone.
+function baseWarnings(source: CardSource): CardWarnings {
+  return { hasUnusualName: false, isNewAddress: false, ...autoAskOf(source) };
+}
+
 function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource): CardFacts {
   const { record, card, settings, isFirstLive, chains } = source;
   const action = actionOf(request, quote);
@@ -168,8 +191,7 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
     ...(route === undefined ? {} : { route }),
     ...(check === undefined ? {} : { check }),
     warnings: {
-      hasUnusualName: false,
-      isNewAddress: false,
+      ...baseWarnings(source),
       ...(isFirstLive ? { isFirstLive } : {}),
       ...(taxBps === undefined ? {} : { taxBps }),
       ...(simulation?.estimated === true ? { isEstimate: true } : {}),
@@ -200,7 +222,7 @@ function rescueFacts(quote: RescueQuote, source: CardSource): CardFacts {
       walletCount: new Set(moves.map(({ from }) => from)).size,
       valueUsdMicros,
     },
-    warnings: { hasUnusualName: false, isNewAddress: false },
+    warnings: baseWarnings(source),
   };
 }
 
@@ -219,7 +241,7 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
     hasOutsideContent: record.hasOutsideContent,
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
     action,
-    warnings: { hasUnusualName: false, isNewAddress: false },
+    warnings: baseWarnings(source),
   };
 }
 
@@ -246,8 +268,7 @@ function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | 
       expiresAtMs,
     },
     warnings: {
-      hasUnusualName: false,
-      isNewAddress: false,
+      ...baseWarnings(source),
       ...(isLinked ? { exitsLinkedToken: request.token } : {}),
       ...(request.worstPrice === undefined ? {} : { worstPrice: request.worstPrice }),
     },

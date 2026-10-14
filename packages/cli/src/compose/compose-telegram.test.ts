@@ -11,6 +11,7 @@ import {
   bot,
   buyUnlisted,
   createOrder,
+  inAutoMode,
   never,
   ownerId,
   propose,
@@ -89,6 +90,15 @@ describe("the bot joined to the engine", () => {
       false,
       true,
     ]);
+  });
+
+  it("says on the card why auto mode asks, naming the MCP client that proposed", async () => {
+    const test = await bot();
+    await inAutoMode(test);
+    await propose(test);
+    await test.telegram.idle();
+    const [card] = test.botApi.messages().map(({ text }) => text.split("\n"));
+    expect(card?.at(-3)).toBe("Auto mode asks you here: proposed from mcp");
   });
 
   it("turns the card into the paper fill's receipt when the CLI confirms it", async () => {

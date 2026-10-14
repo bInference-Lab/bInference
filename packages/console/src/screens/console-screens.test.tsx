@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConsoleRoutes } from "../app/console-router";
 import { EngineProvider } from "../connection/engine-context";
 import { formatterFor, TextProvider } from "../i18n/console-text";
 import type { BrowserPush } from "../push/browser-push";
@@ -151,6 +152,49 @@ describe("the confirmations screen", () => {
       "This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received",
     );
     expect(warning.parentElement?.textContent).toMatch(/^Warning This trade has no time limit/u);
+  });
+
+  it("says why auto mode asks, in the words of its reason", async () => {
+    const [header, action, expiry] = lines.lines;
+    const why = { key: "autoAsks.spender", values: {} };
+    const asked = {
+      ...lines,
+      lines: [
+        header,
+        action,
+        { key: "card.warn.autoAsks", values: { why: { type: "line", line: why } } },
+        expiry,
+      ],
+    };
+    const { client } = fakeClient({ ...answers, "intent/card": () => asked });
+    renderSignedIn(<ConfirmationsScreen />, { client });
+    await settle();
+    expect(
+      screen.getByText("Auto mode asks you here: it approves a contract that is not verified"),
+    ).toBeDefined();
+  });
+
+  it("draws the same line in the Mini App, under its own path", async () => {
+    const [header, action, expiry] = lines.lines;
+    const why = { key: "autoAsks.overCap", values: {} };
+    const asked = {
+      ...lines,
+      lines: [
+        header,
+        action,
+        { key: "card.warn.autoAsks", values: { why: { type: "line", line: why } } },
+        expiry,
+      ],
+    };
+    const { client } = fakeClient({ ...answers, "intent/card": () => asked });
+    // The router restores the scroll on each page, which jsdom does not lay out.
+    const scroll = vi.spyOn(globalThis, "scrollTo").mockImplementation(() => undefined);
+    globalThis.history.replaceState(null, "", "/mini");
+    renderSignedIn(<ConsoleRoutes basepath="/mini" />, { client });
+    await settle();
+    expect(screen.getByText("Auto mode asks you here: over your auto caps")).toBeDefined();
+    globalThis.history.replaceState(null, "", "/");
+    scroll.mockRestore();
   });
 
   it("names a token the registry does not list by what it answered, with its short address", async () => {

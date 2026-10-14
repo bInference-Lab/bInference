@@ -1,5 +1,5 @@
 import type { AssetRef, ChainRegistry } from "@binference/chain";
-import { BinferenceError, type Id } from "@binference/core";
+import { BinferenceError, type Id, idSchema } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { CardClosing } from "../confirmations/card-closing.js";
@@ -10,7 +10,7 @@ import type { CardCloseReason, CardRecord } from "../intents/card-record.js";
 import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
-import type { AgentStore, IntentStore } from "../ports.js";
+import type { AccessStore, AgentStore, IntentStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { type PaperReceipt, paperReceiptOf } from "./paper-receipt.js";
@@ -96,6 +96,8 @@ export const maxWaitingCards = 20;
 export interface CardShowingsOptions {
   readonly intents: IntentStore;
   readonly agents: AgentStore;
+  /** The client tokens and console devices, whose labels name who proposed an intent. */
+  readonly access: Pick<AccessStore, "listTokens" | "findDevice">;
   readonly chains: ChainRegistry;
   /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
@@ -146,6 +148,25 @@ async function settingsOf(
   return settings;
 }
 
+// Who proposed the intent, as an auto mode line names an MCP proposal's client: the label of the
+// client token or console device that called, Telegram, or binference for the engine itself.
+async function clientOf(
+  options: CardShowingsOptions,
+  record: IntentRecord,
+  call: Call,
+): Promise<string> {
+  const ref = record.proposer;
+  if (ref === "telegram" || ref === "engine") {
+    return ref === "telegram" ? "Telegram" : "binference";
+  }
+  const device = idSchema("dev").safeParse(ref);
+  if (device.success) {
+    return (await options.access.findDevice(device.data, call))?.label ?? ref;
+  }
+  const tokens = await options.access.listTokens(call);
+  return tokens.find((token) => token.id === ref)?.label ?? ref;
+}
+
 // An open card version drawn from its stored intent, with the info of every asset it names.
 async function drawOpen(
   options: CardShowingsOptions,
@@ -158,7 +179,8 @@ async function drawOpen(
   const isFirstLive = await isFirstLiveCard(intents, record, call);
   const cards = card.version > 1 ? await intents.cards(record.id, call) : [];
   const previous = cards.find((each) => each.version === card.version - 1);
-  const source = { record, card, settings, isFirstLive, chains, venues };
+  const client = card.autoAsk === "mcp" ? await clientOf(options, record, call) : "";
+  const source = { record, card, settings, isFirstLive, chains, venues, client };
   const facts = cardFactsOf(previous === undefined ? source : { ...source, previous });
   if (facts === undefined) {
     return undefined;

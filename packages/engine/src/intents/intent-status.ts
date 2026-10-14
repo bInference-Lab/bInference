@@ -1,5 +1,6 @@
 import type { TradePlace } from "@binference/protocol";
 import type { Authorization } from "./authorization.js";
+import type { AutoAskCode } from "./auto-mode-refusal.js";
 import type { IntentKind } from "./intent-kind.js";
 import type { IntentReason } from "./intent-reason.js";
 import type { IntentState } from "./intent-state.js";
@@ -26,6 +27,12 @@ export interface CardTerms {
   readonly openedAtMs: number;
   /** No answer by then is a no: the card timer moves the intent to `expired`. */
   readonly expiresAtMs: number;
+  /**
+   * Why auto mode opened the card instead of filling the intent, which the card says (spec 4,
+   * section 3.4). Every later version of the card keeps it. Absent when the agent was in manual
+   * mode.
+   */
+  readonly autoAsk?: AutoAskCode;
 }
 
 /**

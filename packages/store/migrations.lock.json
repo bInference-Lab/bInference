@@ -39,6 +39,7 @@
     "engine/0033_model_budget.ts": "bab18b59c59a9b0e2a51825afaa5e7b2e26ebac81de5f04f87cf6a3dcfc54b72",
     "engine/0034_intent_assets.ts": "0340e0ded4adcda6996bc6010896b10047cc3f7fedd09ae4e2808b790d1e5b4b",
     "engine/0035_questions.ts": "35162e16d100cc045c9985400fb5c73f73f334ca18338b8973db0b1accd0f9cd",
-    "engine/0036_owner_agent.ts": "e74549c79b3f1d8be3346cf3453a19c8bd7b07dd18f8843cf40620fbb0ba29e9"
+    "engine/0036_owner_agent.ts": "e74549c79b3f1d8be3346cf3453a19c8bd7b07dd18f8843cf40620fbb0ba29e9",
+    "engine/0037_card_auto_asks.ts": "e3320a9bf83fd8325b68f5a102dba904289d039c74a5dad571c9fc0da3134bcd"
   }
 }

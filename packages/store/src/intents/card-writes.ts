@@ -51,6 +51,7 @@ export function writeCardChanges(database: DatabaseSync, change: IntentChange): 
         closed_at: null,
         close_reason: null,
         place: optionalJsonText(openCard.place),
+        auto_ask: orNull(openCard.autoAsk),
       }),
     );
   }

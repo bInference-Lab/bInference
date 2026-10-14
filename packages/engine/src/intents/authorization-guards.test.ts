@@ -55,6 +55,11 @@ function expiryOf(verdict: ReturnType<typeof openCard>): number | undefined {
   return verdict.ok ? verdict.value.card?.expiresAtMs : undefined;
 }
 
+// Why the card opened says auto mode asks; a refusal to open one stands as "no card".
+function autoAskOf(verdict: ReturnType<typeof openCard>): string | undefined {
+  return verdict.ok ? verdict.value.card?.autoAsk : "no card";
+}
+
 const valid: AuthorizationCheck = { by: "fill" };
 const auto: AuthorizationCheck = { by: "auto_mode", facts: autoFacts };
 const manual: AuthorizationCheck = {
@@ -145,6 +150,34 @@ describe("opening the first card", () => {
       openCard(input({ ...simulated, kind }, manual, 0)),
     );
     expect(expiries.map(expiryOf)).toStrictEqual([60_000, 60_000, 60_000]);
+  });
+
+  it("keeps why auto mode asks on the card, and no reason for a manual agent's card", () => {
+    const asks = (facts: Partial<AutoModeFacts>, status: IntentStatus = simulated) =>
+      autoAskOf(openCard(input(status, { by: "auto_mode", facts: { ...autoFacts, ...facts } })));
+    expect([
+      asks({ hasUnlistedSpender: true }),
+      asks({ sellsDeniedToken: true }),
+      asks({ feePerGasNativeBase: 1_000_000_001n }),
+      asks({ valueUsdMicros: 100_000_001n }),
+      asks({ isLocked: true }),
+      asks({}, { ...simulated, kind: "send" }),
+      asks({}, { ...simulated, kind: "unfreeze" }),
+      asks({}, { ...simulated, hasOutsideContent: true }),
+      asks({}, { ...simulated, proposer: "mcp_client" }),
+      asks({ approvalMode: "manual", hasUnlistedSpender: true }),
+    ]).toStrictEqual([
+      "spender",
+      "deniedToken",
+      "overFeeCap",
+      "overCap",
+      "locked",
+      "send",
+      "kind",
+      "outside",
+      "mcp",
+      undefined,
+    ]);
   });
 
   it("opens a card in auto mode for a sale out of a token on the deny list", () => {

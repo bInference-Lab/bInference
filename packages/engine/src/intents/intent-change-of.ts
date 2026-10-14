@@ -142,6 +142,7 @@ function opening(card: CardTerms, context: MoveContext, terms: Terms): CardOpeni
     openedAtMs: card.openedAtMs,
     expiresAtMs: card.expiresAtMs,
     ...placeOf(record, terms),
+    ...(card.autoAsk === undefined ? {} : { autoAsk: card.autoAsk }),
   };
 }
 

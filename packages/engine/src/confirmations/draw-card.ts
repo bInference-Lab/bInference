@@ -1,7 +1,7 @@
 import type { Amount, AssetRef } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import type { PoolFee, RouteLeg } from "@binference/protocol";
-import type { AutoModeRefusal } from "../intents/auto-mode.js";
+import type { AutoAskCode } from "../intents/auto-mode-refusal.js";
 import type { CardTerms } from "../intents/intent-status.js";
 import { actionLine, actionVerb, type CardAction } from "./card-action.js";
 import type { CardKey, CardLine, CardValue } from "./card-line.js";
@@ -34,7 +34,7 @@ export interface CardCheck {
  * (spec 6, section 5). An MCP proposal names its client.
  */
 export type AutoAsk =
-  | { readonly code: Exclude<AutoModeRefusal, "manual" | "mcp"> }
+  | { readonly code: Exclude<AutoAskCode, "mcp"> }
   | { readonly code: "mcp"; readonly client: string };
 
 /** The warnings whose facts come from outside the intent's own flags. */

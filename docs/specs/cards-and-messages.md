@@ -199,6 +199,10 @@ paper fill uses the quote. A live trade always needs its simulation.
 ([decision 0102](../DECISIONS.md#d0102)), `autoAsks.locked` "binference is locked; run
 `binference unlock` on the machine" / 「binference 已锁定；请在本机运行 `binference unlock`」
 ([decision 0103](../DECISIONS.md#d0103)). The codes are those of the auto test in spec 6, section 5.
+Every card auto mode opens instead of filling its intent shows the line, last among the warnings:
+the card version keeps the code (`cards.auto_ask`), each later version of the card keeps it too,
+and the `{client}` of `autoAsks.mcp` is the label of the client token or console device that
+proposed, or Telegram. A card of an agent in manual mode shows no such line.
 
 <a id="section-3-5"></a>
 

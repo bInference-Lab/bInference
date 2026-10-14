@@ -4,6 +4,7 @@ import {
   bot,
   buyUnlisted,
   createOrder,
+  inAutoMode,
   propose,
   stopLossUnlisted,
 } from "./test-bot.js";
@@ -19,6 +20,15 @@ describe("the bot joined to the engine, in Chinese", () => {
     expect(card).toMatch(
       /^批准止损：当价格跌至 \$0\.80 时，卖出你持有的全部 XVS（0x0000000f） · /u,
     );
+  });
+
+  it("says on the card why auto mode asks, naming the MCP client that proposed", async () => {
+    const test = await bot({ owner: chinese });
+    await inAutoMode(test);
+    await propose(test);
+    await test.telegram.idle();
+    const [card] = test.botApi.messages().map(({ text }) => text.split("\n"));
+    expect(card?.at(-3)).toBe("自动模式在此需要你确认：由 mcp 提出");
   });
 
   it("shows a buy card for a token the registry does not list, then its receipt", async () => {

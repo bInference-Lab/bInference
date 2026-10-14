@@ -107,7 +107,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   intent_events: names("id intent_id from_state to_state cause at"),
   cards: names(
     "id intent_id version terms_hash callback_ref opened_at expires_at closed_at close_reason " +
-      "place",
+      "place auto_ask",
   ),
   card_messages: names("card_id surface chat_id topic_id message_id sent_at"),
   confirmations: names(

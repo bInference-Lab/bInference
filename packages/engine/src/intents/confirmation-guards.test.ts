@@ -94,6 +94,21 @@ describe("a tap after a re-quote", () => {
     });
   });
 
+  it("keeps on the next card version why auto mode asked", () => {
+    const requote = { quotedAtMs: 29_000, minOutBase: 994_999n };
+    const asked = {
+      ...requoted(requote),
+      status: { ...awaiting, card: { ...card, autoAsk: "mcp" as const } },
+    };
+    expect(reopenCard(asked)).toStrictEqual({
+      ok: true,
+      value: {
+        quote: requote,
+        card: { version: 3, openedAtMs: 30_000, expiresAtMs: 90_000, autoAsk: "mcp" },
+      },
+    });
+  });
+
   it("confirms when the new minimum out is better", () => {
     const requote = { quotedAtMs: 29_000, minOutBase: 1_200_000n };
     expect(confirmRequote(requoted(requote))).toStrictEqual({

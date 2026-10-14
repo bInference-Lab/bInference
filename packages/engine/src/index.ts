@@ -90,12 +90,8 @@ export type {
   WebhookRuleAuthorization,
 } from "./intents/authorization.js";
 export { checkAutoMode } from "./intents/auto-mode.js";
-export type {
-  ApprovalMode,
-  AutoModeFacts,
-  AutoModeRefusal,
-  AutoModeSubject,
-} from "./intents/auto-mode.js";
+export type { ApprovalMode, AutoModeFacts, AutoModeSubject } from "./intents/auto-mode.js";
+export type { AutoAskCode, AutoModeRefusal } from "./intents/auto-mode-refusal.js";
 export {
   cardCloseReasons,
   cardOpeningSchema,

@@ -75,6 +75,7 @@ async function drawnCard(test: TestEngine, intent: Id<"int">) {
   const showings = createCardShowings({
     intents: test.stores.intents,
     agents: test.stores.agents,
+    access: test.stores.access,
     chains: testChains(),
     venues: { hasNoDeadline: () => false },
   });

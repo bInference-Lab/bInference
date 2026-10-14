@@ -47,9 +47,11 @@ function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
 
 function cardTermsOf(history: IntentHistory): CardTerms | undefined {
   const card = history.cards.at(-1);
-  return card === undefined
-    ? undefined
-    : { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs };
+  if (card === undefined) {
+    return undefined;
+  }
+  const { version, openedAtMs, expiresAtMs, autoAsk } = card;
+  return { version, openedAtMs, expiresAtMs, ...(autoAsk === undefined ? {} : { autoAsk }) };
 }
 
 // The parts a step sets once it reaches them; each stays absent until then.

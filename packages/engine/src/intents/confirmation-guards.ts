@@ -4,6 +4,17 @@ import type { CardTerms, IntentStatus, QuoteTerms } from "./intent-status.js";
 import { isSamePlace } from "./same-place.js";
 import type { GuardInput, IntentChange, TransitionProblem } from "./transition-guard.js";
 
+// The next version of a card, opened now: it keeps why auto mode asked.
+function nextCard(card: CardTerms, expiresAtMs: number, nowMs: number): CardTerms {
+  const { autoAsk } = card;
+  return {
+    version: card.version + 1,
+    openedAtMs: nowMs,
+    expiresAtMs,
+    ...(autoAsk === undefined ? {} : { autoAsk }),
+  };
+}
+
 /** The card the owner sees and the quote it shows. */
 interface OpenCard {
   readonly card: CardTerms;
@@ -84,11 +95,7 @@ export function reopenCard(input: RequoteInput): Result<IntentChange, Transition
   if (!isPlaceChanged && !isWorseThanTolerance(open.value.quote, trigger.requote, trigger.cards)) {
     return err("quote_held");
   }
-  const card: CardTerms = {
-    version: open.value.card.version + 1,
-    openedAtMs: nowMs,
-    expiresAtMs: cardExpiresAt(status.kind, nowMs, trigger.cards),
-  };
+  const card = nextCard(open.value.card, cardExpiresAt(status.kind, nowMs, trigger.cards), nowMs);
   return ok({ quote: trigger.requote, card });
 }
 
@@ -128,10 +135,7 @@ export function reopenAfterFeeWait({
   if (nowMs < trigger.expiresAtMs) {
     return err("not_expired");
   }
-  const card: CardTerms = {
-    version: status.card.version + 1,
-    openedAtMs: nowMs,
-    expiresAtMs: cardExpiresAt(status.kind, nowMs, trigger.cards),
-  };
-  return ok({ card });
+  return ok({
+    card: nextCard(status.card, cardExpiresAt(status.kind, nowMs, trigger.cards), nowMs),
+  });
 }

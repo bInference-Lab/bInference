@@ -1,6 +1,6 @@
 import type { Venue } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
-import { BinferenceError, type Bps, bpsSchema, type Id } from "@binference/core";
+import { BinferenceError, type Bps, bpsSchema, type Id, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { CardRecord } from "../intents/card-record.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
@@ -23,6 +23,7 @@ import {
 } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { AgentStore, IntentStore, RiskCheck } from "../ports.js";
+import { sha256Hex } from "../records/sha256-hex.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { createCardShowings, maxWaitingCards } from "./create-card-showings.js";
@@ -57,6 +58,7 @@ function showingsOf(test: TestEngine, stores: StoresSeen = {}) {
   return createCardShowings({
     intents: stores.intents ?? test.stores.intents,
     agents: stores.agents ?? test.stores.agents,
+    access: test.stores.access,
     chains,
     venues: createVenueHost({ venues, chains, clock: test.clock, callTimeoutMs: 5_000 }),
   });
@@ -188,6 +190,53 @@ describe("the card showings", () => {
     const showing = present(await showingsOf(test).opened(ref, live));
     const route = showing.card.lines.find((line) => line.key === "card.route");
     expect(route?.values).toMatchObject({ slippage: { type: "percent", bps: 80 } });
+  });
+
+  it("say why auto mode asks, naming an MCP proposal's client by its token's label", async () => {
+    const shown = await proposed({ agent: { approvalMode: "auto" } });
+    await shown.test.stores.access.addToken(
+      {
+        id: idSchema("tok").parse(testCallers.mcp.credential),
+        label: "Claude Code",
+        kind: "mcp",
+        scopes: ["read", "propose"],
+        secretHash: sha256Hex("bnt_test"),
+        createdAtMs: testNowMs,
+      },
+      live,
+    );
+    const ref = { intent: shown.intent, card: shown.card.id };
+    const showing = present(await showingsOf(shown.test).opened(ref, live));
+    expect(showing.card.lines.slice(-3)).toStrictEqual([
+      {
+        key: "card.warn.autoAsks",
+        values: {
+          why: {
+            type: "line",
+            line: {
+              key: "autoAsks.mcp",
+              values: { client: { type: "text", text: "Claude Code" } },
+            },
+          },
+        },
+      },
+      expect.objectContaining({ key: "card.reason" }),
+      expect.objectContaining({ key: "card.expiry" }),
+    ]);
+  });
+
+  it("say why auto mode asks the agent's own proposal after outside content", async () => {
+    const test = await startTestEngine({ agent: { approvalMode: "auto" } });
+    const caller = { ...testCallers.runtime, turn: { hasOutsideContent: true } };
+    const view = expectOk(
+      await test.engine.handlers["intent/propose"](testCall(testSwap(), caller)),
+    );
+    const [card] = await test.stores.intents.cards(view.intent, live);
+    const ref = { intent: view.intent, card: present(card).id };
+    const lines = present(await showingsOf(test).opened(ref, live)).card.lines;
+    expect(lines.find((line) => line.key === "card.warn.autoAsks")?.values).toStrictEqual({
+      why: { type: "line", line: { key: "autoAsks.outside", values: {} } },
+    });
   });
 
   it("say on a live agent's first card that it trades real money", async () => {
@@ -342,6 +391,7 @@ describe("the card showings", () => {
       isFirstLive: false,
       chains: testChains(),
       venues: { hasNoDeadline: () => false },
+      client: "",
     };
     const { quote: _quote, ...unquoted } = record;
     expect(cardFactsOf({ ...source, record: unquoted })).toBe(undefined);
@@ -372,6 +422,7 @@ describe("the card showings", () => {
       isFirstLive: false,
       chains: testChains(),
       venues: { hasNoDeadline: () => false },
+      client: "",
     };
     const facts = present(cardFactsOf({ ...source, record: unassessed }));
     expect(facts.warnings.taxBps).toBe(undefined);

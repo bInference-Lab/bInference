@@ -68,6 +68,7 @@ export function toCardRecord(row: Selectable<CardsTable>): CardRecord {
     ...field("closedAtMs", row.closed_at),
     ...field("closeReason", row.close_reason),
     ...jsonField("place", row.place),
+    ...field("autoAsk", row.auto_ask),
   });
 }
 

@@ -1,29 +1,11 @@
 import { err, ok, type Result } from "@binference/core";
 import type { AutoModeAuthorization } from "./authorization.js";
+import type { AutoModeRefusal } from "./auto-mode-refusal.js";
 import type { IntentKind } from "./intent-kind.js";
 import type { IntentStatus } from "./intent-status.js";
 
 /** An agent's approval mode (decision 0088): every transaction asks, or auto runs some. */
 export type ApprovalMode = "manual" | "auto";
-
-/**
- * Why auto mode leaves an intent to the owner's tap. `manual`: the agent is not in auto mode. The
- * others are the `autoAsks` lines of spec 4, section 3.4: `locked` means the engine is locked, so
- * nothing could sign the intent, `deniedToken` that the intent sells a token on the deny list,
- * `overFeeCap` that its fee per gas is above the network fee cap, and `spender` that a step
- * approves a spender outside the registry.
- */
-export type AutoModeRefusal =
-  | "manual"
-  | "locked"
-  | "send"
-  | "kind"
-  | "deniedToken"
-  | "overCap"
-  | "overFeeCap"
-  | "spender"
-  | "outside"
-  | "mcp";
 
 /** What the auto test reads beyond the intent, as things stand when the intent is `simulated`. */
 export interface AutoModeFacts {

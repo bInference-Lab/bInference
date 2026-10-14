@@ -3,6 +3,7 @@ import { type TradePlace, tradePlaceSchema } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 import { type Sha256Hex, sha256HexSchema } from "../records/sha256-hex.js";
+import { type AutoAskCode, autoAskCodes } from "./auto-mode-refusal.js";
 
 /**
  * Why a card version closed: the owner's answer, the card timer, a cancel, or a worse re-quote
@@ -42,6 +43,11 @@ export interface CardOpening {
    * can say the place changed. Absent for any other kind.
    */
   readonly place?: TradePlace;
+  /**
+   * Why auto mode opened this card instead of filling the intent, which the card says (spec 4,
+   * section 3.4). Absent when the agent was in manual mode.
+   */
+  readonly autoAsk?: AutoAskCode;
 }
 
 const cardOpeningShape = {
@@ -55,6 +61,7 @@ const cardOpeningShape = {
   openedAtMs: epochMsSchema,
   expiresAtMs: epochMsSchema,
   place: tradePlaceSchema.exactOptional(),
+  autoAsk: z.enum(autoAskCodes).exactOptional(),
 };
 
 /** Parses a new card version. */

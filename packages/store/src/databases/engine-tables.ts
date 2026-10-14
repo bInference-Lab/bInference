@@ -199,6 +199,8 @@ export interface CardsTable {
   close_reason: string | null;
   /** Where the buy or sell the version shows trades, as JSON; none for any other kind. */
   place: string | null;
+  /** Why auto mode opened the version instead of filling, an auto test code; none in manual mode. */
+  auto_ask: string | null;
 }
 
 /** `confirmations`. */

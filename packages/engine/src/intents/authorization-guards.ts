@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
 import { isFillAuthorization } from "./authorization.js";
+import type { AutoModeRefusal } from "./auto-mode-refusal.js";
 import { type AutoModeFacts, checkAutoMode } from "./auto-mode.js";
 import { cardExpiresAt } from "./card-rules.js";
 import type { FillCheck } from "./intent-trigger.js";
@@ -54,21 +55,27 @@ export function breakFill(input: Input): Result<IntentChange, TransitionProblem>
   return check.breach === undefined ? err("fill_holds") : ok({ reason: check.breach });
 }
 
-function firstCard({ status, trigger, nowMs }: Input): IntentChange {
+// The first card version, with why auto mode asks when the agent is in auto mode.
+function firstCard({ status, trigger, nowMs }: Input, refusal: AutoModeRefusal): IntentChange {
   return {
     card: {
       version: 1,
       openedAtMs: nowMs,
       expiresAtMs: cardExpiresAt(status.kind, nowMs, trigger.cards),
+      ...(refusal === "manual" ? {} : { autoAsk: refusal }),
     },
   };
 }
 
-/** `simulated` to `awaiting_confirmation`: an intent that is not a fill and fails the auto test. */
+/**
+ * `simulated` to `awaiting_confirmation`: an intent that is not a fill and fails the auto test.
+ * The card keeps the reason auto mode asks, unless the agent is in manual mode.
+ */
 export function openCard(input: Input): Result<IntentChange, TransitionProblem> {
   const facts = autoModeFacts(input);
   if (facts === undefined) {
     return err("authorization_mismatch");
   }
-  return checkAutoMode(input.status, facts).ok ? err("needs_no_card") : ok(firstCard(input));
+  const auto = checkAutoMode(input.status, facts);
+  return auto.ok ? err("needs_no_card") : ok(firstCard(input, auto.error));
 }

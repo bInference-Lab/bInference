@@ -142,6 +142,15 @@ export async function bot(options: BotOptions = {}): Promise<Bot> {
   return { ...skeleton, telegram: composed, botApi };
 }
 
+/** Switches the test agent to auto mode from the CLI, so its cards say why auto mode asks. */
+export async function inAutoMode(test: Bot): Promise<void> {
+  const args = { args: { agent, mode: "auto" } as const, caller: callers.cli, ...live };
+  const set = await test.composed.engine.handlers["approval/set"](args);
+  if (!set.ok) {
+    never();
+  }
+}
+
 /** Proposes from the MCP client, a swap into the test token by default, which opens a card. */
 export async function propose(
   test: Bot,

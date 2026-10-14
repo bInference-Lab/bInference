@@ -20,6 +20,7 @@ const slow = { timeout: 60_000 };
 const machines = createTestMachines();
 const served: ServedSkeleton[] = [];
 const english = createFormatter({ locale: "en", timeZone: "UTC" });
+const inZh = createFormatter({ locale: "zh", timeZone: "UTC" });
 const en = (key: string, values: Readonly<Record<string, string>> = {}): string =>
   english.message(`cli.${key}`, values);
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
@@ -90,6 +91,20 @@ describe.each(skeletonCompositions)(
       expect(skeleton.executor.taken()).toStrictEqual([]);
       const again = await runOn(machine, ["confirm", proposed.intent, "--json", "--yes"]);
       expect(again).toMatchObject({ code: 1, stdout: '{"error":{"code":"intent.wrong_state"}}\n' });
+    });
+
+    it("shows why auto mode asks, in the owner's language", slow, async () => {
+      const { machine, skeleton } = await servedMachine();
+      await skeleton.client.call("approval/set", { agent, mode: "auto" }, live());
+      const first = await skeleton.client.call("intent/propose", swap(1_000_000n), live());
+      const second = await skeleton.client.call("intent/propose", swap(1_000_000n), live());
+      const inEnglish = await runOn(machine, ["confirm", first.intent, "--yes"]);
+      const inChinese = await runOn(machine, ["confirm", second.intent, "--yes"], {
+        LANG: "zh_CN.UTF-8",
+      });
+      expect(inEnglish.stdout).toContain("\nAuto mode asks you here: proposed from cli\n");
+      const why = inZh.message("autoAsks.mcp", { client: "cli" });
+      expect(inChinese.stdout).toContain(`\n${inZh.message("card.warn.autoAsks", { why })}\n`);
     });
 
     it("prints the intent after the answer as JSON", slow, async () => {
