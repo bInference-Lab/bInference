@@ -72,6 +72,7 @@ const flagged: CardFacts = {
     hasUnusualName: true,
     isNewAddress: true,
     taxBps: 300 as Bps,
+    poolFees: [{ maker: "Genius.fun", feeBps: 200 as Bps }],
     autoAsk: { code: "mcp", client: "Claude Code" },
   },
 };
@@ -201,6 +202,7 @@ describe("drawing a card", () => {
       "card.warn.newAddress",
       "card.warn.unverified",
       "card.warn.highTax",
+      "card.warn.poolFee",
       "card.warn.requoted",
       "card.warn.paper",
       "card.warn.autoAsks",
@@ -267,6 +269,22 @@ describe("drawing a card", () => {
       warnings: { ...flagged.warnings, autoAsk: { code: "overCap" } },
     };
     expect(rendered(overCap)).toContain("Auto mode asks you here: over your auto caps");
+  });
+
+  it("names the fee each maker's pool hooks keep on a line of its own, after the token's tax", () => {
+    expect(rendered(flagged)).toContain("Includes a 2.00% Genius.fun pool fee");
+    const two: CardFacts = {
+      ...flagged,
+      warnings: {
+        ...flagged.warnings,
+        poolFees: [
+          { maker: "Genius.fun", feeBps: 200 as Bps },
+          { maker: "Other", feeBps: 50 as Bps },
+        ],
+      },
+    };
+    const keys = drawCard(two).lines.map((line) => line.key);
+    expect(keys.filter((key) => key === "card.warn.poolFee")).toHaveLength(2);
   });
 
   it("shows no tax warning for a token without tax", () => {

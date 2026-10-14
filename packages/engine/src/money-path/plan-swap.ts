@@ -24,6 +24,14 @@ export interface PlanSwapOptions {
 const quoteLifetimeMs = 60_000;
 const wholeRouteBps: Bps = bpsSchema.parse(bpsPerWhole);
 
+// What the route's pool hooks keep, by maker, for the card's line (decision 0215).
+function poolFeesOf(plan: TradePlan): Pick<QuoteView, "poolFees"> {
+  const fees = plan.quote.hookFees ?? [];
+  return fees.length === 0
+    ? {}
+    : { poolFees: fees.map(({ maker, feeBps }) => ({ maker, feeBps })) };
+}
+
 /**
  * The quote a card and a view show for a plan. The whole route is the venue that quoted, and a buy
  * or a sell names its place. The venue's quote carries no gas estimate, so `gas` is zero until the
@@ -41,6 +49,7 @@ function quoteViewOf(swap: SwapTrade, plan: TradePlan, nativeAsset: AssetRef): Q
     gas: { asset: nativeAsset, base: 0n },
     quotedAt: quotedAtMs,
     expiresAt: quotedAtMs + quoteLifetimeMs,
+    ...poolFeesOf(plan),
   };
   return place === undefined ? quote : { ...quote, place };
 }

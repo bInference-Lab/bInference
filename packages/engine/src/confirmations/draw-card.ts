@@ -1,6 +1,6 @@
 import type { Amount, AssetRef } from "@binference/chain";
 import type { Bps } from "@binference/core";
-import type { RouteLeg } from "@binference/protocol";
+import type { PoolFee, RouteLeg } from "@binference/protocol";
 import type { AutoModeRefusal } from "../intents/auto-mode.js";
 import type { CardTerms } from "../intents/intent-status.js";
 import { actionLine, actionVerb, type CardAction } from "./card-action.js";
@@ -45,6 +45,8 @@ export interface CardWarnings {
   readonly isNewAddress: boolean;
   /** The token's tax on every trade; zero or absent shows no warning. */
   readonly taxBps?: Bps;
+  /** What the route's pool hooks keep, by maker, each on a line of its own (decision 0215). */
+  readonly poolFees?: readonly PoolFee[];
   readonly autoAsk?: AutoAsk;
   /** The agent's first live card, which says so (`isFirstLiveCard`); absent shows no note. */
   readonly isFirstLive?: boolean;
@@ -182,6 +184,13 @@ function taxLines(taxBps: Bps | undefined): readonly CardLine[] {
     : [{ key: "card.warn.highTax", values: { tax: percent(taxBps) } }];
 }
 
+function poolFeeLines(fees: readonly PoolFee[] | undefined): readonly CardLine[] {
+  return (fees ?? []).map(({ maker, feeBps }) => ({
+    key: "card.warn.poolFee",
+    values: { fee: percent(feeBps), maker: { type: "text", text: maker } },
+  }));
+}
+
 // The order of spec 4, section 3.1: outside content, unusual characters, new address, then the
 // token's risk warnings; then the rest in the order of section 3.4.
 function warningLines(facts: CardFacts): readonly CardLine[] {
@@ -194,6 +203,7 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
       [facts.check?.isTokenVerified === false, "card.warn.unverified"],
     ]),
     ...taxLines(warnings.taxBps),
+    ...poolFeeLines(warnings.poolFees),
     ...shown([[facts.card.version > 1, "card.warn.requoted"]]),
     ...optional(warnings.placeChangedToken, placeChangedLine),
     ...shown([[warnings.hasNoDeadline === true, "card.warn.noDeadline"]]),

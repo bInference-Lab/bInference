@@ -3,7 +3,14 @@ import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing"
 import { type Bps, bpsSchema } from "@binference/core";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { testAgent, testCoin, testLimits, testToken, testWallet } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testLimits,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
@@ -372,6 +379,18 @@ describe("a re-quote of a buy or a sell at the tap", () => {
 });
 
 // The header's action and the action line of a proposal's card.
+// The venue with every quote it gives naming a 2% Genius.fun pool hook fee on its route.
+function withHookFees(venue: Venue): Venue {
+  const hookFees = [{ maker: "Genius.fun", feeBps: bpsSchema.parse(200), hooks: [testAccount] }];
+  return {
+    ...venue,
+    async quote(request, options) {
+      const quote = await venue.quote(request, options);
+      return quote.ok ? { ok: true, value: { ...quote.value, hookFees } } : quote;
+    },
+  };
+}
+
 async function cardActionOf(test: TestEngine, request: IntentRequest) {
   const view = await propose(test, request);
   const drawn = await test.engine.handlers["intent/card"](testCall({ intent: view.intent }));
@@ -400,6 +419,16 @@ describe("a buy's and a sell's card", () => {
         },
       },
     });
+  });
+
+  it("shows what the route's pool hooks keep on a line of its own", async () => {
+    const test = await engineWith([withHookFees(createFakeVenue())]);
+    const view = await propose(test, testBuy());
+    const drawn = expectOk(
+      await test.engine.handlers["intent/card"](testCall({ intent: view.intent })),
+    );
+    expect(view.quote?.poolFees).toStrictEqual([{ maker: "Genius.fun", feeBps: 200 }]);
+    expect(drawn.lines.map((line) => line.key)).toContain("card.warn.poolFee");
   });
 
   it("names the venue a sale in the pools runs on, and the share a sale by share sells", async () => {

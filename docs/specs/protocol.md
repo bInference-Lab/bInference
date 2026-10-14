@@ -755,8 +755,10 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   `portfolio/get` and `facts/get` carry the same for such a token, from the newest intent that
   stored it; a token no intent stored is left out, and clients show it by its address.
 - `QuoteView`:
-  `{ route: [{ venue, shareBps }], amountIn, expectedOut, minOut, priceImpactBps, gas: Amount, quotedAt, expiresAt, place? }`.
+  `{ route: [{ venue, shareBps }], amountIn, expectedOut, minOut, priceImpactBps, gas: Amount, quotedAt, expiresAt, place?, poolFees? }`.
   `place`, on a `buy` or `sell` quote, is `{ kind: curve, launchpad }` or `{ kind: pools }`.
+  `poolFees`, `[{ maker, feeBps }]`, is what the route's pool hooks keep, by who made their pools,
+  which `expectedOut` already holds back ([decision 0215](../DECISIONS.md#d0215)).
 - `RiskView`:
   `{ verdict: pass \| warn \| block, flags: [{ code, source }], buyTaxBps?, sellTaxBps?, liquidityUsdMicros?, insiders?: [AccountRef], onCurve, checkedAt }`;
   `insiders` are the wallets the token's launchpad favors over every other buyer, such as those its

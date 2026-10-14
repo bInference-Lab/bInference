@@ -10,7 +10,7 @@ import type {
 import type { AgentSettings } from "../agents/agent-record.js";
 import { limitsRecordAt } from "../agents/limits-in-effect.js";
 import type { CardAction, TradePlace } from "../confirmations/card-action.js";
-import type { CardCheck, CardFacts, CardRoute } from "../confirmations/draw-card.js";
+import type { CardCheck, CardFacts, CardRoute, CardWarnings } from "../confirmations/draw-card.js";
 import type { CardRecord } from "../intents/card-record.js";
 import {
   quoteDocument,
@@ -136,10 +136,18 @@ function placeChangedToken(action: CardAction, source: CardSource): AssetRef | u
   return action.kind === "sell" ? action.amount.asset : undefined;
 }
 
-// Whether a venue on the trade's route declares no deadline on its chain (decision 0180).
-function hasNoDeadline(quote: QuoteView, source: CardSource): boolean {
+// The warnings the trade's route gives: what its pool hooks keep (decision 0215), and whether a
+// venue on it declares no deadline on its chain (decision 0180).
+function routeWarnings(
+  quote: QuoteView,
+  source: CardSource,
+): Pick<CardWarnings, "poolFees" | "hasNoDeadline"> {
   const { chain } = assetRefParts(quote.amountIn.asset);
-  return quote.route.some((leg) => source.venues.hasNoDeadline(leg.venue, chain));
+  const hasNoDeadline = quote.route.some((leg) => source.venues.hasNoDeadline(leg.venue, chain));
+  return {
+    ...(quote.poolFees === undefined ? {} : { poolFees: quote.poolFees }),
+    ...(hasNoDeadline ? { hasNoDeadline } : {}),
+  };
 }
 
 function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource): CardFacts {
@@ -166,7 +174,7 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
       ...(taxBps === undefined ? {} : { taxBps }),
       ...(simulation?.estimated === true ? { isEstimate: true } : {}),
       ...(changedToken === undefined ? {} : { placeChangedToken: changedToken }),
-      ...(hasNoDeadline(quote, source) ? { hasNoDeadline: true } : {}),
+      ...routeWarnings(quote, source),
     },
     reason: request.reason,
   };

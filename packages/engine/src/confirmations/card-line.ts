@@ -50,6 +50,7 @@ export const cardKeys = [
   "card.warn.newAddress",
   "card.warn.unverified",
   "card.warn.highTax",
+  "card.warn.poolFee",
   "card.warn.requoted",
   "card.warn.placeChanged",
   "card.warn.noDeadline",

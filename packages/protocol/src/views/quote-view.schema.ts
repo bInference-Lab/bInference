@@ -18,6 +18,15 @@ export type TradePlace =
   | { readonly kind: "curve"; readonly launchpad: string }
   | { readonly kind: "pools" };
 
+/**
+ * What the hooked pools of one maker on a route keep of the trade (decision 0215): the maker as a
+ * card names it, and the share, which the expected output already holds back.
+ */
+export interface PoolFee {
+  readonly maker: string;
+  readonly feeBps: Bps;
+}
+
 /** A venue quote: the route, what goes in, what comes out at worst, its impact and gas. */
 export interface QuoteView {
   readonly route: readonly RouteLeg[];
@@ -30,6 +39,8 @@ export interface QuoteView {
   readonly expiresAt: number;
   /** The place a `buy` or a `sell` trades at, which the engine chose; a swap has none. */
   readonly place?: TradePlace;
+  /** What the route's pool hooks keep, by maker; absent when it passes none that keeps a share. */
+  readonly poolFees?: readonly PoolFee[];
 }
 
 /** Parses the place of a `buy` or a `sell`; a launchpad is named by its venue id. */
@@ -49,4 +60,16 @@ export const quoteViewSchema: z.ZodType<QuoteView> = z.object({
   quotedAt: epochMsSchema,
   expiresAt: epochMsSchema,
   place: tradePlaceSchema.exactOptional(),
+  poolFees: z
+    .array(
+      z.object({
+        maker: z
+          .string()
+          .max(40)
+          .regex(/^[A-Za-z0-9][A-Za-z0-9 .-]*$/u),
+        feeBps: bpsSchema,
+      }),
+    )
+    .min(1)
+    .exactOptional(),
 });

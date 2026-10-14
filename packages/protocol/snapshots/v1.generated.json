@@ -5697,6 +5697,27 @@
                       ]
                     }
                   ]
+                },
+                "poolFees": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "maker": {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                      },
+                      "feeBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "maker",
+                      "feeBps"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -8631,6 +8652,27 @@
                   ]
                 }
               ]
+            },
+            "poolFees": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "maker": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                  },
+                  "feeBps": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "maker",
+                  "feeBps"
+                ]
+              }
             }
           },
           "required": [
@@ -10919,6 +10961,27 @@
                       ]
                     }
                   ]
+                },
+                "poolFees": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "maker": {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                      },
+                      "feeBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "maker",
+                      "feeBps"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -12239,6 +12302,27 @@
                       ]
                     }
                   ]
+                },
+                "poolFees": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "maker": {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                      },
+                      "feeBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "maker",
+                      "feeBps"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -14060,6 +14144,27 @@
                             ]
                           }
                         ]
+                      },
+                      "poolFees": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "maker": {
+                              "type": "string",
+                              "maxLength": 40,
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                            },
+                            "feeBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "maker",
+                            "feeBps"
+                          ]
+                        }
                       }
                     },
                     "required": [
@@ -15402,6 +15507,27 @@
                       ]
                     }
                   ]
+                },
+                "poolFees": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "maker": {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                      },
+                      "feeBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "maker",
+                      "feeBps"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -16728,6 +16854,27 @@
                       ]
                     }
                   ]
+                },
+                "poolFees": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "maker": {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                      },
+                      "feeBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "maker",
+                      "feeBps"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -18053,6 +18200,27 @@
                       ]
                     }
                   ]
+                },
+                "poolFees": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "maker": {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                      },
+                      "feeBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "maker",
+                      "feeBps"
+                    ]
+                  }
                 }
               },
               "required": [
@@ -28069,6 +28237,27 @@
                                     ]
                                   }
                                 ]
+                              },
+                              "poolFees": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "maker": {
+                                      "type": "string",
+                                      "maxLength": 40,
+                                      "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                                    },
+                                    "feeBps": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "maker",
+                                    "feeBps"
+                                  ]
+                                }
                               }
                             },
                             "required": [

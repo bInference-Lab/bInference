@@ -231,7 +231,7 @@ export type {
 export { balanceViewSchema, portfolioViewSchema } from "./views/portfolio-view.schema.js";
 export type { BalanceView, PortfolioView, PositionView } from "./views/portfolio-view.schema.js";
 export { quoteViewSchema, tradePlaceSchema } from "./views/quote-view.schema.js";
-export type { QuoteView, RouteLeg, TradePlace } from "./views/quote-view.schema.js";
+export type { PoolFee, QuoteView, RouteLeg, TradePlace } from "./views/quote-view.schema.js";
 export { riskViewSchema } from "./views/risk-view.schema.js";
 export type { RiskFlag, RiskView } from "./views/risk-view.schema.js";
 export { scheduleViewSchema, scheduleWhenSchema } from "./views/schedule-view.schema.js";

@@ -42,6 +42,7 @@
   "warn.newAddress": "⚠️ 你从未向此地址转账",
   "warn.unverified": "⚠️ 非已验证代币：风险检查已通过，但请核对地址",
   "warn.highTax": "⚠️ 此代币每笔交易收取 {tax} 交易税",
+  "warn.poolFee": "含 {fee} 的 {maker} 交易池手续费",
   "warn.requoted": "⚠️ 价格已变动：这是新的报价",
   "warn.placeChanged": "⚠️ 自上次报价以来 {token} 已毕业：此交易现在在交易池中进行",
   "warn.noDeadline": "⚠️ 此交易没有时限：如有延迟，之后仍可能成交，但绝不会低于至少收到的数量",
