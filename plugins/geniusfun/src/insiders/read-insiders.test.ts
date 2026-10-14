@@ -13,6 +13,10 @@ import {
 import { readInsiders } from "./read-insiders.js";
 
 const live = (): AbortSignal => new AbortController().signal;
+const receiptsMethod = "eth_getBlockReceipts";
+const readFailed = { code: "geniusfun.read_failed" };
+// The block a request the scripted chain was asked names: its hex number after the method.
+const blockOf = (asked: string): string => asked.slice(receiptsMethod.length + 1);
 
 describe("geniusfun insiders", () => {
   it.each([
@@ -39,6 +43,19 @@ describe("geniusfun insiders", () => {
     expect(rpc.asked.slice(read).filter((asked) => !asked.startsWith("eth_call"))).toStrictEqual(
       [],
     );
+  });
+
+  it("throws, and keeps nothing, when the launch second's blocks hold no exemption", async () => {
+    const recorded = scriptedChain();
+    const request = { token: stackToken, contracts: registryContracts };
+    await readInsiders(request, partsOver(recorded), live());
+    const blocks = recorded.asked.filter((asked) => asked.startsWith(receiptsMethod));
+    const rpc = scriptedChain({ receipts: new Map(blocks.map((asked) => [blockOf(asked), [[]]])) });
+    const parts = partsOver(rpc);
+    await expect(readInsiders(request, parts, live())).rejects.toMatchObject(readFailed);
+    await expect(readInsiders(request, parts, live())).rejects.toMatchObject(readFailed);
+    const receiptReads = rpc.asked.filter((asked) => asked.startsWith(receiptsMethod));
+    expect(receiptReads).toHaveLength(blocks.length * 2);
   });
 
   it.each([

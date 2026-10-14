@@ -42,8 +42,10 @@ function exemptedBy(logs: readonly ReceiptLog[], curve: Address): readonly Addre
  * transaction, so they are read from the `SnipeTaxExempted` logs of the curve in the blocks of its
  * launch second (`launchedAt()`), from their receipts, since public nodes serve no log queries. A
  * token no listed stack launched, or an asset that is no ERC-20 token of a chain the venue trades
- * on, has none. What a launch exempted never changes, so each curve's answer is kept. A contract,
- * a block or a receipt that cannot be read throws.
+ * on, has none. What a launch exempted never changes, so each curve's answer is kept. A launch
+ * always exempts its creator, so a read that finds no exemption is a fault and keeps nothing. The
+ * search reads about 60 headers at most (see `blocksOfSecond`), then the receipts of the second's
+ * blocks. A contract, a block or a receipt that cannot be read throws.
  */
 export async function readInsiders(
   request: CurveRequest,
@@ -70,9 +72,12 @@ export async function readInsiders(
   const asked = { to: curve, data: launchedAtCallData, what: "the curve's launch second" };
   const blocks = await blocksOfSecond(read, await readCall(read, asked, numberOf));
   const logs = await Promise.all(blocks.map(async (block) => logsOf(read, block)));
-  const insiders = exemptedBy(logs.flat(), curve).map((address) =>
-    accountRefSchema.parse(`${setup.chain}:${address}`),
-  );
+  const exempted = exemptedBy(logs.flat(), curve);
+  // A launch always exempts its creator: none found means the blocks read were not its own.
+  if (exempted.length === 0) {
+    throw unreadable("the launch's exemptions were not in the blocks of its launch second.");
+  }
+  const insiders = exempted.map((address) => accountRefSchema.parse(`${setup.chain}:${address}`));
   parts.insiders.set(key, insiders);
   return insiders;
 }

@@ -93,7 +93,8 @@ async function sameSecond(
 /**
  * The blocks made in one second of the chain's clock, such as the second a launch's curve names
  * as its launch: found between the head and a block stepped back from it, by its pace and by
- * halving, then read forward. A second after the head, one no block was made in, or a search that
+ * halving, then read forward. It reads the head, a dozen headers at most stepping back, 48 at most
+ * narrowing, and the second's own blocks: about 60 headers at most, a few on a steady chain. A second after the head, one no block was made in, or a search that
  * does not end within its steps, is a fault (`geniusfun.read_failed`). Rejects when no node
  * answers, and with the signal's reason once it aborts.
  */

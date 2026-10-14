@@ -21,7 +21,8 @@ export interface RiskView {
   readonly liquidityUsdMicros?: bigint;
   /**
    * The insider wallets: those the launchpad that launched the token favors over every other
-   * buyer, such as wallets its launch exempted from the launch-window tax.
+   * buyer, such as wallets its launch exempted from the launch-window tax; at most
+   * {@link maxInsiders}, the first the launchpad named.
    */
   readonly insiders?: readonly AccountRef[];
   readonly onCurve: boolean;
@@ -30,6 +31,9 @@ export interface RiskView {
 
 const codeSchema = z.string().regex(/^[a-z][a-z0-9_]*$/);
 
+/** The most insiders a risk view records, so a launch that exempts thousands stores a few. */
+export const maxInsiders = 50;
+
 /** Parses a risk view. */
 export const riskViewSchema: z.ZodType<RiskView> = z.object({
   verdict: z.enum(["pass", "warn", "block"]),
@@ -37,7 +41,7 @@ export const riskViewSchema: z.ZodType<RiskView> = z.object({
   buyTaxBps: bpsSchema.exactOptional(),
   sellTaxBps: bpsSchema.exactOptional(),
   liquidityUsdMicros: decimalStringSchema.exactOptional(),
-  insiders: z.array(accountRefSchema).exactOptional(),
+  insiders: z.array(accountRefSchema).max(maxInsiders).exactOptional(),
   onCurve: z.boolean(),
   checkedAt: epochMsSchema,
 });

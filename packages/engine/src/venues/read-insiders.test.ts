@@ -65,6 +65,14 @@ describe("a launchpad's insiders in the venue host", () => {
     });
   });
 
+  it("keeps the first 50 insiders of a launch that favors more", async () => {
+    const many = Array.from({ length: 60 }, (_unused, index) =>
+      accountRefSchema.parse(`fake:1:0x${(0x100 + index).toString(16).padStart(8, "0")}`),
+    );
+    const named = await hostOf([naming(many)]).insiders("fake-curve", token, { signal });
+    expect(named).toStrictEqual({ ok: true, value: many.slice(0, 50) });
+  });
+
   it("names none for a venue that reads no insiders, or one the host does not hold", async () => {
     const host = hostOf([createFakeVenue()]);
     await expect(host.insiders("fake-swap", token, { signal })).resolves.toStrictEqual({

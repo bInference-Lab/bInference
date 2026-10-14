@@ -6,6 +6,7 @@ import {
   assetRefParts,
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
+import { maxInsiders } from "@binference/protocol";
 import { z } from "zod";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import type { HostedVenue } from "./hosted-venue.js";
@@ -26,7 +27,8 @@ function isUsable(insiders: readonly AccountRef[], token: AssetRef): boolean {
  * contracts on the token's chain under the host's timeout. A venue the host does not hold, one
  * that names no insiders, or one that does not trade on the token's chain names none. One that
  * throws, times out, or answers anything but accounts of the token's chain, each once, is
- * `venue_down`. Rejects with the signal's reason once it aborts.
+ * `venue_down`. It keeps the first {@link maxInsiders} the venue names, so a launch that favors
+ * thousands of wallets stores a few. Rejects with the signal's reason once it aborts.
  */
 export async function readInsiders(
   hosted: HostedVenue | undefined,
@@ -44,5 +46,7 @@ export async function readInsiders(
     return named ?? [];
   }, call);
   const insiders = answer.ok ? ownCopy(insidersSchema, answer.value) : undefined;
-  return insiders !== undefined && isUsable(insiders, token) ? ok(insiders) : err("venue_down");
+  return insiders !== undefined && isUsable(insiders, token)
+    ? ok(insiders.slice(0, maxInsiders))
+    : err("venue_down");
 }
