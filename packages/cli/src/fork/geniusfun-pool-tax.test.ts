@@ -118,7 +118,7 @@ describe("a graduated geniusfun token's hooked pool on a BSC fork", () => {
       const refused = await check.assess({ quoted, limits: atOne }, { signal });
       expect(passed).toMatchObject({ view: { verdict: "pass", buyTaxBps: 0, sellTaxBps: 0 } });
       expect(passed).not.toHaveProperty("refusal");
-      expect(refused).toMatchObject({ refusal: "high_tax", view: { buyTaxBps: 0 } });
+      expect(refused).toMatchObject({ refusal: "high_pool_fee", view: { buyTaxBps: 0 } });
       await annotate(
         `block ${String(fork.block)}, token ${graduated}: 0.01 BNB bought ${String(share.bought)}, the hook ${hook} took ${String(share.taken)} (${String(share.bps)} bp) out of the vault; round trip buy tax ${String(passed.view.buyTaxBps)} bp, sell tax ${String(passed.view.sellTaxBps)} bp; at a 10% maximum ${passed.view.verdict}, at 1% ${String(refused.refusal)}`,
       );

@@ -149,9 +149,11 @@ The reason stored with `rejected_policy` is one of:
 
 Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `snipe_tax` (a buy
 whose quote names a launch-window tax above the agent's maximum tax,
-[decision 0213](../DECISIONS.md#d0213)), `high_tax` (a leg's tax above the maximum, a buy's with
-the fee its route's pool hooks keep, counted once, [decision 0215](../DECISIONS.md#d0215)),
-`low_liquidity`, `sources_down`, `blacklisted`.
+[decision 0213](../DECISIONS.md#d0213)), `high_tax` (a leg's tax above the maximum on the token's
+own tax), `high_pool_fee` (a buy above the maximum only with the fee its route's pool hooks keep,
+counted once, [decision 0215](../DECISIONS.md#d0215), on a token with no buy tax of its own),
+`high_tax_with_pool_fee` (the same with the token's buy tax and the fee together,
+[decision 0216](../DECISIONS.md#d0216)), `low_liquidity`, `sources_down`, `blacklisted`.
 
 Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a

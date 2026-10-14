@@ -64,7 +64,7 @@ describe("a route's pool hook fee in the risk verdict", () => {
   it("counts the fee the quote names with the buy tax against the maximum", () => {
     const over = riskVerdict(findingsOf({ roundTrip: withBuyTax(900), hookFeeBps: bps(200) }));
     const under = riskVerdict(findingsOf({ roundTrip: withBuyTax(700), hookFeeBps: bps(200) }));
-    expect(over).toMatchObject({ refusal: "high_tax", view: { buyTaxBps: 900 } });
+    expect(over).toMatchObject({ refusal: "high_tax_with_pool_fee", view: { buyTaxBps: 900 } });
     expect(under).toMatchObject({ view: { verdict: "warn", buyTaxBps: 700 } });
     expect(under).not.toHaveProperty("refusal");
   });
@@ -74,7 +74,23 @@ describe("a route's pool hook fee in the risk verdict", () => {
     const once = riskVerdict(findingsOf({ ...named, roundTrip: withBuyTax(750, 200) }));
     const measured = riskVerdict(findingsOf({ ...named, roundTrip: withBuyTax(750, 300) }));
     expect(once).not.toHaveProperty("refusal");
-    expect(measured).toMatchObject({ refusal: "high_tax" });
+    expect(measured).toMatchObject({ refusal: "high_tax_with_pool_fee" });
+  });
+
+  it("names the pool fee alone when the token takes no tax of its own on the buy", () => {
+    const strict = { maxTaxBps: bps(100), liquidityFloorUsdMicros: 10_000_000_000n };
+    const feeOnly = { roundTrip: withBuyTax(0, 200), hookFeeBps: bps(200), limits: strict };
+    expect(riskVerdict(findingsOf(feeOnly))).toMatchObject({
+      refusal: "high_pool_fee",
+      view: { verdict: "block", buyTaxBps: 0 },
+    });
+  });
+
+  it("names the token's tax when a leg the fee never touches is over on its own", () => {
+    const roundTrip = { ...withBuyTax(0, 200), sellTaxBps: bps(1_001) };
+    expect(riskVerdict(findingsOf({ roundTrip, hookFeeBps: bps(200) }))).toMatchObject({
+      refusal: "high_tax",
+    });
   });
 
   it("passes a token with no tax of its own whose route keeps a fee under the maximum", () => {

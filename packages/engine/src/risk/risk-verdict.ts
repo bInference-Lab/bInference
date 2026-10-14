@@ -34,6 +34,16 @@ const simulationSource = "simulation";
 
 type Check = (findings: RiskFindings, flags: ReadonlySet<RiskFlagCode>) => boolean;
 
+/** One of spec 6's risk checks: the reason it stores when it holds, or none. */
+type ReasonCheck = (
+  findings: RiskFindings,
+  flags: ReadonlySet<RiskFlagCode>,
+) => RiskReason | undefined;
+
+function when(reason: RiskReason, check: Check): ReasonCheck {
+  return (findings, flags) => (check(findings, flags) ? reason : undefined);
+}
+
 function reportsOf(answers: readonly SourceAnswer[]): readonly TokenRiskReport[] {
   return answers.flatMap((answer) => (answer.outcome === "reported" ? [answer.report] : []));
 }
@@ -46,14 +56,27 @@ function highestTaxBps(roundTrip: RoundTrip): Bps | undefined {
     : undefined;
 }
 
-// The highest tax a leg pays, the buy counting the fee its route's pool hooks keep once: the
-// quote's or the share measured going to them, the higher (decision 0215).
-function countedTaxBps(roundTrip: RoundTrip, hookFeeBps: Bps | undefined): number {
+// What made a leg's tax pass the maximum (decision 0216): a transfer, a sale or a buy without a
+// pool fee over it on the token's own tax; a buy over it only with the fee its route's pool hooks
+// keep, counted once as the quote's or the share measured going to them, the higher (decision
+// 0215), on the fee alone, or on the token's tax with the fee when the buy has a tax of its own.
+function taxRefusal({ roundTrip, limits, hookFeeBps }: RiskFindings): RiskReason | undefined {
   if (roundTrip.kind !== "measured") {
-    return 0;
+    return undefined;
   }
+  const max = limits.maxTaxBps;
   const hooks = Math.max(hookFeeBps ?? 0, roundTrip.hookFeeBps);
-  return Math.max(roundTrip.buyTaxBps + hooks, roundTrip.transferTaxBps, roundTrip.sellTaxBps);
+  const isBuyOver = roundTrip.buyTaxBps + hooks > max;
+  if (
+    Math.max(roundTrip.transferTaxBps, roundTrip.sellTaxBps) > max ||
+    (isBuyOver && hooks === 0)
+  ) {
+    return "high_tax";
+  }
+  if (!isBuyOver) {
+    return undefined;
+  }
+  return roundTrip.buyTaxBps === 0 ? "high_pool_fee" : "high_tax_with_pool_fee";
 }
 
 // Each source counts only the pools it knows, so the largest figure is the best floor. With no
@@ -72,37 +95,34 @@ const isRefused = (roundTrip: RoundTrip, leg: "transfer" | "sell"): boolean =>
   roundTrip.kind === "refused" && roundTrip.leg === leg;
 
 // Spec 6's risk reasons in its order: the first that holds is the one the intent stores.
-const checks: readonly (readonly [RiskReason, Check])[] = [
-  ["honeypot", (_findings, flags) => flags.has("honeypot")],
-  [
+const checks: readonly ReasonCheck[] = [
+  when("honeypot", (_findings, flags) => flags.has("honeypot")),
+  when(
     "cannot_sell",
     ({ roundTrip }, flags) => flags.has("cannot_sell") || isRefused(roundTrip, "sell"),
-  ],
-  [
+  ),
+  when(
     "hidden_owner",
     (_findings, flags) => flags.has("hidden_owner") && flags.has("owner_changes_balances"),
-  ],
-  ["snipe_tax", ({ snipeTaxBps, limits }) => (snipeTaxBps ?? 0) > limits.maxTaxBps],
-  [
-    "high_tax",
-    ({ roundTrip, limits, hookFeeBps }) => countedTaxBps(roundTrip, hookFeeBps) > limits.maxTaxBps,
-  ],
-  [
+  ),
+  when("snipe_tax", ({ snipeTaxBps, limits }) => (snipeTaxBps ?? 0) > limits.maxTaxBps),
+  taxRefusal,
+  when(
     "low_liquidity",
     ({ answers, limits }) =>
       reportsOf(answers).length > 0 &&
       (liquidityOf(answers) ?? 0n) < limits.liquidityFloorUsdMicros,
-  ],
-  [
+  ),
+  when(
     "sources_down",
     ({ answers, roundTrip }) =>
       roundTrip.kind === "unavailable" ||
       answers.some((answer) => answer.isRequired && answer.outcome !== "reported"),
-  ],
-  [
+  ),
+  when(
     "blacklisted",
     ({ roundTrip }, flags) => flags.has("blacklist") || isRefused(roundTrip, "transfer"),
-  ],
+  ),
 ];
 
 function sourceFlags(answers: readonly SourceAnswer[]): readonly RiskFlag[] {
@@ -159,7 +179,8 @@ function viewOf(findings: RiskFindings, refusal: RiskReason | undefined): RiskVi
  * (ARCHITECTURE.md section 7, risk tiers). A hard finding blocks: a honeypot, a sale that fails, a
  * hidden owner who can change balances, a launch-window tax the quote names above the agent's
  * maximum tax, a measured tax above that maximum (a buy's with the fee its route's pool hooks
- * keep, counted once), liquidity below its floor, a required source or the round trip that could
+ * keep, counted once, named by what counted: the token's tax, the pool fee or both), liquidity
+ * below its floor, a required source or the round trip that could
  * not answer, or a blacklist. The reason stored is the first of spec 6's risk reasons that holds. A token that passes with any
  * finding or tax is a warning. The tax is the highest the round trip measured on any leg: the
  * sources' own tax figures never decide it. The view records the wallets the token's launchpad
@@ -167,7 +188,10 @@ function viewOf(findings: RiskFindings, refusal: RiskReason | undefined): RiskVi
  */
 export function riskVerdict(findings: RiskFindings): RiskAssessment {
   const flags = new Set(reportsOf(findings.answers).flatMap((report) => report.flags));
-  const refusal = checks.find(([, check]) => check(findings, flags))?.[0];
+  const refusal = checks.reduce<RiskReason | undefined>(
+    (found, check) => found ?? check(findings, flags),
+    undefined,
+  );
   const view = viewOf(findings, refusal);
   return refusal === undefined ? { view } : { view, refusal };
 }

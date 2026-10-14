@@ -36,6 +36,8 @@ export const riskReasons = [
   "hidden_owner",
   "snipe_tax",
   "high_tax",
+  "high_pool_fee",
+  "high_tax_with_pool_fee",
   "low_liquidity",
   "sources_down",
   "blacklisted",

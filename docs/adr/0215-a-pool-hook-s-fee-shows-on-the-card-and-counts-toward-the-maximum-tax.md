@@ -1,6 +1,6 @@
 # 0215. A pool hook's fee shows on the card and counts toward the maximum tax
 
-Status: Accepted
+Status: Amended by 0216
 
 Accepted by the owner on 2026-10-14.
 

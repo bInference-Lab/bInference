@@ -556,6 +556,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | share (send to someone)                            | 分享                         |                                         |
 | DEX pools                                          | DEX 交易池                   |                                         |
 | venue fee                                          | 平台手续费                   |                                         |
+| pool fee (what a pool hook keeps)                  | 交易池手续费                 |                                         |
 | launch feed                                        | 发射动态                     |                                         |
 | curve progress                                     | 曲线进度                     |                                         |
 | snipe tax                                          | 狙击税                       | A launch-window tax on early buys       |

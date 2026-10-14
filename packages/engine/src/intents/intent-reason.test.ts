@@ -39,6 +39,8 @@ describe("intent reasons", () => {
       "hidden_owner",
       "snipe_tax",
       "high_tax",
+      "high_pool_fee",
+      "high_tax_with_pool_fee",
       "low_liquidity",
       "sources_down",
       "blacklisted",
@@ -77,7 +79,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(40);
+    expect(intentReasons).toHaveLength(42);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {
