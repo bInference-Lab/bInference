@@ -153,6 +153,11 @@ export interface VenueHost {
    * 0180). A venue the host does not hold, or a chain it does not serve, has none of its own.
    */
   hasNoDeadline(venue: string, chain: ChainRef): boolean;
+  /**
+   * Whether the venue declares contracts each launch has, on any chain (decision 0212): no wallet
+   * ceiling can list them, so its live trades need a launch wallet of their own.
+   */
+  hasLaunchContracts(venue: string): boolean;
 }
 
 /** What the host is made from. */
@@ -388,6 +393,10 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
     },
     hasNoDeadline(venue, chain) {
       return venues.get(venue)?.noDeadline.has(chain) === true;
+    },
+    hasLaunchContracts(venue) {
+      const names = [...(venues.get(venue)?.launchNames.values() ?? [])];
+      return names.some((declared) => declared.size > 0);
     },
   };
   return host;

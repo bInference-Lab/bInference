@@ -72,6 +72,7 @@ export const protocolErrorCodes = [
   "limit.needs_admin",
   "limit.over_ceiling",
   "limit.venue_in_use",
+  "limit.needs_launch_wallet",
   "config.invalid",
   "config.secret_inline",
   "plugin.not_found",

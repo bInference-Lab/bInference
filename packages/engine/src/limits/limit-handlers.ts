@@ -14,7 +14,7 @@ import {
   type ProtocolErrorCode,
 } from "@binference/protocol";
 import { z } from "zod";
-import type { AgentSettings } from "../agents/agent-record.js";
+import type { AgentMode, AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
@@ -28,6 +28,7 @@ import {
 } from "../policy/limit-change.js";
 import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import type { VenueHost } from "../venues/venue-host.js";
 import { unknownVenues, venuesOutsideCeiling } from "./limit-ceiling.js";
 import { limitNotices } from "./limit-notices.js";
 import { limitChangesOf, limitsViewOf, reservesAsked } from "./limit-views.js";
@@ -44,6 +45,8 @@ export interface LimitHandlersOptions {
   readonly agents: AgentStore;
   /** The wallets, whose ceilings bound the venues an agent may add. */
   readonly install: InstallStore;
+  /** Which venues trade on contracts each launch has, which no ceiling can list. */
+  readonly host: Pick<VenueHost, "hasLaunchContracts">;
   readonly journal: ConfigJournal;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
@@ -55,6 +58,7 @@ type LimitsCall = EngineCall<"limit/set"> | EngineCall<"limit/cancelPending">;
 type Decide = (
   state: LimitsState,
   nowMs: number,
+  mode: AgentMode,
 ) => Promise<Result<LimitsState, ProtocolErrorCode>>;
 
 /** The limits as written after a move, and the state they hold. */
@@ -128,7 +132,7 @@ async function move(
   const nowMs = options.clock.now();
   const { limits } = found.value;
   const before = limitsAt(stateOf(limits), nowMs);
-  const next = await decide(stateOf(limits), nowMs);
+  const next = await decide(stateOf(limits), nowMs, found.value.agent.mode);
   if (!next.ok || isSameState(next.value, before)) {
     return next.ok ? ok({ record: limits, state: before }) : next;
   }
@@ -154,24 +158,31 @@ async function move(
   return move(options, { call, decide, attemptsLeft: attemptsLeft - 1 });
 }
 
-// A venue or chain the registry lacks is malformed; a venue a live wallet's ceiling leaves out
-// waits for the owner key, which alone adds it to the ceiling.
+// A venue or chain the registry lacks is malformed. A venue that trades on a launch's own
+// contracts needs a launch wallet to trade live, which no ceiling gives: a live agent cannot add
+// it, and a paper agent adds it with no ceiling to check. Any other venue a live wallet's ceiling
+// leaves out waits for the owner key, which alone adds it to the ceiling.
 async function refusalOf(
   options: LimitHandlersOptions,
   call: EngineCall<"limit/set">,
-  venues: readonly string[],
+  agent: { readonly venues: readonly string[]; readonly mode: AgentMode },
 ): Promise<ProtocolErrorCode | undefined> {
   const { changes } = call.args;
-  const added = (changes.venues ?? []).filter((venue) => !venues.includes(venue));
+  const added = (changes.venues ?? []).filter((venue) => !agent.venues.includes(venue));
   const unknownChain = reservesAsked(changes).some((item) => !options.chains.get(item.chain).ok);
   if (unknownChain || unknownVenues(options.chains, added).length > 0) {
     return "protocol.bad_args";
   }
-  if (added.length === 0) {
+  const launched = added.filter((venue) => options.host.hasLaunchContracts(venue));
+  if (launched.length > 0 && agent.mode === "live") {
+    return "limit.needs_launch_wallet";
+  }
+  const ceilinged = added.filter((venue) => !launched.includes(venue));
+  if (ceilinged.length === 0) {
     return undefined;
   }
   const { wallets } = await options.install.read({ signal: call.signal });
-  const check = { agent: call.args.agent, venues: added, wallets, chains: options.chains };
+  const check = { agent: call.args.agent, venues: ceilinged, wallets, chains: options.chains };
   return venuesOutsideCeiling(check).length > 0 ? "limit.over_ceiling" : undefined;
 }
 
@@ -207,10 +218,11 @@ function canonicalChanges(
 }
 
 function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set">): Decide {
-  return async (state, nowMs) => {
+  return async (state, nowMs, mode) => {
     const { values } = limitsAt(state, nowMs);
     const changes = canonicalChanges(options.chains, call.args.changes);
-    const refusal = changes.ok ? await refusalOf(options, call, values.venues) : changes.error;
+    const agent = { venues: values.venues, mode };
+    const refusal = changes.ok ? await refusalOf(options, call, agent) : changes.error;
     if (!changes.ok || refusal !== undefined) {
       return err(refusal ?? "protocol.bad_args");
     }
@@ -226,7 +238,9 @@ function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set"
  * intent to them, and the looser ones that wait. `limit/set` applies at once, with the `confirm`
  * scope, each change that is clearly stricter or back to the value in effect, and drops any looser
  * value of that limit that waits; every other change needs the `loosen` scope and waits 24 hours
- * (decision 0111). A venue a live wallet's ceiling leaves out is `limit.over_ceiling`. The token
+ * (decision 0111). A venue that trades on a launch's own contracts is `limit.needs_launch_wallet`
+ * for a live agent, and needs no ceiling for a paper one (decision 0212); any other venue a live
+ * wallet's ceiling leaves out is `limit.over_ceiling`. The token
  * lists keep each token in its family's canonical form; a token without one is
  * `protocol.bad_args`.
  * `limit/cancelPending` drops the looser limits that wait. Each move is journaled, pushed as

@@ -197,6 +197,9 @@ new name here first, in the change that uses it.
 - **launch contract**: a contract a launchpad makes with each launch, such as a token's own curve.
   No registry lists one: the launchpad's curve read names it for a token it holds, and only that
   token's trades and price reads call it.
+- **launch wallet**: a small wallet of its own, funded by the owner, whose ceiling may allow a
+  launch's contracts. Live trades on a launch's own curve need one; the agent wallets' ceilings
+  list only registry contracts, so until it exists only a paper agent uses such a venue.
 - **hook allowlist**: per chain, the pool hooks a route may pass through, each with the fee it
   keeps. A route through a PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped,
   aggregator routes too.
@@ -571,6 +574,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | English                                  | 中文                   | Notes                            |
 | ---------------------------------------- | ---------------------- | -------------------------------- |
 | agent wallet                             | Agent 钱包             |                                  |
+| launch wallet                            | 发射钱包               | Trades on a launch's own curve   |
 | owner key                                | 所有者密钥             | Shown once as a `bnok1` code     |
 | balance                                  | 余额                   |                                  |
 | withdraw, fund (a wallet)                | 提取, 充值             | Lending's withdraw is 取出       |

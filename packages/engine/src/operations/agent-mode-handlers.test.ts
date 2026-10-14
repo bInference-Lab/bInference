@@ -1,8 +1,16 @@
+import { accountRefSchema } from "@binference/chain";
+import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { expectOk, testAgent, testNowMs, testSwap } from "../intents/test-intents.js";
+import { expectOk, testAgent, testLimits, testNowMs, testSwap } from "../intents/test-intents.js";
 import type { AgentStore } from "../ports.js";
-import { startTestEngine, type TestEngine, testCall, testCallers } from "./test-engine.js";
+import {
+  startTestEngine,
+  testChains,
+  type TestEngine,
+  testCall,
+  testCallers,
+} from "./test-engine.js";
 
 const live = { signal: new AbortController().signal };
 const unknownAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000009" as Id<"agt">;
@@ -51,6 +59,19 @@ describe("the live switch", () => {
     expect(modes).toStrictEqual(["paper", "paper", "paper", "paper"]);
     const view = expectOk(await handlers["agent/goLive"](testCall({ agent: testAgent })));
     expect([view.mode, await modeOf(test)]).toStrictEqual(["live", "live"]);
+  });
+
+  it("refuses to go live while its venues hold one that trades on a launch's own contracts", async () => {
+    const launchCurve = accountRefSchema.parse("fake:1:0x000000c1");
+    const test = await startTestEngine({
+      chains: testChains(["fake-curve"]),
+      venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })],
+      agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-curve"] } },
+    });
+    await expect(
+      test.engine.handlers["agent/goLive"](testCall({ agent: testAgent })),
+    ).resolves.toStrictEqual(err("limit.needs_launch_wallet"));
+    await expect(modeOf(test)).resolves.toBe("paper");
   });
 
   it("refuses to go live before the default wallet holds funds, and stays on paper", async () => {

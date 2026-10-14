@@ -1,4 +1,5 @@
-import { assetRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema } from "@binference/chain";
+import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
 import { bpsSchema, err, idSchema } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -15,6 +16,7 @@ import {
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
+  testChains,
   type TestEngine,
   testCall,
   testCallers,
@@ -90,6 +92,19 @@ function staleLimits(times: number): (store: AgentStore) => AgentStore {
 async function withWallet(ceiling: WalletRecord["ceiling"]["policy"]): Promise<TestEngine> {
   const test = await startTestEngine({ agent: { limits: { ...testLimits, venues: [] } } });
   test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: ceiling } });
+  return test;
+}
+
+// An agent in the mode, beside a launchpad whose every launch has a curve of its own (decision
+// 0212), with a live wallet whose ceiling names no contract.
+async function besideLaunchCurves(mode: "paper" | "live"): Promise<TestEngine> {
+  const launchCurve = accountRefSchema.parse("fake:1:0x000000c1");
+  const test = await startTestEngine({
+    chains: testChains(["fake-curve"]),
+    venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })],
+    agent: { mode, limits: { ...testLimits, venues: [] } },
+  });
+  test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: [] } });
   return test;
 }
 
@@ -316,6 +331,25 @@ describe("a venue added to the limits", () => {
     const set = expectOk(await setLimits(test, { venues: ["fake-swap"] }));
 
     expect(set.pending).toStrictEqual({ changes: { venues: ["fake-swap"] }, effectiveAt });
+  });
+
+  it("needs no ceiling for a paper agent when it trades on a launch's own contracts", async () => {
+    const test = await besideLaunchCurves("paper");
+
+    const set = expectOk(await setLimits(test, { venues: ["fake-curve"] }));
+
+    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-curve"] }, effectiveAt });
+  });
+
+  it("needs a launch wallet for a live agent when it trades on a launch's own contracts", async () => {
+    const test = await besideLaunchCurves("live");
+
+    expect(await setLimits(test, { venues: ["fake-curve"] })).toStrictEqual(
+      err("limit.needs_launch_wallet"),
+    );
+    expect(await setLimits(test, { venues: ["fake-swap"] })).toStrictEqual(
+      err("limit.over_ceiling"),
+    );
   });
 
   it("is malformed when the registry holds no contract of it, as is an unknown chain", async () => {

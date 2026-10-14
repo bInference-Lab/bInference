@@ -313,7 +313,7 @@ must refetch reads the operation's own list, such as `backup/list`. File results
 | `agent/create`        | `admin`                                     | ✓     |       | `{ name, locale? }` → `AgentView` (starts in paper mode with the defaults table)                                                                                                                                                                                                                                                             |
 | `agent/rename`        | `admin`                                     | ✓     |       | `{ agent, name }` → `AgentView`                                                                                                                                                                                                                                                                                                              |
 | `agent/archive`       | `admin`                                     | ✓     |       | `{ agent }` → `{}` (orders cancelled, funds untouched)                                                                                                                                                                                                                                                                                       |
-| `agent/goLive`        | `admin`                                     | ✓     | ✓     | `{ agent }` → `AgentView`; fails `wallet.unfunded` or `agent.disclaimer` when not ready                                                                                                                                                                                                                                                      |
+| `agent/goLive`        | `admin`                                     | ✓     | ✓     | `{ agent }` → `AgentView`; fails `wallet.unfunded` or `agent.disclaimer` when not ready, and `limit.needs_launch_wallet` while its venues hold one that trades on a launch's own contracts                                                                                                                                                   |
 | `agent/goPaper`       | `confirm`                                   | ✓     |       | `{ agent }` → `AgentView` (braking)                                                                                                                                                                                                                                                                                                          |
 | `agent/readFile`      | `read`                                      |       |       | `{ agent, file }` → `{ text, updatedAt }`; `file` is one of the workspace files; `agent.file_missing` for a file the agent does not have ([decision 0200](../DECISIONS.md#d0200))                                                                                                                                                            |
 | `agent/writeFile`     | `admin`                                     | ✓     |       | `{ agent, file, text }` → `{ updatedAt }`: replaces the file whole; the agent's next turn reads it; `agent.archived` for an archived agent                                                                                                                                                                                                   |
@@ -509,7 +509,10 @@ allow list that keeps only tokens it listed (never an empty one, which allows ev
 list that keeps every token it listed, a larger gas reserve on every chain, a higher send level.
 Every other change is a loosening, which waits 24 hours, is announced on every surface and can be
 cancelled. A venue that a live wallet's ceiling leaves out is `limit.over_ceiling`: only the owner
-key adds it to the ceiling ([decision 0111](../DECISIONS.md#d0111)).
+key adds it to the ceiling ([decision 0111](../DECISIONS.md#d0111)). A venue that trades on a
+launch's own contracts, such as a Genius.fun curve, is `limit.needs_launch_wallet` for a live
+agent: its live trades need a launch wallet, which no ceiling change gives; a paper agent adds it
+with no ceiling to check ([decision 0212](../DECISIONS.md#d0212)).
 
 <a id="section-7-7"></a>
 
@@ -889,7 +892,7 @@ later unchanged.
 | `name`     | `not_found`, `resolver_down`                                                                    |
 | `quote`    | `no_route`, `venue_down`                                                                        |
 | `chain`    | `rpc_down`, `simulation_failed`                                                                 |
-| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`                                                      |
+| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`                               |
 | `config`   | `invalid`, `secret_inline`                                                                      |
 | `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                   |
 | `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                |

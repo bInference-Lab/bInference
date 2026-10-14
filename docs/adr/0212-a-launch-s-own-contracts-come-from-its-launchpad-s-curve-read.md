@@ -34,14 +34,19 @@ list, per function, the contracts it may call, at most 100, and the spenders an 
   of a token a launchpad holds may call them.
 - **Every other check holds:** the trade call goes to a declared contract, registry or launch; the
   recipient, the exact input, the minimum out and the exact approval; then the simulation.
-- **No ceiling lists them.** A ceiling cannot list a contract made per launch, so calls and
-  approvals on launch contracts add nothing to it. A live wallet cannot sign them until a later
-  decision says how a ceiling may hold them.
+- **No agent wallet's ceiling lists them.** A ceiling cannot list a contract made per launch, so
+  calls and approvals on launch contracts add nothing to it, and the agent wallets' ceilings keep to
+  registry contracts. Live trades on launch contracts will go through a launch wallet of their own,
+  a small one the owner funds, whose ceiling may allow them; a later decision builds it.
+- **Until then, paper only.** A paper agent may add a venue that declares launch contracts, with no
+  ceiling to check. A live agent may not (`limit.needs_launch_wallet`, which no ceiling change
+  clears), and an agent whose venues hold one cannot go live. Init never gives one to a new agent.
 
 ## Consequences
 
-- A launchpad with a curve per launch quotes, builds, decodes and prices in the engine. Paper
-  trades and the risk step's round trip run; live trades on those curves are refused at signing.
+- A launchpad with a curve per launch quotes, builds, decodes and prices in the engine. A paper
+  agent that adds it trades on those curves, through the risk step's round trip and the
+  simulation; no live agent can add it, and live trades on those curves are refused at signing.
 - The host trusts the launchpad's read for a curve's address, as it trusts the same read for
   whether the launchpad holds a token ([decision 0179](0179-a-buy-or-sell-goes-nowhere-while-its-place-is-in-doubt.md)).
   A wrong address still meets the recipient, amount and approval checks and the simulation.
@@ -58,4 +63,4 @@ list, per function, the contracts it may call, at most 100, and the spenders an 
   need a declared lookup call and a decoder in each family. Rejected for now: the launchpad's read
   already decides where a token trades.
 - **Let the ceiling allow the curve's functions on any contract.** It breaks decision 0149's
-  promise for every approval. Left to the owner.
+  promise for every approval. Rejected by the owner: the launch wallet holds that risk apart.

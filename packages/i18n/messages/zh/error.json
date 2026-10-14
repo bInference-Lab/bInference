@@ -68,6 +68,7 @@
   "limit.needs_admin": "放宽限额需要在命令行、控制台或 Mini App 中操作。",
   "limit.over_ceiling": "此限额超过了钱包的上限。请先用你的所有者密钥提高上限。",
   "limit.venue_in_use": "此 Agent 的限额仍包含本次上限修改要移除的平台。请先从限额中移除该平台。",
+  "limit.needs_launch_wallet": "在发射项目自身的联合曲线上实盘交易需要发射钱包，任何上限调整都无法放行。只有模拟模式的 Agent 可以使用此平台：Agent 转为实盘前请先移除它。",
   "config.invalid": "配置有误。请运行 `binference check` 查看出错位置和修复方法。",
   "config.secret_inline": "配置文件中有明文密钥。请运行 `binference check --fix`。",
   "plugin.not_found": "此插件未安装。请在控制台查看插件列表。",

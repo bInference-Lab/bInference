@@ -370,6 +370,7 @@ export function createEngineWithFills(given: EngineOptions): {
       ...createLimitHandlers({
         ...settingsParts,
         install: options.stores.install,
+        host: options.host,
         chains: options.chains,
       }),
       ...createSendLevelHandlers(settingsParts),

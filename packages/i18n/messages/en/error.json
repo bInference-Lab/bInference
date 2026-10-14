@@ -68,6 +68,7 @@
   "limit.needs_admin": "A looser limit needs the CLI, the console or the Mini App.",
   "limit.over_ceiling": "This limit is above the wallet's ceiling. Raise the ceiling with your owner key first.",
   "limit.venue_in_use": "The agent's limits still name a venue this ceiling change removes. Remove the venue from the limits first.",
+  "limit.needs_launch_wallet": "Live trades on a launch's own curve need a launch wallet, and no ceiling change can allow them. Only a paper agent may use this venue: remove it before the agent goes live.",
   "config.invalid": "The config has an error. Run `binference check` to see where and how to fix it.",
   "config.secret_inline": "A secret is written as plain text in config. Run `binference check --fix`.",
   "plugin.not_found": "This plugin is not installed. Check the list of plugins in the console.",

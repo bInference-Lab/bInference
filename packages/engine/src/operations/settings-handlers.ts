@@ -97,6 +97,7 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     wallets: options.wallets,
     custody: options.custody,
     chains,
+    host: options.host,
     clock: options.clock,
     publish: options.publish,
   });

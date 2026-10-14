@@ -6,6 +6,10 @@ The `geniusfun` launchpad. It trades the tokens still on Genius.fun's bonding cu
 curve its launch made, and tells the engine which tokens those are, so a buy or a sell of a curve
 token goes to its curve and nowhere else.
 
+No agent wallet's ceiling can list a launch's own curve, so only a paper agent may add this venue
+until live curve trades get a launch wallet of their own (decision 0212); `binference init` does
+not add it.
+
 - **Stacks.** Genius.fun runs several stacks at once, each with a factory the registry lists by
   name (`factory-m4-2`, `factory-m4-1`). A token's launch is the record one of them keeps of it
   (`getLaunchedToken`), its curve among it.

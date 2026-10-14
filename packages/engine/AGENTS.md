@@ -163,7 +163,10 @@ Rules for this package:
   value applies at once with `confirm`, every other change needs `loosen` and waits 24 hours in
   `pending_limits`. `createEngine` wraps the agent store in `withLimitsInEffect`, so every part
   reads the limits in effect, waiting ones folded in at their time; a venue added while a live
-  wallet's ceiling leaves its contracts out is `limit.over_ceiling`. Each move is journaled, pushed
+  wallet's ceiling leaves its contracts out is `limit.over_ceiling`. A venue that trades on a
+  launch's own contracts (`host.hasLaunchContracts`) is `limit.needs_launch_wallet` for a live
+  agent, needs no ceiling for a paper one, and keeps its agent from going live (decision 0212).
+  Each move is journaled, pushed
   as `config/changed`, and announced per limit as `notice.limitChange` and
   `notice.limitChangeCancelled`.
 - The address book lives in the agent's settings: the policy reads every live entry, on every

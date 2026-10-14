@@ -77,6 +77,19 @@ const buy: VenueTrade = {
 };
 const sell: VenueTrade = { ...buy, amountIn: { asset: token, base: 500n }, assetOut: coin };
 
+describe("which venues trade on a launch's own contracts", () => {
+  it("names a launchpad that declares launch contracts, and no other venue", () => {
+    const host = hostOf([createFakeVenue(), launchpad()]);
+    const plain = hostOf([createFakeLaunchpad({ onCurve: [token] })]);
+    expect([
+      host.hasLaunchContracts("fake-curve"),
+      host.hasLaunchContracts("fake-swap"),
+      host.hasLaunchContracts("no-such-venue"),
+      plain.hasLaunchContracts("fake-curve"),
+    ]).toStrictEqual([true, false, false, false]);
+  });
+});
+
 describe("a launch's own contracts in the venue host", () => {
   it("names the curve a launchpad's read gives for a token it holds", async () => {
     await expect(hostOf([launchpad()]).curves(token, { signal })).resolves.toStrictEqual({

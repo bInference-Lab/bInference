@@ -156,6 +156,7 @@ const policyCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "limit.needs_admin",
   "limit.over_ceiling",
   "limit.venue_in_use",
+  "limit.needs_launch_wallet",
 ]);
 
 function isCallCode(code: string): code is ProtocolErrorCode {
