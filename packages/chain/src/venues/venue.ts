@@ -2,7 +2,14 @@ import type { JsonValue } from "@binference/core";
 import { z } from "zod";
 import { type ChainRef, chainRefSchema } from "../caip/chain-ref.js";
 import { kebabCaseSchema } from "../registry/chain-definition.js";
-import type { CurveReader, PriceReader, Quoter, TxBuilder, TxDecoder } from "./ports.js";
+import type {
+  CurveReader,
+  InsiderReader,
+  PriceReader,
+  Quoter,
+  TxBuilder,
+  TxDecoder,
+} from "./ports.js";
 
 /** A function a venue's transactions call on one of its contracts. */
 export interface VenueCall {
@@ -138,7 +145,8 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
  * in the engine, and the venue host checks every transaction they build. A launchpad also reads
  * its curve, so the engine sends a token still on it there and nowhere else. A venue that holds
  * the state a token's price comes from, such as a launchpad's curve, declares the reads that price
- * it, which the price watcher asks every block.
+ * it, which the price watcher asks every block. A launchpad whose contracts favor some wallets on
+ * a token it launched names them, for the risk step.
  */
 export interface Venue
   extends
@@ -147,7 +155,8 @@ export interface Venue
     TxBuilder,
     TxDecoder,
     Partial<CurveReader>,
-    Partial<PriceReader> {}
+    Partial<PriceReader>,
+    Partial<InsiderReader> {}
 
 /** A launchpad: a venue that trades the tokens on its bonding curve, and says which those are. */
 export interface LaunchpadVenue extends Omit<Venue, "curve">, CurveReader {}

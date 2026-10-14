@@ -2,7 +2,7 @@ import { BinferenceError, err, ok, type Ratio, type Result } from "@binference/c
 import type { AccountRef } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
 import type { CurveHolding } from "../venues/curve-holding.js";
-import type { PriceReader } from "../venues/ports.js";
+import type { InsiderReader, PriceReader } from "../venues/ports.js";
 import type { PriceRead, ReadAnswer } from "../venues/price-read.js";
 import type { LaunchpadVenue, Venue, VenueContracts } from "../venues/venue.js";
 import { createFakeVenue } from "./fake-venue.js";
@@ -25,10 +25,13 @@ export interface FakeLaunchpadOptions {
    * absent, it declares no launch contract.
    */
   readonly launchCurve?: AccountRef;
+  /** The wallets its contracts favor on each token it holds; none when absent. */
+  readonly insiders?: readonly AccountRef[];
 }
 
 /** A fake launchpad, whose tokens can graduate during a test. */
-export interface FakeLaunchpad extends Omit<LaunchpadVenue, "priceRead">, PriceReader {
+export interface FakeLaunchpad
+  extends Omit<LaunchpadVenue, "priceRead" | "insiders">, PriceReader, InsiderReader {
   /** Moves a token off the curve, as its graduation to the pools does. */
   graduate(token: AssetRef): void;
 }
@@ -123,7 +126,8 @@ function launchPartsOf(
  * `router` as the fake venue does, and answers any other pair as `no_route`. It prices a token on
  * its curve with one read of its `router`, which {@link fakePriceAnswer} answers. With a
  * `launchCurve`, each held token's launch has that curve, which its curve read names and which
- * its trades and price reads use in place of the `router`.
+ * its trades and price reads use in place of the `router`. It names its `insiders` for each token
+ * it holds.
  */
 export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpad {
   const venue = createFakeVenue({
@@ -154,6 +158,11 @@ export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpa
     async priceRead(request, { signal }) {
       signal.throwIfAborted();
       return await Promise.resolve(priceReadOf(curve, request));
+    },
+    async insiders(request, { signal }) {
+      signal.throwIfAborted();
+      const named = curve.held.has(request.token) ? (options.insiders ?? []) : [];
+      return await Promise.resolve(named);
     },
     graduate(token) {
       curve.held.delete(token);

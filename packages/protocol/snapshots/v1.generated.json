@@ -5750,6 +5750,12 @@
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
                 },
+                "insiders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "onCurve": {
                   "type": "boolean"
                 },
@@ -8033,6 +8039,12 @@
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
                 },
+                "insiders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "onCurve": {
                   "type": "boolean"
                 },
@@ -8206,6 +8218,12 @@
                       "liquidityUsdMicros": {
                         "type": "string",
                         "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      },
+                      "insiders": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "onCurve": {
                         "type": "boolean"
@@ -8733,6 +8751,12 @@
               "type": "string",
               "pattern": "^(?:0|[1-9]\\d{0,77})$"
             },
+            "insiders": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "onCurve": {
               "type": "boolean"
             },
@@ -8968,6 +8992,12 @@
                       "liquidityUsdMicros": {
                         "type": "string",
                         "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      },
+                      "insiders": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       },
                       "onCurve": {
                         "type": "boolean"
@@ -10942,6 +10972,12 @@
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
                 },
+                "insiders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "onCurve": {
                   "type": "boolean"
                 },
@@ -12255,6 +12291,12 @@
                 "liquidityUsdMicros": {
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "insiders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "onCurve": {
                   "type": "boolean"
@@ -14071,6 +14113,12 @@
                         "type": "string",
                         "pattern": "^(?:0|[1-9]\\d{0,77})$"
                       },
+                      "insiders": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "onCurve": {
                         "type": "boolean"
                       },
@@ -15407,6 +15455,12 @@
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
                 },
+                "insiders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "onCurve": {
                   "type": "boolean"
                 },
@@ -16727,6 +16781,12 @@
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
                 },
+                "insiders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "onCurve": {
                   "type": "boolean"
                 },
@@ -18045,6 +18105,12 @@
                 "liquidityUsdMicros": {
                   "type": "string",
                   "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "insiders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "onCurve": {
                   "type": "boolean"
@@ -28055,6 +28121,12 @@
                               "liquidityUsdMicros": {
                                 "type": "string",
                                 "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                              },
+                              "insiders": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
                               },
                               "onCurve": {
                                 "type": "boolean"

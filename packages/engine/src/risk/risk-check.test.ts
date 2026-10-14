@@ -1,5 +1,11 @@
-import type { TokenRiskReport, TokenRiskSource } from "@binference/chain";
+import {
+  accountRefSchema,
+  type TokenRiskReport,
+  type TokenRiskSource,
+  type Venue,
+} from "@binference/chain";
 import { createFakeRiskSource, createFakeVenue } from "@binference/chain/testing";
+import { bpsSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { riskCheckContract } from "../contracts/risk-check-contract.js";
@@ -23,6 +29,7 @@ const deep: TokenRiskReport = { flags: [], liquidityUsdMicros: 50_000_000_000n }
 interface Bench {
   readonly sources?: readonly RiskSourceUse[];
   readonly model?: TokenModel;
+  readonly venue?: Venue;
 }
 
 function sourceOf(id: string, report: TokenRiskReport | undefined, isDown = false) {
@@ -35,7 +42,7 @@ function benchOf(bench: Bench = {}) {
   const clock = createManualClock(nowMs);
   const simulator = createTokenModelSimulator(bench.model ?? {});
   const host = createVenueHost({
-    venues: [createFakeVenue()],
+    venues: [bench.venue ?? createFakeVenue()],
     chains,
     clock,
     callTimeoutMs: 5_000,
@@ -107,6 +114,32 @@ describe("risk check", () => {
         onCurve: false,
         checkedAt: nowMs,
       },
+    });
+  });
+
+  it("records the insiders the trade's venue names, and none from a venue that fails", async () => {
+    const insider = accountRefSchema.parse("fake:1:0x000000ee");
+    const naming: Venue = { ...createFakeVenue(), insiders: async () => [insider] };
+    const failing: Venue = {
+      ...createFakeVenue(),
+      insiders: async () => await Promise.reject(new Error("rpc down")),
+    };
+    const named = await benchOf({ venue: naming }).check.assess(unknownSubject(), live);
+    const failed = await benchOf({ venue: failing }).check.assess(unknownSubject(), live);
+    expect(named).toMatchObject({ view: { verdict: "pass", insiders: [insider] } });
+    expect(failed.view).not.toHaveProperty("insiders");
+  });
+
+  it("blocks a buy whose quote names a snipe tax above the agent's maximum", async () => {
+    const quoted = unknownTokenQuote(nowMs);
+    const tax = bpsSchema.parse(9_700);
+    const subject = riskSubjectOf({
+      ...quoted,
+      quote: { ...quoted.quote, taxBps: tax, snipeTaxBps: tax },
+    });
+    await expect(benchOf().check.assess(subject, live)).resolves.toMatchObject({
+      refusal: "snipe_tax",
+      view: { verdict: "block", buyTaxBps: 9_700 },
     });
   });
 

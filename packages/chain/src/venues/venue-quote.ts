@@ -37,6 +37,13 @@ export interface VenueQuote {
    */
   readonly taxBps?: Bps;
   /**
+   * The part of `taxBps` the venue's contract takes on this buy because its token's launch is
+   * still young, such as a launchpad's snipe tax in the seconds after a launch, for the request's
+   * wallet at the latest block. It falls as the launch ages. The risk step refuses a buy whose
+   * snipe tax is above the agent's maximum tax. Left out, none.
+   */
+  readonly snipeTaxBps?: Bps;
+  /**
    * The venue's own record of the route it quoted, given back to its builder. The host stores it
    * and never reads it.
    */
@@ -48,13 +55,25 @@ export interface VenueQuoteWire {
   readonly expectedOut: AmountWire;
   readonly priceImpactBps: number;
   readonly taxBps?: number;
+  readonly snipeTaxBps?: number;
   readonly route?: string;
 }
 
-/** Decodes a venue quote from JSON, and encodes it back with `z.encode`. */
-export const venueQuoteSchema: z.ZodType<VenueQuote, VenueQuoteWire> = z.strictObject({
-  expectedOut: amountSchema,
-  priceImpactBps: bpsSchema,
-  taxBps: bpsSchema.exactOptional(),
-  route: z.string().exactOptional(),
-});
+// A snipe tax is a part of the quote's tax, never more than all of it.
+function isPartOfTax(quote: Pick<VenueQuote, "taxBps" | "snipeTaxBps">): boolean {
+  return quote.snipeTaxBps === undefined || quote.snipeTaxBps <= (quote.taxBps ?? 0);
+}
+
+/**
+ * Decodes a venue quote from JSON, and encodes it back with `z.encode`. A snipe tax above the
+ * quote's tax is refused.
+ */
+export const venueQuoteSchema: z.ZodType<VenueQuote, VenueQuoteWire> = z
+  .strictObject({
+    expectedOut: amountSchema,
+    priceImpactBps: bpsSchema,
+    taxBps: bpsSchema.exactOptional(),
+    snipeTaxBps: bpsSchema.exactOptional(),
+    route: z.string().exactOptional(),
+  })
+  .refine(isPartOfTax, { message: "A snipe tax is part of the quote's tax." });

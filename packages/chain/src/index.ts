@@ -113,7 +113,14 @@ export type {
 export type { BuildRequest } from "./venues/build-request.js";
 export { decodedEffectSchema } from "./venues/decoded-effect.js";
 export type { DecodedEffect, DecodedEffectWire } from "./venues/decoded-effect.js";
-export type { CurveReader, PriceReader, Quoter, TxBuilder, TxDecoder } from "./venues/ports.js";
+export type {
+  CurveReader,
+  InsiderReader,
+  PriceReader,
+  Quoter,
+  TxBuilder,
+  TxDecoder,
+} from "./venues/ports.js";
 export type {
   PriceMiss,
   PriceRead,

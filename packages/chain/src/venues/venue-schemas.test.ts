@@ -36,6 +36,19 @@ describe("venue schemas", () => {
     expect(venueQuoteSchema.safeParse({ ...quote, taxBps: 10_001 }).success).toBe(false);
   });
 
+  it("reads a snipe tax as part of the quote's tax, and refuses one above it", () => {
+    const quote = {
+      expectedOut: { asset: token, base: "2" },
+      priceImpactBps: 200,
+      taxBps: 9_700,
+      snipeTaxBps: 9_700,
+    };
+    expect(venueQuoteSchema.encode(venueQuoteSchema.parse(quote))).toStrictEqual(quote);
+    expect(venueQuoteSchema.safeParse({ ...quote, taxBps: 9_699 }).success).toBe(false);
+    const { taxBps: _tax, ...untaxed } = quote;
+    expect(venueQuoteSchema.safeParse(untaxed).success).toBe(false);
+  });
+
   it("reads an effect with no deadline as a call that carries none", () => {
     const effect = {
       recipient: "fake:1:0x0000000c",

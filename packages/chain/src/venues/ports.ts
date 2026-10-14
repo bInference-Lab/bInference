@@ -1,4 +1,5 @@
 import type { Result } from "@binference/core";
+import type { AccountRef } from "../caip/account-ref.js";
 import type { TxDraft } from "../transaction.js";
 import type { BuildRequest } from "./build-request.js";
 import type { CurveHolding, CurveRequest } from "./curve-holding.js";
@@ -49,6 +50,20 @@ export interface CurveReader {
    * read its contracts throws. Rejects with the signal's reason once the signal aborts.
    */
   curve(request: CurveRequest, options: { readonly signal: AbortSignal }): Promise<CurveHolding>;
+}
+
+/** Names the wallets a launchpad's own contracts treat apart from every other buyer of a token. */
+export interface InsiderReader {
+  /**
+   * The wallets the launchpad's contracts favor on a token it launched, such as the ones its launch
+   * exempted from the launch-window tax, read from its own contracts and the launch's own
+   * transaction: accounts of the token's chain, each once. A token it did not launch has none. A
+   * launchpad that cannot read them throws. Rejects with the signal's reason once it aborts.
+   */
+  insiders(
+    request: CurveRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly AccountRef[]>;
 }
 
 /** Tells the price watcher how to price a token from the venue's own contracts or pools. */

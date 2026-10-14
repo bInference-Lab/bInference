@@ -1,4 +1,4 @@
-import type { RiskFlagCode, TokenRiskReport } from "@binference/chain";
+import type { AccountRef, RiskFlagCode, TokenRiskReport } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import type { RiskFlag, RiskView } from "@binference/protocol";
 import type { RiskReason } from "../intents/intent-reason.js";
@@ -21,6 +21,10 @@ export interface RiskFindings {
   readonly roundTrip: RoundTrip;
   readonly limits: RiskLimits;
   readonly checkedAtMs: number;
+  /** The launch-window tax the trade's own quote names for its wallet now (decision 0213). */
+  readonly snipeTaxBps?: Bps;
+  /** The wallets the token's launchpad favors, which the view records (decision 0213). */
+  readonly insiders?: readonly AccountRef[];
 }
 
 // The source the engine's own round trip reports its findings as, as the risk cache names it.
@@ -66,6 +70,7 @@ const checks: readonly (readonly [RiskReason, Check])[] = [
     "hidden_owner",
     (_findings, flags) => flags.has("hidden_owner") && flags.has("owner_changes_balances"),
   ],
+  ["snipe_tax", ({ snipeTaxBps, limits }) => (snipeTaxBps ?? 0) > limits.maxTaxBps],
   ["high_tax", ({ roundTrip, limits }) => (highestTaxBps(roundTrip) ?? 0) > limits.maxTaxBps],
   [
     "low_liquidity",
@@ -122,11 +127,13 @@ function viewOf(findings: RiskFindings, refusal: RiskReason | undefined): RiskVi
       : {};
   const taxBps = highestTaxBps(roundTrip) ?? 0;
   const liquidity = liquidityOf(answers);
+  const insiders = findings.insiders ?? [];
   return {
     verdict: verdictOf({ refusal, flags, taxBps }),
     flags,
     ...taxes,
     ...(liquidity === undefined ? {} : { liquidityUsdMicros: liquidity }),
+    ...(insiders.length === 0 ? {} : { insiders }),
     onCurve: false,
     checkedAt: findings.checkedAtMs,
   };
@@ -135,11 +142,13 @@ function viewOf(findings: RiskFindings, refusal: RiskReason | undefined): RiskVi
 /**
  * Weighs what the risk sources and the round trip found for a token the registry does not list
  * (ARCHITECTURE.md section 7, risk tiers). A hard finding blocks: a honeypot, a sale that fails, a
- * hidden owner who can change balances, a measured tax above the agent's maximum, liquidity below
- * its floor, a required source or the round trip that could not answer, or a blacklist. The
+ * hidden owner who can change balances, a launch-window tax the quote names above the agent's
+ * maximum tax, a measured tax above that maximum, liquidity below its floor, a required source or
+ * the round trip that could not answer, or a blacklist. The
  * reason stored is the first of spec 6's risk reasons that holds. A token that passes with any
  * finding or tax is a warning. The tax is the highest the round trip measured on any leg: the
- * sources' own tax figures never decide it.
+ * sources' own tax figures never decide it. The view records the wallets the token's launchpad
+ * favors as its insiders.
  */
 export function riskVerdict(findings: RiskFindings): RiskAssessment {
   const flags = new Set(reportsOf(findings.answers).flatMap((report) => report.flags));

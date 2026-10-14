@@ -53,7 +53,10 @@ Keep the folders that the existing venues use:
   contracts, which passes `curveReaderContract`. A tax its contract takes on the curve goes in the
   quote's `taxBps` (decision 0181). A contract each launch makes, such as a token's own curve, is
   declared by name in `launchContracts`, and the curve read names its address for a token it holds,
-  found through the launchpad's registry contracts (decision 0212). No ceiling lists it.
+  found through the launchpad's registry contracts (decision 0212). No ceiling lists it. A tax
+  that falls in a launch's first seconds is the quote's `snipeTaxBps`, a part of its `taxBps`
+  (decision 0213), and the wallets a launch favors come from `insiders`, whose test runs
+  `insiderReaderContract`.
 - `src/<venue>-venue.ts`: `defineVenue` with the id and, per chain, the registry contract names,
   the calls the venue makes (contract and ABI) and the spenders it approves. The Privy ceiling
   allows only declared calls and spenders, so declare exactly what the venue calls.

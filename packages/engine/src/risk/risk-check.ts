@@ -1,4 +1,9 @@
-import { type ChainRegistry, type TokenRiskSource, type TxSimulator } from "@binference/chain";
+import {
+  type AccountRef,
+  type ChainRegistry,
+  type TokenRiskSource,
+  type TxSimulator,
+} from "@binference/chain";
 import { type Clock, createDeadline, type Random } from "@binference/core";
 import type { RiskView } from "@binference/protocol";
 import { assetInfoOf } from "../money-path/asset-infos.js";
@@ -60,6 +65,14 @@ async function answerOf(
   }
 }
 
+// The wallets the trade's venue favors on the token: a venue that cannot say names none, since
+// insiders are recorded on the view and decide nothing.
+async function insidersOf(options: RiskCheckOptions, call: Call): Promise<readonly AccountRef[]> {
+  const { trade } = call.subject.quoted;
+  const named = await options.host.insiders(trade.venue, trade.assetOut, { signal: call.signal });
+  return named.ok ? named.value : [];
+}
+
 async function roundTripOf(options: RiskCheckOptions, call: Call): Promise<RoundTrip> {
   try {
     return await probeRoundTrip(call.subject.quoted, options, call.signal);
@@ -85,18 +98,29 @@ async function assess(options: RiskCheckOptions, call: Call): Promise<RiskAssess
   if (assetInfoOf(options.chains, quoted.trade.assetOut) !== undefined) {
     return { view: verifiedView(options.clock.now()) };
   }
-  const [answers, roundTrip] = await Promise.all([
+  const [answers, roundTrip, insiders] = await Promise.all([
     Promise.all(options.sources.map(async (use) => answerOf(use, options, call))),
     roundTripOf(options, call),
+    insidersOf(options, call),
   ]);
-  return riskVerdict({ answers, roundTrip, limits, checkedAtMs: options.clock.now() });
+  const { snipeTaxBps } = quoted.quote;
+  const snipe = snipeTaxBps === undefined ? {} : { snipeTaxBps };
+  return riskVerdict({
+    answers,
+    roundTrip,
+    limits,
+    checkedAtMs: options.clock.now(),
+    insiders,
+    ...snipe,
+  });
 }
 
 /**
  * Creates the engine's {@link RiskCheck}. A trade that buys a token the chain registry lists, or
  * the native coin, passes without asking anyone. For any other token it asks every source, each
  * through the risk cache and under its own timeout, while it runs the round trip from fresh
- * accounts, then weighs both (see `riskVerdict`). A source that fails, times out or has no answer
+ * accounts and asks the trade's venue for the token's insiders, then weighs them with the snipe
+ * tax the trade's quote names (see `riskVerdict`). A source that fails, times out or has no answer
  * counts as such, never as a throw; only an abort of the caller's signal rejects.
  */
 export function createRiskCheck(options: RiskCheckOptions): RiskCheck {

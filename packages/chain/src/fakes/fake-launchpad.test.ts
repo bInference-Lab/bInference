@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { accountRefSchema } from "../caip/account-ref.js";
 import { assetRefSchema } from "../caip/asset-ref.js";
 import { curveReaderContract } from "../contracts/curve-reader-contract.js";
+import { insiderReaderContract } from "../contracts/insider-reader-contract.js";
 import { priceReaderContract } from "../contracts/price-reader-contract.js";
 import { quoterContract } from "../contracts/quoter-contract.js";
 import type { PriceRead } from "../venues/price-read.js";
@@ -48,6 +49,18 @@ describe("fake launchpad", () => {
       }),
     }),
   )("follows the curve reader contract with a launch curve: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it.each(
+    insiderReaderContract({
+      create: () => ({
+        reader: createFakeLaunchpad({ onCurve: [token], insiders: [wallet] }),
+        launched: { token, contracts },
+        other: { token: other, contracts },
+      }),
+    }),
+  )("follows the insider reader contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
   });
 

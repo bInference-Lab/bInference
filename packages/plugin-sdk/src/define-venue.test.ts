@@ -110,6 +110,20 @@ describe("defineVenue", () => {
     ]);
   });
 
+  it("keeps a launchpad's read of its insiders, called on the definition", async () => {
+    const insider = accountRefSchema.parse("fake:1:0x000000ee");
+    const launchpad = defineLaunchpad(
+      createFakeLaunchpad({ onCurve: [token], insiders: [insider] }),
+    );
+    await expect(
+      launchpad.insiders?.(
+        { token, contracts: { router } },
+        { signal: new AbortController().signal },
+      ),
+    ).resolves.toStrictEqual([insider]);
+    expect(defineVenue(createFakeVenue()).insiders).toBeUndefined();
+  });
+
   it("keeps the contracts a chain declares each launch has, frozen", () => {
     const curve = accountRefSchema.parse("fake:1:0x00000010");
     const launchpad = defineLaunchpad(

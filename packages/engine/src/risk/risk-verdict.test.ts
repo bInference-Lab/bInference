@@ -1,4 +1,4 @@
-import type { RiskFlagCode } from "@binference/chain";
+import { accountRefSchema, type RiskFlagCode } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import type { RiskFlag } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -29,6 +29,29 @@ function findingsOf(changes: Partial<RiskFindings> = {}): RiskFindings {
   };
 }
 
+describe("the launch window in the risk verdict", () => {
+  it("passes a snipe tax at the maximum, which still counts in the buy leg's tax", () => {
+    const roundTrip = { ...clean, buyTaxBps: bps(1_000) };
+    expect(riskVerdict(findingsOf({ snipeTaxBps: bps(1_000), roundTrip }))).toMatchObject({
+      view: { verdict: "warn", buyTaxBps: 1_000 },
+    });
+  });
+
+  it("refuses a snipe tax above the maximum before the buy leg's tax it is part of", () => {
+    const roundTrip = { ...clean, buyTaxBps: bps(9_700) };
+    expect(riskVerdict(findingsOf({ snipeTaxBps: bps(9_700), roundTrip }))).toMatchObject({
+      view: { verdict: "block" },
+      refusal: "snipe_tax",
+    });
+  });
+
+  it("records the launchpad's insiders on the view, and none when it names none", () => {
+    const insider = accountRefSchema.parse("eip155:56:0x000000000000000000000000000000000000dEaD");
+    expect(riskVerdict(findingsOf({ insiders: [insider] })).view.insiders).toStrictEqual([insider]);
+    expect(riskVerdict(findingsOf({ insiders: [] })).view).not.toHaveProperty("insiders");
+  });
+});
+
 describe("risk verdict", () => {
   it("passes a token every source reports clean, with deep liquidity and no tax", () => {
     expect(riskVerdict(findingsOf())).toStrictEqual({
@@ -56,6 +79,11 @@ describe("risk verdict", () => {
       "a hidden owner who can change balances",
       { answers: [reported("required", ["hidden_owner", "owner_changes_balances"], deep)] },
       "hidden_owner",
+    ],
+    [
+      "a launch-window tax the quote names above the maximum",
+      { snipeTaxBps: bps(1_001), roundTrip: { ...clean, buyTaxBps: bps(1_001) } },
+      "snipe_tax",
     ],
     [
       "a sell tax above the maximum",

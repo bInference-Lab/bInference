@@ -1,5 +1,6 @@
 export {
   curveReaderContract,
+  insiderReaderContract,
   marketCandlesContract,
   marketDataSourceContract,
   marketPricesContract,
@@ -12,6 +13,8 @@ export {
 export type {
   CurveReaderHarness,
   CurveReaderSubject,
+  InsiderReaderHarness,
+  InsiderReaderSubject,
   MarketDataSourceHarness,
   MarketDataSourceSubject,
   PriceReaderHarness,

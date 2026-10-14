@@ -10,6 +10,7 @@ export type {
   CurveReader,
   CurveRequest,
   DecodedEffect,
+  InsiderReader,
   LaunchpadVenue,
   MarketCandle,
   MarketDataSource,

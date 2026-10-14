@@ -18,6 +18,7 @@
   "honeypot": "the token looks like a honeypot: you might not be able to sell it",
   "cannot_sell": "a test sale of the token failed, so you might not be able to sell it",
   "hidden_owner": "the token's contract has a hidden owner who can change it",
+  "snipe_tax": "the token launched seconds ago, and its snipe tax on a buy is above your maximum tax",
   "high_tax": "the token takes a high tax on every trade",
   "low_liquidity": "the token has too little liquidity",
   "sources_down": "the risk checks could not reach their data sources",

@@ -28,6 +28,7 @@ import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { type HostedVenue, hostVenues } from "./hosted-venue.js";
 import { contractsWithLaunch, type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
+import { readInsiders } from "./read-insiders.js";
 import { type HostedPriceRead, readPrices } from "./read-prices.js";
 import { readSteps } from "./read-steps.js";
 
@@ -129,6 +130,17 @@ export interface VenueHost {
     token: AssetRef,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<HostedPriceRead, "no_price_read" | "venue_down">>;
+  /**
+   * The wallets a venue's contracts favor on a token it launched, for the risk step: a launchpad
+   * that names insiders is asked; any other venue names none. A launchpad that throws, times out
+   * or answers anything but accounts of the token's chain, each once, is `venue_down`. Rejects
+   * with the signal's reason once it aborts.
+   */
+  insiders(
+    venue: string,
+    token: AssetRef,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<readonly AccountRef[], "venue_down">>;
   /** Whether the venue is a launchpad the host holds: one that reads its curve. */
   isLaunchpad(venue: string): boolean;
   /**
@@ -222,17 +234,6 @@ function withLaunch(
     : { ...context, request: Object.freeze({ ...context.request, contracts }) };
 }
 
-// The trade's launch, asked about the token bought, then the token sold, never the chain's coin.
-async function launchOf(
-  context: TradeContext,
-  call: VenueCallOptions,
-): Promise<Result<LaunchContracts | undefined, "venue_down">> {
-  const { hosted, chain, trade } = context;
-  const native = nativeAssetOf(chain);
-  const tokens = [trade.assetOut, trade.amountIn.asset].filter((asset) => asset !== native);
-  return tradeLaunchOf(hosted, { chain: chain.ref, tokens }, call);
-}
-
 async function quoteOf(
   { hosted, request }: TradeContext,
   call: VenueCallOptions,
@@ -317,7 +318,12 @@ async function quoteTrade(
     return refuse(context.error);
   }
   const call = parts.callOf(signal);
-  const launch = await launchOf(context.value, call);
+  // Decision 0212: the token bought, then the token sold, never the chain's coin.
+  const { hosted, chain } = context.value;
+  const tokens = [trade.assetOut, trade.amountIn.asset].filter(
+    (asset) => asset !== nativeAssetOf(chain),
+  );
+  const launch = await tradeLaunchOf(hosted, { chain: chain.ref, tokens }, call);
   const launched = launch.ok ? withLaunch(context.value, launch.value) : undefined;
   if (!launch.ok || launched === undefined) {
     return refuse("venue_down");
@@ -379,6 +385,10 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
     async priceRead(token, { signal }) {
       signal.throwIfAborted();
       return readPrices(token, venues, callOf(signal));
+    },
+    async insiders(venue, token, { signal }) {
+      signal.throwIfAborted();
+      return readInsiders(venues.get(venue), token, callOf(signal));
     },
     isLaunchpad(venue) {
       const hosted = venues.get(venue);

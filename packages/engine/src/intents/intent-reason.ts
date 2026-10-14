@@ -34,6 +34,7 @@ export const riskReasons = [
   "honeypot",
   "cannot_sell",
   "hidden_owner",
+  "snipe_tax",
   "high_tax",
   "low_liquidity",
   "sources_down",

@@ -40,10 +40,10 @@ async function firstClaim(
 
 /**
  * The contracts of the launch a trade's token belongs to (decision 0212). A venue that declares no
- * launch contracts on the chain, or a launchpad that holds neither token, gives none. Otherwise
- * the launchpad's curve read is asked about the token bought, then the token sold, the chain's
- * coin never; a read that throws, times out or names an undeclared launch contract is
- * `venue_down`.
+ * launch contracts on the chain, or a launchpad that holds none of the tokens, gives none.
+ * Otherwise the launchpad's curve read is asked about each token in order, such as the token
+ * bought, then the token sold; a read that throws, times out or names an undeclared launch
+ * contract is `venue_down`.
  */
 export async function tradeLaunchOf(
   hosted: HostedVenue,

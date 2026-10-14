@@ -431,7 +431,8 @@ hash and nonce and never signed again, and the intent goes on to `executing` or 
 - Verified tokens (in the registry) pass.
 - Unknown tokens need a clean simulation, a clean GoPlus answer and liquidity above a floor.
 - A hard flag blocks: honeypot, cannot sell, a hidden owner able to change balances, or a tax over
-  the owner's maximum.
+  the owner's maximum, a launch's snipe tax included
+  ([decision 0213](DECISIONS.md#d0213)).
 - When the risk sources are down, unknown tokens fail closed.
 - [Decision 0112](DECISIONS.md#d0112) sets which sources a token needs and what blocks it;
   [decision 0113](DECISIONS.md#d0113) how the round trip measures each leg's tax, and

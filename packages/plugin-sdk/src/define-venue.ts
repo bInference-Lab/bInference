@@ -1,4 +1,5 @@
 import {
+  type InsiderReader,
   type LaunchpadVenue,
   type PriceReader,
   type Venue,
@@ -42,6 +43,17 @@ function priceReadOf(definition: Venue): Pick<Venue, "priceRead"> {
     : {};
 }
 
+function hasInsiders(venue: Venue): venue is Venue & InsiderReader {
+  return venue.insiders !== undefined;
+}
+
+// A launchpad that names the insiders of its launches keeps that read, called on the definition.
+function insidersOf(definition: Venue): Pick<Venue, "insiders"> {
+  return hasInsiders(definition)
+    ? { insiders: async (request, options) => definition.insiders(request, options) }
+    : {};
+}
+
 /**
  * Defines a venue plugin: a protocol the agent trades on. The definition declares the venue's id
  * and, for each chain it serves, the names of its contracts in that chain's registry entry; the
@@ -59,7 +71,8 @@ function priceReadOf(definition: Venue): Pick<Venue, "priceRead"> {
  * `noDeadline`, and its decoder then leaves the deadline out. A venue that holds the state a
  * token's price comes from, such as a launchpad's curve, may declare `priceRead`: the calls that
  * read that state and the pure step that prices their answers, which the price watcher asks every
- * block. The engine decodes every transaction
+ * block. A launchpad whose contracts favor some wallets on a token it launched may declare
+ * `insiders`, which names them for the risk step. The engine decodes every transaction
  * the venue builds and refuses one whose terms differ.
  *
  * The declaration is checked at once: a bad one is a fault (`plugin.bad_venue`), so the plugin
@@ -81,6 +94,7 @@ export function defineVenue(definition: Venue): Venue {
     build: async (request, options) => definition.build(request, options),
     decode: (draft) => definition.decode(draft),
     ...priceReadOf(definition),
+    ...insidersOf(definition),
   };
   return Object.freeze(venue);
 }

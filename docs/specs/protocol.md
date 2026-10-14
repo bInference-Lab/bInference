@@ -755,7 +755,9 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   `{ route: [{ venue, shareBps }], amountIn, expectedOut, minOut, priceImpactBps, gas: Amount, quotedAt, expiresAt, place? }`.
   `place`, on a `buy` or `sell` quote, is `{ kind: curve, launchpad }` or `{ kind: pools }`.
 - `RiskView`:
-  `{ verdict: pass \| warn \| block, flags: [{ code, source }], buyTaxBps?, sellTaxBps?, liquidityUsdMicros?, onCurve, checkedAt }`.
+  `{ verdict: pass \| warn \| block, flags: [{ code, source }], buyTaxBps?, sellTaxBps?, liquidityUsdMicros?, insiders?: [AccountRef], onCurve, checkedAt }`;
+  `insiders` are the wallets the token's launchpad favors over every other buyer, such as those its
+  launch exempted from the launch-window tax ([decision 0213](../DECISIONS.md#d0213)).
 - `CardView`: `{ card, version, opensAt, expiresAt, paper, outsideContent }`; its text is spec 4.
 - `LiveFactsView`:
   `{ agent, at, timeZone, mode, frozen, approvalMode, sendLevel, balances?: [BalanceView], totalUsdMicros?, orders: [OrderView], spentTodayUsdMicros, perTradeUsdMicros, rollingDayUsdMicros, assets }`:
