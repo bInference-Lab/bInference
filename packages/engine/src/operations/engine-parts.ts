@@ -8,11 +8,14 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { ModelBilling } from "../ports.js";
 import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
+import { ownerImagesOf } from "../uploads/owner-images.js";
+import { createUploadHandlers, type UploadHandlers } from "../uploads/upload-handlers.js";
+import { createUploadShelf } from "../uploads/upload-shelf.js";
 import type { EngineOptions } from "./create-engine.js";
 import { intentViewOf } from "./intent-view-of.js";
 
-/** The chat operations the engine answers itself, and `usage/get`. */
-export interface EngineChatHandlers extends ChatHandlers, UsageHandlers {}
+/** The chat operations the engine answers itself, `usage/get` and `upload/start`. */
+export interface EngineChatHandlers extends ChatHandlers, UsageHandlers, UploadHandlers {}
 
 /**
  * The engine's chat relay, whose settle pushes carry each intent's view as `intent/get` gives it,
@@ -24,6 +27,14 @@ export interface EngineChat {
   /** Hears each settle message the stored intents wrote. */
   readonly settled: (message: AgentInboxMessage) => void;
   readonly attach: (stored: StoredIntents) => void;
+}
+
+// The owner's uploads, and every image the runtime reads: the uploads and the bot's photos.
+function imagesOf(options: EngineOptions) {
+  const uploads =
+    options.uploads ?? createUploadShelf({ clock: options.clock, random: options.random });
+  const bot = options.botImages === undefined ? {} : { bot: options.botImages };
+  return { uploads, images: ownerImagesOf({ uploads, ...bot }) };
 }
 
 /** Creates the engine's {@link EngineChat}, whose turns spend each agent's model budget. */
@@ -40,6 +51,7 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       clock,
     });
   const late: { stored?: StoredIntents } = {};
+  const { uploads, images } = imagesOf(options);
   const relay = createChatRelay({
     agentInbox: stores.agentInbox,
     questions: stores.questions,
@@ -60,11 +72,15 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     random: options.random,
     clock: options.clock,
     publish: options.publish,
-    ...(options.ownerImages === undefined ? {} : { images: options.ownerImages }),
+    images,
   });
   return {
     relay,
-    handlers: { ...relay.handlers, ...usageHandlersOf(options, billing) },
+    handlers: {
+      ...relay.handlers,
+      ...usageHandlersOf(options, billing),
+      ...createUploadHandlers(uploads),
+    },
     settled: (message) => {
       relay.settled(message);
     },

@@ -21,6 +21,14 @@ export type {
   QuestionStore,
 } from "./chat/ports.js";
 export { imageTypeOf } from "./chat/image-type.js";
+export { createUploadShelf } from "./uploads/upload-shelf.js";
+export type {
+  UploadPlan,
+  UploadRefusal,
+  UploadShelf,
+  UploadShelfOptions,
+  UploadTicket,
+} from "./uploads/upload-shelf.js";
 export { questionViewOf } from "./chat/question-flow.js";
 export { agentModelsChangeSchema, type AgentModelsChange } from "./agents/agent-record.js";
 export {

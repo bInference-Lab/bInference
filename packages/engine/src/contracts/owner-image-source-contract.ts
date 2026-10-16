@@ -7,8 +7,8 @@ export interface OwnerImageSourceSubject {
   readonly source: OwnerImageSource;
   /** An image the source holds, and its bytes. */
   readonly held: { readonly image: string; readonly bytes: Uint8Array };
-  /** An image over 5 MiB. */
-  readonly large: string;
+  /** An image over 5 MiB, for a source that can hold one; one that refuses them on the way in has none. */
+  readonly large?: string;
   /** An image the source does not have. */
   readonly gone: string;
 }
@@ -35,10 +35,11 @@ export function ownerImageSourceContract(
       },
     },
     {
-      name: "refuses an image over 5 MiB as too large",
+      name: "refuses an image over 5 MiB as too large, when it can hold one",
       run: async () => {
         const { source, large } = await harness.create();
-        assert.deepEqual(await source.read(large, live()), { ok: false, error: "too_large" });
+        const read = large === undefined ? undefined : await source.read(large, live());
+        assert.ok(read === undefined || (!read.ok && read.error === "too_large"));
       },
     },
     {

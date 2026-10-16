@@ -68,6 +68,7 @@ import type {
 } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
+import type { UploadShelf } from "../uploads/upload-shelf.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createEngineWithFills, type Engine, type EngineOptions } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
@@ -151,6 +152,8 @@ export interface TestEngineOptions {
   readonly held?: ReadonlyMap<AccountRef, readonly Amount[]>;
   /** Wallets custody holds besides the test wallet, each with its account. */
   readonly custodyWallets?: ReadonlyMap<Id<"wal">, AccountRef>;
+  /** The owner's uploads, shared with the test that fills them. */
+  readonly uploads?: UploadShelf;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -347,6 +350,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     workspace: createMemoryWorkspaceFiles(clock),
     isLocked: options.isLocked ?? (() => false),
     liveOrderFills: options.liveOrderFills === true,
+    ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),
