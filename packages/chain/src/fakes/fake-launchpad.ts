@@ -9,7 +9,7 @@ import {
 import type { AccountRef } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
 import type { CurveHolding } from "../venues/curve-holding.js";
-import type { InsiderReader, PriceReader } from "../venues/ports.js";
+import type { InsiderReader, Launcher, PriceReader } from "../venues/ports.js";
 import type { PriceRead, ReadAnswer } from "../venues/price-read.js";
 import type { LaunchpadVenue, Venue, VenueContracts } from "../venues/venue.js";
 import { createFakeVenue } from "./fake-venue.js";
@@ -34,6 +34,8 @@ export interface FakeLaunchpadOptions {
   readonly launchCurve?: AccountRef;
   /** The wallets its contracts favor on each token it holds; none when absent. */
   readonly insiders?: readonly AccountRef[];
+  /** What launches its tokens, such as a fake launcher; it launches none when absent. */
+  readonly launcher?: Launcher;
 }
 
 /** A fake launchpad, whose tokens can graduate during a test. */
@@ -150,7 +152,7 @@ function launchPartsOf(
  * its curve with one read of its `router`, which {@link fakePriceAnswer} answers. With a
  * `launchCurve`, each held token's launch has that curve, which its curve read names and which
  * its trades and price reads use in place of the `router`. It names its `insiders` for each token
- * it holds.
+ * it holds, and launches tokens through its `launcher` when it has one.
  */
 export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpad {
   const venue = createFakeVenue({
@@ -167,6 +169,7 @@ export function createFakeLaunchpad(options: FakeLaunchpadOptions): FakeLaunchpa
   return {
     ...venue,
     ...launchPartsOf(venue, options.launchCurve),
+    ...(options.launcher === undefined ? {} : { launcher: options.launcher }),
     id: options.id ?? "fake-curve",
     async quote(request, call) {
       call.signal.throwIfAborted();
