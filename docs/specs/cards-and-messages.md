@@ -6,7 +6,8 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
 [0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0185](../DECISIONS.md#d0185),
-[0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189) and [0190](../DECISIONS.md#d0190).
+[0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190) and
+[0243](../DECISIONS.md#d0243).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
@@ -286,7 +287,7 @@ Open position, English:
 ```text
 PEPE (0x6982…1933) · main · 🔴 Live
 Holding 1.25M PEPE · value $14.20
-Average cost $0.00000944 · cost $11.80
+Average cost <$0.01 · cost $11.80
 P&L  unrealized +$2.40 (+20.34%) · realized +$0.85
 Fees  venue $0.04 · network $0.02
 Since 2026-10-02 14:05
@@ -297,7 +298,7 @@ Since 2026-10-02 14:05
 ```text
 PEPE (0x6982…1933) · main · 🔴 实盘
 持有 1.25M PEPE · 市值 $14.20
-平均成本 $0.00000944 · 成本 $11.80
+平均成本 <$0.01 · 成本 $11.80
 盈亏  未实现盈亏 +$2.40（+20.34%）· 已实现盈亏 +$0.85
 费用  平台手续费 $0.04 · 网络费 $0.02
 开始于 2026-10-02 14:05
@@ -323,27 +324,43 @@ PEPE (0x6982…1933) · main · 🔴 实盘 · 已清仓
 持有 2026-10-02 14:05 → 2026-10-09 09:12（7 天）
 ```
 
-| Line            | Key                | English                                                       | 中文                                                             |
-| --------------- | ------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Header          | `pnl.header`       | {token} · {agent} · {mode}                                    | {token} · {agent} · {mode}                                       |
-| Header, closed  | `pnl.headerClosed` | {token} · {agent} · {mode} · closed                           | {token} · {agent} · {mode} · 已清仓                              |
-| Holding         | `pnl.holding`      | Holding {amount} · value {value}                              | 持有 {amount} · 市值 {value}                                     |
-| Cost            | `pnl.cost`         | Average cost {average} · cost {cost}                          | 平均成本 {average} · 成本 {cost}                                 |
-| P&L, open       | `pnl.open`         | P&L unrealized {unrealized} ({percent}) · realized {realized} | 盈亏 未实现盈亏 {unrealized}（{percent}）· 已实现盈亏 {realized} |
-| P&L, closed     | `pnl.closed`       | P&L realized {realized} ({percent})                           | 盈亏 已实现盈亏 {realized}（{percent}）                          |
-| Bought and sold | `pnl.trades`       | Bought for {bought} · sold for {sold}                         | 买入花费 {bought} · 卖出收到 {sold}                              |
-| Fees            | `pnl.fees`         | Fees venue {venue} · network {network}                        | 费用 平台手续费 {venue} · 网络费 {network}                       |
-| Since           | `pnl.since`        | Since {openedAt}                                              | 开始于 {openedAt}                                                |
-| Held            | `pnl.held`         | Held {openedAt} → {closedAt} ({duration})                     | 持有 {openedAt} → {closedAt}（{duration}）                       |
-| No price        | `pnl.noPrice`      | P&L unrealized: no price now · realized {realized}            | 盈亏 未实现盈亏：暂无价格 · 已实现盈亏 {realized}                |
+| Line              | Key                  | English                                                       | 中文                                                             |
+| ----------------- | -------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Header            | `pnl.header`         | {token} · {agent} · {mode}                                    | {token} · {agent} · {mode}                                       |
+| Header, closed    | `pnl.headerClosed`   | {token} · {agent} · {mode} · closed                           | {token} · {agent} · {mode} · 已清仓                              |
+| Holding           | `pnl.holding`        | Holding {amount} · value {value}                              | 持有 {amount} · 市值 {value}                                     |
+| Cost              | `pnl.cost`           | Average cost {average} · cost {cost}                          | 平均成本 {average} · 成本 {cost}                                 |
+| P&L, open         | `pnl.open`           | P&L unrealized {unrealized} ({percent}) · realized {realized} | 盈亏 未实现盈亏 {unrealized}（{percent}）· 已实现盈亏 {realized} |
+| P&L, closed       | `pnl.closed`         | P&L realized {realized} ({percent})                           | 盈亏 已实现盈亏 {realized}（{percent}）                          |
+| Bought and sold   | `pnl.trades`         | Bought for {bought} · sold for {sold}                         | 买入花费 {bought} · 卖出收到 {sold}                              |
+| Fees              | `pnl.fees`           | Fees venue {venue} · network {network}                        | 费用 平台手续费 {venue} · 网络费 {network}                       |
+| Since             | `pnl.since`          | Since {openedAt}                                              | 开始于 {openedAt}                                                |
+| Held              | `pnl.held`           | Held {openedAt} → {closedAt} ({duration})                     | 持有 {openedAt} → {closedAt}（{duration}）                       |
+| No price          | `pnl.noPrice`        | P&L unrealized: no price now · realized {realized}            | 盈亏 未实现盈亏：暂无价格 · 已实现盈亏 {realized}                |
+| Holding, no price | `pnl.holdingNoValue` | Holding {amount}                                              | 持有 {amount}                                                    |
+| No percentage     | `pnl.noPercent`      | n/a                                                           | 不适用                                                           |
+| Days held         | `pnl.days`           | {count} days (1 day)                                          | {count} 天                                                       |
+| Hours held        | `pnl.hours`          | {count} hours (1 hour)                                        | {count} 小时                                                     |
+| Minutes held      | `pnl.minutes`        | {count} minutes (1 minute)                                    | {count} 分钟                                                     |
 
 - `{mode}` is 🧪 Paper / 🧪 模拟 or 🔴 Live / 🔴 实盘; the console draws the mode as its card header
   does.
 - An open position's `{percent}` is the unrealized P&L over its cost; a closed one's is the
   realized P&L over what its buys cost (`boughtUsdMicros`). Amounts carry their sign, `+` or `-`.
 - `{average}` is the cost per whole token at average cost
-  ([decision 0058](../DECISIONS.md#d0058)); the venue fees and network fees are those of the
-  position's executions, which the cost already holds.
+  ([decision 0058](../DECISIONS.md#d0058)), rounded up and shown in USD with 2 decimals (section 1),
+  so a token under a cent shows `<$0.01`; the venue fees and network fees are those of
+  every execution that bought or sold the asset in the position's span.
+- A position is the agent's rows of the asset in one mode, across its wallets. Its span runs from
+  its first trade or valued arrival, a paper one's from the last paper reset. `{realized}` is the
+  rows' realized P&L minus the venue fees and gas of the span's sales, so it is net of every fee
+  and gas; `{bought}` is what the buys cost with their fees and gas, plus funds that arrived at
+  their value; `{sold}` is each sale's value minus its gas
+  ([decision 0243](../DECISIONS.md#d0243)).
+- A percentage rounds toward minus infinity; with a base of zero it is `pnl.noPercent`. A position
+  with no price now shows `pnl.holdingNoValue` and `pnl.noPrice`. A token whose decimals are not
+  known is named by its short address, and its holding and cost lines are left out.
+- `{duration}` is whole days, else whole hours, else whole minutes.
 
 <a id="section-3-8"></a>
 

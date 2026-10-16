@@ -1,0 +1,18 @@
+{
+  "header": "{token} · {agent} · {mode, select, paper {🧪 模拟} other {🔴 实盘}}",
+  "headerClosed": "{token} · {agent} · {mode, select, paper {🧪 模拟} other {🔴 实盘}} · 已清仓",
+  "holding": "持有 {amount} · 市值 {value}",
+  "holdingNoValue": "持有 {amount}",
+  "cost": "平均成本 {average} · 成本 {cost}",
+  "open": "盈亏 未实现盈亏 {unrealized}（{percent}）· 已实现盈亏 {realized}",
+  "closed": "盈亏 已实现盈亏 {realized}（{percent}）",
+  "trades": "买入花费 {bought} · 卖出收到 {sold}",
+  "fees": "费用 平台手续费 {venue} · 网络费 {network}",
+  "since": "开始于 {openedAt}",
+  "held": "持有 {openedAt} → {closedAt}（{duration}）",
+  "noPrice": "盈亏 未实现盈亏：暂无价格 · 已实现盈亏 {realized}",
+  "noPercent": "不适用",
+  "days": "{count, plural, other {# 天}}",
+  "hours": "{count, plural, other {# 小时}}",
+  "minutes": "{count, plural, other {# 分钟}}"
+}

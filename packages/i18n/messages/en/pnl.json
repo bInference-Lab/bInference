@@ -1,0 +1,18 @@
+{
+  "header": "{token} · {agent} · {mode, select, paper {🧪 Paper} other {🔴 Live}}",
+  "headerClosed": "{token} · {agent} · {mode, select, paper {🧪 Paper} other {🔴 Live}} · closed",
+  "holding": "Holding {amount} · value {value}",
+  "holdingNoValue": "Holding {amount}",
+  "cost": "Average cost {average} · cost {cost}",
+  "open": "P&L unrealized {unrealized} ({percent}) · realized {realized}",
+  "closed": "P&L realized {realized} ({percent})",
+  "trades": "Bought for {bought} · sold for {sold}",
+  "fees": "Fees venue {venue} · network {network}",
+  "since": "Since {openedAt}",
+  "held": "Held {openedAt} → {closedAt} ({duration})",
+  "noPrice": "P&L unrealized: no price now · realized {realized}",
+  "noPercent": "n/a",
+  "days": "{count, plural, one {# day} other {# days}}",
+  "hours": "{count, plural, one {# hour} other {# hours}}",
+  "minutes": "{count, plural, one {# minute} other {# minutes}}"
+}

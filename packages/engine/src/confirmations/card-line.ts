@@ -1,8 +1,8 @@
 import type { CardValueView } from "@binference/protocol";
 
 /**
- * Every message key a card or its receipt uses (spec 4, section 3), the formats of its values
- * among them. Each key has an English and a Chinese message in `@binference/i18n`.
+ * Every message key a card, its receipt or a P&L card uses (spec 4, section 3), the formats of
+ * its values among them. Each key has an English and a Chinese message in `@binference/i18n`.
  */
 export const cardKeys = [
   "card.header",
@@ -88,6 +88,23 @@ export const cardKeys = [
   "receipt.paper",
   "receipt.auto",
   "receipt.result",
+  // The P&L card's lines (spec 4, section 3.7).
+  "pnl.header",
+  "pnl.headerClosed",
+  "pnl.holding",
+  "pnl.holdingNoValue",
+  "pnl.cost",
+  "pnl.open",
+  "pnl.closed",
+  "pnl.trades",
+  "pnl.fees",
+  "pnl.since",
+  "pnl.held",
+  "pnl.noPrice",
+  "pnl.noPercent",
+  "pnl.days",
+  "pnl.hours",
+  "pnl.minutes",
 ] as const;
 
 /**

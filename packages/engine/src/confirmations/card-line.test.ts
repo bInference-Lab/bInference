@@ -2,7 +2,7 @@ import { messageLocales, messages } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import { cardKeys } from "./card-line.js";
 
-const areas = ["card.", "autoAsks.", "receipt.", "order."];
+const areas = ["card.", "autoAsks.", "receipt.", "order.", "pnl."];
 
 describe("card keys", () => {
   it("has an English and a Chinese message for every card key and no other", () => {
