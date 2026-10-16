@@ -44,6 +44,8 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "order/get": orderWire("active"),
   "order/cancel": orderWire("cancelled"),
   "notes/search": { items: [] },
+  "agent/editFile": { updatedAt: 1 },
+  "agent/endFirstChat": {},
   "skill/read": {
     skill: "safe-swap",
     place: "bundled",
@@ -113,6 +115,12 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     { text: "Likes stablecoins" },
     [{ op: "notes/write", args: { agent, text: "Likes stablecoins" }, key }],
   ],
+  [
+    "workspace_write",
+    { file: "STRATEGY.md", text: "Hold for days." },
+    [{ op: "agent/editFile", args: { agent, file: "STRATEGY.md", text: "Hold for days." }, key }],
+  ],
+  ["first_chat_end", {}, [{ op: "agent/endFirstChat", args: { agent }, key }]],
 ];
 
 const names = mappings.map(([name]) => name);
@@ -129,7 +137,7 @@ describe("the agent's tools", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("are the reads, then the proposals, then the brake, then the note it writes", () => {
+  it("are the reads, then the proposals, the brake, the note it writes and the workspace writes", () => {
     const tools = agentTools({ agent, client: createFakeToolClient({}) });
     expect(tools.map((tool) => tool.name)).toStrictEqual(names);
   });

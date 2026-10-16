@@ -8,6 +8,7 @@ import { openSkillTool } from "./skill-tools.js";
 import type { AgentToolParts } from "./tool-client.js";
 import { tradeTools } from "./trade-tools.js";
 import { webTools } from "./web-tools.js";
+import { workspaceTools } from "./workspace-tools.js";
 
 /**
  * The agent's tools for one agent (runtime spec, section 5.1): the reads `portfolio`,
@@ -15,7 +16,8 @@ import { webTools } from "./web-tools.js";
  * `sell` and `order_create`; and `order_cancel`, which brakes. Each maps onto one operation of
  * the engine and names the given agent; no tool takes an agent or a wallet from the model. With
  * web parts, the web tools come after the reads; `notes_search` and `open_skill` follow them,
- * and `notes_write` comes last.
+ * then `notes_write`, and last `workspace_write` and `first_chat_end`, which write the owner's
+ * strategy and persona and end the first chat (decision 0242).
  */
 export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
   const web = parts.web === undefined ? [] : webTools(parts.web);
@@ -28,6 +30,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...tradeTools(parts),
     orderCancelTool(parts),
     notes.write,
+    ...workspaceTools(parts),
   ];
 }
 

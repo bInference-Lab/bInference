@@ -52,12 +52,16 @@ async function sayAndStatus(run: TurnRun, status: TurnStatusLine | undefined): P
 
 /**
  * Ends a turn in the order the runtime spec gives (section 11): its final text, its status line,
- * its end in the journal, then `turn/end`. Each write is best effort with its own time limit, so a
+ * its end in the journal, then `turn/end`. A turn that ends well with no line of its own ends with
+ * the closing line a tool gave it. Each write is best effort with its own time limit, so a
  * port that fails or never answers still lets the turn end; any such failure ends it `failed`.
  */
 export async function endTurn(run: TurnRun, end: LoopEnd): Promise<TurnReport> {
   run.tally.enter("ending");
-  const shown = await sayAndStatus(run, end.status);
+  const { closingLine } = run.tally.now();
+  const closing = end.outcome === "ok" && closingLine !== undefined;
+  const status = end.status ?? (closing ? { line: closingLine } : undefined);
+  const shown = await sayAndStatus(run, status);
   const ended = shown ? end.outcome : portFailure.outcome;
   const { heldBack, committed, toolCalls, modelCalls } = run.tally.now();
   const journaled = await bestEffort(run, async (signal) =>

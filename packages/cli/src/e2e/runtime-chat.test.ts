@@ -284,6 +284,8 @@ describe("the chat relay to the agent runtime process", () => {
         "order_create",
         "order_cancel",
         "notes_write",
+        "workspace_write",
+        "first_chat_end",
       ]);
     },
   );

@@ -52,7 +52,15 @@ export interface ToolOutcome {
   readonly outside?: boolean;
   /** The tool asked the owner a question: the turn ends after this batch. */
   readonly endsTurn?: boolean;
+  /**
+   * The tool finished something the owner hears of in a status line: the turn ends with it when it
+   * ends well and has no other line.
+   */
+  readonly closingLine?: ClosingLine;
 }
+
+/** A status line a tool's work gives a turn that ends well: the first chat ended. */
+export type ClosingLine = "firstChatDone";
 
 /** What a tool's run receives. */
 export interface ToolRunContext {
@@ -192,7 +200,9 @@ export type TurnStatusLine =
   /** The agent's model budget of the day is spent: chat resumes at the owner's next midnight. */
   | { readonly line: "budget"; readonly resumesAt: number }
   /** The owner's images could not be read, and no model was called. */
-  | { readonly line: "image"; readonly problem: ImageProblem };
+  | { readonly line: "image"; readonly problem: ImageProblem }
+  /** A tool of a turn that ended well finished something the owner hears of. */
+  | { readonly line: ClosingLine };
 
 /**
  * One attempt of a model call as `usage/record` takes it (runtime spec, section 8.3): the model

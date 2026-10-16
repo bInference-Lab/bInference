@@ -55,7 +55,7 @@ export interface CallEnd {
 
 /**
  * Runs a read or control call's tool, stopped by the turn's halt or its time limit. A tool that
- * throws gets an error result; nothing is written.
+ * throws gets an error result; nothing is written. A closing line its result gives is kept.
  */
 export async function executeCall(
   run: TurnRun,
@@ -76,6 +76,9 @@ export async function executeCall(
   deadline.clear();
   if (settled.kind !== "value") {
     return { result: failedResult(failedText(run, deadline)), endsTurn: false };
+  }
+  if (settled.value.closingLine !== undefined) {
+    run.tally.close(settled.value.closingLine);
   }
   return { result: resultOf(ready, settled.value), endsTurn: settled.value.endsTurn === true };
 }

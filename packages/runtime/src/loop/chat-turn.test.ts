@@ -144,6 +144,26 @@ describe("createChatTurn", () => {
     expect(recorder.steps.filter((step) => step.kind === "start")).toHaveLength(1);
   });
 
+  it("ends a turn that ended well with the closing line its tool gave, after the final text", async () => {
+    const end: TestTool = {
+      name: "first_chat_end",
+      kind: "control",
+      run: async () =>
+        Promise.resolve({ text: "Ended.", isError: false, closingLine: "firstChatDone" }),
+    };
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "first_chat_end" }]), textReply("Saved.")],
+      tools: [end],
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok" });
+    expect(recorder.steps.slice(-4)).toStrictEqual([
+      { kind: "say", text: "Saved." },
+      { kind: "status", line: { line: "firstChatDone" } },
+      { kind: "journalEnd", outcome: "ok", heldBack: 0 },
+      { kind: "end", outcome: "ok" },
+    ]);
+  });
+
   it("ends failed when the model call fails, naming the failure in its status line", async () => {
     const { turn, recorder } = createTestTurn({
       replies: [[{ type: "error", failure: "auth", message: "401" }]],

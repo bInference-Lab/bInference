@@ -1,3 +1,5 @@
+import type { ClosingLine } from "./turn-records.js";
+
 /** Where a turn is (runtime spec, section 4.1). */
 export type TurnState =
   | "starting"
@@ -32,6 +34,8 @@ interface TurnMarks {
   readonly lastText: string;
   /** How the engine answered the turn's proposal: it waits for the owner, or was refused. */
   readonly proposal?: ProposalAnswer;
+  /** The line a tool's work gives the turn when it ends well with no other. */
+  readonly closingLine?: ClosingLine;
 }
 
 /** How the engine answered a proposal it heard: a card waits for the owner, or it was refused. */
@@ -53,6 +57,8 @@ export interface TurnTally {
   markLooped(): void;
   keepText(text: string): void;
   answerProposal(answer: ProposalAnswer): void;
+  /** Keeps the line a tool's work gives the turn; a later one replaces it. */
+  close(line: ClosingLine): void;
 }
 
 function entered(marks: TurnMarks, state: TurnState): TurnMarks {
@@ -64,20 +70,23 @@ function entered(marks: TurnMarks, state: TurnState): TurnMarks {
   };
 }
 
+// What a turn has done before it starts: nothing.
+const unstarted: TurnMarks = {
+  state: "starting",
+  outside: false,
+  committed: false,
+  heldBack: 0,
+  toolCalls: 0,
+  modelCalls: 0,
+  attempts: 0,
+  budgetSpent: false,
+  looped: false,
+  lastText: "",
+};
+
 /** A new turn's tally: `starting`, marked when its context already holds outside content. */
 export function createTurnTally(options: { readonly outside: boolean }): TurnTally {
-  let marks: TurnMarks = {
-    state: "starting",
-    outside: options.outside,
-    committed: false,
-    heldBack: 0,
-    toolCalls: 0,
-    modelCalls: 0,
-    attempts: 0,
-    budgetSpent: false,
-    looped: false,
-    lastText: "",
-  };
+  let marks: TurnMarks = { ...unstarted, outside: options.outside };
   return {
     now: () => marks,
     enter(state) {
@@ -110,6 +119,9 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     },
     answerProposal(proposal) {
       marks = { ...marks, proposal };
+    },
+    close(closingLine) {
+      marks = { ...marks, closingLine };
     },
   };
 }
