@@ -27,6 +27,7 @@
   "agent.paper_only": "This agent is in paper mode, and this action needs live. Go live with `binference live`.",
   "agent.disclaimer": "Accept the disclaimer before going live. Run `binference live` and follow the steps.",
   "agent.file_missing": "This agent has no such workspace file. Write the file to create it.",
+  "agent.file_untrusted": "The agent read outside content in this chat, so it cannot save your files from it. Send /clear and tell it again, or edit the file in the console.",
   "question.not_found": "This question does not exist. Answer the agent in the chat instead.",
   "question.closed": "This question is closed. Answer the agent in the chat instead.",
   "image.not_found": "This image is not in any of the agent's messages. Send the image again in the chat.",

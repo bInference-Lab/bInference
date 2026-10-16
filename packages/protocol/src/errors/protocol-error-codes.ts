@@ -32,6 +32,7 @@ export const protocolErrorCodes = [
   "agent.disclaimer",
   "agent.budget",
   "agent.file_missing",
+  "agent.file_untrusted",
   "question.not_found",
   "question.closed",
   "image.not_found",

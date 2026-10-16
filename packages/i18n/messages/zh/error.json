@@ -27,6 +27,7 @@
   "agent.paper_only": "此 Agent 处于模拟模式，而此操作需要实盘。请运行 `binference live` 切换到实盘。",
   "agent.disclaimer": "切换到实盘前，请先接受免责声明。请运行 `binference live` 并按提示操作。",
   "agent.file_missing": "此 Agent 没有这个工作区文件。写入该文件即可创建它。",
+  "agent.file_untrusted": "Agent 在本次对话中读取了外部内容，因此不能据此保存你的文件。请发送 /clear 后再告诉它一次，或在控制台中编辑该文件。",
   "question.not_found": "此问题不存在。请直接在对话中回答 Agent。",
   "question.closed": "此问题已关闭。请直接在对话中回答 Agent。",
   "image.not_found": "Agent 的消息中没有这张图片。请在对话中重新发送图片。",

@@ -446,6 +446,7 @@
         "agent.disclaimer",
         "agent.budget",
         "agent.file_missing",
+        "agent.file_untrusted",
         "question.not_found",
         "question.closed",
         "image.not_found",
@@ -3848,6 +3849,175 @@
           "required": [
             "updatedAt"
           ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/agent/editFile": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "agent/editFile"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "file": {
+              "type": "string",
+              "enum": [
+                "PERSONA.md",
+                "STRATEGY.md"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12000
+            }
+          },
+          "required": [
+            "agent",
+            "file",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "agent",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/agent/editFile": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "updatedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "updatedAt"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/agent/endFirstChat": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "agent/endFirstChat"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
+          "required": [
+            "agent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "agent",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/agent/endFirstChat": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
         }
       },
       "required": [

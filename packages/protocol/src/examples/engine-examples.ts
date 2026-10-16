@@ -133,6 +133,11 @@ export const agentExamples: { readonly [N in keyof AgentOperationShapes]: WireEx
     args: { agent: ids.agent, file: "RULES.md", text: "Never trade memes.\n" },
     result: { updatedAt: at },
   },
+  "agent/editFile": {
+    args: { agent: ids.agent, file: "STRATEGY.md", text: "# Strategy\n\n- Hold for days.\n" },
+    result: { updatedAt: at },
+  },
+  "agent/endFirstChat": { args: { agent: ids.agent }, result: empty },
   "facts/get": {
     args: { agent: ids.agent },
     result: {

@@ -106,8 +106,12 @@ export type {
   TrailingOrderRequest,
   WebhookRuleRequest,
 } from "./requests/fill-rule-request.schema.js";
-export { workspaceFiles } from "./operations/agent-operations.schema.js";
-export type { WorkspaceFile } from "./operations/agent-operations.schema.js";
+export {
+  agentEditableFiles,
+  agentFileMaxChars,
+  workspaceFiles,
+} from "./operations/agent-operations.schema.js";
+export type { AgentEditableFile, WorkspaceFile } from "./operations/agent-operations.schema.js";
 export { liveFactsViewSchema } from "./views/live-facts-view.schema.js";
 export type { LiveFactsView } from "./views/live-facts-view.schema.js";
 export { assetSearchTermsSchema } from "./operations/market-operations.schema.js";

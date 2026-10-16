@@ -27,6 +27,19 @@ export const workspaceFiles = [
 /** One of an agent's workspace files. */
 export type WorkspaceFile = (typeof workspaceFiles)[number];
 
+/**
+ * The workspace files the agent itself may replace with `agent/editFile`: how it talks and the
+ * owner's trading profile (decision 0242). The rules, the owner's file and the notes stay the
+ * owner's.
+ */
+export const agentEditableFiles = ["PERSONA.md", "STRATEGY.md"] as const;
+
+/** One of the workspace files the agent may replace. */
+export type AgentEditableFile = (typeof agentEditableFiles)[number];
+
+/** The most characters of a file `agent/editFile` writes: what a turn's prefix keeps of one. */
+export const agentFileMaxChars = 12_000;
+
 /** The args of `agent/readFile`. */
 interface FileArgs extends AgentArgs {
   readonly file: WorkspaceFile;
@@ -34,6 +47,12 @@ interface FileArgs extends AgentArgs {
 
 /** The args of `agent/writeFile`. */
 interface WriteFileArgs extends FileArgs {
+  readonly text: string;
+}
+
+/** The args of `agent/editFile`. */
+interface EditFileArgs extends AgentArgs {
+  readonly file: AgentEditableFile;
   readonly text: string;
 }
 
@@ -81,6 +100,11 @@ export interface AgentOperationShapes {
     readonly args: WriteFileArgs;
     readonly result: { readonly updatedAt: number };
   };
+  readonly "agent/editFile": {
+    readonly args: EditFileArgs;
+    readonly result: { readonly updatedAt: number };
+  };
+  readonly "agent/endFirstChat": { readonly args: AgentArgs; readonly result: Empty };
   readonly "facts/get": { readonly args: AgentArgs; readonly result: LiveFactsView };
   readonly "identity/get": {
     readonly args: AgentArgs;
@@ -160,6 +184,24 @@ export const agentOperations: OperationTable<AgentOperationShapes> = {
     scope: "admin",
     args: z.strictObject({ ...agentFile, text: z.string() }),
     result: z.object({ updatedAt: epochMsSchema }),
+  },
+  "agent/editFile": {
+    ...writeFlags,
+    name: "agent/editFile",
+    scope: "agent",
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      file: z.enum(agentEditableFiles),
+      text: z.string().min(1).max(agentFileMaxChars),
+    }),
+    result: z.object({ updatedAt: epochMsSchema }),
+  },
+  "agent/endFirstChat": {
+    ...writeFlags,
+    name: "agent/endFirstChat",
+    scope: "agent",
+    args: agentArgsSchema,
+    result: emptyResultSchema,
   },
   "facts/get": {
     ...readFlags,
