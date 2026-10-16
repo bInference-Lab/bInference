@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { WorkspaceFiles } from "../ports.js";
-import { err } from "../result.js";
+import { err, ok } from "../result.js";
 import type { WorkspacePlace } from "../workspace/workspace-place.js";
 import type { ContractCheck } from "./contract-check.js";
 
@@ -78,6 +78,28 @@ const createChecks = (harness: WorkspaceFilesHarness): readonly ContractCheck[] 
   },
 ];
 
+const removeChecks = (harness: WorkspaceFilesHarness): readonly ContractCheck[] => [
+  {
+    name: "removes a file, which then reads as not_found and can be created again",
+    run: async () => {
+      const store = await harness.create();
+      await store.write(at("FIRST-CHAT.md"), "questions", signal());
+      await store.write(at("FIRST-CHAT.md", other), "theirs", signal());
+      assert.deepEqual(await store.remove(at("FIRST-CHAT.md"), signal()), ok(undefined));
+      assert.deepEqual(await store.read(at("FIRST-CHAT.md"), signal()), err("not_found"));
+      assert.equal(await textOf(store, at("FIRST-CHAT.md", other)), "theirs");
+      assert.ok((await store.create(at("FIRST-CHAT.md"), "again", signal())).ok);
+    },
+  },
+  {
+    name: "answers not_found when it removes a file the agent does not have",
+    run: async () => {
+      const store = await harness.create();
+      assert.deepEqual(await store.remove(at("FIRST-CHAT.md"), signal()), err("not_found"));
+    },
+  },
+];
+
 const nameChecks = (harness: WorkspaceFilesHarness): readonly ContractCheck[] => [
   {
     name: "refuses a name outside the agent's folder before it touches a file",
@@ -86,6 +108,7 @@ const nameChecks = (harness: WorkspaceFilesHarness): readonly ContractCheck[] =>
       await assert.rejects(store.read(at("../RULES.md"), signal()), invalid);
       await assert.rejects(store.write(at("RULES.md", ".."), "x", signal()), invalid);
       await assert.rejects(store.create(at("rules.md"), "x", signal()), invalid);
+      await assert.rejects(store.remove(at("../FIRST-CHAT.md"), signal()), invalid);
     },
   },
   {
@@ -95,15 +118,22 @@ const nameChecks = (harness: WorkspaceFilesHarness): readonly ContractCheck[] =>
       const aborted = AbortSignal.abort(new Error("stopped"));
       await assert.rejects(store.read(at("RULES.md"), aborted), /stopped/u);
       await assert.rejects(store.write(at("RULES.md"), "x", aborted), /stopped/u);
+      await assert.rejects(store.remove(at("RULES.md"), aborted), /stopped/u);
     },
   },
 ];
 
 /**
  * The contract every {@link WorkspaceFiles} adapter keeps: files read back byte for byte with the
- * time they changed, a missing file is `not_found`, a write replaces, `create` never replaces,
- * agents stay apart, and a name outside an agent's folder throws before anything is touched.
+ * time they changed, a missing file is `not_found`, a write replaces, `create` never replaces, a
+ * removed file is gone and a missing one is `not_found`, agents stay apart, and a name outside an
+ * agent's folder throws before anything is touched.
  */
 export function workspaceFilesContract(harness: WorkspaceFilesHarness): readonly ContractCheck[] {
-  return [...readWriteChecks(harness), ...createChecks(harness), ...nameChecks(harness)];
+  return [
+    ...readWriteChecks(harness),
+    ...createChecks(harness),
+    ...removeChecks(harness),
+    ...nameChecks(harness),
+  ];
 }

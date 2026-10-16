@@ -31,5 +31,7 @@ export function createMemoryWorkspaceFiles(clock: Clock): WorkspaceFiles {
       const key = await start(place, signal);
       return held.has(key) ? err("exists") : ok(put(key, text));
     },
+    remove: async (place, signal) =>
+      held.delete(await start(place, signal)) ? ok(undefined) : err("not_found"),
   };
 }

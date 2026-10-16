@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { link, rm, stat } from "node:fs/promises";
+import { link, rm, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import {
   BinferenceError,
@@ -20,9 +20,9 @@ export interface WorkspaceFolderOptions {
   readonly permissions: FilePermissions;
 }
 
-// A link to a name that is taken fails with `EEXIST`.
-function isExisting(error: Error): boolean {
-  return "code" in error && error.code === "EEXIST";
+// A link to a name that is taken fails with `EEXIST`; an unlink of a missing name, `ENOENT`.
+function hasCode(error: Error, code: string): boolean {
+  return "code" in error && error.code === code;
 }
 
 async function changedAt(path: string): Promise<number> {
@@ -54,7 +54,7 @@ async function createAt(
     await link(draft, path);
     return true;
   } catch (error) {
-    if (error instanceof Error && isExisting(error)) {
+    if (error instanceof Error && hasCode(error, "EEXIST")) {
       return false;
     }
     throw new BinferenceError({
@@ -68,10 +68,35 @@ async function createAt(
   }
 }
 
+// Unlinks the file and makes the removal durable; false when nothing was there.
+async function removeAt(
+  path: string,
+  folder: string,
+  options: { readonly permissions: FilePermissions; readonly signal: AbortSignal },
+): Promise<boolean> {
+  options.signal.throwIfAborted();
+  try {
+    await unlink(path);
+  } catch (error) {
+    if (error instanceof Error && hasCode(error, "ENOENT")) {
+      return false;
+    }
+    throw new BinferenceError({
+      code: "platform.file_write_failed",
+      message: `Could not remove ${path}; check that its folder exists and is yours.`,
+      cause: error,
+      details: { path },
+    });
+  }
+  await options.permissions.syncFolder(folder, options.signal);
+  return true;
+}
+
 /**
  * Creates the {@link WorkspaceFiles} over the state folder's `workspace/`: one owner-only folder
  * per agent, named by its id, each file UTF-8 text of at most 1 MiB. A write replaces the file
- * whole (`writePrivateFile`), and the time a file changed is its modification time.
+ * whole (`writePrivateFile`), a removal is synced to the folder, and the time a file changed is its
+ * modification time.
  */
 export function createWorkspaceFolder(options: WorkspaceFolderOptions): WorkspaceFiles {
   const { permissions } = options;
@@ -94,6 +119,12 @@ export function createWorkspaceFolder(options: WorkspaceFolderOptions): Workspac
         await permissions.syncFolder(join(options.root, place.agent), signal);
       }
       return made ? ok(await changedAt(path)) : err("exists");
+    },
+    async remove(place, signal) {
+      checkWorkspacePlace(place);
+      const folder = join(options.root, place.agent);
+      const removed = await removeAt(join(folder, place.file), folder, { permissions, signal });
+      return removed ? ok(undefined) : err("not_found");
     },
   };
 }

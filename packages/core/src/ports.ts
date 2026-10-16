@@ -97,4 +97,6 @@ export interface WorkspaceFiles {
     text: string,
     signal: AbortSignal,
   ): Promise<Result<number, "exists">>;
+  /** Removes one file. Returns `not_found` and changes nothing when the agent has no such file. */
+  remove(place: WorkspacePlace, signal: AbortSignal): Promise<Result<void, "not_found">>;
 }
