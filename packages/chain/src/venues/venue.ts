@@ -147,7 +147,8 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
  * its curve, so the engine sends a token still on it there and nowhere else. A venue that holds
  * the state a token's price comes from, such as a launchpad's curve, declares the reads that price
  * it, which the price watcher asks every block. A launchpad whose contracts favor some wallets on
- * a token it launched names them, for the risk step.
+ * a token it launched names them, for the risk step. A launchpad that launches tokens for the
+ * agent holds its `launcher`.
  */
 export interface Venue
   extends
@@ -157,12 +158,9 @@ export interface Venue
     TxDecoder,
     Partial<CurveReader>,
     Partial<PriceReader>,
-    Partial<InsiderReader> {}
-
-/**
- * A launchpad: a venue that trades the tokens on its bonding curve, and says which those are. A
- * launchpad that launches tokens for the agent holds its {@link Launcher}.
- */
-export interface LaunchpadVenue extends Omit<Venue, "curve">, CurveReader {
+    Partial<InsiderReader> {
   readonly launcher?: Launcher;
 }
+
+/** A launchpad: a venue that trades the tokens on its bonding curve, and says which those are. */
+export interface LaunchpadVenue extends Omit<Venue, "curve">, CurveReader {}
