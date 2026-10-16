@@ -16,6 +16,7 @@
   "confirmationLapsed": "⚠️ A trade was not sent: its confirmation ran out before it could go out. Nothing was signed.",
   "feeAboveCap": "⚠️ A trade waited because the network fee was above your cap, and its confirmation ran out. Confirm it again on its new card, or cancel it.",
   "launchUnsent": "⚠️ A trade on a launch's curve was not sent: {reason, select, launch_unread {binference could not read the launch from its launchpad} other {the launchpad no longer holds the token on that curve, as after its graduation}}. Nothing was signed.",
+  "launchStopped": "⚠️ The launch of {symbol} on {venue} stopped: {reason, select, pin_failed {the launchpad could not pin its picture and words} other {the launchpad did not pin its picture and words within 5 minutes}}. Nothing was signed; propose the launch again.",
   "stepUnsent": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.",
   "stepDropped": "⚠️ A trade was stuck and did not go through. Nothing moved, and the wallet is free again.",
   "stepDroppedPartWay": "⚠️ A trade stopped part way: an earlier step landed on chain, but a later one was stuck and did not go through. The wallet is free again. Check the wallet.",

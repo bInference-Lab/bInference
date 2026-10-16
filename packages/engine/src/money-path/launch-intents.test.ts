@@ -72,6 +72,15 @@ function launchSimulator(launcher: FakeLauncher): TxSimulator {
   };
 }
 
+// The card of an intent that opened one; a test that needs it fails without it.
+function cardOf(view: IntentView): NonNullable<IntentView["card"]>["card"] {
+  const { card } = view;
+  if (card === undefined) {
+    throw new Error("The intent opened no card.");
+  }
+  return card.card;
+}
+
 interface Launching {
   readonly pin?: FakePinScript;
   readonly options?: TestEngineOptions;
@@ -140,7 +149,20 @@ async function propose(
   return proposed.value;
 }
 
+async function stateOf(test: TestEngine, view: IntentView): Promise<IntentView> {
+  const read = await test.engine.handlers["intent/get"](
+    testCall({ intent: view.intent }, testCallers.cli),
+  );
+  if (!read.ok) {
+    throw new Error(`Expected the intent, got ${read.error}.`);
+  }
+  return read.value;
+}
+
+const signal = { signal: new AbortController().signal };
 const cardsOpened = (test: TestEngine) => test.pushes.filter((push) => push.kind === "card/opened");
+const notices = (test: TestEngine) =>
+  test.pushes.filter((push) => push.kind === "notice/new").map((push) => push.data);
 
 describe("a token launch before its pin", () => {
   it("waits in quoted with its upload made, its card unopened", async () => {
@@ -149,6 +171,57 @@ describe("a token launch before its pin", () => {
     expect(view).toMatchObject({ state: "quoted", wallet: launchWallet });
     expect(launcher.uploads()).toHaveLength(1);
     expect(cardsOpened(test)).toStrictEqual([]);
+  });
+
+  it("opens its card once the launchpad reports the pin, never in auto mode", async () => {
+    const { test, launcher } = await engineOver({
+      pin: { pinnedAfterReads: 2 },
+      options: { agent: { approvalMode: "auto" } },
+    });
+    const view = await propose(test);
+    expect(view.state).toBe("quoted");
+    await expect(test.engine.checkPins(signal)).resolves.toBe(1);
+    const opened = await stateOf(test, view);
+    expect(opened).toMatchObject({ state: "awaiting_confirmation" });
+    expect(cardsOpened(test)).toHaveLength(1);
+    expect(launcher.statusReads()).toBe(2);
+  });
+
+  it("goes straight to its card when the pin is reported at once", async () => {
+    const { test } = await engineOver();
+    await expect(propose(test)).resolves.toMatchObject({ state: "awaiting_confirmation" });
+  });
+
+  it("ends with pin_timeout and a notice when no pin comes within 5 minutes", async () => {
+    const { test } = await engineOver({ pin: { never: true } });
+    const view = await propose(test);
+    await test.clock.advance(299_999);
+    await test.engine.checkPins(signal);
+    expect(await stateOf(test, view)).toMatchObject({ state: "quoted" });
+    await test.clock.advance(1);
+    await test.engine.checkPins(signal);
+    expect(await stateOf(test, view)).toMatchObject({
+      state: "failed_check",
+      outcome: { reason: "pin_timeout" },
+    });
+    expect(notices(test)).toContainEqual(
+      expect.objectContaining({
+        key: "notice.launchStopped",
+        values: { symbol: "MCAT", venue: pad, reason: "pin_timeout" },
+      }),
+    );
+    expect(cardsOpened(test)).toStrictEqual([]);
+  });
+
+  it("ends with pin_failed and a notice when the launchpad reports a failed pin", async () => {
+    const { test } = await engineOver({ pin: { failsAfterReads: 2 } });
+    const view = await propose(test);
+    await test.engine.checkPins(signal);
+    expect(await stateOf(test, view)).toMatchObject({
+      state: "failed_check",
+      outcome: { reason: "pin_failed" },
+    });
+    expect(notices(test)).toContainEqual(expect.objectContaining({ key: "notice.launchStopped" }));
   });
 });
 
@@ -194,5 +267,18 @@ describe("a token launch refused before any upload", () => {
       ok: false,
       error: "quote.no_route",
     });
+  });
+});
+
+describe("a token launch's card", () => {
+  it("is confirmed by the owner's tap and handed to the executor", async () => {
+    const { test } = await engineOver();
+    const view = await propose(test);
+    const card = cardOf(view);
+    const confirmed = await test.engine.handlers["intent/confirm"](
+      testCall({ intent: view.intent, card, cardVersion: 1 }, testCallers.cli),
+    );
+    expect(confirmed).toMatchObject({ ok: true, value: { state: "confirmed" } });
+    expect(test.executor.taken()).toContain(view.intent);
   });
 });

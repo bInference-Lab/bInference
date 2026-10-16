@@ -1,14 +1,10 @@
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
-import {
-  createMoneyPath,
-  type MoneyPath,
-  type MoneyPathOptions,
-} from "../money-path/create-money-path.js";
+import { createMoneyPath, type MoneyPathOptions } from "../money-path/create-money-path.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { LaunchRouting } from "../money-path/launch-routing.js";
-import { withLaunches } from "../money-path/launching-money-path.js";
+import { type LaunchingMoneyPath, withLaunches } from "../money-path/launching-money-path.js";
 import type { LaunchPathOptions } from "../money-path/resolve-launch.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
@@ -43,7 +39,7 @@ export function moneyPathOf(
     readonly lowGas: LowGasAlerts;
     readonly gate: CapGate;
   },
-): MoneyPath {
+): LaunchingMoneyPath {
   const { stores, custody, host, chains, clock, ids, isLocked } = options;
   const { stored, paper, launches, execute, lowGas, gate } = parts;
   const path: MoneyPathOptions = {

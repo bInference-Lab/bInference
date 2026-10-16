@@ -29,6 +29,7 @@ import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handler
 import type { MarketParts } from "../market/market-handlers.js";
 import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { LaunchRouting } from "../money-path/launch-routing.js";
+import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
 import {
   createVenueQuoteSource,
@@ -151,6 +152,13 @@ export interface Engine {
    * price watchers call it with each price; it answers once the fills it started ended.
    */
   readonly seePrice: OrderTriggers["see"];
+  /**
+   * Asks the launchpad of each live token launch waiting in `quoted` whether it pinned the
+   * launch's words and picture (decision 0234): a pinned launch goes on to its card, a failed pin
+   * or the end of the pin wait ends it with a notice. A timer of the composition root calls it
+   * every 3 seconds, locked or not: it signs nothing. Answers how many launches it moved.
+   */
+  readonly checkPins: (options: { readonly signal: AbortSignal }) => Promise<number>;
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -287,6 +295,7 @@ interface IntentParts {
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
   readonly cardTimer: CardTimerParts;
+  readonly moneyPath: LaunchingMoneyPath;
 }
 
 // What sends a live trade on a launch's own contracts to the agent's launch wallet (decision 0217).
@@ -323,7 +332,7 @@ function intentParts(
   const cardTimer = cardTimerOf(options, { confirmations, orders });
   const fills = orderFillsOf(options, { stored, moneyPath, gate, holdings: paper.holdings });
   const triggers = createOrderTriggers({ orders: stores.orders, fills, clock });
-  return { answer, stored, orders, fills, triggers, handlers, lowGas, cardTimer };
+  return { answer, stored, orders, fills, triggers, handlers, lowGas, cardTimer, moneyPath };
 }
 
 // What the rescue address, the address book and the settings operations each read and push.
@@ -400,6 +409,7 @@ export function createEngineWithFills(given: EngineOptions): {
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
     runSchedules: async ({ signal }) => chat.schedules.run({ signal }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
+    checkPins: async (call) => intents.moneyPath.followPins(call),
   };
   return { engine, fillOrder: async (request, call) => intents.fills.run(request, call) };
 }

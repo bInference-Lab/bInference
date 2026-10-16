@@ -27,9 +27,12 @@ async function through(
   return moved.record.state === first.to ? through(advance, moved, rest) : moved;
 }
 
-// The auto test runs on facts that let nothing through without a card: such an intent's kind
-// never passes it (spec 6, section 5).
-function authorizationOf(
+/**
+ * The authorization check of an intent whose kind never passes the auto test (spec 6, section 5),
+ * such as an unfreeze, an auto order's card or a token launch: its facts let nothing through
+ * without a card, and the card says why auto mode asks when the agent is in auto mode.
+ */
+export function cardOnlyAuthorization(
   settings: AgentSettings,
   engine: { readonly isLocked: boolean },
 ): IntentTrigger<"authorization_checked"> {
@@ -83,6 +86,6 @@ export async function openCardUnchecked(
   if (simulated.record.state !== "simulated") {
     return simulated;
   }
-  const trigger = authorizationOf(simulated.settings, run);
+  const trigger = cardOnlyAuthorization(simulated.settings, run);
   return advanceIntent(advance, simulated, { trigger });
 }

@@ -196,6 +196,10 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.confirmationLapsed": { key: "notice.confirmationLapsed", values: {} },
   "notice.feeAboveCap": { key: "notice.feeAboveCap", values: {} },
   "notice.launchUnsent": { key: "notice.launchUnsent", values: { reason: "launch_moved" } },
+  "notice.launchStopped": {
+    key: "notice.launchStopped",
+    values: { symbol: "MCAT", venue: "flap", reason: "pin_timeout" },
+  },
   "notice.stepUnsent": { key: "notice.stepUnsent", values: {} },
   "notice.stepDropped": { key: "notice.stepDropped", values: {} },
   "notice.stepDroppedPartWay": { key: "notice.stepDroppedPartWay", values: {} },

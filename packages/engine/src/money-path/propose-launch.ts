@@ -13,6 +13,7 @@ import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import { minOutFloor } from "../venues/build-checks.js";
 import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
+import { followLaunchPin } from "./follow-launch-pin.js";
 import { launchImageOf } from "./launch-image.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import {
@@ -213,7 +214,8 @@ async function runLaunch(run: LaunchRun, proposed: IntentSnapshot): Promise<Inte
   if (!quote.ok) {
     return failQuote(run, checked, quote.error);
   }
-  return upload(run, { checked, quote: quote.value, pass: verdict.value });
+  const quoted = await upload(run, { checked, quote: quote.value, pass: verdict.value });
+  return quoted.record.state === "quoted" ? followLaunchPin(options, quoted, signal) : quoted;
 }
 
 /**
