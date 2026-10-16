@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191) and [0208](../DECISIONS.md#d0208);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208) and [0224](../DECISIONS.md#d0224);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -54,8 +54,10 @@ From lowest to highest; a higher layer replaces a lower one key by key:
 2. The file.
 3. Environment variables: `BINFERENCE_` plus the key path in capitals, with `__` between segments.
    `BINFERENCE_ENGINE__PORT=7460` sets `engine.port`. Arrays and objects take JSON:
-   `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`. `BINFERENCE_HOME` and `BINFERENCE_MCP_TOKEN` (an
-   MCP session's secret, [decision 0159](../DECISIONS.md#d0159)) are not config keys.
+   `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`. `BINFERENCE_HOME`, `BINFERENCE_MCP_TOKEN` (an
+   MCP session's secret, [decision 0159](../DECISIONS.md#d0159)) and every `BINFERENCE_INIT_*`
+   variable (an answer of `binference init`, [decision 0224](../DECISIONS.md#d0224)) are not
+   config keys.
 4. CLI flags: `--set engine.port=7460`, repeatable.
 
 `binference config show` prints the merged result and the layer each value came from, with secrets

@@ -165,6 +165,8 @@
   "refused.engineRunning": "binference 正在 {folder} 上运行。请先停止它，然后运行 `binference init`。",
   "refused.storeDamaged": "数据库 {file} 未通过完整性检查。请恢复一份备份，然后再次运行 `binference init`。",
   "refused.needsFlag": "在没有终端或使用了 --yes 或 --json 时，binference init 不会提问。请提供 {flag}。",
+  "refused.unknownVariable": "{variable} 不能回答 binference init 的任何问题。请删除它或修正名称：每个 BINFERENCE_INIT_ 变量都是 `binference init --help` 中某个选项的大写形式，例如 BINFERENCE_INIT_PRIVY_APP_ID。",
+  "refused.badAnswer": "{name} 的值 binference init 不接受。运行 `binference init --help` 查看它接受的值。",
   "refused.badSource": "{flag} 不是密钥来源。请按 config.json5 的写法，使用 fromEnv、fromFile、fromKeychain 或 fromCommand。",
   "refused.sourceUnavailable": "无法读取 {flag} 指定的密钥：{reason, select, not_set {该环境变量未设置} not_found {那里没有内容} empty {内容为空} timeout {程序在 10 秒内没有输出} other {程序运行失败}}。请修复后再次运行 `binference init`。",
   "refused.badAppId": "{flag} 不是 Privy 应用 ID。请从 Privy 控制面板的 App settings 中复制。",

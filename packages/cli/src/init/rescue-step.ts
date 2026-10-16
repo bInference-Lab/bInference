@@ -2,6 +2,7 @@ import type { AccountRef } from "@binference/chain";
 import { evmAccountRef, evmChainOf, parseEvmAddress } from "@binference/chain-evm";
 import { bsc } from "@binference/chains";
 import { ok } from "@binference/core";
+import { flagLabel } from "./answer-label.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 
 /** The owner's rescue address: as the ceiling names it, and as the engine keeps it. */
@@ -33,7 +34,7 @@ export async function takeRescueAddress(context: InitContext): Promise<InitStep<
   if (given !== undefined) {
     const rescue = rescueAddressOf(given);
     return rescue === undefined
-      ? refused("init.bad_rescue", "refused.badRescue", { flag: "--rescue" })
+      ? refused("init.bad_rescue", "refused.badRescue", { flag: flagLabel(context, "--rescue") })
       : ok(rescue);
   }
   if (!context.isInteractive) {
@@ -49,6 +50,6 @@ export async function takeRescueAddress(context: InitContext): Promise<InitStep<
   });
   const rescue = rescueAddressOf(typed);
   return rescue === undefined
-    ? refused("init.bad_rescue", "refused.badRescue", { flag: "--rescue" })
+    ? refused("init.bad_rescue", "refused.badRescue", { flag: flagLabel(context, "--rescue") })
     : ok(rescue);
 }

@@ -249,6 +249,7 @@
   "option.model": "The model's ID at the provider",
   "option.modelKey": "The provider key's source, written as in config.json5",
   "option.acceptDisclaimer": "With nobody at the terminal: print the disclaimer and the privacy statement in full, and accept them",
+  "help.initAnswers": "Each answer comes from its flag first, then its BINFERENCE_INIT_ variable (the flag's name in capitals, such as BINFERENCE_INIT_PRIVY_APP_ID). A secret is always a secret source, such as {example}, never the secret itself.",
   "option.setInit": "Set a config key in the file init writes, written as `key=value`",
   "option.startOver": "Set up a folder set up before again, with a new owner key and a new wallet",
   "option.attach": "Make this machine the signer of the install's wallets with a new agent key and the owner key; the key it replaces signs nothing more",

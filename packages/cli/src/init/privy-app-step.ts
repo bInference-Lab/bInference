@@ -1,5 +1,6 @@
 import { ok, type Result, retry, type Secret } from "@binference/core";
 import { checkPrivyApp } from "@binference/custody-privy";
+import { flagLabel } from "./answer-label.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import { type TakenSecret, takeSecret } from "./take-secret.js";
 
@@ -21,7 +22,9 @@ async function appIdOf(context: InitContext): Promise<InitStep<string>> {
   if (given !== undefined) {
     return appIdPattern.test(given)
       ? ok(given)
-      : refused("init.bad_app_id", "refused.badAppId", { flag: "--privy-app-id" });
+      : refused("init.bad_app_id", "refused.badAppId", {
+          flag: flagLabel(context, "--privy-app-id"),
+        });
   }
   if (!context.isInteractive) {
     return refused("init.needs_flag", "refused.needsFlag", { flag: "--privy-app-id" });

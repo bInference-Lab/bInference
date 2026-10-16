@@ -249,6 +249,7 @@
   "option.model": "模型在服务商处的 ID",
   "option.modelKey": "服务商 API 密钥的密钥来源，按 config.json5 的写法",
   "option.acceptDisclaimer": "终端前无人时：完整显示免责声明和隐私声明，并接受它们",
+  "help.initAnswers": "每个回答先取自对应选项，其次是对应的 BINFERENCE_INIT_ 变量（选项名的大写形式，例如 BINFERENCE_INIT_PRIVY_APP_ID）。密钥始终写成密钥来源，例如 {example}，绝不写密钥本身。",
   "option.setInit": "在 init 写入的文件中设置一个配置项，写作 `key=value`",
   "option.startOver": "用新的所有者密钥和新钱包重新设置一个已设置过的文件夹",
   "option.attach": "用新的 Agent 密钥和所有者密钥让此机器成为该安装各钱包的签名方；被替换的密钥不再能签名",

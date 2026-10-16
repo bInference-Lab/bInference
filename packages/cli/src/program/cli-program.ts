@@ -100,6 +100,9 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     );
 }
 
+// The secret source the help shows; a source names where a secret is kept, never the secret.
+const secretExample = '{ fromEnv: "PRIVY_APP_SECRET" }';
+
 function addInit(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   withCommon(program.command("init").description(message("command.init")), message)
@@ -126,6 +129,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     .option("--start-over", message("option.startOver"))
     .option("--attach", message("option.attach"))
     .option("--restore <file>", message("option.restore"))
+    .addHelpText("after", `\n${message("help.initAnswers", { example: secretExample })}`)
     .action((flags: OptionValues) =>
       choose({ name: "init", options: initFlagsSchema.parse(flags) }),
     );

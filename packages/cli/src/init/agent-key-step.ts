@@ -3,6 +3,7 @@ import { createPassphraseSecretStore } from "@binference/platform";
 import { createAgentKey, openAgentKey, parseAgentKey } from "@binference/signer";
 import type { UnlockMode } from "../config/schema/engine.schema.js";
 import { type CommandSource, commandSourceSchema } from "../config/schema/secret-source.schema.js";
+import { flagLabel } from "./answer-label.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import { secretPlaceOf } from "./secret-places.js";
 import { readFlagSecret, sourceOf } from "./take-secret.js";
@@ -82,7 +83,7 @@ export function unlockCommandOf(
   }
   const source = sourceOf(text, commandSourceSchema);
   return source === undefined
-    ? refused("init.bad_source", "refused.badSource", { flag: commandFlag })
+    ? refused("init.bad_source", "refused.badSource", { flag: flagLabel(context, commandFlag) })
     : ok(source);
 }
 
@@ -99,7 +100,9 @@ async function commandKey(
   const pair = parseAgentKey(printed.value);
   return pair.ok
     ? ok({ publicKey: pair.value.publicKey, isNew: false })
-    : refused("init.agent_key_unreadable", "refused.agentKeyUnreadable", { flag });
+    : refused("init.agent_key_unreadable", "refused.agentKeyUnreadable", {
+        flag: flagLabel(context, flag),
+      });
 }
 
 async function storedKey(context: InitContext, store: SecretStore): Promise<InitStep<AgentKey>> {

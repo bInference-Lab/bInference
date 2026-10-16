@@ -1,5 +1,5 @@
 import { BinferenceError } from "@binference/core";
-import type { Formatter } from "@binference/i18n";
+import type { Formatter, MessageValues } from "@binference/i18n";
 import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
 import { runAddressAdd, runAddressList, runAddressRemove } from "../commands/address-command.js";
@@ -165,7 +165,8 @@ async function run(host: CliHost, chosen: ChosenCommand, formatter: Formatter): 
  */
 export async function runCli(host: CliHost): Promise<ExitCode> {
   const formatter = await cliFormatter(host);
-  const message = (key: string): string => formatter.message(`cli.${key}`);
+  const message = (key: string, values?: MessageValues): string =>
+    formatter.message(`cli.${key}`, values);
   const choice: { chosen?: ChosenCommand } = {};
   const program = buildProgram({
     version: host.version,

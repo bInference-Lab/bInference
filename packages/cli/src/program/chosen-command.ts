@@ -1,3 +1,4 @@
+import type { MessageValues } from "@binference/i18n";
 import type { ProtocolId } from "@binference/protocol";
 import type {
   LabelFlags,
@@ -77,8 +78,8 @@ export type ChosenCommand =
 /** What the program is built from. */
 export interface ProgramOptions {
   readonly version: string;
-  /** A message of the `cli` area in the owner's language. */
-  readonly message: (key: string) => string;
+  /** A message of the `cli` area in the owner's language, with its values. */
+  readonly message: (key: string, values?: MessageValues) => string;
   readonly host: Pick<CliHost, "out" | "err">;
   /** Receives the command commander chose, before it runs. */
   readonly choose: (command: ChosenCommand) => void;

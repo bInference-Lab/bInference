@@ -6,6 +6,7 @@ import type { SecretReader } from "../config/secrets/secret-reader.js";
 import type { InitFlags } from "../program/cli-flags.schema.js";
 import type { CliHost } from "../program/cli-host.js";
 import type { Prompter } from "../term/prompter.js";
+import type { AnswerKey, AnswerOrigin } from "./answer-names.js";
 
 /** What every step of `binference init` runs with. */
 export interface InitContext {
@@ -24,6 +25,8 @@ export interface InitContext {
   readonly dateTime: (epochMs: number) => string;
   /** Reads the secrets that flags name by their sources. */
   readonly secrets: SecretReader;
+  /** Where each answer came from (decision 0224); an answer left out came from a flag or none. */
+  readonly origins: ReadonlyMap<AnswerKey, AnswerOrigin>;
   readonly signal: AbortSignal;
 }
 

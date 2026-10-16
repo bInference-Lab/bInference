@@ -1,6 +1,5 @@
-import { homedir } from "node:os";
 import { BinferenceError, createIdSource } from "@binference/core";
-import type { Formatter, MessageValues } from "@binference/i18n";
+import type { Formatter } from "@binference/i18n";
 import { acquireFileLock, ensurePrivateFolder, readTextFile } from "@binference/platform";
 import type { Locale } from "@binference/protocol";
 import {
@@ -14,8 +13,7 @@ import {
 } from "@binference/store";
 import { type AttachAfterRestore, runAttach } from "../attach/run-attach.js";
 import { runRebuild } from "../attach/run-rebuild.js";
-import { platformOf } from "../compose/engine-locations.js";
-import { createSecretReader } from "../config/secrets/secret-reader.js";
+import { layeredAnswers } from "../init/answer-layers.js";
 import { earlierAnswersOf } from "../init/earlier-answers.js";
 import type { InitStart } from "../init/first-answers.js";
 import type { InitContext, InitRefusal } from "../init/init-context.js";
@@ -28,9 +26,9 @@ import type { CliHost } from "../program/cli-host.js";
 import { type CliOutput, createCliOutput, type ExitCode } from "../program/cli-output.js";
 import { ownerFormatter } from "../program/owner-formatter.js";
 import { systemDefaults } from "../program/system-defaults.js";
-import { createOutputPrompter } from "../term/output-prompter.js";
 import { attachSummary } from "./attach-summary.js";
 import { configIssueMessages } from "./config-issue-messages.js";
+import { initContextOf } from "./init-context-of.js";
 import { finishSetUp, type Report, setupSummary } from "./init-summary.js";
 import { rebuildSummary } from "./rebuild-summary.js";
 import { restoreAndAttach } from "./restore-attach.js";
@@ -175,39 +173,6 @@ async function initOnStores(
   }
 }
 
-/**
- * What the steps of `binference init`, and the restore steps it shares, run with: a person at the
- * terminal unless `--yes`, `--json` or no terminal, the `init` messages in the owner's language,
- * and the secrets the config's sources name.
- */
-export function initContextOf(
-  host: CliHost,
-  output: CliOutput,
-  options: { readonly flags: InitFlags; readonly formatter: Formatter },
-): InitContext {
-  const { flags, formatter } = options;
-  const platform = platformOf(host);
-  const isInteractive = host.prompter !== undefined && !flags.yes && !flags.json;
-  return {
-    host,
-    platform,
-    flags,
-    prompter:
-      isInteractive && host.prompter !== undefined ? host.prompter : createOutputPrompter(output),
-    isInteractive,
-    words: (key: string, values?: MessageValues) => formatter.message(`init.${key}`, values),
-    message: (key: string, values?: MessageValues) => formatter.message(key, values),
-    dateTime: (epochMs: number) => formatter.dateTime(epochMs),
-    secrets: createSecretReader({
-      env: host.env,
-      keychain: platform.keychain,
-      homeDir: host.homeDir ?? homedir(),
-      clock: host.clock,
-    }),
-    signal: new AbortController().signal,
-  };
-}
-
 // Flags that cannot go together, or one that needs another.
 function flagConflictOf(flags: InitFlags): InitRefusal | undefined {
   if (flags.isAttach && flags.isStartOver) {
@@ -249,7 +214,7 @@ function inLanguage(
   const formatter = ownerFormatter({ locale, timezone });
   const output = createCliOutput({ host, formatter, isJson: report.isJson });
   return {
-    context: initContextOf(host, output, { flags, formatter }),
+    context: initContextOf(host, output, { flags, formatter, origins: context.origins }),
     report: { output, formatter, isJson: report.isJson },
   };
 }
@@ -308,17 +273,24 @@ async function refusingFaults(
  * once the lock is let go. With `--attach` it makes this machine the signer of the folder's
  * install instead (keys spec, section 6; decision 0140), after restoring a backup into the folder
  * with `--restore` (keys spec, section 7.4). A person at a terminal answers its questions; with
- * `--yes`, `--json` or no terminal, every answer comes from a flag. Exits 0 once the install is
- * set up or attached, 1 when it refused or failed.
+ * `--yes`, `--json` or no terminal, every answer comes from a flag or its `BINFERENCE_INIT_*`
+ * variable (decision 0224). Exits 0 once the install is set up or attached, 1 when it refused or
+ * failed.
  */
 export async function runInitCommand(
   host: CliHost,
   output: CliOutput,
   options: { readonly flags: InitFlags; readonly formatter: Formatter },
 ): Promise<ExitCode> {
-  const { flags, formatter } = options;
-  const first = initContextOf(host, output, options);
-  const firstReport: Report = { output, formatter, isJson: flags.json };
+  const { formatter } = options;
+  const bare = initContextOf(host, output, options);
+  const firstReport: Report = { output, formatter, isJson: options.flags.json };
+  const layered = layeredAnswers(options.flags, host.env);
+  if (!layered.ok) {
+    return refuse(bare, firstReport, layered.refusal);
+  }
+  const { flags, origins } = layered.value;
+  const first = initContextOf(host, output, { flags, formatter, origins });
   const conflict = flagConflictOf(flags);
   if (conflict !== undefined) {
     return refuse(first, firstReport, conflict);

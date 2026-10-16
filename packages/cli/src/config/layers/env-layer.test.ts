@@ -18,6 +18,8 @@ describe("env layer", () => {
       BINFERENCE_NETWORK__NO_PROXY: '["localhost"]',
       BINFERENCE_HOME: "binference-state",
       BINFERENCE_MCP_TOKEN: `bnt_${"s".repeat(43)}`,
+      BINFERENCE_INIT_RESCUE: "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB",
+      BINFERENCE_INIT_ANSWERS: "/srv/binference/answers.json5",
       PATH: "/usr/bin",
     });
     expect(layer.issues).toStrictEqual([]);

@@ -2,6 +2,7 @@ import { BinferenceError, createSecret, ok, type Secret } from "@binference/core
 import JSON5 from "json5";
 import type { z } from "zod";
 import { type SecretSource, secretSourceSchema } from "../config/schema/secret-source.schema.js";
+import { flagLabel } from "./answer-label.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 
 /** A secret init took: its value for the checks, and the source the config names it by. */
@@ -47,7 +48,7 @@ export async function readFlagSecret(
     if (error instanceof BinferenceError && error.code === "config.secret_unavailable") {
       const reason = String(error.details["reason"] ?? "failed");
       return refused("init.source_unavailable", "refused.sourceUnavailable", {
-        flag: spec.flag,
+        flag: flagLabel(context, spec.flag),
         reason,
       });
     }
@@ -66,7 +67,9 @@ export async function takeSecret(
   if (spec.flagText !== undefined) {
     const source = sourceOf(spec.flagText, secretSourceSchema);
     if (source === undefined) {
-      return refused("init.bad_source", "refused.badSource", { flag: spec.flag });
+      return refused("init.bad_source", "refused.badSource", {
+        flag: flagLabel(context, spec.flag),
+      });
     }
     const value = await readFlagSecret(context, spec, source);
     return value.ok ? ok({ value: value.value, source }) : value;

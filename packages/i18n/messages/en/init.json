@@ -165,6 +165,8 @@
   "refused.engineRunning": "binference is running on {folder}. Stop it, then run `binference init`.",
   "refused.storeDamaged": "The database {file} failed its integrity check. Restore a backup, then run `binference init` again.",
   "refused.needsFlag": "binference init asks nothing without a terminal, or with --yes or --json. Give {flag}.",
+  "refused.unknownVariable": "{variable} answers nothing binference init asks. Remove it, or fix its name: each BINFERENCE_INIT_ variable is a flag of `binference init --help` in capitals, such as BINFERENCE_INIT_PRIVY_APP_ID.",
+  "refused.badAnswer": "{name} holds a value binference init does not take. Run `binference init --help` to see what it takes.",
   "refused.badSource": "{flag} is no secret source. Write it as config.json5 writes one, with fromEnv, fromFile, fromKeychain or fromCommand.",
   "refused.sourceUnavailable": "binference cannot read the secret that {flag} names: {reason, select, not_set {the variable is not set} not_found {nothing is there} empty {it is empty} timeout {the program printed nothing within 10 seconds} other {the program failed}}. Fix it, then run `binference init` again.",
   "refused.badAppId": "{flag} is no Privy app ID. Copy it from App settings in the Privy dashboard.",

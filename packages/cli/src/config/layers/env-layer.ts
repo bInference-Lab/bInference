@@ -9,6 +9,16 @@ const prefix = "BINFERENCE_";
 // BINFERENCE_MCP_TOKEN carries an MCP session's secret.
 const reserved: ReadonlySet<string> = new Set(["BINFERENCE_HOME", "BINFERENCE_MCP_TOKEN"]);
 
+/**
+ * The prefix of the variables that answer `binference init` (decision 0224). None is a config
+ * key, so they may stay set for the engine, as in a container.
+ */
+export const initVariablePrefix: string = `${prefix}INIT_`;
+
+function isConfigVariable(name: string): boolean {
+  return name.startsWith(prefix) && !reserved.has(name) && !name.startsWith(initVariablePrefix);
+}
+
 /** The variable segment of a key: `webhookPort` is `WEBHOOK_PORT`. */
 export function envSegment(key: string): string {
   return key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase();
@@ -53,7 +63,8 @@ function walk(root: ConfigNode, segments: readonly string[]): Walk {
 /**
  * Reads the `BINFERENCE_*` variables as a layer: `BINFERENCE_ENGINE__PORT=7460` sets
  * `engine.port`, `__` between segments, and a map's key in lower case. Lists, objects and secret
- * sources take JSON. An empty variable counts as unset; one that names no key is an issue.
+ * sources take JSON. An empty variable counts as unset; one that names no key is an issue. The
+ * `BINFERENCE_INIT_*` variables answer init and are no layer.
  */
 export function readEnvLayer(
   root: ConfigNode,
@@ -61,9 +72,7 @@ export function readEnvLayer(
 ): EnvLayer {
   const entries: LayerEntry[] = [];
   const issues: ConfigIssue[] = [];
-  const names = Object.keys(env)
-    .filter((name) => name.startsWith(prefix) && !reserved.has(name))
-    .toSorted();
+  const names = Object.keys(env).filter(isConfigVariable).toSorted();
   for (const name of names) {
     const text = env[name] ?? "";
     const found = walk(root, name.slice(prefix.length).split("__"));
