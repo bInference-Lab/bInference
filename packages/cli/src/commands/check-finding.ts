@@ -12,7 +12,7 @@ export interface CheckFinding {
   /** The stable check id, such as `permissions.config_file`. */
   readonly check: string;
   readonly level: CheckLevel;
-  /** What a person reads about a warning or a problem; nothing for one that is fine. */
+  /** What a person reads about a warning, a problem or a note; nothing for most that are fine. */
   readonly message?: CliMessage;
   /** The lines that explain it, such as each config issue and its fix. */
   readonly more?: readonly CliMessage[];

@@ -233,4 +233,27 @@ describe("binference check", () => {
       ]);
     },
   );
+
+  it("notes that the main model reads images when the image list names it", slow, async () => {
+    const machine = await machines.create(nowMs);
+    const models = [
+      "  models: {",
+      '    providers: { router: { kind: "binference" } },',
+      '    main: "router/eyes",',
+      '    imageInput: ["router/eyes"],',
+      "  },\n",
+    ].join("\n");
+    await writeTestConfig(machine.folder, models);
+    const provider = createFakeModelProvider();
+    const host = hostWith(machine, ["check"], { env: {}, parts: { http: provider.http } });
+
+    await runCli(host);
+
+    const note = String(messages.en["cli.check.modelImages.reads"]).replace(
+      "{model}",
+      "router/eyes",
+    );
+    expect(host.stdout()).toContain(String(messages.en["cli.check.notes"]));
+    expect(host.stdout()).toContain(note);
+  });
 });

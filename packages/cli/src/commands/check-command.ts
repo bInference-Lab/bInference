@@ -7,6 +7,7 @@ import { accessFindings } from "./access-findings.js";
 import type { CheckFinding } from "./check-finding.js";
 import { configFinding, engineFinding, unlockFinding } from "./install-findings.js";
 import { extraLaunchFinding } from "./launch-wallet-finding.js";
+import { modelImagesFinding } from "./model-images-finding.js";
 import { modelPriceFinding } from "./model-price-finding.js";
 import { modelReachFinding } from "./model-reach-finding.js";
 import { rpcFindings } from "./rpc-keyed-finding.js";
@@ -46,6 +47,11 @@ function printFindings(output: CliOutput, findings: readonly CheckFinding[]): vo
   }
   printSection(output, "check.problems", at("fail"));
   printSection(output, "check.warnings", at("warn"));
+  printSection(
+    output,
+    "check.notes",
+    at("ok").filter((finding) => finding.message !== undefined),
+  );
   const unchecked = at("skip").length;
   if (unchecked > 0) {
     output.say("check.unchecked", { count: unchecked });
@@ -58,7 +64,8 @@ function printFindings(output: CliOutput, findings: readonly CheckFinding[]): vo
  * `permissions.*` (the state folder and the files the specs keep owner-only), `unlock.mode` (a
  * warning in `file` mode, spec 5 section 3), `models.priced` (a warning naming each configured
  * model with no price, runtime spec section 8.3), `models.reachable` (one small live call to the
- * main model, decision 0221), `engine.reachable`, `rpc.keyed` (a warning while live auto orders
+ * main model, decision 0221), `models.images` (where the owner's images go, decision 0228; its
+ * notes print after the warnings), `engine.reachable`, `rpc.keyed` (a warning while live auto orders
  * watch prices over public RPCs only), `rpc.pushed` (a warning while they wait on blocks polled
  * over HTTP, with no `wss:` URL, decision 0209) and `wallets.extra_launch` (a warning naming each
  * extra launch wallet a rebuild adopted, decision 0218). `--fix` makes owner-only every path
@@ -85,6 +92,7 @@ export async function runCheck(
     const unlock = config.config === undefined ? [] : [unlockFinding(config.config, platform)];
     const prices = config.config === undefined ? [] : [modelPriceFinding(config.config)];
     const reach = await modelReachFinding({ host, platform, signal }, config.config);
+    const images = modelImagesFinding(config.config);
     const engine = await engineFinding({ host, platform, signal });
     const rpc = await rpcFindings({ host, platform, signal }, config.config);
     const extra = await extraLaunchFinding({ host, platform, signal });
@@ -94,6 +102,7 @@ export async function runCheck(
       ...unlock,
       ...prices,
       reach,
+      images,
       engine,
       ...rpc,
       extra,
