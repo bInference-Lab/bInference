@@ -7,6 +7,7 @@ import {
   type Venue,
 } from "@binference/chain";
 import {
+  createFakeLauncher,
   createFakeLaunchpad,
   createFakeVenue,
   fakeDraft,
@@ -15,9 +16,10 @@ import {
 } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
 import { defineLaunchpad, defineVenue } from "./define-venue.js";
-import type { BuildRequest, Bps, DecodedEffect } from "./index.js";
+import type { BuildRequest, Bps, DecodedEffect, Launcher, LaunchpadVenue } from "./index.js";
 import {
   curveReaderContract,
+  launcherContract,
   priceReaderContract,
   quoterContract,
   txBuilderContract,
@@ -43,6 +45,15 @@ const effect: DecodedEffect = {
   minOut: request.minOut,
   deadlineMs: request.deadlineMs,
 };
+// The launcher a defined launchpad kept; a test that needs one fails without it.
+function launcherOf(launchpad: LaunchpadVenue): Launcher {
+  const { launcher } = launchpad;
+  if (launcher === undefined) {
+    throw new Error("The launchpad lost its launcher.");
+  }
+  return launcher;
+}
+
 const swap = fakeDraft(wallet, { to: "0x0000000b", value: 1_000n, data: fakeSwapData(effect) });
 
 // The price reads a defined venue keeps, which the suite reads through the venue.
@@ -207,6 +218,60 @@ describe("defineVenue", () => {
     ],
   ])("refuses a declaration with %s", (_case, change) => {
     expect(() => defineVenue({ ...createFakeVenue(), ...change })).toThrow(
+      expect.objectContaining({ code: "plugin.bad_venue" }),
+    );
+  });
+
+  it.each(
+    launcherContract({
+      create: () => {
+        const launchpad = defineLaunchpad(
+          createFakeLaunchpad({ onCurve: [token], launcher: createFakeLauncher() }),
+        );
+        return {
+          launcher: launcherOf(launchpad),
+          launch: {
+            wallet,
+            name: "Moon",
+            symbol: "MOON",
+            pair: coin,
+            firstBuy: { asset: coin, base: 50n },
+            options: {},
+            contracts: { router },
+            image: { contentType: "image/png", bytes: new Uint8Array([137, 80, 78, 71]) },
+          },
+          otherPair: {
+            wallet,
+            name: "Moon",
+            symbol: "MOON",
+            pair: token,
+            options: {},
+            contracts: { router },
+          },
+          other: swap,
+        };
+      },
+    }),
+  )("keeps a launcher that follows the launcher contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("keeps a launchpad's launcher, its settings frozen, and calls it on the definition", async () => {
+    const launcher = createFakeLauncher({
+      launchOptions: [{ name: "taxBps", type: "bps", max: 500, default: 0 }],
+    });
+    const launchpad = defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher }));
+    expect(Object.isFrozen(launchpad.launcher?.launchOptions[0])).toBe(true);
+    await launchpad.launcher?.pinStatus(null, { signal: new AbortController().signal });
+    expect(launcher.statusReads()).toBe(1);
+    expect(defineLaunchpad(createFakeLaunchpad({ onCurve: [token] })).launcher).toBeUndefined();
+  });
+
+  it("refuses a launchpad whose settings are wrong", () => {
+    const launcher = createFakeLauncher({
+      launchOptions: [{ name: "taxBps", type: "bps", max: 20_000 }],
+    });
+    expect(() => defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher }))).toThrow(
       expect.objectContaining({ code: "plugin.bad_venue" }),
     );
   });

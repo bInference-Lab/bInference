@@ -1,5 +1,7 @@
 import {
   type InsiderReader,
+  type Launcher,
+  launchOptionsSchema,
   type LaunchpadVenue,
   type PriceReader,
   type Venue,
@@ -99,17 +101,40 @@ export function defineVenue(definition: Venue): Venue {
   return Object.freeze(venue);
 }
 
+// A launchpad's settings are checked as it loads; its launcher's methods are called on it.
+function launcherOf(launcher: Launcher): Launcher {
+  const options = launchOptionsSchema.safeParse(launcher.launchOptions);
+  if (!options.success) {
+    throw new BinferenceError({
+      code: "plugin.bad_venue",
+      message: `A launchpad's settings are wrong: ${z.prettifyError(options.error)}`,
+    });
+  }
+  const kept: Launcher = {
+    launchOptions: Object.freeze(options.data.map((option) => Object.freeze({ ...option }))),
+    quoteLaunch: async (terms, call) => launcher.quoteLaunch(terms, call),
+    pin: async (request, call) => launcher.pin(request, call),
+    pinStatus: async (pin, call) => launcher.pinStatus(pin, call),
+    buildLaunch: async (request, call) => launcher.buildLaunch(request, call),
+    decodeLaunch: (draft) => launcher.decodeLaunch(draft),
+  };
+  return Object.freeze(kept);
+}
+
 /**
  * Defines a launchpad plugin: a venue that trades the tokens on its bonding curve and reads its
  * curve. It checks and freezes the declaration as {@link defineVenue} does, and keeps `curve`,
  * which must answer from the launchpad's own contracts at the latest block: a token on its curve
- * with the asset the curve trades it against, any other token as off its curve.
+ * with the asset the curve trades it against, any other token as off its curve. A launchpad that
+ * launches tokens keeps its `launcher`, whose declared settings are checked at once.
  */
 export function defineLaunchpad(definition: LaunchpadVenue): LaunchpadVenue {
   const venue = defineVenue(definition);
+  const { launcher } = definition;
   const launchpad: LaunchpadVenue = {
     ...venue,
     curve: async (request, options) => definition.curve(request, options),
+    ...(launcher === undefined ? {} : { launcher: launcherOf(launcher) }),
   };
   return Object.freeze(launchpad);
 }
