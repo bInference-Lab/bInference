@@ -10,7 +10,7 @@ import type { PolicyRejection } from "../intents/intent-reason.js";
 import type { IntentProposerRef } from "../intents/intent-record.js";
 import type { IntentProposer } from "../intents/intent-status.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
-import { createIntentStateMachine, type IntentStateMachine } from "../intents/state-machine.js";
+import type { IntentStateMachine } from "../intents/state-machine.js";
 import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, RiskCheck, Simulator } from "../ports.js";
@@ -21,11 +21,10 @@ import { type ChosenRoute, chooseRoute, type RouteChoiceOptions } from "./choose
 import type { ExecuteConfirmed } from "./execute-confirmed.js";
 import { type PlacedTrade, placeTrade } from "./place-trade.js";
 import { policyFactsOf } from "./policy-facts-of.js";
-import { proposalProblemCode } from "./proposal-problem-code.js";
 import { firstQuoteOf, quotedTradeOf, quoteVenues } from "./quote-venues.js";
 import { type ResolvedProposal, type ResolveOptions, resolveProposal } from "./resolve-proposal.js";
 import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
-import { proposalOf, storeProposed } from "./store-proposed.js";
+import { startProposal, storeProposed } from "./store-proposed.js";
 import { type SwapTrade, swapSubjectOf } from "./swap-trade.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "./token-facts.js";
 import type { Holdings } from "./wallet-facts.js";
@@ -323,13 +322,11 @@ async function propose(
   signal: AbortSignal,
 ): Promise<Result<IntentSnapshot, ProtocolErrorCode>> {
   const { request, proposer, fill } = call;
-  const machine = createIntentStateMachine({ clock: options.clock });
-  const settings = await options.agents.get(request.agent, { signal });
-  const proposal = proposalOf(call, settings);
-  const step = machine.propose(proposal);
-  if (!step.ok || settings === undefined) {
-    return err(step.ok ? "agent.not_found" : proposalProblemCode(step.error));
+  const started = await startProposal(options, call, signal);
+  if (!started.ok) {
+    return started;
   }
+  const { machine, settings, proposal, step } = started.value;
   const { isPaper } = proposal;
   const resolved = await resolveProposal(options, { request, settings, signal, isPaper });
   if (!resolved.ok) {
@@ -342,7 +339,7 @@ async function propose(
   if (!assets.ok) {
     return assets;
   }
-  const intent = { request, proposer, step: step.value, wallet: resolved.value.wallet };
+  const intent = { request, proposer, step, wallet: resolved.value.wallet };
   const created = await storeProposed(options, { ...intent, assets: assets.value }, signal);
   const run = { options, machine, resolved: resolved.value, signal };
   return ok(await runSteps(fill === undefined ? run : { ...run, fill }, created));

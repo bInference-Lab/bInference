@@ -1,11 +1,26 @@
-import { BinferenceError, type Id, type IdSource } from "@binference/core";
-import type { AssetInfos, IntentRequest } from "@binference/protocol";
+import {
+  BinferenceError,
+  type Clock,
+  err,
+  type Id,
+  type IdSource,
+  ok,
+  type Result,
+} from "@binference/core";
+import type { AssetInfos, IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import type { IntentProposal, IntentStep } from "../intents/state-machine.js";
+import {
+  createIntentStateMachine,
+  type IntentProposal,
+  type IntentStateMachine,
+  type IntentStep,
+} from "../intents/state-machine.js";
+import type { AgentStore } from "../ports.js";
 import { agentStatusOf } from "./agent-status-of.js";
 import type { FillProposal } from "./authorize-simulated.js";
 import type { Proposer } from "./create-money-path.js";
+import { proposalProblemCode } from "./proposal-problem-code.js";
 
 /**
  * Stores a proposal the state machine passed as a new intent in `proposed`, under a fresh id, with
@@ -48,7 +63,7 @@ export async function storeProposed(
  * What the state machine checks of a proposal before anything is stored: a fill runs in its order's
  * mode, whatever its agent's mode is now (decision 0195).
  */
-export function proposalOf(
+function proposalOf(
   call: {
     readonly request: IntentRequest;
     readonly proposer: Proposer;
@@ -65,4 +80,36 @@ export function proposalOf(
     agentStatus: agentStatusOf(settings),
     ...(fill === undefined ? {} : { fill: fill.authorization }),
   };
+}
+
+/** A proposal the state machine passed, with its agent's settings and the machine that moves it. */
+export interface StartedProposal {
+  readonly machine: IntentStateMachine;
+  readonly settings: AgentSettings;
+  readonly proposal: IntentProposal;
+  readonly step: IntentStep;
+}
+
+/**
+ * Reads the proposing agent's settings and checks the proposal with a new state machine, before
+ * anything is resolved or stored: an unknown agent is `agent.not_found`, an archived one
+ * `agent.archived`, and a proposer the kind does not take `auth.scope`.
+ */
+export async function startProposal(
+  options: { readonly agents: AgentStore; readonly clock: Clock },
+  call: {
+    readonly request: IntentRequest;
+    readonly proposer: Proposer;
+    readonly fill?: FillProposal;
+  },
+  signal: AbortSignal,
+): Promise<Result<StartedProposal, ProtocolErrorCode>> {
+  const machine = createIntentStateMachine({ clock: options.clock });
+  const settings = await options.agents.get(call.request.agent, { signal });
+  const proposal = proposalOf(call, settings);
+  const step = machine.propose(proposal);
+  if (!step.ok || settings === undefined) {
+    return err(step.ok ? "agent.not_found" : proposalProblemCode(step.error));
+  }
+  return ok({ machine, settings, proposal, step: step.value });
 }
