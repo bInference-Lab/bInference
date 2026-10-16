@@ -71,6 +71,19 @@ export const addInboxMessageTask: StoreTask<
   },
 });
 
+/** One stored message, taken or not, or none. */
+export const getInboxMessageTask: StoreTask<Id<"msg">, AgentInboxMessage | undefined> = defineTask({
+  name: "agentInbox.get",
+  access: "read",
+  input: idSchema("msg"),
+  output: agentInboxMessageSchema.optional(),
+  run(database, id) {
+    const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+    const row = takeFirst(kysely.selectFrom("agent_inbox").selectAll().where("id", "=", id));
+    return row === undefined ? undefined : toAgentInboxMessage(row);
+  },
+});
+
 /** The agent's open session, or none. */
 export const openSessionTask: StoreTask<Id<"agt">, Id<"ses"> | undefined> = defineTask({
   name: "agentInbox.openSession",

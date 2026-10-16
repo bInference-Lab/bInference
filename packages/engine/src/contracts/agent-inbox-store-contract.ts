@@ -94,6 +94,9 @@ async function listsAndTakes(subject: AgentInboxSubject): Promise<void> {
   ]);
   const taken = { ids: [fixtureId("msg", 3), fixtureId("msg", 9)], atMs: 3_000 };
   assert.equal(await agentInbox.take(taken, live()), 1);
+  assert.equal((await agentInbox.get(fixtureId("msg", 3), live()))?.takenAtMs, 3_000);
+  assert.equal((await agentInbox.get(fixtureId("msg", 2), live()))?.createdAtMs, 1_000);
+  assert.equal(await agentInbox.get(fixtureId("msg", 9), live()), undefined);
   assert.equal(await agentInbox.take({ ...taken, atMs: 4_000 }, live()), 0);
   assert.deepEqual(await ids(), [fixtureId("msg", 2), fixtureId("msg", 1)]);
   assert.deepEqual(
@@ -189,6 +192,7 @@ async function refusesAborted(subject: AgentInboxSubject): Promise<void> {
   const { agentInbox, agentId } = subject;
   await assertRefusesAborted(async (options) => agentInbox.add(message(subject, 1), options));
   await assertRefusesAborted(async (options) => agentInbox.openSession(agentId, options));
+  await assertRefusesAborted(async (options) => agentInbox.get(fixtureId("msg", 1), options));
   await assertRefusesAborted(async (options) => agentInbox.untaken({ limit: 1 }, options));
   await assertRefusesAborted(async (options) =>
     agentInbox.take({ ids: [fixtureId("msg", 1)], atMs: 1 }, options),
@@ -201,7 +205,11 @@ export function agentInboxStoreContract(harness: AgentInboxStoreHarness): readon
   const create = async (): Promise<AgentInboxSubject> => harness.create();
   return [
     checkOn("opens a session at the first message and moves it at a clear", create, opensAndClears),
-    checkOn("lists untaken messages oldest first and takes each once", create, listsAndTakes),
+    checkOn(
+      "lists untaken messages oldest first, takes each once and gets one by id",
+      create,
+      listsAndTakes,
+    ),
     checkOn("refuses an owner's message past 200 untaken, never a stop", create, refusesPastTheCap),
     checkOn("refuses an unknown agent and a message id in use", create, refusesUnknownAgentsAndIds),
     checkOn(

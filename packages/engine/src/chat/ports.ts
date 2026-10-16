@@ -30,6 +30,11 @@ export interface AgentInboxStore {
     draft: AgentInboxDraft,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<AgentInboxMessage, "busy" | "not_found">>;
+  /** One stored message, taken or not, or `undefined` for an id the inbox does not hold. */
+  get(
+    id: Id<"msg">,
+    options: { readonly signal: AbortSignal },
+  ): Promise<AgentInboxMessage | undefined>;
   /** The agent's open session, or `undefined` before its first message or for an unknown agent. */
   openSession(
     agent: Id<"agt">,

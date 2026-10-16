@@ -176,6 +176,8 @@ export function createMemoryAgentInboxStore(
       const agent = await options.agents.get(draft.agentId, call);
       return agent === undefined ? err("not_found") : add(rows, structuredClone(draft));
     },
+    get: async (id, call) =>
+      memoryCall(call, () => structuredClone(rows.all().find((stored) => stored.id === id))),
     openSession: async (agent, call) => memoryCall(call, () => rows.sessionOf(agent)),
     untaken: async (query, call) => memoryCall(call, () => untaken(rows, query)),
     take: async (taken, call) =>
