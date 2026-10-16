@@ -1,0 +1,83 @@
+import { z } from "zod";
+
+/**
+ * How a launch setting a launchpad declares is checked and shown: `bps` and `count` are whole
+ * numbers within the option's bounds, `bps` a share of at most 10,000; `flag` is a yes or no;
+ * `choice` one of the option's words; `account` an address on the launch's chain.
+ */
+export const launchOptionTypes = ["bps", "count", "flag", "choice", "account"] as const;
+
+/** The type of a launch setting. */
+export type LaunchOptionType = (typeof launchOptionTypes)[number];
+
+/** A launch setting's value as a request gives it: an account as its address text. */
+export type LaunchOptionValue = number | boolean | string;
+
+/**
+ * One setting a launchpad takes beyond those every launch has, such as a tax on every trade. A
+ * card shows it with the message `launch.option.<name>`, which must exist in every language, and
+ * its value as its type says.
+ */
+export interface LaunchOption {
+  /** Its key in a request's `venueOptions`, in camelCase, such as `taxBps`. */
+  readonly name: string;
+  readonly type: LaunchOptionType;
+  /** The words a `choice` takes; given for a `choice` alone. */
+  readonly choices?: readonly string[];
+  /** The least a `bps` or a `count` takes; 0 when absent. */
+  readonly min?: number;
+  /** The most a `bps` or a `count` takes; 10,000 for a `bps` and no bound for a `count` when absent. */
+  readonly max?: number;
+  /** The value when a request leaves the setting out; absent, every request must give it. */
+  readonly default?: LaunchOptionValue;
+}
+
+const wordSchema = z.string().regex(/^[a-z][a-zA-Z0-9]{0,31}$/);
+
+const isUnique = (values: readonly string[]): boolean => new Set(values).size === values.length;
+
+// The largest whole number a JSON number holds exactly, which bounds a `count`.
+const largestCount = 9_007_199_254_740_991;
+
+// Bounds belong to numbers, words to a choice; a bps share stays within 10,000.
+function isShaped(option: LaunchOption): boolean {
+  const isNumber = option.type === "bps" || option.type === "count";
+  const hasBounds = option.min !== undefined || option.max !== undefined;
+  const isChoice = option.type === "choice";
+  const ceiling = option.type === "bps" ? 10_000 : largestCount;
+  const min = option.min ?? 0;
+  const max = option.max ?? ceiling;
+  return (
+    (isNumber || !hasBounds) &&
+    isChoice === (option.choices !== undefined) &&
+    min <= max &&
+    max <= ceiling
+  );
+}
+
+/**
+ * Checks one launch setting a launchpad declares: a camelCase name of at most 32 characters, words
+ * only for a `choice`, each once, and whole bounds only for a `bps` or a `count`, the least at
+ * most the most. The engine checks the default's value when it hosts the launchpad.
+ */
+export const launchOptionSchema: z.ZodType<LaunchOption> = z
+  .strictObject({
+    name: wordSchema,
+    type: z.enum(launchOptionTypes),
+    choices: z
+      .array(wordSchema)
+      .min(1)
+      .refine(isUnique, { message: "A choice repeats." })
+      .exactOptional(),
+    min: z.int().nonnegative().exactOptional(),
+    max: z.int().nonnegative().exactOptional(),
+    default: z.union([z.number(), z.boolean(), z.string()]).exactOptional(),
+  })
+  .refine(isShaped, { message: "Bounds or choices do not fit the setting's type." });
+
+/** Checks a launchpad's settings: each as {@link launchOptionSchema} says, each name once. */
+export const launchOptionsSchema: z.ZodType<readonly LaunchOption[]> = z
+  .array(launchOptionSchema)
+  .refine((options: readonly LaunchOption[]) => isUnique(options.map((option) => option.name)), {
+    message: "A setting's name repeats.",
+  });

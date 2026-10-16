@@ -127,6 +127,12 @@ export type {
 export type { BuildRequest } from "./venues/build-request.js";
 export { decodedEffectSchema } from "./venues/decoded-effect.js";
 export type { DecodedEffect, DecodedEffectWire } from "./venues/decoded-effect.js";
+export {
+  launchOptionSchema,
+  launchOptionsSchema,
+  launchOptionTypes,
+} from "./venues/launch-option.js";
+export type { LaunchOption, LaunchOptionType, LaunchOptionValue } from "./venues/launch-option.js";
 export type {
   CurveReader,
   InsiderReader,
