@@ -1,6 +1,6 @@
 # 0217. A launch wallet trades on launch contracts under a ceiling of its own
 
-Status: Accepted
+Status: Amended by 0218
 
 Accepted by the owner on 2026-10-15.
 

@@ -1,6 +1,6 @@
 # 0216. A tax refusal names the token's tax, the pool fee, or both
 
-Status: Accepted
+Status: Amended by 0219
 
 Accepted by the owner on 2026-10-15.
 
