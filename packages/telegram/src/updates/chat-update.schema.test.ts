@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { ownerId, photoUpdate, pressUpdate, textUpdate } from "../testing/update-fixtures.js";
 import { chatUpdateSchema } from "./chat-update.schema.js";
 
+// A message with a document of this MIME type, as Telegram sends an uncompressed image.
+function documentUpdate(mimeType: string) {
+  return {
+    update_id: 15,
+    message: {
+      message_id: 515,
+      date: 1_760_000_000,
+      chat: { id: ownerId, type: "private" },
+      from: { id: ownerId, is_bot: false, first_name: "Fixture" },
+      caption: "the full chart",
+      document: { file_id: "BQACdoc1", file_unique_id: "u1", mime_type: mimeType, file_size: 900 },
+    },
+  };
+}
+
 describe("chatUpdateSchema", () => {
   it("reads a private text message into a chat post", () => {
     const update = textUpdate({ updateId: 7, from: ownerId, text: "hi", languageCode: "zh-hans" });
@@ -71,6 +86,14 @@ describe("chatUpdateSchema", () => {
     const update = photoUpdate({ updateId: 14, from: ownerId, fileId: "AgACphoto2" });
     expect(chatUpdateSchema.parse(update)).toMatchObject({ photo: { fileId: "AgACphoto2" } });
     expect(chatUpdateSchema.parse(update)).not.toHaveProperty("photo.sizeBytes");
+  });
+
+  it("reads a PNG, JPEG or WebP document as a photo, and no other document", () => {
+    expect(chatUpdateSchema.parse(documentUpdate("image/webp"))).toMatchObject({
+      text: "the full chart",
+      photo: { fileId: "BQACdoc1", sizeBytes: 900 },
+    });
+    expect(chatUpdateSchema.parse(documentUpdate("application/pdf"))).not.toHaveProperty("photo");
   });
 
   it("reads a button press with the chat its message sits in", () => {

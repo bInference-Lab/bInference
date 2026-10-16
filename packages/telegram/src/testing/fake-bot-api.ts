@@ -10,6 +10,7 @@ import {
   type SentText,
 } from "./fake-chat.js";
 import { createFakeMenus, type FakeMenu, type FakeMenus } from "./fake-commands.js";
+import { createFakeFiles, type FakeFile, type FakeFiles } from "./fake-files.js";
 import type { FakeTopic } from "./fake-topics.js";
 import { downloadOverFetch, httpOverFetch } from "./fetch-http.js";
 
@@ -79,6 +80,10 @@ export interface FakeBotApi {
   readonly http: Http;
   /** The same Bot API's file downloads, as binference's outbound HTTP reaches them. */
   readonly download: HttpDownload;
+  /** Holds a file the bot may read with `getFile` and download, as a photo the owner sent. */
+  addFile(fileId: string, file: FakeFile): void;
+  /** How many file downloads came in. */
+  downloads(): number;
   /** Adds updates Telegram holds until a `getUpdates` offset passes them. */
   push(...updates: readonly JsonValue[]): void;
   /** Presses a button: pushes the `callback_query` update and returns it. */
@@ -130,6 +135,7 @@ interface State {
   readonly calls: FakeCall[];
   readonly chats: FakeChats;
   readonly menus: FakeMenus;
+  readonly files: FakeFiles;
 }
 
 const pollSchema = z.looseObject({ offset: z.int().optional(), limit: z.int().optional() });
@@ -201,6 +207,14 @@ interface FakeRequest {
   readonly signal: Signal;
 }
 
+// The calls the fake answers outside its chats: the command menus and the files.
+function ownCallOf(state: State, method: string) {
+  if (method === "setMyCommands") {
+    return (body: string) => state.menus.setMyCommands(body);
+  }
+  return method === "getFile" ? (body: string) => state.files.getFile(body) : undefined;
+}
+
 async function serve(state: State, request: FakeRequest): Promise<Response> {
   const { call, body } = request;
   if (call.method === "getUpdates") {
@@ -209,10 +223,7 @@ async function serve(state: State, request: FakeRequest): Promise<Response> {
   if (call.method === "getMe") {
     return answer(state.user);
   }
-  const chatCall =
-    call.method === "setMyCommands"
-      ? (menuBody: string) => state.menus.setMyCommands(menuBody)
-      : state.chats.calls[call.method];
+  const chatCall = ownCallOf(state, call.method) ?? state.chats.calls[call.method];
   const result = chatCall?.(body);
   if (result === undefined) {
     return refuse({ status: 404, description: "Not Found: method not found" });
@@ -234,8 +245,17 @@ function networkError(url: string, code: string): Error {
   return Object.assign(new Error(`request to ${url} failed, reason: ${code}`), { code });
 }
 
+// A file's download, `/file/bot<token>/<path>`, which only the bot's own token opens.
+const filePath = /^\/file\/bot([^/]+)\/(.+)$/u;
+
 function fetchOf(state: State): Fetch {
   return async (input, init) => {
+    const file = filePath.exec(new URL(urlOf(input)).pathname);
+    if (file !== null) {
+      return file[1] === fakeBotToken && file[2] !== undefined
+        ? state.files.download(file[2])
+        : new Response("", { status: 404 });
+    }
     const request = requestOf(input, init);
     state.calls.push(request.call);
     const failure = takeFailure(state, request.call);
@@ -279,6 +299,16 @@ async function idleOf(state: State): Promise<void> {
   });
 }
 
+// The files the bot may read, as a test adds them, and the downloads that came in.
+function filesOf(state: State): Pick<FakeBotApi, "addFile" | "downloads"> {
+  return {
+    addFile: (fileId, file) => {
+      state.files.add(fileId, file);
+    },
+    downloads: () => state.files.downloads(),
+  };
+}
+
 // The fetch grammY calls, and binference's outbound HTTP over it.
 function transportsOver(fetch: Fetch): Pick<FakeBotApi, "fetch" | "http" | "download"> {
   return { fetch, http: httpOverFetch(fetch), download: downloadOverFetch(fetch) };
@@ -303,6 +333,7 @@ export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
     calls: [],
     chats,
     menus: createFakeMenus(),
+    files: createFakeFiles(),
   };
   let presses = 0;
   const push = (...updates: readonly JsonValue[]): void => {
@@ -312,9 +343,8 @@ export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
       wake();
     }
   };
-  const fetch = fetchOf(state);
   return {
-    ...transportsOver(fetch),
+    ...transportsOver(fetchOf(state)),
     push,
     press: (press) => {
       presses += 1;
@@ -334,6 +364,7 @@ export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
       chats.deleteTopic(chatId, threadId);
     },
     calls: () => [...state.calls],
+    ...filesOf(state),
     failNext: (method, failure, target) => {
       state.failures.push({ method, failure, ...target });
     },

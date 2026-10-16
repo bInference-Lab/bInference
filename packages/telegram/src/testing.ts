@@ -10,6 +10,7 @@ export type { OwnerCallsHarness, OwnerCallsSubject } from "./contracts/owner-cal
 export { createFakeCardAnswers } from "./fakes/fake-card-answers.js";
 export type { FakeCardAnswers, FakeCardAnswersOptions } from "./fakes/fake-card-answers.js";
 export { createFakeBotApi, fakeBotToken, fakeBotUsername } from "./testing/fake-bot-api.js";
+export type { FakeFile } from "./testing/fake-files.js";
 export type {
   FakeBotApi,
   FakeBotOptions,

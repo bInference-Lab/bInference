@@ -8,7 +8,10 @@ export interface BotSender {
   readonly languageCode?: string;
 }
 
-/** A photo in a message: its largest size, as Telegram keeps it. */
+/**
+ * A photo in a message: its largest size, as Telegram keeps it, or a PNG, JPEG or WebP the owner
+ * sent as a document.
+ */
 export interface PostedPhoto {
   /** The id the bot downloads the photo by; it works only for this bot. */
   readonly fileId: string;
@@ -35,7 +38,7 @@ export interface ChatPost {
   readonly isForwarded: boolean;
   /** The text, or a media message's caption. */
   readonly text?: string;
-  /** The photo of a photo message. */
+  /** The photo of a photo message, or the image of an image document. */
   readonly photo?: PostedPhoto;
   /** The album the message is one part of; Telegram sends each photo of an album on its own. */
   readonly albumId?: string;
@@ -80,6 +83,12 @@ const rawPhotoSizeSchema = z.looseObject({
   file_size: z.int().nonnegative().optional(),
 });
 
+const rawDocumentSchema = z.looseObject({
+  file_id: z.string().min(1),
+  mime_type: z.string().optional(),
+  file_size: z.int().nonnegative().optional(),
+});
+
 const rawPostSchema = z.looseObject({
   message_id: z.int(),
   chat: rawChatSchema,
@@ -92,6 +101,7 @@ const rawPostSchema = z.looseObject({
   text: z.string().optional(),
   caption: z.string().optional(),
   photo: z.array(rawPhotoSizeSchema).min(1).optional(),
+  document: rawDocumentSchema.optional(),
   media_group_id: z.string().optional(),
 });
 
@@ -135,9 +145,21 @@ function photoOf(sizes: RawPost["photo"]): PostedPhoto | undefined {
   return { fileId: largest.file_id, ...(sizeBytes === undefined ? {} : { sizeBytes }) };
 }
 
+// The image types the agent reads (protocol spec, section 7.7): a document of one of them is read
+// as a photo is, since Telegram sends an uncompressed image as a document.
+const imageTypes: ReadonlySet<string> = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+function imageDocumentOf(document: RawPost["document"]): PostedPhoto | undefined {
+  if (document?.mime_type === undefined || !imageTypes.has(document.mime_type)) {
+    return undefined;
+  }
+  const sizeBytes = document.file_size;
+  return { fileId: document.file_id, ...(sizeBytes === undefined ? {} : { sizeBytes }) };
+}
+
 function postOf(kind: ChatPost["kind"], updateId: number, raw: RawPost): ChatPost {
   const text = raw.text ?? raw.caption;
-  const photo = photoOf(raw.photo);
+  const photo = photoOf(raw.photo) ?? imageDocumentOf(raw.document);
   return {
     kind,
     updateId,
