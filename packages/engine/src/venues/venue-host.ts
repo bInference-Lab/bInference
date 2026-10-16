@@ -25,7 +25,7 @@ import {
 } from "./build-checks.js";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { frozenAmount, frozenQuote, nativeAssetOf } from "./host-terms.js";
-import { type HostedVenue, hostVenues } from "./hosted-venue.js";
+import { type HostedVenue, hostVenues, launchCallsOf } from "./hosted-venue.js";
 import { contractsWithLaunch, type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
 import { readInsiders } from "./read-insiders.js";
@@ -158,6 +158,12 @@ export interface VenueHost {
    * ceiling can list them, so its live trades need a launch wallet of their own.
    */
   hasLaunchContracts(venue: string): boolean;
+  /**
+   * The JSON ABI entry of each call the venue declares on the contracts each launch has, on any
+   * chain, or every hosted venue's when `venue` is absent: a launch wallet's ceiling must allow
+   * each (decision 0218). None for a venue the host does not hold.
+   */
+  launchCalls(venue?: string): HostedVenue["launchCalls"];
 }
 
 /** What the host is made from. */
@@ -398,6 +404,7 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
       const names = [...(venues.get(venue)?.launchNames.values() ?? [])];
       return names.some((declared) => declared.size > 0);
     },
+    launchCalls: (venue) => launchCallsOf(venues, venue),
   };
   return host;
 }

@@ -7,7 +7,7 @@ import {
   type VenueContracts,
   venueDeclarationSchema,
 } from "@binference/chain";
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, type JsonValue } from "@binference/core";
 import { z } from "zod";
 
 /** A venue the host holds, with its declared contracts read from the chain registry. */
@@ -22,6 +22,8 @@ export interface HostedVenue {
    * curve read may name their addresses for a token it holds, and under no other name.
    */
   readonly launchNames: ReadonlyMap<ChainRef, ReadonlySet<string>>;
+  /** The JSON ABI entry of each call the venue declares on a launch's own contracts, any chain. */
+  readonly launchCalls: readonly JsonValue[];
 }
 
 function refuse(id: string, problem: string): BinferenceError {
@@ -76,11 +78,17 @@ function host(venue: Venue, chains: ChainRegistry): HostedVenue {
         ? []
         : [[declared.chain, new Set(declared.launchContracts)]],
   );
+  const launchCalls = declaration.data.contracts.flatMap((declared) =>
+    (declared.calls ?? [])
+      .filter((call) => declared.launchContracts?.includes(call.contract) === true)
+      .map((call) => call.abi),
+  );
   return {
     venue,
     contracts: new Map(contracts),
     noDeadline: new Set(noDeadline),
     launchNames: new Map(launchNames),
+    launchCalls,
   };
 }
 
@@ -101,4 +109,16 @@ export function hostVenues(
     });
   }
   return hosted;
+}
+
+/**
+ * The JSON ABI entry of each call one hosted venue declares on a launch's own contracts, or every
+ * hosted venue's when `venue` is absent (decision 0218); none for a venue not hosted.
+ */
+export function launchCallsOf(
+  venues: ReadonlyMap<string, HostedVenue>,
+  venue: string | undefined,
+): readonly JsonValue[] {
+  const hosted = venue === undefined ? [...venues.values()] : [venues.get(venue)];
+  return hosted.flatMap((item) => item?.launchCalls ?? []);
 }

@@ -108,6 +108,7 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     custody: options.custody,
     ceilings: options.ceilings,
     maker: options.walletMaker,
+    host: options.host,
     ...(options.exporter === undefined ? {} : { exporter: options.exporter }),
     ...(options.revoker === undefined ? {} : { revoker: options.revoker }),
     journal: stores.configJournal,

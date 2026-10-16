@@ -21,12 +21,15 @@ import {
   resignRescueCeilings,
   settleRescueCeilings,
 } from "../safety/rescue-ceilings.js";
+import type { VenueHost } from "../venues/venue-host.js";
 import { activeAgent } from "./active-agent.js";
 import type { EngineCall } from "./engine-call.js";
 
 /** What making a wallet reads, writes, journals and asks custody through. */
 export interface MakeWalletOptions extends RescueCeilingsOptions {
   readonly maker: WalletMaker;
+  /** The launch calls the install's launchpads declare, which a launch wallet's ceiling allows. */
+  readonly host: Pick<VenueHost, "launchCalls">;
   readonly journal: ConfigJournal;
   readonly ids: IdSource;
 }
@@ -56,6 +59,18 @@ async function recipientsOf(
   return ok([...new Set([rescueAddress, ...waiting, ...saved])]);
 }
 
+// A launch wallet needs a launchpad that declares launch calls, and an agent holds one at most.
+async function launchRefusal(
+  options: MakeWalletOptions,
+  call: EngineCall<"wallet/create">,
+): Promise<ProtocolErrorCode | undefined> {
+  if (options.host.launchCalls().length === 0) {
+    return "wallet.no_launch_calls";
+  }
+  const held = await launchWalletOf(options.install, call.args.agent, { signal: call.signal });
+  return held === undefined ? undefined : "wallet.launch_exists";
+}
+
 async function record(
   options: MakeWalletOptions,
   call: EngineCall<"wallet/create">,
@@ -81,7 +96,8 @@ async function record(
  * pushed as `config/changed`; while a new rescue address waits, the owner key signs its changes
  * again over every ceiling, the new one too. With `launch`, the wallet is the agent's launch wallet,
  * whose ceiling also allows the calls the install's launchpads declare on each launch's own
- * contracts (decision 0217); an agent with a live one already is `wallet.launch_exists`. The owner
+ * contracts (decision 0217); an agent with a live one already is `wallet.launch_exists`, and an
+ * install whose launchpads declare no such call `wallet.no_launch_calls` (decision 0218). The owner
  * key reaches this call over IPC only, as the protocol server keeps it. No rescue address is
  * `rescue.no_address`, a wrong key `wallet.bad_owner_key`; nothing is made then.
  */
@@ -95,8 +111,9 @@ export async function makeWallet(
     return found;
   }
   const isLaunch = args.launch === true;
-  if (isLaunch && (await launchWalletOf(options.install, args.agent, { signal })) !== undefined) {
-    return err("wallet.launch_exists");
+  const refusal = isLaunch ? await launchRefusal(options, call) : undefined;
+  if (refusal !== undefined) {
+    return err(refusal);
   }
   await settleRescueCeilings(options, signal);
   const recipients = await recipientsOf(options, found.value, signal);

@@ -8,7 +8,7 @@ import { priceReaderContract } from "../contracts/price-reader-contract.js";
 import { quoterContract } from "../contracts/quoter-contract.js";
 import type { PriceRead } from "../venues/price-read.js";
 import { fakeCallOf } from "./fake-draft.js";
-import { createFakeLaunchpad, fakePriceAnswer } from "./fake-launchpad.js";
+import { createFakeLaunchpad, fakeLaunchCallAbi, fakePriceAnswer } from "./fake-launchpad.js";
 
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
 const router = accountRefSchema.parse("fake:1:0x0000000d");
@@ -67,7 +67,12 @@ describe("fake launchpad", () => {
   it("names its launch's curve for a held token, and trades and prices through it", async () => {
     const launchpad = createFakeLaunchpad({ onCurve: [token], launchCurve: curve });
     expect(launchpad.contracts).toStrictEqual([
-      { chain: "fake:1", names: ["router"], launchContracts: ["curve"] },
+      {
+        chain: "fake:1",
+        names: ["router"],
+        launchContracts: ["curve"],
+        calls: [{ contract: "curve", abi: fakeLaunchCallAbi, walletInputs: ["recipient"] }],
+      },
     ]);
     await expect(launchpad.curve({ token, contracts }, live)).resolves.toStrictEqual({
       onCurve: true,

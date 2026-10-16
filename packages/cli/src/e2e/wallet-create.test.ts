@@ -1,8 +1,13 @@
 import { accountRefSchema } from "@binference/chain";
+import {
+  createFakeChainDefinition,
+  createFakeLaunchpad,
+  createFakeVenue,
+} from "@binference/chain/testing";
 import { fakeOwnerKeyCode, testAgent, testNowMs } from "@binference/engine/testing";
 import { createFormatter, messages } from "@binference/i18n";
 import { afterEach, describe, expect, it } from "vitest";
-import { skeletonCompositions } from "../compose/test-skeleton.js";
+import { type SkeletonOptions, skeletonCompositions } from "../compose/test-skeleton.js";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter, type ScriptedAnswer } from "../term/scripted-prompter.js";
 import { type ServedSkeleton, serveSkeleton } from "./skeleton-machine.js";
@@ -23,14 +28,34 @@ afterEach(async () => {
   await machines.removeAll();
 });
 
+// The fake chain with a router of the fake launchpad's, so the skeleton can run it.
+function withLaunchpadRouter() {
+  const fake = createFakeChainDefinition();
+  const routers = fake.contracts.map((router) => ({ ...router, venue: "fake-curve" }));
+  return { ...fake, contracts: [...fake.contracts, ...routers] };
+}
+
+// The fake launchpad, whose launches each have a curve with a call its launch wallet may make.
+const launchpads: SkeletonOptions = {
+  venues: [
+    createFakeVenue(),
+    createFakeLaunchpad({ onCurve: [], launchCurve: accountRefSchema.parse("fake:1:0x000000b1") }),
+  ],
+  fakeChain: withLaunchpadRouter(),
+};
+
 // The skeleton on both compositions, with the owner's rescue address in effect unless left out.
-async function servedMachine(name: string, hasRescue = true): Promise<TestMachine> {
+async function servedMachine(
+  name: string,
+  hasRescue = true,
+  options: SkeletonOptions = {},
+): Promise<TestMachine> {
   const composition = skeletonCompositions.find((item) => item.name === name);
   if (composition === undefined) {
     throw new Error(`Expected the ${name} composition.`);
   }
   const machine = await machines.create(testNowMs);
-  const skeleton = await serveSkeleton(machine, composition);
+  const skeleton = await serveSkeleton(machine, composition, options);
   served.push(skeleton);
   if (hasRescue) {
     const address = accountRefSchema.parse("fake:1:0x000000a1");
@@ -85,7 +110,7 @@ describe("binference wallet create --launch", () => {
     "makes the agent's launch wallet, lists it and shows it in the status, once",
     slow,
     async () => {
-      const machine = await servedMachine("self-hosted");
+      const machine = await servedMachine("self-hosted", true, launchpads);
 
       const made = await create(machine, ["--label", "curves", "--launch"], [fakeOwnerKeyCode]);
       const again = await create(machine, ["--label", "more", "--launch"], [fakeOwnerKeyCode]);
@@ -138,5 +163,18 @@ describe("binference wallet create", () => {
     ]);
     const flagged = await runOn(machine, ["wallet", "create", "--label", "x", "--owner-key", "y"]);
     expect([flagged.code, flagged.stderr]).toStrictEqual([1, `${en("usage.invalid")}\n`]);
+  });
+});
+
+describe("binference wallet create --launch without a launchpad", () => {
+  it("makes nothing when no launchpad the install runs declares a launch call", slow, async () => {
+    const machine = await servedMachine("self-hosted");
+
+    const refused = await create(machine, ["--label", "curves", "--launch"], [fakeOwnerKeyCode]);
+
+    expect([refused.code, refused.stderr]).toStrictEqual([
+      2,
+      `${String(messages.en["error.wallet.no_launch_calls"])}\n`,
+    ]);
   });
 });

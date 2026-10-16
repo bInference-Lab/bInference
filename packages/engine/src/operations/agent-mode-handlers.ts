@@ -5,6 +5,7 @@ import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
 import type { LimitsRecord } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { launchWalletOf } from "../install/launch-wallet.js";
+import { launchRefusal } from "../limits/limit-handlers.js";
 import type { AgentStore, ConfigJournal, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { VenueHost } from "../venues/venue-host.js";
@@ -27,7 +28,7 @@ export interface AgentModeHandlersOptions {
   readonly custody: Signer;
   readonly chains: ChainRegistry;
   /** Which venues trade on contracts each launch has, which only a launch wallet may call. */
-  readonly host: Pick<VenueHost, "hasLaunchContracts">;
+  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchCalls">;
   /** The install's wallets, among them the agent's launch wallet. */
   readonly install: Pick<InstallStore, "read">;
   readonly clock: Clock;
@@ -68,19 +69,22 @@ async function isFunded(
   return balances.some((balance) => balance > 0n);
 }
 
-// Whether the agent's venues, in effect or waiting, hold one that trades on a launch's own
-// contracts while the agent has no live launch wallet, which alone may call them (decision 0217).
-async function needsLaunchWallet(
+// Why the agent cannot go live with its venues, in effect or waiting: one trades on a launch's own
+// contracts while the agent has no live launch wallet, which alone may call them (decision 0217),
+// or while that wallet's ceiling lacks one of its launch calls (decision 0218).
+async function launchVenueRefusal(
   options: AgentModeHandlersOptions,
   found: { readonly agent: AgentRecord; readonly limits: LimitsRecord },
   signal: AbortSignal,
-): Promise<boolean> {
+): Promise<ProtocolErrorCode | undefined> {
   const { limits } = found;
-  const venues = [...limits.venues, ...(limits.pending?.values.venues ?? [])];
-  const isUsed = venues.some((venue) => options.host.hasLaunchContracts(venue));
-  return (
-    isUsed && (await launchWalletOf(options.install, found.agent.id, { signal })) === undefined
-  );
+  const named = [...limits.venues, ...(limits.pending?.values.venues ?? [])];
+  const venues = named.filter((venue) => options.host.hasLaunchContracts(venue));
+  if (venues.length === 0) {
+    return undefined;
+  }
+  const launchWallet = await launchWalletOf(options.install, found.agent.id, { signal });
+  return launchRefusal(options, { venues, launchWallet });
 }
 
 // Every mode change is journaled with who made it and where, and announced on the config topic.
@@ -112,8 +116,10 @@ async function switchMode(
     return found.ok ? ok(agentViewOf(found.value.agent)) : found;
   }
   const { agent } = found.value;
-  if (mode === "live" && (await needsLaunchWallet(options, found.value, call.signal))) {
-    return err("limit.needs_launch_wallet");
+  const launchFailure =
+    mode === "live" ? await launchVenueRefusal(options, found.value, call.signal) : undefined;
+  if (launchFailure !== undefined) {
+    return err(launchFailure);
   }
   if (mode === "live" && !(await isFunded(options, agent.id, call.signal))) {
     return err("wallet.unfunded");

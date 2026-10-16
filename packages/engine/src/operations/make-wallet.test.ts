@@ -1,4 +1,5 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
 import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
@@ -8,7 +9,7 @@ import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
-import { startTestEngine, type TestEngine, testCall } from "./test-engine.js";
+import { startTestEngine, type TestEngine, testCall, testChains } from "./test-engine.js";
 
 const live = { signal: new AbortController().signal };
 const owner: AccountRef = accountRefSchema.parse("fake:1:0x000000a1");
@@ -41,10 +42,16 @@ function create(
   );
 }
 
-// The test engine with the owner's rescue address in effect and one live wallet listing it.
-async function withRescue(): Promise<TestEngine> {
+// The test engine with the owner's rescue address in effect and one live wallet listing it,
+// beside a launchpad that declares a call on each launch's own curve, unless left out.
+async function withRescue(options: { readonly launchpads?: false } = {}): Promise<TestEngine> {
+  const launchCurve = accountRefSchema.parse("fake:1:0x000000b1");
+  const pads =
+    options.launchpads === false ? [] : [createFakeLaunchpad({ onCurve: [], launchCurve })];
   const test = await startTestEngine({
     custodyWallets: new Map([[main.id, accountRefSchema.parse("fake:1:0x000000c1")]]),
+    chains: testChains(["fake-curve"]),
+    venues: [createFakeVenue(), ...pads],
   });
   await test.stores.install.changeRescue(
     { address: owner, atMs: testNowMs - 3 * looseningWaitMs },
@@ -159,6 +166,13 @@ describe("making a wallet with the owner key", () => {
     expect(
       listed.items.map((agent) => [agent.defaultWallet?.label, agent.launchWallet?.label]),
     ).toStrictEqual([["main", "spare"]]);
+  });
+
+  it("makes no launch wallet when no launchpad the install runs declares a launch call", async () => {
+    const test = await withRescue({ launchpads: false });
+
+    expect(await create(test, { launch: true })).toStrictEqual(err("wallet.no_launch_calls"));
+    expect(test.walletMaker.count()).toBe(0);
   });
 
   it("makes one launch wallet when two calls race, and custody makes no second", async () => {

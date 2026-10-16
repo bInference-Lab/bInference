@@ -38,6 +38,7 @@
   "wallet.bad_owner_key": "This owner key does not match the wallet. Check that you entered the right one.",
   "wallet.custody_down": "The wallet service is not responding, so nothing was signed. Try again in a minute.",
   "wallet.launch_exists": "This agent has a launch wallet already, and an agent holds one at most. See it with `binference wallet list`.",
+  "wallet.no_launch_calls": "No launchpad this binference runs declares a call on a launch's own contracts, so a launch wallet would allow nothing more than an agent wallet. Enable a launchpad such as Genius.fun in config.json5, then try again.",
   "address.not_found": "This address book entry does not exist or was removed. Check the address book in the console.",
   "address.launch_wallet": "This address is a launch wallet of this binference, and no wallet may pay one: fund a launch wallet from outside, such as from the rescue address's wallet.",
   "rescue.no_address": "Set a rescue address first: run `binference rescue set` with your own wallet's address.",

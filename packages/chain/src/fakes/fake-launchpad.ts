@@ -1,4 +1,11 @@
-import { BinferenceError, err, ok, type Ratio, type Result } from "@binference/core";
+import {
+  BinferenceError,
+  err,
+  type JsonValue,
+  ok,
+  type Ratio,
+  type Result,
+} from "@binference/core";
 import type { AccountRef } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
 import type { CurveHolding } from "../venues/curve-holding.js";
@@ -99,6 +106,21 @@ function priceReadOf(
   return ok({ quoteAsset: curve.quoteAsset, calls, price: fakePriceOf });
 }
 
+/**
+ * The JSON ABI entry of the one call a fake launchpad with a launch curve declares on it, a buy
+ * that pays its `recipient`: a launch wallet's ceiling must hold it (decision 0218).
+ */
+export const fakeLaunchCallAbi: JsonValue = {
+  type: "function",
+  name: "buy",
+  stateMutability: "payable",
+  inputs: [
+    { name: "minOut", type: "uint256" },
+    { name: "recipient", type: "address" },
+  ],
+  outputs: [],
+};
+
 // The fake venue's declaration and build, through the launch's curve when the launchpad has one.
 function launchPartsOf(
   venue: Venue,
@@ -114,6 +136,7 @@ function launchPartsOf(
     contracts: venue.contracts.map((item): VenueContracts => ({
       ...item,
       launchContracts: ["curve"],
+      calls: [{ contract: "curve", abi: fakeLaunchCallAbi, walletInputs: ["recipient"] }],
     })),
     build: async (request, call) =>
       venue.build({ ...request, contracts: { router: curveOf(request.contracts) } }, call),

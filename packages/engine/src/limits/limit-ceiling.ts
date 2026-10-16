@@ -1,5 +1,5 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { Id, JsonValue } from "@binference/core";
+import { type Id, type JsonValue, stableJson } from "@binference/core";
 import type { WalletRecord } from "../install/install-record.js";
 
 /** What a `limit/set` adding venues is checked against: the registry and the wallets. */
@@ -58,5 +58,28 @@ export function venuesOutsideCeiling(check: VenueCheck): readonly string[] {
       const named = contracts.some((address) => mentions(wallet.ceiling.policy, address));
       return contracts.length > 0 && !named;
     }),
+  );
+}
+
+// Every value a mirrored policy holds, at any depth, in canonical text.
+function valuesIn(policy: JsonValue): readonly string[] {
+  return [stableJson(policy), ...valuesOf(policy).flatMap((value) => valuesIn(value))];
+}
+
+/**
+ * The venues among `venues` that declare calls on each launch's own contracts the launch wallet's
+ * ceiling, as last read back from custody, does not allow (decision 0218): its launch rules hold
+ * each such call's JSON ABI entry, and a launchpad installed after the wallet was made has calls
+ * they lack. Only the owner key changes the ceiling, so `limit/set` and `agent/goLive` refuse such
+ * a venue with `limit.over_ceiling`.
+ */
+export function launchVenuesOutsideCeiling(check: {
+  readonly venues: readonly string[];
+  readonly launchWallet: WalletRecord;
+  readonly launchCalls: (venue: string) => readonly JsonValue[];
+}): readonly string[] {
+  const held = new Set(valuesIn(check.launchWallet.ceiling.policy));
+  return check.venues.filter((venue) =>
+    check.launchCalls(venue).some((abi) => !held.has(stableJson(abi))),
   );
 }

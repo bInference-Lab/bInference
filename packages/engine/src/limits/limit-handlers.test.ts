@@ -1,6 +1,6 @@
 import { accountRefSchema, assetRefSchema } from "@binference/chain";
-import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
-import { bpsSchema, err, idSchema } from "@binference/core";
+import { createFakeLaunchpad, createFakeVenue, fakeLaunchCallAbi } from "@binference/chain/testing";
+import { bpsSchema, err, idSchema, type JsonValue } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -107,6 +107,18 @@ async function besideLaunchCurves(mode: "paper" | "live"): Promise<TestEngine> {
   });
   test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: [] } });
   return test;
+}
+
+// The agent's launch wallet, whose stored ceiling holds the policy given.
+function launchWalletWith(policy: JsonValue): WalletRecord {
+  return {
+    ...wallet,
+    id: fixtureId("wal", 77),
+    custodyWalletId: "privy-wallet-launch",
+    address: "0x000000d7",
+    role: "launch",
+    ceiling: { ...wallet.ceiling, policy },
+  };
 }
 
 describe("the limits operation", () => {
@@ -355,17 +367,20 @@ describe("a venue added to the limits", () => {
 
   it("lets a live agent with a launch wallet add a launchpad, after the 24-hour wait", async () => {
     const test = await besideLaunchCurves("live");
-    test.stores.install.addWallet({
-      ...wallet,
-      id: fixtureId("wal", 77),
-      custodyWalletId: "privy-wallet-launch",
-      address: "0x000000d7",
-      role: "launch",
-    });
+    test.stores.install.addWallet(launchWalletWith([{ abi: [fakeLaunchCallAbi] }]));
 
     const set = expectOk(await setLimits(test, { venues: ["fake-curve"] }));
 
     expect(set.pending).toStrictEqual({ changes: { venues: ["fake-curve"] }, effectiveAt });
+  });
+
+  it("refuses a launchpad whose launch calls the launch wallet's ceiling lacks", async () => {
+    const test = await besideLaunchCurves("live");
+    test.stores.install.addWallet(launchWalletWith([]));
+
+    expect(await setLimits(test, { venues: ["fake-curve"] })).toStrictEqual(
+      err("limit.over_ceiling"),
+    );
   });
 
   it("is malformed when the registry holds no contract of it, as is an unknown chain", async () => {

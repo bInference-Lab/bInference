@@ -78,6 +78,7 @@ async function walletList(
     // The wallet list makes no wallet: these parts of `wallet/create` stay untouched.
     ceilings: createFakeCeilingEditor({ clock }),
     maker: createFakeWalletMaker({ clock, chain: chainRefSchema.parse("fake:1"), family: "fake" }),
+    host: { launchCalls: () => [] },
     journal: createMemoryConfigJournal(),
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(1) }),

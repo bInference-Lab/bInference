@@ -44,7 +44,7 @@ export { createFakeSigner } from "./fakes/fake-signer.js";
 export type { FakeSigner } from "./fakes/fake-signer.js";
 export { createFakeSigningScheme, signFake } from "./fakes/fake-signing-scheme.js";
 export { createFakeChainDefinition } from "./fakes/fake-chain.js";
-export { createFakeLaunchpad, fakePriceAnswer } from "./fakes/fake-launchpad.js";
+export { createFakeLaunchpad, fakeLaunchCallAbi, fakePriceAnswer } from "./fakes/fake-launchpad.js";
 export type { FakeLaunchpad, FakeLaunchpadOptions } from "./fakes/fake-launchpad.js";
 export { createFakeVenue, fakeSwapData } from "./fakes/fake-venue.js";
 export type { FakeVenueOptions } from "./fakes/fake-venue.js";

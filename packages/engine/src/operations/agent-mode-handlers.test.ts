@@ -1,6 +1,6 @@
 import { accountRefSchema } from "@binference/chain";
-import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
-import { err, type Id } from "@binference/core";
+import { createFakeLaunchpad, createFakeVenue, fakeLaunchCallAbi } from "@binference/chain/testing";
+import { err, type Id, type JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
@@ -40,6 +40,26 @@ async function modeOf(test: TestEngine): Promise<string | undefined> {
   return (await test.stores.agents.get(testAgent, live))?.agent.mode;
 }
 
+// A paper agent beside a launchpad with launch contracts, and its launch wallet, whose stored
+// ceiling holds the policy given.
+async function withLaunchWallet(policy: JsonValue) {
+  const launchCurve = accountRefSchema.parse("fake:1:0x000000c1");
+  const test = await startTestEngine({
+    chains: testChains(["fake-curve"]),
+    venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })],
+    agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-curve"] } },
+  });
+  const record = testWalletRecord({
+    id: fixtureId("wal", 77),
+    agentId: testAgent,
+    label: "curves",
+    createdAtMs: testNowMs,
+    role: "launch",
+  });
+  test.stores.install.addWallet({ ...record, ceiling: { ...record.ceiling, policy } });
+  return test;
+}
+
 describe("the live switch", () => {
   it("keeps the agent on paper through every operation but agent/goLive", async () => {
     const test = await startTestEngine();
@@ -77,25 +97,22 @@ describe("the live switch", () => {
   });
 
   it("goes live with a venue on a launch's own contracts once it has a launch wallet", async () => {
-    const launchCurve = accountRefSchema.parse("fake:1:0x000000c1");
-    const test = await startTestEngine({
-      chains: testChains(["fake-curve"]),
-      venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })],
-      agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-curve"] } },
-    });
-    test.stores.install.addWallet(
-      testWalletRecord({
-        id: fixtureId("wal", 77),
-        agentId: testAgent,
-        label: "curves",
-        createdAtMs: testNowMs,
-        role: "launch",
-      }),
-    );
+    const test = await withLaunchWallet([{ abi: [fakeLaunchCallAbi] }]);
+
     const view = expectOk(
       await test.engine.handlers["agent/goLive"](testCall({ agent: testAgent })),
     );
+
     expect([view.mode, await modeOf(test)]).toStrictEqual(["live", "live"]);
+  });
+
+  it("stays on paper while the launch wallet's ceiling lacks the venue's launch calls", async () => {
+    const test = await withLaunchWallet([]);
+
+    const refused = await test.engine.handlers["agent/goLive"](testCall({ agent: testAgent }));
+
+    expect(refused).toStrictEqual(err("limit.over_ceiling"));
+    await expect(modeOf(test)).resolves.toBe("paper");
   });
 
   it("refuses to go live before the default wallet holds funds, and stays on paper", async () => {

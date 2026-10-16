@@ -17,6 +17,7 @@ import { z } from "zod";
 import type { AgentMode, AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import type { WalletRecord } from "../install/install-record.js";
 import { launchWalletIn } from "../install/launch-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
@@ -30,7 +31,11 @@ import {
 import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { VenueHost } from "../venues/venue-host.js";
-import { unknownVenues, venuesOutsideCeiling } from "./limit-ceiling.js";
+import {
+  launchVenuesOutsideCeiling,
+  unknownVenues,
+  venuesOutsideCeiling,
+} from "./limit-ceiling.js";
 import { limitNotices } from "./limit-notices.js";
 import { limitChangesOf, limitsViewOf, reservesAsked } from "./limit-views.js";
 
@@ -47,7 +52,7 @@ export interface LimitHandlersOptions {
   /** The wallets, whose ceilings bound the venues an agent may add. */
   readonly install: InstallStore;
   /** Which venues trade on contracts each launch has, which no ceiling can list. */
-  readonly host: Pick<VenueHost, "hasLaunchContracts">;
+  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchCalls">;
   readonly journal: ConfigJournal;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
@@ -159,10 +164,28 @@ async function move(
   return move(options, { call, decide, attemptsLeft: attemptsLeft - 1 });
 }
 
+/**
+ * Why a live agent cannot use venues that trade on a launch's own contracts (decisions 0217 and
+ * 0218): it has no live launch wallet, or that wallet's ceiling lacks one of their launch calls.
+ */
+export function launchRefusal(
+  options: { readonly host: Pick<VenueHost, "launchCalls"> },
+  check: { readonly venues: readonly string[]; readonly launchWallet: WalletRecord | undefined },
+): ProtocolErrorCode | undefined {
+  const { venues, launchWallet } = check;
+  if (launchWallet === undefined) {
+    return "limit.needs_launch_wallet";
+  }
+  const launchCalls = (venue: string) => options.host.launchCalls(venue);
+  const outside = launchVenuesOutsideCeiling({ venues, launchWallet, launchCalls });
+  return outside.length > 0 ? "limit.over_ceiling" : undefined;
+}
+
 // A venue or chain the registry lacks is malformed. A venue that trades on a launch's own
 // contracts needs a launch wallet to trade live, whose ceiling allows the calls of every launchpad
-// the install runs (decision 0217): a live agent without one cannot add it, and a paper agent, or
-// one with a launch wallet, adds it with no other ceiling to check. Any other venue a live
+// the install runs (decision 0217): a live agent without one cannot add it, one whose launch
+// wallet's ceiling lacks its launch calls waits for the owner key (decision 0218), and a paper
+// agent adds it with no ceiling to check. Any other venue a live
 // wallet's ceiling leaves out waits for the owner key, which alone adds it to the ceiling.
 async function refusalOf(
   options: LimitHandlersOptions,
@@ -177,9 +200,12 @@ async function refusalOf(
   }
   const launched = added.filter((venue) => options.host.hasLaunchContracts(venue));
   const { wallets } = await options.install.read({ signal: call.signal });
-  const hasLaunchWallet = launchWalletIn(wallets, call.args.agent) !== undefined;
-  if (launched.length > 0 && agent.mode === "live" && !hasLaunchWallet) {
-    return "limit.needs_launch_wallet";
+  const launchWallet = launchWalletIn(wallets, call.args.agent);
+  if (launched.length > 0 && agent.mode === "live") {
+    const refusal = launchRefusal(options, { venues: launched, launchWallet });
+    if (refusal !== undefined) {
+      return refusal;
+    }
   }
   const ceilinged = added.filter((venue) => !launched.includes(venue));
   if (ceilinged.length === 0) {
