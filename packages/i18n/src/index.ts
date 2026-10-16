@@ -13,6 +13,7 @@ export type {
   SettingLine,
 } from "./limits/limit-lines.js";
 export type { Formatter, FormatterOptions } from "./format/create-formatter.js";
+export { disclaimerVersion, isDisclaimerPhrase } from "./disclaimer.js";
 export { decimalText } from "./format/decimal-text.js";
 export { displayOutsideText } from "./format/outside-text.js";
 export { dayStartOf, monthStartOf, nextDayStartOf } from "./format/owner-day.js";

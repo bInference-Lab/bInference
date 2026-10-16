@@ -120,7 +120,10 @@ export const agentExamples: { readonly [N in keyof AgentOperationShapes]: WireEx
   "agent/create": { args: { name: "Scout", locale: "zh" }, result: agentView },
   "agent/rename": { args: { agent: ids.agent, name: "Scout" }, result: agentView },
   "agent/archive": { args: { agent: ids.agent }, result: empty },
-  "agent/goLive": { args: { agent: ids.agent }, result: { ...agentView, mode: "live" } },
+  "agent/goLive": {
+    args: { agent: ids.agent, disclaimer: 2 },
+    result: { ...agentView, mode: "live" },
+  },
   "agent/goPaper": { args: { agent: ids.agent }, result: agentView },
   "agent/readFile": {
     args: { agent: ids.agent, file: "STRATEGY.md" },

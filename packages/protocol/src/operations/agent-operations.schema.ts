@@ -43,6 +43,14 @@ interface CreateAgentArgs {
   readonly locale?: Locale;
 }
 
+/**
+ * The args of `agent/goLive`: with the version of the disclaimer and privacy statement the owner
+ * accepted by typing its phrase at the caller, when the engine holds no acceptance of it yet.
+ */
+interface GoLiveArgs extends AgentArgs {
+  readonly disclaimer?: number;
+}
+
 /** The args of `agent/rename`. */
 interface RenameAgentArgs extends AgentArgs {
   readonly name: string;
@@ -63,7 +71,7 @@ export interface AgentOperationShapes {
   readonly "agent/create": { readonly args: CreateAgentArgs; readonly result: AgentView };
   readonly "agent/rename": { readonly args: RenameAgentArgs; readonly result: AgentView };
   readonly "agent/archive": { readonly args: AgentArgs; readonly result: Empty };
-  readonly "agent/goLive": { readonly args: AgentArgs; readonly result: AgentView };
+  readonly "agent/goLive": { readonly args: GoLiveArgs; readonly result: AgentView };
   readonly "agent/goPaper": { readonly args: AgentArgs; readonly result: AgentView };
   readonly "agent/readFile": {
     readonly args: FileArgs;
@@ -126,7 +134,10 @@ export const agentOperations: OperationTable<AgentOperationShapes> = {
     ...localWriteFlags,
     name: "agent/goLive",
     scope: "admin",
-    args: agentArgsSchema,
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      disclaimer: z.int().positive().exactOptional(),
+    }),
     result: agentViewSchema,
   },
   "agent/goPaper": {

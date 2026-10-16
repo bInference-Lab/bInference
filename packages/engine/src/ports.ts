@@ -27,6 +27,7 @@ import type {
   IdempotencyRecall,
 } from "./ingress/idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
+import type { DisclaimerStore } from "./install/disclaimer-record.js";
 import type {
   CeilingUpdate,
   CustodyKeyStore,
@@ -106,10 +107,7 @@ export interface MarketData {
  */
 export interface ConfirmationStore {
   /** The intent with its row version and card rules, or `undefined` for an unknown id. */
-  read(
-    intent: Id<"int">,
-    options: { readonly signal: AbortSignal },
-  ): Promise<StoredIntent | undefined>;
+  read(intent: Id<"int">, options: StoreCall): Promise<StoredIntent | undefined>;
   /**
    * Stores one transition and answers the intent as it now stands. A row that moved past the
    * version the write read, an unknown intent, or a second confirmation for one intent changes
@@ -571,9 +569,9 @@ export interface AgentStore {
 
 /**
  * Keeps the install's own facts (database spec, section 2.1): its id, its custody on Privy, the
- * rescue address, and the wallets `binference init` sets up for the first agent.
+ * rescue address, the accepted disclaimer, and the wallets `binference init` sets up.
  */
-export interface InstallStore extends CustodyKeyStore {
+export interface InstallStore extends CustodyKeyStore, DisclaimerStore {
   /**
    * The install's id. The first call stores the proposed id with the time the install began;
    * every later call answers that stored id and ignores the proposal.

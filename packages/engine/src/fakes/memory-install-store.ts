@@ -1,4 +1,5 @@
 import { err, type Id, ok, type Result } from "@binference/core";
+import type { DisclaimerAcceptance } from "../install/disclaimer-record.js";
 import type {
   AgentKeyAttachment,
   CeilingUpdate,
@@ -58,13 +59,14 @@ function withRescue(
   rescue: RescueState,
   ceiling: RescueCeiling | undefined,
 ): InstallState {
-  const { installId, custody, frozenAtMs, wallets } = state;
+  const { installId, custody, frozenAtMs, disclaimer, wallets } = state;
   return {
     ...(installId === undefined ? {} : { installId }),
     ...(custody === undefined ? {} : { custody }),
     ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
     ...rescue,
     ...(ceiling === undefined ? {} : { rescueCeiling: ceiling }),
+    ...(disclaimer === undefined ? {} : { disclaimer }),
     wallets,
   };
 }
@@ -97,12 +99,13 @@ function movedRescue(
 
 // The install's facts as the store holds them, without the id.
 function factsOf(state: InstallState): InstallFacts {
-  const { custody, frozenAtMs, rescueCeiling, wallets } = state;
+  const { custody, frozenAtMs, rescueCeiling, disclaimer, wallets } = state;
   return {
     ...(custody === undefined ? {} : { custody }),
     ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
     ...storedRescue(state),
     ...(rescueCeiling === undefined ? {} : { rescueCeiling }),
+    ...(disclaimer === undefined ? {} : { disclaimer }),
     wallets,
   };
 }
@@ -194,6 +197,12 @@ function withSealKey(state: InstallState, key: SealKeyRecord): Result<InstallSta
     : ok({ ...state, custody: { ...custody, sealKeyPublic: key.sealKeyPublic } });
 }
 
+// The state with the disclaimer accepted, unless it holds that version or a later one.
+function withDisclaimer(state: InstallState, acceptance: DisclaimerAcceptance): InstallState {
+  const held = state.disclaimer?.version ?? 0;
+  return acceptance.version > held ? { ...state, disclaimer: acceptance } : state;
+}
+
 // The state with a wallet added as if a setup had stored it, and with its freeze set or cleared.
 function withAdded(state: InstallState, wallet: WalletRecord): InstallState {
   return { ...state, wallets: inOrder([...state.wallets, wallet]) };
@@ -254,14 +263,7 @@ export function createMemoryInstallStore(): MemoryInstallStore {
     walletNow: (id) => structuredClone(held.state.wallets.find((wallet) => wallet.id === id)),
     read: async (call) => memoryCall(call, () => structuredClone(factsOf(held.state))),
     setUp: async (setup, call) =>
-      memoryCall(call, () => {
-        const next = setUp(held.state, structuredClone(setup));
-        if (!next.ok) {
-          return next;
-        }
-        held.state = next.value;
-        return ok(undefined);
-      }),
+      memoryCall(call, () => written(setUp(held.state, structuredClone(setup)), update)),
     changeRescue: async (change, call) => memoryCall(call, () => rescueChange(write, change)),
     cancelRescueChange: async (atMs, call) =>
       memoryCall(call, () => write({ atMs, decide: (rescue) => cancelRescue(rescue, atMs) })),
@@ -279,5 +281,7 @@ export function createMemoryInstallStore(): MemoryInstallStore {
       ),
     setSealKey: async (key, call) =>
       memoryCall(call, () => written(withSealKey(held.state, structuredClone(key)), update)),
+    acceptDisclaimer: async (acceptance, call) =>
+      memoryCall(call, () => update((state) => withDisclaimer(state, { ...acceptance }))),
   };
 }

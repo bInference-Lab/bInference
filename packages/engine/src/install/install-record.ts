@@ -3,6 +3,7 @@ import { type Id, idSchema, type JsonValue, jsonValueSchema, type Result } from 
 import { z } from "zod";
 import type { RescueState } from "../policy/rescue-change.js";
 import { epochMsSchema, shortTextSchema } from "../records/record-fields.js";
+import { type DisclaimerAcceptance, disclaimerAcceptanceSchema } from "./disclaimer-record.js";
 import { pendingRescueSchema, type RescueCeiling, rescueCeilingSchema } from "./rescue-record.js";
 
 /**
@@ -205,7 +206,7 @@ export const installSetupSchema: z.ZodType<InstallSetup> = z.strictObject({
 
 /**
  * The install as it stands: its custody, its rescue address with a new one that waits, its
- * freeze, and its wallets, oldest first. Read the rescue address in effect through `rescueAt`.
+ * freeze, the disclaimer its owner accepted, and its wallets, oldest first. Read the rescue address in effect through `rescueAt`.
  */
 export interface InstallFacts extends RescueState {
   readonly custody?: CustodyRecord;
@@ -213,6 +214,8 @@ export interface InstallFacts extends RescueState {
   readonly frozenAtMs?: number;
   /** The ceiling changes kept for the new rescue address that waits. */
   readonly rescueCeiling?: RescueCeiling;
+  /** The disclaimer the owner accepted last; none before the owner accepted one. */
+  readonly disclaimer?: DisclaimerAcceptance;
   readonly wallets: readonly WalletRecord[];
 }
 
@@ -223,6 +226,7 @@ export const installFactsSchema: z.ZodType<InstallFacts> = z.strictObject({
   rescueAddress: accountRefSchema.exactOptional(),
   pendingRescue: pendingRescueSchema.exactOptional(),
   rescueCeiling: rescueCeilingSchema.exactOptional(),
+  disclaimer: disclaimerAcceptanceSchema.exactOptional(),
   wallets: z.array(walletRecordSchema),
 });
 

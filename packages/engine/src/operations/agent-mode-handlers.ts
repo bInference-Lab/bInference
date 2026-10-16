@@ -1,5 +1,6 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError, type Clock, err, type Id, ok, type Result } from "@binference/core";
+import { disclaimerVersion } from "@binference/i18n";
 import type { AgentView, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
 import type { LimitsRecord } from "../agents/limits-record.js";
@@ -29,8 +30,11 @@ export interface AgentModeHandlersOptions {
   readonly chains: ChainRegistry;
   /** Which venues trade on contracts each launch has, which only a launch wallet may call. */
   readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchCalls">;
-  /** The install's wallets, among them the agent's launch wallet. */
-  readonly install: Pick<InstallStore, "read">;
+  /**
+   * The install's wallets, among them the agent's launch wallet, and the disclaimer its owner
+   * accepted.
+   */
+  readonly install: Pick<InstallStore, "read" | "acceptDisclaimer">;
   readonly clock: Clock;
   readonly publish: PublishPush;
 }
@@ -85,6 +89,26 @@ async function launchVenueRefusal(
   }
   const launchWallet = await launchWalletOf(options.install, found.agent.id, { signal });
   return launchRefusal(options, { venues, launchWallet });
+}
+
+// The owner accepts the current disclaimer once (decision 0220): a call that carries its version
+// stores the acceptance. Until one is stored every call refuses, an agent live already included,
+// so `binference live` asks for a newer text there too.
+async function disclaimerRefusal(
+  options: AgentModeHandlersOptions,
+  call: EngineCall<"agent/goLive">,
+): Promise<ProtocolErrorCode | undefined> {
+  const { signal } = call;
+  const accepted = (await options.install.read({ signal })).disclaimer?.version ?? 0;
+  if (accepted >= disclaimerVersion) {
+    return undefined;
+  }
+  if (call.args.disclaimer !== disclaimerVersion) {
+    return "agent.disclaimer";
+  }
+  const acceptance = { version: disclaimerVersion, acceptedAtMs: options.clock.now() };
+  await options.install.acceptDisclaimer(acceptance, { signal });
+  return undefined;
 }
 
 // Every mode change is journaled with who made it and where, and announced on the config topic.
@@ -147,17 +171,22 @@ async function switchMode(
 /**
  * Creates the mode switch. `agent/goLive` is the only way an agent goes live: a loosening the
  * protocol server lets only an `admin` caller make over local IPC, such as `binference live`, and
- * only once the agent's default wallet holds funds (`wallet.unfunded` before) and its venues, in
- * effect or waiting, hold none that trades on a launch's own contracts unless it has a live launch
- * wallet (`limit.needs_launch_wallet`, decisions 0212 and 0217). `agent/goPaper`
- * brakes from any surface with `confirm`. Each switch keeps the intents already proposed as they
+ * only once the owner accepted the current disclaimer, before or in the call itself
+ * (`agent.disclaimer` before, decision 0220), the agent's default wallet holds funds
+ * (`wallet.unfunded` before) and its venues, in effect or waiting, hold none that trades on a
+ * launch's own contracts unless it has a live launch wallet (`limit.needs_launch_wallet`,
+ * decisions 0212 and 0217). `agent/goPaper` brakes from any surface with `confirm`. Each switch keeps the intents already proposed as they
  * were stored, so a paper card still fills on paper; it is journaled and announced. Switching to
  * the mode an agent is in changes nothing.
  */
 export function createAgentModeHandlers(options: AgentModeHandlersOptions): AgentModeHandlers {
   return {
-    "agent/goLive": async (call) =>
-      switchMode(options, { call, mode: "live", attemptsLeft: switchAttempts }),
+    "agent/goLive": async (call) => {
+      const refusal = await disclaimerRefusal(options, call);
+      return refusal === undefined
+        ? switchMode(options, { call, mode: "live", attemptsLeft: switchAttempts })
+        : err(refusal);
+    },
     "agent/goPaper": async (call) =>
       switchMode(options, { call, mode: "paper", attemptsLeft: switchAttempts }),
   };

@@ -8,6 +8,7 @@ import {
   testToken as token,
   testWallet as wallet,
 } from "@binference/engine/testing";
+import { disclaimerVersion } from "@binference/i18n";
 import type { PushFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -186,7 +187,8 @@ describe.each(compositions)(
         });
         const stored = await skeleton.parts.stores.agents.get(agent, live());
         expect(stored?.agent.mode).toBe("paper");
-        expect((await client.call("agent/goLive", { agent }, live())).mode).toBe("live");
+        const accepted = { agent, disclaimer: disclaimerVersion };
+        expect((await client.call("agent/goLive", accepted, live())).mode).toBe("live");
 
         const proposed = await client.call("intent/propose", swapRequest, live());
         expect([proposed.paper, proposed.card?.paper]).toStrictEqual([false, false]);

@@ -12,6 +12,7 @@ import {
 import { bsc } from "@binference/chains";
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, type Http, type Id } from "@binference/core";
+import { disclaimerVersion } from "@binference/i18n";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
 import type { IntentView, PortfolioView } from "@binference/protocol";
@@ -218,7 +219,7 @@ describe("binference start on the BSC fork", () => {
       const miner = new AbortController();
       const mining = startMining(fork, miner.signal);
       try {
-        await client.call("agent/goLive", { agent }, call);
+        await client.call("agent/goLive", { agent, disclaimer: disclaimerVersion }, call);
         const live = await settled(client, (await buyUsdt(started, bought)).intent);
         expect(live.state).toBe("reconciled");
       } finally {

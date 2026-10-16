@@ -1,4 +1,5 @@
 import { err, type Id } from "@binference/core";
+import { disclaimerVersion } from "@binference/i18n";
 import type { IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import type { AgentDraft } from "../agents/agent-record.js";
@@ -67,7 +68,11 @@ describe("the rolling 24-hour cap at confirmation", () => {
   it("keeps paper and live apart", async () => {
     const test = await startTestEngine({ agent: capped });
     expect(expectOk(await confirm(test, await propose(test))).state).toBe("paper_filled");
-    expectOk(await test.engine.handlers["agent/goLive"](testCall({ agent: testAgent })));
+    expectOk(
+      await test.engine.handlers["agent/goLive"](
+        testCall({ agent: testAgent, disclaimer: disclaimerVersion }),
+      ),
+    );
     expect(expectOk(await confirm(test, await propose(test))).state).toBe("confirmed");
   });
 

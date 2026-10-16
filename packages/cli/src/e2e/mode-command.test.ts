@@ -144,10 +144,8 @@ describe("going live", () => {
 
     expect(went.code).toBe(0);
     expect(went.prompter.transcript.notes).toStrictEqual([
-      {
-        title: en.message("cli.live.disclaimerTitle", phrase),
-        text: en.message("cli.live.disclaimer", phrase),
-      },
+      { title: en.message("disclaimer.title"), text: en.message("disclaimer.text") },
+      { title: en.message("disclaimer.privacyTitle"), text: en.message("disclaimer.privacy") },
     ]);
     expect(went.prompter.transcript.lines).toStrictEqual([
       en.message("cli.live.wrongPhrase", phrase),

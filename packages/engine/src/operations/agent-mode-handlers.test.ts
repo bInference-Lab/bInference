@@ -1,6 +1,7 @@
 import { accountRefSchema } from "@binference/chain";
 import { createFakeLaunchpad, createFakeVenue, fakeLaunchCallAbi } from "@binference/chain/testing";
 import { err, type Id, type JsonValue } from "@binference/core";
+import { disclaimerVersion } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
@@ -15,6 +16,8 @@ import {
 } from "./test-engine.js";
 
 const live = { signal: new AbortController().signal };
+// The args of `binference live` once the owner typed the disclaimer's phrase.
+const accepted = { agent: testAgent, disclaimer: disclaimerVersion };
 const unknownAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000009" as Id<"agt">;
 // A wallet the custodian holds no account for.
 const unheldWallet = "wal_0190f1c2-3a4b-7c5d-8e6f-000000000009" as Id<"wal">;
@@ -60,6 +63,44 @@ async function withLaunchWallet(policy: JsonValue) {
   return test;
 }
 
+describe("the disclaimer before going live", () => {
+  it("refuses without the owner's acceptance, stores none and stays on paper", async () => {
+    const test = await startTestEngine();
+    const { handlers } = test.engine;
+    const older = { ...accepted, disclaimer: disclaimerVersion - 1 };
+    expect([
+      await handlers["agent/goLive"](testCall({ agent: testAgent })),
+      await handlers["agent/goLive"](testCall(older)),
+    ]).toStrictEqual([err("agent.disclaimer"), err("agent.disclaimer")]);
+    expect((await test.stores.install.read(live)).disclaimer).toBeUndefined();
+    await expect(modeOf(test)).resolves.toBe("paper");
+  });
+
+  it("stores the version accepted in the call, and asks for it no more", async () => {
+    const test = await startTestEngine();
+    const { handlers } = test.engine;
+    await test.clock.advance(5_000);
+    expectOk(await handlers["agent/goLive"](testCall(accepted)));
+    expectOk(await handlers["agent/goPaper"](testCall({ agent: testAgent })));
+    expectOk(await handlers["agent/goLive"](testCall({ agent: testAgent })));
+    expect((await test.stores.install.read(live)).disclaimer).toStrictEqual({
+      version: disclaimerVersion,
+      acceptedAtMs: testNowMs + 5_000,
+    });
+    await expect(modeOf(test)).resolves.toBe("live");
+  });
+
+  it("asks an agent live already for the current text, and keeps it live", async () => {
+    const test = await startTestEngine({ agent: { mode: "live" } });
+    const { handlers } = test.engine;
+    const refused = await handlers["agent/goLive"](testCall({ agent: testAgent }));
+    expect(refused).toStrictEqual(err("agent.disclaimer"));
+    await expect(modeOf(test)).resolves.toBe("live");
+    expect(expectOk(await handlers["agent/goLive"](testCall(accepted))).mode).toBe("live");
+    expect((await test.stores.install.read(live)).disclaimer?.version).toBe(disclaimerVersion);
+  });
+});
+
 describe("the live switch", () => {
   it("keeps the agent on paper through every operation but agent/goLive", async () => {
     const test = await startTestEngine();
@@ -79,7 +120,7 @@ describe("the live switch", () => {
     await handlers["ledger/list"](testCall({}));
     modes.push(await modeOf(test));
     expect(modes).toStrictEqual(["paper", "paper", "paper", "paper"]);
-    const view = expectOk(await handlers["agent/goLive"](testCall({ agent: testAgent })));
+    const view = expectOk(await handlers["agent/goLive"](testCall(accepted)));
     expect([view.mode, await modeOf(test)]).toStrictEqual(["live", "live"]);
   });
 
@@ -90,18 +131,16 @@ describe("the live switch", () => {
       venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })],
       agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-curve"] } },
     });
-    await expect(
-      test.engine.handlers["agent/goLive"](testCall({ agent: testAgent })),
-    ).resolves.toStrictEqual(err("limit.needs_launch_wallet"));
+    await expect(test.engine.handlers["agent/goLive"](testCall(accepted))).resolves.toStrictEqual(
+      err("limit.needs_launch_wallet"),
+    );
     await expect(modeOf(test)).resolves.toBe("paper");
   });
 
   it("goes live with a venue on a launch's own contracts once it has a launch wallet", async () => {
     const test = await withLaunchWallet([{ abi: [fakeLaunchCallAbi] }]);
 
-    const view = expectOk(
-      await test.engine.handlers["agent/goLive"](testCall({ agent: testAgent })),
-    );
+    const view = expectOk(await test.engine.handlers["agent/goLive"](testCall(accepted)));
 
     expect([view.mode, await modeOf(test)]).toStrictEqual(["live", "live"]);
   });
@@ -109,7 +148,7 @@ describe("the live switch", () => {
   it("stays on paper while the launch wallet's ceiling lacks the venue's launch calls", async () => {
     const test = await withLaunchWallet([]);
 
-    const refused = await test.engine.handlers["agent/goLive"](testCall({ agent: testAgent }));
+    const refused = await test.engine.handlers["agent/goLive"](testCall(accepted));
 
     expect(refused).toStrictEqual(err("limit.over_ceiling"));
     await expect(modeOf(test)).resolves.toBe("paper");
@@ -119,7 +158,7 @@ describe("the live switch", () => {
     const empty = await startTestEngine({ facts: { nativeBalanceBase: 0n } });
     const none = await startTestEngine({ wallets: [] });
     const unheld = await startTestEngine({ wallets: [unheldWallet], paper: [] });
-    const goLive = testCall({ agent: testAgent });
+    const goLive = testCall(accepted);
     expect([
       await empty.engine.handlers["agent/goLive"](goLive),
       await none.engine.handlers["agent/goLive"](goLive),
@@ -136,8 +175,8 @@ describe("the live switch", () => {
     const test = await startTestEngine();
     const { handlers } = test.engine;
     await test.clock.advance(5_000);
-    expectOk(await handlers["agent/goLive"](testCall({ agent: testAgent })));
-    expectOk(await handlers["agent/goLive"](testCall({ agent: testAgent })));
+    expectOk(await handlers["agent/goLive"](testCall(accepted)));
+    expectOk(await handlers["agent/goLive"](testCall(accepted)));
     const device = { ...testCallers.cli, credential: "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001" };
     const console = { ...device, client: { kind: "console", version: "test" } } as const;
     expectOk(await handlers["agent/goPaper"](testCall({ agent: testAgent }, console)));
@@ -188,15 +227,15 @@ describe("the live switch", () => {
 
   it("refuses an agent it does not hold", async () => {
     const { engine } = await startTestEngine();
-    const unknown = testCall({ agent: unknownAgent });
+    const unknown = { agent: unknownAgent, disclaimer: disclaimerVersion };
     expect([
-      await engine.handlers["agent/goLive"](unknown),
-      await engine.handlers["agent/goPaper"](unknown),
+      await engine.handlers["agent/goLive"](testCall(unknown)),
+      await engine.handlers["agent/goPaper"](testCall({ agent: unknownAgent })),
     ]).toStrictEqual([err("agent.not_found"), err("agent.not_found")]);
   });
 
   it("reads the agent again after a lost race, and faults after three", async () => {
-    const goLive = testCall({ agent: testAgent });
+    const goLive = testCall(accepted);
     const once = await startTestEngine({ agents: racing(1) });
     expect(expectOk(await once.engine.handlers["agent/goLive"](goLive)).mode).toBe("live");
     const always = await startTestEngine({ agents: racing(3) });

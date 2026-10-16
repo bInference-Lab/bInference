@@ -1,4 +1,5 @@
 import type { Id } from "@binference/core";
+import { disclaimerVersion } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import {
   expectOk,
@@ -73,7 +74,9 @@ describe("paper mode", () => {
     const test = await startTestEngine({ executor: walletQueueNeverReached });
     const handlers = test.engine.handlers;
     const view = expectOk(await handlers["intent/propose"](testCall(testSwap())));
-    expectOk(await handlers["agent/goLive"](testCall({ agent: testAgent })));
+    expectOk(
+      await handlers["agent/goLive"](testCall({ agent: testAgent, disclaimer: disclaimerVersion })),
+    );
     const card = view.card?.card as Id<"crd">;
     const args = { intent: view.intent, card, cardVersion: 1 };
     const answer = expectOk(await handlers["intent/confirm"](testCall(args)));

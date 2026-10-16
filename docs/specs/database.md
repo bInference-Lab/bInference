@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0095](../DECISIONS.md#d0095)), amended by decisions
 [0127](../DECISIONS.md#d0127), [0133](../DECISIONS.md#d0133), [0185](../DECISIONS.md#d0185),
-[0186](../DECISIONS.md#d0186) and [0189](../DECISIONS.md#d0189); the agent runtime's additions
+[0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189) and [0220](../DECISIONS.md#d0220); the agent runtime's additions
 follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on 2026-10-12: `launches`,
 `tracked_wallets` and its cap, `wallet_activity` and `watch_cursors` (section 2.6); `questions`
 and `question_messages` (section 2.7); `orders.end_reason` and `alerts.wake`, `fires` and
@@ -58,9 +58,10 @@ Conventions ([ENGINEERING.md section 24.2](../ENGINEERING.md#section-24-2)):
 | `custody` | one row, `id = 1` (spec 5): `provider` (`privy`), `app_id`, `owner_quorum_id`, `owner_key_public`, `agent_quorum_id`, `agent_key_public`, `attached_at`, `version`, `seal_key_public` (the sealing key's public half, NULL until the owner key derived it; [decision 0164](../DECISIONS.md#d0164)). No secret is stored here. |
 
 `safety.disclaimer_version` holds the version of the disclaimer and privacy statement the owner
-accepted (spec 4, section 9): `1` for the text of `binference live` before 2026-10-12, `2` for the
-text with the wider privacy statement. An install whose stored version is below the current one
-asks again before an agent goes live.
+accepted (spec 4, section 9), as decimal text, and `disclaimer_accepted_at` when: `1` for the text
+of `binference live` before 2026-10-12, `2` for the text with the wider privacy statement. An
+install whose stored version is below the current one asks again before an agent goes live. A
+stored version never goes down ([decision 0220](../DECISIONS.md#d0220)).
 
 <a id="section-2-2"></a>
 

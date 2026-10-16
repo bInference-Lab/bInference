@@ -16,6 +16,7 @@ import type { CustodyTable, EngineTables } from "../databases/engine-tables.js";
 import type { CeilingsTable, WalletsTable } from "../databases/wallet-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, readDecimal, readJson } from "../rows/column-values.js";
+import { readDisclaimer } from "./disclaimer-task.js";
 
 function toCustody(row: CustodyTable): CustodyRecord {
   return custodyRecordSchema.parse({
@@ -109,8 +110,8 @@ export function readRescueCeiling(database: DatabaseSync): RescueCeiling | undef
 }
 
 /**
- * Reads the install's custody, freeze, rescue address and wallets with their ceilings, oldest
- * first.
+ * Reads the install's custody, freeze, rescue address, accepted disclaimer and wallets with
+ * their ceilings, oldest first.
  */
 export function readInstall(database: DatabaseSync): InstallFacts {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -121,6 +122,7 @@ export function readInstall(database: DatabaseSync): InstallFacts {
     ...field("frozenAtMs", safety?.frozen_at ?? null),
     ...readRescue(database),
     ...field("rescueCeiling", readRescueCeiling(database) ?? null),
+    ...field("disclaimer", readDisclaimer(database) ?? null),
     wallets: readWallets(database),
   };
 }

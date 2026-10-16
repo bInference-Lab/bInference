@@ -24,6 +24,8 @@ export type {
   WalletRole,
 } from "./install/install-record.js";
 export type { InstallStore } from "./ports.js";
+export { disclaimerAcceptanceSchema } from "./install/disclaimer-record.js";
+export type { DisclaimerAcceptance, DisclaimerStore } from "./install/disclaimer-record.js";
 export { cancelRescue, changeRescue, rescueAt } from "./policy/rescue-change.js";
 export type { RescueState } from "./policy/rescue-change.js";
 export {

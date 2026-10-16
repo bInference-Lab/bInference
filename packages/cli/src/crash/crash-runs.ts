@@ -7,6 +7,7 @@ import { bsc } from "@binference/chains";
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, bpsSchema, type Id } from "@binference/core";
 import type { FakePrivy } from "@binference/custody-privy/testing";
+import { disclaimerVersion } from "@binference/i18n";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import type { ProtocolId } from "@binference/protocol";
@@ -132,7 +133,7 @@ async function goneLive(client: ProtocolClient, call: { readonly signal: AbortSi
   if (agent === undefined) {
     throw new BinferenceError({ code: "crash.no_agent", message: "init made no agent." });
   }
-  await client.call("agent/goLive", { agent: agent.id }, call);
+  await client.call("agent/goLive", { agent: agent.id, disclaimer: disclaimerVersion }, call);
   return agent;
 }
 

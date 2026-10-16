@@ -1,0 +1,8 @@
+{
+  "title": "Read this first",
+  "text": "binference gives facts, not advice. You are responsible for every trade you confirm, and for what auto mode does within your caps. binference is open-source software under the MIT license, provided as is and without warranty: it can have bugs, and a transaction on chain cannot be undone.",
+  "privacyTitle": "What leaves this machine",
+  "privacy": "Your model provider sees your chats, your balances and what your agent reads for you. Telegram carries your chats with your bot. Privy, which holds your wallets, sees every transaction they sign, and the private relays see the transactions they send. The RPC nodes see your IP address. The risk and market data services see the addresses of the tokens you trade or look at. A search provider sees your agent's searches, and a launchpad sees the name, picture and description of a token you launch. The update check reports the binference version, your operating system, Node version and CPU type, and, if you agree, the usage counts. Your owner key and agent key never leave this machine.",
+  "ask": "Type {phrase} to accept",
+  "phrase": "I understand"
+}
