@@ -6,6 +6,7 @@ import type { ModelUsageTables } from "./model-usage-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
 import type { OrderTables } from "./order-tables.js";
 import type { PositionTables } from "./position-tables.js";
+import type { ScheduleTables } from "./schedule-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
 import type { WalletTables } from "./wallet-tables.js";
 
@@ -309,6 +310,7 @@ export interface EngineTables
     AccessTables,
     AgentInboxTables,
     ModelUsageTables,
+    ScheduleTables,
     WalletTables {
   meta: MetaTable;
   safety: SafetyTable;
