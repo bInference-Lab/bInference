@@ -26,7 +26,7 @@ export interface ConfigChangeOptions {
   readonly file: string;
   readonly permissions: FilePermissions;
   /** The config the engine runs on now. */
-  readonly settings: Pick<ConfigCell, "current">;
+  readonly settings: Pick<ConfigCell, "current" | "started">;
   /** Reads the config in the layers it runs with, the file's text given: the check before a write. */
   readonly validate: (text: string, signal: AbortSignal) => Promise<ConfigOutcome>;
   /** The reload path, which journals the change once, as the caller's (decision 0118). */
@@ -71,7 +71,8 @@ export function createConfigChange(options: ConfigChangeOptions): EngineHandler<
     await write(options.file, edited, { permissions: options.permissions, signal });
     const reason = args.reason === undefined ? {} : { reason: args.reason };
     await options.reload.applyNow({ author: authorOf(caller), ...reason }, signal);
-    const changes = configChanges(running, checked.config);
+    const { started } = options.settings;
+    const changes = configChanges({ running, read: checked.config, started });
     const restartNeeded = changes.some((change) => !change.appliesNow);
     return ok({ config: shownConfig(checked.config), restartNeeded });
   };

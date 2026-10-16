@@ -87,7 +87,9 @@ async function reload(
     refuse(options, loaded.issues);
     return;
   }
-  const changes = configChanges(options.settings.current(), loaded.config);
+  const { settings } = options;
+  const compared = { running: settings.current(), read: loaded.config, started: settings.started };
+  const changes = configChanges(compared);
   if (changes.length > 0) {
     await apply(options, { config: loaded.config, changes, by }, signal);
   }

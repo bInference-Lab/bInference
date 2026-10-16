@@ -1,6 +1,6 @@
 # 0118. Settings reload when config.json5 changes
 
-Status: Accepted
+Status: Amended by 0230
 
 ## Context
 

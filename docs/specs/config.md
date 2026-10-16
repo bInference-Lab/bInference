@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224) and [0225](../DECISIONS.md#d0225);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225) and [0230](../DECISIONS.md#d0230);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -41,8 +41,10 @@ the owner on 2026-10-12.
   `notice.configInvalid` names the first problem by its line or its key. Otherwise each changed key
   is journaled by `engine` on the surface `config.json5`, and `notice.configChanged` lists the
   changes and those that apply only after a restart. A key applies at once when the part that uses
-  it reads it on each use: today `owner.locale`, `owner.timezone` and `logging.level`; every other
-  key, those marked live below included, applies after a restart until its part does.
+  it reads it on each use ([decision 0230](../DECISIONS.md#d0230)): one table in
+  `packages/cli/src/config/apply-times.ts` gives every key its time, lists the restart-only keys in
+  one place, and judges a key it does not list as restart. A key marked live below whose part still
+  copies it at start is listed there as restart until its part reads it on use.
 
 <a id="section-3"></a>
 
@@ -98,23 +100,24 @@ Secrets are read when needed and never logged, returned by `config/read`, or wri
 ## 6. Keys
 
 "Live" means a change applies without a restart; "restart" means `config/change` answers
-`restartNeeded: true`.
+`restartNeeded: true`. A live key that no part reads yet, such as `telemetry.enabled`, has nothing to restart:
+the part that comes for it reads it on each use.
 
 <a id="section-6-1"></a>
 
 ### 6.1 `version`, `owner`, `engine`
 
-| Key                       | Type                                                  | Default                                                                                     | Applies | Meaning                                                                                       |
-| ------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------- |
-| `version`                 | integer                                               | `1`                                                                                         | restart | The file's shape                                                                              |
-| `owner.locale`            | `"en"` \| `"zh"`                                      | from the OS                                                                                 | live    | Language of every surface                                                                     |
-| `owner.timezone`          | IANA zone                                             | from the OS                                                                                 | live    | Schedules, the daily summary, times shown ([decision 0046](../DECISIONS.md#d0046))            |
-| `engine.port`             | integer                                               | `7456`                                                                                      | restart | Console, Mini App and WebSocket (spec 1, section 2)                                           |
-| `engine.webhookPort`      | integer                                               | `7457`                                                                                      | restart | The webhook listener                                                                          |
-| `engine.extraOrigins`     | string[]                                              | `[]`                                                                                        | live    | More allowed browser origins                                                                  |
-| `engine.unlock.mode`      | `"keychain"` \| `"file"` \| `"manual"` \| `"command"` | `"keychain"` with a desktop session, else `"file"` ([decision 0065](../DECISIONS.md#d0065)) | restart | Where the agent key and the Privy app secret are read at start (spec 5)                       |
-| `engine.unlock.command`   | Secret (`fromCommand`)                                | none                                                                                        | restart | Used when `mode` is `"command"`                                                               |
-| `engine.shutdownBudgetMs` | integer                                               | `30000`                                                                                     | live    | The shutdown order's time limit ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)) |
+| Key                       | Type                                                  | Default                                                                                     | Applies | Meaning                                                                                                                                                                                                   |
+| ------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                 | integer                                               | `1`                                                                                         | restart | The file's shape                                                                                                                                                                                          |
+| `owner.locale`            | `"en"` \| `"zh"`                                      | from the OS                                                                                 | live    | Language of every surface                                                                                                                                                                                 |
+| `owner.timezone`          | IANA zone                                             | from the OS                                                                                 | live    | Schedules, the daily summary, times shown ([decision 0046](../DECISIONS.md#d0046))                                                                                                                        |
+| `engine.port`             | integer                                               | `7456`                                                                                      | restart | Console, Mini App and WebSocket (spec 1, section 2)                                                                                                                                                       |
+| `engine.webhookPort`      | integer                                               | `7457`                                                                                      | restart | The webhook listener                                                                                                                                                                                      |
+| `engine.extraOrigins`     | string[]                                              | `[]`                                                                                        | live    | More allowed browser origins                                                                                                                                                                              |
+| `engine.unlock.mode`      | `"keychain"` \| `"file"` \| `"manual"` \| `"command"` | `"keychain"` with a desktop session, else `"file"` ([decision 0065](../DECISIONS.md#d0065)) | restart | Where the agent key and the Privy app secret are read at start (spec 5)                                                                                                                                   |
+| `engine.unlock.command`   | Secret (`fromCommand`)                                | none                                                                                        | restart | Used when `mode` is `"command"`                                                                                                                                                                           |
+| `engine.shutdownBudgetMs` | integer                                               | `30000`                                                                                     | restart | The shutdown order's time limit ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)); the background service's wait for the exit is written with it when `binference start` installs the service |
 
 ### 6.1a `custody`
 
@@ -166,6 +169,9 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 <a id="section-6-4"></a>
 
 ### 6.4 `defaults` (copied into each new agent)
+
+Every `defaults` key applies after a restart: the paper balances and a new wallet's ceiling are read
+from them at start ([decision 0230](../DECISIONS.md#d0230)).
 
 | Key                                       | Default ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28))                                                                                                           |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

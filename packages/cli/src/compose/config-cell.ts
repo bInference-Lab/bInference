@@ -6,6 +6,8 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
  * and its key applies after a restart.
  */
 export interface ConfigCell {
+  /** The config the engine started with: what a part that copies a key at start holds. */
+  readonly started: BinferenceConfig;
   current(): BinferenceConfig;
   /** Puts a config read again in place; the next read of any key sees it. */
   replace(next: BinferenceConfig): void;
@@ -15,6 +17,7 @@ export interface ConfigCell {
 export function createConfigCell(initial: BinferenceConfig): ConfigCell {
   const cell = { config: initial };
   return {
+    started: initial,
     current: () => cell.config,
     replace: (next) => {
       cell.config = next;
