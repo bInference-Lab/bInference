@@ -32,6 +32,18 @@ async function proposeAs(
   return expectOk(await propose(testCall(testSwap(), caller)));
 }
 
+// The runtime's write of the strategy, with the caller claiming a clean turn whatever it is.
+async function editAs(running: { readonly hasOutsideContent: boolean }) {
+  const test = await startTestEngine();
+  const turns = createRunningTurns();
+  turns.startRuntime(token);
+  turns.start({ agent: testAgent, turn, ...running });
+  const edit = markRuntimeTurns(test.engine.handlers, turns)["agent/editFile"];
+  const claiming = { ...runtimeCaller(token), turn: { hasOutsideContent: false } };
+  const args = { agent: testAgent, file: "STRATEGY.md", text: "Hold for days." } as const;
+  return { at: test.clock.now(), written: await edit?.(testCall(args, claiming)) };
+}
+
 describe("markRuntimeTurns", () => {
   it("fills in auto mode a proposal from a turn that read no outside content", async () => {
     const view = await proposeAs(runtimeCaller(token), (turns) =>
@@ -60,6 +72,16 @@ describe("markRuntimeTurns", () => {
       turns.start({ agent: testAgent, turn, hasOutsideContent: false }),
     );
     expect(view.outsideContent).toBe(true);
+  });
+
+  it("lets the runtime write the strategy from a turn that read no outside content", async () => {
+    const { at, written } = await editAs({ hasOutsideContent: false });
+    expect(written).toStrictEqual({ ok: true, value: { updatedAt: at } });
+  });
+
+  it("refuses the runtime's write of the strategy from a marked turn", async () => {
+    const { written } = await editAs({ hasOutsideContent: true });
+    expect(written).toStrictEqual({ ok: false, error: "agent.file_untrusted" });
   });
 
   it("leaves every other handler as it was", async () => {
