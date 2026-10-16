@@ -30,6 +30,26 @@ describe("the stable prefix", () => {
     );
   });
 
+  it("leaves the first chat's script out while the agent is live, and keeps it in paper mode", async () => {
+    const source = createMemoryContextSource();
+    source.write(agent, "STRATEGY.md", "Hold for days.");
+    source.write(agent, "FIRST-CHAT.md", "questions");
+    source.setMode(agent, "live");
+    const live = await readTurnPrefix(source, turn, signal);
+    source.setMode(agent, "paper");
+    const paper = await readTurnPrefix(source, turn, signal);
+    expect(live).toContain("Hold for days.");
+    expect(live).not.toContain("FIRST-CHAT.md");
+    expect(paper).toContain('<workspace-file name="FIRST-CHAT.md">\nquestions\n</workspace-file>');
+  });
+
+  it("reads no live facts for an agent with no first chat", async () => {
+    const source = createMemoryContextSource();
+    source.write(agent, "STRATEGY.md", "Hold for days.");
+    await readTurnPrefix(source, turn, signal);
+    expect(source.factReads()).toBe(0);
+  });
+
   it("is the same bytes while nothing changes, and holds an edit at the next read", async () => {
     const source = createMemoryContextSource();
     source.write(agent, "STRATEGY.md", "Hold for days.");

@@ -91,10 +91,26 @@ export function prefixText(
   return [instructions, ...workspaceSections(files), ...skillsIndex(skills)].join("\n\n");
 }
 
+// The first chat runs in paper mode alone (decision 0242): a live agent's prefix leaves its script
+// out. The mode is read from the live facts, and only while the script exists.
+async function withoutLiveFirstChat(
+  source: ContextSource,
+  read: { readonly agent: Id<"agt">; readonly files: readonly WorkspaceText[] },
+  signal: AbortSignal,
+): Promise<readonly WorkspaceText[]> {
+  const { agent, files } = read;
+  if (!files.some(({ file }) => file === "FIRST-CHAT.md")) {
+    return files;
+  }
+  const { mode } = await source.liveFacts(agent, signal);
+  return mode === "paper" ? files : files.filter(({ file }) => file !== "FIRST-CHAT.md");
+}
+
 /**
  * Reads the agent's workspace files, in the order a turn reads them, and its skills from the
- * engine, and gives the turn's stable prefix. A file the agent does not have is left out. Rejects
- * when the engine cannot answer, and with the signal's reason once it aborts.
+ * engine, and gives the turn's stable prefix. A file the agent does not have is left out, and so
+ * is `FIRST-CHAT.md` while the agent is live. Rejects when the engine cannot answer, and with the
+ * signal's reason once it aborts.
  */
 export async function readTurnPrefix(
   source: ContextSource,
@@ -107,6 +123,11 @@ export async function readTurnPrefix(
       return text === undefined ? [] : [{ file, text }];
     }),
   );
+  const files = await withoutLiveFirstChat(
+    source,
+    { agent: turn.agent, files: read.flat() },
+    signal,
+  );
   const skills = await source.skills(turn.agent, signal);
-  return prefixText(turn.instructions, read.flat(), skills);
+  return prefixText(turn.instructions, files, skills);
 }

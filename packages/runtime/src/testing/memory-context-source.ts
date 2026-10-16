@@ -9,6 +9,8 @@ export interface MemoryContextSource extends ContextSource {
   write(agent: Id<"agt">, file: WorkspaceFile, text: string | undefined): void;
   /** Sets the skills an agent's index holds, in place of those before. */
   setSkills(agent: Id<"agt">, skills: readonly SkillIndexEntry[]): void;
+  /** Sets the mode an agent's live facts name; paper until set. */
+  setMode(agent: Id<"agt">, mode: LiveFactsView["mode"]): void;
   /** Makes every read reject from now on, as an engine out of reach does, or answer again. */
   link(state: "up" | "down"): void;
   /** How many times the live facts were read. */
@@ -61,6 +63,7 @@ export function createMemoryContextSource(
   const { agents, now = () => 1_767_261_610_000 } = options;
   const files = new Map<string, string>();
   const skills = new Map<Id<"agt">, readonly SkillIndexEntry[]>();
+  const modes = new Map<Id<"agt">, LiveFactsView["mode"]>();
   const state = { down: false, reads: 0 };
   const reach = (agent: Id<"agt">, signal: AbortSignal): void => {
     signal.throwIfAborted();
@@ -80,7 +83,8 @@ export function createMemoryContextSource(
     async liveFacts(agent, signal) {
       reach(agent, signal);
       state.reads += 1;
-      return await Promise.resolve(testLiveFacts(agent, now()));
+      const facts = testLiveFacts(agent, now());
+      return await Promise.resolve({ ...facts, mode: modes.get(agent) ?? facts.mode });
     },
     write(agent, file, text) {
       const key = `${agent}/${file}`;
@@ -92,6 +96,9 @@ export function createMemoryContextSource(
     },
     setSkills(agent, entries) {
       skills.set(agent, entries);
+    },
+    setMode(agent, mode) {
+      modes.set(agent, mode);
     },
     link: (link) => {
       state.down = link === "down";
