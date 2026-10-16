@@ -1,76 +1,14 @@
-import {
-  accountRefSchema,
-  type LaunchOption,
-  type SimulatedStep,
-  type TxSimulator,
-} from "@binference/chain";
-import {
-  createFakeLauncher,
-  createFakeLaunchpad,
-  createFakeVenue,
-  type FakeLauncher,
-  type FakePinScript,
-  createFakeFamily,
-} from "@binference/chain/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { fixtureId } from "../contracts/store-fixtures.js";
-import { createMemoryLaunchImages } from "../fakes/memory-launch-images.js";
-import { testWalletRecord } from "../install/test-wallet-record.js";
-import { testAgent, testCoin, testLimits, testNowMs, testWallet } from "../intents/test-intents.js";
-import type { EngineCaller } from "../operations/engine-call.js";
+import { testWallet } from "../intents/test-intents.js";
+import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
 import {
-  startTestEngine,
-  testCall,
-  testCallers,
-  testChains,
-  type TestEngine,
-  type TestEngineOptions,
-} from "../operations/test-engine.js";
-
-// Token launches (decision 0234) on a fake launchpad whose launcher pins as each test scripts.
-const pad = "fake-curve";
-const launchWallet = fixtureId("wal", 270);
-const launchAccount = accountRefSchema.parse("fake:1:0x000000d9");
-const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
-const settings: readonly LaunchOption[] = [
-  { name: "taxBps", type: "bps", max: 1000, default: 0 },
-  { name: "buyback", type: "flag", default: false },
-];
-
-// What a launch's steps do on the fake chain: the create call's value leaves the wallet for the
-// launchpad, and the first buy's minimum of the token arrives.
-function launchSimulator(launcher: FakeLauncher): TxSimulator {
-  const family = createFakeFamily();
-  const reverted: SimulatedStep = { status: "reverted", gasUsed: 0n, transfers: [], approvals: [] };
-  return {
-    async simulate(drafts, { signal }) {
-      signal.throwIfAborted();
-      return await Promise.resolve(
-        drafts.map((draft): SimulatedStep => {
-          const call = family.readDraft(draft);
-          const launch = launcher.decodeLaunch(draft);
-          if (!call.ok || !launch.ok) {
-            return reverted;
-          }
-          const to = call.value.target;
-          const paid = {
-            from: draft.from,
-            to,
-            amount: { asset: testCoin, base: call.value.nativeValue },
-          };
-          const bought = launch.value.firstBuy;
-          const token = launch.value.token;
-          const got =
-            bought === undefined
-              ? []
-              : [{ from: to, to: draft.from, amount: { asset: token, base: bought.minOut } }];
-          return { status: "success", gasUsed: 21_000n, transfers: [paid, ...got], approvals: [] };
-        }),
-      );
-    },
-  };
-}
+  proposeIntent as propose,
+  testLaunch as launch,
+  testLaunchEngine as engineOver,
+  testLaunchWallet as launchWallet,
+  testPad as pad,
+} from "./test-launches.js";
 
 // The card of an intent that opened one; a test that needs it fails without it.
 function cardOf(view: IntentView): NonNullable<IntentView["card"]>["card"] {
@@ -79,74 +17,6 @@ function cardOf(view: IntentView): NonNullable<IntentView["card"]>["card"] {
     throw new Error("The intent opened no card.");
   }
   return card.card;
-}
-
-interface Launching {
-  readonly pin?: FakePinScript;
-  readonly options?: TestEngineOptions;
-  readonly hasLaunchWallet?: boolean;
-}
-
-async function engineOver(launching: Launching = {}) {
-  const launcher = createFakeLauncher({
-    launchOptions: settings,
-    ...(launching.pin === undefined ? {} : { pin: launching.pin }),
-  });
-  const venues = [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launcher })];
-  const { options = {}, hasLaunchWallet = true } = launching;
-  const test = await startTestEngine({
-    chains: testChains([pad]),
-    venues,
-    chainSimulator: launchSimulator(launcher),
-    launchImages: createMemoryLaunchImages(new Map([["upl_moon", png]])),
-    wallets: [testWallet, launchWallet],
-    custodyWallets: new Map([[launchWallet, launchAccount]]),
-    ...options,
-    agent: {
-      mode: "live",
-      limits: { ...testLimits, venues: ["fake-swap", pad] },
-      ...options.agent,
-    },
-  });
-  if (hasLaunchWallet) {
-    test.stores.install.addWallet(
-      testWalletRecord({
-        id: launchWallet,
-        agentId: testAgent,
-        label: "launches",
-        createdAtMs: testNowMs,
-        role: "launch",
-      }),
-    );
-  }
-  return { test, launcher };
-}
-
-const launch: Extract<IntentRequest, { kind: "launchToken" }> = {
-  kind: "launchToken",
-  agent: testAgent,
-  reason: "Launch the cat",
-  venue: pad,
-  name: "Moon Cat",
-  symbol: "MCAT",
-  image: "upl_moon",
-  description: "A cat on the moon",
-  links: { website: "https://moon.example" },
-  pairWith: testCoin,
-  firstBuy: { asset: testCoin, base: 1_000_000n },
-  venueOptions: { taxBps: 300 },
-};
-
-async function propose(
-  test: TestEngine,
-  request: IntentRequest = launch,
-  caller: EngineCaller = testCallers.runtime,
-): Promise<IntentView> {
-  const proposed = await test.engine.handlers["intent/propose"](testCall(request, caller));
-  if (!proposed.ok) {
-    throw new Error(`Expected an intent, got ${proposed.error}.`);
-  }
-  return proposed.value;
 }
 
 async function stateOf(test: TestEngine, view: IntentView): Promise<IntentView> {
