@@ -98,12 +98,13 @@ function liveRefusal(
 
 // The request's wallet, or the one its trades route to: the agent's launch wallet for a token on
 // a launch's curve or one it holds, else its default wallet (decision 0217); with an account in
-// custody on the token's chain.
+// custody on the token's chain. A curve read that failed picks none: the launchpad did not answer
+// (decision 0218).
 async function walletOf(
   parts: Pick<OrderParts, "wallets" | "custody" | "launches">,
   asked: CheckedOrder & { readonly isPaper: boolean },
   signal: AbortSignal,
-): Promise<Id<"wal"> | undefined> {
+): Promise<Result<Id<"wal">, ProtocolErrorCode>> {
   const { request, chain } = asked;
   const owned = await parts.wallets.wallets(request.agent, { signal });
   const sold = request.side === "sell" ? { sold: request.token } : {};
@@ -114,13 +115,19 @@ async function walletOf(
     owned,
     placed: request.token,
   };
-  const wallet =
-    request.wallet ?? (await routedWalletOf(parts.launches, { ...trade, ...sold }, signal));
+  const routed =
+    request.wallet === undefined
+      ? await routedWalletOf(parts.launches, { ...trade, ...sold }, signal)
+      : ok(request.wallet);
+  if (!routed.ok) {
+    return err("quote.venue_down");
+  }
+  const wallet = routed.value;
   if (wallet === undefined || !owned.includes(wallet)) {
-    return undefined;
+    return err("wallet.not_found");
   }
   const account = await parts.custody.account(wallet, chain.ref, { signal });
-  return account.ok ? wallet : undefined;
+  return account.ok ? ok(wallet) : err("wallet.not_found");
 }
 
 /** The wallet that holds a new order, and what its unlisted tokens answered on chain. */
@@ -139,10 +146,11 @@ async function holderOf(
   checked: CheckedOrder & { readonly isPaper: boolean },
   signal: AbortSignal,
 ): Promise<Result<Holder, ProtocolErrorCode>> {
-  const wallet = await walletOf(parts, checked, signal);
-  if (wallet === undefined) {
-    return err("wallet.not_found");
+  const holder = await walletOf(parts, checked, signal);
+  if (!holder.ok) {
+    return holder;
   }
+  const wallet = holder.value;
   const { request } = checked;
   if (hasPriceTrigger(request.kind) && !(await parts.canPrice(request.token, { signal }))) {
     return err("order.unpriced_token");
@@ -252,7 +260,8 @@ async function openOrderCard(
  * order `awaiting_confirmation` in its agent's mode with the proposal's outside-content mark, then
  * its `autoOrder` intent, which always opens one card, whatever the mode or the mark. The order
  * becomes `active` only on that card's Confirm. A refusal stores nothing: an unknown, archived or
- * frozen agent, a wallet that is not the agent's, a kind that does not run yet, a broken rule, or
+ * frozen agent, a wallet that is not the agent's, a launchpad whose curve read failed as it picks
+ * the wallet (`quote.venue_down`), a kind that does not run yet, a broken rule, or
  * a price order for a token the price watcher cannot price now (decision 0194), or a token the
  * registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
  * decision 0199). The card shows such a token by what it answered, marked unverified.

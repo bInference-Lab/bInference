@@ -50,7 +50,9 @@ export type RiskReason = (typeof riskReasons)[number];
  * Why a quote, build, decode or simulation failed: the reason stored with `failed_check`.
  * `nothing_to_sell` is a sale by share of a token the wallet holds none of, or whose share rounds
  * to nothing, or a paper sale or swap whose paper portfolio holds less of its input at the fill
- * than its confirmed quote spends.
+ * than its confirmed quote spends. `needs_launch_wallet` is a live trade on a launch's own curve
+ * from a wallet that is not the agent's launch wallet, and `launch_unread` one whose curve read
+ * failed as it picked the wallet (decision 0218).
  */
 export const checkReasons = [
   "no_route",
@@ -61,6 +63,8 @@ export const checkReasons = [
   "price_impact",
   "nothing_to_sell",
   "balance_unread",
+  "needs_launch_wallet",
+  "launch_unread",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

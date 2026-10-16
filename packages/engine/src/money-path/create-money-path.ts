@@ -224,15 +224,20 @@ async function build(
 }
 
 // The trade's place and amount, settled as its quote is built (spec 6, section 5): a sale by
-// share reads what the wallet holds now, in the intent's mode.
+// share reads what the wallet holds now, in the intent's mode. A curve read that failed as it
+// picked the wallet ends the trade first (decision 0218).
 async function placedTradeOf(run: Run, snapshot: IntentSnapshot): Promise<PlacedTrade> {
   const { resolved, options, signal } = run;
-  const { wallet, account, nativeAsset, settings } = resolved;
+  const { wallet, account, nativeAsset, settings, launchWallet } = resolved;
   const { chains, host, holdings } = options;
   const { isPaper } = snapshot.record;
   const { limits } = settings;
   const context = { limits, account, chains, host, nativeAsset, holdings, wallet, isPaper, signal };
-  return placeTrade(resolved.ask, context);
+  const placed = await placeTrade(
+    resolved.ask,
+    launchWallet === undefined ? context : { ...context, launchWallet },
+  );
+  return resolved.launchUnread === true ? { ...placed, refusal: "launch_unread" } : placed;
 }
 
 // A trade that cannot be placed is judged by the policy first, and asks no venue: a policy

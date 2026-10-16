@@ -32,6 +32,8 @@
   "effects_differ": "模拟结果与报价不符，因此未发送任何内容",
   "nothing_to_sell": "钱包中这种代币不足",
   "balance_unread": "无法读取钱包余额；系统会再次尝试",
+  "needs_launch_wallet": "在发射项目自身联合曲线上的实盘交易只能从该 Agent 的发射钱包发起：请用 `binference wallet create --launch` 创建发射钱包并充值，或不要指定其他钱包",
+  "launch_unread": "binference 无法从发射台读取该发射项目的联合曲线，因此未选定钱包；请重试",
   "reverted": "交易已回滚，只扣除了网络费",
   "stuck_cancelled": "交易长时间未上链，已被取消；只扣除了网络费",
   "nonce_taken": "另一笔交易占用了此钱包的随机数，这笔交易未能上链",

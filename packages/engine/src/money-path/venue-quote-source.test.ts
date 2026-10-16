@@ -54,6 +54,7 @@ function quoting(
     prices: createFakePriceSource(new Map()),
     chains,
     clock,
+    install: stores.install,
   });
   const ready = (async () => {
     await stores.agents.create(testAgentDraft({ limits }), live);

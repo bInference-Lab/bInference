@@ -78,7 +78,7 @@ export interface TradeQuote {
 /** Why the host refused a trade: a check reason of spec 6 that `quote_failed` carries. */
 export type VenueFailure = Exclude<
   QuoteFailure,
-  "price_impact" | "nothing_to_sell" | "balance_unread"
+  "price_impact" | "nothing_to_sell" | "balance_unread" | "needs_launch_wallet" | "launch_unread"
 >;
 
 /** The host's refusal. `mismatch` names the failed check of a `decode_mismatch`. */

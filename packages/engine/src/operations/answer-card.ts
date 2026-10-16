@@ -144,6 +144,8 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   price_impact: "quote.no_route",
   nothing_to_sell: "quote.no_route",
   balance_unread: "chain.rpc_down",
+  needs_launch_wallet: "limit.needs_launch_wallet",
+  launch_unread: "quote.venue_down",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

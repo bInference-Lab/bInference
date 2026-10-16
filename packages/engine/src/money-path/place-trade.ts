@@ -2,6 +2,7 @@ import type { AssetRef } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { QuoteView, TradePlace } from "@binference/protocol";
 import type { QuoteFailure } from "../intents/intent-reason.js";
+import type { CurveClaim } from "../venues/read-curves.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { shareAmountBase } from "./share-amount.js";
 import { type SwapContext, type SwapTrade, swapTradeOf, type TradeAsk } from "./swap-trade.js";
@@ -15,6 +16,8 @@ export interface PlaceContext extends SwapContext {
   /** What the wallet holds: on chain for a live intent, in the paper portfolio for a paper one. */
   readonly holdings: Holdings;
   readonly wallet: Id<"wal">;
+  /** The agent's live launch wallet, which alone runs a live trade on a launch's own curve. */
+  readonly launchWallet?: Id<"wal">;
   /** The intent runs on paper. */
   readonly isPaper: boolean;
   readonly signal: AbortSignal;
@@ -55,6 +58,13 @@ function onCurve(
   return isAllowed && curveSide === quoteAsset ? placement : { ...placement, refusal: "no_route" };
 }
 
+// A live trade on a curve whose launch has contracts of its own signs only from the agent's launch
+// wallet, whose ceiling alone lets it call them (decision 0218); a paper one signs nothing.
+function needsLaunchWallet(claim: CurveClaim, context: PlaceContext): boolean {
+  const hasLaunch = Object.keys(claim.launch ?? {}).length > 0;
+  return hasLaunch && !context.isPaper && context.wallet !== context.launchWallet;
+}
+
 // Spec 6, section 5: the launchpad that holds the token on its curve takes the trade; with none,
 // the aggregators among the agent's venues quote it in the pools. A swap asks every venue.
 async function placementOf(ask: TradeAsk, context: PlaceContext): Promise<Placement> {
@@ -75,10 +85,13 @@ async function placementOf(ask: TradeAsk, context: PlaceContext): Promise<Placem
   if (second !== undefined) {
     return { ...pools, refusal: "no_route" };
   }
-  if (claim !== undefined) {
-    return onCurve(ask, claim, limits.venues);
+  if (claim === undefined) {
+    return pools.venues.length === 0 ? { ...pools, refusal: "no_route" } : pools;
   }
-  return pools.venues.length === 0 ? { ...pools, refusal: "no_route" } : pools;
+  const placed = onCurve(ask, claim, limits.venues);
+  return placed.refusal === undefined && needsLaunchWallet(claim, context)
+    ? { ...placed, refusal: "needs_launch_wallet" }
+    : placed;
 }
 
 // What the wallet holds of the asset a sale by share sells, now, in the intent's mode; `undefined`
@@ -108,7 +121,9 @@ function shareRefusal(share: {
 /**
  * Settles a trade's place and amount when its quote is built (spec 6, section 5). A buy or a sell
  * goes to the curve of the one launchpad that holds its token, or else to the pools; two
- * launchpads that claim one token, or a launchpad whose claim cannot be read, refuse it. A sale by
+ * launchpads that claim one token, or a launchpad whose claim cannot be read, refuse it, and so
+ * does a live trade on a launch's own curve from any wallet but the agent's launch wallet
+ * (`needs_launch_wallet`, decision 0218). A sale by
  * share sells that share of what the wallet holds now, rounded down, so never more than it holds;
  * a share of nothing, or one that rounds to nothing, is `nothing_to_sell`, and a share of a balance
  * the chain's answer had no entry for is `balance_unread` (decision 0197).

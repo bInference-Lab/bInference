@@ -173,22 +173,19 @@ describe("a launch wallet on the BSC fork", () => {
       );
     }));
 
-  it("refuses at signing a buy on the curve that names the main wallet, and sends nothing", async ({
+  it("ends a buy on the curve that names the main wallet before any card, and sends nothing", async ({
     signal,
   }) =>
     onLaunchRig(signal, async (rig, fork, launched) => {
       const named: IntentRequest = { ...buyOf(rig, fork, launched), wallet: rig.main.wallet };
-      const view = await proposeAndTap(rig, named, signal);
-      expect(view.wallet).toBe(rig.main.wallet);
-      await expect(reach(rig, view.intent, "cancelled")).resolves.toBe("cancelled");
-      const events = await rig.stores.intents.events(view.intent, { signal });
-      expect(events.at(-1)).toMatchObject({
-        fromState: "executing",
-        cause: { trigger: "step_unsent", cancelCause: "step_unsent" },
+      const view = expectValue(await rig.engine.handlers["intent/propose"](call(named, signal)));
+      expect(view).toMatchObject({
+        wallet: rig.main.wallet,
+        state: "failed_check",
+        outcome: { reason: "needs_launch_wallet" },
       });
-      expect(rig.refusals).toStrictEqual([
-        { wallet: rig.main.wallet, intent: view.intent, refused: "rule_2" },
-      ]);
+      expect(view.card).toBeUndefined();
+      expect(rig.refusals).toStrictEqual([]);
       const account = evmAccountRef(fork.chain, rig.main.address);
       const stored = await rig.stores.transactions.list(
         { account, fromNonce: 0, limit: 10 },

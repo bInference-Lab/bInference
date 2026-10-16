@@ -217,10 +217,11 @@ function requoteOptions(
   options: EngineOptions,
   parts: { readonly stored: StoredIntents; readonly paper: PaperParts },
 ): VenueQuoteSourceOptions {
-  const { custody, host, chains, clock, prices } = options;
+  const { custody, host, chains, clock, prices, stores } = options;
   const { stored, paper } = parts;
   const { wallets, simulator, holdings } = paper;
-  return { stored, custody, wallets, holdings, host, simulator, prices, chains, clock };
+  const { install } = stores;
+  return { stored, custody, wallets, holdings, host, simulator, prices, chains, clock, install };
 }
 
 // A confirmed paper intent fills in the paper portfolio, an unfreeze is written, and any other live

@@ -1,10 +1,11 @@
 import type { ChainRegistry, PriceSource, RegisteredChain, Signer } from "@binference/chain";
 import { type Clock, err, type Id, ok, type Result } from "@binference/core";
 import type { BuiltQuote } from "../confirmations/stored-intent.js";
+import { launchWalletOf } from "../install/launch-wallet.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { QuoteFailure } from "../intents/intent-reason.js";
-import type { QuoteSource, Simulator, WalletFactsSource } from "../ports.js";
+import type { InstallStore, QuoteSource, Simulator, WalletFactsSource } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { chooseRoute } from "./choose-route.js";
 import { placeTrade } from "./place-trade.js";
@@ -25,6 +26,8 @@ export interface VenueQuoteSourceOptions {
   readonly prices: PriceSource;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
+  /** The install's wallets: a live trade on a launch's own curve runs from its launch wallet. */
+  readonly install: Pick<InstallStore, "read">;
 }
 
 /** An intent read again for its re-quote: what it asks, on which chain, for which wallet. */
@@ -67,7 +70,9 @@ async function requote(
   const facts = await options.wallets.facts(query, { signal });
   const nativeAsset = nativeAssetOf(chain);
   const placing = { limits, account: account.value, chains, host, nativeAsset, holdings };
-  const placed = await placeTrade(ask, { ...placing, wallet, isPaper, signal });
+  const launch = await launchWalletOf(options.install, record.agentId, { signal });
+  const launchWallet = launch === undefined ? {} : { launchWallet: launch.id };
+  const placed = await placeTrade(ask, { ...placing, ...launchWallet, wallet, isPaper, signal });
   if (placed.refusal !== undefined) {
     return err(placed.refusal);
   }
@@ -96,7 +101,9 @@ async function requote(
  * an unknown one included, is `no_route`. A buy or a sell whose place changed since its card, a
  * token that graduated, is quoted at its new place; the state machine then opens the next card
  * version, since the card named the place. A wallet the custodian no longer holds is
- * `venue_down`. Each failure leaves the card open, and the owner can cancel it.
+ * `venue_down`, and a live trade on a launch's own curve from a wallet that is not the agent's
+ * launch wallet `needs_launch_wallet` (decision 0218). Each failure leaves the card open, and the
+ * owner can cancel it.
  */
 export function createVenueQuoteSource(options: VenueQuoteSourceOptions): QuoteSource {
   return {

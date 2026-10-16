@@ -8,10 +8,11 @@ import {
   createFakeLaunchpad,
   createFakeRiskSource,
   createFakeVenue,
+  type FakeLaunchpad,
 } from "@binference/chain/testing";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createMemoryRiskCacheStore } from "../fakes/memory-risk-cache-store.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
@@ -205,18 +206,65 @@ describe("a trade routed to the agent's launch wallet", () => {
     });
   });
 
-  it("runs any other trade from the default wallet, and a named wallet as named", async () => {
+  it("runs any other trade from the default wallet", async () => {
     const test = await withLaunchWallet();
 
     const registry = await propose(test, { ...unnamedBuy, token: testToken });
-    const named = await propose(test, buy);
     const unheld = await propose(test, swapOut);
 
-    expect([registry.wallet, named.wallet, unheld.wallet]).toStrictEqual([
-      testWallet,
-      testWallet,
-      testWallet,
-    ]);
+    expect([registry.wallet, unheld.wallet]).toStrictEqual([testWallet, testWallet]);
+    expect(registry.state).toBe("awaiting_confirmation");
+  });
+
+  it("ends a live curve trade that names another wallet, before any card", async () => {
+    const test = await withLaunchWallet();
+
+    const named = await propose(test, buy);
+
+    expect(named).toMatchObject({
+      wallet: testWallet,
+      state: "failed_check",
+      outcome: { reason: "needs_launch_wallet" },
+    });
+    const card = await test.engine.handlers["intent/card"](testCall({ intent: named.intent }));
+    expect(card.ok).toBe(false);
+  });
+
+  it("ends a live curve trade of an agent with no launch wallet, auto mode too", async () => {
+    const test = await engineOver({
+      risk: passing,
+      agent: {
+        mode: "live",
+        approvalMode: "auto",
+        limits: { ...testLimits, venues: ["fake-swap", curve] },
+      },
+    });
+
+    const view = await propose(test, unnamedBuy, testCallers.runtime);
+
+    expect(view).toMatchObject({
+      state: "failed_check",
+      outcome: { reason: "needs_launch_wallet" },
+    });
+  });
+
+  it("ends a live trade whose curve read fails as it picks the wallet", async () => {
+    const pad = createFakeLaunchpad({ onCurve: [unlisted], launchCurve });
+    // The launchpad's node fails the routing read once, and answers every read after it.
+    const curveRead = vi
+      .fn<FakeLaunchpad["curve"]>()
+      .mockRejectedValueOnce(new Error("The launchpad's node did not answer."))
+      .mockImplementation(async (request, call) => pad.curve(request, call));
+    const flaky: Venue = { ...pad, curve: curveRead };
+    const test = await withLaunchWallet({ venues: [createFakeVenue(), flaky] });
+
+    const view = await propose(test, unnamedBuy);
+
+    expect(view).toMatchObject({
+      wallet: testWallet,
+      state: "failed_check",
+      outcome: { reason: "launch_unread" },
+    });
   });
 
   it("sells a token the launch wallet holds from it, off the curve too", async () => {

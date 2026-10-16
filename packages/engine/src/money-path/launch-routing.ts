@@ -1,5 +1,5 @@
 import type { AssetRef, ChainRegistry, RegisteredChain, Signer } from "@binference/chain";
-import type { Id } from "@binference/core";
+import { err, type Id, ok, type Result } from "@binference/core";
 import { launchWalletOf } from "../install/launch-wallet.js";
 import type { InstallStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
@@ -30,18 +30,21 @@ export interface RoutedTrade {
   readonly sold?: AssetRef;
 }
 
-// Whether a launchpad holds the token on a curve with contracts of its own launch. A read that
-// fails says nothing: the trade's own quote then meets the same doubt (decision 0179).
+// Whether a launchpad holds the token on a curve with contracts of its own launch; `unread` when a
+// launchpad's read failed, so no wallet can be picked for it (decision 0218).
 async function isOnLaunchCurve(
   routing: LaunchRouting,
   token: AssetRef | undefined,
   signal: AbortSignal,
-): Promise<boolean> {
+): Promise<boolean | "unread"> {
   if (token === undefined) {
     return false;
   }
   const claims = await routing.host.curves(token, { signal });
-  return claims.ok && claims.value.some((claim) => Object.keys(claim.launch ?? {}).length > 0);
+  if (!claims.ok) {
+    return "unread";
+  }
+  return claims.value.some((claim) => Object.keys(claim.launch ?? {}).length > 0);
 }
 
 // Whether the launch wallet holds some of the token the trade sells, in the trade's mode: a token
@@ -66,16 +69,15 @@ async function holdsSold(
 }
 
 // Whether the trade runs from the launch wallet: a buy or a sale on a curve with contracts of its
-// own launch, or a sale or a swap of an unlisted token the launch wallet holds.
+// own launch, or a sale or a swap of an unlisted token the launch wallet holds; `unread` when the
+// curve read failed.
 async function isLaunchTrade(
   routing: LaunchRouting,
   trade: RoutedTrade & { readonly wallet: Id<"wal"> },
   signal: AbortSignal,
-): Promise<boolean> {
-  return (
-    (await isOnLaunchCurve(routing, trade.placed, signal)) ||
-    (await holdsSold(routing, trade, signal))
-  );
+): Promise<boolean | "unread"> {
+  const onCurve = await isOnLaunchCurve(routing, trade.placed, signal);
+  return onCurve === false ? holdsSold(routing, trade, signal) : onCurve;
 }
 
 /**
@@ -84,20 +86,26 @@ async function isLaunchTrade(
  * its own launch, or for a sale or a swap of a token the registry does not list that the launch
  * wallet holds, a graduated token's sale through the pools among them; else its oldest live
  * wallet that is no launch wallet. A paper intent signs nothing, so it runs from that default
- * wallet. `owned` is the agent's live wallets, oldest first. Without routing, the oldest.
+ * wallet. `owned` is the agent's live wallets, oldest first. Without routing, the oldest. A live
+ * trade of an agent with a launch wallet whose curve read failed is `launch_unread`: it runs from
+ * no wallet (decision 0218).
  */
 export async function routedWalletOf(
   routing: LaunchRouting | undefined,
   trade: RoutedTrade & { readonly owned: readonly Id<"wal">[] },
   signal: AbortSignal,
-): Promise<Id<"wal"> | undefined> {
+): Promise<Result<Id<"wal"> | undefined, "launch_unread">> {
   if (routing === undefined) {
-    return trade.owned[0];
+    return ok(trade.owned[0]);
   }
   const launch = await launchWalletOf(routing.install, trade.agent, { signal });
-  const isLive = launch !== undefined && !trade.isPaper;
-  if (isLive && (await isLaunchTrade(routing, { ...trade, wallet: launch.id }, signal))) {
-    return launch.id;
+  const fallback = trade.owned.find((wallet) => wallet !== launch?.id);
+  if (launch === undefined || trade.isPaper) {
+    return ok(fallback);
   }
-  return trade.owned.find((wallet) => wallet !== launch?.id);
+  const isLaunch = await isLaunchTrade(routing, { ...trade, wallet: launch.id }, signal);
+  if (isLaunch === "unread") {
+    return err("launch_unread");
+  }
+  return ok(isLaunch ? launch.id : fallback);
 }

@@ -160,7 +160,10 @@ Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
 token the wallet holds none of, or whose share rounds to zero; or a paper sale or swap whose paper
 portfolio holds less of its input at the fill than its confirmed quote spends), `balance_unread` (a
 sale by share, or an order's fill, whose balance read had no entry for the asset: no data, never
-zero; [decision 0197](../DECISIONS.md#d0197)).
+zero; [decision 0197](../DECISIONS.md#d0197)), `needs_launch_wallet` (a live buy or sale placed on a
+curve whose launch has contracts of its own, from a wallet that is not the agent's live launch
+wallet) and `launch_unread` (the curve read that picks the wallet failed), both after the policy
+and before any quote ([decision 0218](../DECISIONS.md#d0218)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or
