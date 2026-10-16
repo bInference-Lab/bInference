@@ -77,5 +77,7 @@
   "chat.empty": "还没有消息。可以问 Agent 某个代币，或让它交易。",
   "chat.fromOwner": "你",
   "chat.historyFailed": "无法加载此前的对话。{reason}你的消息仍会发送给 Agent。",
-  "chat.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。"
+  "chat.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。",
+  "chat.images": "{count, plural, other {# 张图片}}",
+  "chat.working": "处理中 · {seconds} 秒"
 }

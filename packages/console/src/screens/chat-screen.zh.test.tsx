@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen } from "@testing-library/react";
+import { act, cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { fakeClient } from "../testing/fake-client";
 import { renderSignedIn, settle } from "../testing/render-signed-in";
@@ -10,7 +10,7 @@ afterEach(cleanup);
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 
 describe("the chat screen, in Chinese", () => {
-  it("speaks the owner's language", async () => {
+  it("speaks the owner's language, the running turn too", async () => {
     const engine = fakeClient({
       "agent/list": () => ({
         items: [{ agent, name: "main", mode: "paper", locale: "zh", createdAt: 1, changedAt: 1 }],
@@ -23,5 +23,12 @@ describe("the chat screen, in Chinese", () => {
     expect(screen.getByRole("heading", { name: "对话" })).toBeDefined();
     expect(screen.getByRole("log", { name: "与 main 的对话" })).toBeDefined();
     expect(screen.getByText("还没有消息。可以问 Agent 某个代币，或让它交易。")).toBeDefined();
+    const started = {
+      agent,
+      session: "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+      turn: "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+    };
+    act(() => engine.push(`chat:${agent}`, "chat/turnStarted", started));
+    expect(screen.getByText("处理中 · 0 秒")).toBeDefined();
   });
 });

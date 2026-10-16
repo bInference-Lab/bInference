@@ -28,8 +28,8 @@ async function readSession(
   return read;
 }
 
-// The query key of an agent's transcript.
-function transcriptKey(agent: ProtocolId<"agent">): readonly string[] {
+/** The query key of an agent's transcript, which a turn's end and a clear make stale. */
+export function transcriptKey(agent: ProtocolId<"agent">): readonly string[] {
   return ["chat", agent];
 }
 

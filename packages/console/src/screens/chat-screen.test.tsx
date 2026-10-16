@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, screen } from "@testing-library/react";
+import { act, cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConsoleRoutes } from "../app/console-router";
 import { type FakeAnswers, fakeClient } from "../testing/fake-client";
@@ -56,6 +56,37 @@ describe("the chat screen", () => {
       agent,
       limit: 200,
     });
+  });
+
+  it("streams the agent's running turn, then shows its answer and its status lines", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    const topic = `chat:${agent}` as const;
+    act(() => engine.push(topic, "chat/turnStarted", { agent, session, turn }));
+    expect(screen.getByText("Working on it · 0 s")).toBeDefined();
+    act(() =>
+      engine.push(topic, "chat/message", { agent, session, turn, text: "Checking", final: false }),
+    );
+    expect(screen.getByText("Checking")).toBeDefined();
+    act(() =>
+      engine.push(topic, "chat/message", {
+        agent,
+        session,
+        turn,
+        text: "A card waits.",
+        final: true,
+      }),
+    );
+    act(() => engine.push(topic, "chat/status", { agent, turn, statusKey: "turn.image.noVision" }));
+    act(() => engine.push(topic, "chat/turnEnded", { agent, turn, outcome: "ok" }));
+    await settle();
+    const log = screen.getByRole("log", { name: "Chat with main" });
+    expect(log.textContent).toContain("A card waits.");
+    expect(screen.queryByText("Working on it · 0 s")).toBeNull();
+    // A status line's `code` spans show as code, and a turn's end loads the transcript again.
+    expect(screen.getByText("models.vision").tagName).toBe("CODE");
+    expect(engine.calls.filter((call) => call.op === "chat/messages").length).toBeGreaterThan(1);
   });
 
   it("says the chat so far could not load while the agent runtime is down", async () => {
