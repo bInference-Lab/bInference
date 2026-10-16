@@ -87,5 +87,6 @@
   "chat.clear": "New chat",
   "chat.cleared": "A new chat has started. The agent forgets this conversation; its notes and files stay.",
   "chat.failed": "Not sent: {reason}",
-  "chat.noScope": "This connection can read the chat but not write in it."
+  "chat.noScope": "This connection can read the chat but not write in it.",
+  "chat.cards": "Waiting for your answer"
 }

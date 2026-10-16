@@ -87,5 +87,6 @@
   "chat.clear": "新对话",
   "chat.cleared": "新的对话已开始。Agent 会忘记这段对话，它的笔记和文件仍然保留。",
   "chat.failed": "未发送：{reason}",
-  "chat.noScope": "此连接可以查看对话，但不能发送消息。"
+  "chat.noScope": "此连接可以查看对话，但不能发送消息。",
+  "chat.cards": "等待你回复"
 }

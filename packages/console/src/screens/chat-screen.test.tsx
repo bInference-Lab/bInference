@@ -154,6 +154,47 @@ describe("the chat screen", () => {
     ).toBeDefined();
   });
 
+  it("shows the agent's card inline, with its warning and time left, and confirms it", async () => {
+    vi.setSystemTime(1_800_000_000_000);
+    const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+    const card = "crd_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+    const expiresAt = 1_800_000_060_000;
+    const pending = {
+      intent,
+      agent,
+      kind: "swap",
+      paper: true,
+      card: { card, version: 1, expiresAt },
+    };
+    const header = {
+      action: { type: "choice", choice: "swap" },
+      agent: { type: "text", text: "main" },
+      mode: { type: "choice", choice: "paper" },
+    };
+    const lines = [
+      { key: "card.header", values: header },
+      { key: "card.warn.outsideContent", values: {} },
+    ];
+    const engine = fakeClient(
+      chatAnswers({
+        "intent/list": () => ({ items: [pending] }),
+        "intent/card": () => ({ card, version: 1, expiresAt, assets: {}, lines }),
+        "intent/confirm": () => ({ intent, state: "paper_filled" }),
+      }),
+    );
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    const cards = screen.getByRole("region", { name: "Waiting for your answer" });
+    expect(cards.textContent).toContain("This came after reading outside content");
+    expect(screen.getByRole("timer").textContent).toBe("60 seconds left");
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await settle();
+    const confirmed = engine.calls.filter((call) => call.op === "intent/confirm");
+    expect(confirmed).toStrictEqual([
+      { op: "intent/confirm", args: { intent, card, cardVersion: 1 } },
+    ]);
+  });
+
   it("says the chat so far could not load while the agent runtime is down", async () => {
     const down = Object.assign(new Error("down"), { code: "runtime.unavailable" });
     const engine = fakeClient(chatAnswers({ "chat/messages": async () => Promise.reject(down) }));

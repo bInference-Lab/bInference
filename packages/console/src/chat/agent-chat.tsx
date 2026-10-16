@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { useEngine } from "../connection/engine-context";
 import { errorWords } from "../connection/error-words";
 import { MessageText, useText } from "../i18n/console-text";
+import { ChatCards } from "./chat-cards";
 import { ChatComposer } from "./chat-composer";
 import { chatEntries } from "./chat-entries";
 import { ChatThread, WorkingLine } from "./chat-thread";
@@ -134,7 +135,8 @@ function ChatBottom(props: {
 }
 
 /**
- * The chat with one agent: the thread, the running turn and the composer. New chat starts a new session; the agent keeps its notes and files.
+ * The chat with one agent: the thread, the running turn, the agent's cards inline with Confirm and
+ * Cancel, and the composer. New chat starts a new session; the agent keeps its notes and files.
  */
 export function AgentChat(props: {
   readonly agent: ProtocolId<"agent">;
@@ -154,6 +156,7 @@ export function AgentChat(props: {
       {running === undefined ? null : (
         <WorkingLine draft={running.draft} startedAt={running.startedAt} />
       )}
+      <ChatCards agent={agent} />
       <ChatBottom
         actions={actions}
         canChat={canChat}
