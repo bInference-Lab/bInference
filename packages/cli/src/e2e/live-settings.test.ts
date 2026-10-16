@@ -9,7 +9,7 @@ import {
 } from "@binference/core";
 import type { TempFolder } from "@binference/platform/testing";
 import { startInProcessRuntime } from "@binference/runtime/testing";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { z } from "zod";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
@@ -116,9 +116,11 @@ function at(value: JsonValue, path: string): JsonValue | undefined {
     );
 }
 
+type Patch = Readonly<Record<string, JsonValue>>;
+
 interface Row {
   readonly key: string;
-  readonly patch: Readonly<Record<string, JsonValue>>;
+  readonly patch: Patch;
   /** Where the runtime's settings show the key, and the value they must show after the change. */
   readonly shows: readonly [path: string, value: JsonValue];
 }
@@ -156,6 +158,11 @@ const runtimeRows: readonly Row[] = [
     key: "models.vision",
     patch: { models: { vision: "test/eyes" } },
     shows: ["models.vision", "test/eyes"],
+  },
+  {
+    key: "models.imageInput",
+    patch: { models: { imageInput: ["test/main-b"] } },
+    shows: ["models.imageInput", ["test/main-b"]],
   },
   {
     key: "models.fallbacks.main",
@@ -270,6 +277,39 @@ function recordedWorld() {
 const bsc = "eip155:56";
 const rpcUrls = (url: string) => ({ chains: { rpc: { [bsc]: { urls: [url] } } } });
 
+// Live keys whose parts this engine cannot be watched using here (a log file past its size, a
+// backup's night, a notice in a topic, a cached risk report) or that no part reads yet: each part's
+// own test proves the read on use; here the answer and the notice must say they apply now.
+const appliedRows: readonly (readonly [string, Patch])[] = [
+  ["logging.level", { logging: { level: "debug" } }],
+  ["logging.keepDays", { logging: { keepDays: 7 } }],
+  ["logging.maxFileMb", { logging: { maxFileMb: 5 } }],
+  ["backups.daily", { backups: { daily: false } }],
+  ["backups.keepDaily", { backups: { keepDaily: 3 } }],
+  ["backups.keepWeekly", { backups: { keepWeekly: 2 } }],
+  ["telegram.topicsPerAgent", { telegram: { topicsPerAgent: true } }],
+  ["risk.cacheTtlSec", { risk: { cacheTtlSec: 60 } }],
+  ["telegram.groups", { telegram: { groups: true } }],
+  ["remote.mini", { remote: { mini: true } }],
+  ["updates.channel", { updates: { channel: "beta" } }],
+  ["telemetry.enabled", { telemetry: { enabled: true } }],
+  ["chats.keepDays", { chats: { keepDays: 30 } }],
+];
+
+// Keys whose parts copy them at start: the answer asks for a restart and the notice says so.
+const restartRows: readonly (readonly [string, Patch])[] = [
+  ["engine.shutdownBudgetMs", { engine: { shutdownBudgetMs: 20_000 } }],
+  ["engine.webhookPort", { engine: { webhookPort: 7999 } }],
+  ["defaults.modelBudgetUsdPerDay", { defaults: { modelBudgetUsdPerDay: "5" } }],
+  [
+    "chains.rpc.eip155:56.tracer",
+    { chains: { rpc: { "eip155:56": { tracer: { fromEnv: "TEST_TRACER" } } } } },
+  ],
+  ["network.noProxy", { network: { noProxy: ["localhost"] } }],
+  ["remote.publicUrl", { remote: { publicUrl: "https://box.example.ts.net" } }],
+  ["cex.binance.enabled", { cex: { binance: { enabled: true } } }],
+];
+
 describe("live settings in a running engine", () => {
   const running = {} as { machine: InitMachine; client: ProtocolClient; port: number };
   const runtime = recordedRuntime();
@@ -312,7 +352,7 @@ describe("live settings in a running engine", () => {
     await running.client.call("intent/propose", swap, live()).catch(() => undefined);
     return world.sent.slice(from);
   };
-  const change = async (patch: Readonly<Record<string, JsonValue>>): Promise<boolean> =>
+  const change = async (patch: Patch): Promise<boolean> =>
     (await running.client.call("config/change", { patch }, live())).restartNeeded;
 
   beforeAll(async () => {
@@ -324,11 +364,18 @@ describe("live settings in a running engine", () => {
     });
     running.machine = machine;
     running.port = z.object({ http: z.object({ port: z.number() }) }).parse(started).http.port;
-    running.client = await connectClient(machine);
   }, 60_000);
 
-  afterAll(async () => {
+  // Each row signs in again: a connection's call budget refills with the clock, which stands still.
+  beforeEach(async () => {
+    running.client = await connectClient(running.machine);
+  });
+
+  afterEach(() => {
     running.client.close();
+  });
+
+  afterAll(async () => {
     await engines.stopAll();
     await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
   });
@@ -394,6 +441,21 @@ describe("live settings in a running engine", () => {
     await expect(change({ engine: { extraOrigins: [] } })).resolves.toBe(false);
     await expect(firstAnswerCode(running.port, origin)).resolves.toBe("auth.origin");
   });
+
+  it.each(appliedRows)("answers and announces a changed %s as applied now", async (key, patch) => {
+    await expect(change(patch)).resolves.toBe(false);
+    const named = (await configNotices()).filter(({ changed }) => changed === key);
+    expect(new Set(named.map(({ afterRestart }) => afterRestart))).toStrictEqual(new Set(["none"]));
+  });
+
+  it.each(restartRows)(
+    "never says a changed %s applied, and names it as waiting for a restart",
+    async (key, patch) => {
+      await expect(change(patch)).resolves.toBe(true);
+      const named = (await configNotices()).filter(({ changed }) => changed === key);
+      expect(new Set(named.map(({ afterRestart }) => afterRestart))).toStrictEqual(new Set([key]));
+    },
+  );
 
   it("reads the chain through changed rpc urls at the next request", async () => {
     await expect(change(rpcUrls("https://rpc-one.example.org/"))).resolves.toBe(false);

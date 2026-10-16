@@ -49,6 +49,7 @@ describe("when a config change applies", () => {
     ["backups.copyTo", "/backups", "now"],
     ["telegram.topicsPerAgent", true, "now"],
     ["models.main", "test/main", "now"],
+    ["models.imageInput", ["test/main"], "now"],
     ["search.keys.brave", "fromEnv", "now"],
     ["chains.rpc.eip155:56.urls", ["https://node.example.org"], "now"],
     ["chains.relays.eip155:56", ["blockrazor"], "now"],
