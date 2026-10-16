@@ -1,4 +1,7 @@
 {
   "line": "{token} · {launchpad} · {age}前 · {curve} · 交易税 {tax} · {insiders, plural, =0 {无内部钱包} other {# 个内部钱包}} · 创建者 30 天内其他发射：{creatorLaunches}",
-  "curve": "{graduated, select, yes {已毕业} other {曲线进度 {progress}}}"
+  "curve": "{graduated, select, yes {已毕业} other {曲线进度 {progress}}}",
+  "option.taxBps": "每笔交易的交易税：{value}",
+  "option.taxRecipient": "交易税支付给 {value}",
+  "option.buyback": "回购并销毁：{value, select, yes {开启} other {关闭}}"
 }

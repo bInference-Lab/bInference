@@ -1,4 +1,7 @@
 {
   "line": "{token} · {launchpad} · {age} ago · {curve} · tax {tax} · {insiders, plural, =0 {no insider wallets} one {# insider wallet} other {# insider wallets}} · creator's other launches in 30 days: {creatorLaunches}",
-  "curve": "{graduated, select, yes {graduated} other {curve {progress}}}"
+  "curve": "{graduated, select, yes {graduated} other {curve {progress}}}",
+  "option.taxBps": "Tax on every trade: {value}",
+  "option.taxRecipient": "Tax paid to {value}",
+  "option.buyback": "Buyback and burn: {value, select, yes {on} other {off}}"
 }
