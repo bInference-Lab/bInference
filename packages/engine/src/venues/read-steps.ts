@@ -35,7 +35,7 @@ function decodeSafely(decoder: TxDecoder, draft: TxDraft): DecodedEffect | undef
  * approval step, and any other call as `readCall` reads it. A draft the family cannot read, or a
  * call `readCall` cannot, is `undefined`.
  */
-function readCallStep<S>(
+export function readCallStep<S>(
   draft: TxDraft,
   family: ChainFamily,
   readCall: (draft: TxDraft, call: DraftCall) => S | undefined,
@@ -54,7 +54,7 @@ function readCallStep<S>(
  * Reads every draft a venue built with `read`, each from the host's own copy of the draft. No
  * draft, or one draft `read` cannot read, refuses the whole plan.
  */
-function readEachDraft<S>(
+export function readEachDraft<S>(
   drafts: readonly TxDraft[],
   read: (draft: TxDraft) => S | undefined,
 ): Result<readonly S[], "unreadable_step"> {
