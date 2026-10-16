@@ -8,13 +8,17 @@ const agentInboxKinds = [
   "inbox/intentSettled",
   "inbox/stop",
   "inbox/clear",
+  "inbox/scheduleDue",
 ] as const;
 
 /** One kind of agent inbox message, named as its `inbox` push. */
 export type AgentInboxKind = (typeof agentInboxKinds)[number];
 
-/** The kinds an owner's chat writes; a settle message is written only with its intent's move. */
-type OwnerInboxKind = Exclude<AgentInboxKind, "inbox/intentSettled">;
+/**
+ * The kinds an owner's chat writes; a settle message is written only with its intent's move, and
+ * a wake-up only with its schedule's run.
+ */
+type OwnerInboxKind = Exclude<AgentInboxKind, "inbox/intentSettled" | "inbox/scheduleDue">;
 
 /**
  * Untaken messages one agent may hold (runtime spec, section 3.2). Past it, an owner's message is

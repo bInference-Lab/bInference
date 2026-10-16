@@ -8,6 +8,7 @@ import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import {
   clearPayloadSchema,
   ownerMessagePayloadSchema,
+  scheduleDuePayloadSchema,
   settlePayloadSchema,
   stopPayloadSchema,
 } from "./inbox-payload.schema.js";
@@ -31,7 +32,8 @@ function turnOf(message: AgentInboxMessage): Id<"trn"> {
 
 /**
  * A stored inbox message as `inbox/list` and the `inbox` topic carry it (runtime spec, section
- * 3.3): a settle message with its intent's view as it stands now.
+ * 3.3): a settle message with its intent's view as it stands now, and a schedule's wake-up with
+ * its prompt and mark.
  */
 export async function inboxViewOf(
   message: AgentInboxMessage,
@@ -53,6 +55,10 @@ export async function inboxViewOf(
   }
   if (message.kind === "inbox/clear") {
     return { ...base, kind: message.kind, ...clearPayloadSchema.parse(message.payload) };
+  }
+  if (message.kind === "inbox/scheduleDue") {
+    const payload = scheduleDuePayloadSchema.parse(message.payload);
+    return { ...base, kind: message.kind, turn: turnOf(message), ...payload };
   }
   const { intent } = settlePayloadSchema.parse(message.payload);
   const view = await intentView(intent, signal);

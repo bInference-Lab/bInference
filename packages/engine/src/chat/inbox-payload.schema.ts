@@ -1,6 +1,7 @@
 import { type Id, idSchema } from "@binference/core";
 import { chatSurfaceSchema, type ChatSurface, choicePlaceSchema } from "@binference/protocol";
 import { z } from "zod";
+import { epochMsSchema } from "../records/record-fields.js";
 
 // The payload of each kind of agent inbox message, as `agent_inbox.payload` stores it: the kind's
 // own fields of the runtime spec's section 3.3, in their wire form.
@@ -52,4 +53,20 @@ export interface ClearPayload {
 /** Parses a clear's payload. */
 export const clearPayloadSchema: z.ZodType<ClearPayload> = z.strictObject({
   next: idSchema("ses"),
+});
+
+/** A schedule's wake-up: the schedule, its prompt, when the run was due, and its mark. */
+export interface ScheduleDuePayload {
+  readonly schedule: Id<"sch">;
+  readonly prompt: string;
+  readonly due: number;
+  readonly outsideContent: boolean;
+}
+
+/** Parses a wake-up's payload. */
+export const scheduleDuePayloadSchema: z.ZodType<ScheduleDuePayload> = z.strictObject({
+  schedule: idSchema("sch"),
+  prompt: z.string(),
+  due: epochMsSchema,
+  outsideContent: z.boolean(),
 });

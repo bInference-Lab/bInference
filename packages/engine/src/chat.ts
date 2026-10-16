@@ -62,3 +62,24 @@ export type { BudgetNoticeClaim, ModelSpend, SpendQuery } from "./billing/model-
 export type { ModelUsageStore } from "./billing/ports.js";
 export { createDailyModelBudget, ownerDayOf } from "./billing/daily-model-budget.js";
 export type { DailyModelBudgetOptions, OwnerDay } from "./billing/daily-model-budget.js";
+export {
+  dueQuerySchema,
+  maxActiveSchedules,
+  scheduleCancelSchema,
+  scheduleQuerySchema,
+  scheduleRecordSchema,
+  scheduleRezoneSchema,
+  scheduleRunDraftSchema,
+} from "./schedules/schedule-record.js";
+export type {
+  DueQuery,
+  ScheduleCancel,
+  ScheduleNext,
+  ScheduleQuery,
+  ScheduleRecord,
+  ScheduleRezone,
+  ScheduleRunDraft,
+  ScheduleRunWritten,
+  ScheduleWake,
+} from "./schedules/schedule-record.js";
+export type { ScheduleStore } from "./schedules/ports.js";

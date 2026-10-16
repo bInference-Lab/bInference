@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import { maxUntakenMessages } from "../chat/agent-inbox-record.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
 import {
   type QuestionAnswerDraft,
   questionOpenMs,
   type QuestionRecord,
 } from "../chat/question-record.js";
-import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
+import { fillAgentInbox } from "./inbox-fixtures.js";
+import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
 
 /** A question store under test, the agent inbox of the same database, and an agent there. */
 export interface QuestionSubject {
@@ -128,21 +128,7 @@ async function refusesClosedAndExpired(subject: QuestionSubject): Promise<void> 
 async function refusesWhenTheInboxIsFull(subject: QuestionSubject): Promise<void> {
   const { questions, agentInbox, agentId } = subject;
   await asked(subject, question(subject, 1));
-  const numbers = Array.from({ length: maxUntakenMessages }, (_, index) => index + 1);
-  await inOrder(numbers, async (n) =>
-    agentInbox.add(
-      {
-        id: fixtureId("msg", 1_000 + n),
-        agentId,
-        kind: "inbox/message",
-        turnId: fixtureId("trn", 1_000 + n),
-        payload: { text: "hi", surface: "telegram" },
-        atMs: n,
-        opens: session,
-      },
-      live(),
-    ),
-  );
+  await fillAgentInbox(agentInbox, { agentId, session });
   assert.deepEqual(await questions.answer(answerOf(1, 0, 1_500), live()), {
     ok: false,
     error: "busy",
