@@ -286,8 +286,9 @@ async function refusingFaults(
  * install instead (keys spec, section 6; decision 0140), after restoring a backup into the folder
  * with `--restore` (keys spec, section 7.4). A person at a terminal answers its questions; with
  * `--yes`, `--json` or no terminal, every answer comes from a flag, its `BINFERENCE_INIT_*`
- * variable or the answers file (decision 0224). Exits 0 once the install is set up or attached, 1 when it refused or
- * failed.
+ * variable or the answers file (decision 0224), and a new set-up is checked for every answer
+ * before anything is written (decision 0225). Exits 0 once the install is set up or attached, 1
+ * when it refused or failed.
  */
 export async function runInitCommand(
   host: CliHost,

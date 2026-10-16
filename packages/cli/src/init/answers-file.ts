@@ -1,4 +1,4 @@
-import { ok } from "@binference/core";
+import { BinferenceError, ok } from "@binference/core";
 import { readTextFile } from "@binference/platform";
 import { z } from "zod";
 import { readConfigText } from "../config/config-text.js";
@@ -54,17 +54,39 @@ function issueKey(issue: z.core.$ZodIssue): string {
   return issue.path.map(String).join(".");
 }
 
+// A file the platform cannot open, such as one of another user or over 1 MiB, is init's refusal,
+// not a fault.
+async function readOrRefuse(
+  file: string,
+  signal: AbortSignal,
+): Promise<Awaited<ReturnType<typeof readTextFile>> | "unopened"> {
+  try {
+    return await readTextFile(file, signal);
+  } catch (error) {
+    const isUnopened =
+      error instanceof BinferenceError &&
+      ["platform.file_read_failed", "platform.file_too_large"].includes(error.code);
+    if (isUnopened) {
+      return "unopened";
+    }
+    throw error;
+  }
+}
+
 /**
  * Reads the answers file (decision 0223): one JSON5 object whose keys are init's flags in camel
  * case, each secret as a secret source, and a `set` object of config keys. A file that is gone,
- * does not parse or holds a key init does not take is init's refusal, naming the file and the
- * line or key, never a value.
+ * cannot be opened, does not parse or holds a key init does not take is init's refusal, naming
+ * the file and the line or key, never a value.
  */
 export async function readAnswersFile(
   file: string,
   signal: AbortSignal,
 ): Promise<InitStep<FileAnswers>> {
-  const read = await readTextFile(file, signal);
+  const read = await readOrRefuse(file, signal);
+  if (read === "unopened") {
+    return refused("init.answers_unreadable", "refused.answersUnopened", { file });
+  }
   if (!read.ok) {
     return refused("init.answers_missing", "refused.answersMissing", { file });
   }

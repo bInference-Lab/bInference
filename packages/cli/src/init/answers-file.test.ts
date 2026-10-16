@@ -80,6 +80,20 @@ describe("the answers file", () => {
     expect(JSON.stringify(read)).not.toContain("AAE-secret");
   });
 
+  it("refuses a folder in place of a file", async () => {
+    const file = await answersFile("{}");
+    const folder = join(file, "..");
+
+    await expect(readAnswersFile(folder, signal)).resolves.toStrictEqual({
+      ok: false,
+      refusal: {
+        code: "init.answers_unreadable",
+        key: "refused.answersUnopened",
+        values: { file: folder },
+      },
+    });
+  });
+
   it("refuses a file that is gone or holds no object", async () => {
     const list = await answersFile("[]");
     const gone = join(list, "..", "gone.json5");

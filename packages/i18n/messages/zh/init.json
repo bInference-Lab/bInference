@@ -168,6 +168,7 @@
   "answers.inFile": "{file} 中的 {key}",
   "refused.unknownVariable": "{variable} 不能回答 binference init 的任何问题。请删除它或修正名称：每个 BINFERENCE_INIT_ 变量都是 `binference init --help` 中某个选项的大写形式，例如 BINFERENCE_INIT_PRIVY_APP_ID。",
   "refused.answersMissing": "{file} 处没有应答文件。请检查 `--answers` 或 `BINFERENCE_INIT_ANSWERS` 给出的路径。",
+  "refused.answersUnopened": "binference init 无法打开应答文件 {file}。请确认它是你可以读取的文件，且不超过 1 MiB。",
   "refused.answersUnreadable": "无法读取应答文件 {file} 第 {line} 行第 {column} 列。请修正该处，然后再次运行 `binference init`。",
   "refused.answersNotObject": "应答文件 {file} 必须是一个 JSON5 对象，每个回答一项。",
   "refused.answersInvalid": "应答文件 {file} 在 {key} 处有 binference init 不接受的内容。每一项都以 `binference init --help` 中某个选项的驼峰写法命名，例如 `privyAppId`；`set` 中写配置项。",

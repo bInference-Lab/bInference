@@ -168,6 +168,7 @@
   "answers.inFile": "{key} in {file}",
   "refused.unknownVariable": "{variable} answers nothing binference init asks. Remove it, or fix its name: each BINFERENCE_INIT_ variable is a flag of `binference init --help` in capitals, such as BINFERENCE_INIT_PRIVY_APP_ID.",
   "refused.answersMissing": "There is no answers file at {file}. Check the path that `--answers` or `BINFERENCE_INIT_ANSWERS` gives.",
+  "refused.answersUnopened": "binference init cannot open the answers file {file}. Check that it is a file you can read, of at most 1 MiB.",
   "refused.answersUnreadable": "The answers file {file} cannot be read at line {line}, column {column}. Fix it there, then run `binference init` again.",
   "refused.answersNotObject": "The answers file {file} must hold one JSON5 object, with one entry for each answer.",
   "refused.answersInvalid": "The answers file {file} holds something binference init does not take at {key}. Each entry is named after a flag of `binference init --help` in camel case, such as `privyAppId`, and `set` holds config keys.",
