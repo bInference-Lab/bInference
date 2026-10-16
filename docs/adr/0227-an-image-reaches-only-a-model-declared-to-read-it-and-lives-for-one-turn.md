@@ -1,6 +1,6 @@
 # 0227. An image reaches only a model declared to read it, and lives for one turn
 
-Status: Accepted
+Status: Amended by 0228
 
 Accepted by the owner on 2026-10-16.
 

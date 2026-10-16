@@ -10,7 +10,12 @@ import {
 import { describe, expect, it } from "vitest";
 import { anthropicAnswer, openaiAnswer, openrouterAnswer } from "../testing/failure-answers.js";
 import type { RecordedAnswer } from "../testing/recorded-http.js";
-import { checkModel, type ModelCheckProblem, type ModelCheckTarget } from "./model-check.js";
+import {
+  checkModel,
+  checkModelImages,
+  type ModelCheckProblem,
+  type ModelCheckTarget,
+} from "./model-check.js";
 
 const clock: Clock = { now: () => 1_760_000_000_000, sleep: async () => Promise.resolve() };
 const key = "sk-test-check-key";
@@ -226,5 +231,71 @@ describe("the model check", () => {
     const { outcome, requests } = await check(target, answer);
     expect(outcome).toStrictEqual(err(problem));
     expect(requests).toHaveLength(1);
+  });
+
+  it("sends one 1x1 PNG in each API's own image format for the image check", async () => {
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+    const parts = { clock, timeoutMs: 5_000, signal: AbortSignal.timeout(5_000) };
+    const chat = providerOf(chatAnswer);
+    const messages = providerOf(messagesAnswer);
+    const outcomes = await Promise.all([
+      checkModelImages(
+        { ...targets.openai, apiKey: createSecret(key) },
+        { ...parts, http: chat.http },
+      ),
+      checkModelImages(
+        { ...targets.anthropic, apiKey: createSecret(key) },
+        { ...parts, http: messages.http },
+      ),
+    ]);
+    expect(outcomes).toStrictEqual([ok(undefined), ok(undefined)]);
+    expect(bodyOf(chat.requests[0])).toMatchObject({
+      max_completion_tokens: 16,
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "image_url", image_url: { url: png } }, { type: "text" }],
+        },
+      ],
+    });
+    expect(bodyOf(messages.requests[0])).toMatchObject({
+      max_tokens: 1,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: "image/png" } },
+            { type: "text" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("answers a problem for a model that refuses the image", async () => {
+    const refused: RecordedAnswer = {
+      status: 400,
+      headers: json,
+      chunks: [
+        JSON.stringify({
+          error: {
+            message: "Invalid content type. image_url is only supported by certain models.",
+            type: "invalid_request_error",
+            param: "messages.[0].content.[0].type",
+            code: null,
+          },
+        }),
+      ],
+    };
+    const provider = providerOf(refused);
+    const parts = {
+      http: provider.http,
+      clock,
+      timeoutMs: 5_000,
+      signal: AbortSignal.timeout(5_000),
+    };
+    const outcome = await checkModelImages({ ...targets.openai, apiKey: createSecret(key) }, parts);
+    expect(outcome).toMatchObject({ ok: false });
   });
 });

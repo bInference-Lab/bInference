@@ -1,6 +1,6 @@
 # 0221. Init checks a model key with one small live call before saving it
 
-Status: Accepted
+Status: Amended by 0228
 
 Accepted by the owner on 2026-10-16.
 

@@ -1,4 +1,6 @@
+import type { ContentBlockParam } from "@anthropic-ai/sdk/resources/messages";
 import { type Clock, err, type Http, ok, type Result, type Secret } from "@binference/core";
+import type { ChatCompletionContentPart } from "openai/resources/chat/completions";
 import { z } from "zod";
 import type { RuntimeProvider } from "../control/runtime-settings.schema.js";
 import type { ModelFailure } from "../loop/model-event.js";
@@ -46,6 +48,32 @@ export interface ModelCheckParts {
 
 // The words of the one message a check sends; the answer is read only for its shape.
 const greeting = "Hi";
+// The image check's one image, a 1x1 PNG, the smallest image both APIs take (decision 0228), and
+// its question.
+const tinyPng =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+const imageQuestion = "What color is this image?";
+
+/** What one check asks: a greeting, or the tiny image with its question. */
+type CheckAsk = "text" | "image";
+
+function chatContent(ask: CheckAsk): ChatCompletionContentPart[] | string {
+  return ask === "text"
+    ? greeting
+    : [
+        { type: "image_url", image_url: { url: `data:image/png;base64,${tinyPng}` } },
+        { type: "text", text: imageQuestion },
+      ];
+}
+
+function messagesContent(ask: CheckAsk): ContentBlockParam[] | string {
+  return ask === "text"
+    ? greeting
+    : [
+        { type: "image", source: { type: "base64", media_type: "image/png", data: tinyPng } },
+        { type: "text", text: imageQuestion },
+      ];
+}
 // Some OpenAI-compatible servers refuse fewer than 16 output tokens; Messages takes 1.
 const chatOutputTokens = 16;
 const messagesOutputTokens = 1;
@@ -93,14 +121,15 @@ function problemOf(failure: ProviderFailure, facts: FailureFacts): ModelCheckPro
 
 async function checkChat(
   options: Parameters<typeof createChatClient>[0],
-  signal: AbortSignal,
+  call: { readonly ask: CheckAsk; readonly signal: AbortSignal },
 ): Promise<Result<void, ModelCheckProblem>> {
+  const { signal } = call;
   const client = createChatClient(options);
   try {
     const answer = await client.chat.completions.create(
       {
         model: options.model,
-        messages: [{ role: "user", content: greeting }],
+        messages: [{ role: "user", content: chatContent(call.ask) }],
         max_completion_tokens: chatOutputTokens,
       },
       { signal },
@@ -114,14 +143,15 @@ async function checkChat(
 
 async function checkMessages(
   options: Parameters<typeof createMessagesClient>[0],
-  signal: AbortSignal,
+  call: { readonly ask: CheckAsk; readonly signal: AbortSignal },
 ): Promise<Result<void, ModelCheckProblem>> {
+  const { signal } = call;
   const client = createMessagesClient(options);
   try {
     const answer = await client.messages.create(
       {
         model: options.model,
-        messages: [{ role: "user", content: greeting }],
+        messages: [{ role: "user", content: messagesContent(call.ask) }],
         max_tokens: messagesOutputTokens,
       },
       { signal },
@@ -145,6 +175,28 @@ export async function checkModel(
   target: ModelCheckTarget,
   parts: ModelCheckParts,
 ): Promise<Result<void, ModelCheckProblem>> {
+  return checkOnce(target, parts, "text");
+}
+
+/**
+ * Checks that a model reads images with one small live call (decision 0228): the same call as
+ * {@link checkModel}, its message one 1x1 PNG in the provider's documented format, an `image_url`
+ * data URL on Chat Completions, an `image` block with a base64 source on Messages, and a short
+ * question. A model that answers in the API's shape reads images; any problem means it is not
+ * declared to.
+ */
+export async function checkModelImages(
+  target: ModelCheckTarget,
+  parts: ModelCheckParts,
+): Promise<Result<void, ModelCheckProblem>> {
+  return checkOnce(target, parts, "image");
+}
+
+async function checkOnce(
+  target: ModelCheckTarget,
+  parts: ModelCheckParts,
+  ask: CheckAsk,
+): Promise<Result<void, ModelCheckProblem>> {
   const options = {
     baseUrl: baseUrlOf(target),
     ...(target.apiKey === undefined ? {} : { apiKey: target.apiKey.reveal() }),
@@ -153,7 +205,6 @@ export async function checkModel(
     http: createBufferedHttp(parts.http),
     clock: parts.clock,
   };
-  return target.kind === "anthropic"
-    ? checkMessages(options, parts.signal)
-    : checkChat(options, parts.signal);
+  const call = { ask, signal: parts.signal };
+  return target.kind === "anthropic" ? checkMessages(options, call) : checkChat(options, call);
 }

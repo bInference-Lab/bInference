@@ -28,7 +28,7 @@ export type {
   RuntimeSettings,
   RuntimeSettingsWire,
 } from "./control/runtime-settings.schema.js";
-export { checkModel } from "./providers/model-check.js";
+export { checkModel, checkModelImages } from "./providers/model-check.js";
 export type {
   ModelCheckParts,
   ModelCheckProblem,

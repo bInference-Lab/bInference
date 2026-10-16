@@ -524,7 +524,9 @@ nothing after the history carries one.
 - A model the owner picked for the agent (`/ai`, `model/set`) is never swapped for another.
 - The model check (`checkModel`, [decision 0221](../DECISIONS.md#d0221)) builds the same clients
   for one small call that `binference init` and `binference check` make in the CLI's process: it
-  proves a key, its credit, its model and its address, and names what went wrong.
+  proves a key, its credit, its model and its address, and names what went wrong. The image check
+  (`checkModelImages`, [decision 0228](../DECISIONS.md#d0228)) makes the same call with one 1x1
+  PNG in the API's own image format; init lists a model that passes in `models.imageInput`.
 
 <a id="section-8-2"></a>
 
