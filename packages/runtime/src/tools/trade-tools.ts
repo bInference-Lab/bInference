@@ -20,8 +20,9 @@ import { failedAnswer, isEngineRefusal, isRefusedState } from "./tool-answer.js"
 import type { AgentToolParts, ToolClient } from "./tool-client.js";
 
 // The agent's propose tools (runtime spec, sections 5.1 and 6.1). The model gives the terms and
-// its reason; the tool names the agent of its turn and no wallet, so the engine acts from the
-// agent's default wallet. Each call sends the call's key as its idempotency key, so a resend on
+// its reason; the tool names the agent of its turn and no wallet, so the engine picks it: the
+// agent's launch wallet for a live trade on a launch's own curve, else its default wallet
+// (decisions 0217 and 0218). Each call sends the call's key as its idempotency key, so a resend on
 // a new connection returns the first intent. The answer names the intent or the order and says
 // it waits for the owner, and nothing more: the card speaks for the proposal, and the next turn
 // reads its outcome. It never waits for the tap.

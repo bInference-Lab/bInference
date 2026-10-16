@@ -9,7 +9,8 @@ export type ToolClient = Pick<ProtocolClient, "call">;
 export interface AgentToolParts {
   /**
    * The agent whose turns call the tools. Every call names it; the model never names an agent, and
-   * names no wallet, so the engine acts from this agent's default wallet (decision 0176).
+   * names no wallet, so the engine picks this agent's wallet: its launch wallet for a live trade on
+   * a launch's own curve, else its default wallet (decisions 0176 and 0217).
    */
   readonly agent: Id<"agt">;
   readonly client: ToolClient;
