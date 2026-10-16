@@ -1,4 +1,4 @@
-import { err, type Id } from "@binference/core";
+import { err, type Id, ok } from "@binference/core";
 import type { QueuedMessage } from "@binference/store";
 import { readTurnPrefix } from "../context/turn-prefix.js";
 import { createChatTurn, type TurnReport } from "../loop/chat-turn.js";
@@ -199,11 +199,14 @@ function imagePartsOf(
   if (images === undefined) {
     return vision;
   }
+  // The turn keeps only what a model reads of each image: its format and its bytes.
   const readImage: ReadImage = async (wanted, signal) => {
     const message = taken.find(({ queued }) => queued.message === wanted.message)?.queued.message;
-    return message === undefined
-      ? err("not_found")
-      : images.read({ agent, message, image: wanted.image }, signal);
+    if (message === undefined) {
+      return err("not_found");
+    }
+    const read = await images.read({ agent, message, image: wanted.image }, signal);
+    return read.ok ? ok({ contentType: read.value.contentType, data: read.value.data }) : read;
   };
   return { ...vision, readImage };
 }
