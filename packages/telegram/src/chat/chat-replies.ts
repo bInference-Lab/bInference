@@ -1,13 +1,13 @@
 import { BinferenceError, type Clock, type JsonValue, type Logger } from "@binference/core";
 import type { OwnerStore } from "@binference/engine/surfaces";
 import { displayOutsideText, type Formatter, type MessageLocale } from "@binference/i18n";
+import { type ChatPush, chatPushOf } from "@binference/protocol";
 import type { Api } from "grammy";
 import { callBotApi } from "../api/call-bot-api.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import { previewSignal } from "../throttle/preview-signal.js";
 import { chatHtmlOf, statusHtmlOf } from "./chat-html.js";
-import { type ChatPush, chatPushOf } from "./chat-push.schema.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
 export interface ChatReplies {

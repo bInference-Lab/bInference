@@ -213,6 +213,8 @@ export type {
 export type { JobRef } from "./views/job-ref.schema.js";
 export { jobDonePushSchema, jobFailedPushSchema } from "./views/job-push.schema.js";
 export type { JobDonePush, JobFailedPush } from "./views/job-push.schema.js";
+export { chatPushOf } from "./views/chat-push.schema.js";
+export type { ChatPush } from "./views/chat-push.schema.js";
 export { noticePushViewSchema, noticeViewSchema } from "./views/notice-view.schema.js";
 export type {
   NoticeDeliveryState,
