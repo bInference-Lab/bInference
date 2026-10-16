@@ -173,6 +173,27 @@ function pinless(rule: RuleJson): RuleJson {
   return { ...rule, conditions: kept };
 }
 
+// A condition as a ceiling rule writes it, on the decoded call or the transaction itself.
+function conditionOn(field: string, fieldSource: string, value: string): JsonValue {
+  return { field_source: fieldSource, field, operator: "eq", value };
+}
+
+// The launch buy that names the one contract it may reach, as no launch rule does.
+function namingContract(rule: RuleJson): RuleJson {
+  const to = conditionOn("to", "ethereum_transaction", testAddresses.curve);
+  return rule.name === "Launch call buy, chain 56"
+    ? Object.assign({}, rule, { conditions: [...rule.conditions, to] })
+    : rule;
+}
+
+// The launch approvals that name the one spender they may approve, as no launch rule does.
+function namingSpender(rule: RuleJson): RuleJson {
+  const spender = conditionOn("approve.spender", "ethereum_calldata", testAddresses.curve);
+  return rule.name === "Launch approvals, chain 56"
+    ? Object.assign({}, rule, { conditions: [...rule.conditions, spender] })
+    : rule;
+}
+
 describe("isBuiltCeiling", () => {
   const { rescue, saved, unsaved } = testAddresses;
 
@@ -242,6 +263,13 @@ describe("isBuiltCeiling", () => {
     expect(isBuiltCeiling(changed(launch, movedToChain97))).toBe(false);
     expect(isBuiltCeiling(changed(launch, payingRescue))).toBe(false);
     expect(isBuiltCeiling(changed(launch, pinless))).toBe(false);
+  });
+
+  it("fails a launch rule that names a contract or a spender", () => {
+    const launch = rulesOf(testLaunchCeilingRequest());
+
+    expect(isBuiltCeiling(changed(launch, namingContract))).toBe(false);
+    expect(isBuiltCeiling(changed(launch, namingSpender))).toBe(false);
   });
 
   it("fails a ceiling that names no chain or no recipient", () => {

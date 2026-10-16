@@ -52,11 +52,41 @@ function curveCall(side: "buy" | "sell", recipient: string): TestCall {
   return { to: curve, valueWei: side === "buy" ? oneBnbWei : 0n, data: curveData(side, recipient) };
 }
 
+// What a launch wallet may approve: any spender through `approve` alone, within each capped token's
+// cap, and a token no cap names in any amount.
+function approvalChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
+  return [
+    launchCheck(harness, "refuses an approval through any function but approve", async (w) => {
+      await privyRefuses(w.launch, { to: token, valueWei: 0n, data: approvalForAllData(curve) });
+      await privyRefuses(w.launch, { to: token, valueWei: 1n, data: approveData(curve, 7n) });
+    }),
+    launchCheck(harness, "signs an approval of a token no cap names, of any size", async (w) => {
+      await privySigns(w.launch, {
+        to: unlisted,
+        valueWei: 0n,
+        data: approveData(curve, 10n ** 30n),
+      });
+    }),
+    // The loss bound of decision 0217 rests on this: any spender, a thief's too, within the cap.
+    launchCheck(
+      harness,
+      "signs an approval naming any spender of a capped token, in its cap",
+      async (w) => {
+        await privySigns(w.launch, { to: token, valueWei: 0n, data: approveData(unsaved, 5n) });
+      },
+    ),
+    launchCheck(harness, "refuses an approval of a capped token above its cap", async (w) => {
+      await privyRefuses(w.launch, { to: token, valueWei: 0n, data: approveData(curve, 1_001n) });
+    }),
+  ];
+}
+
 /**
  * What a launch wallet's ceiling holds on the Privy fake and the Privy test app (decision 0217):
  * a curve's `buy` and `sell` on a contract no list holds, paying the launch wallet itself, and an
- * approval naming the curve, which the agent's main wallet is refused; a call paying anyone else,
- * a send to an unsaved address and an approval through any other function, refused.
+ * approval naming the curve, which the agent's main wallet is refused; an approval naming any
+ * spender of a capped token within its cap, which is what a stolen key can take; a call paying
+ * anyone else, a send to an unsaved address and an approval through any other function, refused.
  */
 export function launchWalletChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [
@@ -88,20 +118,7 @@ export function launchWalletChecks(harness: PrivyCustodyHarness): readonly Contr
       await privyRefuses(w.launch, { to: unsaved, valueWei: 1n, data: "0x" });
       await privyRefuses(w.launch, { to: w.main.wallet.address, valueWei: 1n, data: "0x" });
     }),
-    launchCheck(harness, "refuses an approval through any function but approve", async (w) => {
-      await privyRefuses(w.launch, { to: token, valueWei: 0n, data: approvalForAllData(curve) });
-      await privyRefuses(w.launch, { to: token, valueWei: 1n, data: approveData(curve, 7n) });
-    }),
-    launchCheck(harness, "signs an approval of a token no cap names, of any size", async (w) => {
-      await privySigns(w.launch, {
-        to: unlisted,
-        valueWei: 0n,
-        data: approveData(curve, 10n ** 30n),
-      });
-    }),
-    launchCheck(harness, "refuses an approval of a capped token above its cap", async (w) => {
-      await privyRefuses(w.launch, { to: token, valueWei: 0n, data: approveData(curve, 1_001n) });
-    }),
+    ...approvalChecks(harness),
     launchCheck(harness, "refuses a curve call above the cap in native coin", async (w) => {
       const buy = curveCall("buy", w.launch.wallet.address);
       await privyRefuses(w.launch, { ...buy, valueWei: oneBnbWei + 1n });
