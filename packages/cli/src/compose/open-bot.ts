@@ -1,6 +1,14 @@
-import { BinferenceError, type Clock, type Http, type Logger, type Secret } from "@binference/core";
+import {
+  BinferenceError,
+  type Clock,
+  type Http,
+  type HttpDownload,
+  type Logger,
+  type Secret,
+} from "@binference/core";
 import type { EngineStores } from "@binference/engine";
-import { createBotApiFetch, createBotThrottlers } from "@binference/telegram";
+import type { OwnerImageSource } from "@binference/engine/chat";
+import { createBotApiFetch, createBotThrottlers, createTelegramImages } from "@binference/telegram";
 import { Api } from "grammy";
 import type { SecretSource } from "../config/schema/secret-source.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
@@ -15,6 +23,8 @@ export interface OpenedBot {
    * `engine.sqlite` (decision 0139), with the engine's other stores.
    */
   readonly api: Api;
+  /** The owner's photos, read through the bot's `getFile`; none without a download port. */
+  readonly images?: OwnerImageSource;
 }
 
 /** What the bot opens with. */
@@ -24,6 +34,8 @@ export interface OpenBotOptions {
   readonly secrets: SecretReader;
   /** binference's outbound HTTP, which every Bot API request goes through. */
   readonly http: Http;
+  /** binference's downloads, which read the owner's photos as bytes; none are read without it. */
+  readonly download?: HttpDownload;
   readonly clock: Clock;
   readonly logger: Logger;
   readonly signal: AbortSignal;
@@ -41,7 +53,10 @@ export async function openBot(options: OpenBotOptions): Promise<OpenedBot | unde
     const token = await secrets.read("telegram.botToken", options.source, signal);
     const api = new Api(token.reveal(), { fetch: createBotApiFetch(options.http) });
     createBotThrottlers({ clock: options.clock, logger }).install(api);
-    return { token, api };
+    const { download } = options;
+    return download === undefined
+      ? { token, api }
+      : { token, api, images: createTelegramImages({ api, download, token }) };
   } catch (error) {
     signal.throwIfAborted();
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
@@ -67,5 +82,6 @@ export function botParts(
     copies: stores.cardCopies,
     topics: { isOn: topicsOn, store: stores.agentTopics },
     botToken: bot.token,
+    ...(bot.images === undefined ? {} : { images: bot.images }),
   };
 }

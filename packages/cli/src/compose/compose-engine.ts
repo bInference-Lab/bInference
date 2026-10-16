@@ -308,6 +308,7 @@ function engineOf(
     publish: given.publish,
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,
+    ...(options.telegram?.images === undefined ? {} : { ownerImages: options.telegram.images }),
   });
 }
 

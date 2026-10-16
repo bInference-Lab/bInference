@@ -37,6 +37,7 @@ process.exitCode = await runCli({
   clock: createSystemClock(),
   random: createSystemRandom(),
   http,
+  download: http,
   ...(hasTerminal
     ? { prompter: createTerminalPrompter({ input: process.stdin, output: process.stdout }) }
     : {}),

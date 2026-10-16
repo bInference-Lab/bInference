@@ -115,6 +115,7 @@ async function readSecretParts(
     source,
     secrets,
     http: host.http,
+    ...(host.download === undefined ? {} : { download: host.download }),
     clock: host.clock,
     logger,
     signal,

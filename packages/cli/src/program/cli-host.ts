@@ -1,5 +1,5 @@
 import type { AssetRef } from "@binference/chain";
-import type { Clock, Http, Random } from "@binference/core";
+import type { Clock, Http, HttpDownload, Random } from "@binference/core";
 import type { Engine } from "@binference/engine";
 import type { ServiceManager, SignalEvents } from "@binference/platform";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
@@ -48,6 +48,8 @@ export interface CliHost {
   readonly random: Random;
   /** Reaches outside services, such as Privy's API and Telegram's Bot API. */
   readonly http: Http;
+  /** Downloads files as bytes, such as the photos the owner sends the bot; absent, none is read. */
+  readonly download?: HttpDownload;
   /** Asks the person at the terminal; absent when no person is there to answer. */
   readonly prompter?: Prompter;
   /** Where stop signals arrive: `process` in the entry file. */

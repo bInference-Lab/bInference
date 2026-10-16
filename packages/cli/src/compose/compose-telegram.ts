@@ -2,6 +2,7 @@ import type { ChainRegistry } from "@binference/chain";
 import type { Clock, Logger, Random, Secret } from "@binference/core";
 import type { AnswerCard, EngineStores, VenueHost } from "@binference/engine";
 import { issueLaunchTicket } from "@binference/engine/access";
+import type { OwnerImageSource } from "@binference/engine/chat";
 import {
   type CardCopyStore,
   createCardPresses,
@@ -55,6 +56,8 @@ export interface TelegramParts {
   readonly botToken: Secret;
   /** The Mini App's HTTPS address, which `/console` opens; none without `remote.publicUrl`. */
   readonly miniAppUrl?: string;
+  /** The photos the owner sends the bot, which the runtime reads with `inbox/readImage`. */
+  readonly images?: OwnerImageSource;
 }
 
 /**
