@@ -5,6 +5,7 @@ import { testCall, testCallers, type TestEngine } from "../operations/test-engin
 import {
   proposeIntent as propose,
   testLaunch as launch,
+  type Launching,
   testLaunchEngine as engineOver,
   testLaunchWallet as launchWallet,
   testPad as pad,
@@ -92,6 +93,33 @@ describe("a token launch before its pin", () => {
       outcome: { reason: "pin_failed" },
     });
     expect(notices(test)).toContainEqual(expect.objectContaining({ key: "notice.launchStopped" }));
+  });
+});
+
+// A simulator whose node goes away on the first run, as a stop part way through a launch does.
+const failingOnce: NonNullable<Launching["simulator"]> = (real) => {
+  const calls = { count: 0 };
+  return {
+    simulate: async (drafts, call) => {
+      calls.count += 1;
+      return calls.count === 1
+        ? Promise.reject(new Error("The node went away."))
+        : real.simulate(drafts, call);
+    },
+  };
+};
+
+describe("a token launch a stop left between its pin and its card", () => {
+  it("goes on to its card at the next pin check", async () => {
+    const { test } = await engineOver({ simulator: failingOnce });
+    await expect(propose(test)).rejects.toThrow("The node went away.");
+    const left = await test.stores.intents.list({ states: ["assessed"], limit: 5 }, signal);
+    expect(left.map((record) => record.kind)).toStrictEqual(["launchToken"]);
+
+    await expect(test.engine.checkPins(signal)).resolves.toBe(1);
+    const waiting = { states: ["awaiting_confirmation" as const], limit: 5 };
+    const carded = await test.stores.intents.list(waiting, signal);
+    expect(carded.map((record) => record.id)).toStrictEqual(left.map((record) => record.id));
   });
 });
 

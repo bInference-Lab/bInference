@@ -83,6 +83,8 @@ export function testLaunchSimulator(launcher: FakeLauncher): Pick<TxSimulator, "
 /** How a test launch engine runs: its pins, its options, and whether it has a launch wallet. */
 export interface Launching {
   readonly pin?: FakePinScript;
+  /** Wraps the simulator a launch's steps run on. */
+  readonly simulator?: (real: Pick<TxSimulator, "simulate">) => Pick<TxSimulator, "simulate">;
   readonly options?: TestEngineOptions;
   readonly hasLaunchWallet?: boolean;
 }
@@ -104,7 +106,7 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
   const test = await startTestEngine({
     chains: testChains([testPad]),
     venues,
-    chainSimulator: testLaunchSimulator(launcher),
+    chainSimulator: (launching.simulator ?? ((real) => real))(testLaunchSimulator(launcher)),
     launchImages: createMemoryLaunchImages(new Map([["upl_moon", png]])),
     wallets: [testWallet, testLaunchWallet],
     custodyWallets: new Map([[testLaunchWallet, testLaunchAccount]]),

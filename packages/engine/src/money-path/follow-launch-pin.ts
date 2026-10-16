@@ -102,17 +102,15 @@ async function simulate(
   return advance(run, snapshot, { trigger: { type: "simulation_matched" }, fields });
 }
 
-// Once pinned, the launch is simulated and opens its card: its kind never passes the auto test.
+// A pinned launch is simulated and opens its card: its kind never passes the auto test. A launch
+// a stop left part way on, in `assessed` or `simulated`, goes on from where it is.
 async function toCard(
   run: PinRun,
   snapshot: IntentSnapshot,
   quote: TokenLaunchQuote,
 ): Promise<IntentSnapshot> {
-  const pinned = await advance(run, snapshot, { trigger: { type: "pin_reported" } });
-  if (pinned.record.state !== "assessed") {
-    return pinned;
-  }
-  const simulated = await simulate(run, pinned, quote);
+  const simulated =
+    snapshot.record.state === "assessed" ? await simulate(run, snapshot, quote) : snapshot;
   if (simulated.record.state !== "simulated") {
     return simulated;
   }
@@ -120,11 +118,16 @@ async function toCard(
   return advance(run, simulated, { trigger });
 }
 
+// The states a launch is followed in: waiting for its pin, and the two a stop can leave it in on
+// its way from the pin to its card.
+const followedStates = ["quoted", "assessed", "simulated"] as const;
+
 /**
  * Asks a launch waiting in `quoted` whether its launchpad reported the pin (decision 0234): a
  * reported pin moves it on to its simulation and its card; a failed one, or the end of the pin
  * wait, ends it with `pin_failed` or `pin_timeout` and a notice to the owner; no report yet leaves
- * it waiting. Any other intent is answered as it is.
+ * it waiting. A launch a stop left in `assessed` or `simulated` goes on to its card. Any other
+ * intent is answered as it is.
  */
 export async function followLaunchPin(
   options: LaunchPathOptions,
@@ -132,11 +135,15 @@ export async function followLaunchPin(
   signal: AbortSignal,
 ): Promise<IntentSnapshot> {
   const { record } = snapshot;
-  if (record.kind !== "launchToken" || record.state !== "quoted" || record.quote === undefined) {
+  const isFollowed = followedStates.some((state) => state === record.state);
+  if (record.kind !== "launchToken" || !isFollowed || record.quote === undefined) {
     return snapshot;
   }
   const run = { options, signal };
   const quote = tokenLaunchQuoteDocument.decode(record.quote);
+  if (record.state !== "quoted") {
+    return toCard(run, snapshot, quote);
+  }
   if (options.clock.now() >= quote.pinWaitUntilMs) {
     return endOnPin(run, snapshot, "pin_timeout");
   }
@@ -144,15 +151,20 @@ export async function followLaunchPin(
   if (status === "failed") {
     return endOnPin(run, snapshot, "pin_failed");
   }
-  return status === "pinned" ? toCard(run, snapshot, quote) : snapshot;
+  if (status !== "pinned") {
+    return snapshot;
+  }
+  const pinned = await advance(run, snapshot, { trigger: { type: "pin_reported" } });
+  return pinned.record.state === "assessed" ? toCard(run, pinned, quote) : pinned;
 }
 
 // The launches a page reads at a time.
 const pageSize = 50;
 
 /**
- * Follows the pin of every live launch waiting in `quoted` (decision 0234), the oldest first: a
- * timer of the composition root calls it every 3 seconds. Answers how many it moved.
+ * Follows the pin of every live launch waiting in `quoted` (decision 0234), and moves on each
+ * launch a stop left between its pin and its card: a timer of the composition root calls it every
+ * 3 seconds. Answers how many it moved.
  */
 export async function followLaunchPins(
   options: LaunchPathOptions,
@@ -160,7 +172,7 @@ export async function followLaunchPins(
 ): Promise<number> {
   const { signal } = call;
   const waiting = await options.stored.list(
-    { states: ["quoted"], isPaper: false, limit: pageSize },
+    { states: [...followedStates], isPaper: false, limit: pageSize },
     { signal },
   );
   const launches = waiting.filter((record) => record.kind === "launchToken");
@@ -169,6 +181,6 @@ export async function followLaunchPins(
     const snapshot = await options.stored.snapshot(record.id, { signal });
     const moved =
       snapshot === undefined ? snapshot : await followLaunchPin(options, snapshot, signal);
-    return moved !== undefined && moved.record.state !== "quoted" ? count + 1 : count;
+    return moved !== undefined && moved.record.state !== record.state ? count + 1 : count;
   }, Promise.resolve(0));
 }
