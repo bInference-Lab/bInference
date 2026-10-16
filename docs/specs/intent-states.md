@@ -9,7 +9,7 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), [0157](../DECISIONS.md#d0157)
-[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195), [0210](../DECISIONS.md#d0210) and [0211](../DECISIONS.md#d0211). Accepted by the owner on 2026-10-12: a token launch refused in
+[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195), [0210](../DECISIONS.md#d0210), [0211](../DECISIONS.md#d0211) and [0234](../DECISIONS.md#d0234). Accepted by the owner on 2026-10-12: a token launch refused in
 paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
 whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
 to 13.
@@ -81,6 +81,8 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `checked`                    | `failed_check`          | venue quote and build                                                                                | no route, venue down, or decode mismatch                                                                                                                                                                                                                                     |
 | `quoted`                     | `assessed`              | risk check                                                                                           | token verified, or every risk source passes ([decision 0112](../DECISIONS.md#d0112))                                                                                                                                                                                         |
 | `quoted`                     | `risk_blocked`          | risk check                                                                                           | a hard flag, or sources down for an unknown token                                                                                                                                                                                                                            |
+| `quoted`                     | `assessed`              | the launchpad reports the pin                                                                        | a token launch, which leaves `quoted` this way alone: the risk check never moves it ([decision 0234](../DECISIONS.md#d0234))                                                                                                                                                 |
+| `quoted`                     | `failed_check`          | the launchpad reports a failed pin, or the pin wait ends                                             | a token launch; the reason `pin_failed` or `pin_timeout` is stored and the owner gets `notice.launchStopped` ([decision 0234](../DECISIONS.md#d0234))                                                                                                                        |
 | `quoted`                     | `failed_check`          | simulation of the chosen route                                                                       | it reverted, or its effects differ; the risk check never runs on it ([decision 0145](../DECISIONS.md#d0145))                                                                                                                                                                 |
 | `assessed`                   | `simulated`             | `eth_simulateV1` with transfer tracing                                                               | net balance changes match the request; no other outflow or approval. A paper sale of a token no simulation can hold passes as an estimate ([decision 0114](../DECISIONS.md#d0114))                                                                                           |
 | `assessed`                   | `failed_check`          | simulation                                                                                           | reverted, or effects differ                                                                                                                                                                                                                                                  |
@@ -169,7 +171,10 @@ curve whose launch has contracts of its own, from a wallet that is not the agent
 wallet) and `launch_unread` (the curve read that picks the wallet failed), both after the policy
 and before any quote; `launch_unread` and `launch_moved` again when the wallet queue takes a
 launch wallet's curve trade whose launch it cannot read, or that left the curve
-([decision 0218](../DECISIONS.md#d0218)).
+([decision 0218](../DECISIONS.md#d0218)); for a token launch, `needs_launch_wallet` from any wallet
+but the agent's live launch wallet, `image_unreadable` (its picture is no PNG, JPEG or WebP of at
+most 5 MiB), both before any upload, and `pin_failed` and `pin_timeout` from `quoted`
+([decision 0234](../DECISIONS.md#d0234)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or
@@ -343,6 +348,13 @@ and `step_unsent` (a step never signed after an earlier one landed,
     trade. Its venue options are checked by the launchpad's plugin when it is proposed, so the
     refusal shows every setting as checked (spec 4, section 3.6).
   - A launch never passes the auto test (`kind`), in either mode.
+  - A live launch is quoted by its launchpad from its contracts (the launch fee, the first buy's
+    output) before the policy judges the first buy and the fee; it runs from the agent's live
+    launch wallet alone, else `needs_launch_wallet`; the engine reads its picture once, and the
+    launchpad uploads it and asks for the pin. In `quoted` the engine asks the launchpad for the pin
+    at once and every 3 seconds, for at most 5 minutes after the upload. Only `pin_reported` moves
+    it on, to `assessed`: it has no token to weigh. Its simulation, card and execution follow
+    [decision 0234](../DECISIONS.md#d0234); `intent/propose` answers it once it waits for its pin.
 - **Buy and sell: the place.** `buy` and `sell` name a token, never a venue. At
   `checked → quoted`, the engine asks each launchpad plugin among the agent's venues whether the
   token is on its curve now, from the launchpad's own contract at the latest block.
@@ -571,3 +583,5 @@ Property tests (fast-check) hold these for every generated history:
 16. A live fill signs only while its order holds the fills it had when the fill was proposed, and
     each live fill that lands counts on its order once, so an order never fills past its fills
     ([decision 0210](../DECISIONS.md#d0210)).
+17. A token launch never reaches `assessed`, its card, `confirmed` or `executing` before its
+    launchpad reports the pin ([decision 0234](../DECISIONS.md#d0234)).

@@ -146,6 +146,8 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   balance_unread: "chain.rpc_down",
   needs_launch_wallet: "limit.needs_launch_wallet",
   launch_unread: "quote.venue_down",
+  // A launch reads its picture once, before its pin, and is never quoted again at a tap.
+  image_unreadable: "quote.no_route",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

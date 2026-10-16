@@ -37,7 +37,9 @@ export type TransitionProblem =
   | "delivery_pending"
   | "not_unfreeze"
   | "not_auto_order"
-  | "no_steps";
+  | "no_steps"
+  | "pin_missing"
+  | "not_launch";
 
 /** What a transition writes besides the new state. */
 export interface IntentChange {

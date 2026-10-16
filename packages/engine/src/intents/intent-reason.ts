@@ -54,7 +54,10 @@ export type RiskReason = (typeof riskReasons)[number];
  * from a wallet that is not the agent's launch wallet, and `launch_unread` one whose curve read
  * failed as it picked the wallet or as the wallet queue took it; `launch_moved` is a launch
  * wallet's curve trade whose launchpad no longer holds the token on that curve when the queue
- * takes it, as after a graduation (decision 0218).
+ * takes it, as after a graduation (decision 0218). `image_unreadable` is a token launch whose
+ * picture the engine cannot read as an image of at most 5 MiB, `pin_failed` one whose launchpad
+ * reported that the pin of its words and picture failed, and `pin_timeout` one whose launchpad
+ * reported no pin within the pin wait (decision 0234).
  */
 export const checkReasons = [
   "no_route",
@@ -68,6 +71,9 @@ export const checkReasons = [
   "needs_launch_wallet",
   "launch_unread",
   "launch_moved",
+  "image_unreadable",
+  "pin_failed",
+  "pin_timeout",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */
@@ -76,8 +82,11 @@ export type CheckReason = (typeof checkReasons)[number];
 /** A check reason of the quote and build step. */
 export type QuoteFailure = Exclude<
   CheckReason,
-  "simulation_reverted" | "effects_differ" | "launch_moved"
+  "simulation_reverted" | "effects_differ" | "launch_moved" | PinFailure
 >;
+
+/** Why a token launch's pin never came: the launchpad reported a failure, or the wait ran out. */
+export type PinFailure = Extract<CheckReason, "pin_failed" | "pin_timeout">;
 
 /** Why the wallet queue could not read the contracts of a curve trade's launch (decision 0218). */
 export type LaunchReadFailure = Extract<CheckReason, "launch_unread" | "launch_moved">;

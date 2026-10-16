@@ -3,6 +3,7 @@ import type { CardRules } from "./card-rules.js";
 import type {
   FillBreach,
   LaunchReadFailure,
+  PinFailure,
   PolicyRejection,
   QuoteFailure,
   RiskReason,
@@ -21,6 +22,8 @@ export const triggerTypes = [
   "quote_failed",
   "risk_passed",
   "risk_refused",
+  "pin_reported",
+  "pin_failed",
   "simulation_matched",
   "simulation_failed",
   "authorization_checked",
@@ -114,6 +117,13 @@ export interface TriggerFacts {
   /** The token is verified, or every risk source passed. */
   readonly risk_passed: NoFacts;
   readonly risk_refused: { readonly reason: RiskReason };
+  /** A token launch's launchpad reported the pin of its words and picture. */
+  readonly pin_reported: NoFacts;
+  /**
+   * A token launch's launchpad reported that its pin failed, or the pin wait ran out before it
+   * reported one.
+   */
+  readonly pin_failed: { readonly reason: PinFailure };
   /** The net balance changes match the request, with no other outflow or approval. */
   readonly simulation_matched: NoFacts;
   readonly simulation_failed: { readonly reason: SimulationFailure };

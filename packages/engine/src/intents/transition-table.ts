@@ -1,4 +1,4 @@
-import { ok, type Result } from "@binference/core";
+import { err, ok, type Result } from "@binference/core";
 import { authorizeIntent, breakFill, openCard } from "./authorization-guards.js";
 import {
   confirmRequote,
@@ -64,17 +64,33 @@ function pass(): Result<IntentChange, TransitionProblem> {
 
 function storeReason({
   trigger,
-}: GuardInput<"policy_refused" | "quote_failed" | "risk_refused" | "simulation_failed">): Result<
-  IntentChange,
-  TransitionProblem
-> {
+}: GuardInput<
+  "policy_refused" | "quote_failed" | "risk_refused" | "pin_failed" | "simulation_failed"
+>): Result<IntentChange, TransitionProblem> {
   return ok({ reason: trigger.reason });
+}
+
+// A token launch leaves `quoted` for `assessed` only on its launchpad's pin report (decision
+// 0234): it has no token to weigh yet, and its card must never open before the pin.
+function passRisk({ status }: GuardInput<"risk_passed">): Result<IntentChange, TransitionProblem> {
+  return status.kind === "launchToken" ? err("pin_missing") : ok({});
+}
+
+function reportPin({
+  status,
+}: GuardInput<"pin_reported">): Result<IntentChange, TransitionProblem> {
+  return status.kind === "launchToken" ? ok({}) : err("not_launch");
+}
+
+function failPin(input: GuardInput<"pin_failed">): Result<IntentChange, TransitionProblem> {
+  return input.status.kind === "launchToken" ? storeReason(input) : err("not_launch");
 }
 
 /**
  * The intent state machine's transition table (spec 6, section 3). Rows beyond the spec's table
  * come from its text: a reorg moves `included` back to `executing` (section 3), and reconciliation
- * ends `unknown_after_send` in `executing` or `failed_onchain` (section 7).
+ * ends `unknown_after_send` in `executing` or `failed_onchain` (section 7). A token launch waits in
+ * `quoted` for its pin, which alone moves it on (decision 0234).
  */
 export const transitionTable: TransitionTable = {
   policy_passed: [{ from: ["proposed"], to: "checked", guard: pass }],
@@ -83,8 +99,10 @@ export const transitionTable: TransitionTable = {
     { from: ["checked"], to: "quoted", guard: ({ trigger }) => ok({ quote: trigger.quote }) },
   ],
   quote_failed: [{ from: ["checked"], to: "failed_check", guard: storeReason }],
-  risk_passed: [{ from: ["quoted"], to: "assessed", guard: pass }],
+  risk_passed: [{ from: ["quoted"], to: "assessed", guard: passRisk }],
   risk_refused: [{ from: ["quoted"], to: "risk_blocked", guard: storeReason }],
+  pin_reported: [{ from: ["quoted"], to: "assessed", guard: reportPin }],
+  pin_failed: [{ from: ["quoted"], to: "failed_check", guard: failPin }],
   simulation_matched: [{ from: ["assessed"], to: "simulated", guard: pass }],
   simulation_failed: [{ from: ["quoted", "assessed"], to: "failed_check", guard: storeReason }],
   authorization_checked: [

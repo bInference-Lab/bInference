@@ -111,6 +111,8 @@ const builders: Builders = {
   quote_failed: (facts) => ({ type: "quote_failed", reason: facts.quoteFailure }),
   risk_passed: () => ({ type: "risk_passed" }),
   risk_refused: (facts) => ({ type: "risk_refused", reason: facts.riskReason }),
+  pin_reported: () => ({ type: "pin_reported" }),
+  pin_failed: () => ({ type: "pin_failed", reason: "pin_timeout" }),
   simulation_matched: () => ({ type: "simulation_matched" }),
   simulation_failed: (facts) => ({ type: "simulation_failed", reason: facts.simulationFailure }),
   authorization_checked: (facts, at) => ({
@@ -272,7 +274,7 @@ function triggersFrom(state: IntentState): readonly TriggerType[] {
 const forward: Readonly<Partial<Record<IntentState, readonly TriggerType[]>>> = {
   proposed: ["policy_passed"],
   checked: ["quote_built"],
-  quoted: ["risk_passed"],
+  quoted: ["risk_passed", "pin_reported"],
   assessed: ["simulation_matched"],
   simulated: ["authorization_checked"],
   awaiting_confirmation: ["confirm_tapped", "confirm_requoted"],
