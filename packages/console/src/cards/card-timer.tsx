@@ -24,8 +24,21 @@ export function CardTimer(props: { readonly seconds: number }): React.JSX.Elemen
   );
 }
 
-/** The seconds left on a card that expires at `expiresAt`, by the browser's clock. */
-export function useSecondsLeft(expiresAt: number | undefined): number | undefined {
+/** When a card expires, and how long it lasts from when it opened. */
+export interface CardTimes {
+  readonly expiresAt: number;
+  readonly lifetimeMs: number;
+}
+
+/**
+ * The seconds left on a card by the browser's clock, never more than the card lasts: a browser
+ * whose clock runs behind the engine's shows the card's whole time rather than more.
+ */
+export function useSecondsLeft(times: CardTimes | undefined): number | undefined {
   const now = useNow();
-  return expiresAt === undefined ? undefined : secondsLeft(expiresAt, now);
+  if (times === undefined) {
+    return undefined;
+  }
+  const most = Math.ceil(times.lifetimeMs / 1_000);
+  return Math.min(secondsLeft(times.expiresAt, now), most);
 }

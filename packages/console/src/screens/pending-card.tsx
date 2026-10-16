@@ -3,7 +3,7 @@ import type { CardLinesView, IntentView } from "@binference/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, XIcon } from "lucide-react";
 import { CardLine } from "../cards/card-line";
-import { CardTimer, useSecondsLeft } from "../cards/card-timer";
+import { type CardTimes, CardTimer, useSecondsLeft } from "../cards/card-timer";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
@@ -68,11 +68,6 @@ function AnswerButtons(props: {
   );
 }
 
-/**
- * One card that waits for the owner, drawn line by line as Telegram draws it (spec 4), its status
- * icons as line icons, with Confirm and Cancel for a connection that holds the `confirm` scope. A Confirm names the card
- * version it shows, so a new quote is never confirmed unseen.
- */
 // The card's lines as the console shows them: the Paper label marks the mode, so the header line
 // is the console's own, without it.
 function consoleLines(shown: CardLinesView | undefined, formatter: Formatter): readonly string[] {
@@ -84,6 +79,22 @@ function consoleLines(shown: CardLinesView | undefined, formatter: Formatter): r
   );
 }
 
+// When the card the owner reads expires, and how long its card lasts from when it opened.
+function cardTimesOf(intent: IntentView, shown: CardLinesView | undefined): CardTimes | undefined {
+  const opened = intent.card;
+  return opened === undefined
+    ? undefined
+    : {
+        expiresAt: shown?.expiresAt ?? opened.expiresAt,
+        lifetimeMs: opened.expiresAt - opened.opensAt,
+      };
+}
+
+/**
+ * One card that waits for the owner, drawn line by line as Telegram draws it (spec 4), its status
+ * icons as line icons, with Confirm and Cancel for a connection that holds the `confirm` scope. A Confirm names the card
+ * version it shows, so a new quote is never confirmed unseen.
+ */
 export function PendingCard(props: { readonly intent: IntentView }): React.JSX.Element {
   const { intent } = props;
   const { isFocused, showIn } = useFocusedCard(intent.intent);
@@ -99,7 +110,7 @@ export function PendingCard(props: { readonly intent: IntentView }): React.JSX.E
   const lines = consoleLines(card.data, formatter);
   const [header, ...rest] = lines;
   const shown = card.data;
-  const seconds = useSecondsLeft(shown?.expiresAt ?? intent.card?.expiresAt);
+  const seconds = useSecondsLeft(cardTimesOf(intent, shown));
   return (
     <Card
       ref={showIn}

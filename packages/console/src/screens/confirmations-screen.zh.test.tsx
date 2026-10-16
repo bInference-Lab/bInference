@@ -13,7 +13,15 @@ const card = "crd_0190f1c2-3a4b-7c5d-8e6f-000000000003";
 // One waiting card whose only lines are the header, why auto mode asks and the expiry.
 const engineAnswers: Readonly<Record<string, () => object>> = {
   "intent/list": () => ({
-    items: [{ intent, agent: "agt_1", kind: "swap", paper: false, card: { card, version: 1 } }],
+    items: [
+      {
+        intent,
+        agent: "agt_1",
+        kind: "swap",
+        paper: false,
+        card: { card, version: 1, opensAt: 1_800_000_000_000, expiresAt: 1_800_000_060_000 },
+      },
+    ],
   }),
   "intent/card": () => ({
     card,

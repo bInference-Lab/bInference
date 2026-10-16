@@ -27,7 +27,15 @@ const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const card = "crd_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 
 const pending = {
-  items: [{ intent, agent: "agt_1", kind: "swap", paper: true, card: { card, version: 2 } }],
+  items: [
+    {
+      intent,
+      agent: "agt_1",
+      kind: "swap",
+      paper: true,
+      card: { card, version: 2, opensAt: 1_800_000_000_000, expiresAt: 1_800_000_060_000 },
+    },
+  ],
 };
 const lines = {
   card,
@@ -86,6 +94,12 @@ describe("the confirmations screen", () => {
     renderSignedIn(<ConfirmationsScreen />, { client });
     await settle();
     expect(screen.getByRole("timer").textContent).toBe("42 seconds left");
+    vi.setSystemTime(lines.expiresAt - 3_600_000);
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    // A browser clock an hour behind the engine's still shows no more than the card's minute.
+    expect(screen.getByRole("timer").textContent).toBe("60 seconds left");
+    vi.setSystemTime(lines.expiresAt - 42_000);
+    await act(async () => vi.advanceTimersByTimeAsync(250));
     await act(async () => vi.advanceTimersByTimeAsync(41_000));
     expect(screen.getByRole("timer").textContent).toBe("1 second left");
     await act(async () => vi.advanceTimersByTimeAsync(1_000));

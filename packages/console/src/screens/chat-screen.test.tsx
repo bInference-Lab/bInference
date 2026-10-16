@@ -167,7 +167,7 @@ describe("the chat screen", () => {
       agent,
       kind: "swap",
       paper: true,
-      card: { card, version: 1, expiresAt },
+      card: { card, version: 1, opensAt: 1_800_000_000_000, expiresAt },
     };
     const header = {
       action: { type: "choice", choice: "swap" },
