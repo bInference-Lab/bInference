@@ -6,6 +6,7 @@ import { formatterFor, localeOf, TextProvider, wordsOf } from "../i18n/console-t
 import { readIntentQuery } from "../push/card-push.schema";
 import { type ConsolePush, ConsolePushProvider } from "../push/console-push";
 import { SignInScreen } from "../screens/sign-in-screen";
+import type { SessionState } from "../session/session-state";
 import { useSession } from "../session/use-session";
 import type { ConsoleBrowser } from "./console-browser";
 import { ConsoleRoutes } from "./console-router";
@@ -34,13 +35,35 @@ function useConsolePushOf(browser: ConsoleBrowser): ConsolePush {
   );
 }
 
+interface ReadyProps {
+  readonly session: Extract<SessionState, { readonly kind: "ready" }>;
+  readonly browser: ConsoleBrowser;
+  readonly push: ConsolePush;
+}
+
+// The signed-in console: its queries, its link to the engine and its screens.
+function ReadyConsole(props: ReadyProps): React.JSX.Element {
+  const { session, browser } = props;
+  const [queries] = useState(() => new QueryClient());
+  const { client, ready } = session;
+  const link = useMemo(() => ({ client, ready, fetch: browser.fetch }), [client, ready, browser]);
+  return (
+    <QueryClientProvider client={queries}>
+      <EngineProvider link={link}>
+        <ConsolePushProvider value={props.push}>
+          <ConsoleRoutes basepath={basepathOf(browser.pathname)} />
+        </ConsolePushProvider>
+      </EngineProvider>
+    </QueryClientProvider>
+  );
+}
+
 // One attempt to sign in and the console it opens; a retry mounts a new one.
 function ConsoleSession(props: SessionProps): React.JSX.Element {
   const { browser, before } = props;
   const label = wordsOf(before)("console.device.label", { platform: browser.platform });
   const state = useSession(browser, label);
   const push = useConsolePushOf(browser);
-  const [queries] = useState(() => new QueryClient());
   const owner = state.kind === "ready" ? state.ready.owner : undefined;
   const text = useMemo(
     () => (owner === undefined ? before : formatterFor(owner.locale, owner.timezone)),
@@ -52,13 +75,7 @@ function ConsoleSession(props: SessionProps): React.JSX.Element {
   return (
     <TextProvider formatter={text}>
       {state.kind === "ready" ? (
-        <QueryClientProvider client={queries}>
-          <EngineProvider link={state}>
-            <ConsolePushProvider value={push}>
-              <ConsoleRoutes basepath={basepathOf(browser.pathname)} />
-            </ConsolePushProvider>
-          </EngineProvider>
-        </QueryClientProvider>
+        <ReadyConsole session={state} browser={browser} push={push} />
       ) : (
         <SignInScreen state={state} retry={props.retry} />
       )}

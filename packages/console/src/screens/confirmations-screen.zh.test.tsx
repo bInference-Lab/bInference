@@ -1,11 +1,8 @@
 // @vitest-environment jsdom
 import type { ProtocolClient } from "@binference/client";
-import { readyFrameSchema } from "@binference/protocol";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { EngineProvider } from "../connection/engine-context";
-import { formatterFor, TextProvider } from "../i18n/console-text";
+import { cleanup, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { renderSignedIn, settle } from "../testing/render-signed-in";
 import { ConfirmationsScreen } from "./confirmations-screen";
 
 afterEach(cleanup);
@@ -50,25 +47,8 @@ const client = {
 
 describe("the confirmations screen, in Chinese", () => {
   it("says why auto mode asks, in the words of its reason", async () => {
-    const ready = readyFrameSchema.parse({
-      t: "ready",
-      v: 1,
-      connection: "con_0190f1c2-3a4b-7c5d-8e6f-000000000003",
-      scopes: ["read", "confirm"],
-      engine: { version: "2026.10.0", protocol: 1, state: "ready" },
-      owner: { locale: "zh", timezone: "Asia/Shanghai" },
-    });
-    const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
-      <TextProvider formatter={formatterFor("zh", "Asia/Shanghai")}>
-        <QueryClientProvider client={queries}>
-          <EngineProvider link={{ client, ready }}>
-            <ConfirmationsScreen />
-          </EngineProvider>
-        </QueryClientProvider>
-      </TextProvider>,
-    );
-    await act(async () => vi.advanceTimersByTimeAsync(20));
+    renderSignedIn(<ConfirmationsScreen />, { client, scopes: ["read", "confirm"], locale: "zh" });
+    await settle();
     expect(screen.getByText("自动模式在此需要你确认：卖出的是你禁止列表中的代币")).toBeDefined();
   });
 });

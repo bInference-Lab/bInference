@@ -5,6 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { EngineProvider } from "../connection/engine-context";
 import { formatterFor, TextProvider } from "../i18n/console-text";
+import { noFetch } from "../testing/render-signed-in";
 import { SignInEnded } from "./sign-in-ended";
 
 afterEach(cleanup);
@@ -26,7 +27,7 @@ function renderWith(status: ClientStatus) {
   const client = { status: () => status } as unknown as ProtocolClient;
   return render(
     <TextProvider formatter={formatterFor("en", "UTC")}>
-      <EngineProvider link={{ client, ready }}>
+      <EngineProvider link={{ client, ready, fetch: noFetch }}>
         <SignInEnded />
       </EngineProvider>
     </TextProvider>,

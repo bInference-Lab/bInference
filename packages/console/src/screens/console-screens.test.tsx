@@ -1,15 +1,11 @@
 // @vitest-environment jsdom
-import type { ProtocolClient } from "@binference/client";
-import { type ReadyFrame, readyFrameSchema, type Scope } from "@binference/protocol";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConsoleRoutes } from "../app/console-router";
-import { EngineProvider } from "../connection/engine-context";
-import { formatterFor, TextProvider } from "../i18n/console-text";
 import type { BrowserPush } from "../push/browser-push";
 import { ConsolePushProvider } from "../push/console-push";
+import { fakeClient } from "../testing/fake-client";
+import { renderSignedIn, settle } from "../testing/render-signed-in";
 import { ConfirmationsScreen } from "./confirmations-screen";
 import { LedgerScreen } from "./ledger-screen";
 import { LimitsScreen } from "./limits-screen";
@@ -18,67 +14,6 @@ afterEach(cleanup);
 
 const waiting = String.fromCodePoint(0x1f7e1);
 const paperIcon = String.fromCodePoint(0x1f9ea);
-
-/** One call the fake engine answered. */
-interface SeenCall {
-  readonly op: string;
-  readonly args: object;
-}
-
-/** The answers of a fake engine, by operation. */
-type FakeAnswers = Readonly<Record<string, (args: object) => object>>;
-
-const consoleScopes: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
-
-function readyWith(scopes: readonly Scope[]): ReadyFrame {
-  return readyFrameSchema.parse({
-    t: "ready",
-    v: 1,
-    connection: "con_0190f1c2-3a4b-7c5d-8e6f-000000000001",
-    scopes,
-    engine: { version: "2026.10.0", protocol: 1, state: "ready" },
-    owner: { locale: "en", timezone: "UTC" },
-  });
-}
-
-/** A client that answers each call from `answers` and keeps every call it was given. */
-function fakeClient(answers: FakeAnswers) {
-  const calls: SeenCall[] = [];
-  const client = {
-    call: async (op: string, args: object) => {
-      calls.push({ op, args });
-      const answer = answers[op];
-      return answer === undefined
-        ? Promise.reject(Object.assign(new Error(op), { code: "protocol.unknown_op" }))
-        : answer(args);
-    },
-    subscribe: () => () => undefined,
-    status: () => ({ state: "ready" }),
-  } as unknown as ProtocolClient;
-  return { client, calls };
-}
-
-/** Lets React Query's timers and the answers' promises run, as the browser would between frames. */
-async function settle(): Promise<void> {
-  await act(async () => vi.advanceTimersByTimeAsync(10));
-  await act(async () => vi.advanceTimersByTimeAsync(10));
-}
-
-/** Renders a signed-in screen in English over a fake client. */
-function renderSignedIn(
-  page: ReactNode,
-  options: { readonly client: ProtocolClient; readonly scopes?: readonly Scope[] },
-) {
-  const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const link = { client: options.client, ready: readyWith(options.scopes ?? consoleScopes) };
-  return render(
-    <TextProvider formatter={formatterFor("en", "UTC")}>
-      <QueryClientProvider client={queries}>
-        <EngineProvider link={link}>{page}</EngineProvider>
-      </QueryClientProvider>
-    </TextProvider>,
-  );
-}
 
 const bnb = "eip155:56/slip44:714";
 const usdt = "eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955";

@@ -15,15 +15,15 @@ const followed: readonly (readonly [PushTopic, QueryKey])[] = [
  * entry loads the screens that show them again, and a notice, such as a limit change, the limits.
  */
 export function useLiveTopics(): void {
-  const { client } = useEngine();
+  const { topics } = useEngine();
   const queries = useQueryClient();
   useEffect(() => {
     const ends = followed.map(([topic, queryKey]) => {
       const stale = async (): Promise<void> => queries.invalidateQueries({ queryKey });
-      return client.subscribe(topic, { onPush: () => void stale(), refetch: stale });
+      return topics.listen(topic, { onPush: () => void stale(), refetch: stale });
     });
     return () => {
       ends.forEach((end) => end());
     };
-  }, [client, queries]);
+  }, [topics, queries]);
 }
