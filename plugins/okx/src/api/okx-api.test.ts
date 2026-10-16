@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
-import { BinferenceError } from "@binference/plugin-sdk";
+import { BinferenceError, createSecret } from "@binference/plugin-sdk";
 import { describe, expect, it } from "vitest";
+import type { OkxKeys } from "../okx-options.js";
 import { nativeToken, usdtToken } from "../testing/dag-fixtures.js";
 import { errorAnswer, liquidityAnswer, quoteAnswer } from "../testing/okx-answers.js";
 import {
@@ -8,6 +9,7 @@ import {
   fixedClock,
   okxUrl,
   quotedAtMs,
+  heldKeys,
   scriptedApi,
   testKeys,
 } from "../testing/venue-fixtures.js";
@@ -37,7 +39,7 @@ const route = {
 
 function apiOver(response: ReturnType<typeof quoteAnswer>) {
   const http = scriptedApi({ [quoteUrl]: response });
-  return { http, api: createOkxApi({ http, clock: fixedClock, keys: testKeys }) };
+  return { http, api: createOkxApi({ http, clock: fixedClock, keys: heldKeys }) };
 }
 
 async function faultOf(response: ReturnType<typeof quoteAnswer>): Promise<BinferenceError> {
@@ -48,6 +50,21 @@ async function faultOf(response: ReturnType<typeof quoteAnswer>): Promise<Binfer
 }
 
 describe("okx api", () => {
+  it("signs each request with the key as it stands when the request starts", async () => {
+    const http = scriptedApi({ [quoteUrl]: quoteAnswer(route) });
+    const held: { keys?: OkxKeys } = { keys: testKeys };
+    const api = createOkxApi({ http, clock: fixedClock, keys: () => held.keys });
+    await api.quote(query, live());
+    held.keys = { ...testKeys, apiKey: createSecret("rotated-api-key") };
+    await api.quote(query, live());
+    delete held.keys;
+    await expect(api.quote(query, live())).rejects.toMatchObject({ code: "okx.no_key" });
+    expect(http.requests().map((request) => request.headers?.["OK-ACCESS-KEY"])).toStrictEqual([
+      "test-api-key",
+      "rotated-api-key",
+    ]);
+  });
+
   it("signs each GET as OKX's authentication guide says: timestamp, method, path and query", async () => {
     const { http, api } = apiOver(quoteAnswer(route));
     await api.quote(query, live());
@@ -89,7 +106,7 @@ describe("okx api", () => {
       excludeDexIds: "190,200",
     });
     const http = scriptedApi({ [excluded]: quoteAnswer(route) });
-    const api = createOkxApi({ http, clock: fixedClock, keys: testKeys });
+    const api = createOkxApi({ http, clock: fixedClock, keys: heldKeys });
     const found = await api.quote({ ...query, excludedDexIds: ["190", "200"] }, live());
     expect(found.ok).toBe(true);
   });
@@ -174,12 +191,12 @@ describe("okx api", () => {
   it("lists the liquidity protocols of a chain, and throws when OKX gives none", async () => {
     const url = okxUrl("/get-liquidity", { chainIndex: "56" });
     const http = scriptedApi({ [url]: liquidityAnswer([["190", "PancakeSwap Infinity CL"]]) });
-    const api = createOkxApi({ http, clock: fixedClock, keys: testKeys });
+    const api = createOkxApi({ http, clock: fixedClock, keys: heldKeys });
     await expect(api.liquidity("56", live())).resolves.toStrictEqual([
       { id: "190", name: "PancakeSwap Infinity CL" },
     ]);
     const refusing = scriptedApi({ [url]: errorAnswer("82000") });
-    const refused = createOkxApi({ http: refusing, clock: fixedClock, keys: testKeys });
+    const refused = createOkxApi({ http: refusing, clock: fixedClock, keys: heldKeys });
     await expect(refused.liquidity("56", live())).rejects.toMatchObject({
       code: "okx.unavailable",
       details: { answer: "82000" },

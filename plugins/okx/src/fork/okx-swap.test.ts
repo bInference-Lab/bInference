@@ -100,11 +100,11 @@ async function tradingOn(fork: Fork): Promise<Trading> {
   const venue = createOkxVenue({
     http: okxHttp(asked),
     clock: wallClock,
-    keys: {
+    keys: () => ({
       apiKey: createSecret(apiKey),
       secretKey: createSecret(secretKey),
       passphrase: createSecret(passphrase),
-    },
+    }),
     chains: [{ chain: fork.chain.ref, nativeAsset: fork.chain.nativeAsset }],
   });
   const accountOf = (address: Address): AccountRef =>

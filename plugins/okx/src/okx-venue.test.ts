@@ -39,6 +39,7 @@ import {
   quotedAtMs,
   scriptedApi,
   sellRequest,
+  heldKeys,
   testKeys,
   usdt,
   venueOver,
@@ -256,7 +257,7 @@ describe("the okx venue", () => {
     ["the coin of another chain", { nativeAsset: assetRefSchema.parse("eip155:1/slip44:60") }],
     ["a token as the native asset", { nativeAsset: usdt }],
   ])("refuses to trade on %s", (_case, change) => {
-    const options = { http: scriptedApi({}), clock: fixedClock, keys: testKeys };
+    const options = { http: scriptedApi({}), clock: fixedClock, keys: heldKeys };
     expect(() => createOkxVenue({ ...options, chains: [chainWith(change)] })).toThrow(
       expect.objectContaining({ code: "okx.bad_options" }),
     );
@@ -270,8 +271,15 @@ describe("the okx venue", () => {
     ["no passphrase", [chainWith({})], { ...testKeys, passphrase: createSecret("") }],
   ])("refuses options with %s", (_case, chains, keys) => {
     expect(() =>
-      createOkxVenue({ http: scriptedApi({}), clock: fixedClock, keys, chains }),
+      createOkxVenue({ http: scriptedApi({}), clock: fixedClock, keys: () => keys, chains }),
     ).toThrow(expect.objectContaining({ code: "okx.bad_options" }));
+  });
+
+  it("refuses to be made with no key", () => {
+    const options = { http: scriptedApi({}), clock: fixedClock, chains: [chainWith({})] };
+    expect(() => createOkxVenue({ ...options, keys: () => undefined })).toThrow(
+      expect.objectContaining({ code: "okx.no_key" }),
+    );
   });
 
   it("decodes no draft on a chain it does not trade on", () => {

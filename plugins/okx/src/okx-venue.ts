@@ -1,30 +1,12 @@
-import {
-  BinferenceError,
-  defineVenue,
-  type Venue,
-  type VenueDeclaration,
-} from "@binference/plugin-sdk";
-import { createOkxApi } from "./api/okx-api.js";
+import { defineVenue, type Venue, type VenueDeclaration } from "@binference/plugin-sdk";
+import { checkedKeys, createOkxApi } from "./api/okx-api.js";
 import { chainSetupsOf } from "./chain-setup.js";
 import { approverName, routerName } from "./okx-contracts.js";
-import type { OkxChain, OkxKeys, OkxOptions } from "./okx-options.js";
+import type { OkxChain, OkxOptions } from "./okx-options.js";
 import { buildSwap } from "./router/build-swap.js";
 import { dagSwapByOrderIdJson, dagSwapToJson } from "./router/dag-call.js";
 import { decodeSwap } from "./router/decode-swap.js";
 import { quoteTrade } from "./routes/quote-trade.js";
-
-// The venue runs only on the owner's key: an empty key, secret or passphrase is refused when the
-// venue is made, never left for OKX to refuse on each call.
-function keysOf(keys: OkxKeys): OkxKeys {
-  const parts = [keys.apiKey, keys.secretKey, keys.passphrase];
-  if (parts.some((part) => part.reveal().trim() === "")) {
-    throw new BinferenceError({
-      code: "okx.bad_options",
-      message: "OKX needs the owner's API key, its secret and its passphrase.",
-    });
-  }
-  return keys;
-}
 
 /**
  * What the `okx` venue declares on the chains it is given: its id, and OKX's DEX router and
@@ -54,13 +36,16 @@ export function okxDeclaration(chains: readonly OkxChain[]): VenueDeclaration {
  * trades through OKX's DEX router. On each chain it declares the router and OKX's TokenApprove
  * from the registry; the host gives their addresses with every request. Quotes drop routes
  * through protocols whose pools run hooks; builds carry the host's minimum output and deadline;
- * the decoder reads both back from the router call. Bad options, an empty key part among them,
- * are a fault (`okx.bad_options`).
+ * the decoder reads both back from the router call. Bad options, an empty key part among them, are
+ * a fault (`okx.bad_options`). Each request signs with the key as it stands when the request
+ * starts; with no key, making the venue or a request is refused with `okx.no_key`.
  */
 export function createOkxVenue(options: OkxOptions): Venue {
   const setups = chainSetupsOf(options.chains);
   const { http, clock } = options;
-  const parts = { api: createOkxApi({ http, clock, keys: keysOf(options.keys) }), setups };
+  // The venue is made only on the owner's key; a key that goes later stops the next request.
+  checkedKeys(options.keys);
+  const parts = { api: createOkxApi({ http, clock, keys: options.keys }), setups };
   return defineVenue({
     ...okxDeclaration(options.chains),
     quote: async (request, { signal }) => quoteTrade(request, parts, signal),

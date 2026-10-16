@@ -54,6 +54,9 @@ export const testKeys: OkxKeys = {
   passphrase: createSecret("test-passphrase"),
 };
 
+/** {@link testKeys} as the venue reads them at each request. */
+export const heldKeys = (): OkxKeys => testKeys;
+
 /** When the fixtures quote: 2026-10-08 18:13:20 UTC. */
 export const quotedAtMs = 1_791_483_200_000;
 
@@ -106,7 +109,7 @@ export function venueOver(http: ScriptedHttp): Venue {
   return createOkxVenue({
     http,
     clock: fixedClock,
-    keys: testKeys,
+    keys: () => testKeys,
     chains: [{ chain: chainRefSchema.parse("eip155:56"), nativeAsset: bnb }],
   });
 }

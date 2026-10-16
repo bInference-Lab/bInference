@@ -23,6 +23,10 @@ export interface OkxOptions {
   readonly http: Http;
   /** Stamps each signed request; OKX refuses a stamp more than 30 s from its own clock. */
   readonly clock: Clock;
-  readonly keys: OkxKeys;
+  /**
+   * The owner's key as it stands when each request starts, so a changed key signs the next
+   * request; `undefined` once the owner removed it, and the venue then answers no request.
+   */
+  readonly keys: () => OkxKeys | undefined;
   readonly chains: readonly OkxChain[];
 }

@@ -1,4 +1,11 @@
-import { type Clock, err, type Http, ok, type Result } from "@binference/plugin-sdk";
+import {
+  BinferenceError,
+  type Clock,
+  err,
+  type Http,
+  ok,
+  type Result,
+} from "@binference/plugin-sdk";
 import type { Address } from "viem";
 import type { OkxKeys } from "../okx-options.js";
 import { type AnswerReader, readEnvelope } from "./answer-envelope.schema.js";
@@ -41,7 +48,30 @@ export interface OkxApi {
 export interface OkxApiOptions {
   readonly http: Http;
   readonly clock: Clock;
-  readonly keys: OkxKeys;
+  /** The owner's key as it stands when each request starts; `undefined` once it is gone. */
+  readonly keys: () => OkxKeys | undefined;
+}
+
+/**
+ * The owner's key as it stands now. None is `okx.no_key`; an empty key, secret or passphrase is
+ * `okx.bad_options`, never left for OKX to refuse.
+ */
+export function checkedKeys(keys: () => OkxKeys | undefined): OkxKeys {
+  const held = keys();
+  if (held === undefined) {
+    throw new BinferenceError({
+      code: "okx.no_key",
+      message: "OKX has no key: config names none now.",
+    });
+  }
+  const parts = [held.apiKey, held.secretKey, held.passphrase];
+  if (parts.some((part) => part.reveal().trim() === "")) {
+    throw new BinferenceError({
+      code: "okx.bad_options",
+      message: "OKX needs the owner's API key, its secret and its passphrase.",
+    });
+  }
+  return held;
 }
 
 const origin = "https://web3.okx.com";
@@ -81,7 +111,8 @@ async function ask<T>(
   signal: AbortSignal,
 ): Promise<Result<T, string>> {
   const pathAndQuery = `${aggregator}${call.path}?${call.params.toString()}`;
-  const headers = signedHeaders(options.keys, { pathAndQuery, atMs: options.clock.now() });
+  const keys = checkedKeys(options.keys);
+  const headers = signedHeaders(keys, { pathAndQuery, atMs: options.clock.now() });
   const response = await options.http.request({
     method: "GET",
     url: `${origin}${pathAndQuery}`,

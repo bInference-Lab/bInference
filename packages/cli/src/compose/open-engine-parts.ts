@@ -37,6 +37,7 @@ import type { ConfigCell } from "./config-cell.js";
 import type { ConfigReloadLink } from "./config-reload-link.js";
 import { engineEndpoint, engineLogFile } from "./engine-locations.js";
 import type { OpenedBot } from "./open-bot.js";
+import type { ReadVenues } from "./read-venues.js";
 
 /** One start while its parts open: each part adds what closes it. */
 export interface Opening {
@@ -76,6 +77,8 @@ export interface Opened {
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   /** The venues it quotes on, their keys read. */
   readonly venues: readonly Venue[];
+  /** Reads the venues' keys again after a reload changed them (decision 0230). */
+  readonly followVenues: ReadVenues["followReload"];
   /** The owner's bot, or `undefined` when its token could not be read. */
   readonly bot: OpenedBot | undefined;
   /** What the agent runtime starts with, its keys read from their secret sources. */

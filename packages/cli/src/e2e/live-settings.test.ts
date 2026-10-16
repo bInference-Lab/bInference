@@ -7,12 +7,13 @@ import {
   type JsonValue,
   jsonValueSchema,
 } from "@binference/core";
+import type { TempFolder } from "@binference/platform/testing";
 import { startInProcessRuntime } from "@binference/runtime/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import { isObject } from "../config/shown-config.js";
-import { type InitMachine, secretEnv } from "./init-fixtures.js";
+import { initFlags, type InitMachine, newInitMachine, runOn, secretEnv } from "./init-fixtures.js";
 import { connectClient } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
 
@@ -20,14 +21,51 @@ import { createRunningEngines } from "./unlock-fixtures.js";
 // the part that uses it, and the answer never asks for a restart. One engine serves every row, in
 // order, as an owner would change one setting after another.
 const engines = createRunningEngines();
+const folders: TempFolder[] = [];
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(20_000) });
 const env = {
+  OKX_KEY: "okx-key-one",
+  OKX_KEY_TWO: "okx-key-two",
+  OKX_SECRET: "okx-secret",
+  OKX_PASSPHRASE: "okx-passphrase",
   TEST_MODEL_KEY: "sk-test-model",
   TEST_BRAVE_KEY: "brave-test-key",
   TEST_X_KEY: "x-test-key",
 };
 
 const controlLine = z.looseObject({ t: z.string(), settings: jsonValueSchema.optional() });
+
+const okxKeys = (apiKey: string) => ({
+  venues: {
+    keys: {
+      okx: {
+        apiKey: { fromEnv: apiKey },
+        secret: { fromEnv: "OKX_SECRET" },
+        passphrase: { fromEnv: "OKX_PASSPHRASE" },
+      },
+    },
+  },
+});
+
+// A machine `binference init` set up with the owner's OKX key, so OKX is a venue of the install
+// and of its first agent.
+async function setUpWithOkx(): Promise<InitMachine> {
+  const machine = await newInitMachine(folders);
+  const okx = Object.entries({
+    apiKey: "OKX_KEY",
+    secret: "OKX_SECRET",
+    passphrase: "OKX_PASSPHRASE",
+  });
+  const sets = okx.flatMap(([part, name]) => [
+    "--set",
+    `venues.keys.okx.${part}=${JSON.stringify({ fromEnv: name })}`,
+  ]);
+  const init = await runOn(machine, ["init", "--yes", ...initFlags(machine), ...sets]);
+  if (init.code !== 0) {
+    throw new Error(`binference init failed: ${init.stderr}`);
+  }
+  return machine;
+}
 
 /** Every line the engine wrote to the agent runtime, which runs in this process. */
 function recordedRuntime() {
@@ -261,7 +299,7 @@ describe("live settings in a running engine", () => {
     (await running.client.call("config/change", { patch }, live())).restartNeeded;
 
   beforeAll(async () => {
-    const machine = await engines.setUp();
+    const machine = await setUpWithOkx();
     world.held.world = machine.world;
     await engines.start(machine, {
       env: { ...secretEnv(machine), ...env },
@@ -274,6 +312,7 @@ describe("live settings in a running engine", () => {
   afterAll(async () => {
     running.client.close();
     await engines.stopAll();
+    await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
   });
 
   it.each(runtimeRows)("sends a changed $key to the agent runtime at once", async (row) => {
@@ -314,6 +353,19 @@ describe("live settings in a running engine", () => {
     await expect(change({ venues: { kyberClientId: "bin ference" } })).rejects.toMatchObject({
       code: "config.invalid",
     });
+  });
+
+  it("signs the next okx request with a changed key, and asks okx nothing once it is gone", async () => {
+    await expect(change(rpcUrls(nodeUrl))).resolves.toBe(false);
+    await expect(change(okxKeys("OKX_KEY_TWO"))).resolves.toBe(false);
+    const signed = (await requestsOfASwap())
+      .filter((request) => new URL(request.url).host === "web3.okx.com")
+      .map((request) => request.headers?.["OK-ACCESS-KEY"]);
+    expect(new Set(signed)).toStrictEqual(new Set(["okx-key-two"]));
+    await expect(change({ venues: { keys: { okx: null } } })).resolves.toBe(false);
+    const hosts = (await requestsOfASwap()).map((request) => new URL(request.url).host);
+    expect(hosts).not.toContain("web3.okx.com");
+    expect(hosts).toContain("aggregator-api.kyberswap.com");
   });
 
   it("reads the chain through changed rpc urls at the next request", async () => {

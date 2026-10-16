@@ -1,5 +1,5 @@
 import { chainRefSchema } from "@binference/chain";
-import { BinferenceError, bpsSchema, createSecret } from "@binference/core";
+import { BinferenceError, bpsSchema, createSecret, type Http } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
@@ -68,7 +68,7 @@ async function read(venues: VenuesConfig) {
     logger,
     signal: new AbortController().signal,
   });
-  return { ids: venuesRead.map((venue) => venue.id), logger };
+  return { ids: venuesRead.venues.map((venue) => venue.id), logger };
 }
 
 describe("the self-hosted venues", () => {
@@ -77,7 +77,7 @@ describe("the self-hosted venues", () => {
     const clock = createManualClock();
     const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
     const reads = composeChainReads({ chains: selfHostedChains(), config: chains, http, clock });
-    const venues = await readVenues({
+    const { venues } = await readVenues({
       venues: venuesWith(),
       chains,
       registry: selfHostedChains(),
@@ -118,7 +118,7 @@ describe("the self-hosted venues", () => {
     const http = scriptedApi({ [buyRoutesUrl]: answer(hooked) });
     const clock = createManualClock();
     const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
-    const venues = await readVenues({
+    const { venues } = await readVenues({
       venues: venuesWith(),
       chains,
       registry: selfHostedChains(),
@@ -180,5 +180,57 @@ describe("the self-hosted venues", () => {
       signal: new AbortController().signal,
     });
     await expect(reading).rejects.toMatchObject({ code: "cli.hook_missing" });
+  });
+
+  it("sign the next okx request with the key a reload names, and none once it names none", async () => {
+    const sent: (string | undefined)[] = [];
+    const http: Http = {
+      request: async (request) => {
+        sent.push(request.headers?.["OK-ACCESS-KEY"]);
+        return Promise.resolve({ status: 503, headers: {}, body: "" });
+      },
+    };
+    const clock = createManualClock();
+    const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
+    const held = { venues: venuesWith("OKX") };
+    const logger = createMemoryLogger({ subsystem: "engine" });
+    const signal = new AbortController().signal;
+    const followed = await readVenues({
+      venues: held.venues,
+      current: () => held.venues,
+      chains,
+      registry: selfHostedChains(),
+      poolHooks: selfHostedPoolHooks(),
+      reads: composeChainReads({ chains: selfHostedChains(), config: chains, http, clock }),
+      secrets,
+      http,
+      clock,
+      logger,
+      signal,
+    });
+    const host = createVenueHost({
+      venues: followed.venues,
+      chains: selfHostedChains(),
+      clock,
+      callTimeoutMs: 5_000,
+    });
+    const trade = {
+      venue: "okx",
+      wallet: recordedWallet,
+      amountIn: { asset: bnb, base: 10n ** 17n },
+      assetOut: usdt,
+      maxSlippageBps: bpsSchema.parse(100),
+    };
+    const quoteOnce = async (venues: VenuesConfig) => {
+      held.venues = venues;
+      await followed.followReload(["venues.keys.okx.apiKey"], signal);
+      return host.quote(trade, { signal });
+    };
+    await quoteOnce(venuesWith("OKX_TWO"));
+    const down = { ok: false, error: "venue_down" };
+    await expect(quoteOnce(venuesWith())).resolves.toStrictEqual(down);
+    await expect(quoteOnce(venuesWith("MISSING"))).resolves.toStrictEqual(down);
+    expect(new Set(sent)).toStrictEqual(new Set(["okx_two_key-value"]));
+    expect(logger.records().map((record) => record.event)).toStrictEqual(["engine.venue_skipped"]);
   });
 });

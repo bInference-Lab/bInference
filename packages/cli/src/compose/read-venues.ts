@@ -19,7 +19,11 @@ import { createFlapVenue } from "@binference/flap";
 import { createGeniusfunVenue } from "@binference/geniusfun";
 import { createKyberswapVenue, type KyberswapHook } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
-import type { ChainsConfig, VenuesConfig } from "../config/schema/chains-venues.schema.js";
+import type {
+  ChainsConfig,
+  OkxKeysConfig,
+  VenuesConfig,
+} from "../config/schema/chains-venues.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
 import type { ChainReads } from "./chain-reads.js";
 
@@ -42,13 +46,29 @@ export interface ReadVenuesOptions {
   readonly signal: AbortSignal;
 }
 
+/** The venues the engine quotes on, and the part of them that follows a reload. */
+export interface ReadVenues {
+  readonly venues: readonly Venue[];
+  /**
+   * Reads the OKX key again when a reload changed it, for an engine that started with OKX
+   * (decision 0230): the next OKX request signs with it, and none once config names none or it
+   * cannot be read.
+   */
+  readonly followReload: (changed: readonly string[], signal: AbortSignal) => Promise<void>;
+}
+
+type KeyReading = Pick<ReadVenuesOptions, "secrets" | "logger">;
+
 // The owner's OKX key, or `undefined` when config names none or a part of it cannot be read.
-async function okxKeysOf(options: ReadVenuesOptions): Promise<OkxKeys | undefined> {
-  const named = options.venues.keys.okx;
+async function okxKeysOf(
+  named: OkxKeysConfig | undefined,
+  options: KeyReading,
+  signal: AbortSignal,
+): Promise<OkxKeys | undefined> {
   if (named === undefined) {
     return undefined;
   }
-  const { secrets, signal } = options;
+  const { secrets } = options;
   try {
     const [apiKey, secretKey, passphrase] = await Promise.all([
       secrets.read("venues.keys.okx.apiKey", named.apiKey, signal),
@@ -133,7 +153,7 @@ function allowedHooksOf(
  * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
  * names, with their fees, and drops routes through any other hooked pool (decision 0214).
  */
-export async function readVenues(options: ReadVenuesOptions): Promise<readonly Venue[]> {
+export async function readVenues(options: ReadVenuesOptions): Promise<ReadVenues> {
   const enabled = options.registry
     .list()
     .filter((chain) => chain.definition.family === evmFamilyId)
@@ -157,8 +177,18 @@ export async function readVenues(options: ReadVenuesOptions): Promise<readonly V
   const geniusfun = createGeniusfunVenue({
     chains: curveChainsOf(enabled, reads, geniusfunQuoteSymbols),
   });
-  const keys = await okxKeysOf(options);
-  return keys === undefined
-    ? [kyberswap, flap, geniusfun]
-    : [kyberswap, flap, geniusfun, createOkxVenue({ http, clock, keys, chains })];
+  const held = { keys: await okxKeysOf(options.venues.keys.okx, options, options.signal) };
+  if (held.keys === undefined) {
+    return { venues: [kyberswap, flap, geniusfun], followReload: async () => Promise.resolve() };
+  }
+  const okx = createOkxVenue({ http, clock, keys: () => held.keys, chains });
+  return {
+    venues: [kyberswap, flap, geniusfun, okx],
+    async followReload(changed, signal) {
+      if (changed.some((path) => path.startsWith("venues.keys.okx"))) {
+        const named = (options.current?.() ?? options.venues).keys.okx;
+        held.keys = await okxKeysOf(named, options, signal);
+      }
+    },
+  };
 }

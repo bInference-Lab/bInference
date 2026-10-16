@@ -78,7 +78,15 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
 
 type SecretParts = Pick<
   Opened,
-  "tracers" | "headSockets" | "chains" | "reads" | "venues" | "bot" | "runtime" | "secrets"
+  | "tracers"
+  | "headSockets"
+  | "chains"
+  | "reads"
+  | "venues"
+  | "followVenues"
+  | "bot"
+  | "runtime"
+  | "secrets"
 >;
 
 // The parts that read config's secret sources: the owner's own RPCs, the venues and the bot.
@@ -102,7 +110,7 @@ async function readSecretParts(
   const { http, clock } = host;
   const current = () => settings.current().chains;
   const reads = composeChainReads({ chains, config: config.chains, current, http, clock });
-  const venues = await readVenues({
+  const { venues, followReload: followVenues } = await readVenues({
     ...call,
     venues: config.venues,
     current: () => settings.current().venues,
@@ -130,7 +138,7 @@ async function readSecretParts(
     logger: log.logger.child("runtime"),
     signal,
   });
-  return { tracers, headSockets, chains, reads, venues, bot, runtime, secrets };
+  return { tracers, headSockets, chains, reads, venues, followVenues, bot, runtime, secrets };
 }
 
 async function openStoresAndServe(

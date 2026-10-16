@@ -77,7 +77,6 @@ const keysNoPartReads: readonly string[] = [
 // until its part reads the config cell on each use.
 const keysCopiedAtStart: readonly string[] = [
   "engine.extraOrigins",
-  "venues.keys.okx",
   "risk",
   "logging.keepDays",
   "logging.maxFileMb",
@@ -102,9 +101,15 @@ const feeCapWithinStart: Judge = (change, started) => {
   return isWithin ? "now" : "restart";
 };
 
+// The OKX key applies to the next OKX request when the engine started with OKX; adding one to an
+// engine that started without it waits for a restart, which lists the venue and its contracts.
+const okxStarted: Judge = (_change, started) =>
+  started.venues.keys.okx === undefined ? "restart" : "now";
+
 // The keys that apply now only while they stay within what the engine started with.
 const keysBoundByStart: readonly (readonly [string, Judge])[] = [
   ["chains.maxFeePerGasGwei.*", feeCapWithinStart],
+  ["venues.keys.okx", okxStarted],
 ];
 
 // The table, every entry with its judge; the longest entry that covers a key decides.
