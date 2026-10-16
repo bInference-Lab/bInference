@@ -38,7 +38,7 @@
   "route": "Route  {route} · impact {impact} · max slippage {slippage}",
   "fees": "Fees   network ≈ {fee}{privateSend, select, yes { · private send} other {}}",
   "check": "Check  ✅ simulation: you receive {received} · {verified, select, yes {✅ {token} verified} other {✅ {token} passed the risk checks}}",
-  "warn.outsideContent": "⚠️ This came after reading outside content (web, X or token data)",
+  "warn.outsideContent": "⚠️ This came after reading outside content (web, X, token data or an image)",
   "warn.unusualName": "⚠️ Unusual characters in this token's name",
   "warn.newAddress": "⚠️ You have never sent to this address",
   "warn.unverified": "⚠️ Not a verified token: risk checks passed, but check the address",

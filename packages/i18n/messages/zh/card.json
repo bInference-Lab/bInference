@@ -38,7 +38,7 @@
   "route": "路由  {route} · 价格影响 {impact} · 滑点上限 {slippage}",
   "fees": "费用  网络费约 {fee}{privateSend, select, yes { · 私密发送} other {}}",
   "check": "检查  ✅ 模拟：你将收到 {received} · {verified, select, yes {✅ {token} 已验证} other {✅ {token} 已通过风险检查}}",
-  "warn.outsideContent": "⚠️ 此请求发生在读取外部内容（网页、X 或代币信息）之后",
+  "warn.outsideContent": "⚠️ 此请求发生在读取外部内容（网页、X、代币信息或图片）之后",
   "warn.unusualName": "⚠️ 此代币名称含有不常见字符",
   "warn.newAddress": "⚠️ 你从未向此地址转账",
   "warn.unverified": "⚠️ 非已验证代币：风险检查已通过，但请核对地址",

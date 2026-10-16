@@ -164,7 +164,7 @@ owner gave it ([decision 0217](../DECISIONS.md#d0217)).
 
 | Key                        | English                                                                                                      | 中文                                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `card.warn.outsideContent` | ⚠️ This came after reading outside content (web, X or token data)                                            | ⚠️ 此请求发生在读取外部内容（网页、X 或代币信息）之后                   |
+| `card.warn.outsideContent` | ⚠️ This came after reading outside content (web, X, token data or an image)                                  | ⚠️ 此请求发生在读取外部内容（网页、X、代币信息或图片）之后              |
 | `card.warn.newAddress`     | ⚠️ You have never sent to this address                                                                       | ⚠️ 你从未向此地址转账                                                   |
 | `card.warn.unusualName`    | ⚠️ Unusual characters in this token's name                                                                   | ⚠️ 此代币名称含有不常见字符                                             |
 | `card.warn.unverified`     | ⚠️ Not a verified token: risk checks passed, but check the address                                           | ⚠️ 非已验证代币：风险检查已通过，但请核对地址                           |
