@@ -1,6 +1,7 @@
 import type { AccountRef, Amount, AssetRef, ChainRef } from "@binference/chain";
 import { type Bps, bpsPerWhole, type Ratio } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
+import type { LaunchDetails } from "./launch-card-lines.js";
 import { type PriceOrderRequest, orderSummaryLine } from "./order-card-lines.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
@@ -60,13 +61,17 @@ export interface CardActionFacts {
     readonly price: string;
   };
   readonly registerIdentity: { readonly agent: string };
-  /** `firstBuy` is zero when the request asks for no first buy. */
+  /**
+   * `firstBuy` is zero when the request asks for no first buy. `details` holds every other
+   * setting, each on a line of its own under the action line (decision 0235).
+   */
   readonly launchToken: {
     readonly symbol: string;
     readonly name: string;
     readonly venue: string;
     readonly pair: AssetRef;
     readonly firstBuy: Amount;
+    readonly details?: LaunchDetails;
   };
   readonly rescue: {
     readonly address: AccountRef;

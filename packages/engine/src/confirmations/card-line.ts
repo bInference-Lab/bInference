@@ -26,6 +26,14 @@ export const cardKeys = [
   "card.cex.action",
   "card.identity.action",
   "card.launch.action",
+  "card.launch.token",
+  "card.launch.firstBuyMin",
+  "card.launch.fee",
+  "card.launch.description",
+  "card.launch.link",
+  "card.launch.picture",
+  "card.launch.upload",
+  "card.launch.pinned",
   "card.rescue.action",
   "card.unfreeze.agent",
   "card.unfreeze.all",
@@ -82,8 +90,11 @@ export const cardKeys = [
   "receipt.result",
 ] as const;
 
-/** A message key of a card or a receipt. */
-export type CardKey = (typeof cardKeys)[number];
+/**
+ * A message key of a card or a receipt, or of a launchpad setting's card line, `launch.option.`
+ * and the setting's name, which the launch host checks exists in every language (decision 0235).
+ */
+export type CardKey = (typeof cardKeys)[number] | `launch.option.${string}`;
 
 /**
  * One argument of a card line, typed so every surface formats it with the one formatter: an

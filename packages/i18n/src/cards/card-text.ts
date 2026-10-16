@@ -33,7 +33,15 @@ type ValueFormats = {
 // past 200. Every other outside text is a name.
 const symbolLength = 16;
 const nameLength = 40;
-const textLengths: Readonly<Record<string, number>> = { reason: 200, symbol: symbolLength };
+// A launch's description, links and metadata address show long enough to check against what the
+// owner asked (decision 0235).
+const textLengths: Readonly<Record<string, number>> = {
+  reason: 200,
+  symbol: symbolLength,
+  description: 1_000,
+  url: 200,
+  uri: 200,
+};
 const ratioDecimals = 2;
 
 function say(formatter: Formatter, key: string, values?: MessageValues): string {

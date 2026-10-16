@@ -5,6 +5,7 @@ import type { AutoAskCode } from "../intents/auto-mode-refusal.js";
 import type { CardTerms } from "../intents/intent-status.js";
 import { actionLine, actionVerb, type CardAction } from "./card-action.js";
 import type { CardKey, CardLine, CardValue } from "./card-line.js";
+import { launchDetailLines } from "./launch-card-lines.js";
 
 /** The route line: the venue that quoted, its legs with their shares, the impact and the limit. */
 export interface CardRoute {
@@ -224,14 +225,18 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
 }
 
 /**
- * Draws one card version from its facts (spec 4, section 3): the header, the action, the launch
- * wallet it runs from, the route, the fees, the check, the warnings, what the agent says and the
- * expiry, in that order. Lines without facts are left out.
+ * Draws one card version from its facts (spec 4, section 3): the header, the action, a token
+ * launch's every other setting, the launch wallet it runs from, the route, the fees, the check,
+ * the warnings, what the agent says and the expiry, in that order. Lines without facts are left
+ * out.
  */
 export function drawCard(facts: CardFacts): Card {
   const lines: readonly CardLine[] = [
     headerLine(facts),
     actionLine(facts.action),
+    ...(facts.action.kind === "launchToken" && facts.action.details !== undefined
+      ? launchDetailLines(facts.action.details)
+      : []),
     ...optional(facts.launchWallet, (label) => ({
       key: "card.launchWallet",
       values: { wallet: { type: "text", text: label } },

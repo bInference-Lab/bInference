@@ -151,6 +151,26 @@ Agent 说明  “按你的要求在 $625 止盈”
 | auto order         | `card.order.action`                        | Approve {orderKind}: {summary} · up to {maxFills} fills until {expiry}                                                                        | 批准{orderKind}：{summary} · 最多成交 {maxFills} 次，截至 {expiry}                                                             |
 | webhook rule       | `card.webhookRule.action`                  | Approve alert rule "{name}": {summary} · at most {rate} a minute                                                                              | 批准提醒规则“{name}”：{summary} · 每分钟最多 {rate} 次                                                                         |
 
+A `launchToken` shows, right after its action line, each line below that has its facts
+([decision 0235](../DECISIONS.md#d0235)), then `card.launchWallet`:
+
+| Line              | Key                       | English                                                                                         | 中文                                                         |
+| ----------------- | ------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Token             | `card.launch.token`       | New token {token}                                                                               | 新代币 {token}                                               |
+| First buy's least | `card.launch.firstBuyMin` | First buy gets at least {minOut}                                                                | 首笔买入至少获得 {minOut}                                    |
+| Launch fee        | `card.launch.fee`         | Launch fee {fee}                                                                                | 发射手续费 {fee}                                             |
+| Description       | `card.launch.description` | Description: {description}                                                                      | 简介：{description}                                          |
+| Link, each        | `card.launch.link`        | {site}: {url} (Website, X, Telegram)                                                            | {site}：{url}（网站、X、Telegram）                           |
+| Picture           | `card.launch.picture`     | Picture: {format}, {kib} KB, SHA-256 {digest} · {uri}                                           | 图片：{format}，{kib} KB，SHA-256 {digest} · {uri}           |
+| Picture, paper    | `card.launch.upload`      | Picture: upload {upload}                                                                        | 图片：上传 {upload}                                          |
+| Setting, each     | `launch.option.<name>`    | One per launchpad setting, such as `launch.option.taxBps`: Tax on every trade: {value}          | 如 `launch.option.taxBps`：每笔交易的交易税：{value}         |
+| Public already    | `card.launch.pinned`      | ⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel | ⚠️ 图片和文字已在 {venue} 的存储中公开，即使取消也会保持公开 |
+
+`{digest}` is the first 16 hex digits of the picture's SHA-256; the terms hash binds all of it.
+A card cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200. A launchpad's
+setting names its own message, which must exist in both languages before the engine hosts the
+launchpad.
+
 A trade that runs from the agent's launch wallet shows `card.launchWallet` right after its action
 line: "From your launch wallet {wallet}" / 「从你的发射钱包 {wallet} 发起」, `{wallet}` the label the
 owner gave it ([decision 0217](../DECISIONS.md#d0217)).

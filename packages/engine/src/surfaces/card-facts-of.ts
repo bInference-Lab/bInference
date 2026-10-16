@@ -28,6 +28,7 @@ import type { IntentKind } from "../intents/intent-kind.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { type RescueQuote, rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { isSamePlace } from "../intents/same-place.js";
+import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
@@ -35,6 +36,7 @@ import { tradeSlippageBps } from "../money-path/swap-trade.js";
 import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
 import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import { launchCardFacts } from "./launch-card-facts.js";
 
 function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
   const chain = chains.get(assetRefParts(asset).chain);
@@ -293,6 +295,11 @@ const ownQuoteFacts: ReadonlyMap<
   ["rescue", (quote, source) => rescueFacts(rescueQuoteDocument.decode(quote), source)],
   ["unfreeze", (quote, source) => unfreezeFacts(unfreezeQuoteDocument.decode(quote), source)],
   ["autoOrder", (quote, source) => autoOrderFacts(autoOrderQuoteDocument.decode(quote), source)],
+  [
+    "launchToken",
+    (quote, source) =>
+      launchCardFacts(tokenLaunchQuoteDocument.decode(quote), source, baseWarnings(source)),
+  ],
 ]);
 
 /**
@@ -301,9 +308,10 @@ const ownQuoteFacts: ReadonlyMap<
  * deadline, the simulation's check (or that a paper
  * sale's fill is an estimate), the highest tax the risk step measured and the agent's reason; for
  * a rescue, its address, what it moves and their value; for an unfreeze, what it unfreezes; for an
- * auto order, its terms. The money path quotes trades, rescues, unfreezes and auto orders only,
- * so an intent of another kind, or one without a quote, has none. The fees line waits for a gas
- * estimate in the quote, and no source marks unusual names yet.
+ * auto order, its terms; for a token launch, every setting it runs with (decision 0235). The money
+ * path quotes trades, rescues, unfreezes, auto orders and launches only, so an intent of another
+ * kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
+ * no source marks unusual names yet.
  */
 export function cardFactsOf(source: CardSource): CardFacts | undefined {
   const { record } = source;

@@ -98,7 +98,7 @@ export function launchSettingsOf(
 }
 
 /** The message key of a launchpad setting's card line (spec 4, section 3.3). */
-function launchSettingKey(name: string): `launch.option.${string}` {
+export function launchSettingKey(name: string): `launch.option.${string}` {
   return `launch.option.${name}`;
 }
 

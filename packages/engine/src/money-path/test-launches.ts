@@ -13,6 +13,7 @@ import {
   type FakePinScript,
 } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
+import { cardLineText, createFormatter } from "@binference/i18n";
 import type { IntentRequest, IntentView, LaunchTokenRequest } from "@binference/protocol";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createMemoryLaunchImages } from "../fakes/memory-launch-images.js";
@@ -152,3 +153,27 @@ export async function proposeIntent(
   }
   return proposed.value;
 }
+
+/** A launch's card as an owner reads it, line by line, in one language. */
+export async function testCardText(
+  test: TestEngine,
+  view: IntentView,
+  locale: "en" | "zh",
+): Promise<readonly string[]> {
+  const drawn = await test.engine.handlers["intent/card"](
+    testCall({ intent: view.intent }, testCallers.cli),
+  );
+  if (!drawn.ok) {
+    throw new Error(`Expected the card, got ${drawn.error}.`);
+  }
+  const formatter = createFormatter({ locale, timeZone: "UTC" });
+  const display = { formatter, assets: drawn.value.assets };
+  return drawn.value.lines.map((line) => cardLineText(line, display));
+}
+
+/** The test launch with two links and both its settings set. */
+export const testSettledLaunch: LaunchTokenRequest = {
+  ...testLaunch,
+  links: { website: "https://moon.example", x: "https://x.com/mooncat" },
+  venueOptions: { taxBps: 300, buyback: true },
+};
