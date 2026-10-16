@@ -41,11 +41,12 @@ import { chainTokenFacts } from "./token-facts.js";
 /**
  * The self-hosted engine, built and not yet listening, with the engine's timed work: the work that
  * waits for its time, such as a rescue address's ceiling change, the gas check, the auto orders
- * that wait for no price, the cards whose time is up, and the schedules whose time came.
+ * that wait for no price, the cards whose time is up, the schedules whose time came, and the
+ * token launches waiting for their launchpad's pin (decision 0234).
  */
 export interface ComposedSelfHosted extends Pick<
   Engine,
-  "settle" | "checkGas" | "tickOrders" | "expireCards" | "runSchedules"
+  "settle" | "checkGas" | "tickOrders" | "expireCards" | "runSchedules" | "checkPins"
 > {
   readonly server: ProtocolServer;
   /** Where the engine's pushes go: the server, and the owner's bot when there is one. */
@@ -336,17 +337,17 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     publish({ topic: "engine", kind: "engine/state", data: { state: locked.state() } });
     publish(signerStoppedNotice());
   };
-  const { executor } = sending;
   const bot = telegram === undefined ? {} : { telegram };
   return {
     server,
     publish,
-    executor,
+    executor: sending.executor,
     settle: engine.settle,
     checkGas: engine.checkGas,
     tickOrders: engine.tickOrders,
     expireCards: engine.expireCards,
     runSchedules: engine.runSchedules,
+    checkPins: engine.checkPins,
     repairPaperFills: engine.repairPaperFills,
     repairOrderFills: engine.repairOrderFills,
     resume,

@@ -252,6 +252,8 @@ export type {
 } from "./policy/policy-rules.js";
 export { buildMismatches } from "./venues/build-checks.js";
 export type { ApprovalStep, BuildMismatch, PlanStep, TradeStep } from "./venues/build-checks.js";
+export { createLaunchHost } from "./venues/launch-host.js";
+export type { LaunchHost, LaunchHostOptions } from "./venues/launch-host.js";
 export { createVenueHost } from "./venues/venue-host.js";
 export type {
   TradePlan,

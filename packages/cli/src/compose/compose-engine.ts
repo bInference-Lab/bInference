@@ -9,6 +9,7 @@ import {
 } from "@binference/core";
 import {
   createEngine,
+  createLaunchHost,
   createVenueHost,
   type Engine,
   type EngineOptions,
@@ -17,6 +18,7 @@ import {
   type PositionStore,
   type RiskCacheStore,
   type Simulator,
+  type LaunchHost,
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
@@ -191,19 +193,19 @@ function joinTelegram(
       });
 }
 
-// The venue host over the options' venues, and the risk check that asks the profile's sources and
-// builds its round trips there.
-function tradingOf(
-  parts: EngineParts,
-  options: ComposeEngineOptions,
-): { readonly host: VenueHost; readonly risk: RiskCheck } {
+/** The venue host, its launch side and the risk check the engine trades through. */
+interface Trading {
+  readonly host: VenueHost;
+  readonly launchHost: LaunchHost;
+  readonly risk: RiskCheck;
+}
+
+// The venue host over the options' venues, its launch side (decision 0234), and the risk check
+// that asks the profile's sources and builds its round trips there.
+function tradingOf(parts: EngineParts, options: ComposeEngineOptions): Trading {
   const { clock, random, chains } = options;
-  const host = createVenueHost({
-    venues: options.venues,
-    chains,
-    clock,
-    callTimeoutMs: venueCallTimeoutMs,
-  });
+  const hosted = { venues: options.venues, chains, clock, callTimeoutMs: venueCallTimeoutMs };
+  const host = createVenueHost(hosted);
   const risk = createRiskCheck({
     ...options.risk,
     sources: parts.riskSources,
@@ -213,7 +215,7 @@ function tradingOf(
     clock,
     random,
   });
-  return { host, risk };
+  return { host, launchHost: createLaunchHost(hosted), risk };
 }
 
 // The custody ports the engine takes: signing, ceilings, new wallets and, where custody gives
@@ -237,11 +239,11 @@ function engineOf(
     readonly ids: IdSource;
     readonly publish: (push: EnginePush) => void;
     readonly turns: RunningTurns;
-    readonly trading: { readonly host: VenueHost; readonly risk: RiskCheck };
+    readonly trading: Trading;
     readonly uploads: UploadShelf;
   },
 ): Engine {
-  const { host, risk } = given.trading;
+  const { host, launchHost, risk } = given.trading;
   return createEngine({
     stores: parts.stores,
     positions: options.positions,
@@ -250,6 +252,7 @@ function engineOf(
     marketReads: parts.marketReads,
     wallets: options.wallets,
     host,
+    launchHost,
     risk,
     simulator: options.simulator,
     chainSimulator: options.risk.simulator,

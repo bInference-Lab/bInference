@@ -12,6 +12,7 @@ import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startTestOrders } from "./order-pricing.js";
 import { startOrderTimer } from "./order-timer.js";
+import { startPinTimer } from "./pin-timer.js";
 import { startScheduleTimer } from "./schedule-timer.js";
 import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
@@ -64,6 +65,7 @@ function startTimers(
   startOrderTimer({ tickOrders: composed.tickOrders, clock: host.clock, closers, logger });
   startCardTimer({ expireCards: composed.expireCards, clock: host.clock, closers, logger });
   startScheduleTimer({ runSchedules: composed.runSchedules, ...timers });
+  startPinTimer({ checkPins: composed.checkPins, clock: host.clock, closers, logger });
   composed.priceWatchers.start(closers, logger.child("watcher"));
   startTestOrders(opening, composed.priceWatchers.triggers);
   const backups = backupPartsOf(opening, opened.stores.backups, logger);
