@@ -1,5 +1,5 @@
 import { ok } from "@binference/core";
-import { checkModel, type ModelCheckProblem } from "@binference/runtime";
+import { checkModel, checkModelImages, type ModelCheckProblem } from "@binference/runtime";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import { isModelAddress, type ModelPreset, modelIdPattern, modelPresets } from "./model-presets.js";
 import { type TakenSecret, takeSecret } from "./take-secret.js";
@@ -13,6 +13,8 @@ export interface ModelLink {
   readonly model: string;
   /** None for a provider that takes no key, such as a local one. */
   readonly key?: TakenSecret;
+  /** The model read the image check's test image (decision 0228). */
+  readonly readsImages?: true;
 }
 
 // A model's first answer may take a while on a busy provider or a local machine.
@@ -26,17 +28,31 @@ export async function checkLink(
   context: InitContext,
   link: ModelLink,
 ): Promise<ModelCheckProblem | undefined> {
-  const { host } = context;
-  const target = {
+  const checked = await checkModel(targetOf(link), checkParts(context));
+  return checked.ok ? undefined : checked.error;
+}
+
+/**
+ * Checks that a linked model reads images with one small live call holding a 1x1 PNG (decision
+ * 0228), within 30 seconds; answers whether it answered.
+ */
+export async function checkLinkImages(context: InitContext, link: ModelLink): Promise<boolean> {
+  return (await checkModelImages(targetOf(link), checkParts(context))).ok;
+}
+
+function targetOf(link: ModelLink) {
+  return {
     kind: link.preset.kind,
     ...(link.baseUrl === undefined ? {} : { baseUrl: link.baseUrl }),
     ...(link.key === undefined ? {} : { apiKey: link.key.value }),
     model: link.model,
   };
+}
+
+function checkParts(context: InitContext) {
+  const { host } = context;
   const signal = AbortSignal.any([context.signal, AbortSignal.timeout(checkTimeoutMs)]);
-  const parts = { http: host.http, clock: host.clock, timeoutMs: checkTimeoutMs, signal };
-  const checked = await checkModel(target, parts);
-  return checked.ok ? undefined : checked.error;
+  return { http: host.http, clock: host.clock, timeoutMs: checkTimeoutMs, signal };
 }
 
 /** The values a model message names: the provider's words, the model and the address. */

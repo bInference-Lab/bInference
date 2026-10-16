@@ -75,5 +75,6 @@ export function modelSettingsOf(
     ...(link.baseUrl === undefined ? {} : { baseUrl: link.baseUrl }),
     ...(apiKey === undefined ? {} : { apiKey }),
     model: link.model,
+    ...(link.readsImages === true ? { readsImages: true } : {}),
   };
 }

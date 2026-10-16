@@ -22,6 +22,8 @@ export interface ModelSettings {
   readonly baseUrl?: string;
   readonly apiKey?: SecretSource;
   readonly model: string;
+  /** It read the image check's test image, so `models.imageInput` lists it (decision 0228). */
+  readonly readsImages?: true;
 }
 
 /** What init writes into the config itself; `--set` flags add the rest. */
@@ -46,7 +48,7 @@ export interface InitConfig {
 
 // Keys init sets from its own steps; a `--set` flag cannot replace them.
 const ownedPaths = ["version", "engine.unlock", "custody", "telegram.botToken"];
-const modelPaths = ["models.providers", "models.main", "models.fast"];
+const modelPaths = ["models.providers", "models.main", "models.fast", "models.imageInput"];
 
 function ownedBy(set: string, settings: InitSettings): string | undefined {
   const path = set.split("=")[0] ?? "";
@@ -61,7 +63,8 @@ function modelsValue(model: ModelSettings): JsonObject {
     ...(model.apiKey === undefined ? {} : { apiKey: { ...model.apiKey } }),
   };
   const named = `${model.name}/${model.model}`;
-  return { providers: { [model.name]: provider }, main: named, fast: named };
+  const images = model.readsImages === true ? { imageInput: [named] } : {};
+  return { providers: { [model.name]: provider }, main: named, fast: named, ...images };
 }
 
 function settingsValue(settings: InitSettings): JsonObject {

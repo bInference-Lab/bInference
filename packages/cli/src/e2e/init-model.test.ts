@@ -14,7 +14,7 @@ import {
   storedInstall,
 } from "./init-fixtures.js";
 import { fileText, initScript, interactiveInit } from "./init-script.js";
-import { testModelId, testModelKey } from "./model-fixtures.js";
+import { testModelId, testModelKey, testTextModelId } from "./model-fixtures.js";
 
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
@@ -67,7 +67,10 @@ describe("the model step of binference init", () => {
     );
     expect(config).not.toContain(testModelKey);
     await expect(fileText(machine, "keys", "openrouter-key")).resolves.toBe(`${testModelKey}\n`);
+    expect(config).toContain(`imageInput: ["openrouter/${testModelId}"],`);
+    // The model check, then the image check.
     expect(machine.models.requests.map((request) => request.url)).toStrictEqual([
+      `${openrouter}/chat/completions`,
       `${openrouter}/chat/completions`,
     ]);
     expect(shown(run)).not.toContain(testModelKey);
@@ -94,7 +97,9 @@ describe("the model step of binference init", () => {
     expect(config).toContain("telemetry: {");
     expect(config).toContain("enabled: true,");
     expect(config).toContain(`main: "anthropic/${testModelId}",`);
+    expect(config).toContain(`imageInput: ["anthropic/${testModelId}"],`);
     expect(machine.models.requests.map((request) => request.url)).toStrictEqual([
+      "https://api.anthropic.com/v1/messages",
       "https://api.anthropic.com/v1/messages",
     ]);
     expect(shown(run)).not.toContain(testModelKey);
@@ -145,7 +150,9 @@ describe("the model step of binference init", () => {
         .replace("{provider}", "OpenAI")
         .replace("{model}", "no-such-model");
       expect(run.transcript.lines).toContain(unknown);
-      expect(keysSent(machine)).toStrictEqual([`Bearer ${testModelKey}`, `Bearer ${testModelKey}`]);
+      expect(keysSent(machine)).toStrictEqual(
+        Array.from({ length: 3 }, () => `Bearer ${testModelKey}`),
+      );
     },
   );
 
@@ -207,7 +214,32 @@ describe("the model step of binference init", () => {
     expect(config).toContain('baseUrl: "http://localhost:11434/v1",');
     expect(config).toContain(`main: "compatible/${testModelId}",`);
     expect(config).toContain("enabled: true,");
-    expect(keysSent(machine)).toStrictEqual([`Bearer ${testModelKey}`, `Bearer ${testModelKey}`]);
+    expect(keysSent(machine)).toStrictEqual(
+      Array.from({ length: 4 }, () => `Bearer ${testModelKey}`),
+    );
     expect(shown(run)).not.toContain(testModelKey);
   });
+
+  it(
+    "keeps a model that refuses the test image out of the image list, and says where images go",
+    slow,
+    async () => {
+      const machine = await newInitMachine(folders);
+      const script = initScript(machine, {
+        modelProvider: ["openai"],
+        modelName: [testTextModelId],
+        modelKey: [testModelKey],
+      });
+
+      const run = await interactiveInit(machine, script);
+
+      expect([run.code, run.stderr]).toStrictEqual([0, ""]);
+      expect(run.transcript.lines).toContain(
+        String(messages.en["init.model.noImages"]).replace("{model}", testTextModelId),
+      );
+      const config = await configText(machine);
+      expect(config).toContain(`main: "openai/${testTextModelId}",`);
+      expect(config).not.toContain('imageInput: ["');
+    },
+  );
 });

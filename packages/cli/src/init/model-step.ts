@@ -3,7 +3,13 @@ import type { SecretSource } from "../config/schema/secret-source.schema.js";
 import { promptCancelled } from "../term/prompter.js";
 import type { EarlierModel } from "./earlier-answers.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
-import { checkLink, linkOfFlags, linkValues, type ModelLink } from "./model-link.js";
+import {
+  checkLink,
+  checkLinkImages,
+  linkOfFlags,
+  linkValues,
+  type ModelLink,
+} from "./model-link.js";
 import { isModelAddress, type ModelPreset, modelIdPattern, modelPresets } from "./model-presets.js";
 import { readFlagSecret, type TakenSecret } from "./take-secret.js";
 
@@ -138,7 +144,7 @@ async function askChecked(
   const problem = await checkLink(context, link.value);
   if (problem === undefined) {
     context.prompter.say(context.words("model.checked", values));
-    return link;
+    return ok(await withImageCheck(context, link.value));
   }
   if (tries >= maxTries) {
     return refused(`init.model_${problem}`, `refused.model.${problem}`, values);
@@ -149,11 +155,22 @@ async function askChecked(
   return askChecked(context, { ...last, ...(kept === undefined ? {} : { kept }) }, tries + 1);
 }
 
+// The image check of a model that answered (decision 0228): a pass lists it in
+// `models.imageInput`; a failure never blocks init, and says where images go instead.
+async function withImageCheck(context: InitContext, link: ModelLink): Promise<ModelLink> {
+  const values = linkValues(context, link);
+  context.prompter.say(context.words("model.checkingImages", values));
+  const reads = await checkLinkImages(context, link);
+  context.prompter.say(context.words(reads ? "model.readsImages" : "model.noImages", values));
+  return reads ? { ...link, readsImages: true } : link;
+}
+
 /**
- * The model step (ARCHITECTURE section 27; decision 0221): the person picks a compatible provider,
+ * The model step (ARCHITECTURE section 27; decisions 0221 and 0228): the person picks a compatible provider,
  * its address when it is none init knows, the model and the key, typed hidden, and init checks
  * them with one small live call before it keeps anything. A failed check says why and what to do,
  * and the questions come again with the last answers first, three tries in all; then init stops.
+ * A model that answered gets one more call with a tiny image: it reads images when it answers that.
  * A start over offers the earlier set-up's answers first and keeps its key on Enter. The
  * `--model-*` flags answer it instead, and their failed check stops init at once; a run nobody
  * answers needs them (decision 0225).
@@ -172,7 +189,7 @@ export async function takeModel(
     const problem = await checkLink(context, link.value);
     const values = linkValues(context, link.value);
     return problem === undefined
-      ? link
+      ? ok(await withImageCheck(context, link.value))
       : refused(`init.model_${problem}`, `refused.model.${problem}`, values);
   }
   context.prompter.note(context.words("model.explain"), context.words("model.title"));
