@@ -1,13 +1,11 @@
 import { err, ok, type Result } from "@binference/core";
+import { maxImagesPerMessage } from "@binference/protocol";
 import type { ModelImage, ModelMessage, OwnerMessage } from "../loop/model-message.js";
 import type { ImageProblem, ImageReadRefusal } from "../loop/turn-records.js";
 import type { TurnRun } from "../loop/turn-run.js";
 import { budgetEnd, haltedEnd, type LoopEnd } from "../loop/turn-step.js";
 import { describeImage } from "./describe-image.js";
 import { describedImageNote } from "./image-notes.js";
-
-/** The most images one message carries (protocol spec, section 7.7). */
-const maxImagesPerMessage = 4;
 
 const problems: Readonly<Record<ImageReadRefusal, ImageProblem>> = {
   not_found: "unreadable",

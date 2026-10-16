@@ -12,6 +12,9 @@ export const imagePartBytes: number = 512 * 1024;
 /** The largest image the agent reads: 5 MiB (protocol spec, section 7.7). */
 export const maxImageBytes: number = 5 * 1024 * 1024;
 
+/** The most images one owner's message names (protocol spec, section 7.7). */
+export const maxImagesPerMessage: number = 4;
+
 /** The args of `inbox/readImage`: one image of an agent's own message, from `offset`. */
 interface ReadImageArgs {
   readonly agent: ProtocolId<"agent">;

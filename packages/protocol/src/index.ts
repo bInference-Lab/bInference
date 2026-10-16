@@ -78,6 +78,7 @@ export {
   imageContentTypeSchema,
   imagePartBytes,
   maxImageBytes,
+  maxImagesPerMessage,
 } from "./operations/image-operations.schema.js";
 export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";

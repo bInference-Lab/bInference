@@ -10,6 +10,7 @@ import {
   type InboxMessageView,
   inboxMessageViewSchema,
 } from "../views/inbox-message-view.schema.js";
+import { maxImagesPerMessage } from "./image-operations.schema.js";
 import { readFlags, routedReadFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /** The args of `chat/post`: the owner's message, with at most 4 uploaded images. */
@@ -179,7 +180,7 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
     args: z.strictObject({
       agent,
       text: z.string(),
-      images: z.array(plainIdSchema).min(1).max(4).exactOptional(),
+      images: z.array(plainIdSchema).min(1).max(maxImagesPerMessage).exactOptional(),
     }),
     result: z.object({ session, turn }),
   },
