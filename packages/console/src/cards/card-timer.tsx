@@ -1,20 +1,8 @@
-import { useEffect, useState } from "react";
+import { useNow } from "../app/use-now";
 import { useText } from "../i18n/console-text";
 
-// The timer counts whole seconds; it redraws a little more often so it never skips one.
-const tickMs = 250;
 // Under this many seconds the time left shows in the warning color.
 const lateSeconds = 10;
-
-/** The browser's time now, read again every quarter second while the component is mounted. */
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), tickMs);
-    return () => clearInterval(timer);
-  }, []);
-  return now;
-}
 
 // The whole seconds a card has left at `now`; 0 once it expired.
 function secondsLeft(expiresAt: number, now: number): number {

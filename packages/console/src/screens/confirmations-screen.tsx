@@ -1,6 +1,5 @@
 import type { IntentView } from "@binference/protocol";
-import { useQuery } from "@tanstack/react-query";
-import { useEngine } from "../connection/engine-context";
+import { usePendingIntents } from "../cards/use-pending-intents";
 import { useText } from "../i18n/console-text";
 import { PushToggle } from "../push/push-toggle";
 import { PendingCard } from "./pending-card";
@@ -22,14 +21,9 @@ function PendingCards(props: { readonly intents: readonly IntentView[] }): React
 
 /** The cards that wait for the owner, oldest first, each with Confirm and Cancel. */
 export function ConfirmationsScreen(): React.JSX.Element {
-  const { client } = useEngine();
   const text = useText();
-  const pending = useQuery({
-    queryKey: ["intents", "awaiting_confirmation"],
-    queryFn: async ({ signal }) =>
-      client.call("intent/list", { state: "awaiting_confirmation", limit: 50 }, { signal }),
-  });
-  const intents = pending.data?.items.filter((intent) => intent.card !== undefined);
+  const pending = usePendingIntents();
+  const intents = pending.data;
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">{text("console.confirmations.title")}</h1>
