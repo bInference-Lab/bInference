@@ -1,8 +1,9 @@
 import { err, ok } from "@binference/core";
 import type { ProtocolId } from "@binference/protocol";
 import { activeAgent } from "../operations/active-agent.js";
-import type { EngineHandler } from "../operations/engine-call.js";
+import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { isWakeUp } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
 import { inboxCursorOf, parseInboxCursor } from "./inbox-cursor.schema.js";
 import { inboxViewOf } from "./inbox-views.js";
@@ -39,6 +40,31 @@ async function noticeLoop(
   options.publish(noticePush({ key: loopNoticeKey, agent, values: { agent: name } }));
 }
 
+// A frozen agent's turn starts for the owner's messages and the settle messages, never for wake-ups
+// alone (runtime spec, section 4.4).
+async function onlyWakesUp(
+  options: ChatRelayOptions,
+  messages: readonly ProtocolId<"inboxMessage">[],
+  signal: AbortSignal,
+): Promise<boolean> {
+  const stored = await Promise.all(
+    messages.map(async (message) => options.agentInbox.get(message, { signal })),
+  );
+  return (
+    stored.length > 0 && stored.every((message) => message !== undefined && isWakeUp(message.kind))
+  );
+}
+
+// The agent a turn starts for: refused when it is unknown or archived, and when it is frozen and
+// the turn holds wake-ups alone.
+async function startable(options: ChatRelayOptions, call: EngineCall<"turn/start">) {
+  const active = await activeAgent(options.agents, call.args.agent, call);
+  const isFrozen = active.ok && active.value.agent.frozenAtMs !== undefined;
+  return isFrozen && (await onlyWakesUp(options, call.args.messages, call.signal))
+    ? err("agent.frozen")
+    : active;
+}
+
 // Only the runtime the engine runs now speaks for the agent: every other caller, another client
 // with the `agent` scope or a runtime of an earlier start among them, is refused `auth.scope`, so
 // no client can start a turn, mark one clean or take the runtime's messages.
@@ -57,7 +83,7 @@ function turnHandlers(
   return {
     async "turn/start"(call) {
       const { agent, session, turn, outsideContent } = call.args;
-      const active = await activeAgent(options.agents, agent, call);
+      const active = await startable(options, call);
       if (!active.ok) {
         return active;
       }

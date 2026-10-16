@@ -20,6 +20,11 @@ export type AgentInboxKind = (typeof agentInboxKinds)[number];
  */
 type OwnerInboxKind = Exclude<AgentInboxKind, "inbox/intentSettled" | "inbox/scheduleDue">;
 
+/** Whether a message only wakes the agent: a turn of these alone waits while it is frozen. */
+export function isWakeUp(kind: AgentInboxKind): boolean {
+  return kind === "inbox/scheduleDue";
+}
+
 /**
  * Untaken messages one agent may hold (runtime spec, section 3.2). Past it, an owner's message is
  * refused and a message the engine makes is dropped.

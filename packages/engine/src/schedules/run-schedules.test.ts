@@ -12,6 +12,7 @@ import {
 const prompt = "Review my portfolio.";
 const newYork = "America/New_York";
 const turn = idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-0000000000aa");
+const session = idSchema("ses").parse("ses_0190f1c2-3a4b-7c5d-8e6f-0000000000aa");
 
 async function setSchedule(test: TestEngine, cron: string): Promise<ScheduleView> {
   const args = { agent: testAgent, when: { cron }, prompt };
@@ -133,6 +134,35 @@ describe("the schedule queue", () => {
       outcome: "skipped",
       reason: "frozen",
     });
+  });
+
+  it("refuses a frozen agent's turn of wake-ups alone, never one with the owner's message", async () => {
+    const test = await startTestEngine({ timeZone: newYork });
+    const { handlers } = test.engine;
+    await setSchedule(test, "0 9 * * *");
+    await runAt(test, "2027-01-15T14:00:00Z");
+    expectOk(await handlers["safety/freeze"](testCall({ agent: testAgent })));
+    expectOk(await handlers["chat/post"](testCall({ agent: testAgent, text: "Still there?" })));
+    const waiting = await test.stores.agentInbox.untaken(
+      { agentId: testAgent, limit: 10 },
+      testCall({}),
+    );
+    const wakeUps = waiting.filter((message) => message.kind === "inbox/scheduleDue");
+    const all = waiting.map(({ id }) => id);
+    const start = async (messages: readonly (typeof all)[number][]) =>
+      handlers["turn/start"](
+        testCall(
+          { agent: testAgent, session, turn, messages, outsideContent: false },
+          testCallers.runtime,
+        ),
+      );
+
+    expect(all).toHaveLength(2);
+    expect(await start(wakeUps.map(({ id }) => id))).toStrictEqual({
+      ok: false,
+      error: "agent.frozen",
+    });
+    expect(await start(all)).toMatchObject({ ok: true });
   });
 
   it("ends a schedule that runs once after its run", async () => {
