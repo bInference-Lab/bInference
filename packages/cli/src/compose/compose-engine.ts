@@ -20,7 +20,6 @@ import {
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
-import { createDevicePairing, createLockoutNotices } from "@binference/engine/access";
 import { createRunningTurns, markRuntimeTurns, type RunningTurns } from "@binference/engine/chat";
 import { isNoticeMutedFor } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
@@ -28,14 +27,13 @@ import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
   type ConsoleFiles,
-  createProtocolServer,
   type HttpListenOptions,
-  type MiniAppAuth,
   type ProtocolServer,
   telegramCredentialOf,
 } from "@binference/server";
 import type { WebPushRelay } from "../web-push/web-push-relay.js";
 import { accessHandlersOf } from "./access-handlers.js";
+import { composeServer } from "./compose-server.js";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
 import { composeWebPush, type WebPushParts } from "./compose-web-push.js";
 import { consoleOriginCell } from "./console-origin.js";
@@ -225,52 +223,6 @@ function custodyPartsOf(parts: EngineParts) {
   };
 }
 
-/** What the server is built from besides the profile parts and the options. */
-interface ServerParts {
-  readonly handlers: EngineHandlerTable;
-  readonly publish: (push: EnginePush) => void;
-  readonly ids: IdSource;
-}
-
-// The owner's bot as the Mini App's sign-in reads it: its token checks each launch's signature,
-// and the paired owner's numeric Telegram id is the one id that signs in.
-function miniAppOf(telegram: TelegramParts | undefined): { readonly miniApp?: MiniAppAuth } {
-  if (telegram === undefined) {
-    return {};
-  }
-  const { botToken, owners } = telegram;
-  return { miniApp: { botToken, ownerId: async (call) => (await owners.get(call))?.userId } };
-}
-
-// The protocol server over the handlers: sign-ins through the access store and the owner's bot,
-// idempotent writes, device pairing, the console, and the owner's notice of each lockout.
-function serverOf(
-  parts: EngineParts,
-  options: ComposeEngineOptions,
-  given: ServerParts,
-): ProtocolServer {
-  const { clock, random, logger, consoleFiles } = options;
-  const { access } = parts.stores;
-  const pairing = createDevicePairing({ access, clock, ids: given.ids, publish: given.publish });
-  return createProtocolServer({
-    ...(options.http === undefined ? {} : { http: options.http }),
-    auth: { access, ...miniAppOf(options.telegram) },
-    pairing,
-    ...(consoleFiles === undefined ? {} : { consoleFiles }),
-    idempotency: parts.stores.idempotency,
-    handlers: given.handlers,
-    engine: {
-      version: options.version,
-      state: options.state ?? (() => "ready"),
-      owner: options.owner,
-    },
-    clock,
-    random,
-    logger: logger.child("server"),
-    onLockout: createLockoutNotices({ access, publish: given.publish }),
-  });
-}
-
 // The engine on the profile parts, its venue host and risk check, publishing through `publish`.
 function engineOf(
   parts: EngineParts,
@@ -370,7 +322,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     notices,
     server: () => server,
   });
-  const server = origin.watch(serverOf(parts, options, { handlers, publish, ids }));
+  const server = origin.watch(composeServer(parts, options, { handlers, publish, ids }));
   return {
     engine,
     server,
