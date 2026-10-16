@@ -1,4 +1,4 @@
-import type { Http, JsonValue } from "@binference/core";
+import type { Http, HttpDownload, JsonValue } from "@binference/core";
 import { z } from "zod";
 import {
   type CallbackAnswer,
@@ -11,7 +11,7 @@ import {
 } from "./fake-chat.js";
 import { createFakeMenus, type FakeMenu, type FakeMenus } from "./fake-commands.js";
 import type { FakeTopic } from "./fake-topics.js";
-import { httpOverFetch } from "./fetch-http.js";
+import { downloadOverFetch, httpOverFetch } from "./fetch-http.js";
 
 /** A token in the Bot API's shape, for tests only. */
 export const fakeBotToken = "7012345678:AAE_fakeTokenForTestsOnly_0123456789ab";
@@ -77,6 +77,8 @@ export interface FakeBotApi {
   readonly fetch: Fetch;
   /** The same Bot API behind the Http port, as binference's outbound HTTP reaches Telegram. */
   readonly http: Http;
+  /** The same Bot API's file downloads, as binference's outbound HTTP reaches them. */
+  readonly download: HttpDownload;
   /** Adds updates Telegram holds until a `getUpdates` offset passes them. */
   push(...updates: readonly JsonValue[]): void;
   /** Presses a button: pushes the `callback_query` update and returns it. */
@@ -277,6 +279,11 @@ async function idleOf(state: State): Promise<void> {
   });
 }
 
+// The fetch grammY calls, and binference's outbound HTTP over it.
+function transportsOver(fetch: Fetch): Pick<FakeBotApi, "fetch" | "http" | "download"> {
+  return { fetch, http: httpOverFetch(fetch), download: downloadOverFetch(fetch) };
+}
+
 /** How the synthetic Bot API's bot is set up at BotFather. */
 export interface FakeBotOptions {
   /** Whether topics in private chats are on, which `getMe` reports as `has_topics_enabled`. */
@@ -307,8 +314,7 @@ export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
   };
   const fetch = fetchOf(state);
   return {
-    fetch,
-    http: httpOverFetch(fetch),
+    ...transportsOver(fetch),
     push,
     press: (press) => {
       presses += 1;

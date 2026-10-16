@@ -1,4 +1,9 @@
-import type { HttpRequest, HttpResponse } from "./http-exchange.js";
+import type {
+  DownloadAnswer,
+  DownloadRequest,
+  HttpRequest,
+  HttpResponse,
+} from "./http-exchange.js";
 import type { LogFields } from "./log-record.js";
 import type { Result } from "./result.js";
 import type { Secret } from "./secret/secret.js";
@@ -37,6 +42,17 @@ export interface Logger {
  */
 export interface Http {
   request(request: HttpRequest): Promise<HttpResponse>;
+}
+
+/**
+ * Downloads a file as bytes over HTTP, such as an image the owner sent. A status of 400 or more is
+ * an answer, not a fault. An answer longer than `maxBytes` rejects with `http.answer_too_large`
+ * before it fills memory, and a download that never gets an answer rejects with a retryable
+ * `BinferenceError`. The URL may hold a secret, as Telegram's file links hold the bot token, so an
+ * error names only the origin.
+ */
+export interface HttpDownload {
+  download(request: DownloadRequest): Promise<DownloadAnswer>;
 }
 
 /**

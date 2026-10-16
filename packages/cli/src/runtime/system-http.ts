@@ -2,7 +2,10 @@ import { lookup } from "node:dns";
 import {
   answerHeaders,
   BinferenceError,
+  type DownloadAnswer,
+  type DownloadRequest,
   type Http,
+  type HttpDownload,
   type HttpRequest,
   type HttpResponse,
   outboundInit,
@@ -14,7 +17,7 @@ import {
 import { Agent, request as send } from "undici";
 
 /** The outbound Http adapter of a CLI process, with the connection pool it holds. */
-export interface SystemHttp extends Http {
+export interface SystemHttp extends Http, HttpDownload {
   /** Closes the pool's idle connections, so the process can end at once. */
   close(): Promise<void>;
 }
@@ -28,25 +31,29 @@ export interface SystemHttpOptions {
 // An answer binference reads is small JSON; a larger one is refused before it fills memory.
 const maxBodyBytes = 8 * 1024 * 1024;
 
-function tooLarge(request: HttpRequest): BinferenceError {
+function tooLarge(request: HttpRequest, maxBytes: number): BinferenceError {
   return new BinferenceError({
     code: "http.answer_too_large",
-    message: `The answer is larger than ${String(maxBodyBytes)} bytes.`,
+    message: `The answer is larger than ${String(maxBytes)} bytes.`,
     details: { method: request.method, origin: new URL(request.url).origin },
   });
 }
 
-async function readBody(chunks: AsyncIterable<Uint8Array>, request: HttpRequest): Promise<string> {
+async function readBytes(
+  chunks: AsyncIterable<Uint8Array>,
+  request: HttpRequest,
+  maxBytes: number,
+): Promise<Buffer> {
   const parts: Uint8Array[] = [];
   let size = 0;
   for await (const chunk of chunks) {
     size += chunk.byteLength;
-    if (size > maxBodyBytes) {
-      throw tooLarge(request);
+    if (size > maxBytes) {
+      throw tooLarge(request, maxBytes);
     }
     parts.push(chunk);
   }
-  return Buffer.concat(parts).toString("utf8");
+  return Buffer.concat(parts);
 }
 
 /** The connection pools: one for any address, one that reaches public addresses only. */
@@ -70,7 +77,23 @@ async function exchange(
   return {
     status: answer.statusCode,
     headers: answerHeaders(answer.headers),
-    body: await readBody(answer.body, request),
+    body: (await readBytes(answer.body, request, maxBodyBytes)).toString("utf8"),
+  };
+}
+
+// A download is a GET with no body, read as bytes up to its own limit.
+async function fetchBytes(
+  agents: Agents,
+  download: DownloadRequest,
+  userAgent: string,
+): Promise<DownloadAnswer> {
+  const request: HttpRequest = { method: "GET", url: download.url, signal: download.signal };
+  const init = outboundInit(request, userAgent);
+  const answer = await send(request.url, { dispatcher: agentFor(agents, request), ...init });
+  return {
+    status: answer.statusCode,
+    headers: answerHeaders(answer.headers),
+    bytes: await readBytes(answer.body, request, download.maxBytes),
   };
 }
 
@@ -82,7 +105,8 @@ async function exchange(
  * binference/<version>`, in place of any user agent the caller set, so each service sees one
  * name: some refuse a request with none, as KyberSwap's edge does. A request that gets no answer
  * rejects with a retryable `http.unreachable` naming only the method and the origin, never the
- * path, a header or a body; one whose signal aborts rejects with the signal's reason. A
+ * path, a header or a body; one whose signal aborts rejects with the signal's reason. A download
+ * reads the answer as bytes, up to its own `maxBytes`, the same way. A
  * `publicOnly` request connects only to the public addresses its host resolves to, checked at
  * connect time so a name cannot rebind to a private one, and rejects with `http.private_address`
  * otherwise.
@@ -100,6 +124,15 @@ export function createSystemHttp(options: SystemHttpOptions): SystemHttp {
         return await exchange(agents, request, userAgent);
       } catch (error) {
         return throwOutboundFailure(request, error);
+      }
+    },
+    async download(download) {
+      download.signal.throwIfAborted();
+      try {
+        return await fetchBytes(agents, download, userAgent);
+      } catch (error) {
+        const { url, signal } = download;
+        return throwOutboundFailure({ method: "GET", url, signal }, error);
       }
     },
     close: async () => {

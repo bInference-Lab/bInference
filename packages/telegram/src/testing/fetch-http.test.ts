@@ -1,7 +1,7 @@
-import { httpContract } from "@binference/core/testing";
+import { httpContract, httpDownloadContract } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { BotApiFetch } from "../api/bot-api-fetch.js";
-import { httpOverFetch } from "./fetch-http.js";
+import { downloadOverFetch, httpOverFetch } from "./fetch-http.js";
 
 const origin = "https://bot.example.org";
 
@@ -17,6 +17,9 @@ const scripted: BotApiFetch = async (input) => {
   const url = urlOf(input);
   if (url.pathname === "/ok") {
     return Promise.resolve(new Response("ok", { headers: { "content-type": "text/plain" } }));
+  }
+  if (url.pathname === "/png") {
+    return Promise.resolve(new Response(Uint8Array.from([0x89, 0x50, 0x4e, 0x47])));
   }
   if (url.pathname === "/missing") {
     return Promise.resolve(new Response("", { status: 404 }));
@@ -35,6 +38,19 @@ describe("the Http port over a fetch", () => {
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it.each(
+    httpDownloadContract({
+      create: () => ({
+        download: downloadOverFetch(scripted),
+        bytesUrl: `${origin}/png`,
+        missingUrl: `${origin}/missing`,
+        unreachableUrl: `${origin}/closed`,
+      }),
+    }),
+  )("follows the download contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
   });
 

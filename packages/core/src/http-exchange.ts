@@ -29,3 +29,20 @@ export interface HttpResponse {
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string;
 }
+
+/** One file to download as bytes, such as an image the owner sent. */
+export interface DownloadRequest {
+  readonly url: string;
+  /** The most bytes the answer may hold; a longer one is refused before it fills memory. */
+  readonly maxBytes: number;
+  /** Aborts the download; callers combine their timeout into it. */
+  readonly signal: AbortSignal;
+}
+
+/** The answer to a {@link DownloadRequest}: its status, its headers and its body as it came. */
+export interface DownloadAnswer {
+  readonly status: number;
+  /** Header names are lowercase. */
+  readonly headers: Readonly<Record<string, string>>;
+  readonly bytes: Uint8Array;
+}

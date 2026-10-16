@@ -1,6 +1,6 @@
 // oxlint-disable-next-line eslint/no-restricted-imports -- the test serves the adapter's answers from a loopback server
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { httpContract } from "@binference/core/testing";
+import { httpContract, httpDownloadContract } from "@binference/core/testing";
 import { createBotApiFetch } from "@binference/telegram";
 import { fakeBotToken } from "@binference/telegram/testing";
 import { Api } from "grammy";
@@ -12,6 +12,9 @@ const pages: Readonly<
 > = {
   "/ok": (_, response) => {
     response.end("ok");
+  },
+  "/png": (_, response) => {
+    response.end(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
   },
   "/echo": (request, response) => {
     const parts: Buffer[] = [];
@@ -101,6 +104,28 @@ describe("the system Http adapter", () => {
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it.each(
+    httpDownloadContract({
+      create: () => ({
+        download: adapter(),
+        bytesUrl: `${held.origin}/png`,
+        missingUrl: `${held.origin}/missing`,
+        unreachableUrl: `${held.closed}/png`,
+      }),
+    }),
+  )("follows the download contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("names only the origin when a download gets no answer", async () => {
+    const url = `${held.closed}/file/bot${fakeBotToken}/photos/a.jpg`;
+    const failure = await adapter()
+      .download({ url, maxBytes: 4, signal: live() })
+      .catch((error: unknown) => error);
+    expect(JSON.stringify(failure)).not.toContain(fakeBotToken);
+    expect(failure).toMatchObject({ code: "http.unreachable", details: { origin: held.closed } });
   });
 
   it("sends the method, headers and body, and answers headers in lowercase", async () => {

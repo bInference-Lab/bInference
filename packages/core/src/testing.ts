@@ -2,6 +2,11 @@ export { clockContract } from "./contracts/clock-contract.js";
 export type { ClockHarness, ClockSubject } from "./contracts/clock-contract.js";
 export type { ContractCheck } from "./contracts/contract-check.js";
 export { httpContract } from "./contracts/http-contract.js";
+export { httpDownloadContract } from "./contracts/http-download-contract.js";
+export type {
+  HttpDownloadHarness,
+  HttpDownloadSubject,
+} from "./contracts/http-download-contract.js";
 export type { HttpHarness, HttpSubject } from "./contracts/http-contract.js";
 export { loggerContract } from "./contracts/logger-contract.js";
 export type { LoggerHarness, LoggerSubject } from "./contracts/logger-contract.js";

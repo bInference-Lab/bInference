@@ -14,7 +14,13 @@ export type {
 export { redactedMark, redactSecrets, secretKindsIn } from "./errors/redact-secrets.js";
 export type { SecretKind } from "./errors/redact-secrets.js";
 export { fetchInputUrl } from "./fetch-input-url.js";
-export type { HttpMethod, HttpRequest, HttpResponse } from "./http-exchange.js";
+export type {
+  DownloadAnswer,
+  DownloadRequest,
+  HttpMethod,
+  HttpRequest,
+  HttpResponse,
+} from "./http-exchange.js";
 export { answerHeaders, outboundInit, throwOutboundFailure } from "./outbound-request.js";
 export type { OutboundInit } from "./outbound-request.js";
 export { createIdSource } from "./ids/id-source.js";
@@ -25,7 +31,15 @@ export { jsonValueSchema } from "./json/json-value.schema.js";
 export type { JsonValue } from "./json/json-value.schema.js";
 export { stableJson } from "./json/stable-json.js";
 export type { LogFields, LogLevel, LogRecord } from "./log-record.js";
-export type { Clock, Http, Logger, Random, SecretStore, WorkspaceFiles } from "./ports.js";
+export type {
+  Clock,
+  Http,
+  HttpDownload,
+  Logger,
+  Random,
+  SecretStore,
+  WorkspaceFiles,
+} from "./ports.js";
 export { err, ok } from "./result.js";
 export type { Err, Ok, Result } from "./result.js";
 export { retry } from "./retry/retry.js";
