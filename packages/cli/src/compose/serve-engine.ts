@@ -12,6 +12,7 @@ import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startTestOrders } from "./order-pricing.js";
 import { startOrderTimer } from "./order-timer.js";
+import { startScheduleTimer } from "./schedule-timer.js";
 import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
 import { startUnlockRetry } from "./unlock-retry.js";
@@ -44,8 +45,8 @@ function isUnreachable(unlocked: Result<void, LockReason>): boolean {
   return !unlocked.ok && unlocked.error === "custody_unreachable";
 }
 
-// What runs while the engine serves: the settle timer, the gas check, the price watchers, the
-// nightly backup, the reload of
+// What runs while the engine serves: the settle timer, the gas check, the order and card timers,
+// the schedule queue, the price watchers, the nightly backup, the reload of
 // `config.json5` when it changes (decision 0118), and the retries of the signer step after a start
 // that found Privy out of reach (decision 0119).
 function startTimers(
@@ -62,6 +63,7 @@ function startTimers(
   startGasCheckTimer({ checkGas: composed.checkGas, ...timers });
   startOrderTimer({ tickOrders: composed.tickOrders, clock: host.clock, closers, logger });
   startCardTimer({ expireCards: composed.expireCards, clock: host.clock, closers, logger });
+  startScheduleTimer({ runSchedules: composed.runSchedules, ...timers });
   composed.priceWatchers.start(closers, logger.child("watcher"));
   startTestOrders(opening, composed.priceWatchers.triggers);
   const backups = backupPartsOf(opening, opened.stores.backups, logger);

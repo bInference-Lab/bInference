@@ -38,20 +38,19 @@ import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
 import { stateWorkspace } from "./state-workspace.js";
 import { chainTokenFacts } from "./token-facts.js";
 
-/** The self-hosted engine, built and not yet listening. */
-export interface ComposedSelfHosted {
+/**
+ * The self-hosted engine, built and not yet listening, with the engine's timed work: the work that
+ * waits for its time, such as a rescue address's ceiling change, the gas check, the auto orders
+ * that wait for no price, the cards whose time is up, and the schedules whose time came.
+ */
+export interface ComposedSelfHosted extends Pick<
+  Engine,
+  "settle" | "checkGas" | "tickOrders" | "expireCards" | "runSchedules"
+> {
   readonly server: ProtocolServer;
   /** Where the engine's pushes go: the server, and the owner's bot when there is one. */
   readonly publish: (push: EnginePush) => void;
   readonly executor: RunningExecutor;
-  /** The work that waits for its time, such as a rescue address's ceiling change. */
-  readonly settle: Engine["settle"];
-  /** Reads every live wallet's gas and raises the low-gas alert. */
-  readonly checkGas: Engine["checkGas"];
-  /** Moves the auto orders that wait for no price, such as one whose card ended. */
-  readonly tickOrders: Engine["tickOrders"];
-  /** Expires the cards whose time is up and says when the next one's is. */
-  readonly expireCards: Engine["expireCards"];
   /** Records the positions a crash kept from recent paper fills. */
   readonly repairPaperFills: Engine["repairPaperFills"];
   /** Ends the paper fills a stop left unfinished and tells the notices it kept back. */
@@ -347,6 +346,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     checkGas: engine.checkGas,
     tickOrders: engine.tickOrders,
     expireCards: engine.expireCards,
+    runSchedules: engine.runSchedules,
     repairPaperFills: engine.repairPaperFills,
     repairOrderFills: engine.repairOrderFills,
     resume,
