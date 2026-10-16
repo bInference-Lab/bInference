@@ -16,6 +16,20 @@ function owned(recipients: readonly string[]): OwnedWallet {
   } as unknown as OwnedWallet;
 }
 
+// A launch wallet at `address`, whose ceiling lists the recipients given.
+function launchAt(address: string, recipients: readonly string[]): OwnedWallet {
+  return {
+    wallet: { address },
+    ceiling: {
+      chainIds: ["56"],
+      contracts: [],
+      perTxNativeCapBase: 0n,
+      recipients,
+      isLaunch: true,
+    },
+  } as unknown as OwnedWallet;
+}
+
 function contextOf(options: { readonly rescue?: string; readonly answers?: readonly string[] }) {
   const prompter = createScriptedPrompter({ rescue: options.answers ?? [] });
   const context = {
@@ -66,6 +80,18 @@ describe("the rescue address of a rebuild", () => {
       refusal,
     });
     expect(await takeRebuildRescue(contextOf({}).context, shared)).toMatchObject({
+      ok: false,
+      refusal,
+    });
+  });
+
+  it("never takes a launch wallet it found, though every ceiling lists it", async () => {
+    const wallets = [owned([rescue, saved]), launchAt(saved, [rescue, saved])];
+
+    expect(await takeRebuildRescue(contextOf({}).context, wallets)).toStrictEqual(
+      ok(rescueAddressOf(rescue)),
+    );
+    expect(await takeRebuildRescue(contextOf({ rescue: saved }).context, wallets)).toMatchObject({
       ok: false,
       refusal,
     });

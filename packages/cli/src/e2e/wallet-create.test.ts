@@ -102,7 +102,8 @@ describe("binference wallet create --launch", () => {
       ]);
       const listed = await runOn(machine, ["wallet", "list"]);
       const address = secondLine(made.stdout);
-      const item = en("wallet.item", { ...values, address, role: "launch", archived: "no" });
+      const shown = { ...values, address, role: "launch", extra: "no", archived: "no" };
+      const item = en("wallet.item", shown);
       expect(listed.stdout).toContain(item);
       expect(item).toContain(", launch wallet");
       const status = await runOn(machine, ["status"]);

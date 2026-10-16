@@ -7,12 +7,17 @@ function lower(items: readonly string[]): ReadonlySet<string> {
   return new Set(items.map((item) => item.toLowerCase()));
 }
 
-// The addresses every ceiling lets a native send pay, as the first ceiling writes them.
+// The addresses every ceiling lets a native send pay, as the first ceiling writes them; never a
+// launch wallet's, which no ceiling may list (decision 0218).
 function commonRecipients(owned: readonly OwnedWallet[]): readonly string[] {
   const [first, ...rest] = owned;
   const others = rest.map((item) => lower(item.ceiling.recipients));
-  return (first?.ceiling.recipients ?? []).filter((address) =>
-    others.every((set) => set.has(address.toLowerCase())),
+  const launches = lower(
+    owned.filter((item) => item.ceiling.isLaunch).map((item) => item.wallet.address),
+  );
+  return (first?.ceiling.recipients ?? []).filter(
+    (address) =>
+      others.every((set) => set.has(address.toLowerCase())) && !launches.has(address.toLowerCase()),
   );
 }
 
@@ -24,8 +29,8 @@ function listed(candidates: readonly string[], text: string): RescueAddress | un
 
 /**
  * The rescue address of a rebuild (decision 0142): one of the addresses every wallet's ceiling
- * lets a send pay, since the rescue address is in every ceiling. It is read when the ceilings
- * share exactly one; otherwise `--rescue` names one of them, or a person picks one.
+ * lets a send pay, since the rescue address is in every ceiling, and never the address of a
+ * launch wallet it found. It is read when the ceilings share exactly one; otherwise `--rescue` names one of them, or a person picks one.
  */
 export async function takeRebuildRescue(
   context: InitContext,

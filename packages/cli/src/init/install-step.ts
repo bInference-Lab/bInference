@@ -85,11 +85,13 @@ export interface WalletEntry {
   readonly label: string;
   /** `launch` for a launch wallet (decision 0217); absent for an agent wallet. */
   readonly role?: WalletRole;
+  /** When the store records it; now when absent. */
+  readonly atMs?: number;
 }
 
 /** The store's draft of a wallet Privy holds, with a new id and its ceiling as read now. */
 export function walletDraftOf(context: InitContext, entry: WalletEntry): WalletDraft {
-  const atMs = context.host.clock.now();
+  const atMs = entry.atMs ?? context.host.clock.now();
   const ids = createIdSource({ clock: context.host.clock, random: context.host.random });
   const { first } = entry;
   return {

@@ -23,6 +23,7 @@ import type { FirstWallet } from "../init/wallet-step.js";
 import { type MovedSigners, moveSigners } from "./attach-signers.js";
 import { type RebuildOwner, takeRebuildOwner } from "./rebuild-owner.js";
 import { takeRebuildRescue } from "./rebuild-rescue.js";
+import { rebuildOrder } from "./rebuild-wallets.js";
 
 /** What a rebuild made, for its summary. */
 export interface RebuildOutcome {
@@ -56,6 +57,27 @@ async function confirmed(context: InitContext, count: number): Promise<boolean> 
   return typed.trim() === expected;
 }
 
+// Each wallet with the time Privy made it and its role, so one the owner did not make stands out;
+// with more than one launch wallet, which one the agent trades from (decision 0218).
+function showFound(context: InitContext, owned: readonly OwnedWallet[]): void {
+  const wallets = owned
+    .map(({ wallet, ceiling }) =>
+      context.words("rebuild.foundWallet", {
+        address: wallet.address,
+        made: context.dateTime(wallet.createdAtMs),
+        role: ceiling.isLaunch ? "launch" : "agent",
+      }),
+    )
+    .join("\n");
+  context.prompter.say(context.words("rebuild.found", { count: owned.length, wallets }));
+  const launches = owned.filter((item) => item.ceiling.isLaunch);
+  const [newest, ...extra] = launches;
+  if (newest !== undefined && extra.length > 0) {
+    const address = newest.wallet.address;
+    context.prompter.say(context.words("rebuild.extraLaunch", { count: extra.length, address }));
+  }
+}
+
 async function questions(context: InitContext): Promise<InitStep<Omit<Prepared, "built">>> {
   const unlock = unlockOf(context);
   if (!unlock.ok) {
@@ -65,27 +87,21 @@ async function questions(context: InitContext): Promise<InitStep<Omit<Prepared, 
   if (!app.ok) {
     return app;
   }
-  const owner = await takeRebuildOwner(context, app.value);
-  if (!owner.ok) {
-    return owner;
+  const found = await takeRebuildOwner(context, app.value);
+  if (!found.ok) {
+    return found;
   }
-  // Each wallet with the time Privy made it, so one the owner did not make stands out.
-  const wallets = owner.value.owned
-    .map(({ wallet }) =>
-      context.words("rebuild.foundWallet", {
-        address: wallet.address,
-        made: context.dateTime(wallet.createdAtMs),
-      }),
-    )
-    .join("\n");
-  context.prompter.say(
-    context.words("rebuild.found", { count: owner.value.owned.length, wallets }),
-  );
-  const rescue = await takeRebuildRescue(context, owner.value.owned);
+  const owned = rebuildOrder(found.value.owned);
+  if (owned === undefined) {
+    return refused("init.rebuild_only_launch", "refused.rebuildOnlyLaunch");
+  }
+  const owner = { ...found.value, owned };
+  showFound(context, owned);
+  const rescue = await takeRebuildRescue(context, owned);
   if (!rescue.ok) {
     return rescue;
   }
-  if (!(await confirmed(context, owner.value.owned.length))) {
+  if (!(await confirmed(context, owned.length))) {
     return refused("init.rebuild_not_confirmed", "refused.rebuildNotConfirmed");
   }
   const bot = await takeOwnerBot(context);
@@ -93,7 +109,7 @@ async function questions(context: InitContext): Promise<InitStep<Omit<Prepared, 
     return bot;
   }
   const place = secretPlaceOf(unlock.value.mode, context.platform);
-  const { ownerKey } = owner.value;
+  const { ownerKey } = owner;
   const answers = {
     unlock: unlock.value,
     place,
@@ -102,7 +118,7 @@ async function questions(context: InitContext): Promise<InitStep<Omit<Prepared, 
     rescue: rescue.value,
     bot: bot.value,
   };
-  return ok({ answers, owner: owner.value });
+  return ok({ answers, owner });
 }
 
 async function prepare(context: InitContext): Promise<InitStep<Prepared>> {
@@ -129,9 +145,9 @@ function firstOf(owned: OwnedWallet, agentQuorum: PrivyId): FirstWallet {
   };
 }
 
-// Records the custody, the rescue address and every wallet with its ceiling, in the order Privy
-// listed them, agent wallets first: the first as init's first wallet, the others beside it, a
-// launch wallet with its role (decision 0217).
+// Records the custody, the rescue address and every wallet with its ceiling, in the rebuild's
+// order: the first as init's first wallet, the others beside it, a launch wallet with its role
+// (decisions 0217 and 0218).
 async function record(
   context: InitContext,
   stores: InitStores,
@@ -143,11 +159,9 @@ async function record(
   },
 ): Promise<InitStep<undefined>> {
   const { prepared, agent, agentKey, moved } = made;
-  // Agent wallets first, as Privy listed them, so the main wallet is never a launch wallet.
-  const listed = prepared.owner.owned.toSorted(
-    (left, right) => Number(left.ceiling.isLaunch) - Number(right.ceiling.isLaunch),
-  );
-  const [first, ...others] = listed.map((owned) =>
+  // In the rebuild's order: the first an agent wallet, then each a millisecond after the one
+  // before, so the store lists them so and the agent's launch wallet comes first of its kind.
+  const [first, ...others] = prepared.owner.owned.map((owned) =>
     Object.assign(
       { first: firstOf(owned, moved.signer), perTxNativeBase: owned.ceiling.perTxNativeCapBase },
       owned.ceiling.isLaunch ? { role: "launch" as const } : {},
@@ -171,12 +185,12 @@ async function record(
   if (!recorded.ok) {
     return recorded;
   }
+  const startMs = context.host.clock.now() + 1;
   for (const [index, other] of others.entries()) {
     const label = `wallet ${String(index + 2)}`;
-    // oxlint-disable-next-line eslint/no-await-in-loop -- wallets keep the order Privy listed them in
-    await stores.install.createWallet(walletDraftOf(context, { agent, ...other, label }), {
-      signal: context.signal,
-    });
+    const entry = { agent, ...other, label, atMs: startMs + index };
+    // oxlint-disable-next-line eslint/no-await-in-loop -- wallets keep the rebuild's order
+    await stores.install.createWallet(walletDraftOf(context, entry), { signal: context.signal });
   }
   return ok(undefined);
 }
@@ -223,7 +237,9 @@ async function make(
  * 0142). It warns first that history, settings, labels, saved addresses and the bot's pairing
  * start fresh, takes the Privy app and the owner key, finds the wallets the key owns, reads the
  * rescue address from their ceilings or asks for one they list, and goes on only once the person
- * types how many wallets it found. Then, as init does, it takes the bot and the limits and builds
+ * types how many wallets it found. It adopts launch wallets too, after the agent wallets, the
+ * newest the agent's launch wallet, and refuses an owner key that owns only launch wallets
+ * (decision 0218). Then, as init does, it takes the bot and the limits and builds
  * the config, makes the first agent and this machine's agent key, moves every wallet's signer to
  * the key in a change the owner key signs, records the wallets with their ceilings, issues the
  * bot's pairing link and writes the config last. Nothing changes on Privy before the count is

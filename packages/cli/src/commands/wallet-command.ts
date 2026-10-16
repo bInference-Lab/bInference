@@ -28,13 +28,14 @@ function walletValues(wallet: WalletView) {
     chain: chainName(chain),
     address,
     role: wallet.role ?? "agent",
+    extra: wallet.extra === true ? "yes" : "no",
   };
 }
 
 /**
  * `binference wallet list [--agent <id>]`: the agent wallets through `wallet/list`, every agent's
  * when `--agent` is left out, oldest first, each with its label, its address and its chain, a
- * launch wallet and archived ones marked. With `--json` it prints the list as the operation
+ * launch wallet, an extra launch wallet a rebuild adopted (decision 0218) and archived ones marked. With `--json` it prints the list as the operation
  * answers it.
  */
 export async function runWalletList(

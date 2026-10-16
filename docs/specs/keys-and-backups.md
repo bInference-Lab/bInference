@@ -307,9 +307,13 @@ A refusal is logged with the rule number, never with key material, and raises
   app and the owner key, finds the wallets the app holds whose owner is the owner key alone (Privy's
   `authorization_key` filter), each under one ceiling the same key owns whose rules are exactly
   the ones binference builds, its token sends paying the addresses its native sends pay. It
-  lists each wallet with the time Privy made it, and reads the rescue address when every ceiling
-  lets sends pay exactly one address in common; otherwise the owner names one of the shared
-  addresses. Nothing changes on Privy until the owner types the number of wallets found. Then, as
+  lists each wallet with the time Privy made it and marks each launch wallet, and reads the
+  rescue address when every ceiling lets sends pay exactly one address in common, never a launch
+  wallet's; otherwise the owner names one of the shared addresses. It adopts launch wallets too
+  ([decision 0218](../DECISIONS.md#d0218)): after the agent wallets, the newest first, which
+  becomes the agent's launch wallet; any other is an extra launch wallet that nothing trades from,
+  which `wallet list` and `binference check` name so the owner rescues it. An owner key that owns
+  only launch wallets is refused. Nothing changes on Privy until the owner types the number of wallets found. Then, as
   `init` does, it takes the bot and the limits, makes one agent with the default settings and this
   machine's agent key, moves every wallet's signer to that key, records each wallet with its
   ceiling, and issues the bot's pairing link. A folder that holds a config file but no install is

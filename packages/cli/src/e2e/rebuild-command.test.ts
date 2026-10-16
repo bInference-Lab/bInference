@@ -105,7 +105,8 @@ describe("binference init --attach on a folder with no install", () => {
       const made = english.dateTime(old.clock.now());
       const lines = rebuilt.prompter.transcript.lines.join("\n");
       for (const { address } of after.facts.wallets) {
-        expect(lines).toContain(english.message("init.rebuild.foundWallet", { address, made }));
+        const found = { address, made, role: "agent" };
+        expect(lines).toContain(english.message("init.rebuild.foundWallet", found));
       }
       // Wallets made in the same millisecond list by their store ids, which each machine makes.
       const ids = (facts: typeof after.facts) =>
@@ -130,11 +131,21 @@ describe("binference init --attach on a folder with no install", () => {
     const rebuilt = await rebuild(fresh, { ownerKeys: [ownerKey], count: "2" });
 
     expect([rebuilt.code, rebuilt.stderr]).toStrictEqual([0, ""]);
-    expect(rolesOf((await storedInstall(fresh)).facts)).toStrictEqual(rolesOf(before.facts));
+    const after = await storedInstall(fresh);
+    expect(rolesOf(after.facts)).toStrictEqual(rolesOf(before.facts));
     expect(rolesOf(before.facts).map((entry) => entry.split(" ")[1])).toStrictEqual([
       "agent",
       "launch",
     ]);
+    // The found list marks the launch wallet, and the agent wallet is the first the store lists.
+    const lines = rebuilt.prompter.transcript.lines.join("\n");
+    const [, launch] = after.facts.wallets;
+    expect(launch?.role).toBe("launch");
+    const made = english.dateTime(old.clock.now());
+    const found = { address: String(launch?.address), made, role: "launch" };
+    expect(lines).toContain(english.message("init.rebuild.foundWallet", found));
+    expect(after.facts.wallets[0]?.role).toBeUndefined();
+    expect(await signsWith(old, await heldKey(old))).toBe("refused");
   });
 
   it("changes nothing for a key that owns no wallet, typed three times", slow, async () => {
