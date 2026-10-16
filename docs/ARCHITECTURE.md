@@ -1065,7 +1065,11 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
 - **Config journal.** Every change to settings or limits is recorded (who, where, before, after) and
   announced on every surface.
 - **Live settings** reload without a restart; onboarding has a non-interactive mode for Docker and
-  VPS installs.
+  VPS installs: `binference init --yes` takes each answer from its flag, a `BINFERENCE_INIT_*`
+  variable or an answers file ([decision 0224](DECISIONS.md#d0224)), secrets only as secret
+  sources, every answer and the model checked before it writes
+  ([decisions 0225](DECISIONS.md#d0225) and [0226](DECISIONS.md#d0226)), and the disclaimer
+  accepted only by a flag that prints it ([decision 0223](DECISIONS.md#d0223)).
 - **Backups ([decision 0055](DECISIONS.md#d0055)).** An encrypted snapshot through SQLite's backup
   API every day (7 daily and 4 weekly kept), and one before every update and migration. Live
   database files are never copied. An optional second copy goes to a folder the owner picks.
