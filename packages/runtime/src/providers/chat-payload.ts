@@ -1,5 +1,6 @@
 import type { JsonValue } from "@binference/core";
 import type {
+  ChatCompletionContentPart,
   ChatCompletionCreateParamsStreaming,
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -42,11 +43,26 @@ function agentMessage(entry: Extract<ModelMessage, { role: "agent" }>): ChatComp
   };
 }
 
+// The owner's images as `image_url` parts with a base64 data URL, before the text, in the order
+// they came; a message without images stays one text.
+function ownerMessage(entry: Extract<ModelMessage, { role: "owner" }>): ChatCompletionMessageParam {
+  if (entry.images === undefined || entry.images.length === 0) {
+    return { role: "user", content: entry.text };
+  }
+  const images = entry.images.map((image): ChatCompletionContentPart => ({
+    type: "image_url",
+    image_url: { url: `data:${image.contentType};base64,${image.data}` },
+  }));
+  const text: ChatCompletionContentPart[] =
+    entry.text === "" ? [] : [{ type: "text", text: entry.text }];
+  return { role: "user", content: [...images, ...text] };
+}
+
 // The reasoning a response held stays in the transcript: Chat Completions has no field to send
 // it back in.
 function messageOf(entry: ModelMessage): ChatCompletionMessageParam {
   if (entry.role === "owner") {
-    return { role: "user", content: entry.text };
+    return ownerMessage(entry);
   }
   if (entry.role === "tool") {
     return { role: "tool", tool_call_id: entry.callId, content: entry.text };

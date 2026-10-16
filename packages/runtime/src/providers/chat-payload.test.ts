@@ -141,4 +141,39 @@ describe("chatPayloadOf", () => {
       expect(JSON.stringify(chatPayloadOf(request, { model }))).not.toContain("cache_control");
     },
   );
+
+  it("sends the owner's images as base64 data URLs before the text", () => {
+    const payload = chatPayloadOf(
+      {
+        prefix: "",
+        messages: [
+          {
+            role: "owner",
+            text: "What does this chart show?",
+            images: [
+              { contentType: "image/png", data: "iVBORw0KGgo=" },
+              { contentType: "image/webp", data: "UklGRg==" },
+            ],
+          },
+          { role: "owner", text: "", images: [{ contentType: "image/jpeg", data: "/9j/4A==" }] },
+        ],
+        tools: [],
+      },
+      { model: "gpt-5-mini" },
+    );
+    expect(payload.messages).toStrictEqual([
+      {
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } },
+          { type: "image_url", image_url: { url: "data:image/webp;base64,UklGRg==" } },
+          { type: "text", text: "What does this chart show?" },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/4A==" } }],
+      },
+    ]);
+  });
 });

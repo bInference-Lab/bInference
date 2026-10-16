@@ -52,6 +52,17 @@ function toolResult(entry: Extract<ModelMessage, { role: "tool" }>): ToolResultB
   };
 }
 
+// The owner's images as `image` blocks with a base64 source, before the text, as the API's vision
+// guide places them.
+function ownerBlocks(entry: Extract<ModelMessage, { role: "owner" }>): ContentBlockParam[] {
+  const images = (entry.images ?? []).map((image): ContentBlockParam => ({
+    type: "image",
+    source: { type: "base64", media_type: image.contentType, data: image.data },
+  }));
+  const text: ContentBlockParam[] = entry.text === "" ? [] : [{ type: "text", text: entry.text }];
+  return [...images, ...text];
+}
+
 function blocksOf(entry: ModelMessage): {
   role: "user" | "assistant";
   blocks: ContentBlockParam[];
@@ -62,7 +73,7 @@ function blocksOf(entry: ModelMessage): {
   if (entry.role === "tool") {
     return { role: "user", blocks: [toolResult(entry)] };
   }
-  return { role: "user", blocks: entry.text === "" ? [] : [{ type: "text", text: entry.text }] };
+  return { role: "user", blocks: ownerBlocks(entry) };
 }
 
 // One message per run of entries of one side: a response's results and the owner's messages held
@@ -84,7 +95,7 @@ function messagesOf(conversation: readonly ModelMessage[]): MessageParam[] {
   return messages;
 }
 
-// The last owner text or tool result ends the history, the cache's second mark (runtime spec,
+// The last owner text, image or tool result ends the history, the cache's second mark (runtime spec,
 // section 7.1). Thinking and calls the model wrote take no mark.
 function withHistoryMark(messages: MessageParam[]): MessageParam[] {
   const end = messages.findLastIndex((message) => message.role === "user");
@@ -95,7 +106,7 @@ function withHistoryMark(messages: MessageParam[]): MessageParam[] {
   const blocks = message.content;
   const last = blocks.at(-1);
   const marked =
-    last?.type === "text" || last?.type === "tool_result"
+    last?.type === "text" || last?.type === "tool_result" || last?.type === "image"
       ? [...blocks.slice(0, -1), { ...last, cache_control: mark }]
       : blocks;
   return messages.with(end, { ...message, content: marked });

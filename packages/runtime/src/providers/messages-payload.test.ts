@@ -183,4 +183,25 @@ describe("messagesPayloadOf", () => {
       },
     ]);
   });
+
+  it("sends the owner's images as base64 image blocks before the text, the last one marked", () => {
+    const png = { contentType: "image/png", data: "iVBORw0KGgo=" } as const;
+    const payload = payloadOf([
+      { role: "owner", text: "What does this chart show?", images: [png] },
+      agent("A rising line."),
+      { role: "owner", text: "", images: [png] },
+    ]);
+    const image = {
+      type: "image",
+      source: { type: "base64", media_type: "image/png", data: png.data },
+    };
+    expect(payload.messages).toStrictEqual([
+      {
+        role: "user",
+        content: [image, { type: "text", text: "What does this chart show?" }],
+      },
+      { role: "assistant", content: [{ type: "text", text: "A rising line." }] },
+      { role: "user", content: [{ ...image, cache_control: mark }] },
+    ]);
+  });
 });

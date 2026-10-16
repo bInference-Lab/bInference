@@ -1,4 +1,5 @@
 import type { JsonValue } from "@binference/core";
+import type { ImageContentType } from "@binference/protocol";
 import type { ResponseReplay } from "./model-event.js";
 
 /** A tool call as the model wrote it: its arguments are JSON text, parsed only by the tool box. */
@@ -18,10 +19,22 @@ export interface OwnerMessage {
   readonly outside: boolean;
 }
 
+/**
+ * An image the owner sent, as a model that takes images reads it (decision 0227). It lives only
+ * in the memory of the turn that took it: the transcript never holds its bytes.
+ */
+interface ModelImage {
+  readonly contentType: ImageContentType;
+  /** The image's bytes in base64. */
+  readonly data: string;
+}
+
 /** The owner's side of the conversation. */
 interface OwnerEntry {
   readonly role: "owner";
   readonly text: string;
+  /** The images the owner sent with the text, which go before it; only for a model that reads them. */
+  readonly images?: readonly ModelImage[];
 }
 
 /** One model response: its text, its reasoning and the tool calls it made. */
