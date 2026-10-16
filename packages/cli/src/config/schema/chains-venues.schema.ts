@@ -66,6 +66,28 @@ export interface SearchConfig {
   readonly xApiKey?: SecretSource;
 }
 
+// The relays this binference's chain files name; an https URL names a relay of the owner's own.
+const listedRelays: ReadonlyMap<string, readonly string[]> = new Map([
+  [bsc.id, bsc.relays.map(({ name }) => name)],
+]);
+
+// Each relay is one the chain lists by name, or an https URL, so a reload never hands the
+// executor a relay it cannot reach (decision 0230).
+function knownRelays(
+  relays: Readonly<Record<string, readonly string[]>>,
+  context: z.RefinementCtx,
+): void {
+  for (const [chain, entries] of Object.entries(relays)) {
+    entries.forEach((entry, at) => {
+      const isListed = listedRelays.get(chain)?.includes(entry) === true;
+      if (!isListed && URL.parse(entry)?.protocol !== "https:") {
+        const message = `${entry} is no relay ${chain} lists and no https URL.`;
+        context.addIssue({ code: "custom", path: [chain, at], message, input: entry });
+      }
+    });
+  }
+}
+
 /** Parses `chains`. */
 export const chainsSchema: z.ZodType<ChainsConfig> = z
   .strictObject({
@@ -97,6 +119,7 @@ export const chainsSchema: z.ZodType<ChainsConfig> = z
       .meta({ description: "RPCs per chain.", keyName: "chain" }),
     relays: z
       .record(chainSchema, z.array(z.string().min(1)))
+      .superRefine(knownRelays)
       .prefault({})
       .meta({
         description: "Private relays for sends, per chain.",

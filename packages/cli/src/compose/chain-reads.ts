@@ -9,7 +9,7 @@ import {
   type RpcFailover,
 } from "@binference/chain-evm";
 import { BinferenceError, type Clock, type Http } from "@binference/core";
-import { gweiToWei } from "../config/gwei-to-wei.js";
+import { gweiToWei, isGweiText } from "../config/gwei-to-wei.js";
 import type { ChainsConfig, RpcConfig } from "../config/schema/chains-venues.schema.js";
 import { followingRpc } from "./following-rpc.js";
 import type { HealthSignal } from "./health-signals.js";
@@ -22,8 +22,12 @@ export interface ChainReads {
   readonly chain: RegisteredChain;
   readonly evm: EvmChain;
   readonly rpc: RpcFailover;
-  /** The chain's network fee cap, in wei per gas (decision 0102). */
-  readonly networkFeeCapWeiPerGas: bigint;
+  /**
+   * The chain's network fee cap now, in wei per gas (decision 0102): config's as reloaded while it
+   * is at most the cap the engine started with, which the signer holds, else that one (decision
+   * 0230).
+   */
+  readonly networkFeeCapWeiPerGas: () => bigint;
   /** Multicall3 on the chain, from the registry, which reads balances in one call. */
   readonly multicall: `0x${string}`;
 }
@@ -74,6 +78,19 @@ function multicallOf(chain: RegisteredChain): `0x${string}` {
   return address.value;
 }
 
+// The reloaded cap when it is no higher than the cap at start, else the cap at start: a higher cap
+// waits for a restart, and one that does not read as gwei keeps the cap at start.
+function feeCapNow(chain: ChainRef, startedWei: bigint, current: () => ChainsConfig): () => bigint {
+  return () => {
+    const text = current().maxFeePerGasGwei[chain];
+    if (text === undefined || !isGweiText(text)) {
+      return startedWei;
+    }
+    const wei = gweiToWei(text, chain);
+    return wei < startedWei ? wei : startedWei;
+  };
+}
+
 function readsOf(chain: RegisteredChain, options: ChainReadsOptions): ChainReads {
   const { http, clock, config } = options;
   const capText = config.maxFeePerGasGwei[chain.ref];
@@ -90,7 +107,7 @@ function readsOf(chain: RegisteredChain, options: ChainReadsOptions): ChainReads
     chain,
     evm: evmChainOf(chain.definition),
     rpc,
-    networkFeeCapWeiPerGas: gweiToWei(capText, chain.ref),
+    networkFeeCapWeiPerGas: feeCapNow(chain.ref, gweiToWei(capText, chain.ref), current),
     multicall: multicallOf(chain),
   };
 }

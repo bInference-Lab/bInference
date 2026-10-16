@@ -66,8 +66,11 @@ export interface ComposeExecutorOptions {
   readonly venues: readonly Venue[];
   /** Each enabled chain's RPC failover and network fee cap. */
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
-  /** The relays config names for each chain; every relay the chain lists when it names none. */
-  readonly relays: ChainsConfig["relays"];
+  /**
+   * The relays config names for each chain as they stand now; every relay the chain lists when it
+   * names none.
+   */
+  readonly relays: () => ChainsConfig["relays"];
   /** The owner's tracing RPC of each chain that has one (decision 0108). */
   readonly tracers?: ReadonlyMap<ChainRef, string>;
   /** Outbound HTTP for the chains' relays and tracing RPCs. */
@@ -120,7 +123,7 @@ export function relayEndpointsOf(
 }
 
 // The owner's tracing RPC of the chain, when config names one; errors name it `tracer` only.
-function tracerOf(chain: ChainRef, options: ComposeExecutorOptions) {
+function tracerOf(chain: ChainRef, options: SendingOptions) {
   const url = options.tracers?.get(chain);
   return url === undefined
     ? {}
@@ -135,42 +138,58 @@ function tracerOf(chain: ChainRef, options: ComposeExecutorOptions) {
       };
 }
 
-interface ChainParts {
-  readonly sending: ChainSending;
-  readonly nonces: NonceSource;
+/** What a chain's sending parts are built over. */
+type SendingOptions = Pick<ComposeExecutorOptions, "relays" | "tracers" | "http" | "clock">;
+
+// What a chain's sending parts are built from: its relays and its fee cap as they stand now.
+interface SendingTerms {
+  readonly relays: readonly string[] | undefined;
+  readonly feeCapWeiPerGas: bigint;
 }
 
-function chainPartsOf(
+/**
+ * One chain's sending parts for the next intent run (decision 0230): the relay sender and the
+ * preparer are built again only when the chain's relays or fee cap changed, so a run under way
+ * keeps the parts it read when it started; the receipt reader stays.
+ */
+export function followingSending(
   reads: ChainReads,
-  options: ComposeExecutorOptions,
+  options: SendingOptions,
   health: RelayHealth,
-): ChainParts {
+): () => ChainSending {
   const { http, clock } = options;
   const { chain, evm, rpc } = reads;
-  const relays = relayEndpointsOf(chain, options.relays[chain.ref]);
-  const sender = createEvmRelaySender({
+  const receipts = createEvmReceiptReader({
+    rpc,
     chain: evm,
-    relays,
-    http,
-    clock,
-    timeoutMs: relayTimeoutMs,
+    finality: chain.definition.finality,
+    ...tracerOf(chain.ref, options),
   });
-  return {
-    sending: {
-      preparer: createEvmTxPreparer({
-        rpc,
-        chain: evm,
-        networkFeeCapWeiPerGas: reads.networkFeeCapWeiPerGas,
-      }),
-      sender: health.watch(chain.ref, sender),
-      receipts: createEvmReceiptReader({
-        rpc,
-        chain: evm,
-        finality: chain.definition.finality,
-        ...tracerOf(chain.ref, options),
-      }),
-    },
-    nonces: createEvmNonceSource({ rpc, chain: evm }),
+  const build = (terms: SendingTerms): ChainSending => {
+    const relays = relayEndpointsOf(chain, terms.relays);
+    const sender = createEvmRelaySender({
+      chain: evm,
+      relays,
+      http,
+      clock,
+      timeoutMs: relayTimeoutMs,
+    });
+    const networkFeeCapWeiPerGas = terms.feeCapWeiPerGas;
+    const preparer = createEvmTxPreparer({ rpc, chain: evm, networkFeeCapWeiPerGas });
+    return { preparer, sender: health.watch(chain.ref, sender), receipts };
+  };
+  const held: { key?: string; sending?: ChainSending } = {};
+  return () => {
+    const terms = {
+      relays: options.relays()[chain.ref],
+      feeCapWeiPerGas: reads.networkFeeCapWeiPerGas(),
+    };
+    const key = JSON.stringify({ relays: terms.relays, cap: String(terms.feeCapWeiPerGas) });
+    if (held.sending === undefined || held.key !== key) {
+      held.sending = build(terms);
+      held.key = key;
+    }
+    return held.sending;
   };
 }
 
@@ -193,15 +212,22 @@ export function nonceRouterOf(sources: ReadonlyMap<ChainRef, NonceSource>): Nonc
 /**
  * Builds the executor of a self-hosted engine: for each chain the reads hold, the relay sender
  * over every relay the chain lists or config names (all of them until a measurement picks the
- * fastest), the preparer with the chain's network fee cap, the receipt reader by the chain's
+ * fastest) and the preparer with the chain's network fee cap, both as config holds them when an
+ * intent run starts, the receipt reader by the chain's
  * finality rule with the owner's tracing RPC when there is one, and the nonce source, all over the
  * chain's one RPC failover; the wallet queue over the stored transactions; custody as the
  * composition gives it.
  */
 export function composeExecutor(options: ComposeExecutorOptions): ComposedExecutor {
   const health = createRelayHealth();
-  const parts = new Map(
-    [...options.reads].map(([chain, reads]) => [chain, chainPartsOf(reads, options, health)]),
+  const sendings = new Map(
+    [...options.reads].map(([chain, reads]) => [chain, followingSending(reads, options, health)]),
+  );
+  const nonces = new Map(
+    [...options.reads].map(([chain, { rpc, evm }]) => [
+      chain,
+      createEvmNonceSource({ rpc, chain: evm }),
+    ]),
   );
   const { stores, clock, random } = options;
   const executor = createExecutor({
@@ -209,7 +235,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     positions: options.positions,
     queue: createWalletQueue({
       transactions: stores.transactions,
-      nonces: nonceRouterOf(new Map([...parts].map(([chain, part]) => [chain, part.nonces]))),
+      nonces: nonceRouterOf(nonces),
       clock,
     }),
     custody: options.custody,
@@ -223,7 +249,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
       clock,
       callTimeoutMs: curveReadTimeoutMs,
     }),
-    sending: new Map([...parts].map(([chain, part]) => [chain, part.sending])),
+    sending: { get: (chain) => sendings.get(chain)?.() },
     clock,
     ids: createIdSource({ clock, random }),
     publish: options.publish,

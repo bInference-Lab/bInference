@@ -70,19 +70,18 @@ async function factsOf(
     intent === undefined
       ? { agentId, isPaper, nowMs }
       : { agentId, isPaper, nowMs, exclude: intent };
+  // One read of the cap, so the fee reading and the facts judge by the same one.
+  const networkFeeCapWeiPerGas = reads.networkFeeCapWeiPerGas();
   const [nativeBalanceBase, fees, recentOutflows] = await Promise.all([
     isPaper ? Promise.resolve(0n) : coinBalance(reads, holder, call),
-    readFees(reads.rpc, {
-      networkFeeCapWeiPerGas: reads.networkFeeCapWeiPerGas,
-      signal: call.signal,
-    }),
+    readFees(reads.rpc, { networkFeeCapWeiPerGas, signal: call.signal }),
     recentOutflowsOf(options.intents, outflows, call),
   ]);
   return {
     nativeBalanceBase,
     ceilingPerTxNativeBase: wallet.ceiling.perTxNativeBase,
     feePerGasNativeBase: fees.fees.maxFeePerGas,
-    networkFeeCapNativeBase: reads.networkFeeCapWeiPerGas,
+    networkFeeCapNativeBase: networkFeeCapWeiPerGas,
     recentOutflows,
   };
 }

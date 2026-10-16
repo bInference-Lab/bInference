@@ -196,6 +196,18 @@ describe("live settings in a running engine", () => {
     await running.client.call(op, {}, live()).catch(() => undefined);
     return world.hostsSince(from);
   };
+  // The values of each settings notice so far.
+  const configNotices = async (): Promise<
+    readonly { readonly changed: string; readonly afterRestart: string }[]
+  > => {
+    const page = await running.client.call("notice/list", { limit: 200 }, live());
+    return page.items
+      .filter((item) => item.key === "notice.configChanged")
+      .map(({ values }) => ({
+        changed: values["changed"] ?? "",
+        afterRestart: values["afterRestart"] ?? "",
+      }));
+  };
   const change = async (patch: Readonly<Record<string, JsonValue>>): Promise<boolean> =>
     (await running.client.call("config/change", { patch }, live())).restartNeeded;
 
@@ -219,6 +231,28 @@ describe("live settings in a running engine", () => {
     await expect(change(row.patch)).resolves.toBe(false);
     const [path, value] = row.shows;
     expect(at(runtime.settings(), path)).toStrictEqual(value);
+  });
+
+  it("applies a lower fee cap and names a higher one as waiting for a restart", async () => {
+    const cap = (gwei: string) => ({ chains: { maxFeePerGasGwei: { [bsc]: gwei } } });
+    await expect(change(cap("0.5"))).resolves.toBe(false);
+    await expect(change(cap("1"))).resolves.toBe(false);
+    await expect(change(cap("3"))).resolves.toBe(true);
+    const key = `chains.maxFeePerGasGwei.${bsc}`;
+    const named = (await configNotices()).filter(({ changed }) => changed === key);
+    expect(
+      named
+        .map(({ afterRestart }) => afterRestart)
+        .toSorted((left, right) => left.localeCompare(right)),
+    ).toStrictEqual([key, "none", "none"]);
+    await expect(change(cap("1"))).resolves.toBe(false);
+  });
+
+  it("takes changed relays for the next intent run at once", async () => {
+    await expect(change({ chains: { relays: { [bsc]: ["blockrazor"] } } })).resolves.toBe(false);
+    await expect(
+      change({ chains: { relays: { [bsc]: ["no-such-relay"] } } }),
+    ).rejects.toMatchObject({ code: "config.invalid" });
   });
 
   it("reads the chain through changed rpc urls at the next request", async () => {

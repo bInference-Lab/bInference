@@ -1,4 +1,6 @@
+import { chainRefSchema } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
+import { gweiToWei, isGweiText } from "./gwei-to-wei.js";
 import type { BinferenceConfig } from "./schema/config.schema.js";
 
 /** When a change to a config key takes effect: at once, or once binference restarts. */
@@ -50,6 +52,8 @@ const keysReadOnUse: readonly string[] = [
   "chats.newMessageMode",
   // Each RPC request asks the endpoints config names when it starts.
   "chains.rpc.*.urls",
+  // An intent run reads its chain's relays when it starts and keeps them to its end.
+  "chains.relays",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the
@@ -71,8 +75,6 @@ const keysNoPartReads: readonly string[] = [
 // until its part reads the config cell on each use.
 const keysCopiedAtStart: readonly string[] = [
   "engine.extraOrigins",
-  "chains.relays",
-  "chains.maxFeePerGasGwei",
   "venues.keys.okx",
   "venues.kyberClientId",
   "risk",
@@ -85,12 +87,32 @@ type Judge = (change: KeyChange, started: BinferenceConfig) => ApplyTime;
 const now: Judge = () => "now";
 const restart: Judge = () => "restart";
 
+// A chain's fee cap applies to the next intent run while it is at most the cap the engine started
+// with: the signer checks every transaction against that one until a restart.
+const feeCapWithinStart: Judge = (change, started) => {
+  const chain = chainRefSchema.safeParse(change.path.split(".").at(-1));
+  if (!chain.success || typeof change.after !== "string" || !isGweiText(change.after)) {
+    return "restart";
+  }
+  const startedCap = started.chains.maxFeePerGasGwei[chain.data];
+  const isWithin =
+    startedCap !== undefined &&
+    gweiToWei(change.after, chain.data) <= gweiToWei(startedCap, chain.data);
+  return isWithin ? "now" : "restart";
+};
+
+// The keys that apply now only while they stay within what the engine started with.
+const keysBoundByStart: readonly (readonly [string, Judge])[] = [
+  ["chains.maxFeePerGasGwei.*", feeCapWithinStart],
+];
+
 // The table, every entry with its judge; the longest entry that covers a key decides.
 const entries: readonly (readonly [string, Judge])[] = [
   ...restartOnlyKeys.map((key) => [key, restart] as const),
   ...keysCopiedAtStart.map((key) => [key, restart] as const),
   ...keysReadOnUse.map((key) => [key, now] as const),
   ...keysNoPartReads.map((key) => [key, now] as const),
+  ...keysBoundByStart,
 ];
 
 function covers(entry: string, path: readonly string[]): boolean {

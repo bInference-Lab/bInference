@@ -15,10 +15,16 @@ import {
 } from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
-import { composeChainReads } from "./chain-reads.js";
-import { composeExecutor, nonceRouterOf, relayEndpointsOf } from "./compose-executor.js";
+import { chainReadsOf, composeChainReads } from "./chain-reads.js";
+import {
+  composeExecutor,
+  followingSending,
+  nonceRouterOf,
+  relayEndpointsOf,
+} from "./compose-executor.js";
 import { createCustodyCell } from "./custody-cell.js";
 import { selfHostedChains } from "./open-engine-parts.js";
+import { createRelayHealth } from "./relay-health.js";
 
 const chains = selfHostedChains();
 const bscRef = chainRefSchema.parse(bsc.id);
@@ -56,7 +62,7 @@ function composeWith(chainsConfig: ChainsConfig) {
     chains,
     venues: [],
     reads: composeChainReads({ chains, config: chainsConfig, http, clock }),
-    relays: chainsConfig.relays,
+    relays: () => chainsConfig.relays,
     http,
     clock,
     random: createSeededRandom(1),
@@ -92,6 +98,38 @@ describe("the self-hosted executor", () => {
     expect(() => composeWith({ ...config, maxFeePerGasGwei: {} })).toThrow(
       expect.objectContaining({ code: "cli.no_fee_cap" }),
     );
+  });
+
+  it("gives the next intent run new sending parts once its chain's relays or fee cap change", () => {
+    const held = { chains: config };
+    const [http, clock] = [createScriptedHttp([]), createManualClock()];
+    const current = () => held.chains;
+    const reads = chainReadsOf(composeChainReads({ chains, config, current, http, clock }), bscRef);
+    const relays = () => held.chains.relays;
+    const next = followingSending(reads, { relays, http, clock }, createRelayHealth());
+    const first = next();
+    expect(next()).toBe(first);
+    held.chains = { ...config, relays: { [bscRef]: ["blockrazor"] } };
+    const second = next();
+    expect([first.sender.relays.length, second.sender.relays]).toStrictEqual([3, ["blockrazor"]]);
+    expect(second.receipts).toBe(first.receipts);
+    held.chains = { ...held.chains, maxFeePerGasGwei: { [bscRef]: "0.5" } };
+    expect([next() === second, reads.networkFeeCapWeiPerGas()]).toStrictEqual([
+      false,
+      500_000_000n,
+    ]);
+  });
+
+  it("keeps the fee cap it started with when config raises it, or names no cap it can read", () => {
+    const held = { chains: config };
+    const [http, clock] = [createScriptedHttp([]), createManualClock()];
+    const current = () => held.chains;
+    const reads = chainReadsOf(composeChainReads({ chains, config, current, http, clock }), bscRef);
+    const caps = [{ [bscRef]: "3" }, { [bscRef]: "0.0000000001" }, {}].map((maxFeePerGasGwei) => {
+      held.chains = { ...config, maxFeePerGasGwei };
+      return reads.networkFeeCapWeiPerGas();
+    });
+    expect(caps).toStrictEqual([1_000_000_000n, 1_000_000_000n, 1_000_000_000n]);
   });
 
   it.each(

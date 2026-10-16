@@ -1,4 +1,4 @@
-import type { ChainRegistry, RegisteredChain, TxDraft } from "@binference/chain";
+import type { ChainRef, ChainRegistry, RegisteredChain, TxDraft } from "@binference/chain";
 import { planDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { ChainSending } from "./executor-options.js";
@@ -16,12 +16,13 @@ export type PlanProblem = "no_plan" | "chains_differ" | "unknown_chain" | "no_re
 /** What a plan is read against. */
 export interface PlanSources {
   readonly chains: ChainRegistry;
-  readonly sending: ReadonlyMap<string, ChainSending>;
+  /** Each chain's sending parts as they stand when the plan is read. */
+  readonly sending: Pick<ReadonlyMap<ChainRef, ChainSending>, "get">;
 }
 
 /**
  * Reads a stored intent's plan: every step from the intent's wallet on one chain the registry
- * holds, with sending parts for that chain. Anything else is a problem the intent keeps
+ * holds, with sending parts for that chain as they stand now, which the run keeps to its end. Anything else is a problem the intent keeps
  * `confirmed` for, since nothing has been signed.
  */
 export function intentPlanOf(

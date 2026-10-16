@@ -71,7 +71,11 @@ export interface ExecutorOptions {
    * again right before signing (decision 0217). Without them, no step reaches a launch contract.
    */
   readonly curves?: Pick<VenueHost, "curves">;
-  readonly sending: ReadonlyMap<ChainRef, ChainSending>;
+  /**
+   * Each chain's sending parts. An intent run reads its chain's once, when it reads its plan, and
+   * keeps them to its end: a settings reload reaches the runs that start after it (decision 0230).
+   */
+  readonly sending: Pick<ReadonlyMap<ChainRef, ChainSending>, "get">;
   readonly clock: Clock;
   readonly ids: IdSource;
   /** Where the pushes of its intent moves and ledger entries go. */

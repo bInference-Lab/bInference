@@ -111,7 +111,7 @@ function composeSending(
   },
 ) {
   const { host, closers } = opening;
-  const { config, log, stores } = opened;
+  const { log, stores } = opened;
   const { parts, chains } = context;
   const pushes = { publish: (_push: EnginePush): void => undefined };
   const composed = composeExecutor({
@@ -124,7 +124,7 @@ function composeSending(
     chains,
     venues: opened.venues,
     reads: parts.reads,
-    relays: config.chains.relays,
+    relays: () => opened.settings.current().chains.relays,
     http: host.http,
     clock: host.clock,
     random: host.random,

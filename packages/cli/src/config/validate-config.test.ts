@@ -170,6 +170,22 @@ describe("validate config", () => {
     },
   );
 
+  it("refuses a relay its chain does not list unless it is an https url", () => {
+    const relays = [
+      "blockrazor",
+      "https://relay.example.org/rpc",
+      "fastest",
+      "http://relay.example.org",
+    ];
+    const issues = issuesOf(check({ ...base, chains: { relays: { "eip155:56": relays } } }));
+    expect(issues.map(({ path, problem }) => [path, problem.kind])).toStrictEqual([
+      ["chains.relays.eip155:56", "bad_value"],
+    ]);
+    expect(lines({ ...base, chains: { relays: { "eip155:56": ["fastest"] } } })).toStrictEqual([
+      expect.stringContaining('(got "fastest")'),
+    ]);
+  });
+
   it("names the variable or the flag that set a bad value", () => {
     expect(
       lines({ ...base, engine: { port: 1 } }, { layer: "env", name: "BINFERENCE_ENGINE__PORT" }),

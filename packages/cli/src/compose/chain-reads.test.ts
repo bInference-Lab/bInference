@@ -72,7 +72,7 @@ describe("the chains' reads", () => {
     const reads = composeChainReads({ chains: selfHostedChains(), config, http, clock });
     const bscReads = chainReadsOf(reads, bscRef);
     expect([
-      bscReads.networkFeeCapWeiPerGas,
+      bscReads.networkFeeCapWeiPerGas(),
       bscReads.multicall,
       bscReads.evm.chainId,
     ]).toStrictEqual([1_000_000_000n, "0xcA11bde05977b3631167028862bE2a173976CA11", 56]);
