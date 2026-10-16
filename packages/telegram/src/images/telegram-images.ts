@@ -20,13 +20,12 @@ export interface TelegramImagesOptions {
   readonly download: HttpDownload;
   /** The bot token, which the file's link holds. */
   readonly token: Secret;
-  /** The Bot API server; Telegram's own when absent. */
-  readonly apiRoot?: string;
 }
 
 /** The prefix of an image the owner sent the bot (protocol spec, section 7.7). */
 const prefix = "tg:";
-const defaultApiRoot = "https://api.telegram.org";
+// Where the Bot API serves the files `getFile` names.
+const fileRoot = "https://api.telegram.org/file";
 // Telegram's words for a file over the 20 MB `getFile` serves.
 const fileTooBig = /file is too big/iu;
 const badRequest = 400;
@@ -71,8 +70,7 @@ async function bytesOf(
   path: string,
   signal: AbortSignal,
 ): Promise<Result<Uint8Array, ImageRefusal>> {
-  const root = options.apiRoot ?? defaultApiRoot;
-  const url = `${root}/file/bot${options.token.reveal()}/${path}`;
+  const url = `${fileRoot}/bot${options.token.reveal()}/${path}`;
   try {
     const answer = await options.download.download({ url, maxBytes: maxImageBytes, signal });
     if (answer.status === 200) {
