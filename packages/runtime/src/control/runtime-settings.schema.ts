@@ -21,6 +21,7 @@ export interface RuntimeModelPrice {
 export interface AgentModelPicks {
   readonly main?: string;
   readonly fast?: string;
+  readonly vision?: string;
 }
 
 /** The models section of the settings (config spec, section 6.3), keys resolved. */
@@ -29,6 +30,8 @@ export interface RuntimeModels {
   readonly main?: string;
   readonly fast?: string;
   readonly vision?: string;
+  /** The models that take images as input (decision 0227); the vision model reads them by its role. */
+  readonly imageInput: readonly string[];
   readonly fallbacks: { readonly main: readonly string[]; readonly fast: readonly string[] };
   readonly idleTimeoutMs: number;
   readonly cooldownMs: number;
@@ -96,6 +99,7 @@ const modelsSchema = z.strictObject({
   main: nameSchema.exactOptional(),
   fast: nameSchema.exactOptional(),
   vision: nameSchema.exactOptional(),
+  imageInput: z.array(nameSchema).max(64),
   fallbacks: z.strictObject({
     main: z.array(nameSchema).max(16),
     fast: z.array(nameSchema).max(16),
@@ -108,7 +112,11 @@ const modelsSchema = z.strictObject({
   picked: z
     .record(
       nameSchema,
-      z.strictObject({ main: nameSchema.exactOptional(), fast: nameSchema.exactOptional() }),
+      z.strictObject({
+        main: nameSchema.exactOptional(),
+        fast: nameSchema.exactOptional(),
+        vision: nameSchema.exactOptional(),
+      }),
     )
     .exactOptional(),
 });

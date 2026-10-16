@@ -16,8 +16,13 @@ const models: RuntimeModels = {
   cooldownMs: 60_000,
   maxToolCallsPerTurn: 25,
   loopDetection: true,
+  imageInput: [],
   prices: {},
-  picked: { agt_picked: { main: "router/picked" }, agt_fast: { fast: "router/backup" } },
+  picked: {
+    agt_picked: { main: "router/picked" },
+    agt_fast: { fast: "router/backup" },
+    agt_eyes: { vision: "router/eyes" },
+  },
 };
 
 function namesOf(agent: string, settings: RuntimeModels = models) {
@@ -50,5 +55,20 @@ describe("turnModelsOf", () => {
       main: ["router/picked"],
       summarizer: ["router/picked"],
     });
+  });
+
+  it("reads images on the models imageInput names, and on the vision model by its role", () => {
+    const declared = { ...models, imageInput: ["router/backup"], vision: "router/vision" };
+    const { main, vision } = turnModelsOf("agt_other", { models: declared }, parts);
+    expect(main.models.map((model) => model.readsImages === true)).toStrictEqual([false, true]);
+    expect(vision?.models.map((model) => [model.name, model.readsImages])).toStrictEqual([
+      ["router/vision", true],
+    ]);
+    const picked = turnModelsOf("agt_eyes", { models: declared }, parts).vision;
+    expect(picked?.models.map((model) => model.name)).toStrictEqual(["router/eyes"]);
+  });
+
+  it("has no vision model when neither the config nor the agent's pick names one", () => {
+    expect(turnModelsOf("agt_other", { models }, parts).vision).toBeUndefined();
   });
 });

@@ -34,6 +34,7 @@ function modelsWith(
     cooldownMs: 60_000,
     maxToolCallsPerTurn: 25,
     loopDetection: true,
+    imageInput: [],
     prices: {},
   };
 }

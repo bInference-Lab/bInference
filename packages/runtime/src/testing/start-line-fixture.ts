@@ -11,6 +11,7 @@ export const fixtureSettings: RuntimeSettings = {
     cooldownMs: 60_000,
     maxToolCallsPerTurn: 25,
     loopDetection: true,
+    imageInput: [],
     prices: {
       "router/main-model": {
         inputPerMTokUsd: 18_446_744_073_709_551_617n,

@@ -42,6 +42,8 @@ export interface ModelsConfig {
   readonly main?: string;
   readonly fast?: string;
   readonly vision?: string;
+  /** The models that take images as input, each `<provider>/<model>` (decision 0227). */
+  readonly imageInput: readonly string[];
   readonly fallbacks: FallbackConfig;
   readonly idleTimeoutMs: number;
   readonly cooldownMs: number;
@@ -100,6 +102,12 @@ export const modelsSchema: z.ZodType<ModelsConfig> = z
     main: modelRole("talks and proposes"),
     fast: modelRole("writes summaries, compacts and classifies"),
     vision: modelRole("reads images when the main one cannot"),
+    imageInput: z
+      .array(modelSchema)
+      .prefault([])
+      .describe(
+        "The models that take images as input; any other model gets the vision model's description.",
+      ),
     fallbacks: z
       .strictObject({ main: fallbackList("main"), fast: fallbackList("fast") })
       .prefault({})

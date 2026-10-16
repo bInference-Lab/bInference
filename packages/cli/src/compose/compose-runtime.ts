@@ -15,10 +15,14 @@ import { engineEndpoint } from "./engine-locations.js";
 import { type AgentPicks, picksOf } from "./model-operations.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 
-// The roles the runtime runs a picked model for; a picked vision model waits for image reading.
+// The models the owner picked for the agent, by role.
 function runtimePicks(picks: AgentPicks): AgentModelPicks {
-  const { main, fast } = picks;
-  return { ...(main === undefined ? {} : { main }), ...(fast === undefined ? {} : { fast }) };
+  const { main, fast, vision } = picks;
+  return {
+    ...(main === undefined ? {} : { main }),
+    ...(fast === undefined ? {} : { fast }),
+    ...(vision === undefined ? {} : { vision }),
+  };
 }
 
 // The settings with every agent's picks in force.

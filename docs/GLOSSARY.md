@@ -251,6 +251,8 @@ new name here first, in the change that uses it.
 - **read, propose and control tools**: tools that read data, tools that create an intent or an auto
   order and its card, and tools that change something without moving money or opening a card
   (cancel an order, set an alert or a schedule, write a note, ask the owner).
+- **image input**: `models.imageInput`, the models declared to take images as input; a model reads
+  images only when it is listed there or is the vision model.
 - **vision model**: `models.vision`, which reads images when the main model cannot.
 - **model budget**: the daily dollar budget for an agent's model calls.
 

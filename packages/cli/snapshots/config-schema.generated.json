@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -235,6 +235,16 @@
             "type": "string",
             "pattern": "^[^\\s/]+\\/\\S+$",
             "valueFormat": "model"
+          },
+          "imageInput": {
+            "description": "The models that take images as input; any other model gets the vision model's description.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[^\\s/]+\\/\\S+$",
+              "valueFormat": "model"
+            }
           },
           "fallbacks": {
             "description": "Fallback models per role.",

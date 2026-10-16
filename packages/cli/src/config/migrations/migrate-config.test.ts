@@ -137,9 +137,18 @@ describe("migrate config", () => {
     ["brave", []],
   ])("moves a version 7 file to version 8 with the search provider %s", (provider, edits) => {
     const seventh: JsonObject = { version: 7, search: { provider } };
-    expect(migrateConfig(seventh, configMigrations)).toMatchObject({
+    expect(migrateConfig(seventh, configMigrations.slice(0, 7))).toMatchObject({
       ok: true,
       steps: [{ from: 7, to: 8, edits }],
+    });
+  });
+
+  it("moves a version 8 file to version 9 without a change, so the image input list starts empty", () => {
+    const eighth: JsonObject = { version: 8, models: { vision: "router/eyes" } };
+    expect(migrateConfig(eighth, configMigrations)).toMatchObject({
+      ok: true,
+      file: { ...eighth, version: 9 },
+      steps: [{ from: 8, to: 9, edits: [] }],
     });
   });
 

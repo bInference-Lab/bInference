@@ -16,6 +16,7 @@ const models: RuntimeModels = {
   cooldownMs: 60_000,
   maxToolCallsPerTurn: 25,
   loopDetection: true,
+  imageInput: [],
   prices: {
     "router/large": {
       inputPerMTokUsd: 3_000_000n,

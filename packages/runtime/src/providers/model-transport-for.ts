@@ -137,13 +137,49 @@ export function modelChainFor(
   const transportParts = { http: parts.http, clock: parts.clock };
   const chainModel = (model: { readonly ref: string | undefined; readonly place: ModelPlace }) => {
     const priced = model.ref === undefined ? undefined : modelPriceOf(model.ref, models);
+    const reads = model.ref !== undefined && models.imageInput.includes(model.ref);
     return {
       name: model.ref ?? `${role}/none`,
       transport: transportOf(models, model, transportParts),
       ...(priced === undefined ? {} : { price: priced.price }),
+      ...(reads ? { readsImages: true as const } : {}),
     };
   };
   return createModelChain([chainModel(own), ...fallbacks.map(chainModel)], {
+    clock: parts.clock,
+    cooldownMs: models.cooldownMs,
+    until: parts.rests,
+  });
+}
+
+const visionPlace: ModelPlace = {
+  unnamed: "models.vision is not set as <provider>/<model>.",
+  unknown: "The provider of models.vision is not in models.providers.",
+};
+
+/**
+ * The vision model's chain (decision 0227): the model the owner picked for the agent's vision
+ * role, else `models.vision`, alone, which reads images by its role. `undefined` when neither
+ * names one.
+ */
+export function visionChainFor(
+  models: RuntimeModels,
+  picked: string | undefined,
+  parts: ChainParts,
+): ModelChain | undefined {
+  const ref = picked ?? models.vision;
+  if (ref === undefined) {
+    return undefined;
+  }
+  const place = picked === undefined ? visionPlace : pickedPlace;
+  const priced = modelPriceOf(ref, models);
+  const model = {
+    name: ref,
+    transport: transportOf(models, { ref, place }, { http: parts.http, clock: parts.clock }),
+    ...(priced === undefined ? {} : { price: priced.price }),
+    readsImages: true as const,
+  };
+  return createModelChain([model], {
     clock: parts.clock,
     cooldownMs: models.cooldownMs,
     until: parts.rests,

@@ -48,6 +48,13 @@ export const configMigrations: readonly ConfigMigration[] = [
         ? [{ kind: "remove", path: searchProvider }]
         : [],
   },
+  {
+    from: 8,
+    summary:
+      "Adds models.imageInput, the models that take images as input, empty: images go to " +
+      "models.vision until a model is listed.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

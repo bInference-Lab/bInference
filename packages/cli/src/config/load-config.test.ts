@@ -159,8 +159,11 @@ describe("load config", () => {
   });
 
   it("refuses a file from a newer binference", async () => {
-    expect(lines(await loadConfig(options(`{ version: 9, ${botToken} }`)))).toStrictEqual([
-      `version: is version 9, from a newer binference; this one reads up to version ${String(currentConfigVersion)}. Update ` +
+    const newer = currentConfigVersion + 1;
+    expect(
+      lines(await loadConfig(options(`{ version: ${String(newer)}, ${botToken} }`))),
+    ).toStrictEqual([
+      `version: is version ${String(newer)}, from a newer binference; this one reads up to version ${String(currentConfigVersion)}. Update ` +
         "binference, or restore a backup of config.json5.",
     ]);
   });

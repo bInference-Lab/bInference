@@ -29,6 +29,11 @@ export interface ChainModel {
    * reports no cost of its own; absent when neither has a price, and such a call counts $0.
    */
   readonly price?: ModelPrice;
+  /**
+   * The model takes images as input: `models.imageInput` names it, or it is the vision model
+   * (decision 0227). Absent, it never gets an image.
+   */
+  readonly readsImages?: true;
 }
 
 /** What a tool does, which decides how the loop runs it (runtime spec, section 5.1). */
