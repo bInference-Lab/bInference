@@ -81,7 +81,7 @@
   "chat.images": "{count, plural, one {# image} other {# images}}",
   "chat.working": "Working on it · {seconds} s",
   "chat.message": "Message to the agent",
-  "chat.placeholder": "Write to {agent}",
+  "chat.placeholder": "Write to {agent}…",
   "chat.post": "Send",
   "chat.stop": "Stop",
   "chat.clear": "New chat",

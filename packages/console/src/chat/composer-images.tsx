@@ -97,6 +97,8 @@ function Preview(props: {
     <li className="relative">
       <img
         src={props.image.url}
+        width={64}
+        height={64}
         alt={text("console.chat.imageAlt", { number: props.number })}
         className="size-16 rounded-md border object-cover"
       />

@@ -81,7 +81,7 @@
   "chat.images": "{count, plural, other {# 张图片}}",
   "chat.working": "处理中 · {seconds} 秒",
   "chat.message": "发给 Agent 的消息",
-  "chat.placeholder": "给 {agent} 发消息",
+  "chat.placeholder": "给 {agent} 发消息…",
   "chat.post": "发送",
   "chat.stop": "停止",
   "chat.clear": "新对话",

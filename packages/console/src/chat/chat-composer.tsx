@@ -105,6 +105,8 @@ export function ChatComposer(props: {
       </label>
       <textarea
         id={id}
+        name="message"
+        autoComplete="off"
         value={composer.draft}
         rows={3}
         placeholder={text("console.chat.placeholder", { agent: state.agentName })}

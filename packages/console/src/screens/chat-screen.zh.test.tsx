@@ -32,7 +32,7 @@ describe("the chat screen, in Chinese", () => {
     expect(screen.getByText("处理中 · 0 秒")).toBeDefined();
     expect(screen.getByRole("button", { name: "停止" })).toBeDefined();
     const box = screen.getByRole("textbox", { name: "发给 Agent 的消息" });
-    expect(box.getAttribute("placeholder")).toBe("给 main 发消息");
+    expect(box.getAttribute("placeholder")).toBe("给 main 发消息…");
     const gif = new File([new Uint8Array(6)], "cat.gif", { type: "image/gif" });
     fireEvent.paste(box, { clipboardData: { files: [gif] } });
     expect(screen.getByRole("alert").textContent).toBe("cat.gif 不是 PNG、JPEG 或 WebP 图片。");
