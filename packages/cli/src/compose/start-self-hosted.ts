@@ -3,7 +3,6 @@ import { BinferenceError, createDeadline, ok } from "@binference/core";
 import { acquireFileLock, ensurePrivateFolder } from "@binference/platform";
 import { runtimeSettingsOf } from "../agent-runtime/runtime-settings-of.js";
 import { loadConfig } from "../config/load-config.js";
-import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
 import type { ConfigOutcome } from "../config/validate-config.js";
 import type { CliHost } from "../program/cli-host.js";
@@ -13,7 +12,7 @@ import { composeChainReads } from "./chain-reads.js";
 import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
-import { createConfigCell } from "./config-cell.js";
+import { type ConfigCell, createConfigCell } from "./config-cell.js";
 import { createConfigReloadLink } from "./config-reload-link.js";
 import { openConsoleFiles } from "./console-files.js";
 import { platformOf } from "./engine-locations.js";
@@ -62,7 +61,7 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   const settings = createConfigCell(loaded.config);
   const log = await openEngineLog(opening, settings);
   try {
-    const parts = await readSecretParts(opening, loaded.config, log);
+    const parts = await readSecretParts(opening, settings, log);
     const consoleFiles = await openConsoleFiles(host.consoleFolder, { logger: log.logger, signal });
     const webPushKey = await openEngineWebPushKey(platform, { logger: log.logger, signal });
     const config = loaded.config;
@@ -85,10 +84,11 @@ type SecretParts = Pick<
 // The parts that read config's secret sources: the owner's own RPCs, the venues and the bot.
 async function readSecretParts(
   opening: Opening,
-  config: BinferenceConfig,
+  settings: ConfigCell,
   log: OpenedLog,
 ): Promise<SecretParts> {
   const { host, platform, signal } = opening;
+  const config = settings.started;
   const secrets = createSecretReader({
     env: host.env,
     keychain: platform.keychain,
@@ -100,7 +100,8 @@ async function readSecretParts(
   const headSockets = await readRpcUrls({ chains: config.chains, secrets, kind: "ws" }, call);
   const chains = selfHostedChains();
   const { http, clock } = host;
-  const reads = composeChainReads({ chains, config: config.chains, http, clock });
+  const current = () => settings.current().chains;
+  const reads = composeChainReads({ chains, config: config.chains, current, http, clock });
   const venues = await readVenues({
     ...call,
     venues: config.venues,

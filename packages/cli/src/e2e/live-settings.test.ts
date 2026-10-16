@@ -1,5 +1,5 @@
 import type { ProtocolClient } from "@binference/client";
-import { type JsonValue, jsonValueSchema } from "@binference/core";
+import { type Http, type HttpRequest, type JsonValue, jsonValueSchema } from "@binference/core";
 import { startInProcessRuntime } from "@binference/runtime/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -164,15 +164,47 @@ const runtimeRows: readonly Row[] = [
   },
 ];
 
+/** Every request the engine sent to the outside world, which the machine's fakes answer. */
+function recordedWorld() {
+  const sent: HttpRequest[] = [];
+  const held: { world?: Http } = {};
+  const http: Http = {
+    request: async (request) => {
+      sent.push(request);
+      if (held.world === undefined) {
+        throw new Error("The machine is not set up yet.");
+      }
+      return held.world.request(request);
+    },
+  };
+  // The hosts asked since `from`, the count of requests sent before.
+  const hostsSince = (from: number): readonly string[] =>
+    sent.slice(from).map((request) => new URL(request.url).host);
+  return { http, held, sent, hostsSince };
+}
+
+const bsc = "eip155:56";
+const rpcUrls = (url: string) => ({ chains: { rpc: { [bsc]: { urls: [url] } } } });
+
 describe("live settings in a running engine", () => {
   const running = {} as { machine: InitMachine; client: ProtocolClient };
   const runtime = recordedRuntime();
+  const world = recordedWorld();
+  // Calls an operation, then answers the hosts the engine asked while it ran.
+  const hostsAskedBy = async (op: "portfolio/get"): Promise<readonly string[]> => {
+    const from = world.sent.length;
+    await running.client.call(op, {}, live()).catch(() => undefined);
+    return world.hostsSince(from);
+  };
+  const change = async (patch: Readonly<Record<string, JsonValue>>): Promise<boolean> =>
+    (await running.client.call("config/change", { patch }, live())).restartNeeded;
 
   beforeAll(async () => {
     const machine = await engines.setUp();
+    world.held.world = machine.world;
     await engines.start(machine, {
       env: { ...secretEnv(machine), ...env },
-      parts: { startRuntime: runtime.startRuntime },
+      parts: { startRuntime: runtime.startRuntime, http: world.http },
     });
     running.machine = machine;
     running.client = await connectClient(machine);
@@ -184,9 +216,17 @@ describe("live settings in a running engine", () => {
   });
 
   it.each(runtimeRows)("sends a changed $key to the agent runtime at once", async (row) => {
-    const answer = await running.client.call("config/change", { patch: row.patch }, live());
-    expect(answer.restartNeeded).toBe(false);
+    await expect(change(row.patch)).resolves.toBe(false);
     const [path, value] = row.shows;
     expect(at(runtime.settings(), path)).toStrictEqual(value);
+  });
+
+  it("reads the chain through changed rpc urls at the next request", async () => {
+    await expect(change(rpcUrls("https://rpc-one.example.org/"))).resolves.toBe(false);
+    expect(await hostsAskedBy("portfolio/get")).toContain("rpc-one.example.org");
+    await expect(change(rpcUrls("https://rpc-two.example.org/"))).resolves.toBe(false);
+    const asked = await hostsAskedBy("portfolio/get");
+    expect(asked).toContain("rpc-two.example.org");
+    expect(asked).not.toContain("rpc-one.example.org");
   });
 });

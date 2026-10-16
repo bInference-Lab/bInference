@@ -11,6 +11,7 @@ import {
 import { BinferenceError, type Clock, type Http } from "@binference/core";
 import { gweiToWei } from "../config/gwei-to-wei.js";
 import type { ChainsConfig, RpcConfig } from "../config/schema/chains-venues.schema.js";
+import { followingRpc } from "./following-rpc.js";
 import type { HealthSignal } from "./health-signals.js";
 
 /**
@@ -30,7 +31,13 @@ export interface ChainReads {
 /** What the chains' reads are built from. */
 export interface ChainReadsOptions {
   readonly chains: ChainRegistry;
+  /** The chains' config the engine started with. */
   readonly config: ChainsConfig;
+  /**
+   * The chains' config as reloaded, which each RPC request reads its endpoints from (decision
+   * 0230); the config the engine started with when absent.
+   */
+  readonly current?: () => ChainsConfig;
   /** Outbound HTTP for the chains' RPCs. */
   readonly http: Http;
   readonly clock: Clock;
@@ -73,13 +80,12 @@ function readsOf(chain: RegisteredChain, options: ChainReadsOptions): ChainReads
   if (capText === undefined) {
     throw refuse("cli.no_fee_cap", `No network fee cap is set for ${chain.ref}.`, chain.ref);
   }
-  const rpc = createRpcFailover({
-    endpoints: rpcEndpointsOf(chain.definition, config.rpc[chain.ref]),
-    http,
-    clock,
-    timeoutMs: rpcTimeoutMs,
-    restMs: rpcRestMs,
-  });
+  const current = options.current ?? (() => config);
+  const rpc = followingRpc(
+    () => rpcEndpointsOf(chain.definition, current().rpc[chain.ref]),
+    (endpoints) =>
+      createRpcFailover({ endpoints, http, clock, timeoutMs: rpcTimeoutMs, restMs: rpcRestMs }),
+  );
   return {
     chain,
     evm: evmChainOf(chain.definition),
@@ -91,7 +97,8 @@ function readsOf(chain: RegisteredChain, options: ChainReadsOptions): ChainReads
 
 /**
  * The reads of each chain config enables on the EVM family: one RPC failover over config's RPCs
- * and the chain's public ones, its network fee cap and its Multicall3. A chain with no fee cap in
+ * as they stand at each request and the chain's public ones, its network fee cap and its
+ * Multicall3. A chain with no fee cap in
  * config, or whose registry lists no Multicall3, stops the start.
  */
 export function composeChainReads(options: ChainReadsOptions): ReadonlyMap<ChainRef, ChainReads> {

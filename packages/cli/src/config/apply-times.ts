@@ -48,6 +48,8 @@ const keysReadOnUse: readonly string[] = [
   "models",
   "search",
   "chats.newMessageMode",
+  // Each RPC request asks the endpoints config names when it starts.
+  "chains.rpc.*.urls",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the
@@ -69,7 +71,6 @@ const keysNoPartReads: readonly string[] = [
 // until its part reads the config cell on each use.
 const keysCopiedAtStart: readonly string[] = [
   "engine.extraOrigins",
-  "chains.rpc.*.urls",
   "chains.relays",
   "chains.maxFeePerGasGwei",
   "venues.keys.okx",
