@@ -176,6 +176,14 @@ Rules for this package:
   Each move is journaled, pushed
   as `config/changed`, and announced per limit as `notice.limitChange` and
   `notice.limitChangeCancelled`.
+- Schedules (`src/schedules/`, decisions 0231 to 0233) are set and cancelled with no card,
+  journaled under `agents.<name>.schedules` and announced as `notice.scheduleSet` and
+  `notice.scheduleCancelled`. `nextCronRun` works out each next run on the wall clock of the
+  schedule's zone or `owner.timezone`: a skipped wall time runs at the jump, a repeated one at its
+  first occurrence. `runSchedules` runs each schedule whose time came once, however many runs it
+  missed, and stores its `inbox/scheduleDue` in the same write as the run, unless the agent is
+  archived, frozen or out of model budget, its last wake-up still waits, or its inbox is full;
+  each run, sent or skipped, is recorded with its reason.
 - The address book lives in the agent's settings: the policy reads every live entry, on every
   chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers

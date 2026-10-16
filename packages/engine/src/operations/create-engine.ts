@@ -139,6 +139,11 @@ export interface Engine {
    */
   readonly expireCards: (options: { readonly signal: AbortSignal }) => Promise<number | undefined>;
   /**
+   * Runs each schedule whose time came, once however many runs it missed (decision 0232). A timer
+   * of the composition root calls it while the engine is unlocked.
+   */
+  readonly runSchedules: (options: { readonly signal: AbortSignal }) => Promise<void>;
+  /**
    * Judges the active limit, take-profit, stop-loss and trailing orders on a confirmed price of
    * their token, and fills those it triggers in the same block's processing (decision 0196). The
    * price watchers call it with each price; it answers once the fills it started ended.
@@ -387,6 +392,7 @@ export function createEngineWithFills(given: EngineOptions): {
     repairOrderFills: orderRepairOf(options, intents.stored),
     tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
+    runSchedules: async ({ signal }) => chat.schedules.run({ signal }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
   };
   return { engine, fillOrder: async (request, call) => intents.fills.run(request, call) };

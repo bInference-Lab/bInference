@@ -42,3 +42,8 @@ export function nextRunOf(
   }
   return cronRun(when, afterMs, ownerZone);
 }
+
+/** Whether a schedule's runs follow `owner.timezone`, since it names no zone of its own. */
+export function followsOwnerZone(when: ScheduleWhen): boolean {
+  return "cron" in when && when.timezone === undefined;
+}

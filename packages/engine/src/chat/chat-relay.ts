@@ -14,8 +14,9 @@ export interface ChatHandlers extends OwnerChatHandlers, RuntimeChatHandlers, Im
 export interface ChatRelay {
   readonly handlers: ChatHandlers;
   /**
-   * Pushes a settle message an intent's write stored on the `inbox` topic. A push that fails is
-   * dropped: the runtime reads every untaken message again with `inbox/list` at its start.
+   * Pushes a message another write stored on the `inbox` topic: an intent's settle message, or a
+   * schedule's wake-up. A push that fails is dropped: the runtime reads every untaken message again
+   * with `inbox/list` at its start.
    */
   settled(message: AgentInboxMessage): void;
   /**

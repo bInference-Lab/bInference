@@ -1,5 +1,5 @@
 import { createDailyModelBudget } from "../billing/daily-model-budget.js";
-import { createModelBudget } from "../billing/model-budget.js";
+import { createModelBudget, type ModelBudget } from "../billing/model-budget.js";
 import { createUsageHandlers, type UsageHandlers } from "../billing/usage-handlers.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import { type ChatHandlers, type ChatRelay, createChatRelay } from "../chat/chat-relay.js";
@@ -8,6 +8,7 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { ModelBilling } from "../ports.js";
 import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
+import { createScheduleQueue, type ScheduleQueue } from "../schedules/run-schedules.js";
 import { createScheduleHandlers, type ScheduleHandlers } from "../schedules/schedule-handlers.js";
 import { ownerImagesOf } from "../uploads/owner-images.js";
 import { createUploadHandlers, type UploadHandlers } from "../uploads/upload-handlers.js";
@@ -28,8 +29,10 @@ export interface EngineChatHandlers
  */
 export interface EngineChat {
   readonly relay: ChatRelay;
+  /** The schedule queue, whose wake-ups ask the chat's model budget and push as chat does. */
+  readonly schedules: ScheduleQueue;
   readonly handlers: EngineChatHandlers;
-  /** Hears each settle message the stored intents wrote. */
+  /** Hears each settle message the stored intents wrote, and each schedule's wake-up. */
   readonly settled: (message: AgentInboxMessage) => void;
   readonly attach: (stored: StoredIntents) => void;
 }
@@ -42,9 +45,15 @@ function imagesOf(options: EngineOptions) {
   return { uploads, images: ownerImagesOf({ uploads, ...bot }) };
 }
 
+// Each agent's daily model budget over the billing, which chat turns and the schedule queue ask.
+function budgetOf(options: EngineOptions, billing: ModelBilling): ModelBudget {
+  const { stores, clock, publish, ownerTimeZone: timeZone } = options;
+  return createModelBudget({ billing, usage: stores.modelUsage, timeZone, clock, publish });
+}
+
 /** Creates the engine's {@link EngineChat}, whose turns spend each agent's model budget. */
 export function engineChatOf(options: EngineOptions): EngineChat {
-  const { stores, chains, clock, publish } = options;
+  const { stores, chains, clock } = options;
   // Who pays for model calls: the billing the options give, else the daily model budget over the
   // stored usage, which reads each agent's limits as they are in effect now.
   const billing =
@@ -57,18 +66,13 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     });
   const late: { stored?: StoredIntents } = {};
   const { uploads, images } = imagesOf(options);
+  const budget = budgetOf(options, billing);
   const relay = createChatRelay({
     agentInbox: stores.agentInbox,
     questions: stores.questions,
     agents: stores.agents,
     turns: options.turns ?? createRunningTurns(),
-    budget: createModelBudget({
-      billing,
-      usage: stores.modelUsage,
-      timeZone: options.ownerTimeZone,
-      clock,
-      publish,
-    }),
+    budget,
     intentView: async (intent, signal) => {
       const snapshot = await late.stored?.snapshot(intent, { signal });
       return snapshot === undefined ? undefined : intentViewOf(snapshot, chains);
@@ -79,17 +83,20 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     publish: options.publish,
     images,
   });
+  const settled = (message: AgentInboxMessage): void => {
+    relay.settled(message);
+  };
+  const schedules = schedulesOf(options, { budget, settled });
   return {
     relay,
+    schedules: schedules.queue,
     handlers: {
       ...relay.handlers,
       ...usageHandlersOf(options, billing),
       ...createUploadHandlers(uploads),
-      ...scheduleHandlersOf(options),
+      ...schedules.handlers,
     },
-    settled: (message) => {
-      relay.settled(message);
-    },
+    settled,
     attach: (stored) => {
       late.stored = stored;
     },
@@ -127,9 +134,32 @@ export function safetyHandlersOf(
   return { ...handlers, "safety/freeze": relay.freezing(handlers["safety/freeze"]) };
 }
 
-// The schedule operations, journaled and announced as settings changes are.
-function scheduleHandlersOf(options: EngineOptions): ScheduleHandlers {
+// The schedule operations, journaled and announced as settings changes are, and the schedule
+// queue, whose wake-ups ask the chat's model budget and reach the runtime as the chat's pushes do.
+function schedulesOf(
+  options: EngineOptions,
+  chat: { readonly budget: ModelBudget; readonly settled: (message: AgentInboxMessage) => void },
+): { readonly handlers: ScheduleHandlers; readonly queue: ScheduleQueue } {
   const { stores, ids, clock, publish, ownerTimeZone } = options;
-  const { schedules, agents, configJournal: journal } = stores;
-  return createScheduleHandlers({ schedules, agents, journal, ownerTimeZone, ids, clock, publish });
+  const { schedules, agents } = stores;
+  return {
+    handlers: createScheduleHandlers({
+      schedules,
+      agents,
+      journal: stores.configJournal,
+      ownerTimeZone,
+      ids,
+      clock,
+      publish,
+    }),
+    queue: createScheduleQueue({
+      schedules,
+      agents,
+      budget: chat.budget,
+      ownerTimeZone,
+      woke: chat.settled,
+      ids,
+      clock,
+    }),
+  };
 }
