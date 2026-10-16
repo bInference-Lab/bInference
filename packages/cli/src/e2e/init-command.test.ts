@@ -56,6 +56,8 @@ const answerSchema = z.strictObject({
   agentKey: z.enum(["made", "kept"]),
   pairing: z.strictObject({ link: z.string(), expiresAtMs: z.number() }),
   configFile: z.string(),
+  disclaimer: z.enum(["accepted", "accepted_before", "not_accepted"]),
+  telemetry: z.boolean(),
 });
 
 type InitAnswer = z.infer<typeof answerSchema>;

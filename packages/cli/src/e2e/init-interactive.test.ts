@@ -1,24 +1,25 @@
 import { join } from "node:path";
 import { messages } from "@binference/i18n";
-import { readTextFile } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
 import { fakeBotToken } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  createScriptedPrompter,
-  type ScriptedAnswer,
-  type Transcript,
-} from "../term/scripted-prompter.js";
+import type { Transcript } from "../term/scripted-prompter.js";
 import {
   configText,
   type InitMachine,
   newInitMachine,
   rescueAddress,
-  runOn,
-  secretEnv,
   secretVariables,
   storedInstall,
 } from "./init-fixtures.js";
+import {
+  fileText,
+  type InitScript,
+  initScript,
+  interactiveInit,
+  lastSix,
+  shownCode,
+} from "./init-script.js";
 
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
@@ -29,54 +30,20 @@ afterEach(async () => {
 
 const en = (key: string): string => messages.en[`init.${key}`] ?? `missing ${key}`;
 
-// The owner key's code as the note showed it: its first line, the code in groups of five.
-function shownCode(transcript: Transcript): string {
-  const note = transcript.notes.find((item) => item.title === en("ownerKey.title"));
-  return note?.text.split("\n")[0] ?? "";
-}
-
-function lastSix(transcript: Transcript): string {
-  return shownCode(transcript).replaceAll(" ", "").slice(-6);
-}
-
 // The check-back as a person may type it: in capitals, with a space in the middle.
 function spacedCapitals(transcript: Transcript): string {
   const six = lastSix(transcript).toUpperCase();
   return `${six.slice(0, 3)} ${six.slice(3)}`;
 }
 
-async function fileText(machine: InitMachine, ...path: string[]): Promise<string | undefined> {
-  const read = await readTextFile(join(machine.folder, ...path), new AbortController().signal);
-  return read.ok ? read.value : undefined;
-}
-
-function script(
-  machine: InitMachine,
-  changes: Readonly<Record<string, readonly ScriptedAnswer[]>> = {},
-): Readonly<Record<string, readonly ScriptedAnswer[]>> {
-  return {
-    privyAppId: [machine.privy.appId],
-    privyAppSecret: [machine.privy.appSecret.reveal()],
-    ownerKeyCheck: [lastSix],
-    rescue: [rescueAddress],
-    botToken: [fakeBotToken],
-    perTradeUsd: [""],
-    rollingDayUsd: [""],
-    ...changes,
-  };
-}
+const script = initScript;
 
 async function interactive(
   machine: InitMachine,
-  answers: Readonly<Record<string, readonly ScriptedAnswer[]>>,
+  answers: InitScript,
   flags: readonly string[] = ["--unlock", "file"],
 ) {
-  const prompter = createScriptedPrompter(answers);
-  const run = await runOn(machine, ["init", ...flags], {
-    env: secretEnv(machine),
-    parts: { prompter },
-  });
-  return { ...run, transcript: prompter.transcript };
+  return interactiveInit(machine, answers, { flags });
 }
 
 describe("binference init with a person at the terminal", () => {

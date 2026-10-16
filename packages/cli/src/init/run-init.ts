@@ -1,6 +1,8 @@
 import type { VenueDeclaration } from "@binference/chain";
 import { createIdSource, type Id, ok, type Secret } from "@binference/core";
 import type { AgentDraft } from "@binference/engine";
+import type { DisclaimerAcceptance } from "@binference/engine/install";
+import { disclaimerVersion } from "@binference/i18n";
 import { ensurePrivateFolder, writePrivateFile } from "@binference/platform";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
@@ -14,7 +16,9 @@ import {
   coreVenues,
   enabledVenues,
 } from "./ceiling-request.js";
+import type { DisclaimerAnswer } from "./disclaimer-step.js";
 import { firstAgentDraft } from "./first-agent.js";
+import { type FirstAnswers, type InitStart, takeFirstAnswers } from "./first-answers.js";
 import { type Answers, takeAnswers } from "./init-answers.js";
 import { type InitConfig, initConfig } from "./init-config.js";
 import type { InitContext, InitStep } from "./init-context.js";
@@ -33,12 +37,18 @@ export interface InitOutcome {
   readonly pairingExpiresAtMs: number;
   readonly botUsername: string;
   readonly configFile: string;
+  readonly disclaimer: DisclaimerAnswer;
+  readonly telemetry: boolean;
 }
 
-/** The config init writes from its answers, with the limits a person sets, built and loaded. */
+/**
+ * The config init writes from its answers, with the first answers of a new set-up (the language
+ * and telemetry) and the limits a person sets, built and loaded.
+ */
 export async function configOf(
   context: InitContext,
   answers: Answers,
+  first?: FirstAnswers,
 ): Promise<InitStep<InitConfig>> {
   const { app, bot, place, unlock } = answers;
   const settings = {
@@ -48,9 +58,11 @@ export async function configOf(
     appSecret: app.secret.source ?? place.sourceOf(appSecretEntry),
     ownerKeyPublic: answers.ownerKey.publicKey,
     botToken: bot.token.source ?? place.sourceOf(botTokenEntry),
-    limits: await takeLimits(context),
+    asked: [...(first?.telemetry ?? []), ...(await takeLimits(context))],
   };
-  return initConfig(context, settings, systemDefaults(context.host.env, context.platform));
+  const system = systemDefaults(context.host.env, context.platform);
+  const locale = first?.locale ?? system.locale;
+  return initConfig(context, settings, { ...system, locale });
 }
 
 /** Stores each secret a person typed where the unlock mode keeps it; a flag's source stays put. */
@@ -78,6 +90,7 @@ export async function writeConfig(context: InitContext, text: string): Promise<s
 
 /** Everything init checked before it stores or makes anything. */
 interface Prepared {
+  readonly first: FirstAnswers;
   readonly answers: Answers;
   readonly built: InitConfig;
   /** What the first wallet's ceiling is built from, and its cap per call on the first chain. */
@@ -110,12 +123,16 @@ export function agentDraftOf(
   });
 }
 
-async function prepare(context: InitContext): Promise<InitStep<Prepared>> {
+async function prepare(context: InitContext, start: Start): Promise<InitStep<Prepared>> {
+  const first = await takeFirstAnswers(context, start);
+  if (!first.ok) {
+    return first;
+  }
   const answers = await takeAnswers(context);
   if (!answers.ok) {
     return answers;
   }
-  const built = await configOf(context, answers.value);
+  const built = await configOf(context, answers.value, first.value);
   if (!built.ok) {
     return built;
   }
@@ -133,6 +150,7 @@ async function prepare(context: InitContext): Promise<InitStep<Prepared>> {
   const agentDraft = agentDraftOf(context, config, venues.value);
   return agentDraft.ok
     ? ok({
+        first: first.value,
         answers: answers.value,
         built: built.value,
         draft: request.value,
@@ -184,6 +202,11 @@ async function record(
   if (!recorded.ok) {
     return recorded;
   }
+  const { first } = prepared;
+  if (first.disclaimer === "accepted") {
+    const acceptance = { version: disclaimerVersion, acceptedAtMs: context.host.clock.now() };
+    await stores.install.acceptDisclaimer(acceptance, { signal: context.signal });
+  }
   const pairing = await issuePairing(context, stores, bot.account.username);
   return ok({
     walletAddress: made.first.wallet.address,
@@ -194,22 +217,33 @@ async function record(
     pairingExpiresAtMs: pairing.expiresAtMs,
     botUsername: bot.account.username,
     configFile: await writeConfig(context, prepared.built.text),
+    disclaimer: first.disclaimer,
+    telemetry: prepared.built.config.telemetry.enabled,
   });
 }
 
+/** What a run starts with, and the install it sets up. */
+type Start = InitStart & { readonly accepted?: DisclaimerAcceptance };
+
 /**
  * Runs `binference init` once its database is open (keys spec, section 2): every question and
- * check first, then the config built and loaded, then this machine's agent key, the typed
- * secrets and the VAPID key of browser push stored, the first wallet made on Privy and read back, the setup recorded, the bot's
- * pairing link issued, and the config file written last, once, owner-only. A refusal before the
- * wallet leaves nothing on Privy.
+ * check first, in the order of ARCHITECTURE section 27 after the language (the disclaimer,
+ * telemetry, the Privy app, the owner key, the rescue address, the bot and the limits), then the config built and loaded, then this machine's agent key, the typed
+ * secrets and the VAPID key of browser push stored, the first wallet made on Privy and read back,
+ * the setup and an accepted disclaimer recorded, the bot's pairing link issued, and the config
+ * file written last, once, owner-only. A refusal before the wallet leaves nothing on Privy.
  */
 export async function runInit(
   context: InitContext,
   stores: InitStores,
-  installId: Id<"ins">,
+  start: InitStart & { readonly installId: Id<"ins"> },
 ): Promise<InitStep<InitOutcome>> {
-  const prepared = await prepare(context);
+  const { installId } = start;
+  const { disclaimer } = await stores.install.read({ signal: context.signal });
+  const prepared = await prepare(context, {
+    ...start,
+    ...(disclaimer === undefined ? {} : { accepted: disclaimer }),
+  });
   if (!prepared.ok) {
     return prepared;
   }

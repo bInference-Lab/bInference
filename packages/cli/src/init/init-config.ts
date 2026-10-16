@@ -21,8 +21,8 @@ export interface InitSettings {
   readonly appSecret: SecretSource;
   readonly ownerKeyPublic: string;
   readonly botToken: SecretSource;
-  /** The limits a person set at init, as entries below the flags'. */
-  readonly limits: readonly LayerEntry[];
+  /** What a person answered at init besides these, such as the limits, as entries. */
+  readonly asked: readonly LayerEntry[];
 }
 
 /** The config file init writes: its text, and the config it loads to. */
@@ -86,7 +86,7 @@ function fileValue(
     version,
     owner,
     ...flags.entries,
-    ...settings.limits,
+    ...settings.asked,
     own,
   ]);
   return flags.issues.length === 0 ? ok(merged.value) : configRefused(flags.issues);
@@ -95,7 +95,8 @@ function fileValue(
 /**
  * Builds the config file init writes (config spec, section 2): the owner's language and zone,
  * the unlock mode, the Privy app with its secret's source and the owner key's public half, the
- * bot token's source, the limits a person set and every `--set` flag, each key with its comment.
+ * bot token's source, the limits and telemetry choice a person set and every `--set` flag, each
+ * key with its comment.
  * The text must load as `binference start` loads it; a flag that does not fit, or one on a key
  * init sets itself, stops init before anything is made.
  */

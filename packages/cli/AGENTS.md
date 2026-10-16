@@ -81,7 +81,8 @@ Rules for this package:
   card version that opens or closes reaches the owner's browsers. A log line names an answer's
   status, never an endpoint, which works as a capability.
 - `binference init` lives in `src/init/`, one step per file, each answering an `InitStep`: its
-  value or a refusal with a code and an `init` message. Every question and check runs before
+  value or a refusal with a code and an `init` message. The language step runs first, and the
+  context is made again in the language picked (decision 0222). Every question and check runs before
   anything is stored or made on Privy; the config file is written last. Questions go through the
   `Prompter` of `src/term/`: the terminal's over `@clack/prompts`, a scripted one in tests, and
   one that only prints when nobody answers, so every answer then comes from a flag. Secrets come

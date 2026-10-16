@@ -1153,7 +1153,8 @@ Decided in decisions [0054](DECISIONS.md#d0054), [0057](DECISIONS.md#d0057),
   ([decision 0048](DECISIONS.md#d0048)); the model (device-code link or any provider); the Privy app
   and the owner key, shown once and confirmed ([decision 0085](DECISIONS.md#d0085)); the rescue
   address ([decision 0044](DECISIONS.md#d0044)); the Telegram bot and owner pairing; limits, gas
-  reserve and send level; the service; paper mode.
+  reserve and send level; the service; paper mode. The language is asked first and spoken by every
+  later step ([decision 0222](DECISIONS.md#d0222)).
 - **Disclaimer ([decision 0060](DECISIONS.md#d0060)).** Not financial advice; the owner is
   responsible for every confirmed trade; the software is MIT "as is". The privacy statement lists
   what leaves the machine: the model provider sees chats and balances, RPCs see the IP address, risk

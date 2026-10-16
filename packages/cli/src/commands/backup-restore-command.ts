@@ -13,7 +13,8 @@ import type { InitContext, InitStep } from "../init/init-context.js";
 import type { StartFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
-import { initContextOf, type Report, refuse } from "./init-command.js";
+import { initContextOf, refuse } from "./init-command.js";
+import type { Report } from "./init-summary.js";
 import {
   isEngineRunning,
   isHomeMoved,

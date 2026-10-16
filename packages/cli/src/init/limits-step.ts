@@ -1,5 +1,6 @@
 import type { LayerEntry } from "../config/layers/layer-entry.js";
 import type { InitContext } from "./init-context.js";
+import { isSetByFlag } from "./set-by-flag.js";
 
 // US dollars as the config file writes them: at most six decimals, at most a trillion.
 const dollarPattern = /^(?:0|[1-9]\d{0,11})(?:\.\d{1,6})?$/;
@@ -20,11 +21,6 @@ async function askLimit(context: InitContext, limit: (typeof asked)[number]): Pr
   });
   const origin = { layer: "flag", name: limit.path.join(".") } as const;
   return { path: limit.path, value: typed.trim(), origin };
-}
-
-function isSetByFlag(context: InitContext, path: readonly string[]): boolean {
-  const key = `${path.join(".")}=`;
-  return context.flags.sets.some((set) => set.startsWith(key));
 }
 
 /**

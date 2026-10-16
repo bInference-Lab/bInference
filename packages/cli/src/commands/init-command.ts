@@ -1,7 +1,8 @@
 import { homedir } from "node:os";
-import { BinferenceError, createIdSource, type JsonValue } from "@binference/core";
+import { BinferenceError, createIdSource } from "@binference/core";
 import type { Formatter, MessageValues } from "@binference/i18n";
 import { acquireFileLock, ensurePrivateFolder, readTextFile } from "@binference/platform";
+import type { Locale } from "@binference/protocol";
 import {
   createSqliteAccessStore,
   createSqliteAgentStore,
@@ -15,26 +16,24 @@ import { type AttachAfterRestore, runAttach } from "../attach/run-attach.js";
 import { runRebuild } from "../attach/run-rebuild.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { createSecretReader } from "../config/secrets/secret-reader.js";
+import { earlierAnswersOf } from "../init/earlier-answers.js";
+import type { InitStart } from "../init/first-answers.js";
 import type { InitContext, InitRefusal } from "../init/init-context.js";
 import { initFaultOf } from "../init/init-faults.js";
 import type { InitStores } from "../init/install-step.js";
-import { type InitOutcome, runInit } from "../init/run-init.js";
+import { takeLanguage } from "../init/language-step.js";
+import { runInit } from "../init/run-init.js";
 import type { InitFlags } from "../program/cli-flags.schema.js";
 import type { CliHost } from "../program/cli-host.js";
-import type { CliOutput, ExitCode } from "../program/cli-output.js";
+import { type CliOutput, createCliOutput, type ExitCode } from "../program/cli-output.js";
+import { ownerFormatter } from "../program/owner-formatter.js";
+import { systemDefaults } from "../program/system-defaults.js";
 import { createOutputPrompter } from "../term/output-prompter.js";
 import { attachSummary } from "./attach-summary.js";
 import { configIssueMessages } from "./config-issue-messages.js";
+import { type Report, setupSummary } from "./init-summary.js";
 import { rebuildSummary } from "./rebuild-summary.js";
 import { restoreAndAttach } from "./restore-attach.js";
-import { setupDoneLines } from "./setup-done-lines.js";
-
-/** What the init command reports with: the command's output and the owner's formatter. */
-export interface Report {
-  readonly output: CliOutput;
-  readonly formatter: Formatter;
-  readonly isJson: boolean;
-}
 
 /**
  * Prints why an init step refused: its `init` message and the config issues under it on standard
@@ -57,27 +56,6 @@ export function refuse(context: InitContext, report: Report, refusal: InitRefusa
     configIssueMessages(issue).forEach(({ key, values }) => output.explain(key, values));
   }
   return 1;
-}
-
-function summary(context: InitContext, report: Report, outcome: InitOutcome): ExitCode {
-  const { words } = context;
-  const lines = [
-    words("done.wallet", { address: outcome.walletAddress }),
-    words("done.paper"),
-    ...setupDoneLines(words, report.formatter, outcome),
-  ];
-  context.prompter.note(lines.join("\n\n"), words("done.title"));
-  context.prompter.outro(words("done.next"));
-  const answer: JsonValue = {
-    state: "set_up",
-    wallet: { address: outcome.walletAddress, privyWalletId: outcome.privyWalletId },
-    unlockMode: outcome.unlockMode,
-    agentKey: outcome.isAgentKeyNew ? "made" : "kept",
-    pairing: { link: outcome.pairingLink.reveal(), expiresAtMs: outcome.pairingExpiresAtMs },
-    configFile: outcome.configFile,
-  };
-  report.output.json(answer);
-  return 0;
 }
 
 async function openStores(
@@ -148,8 +126,9 @@ async function attachOnStores(
 async function initOnStores(
   context: InitContext,
   report: Report,
-  restore?: AttachAfterRestore,
+  on: { readonly start?: InitStart; readonly restore?: AttachAfterRestore } = {},
 ): Promise<ExitCode> {
+  const { start = {}, restore } = on;
   const { engineDatabase } = context.platform.stateFolder;
   // A database copied while its engine ran, or one an engine did not close, is never attached:
   // opening it would write over what the copy left half done (decision 0142).
@@ -187,9 +166,9 @@ async function initOnStores(
       { id: ids.next("ins"), atMs: host.clock.now() },
       { signal: context.signal },
     );
-    const outcome = await runInit(context, stores, installId);
+    const outcome = await runInit(context, stores, { ...start, installId });
     return outcome.ok
-      ? summary(context, report, outcome.value)
+      ? setupSummary(context, report, outcome.value)
       : refuse(context, report, outcome.refusal);
   } finally {
     await opened.database.close();
@@ -242,29 +221,46 @@ function flagConflictOf(flags: InitFlags): InitRefusal | undefined {
     : undefined;
 }
 
-/**
- * `binference init`: sets up a new install (keys spec, section 2) under the engine lock, so no
- * engine runs on the folder meanwhile. It refuses a folder set up before unless the owner asks
- * to start over, and never replaces a stored agent key. With `--attach` it makes this machine the
- * signer of the folder's install instead (keys spec, section 6; decision 0140), after restoring a
- * backup into the folder with `--restore` (keys spec, section 7.4). A person at a
- * terminal answers its questions; with `--yes`, `--json` or no terminal, every answer comes from a
- * flag. Exits 0 once the install is set up or attached, 1 when it refused or failed.
- */
-export async function runInitCommand(
-  host: CliHost,
-  output: CliOutput,
-  options: { readonly flags: InitFlags; readonly formatter: Formatter },
-): Promise<ExitCode> {
-  const { flags, formatter } = options;
-  const context = initContextOf(host, output, options);
-  const report: Report = { output, formatter, isJson: flags.json };
-  const folder = context.platform.stateFolder;
-  const conflict = flagConflictOf(flags);
-  if (conflict !== undefined) {
-    return refuse(context, report, conflict);
+// The language step and an earlier set-up's answers come first, for a new set-up only: attach
+// and restore take the install's own config.
+async function startOf(context: InitContext): Promise<InitStart> {
+  const { flags } = context;
+  if (flags.isAttach || flags.restore !== undefined) {
+    return {};
   }
-  context.prompter.intro(context.words("title"));
+  const earlier = await earlierAnswersOf(context);
+  const locale = await takeLanguage(context, earlier?.locale);
+  return {
+    ...(earlier === undefined ? {} : { earlier }),
+    ...(locale === undefined ? {} : { locale }),
+  };
+}
+
+function inLanguage(
+  context: InitContext,
+  report: Report,
+  locale: Locale | undefined,
+): { readonly context: InitContext; readonly report: Report } {
+  if (locale === undefined) {
+    return { context, report };
+  }
+  const { host, flags, platform } = context;
+  const timezone = systemDefaults(host.env, platform).timezone;
+  const formatter = ownerFormatter({ locale, timezone });
+  const output = createCliOutput({ host, formatter, isJson: report.isJson });
+  return {
+    context: initContextOf(host, output, { flags, formatter }),
+    report: { output, formatter, isJson: report.isJson },
+  };
+}
+
+async function underLock(
+  context: InitContext,
+  report: Report,
+  start: InitStart,
+): Promise<ExitCode> {
+  const { flags } = context;
+  const folder = context.platform.stateFolder;
   await ensurePrivateFolder(folder.root, {
     permissions: context.platform.permissions,
     signal: context.signal,
@@ -279,17 +275,57 @@ export async function runInitCommand(
   }
   try {
     return flags.restore === undefined
-      ? await initOnStores(context, report)
+      ? await initOnStores(context, report, { start })
       : await restoreAndAttach(context, flags.restore, {
-          attach: async (restore) => initOnStores(context, report, restore),
+          attach: async (restore) => initOnStores(context, report, { restore }),
           refuse: (refusal) => refuse(context, report, refusal),
         });
+  } finally {
+    lock.value.release();
+  }
+}
+
+async function refusingFaults(
+  context: InitContext,
+  report: Report,
+  run: () => Promise<ExitCode>,
+): Promise<ExitCode> {
+  try {
+    return await run();
   } catch (error) {
     if (!(error instanceof BinferenceError)) {
       throw error;
     }
     return refuse(context, report, initFaultOf(error));
-  } finally {
-    lock.value.release();
   }
+}
+
+/**
+ * `binference init`: sets up a new install (keys spec, section 2) under the engine lock, so no
+ * engine runs on the folder meanwhile, its questions in the language the person picks first. It
+ * refuses a folder set up before unless the owner asks to start over, which offers the earlier
+ * answers first, and never replaces a stored agent key. With `--attach` it makes this machine the
+ * signer of the folder's install instead (keys spec, section 6; decision 0140), after restoring a
+ * backup into the folder with `--restore` (keys spec, section 7.4). A person at a terminal answers
+ * its questions; with `--yes`, `--json` or no terminal, every answer comes from a flag. Exits 0
+ * once the install is set up or attached, 1 when it refused or failed.
+ */
+export async function runInitCommand(
+  host: CliHost,
+  output: CliOutput,
+  options: { readonly flags: InitFlags; readonly formatter: Formatter },
+): Promise<ExitCode> {
+  const { flags, formatter } = options;
+  const first = initContextOf(host, output, options);
+  const firstReport: Report = { output, formatter, isJson: flags.json };
+  const conflict = flagConflictOf(flags);
+  if (conflict !== undefined) {
+    return refuse(first, firstReport, conflict);
+  }
+  first.prompter.intro(first.words("title"));
+  return refusingFaults(first, firstReport, async () => {
+    const start = await startOf(first);
+    const { context, report } = inLanguage(first, firstReport, start.locale);
+    return refusingFaults(context, report, async () => underLock(context, report, start));
+  });
 }

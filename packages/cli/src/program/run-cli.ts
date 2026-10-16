@@ -1,5 +1,5 @@
 import { BinferenceError } from "@binference/core";
-import { createFormatter, type Formatter } from "@binference/i18n";
+import type { Formatter } from "@binference/i18n";
 import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
 import { runAddressAdd, runAddressList, runAddressRemove } from "../commands/address-command.js";
@@ -38,6 +38,7 @@ import type { CliHost } from "./cli-host.js";
 import { type CliOutput, createCliOutput, type ExitCode } from "./cli-output.js";
 import { buildProgram } from "./cli-program.js";
 import type { CommandRun } from "./command-run.js";
+import { ownerFormatter } from "./owner-formatter.js";
 import { systemDefaults } from "./system-defaults.js";
 
 // Commander's codes for a help or version request it already answered.
@@ -67,12 +68,7 @@ async function ownerOf(host: CliHost): Promise<OwnerInfo> {
 
 /** The formatter in the owner's language; UTC when the zone is one `Intl` does not know. */
 async function cliFormatter(host: CliHost): Promise<Formatter> {
-  const owner = await ownerOf(host);
-  try {
-    return createFormatter({ locale: owner.locale, timeZone: owner.timezone });
-  } catch {
-    return createFormatter({ locale: owner.locale, timeZone: "UTC" });
-  }
+  return ownerFormatter(await ownerOf(host));
 }
 
 const faultMessages: Readonly<Record<string, string>> = {
