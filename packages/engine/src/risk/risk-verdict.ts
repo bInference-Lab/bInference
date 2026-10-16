@@ -56,27 +56,25 @@ function highestTaxBps(roundTrip: RoundTrip): Bps | undefined {
     : undefined;
 }
 
-// What made a leg's tax pass the maximum (decision 0216): a transfer, a sale or a buy without a
-// pool fee over it on the token's own tax; a buy over it only with the fee its route's pool hooks
-// keep, counted once as the quote's or the share measured going to them, the higher (decision
-// 0215), on the fee alone, or on the token's tax with the fee when the buy has a tax of its own.
+// What made a leg's tax pass the maximum (decisions 0216 and 0219): a transfer, a sale or a buy
+// over it on the token's own tax, whatever the buy's pool fee; a buy within it on its own tax but
+// over it with the fee its route's pool hooks keep, counted once as the quote's or the share
+// measured going to them, the higher (decision 0215), on the fee alone, or on the token's tax with
+// the fee when the buy has a tax of its own.
 function taxRefusal({ roundTrip, limits, hookFeeBps }: RiskFindings): RiskReason | undefined {
   if (roundTrip.kind !== "measured") {
     return undefined;
   }
   const max = limits.maxTaxBps;
-  const hooks = Math.max(hookFeeBps ?? 0, roundTrip.hookFeeBps);
-  const isBuyOver = roundTrip.buyTaxBps + hooks > max;
-  if (
-    Math.max(roundTrip.transferTaxBps, roundTrip.sellTaxBps) > max ||
-    (isBuyOver && hooks === 0)
-  ) {
+  const { buyTaxBps, transferTaxBps, sellTaxBps } = roundTrip;
+  if (Math.max(buyTaxBps, transferTaxBps, sellTaxBps) > max) {
     return "high_tax";
   }
-  if (!isBuyOver) {
+  const hooks = Math.max(hookFeeBps ?? 0, roundTrip.hookFeeBps);
+  if (buyTaxBps + hooks <= max) {
     return undefined;
   }
-  return roundTrip.buyTaxBps === 0 ? "high_pool_fee" : "high_tax_with_pool_fee";
+  return buyTaxBps === 0 ? "high_pool_fee" : "high_tax_with_pool_fee";
 }
 
 // Each source counts only the pools it knows, so the largest figure is the best floor. With no

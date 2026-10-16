@@ -83,32 +83,32 @@ function taxedOf({ buy, sale, hook, max }: Taxed): RiskFindings {
   };
 }
 
-// Whether a leg passes the maximum, the buy with its pool fee.
-const isOver = ({ buy, sale, hook, max }: Taxed): boolean => Math.max(buy + hook, sale) > max;
-
-// Whether only the pool fee took the buy past the maximum, with the sale within it.
-const isFeeOver = ({ buy, sale, hook, max }: Taxed): boolean =>
-  sale <= max && buy + hook > max && hook > 0;
-
-// The reason a tax refusal names: the pool fee alone on a token with no buy tax, both otherwise.
-const feeReasonOf = (taxed: Taxed): string =>
-  taxed.buy === 0 ? "high_pool_fee" : "high_tax_with_pool_fee";
+// The reason decisions 0216 and 0219 name, read from their words leg by leg: a leg whose own tax
+// is over the maximum is `high_tax`; else a buy over it only with its pool fee names the fee, alone
+// on a token with no buy tax, with the buy tax otherwise; else nothing is refused.
+function reasonOf({ buy, sale, hook, max }: Taxed): string | undefined {
+  const legs: readonly { readonly isOver: boolean; readonly reason: string }[] = [
+    { isOver: buy > max || sale > max, reason: "high_tax" },
+    { isOver: buy === 0 && hook > max, reason: "high_pool_fee" },
+    { isOver: buy + hook > max, reason: "high_tax_with_pool_fee" },
+  ];
+  return legs.find((leg) => leg.isOver)?.reason;
+}
 
 describe("a tax above the maximum in the risk verdict, for any taxes, fee and maximum", () => {
-  it("refuses exactly when a leg passes the maximum, the buy with its pool fee", () => {
+  it("names the reason the decisions' words give, or refuses nothing", () => {
     fc.assert(
       fc.property(taxedCases, (taxed) => {
-        const { refusal } = riskVerdict(taxedOf(taxed));
-        expect(refusal !== undefined).toBe(isOver(taxed));
+        expect(riskVerdict(taxedOf(taxed)).refusal).toBe(reasonOf(taxed));
       }),
     );
   });
 
-  it("names the pool fee, alone or with the buy tax, only when the fee took the buy over", () => {
+  it("names the token's tax whenever a buy's own tax alone passes the maximum", () => {
+    const buyOver = taxedCases.filter(({ buy, max }) => buy > max);
     fc.assert(
-      fc.property(taxedCases, (taxed) => {
-        const { refusal } = riskVerdict(taxedOf(taxed));
-        expect(refusal === feeReasonOf(taxed)).toBe(isFeeOver(taxed));
+      fc.property(buyOver, (taxed) => {
+        expect(riskVerdict(taxedOf(taxed)).refusal).toBe("high_tax");
       }),
     );
   });
