@@ -8,6 +8,10 @@ import { createUploadShelf } from "./upload-shelf.js";
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
 const png = { contentType: "image/png", bytes: testPng.byteLength } as const;
+// The Mini App's credential, which asks for the tickets.
+const holder = "tg:279058397";
+
+const isMiniApp = (asker: string): boolean => asker.startsWith("tg:");
 
 function shelfAt(startMs = 0) {
   const clock = createManualClock(startMs);
@@ -20,7 +24,7 @@ function holding(): {
   readonly upload: string;
 } {
   const { shelf } = shelfAt();
-  return { shelf, upload: expectOk(shelf.receive(shelf.ticket(png).ticket, testPng)) };
+  return { shelf, upload: expectOk(shelf.receive(shelf.ticket(png, holder).ticket, testPng)) };
 }
 
 describe("the upload shelf", () => {
@@ -41,11 +45,11 @@ describe("the upload shelf", () => {
 
   it("takes one body per ticket, within 2 minutes", async () => {
     const { shelf, clock } = shelfAt();
-    const first = shelf.ticket(png);
+    const first = shelf.ticket(png, holder);
     expect(first.expiresAt).toBe(120_000);
     expect(shelf.receive(first.ticket, testPng)).toMatchObject({ ok: true });
     expect(shelf.receive(first.ticket, testPng)).toStrictEqual({ ok: false, error: "ticket" });
-    const late = shelf.ticket(png);
+    const late = shelf.ticket(png, holder);
     await clock.advance(120_000);
     expect(shelf.receive(late.ticket, testPng)).toStrictEqual({ ok: false, error: "ticket" });
   });
@@ -54,10 +58,10 @@ describe("the upload shelf", () => {
     const { shelf } = shelfAt();
     const big = { contentType: "image/png", bytes: maxImageBytes } as const;
     const outcomes = [
-      shelf.receive(shelf.ticket(big).ticket, new Uint8Array(maxImageBytes + 1)),
-      shelf.receive(shelf.ticket({ ...png, bytes: 10 }).ticket, testPng),
-      shelf.receive(shelf.ticket(png).ticket, testPng.subarray(0, 20)),
-      shelf.receive(shelf.ticket({ ...png, bytes: 6 }).ticket, testImageHeads.jpeg),
+      shelf.receive(shelf.ticket(big, holder).ticket, new Uint8Array(maxImageBytes + 1)),
+      shelf.receive(shelf.ticket({ ...png, bytes: 10 }, holder).ticket, testPng),
+      shelf.receive(shelf.ticket(png, holder).ticket, testPng.subarray(0, 20)),
+      shelf.receive(shelf.ticket({ ...png, bytes: 6 }, holder).ticket, testImageHeads.jpeg),
     ];
     expect(outcomes).toStrictEqual([
       { ok: false, error: "too_large" },
@@ -69,7 +73,7 @@ describe("the upload shelf", () => {
 
   it("keeps an upload 1 hour, and at most 16 at once, the oldest dropped first", async () => {
     const { shelf, clock } = shelfAt();
-    const upload = () => expectOk(shelf.receive(shelf.ticket(png).ticket, testPng));
+    const upload = () => expectOk(shelf.receive(shelf.ticket(png, holder).ticket, testPng));
     const first = upload();
     const second = upload();
     Array.from({ length: 15 }, upload);
@@ -79,9 +83,25 @@ describe("the upload shelf", () => {
     expect(await shelf.read(second, live())).toStrictEqual({ ok: false, error: "unreadable" });
   });
 
+  it("uses a ticket up when its holder is refused, as one it never had", () => {
+    const { shelf } = shelfAt();
+    const { ticket } = shelf.ticket(png, holder);
+    const refused = shelf.receive(ticket, testPng, (asker) => asker !== holder);
+    const again = shelf.receive(ticket, testPng, isMiniApp);
+    const admitted = shelf.receive(shelf.ticket(png, holder).ticket, testPng, isMiniApp);
+    expect([refused, again]).toStrictEqual([
+      { ok: false, error: "ticket" },
+      { ok: false, error: "ticket" },
+    ]);
+    expect(admitted).toMatchObject({ ok: true });
+  });
+
   it("holds at most 64 open tickets, the oldest dropped first", () => {
     const { shelf } = shelfAt();
-    const [oldest, next, ...rest] = Array.from({ length: 65 }, () => shelf.ticket(png).ticket);
+    const [oldest, next, ...rest] = Array.from(
+      { length: 65 },
+      () => shelf.ticket(png, holder).ticket,
+    );
     const kept = [oldest, next].map((ticket) => shelf.receive(String(ticket), testPng));
     expect(kept).toMatchObject([{ ok: false, error: "ticket" }, { ok: true }]);
     expect(rest).toHaveLength(63);

@@ -9,12 +9,13 @@ import { ownerImagesOf } from "./owner-images.js";
 import { createUploadShelf } from "./upload-shelf.js";
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
+const holder = "tg:279058397";
 
 // A shelf holding the test PNG, and the upload id it gave it.
 function holding() {
   const shelf = createUploadShelf({ clock: createManualClock(0), random: createSeededRandom(7) });
   const plan = { contentType: "image/png", bytes: testPng.byteLength } as const;
-  return { shelf, upload: expectOk(shelf.receive(shelf.ticket(plan).ticket, testPng)) };
+  return { shelf, upload: expectOk(shelf.receive(shelf.ticket(plan, holder).ticket, testPng)) };
 }
 
 describe("ownerImagesOf", () => {

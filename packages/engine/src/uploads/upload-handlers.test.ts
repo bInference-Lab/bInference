@@ -6,6 +6,9 @@ import { expectOk, testAgent } from "../intents/test-intents.js";
 import { startTestEngine, testCall, testCallers } from "../operations/test-engine.js";
 import { createUploadShelf } from "./upload-shelf.js";
 
+// The ticket is held for the caller's credential, which the public address checks.
+const isCaller = (holder: string): boolean => holder === testCallers.cli.credential;
+
 describe("an upload of the owner's image", () => {
   it("goes from upload/start through the shelf to the runtime's inbox/readImage", async () => {
     const uploads = createUploadShelf({
@@ -18,7 +21,9 @@ describe("an upload of the owner's image", () => {
     const started = expectOk(await handlers["upload/start"](testCall(plan)));
     expect(started.url).toMatch(/^\/upload\/[\w-]{43}$/);
     expect(started.expiresAt).toBe(120_000);
-    const image = expectOk(uploads.receive(started.url.slice("/upload/".length), testPng));
+    const image = expectOk(
+      uploads.receive(started.url.slice("/upload/".length), testPng, isCaller),
+    );
     await handlers["chat/post"](
       testCall({ agent: testAgent, text: "This chart", images: [image] }),
     );

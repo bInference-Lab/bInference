@@ -9,6 +9,9 @@ export interface UploadPlan {
   readonly bytes: number;
 }
 
+/** Who asked for a ticket: the id of the credential the caller signed in with, such as `tg:<id>`. */
+export type UploadHolder = string;
+
 /** A single-use ticket for one upload, and when it stops working. */
 export interface UploadTicket {
   readonly ticket: string;
@@ -28,10 +31,18 @@ export type UploadRefusal = "ticket" | "too_large" | "length" | "format";
  * either limit the oldest is dropped first. It reads uploads as the owner's images by their ids.
  */
 export interface UploadShelf extends OwnerImageSource {
-  /** A ticket for one upload of this plan. */
-  ticket(plan: UploadPlan): UploadTicket;
-  /** Takes the body of a ticket's upload, which uses the ticket up: answers the upload's id. */
-  receive(ticket: string, body: Readonly<Uint8Array>): Result<string, UploadRefusal>;
+  /** A ticket for one upload of this plan, held for the credential that asked for it. */
+  ticket(plan: UploadPlan, holder: UploadHolder): UploadTicket;
+  /**
+   * Takes the body of a ticket's upload, which uses the ticket up: answers the upload's id. With
+   * `admits`, a ticket whose holder it refuses is used up and refused as one the shelf never had
+   * (decision 0229).
+   */
+  receive(
+    ticket: string,
+    body: Readonly<Uint8Array>,
+    admits?: (holder: UploadHolder) => boolean,
+  ): Result<string, UploadRefusal>;
 }
 
 /** How long tickets and uploads last, and how many of each the shelf holds. */
@@ -42,6 +53,11 @@ export interface UploadShelfOptions {
   readonly keepMs?: number;
   readonly most?: number;
   readonly mostTickets?: number;
+}
+
+interface Planned {
+  readonly plan: UploadPlan;
+  readonly holder: UploadHolder;
 }
 
 interface Kept<T> {
@@ -78,7 +94,7 @@ function checked(
 /** Creates an empty {@link UploadShelf}. */
 export function createUploadShelf(options: UploadShelfOptions): UploadShelf {
   const { clock, random } = options;
-  const tickets = new Map<string, Kept<UploadPlan>>();
+  const tickets = new Map<string, Kept<Planned>>();
   const uploads = new Map<string, Kept<Readonly<Uint8Array>>>();
   const ticketMs = options.ticketMs ?? 120_000;
   const keepMs = options.keepMs ?? 3_600_000;
@@ -86,18 +102,19 @@ export function createUploadShelf(options: UploadShelfOptions): UploadShelf {
   const mostTickets = options.mostTickets ?? 64;
   const token = (length: number): string => Buffer.from(random.bytes(length)).toString("base64url");
   return {
-    ticket(plan) {
+    ticket(plan, holder) {
       const ticket = token(32);
       const expiresAt = clock.now() + ticketMs;
-      tickets.set(ticket, { value: plan, untilMs: expiresAt });
+      tickets.set(ticket, { value: { plan, holder }, untilMs: expiresAt });
       prune(tickets, clock.now(), mostTickets);
       return { ticket, expiresAt };
     },
-    receive(ticket, body) {
+    receive(ticket, body, admits) {
       prune(tickets, clock.now());
-      const plan = tickets.get(ticket)?.value;
+      const planned = tickets.get(ticket)?.value;
       tickets.delete(ticket);
-      const kept = plan === undefined ? err("ticket" as const) : checked(plan, body);
+      const isAdmitted = planned !== undefined && (admits?.(planned.holder) ?? true);
+      const kept = isAdmitted ? checked(planned.plan, body) : err("ticket" as const);
       if (!kept.ok) {
         return kept;
       }

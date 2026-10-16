@@ -9,6 +9,8 @@ import { startTestServer, type TestServer } from "./test-server.js";
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(5_000) });
 const png = { contentType: "image/png", bytes: testPng.byteLength } as const;
+// The console device's credential, which asks for the tickets on this machine.
+const holder = "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 
 // A POST of the body to the ticket's path, from a browser at `origin` when one is given.
 async function post(
@@ -39,7 +41,7 @@ describe("uploading the owner's image", () => {
 
   it("keeps the body of a ticket once, and the runtime reads it by the upload id", async () => {
     const { server, uploads } = await start();
-    const { ticket } = uploads.ticket(png);
+    const { ticket } = uploads.ticket(png, holder);
     const answer = await post(server, { ticket, body: testPng, origin: server.origin });
     expect(answer.status).toBe(201);
     const { upload } = JSON.parse(answer.body) as { readonly upload: string };
@@ -58,16 +60,16 @@ describe("uploading the owner's image", () => {
     const { server, uploads } = await start();
     // The declared size alone refuses it, before a byte of the body is read.
     const large = await requestLocal(server.httpPort, {
-      path: `/upload/${uploads.ticket({ contentType: "image/png", bytes: maxImageBytes }).ticket}`,
+      path: `/upload/${uploads.ticket({ contentType: "image/png", bytes: maxImageBytes }, holder).ticket}`,
       method: "POST",
       headers: { "content-length": String(maxImageBytes + 1) },
     });
     const gif = await post(server, {
-      ticket: uploads.ticket({ contentType: "image/png", bytes: 6 }).ticket,
+      ticket: uploads.ticket({ contentType: "image/png", bytes: 6 }, holder).ticket,
       body: new TextEncoder().encode("GIF89a"),
     });
     const foreign = await post(server, {
-      ticket: uploads.ticket(png).ticket,
+      ticket: uploads.ticket(png, holder).ticket,
       body: testPng,
       origin: "https://evil.example",
     });
@@ -77,7 +79,7 @@ describe("uploading the owner's image", () => {
   it("is not there through the public address, and takes POST only", async () => {
     const { server, uploads } = await start({ publicOrigin: "https://owner.example.ts.net" });
     const published = await requestLocal(server.httpPort, {
-      path: `/upload/${uploads.ticket(png).ticket}`,
+      path: `/upload/${uploads.ticket(png, holder).ticket}`,
       method: "POST",
       headers: { host: "owner.example.ts.net" },
       body: testPng,

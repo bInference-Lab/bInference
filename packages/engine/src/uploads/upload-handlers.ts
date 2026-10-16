@@ -8,13 +8,14 @@ export interface UploadHandlers {
 }
 
 /**
- * Creates the handler of `upload/start`: a single-use ticket for one image, valid 2 minutes, as
- * the path of `POST /upload/:ticket` on the address the client reached the engine at.
+ * Creates the handler of `upload/start`: a single-use ticket for one image, valid 2 minutes, held
+ * for the caller's credential, as the path of `POST /upload/:ticket` on the address the client
+ * reached the engine at.
  */
 export function createUploadHandlers(shelf: Pick<UploadShelf, "ticket">): UploadHandlers {
   return {
     async "upload/start"(call) {
-      const { ticket, expiresAt } = shelf.ticket(call.args);
+      const { ticket, expiresAt } = shelf.ticket(call.args, call.caller.credential);
       return Promise.resolve(ok({ url: `/upload/${ticket}`, expiresAt }));
     },
   };

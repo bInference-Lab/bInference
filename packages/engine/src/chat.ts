@@ -23,6 +23,7 @@ export type {
 export { imageTypeOf } from "./chat/image-type.js";
 export { createUploadShelf } from "./uploads/upload-shelf.js";
 export type {
+  UploadHolder,
   UploadPlan,
   UploadRefusal,
   UploadShelf,
