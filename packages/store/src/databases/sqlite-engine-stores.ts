@@ -12,6 +12,7 @@ import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
 import { createSqliteModelUsageStore } from "../model-usage/sqlite-model-usage-store.js";
 import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
 import { createSqliteOrderStore } from "../orders/sqlite-order-store.js";
+import { createSqliteScheduleStore } from "../schedules/sqlite-schedule-store.js";
 import { createSqliteAgentTopicStore } from "../surfaces/sqlite-agent-topic-store.js";
 import { createSqliteCardCopyStore } from "../surfaces/sqlite-card-copy-store.js";
 import { createSqliteOwnerStore } from "../surfaces/sqlite-owner-store.js";
@@ -41,5 +42,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     cardCopies: createSqliteCardCopyStore(host),
     agentTopics: createSqliteAgentTopicStore(host),
     modelUsage: createSqliteModelUsageStore(host),
+    schedules: createSqliteScheduleStore(host),
   };
 }

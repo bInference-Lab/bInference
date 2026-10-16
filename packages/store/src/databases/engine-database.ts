@@ -16,6 +16,7 @@ import { noticeTasks } from "../notices/notice-tasks.js";
 import { orderTasks } from "../orders/order-tasks.js";
 import { positionTasks } from "../positions/sqlite-position-store.js";
 import { riskCacheTasks } from "../risk-cache/risk-cache-tasks.js";
+import { scheduleTasks } from "../schedules/sqlite-schedule-store.js";
 import { agentTopicTasks } from "../surfaces/sqlite-agent-topic-store.js";
 import { cardCopyTasks } from "../surfaces/sqlite-card-copy-store.js";
 import { ownerTasks } from "../surfaces/sqlite-owner-store.js";
@@ -49,6 +50,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...cardCopyTasks,
     ...agentTopicTasks,
     ...modelUsageTasks,
+    ...scheduleTasks,
   ],
 };
 

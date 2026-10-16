@@ -13,6 +13,7 @@ import type {
   NoticeStore,
   TransactionStore,
 } from "../ports.js";
+import type { ScheduleStore } from "../schedules/ports.js";
 import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/ports.js";
 
 /**
@@ -46,4 +47,6 @@ export interface EngineStores {
   readonly questions: QuestionStore;
   /** Each model call attempt of the agents' runtime, and the budget notices of each day. */
   readonly modelUsage: ModelUsageStore;
+  /** The owner's schedules and their runs, which store their wake-ups in the agent inbox. */
+  readonly schedules: ScheduleStore;
 }

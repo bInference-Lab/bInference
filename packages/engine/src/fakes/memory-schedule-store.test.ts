@@ -5,21 +5,16 @@ import {
 } from "../contracts/schedule-store-contract.js";
 import { fixtureId, live } from "../contracts/store-fixtures.js";
 import { testAgentDraft } from "../intents/test-intents.js";
-import { createMemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
-import { createMemoryAgentStore } from "./memory-agent-store.js";
-import { createMemoryInstallStore } from "./memory-install-store.js";
-import { createMemoryScheduleStore } from "./memory-schedule-store.js";
+import { createMemoryEngineStores } from "./memory-engine-stores.js";
 
 describe("memory schedule store", () => {
   it.each(
     scheduleStoreContract({
       create: async (): Promise<ScheduleSubject> => {
-        const agents = createMemoryAgentStore({ install: createMemoryInstallStore() });
-        const agentInbox = createMemoryAgentInboxStore({ agents });
+        const stores = createMemoryEngineStores();
         const agentId = fixtureId("agt", 1);
-        await agents.create(testAgentDraft({ id: agentId }), live());
-        const schedules = createMemoryScheduleStore({ agents, agentInbox });
-        return { schedules, agentInbox, agentId };
+        await stores.agents.create(testAgentDraft({ id: agentId }), live());
+        return { schedules: stores.schedules, agentInbox: stores.agentInbox, agentId };
       },
     }),
   )("follows the contract: $name", async ({ run }) => {

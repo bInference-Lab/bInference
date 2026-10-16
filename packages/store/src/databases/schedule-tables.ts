@@ -1,7 +1,7 @@
 // The tables of the owner's schedules, as SQLite returns them: migration 0040 defines both.
 
 /** `schedules`: one schedule, with its next run and its last one. */
-interface SchedulesTable {
+export interface SchedulesTable {
   id: string;
   agent_id: string;
   when: string;

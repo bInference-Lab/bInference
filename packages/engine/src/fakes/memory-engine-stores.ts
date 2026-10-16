@@ -15,6 +15,7 @@ import { createMemoryNoticeStore } from "./memory-notice-store.js";
 import { createMemoryOrderStore, type MemoryOrderStore } from "./memory-order-store.js";
 import { createMemoryOwnerStore } from "./memory-owner-store.js";
 import { createMemoryQuestionStore } from "./memory-question-store.js";
+import { createMemoryScheduleStore } from "./memory-schedule-store.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 
 /**
@@ -65,5 +66,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     cardCopies: createMemoryCardCopyStore(),
     agentTopics: createMemoryAgentTopicStore(),
     modelUsage: createMemoryModelUsageStore({ agents }),
+    schedules: createMemoryScheduleStore({ agents, agentInbox }),
   };
 }
