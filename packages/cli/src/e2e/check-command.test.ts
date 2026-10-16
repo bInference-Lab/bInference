@@ -2,10 +2,12 @@ import { messages } from "@binference/i18n";
 import { afterEach, describe, expect, it } from "vitest";
 import { platformOf } from "../compose/engine-locations.js";
 import { runCli } from "../program/run-cli.js";
+import { createFakeModelProvider, testModelId, testModelKey } from "./model-fixtures.js";
 import {
   createTestMachines,
   freePort,
   hostOn,
+  hostWith,
   runOn,
   type TestMachine,
   writeTestConfig,
@@ -47,6 +49,12 @@ async function start(machine: TestMachine): Promise<void> {
   await host.waitForLine((line) => line.includes('"state":"ready"'));
 }
 
+// The finding `models.reachable` of a `check --json` run's output.
+function reachable(stdout: string): Finding | undefined {
+  const parsed = JSON.parse(stdout) as { readonly findings: readonly Finding[] };
+  return parsed.findings.find((finding) => finding.check === "models.reachable");
+}
+
 // The file unlock mode, whatever the machine running the test would choose.
 const fileUnlock = '  engine: { unlock: { mode: "file" } },\n';
 
@@ -76,6 +84,10 @@ describe("binference check", () => {
       expect(stopped.byCheck.get("rpc.keyed")).toStrictEqual({ check: "rpc.keyed", level: "skip" });
       expect(stopped.byCheck.get("rpc.pushed")).toStrictEqual({
         check: "rpc.pushed",
+        level: "skip",
+      });
+      expect(stopped.byCheck.get("models.reachable")).toStrictEqual({
+        check: "models.reachable",
         level: "skip",
       });
       await start(machine);
@@ -167,6 +179,58 @@ describe("binference check", () => {
       });
       expect(checked.code).toBe(0);
       expect(english.stdout).toContain("  local/qwen-9: its provider reports no cost");
+    },
+  );
+
+  it(
+    "checks the main model with one small call, and names a refused key, never the key",
+    slow,
+    async () => {
+      const machine = await machines.create(nowMs);
+      const models = [
+        "  models: {",
+        '    providers: { openai: { kind: "openai", apiKey: { fromEnv: "TEST_MODEL_KEY" } } },',
+        `    main: "openai/${testModelId}",`,
+        "  },\n",
+      ].join("\n");
+      await writeTestConfig(machine.folder, models);
+      const provider = createFakeModelProvider();
+      const checkWith = async (key: string, argv: readonly string[]) => {
+        const host = hostWith(machine, ["check", ...argv], {
+          env: { TEST_MODEL_KEY: key },
+          parts: { http: provider.http },
+        });
+        return { code: await runCli(host), stdout: host.stdout() };
+      };
+
+      const passed = await checkWith(testModelKey, ["--json"]);
+      const refused = await checkWith("sk-test-a-key-it-refuses", ["--json"]);
+      const words = await checkWith("sk-test-a-key-it-refuses", []);
+
+      expect(reachable(passed.stdout)).toStrictEqual({
+        check: "models.reachable",
+        level: "ok",
+        model: `openai/${testModelId}`,
+      });
+      expect([refused.code, reachable(refused.stdout)]).toStrictEqual([
+        1,
+        {
+          check: "models.reachable",
+          level: "fail",
+          model: `openai/${testModelId}`,
+          problem: "bad_key",
+        },
+      ]);
+      const message = String(messages.en["cli.check.model.bad_key"])
+        .replaceAll("{provider}", "openai")
+        .replace("{model}", testModelId);
+      expect(words.stdout).toContain(message);
+      expect(words.stdout).not.toContain("sk-test-a-key-it-refuses");
+      expect(provider.requests.map((request) => request.url)).toStrictEqual([
+        "https://api.openai.com/v1/chat/completions",
+        "https://api.openai.com/v1/chat/completions",
+        "https://api.openai.com/v1/chat/completions",
+      ]);
     },
   );
 });
